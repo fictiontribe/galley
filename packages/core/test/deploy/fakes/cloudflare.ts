@@ -29,10 +29,18 @@ export interface FakeCloudflare extends FakeServer {
   stored: Map<string, Buffer>;
   /** How many file parts were uploaded in total. */
   uploadedParts: number;
+  /** Worker Custom Domains in the account. */
+  domains: Array<{ id: string; hostname: string; service: string; zone_id: string; zone_name: string }>;
+  /** Host names that already have a DNS record of their own (not a Worker domain). */
+  dnsRecords: Set<string>;
 }
 
 export interface FakeCloudflareOptions {
   token?: string;
+  /** Zones in the account, name → id. Default: example.com. */
+  zones?: Record<string, string>;
+  /** How many probes an attached address fails before its certificate is ready. Default 0. */
+  certificatePolls?: number;
   accounts?: Array<{ id: string; name: string }>;
   subdomain?: string | null;
   /** The key works but can't touch Workers (403, code 10000). */
@@ -62,6 +70,15 @@ export async function startFakeCloudflare(options: FakeCloudflareOptions = {}): 
   const sessions = new Map<string, { account: string; script: string; manifest: Record<string, { hash: string; size: number }>; needed: Set<string> }>();
   const completions = new Map<string, { script: string; manifest: Record<string, { hash: string; size: number }> }>();
   const deployments: CfDeployment[] = [];
+  const zones = options.zones ?? { "example.com": "zone0123456789abcdef0123456789ab" };
+  const domains: FakeCloudflare["domains"] = [];
+  const dnsRecords = new Set<string>();
+  const probes = new Map<string, number>();
+  const zoneFor = (hostname: string) => {
+    const name = Object.keys(zones).find((zone) => hostname === zone || hostname.endsWith(`.${zone}`));
+
+    return name ? { name, id: zones[name]! } : null;
+  };
   let uploadedParts = 0;
 
   const accountOk = (id: string | undefined) => accounts.some((account) => account.id === id);
@@ -107,6 +124,18 @@ export async function startFakeCloudflare(options: FakeCloudflareOptions = {}): 
         return ok({});
       }
 
+      // ── the address itself, as a browser would reach it (rehearsal and tests only): ready once attached and its certificate is out
+      if (request.url.pathname === "/__probe") {
+        const host = request.url.searchParams.get("host") ?? "";
+        const domain = domains.find((entry) => entry.hostname === host);
+
+        if (!domain) return { status: 404, body: { error: "no such address" } };
+        const polls = (probes.get(host) ?? 0) + 1;
+
+        probes.set(host, polls);
+        return polls > (options.certificatePolls ?? 0) ? { status: 200, body: { ok: true } } : { status: 525, body: { error: "SSL handshake failed" } };
+      }
+
       // ── everything else authenticates with the account key
       if (request.bearer !== token) return fail(400, 9109, `Invalid access token${echo}`);
       if (parts[0] !== "accounts") return fail(404, 7003, "No route for that URI");
@@ -119,6 +148,56 @@ export async function startFakeCloudflare(options: FakeCloudflareOptions = {}): 
       if (options.noWorkersPermission && parts[2] === "workers") return fail(403, 10000, `Authentication error${echo}`);
       const rest = parts.slice(2).join("/");
 
+      // ── Worker Custom Domains (documented: list, attach, detach) and the read-only changeset Wrangler uses
+      if (rest === "workers/domains" && request.method === "GET") {
+        const hostname = request.url.searchParams.get("hostname");
+
+        return ok(domains.filter((domain) => !hostname || domain.hostname === hostname));
+      }
+      if (rest === "workers/domains" && request.method === "PUT") {
+        const body = request.json<{ hostname?: string; service?: string; zone_id?: string; environment?: string }>();
+        const zone = zoneFor(body?.hostname ?? "");
+
+        if (!body?.hostname || !body.service) return fail(400, 100100, "hostname and service are required");
+        if (!scripts.has(body.service)) return fail(404, 10007, "This Worker does not exist on your account.");
+        if (!zone) return fail(400, 100109, `Could not find zone for ${body.hostname}`);
+        if (body.zone_id && body.zone_id !== zone.id) return fail(400, 100110, "zone_id doesn't match the hostname");
+        // No override flag on this endpoint: an existing record or another Worker's domain is refused, never replaced.
+        if (dnsRecords.has(body.hostname)) return fail(409, 100117, "Hostname already has externally managed DNS records (A, CNAME, etc).");
+        const taken = domains.find((domain) => domain.hostname === body.hostname);
+
+        if (taken && taken.service !== body.service) return fail(409, 100116, "Hostname is already in use by another Worker.");
+        if (!taken) domains.push({ id: `dom-${randomUUID().slice(0, 8)}`, hostname: body.hostname, service: body.service, zone_id: zone.id, zone_name: zone.name });
+        return ok(domains.find((domain) => domain.hostname === body.hostname));
+      }
+      const domainId = /^workers\/domains\/([^/]+)$/.exec(rest)?.[1];
+
+      if (domainId && request.method === "DELETE") {
+        const at = domains.findIndex((domain) => domain.id === domainId);
+
+        if (at === -1) return fail(404, 100114, "Domain not found");
+        domains.splice(at, 1);
+        return ok(null);
+      }
+      const changeset = /^workers\/scripts\/([^/]+)\/domains\/changeset$/.exec(rest)?.[1];
+
+      if (changeset && request.method === "POST") {
+        if (!scripts.has(changeset)) return fail(404, 10007, "This Worker does not exist on your account.");
+        const origins = request.json<Array<{ hostname: string }>>() ?? [];
+        const result = { added: [] as unknown[], removed: [] as unknown[], updated: [] as unknown[], conflicting: [] as unknown[] };
+
+        for (const origin of origins) {
+          const zone = zoneFor(origin.hostname);
+
+          if (!zone) return fail(400, 100109, `Could not find zone for ${origin.hostname}`);
+          const entry = { hostname: origin.hostname, service: changeset, zone_id: zone.id, zone_name: zone.name };
+
+          if (dnsRecords.has(origin.hostname)) result.conflicting.push(entry);
+          else if (domains.some((domain) => domain.hostname === origin.hostname)) result.updated.push({ ...entry, modified: false });
+          else result.added.push(entry);
+        }
+        return ok(result);
+      }
       if (request.method === "GET" && rest === "workers/subdomain") return subdomain ? ok({ subdomain }) : fail(404, 10007, "This account doesn't have a workers.dev subdomain");
       // Like the real list: a Worker with no version yet isn't in it.
       if (request.method === "GET" && rest === "workers/scripts") return ok([...scripts.keys()].filter((id) => deployments.some((entry) => entry.script === id)).map((id) => ({ id })));
@@ -224,6 +303,8 @@ export async function startFakeCloudflare(options: FakeCloudflareOptions = {}): 
     api: `${server.url}/client/v4`,
     token,
     scripts,
+    domains,
+    dnsRecords,
     deployments,
     stored,
     get uploadedParts() {

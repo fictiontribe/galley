@@ -154,6 +154,10 @@
     "target": "cloudflare",
     "account": "0cc7327da4f3d67ccdcb0e075d72eccc",
     "project": "galley",
-    "productionUrl": "https://galley.fictiontribe.com"
+    "productionUrl": "https://galley.fictiontribe.com",
+    "domain": {
+      "hostname": "galley.fictiontribe.com",
+      "attached": false
+    }
   }
 }

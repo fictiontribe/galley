@@ -1,8 +1,9 @@
 # Releasing
 
-Nothing has been released yet. This is the checklist for the first release and
-the ones after it — what has to be true, and the steps, in order. Items marked
-**(first release)** are one-time work that hasn't been done.
+0.1.0, the first release, went to npm on 2026-11-23 as `galley-cms` and
+`create-galley`. This is the checklist for each release — what has to be true,
+and the steps, in order. Items marked **(first release)** were one-time work
+for 0.1.0; this file doesn't record which of them were finished.
 
 ## What a release is
 
@@ -30,9 +31,9 @@ versions:
 - **minor** (`0.1.0` → `0.2.0`): any change to `galley.config.json`, the HTTP
   API, the adapter API (`ADAPTER_API_VERSION`), a command-line option or a
   starter's name;
-- **patch** (`0.1.0` → `0.1.1`): fixes and additions that change none of
-  those;
-- **pre-release** (`0.2.0-rc.1`): published under npm's `next` tag, so
+- **patch** (`0.1.0` → `0.1.1`): fixes, and additions that leave what is
+  already there working as it did (a new command, a new optional setting);
+- **release candidate** (`0.2.0-rc.1`): published under npm's `next` tag, so
   `npm create galley@latest` and `npx galley-cms` keep giving people the last
   release; `npm create galley@next` tries the new one.
 

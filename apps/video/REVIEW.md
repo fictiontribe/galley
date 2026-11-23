@@ -7,7 +7,7 @@ Read this before changing anything.
 The owner liked the script and not the pictures: the first cut edited a plain example site
 (“Lowfield Studio”). This cut keeps the script, the voice and the length and re-shoots every shot on
 **Caddow**, the fashion starter, so the photograph is on screen for most of the film. The film must
-not show or say a command that does not work: Galley is pre-release and not on npm.
+not show or say a command that does not work: at the time of this cut Galley was not on npm yet.
 
 ## Creative calls
 

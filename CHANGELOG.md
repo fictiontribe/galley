@@ -5,10 +5,42 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
-## Unreleased — 0.1.0
+## 0.1.1 — 2026-11-24
 
-Nothing has been released or published yet. This is what the first release
-will contain, as it stands in the repository.
+### Added
+
+- **Your own domain** for a site that is online: **Online › Use your own
+  domain…** in the app, `galley domain <hostname>` and
+  `galley deploy --domain <hostname>` on the command line. Galley shows what
+  will change first, never replaces a DNS record, waits until the address
+  answers over HTTPS, and detaches only an address it attached itself. On
+  Cloudflare the domain has to be in the same account as the site; on Vercel
+  you're shown the DNS record to add. New optional settings: `deploy.domain`
+  and `deploy.defaultUrl`.
+
+### Changed
+
+- The packages describe Galley as an open-source AI CMS **for static sites**:
+  Astro fits deepest, and Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo
+  and Jekyll are recognised by their conventions.
+- The documentation, the quickstart and the starters' READMEs start from
+  `npm create galley@latest` and `npx galley-cms`; running from a clone is in
+  `CONTRIBUTING.md`, for people changing Galley itself.
+- A site's live address stays the one you chose: a deploy no longer replaces
+  an own domain with the host's default address.
+
+### Known problems
+
+- The Search and AI checks, and Proof's "things to check", read the redirects
+  list as page links and report every old address as a broken link. Don't use
+  **Point it at the new address** or **Fix all** on those findings: it
+  rewrites the redirect. A fix is on its way.
+- `galley starters | head` (any command whose output is cut short) ends with
+  an error message.
+
+## 0.1.0 — 2026-11-23
+
+The first release, on npm as `galley-cms` and `create-galley`.
 
 ### Engine (`@galley/core`)
 

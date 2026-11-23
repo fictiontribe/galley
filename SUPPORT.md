@@ -1,6 +1,6 @@
 # Support
 
-Galley is pre-release and maintained by a small team, in the open.
+Galley is new and maintained by a small team, in the open.
 
 - **Questions and ideas**: open an issue (use the feature request form for
   ideas). Discussions may be enabled when the repository is public.

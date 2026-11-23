@@ -34,7 +34,7 @@ Galley is free and Apache-2.0, with one edition. The assistant and image generat
 
 ## Which frameworks?
 
-Astro is the one Galley is built and tested against: it reads the content config and zod schemas, the routes and the Astro config. Eleventy, Hugo, Jekyll, Next.js, Nuxt, SvelteKit and Docusaurus are recognised by convention, and any folder of markdown with front matter works. Other frameworks arrive as adapters. [Adapters](/docs/adapters/).
+Astro fits deepest: Galley reads its content config and zod schemas, the routes and the Astro config, and the site kit and the starters are Astro. Eleventy, Hugo, Jekyll, Next.js, Nuxt, SvelteKit and Docusaurus are recognised by convention, and any folder of markdown with front matter works. Other frameworks arrive as adapters. [Adapters](/docs/adapters/).
 
 ## How does it fit our deploy pipeline?
 
@@ -66,4 +66,4 @@ When you need per-user roles and approval chains beyond pull requests, scheduled
 
 ## Is it ready?
 
-Pre-release, version 0.1.0. Editing three ways, Proof, publishing and undo, forms and the inbox, scripts with consent, plugins, Cloudflare deploys, many sites in one app, MCP, the desktop app (macOS, unsigned) and three starters are built. Redirects, the brand set-up, the Search and AI checks and the guided WordPress move are new and in final checks; the page builder is in preview; Vercel deploys, agent-readable pages for the sites Galley builds, the per-crawler switch and the Shopify storefront are in progress. Nothing is published to npm yet. The [changelog]({repository}/blob/main/CHANGELOG.md) lists what the first release will contain.
+Version {version}, on npm. Editing three ways, Proof, publishing and undo, forms and the inbox, scripts with consent, plugins, Cloudflare deploys, many sites in one app, MCP, the desktop app (macOS, unsigned) and three starters are built. Redirects, the brand set-up, the Search and AI checks and the guided WordPress move are new and in final checks; the page builder is in preview; Vercel deploys, agent-readable pages for the sites Galley builds, the per-crawler switch and the Shopify storefront are in progress. It is on npm as `galley-cms`; the [changelog]({repository}/blob/main/CHANGELOG.md) lists what is in it.

@@ -20,6 +20,9 @@ export const deployKeys = {
 interface DeployUi {
   setup: { open: boolean; intent: SetupIntent };
   share: boolean;
+  /** The "Use your own domain" dialog. */
+  domain: boolean;
+  setDomain: (open: boolean) => void;
   openSetup: (intent?: SetupIntent) => void;
   closeSetup: () => void;
   setShare: (open: boolean) => void;
@@ -29,6 +32,8 @@ interface DeployUi {
 export const useDeployUi = create<DeployUi>((set) => ({
   setup: { open: false, intent: "production" },
   share: false,
+  domain: false,
+  setDomain: (domain) => set({ domain }),
   openSetup: (intent = "production") => set({ setup: { open: true, intent } }),
   closeSetup: () => set((state) => ({ setup: { ...state.setup, open: false } })),
   setShare: (share) => set({ share }),
@@ -49,7 +54,7 @@ export function useDeployStatus(siteId: string) {
 
   // A deploy that finishes changes the status (a new deployment, a new address): read it again.
   useServerEvent("job", (event) => {
-    if (event.job.kind !== "deploy" || event.job.siteId !== siteId || event.job.state === "running") return;
+    if ((event.job.kind !== "deploy" && event.job.kind !== "domain") || event.job.siteId !== siteId || event.job.state === "running") return;
     invalidate(deployKeys.status(siteId));
     invalidate(deployKeys.deployments(siteId));
   });

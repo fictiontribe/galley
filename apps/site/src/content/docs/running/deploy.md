@@ -58,6 +58,10 @@ galley deploy ./site --target vercel --project my-site --yes
 
 It asks only what it can't find, only on a terminal (the key is read without echo and stored), saves the choices, prints the address, and exits 1 on failure.
 
+## Your own domain
+
+Once a site is online it can answer at an address of yours, such as `www.example.com`: **Online › Use your own domain…** in the app, or `galley domain www.example.com` ([Command line](/docs/reference/cli/#galley-domain)). Galley shows what will change, attaches the address when you say yes, waits until it answers over HTTPS, then makes it the site's live address. It never replaces a DNS record, and `galley domain --remove` detaches only an address Galley attached. On Cloudflare the domain has to be in the same account; on Vercel you're shown the one DNS record to add where your DNS is. *Status: new in 0.1.1. On Cloudflare, taking over an address that already pointed at the site has been run on the real service; attaching a fresh address, and everything on Vercel, is tested against stand-ins only.* Details: [`docs/deploy.md`]({repository}/blob/main/docs/deploy.md#using-your-own-domain).
+
 ## Or let the host build it
 
 If the site lives in a git host and a team works through pull requests, connect the repository to Cloudflare or Vercel and let them build on every push. Don't use both for one project: two sources of truth for what's live is how sites go back in time.

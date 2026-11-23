@@ -1,11 +1,11 @@
 ---
 title: Community
-description: Galley is open source under Apache-2.0 and built in the open with Astro developers. How to take part, the rules of the project, and who makes it.
+description: Galley is open source under Apache-2.0 and built in the open. How to take part, the rules of the project, and who makes it.
 sections:
   - type: hero
     layout: text
     eyebrow: Apache-2.0 · no telemetry
-    heading: Built in the open, with Astro developers.
+    heading: Built in the open.
     text: Run it, break it, and send back a starter, an adapter, a plugin or a fix. The open-source product has no paid tier.
     cta:
       label: Get started

@@ -8,7 +8,7 @@ noindex: true
 
 You are helping a person run Galley {version} on their website. Read this whole file before you run anything. The full documentation is at {site}/docs/, the index for agents is {site}/llms.txt, and the whole site is one file at {site}/llms-full.txt.
 
-> Galley is pre-release ({version}) and not on npm yet: it runs from a clone of its repository. Below, `galley` means `node <clone>/packages/cli/bin/galley.js` (or an alias to it). If a command below fails, say so plainly to the person — do not invent a workaround.
+> Galley is at version {version}, on npm as `galley-cms` (Node.js 20.11 or newer). The docs write its command as `galley`; here it is `npx galley-cms`. If a command below fails, say so plainly to the person — do not invent a workaround.
 
 ## What it is
 
@@ -24,22 +24,12 @@ Astro is first-class: `src/content.config.ts` is parsed statically (never execut
 
 ## Setting it up
 
-1. **Get Galley** (once, anywhere outside the person's site):
-
-   ```sh
-   git clone {repository}.git galley
-   cd galley
-   corepack enable
-   pnpm install
-   pnpm --filter @galley/web build
-   alias galley="node $PWD/packages/cli/bin/galley.js"
-   ```
-
-2. **See what detection found, without opening anything:** `galley doctor <site folder>` — framework, package manager, dev and build commands, collections with entry counts and fields, media folders, detection's notes, git state and the assistant's key.
-3. **Open the site:** `galley <site folder>` — starts the site's own dev server behind a preview proxy, binds to `127.0.0.1`, and opens the editor in a browser with a session token in the address. It runs until stopped with Ctrl+C. `--no-open` prints the address instead; `--port` picks the port.
-4. **No site yet:** `galley new <name> --starter <id>` copies a starter (`galley starters` lists them: `astro-editorial` Caddow, `astro-saas` Ferrow, `astro-starter` Lowfield Studio), installs it, records a first version and opens it.
-5. **Write a config to correct detection:** `galley init <site folder>` writes `galley.config.json` from what was detected. Edit only what is wrong; precedence is config > schema > inferred.
-6. **Host it for a team:** `GALLEY_PASSWORD=<at least 12 characters> galley serve` — hosted mode refuses to start without a password.
+1. **See what detection found, without opening anything:** `npx galley-cms doctor <site folder>` — framework, package manager, dev and build commands, collections with entry counts and fields, media folders, detection's notes, git state and the assistant's key.
+2. **Open the site:** run `npx galley-cms` in the site's folder (or `npx galley-cms <site folder>`). It starts the site's own dev server behind a preview proxy, binds to `127.0.0.1`, and opens the editor in a browser with a session token in the address. It runs until stopped with Ctrl+C. `--no-open` prints the address instead; `--port` picks the port.
+3. **No site yet:** `npm create galley@latest <name> -- --starter <id>` copies a starter (`caddow`, `ferrow`, `lowfield` — the default — or `storefront`; `npx galley-cms starters` describes them), installs it, records a first version and opens it. The starters need Node.js 22.23.4 or newer (Astro 7).
+4. **Let an AI tool edit the site over MCP:** `npx galley-cms mcp config <site folder> --client <name>` prints what to paste; use the `npx -y galley-cms mcp …` form it prints.
+5. **Write a config to correct detection:** `npx galley-cms init <site folder>` writes `galley.config.json` from what was detected. Edit only what is wrong; precedence is config > schema > inferred.
+6. **Host it for a team:** `GALLEY_PASSWORD=<at least 12 characters> npx galley-cms serve` — hosted mode refuses to start without a password.
 7. **The assistant** needs an Anthropic API key, entered in Galley's Settings or set as `ANTHROPIC_API_KEY`. Everything except asking for changes works without one.
 
 The quickstart walks a person through the same steps: {site}/docs/getting-started/quickstart/
@@ -50,7 +40,7 @@ The quickstart walks a person through the same steps: {site}/docs/getting-starte
 2. **Never commit, push or force-push Galley's pending changes yourself.** The working tree is Galley's draft. If you must commit your own work, tell the person first and keep it separate from their content edits.
 3. **Never write secrets into files.** API keys go in Galley's Settings or the environment, never in `galley.config.json`, the repository, or a chat.
 4. **Don't hand-edit what Galley manages while it runs** unless asked. If you do edit content files, Galley's watcher shows the change in its proof as an external edit — say so.
-5. **Keep `galley.config.json` minimal.** It exists to correct or extend detection, not to restate it. Validate it by running `galley doctor` afterwards.
+5. **Keep `galley.config.json` minimal.** It exists to correct or extend detection, not to restate it. Validate it by running `npx galley-cms doctor` afterwards.
 6. **Don't add Galley to the site.** It needs no dependency, integration or build plugin. If you find yourself adding one, stop.
 7. **Speak the person's language.** To editors, say Publish, Changes, Proof, Discard, Undo and Version history — not commit, diff or revert.
 

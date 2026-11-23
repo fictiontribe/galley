@@ -1,16 +1,15 @@
 ---
-title: Galley — the open-source AI CMS for Astro
-description: Galley is an open-source AI CMS for Astro. Change a page in a form, on the page or by asking, check every change beside the live site, then publish it to your own git repository.
+title: Galley — the open-source AI CMS for static sites
+description: Galley is an open-source AI CMS for static sites. Change a page in a form, on the page or by asking, check every change beside the live site, then publish it to your own git repository.
 sections:
   - type: hero
     layout: showcase
-    heading: The open-source AI CMS for Astro.
+    heading: The open-source AI CMS.
     text: Prompt it. Proof it. Publish it. Ask for a change, type it in a form or click the page — check it beside the live site, then publish to your own repository.
     cta:
       label: Get started
       href: /docs/getting-started/quickstart/
-    note: "Pre-release: runs from a clone until it’s on npm."
-    notePublished: Run it in your Astro site’s folder.
+    note: "Starts a new site and opens Galley. Already have a site? Run npx galley-cms in its folder."
     command: true
     copyFile:
       label: Setting it up with an agent? Copy its context
@@ -145,8 +144,9 @@ sections:
     heading: It’s just your repo.
     text: Pages stay markdown and JSON files in git. Publish is a commit or a pull request. Galley adds nothing to your build.
     points:
-      - Reads your content collections, no schema to write
-      - Previews with your own `astro dev`
+      - Astro fits deepest; it also recognises Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll — or [teach it yours](/docs/adapters/)
+      - Reads Astro’s content collections, no schema to write
+      - Previews with your site’s own dev server
       - One field changed, one value changed
     link:
       label: Galley and Astro
@@ -180,7 +180,7 @@ sections:
         href: /cloud/
   - type: close
     id: start
-    heading: Built in the open, with Astro developers.
+    heading: Built in the open.
     text: Apache-2.0, free to use. The assistant runs on your own AI key. Bring a starter, an adapter, a plugin or a fix.
     actions:
       - label: Read the quickstart

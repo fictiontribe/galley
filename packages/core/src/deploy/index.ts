@@ -15,3 +15,6 @@ export { appendDeployment, readDeployments } from "./history";
 export { buildForDeploy, publishedCommit, versionsBetween } from "./source";
 export { defaultProjectName, projectNameProblem, VALID_PROJECT, CLOUDFLARE_INFO, CLOUDFLARE_CREDENTIALS, VERCEL_INFO, VERCEL_CREDENTIALS } from "./info";
 export type { DeployContext, DeployInput, DeployOutcome, DeployProgress, DeployTarget } from "./types";
+export { apexOf, hostnameProblem, normalizeHostname, requireHostname } from "./domains";
+export { hasCustomAddress } from "./service";
+export type { DomainInput } from "./types";

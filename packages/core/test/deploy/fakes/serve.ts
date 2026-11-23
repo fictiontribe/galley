@@ -15,7 +15,10 @@ import { startFakeCloudflare } from "./cloudflare";
 import { startFakeVercel } from "./vercel";
 
 const [evidence = "/tmp/galley-deploy/evidence.json", cfPort = "4531", vercelPort = "4532"] = process.argv.slice(2);
-const cf = await startFakeCloudflare({ port: Number(cfPort) });
+// A certificate that takes a few looks to arrive, and one address with a DNS record already on it, so the rehearsal shows the wait and a refusal.
+const cf = await startFakeCloudflare({ port: Number(cfPort), certificatePolls: 3 });
+
+cf.dnsRecords.add("mail.example.com");
 const vercel = await startFakeVercel({ port: Number(vercelPort) });
 
 function describe(files: Map<string, Buffer>) {
@@ -34,7 +37,7 @@ function write() {
     evidence,
     `${JSON.stringify(
       {
-        cloudflare: { uploadedParts: cf.uploadedParts, log: cf.log, deployments: cf.deployments.map((entry) => ({ kind: entry.kind, script: entry.script, id: entry.id, metadata: { ...entry.metadata, assets: { ...entry.metadata.assets, jwt: "[completion jwt]" } }, files: describe(entry.files) })) },
+        cloudflare: { uploadedParts: cf.uploadedParts, domains: cf.domains, log: cf.log, deployments: cf.deployments.map((entry) => ({ kind: entry.kind, script: entry.script, id: entry.id, metadata: { ...entry.metadata, assets: { ...entry.metadata.assets, jwt: "[completion jwt]" } }, files: describe(entry.files) })) },
         vercel: { uploads: vercel.uploads, log: vercel.log, deployments: vercel.deployments.map((entry) => ({ kind: entry.kind, project: entry.project, id: entry.id, files: describe(entry.files) })) },
       },
       null,

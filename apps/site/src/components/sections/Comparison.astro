@@ -1,12 +1,36 @@
 ---
-// A fair comparison: short values in two columns, a note where the other tool
-// does more, and the trademark note under the table.
+// A fair comparison: short values in two columns, each row marked with which
+// side is stronger (`better: ours | theirs | even` in the content), the same
+// mark whichever side wins. A count of the verdicts above doubles as the key;
+// the trademark note sits under the table.
+import mark from "../../../../../brand/logo/mark.svg?raw";
+import Verdict from "../Verdict.astro";
 import { inline } from "../../lib/markdown";
-import { fill } from "../../lib/site";
+import { fill, site } from "../../lib/site";
+
+type Better = "ours" | "theirs" | "even";
+type Row = { label: string; ours: string; theirs: string; better?: Better; more?: string };
 
 const { s, block, first } = Astro.props;
 const H = first ? "h1" : "h2";
 const hid = `${s.id ?? "comparison"}-h`;
+const t = site.ui;
+const [, us, them] = s.columns as string[];
+const rows = s.rows as Row[];
+const icon = mark.replace(/<svg /, '<svg class="compare__mark" aria-hidden="true" focusable="false" ').replace(/ width="[^"]+" height="[^"]+"/, "").replace(/<title[^>]*>.*?<\/title>/, "").replace(/ role="img"[^>]*?(?=>)/, "").replace(/ aria-labelledby="[^"]*"/, "");
+
+/** Which mark a cell gets: the stronger side the caret, the other side the empty ring, both the bars when even. */
+const kindOf = (better: Better | undefined, side: "ours" | "theirs") => (!better ? null : better === "even" ? "even" : better === side ? "win" : "plain");
+/** The verdict in words, read once per row: in the stronger cell, or the last cell when even. */
+const said = (better: Better | undefined, side: "ours" | "theirs") =>
+  better === side ? t.strongerHere.replace("{name}", side === "ours" ? us : them) : better === "even" && side === "theirs" ? t.even : null;
+
+const count = (b: Better) => rows.filter((r) => r.better === b).length;
+const tally = [
+  { kind: "win" as const, label: t.stronger.replace("{name}", us), n: count("ours") },
+  { kind: "win" as const, label: t.stronger.replace("{name}", them), n: count("theirs") },
+  { kind: "even" as const, label: t.even, n: count("even") },
+].filter((x) => x.n > 0);
 ---
 
 <section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
@@ -14,16 +38,49 @@ const hid = `${s.id ?? "comparison"}-h`;
     <H class="h2" id={hid} set:html={inline(s.heading)} />
     <p class="lead">{fill(s.text)}</p>
   </div>
+  {
+    tally.length > 0 && (
+      <ul class="tally" aria-label={t.tally}>
+        {tally.map((x) => (
+          <li>
+            <Verdict kind={x.kind} />
+            <span>{x.label}</span>
+            <b>{x.n}</b>
+          </li>
+        ))}
+      </ul>
+    )
+  }
   <table class="compare">
     <caption class="sr">{s.caption}</caption>
-    <thead><tr>{s.columns.map((c: string) => <th scope="col">{c}</th>)}</tr></thead>
+    <thead>
+      <tr>
+        <th scope="col">{s.columns[0]}</th>
+        <th scope="col" class="us"><span class="compare__brand"><Fragment set:html={icon} />{us}</span></th>
+        <th scope="col">{them}</th>
+      </tr>
+    </thead>
     <tbody>
       {
-        s.rows.map((r: { label: string; ours: string; theirs: string; more?: string }) => (
-          <tr>
+        rows.map((r) => (
+          <tr class:list={[r.better && `is-${r.better}`]}>
             <th scope="row">{r.label}</th>
-            <td class="us" data-col={s.columns[1]}>{fill(r.ours)}</td>
-            <td data-col={s.columns[2]}>{fill(r.theirs)}{r.more && " "}{r.more && <span class="more">{r.more}</span>}</td>
+            {(["ours", "theirs"] as const).map((side) => {
+              const kind = kindOf(r.better, side);
+              const words = said(r.better, side);
+              return (
+                <td class:list={[side === "ours" && "us", kind === "win" && "win"]} data-col={side === "ours" ? us : them}>
+                  <div class="cell">
+                    {kind && <Verdict kind={kind} />}
+                    <span>
+                      {fill(r[side])}
+                      {words && <span class="sr"> ({words})</span>}
+                      {side === "theirs" && r.more && <span class="more">{r.more}</span>}
+                    </span>
+                  </div>
+                </td>
+              );
+            })}
           </tr>
         ))
       }

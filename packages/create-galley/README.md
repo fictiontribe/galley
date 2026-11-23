@@ -1,7 +1,7 @@
 # create-galley
 
 Make a new site with [Galley](https://galley.fictiontribe.com), the
-open-source AI CMS for Astro, in one command:
+open-source AI CMS for static sites, in one command:
 
 ```sh
 npm create galley@latest

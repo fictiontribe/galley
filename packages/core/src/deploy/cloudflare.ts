@@ -37,7 +37,9 @@ import { DeployError } from "./errors";
 import { eachLimited, type DeployFile } from "./files";
 import { describeResponse, hostRequest, type HostResponse, type RequestBody } from "./http";
 import { CLOUDFLARE_CREDENTIALS, CLOUDFLARE_INFO, projectNameProblem } from "./info";
+import { apexOf } from "./domains";
 import { checkCloudflareHeaders, checkCloudflareRedirects, hasMarkdown, withCloudflareMarkdownHeader } from "./routing";
+import type { DomainPlan } from "../types";
 import type { DeployContext, DeployTarget } from "./types";
 
 export const CLOUDFLARE_API = "https://api.cloudflare.com/client/v4";
@@ -156,6 +158,62 @@ function workerForm(metadata: Record<string, unknown>): FormData {
   return form;
 }
 
+// ─────────────────────────────────────────────────────────────── own domain
+
+interface CfDomain {
+  id?: string;
+  hostname?: string;
+  service?: string;
+  zone_id?: string;
+  zone_name?: string;
+}
+
+interface CfChangeset {
+  added?: CfDomain[];
+  updated?: CfDomain[];
+  conflicting?: CfDomain[];
+}
+
+const ADD_DOMAIN_HELP = "https://developers.cloudflare.com/fundamentals/manage-domains/add-site/";
+
+/** Worker Custom Domains on `hostname` in this account (documented: GET /accounts/:a/workers/domains?hostname=). */
+async function domainsFor(ctx: DeployContext, account: string, hostname: string): Promise<CfDomain[]> {
+  const list = await cf<CfDomain[]>(ctx, "GET", `accounts/${encodeURIComponent(account)}/workers/domains`, "list the account's Worker domains", { query: { hostname } });
+
+  return (list ?? []).filter((domain) => domain.hostname === hostname);
+}
+
+/**
+ * Cloudflare's own read-only preview of attaching `hostname` to the Worker —
+ * the call Wrangler makes before it asks anything
+ * (POST …/workers/scripts/:name/domains/changeset; workers-sdk
+ * packages/deploy-helpers/src/triggers/publish-routes.ts). It resolves the
+ * zone in this account and names a DNS record already on that hostname
+ * (`conflicting`), which the access key couldn't read otherwise (it has no
+ * DNS permission). null: the zone isn't in this account.
+ */
+async function changesetFor(ctx: DeployContext, account: string, project: string, hostname: string): Promise<CfChangeset | null> {
+  const path = `${scriptPath(account, project)}/domains/changeset`;
+  const response = await hostRequest<CfEnvelope<CfChangeset>>(ctx, NAME, {
+    method: "POST",
+    path,
+    query: { replace_state: "true" },
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify([{ hostname }]),
+    retry: true,
+  });
+
+  if (response.ok && response.body?.success !== false) return response.body?.result ?? {};
+  const message = (response.body?.errors ?? []).map((error) => error.message ?? "").join(" ");
+
+  if (response.status !== 401 && response.status !== 403 && /zone/i.test(message)) return null;
+  throw failure(response, "POST", path, "check the address");
+}
+
+function domainPlan(hostname: string, status: DomainPlan["status"], summary: string, extra: Partial<DomainPlan> = {}): DomainPlan {
+  return { hostname, status, summary, canAttach: status === "ready", ...extra };
+}
+
 export function createCloudflareTarget(): DeployTarget {
   return {
     id: "cloudflare",
@@ -206,6 +264,71 @@ export function createCloudflareTarget(): DeployTarget {
         });
       }
       return { project: name, productionUrl: productionAddress(name, subdomain) };
+    },
+
+    async planDomain(ctx, { account, project, hostname }) {
+      const apex = apexOf(hostname);
+      const worker = await workerState(ctx, account, project);
+
+      if (!worker.exists || !worker.hasVersions) {
+        return domainPlan(hostname, "not-online", "Put the site online first; then it can answer on your own address.");
+      }
+      const existing = await domainsFor(ctx, account, hostname);
+
+      if (existing.some((domain) => domain.service === project)) {
+        return domainPlan(hostname, "already", `${hostname} already shows this site.`);
+      }
+      if (existing.length > 0) {
+        return domainPlan(hostname, "taken", `${hostname} already shows another Worker in this account (“${existing[0]!.service ?? "unnamed"}”). Choose another address, or free that one on Cloudflare first. Nothing was changed.`);
+      }
+      const changeset = await changesetFor(ctx, account, project, hostname);
+
+      if (!changeset) {
+        return domainPlan(
+          hostname,
+          "not-in-account",
+          `${apex} isn't a domain in this Cloudflare account, so Cloudflare can't answer ${hostname} with this site — no DNS record elsewhere can do it. Add ${apex} to this Cloudflare account first (it moves the domain's DNS to Cloudflare), or use an address on a domain that is already there.`,
+          { helpUrl: ADD_DOMAIN_HELP }
+        );
+      }
+      if ((changeset.conflicting ?? []).some((domain) => domain.hostname === hostname)) {
+        return domainPlan(
+          hostname,
+          "dns-conflict",
+          `${apex} already has a DNS record for ${hostname}. This app never replaces DNS records: remove or rename that record on Cloudflare (DNS › Records), then check again. Nothing was changed.`,
+          { helpUrl: "https://developers.cloudflare.com/dns/manage-dns-records/how-to/create-dns-records/" }
+        );
+      }
+      const zone = (changeset.added ?? []).find((domain) => domain.hostname === hostname)?.zone_name ?? apex;
+
+      return domainPlan(hostname, "ready", `Cloudflare will answer ${hostname} with this site and set up its certificate. Nothing else on ${zone} changes.`);
+    },
+
+    async attachDomain(ctx, input) {
+      const plan = await this.planDomain!(ctx, input);
+
+      if (plan.status === "already") return {};
+      if (plan.status !== "ready") throw new DeployError("domain", plan.summary, plan.status);
+      const changeset = await changesetFor(ctx, input.account, input.project, input.hostname);
+      const zone = (changeset?.added ?? []).find((domain) => domain.hostname === input.hostname);
+
+      // Documented: PUT /accounts/:a/workers/domains { hostname, service, zone_id }. No override flag exists here: a DNS record in the way is refused.
+      await cf(ctx, "PUT", `accounts/${encodeURIComponent(input.account)}/workers/domains`, "attach the address", {
+        json: { hostname: input.hostname, service: input.project, ...(zone?.zone_id ? { zone_id: zone.zone_id } : {}) },
+      });
+      return {};
+    },
+
+    async domainStatus(ctx, { account, project, hostname }) {
+      return { ready: (await domainsFor(ctx, account, hostname)).some((domain) => domain.service === project) };
+    },
+
+    async detachDomain(ctx, { account, project, hostname }) {
+      // Only this Worker's attachment of exactly this address; anything else is left alone.
+      for (const domain of await domainsFor(ctx, account, hostname)) {
+        if (domain.service !== project || !domain.id) continue;
+        await cf(ctx, "DELETE", `accounts/${encodeURIComponent(account)}/workers/domains/${encodeURIComponent(domain.id)}`, "stop using the address");
+      }
     },
 
     async deploy(ctx, input) {

@@ -7,7 +7,7 @@ order: 3
 
 <!-- Generated from packages/core/src/api.ts (ApiRoutes) by apps/site/scripts/reference-api.mjs. Edit those, not this page. -->
 
-This page is for developers integrating with Galley — scripts, CI jobs, other tools. The web app uses exactly this API and nothing else: its client is typed from the `ApiRoutes` map in [`packages/core/src/api.ts`]({repository}/blob/main/packages/core/src/api.ts), where every request and response type named below is defined. **This page is generated from that file** (`apps/site/scripts/reference-api.mjs`), so it lists every route there is. The API is pre-release and may change before 1.0.
+This page is for developers integrating with Galley — scripts, CI jobs, other tools. The web app uses exactly this API and nothing else: its client is typed from the `ApiRoutes` map in [`packages/core/src/api.ts`]({repository}/blob/main/packages/core/src/api.ts), where every request and response type named below is defined. **This page is generated from that file** (`apps/site/scripts/reference-api.mjs`), so it lists every route there is. The API is at version 0.1 and may change before 1.0.
 
 ## Conventions
 
@@ -203,6 +203,10 @@ Two addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/d
 | `POST /api/sites/:siteId/deploy/live-address` | Use the live address as the site's `urls.production` (what Proof compares against). | — | `DeployStatus` | Signed in |
 | `POST /api/sites/:siteId/deploy` | Start a deploy: "production" puts the published version live; "preview" puts the working tree, pending changes included, at an address of its own. | `{ kind, label? }` | `Job` | Signed in |
 | `GET /api/sites/:siteId/deployments` | Deployments made from this computer, newest first. | `?limit?` | `{ items }` | Signed in |
+| `POST /api/sites/:siteId/deploy/domain/plan` | What using this address as the site's own would do. | `{ hostname }` | `DomainPlan` | Signed in |
+| `POST /api/sites/:siteId/deploy/domain` | Use the address (after the person said yes to the plan): attach it and wait until it answers over HTTPS. | `{ hostname }` | `Job` | Signed in |
+| `POST /api/sites/:siteId/deploy/domain/check` | Look again at an address that isn't answering yet. | — | `Job` | Signed in |
+| `DELETE /api/sites/:siteId/deploy/domain` | Stop using the site's own address: detached only if Galley attached it; the host's address becomes the live one again. | — | `DeployStatus` | Signed in |
 
 ## Redirects
 

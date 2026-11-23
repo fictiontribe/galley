@@ -35,4 +35,4 @@ export const DEFAULT_BRAND: BrandConfig = {
   docsUrl: `${SITE_URL}/docs`,
 };
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.1.1";

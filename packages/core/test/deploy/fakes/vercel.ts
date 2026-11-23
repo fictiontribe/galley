@@ -20,6 +20,12 @@ export interface VercelDeployment {
 
 export interface FakeVercel extends FakeServer {
   token: string;
+  /** Domains on projects: hostname → { project, verified }. */
+  domains: Map<string, { project: string; verified: boolean }>;
+  /** Host names whose DNS already points at Vercel (the person created the record). */
+  dnsReady: Set<string>;
+  /** Host names another Vercel project (someone else's) already uses. */
+  elsewhere: Set<string>;
   projects: Map<string, { teamId: string | null; deployments: number }>;
   deployments: VercelDeployment[];
   stored: Map<string, Buffer>;
@@ -44,11 +50,20 @@ export async function startFakeVercel(options: FakeVercelOptions = {}): Promise<
   const stored = new Map<string, Buffer>();
   const projects = new Map<string, { teamId: string | null; deployments: number }>();
   const deployments: VercelDeployment[] = [];
+  const domains: FakeVercel["domains"] = new Map();
+  const dnsReady = new Set<string>();
+  const elsewhere = new Set<string>();
   let forget = Boolean(options.forgetOnce);
   let uploads = 0;
 
   const server = await startFake(
     async (request) => {
+      // The address itself, as a browser would reach it (rehearsal only): answers once on a project and its DNS points here.
+      if (request.url.pathname === "/__probe") {
+        const host = request.url.searchParams.get("host") ?? "";
+
+        return domains.has(host) && dnsReady.has(host) && domains.get(host)!.verified ? { status: 200, body: { ok: true } } : { status: 525, body: { error: "not ready" } };
+      }
       if (request.bearer !== token) return err(403, "forbidden", "Not authorized", { invalidToken: true });
       const path = request.url.pathname;
       const teamId = request.url.searchParams.get("teamId");
@@ -56,6 +71,43 @@ export async function startFakeVercel(options: FakeVercelOptions = {}): Promise<
       if (teamId && !teams.some((team) => team.id === teamId)) return err(403, "forbidden", "You don't have access to this team");
       if (request.method === "GET" && path === "/v2/user") return { status: 200, body: { user: { id: "user_1", username: "sam", name: "Sam", defaultTeamId: teams[0]?.id ?? null } } };
       if (request.method === "GET" && path === "/v2/teams") return { status: 200, body: { teams, pagination: { count: teams.length } } };
+      const config = /^\/v6\/domains\/([^/]+)\/config$/.exec(path)?.[1];
+
+      if (request.method === "GET" && config) {
+        const host = decodeURIComponent(config);
+
+        return { status: 200, body: { configuredBy: dnsReady.has(host) ? "CNAME" : null, misconfigured: !dnsReady.has(host), acceptedChallenges: [], recommendedIPv4: [{ rank: 1, value: ["76.76.21.21"] }], recommendedCNAME: [{ rank: 1, value: "cname.vercel-dns-fake.com." }] } };
+      }
+      const projectDomain = /^\/v9\/projects\/([^/]+)\/domains\/([^/]+?)(\/verify)?$/.exec(path);
+
+      if (projectDomain) {
+        const name = decodeURIComponent(projectDomain[1]!);
+        const host = decodeURIComponent(projectDomain[2]!);
+        const domain = domains.get(host);
+
+        if (!domain || domain.project !== name) return err(404, "not_found", "The project domain was not found");
+        if (request.method === "DELETE") {
+          domains.delete(host);
+          return { status: 200, body: {} };
+        }
+        if (request.method === "POST" && projectDomain[3]) domain.verified = domain.verified || dnsReady.has(host);
+        return { status: 200, body: { name: host, projectId: `prj_${name}`, verified: domain.verified, ...(domain.verified ? {} : { verification: [{ type: "TXT", domain: `_vercel.${host.split(".").slice(-2).join(".")}`, value: "vc-domain-verify=fake", reason: "pending_domain_verification" }] }) } };
+      }
+      const projectDomains = /^\/v10\/projects\/([^/]+)\/domains$/.exec(path)?.[1];
+
+      if (request.method === "POST" && projectDomains) {
+        const name = decodeURIComponent(projectDomains);
+        const host = request.json<{ name?: string }>()?.name ?? "";
+
+        if (!projects.has(name)) return err(404, "not_found", "Project not found");
+        if (elsewhere.has(host)) return err(409, "domain_already_in_use", "The domain is already assigned to another Vercel project");
+        if (domains.has(host)) return err(400, "domain_already_exists", "The domain already exists on the project");
+        // Someone else's apex: Vercel asks for a TXT proof as well (verified false); one we can see is verified at once.
+        const verified = !host.startsWith("proof.");
+
+        domains.set(host, { project: name, verified });
+        return { status: 200, body: { name: host, apexName: host.split(".").slice(-2).join("."), projectId: `prj_${name}`, verified, ...(verified ? {} : { verification: [{ type: "TXT", domain: `_vercel.${host.split(".").slice(-2).join(".")}`, value: "vc-domain-verify=fake", reason: "pending_domain_verification" }] }) } };
+      }
       const project = /^\/v9\/projects\/([^/]+)$/.exec(path)?.[1];
 
       if (request.method === "GET" && project) {
@@ -155,6 +207,9 @@ export async function startFakeVercel(options: FakeVercelOptions = {}): Promise<
     ...server,
     token,
     projects,
+    domains,
+    dnsReady,
+    elsewhere,
     deployments,
     stored,
     get uploads() {

@@ -16,6 +16,7 @@ import type { DeployAccount, DeployConfig, DeployTargetInfo, Job } from "@galley
 import { defaultHome, openSingleSite } from "@galley/server";
 import { parse, UsageError } from "../args";
 import type { Io } from "../io";
+import { useDomain } from "./domain";
 
 export const DEPLOY_HELP = `Usage: ${PRODUCT.slug} deploy [path] [options]
 
@@ -31,6 +32,8 @@ Options
       --target <host>   cloudflare (default) or vercel
       --project <name>  The project on the host (default: from the site's name)
       --account <id>    The Cloudflare account or Vercel team
+      --domain <host>   Afterwards, use your own address for the live site
+                        (see \`${PRODUCT.slug} domain --help\`)
   -y, --yes             Don't ask: take the defaults (and an existing project)
       --json            Print the result as JSON
   -h, --help            Show this help
@@ -162,6 +165,7 @@ export async function deployCommand(argv: string[], io: DeployIo): Promise<numbe
       target: { type: "string" },
       project: { type: "string" },
       account: { type: "string" },
+      domain: { type: "string" },
       yes: { type: "boolean", short: "y" },
       json: { type: "boolean" },
     },
@@ -202,6 +206,11 @@ export async function deployCommand(argv: string[], io: DeployIo): Promise<numbe
     } else {
       io.out(`✓ Preview at ${deployment.url}`);
       io.err(`  It shows unpublished changes. ${chosen.target.previewNote}`);
+    }
+    // Then the site's own address, the same way `galley domain` does it.
+    if (values.domain) {
+      if (kind !== "production") throw new UsageError("--domain goes with a live deploy, not --preview.");
+      return await useDomain(ioWithPrompt, deploy, engine.events, engine.site, values.domain, { yes: Boolean(values.yes), json });
     }
     return 0;
   } catch (error) {

@@ -57,7 +57,7 @@ export const GENERATED = [
       order: 2,
     },
     intro:
-      "> This page is [`docs/adapters.md`]({repository}/blob/main/docs/adapters.md) from the repository, rendered as it is. **Nothing is on npm yet**: `@galley/adapter-kit` is `packages/adapter-kit` in the repository, and the `npm install` and `npx galley-adapter-check` lines below describe the published package. From a clone, run the kit's checker as `node packages/adapter-kit/bin/galley-adapter-check.js <adapter> <fixture>`.",
+      "> This page is [`docs/adapters.md`]({repository}/blob/main/docs/adapters.md) from the repository, rendered as it is. **The kit isn't on npm** (Galley itself is, as `galley-cms`): `@galley/adapter-kit` is `packages/adapter-kit` in the repository, and the `npm install` and `npx galley-adapter-check` lines below describe a package that isn't published yet. From a clone, run the kit's checker as `node packages/adapter-kit/bin/galley-adapter-check.js <adapter> <fixture>`.",
   },
   {
     source: "docs/mcp.md",
@@ -70,7 +70,7 @@ export const GENERATED = [
       order: 4,
     },
     intro:
-      "> This page is [`docs/mcp.md`]({repository}/blob/main/docs/mcp.md) from the repository, rendered as it is. Nothing is on npm yet: use the from-source command that `galley mcp config` prints. The tool reference below is generated from the same catalogue the server registers its tools from, and this site's build checks it is current.",
+      "> This page is [`docs/mcp.md`]({repository}/blob/main/docs/mcp.md) from the repository, rendered as it is. The tool reference below is generated from the same catalogue the server registers its tools from, and this site's build checks it is current.",
   },
   {
     source: "docs/wordpress-import.md",
@@ -96,7 +96,7 @@ export const GENERATED = [
       order: 2,
     },
     intro:
-      "> This page is [`RELEASING.md`]({repository}/blob/main/RELEASING.md) from the repository, for maintainers and anyone curious about how Galley will ship. Nothing has been released yet.",
+      "> This page is [`RELEASING.md`]({repository}/blob/main/RELEASING.md) from the repository, for maintainers and anyone curious about how Galley ships.",
   },
 ];
 

@@ -3,7 +3,14 @@
  * and serve it at an address. Cloudflare and Vercel are built in; a plugin can
  * add another by implementing this and registering it (see registry.ts).
  */
-import type { DeployAccount, DeployKind, DeployProjectCheck, DeployTargetId, DeployTargetInfo, Deployment, SecretName } from "../types";
+import type { DeployAccount, DeployKind, DeployProjectCheck, DeployTargetId, DeployTargetInfo, Deployment, DomainPlan, DomainRecord, SecretName } from "../types";
+
+export interface DomainInput {
+  account: string;
+  project: string;
+  /** Normalised host name: "www.example.com". */
+  hostname: string;
+}
 import type { DeployFile } from "./files";
 
 /** What every call to a host gets. */
@@ -75,6 +82,14 @@ export interface DeployTarget {
   ensureProject(ctx: DeployContext, input: { account: string; name: string; ours?: boolean }): Promise<{ project: string; productionUrl: string }>;
   /** Upload a built folder and make it reachable. */
   deploy(ctx: DeployContext, input: DeployInput): Promise<DeployOutcome>;
+  /** What using `hostname` for the project would do — read-only. Absent: the host has no custom domains here. */
+  planDomain?(ctx: DeployContext, input: DomainInput): Promise<DomainPlan>;
+  /** Point `hostname` at the project. Returns records the person must still create (Vercel), if any. */
+  attachDomain?(ctx: DeployContext, input: DomainInput): Promise<{ records?: DomainRecord[] }>;
+  /** Whether the host has finished on its side (DNS verified). The HTTPS answer is checked separately. */
+  domainStatus?(ctx: DeployContext, input: DomainInput): Promise<{ ready: boolean; records?: DomainRecord[] }>;
+  /** Detach `hostname` from the project — only ever a domain Galley attached. */
+  detachDomain?(ctx: DeployContext, input: DomainInput): Promise<void>;
   /** The host's own list of recent deployments, when it can give one. */
   list?(ctx: DeployContext, input: { account: string; project: string }): Promise<Deployment[]>;
 }

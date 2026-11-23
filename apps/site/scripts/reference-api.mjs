@@ -119,7 +119,7 @@ const SECTION_TITLES = {
   "files (source view)": "Files (the source view)",
 };
 
-const INTRO = `This page is for developers integrating with Galley — scripts, CI jobs, other tools. The web app uses exactly this API and nothing else: its client is typed from the \`ApiRoutes\` map in [\`packages/core/src/api.ts\`]({repository}/blob/main/packages/core/src/api.ts), where every request and response type named below is defined. **This page is generated from that file** (\`apps/site/scripts/reference-api.mjs\`), so it lists every route there is. The API is pre-release and may change before 1.0.
+const INTRO = `This page is for developers integrating with Galley — scripts, CI jobs, other tools. The web app uses exactly this API and nothing else: its client is typed from the \`ApiRoutes\` map in [\`packages/core/src/api.ts\`]({repository}/blob/main/packages/core/src/api.ts), where every request and response type named below is defined. **This page is generated from that file** (\`apps/site/scripts/reference-api.mjs\`), so it lists every route there is. The API is at version 0.1 and may change before 1.0.
 
 ## Conventions
 

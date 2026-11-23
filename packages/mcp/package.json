@@ -1,7 +1,7 @@
 {
   "name": "@galley/mcp",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Galley over the Model Context Protocol: the engine's tools for any LLM harness, on stdio or Streamable HTTP.",
   "license": "Apache-2.0",

@@ -25,6 +25,8 @@ export type DeployReason =
   | "too-large"
   /** A file of the site the host reads (vercel.json) can't be read. */
   | "site-file"
+  /** An address for the site's own domain can't be used as asked. */
+  | "domain"
   /** This computer can't reach the host. */
   | "offline"
   | "rate-limited"
@@ -47,6 +49,7 @@ const CODE: Record<DeployReason, GalleyErrorShape["code"]> = {
   "no-output": "invalid",
   "too-large": "invalid",
   "site-file": "invalid",
+  domain: "invalid",
   offline: "internal",
   "rate-limited": "busy",
   unpublished: "invalid",

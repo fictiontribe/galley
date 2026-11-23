@@ -274,34 +274,64 @@ button.link::after { content: none; }
 .term__copy { background: transparent; border-color: rgb(242 236 225 / .24); color: var(--on-plate); height: 30px; }
 .term__copy:hover { background: rgb(242 236 225 / .08); }
 
-/* ---------- starters ---------- */
-.starters { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--gap); }
-.starters--gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.starter { min-width: 0; display: flex; flex-direction: column; gap: var(--s4); padding: var(--s3) var(--s3) var(--s5); background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-lg); }
+/* ---------- starters ----------
+   No card box: the tan capture panel is the one frame. The starter's home page
+   sits in it like a proof on the desk — inset on three sides, running off the
+   bottom. Its looks are buttons on the panel's top margin (under 1024 px, just
+   under the panel). Then what it is, then the one command that starts it. */
+.starters { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s7) var(--gap); }
+.starters--gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s8) clamp(24px, 3vw, 40px); }
+.starter { min-width: 0; display: flex; flex-direction: column; gap: var(--s5); }
 .starter--tall { grid-row: span 2; }
-.starter__pic { position: relative; overflow: hidden; border-radius: var(--r-sm); border: 1px solid var(--shot-line); background: var(--sunken); aspect-ratio: 16 / 10; }
-.starter--tall .starter__pic { aspect-ratio: auto; flex: 1; min-height: 420px; }
-.starter__pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
-.starter__pic img[hidden] { display: none; }
-.starter__body { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2) var(--s4); align-items: baseline; padding-inline: var(--s2); }
-.starter__name { font: 400 1.625rem/1.1 var(--font-display); letter-spacing: -0.01em; }
-.starter__meta { grid-column: 1 / -1; font-size: 0.9375rem; color: var(--ink-2); }
-.starter__run { grid-column: 1 / -1; display: grid; gap: 6px; margin-top: var(--s2); min-width: 0; }
-.starter__run .cmd pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.starter__view { position: relative; display: flex; flex-direction: column; }
+.starter__frame { aspect-ratio: 16 / 10; }
+.starters--gallery .starter__frame { aspect-ratio: 5 / 4; }
+.starter--tall .starter__view { flex: 1; }
+.starter--tall .starter__body { flex: none; }
+.starter--tall .starter__frame { aspect-ratio: auto; flex: 1; min-height: 420px; }
+.starter__frame .stage { --fade-w: 4px; --fade-h: 72px; }
+.starter__shot { --ax: 24px; --ay: 24px; --ax-sm: 20px; --ay-sm: 20px; width: calc(100% - 2 * var(--ax)); }
+.starter__shot img[hidden] { display: none; }
+/* The tall one's panel is as high as the cards beside it: the page runs off its bottom and right, dissolving, as the site's other captures do. */
+.starter--tall .starter__frame .stage { --fade-w: 72px; }
+.starter--tall .starter__shot { right: -1px; bottom: -1px; width: auto; }
+.starter--tall .starter__shot > img { height: 100%; object-fit: cover; object-position: top left; }
+.starter__body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: var(--s2); }
+.starter__name { font: 400 1.75rem/1.1 var(--font-display); letter-spacing: -0.012em; }
+.starter__kind { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
+.starter__meta { max-width: 36rem; font-size: 1rem; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
+.starter__run { display: grid; gap: var(--s2); min-width: 0; margin-top: auto; padding-top: var(--s4); }
+.starter__run .cmd pre { font-size: 0.8125rem; }
+/* When the command is wider than its box it scrolls; a soft edge shows there is more, and goes once you reach the end. */
+.starter__run .cmd pre { background: linear-gradient(to left, var(--raised) 45%, transparent) right / 28px 100% no-repeat local, linear-gradient(to left, rgb(26 23 18 / .16), transparent) right / 16px 100% no-repeat scroll; }
 .starter__foot { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--s4); font-size: var(--t-small); color: var(--ink-3); }
 .starter__foot .link { color: var(--ink-2); }
-.looks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
-.look { display: inline-flex; align-items: center; gap: var(--s2); min-height: 36px; padding: 0 var(--s3) 0 6px; border-radius: var(--r-pill); border: 1px solid var(--line-2); background: transparent; font: 500 0.875rem/1 var(--font-text); color: var(--ink-2); cursor: pointer; }
+.looks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--s3); }
+.look { display: inline-flex; align-items: center; gap: var(--s2); min-height: 36px; padding: 0 var(--s3) 0 6px; border-radius: var(--r-pill); border: 1px solid var(--line-2); background: transparent; font: 500 0.875rem/1 var(--font-text); color: var(--ink-2); cursor: pointer; transition: background-color .15s, border-color .15s; }
 .look:hover { background: var(--sunken); }
 .look[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: var(--paper); }
 .look__sw { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; overflow: hidden; box-shadow: inset 0 0 0 1px rgb(26 23 18 / .15); transform: rotate(-45deg); }
 .look__sw span { flex: 1; }
+@media (min-width: 1024px) {
+  .starter__shot { --ax: 40px; --ay: 60px; }
+  .starter__view .looks { position: absolute; top: 12px; left: 40px; right: 40px; z-index: 2; margin: 0; }
+  .starter__view .look { min-height: 34px; border-color: color-mix(in oklab, var(--ink) 22%, transparent); background: color-mix(in oklab, var(--raised) 35%, transparent); color: var(--ink); }
+  .starter__view .look:hover { background: color-mix(in oklab, var(--raised) 75%, transparent); }
+  .starter__view .look[aria-pressed="true"] { border-color: var(--ink); background: var(--raised); }
+}
 .starters__aside { display: grid; gap: var(--gap); align-content: start; }
-.starters--gallery .starters__aside { grid-column: 1 / -1; }
-.starters--gallery .starter--soon { padding: var(--s5) var(--s6); }
-.starter--soon { justify-content: center; gap: var(--s3); padding: var(--s6); background: transparent; border-style: dashed; border-color: var(--line-2); }
-.starter--soon .starter__body { padding: 0; }
-.starters__more { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s4); margin-top: var(--s5); }
+.starter--soon { justify-content: center; gap: var(--s3); padding: var(--s6); border: 1px dashed var(--line-2); border-radius: var(--r-lg); }
+.starters__note { margin-top: var(--s5); }
+/* "Make your own": a blank page inside crop marks — the brand's marks for a page not yet set. */
+.own-list { display: grid; gap: var(--s7); margin-top: var(--s8); }
+.own { position: relative; display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 5fr) auto; gap: var(--s3) var(--s7); align-items: center; padding: var(--s6) clamp(20px, 3vw, 40px); background: var(--raised); }
+.own::before { content: ""; position: absolute; inset: -10px; pointer-events: none; --c: var(--line-strong); background:
+    linear-gradient(var(--c), var(--c)) 0 10px / 7px 1px no-repeat, linear-gradient(var(--c), var(--c)) 10px 0 / 1px 7px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 10px / 7px 1px no-repeat, linear-gradient(var(--c), var(--c)) calc(100% - 10px) 0 / 1px 7px no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 calc(100% - 10px) / 7px 1px no-repeat, linear-gradient(var(--c), var(--c)) 10px 100% / 1px 7px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% calc(100% - 10px) / 7px 1px no-repeat, linear-gradient(var(--c), var(--c)) calc(100% - 10px) 100% / 1px 7px no-repeat; }
+.own__name { display: grid; gap: var(--s2); }
+.own__go { justify-self: end; white-space: nowrap; }
 .builder { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s5) var(--s8); align-items: center; margin-top: var(--s7); }
 .builder__text { display: grid; gap: var(--s3); justify-items: start; max-width: 30rem; }
 .builder .frame { aspect-ratio: 16 / 9; }
@@ -368,13 +398,35 @@ button.link::after { content: none; }
 .list--delete li span { text-decoration: line-through; text-decoration-color: var(--del); text-decoration-thickness: 1.5px; color: var(--ink-2); }
 .list__note { margin-top: var(--s3); font-size: var(--t-small); color: var(--ink-3); }
 
-/* ---------- comparison ---------- */
-.compare { width: 100%; border-collapse: collapse; font-size: 0.9875rem; }
-.compare th, .compare td { padding: 13px var(--s4) 13px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line-2); line-height: 1.45; }
-.compare thead th { padding-top: 0; font: 500 var(--t-label)/1.4 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); border-bottom-color: var(--ink); }
-.compare tbody th { width: 20%; font-weight: 600; }
-.compare td { width: 40%; color: var(--ink-2); }
-.compare td.us { color: var(--ink); }
+/* ---------- comparison ----------
+   A set table: Galley's column is a sheet of raised paper; each row carries a
+   verdict mark from the logo (Verdict.astro): the caret on the stronger side,
+   an empty ring on the other, the two bars on both when even. The count above
+   is the key. Colour is never the only signal: filled vs empty vs barred. */
+.vd { flex: none; width: 22px; height: 22px; }
+.vd--win circle { fill: var(--accent); }
+.vd--win path { fill: var(--raised); }
+.vd--plain circle, .vd--even circle { fill: none; stroke: var(--line-strong); stroke-width: 1.5; }
+.vd--even path { fill: var(--ink-2); }
+.tally { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s6); margin: calc(-1 * var(--s4)) 0 var(--s6); font-size: var(--t-small); color: var(--ink-2); }
+.tally li { display: inline-flex; align-items: center; gap: var(--s2); }
+.tally .vd { width: 18px; height: 18px; }
+.tally b { min-width: 1.6em; padding: 1px 6px; border-radius: var(--r-pill); background: var(--sunken); font: 500 0.8125rem/1.5 var(--font-mono); color: var(--ink); text-align: center; font-variant-numeric: tabular-nums; }
+.compare { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 1rem; }
+.compare th, .compare td { padding: 15px var(--s5); text-align: left; vertical-align: top; border-bottom: 1px solid var(--line-2); line-height: 1.45; }
+.compare th:first-child { padding-left: 0; }
+.compare thead th { padding-top: var(--s5); padding-bottom: var(--s3); vertical-align: bottom; font: 500 var(--t-label)/1.4 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); border-bottom-color: var(--ink); }
+.compare thead th:not(:first-child) { font: 400 1.5rem/22px var(--font-display); letter-spacing: -0.01em; text-transform: none; color: var(--ink); }
+/* vertical-align: an inline-flex box sits on the text baseline by its bottom edge, which lifted "Galley" above "WordPress". */
+.compare__brand { display: inline-flex; align-items: center; gap: 10px; vertical-align: bottom; }
+.compare__mark { width: 22px; height: 22px; }
+.compare .us { background: var(--raised); }
+.compare thead .us { border-radius: var(--r-md) var(--r-md) 0 0; }
+.compare tbody tr:last-child .us { border-radius: 0 0 var(--r-md) var(--r-md); }
+.compare tbody th { width: 22%; font: 400 1.1875rem/1.25 var(--font-display); letter-spacing: -0.005em; }
+.compare td { width: 39%; color: var(--ink-2); }
+.compare td.win { color: var(--ink); }
+.compare .cell { display: flex; align-items: flex-start; gap: var(--s3); }
 .compare .more { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: var(--r-pill); background: var(--sunken); font: 500 0.75rem/1.5 var(--font-text); color: var(--ink-2); white-space: nowrap; }
 .compare-note { margin-top: var(--s4); max-width: 52rem; }
 
@@ -514,7 +566,9 @@ button.link::after { content: none; }
   .way__n { grid-row: auto; }
   .starters { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .starter--tall { grid-row: auto; grid-column: 1 / -1; }
-  .starter--tall .starter__pic { flex: none; min-height: 0; aspect-ratio: 16 / 10; }
+  .starter--tall .starter__frame { flex: none; min-height: 0; aspect-ratio: 16 / 10; }
+  .own { grid-template-columns: minmax(0, 1fr); }
+  .own__go { justify-self: start; }
   .spec { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s6) var(--s6); }
   .spec__group:first-child { grid-column: 1 / -1; }
   .cards { grid-template-columns: minmax(0, 1fr); }
@@ -543,7 +597,7 @@ button.link::after { content: none; }
   .change__act { grid-column: 2; grid-row: auto; justify-self: start; margin-top: var(--s2); }
   .notes { grid-template-columns: minmax(0, 1fr); }
   .starters, .starters--gallery { grid-template-columns: minmax(0, 1fr); }
-  .starter--tall .starter__pic { aspect-ratio: 4 / 5; }
+  .starter--tall .starter__frame { aspect-ratio: 4 / 5; }
   .split .frame, .hero--split .frame { aspect-ratio: 1 / 1; }
   .builder .frame { aspect-ratio: 1 / 1; }
   .spec { grid-template-columns: minmax(0, 1fr); }
@@ -552,14 +606,21 @@ button.link::after { content: none; }
   .team, .person--featured { grid-template-columns: minmax(0, 1fr); }
   .card { padding: var(--s5) var(--s7) var(--s5) var(--s5); }
   .close__actions .btn { flex: 1 1 100%; }
-  .compare thead { display: none; }
-  .compare, .compare tbody, .compare tr, .compare th, .compare td { display: block; width: auto; }
-  .compare tr { padding: var(--s4) 0; border-bottom: 1px solid var(--line-2); }
-  .compare th, .compare td { border: 0; padding: 0; }
-  .compare tbody th { margin-bottom: var(--s2); width: auto; }
-  .compare td { display: grid; grid-template-columns: 96px 1fr; gap: var(--s3); padding: 3px 0; width: auto; }
-  .compare td::before { content: attr(data-col); font: 500 0.75rem/1.7 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
-  .compare td .more { grid-column: 2; justify-self: start; margin: 4px 0 0; }
+  /* Phone: the two sides stay side by side under a header that stays in view;
+     each row's name runs across both, Galley's sheet unbroken beneath it. */
+  .tally { flex-direction: column; gap: var(--s2); margin-top: calc(-1 * var(--s3)); }
+  .compare, .compare thead, .compare tbody { display: block; }
+  .compare thead { position: sticky; top: var(--header-h); z-index: 2; background: var(--paper); }
+  .compare tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .compare th, .compare td { display: block; width: auto; padding: var(--s1) var(--s3) var(--s4); }
+  .compare thead th:first-child { display: none; }
+  .compare thead th:not(:first-child) { padding: var(--s4) var(--s3) var(--s3); font-size: 1.25rem; }
+  .compare__mark { width: 18px; height: 18px; }
+  .compare tbody th:first-child { grid-column: 1 / -1; width: auto; padding: var(--s4) var(--s3) var(--s2); border-bottom: 0; font-size: 1.125rem; background: linear-gradient(90deg, var(--raised) 50%, transparent 50%); }
+  .compare td { font-size: 0.9375rem; }
+  .compare .cell { flex-direction: column; gap: var(--s2); }
+  .compare .vd { width: 20px; height: 20px; }
+  .compare td .more { margin: 4px 0 0; }
   .step .frame { aspect-ratio: 4 / 3; }
   .docs__pager { grid-template-columns: minmax(0, 1fr); }
   .docs__pager .next { grid-column: 1; }

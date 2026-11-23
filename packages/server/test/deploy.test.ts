@@ -103,6 +103,30 @@ describe("deploy routes", () => {
     expect(await json(await call("GET", `/api/sites/${SITE_ID}/deployments?limit=5`))).toEqual({ items: [{ id: "d-5" }] });
   });
 
+  it("plan, use, check and stop an own domain through the engine, with input validated first", async () => {
+    const calls: unknown[] = [];
+    const domainJob: Job = { ...JOB, id: "job-d", kind: "domain", label: "Using galley.example.com" };
+    const { call } = withDeploy({
+      planDomain: async (_site, hostname) => {
+        calls.push(["plan", hostname]);
+        return { hostname, status: "ready", summary: "Cloudflare will answer it.", canAttach: true };
+      },
+      attachDomain: async (_site, hostname) => {
+        calls.push(["attach", hostname]);
+        return domainJob;
+      },
+      checkDomain: async () => domainJob,
+      detachDomain: async () => STATUS,
+    });
+
+    expect(await json(await call("POST", `/api/sites/${SITE_ID}/deploy/domain/plan`, { hostname: "galley.example.com" }))).toMatchObject({ status: "ready", canAttach: true });
+    expect(await json(await call("POST", `/api/sites/${SITE_ID}/deploy/domain`, { hostname: "galley.example.com" }))).toEqual(domainJob);
+    expect(await json(await call("POST", `/api/sites/${SITE_ID}/deploy/domain/check`))).toEqual(domainJob);
+    expect(await json(await call("DELETE", `/api/sites/${SITE_ID}/deploy/domain`))).toEqual(STATUS);
+    expect((await call("POST", `/api/sites/${SITE_ID}/deploy/domain`, {})).status).toBe(400);
+    expect(calls).toEqual([["plan", "galley.example.com"], ["attach", "galley.example.com"]]);
+  });
+
   it("store host keys through the secrets route and never echo them", async () => {
     const value = "cf-key-that-must-not-echo-0123456789abcd";
     const status: SecretStatus = { name: "cloudflare", configured: true, source: "stored", hint: value.slice(-4) };

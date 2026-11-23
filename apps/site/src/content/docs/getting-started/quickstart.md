@@ -1,18 +1,18 @@
 ---
-title: "Quickstart: Galley on your Astro site"
+title: "Quickstart: Galley on your site"
 navTitle: Quickstart
-description: Open your Astro site in Galley, change a page, check it in Proof and publish it. About ten minutes.
+description: Open your site in Galley with one command, change a page, check it in Proof and publish it. About ten minutes.
 group: getting-started
 order: 1
 ---
 
-Start here if you look after an Astro site. In ten minutes you'll change a page, check the change, and publish it to the site's own git repository.
+Start here if you look after a site whose pages are files in a git repository. Astro sites fit best; [these frameworks](/docs/adapters/) are recognised too. In ten minutes you'll change a page, check the change, and publish it to the site's own repository.
 
 No site yet? [Create a new site](/docs/getting-started/new-site/) instead.
 
 ## What you need
 
-- An Astro site in a git repository.
+- A site in a git repository.
 - [Node.js](https://nodejs.org) 20.11 or newer — and whatever your site needs (Astro 7 needs 22.23.4) — and git.
 - Optional: an Anthropic API key, for the assistant.
 
@@ -20,25 +20,16 @@ Galley adds nothing to your site: no dependency, no integration, no build step.
 
 ## Open your site
 
-<!-- if install.published -->
 In your site's folder, run:
 
 ```sh
 {install.run}
 ```
-<!-- else -->
-Galley isn't on npm yet, so today you run it from a copy of its code. Replace `~/sites/your-site` with your site's folder:
-
-```sh
-{install.fromClone}
-```
-
-The first five commands get Galley, once; the last one opens your site.
-<!-- end -->
 
 ```output
 {install.running}
 …
+Open: http://127.0.0.1:4400/sites/…?token=…
 ```
 
 Your browser opens on the site. Galley runs on your computer only, until you press **Ctrl+C**.
@@ -72,17 +63,16 @@ Undoing a publish later is a new commit, never a rewrite.
 
 ## If something's different
 
-- **Galley says the folder doesn't look like a site.** Point it at the folder with `package.json` in it.
+- **npx asks to install `galley-cms`.** That happens the first time; answer **y**.
+- **Galley says the folder doesn't look like a site.** Run it in the folder with `package.json` in it.
 - **Port 4400 is taken.** Galley uses the next free one and says so.
-- **The preview stays blank.** Your site's own `astro dev` must work first; run `galley doctor` in its folder to see what Galley finds.
-- **You want the command as `galley`.** Other pages write it that way. From a clone, run this inside the `galley` folder, for this terminal:
-
-  ```sh
-  alias galley="node $PWD/packages/cli/bin/galley.js"
-  ```
+- **The preview stays blank.** Your site's own dev command (`npm run dev`) must work first; `npx galley-cms doctor` shows what Galley finds.
+- **Other pages write the command as `galley`.** Type `npx galley-cms` in its place.
 
 ## Next
 
-1. [How Galley reads your site](/docs/astro/content-collections/) — and what it can't read.
+1. [How Galley reads an Astro site](/docs/astro/content-collections/) — and what it can't read.
 2. [Connect the assistant](/docs/getting-started/assistant/).
 3. [Hand the site to an editor](/docs/getting-started/handover/).
+
+Changing Galley itself? Running it from a clone is in [CONTRIBUTING.md]({repository}/blob/main/CONTRIBUTING.md).

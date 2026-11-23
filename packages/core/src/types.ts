@@ -1133,7 +1133,7 @@ export type ServerEvent =
 /** A long-running operation: cloning a repo, creating a site, installing dependencies. */
 export interface Job {
   id: string;
-  kind: "clone" | "create" | "install" | "build" | "publish" | "deploy" | "video" | "visibility" | "redirects" | "brand" | "kit-setup" | "import";
+  kind: "clone" | "create" | "install" | "build" | "publish" | "deploy" | "video" | "visibility" | "redirects" | "brand" | "kit-setup" | "import" | "domain";
   label: string;
   state: "running" | "done" | "error";
   /** 0–1 when measurable. */
@@ -1515,8 +1515,16 @@ export interface DeployConfig {
   account: string;
   /** The host's project (Cloudflare Worker / Vercel project) name. */
   project: string;
-  /** The live address the host gave the project, once known. */
+  /**
+   * The site's live address — the person's choice: the host's own address
+   * until they use their own domain, then that. A deploy never replaces a
+   * custom address with the host's default.
+   */
   productionUrl?: string;
+  /** The host's own address for the project (`…workers.dev`, `….vercel.app`), whatever the live address is. */
+  defaultUrl?: string;
+  /** The site's own domain, when one is in use. */
+  domain?: DeployDomainConfig;
   /** Put published versions live by themselves after each publish. */
   autoDeploy?: boolean;
   /** Proof's "Share a preview link" is offered. Default true. */
@@ -1611,6 +1619,45 @@ export interface Deployment {
 }
 
 /** What the UI needs to show a site's deploy state. */
+/** A domain the site answers on. */
+export interface DeployDomainConfig {
+  /** "www.example.com" — no scheme, no path. */
+  hostname: string;
+  /** Galley attached it to the host's project, so "Stop using this address" may detach it. False: it was there already. */
+  attached: boolean;
+  /** Attached, but not answering yet (DNS or certificate still on its way). */
+  pending?: boolean;
+}
+
+/** A DNS record the person creates at their DNS provider. */
+export interface DomainRecord {
+  type: string;
+  name: string;
+  value: string;
+}
+
+/** What using an address would do, worked out without changing anything. */
+export interface DomainPlan {
+  hostname: string;
+  /**
+   * "ready": the host can answer it and set up the certificate itself.
+   * "needs-dns": it can, once the person creates `records`.
+   * "already": it already shows this site.
+   * "taken": it shows something else.
+   * "dns-conflict": a DNS record for it exists, and Galley never replaces records.
+   * "not-in-account": the domain isn't one this account can use.
+   * "not-online": the site has to be online first.
+   */
+  status: "ready" | "needs-dns" | "already" | "taken" | "dns-conflict" | "not-in-account" | "not-online";
+  /** Plain sentences: what will happen, or why not and what to do. */
+  summary: string;
+  /** Records the person must create (Vercel, or a domain outside the host). */
+  records?: DomainRecord[];
+  canAttach: boolean;
+  /** A page on the host that helps (adding a domain, DNS records). */
+  helpUrl?: string;
+}
+
 export interface DeployStatus {
   config: DeployConfig | null;
   /** The newest production deployment recorded here. */
@@ -1625,6 +1672,10 @@ export interface DeployStatus {
   liveAddressSet: boolean;
   /** A project name made from the site's name, for the setup form. */
   suggestedProject: string;
+  /** The running (or last) "domain" job: attaching an address and waiting for it to answer. */
+  domainJob?: Job | null;
+  /** DNS records the person still has to create for the site's own address, when the host said so. */
+  domainRecords?: DomainRecord[];
 }
 
 // ─────────────────────────────────────────────────────────────── engine facade
@@ -1749,6 +1800,13 @@ export interface SiteService {
 
   // proof & publish
   changes(): Promise<ChangeSet>;
+  /**
+   * Repo paths with pending changes, from the status the site keeps up to
+   * date as files change: no git call, no change summaries. For callers that
+   * only need to know which files are pending. Optional so other
+   * implementations (test fakes) needn't provide it; `changes()` is the fallback.
+   */
+  pendingPaths?(): string[];
   diff(path: string): Promise<FileDiff>;
   /** The base-commit bytes of a file (for before/after image previews). */
   readBase(path: string): Promise<Uint8Array | null>;

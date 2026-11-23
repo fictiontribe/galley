@@ -7,7 +7,7 @@
 import { randomUUID } from "node:crypto";
 // Only the dependency-free setup data (and types): this file is loaded by Node directly, not bundled.
 import { CLOUDFLARE_CREDENTIALS, CLOUDFLARE_INFO, VERCEL_CREDENTIALS, VERCEL_INFO, defaultProjectName, projectNameProblem } from "@galley/core/deploy-info";
-import type { DeployConfig, DeployKind, DeployStatus, DeployTargetInfo, Deployment, Job } from "@galley/core/types";
+import type { DeployConfig, DeployKind, DeployStatus, DeployTargetInfo, Deployment, DomainPlan, Job } from "@galley/core/types";
 import type { Handlers, MockBackend } from "./backend.ts";
 import { MockError } from "./site.ts";
 
@@ -19,7 +19,11 @@ type DeployKey =
   | "PUT /api/sites/:siteId/deploy"
   | "POST /api/sites/:siteId/deploy/live-address"
   | "POST /api/sites/:siteId/deploy"
-  | "GET /api/sites/:siteId/deployments";
+  | "GET /api/sites/:siteId/deployments"
+  | "POST /api/sites/:siteId/deploy/domain/plan"
+  | "POST /api/sites/:siteId/deploy/domain"
+  | "POST /api/sites/:siteId/deploy/domain/check"
+  | "DELETE /api/sites/:siteId/deploy/domain";
 
 const TARGETS = [
   { id: "cloudflare", name: "Cloudflare", info: CLOUDFLARE_INFO, credentials: CLOUDFLARE_CREDENTIALS },
@@ -40,6 +44,20 @@ export function createMockDeploy(mock: MockBackend) {
   const records = new Map<string, Deployment[]>();
   const jobs = new Map<string, string>();
   const liveAddress = new Set<string>();
+  const domainJobs = new Map<string, string>();
+
+  function domainPlan(siteId: string, hostname: string): DomainPlan {
+    const config = configs.get(siteId);
+    const host = config?.target === "vercel" ? "Vercel" : "Cloudflare";
+    const apex = hostname.split(".").slice(-2).join(".");
+
+    if (!config || !records.get(siteId)?.some((record) => record.kind === "production")) return { hostname, status: "not-online", summary: "Put the site online first; then it can answer on your own address.", canAttach: false };
+    if (hostname.startsWith("shop.")) return { hostname, status: "taken", summary: `${hostname} already shows another Worker in this account (“storefront”). Choose another address, or free that one on ${host} first. Nothing was changed.`, canAttach: false };
+    if (hostname.startsWith("mail.")) return { hostname, status: "dns-conflict", summary: `${apex} already has a DNS record for ${hostname}. This app never replaces DNS records: remove or rename that record on Cloudflare (DNS › Records), then check again. Nothing was changed.`, canAttach: false };
+    if (!hostname.endsWith("example.com")) return { hostname, status: "not-in-account", summary: `${apex} isn't a domain in this Cloudflare account, so Cloudflare can't answer ${hostname} with this site — no DNS record elsewhere can do it. Add ${apex} to this Cloudflare account first (it moves the domain's DNS to Cloudflare), or use an address on a domain that is already there.`, canAttach: false, helpUrl: "https://developers.cloudflare.com/fundamentals/manage-domains/add-site/" };
+    return { hostname, status: "ready", summary: `${host} will answer ${hostname} with this site and set up its certificate. Nothing else on ${apex} changes.`, canAttach: true };
+  }
+
 
   const productionUrl = (config: DeployConfig) => (config.target === "vercel" ? `https://${config.project}.vercel.app` : `https://${config.project}.studio-mock.workers.dev`);
 
@@ -56,6 +74,7 @@ export function createMockDeploy(mock: MockBackend) {
       production,
       preview: list.find((record) => record.kind === "preview") ?? null,
       job: jobId ? (mock.jobs.get(jobId) ?? null) : null,
+      domainJob: domainJobs.get(siteId) ? (mock.jobs.get(domainJobs.get(siteId)!) ?? null) : null,
       behind: production ? (at === -1 ? null : at) : null,
       liveAddressSet: liveAddress.has(siteId),
       suggestedProject: defaultProjectName(site.name),
@@ -103,7 +122,11 @@ export function createMockDeploy(mock: MockBackend) {
       const record: Deployment = { id, kind, target: config.target, project: config.project, url, commit: site.history[0]?.commit ?? null, createdAt: new Date().toISOString(), who: mock.settings.author.name || undefined, files: count, bytes: 3_250_000, ...(label ? { label } : {}) };
 
       records.set(siteId, [record, ...(records.get(siteId) ?? [])]);
-      if (kind === "production") configs.set(siteId, { ...config, productionUrl: url });
+      if (kind === "production") {
+        const latest = configs.get(siteId) ?? config;
+
+        configs.set(siteId, { ...latest, defaultUrl: url, ...(latest.domain && !latest.domain.pending ? {} : { productionUrl: url }) });
+      }
       Object.assign(job, { state: "done", progress: 1, detail: kind === "production" ? "Live" : "Preview ready", url, finishedAt: Date.now() });
       mock.emit({ type: "job", job: { ...job } });
       mock.emit({ type: "site.updated", siteId });
@@ -156,6 +179,61 @@ export function createMockDeploy(mock: MockBackend) {
       return status(params.siteId);
     },
     "POST /api/sites/:siteId/deploy": ({ params, body }) => start(params.siteId, body.kind, body.label),
+    "POST /api/sites/:siteId/deploy/domain/plan": async ({ params, body }) => {
+      await sleep(600);
+      return domainPlan(params.siteId, body.hostname.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, ""));
+    },
+    "POST /api/sites/:siteId/deploy/domain": ({ params, body }) => {
+      const hostname = body.hostname.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+      const config = configs.get(params.siteId);
+      const plan = domainPlan(params.siteId, hostname);
+      const job: Job = { id: randomUUID(), kind: "domain", label: `Using ${hostname}`, state: "running", progress: 0, detail: `Checking ${hostname}…`, siteId: params.siteId, startedAt: Date.now() };
+
+      mock.jobs.set(job.id, job);
+      domainJobs.set(params.siteId, job.id);
+      void (async () => {
+        const steps: Array<[string, number]> = [[`Asking ${config?.target === "vercel" ? "Vercel" : "Cloudflare"} to answer ${hostname}…`, 0.2], [`Waiting for ${hostname} to answer — Cloudflare is setting up its certificate…`, 0.5]];
+
+        if (!plan.canAttach) {
+          await sleep(500);
+          Object.assign(job, { state: "error", detail: plan.summary, finishedAt: Date.now() });
+          mock.emit({ type: "job", job: { ...job } });
+          return;
+        }
+        for (const [detail, progress] of steps) {
+          await sleep(1500);
+          Object.assign(job, { detail, progress });
+          mock.emit({ type: "job", job: { ...job } });
+        }
+        await sleep(2500);
+        configs.set(params.siteId, { ...configs.get(params.siteId)!, productionUrl: `https://${hostname}`, domain: { hostname, attached: true } });
+        Object.assign(job, { state: "done", progress: 1, url: `https://${hostname}`, detail: `${hostname} answers`, finishedAt: Date.now() });
+        mock.emit({ type: "job", job: { ...job } });
+        mock.emit({ type: "site.updated", siteId: params.siteId });
+      })();
+      return { ...job };
+    },
+    "POST /api/sites/:siteId/deploy/domain/check": ({ params }) => {
+      const config = configs.get(params.siteId);
+
+      if (!config?.domain) throw new MockError("invalid", "This site isn't using an address of its own.");
+      const job: Job = { id: randomUUID(), kind: "domain", label: `Using ${config.domain.hostname}`, state: "done", progress: 1, url: `https://${config.domain.hostname}`, detail: `${config.domain.hostname} answers`, siteId: params.siteId, startedAt: Date.now(), finishedAt: Date.now() };
+
+      mock.jobs.set(job.id, job);
+      domainJobs.set(params.siteId, job.id);
+      return job;
+    },
+    "DELETE /api/sites/:siteId/deploy/domain": ({ params }) => {
+      const config = configs.get(params.siteId);
+
+      if (config?.domain) {
+        const { domain: _gone, ...rest } = config;
+
+        configs.set(params.siteId, { ...rest, ...(config.defaultUrl ? { productionUrl: config.defaultUrl } : {}) });
+      }
+      mock.emit({ type: "site.updated", siteId: params.siteId });
+      return status(params.siteId);
+    },
     "GET /api/sites/:siteId/deployments": ({ params, query }) => ({ items: (records.get(params.siteId) ?? []).slice(0, query.limit ? Number(query.limit) : 50) }),
   };
 

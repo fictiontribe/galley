@@ -11,7 +11,7 @@ badges on `/wordpress/` steps, `/starters/` and `/ai-first/`, and the agent
 files all render from it. Flip a status there and every page follows; keep
 the table below in step.
 
-Updated 2026-11-23 (rebuild of the site).
+Updated 2026-11-24 (Galley on npm; “for static sites” instead of “for Astro”). Before that, 2026-11-23 (rebuild of the site).
 
 ## The status table (src/data/status.json)
 
@@ -43,8 +43,15 @@ Updated 2026-11-23 (rebuild of the site).
 
 | Statement | Where | Support |
 | --- | --- | --- |
-| Pre-release 0.1.0, Apache-2.0, not on npm, runs from a clone | everywhere | `packages/core/src/brand.ts` (the version is read from it), `LICENSE` |
-| The clone commands (clone, `corepack enable`, `pnpm install`, `pnpm --filter @galley/web build`, `node packages/cli/bin/galley.js <site>`) | home close, quickstart, docs index, agent.md | Followed on this machine 2026-11-23 (repo used in place; the web build was made into a temp folder with the same vite build). `galley new my-site --starter astro-editorial` → editor → form edit → Proof → Publish produced a real commit. See "Known problems". |
+| Version 0.1.1, Apache-2.0, on npm as `galley-cms` (and `create-galley`); the site no longer calls it “pre-release” | everywhere (`site.json` → `statusNote`, docs index, FAQ, agent.md, `visibility.json` summary → llms.txt) | `packages/core/src/brand.ts` (the version is read from it), `LICENSE`; `npm view galley-cms` and `npm view create-galley`: 0.1.0 published 2026-11-23, 0.1.1 on 2026-11-24 |
+| The install commands: `npm create galley@latest`, `npm create galley@latest my-site -- --starter caddow`, `npx galley-cms` | home hero (the command `npm create galley@latest`, and the note “Already have a site? Run npx galley-cms in its folder.”) and close (`npx galley-cms`), quickstart, new site, docs index, agent.md, README, `packages/cli/README.md`, the starters' READMEs | Run from the registry in a clean folder on 2026-11-24: `npm create galley@latest my-site -- --starter caddow --no-install --no-start` (site made, first version recorded), then `npx galley-cms --no-open` in it (the app opened in a browser with no errors). The interactive form, `npm create galley@latest` with no arguments, was not test-run from the registry; it is the same program asking for the name and starter. The docs re-ran them on 2026-11-24 with a throwaway `HOME` and `GALLEY_HOME`: `npm create galley@latest my-site -- --starter caddow --no-install --no-start` and `… t2 -- --starter lowfield --look sage --no-install --no-start` (copied, first version recorded, the “To start Galley on it” hint), then `npx galley-cms --no-open` in that site (printed `Galley is running at http://127.0.0.1:4400` and an `Open:` link), `npx galley-cms doctor`, `starters`, `init`. Not run by the docs: an install (`--no-install` every time, disk), and the `pnpm create` / `yarn create` / `bun create` forms (new-site says so) |
+| Running Galley from a clone is for changing Galley itself | quickstart (last line), README, CONTRIBUTING.md | `CONTRIBUTING.md` “Dev setup”; the from-a-clone steps stay in `site.json` → `install.fromClone` but no page shows them while `install.published` is true |
+| “The open-source AI CMS for static sites” (not “for Astro”) | home title and description, `site.json` → `descriptor`/`description`, `visibility.json` summary (llms.txt), docs index, README, `packages/cli` and `packages/create-galley` descriptions and READMEs | Galley reads and edits any site whose content is files in git: `packages/core/src/adapters/` (astro, conventions, generic) |
+| “Astro fits deepest; it also recognises Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll — or teach it yours” | home “It’s just your repo” (first point, links to /docs/adapters/), docs index, quickstart, FAQ, README | `packages/core/src/adapters/astro/` reads Astro's own config; `packages/core/src/adapters/conventions/` holds the seven convention adapters (where content usually lives, how the site is usually run); `generic/` is the markdown fallback; /docs/adapters/ has the table. The site kit and all four starters are Astro; nothing claims the kit, starters or config-reading for the others |
+| MCP works from the npm package: `npx galley-cms mcp config …`, then the `npx -y galley-cms mcp …` form it prints | /docs/integrations/mcp/ (`docs/mcp.md`), agent.md, README status | Ran 2026-11-24 from the published 0.1.0 on a throwaway Caddow copy: `npx -y galley-cms mcp ./my-site` answered `initialize`, listed 28 tools (the five `shopify_*` among them) and returned the site card for `get_site`; `mcp config --client claude-code` printed both forms (see “Known problems”) |
+| The plugins are built into `galley-cms`, not separate packages | README status | `npx galley-cms plugin list` from the published 0.1.0 (2026-11-24): `@galley/builtin`, `@galley/plugin-openrouter`, `@galley/plugin-shopify`, `@galley/import-wordpress`, each “on, built in”. The tarball's file list (1,050 files: `bin/galley.js`, `dist/galley.mjs`, `dist/web/`, `dist/starters/`, `dist/overlay.js`, README, LICENSE, NOTICE) has no separate plugin files; `packages/server/src/plugins.ts` imports them statically |
+| Not on npm: `@galley/astro` (vendored), `@galley/adapter-kit`, `@galley/plugin-kit`, the plugins as packages | site kit, adapters, plugins pages, README | Their `package.json` files are `"private": true`; RELEASING.md |
+| `galley domain` (and `galley deploy --domain`) is new in 0.1.1; taking over an address that already pointed at the site is the only part run on a real service | /docs/running/deploy/ “Your own domain”, /docs/reference/cli/ notes | `galley domain apps/site galley.fictiontribe.com --yes --json` against Cloudflare on 2026-11-24 answered “galley.fictiontribe.com answers” and recorded `deploy.domain` with `attached: false` in `apps/site/galley.config.json`. Attaching a fresh address and the Vercel path: `packages/core/test/deploy/domains.test.ts` against stand-ins only. 0.1.0 has no `domain` command. |
 | "Galley adds nothing to your build" / no dependency or integration needed | home, /astro/ | ARCHITECTURE; the starters run without the kit's integration. (This site *chooses* to use the kit, for its agent files.) |
 | In `astro dev`, the site kit's toolbar app opens the page in Galley | /astro/ | `packages/astro` README ("Dev Toolbar app"); the kit is not on npm (vendored) |
 | This site's agent files (twins of every page incl. docs, llms.txt, llms-full.txt, robots.txt, sitemap.xml) | /ai-first/ | Written by the vendored site kit at build time (`src/galley/`, `src/data/visibility.json`); `/agent.md` is this site's own (`src/content/pages/agent.md`) |
@@ -56,15 +63,15 @@ Updated 2026-11-23 (rebuild of the site).
 
 ## Install commands
 
-Every command a page shows comes from `src/data/site.json → install`. While
-`install.published` is false the site shows only what works today: the
-from-a-clone steps (home hero and close) and, on each starter card,
-`npm create astro@latest my-site -- --template fictiontribe/galley/starters/<folder>`
-("Works today with Astro’s installer" — checked 2026-11-24: it copies the
-starter from the public repository). With the flag true the cards show
+Every command a page shows comes from `src/data/site.json → install`.
+`install.published` is true since 2026-11-24 (0.1.0 is on npm): the hero and
+the close show `npx galley-cms`, the starter cards
 `npm create galley@latest my-site -- --starter <caddow|ferrow|lowfield|storefront>`
-and the hero `npx galley-cms`. `src/lib/install.ts` stops the build if a page
-would show `npm create galley` or `npx galley-cms` while the flag is false.
+with “Creates the site and opens Galley”, and the docs `{install.create}`,
+`{install.createStarter …}` and `{install.run}`. While the flag was false the
+site showed the from-a-clone steps and, on each card,
+`npm create astro@latest my-site -- --template fictiontribe/galley/starters/<folder>`;
+`src/lib/install.ts` still refuses the npm commands if the flag is turned off.
 
 ## Files generated from the code
 
@@ -88,7 +95,7 @@ Stale statements the content plan listed are gone: forms, plugins, scripts and
 redirects described as "in progress"; "one-click deploy in progress"; AI-first
 "in preview"; every `npx galley-cms` command a reader could copy (the docs
 index, agent.md and starters page now show the clone commands; reference pages
-that mention the future npm package say it isn't published); the quickstart's
+that mention the future npm package say it isn't published — reversed on 2026-11-24, when Galley went on npm); the quickstart's
 "screens are still being finished" and its API walk-through; the Cloud page's
 fake email field; "no paid tier" (now "the open-source product has no paid
 tier"); Fiction Tribe's Portland/2011 facts (the /fiction-tribe/ page is cut).
@@ -105,3 +112,12 @@ tier"); Fiction Tribe's Portland/2011 facts (the /fiction-tribe/ page is cut).
   still work). Re-vendor the kit into the starters.
 - The reference pages have since been regenerated; `check-docs` passes and
   `pnpm --filter @galley/site build` builds.
+- **`galley mcp config` from the npm package** (0.1.0, checked 2026-11-24;
+  unchanged in 0.1.1)
+  prints first a `node …/_npx/<hash>/node_modules/galley-cms/bin/galley.js`
+  command — a path into npx's cache, which npx may clear — and then the
+  lasting `npx -y galley-cms mcp …` form under “Once galley-cms is published
+  to npm, the same works without this checkout” (`packages/cli/src/commands/mcp.ts`).
+  `docs/mcp.md` tells readers to use the second form.
+- **`galley starters | head`** still crashes with an unhandled `EPIPE` in
+  0.1.0, 0.1.1 and the source (nothing handles a closed standard output).

@@ -91,6 +91,7 @@ describe("galley deploy", () => {
       account: "acc0123456789abcdef0123456789abc",
       project: "corner-bakery",
       productionUrl: "https://corner-bakery.studio.workers.dev",
+      defaultUrl: "https://corner-bakery.studio.workers.dev",
     });
     expect(io.stderr.join("\n")).not.toContain(cf.token);
   });
@@ -143,6 +144,45 @@ describe("galley deploy", () => {
     expect(existsSync(join(io.env.GALLEY_HOME!, "secrets.json"))).toBe(false);
     expect(cf.deployments).toHaveLength(0);
   });
+
+  it("galley domain: plan, attach with --yes, keep the address across deploys, remove", async () => {
+    cf = await startFakeCloudflare();
+    const root = makeSite();
+    const env = { CLOUDFLARE_API_TOKEN: cf.token, GALLEY_DEPLOY_CLOUDFLARE_API: cf.api, GALLEY_DEPLOY_PROBE: `${cf.url}/__probe?host={host}` };
+    const first = testIo(env);
+
+    expect(await main(["deploy", root, "--yes"], first)).toBe(0);
+    const home = { ...env, GALLEY_HOME: first.env.GALLEY_HOME! };
+    const refused = testIo(home);
+
+    expect(await main(["domain", root, "www.elsewhere.org"], refused)).toBe(1);
+    expect(refused.stderr[0]).toContain("elsewhere.org isn't a domain in this Cloudflare account");
+    const noYes = testIo(home);
+
+    await expect(main(["domain", root, "bakery.example.com"], noYes)).resolves.toBe(2);
+    expect(noYes.stderr.join("\n")).toContain("Run it again with --yes");
+    expect(cf.domains).toHaveLength(0);
+
+    const attach = testIo(home);
+
+    expect(await main(["domain", root, "bakery.example.com", "--yes"], attach)).toBe(0);
+    expect(attach.stderr[0]).toBe("Cloudflare will answer bakery.example.com with this site and set up its certificate. Nothing else on example.com changes.");
+    expect(attach.stdout).toEqual(["✓ https://bakery.example.com answers — it's the site's live address now."]);
+    expect(cf.domains.map((domain) => [domain.hostname, domain.service])).toEqual([["bakery.example.com", "corner-bakery"]]);
+
+    const again = testIo(home);
+
+    expect(await main(["deploy", root, "--yes"], again)).toBe(0);
+    expect(again.stdout).toEqual(["✓ Live at https://bakery.example.com"]);
+    expect(JSON.parse(readFileSync(join(root, "galley.config.json"), "utf8")).deploy).toMatchObject({ productionUrl: "https://bakery.example.com", defaultUrl: "https://corner-bakery.studio.workers.dev" });
+
+    const remove = testIo(home);
+
+    expect(await main(["domain", root, "--remove", "--yes"], remove)).toBe(0);
+    expect(remove.stdout[0]).toBe("✓ Stopped using bakery.example.com. The live address is https://corner-bakery.studio.workers.dev again.");
+    expect(cf.domains).toHaveLength(0);
+    // Two live deploys in a temporary checkout plus the attach: slower than most tests when the suite runs in parallel.
+  }, 180_000);
 
   it("refuses, without asking, when there's no key and no terminal", async () => {
     const root = makeSite();

@@ -324,6 +324,30 @@
           "type": "string",
           "format": "uri"
         },
+        "defaultUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "domain": {
+          "type": "object",
+          "properties": {
+            "hostname": {
+              "type": "string",
+              "pattern": "^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$"
+            },
+            "attached": {
+              "type": "boolean"
+            },
+            "pending": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "hostname",
+            "attached"
+          ],
+          "additionalProperties": false
+        },
         "autoDeploy": {
           "type": "boolean"
         },

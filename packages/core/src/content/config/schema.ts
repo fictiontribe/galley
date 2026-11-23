@@ -108,6 +108,15 @@ const deployConfig = z
     account: z.string().min(1).max(100),
     project: z.string().regex(DEPLOY_PROJECT, { message: "must be lowercase letters, digits and dashes (up to 54), like “my-site”." }),
     productionUrl: z.string().url().optional(),
+    defaultUrl: z.string().url().optional(),
+    domain: z
+      .object({
+        hostname: z.string().regex(/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, { message: "must be a host name like “www.example.com”." }),
+        attached: z.boolean(),
+        pending: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
     autoDeploy: z.boolean().optional(),
     previewOnShare: z.boolean().optional(),
   })

@@ -3,8 +3,9 @@
 Thank you. This page is the whole process. If something here is unclear, open
 an issue and we will fix the page.
 
-Galley is pre-release: the repository is not public yet and nothing is
-published. The setup below works from a copy of the repository today.
+Galley is on npm as `galley-cms`; to use it, the
+[README](README.md#try-it) has the one command. The setup below is for
+changing Galley itself: it runs Galley from a clone.
 
 ## Dev setup
 
@@ -19,6 +20,9 @@ pnpm install --frozen-lockfile
 pnpm --filter @galley/web build      # the UI the server hosts
 node packages/cli/bin/galley.js doctor starters/astro-starter
 ```
+
+`node packages/cli/bin/galley.js <site folder>` then opens a site in the
+Galley you are changing.
 
 The engine (`packages/core`) is imported as TypeScript source inside the
 monorepo — there is no build step — and the CLI runs it through `tsx`. Work on

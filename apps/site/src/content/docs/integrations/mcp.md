@@ -8,7 +8,7 @@ order: 4
 
 <!-- Generated from docs/mcp.md by apps/site/scripts/sync-docs.mjs. Edit that file, not this one. -->
 
-> This page is [`docs/mcp.md`]({repository}/blob/main/docs/mcp.md) from the repository, rendered as it is. Nothing is on npm yet: use the from-source command that `galley mcp config` prints. The tool reference below is generated from the same catalogue the server registers its tools from, and this site's build checks it is current.
+> This page is [`docs/mcp.md`]({repository}/blob/main/docs/mcp.md) from the repository, rendered as it is. The tool reference below is generated from the same catalogue the server registers its tools from, and this site's build checks it is current.
 
 Galley's own interface is meant to be the best way to run a site, never the
 only way. Everything its built-in assistant can do to a site, any AI tool that
@@ -35,10 +35,10 @@ engine, with the same guard rails.
 
 ## Quick start
 
-From a checkout of this repository, for a site in `~/sites/my-site`:
+For a site in `~/sites/my-site`:
 
 ```sh
-node packages/cli/bin/galley.js mcp config ~/sites/my-site --client claude-code
+npx galley-cms mcp config ~/sites/my-site --client claude-code
 ```
 
 It prints exactly what to paste for that client — here, a `claude mcp add …`
@@ -46,18 +46,22 @@ command. For Claude Desktop, Cursor or VS Code it prints the JSON block for
 their config file instead. Paste it, restart the client if it asks, and ask
 it to “describe my site”.
 
-`galley mcp config` always prints two forms: the one that works today from
-this checkout (an absolute `node …/galley.js` command), and the
-`npx -y galley-cms mcp …` form that works once the `galley-cms` package is
-published to npm. Nothing else needs to be running — the client starts
+It prints two forms. Use the second, `npx -y galley-cms mcp …`: the first is
+an absolute `node …/galley.js` command that points at the copy npx happened
+to download, which npx may clear. (Versions 0.1.0 and 0.1.1 still introduce the
+second with “Once galley-cms is published to npm”; it is.) From a clone of this
+repository, run `node packages/cli/bin/galley.js mcp config …` instead and
+use the first form. Nothing else needs to be running — the client starts
 `galley mcp` itself, and it stops when the client disconnects.
 
 ## Setup for each client
 
 Generated from the same code as `galley mcp config` (a test fails if this
-section falls behind; `pnpm --filter @galley/mcp docs` rewrites it). Replace
-`/path/to/galley` with this checkout and `/path/to/your-site` with the site's
-folder — or let `galley mcp config` fill both in.
+section falls behind; `pnpm --filter @galley/mcp docs` rewrites it). The
+stdio forms run Galley from a clone: replace `/path/to/galley` with the clone
+and `/path/to/your-site` with the site's folder. With the npm package, the
+command is `npx` and the arguments are `-y galley-cms mcp /path/to/your-site`
+— `galley mcp config` prints that form, filled in.
 
 ### Claude Desktop
 
@@ -784,5 +788,3 @@ only when asked; in content mode, say plainly when a request needs build mode.
 - **The 2026-07-28 protocol revision**, until the SDK ships it.
 - **Undoing one harness turn.** The built-in assistant can undo exactly what
   one of its turns changed; over MCP, use `discard_changes` (per file) instead.
-- **`npx galley-cms mcp`** works once the package is published; until then use
-  the from-source command `galley mcp config` prints.

@@ -80,7 +80,7 @@
       "href": "{license}"
     },
     {
-      "label": "{version} pre-release"
+      "label": "Version {version}"
     },
     {
       "label": "No cookies"

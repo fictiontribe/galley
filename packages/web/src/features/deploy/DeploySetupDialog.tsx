@@ -371,6 +371,17 @@ export function DeploySetupDialog({ siteId }: { siteId: string }) {
                 <span>Proof compares your changes against this address.</span>
               </p>
             )}
+            <Button
+              variant="quiet"
+              size="sm"
+              icon="globe"
+              onClick={() => {
+                close();
+                useDeployUi.getState().setDomain(true);
+              }}
+            >
+              Use your own domain…
+            </Button>
             <Toggle
               checked={autoDeploy ?? Boolean(config?.autoDeploy)}
               onChange={(checked) => {

@@ -1,9 +1,16 @@
 ---
-// The starters: a large real picture each, read from the starter's own files,
-// with its looks as buttons that swap the picture. An item with no starter
-// folder is a plain card (one in progress, or "make your own").
+// The starters: each one a page of its own home page set in the tan capture
+// panel, its looks as buttons on the panel that swap the picture, then what
+// it is, then the one command that starts it. An item with no starter folder
+// is a plain card (one in progress, or "make your own", set as a blank page
+// inside crop marks).
 //   feature — the first starter tall beside the others, then the page builder line
 //   gallery — two columns, the starters' own page
+//
+// Pictures, in order: the item's `tall` captures (public/sites/<tall>-<look>.webp),
+// else the site's capture of the starter (public/sites/<short>-<look>.webp, the top
+// 1600 px of its home page in a 1280 px window — one treatment for every starter),
+// else the starter's own preview (starters/<id>/galley/previews/).
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import Panel from "../Panel.astro";
@@ -21,12 +28,13 @@ const H = first ? "h1" : "h2";
 const Hi = first ? "h2" : "h3";
 const hid = `${s.id ?? "starters"}-h`;
 const t = site.ui;
+const captured = (name: string) => existsSync(join(process.cwd(), "public", "sites", `${name}.webp`));
 const items = s.items.map((item: { starter?: string; tall?: string; status?: string }, i: number) => {
   const st = item.starter ? getStarter(item.starter) : null;
   const tall = s.layout === "feature" && i === 0;
   const looks = (st?.looks ?? []).map((look) => {
-    const name = item.tall ? `${item.tall}-${look.id}` : null;
-    const pic = tall && name && existsSync(join(process.cwd(), "public", "sites", `${name}.webp`)) ? siteShot(name) : null;
+    const name = [tall && item.tall ? `${item.tall}-${look.id}` : null, `${st!.short}-${look.id}`].find((n) => n && captured(n));
+    const pic = name ? siteShot(name) : null;
     return pic
       ? { ...look, src: pic.src, srcset: pic.srcset, width: pic.width, height: pic.height }
       : { ...look, src: look.preview, srcset: undefined };
@@ -34,8 +42,10 @@ const items = s.items.map((item: { starter?: string; tall?: string; status?: str
   const run = st ? starterCommand({ short: st.short, dir: st.id }) : null;
   return { ...item, looks, tall, badge: badgeOf(item.status), run, inside: st ? fill(`{repository}/tree/${site.repositoryBranch}/starters/${st.id}`) : null };
 });
+const shown = items.filter((item: any) => item.looks.length);
+const others = items.filter((item: any) => !item.looks.length);
 const sizes = (tall: boolean) =>
-  s.layout === "gallery" ? "(max-width: 639px) calc(100vw - 66px), (max-width: 1440px) 46vw, 610px" : tall ? "(max-width: 639px) calc(100vw - 66px), (max-width: 1023px) 92vw, 510px" : "(max-width: 639px) calc(100vw - 66px), (max-width: 1023px) 45vw, 720px";
+  s.layout === "gallery" ? "(max-width: 639px) calc(100vw - 80px), (max-width: 1440px) 42vw, 548px" : tall ? "(max-width: 639px) calc(100vw - 80px), (max-width: 1023px) 86vw, 440px" : "(max-width: 639px) calc(100vw - 80px), (max-width: 1023px) 40vw, 650px";
 ---
 
 <section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
@@ -48,58 +58,79 @@ const sizes = (tall: boolean) =>
   </div>
   <div class:list={["starters", `starters--${s.layout}`]}>
     {
-      items.filter((item: any) => item.looks.length).map((item: any) =>
-        (
-          <article class:list={["starter", item.tall && "starter--tall"]} data-starter aria-labelledby={`${hid}-${item.starter}`}>
-            <div class="starter__pic">
-              {item.looks.map((look: any, i: number) => (
-                <img src={look.src} srcset={look.srcset} sizes={look.srcset ? sizes(item.tall) : undefined} width={look.width} height={look.height} alt={t.lookAlt.replace("{name}", item.name).replace("{look}", look.label)} loading="lazy" decoding="async" data-look={look.id} hidden={i !== 0} />
-              ))}
-            </div>
-            <div class="starter__body">
-              <Hi class="starter__name" id={`${hid}-${item.starter}`}>{item.name}</Hi>
-              {item.badge ? <span class:list={["badge", `badge--${item.badge.status}`]}>{item.badge.label}</span> : <span class="label">{item.kind}</span>}
-              <p class="starter__meta">{fill(item.text)}</p>
-              <div class="looks" data-galley-agent="skip" role="group" aria-label={t.lookOf.replace("{name}", item.name)}>
+      shown.map((item: any) => (
+        <article class:list={["starter", item.tall && "starter--tall"]} data-starter aria-labelledby={`${hid}-${item.starter}`}>
+          <div class="starter__view">
+            <Panel class="starter__frame">
+              <div class="shot starter__shot">
                 {item.looks.map((look: any, i: number) => (
-                  <button class="look" type="button" data-look-to={look.id} aria-pressed={i === 0 ? "true" : "false"}>
-                    <span class="look__sw" aria-hidden="true"><span style={`background:${look.swatches[0]}`} /><span style={`background:${look.swatches[2] ?? look.swatches[1]}`} /></span>
-                    {look.label}
-                  </button>
+                  <img src={look.src} srcset={look.srcset} sizes={look.srcset ? sizes(item.tall) : undefined} width={look.width} height={look.height} alt={t.lookAlt.replace("{name}", item.name).replace("{look}", look.label)} loading="lazy" decoding="async" data-look={look.id} hidden={i !== 0} />
                 ))}
               </div>
-              {item.run && (
-                <div class="starter__run">
-                  <Command lines={[item.run.command]} label={`${item.run.note}: ${item.name}`} />
-                  <p class="starter__foot">
-                    <span>{item.run.note}</span>
-                    <a class="link" href={item.inside}>{t.inside}<span class="sr">: {item.name}</span></a>
-                  </p>
-                </div>
-              )}
+            </Panel>
+            <div class="looks" data-galley-agent="skip" role="group" aria-label={t.lookOf.replace("{name}", item.name)}>
+              {item.looks.map((look: any, i: number) => (
+                <button class="look" type="button" data-look-to={look.id} aria-pressed={i === 0 ? "true" : "false"}>
+                  <span class="look__sw" aria-hidden="true"><span style={`background:${look.swatches[0]}`} /><span style={`background:${look.swatches[2] ?? look.swatches[1]}`} /></span>
+                  {look.label}
+                </button>
+              ))}
             </div>
-          </article>
-        ),
-      )
+          </div>
+          <div class="starter__body">
+            <Hi class="starter__name" id={`${hid}-${item.starter}`}>{item.name}</Hi>
+            <p class="starter__kind">
+              <span class="label">{item.kind}</span>
+              {item.badge && <span class:list={["badge", `badge--${item.badge.status}`]}>{item.badge.label}</span>}
+            </p>
+            <p class="starter__meta">{fill(item.text)}</p>
+            {item.run && (
+              <div class="starter__run">
+                <Command lines={[item.run.command]} label={`${item.run.note}: ${item.name}`} />
+                <p class="starter__foot">
+                  <span>{item.run.note}</span>
+                  <a class="link" href={item.inside}>{t.inside}<span class="sr">: {item.name}</span></a>
+                </p>
+              </div>
+            )}
+          </div>
+        </article>
+      ))
     }
     {
-      items.some((item: any) => !item.looks.length) && (
+      others.length > 0 && s.layout !== "gallery" && (
         <div class="starters__aside">
-          {items.filter((item: any) => !item.looks.length).map((item: any) => (
-          <article class="starter starter--soon">
-            <div class="starter__body">
-              <Hi class="starter__name">{item.name}</Hi>
-              {item.badge ? <span class:list={["badge", `badge--${item.badge.status}`]}>{item.badge.label}</span> : <span class="label">{item.kind}</span>}
-              <p class="starter__meta">{fill(item.text)}</p>
-              {item.link && <p><a class="link link--accent" href={fill(item.link.href)}>{item.link.label}</a></p>}
-            </div>
-          </article>
+          {others.map((item: any) => (
+            <article class="starter starter--soon">
+              <div class="starter__body">
+                <Hi class="starter__name">{item.name}</Hi>
+                <p class="starter__kind"><span class="label">{item.kind}</span>{item.badge && <span class:list={["badge", `badge--${item.badge.status}`]}>{item.badge.label}</span>}</p>
+                <p class="starter__meta">{fill(item.text)}</p>
+                {item.link && <p><a class="link link--accent" href={fill(item.link.href)}>{item.link.label}</a></p>}
+              </div>
+            </article>
           ))}
         </div>
       )
     }
   </div>
-  {s.note && <p class="small starters__more">{fill(s.note)}</p>}
+  {s.note && <p class="caption starters__note">{fill(s.note)}</p>}
+  {
+    others.length > 0 && s.layout === "gallery" && (
+      <div class="own-list">
+        {others.map((item: any) => (
+          <article class="own">
+            <div class="own__name">
+              <Hi class="starter__name">{item.name}</Hi>
+              <p class="starter__kind"><span class="label">{item.kind}</span>{item.badge && <span class:list={["badge", `badge--${item.badge.status}`]}>{item.badge.label}</span>}</p>
+            </div>
+            <p class="starter__meta">{fill(item.text)}</p>
+            {item.link && <p class="own__go"><a class="link link--accent" href={fill(item.link.href)}>{item.link.label}</a></p>}
+          </article>
+        ))}
+      </div>
+    )
+  }
   {
     s.builder && (
       <div class="builder">

@@ -1,0 +1,24 @@
+---
+// The comparison's marks, drawn from the logo: its caret (stronger here), its
+// two bars (even) and an empty ring (the other side). Decorative: the words
+// that say the same thing are in the table, once per row.
+//   win   the blue pencil's caret, reversed out of a filled disc
+//   plain an empty ring: unmarked, not marked down
+//   even  the ring holding the logo's two bars
+interface Props { kind: "win" | "plain" | "even" }
+const { kind } = Astro.props;
+---
+
+<svg class:list={["vd", `vd--${kind}`]} viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+  {kind === "win" ? (
+    <>
+      <circle cx="12" cy="12" r="12" />
+      <path transform="translate(12 12.6) scale(.88) translate(-16 -21.05)" d="M8.76 24.24 16 15.33l7.24 8.91-3.1 2.52L16 21.67l-4.14 5.09z" />
+    </>
+  ) : (
+    <>
+      <circle cx="12" cy="12" r="11.25" />
+      {kind === "even" && <path d="M7 8.6h10v2.4H7zM7 13h10v2.4H7z" />}
+    </>
+  )}
+</svg>

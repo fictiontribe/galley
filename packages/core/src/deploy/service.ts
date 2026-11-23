@@ -26,6 +26,8 @@ import type {
   DeployTargetId,
   DeployTargetInfo,
   Deployment,
+  DomainPlan,
+  DomainRecord,
   EventBus,
   GalleyConfig,
   Job,
@@ -40,7 +42,8 @@ import { appendDeployment, readDeployments } from "./history";
 import { defaultProjectName, projectNameProblem } from "./names";
 import { builtInTargets } from "./registry";
 import { buildForDeploy, publishedCommit, versionsBetween } from "./source";
-import type { DeployContext, DeployTarget } from "./types";
+import { requireHostname } from "./domains";
+import type { DeployContext, DeployTarget, DomainInput } from "./types";
 
 export interface DeployServiceOptions {
   /** Galley home: deployment records live in `<home>/state/<siteId>/`. */
@@ -51,6 +54,15 @@ export interface DeployServiceOptions {
   targets?: DeployTarget[];
   /** Test seam. */
   fetch?: typeof fetch;
+  /**
+   * Whether `hostname` answers over HTTPS. Default: a HEAD request to
+   * `https://<hostname>/`. Tests and the rehearsal (GALLEY_DEPLOY_PROBE, a URL
+   * with `{host}`) point it at a fake.
+   */
+  probe?: (hostname: string) => Promise<boolean>;
+  /** How long attaching waits for the address to answer (default 10 min), and how often it looks (default 5 s). */
+  domainWaitMs?: number;
+  domainPollMs?: number;
   /**
    * Point a host's API somewhere else, by target id. Only tests and the
    * end-to-end rehearsal use this (with a fake host); see also `env`.
@@ -97,6 +109,14 @@ export interface DeployService {
   /** The publish hook: start a production deploy when the site has auto-deploy on. Never throws. */
   afterPublish(site: SiteService, result: PublishResult): void;
   job(id: string): Job | null;
+  /** What using `hostname` as the site's address would do. Read-only. */
+  planDomain(site: SiteService, hostname: string): Promise<DomainPlan>;
+  /** Attach `hostname` (after the person said yes to the plan) and wait until it answers over HTTPS. A "domain" job. */
+  attachDomain(site: SiteService, hostname: string): Promise<Job>;
+  /** Look again at an address that isn't answering yet (DNS or certificate on its way). A "domain" job. */
+  checkDomain(site: SiteService): Promise<Job>;
+  /** Stop using the site's own address: detach it if Galley attached it, and put the host's address back as the live one. */
+  detachDomain(site: SiteService): Promise<DeployStatus>;
   /** The default project name for a site. */
   suggestName(site: SiteService): Promise<string>;
   dispose(): void;
@@ -106,6 +126,15 @@ const SECRET_ENV_HINT: Record<string, string> = { cloudflare: "CLOUDFLARE_API_TO
 
 /** A progress update every person must see, however fast the next one follows (see JobHandle.update). */
 const STEP = { immediate: true } as const;
+
+/** The hosts' own addresses; anything else as a live address is one the person chose. */
+const HOST_ADDRESS = /^https?:\/\/[^/]+\.(workers\.dev|pages\.dev|vercel\.app)\/?$/i;
+
+/** Whether the saved live address is the person's own (a domain), which a deploy must never replace. */
+export function hasCustomAddress(config: DeployConfig): boolean {
+  if (config.domain && !config.domain.pending) return true;
+  return Boolean(config.productionUrl) && config.productionUrl !== config.defaultUrl && !HOST_ADDRESS.test(config.productionUrl!);
+}
 
 function normalizeUrl(url: string | undefined): string {
   return (url ?? "").trim().replace(/\/+$/, "").toLowerCase();
@@ -119,6 +148,25 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
   /** Per site: the deploy running now, and whether a production deploy is waiting behind it. */
   const running = new Map<string, { kind: DeployKind; job: JobHandle; done: Promise<Deployment>; again: StartOptions | null; listeners: Set<(job: Job) => void> }>();
   const lastJob = new Map<string, string>();
+  const lastDomainJob = new Map<string, string>();
+  const domainRecords = new Map<string, DomainRecord[]>();
+  const probeTemplate = env.GALLEY_DEPLOY_PROBE?.trim();
+  const probe =
+    options.probe ??
+    (async (hostname: string) => {
+      const url = probeTemplate ? probeTemplate.replace("{host}", encodeURIComponent(hostname)) : `https://${hostname}/`;
+
+      try {
+        const response = await doFetch(url, { method: probeTemplate ? "GET" : "HEAD", redirect: "manual", signal: AbortSignal.timeout(10_000) });
+
+        // Any answer over HTTPS means DNS and the certificate work; the fake for rehearsals answers 200 only when ready.
+        return probeTemplate ? response.ok : true;
+      } catch {
+        return false;
+      }
+    });
+  const waitMs = options.domainWaitMs ?? 10 * 60_000;
+  const pollMs = options.domainPollMs ?? 5_000;
 
   function targetFor(id: DeployTargetId | undefined): DeployTarget {
     const target = targets.find((candidate) => candidate.id === id);
@@ -217,12 +265,16 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
           job.update({ detail, ...(progress !== undefined ? { progress: 0.4 + progress * 0.55 } : {}) }, progress === undefined || progress === 0 || progress === 1 ? STEP : {}),
       });
       const author = await who();
+      // The live address is the person's choice: a custom one is kept, the host's own is recorded beside it.
+      const latest = start.kind === "production" ? await readDeployConfig(site) : null;
+      const hostDefault = outcome.productionUrl ?? (start.kind === "production" ? project.productionUrl : undefined);
+      const custom = latest ? hasCustomAddress(latest) : false;
       const record: Deployment = {
         id: outcome.id,
         kind: start.kind,
         target: target.id,
         project: project.project,
-        url: outcome.url,
+        url: custom && latest?.productionUrl ? latest.productionUrl : outcome.url,
         commit: built.commit,
         createdAt: outcome.createdAt,
         ...(author ? { who: author } : {}),
@@ -232,13 +284,11 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       };
 
       await appendDeployment(options.home, site.id, record);
-      const productionUrl = outcome.productionUrl ?? (start.kind === "production" ? project.productionUrl : undefined);
-
-      if (start.kind === "production" && productionUrl && productionUrl !== config.productionUrl) {
+      if (latest && hostDefault) {
         // The settings file records where the site lives, so the next session (and the CLI) knows its address.
-        const latest = await readDeployConfig(site);
+        const next: DeployConfig = { ...latest, defaultUrl: hostDefault, ...(custom ? {} : { productionUrl: hostDefault }) };
 
-        if (latest) await writeDeployConfig(site, { ...latest, productionUrl });
+        if (next.defaultUrl !== latest.defaultUrl || next.productionUrl !== latest.productionUrl) await writeDeployConfig(site, next);
       }
       return record;
     } catch (error) {
@@ -318,6 +368,49 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
     return launch(site, config, start);
   }
 
+  async function domainContext(site: SiteService, input: string) {
+    const config = await readDeployConfig(site);
+
+    if (!config) throw new DeployError("not-set-up", "Put the site online first; then it can answer on your own address.");
+    const target = targetFor(config.target);
+
+    if (!target.planDomain || !target.attachDomain) throw new DeployError("domain", `Using your own address isn't available for ${target.name} here.`);
+    return { config, target, hostname: requireHostname(input) };
+  }
+
+  /** Waits until the host is done and the address answers over HTTPS; then it becomes the live address. */
+  async function waitForDomain(site: SiteService, target: DeployTarget, ctx: DeployContext, input: DomainInput, job: JobHandle, records: DomainRecord[]): Promise<void> {
+    const { hostname } = input;
+    const started = Date.now();
+    let said = false;
+
+    for (;;) {
+      const status = target.domainStatus ? await target.domainStatus(ctx, input) : { ready: true };
+      const needs = status.records ?? records;
+
+      if (!status.ready && needs.length > 0) {
+        domainRecords.set(site.id, needs);
+        // Nothing to wait for until the person creates the record: say so and stop.
+        job.finish("done", { progress: 1, detail: `Create the DNS record for ${hostname}, then check again.` });
+        return;
+      }
+      if (status.ready && (await probe(hostname))) break;
+      if (!said) {
+        job.update({ detail: `Waiting for ${hostname} to answer — ${target.name} is setting up its certificate…`, progress: 0.5 }, STEP);
+        said = true;
+      }
+      if (Date.now() - started >= waitMs) {
+        throw new DeployError("domain", `${hostname} is attached but isn't answering over HTTPS yet — certificates can take a while. Check again in a few minutes; the site's address stays as it was until then.`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, pollMs));
+    }
+    domainRecords.delete(site.id);
+    const latest = await readDeployConfig(site);
+
+    if (latest) await writeDeployConfig(site, { ...latest, productionUrl: `https://${hostname}`, domain: { hostname, attached: latest.domain?.hostname === hostname ? latest.domain.attached : false } });
+    job.finish("done", { progress: 1, url: `https://${hostname}`, detail: `${hostname} answers` });
+  }
+
   const service: DeployService = {
     async targets() {
       const statuses = await Promise.all(
@@ -390,12 +483,15 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
 
       return {
         config,
-        production,
+        // Shown at the live address the person chose, whatever the host called it at the time.
+        production: production && config?.productionUrl ? { ...production, url: config.productionUrl } : production,
         preview,
         job: active ?? (last ? jobs.get(last) : null),
         behind,
         liveAddressSet: Boolean(config?.productionUrl) && normalizeUrl(model.urls.production) === normalizeUrl(config?.productionUrl),
         suggestedProject: defaultProjectName(model.name),
+        domainJob: lastDomainJob.get(site.id) ? jobs.get(lastDomainJob.get(site.id)!) : null,
+        ...(domainRecords.get(site.id)?.length ? { domainRecords: domainRecords.get(site.id) } : {}),
       };
     },
 
@@ -467,6 +563,101 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
 
     job(id) {
       return jobs.get(id);
+    },
+
+    async planDomain(site, input) {
+      const { config, target, hostname } = await domainContext(site, input);
+
+      return withHost(target, (ctx) => target.planDomain!(ctx, { account: config.account, project: config.project, hostname }));
+    },
+
+    async attachDomain(site, input) {
+      const { config, target, hostname } = await domainContext(site, input);
+      const running = lastDomainJob.get(site.id) ? jobs.get(lastDomainJob.get(site.id)!) : null;
+
+      if (running?.state === "running") throw new DeployError("busy", "An address is being set up right now. Wait for it to finish.");
+      const job = jobs.start("domain", `Using ${hostname}`);
+
+      job.update({ siteId: site.id, detail: `Checking ${hostname}…`, progress: 0 }, STEP);
+      lastDomainJob.set(site.id, job.id);
+      void (async () => {
+        let ctx: DeployContext | null = null;
+
+        try {
+          ctx = await contextFor(target);
+          const input = { account: config.account, project: config.project, hostname };
+          const plan = await target.planDomain!(ctx, input);
+
+          if (!plan.canAttach && plan.status !== "already") throw new DeployError("domain", plan.summary, plan.status);
+          let records: DomainRecord[] = [];
+
+          if (plan.status !== "already") {
+            job.update({ detail: `Asking ${target.name} to answer ${hostname}…`, progress: 0.2 }, STEP);
+            records = (await target.attachDomain!(ctx, input)).records ?? [];
+          }
+          // Recorded before waiting, so it can be stopped even if it never answers. `attached`: only what Galley attached is ever detached.
+          const latest = (await readDeployConfig(site)) ?? config;
+          const attached = plan.status !== "already" || (latest.domain?.hostname === hostname && latest.domain.attached);
+
+          await writeDeployConfig(site, { ...latest, domain: { hostname, attached, pending: true } });
+          await waitForDomain(site, target, ctx, input, job, records);
+        } catch (error) {
+          const clean = scrubError(error, [ctx?.token]);
+
+          job.finish("error", { detail: clean.message, ...(clean.detail ? { output: clean.detail } : {}) });
+        }
+      })();
+      return job.snapshot();
+    },
+
+    async checkDomain(site) {
+      const config = await readDeployConfig(site);
+
+      if (!config?.domain) throw new DeployError("domain", "This site isn't using an address of its own.");
+      const target = targetFor(config.target);
+      const hostname = config.domain.hostname;
+      const job = jobs.start("domain", `Using ${hostname}`);
+
+      job.update({ siteId: site.id, detail: `Checking ${hostname}…`, progress: 0.2 }, STEP);
+      lastDomainJob.set(site.id, job.id);
+      void (async () => {
+        let ctx: DeployContext | null = null;
+
+        try {
+          ctx = await contextFor(target);
+          await waitForDomain(site, target, ctx, { account: config.account, project: config.project, hostname }, job, domainRecords.get(site.id) ?? []);
+        } catch (error) {
+          const clean = scrubError(error, [ctx?.token]);
+
+          job.finish("error", { detail: clean.message, ...(clean.detail ? { output: clean.detail } : {}) });
+        }
+      })();
+      return job.snapshot();
+    },
+
+    async detachDomain(site) {
+      const config = await readDeployConfig(site);
+
+      if (!config?.domain) return service.status(site);
+      const target = targetFor(config.target);
+      const { hostname, attached } = config.domain;
+
+      if (attached && target.detachDomain) {
+        await withHost(target, (ctx) => target.detachDomain!(ctx, { account: config.account, project: config.project, hostname }));
+      }
+      domainRecords.delete(site.id);
+      const custom = `https://${hostname}`;
+      const { domain: _gone, productionUrl: _was, ...rest } = config;
+      const next: DeployConfig = { ...rest, ...(config.defaultUrl ? { productionUrl: config.defaultUrl } : {}) };
+
+      // The comparison address goes back too, when it was this one.
+      await writeDeployConfig(site, next, (file) => {
+        if (normalizeUrl(file.urls?.production) !== normalizeUrl(custom)) return file;
+        const { production: _old, ...urls } = file.urls ?? {};
+
+        return { ...file, urls: config.defaultUrl ? { ...urls, production: config.defaultUrl } : urls };
+      });
+      return service.status(site);
     },
 
     async suggestName(site) {

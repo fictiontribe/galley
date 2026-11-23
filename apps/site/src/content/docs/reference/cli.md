@@ -7,7 +7,7 @@ order: 1
 
 <!-- Generated from the CLI's own --help output by apps/site/scripts/reference-cli.mjs. Edit that file (or the command's help), not this page. -->
 
-This page is for developers. The `galley` command is the one binary of the `galley-cms` package. **That package isn't on npm yet**: run it from a clone of the repository as `node packages/cli/bin/galley.js`, aliased as `galley` ([Quickstart](/docs/getting-started/quickstart/#open-your-site)). The source is [`packages/cli/src/`]({repository}/tree/main/packages/cli/src). **This page is generated from the CLI itself** (`apps/site/scripts/reference-cli.mjs`): every help text below is the command's real output.
+This page is for developers. The `galley` command is the one binary of the `galley-cms` package on npm: type `npx galley-cms` where this page writes `galley` ([Quickstart](/docs/getting-started/quickstart/#open-your-site)). The source is [`packages/cli/src/`]({repository}/tree/main/packages/cli/src). **This page is generated from the CLI itself** (`apps/site/scripts/reference-cli.mjs`): every help text below is the command's real output, from the repository — so where a command or option is newer than the release on npm, its note says so.
 
 **Exit codes**: `0` success; `1` it couldn't do it (no such folder, a refused start-up, `doctor` found a blocking problem, a failed deploy); `2` the command was typed wrong — an unknown option, a missing value, too many arguments.
 
@@ -23,6 +23,7 @@ Usage
   galley init [path]     Write galley.config.json from what detection finds
   galley doctor [path]   Check that a site and this computer are ready
   galley deploy [path]   Put the site online with Cloudflare or Vercel (--preview: unpublished changes)
+  galley domain [path]   Use your own domain for a site that is online
   galley new <name>      Start a new site from a starter
   galley import …        Bring a WordPress site (or another importer's) into a site
   galley starters        List the starters and their looks
@@ -293,7 +294,7 @@ Options
 
 ## `galley deploy [path]`
 
-Puts the site online from a terminal, as the app's **Online** screen does. Not run against the live services by the docs; Cloudflare has been verified by the people who built it, Vercel not yet. Details: [Deploying, for developers](/docs/running/deploy/).
+Puts the site online from a terminal, as the app's **Online** screen does. Not run against the live services by the docs; Cloudflare has been verified by the people who built it, Vercel not yet. `--domain` is new in 0.1.1. Details: [Deploying, for developers](/docs/running/deploy/).
 
 Its help (`--help`):
 
@@ -310,6 +311,8 @@ Options
       --target <host>   cloudflare (default) or vercel
       --project <name>  The project on the host (default: from the site's name)
       --account <id>    The Cloudflare account or Vercel team
+      --domain <host>   Afterwards, use your own address for the live site
+                        (see `galley domain --help`)
   -y, --yes             Don't ask: take the defaults (and an existing project)
       --json            Print the result as JSON
   -h, --help            Show this help
@@ -321,6 +324,29 @@ Examples
   galley deploy                       Put the published site live
   galley deploy --preview             Share unpublished changes
   galley deploy ./site --target vercel --project my-site --yes
+```
+
+## `galley domain`
+
+New in 0.1.1. Uses your own address for a site that is already online: it shows what will change, attaches the address on yes, waits until it answers over HTTPS, and makes it the site's live address. It never replaces a DNS record, and it detaches only an address it attached itself. On Cloudflare the domain has to be in the same account as the site. Details: [Deploying, for developers](/docs/running/deploy/).
+
+Its help (`--help`):
+
+```text
+Usage: galley domain [path] [hostname] [options]
+Use your own domain for the site in [path] (default: this folder), which must
+already be online. With a hostname: show what will change, attach it on yes,
+and wait until it answers over HTTPS — it then becomes the site's live
+address. Without one: show the address in use.
+Options
+      --check     Look again at an address that isn't answering yet
+      --remove    Stop using the address (it is detached only if Galley attached it)
+  -y, --yes       Don't ask before attaching or removing
+      --json      Print the result as JSON
+  -h, --help      Show this help
+Examples
+  galley domain www.example.com
+  galley domain ./site --remove --yes
 ```
 
 ## `galley schema`

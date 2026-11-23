@@ -103,18 +103,54 @@ one can do anything in the team you chose. Galley only uses it to create the
 project, upload files and read deployments. Delete it on Vercel if you stop
 using Galley.
 
-### Custom domains
+### Using your own domain
 
-Galley puts the site at the host's own address. To serve it at your own
-domain, add the domain on the host — Galley doesn't change DNS or domain
-settings:
+Once the site is online it can answer at an address of yours, like
+`www.example.com`, instead of the host's own (`….workers.dev`,
+`….vercel.app`). Open **Online › Use your own domain…** (also on the last
+step of the setup), or run `galley domain www.example.com` /
+`galley deploy --domain www.example.com`.
 
-- Cloudflare: [Custom Domains for Workers](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
-  (the domain's DNS must be on Cloudflare).
-- Vercel: [Adding a domain](https://vercel.com/docs/domains/working-with-domains/add-a-domain).
+1. **Type the address.** Galley checks it with the host — without changing
+   anything — and tells you in a sentence what will happen, for example:
+   *"Cloudflare will answer galley.example.com with this site and set up its
+   certificate. Nothing else on example.com changes."*
+2. **Say yes.** The host attaches the address. On Cloudflare it creates the
+   DNS record and the certificate itself. On Vercel you are shown the one DNS
+   record to create where your domain's DNS is managed, with Copy; then
+   **Check again**.
+3. **Wait a moment.** Galley waits until the address answers over HTTPS
+   (certificates can take a few minutes; you can close the window). If it
+   takes longer than ten minutes, it says so and you can **Check again**
+   later — the site's address stays as it was meanwhile.
+4. **It becomes the site's live address**: the status bar, the Online page
+   and the deployment list show it, and Galley offers to make it what Proof
+   compares your changes against. Putting new versions live never changes it
+   back.
 
-Then set **Site settings › Addresses › Live site** to your domain so Proof
-compares against it.
+When it can't be done, it says why and changes nothing:
+
+- **The address already shows something else** (another Worker or another
+  Vercel project): choose another address, or free it on the host first.
+- **There's already a DNS record for that address** (Cloudflare): Galley never
+  replaces DNS records. Remove or rename the record on Cloudflare
+  (DNS › Records), then check again.
+- **The domain isn't in your Cloudflare account**: Cloudflare can only answer
+  an address on a domain whose DNS it runs, so there's no record to add
+  elsewhere. [Add the domain to Cloudflare](https://developers.cloudflare.com/fundamentals/manage-domains/add-site/)
+  first (it moves the domain's DNS to Cloudflare), or use an address on a
+  domain already there. Vercel works with DNS anywhere.
+
+**Stop using this address** (on the Online page, or `galley domain --remove`)
+puts the host's own address back as the live one. It detaches the address
+only if Galley attached it; an address that was set up some other way stays
+as it is on the host. The domain and its other records are never touched.
+On Cloudflare, the certificate made for the address isn't deleted by
+detaching (Cloudflare's docs say so); remove it under SSL/TLS › Edge
+Certificates if you want it gone.
+
+The access key you already gave works: on Cloudflare, Account › Workers
+Scripts › Edit is the permission the Workers domains API asks for.
 
 ### Limits
 
@@ -392,6 +428,69 @@ a team works on it through pull requests; use Galley's one-click deploy when
 the site lives on one computer, or when you want preview links of unpublished
 changes. Don't use both for the same project: two sources of truth for what's
 live is how sites go back in time.
+
+### Own domains: how it works
+
+The saved addresses (`galley.config.json` › `deploy`):
+
+- `productionUrl` — the site's **live address**, the person's choice: the
+  host's own until a domain is in use, then `https://<domain>`. A production
+  deploy never replaces a custom one; `hasCustomAddress()` decides.
+- `defaultUrl` — the host's own address, recorded on every production deploy.
+- `domain: { hostname, attached, pending? }` — the domain in use; `attached`
+  is true only when Galley attached it, so stopping detaches nothing else;
+  `pending` while it isn't answering yet.
+
+The flow is a `Job` of kind `"domain"`: plan → attach → wait (host side
+ready, then `https://<domain>/` answers) → `productionUrl` = the domain.
+Routes: `POST …/deploy/domain/plan` (read-only), `POST …/deploy/domain`,
+`POST …/deploy/domain/check`, `DELETE …/deploy/domain`.
+
+**Cloudflare** (Workers Custom Domains):
+
+- Look up: `GET /accounts/:a/workers/domains?hostname=` — another Worker's
+  domain is refused, this Worker's is used (and recorded as not attached by
+  Galley).
+- Plan: `POST /accounts/:a/workers/scripts/:name/domains/changeset?replace_state=true`
+  with `[{ hostname }]` — Cloudflare's read-only preview, the call Wrangler
+  makes before it asks anything. It resolves the zone in the account (an
+  error naming the zone: not in this account) and lists DNS records in the
+  way (`conflicting`) — which the deploy key couldn't read otherwise, having
+  no DNS permission. This endpoint isn't in the public API reference; it is
+  taken from Wrangler's source.
+- Attach: `PUT /accounts/:a/workers/domains` `{ hostname, service, zone_id }`
+  (documented; `environment` is deprecated there and not sent). Galley never
+  sends Wrangler's `override_existing_dns_record` / `override_existing_origin`
+  (those belong to a different, script-scoped endpoint).
+- Detach: `DELETE /accounts/:a/workers/domains/:id`, only for the domain on
+  this Worker that Galley attached.
+- Permissions: Workers Scripts Write (the deploy key's Account › Workers
+  Scripts › Edit) for attach and detach; any Workers read permission for the
+  list. A key without it gets "…didn't let the access key … Account › Workers
+  Scripts › Edit".
+
+**Vercel** (project domains): plan with `GET /v9/projects/:p/domains/:d`
+(already this project's) and `GET /v6/domains/:d/config?projectIdOrName=:p`
+(`misconfigured`, `recommendedCNAME` / `recommendedIPv4`, rank 1 → the record
+to show: an A record at the apex, a CNAME below it); attach with
+`POST /v10/projects/:p/domains` `{ name }` (409: another project has it;
+`verified: false` adds the TXT `verification` record); check with
+`POST /v9/projects/:p/domains/:d/verify` and the config again; remove with
+`DELETE /v9/projects/:p/domains/:d`.
+
+Sources (read 2026-11-24): Cloudflare
+[Attach Worker Domain](https://developers.cloudflare.com/api/resources/workers/subresources/domains/methods/update/),
+[List Domains](https://developers.cloudflare.com/api/resources/workers/subresources/domains/methods/list/),
+[Detach Domain](https://developers.cloudflare.com/api/resources/workers/subresources/domains/methods/delete/),
+[Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
+(an active zone you own; DNS records and certificate made for you; no Custom
+Domain on a hostname with an existing CNAME; the certificate isn't deleted
+with the domain); Wrangler
+[publish-routes.ts](https://github.com/cloudflare/workers-sdk/blob/fa50abac64e5d9a3e5daa7258c8cf816a90c5349/packages/deploy-helpers/src/triggers/publish-routes.ts)
+(the changeset call; last changed 2026-11-19); Vercel
+[Add a domain to a project](https://vercel.com/docs/rest-api/projects/add-a-domain-to-a-project),
+[Get a domain's configuration](https://vercel.com/docs/rest-api/domains/get-a-domain-s-configuration),
+[REST API index](https://vercel.com/docs/rest-api) (verify, remove).
 
 ### The hosts' own one-click buttons (public repositories)
 

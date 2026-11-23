@@ -8,7 +8,7 @@ order: 2
 
 <!-- Generated from docs/adapters.md by apps/site/scripts/sync-docs.mjs. Edit that file, not this one. -->
 
-> This page is [`docs/adapters.md`]({repository}/blob/main/docs/adapters.md) from the repository, rendered as it is. **Nothing is on npm yet**: `@galley/adapter-kit` is `packages/adapter-kit` in the repository, and the `npm install` and `npx galley-adapter-check` lines below describe the published package. From a clone, run the kit's checker as `node packages/adapter-kit/bin/galley-adapter-check.js <adapter> <fixture>`.
+> This page is [`docs/adapters.md`]({repository}/blob/main/docs/adapters.md) from the repository, rendered as it is. **The kit isn't on npm** (Galley itself is, as `galley-cms`): `@galley/adapter-kit` is `packages/adapter-kit` in the repository, and the `npm install` and `npx galley-adapter-check` lines below describe a package that isn't published yet. From a clone, run the kit's checker as `node packages/adapter-kit/bin/galley-adapter-check.js <adapter> <fixture>`.
 
 Galley is built around Astro, and every other framework arrives through an
 **adapter**: a small module that tells Galley how to recognise a site of that

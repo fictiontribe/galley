@@ -1,8 +1,8 @@
 {
   "name": "galley-cms",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
-  "description": "Galley, the open-source AI CMS for Astro: change a page, check it in Proof, publish it to your own git repository. Run `npx galley-cms` in a site's folder.",
+  "description": "Galley, the open-source AI CMS for static sites: change a page, check it in Proof, publish it to your own git repository. Run `npx galley-cms` in a site's folder.",
   "keywords": [
     "cms",
     "ai-cms",

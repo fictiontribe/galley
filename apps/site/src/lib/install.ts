@@ -24,9 +24,13 @@ export function runCommands(): string[] {
   return published ? [install.run] : install.fromClone.map(fill);
 }
 
-/** The first thing to type, for places with room for one line. */
+/**
+ * The first thing to type, for places with room for one line. Once published
+ * that is the command that works from an empty folder (a new site from a
+ * starter); a site that already exists uses runCommands().
+ */
 export function firstCommand(): string {
-  return runCommands()[0];
+  return published ? install.create : runCommands()[0];
 }
 
 /** A starter's one command: create-galley once published, else Astro's installer on the starter's folder. */

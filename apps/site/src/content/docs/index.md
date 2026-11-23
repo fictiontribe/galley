@@ -6,7 +6,7 @@ group: start
 order: 1
 ---
 
-Galley is an open-source AI CMS for static sites, built for [Astro](/astro/) first. A site's content stays as files in its own git repository. People change pages three ways — typing in a form, clicking the words on the page, or asking the assistant — and every change waits in **Proof**, marked up beside the live site, until someone presses **Publish**.
+Galley is an open-source AI CMS for static sites. [Astro](/astro/) fits it best, and [other frameworks](/docs/adapters/) are recognised too. A site's content stays as files in its own git repository. People change pages three ways — typing in a form, clicking the words on the page, or asking the assistant — and every change waits in **Proof**, marked up beside the live site, until someone presses **Publish**.
 
 | Step | What the person does | What happens underneath |
 | --- | --- | --- |
@@ -14,7 +14,7 @@ Galley is an open-source AI CMS for static sites, built for [Astro](/astro/) fir
 | **Proof** | Checks each change beside the live site; puts back what they don't want | A diff against the last commit, shown in the site's own words |
 | **Publish** | Presses Publish | A git commit, and a push — or a branch and a pull request |
 
-Galley is **pre-release, version {version}**. <!-- if install.published -->It is on npm as `{package}`.<!-- else -->It isn't on npm yet: it runs from a copy of the [repository]({repository}).<!-- end --> Where something is new or still being built, the page says so.
+Galley is at **version {version}**, on npm as `{package}`. Where something is new or still being built, the page says so.
 
 ## Two kinds of reader
 
@@ -35,22 +35,19 @@ Galley is **pre-release, version {version}**. <!-- if install.published -->It is
 
 ## The quickest way in
 
-<!-- if install.published -->
-One command makes a new site from the Caddow starter and opens it in Galley:
+A new site, from one of the starters:
 
 ```sh
-{install.createStarter folder=my-site starter=caddow}
+{install.create}
 ```
-<!-- else -->
-Galley isn't on npm yet. Today, get it once, then make a new site from the Caddow starter:
+
+A site you already have — run this in its folder:
 
 ```sh
-{install.fromClone take=5}
-node packages/cli/bin/galley.js new my-site --starter caddow --dir ~/sites
+{install.run}
 ```
-<!-- end -->
 
-Your browser opens on the new site. [Create a new site](/docs/getting-started/new-site/) goes through it; the [quickstart](/docs/getting-started/quickstart/) opens a site you already have.
+Either way your browser opens on the site in Galley. [Create a new site](/docs/getting-started/new-site/) and the [quickstart](/docs/getting-started/quickstart/) go through each step.
 
 ## What it costs
 

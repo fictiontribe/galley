@@ -226,7 +226,8 @@ const comparisonSection = z.object({
   text: z.string(),
   caption: z.string(),
   columns: z.array(z.string()),
-  rows: z.array(z.object({ label: z.string(), ours: z.string(), theirs: z.string(), more: z.string().optional() })),
+  /** better: which side is stronger on the row (ours = the second column, theirs = the third), or even. */
+  rows: z.array(z.object({ label: z.string(), ours: z.string(), theirs: z.string(), better: z.enum(["ours", "theirs", "even"]).optional(), more: z.string().optional() })),
   note: z.string().optional(),
 });
 

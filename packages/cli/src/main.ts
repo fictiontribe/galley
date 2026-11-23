@@ -7,6 +7,7 @@ import { PRODUCT, VERSION } from "@galley/core/brand";
 import { StartupError } from "@galley/server";
 import { UsageError } from "./args";
 import { deployCommand } from "./commands/deploy";
+import { domainCommand } from "./commands/domain";
 import { desktopCommand } from "./commands/desktop";
 import { doctorCommand } from "./commands/doctor";
 import { importCommand } from "./commands/import";
@@ -28,6 +29,7 @@ Usage
   ${PRODUCT.slug} init [path]     Write ${PRODUCT.configFile} from what detection finds
   ${PRODUCT.slug} doctor [path]   Check that a site and this computer are ready
   ${PRODUCT.slug} deploy [path]   Put the site online with Cloudflare or Vercel (--preview: unpublished changes)
+  ${PRODUCT.slug} domain [path]   Use your own domain for a site that is online
   ${PRODUCT.slug} new <name>      Start a new site from a starter
   ${PRODUCT.slug} import …        Bring a WordPress site (or another importer's) into a site
   ${PRODUCT.slug} starters        List the starters and their looks
@@ -66,6 +68,7 @@ export const COMMANDS: Record<string, Command> = {
   plugin: pluginCommand,
   import: importCommand,
   deploy: deployCommand,
+  domain: domainCommand,
   schema: schemaCommand,
   version: versionCommand,
   // Started by the desktop app, not typed by people, so it isn't in HELP.

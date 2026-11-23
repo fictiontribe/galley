@@ -310,6 +310,10 @@ const coveredElsewhere: ApiRouteKey[] = [
   "POST /api/sites/:siteId/deploy/live-address",
   "POST /api/sites/:siteId/deploy",
   "GET /api/sites/:siteId/deployments",
+  "POST /api/sites/:siteId/deploy/domain/plan",
+  "POST /api/sites/:siteId/deploy/domain",
+  "POST /api/sites/:siteId/deploy/domain/check",
+  "DELETE /api/sites/:siteId/deploy/domain",
   // plugins.test.ts (needs a real plugin registry, or a video service)
   "GET /api/plugins",
   "GET /api/sites/:siteId/plugins",

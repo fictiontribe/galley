@@ -89,7 +89,7 @@ jobs:
               console.error(`::error::The versions differ: ${JSON.stringify(all)}. Set them all to the same number (RELEASING.md, step 3).`);
               process.exit(1);
             }
-            // A pre-release (0.2.0-rc.1) goes out as "next", so npm create galley@latest keeps the last release.
+            // A release candidate (0.2.0-rc.1) goes out as "next", so npm create galley@latest keeps the last release.
             const distTag = cli.includes("-") ? "next" : "latest";
             console.log(`Version ${cli}, npm dist-tag ${distTag}`);
             appendFileSync(process.env.GITHUB_OUTPUT, `version=${cli}\ndist-tag=${distTag}\n`);

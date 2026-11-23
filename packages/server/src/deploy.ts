@@ -20,7 +20,11 @@ type DeployRouteKey =
   | "PUT /api/sites/:siteId/deploy"
   | "POST /api/sites/:siteId/deploy/live-address"
   | "POST /api/sites/:siteId/deploy"
-  | "GET /api/sites/:siteId/deployments";
+  | "GET /api/sites/:siteId/deployments"
+  | "POST /api/sites/:siteId/deploy/domain/plan"
+  | "POST /api/sites/:siteId/deploy/domain"
+  | "POST /api/sites/:siteId/deploy/domain/check"
+  | "DELETE /api/sites/:siteId/deploy/domain";
 
 const id = z.string().trim().min(1, "it can't be empty").max(100);
 
@@ -40,6 +44,7 @@ export const deploySettingsBody = z
   })
   .strict();
 export const deployStartBody = z.object({ kind: z.enum(["production", "preview"]), label: z.string().trim().max(200).optional() }).strict();
+export const domainBody = z.object({ hostname: z.string().trim().min(1, "it can't be empty").max(300) }).strict();
 export const deploymentsQuery = z.object({ limit: z.coerce.number().int().min(1).max(200).optional() });
 
 function deployOf(ctx: RouteContext): DeployService {
@@ -100,6 +105,30 @@ export const deployRoutes: Pick<RouteTable, DeployRouteKey> = {
     const site = await siteOf(c, ctx);
 
     return host(() => deploy.start(site, { kind, ...(label ? { label } : {}) }));
+  },
+  "POST /api/sites/:siteId/deploy/domain/plan": async (c, ctx) => {
+    const deploy = deployOf(ctx);
+    const { hostname } = await v.body(c, domainBody);
+    const site = await siteOf(c, ctx);
+
+    return host(() => deploy.planDomain(site, hostname));
+  },
+  "POST /api/sites/:siteId/deploy/domain": async (c, ctx) => {
+    const deploy = deployOf(ctx);
+    const { hostname } = await v.body(c, domainBody);
+    const site = await siteOf(c, ctx);
+
+    return host(() => deploy.attachDomain(site, hostname));
+  },
+  "POST /api/sites/:siteId/deploy/domain/check": async (c, ctx) => {
+    const deploy = deployOf(ctx);
+
+    return host(async () => deploy.checkDomain(await siteOf(c, ctx)));
+  },
+  "DELETE /api/sites/:siteId/deploy/domain": async (c, ctx) => {
+    const deploy = deployOf(ctx);
+
+    return host(async () => deploy.detachDomain(await siteOf(c, ctx)));
   },
   "GET /api/sites/:siteId/deployments": async (c, ctx) => {
     const deploy = deployOf(ctx);

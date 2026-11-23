@@ -157,8 +157,10 @@ visitor's browser, so the consent banner then asks first.
 
 ## Editing with Galley
 
+In the project folder (`npm run galley` does the same):
+
 ```sh
-npx galley-cms   # once published; or npm run galley
+npx galley-cms
 ```
 
 Galley detects the collections and sections. Its Shopify plugin (built in,

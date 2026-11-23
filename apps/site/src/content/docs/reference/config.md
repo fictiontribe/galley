@@ -129,7 +129,12 @@ Written by the **Online** setup and by `galley deploy` ([Deploying, for develope
 | `deploy.target` | string, **required**, a host id (`cloudflare`, `vercel`, or a plugin's) | The host. |
 | `deploy.account` | string, **required**, 1–100 characters | The Cloudflare account id or the Vercel team id. |
 | `deploy.project` | string, **required**, lowercase letters, digits and dashes, up to 54 | The project (Cloudflare Worker, Vercel project) the site goes into. |
-| `deploy.productionUrl` | string, a URL | The live address, written after the first deploy. |
+| `deploy.productionUrl` | string, a URL | The site's live address: the host's own address after the first deploy, or your own domain once you choose one. |
+| `deploy.defaultUrl` | string, a URL | The address the host gave the site (`…workers.dev`, `…vercel.app`). Kept so a site on its own domain can go back to it. |
+| `deploy.domain` | object | Your own domain for the site, written by **Use your own domain** on the Online screen or `galley domain`. |
+| `deploy.domain.hostname` | string, a host name like `www.example.com` | The domain. |
+| `deploy.domain.attached` | boolean | `true` when Galley attached the domain itself, so removing it detaches it. `false` when the domain was already pointing at the site: Galley then leaves it in place. |
+| `deploy.domain.pending` | boolean | `true` while the domain is attached but not answering over HTTPS yet. |
 | `deploy.autoDeploy` | boolean | **Put changes live every time I publish**: each publish puts the new version online by itself. *Default:* `false`. |
 | `deploy.previewOnShare` | boolean | `false` hides **Share a preview link** in Proof. *Default:* shown. |
 

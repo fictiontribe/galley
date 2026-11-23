@@ -29,39 +29,33 @@ asking — check exactly what changed, and publish it as a commit.
 - **Runs your way.** One command on your machine, a desktop app, or one server
   behind a password for a team. Apache-2.0, no account, no telemetry.
 
-## Try it in 60 seconds (from source)
+## Try it
 
-Nothing is published yet, so today you run Galley from a clone. You need
-Node.js 22.23.4+ (Astro 7's minimum; Galley itself needs 20.11), git, and
-pnpm 10 via corepack.
+You need Node.js 20.11 or newer and git. A new site, from one of the
+starters (they are Astro 7 sites, so they need Node.js 22.23.4):
 
 ```sh
-git clone https://github.com/fictiontribe/galley.git
-cd galley
-corepack enable
-pnpm install
-pnpm --filter @galley/web build
-node packages/cli/bin/galley.js ~/sites/your-astro-site
+npm create galley@latest
 ```
 
-It prints a link with a session token and opens your browser on it; everything
-listens on `127.0.0.1`. `node packages/cli/bin/galley.js doctor <site>` shows
-what it detected without opening anything; `… new my-site` starts a site from
-the Astro starter.
-
-Once the `galley-cms` package is published, the same thing will be one line in
-your site's folder:
+A site you already have — run this in its folder:
 
 ```sh
 npx galley-cms
 ```
 
-## Built for Astro, adapters for the rest
+It prints a link with a session token and opens your browser on it;
+everything listens on `127.0.0.1`. `npx galley-cms doctor` shows what it
+detected without opening anything.
 
-Astro is the framework Galley is built around and tested against: it reads
-`astro.config.*`, the content config and its zod schemas (discriminated unions
-become page sections) and the routes in `src/pages` — statically — and
-previews with `astro dev`. Eleventy, Hugo, Jekyll, Next.js, Nuxt, SvelteKit
+To change Galley itself, run it from a clone: [CONTRIBUTING.md](CONTRIBUTING.md#dev-setup).
+
+## Astro first, adapters for the rest
+
+Astro is the deepest fit: Galley reads `astro.config.*`, the content config
+and its zod schemas (discriminated unions become page sections) and the
+routes in `src/pages` — statically — and previews with `astro dev`; the site
+kit and the starters are Astro. Eleventy, Hugo, Jekyll, Next.js, Nuxt, SvelteKit
 and Docusaurus are recognised by convention, and any folder of markdown with
 front matter works. Every other framework arrives through the public
 [adapter API](docs/adapters.md), with a conformance kit to prove an adapter
@@ -107,44 +101,35 @@ The principles behind it are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Status
 
-Pre-release. Honestly:
+Version 0.1.1, on npm as `galley-cms` and `create-galley` (first released
+2026-11-23).
+While the version starts with `0.`, the config file, the API and the
+command-line options can still change between minor versions
+([what the numbers mean](RELEASING.md)).
 
-- **Done and tested**: the engine; the server; the CLI; the Astro starter; the
-  adapter API and conformance kit; the desktop app on macOS; the web UI's
-  shell, Sites, site home, settings, version history and editor container.
-- **In progress**: the web UI's content form, media library, chat, proof,
-  preview pane and new-site screen; the MCP server (`galley mcp`, over stdio
-  or HTTP — usable from source, still being finished; no OAuth for remote
-  connectors yet); the optional `@galley/astro` toolbar app.
-- **Not verified yet**: the assistant's fallback request profile (the normal
-  one has been run against the live Anthropic API); the OpenAI and Google
-  image providers; the `Dockerfile` (never built); Windows and Linux; hosted
-  previews behind a reverse proxy or a fixed port mapping (they use random
-  ports today); code signing.
-- **Not published**: no npm package, no public repository, no website yet.
+- **Built**: editing three ways (a form, the page itself, the assistant);
+  Proof; publishing to your own repository, with undo; forms and the inbox;
+  scripts with consent; plugins, image and video generation among them;
+  one-click deploys to Cloudflare, verified on the real service; many sites
+  in one app; the macOS desktop app and the web app; MCP; three starters.
+- **New, in final checks**: redirects; the brand set-up; the Search and AI
+  checks; the guided move from WordPress.
+- **Preview**: the page builder.
+- **In progress**: deploys to Vercel (built, not yet run on the real
+  service); agent-readable pages for the sites Galley builds; a switch per
+  AI-crawler family; the Shopify storefront starter.
+- **Not verified yet**: Windows and Linux; code signing (the desktop app is
+  unsigned); the OpenAI and Google image providers; the assistant's fallback
+  request profile; setting redirects on Cloudflare itself (Bulk Redirects)
+  against the real service; the container image and a hosted install behind
+  a reverse proxy.
+- **Not on npm as packages**: the site kit `@galley/astro` (sites carry it
+  vendored), `@galley/adapter-kit` and `@galley/plugin-kit`. The plugins are
+  built into `galley-cms`.
 
-Tests, as last run on the build machine (macOS, Node 23.6, 2026-11-23) with
-`pnpm -r --no-bail --if-present test` — all passing:
-
-| Package | Tests |
-| --- | ---: |
-| `packages/core` | 503 in 35 files |
-| `packages/server` | 281 in 12 files |
-| `packages/web` | 136 in 13 files |
-| `packages/cli` | 63 in 3 files |
-| `examples/adapter-eleventy` | 34 in 1 file |
-| `packages/mcp` | 32 in 3 files |
-| `packages/overlay` | 28 in 3 files |
-| `packages/adapter-kit` | 25 in 3 files |
-| `packages/astro` | 23 in 4 files |
-
-`pnpm -r --if-present typecheck` passed in every package on the same day.
-Several packages were still changing then — an earlier run had one failing
-engine test and a type error in `packages/web`'s tests, both fixed since. CI
-has not run yet.
-
-What is missing is in [ROADMAP.md](ROADMAP.md); what the first release will
-contain, in [CHANGELOG.md](CHANGELOG.md).
+Every push runs the type checks, the tests, the app build and the site build
+in [GitHub Actions](.github/workflows/ci.yml). The same list, kept current,
+is on [the website](https://galley.fictiontribe.com/).
 
 ## Development
 

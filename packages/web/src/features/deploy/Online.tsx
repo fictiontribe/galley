@@ -18,6 +18,7 @@ import { putLive } from "./DeployStatusItem";
 import { hostOf, statusLine, targetName } from "./logic";
 export { onlineOutcome } from "./logic";
 import { copyText, DeployProgress } from "./parts";
+import { DomainSection } from "./Domain";
 import { SharePreviewButton } from "./SharePreview";
 import { deployKeys, setAutoDeploy, useDeployStatus, useDeployTargets, useDeployUi, useLatestDeployJob } from "./useDeploy";
 import "./deploy.css";
@@ -76,6 +77,7 @@ export function OnlineCard({ siteId, variant = "home", listLink = true }: { site
               </Link>
             ) : null}
           </div>
+          {variant === "settings" ? <DomainSection siteId={siteId} /> : null}
           {variant === "settings" ? (
             <div className="deploy-card__settings">
               <Toggle

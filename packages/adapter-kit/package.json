@@ -1,6 +1,6 @@
 {
   "name": "@galley/adapter-kit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Write and test Galley framework adapters: the adapter types, defineAdapter/conventionAdapter, and a conformance check that says whether an adapter is correct.",

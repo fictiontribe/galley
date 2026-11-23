@@ -5,7 +5,7 @@ sections:
   - type: hero
     layout: split
     notice:
-      label: "Pre-release: the guided move is new and still being checked."
+      label: "New: the guided move is still being checked."
       href: /docs/getting-started/wordpress/
     heading: Leave WordPress. Keep editing it yourself.
     text: Galley moves your posts, pages, images and SEO details to a fast static site, then lets you change it in a form, on the page or by asking, and check every change before it’s live.
@@ -59,36 +59,43 @@ sections:
       - label: Speed
         ours: Pages built ahead, served as files
         theirs: Usually built on each visit
+        better: ours
       - label: Upkeep
         ours: Update when you choose
         theirs: Core, theme and plugins
+        better: ours
       - label: Security
         ours: No database or login online
         theirs: Patches for core and plugins
+        better: ours
       - label: Editing
         ours: Form, page or assistant, proofed
         theirs: Block editor or page builder
+        better: even
       - label: Page building
         ours: Your own sections (preview)
         theirs: Mature builders, many widgets
-        more: WordPress does more
+        better: theirs
       - label: Forms
         ours: Built in, to your marketing tools
         theirs: Many form plugins
+        better: even
       - label: Your content
         ours: Markdown files in your repository
         theirs: Rows in a database
+        better: ours
       - label: Hosting
         ours: Static files, often free
         theirs: A PHP server and database
+        better: ours
       - label: Extensions
         ours: A few plugins so far
         theirs: Thousands of plugins
-        more: WordPress does more
+        better: theirs
       - label: Maturity
-        ours: Pre-release {version}
+        ours: "New: first released in 2026"
         theirs: Twenty years, thousands of plugins
-        more: WordPress does more
+        better: theirs
     note: WordPress and Elementor are trademarks of their owners, named only to describe them. Galley is not affiliated with either.
   - type: steps
     id: how
@@ -118,7 +125,7 @@ sections:
           alt: The proof of a page, old words struck out and new ones written in.
   - type: close
     id: honest
-    heading: Galley is pre-release.
+    heading: Galley is new.
     text: Today the app runs on your computer or a server you manage.
     actions:
       - label: Read the moving guide

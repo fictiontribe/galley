@@ -12,6 +12,7 @@ import { notify } from "@/lib/stores/toasts";
 import { useChrome } from "@/app/chrome";
 import { ProofMark, Spinner } from "@/ui";
 import { DeploySetupDialog } from "./DeploySetupDialog";
+import { DomainDialog } from "./Domain";
 import { failureFor, hostOf, jobFailureTitle, statusLine } from "./logic";
 import { SharePreviewDialog } from "./SharePreview";
 import { startDeploy, useDeployStatus, useDeployUi } from "./useDeploy";
@@ -30,8 +31,14 @@ export async function putLive(siteId: string): Promise<void> {
 function useFinishToasts(siteId: string) {
   useServerEvent("job", (event) => {
     const job = event.job;
-    if (job.kind !== "deploy" || job.siteId !== siteId || job.state === "running") return;
+    if ((job.kind !== "deploy" && job.kind !== "domain") || job.siteId !== siteId || job.state === "running") return;
     const ui = useDeployUi.getState();
+    if (job.kind === "domain") {
+      if (ui.domain) return;
+      if (job.state === "done") notify({ tone: job.url ? "success" : "neutral", title: job.url ? `${hostOf(job.url)} answers` : "One DNS record to go", body: job.url ? "It’s the site’s live address now." : job.detail });
+      else notify({ tone: "danger", title: "Couldn’t use that address", body: job.detail, detail: job.output });
+      return;
+    }
     // An open dialog (setup, share, or the Publish dialog's result) is already showing this job.
     if (ui.setup.open || ui.share || useChrome.getState().publishOpen) return;
     if (job.state === "done" && job.url) {
@@ -95,6 +102,7 @@ export function DeployStatusItem({ siteId }: { siteId: string }) {
         <>
           <DeploySetupDialog siteId={siteId} />
           <SharePreviewDialog siteId={siteId} />
+          <DomainDialog siteId={siteId} />
         </>,
         document.body
       )}

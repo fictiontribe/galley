@@ -1,6 +1,6 @@
 # galley-cms
 
-[Galley](https://galley.fictiontribe.com) is an open-source AI CMS for Astro:
+[Galley](https://galley.fictiontribe.com) is an open-source AI CMS for static sites:
 change a page in a form, on the page or by asking, check every change in
 Proof beside the live site, then publish it to your own git repository.
 Everything stays on your computer.
@@ -11,7 +11,7 @@ A new site, from one of Galley's starters, with Galley running on it:
 npm create galley@latest
 ```
 
-An Astro site you already have — run this in its folder:
+A site you already have — run this in its folder:
 
 ```sh
 npx galley-cms
@@ -21,7 +21,7 @@ It needs Node 20.11 or newer (22.23.4 for the starters, which are Astro 7
 sites) and git. There are no install scripts and nothing native: the package
 is one bundled file with the web app and the starters beside it.
 
-Inside this repository, before anything is published:
+Inside this repository, to work on Galley itself:
 
 ```sh
 node packages/cli/bin/galley.js --help

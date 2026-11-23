@@ -198,19 +198,11 @@ as it is — collections, section types and their variants come from
 `src/content.config.ts` — and everything you change is a plain edit to these
 files, published as a git commit. Nothing is installed into the site.
 
-**Once Galley is published to npm**, one command in the project folder starts
-it and opens your browser:
+One command in the project folder starts it and opens your browser
+(`npm run galley` does the same):
 
 ```sh
-npx galley-cms        # or: npm run galley
-```
-
-**Until then**, run it from its repository (Node 20.11+, git, pnpm 10):
-
-```sh
-git clone https://github.com/fictiontribe/galley.git
-cd galley && corepack enable && pnpm install && pnpm --filter @galley/web build
-node packages/cli/bin/galley.js /path/to/your-site
+npx galley-cms
 ```
 
 On this starter, Galley gives you a form for every page, lookbook, story and
