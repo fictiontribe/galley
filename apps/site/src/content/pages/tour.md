@@ -21,10 +21,14 @@ sections:
         guide: /docs/editing/form/
         visual:
           src: form
-          alt: The form beside the Caddow home page, its campaign section open and the edited heading marked.
+          alt: The editor on Caddow’s home page — the page’s form on the left with the Campaign hero section open and its Heading marked Edited, beside a Put back button, and the page itself on the right, now headed “Coats for low sun.”
         inset:
-          src: docs/form-field-edited
-          alt: A section’s Heading field just after an edit, with a green Edited mark and a Put back button beside its label.
+          src: form
+          x: -16
+          y: -455
+          w: 336
+          h: 340
+          alt: A close look at the form — the Campaign hero section with 2 edits, and its Heading field marked Edited, with Put back, holding “Coats for low sun.”
       - id: on-the-page
         layout: half
         heading: On the page
@@ -33,8 +37,8 @@ sections:
         guide: /docs/editing/on-the-page/
         visual:
           src: click
-          y: -150
-          alt: On the Caddow page, the heading over four knitwear photographs retyped in place to “Coats and knits to start with”, outlined in blue.
+          y: -180
+          alt: The Caddow home page in the editor with Click to edit chosen — the heading over four knitwear photographs retyped in place to “Coats and knits to start with”, outlined in blue.
       - id: assistant
         layout: half
         heading: By asking
@@ -43,8 +47,8 @@ sections:
         guide: /docs/editing/assistant/
         visual:
           src: assistant
-          x: -520
-          alt: The assistant’s reply beside the Caddow page after changing the campaign heading and its first button, with Review in Proof and Undo this change beneath.
+          x: -700
+          alt: The assistant beside the Caddow home page — the request to change the campaign heading and its first button, the lines Read the home page and Edited the home page, the reply saying what changed and that both changes wait in Proof, and the buttons Review in Proof and Undo this change.
   - type: tour
     id: check
     label: Check and publish
@@ -52,7 +56,7 @@ sections:
     text: Nothing is live until someone presses Publish, and a publish can be undone.
     items:
       - id: proof
-        layout: full
+        layout: wide
         heading: Proof
         text: Every change waiting, in the site’s own words — the old struck out, the new written in. Put back any one.
         status: proof
@@ -60,25 +64,30 @@ sections:
         guide: /docs/editing/proof-and-publish/
         visual:
           src: proof-changes
-          alt: Galley’s proof of the Caddow home page — “Coats for the long afternoon.” struck out and “Coats for low sun.” written in, the button “See the lookbook” renamed “See the eight looks”, and “begin” changed to “start” in a heading.
+          alt: Proof for the Caddow home page, What changed — “Coats for the long afternoon.” struck out and “Coats for low sun.” written in, “See the lookbook” changed to “See the eight looks”, and “begin” changed to “start” in the Pieces heading, each with Put back.
       - id: publish
-        layout: half
+        layout: flip
+        ratio: 5/4
         heading: Publish
         text: A one-line note for the version history, a list of what goes, and one button. Untick anything you’d rather keep back.
         status: publish
         howto: proof-and-publish
         guide: /docs/editing/proof-and-publish/
         visual:
-          src: docs/publish-dialog
-          alt: The Publish 3 changes? window — a suggested note for version history, three ticked changes under What goes, and the buttons Not yet and Publish 3 changes.
+          src: publish
+          x: -440
+          y: -170
+          alt: The Publish 3 changes? window over Proof — a suggested one-line note for version history, the three pages that go, each ticked (Home page, Journal, The atelier), the name the version is recorded under, and the buttons Not yet and Publish 3 changes.
       - id: history
-        layout: half
+        layout: full
         heading: Version history
         text: Every published version, newest first, with who published it and when. Undoing one adds a new version, so nothing is erased.
         guide: /docs/editing/history/
         visual:
-          src: docs/history
-          alt: Version history for Caddow — the newest version, by Sam Okafor, marked Latest and Published here, with an Undo this publish button, and the first version below it.
+          src: history
+          x: -345
+          y: -100
+          alt: Version history for Caddow, newest first — the latest version, marked Latest and Published here, with Put this site online and Undo this publish, and the earlier ones below it (an old link fixed, care notes, the brand written down, a phone number on the workroom form), each with who published it, when, and its own Undo this publish.
   - type: tour
     id: build
     label: Build pages
@@ -95,7 +104,7 @@ sections:
         visual:
           kind: recording
           src: arrange-drag
-          alt: A newsletter section found in the section library, dragged onto the Caddow page and dropped under the campaign photograph.
+          alt: A Newsletter section found in the section library and dragged onto the Caddow home page, dropped under the campaign photograph.
   - type: tour
     id: run
     label: Run the site
@@ -103,18 +112,23 @@ sections:
     text: Forms, scripts, redirects, the brand and search checks live in the same app — and changing them is a change like any other.
     items:
       - id: forms
-        layout: wide
+        layout: full
         heading: Forms and the inbox
         text: Build a form, then choose where it sends — HubSpot, Marketo, Salesforce, Pardot, a webhook, or the app’s own inbox.
         status: forms
         howto: add-a-form
         guide: /docs/editing/forms/
         visual:
-          src: docs/form-builder
-          alt: The form builder on Caddow’s Write to the workroom form — field types on the left, the form as visitors see it in the middle, its name, button text and appearance on the right.
+          src: forms
+          x: -290
+          alt: The Forms screen for Caddow — three forms, Become a stockist, Caddow letters and Write to the workroom, each sending to the Inbox, with their number of fields, under a note about where the live site should send submissions.
         inset:
-          src: docs/inbox
-          alt: The Inbox for Caddow — one test submission open, every answer with its label, and the buttons Mark unread, Spam and Delete.
+          src: inbox
+          x: -901
+          y: -263
+          w: 476
+          h: 330
+          alt: One submission open in the Inbox — Corin Vale, marked Test, asking about a repair, with every answer beside its label.
       - id: scripts
         layout: half
         heading: Scripts, with consent
@@ -123,8 +137,10 @@ sections:
         howto: add-analytics
         guide: /docs/editing/scripts/
         visual:
-          src: docs/scripts-add-ga4
-          alt: The Add Google Analytics 4 window with a measurement ID filled in, and what is already chosen — loads straight away, in the page head, waits for consent to analytics, on every page.
+          src: scripts
+          x: -820
+          y: -290
+          alt: Scripts for Caddow — Plausible switched off and Google Analytics 4 switched on, both marked Analytics, and beside them the built-in consent banner set to ask visitors first, with its words — Counting visits, Count my visit, Don’t count it.
       - id: media
         layout: half
         heading: Images and video
@@ -132,8 +148,10 @@ sections:
         status: plugins
         guide: /docs/editing/media/
         visual:
-          src: docs/media-generate
-          alt: The Generate an image window — a description of a wool coat on a hook, two candidate pictures, a name for the chosen one and the Save to media button.
+          src: media
+          x: -290
+          y: -60
+          alt: Media for Caddow — the site’s photographs with their sizes, filters for images, videos and documents, and the buttons Upload, Generate a video and Generate an image.
       - id: redirects
         layout: flip
         heading: Redirects
@@ -166,12 +184,12 @@ sections:
           y: -64
           alt: The brand proposal for Caddow, read from the site — Nothing is saved yet with Save the brand, Worth a look notes on near-identical greys and text contrast, and the first colours, Lime-wash, Paper white, Chalk grey and Ink, each marked Measured or Declared with where it was found.
         inset:
-          src: brand-material
-          x: -485
-          y: -243
-          w: 560
-          h: 222
-          alt: The material the brand was also read from — caddow-brand-notes.pdf, two pages, with the note that the colours on page 1 are current, and caddow-wordmark.png, each kept outside the site.
+          src: brand-voice
+          x: -505
+          y: -178
+          w: 470
+          h: 232
+          alt: The Voice part of the proposal — plain, patient, exact, quietly dry, unhurried — then rules drawn from the site’s own words, each with a line to avoid struck out and the site’s way written in, such as “Our luxurious, beautifully crafted signature coat” becoming “Waxed cotton, unlined, horn buttons.”
       - id: search
         layout: flip
         heading: Search and AI checks
@@ -180,8 +198,10 @@ sections:
         howto: search-and-ai
         guide: /docs/editing/search-and-ai/
         visual:
-          src: docs/search-and-ai
-          alt: Search & AI for Caddow — counts of Must fix, Should fix and Ideas, the findings in groups, and the AI crawlers panel on the right.
+          src: search-ai
+          x: -290
+          y: -64
+          alt: Search & AI for Caddow — 1 must fix, 1 should fix and 2 ideas; Titles & descriptions in good shape, a should-fix about example addresses left in, and on the right how AI systems see the site.
   - type: tour
     id: live
     label: Go live and grow
@@ -189,15 +209,25 @@ sections:
     text: A real address, every site you look after, and a way out of WordPress.
     items:
       - id: online
-        layout: wide
+        layout: full
         heading: Put it online
-        text: A real address on Cloudflare in four steps — even for a site that so far lives only on your computer. Your own domain is added at the host.
+        text: A real address on Cloudflare in four steps — even for a site that so far lives only on your computer. Then your own domain, if you have one; Cloudflare answers it with the site.
         status: deploy-cloudflare
         howto: put-online
         guide: /docs/editing/online/
+        note: Pictured against a stand-in for Cloudflare, with made-up addresses.
         visual:
-          src: docs/online-setup
-          alt: Step 1 of 4 of Put this site online — Cloudflare, marked Recommended, and Vercel, each with a line about what it suits, and the buttons Not now and Continue.
+          src: online-domain
+          x: -330
+          y: -120
+          alt: Use your own domain, over the Online screen — the address www.caddow.example, and the note that Cloudflare will answer it with this site and set up its certificate, while nothing else on caddow.example changes; behind it, the site live at caddow.example-studio.workers.dev.
+        inset:
+          src: online-live
+          x: -390
+          y: -209
+          w: 470
+          h: 218
+          alt: The Online screen afterwards — www.caddow.example, Live and updated just now, on Cloudflare in the project caddow, marked as your own address.
       - id: sites
         layout: flip
         heading: Many sites, one app
@@ -205,21 +235,35 @@ sections:
         status: agencies
         guide: /docs/editing/many-sites/
         visual:
-          src: docs/sites
-          alt: Your sites — a group called Caddow Ltd holding the Caddow site’s card with the chips 8 changes and Preview running and a note, above it the search box, Needs attention and the Add sites button.
+          src: sites
+          x: -290
+          alt: Your sites — two groups, Caddow Ltd and Fernhill Garden Studio, each holding its site’s card; Caddow’s shows 3 unread, 3 changes and Preview running with a note about its contact, Lowfield’s 38 changes; above them search, Every group and Needs attention · 2.
+        inset:
+          src: site-home
+          x: -266
+          y: -366
+          w: 480
+          h: 238
+          alt: Site home for Caddow, Waiting to publish — three pages edited since the last publish, the home page, Journal and The atelier, with Review changes.
       - id: wordpress
-        layout: full
+        layout: wide
         heading: Move from WordPress
         text: Posts, pages, images and search details come across in four steps, as changes you check before anything goes live.
         status: wordpress-guided
         howto: move-from-wordpress
         guide: /docs/editing/wordpress/
+        note: Pictured with a stand-in WordPress site running on the same computer, hence the 127.0.0.1 address.
         visual:
-          src: wordpress-plan
-          alt: "The move’s second step, “Here’s what comes across from Fernhill Garden Studio”: 60 posts, 12 pages, 84 images, 3 authors and 4 categories, and which collection each goes into."
+          src: wordpress-where
+          y: -90
+          alt: The first of four steps, Where is your WordPress site? — the address http://127.0.0.1:4792 checked as Fernhill Garden Studio, with 12 posts, 6 pages, 18 images and files, and 37 comments that stay behind, and the Continue button.
         inset:
           src: wordpress-report
-          alt: "The report at the end, “Your WordPress site is here”, with five next steps: review it in Proof, rebuild the page-builder pages, set the redirects, put the site online, switch the domain."
+          x: -105
+          y: -95
+          w: 440
+          h: 230
+          alt: The fourth step, the report — Your WordPress site is here, then the next steps, Review it in Proof, Rebuild the page-builder pages, Set the redirects, Put the site online, Switch the domain.
   - type: close
     id: start
     heading: Try it on your own site.

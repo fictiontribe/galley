@@ -53,9 +53,10 @@ for (const item of items) {
                 </h3>
                 <p class="body">{fill(item.text)}</p>
                 {item.href && <a class="link link--accent" href={item.href}>{site.ui.howTo}<span class="sr">: {item.heading}</span></a>}
+                {item.note && <p class="tour-item__note">{fill(item.note)}</p>}
               </div>
               {item.main && (
-                <div class:list={["frame", "tour-frame", item.main.rec && "rec"]} data-rec={item.main.rec ? "" : undefined} data-zoom-panel={item.main.rec ? undefined : ""}>
+                <div class:list={["frame", "tour-frame", item.main.rec && "rec"]} style={item.ratio && /^\d+\s*\/\s*\d+$/.test(item.ratio) ? `--ratio:${item.ratio}` : undefined} data-rec={item.main.rec ? "" : undefined} data-zoom-panel={item.main.rec ? undefined : ""}>
                   {item.main.rec ? (
                     <>
                       <div class="stage">

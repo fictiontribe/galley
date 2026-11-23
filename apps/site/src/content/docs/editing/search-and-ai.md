@@ -24,7 +24,7 @@ Findings come in groups — **Titles & descriptions**, **Headings & content**, *
 
 ## Choose which AI crawlers may visit
 
-**AI crawlers** has an **Allow** / **Block** choice for each crawler — OpenAI, Anthropic, Perplexity, Google, Apple, Common Crawl. Search crawlers decide whether AI assistants can find and link to the site; training crawlers decide whether its pages may train models. Blocking one isn't blocking the other, and the rules are a request: reputable crawlers say they follow them. *Status: the per-crawler switch is in progress.*
+**AI crawlers** has an **Allow** / **Block** choice for each crawler — OpenAI, Anthropic, Perplexity, Google, Apple, Common Crawl. Search crawlers decide whether AI assistants can find and link to the site; training crawlers decide whether its pages may train models. Blocking one isn't blocking the other, and the rules are a request: reputable crawlers say they follow them.
 
 **What an AI agent reads** shows a page as an AI agent gets it.
 

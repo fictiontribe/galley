@@ -4,26 +4,27 @@
 // listed in ../screens.json; the how-to sequences are also recorded, step by
 // step, in ../src/data/howto.json (written by this script).
 //
-//   GALLEY_ORIGIN=http://127.0.0.1:4790 GALLEY_TOKEN=… GALLEY_SITE=<siteId> \
-//   SITE_DIR=<the Caddow copy's folder> WP_SITE=<second site's id> WP_URL=<stand-in WordPress> \
-//   CF_KEY=<the stand-in Cloudflare's key> \
+//   GALLEY_ORIGIN=http://127.0.0.1:4790 GALLEY_TOKEN=… GALLEY_SITE=<Caddow's id> \
+//   SITE_DIR=<the Caddow copy's folder> WP_SITE=<Lowfield's id> WP_URL=http://127.0.0.1:4792 \
+//   CF_KEY=<the key the stand-in Cloudflare prints> \
 //   PLAYWRIGHT_MODULES=<a node_modules folder with playwright-core> \
 //   node scripts/capture-screens.mjs [step …]
 //
-// The Galley it talks to must have a throwaway copy of the fashion starter
-// (astro-editorial, "Caddow") open: every step makes real changes to that copy,
-// publishes some of them and puts it "online" on a stand-in host. screens.json
-// says how to set everything up (throwaway home, stand-in Cloudflare and
-// WordPress, the assistant key passed to the server only).
+// scripts/capture/README.md says how to start everything it talks to: the
+// released Galley on throwaway copies of two starters (Caddow, Lowfield), with
+// a throwaway home, the stand-in Cloudflare and the stand-in WordPress site.
+// Every step makes real changes to those copies — it publishes, and puts
+// Caddow "online" on the stand-in host — so start from fresh copies.
 //
-// With no step named, the whole session runs in order (ALL below), from a
-// freshly made copy: the parts that build history first (each published as
-// Tobiah Rusk), then three pending changes that every showcase capture shares,
-// then publishing, undoing and going online. The "ask" and "brand" steps make
-// real assistant requests (about $1 together); the rest cost nothing.
+// With no step named, the whole session runs in order (ALL below). The steps
+// "brand", "ask-journal" and "ask" make real assistant requests (about $0.50
+// together, billed to the ANTHROPIC_API_KEY the Galley server was started
+// with); everything else costs nothing. A few steps re-make one picture from
+// the state an earlier step left: brand-saved, click-doc, which-one,
+// assistant-reply, chat, media-generate, publish-doc, undo-doc.
 //
 // Output (2× device scale, light theme, WebP with a 1× copy <name>@1x.webp):
-//   public/screens/<name>.webp   showcase captures (and the arrange-drag recording)
+//   public/screens/<name>.webp   showcase captures (and the arrange-drag recording, WebM)
 //   public/docs/<name>.webp      the docs pages' pictures, at the exact size each page declares
 //   public/howto/<slug>-<n>.webp the how-to steps; their words go to src/data/howto.json
 // Captures of the example site itself ("site", "looks") go to public/sites/.
@@ -55,12 +56,18 @@ mkdirSync(OUT, { recursive: true });
 // The whole session, in the order it has to happen (see the header).
 const ALL = [
   "setup",
+  // History first: each of these is published as Tobiah Rusk.
   "analytics", "bulk-redirects", "add-form", "brand", "search-ai",
+  // The WordPress move, on the second site (left waiting in Proof there).
   "wordpress",
+  // On a page with no changes waiting (each puts its page back afterwards).
   "arrange", "drag", "build-page",
-  "change-page", "click", "ask-journal", "ask", "chat",
-  "showcase", "form", "proof", "source", "media", "sites", "settings",
-  "publish", "history", "online",
+  // The three changes every showcase capture shares: the atelier (form), the home page (on the page and
+  // the assistant), the journal (the assistant).
+  "change-page", "click", "ask-journal", "ask",
+  "showcase", "form", "proof", "source",
+  // Then publishing (and the undo window), and going online on the stand-in host.
+  "publish", "online",
 ];
 const steps = process.argv.slice(2).length ? process.argv.slice(2) : ALL;
 const appSteps = steps.some((s) => s !== "own");
@@ -265,7 +272,7 @@ function writeHowto() {
   mkdirSync(dirname(HOWTO_JSON), { recursive: true });
   writeFileSync(HOWTO_JSON, `${JSON.stringify({
     about: "How-to sequences captured from the running app. Written by scripts/capture-screens.mjs; the wording of do/see may be polished by hand, the facts may not.",
-    captured: `${new Date().toISOString().slice(0, 10)}, Galley ${process.env.GALLEY_VERSION ?? "0.1.2"}`,
+    captured: `${new Date().toLocaleDateString("sv")}, Galley ${process.env.GALLEY_VERSION ?? "0.1.2"}`,
     guides: list,
   }, null, 2)}\n`);
   console.log(`  howto.json: ${list.length} guides`);
@@ -342,6 +349,127 @@ async function checksDone(page) {
 async function dismissToasts(page) {
   for (const b of await page.getByRole("button", { name: "Dismiss" }).all()) await b.click().catch(() => {});
   await page.waitForTimeout(600);
+}
+
+/** The docs' Click to edit picture: the top of the home page, its campaign heading outlined with its tag. */
+async function clickToEditDoc(page) {
+  await hideDevToolbar(page);
+  const frame = previewFrame(page);
+  await frame.evaluate(() => scrollTo(0, 0));
+  await page.waitForTimeout(800);
+  await frame.locator("[data-galley-block]").first().locator("h1, h2").first().hover();
+  await page.waitForTimeout(900);
+  const pv = await box(page, ".preview");
+  await shoot(page, "on-the-page-click-to-edit", exact(pv.x, pv.y + 80, 756, 547), { dir: DOCS, max: 120_000, exact: true, keepPointer: true });
+}
+
+/**
+ * The docs' assistant reply: the journal conversation reopened from Chats in a narrower window with the
+ * preview hidden, so the pane is about as wide as the docs picture (590 px).
+ */
+async function assistantReplyDoc(page) {
+  await openEditor(page, { path: JOURNAL, form: false, assistant: true });
+  await page.setViewportSize({ width: 746, height: VIEW.height });
+  const hidePreview = page.getByRole("button", { name: /^Hide preview/i }).first();
+  if (await hidePreview.count()) await hidePreview.click();
+  await page.getByRole("button", { name: "Chats" }).click();
+  await page.waitForTimeout(1000);
+  await page.getByText(/journal page's heading/).first().click();
+  await page.waitForTimeout(2500);
+  const c = await box(page, ".g-chat");
+  await shoot(page, "assistant-reply", { x: Math.round(c.x - 10), y: Math.round(c.y - 8), width: 590, height: 310 }, { dir: DOCS, max: 120_000, exact: true });
+  await page.setViewportSize(VIEW);
+  const showPreview = page.getByRole("button", { name: /^Show preview/i }).first();
+  if (await showPreview.count()) await showPreview.click();
+  await page.waitForTimeout(1000);
+}
+
+/** The docs' Generate an image window with two placeholder pictures made (nothing saved). */
+async function mediaGenerateDoc(page) {
+  await page.getByRole("button", { name: "Generate an image" }).click();
+  await page.waitForTimeout(1500);
+  await page.getByRole("dialog").getByRole("textbox").first().fill("A wool coat on an iron hook against a lime-washed wall, low sun, long shadow");
+  await page.getByRole("button", { name: /^Make images?/ }).click();
+  await until(page, "the candidates", async () => (await page.getByRole("button", { name: "Save to media" }).count()) > 0, 120_000);
+  await page.waitForTimeout(2500);
+  const gen = await box(page, "dialog[open], [role=dialog]");
+  const [w, h] = DOC_SIZE["media-generate"];
+  // The whole window, from its title to Save to media: a slightly larger area brought down to the docs' size.
+  const tall = Math.min(gen.height, VIEW.height);
+  const wide = Math.max(w, Math.ceil((tall * w) / h));
+  await docShot(page, "media-generate", gen.x - (wide - gen.width) / 2, gen.y, wide > w ? wide : undefined);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(800);
+}
+
+/** A docs picture of a whole window (dialog): an area of the declared shape around it, brought to the declared size. */
+async function docDialog(page, name) {
+  const d = await box(page, "dialog[open]");
+  const [w, h] = DOC_SIZE[name];
+  const wide = Math.max(w, Math.ceil((d.height * w) / h), Math.ceil(d.width));
+  const tall = Math.round((wide * h) / w);
+  await docShot(page, name, d.x - (wide - d.width) / 2, d.y - (tall - d.height) / 2, wide > w ? wide : undefined);
+}
+
+/** Click to edit on words that come from two places (the footer's Atelier): "Which one did you mean?" */
+async function whichOne(page) {
+    // Words that appear in two places: the footer's Atelier link is also in the header menu.
+    const frame = previewFrame(page);
+    const atelier = frame.locator("footer a").filter({ hasText: /^Atelier$/i }).first();
+    await atelier.evaluate((e) => e.scrollIntoView({ block: "center" }));
+    await page.waitForTimeout(800);
+    await atelier.click();
+    await page.waitForTimeout(1500);
+    const ask = await box(page, page.getByText("Which one did you mean?"));
+    await docShot(page, "on-the-page-which-one", ask.x - 39, ask.y - 80);
+    const wf = await focus(page, [page.getByText("Which one did you mean?"), atelier], { min: 900 });
+    await howto(page, "edit-on-the-page", 4, { ...wf, x: Math.max(wf.x, 268) }, {
+      alt: "The word Atelier in the Caddow footer, outlined, with a small window under it: Which one did you mean? This text appears in 2 places — Navigation › Header › 2 › Label and Navigation › Footer › 1 › Links › 2 › Label.",
+      do: "If the same words come from more than one place, it asks **Which one did you mean?** Choose one, then type.",
+    });
+}
+
+/** Ask the assistant for a change on a page and wait for its answer (a real request). */
+async function askAssistant(page, path, text, { form = false, before } = {}) {
+  await openEditor(page, { path, form, assistant: true });
+  const fresh = page.getByRole("button", { name: /^New chat/i }).first();
+  if ((await page.locator(".g-chat .g-msg--user").count()) && (await fresh.count())) { await fresh.click(); await page.waitForTimeout(1000); }
+  const composer = page.getByPlaceholder(/Ask for a change/i).first();
+  await composer.click();
+  await composer.fill(text);
+  await page.waitForTimeout(600);
+  if (before) await before();
+  await composer.press("Enter");
+  await page.waitForTimeout(5000);
+  await until(page, "the assistant's answer", async () => {
+    const { threads } = await api(`/api/sites/${SITE}/threads`);
+    return threads?.length && !threads.some((t) => t.busy) && (await page.getByRole("button", { name: "Review in Proof" }).count()) > 0;
+  }, 300_000);
+  await page.waitForTimeout(4000);
+  await hideDevToolbar(page);
+}
+
+/** The assistant's last reply beside the page it changed (the page and the assistant pane, below the top bar). */
+async function chatClip() {
+  return exact(268, 44, 1172, 732);
+}
+const ASK_STEP_2 = {
+  alt: "The assistant's reply beside the page it changed: the lines Read the home page and Edited the home page, then what it changed, quoting the new heading “Coats for low sun.” and the button “See the eight looks”, with Review in Proof and Undo this change; the page shows the new heading.",
+  do: "Read what it did: it lists what it read and edited, then quotes the new words.",
+  see: "**Undo this change** puts back exactly what that reply changed.",
+};
+/** The showcase "assistant" (and how-to step 2): reopens the home page's conversation from Chats if needed. */
+async function chatShot(page) {
+  if (!(await page.locator(".g-chat .g-msg--user").count())) {
+    await openEditor(page, { form: false, assistant: true });
+    await page.getByRole("button", { name: "Chats" }).click();
+    await page.waitForTimeout(1000);
+    await page.getByText(/campaign heading/).first().click();
+    await page.waitForTimeout(3000);
+  }
+  await hideDevToolbar(page);
+  await shoot(page, "assistant", await chatClip());
+  await howto(page, "ask-the-assistant", 2, await chatClip(), ASK_STEP_2);
 }
 
 /** The brand material the "brand" step adds: a two-page PDF of brand notes, the wordmark, a note (all invented). */
@@ -788,6 +916,258 @@ async function run(step) {
     });
   }
 
+  if (step === "click-doc") {
+    await openEditor(page, { form: false, assistant: false });
+    await tool(page, "Click to edit");
+    await clickToEditDoc(page);
+  }
+
+  if (step === "which-one") {
+    await openEditor(page, { form: false, assistant: false });
+    await tool(page, "Click to edit");
+    await whichOne(page);
+    await go(page, `/sites/${SITE}`, 1500);
+  }
+
+  if (step === "click") {
+    // How-to: Click to edit on the home page — point, click, retype the Pieces heading, Enter; and the
+    // "Which one did you mean?" case in the footer. Also screens/click and the docs' two pictures.
+    // The retyped heading is left waiting in Proof.
+    await openEditor(page, { form: false, assistant: false });
+    await tool(page, "Click to edit");
+    await hideDevToolbar(page);
+    const frame = previewFrame(page);
+    await clickToEditDoc(page);
+    // A heading with no formatting inside, so it is retyped in place.
+    const target = frame.locator(process.env.CLICK_TARGET ?? "main h2:not(:has(em))").nth(Number(process.env.CLICK_INDEX ?? 1));
+    await target.evaluate((el) => scrollTo(0, el.getBoundingClientRect().top + scrollY - 200));
+    await page.waitForTimeout(800);
+    await target.hover();
+    await page.waitForTimeout(900);
+    await shoot(page, "edit-on-the-page-1", FULL, { dir: HOWTO, keepPointer: true });
+    guides.get("edit-on-the-page").steps = [{
+      image: "howto/edit-on-the-page-1",
+      alt: "The Caddow home page in the editor with Click to edit chosen above it: the heading “Coats and knits to begin with” has a dotted blue outline and a blue Click to edit tag.",
+      do: "Open the page in the editor. Above the page, **Click to edit** is chosen; point at the words you want to change.",
+      see: "They get a dotted outline and a **Click to edit** tag.",
+    }];
+    touched.add("edit-on-the-page");
+    await target.click();
+    await page.waitForTimeout(700);
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.type(CLICK_TEXT, { delay: 30 });
+    await page.waitForTimeout(600);
+    await shoot(page, "click", await clipOf(page, [".preview"], { aspect: 16 / 10 }), { keepPointer: true });
+    await shoot(page, "edit-on-the-page-2", await focus(page, [target], { min: 900 }), { dir: HOWTO, keepPointer: true });
+    guides.get("edit-on-the-page").steps[1] = {
+      image: "howto/edit-on-the-page-2",
+      alt: "The same heading being retyped in place on the page: it now reads “Coats and knits to start with”, still outlined, with the products below it.",
+      do: "Click, and type over the words.",
+    };
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(3000);
+    await howto(page, "edit-on-the-page", 3, { x: 232, y: 0, width: 1208, height: 560 }, {
+      alt: "After pressing Enter: the page shows the new heading “Coats and knits to start with”, the page's name in the top bar is marked Edited, and Proof counts 2 changes.",
+      do: "Press **Enter** to keep the change, or **Escape** to leave the words as they were.",
+      see: "It's saved like any edit in the form, and waits in Proof.",
+    });
+    await whichOne(page);
+    // (The window has no close button; leaving the page closes it.)
+    await go(page, `/sites/${SITE}`, 1500);
+  }
+
+  if (step === "media-generate") { await go(page, `/sites/${SITE}/media`, 3000); await mediaGenerateDoc(page); }
+
+  if (step === "showcase") {
+    // The main screens in the shared session state (three changes waiting in Proof): site home, sites,
+    // media, forms, inbox, scripts, Search & AI, redirects, settings. Also the docs' sites and media pictures.
+    const WP_SITE = process.env.WP_SITE;
+    // Sites filed by client, with a note each (kept by this app, not in the sites).
+    const listGroups = async () => (await api("/api/groups")).groups ?? (await api("/api/groups"));
+    const groupFor = async (name) => {
+      const all = await listGroups();
+      return (Array.isArray(all) ? all : []).find((g) => g.name === name) ?? (await api("/api/groups", { method: "POST", body: JSON.stringify({ name }) }));
+    };
+    const caddowLtd = await groupFor("Caddow Ltd");
+    await api(`/api/sites/${SITE}/listing`, { method: "PATCH", body: JSON.stringify({ group: caddowLtd.id, note: "Hesper is the contact; spring lookbook due in March." }) });
+    if (WP_SITE) {
+      const fernhill = await groupFor("Fernhill Garden Studio");
+      await api(`/api/sites/${WP_SITE}/listing`, { method: "PATCH", body: JSON.stringify({ group: fernhill.id, note: "Moving from WordPress: check the import before launch." }) });
+    }
+    // Two visitors' messages and a sign-up, as the live site would send them (invented people).
+    const { items = [] } = await api(`/api/sites/${SITE}/inbox/contact?filter=all`);
+    if (!items.some((i) => !i.test)) {
+      const send = (form, values, url, title) => fetch(`${ORIGIN}/f/${SITE}`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: JSON.stringify({ form, values, page: { url, title, referrer: "" }, meta: { honeypot: "", elapsedMs: 24_000 } }) });
+      await send("contact", { name: "Ines Marrow", email: "ines.marrow@example.com", topic: "size", height: "5 ft 9, the field coat", message: "I'm between a 2 and a 3 in the field coat. Could you measure the 3 across the shoulders for me?", consent: "yes" }, "https://www.caddow.example/contact/", "Contact");
+      await page.waitForTimeout(1500);
+      await send("contact", { name: "Corin Vale", email: "corin.vale@example.com", topic: "repair", message: "The left pocket of my 2024 rust coat has worn through at the corner. Can I post it to you for mending?", a_phone_number_if_you_d_rather_we_rang: "01632 960 418", consent: "yes" }, "https://www.caddow.example/contact/", "Contact");
+      await send("newsletter", { email: "m.ashby@example.com", source: "home" }, "https://www.caddow.example/", "Caddow");
+    }
+    await waitForPreview(page);
+    await go(page, `/sites/${SITE}`, 3000);
+    await shoot(page, "site-home", FULL);
+    await go(page, "/", 3000);
+    await shoot(page, "sites", FULL);
+    await docShot(page, "sites", 270, 140);
+    await go(page, `/sites/${SITE}/media`, 3000);
+    await shoot(page, "media", FULL);
+    await mediaGenerateDoc(page);
+    await go(page, `/sites/${SITE}/forms`, 2500);
+    await shoot(page, "forms", FULL);
+    await go(page, `/sites/${SITE}/inbox`, 2500);
+    await page.getByRole("button", { name: /^Write to the workroom/ }).click();
+    await page.waitForTimeout(1500);
+    await page.getByRole("button", { name: /^Corin Vale/ }).click();
+    await page.waitForTimeout(2000);
+    await shoot(page, "inbox", FULL);
+    await go(page, `/sites/${SITE}/scripts`, 2500);
+    await shoot(page, "scripts", FULL);
+    await page.goto(`${ORIGIN}/sites/${SITE}/visibility`, { waitUntil: "load" });
+    await checksDone(page);
+    await page.getByRole("button", { name: "Check again" }).click();
+    await page.waitForTimeout(3000);
+    await checksDone(page);
+    await shoot(page, "search-ai", FULL);
+    await page.locator("#seo-crawlers-title").evaluate((e) => e.scrollIntoView({ block: "start" }));
+    await page.waitForTimeout(800);
+    await shoot(page, "search-ai-crawlers", FULL);
+    await go(page, `/sites/${SITE}/redirects`, 2500);
+    await shoot(page, "redirects", FULL);
+    await go(page, `/sites/${SITE}/settings`, 2500);
+    await shoot(page, "settings", FULL);
+  }
+
+  if (step === "publish-doc") {
+    // The docs' Publish window again (needs changes waiting).
+    await go(page, `/sites/${SITE}/proof`, 2500);
+    await page.getByRole("button", { name: "Publish", exact: true }).first().click();
+    await page.waitForTimeout(6000);
+    await docDialog(page, "publish-dialog");
+    await page.getByRole("button", { name: "Not yet" }).click();
+  }
+
+  if (step === "undo-doc") {
+    await go(page, `/sites/${SITE}/history`, 3000);
+    await page.getByRole("button", { name: "Undo this publish" }).first().click();
+    await page.waitForTimeout(1500);
+    await docDialog(page, "undo-publish-dialog");
+    await page.getByRole("button", { name: "Keep it" }).click();
+  }
+
+  if (step === "publish") {
+    // How-to: open Proof, put one change back, publish, and the undo from Version history (the
+    // window, kept: "Keep it"). Also the showcase publish and history, and the docs' three pictures.
+    await go(page, `/sites/${SITE}/proof`, 3000);
+    await howto(page, "proof-and-publish", 1, FULL, {
+      alt: "Proof with 3 changes waiting to be published: Home page, Journal and The atelier on the left, each marked Edited; on the right the home page's changes in its own words — the campaign heading, its button and the Pieces heading — each with Put back.",
+      do: "Press **Proof** in the top bar. Choose a page on the left to see **What changed**, in the page's own words.",
+    });
+    const pieces = page.locator("article.proof-change").filter({ hasText: /Pieces/i }).last();
+    await pieces.getByRole("button", { name: "Put back" }).click();
+    await page.waitForTimeout(3500);
+    await dismissToasts(page);
+    await howto(page, "proof-and-publish", 2, { x: 232, y: 0, width: 1208, height: 620 }, {
+      alt: "Proof after putting one change back: the home page now lists two changes — the campaign heading and its button — and the Pieces heading is gone from the list; 3 pages still have changes waiting.",
+      do: "Press **Put back** beside a change you don't want. **Discard** on a row throws away every change to that page.",
+      see: "What you put back returns to what is published; the rest stays waiting.",
+    });
+    await page.getByRole("button", { name: "Publish", exact: true }).first().click();
+    // With the assistant connected, the window asks it for a note (one small request).
+    await page.waitForTimeout(6000);
+    await shoot(page, "publish", FULL);
+    await docDialog(page, "publish-dialog");
+    await howto(page, "proof-and-publish", 3, await focus(page, ["dialog[open]"], { min: 800 }), {
+      alt: "The Publish 3 changes? window: it saves the changes as a new version on this computer, a suggested Note for version history, the three pages ticked under What goes — Home page, Journal and The atelier — and the buttons Not yet and Publish 3 changes.",
+      do: "Press **Publish** in the top bar. Check the **Note for version history** and, under **What goes**, untick anything to keep back. Press **Publish 3 changes** (the number is yours).",
+      see: "**Not yet** closes the window and publishes nothing.",
+    });
+    await page.getByRole("button", { name: /^Publish \d+ changes?$/ }).click();
+    await until(page, "the publish", async () => (await api(`/api/sites/${SITE}/changes`)).files?.length === 0, 120_000);
+    await page.waitForTimeout(2500);
+    await dismissToasts(page);
+    await go(page, `/sites/${SITE}/history`, 3000);
+    await shoot(page, "history", FULL);
+    await docShot(page, "history", 346, 196);
+    await howto(page, "proof-and-publish", 4, exact(346, 196, 964, 600), {
+      alt: "Version history: the newest version, with the note written in the Publish window, marked Latest and Published here, by Tobiah Rusk a moment ago, with Put this site online and Undo this publish; the earlier versions below it.",
+      do: "Every publish is a new version in **Version history**, with who published it and when. To take one back, press **Undo this publish** beside it.",
+    });
+    await page.getByRole("button", { name: "Undo this publish" }).first().click();
+    await page.waitForTimeout(1500);
+    await docDialog(page, "undo-publish-dialog");
+    await howto(page, "proof-and-publish", 5, await focus(page, ["dialog[open]"], { min: 800 }), {
+      alt: "The Undo this publish? window over Version history: it takes back the newest version and adds a new version on top, so Version history keeps everything; buttons Keep it and Undo this publish.",
+      do: "Press **Undo this publish** to go ahead, or **Keep it**.",
+      see: "The undo is published straight away as a new version called Undo “…”; undoing that one puts the changes back.",
+    });
+    await page.getByRole("button", { name: "Keep it" }).click();
+    await page.waitForTimeout(800);
+  }
+
+  if (step === "online") {
+    // How-to and showcase: put the site online on the stand-in Cloudflare (CF_KEY is the key it
+    // prints; addresses are made up: caddow.example-studio.workers.dev, then www.caddow.example).
+    // The deploy builds the last published version. Needs a site that isn't online yet.
+    const CF_KEY = process.env.CF_KEY;
+    if (!CF_KEY) throw new Error("Set CF_KEY (the stand-in Cloudflare's key) for the online step.");
+    const dialog = () => page.locator("dialog[open]");
+    await go(page, `/sites/${SITE}/online`, 2500);
+    await page.getByRole("button", { name: "Put this site online" }).first().click();
+    await page.waitForTimeout(1500);
+    const d1 = await box(page, "dialog[open]");
+    await docShot(page, "online-setup", d1.x, d1.y);
+    await shoot(page, "online-setup", FULL);
+    await howto(page, "put-online", 1, FULL, {
+      alt: "Step 1 of 4 of Put this site online, over the Online screen: Cloudflare, marked Recommended, and Vercel, each with a line about what it suits and a link to its prices, and the buttons Not now and Continue.",
+      do: "Open **Online** in the sidebar and press **Put this site online**. Choose **Cloudflare** and press **Continue**.",
+    });
+    await dialog().getByRole("button", { name: "Continue" }).click();
+    await page.waitForTimeout(1500);
+    await howto(page, "put-online", 2, await focus(page, ["dialog[open]"], { min: 800 }), {
+      alt: "Step 2 of 4, Connect Cloudflare: four short instructions for making an access key on Cloudflare's own page, the button Open Cloudflare's page, what the key lets the app do, and an empty Access key box above Back and Connect.",
+      do: "Press **Open Cloudflare's page**, make the key there as the window says, paste it in **Access key** and press **Connect**.",
+      see: "The key is checked with Cloudflare before it is saved, and kept on this computer only.",
+    });
+    await dialog().getByLabel("Access key").fill(CF_KEY);
+    await dialog().getByRole("button", { name: "Connect" }).click();
+    await until(page, "the account step", async () => (await dialog().getByRole("heading", { name: "Choose the account" }).count()) > 0, 60_000);
+    await dialog().getByRole("button", { name: "Continue" }).click();
+    await until(page, "the name step", async () => (await dialog().getByRole("heading", { name: "Name it" }).count()) > 0, 60_000);
+    await page.waitForTimeout(800);
+    await howto(page, "put-online", 3, await focus(page, ["dialog[open]"], { min: 800 }), {
+      alt: "Step 4 of 4, Name it: the project name caddow, with the note It's free. The address will be caddow.example-studio.workers.dev, and What's live is what you've published; buttons Back and Put it online.",
+      do: "Choose the account, then name it — the name becomes part of the address — and press **Put it online**.",
+      see: "What goes live is the last published version; changes waiting in Proof stay here.",
+    });
+    await dialog().getByRole("button", { name: "Put it online" }).click();
+    await until(page, "the deploy", async () => (await dialog().getByRole("heading", { name: "The site is online" }).count()) > 0, 600_000);
+    await page.waitForTimeout(1500);
+    await howto(page, "put-online", 4, await focus(page, ["dialog[open]"], { min: 800 }), {
+      alt: "The site is online: live at caddow.example-studio.workers.dev with Open and Copy, an offer to compare Proof against the live site (Use this address), Use your own domain…, and the switch Put changes live every time I publish.",
+      do: "Press **Open** to see it. **Put changes live every time I publish** makes each publish go live by itself.",
+    });
+    await dialog().getByRole("button", { name: "Use your own domain…" }).click();
+    await page.waitForTimeout(1200);
+    await dialog().getByLabel("Address").fill("www.caddow.example");
+    await dialog().getByRole("button", { name: "Check" }).click();
+    await until(page, "the domain check", async () => (await dialog().getByRole("button", { name: "Use this address" }).count()) > 0, 60_000);
+    await page.waitForTimeout(800);
+    await page.evaluate(() => document.activeElement?.blur());
+    await shoot(page, "online-domain", FULL);
+    await dialog().getByRole("button", { name: "Use this address" }).click();
+    await until(page, "the address to answer", async () => (await dialog().getByRole("heading", { name: "Your address answers" }).count()) > 0, 300_000);
+    await page.waitForTimeout(1000);
+    await howto(page, "put-online", 5, await focus(page, ["dialog[open]"], { min: 800 }), {
+      alt: "Your address answers: the site's live address is now www.caddow.example, with Open and Copy and an offer to compare Proof against it (Use this address).",
+      do: "To use your own domain, press **Use your own domain…**, type the address — www.caddow.example here — press **Check**, read what will change, then **Use this address**.",
+      see: "Cloudflare answers the address with the site and sets up its certificate; it can take a few minutes, and nothing else on the domain changes.",
+    });
+    await dialog().getByRole("button", { name: "Done" }).click();
+    await page.waitForTimeout(2000);
+    await go(page, `/sites/${SITE}/online`, 2500);
+    await shoot(page, "online-live", FULL);
+  }
+
   if (step === "brand-saved") await brandSaved(); // step 5 again, on a saved brand not yet published
 
   if (step === "brand") {
@@ -857,7 +1237,8 @@ async function run(step) {
     await go(page, `/sites/${SITE}/proof`);
     await page.getByRole("tab", { name: "Source" }).first().click();
     await page.waitForTimeout(2500);
-    await shoot(page, "proof-source", await clipOf(page, [".proof-detail__head", ".proof-detail__panel > *:first-child"], { pad: 8, aspect: 16 / 10 }));
+    const src = await clipOf(page, [".proof-detail__head", ".proof-detail__panel > *:first-child"], { pad: 8, aspect: 16 / 10 });
+    await shoot(page, "proof-source", { ...src, height: Math.min(src.height, ABOVE_STATUS - src.y) });
   }
 
   if (step === "form") {
@@ -993,32 +1374,38 @@ async function run(step) {
     await discard([HOME_PAGE]);
   }
 
-  if (step === "ask") {
-    // One real request to the assistant (costs money: run deliberately).
-    await openEditor(page);
-    const composer = page.getByPlaceholder(/Ask for a change/i).first();
-    await composer.click();
-    await composer.fill(ASK);
-    await composer.press("Enter");
-    const t0 = Date.now();
-    for (;;) {
-      await page.waitForTimeout(1500);
-      const { threads } = await api(`/api/sites/${SITE}/threads`);
-      const t = threads?.[0];
-      if (t && !t.busy && t.messageCount >= 2) break;
-      if (Date.now() - t0 > 240_000) throw new Error("assistant took too long");
-    }
-    await page.waitForTimeout(3000);
+  if (step === "ask-journal") {
+    // One real request to the assistant (about $0.10): the journal page's heading. Makes the docs'
+    // editor overview and assistant reply. Left waiting in Proof.
+    await askAssistant(page, JOURNAL, ASK_JOURNAL, { form: true });
+    await docShot(page, "editor-overview", 0, 0);
+    await assistantReplyDoc(page);
   }
 
-  if (step === "chat") {
-    // The assistant's reply beside the page it changed.
-    await openEditor(page, { form: false });
-    const chat = page.locator(".g-chat").first();
-    const prev = await page.locator(".preview").first().boundingBox();
-    const chatBox = await chat.boundingBox();
-    await shoot(page, "assistant", await clipOf(page, [{ x: prev.x + prev.width * 0.35, y: prev.y, width: prev.width * 0.65, height: prev.height }, chatBox], { aspect: 16 / 10 }));
+  if (step === "assistant-reply") await assistantReplyDoc(page);
+
+  if (step === "ask") {
+    // How-to: ask for a change in words, see what it did, review it — one real request (about $0.10)
+    // on the home page's campaign hero. Also the showcase "assistant". Left waiting in Proof.
+    await askAssistant(page, HOME_PAGE, ASK, {
+      form: false,
+      before: () => howto(page, "ask-the-assistant", 1, FULL, {
+        alt: "The editor on the Caddow home page with the assistant pane on the right: under Looking at /, the request “Change the campaign heading to “Coats for low sun.” and its first button to “See the eight looks”.” typed into the box, with Content chosen.",
+        do: "Open the page in the editor. In the assistant pane on the right, type what you want in **Ask for a change…** and press **Enter**.",
+        see: "**Looking at** shows the page you're on, so “this page” means it.",
+      }),
+    });
+    await chatShot(page);
+    await page.getByRole("button", { name: "Review in Proof" }).last().click();
+    await page.waitForTimeout(3500);
+    await howto(page, "ask-the-assistant", 3, { x: 232, y: 0, width: 1208, height: 620 }, {
+      alt: "Proof opened on the home page's changes: the campaign hero's heading and first button with the old words struck through and the new ones written in, each with Put back, among the changes waiting to be published.",
+      do: "Press **Review in Proof** to check the change in the page's own words; **Put back** undoes any one of them.",
+      see: "Nothing the assistant does is live until someone presses **Publish**.",
+    });
   }
+
+  if (step === "chat") await chatShot(page);
 
   if (step === "proof") {
     // Proof: what changed, in content terms.

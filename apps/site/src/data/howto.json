@@ -33,6 +33,99 @@
       ]
     },
     {
+      "slug": "edit-on-the-page",
+      "title": "Change text on the page",
+      "summary": "Click the words on the page itself and type over them, without hunting for the right field.",
+      "guide": "/docs/editing/on-the-page/",
+      "steps": [
+        {
+          "image": "howto/edit-on-the-page-1",
+          "alt": "The Caddow home page in the editor with Click to edit chosen above it: the heading “Coats and knits to begin with” has a dotted blue outline and a blue Click to edit tag.",
+          "do": "Open the page in the editor. Above the page, **Click to edit** is chosen; point at the words you want to change.",
+          "see": "They get a dotted outline and a **Click to edit** tag."
+        },
+        {
+          "image": "howto/edit-on-the-page-2",
+          "alt": "The same heading being retyped in place on the page: it now reads “Coats and knits to start with”, still outlined, with the products below it.",
+          "do": "Click, and type over the words."
+        },
+        {
+          "image": "howto/edit-on-the-page-3",
+          "alt": "After pressing Enter: the page shows the new heading “Coats and knits to start with”, the page's name in the top bar is marked Edited, and Proof counts 2 changes.",
+          "do": "Press **Enter** to keep the change, or **Escape** to leave the words as they were.",
+          "see": "It's saved like any edit in the form, and waits in Proof."
+        },
+        {
+          "image": "howto/edit-on-the-page-4",
+          "alt": "The word Atelier in the Caddow footer, outlined, with a small window under it: Which one did you mean? This text appears in 2 places — Navigation › Header › 2 › Label and Navigation › Footer › 1 › Links › 2 › Label.",
+          "do": "If the same words come from more than one place, it asks **Which one did you mean?** Choose one, then type."
+        }
+      ]
+    },
+    {
+      "slug": "ask-the-assistant",
+      "title": "Ask the assistant for a change",
+      "summary": "Say what you want in plain words; the assistant makes the change and tells you exactly what it did.",
+      "guide": "/docs/editing/assistant/",
+      "needs": "The assistant connected (an Anthropic key in App settings).",
+      "steps": [
+        {
+          "image": "howto/ask-the-assistant-1",
+          "alt": "The editor on the Caddow home page with the assistant pane on the right: under Looking at /, the request “Change the campaign heading to “Coats for low sun.” and its first button to “See the eight looks”.” typed into the box, with Content chosen.",
+          "do": "Open the page in the editor. In the assistant pane on the right, type what you want in **Ask for a change…** and press **Enter**.",
+          "see": "**Looking at** shows the page you're on, so “this page” means it."
+        },
+        {
+          "image": "howto/ask-the-assistant-2",
+          "alt": "The assistant's reply beside the page it changed: the lines Read the home page and Edited the home page, then what it changed, quoting the new heading “Coats for low sun.” and the button “See the eight looks”, with Review in Proof and Undo this change; the page shows the new heading.",
+          "do": "Read what it did: it lists what it read and edited, then quotes the new words.",
+          "see": "**Undo this change** puts back exactly what that reply changed."
+        },
+        {
+          "image": "howto/ask-the-assistant-3",
+          "alt": "Proof opened on the home page's changes: the campaign hero's heading and first button with the old words struck through and the new ones written in, each with Put back, among the changes waiting to be published.",
+          "do": "Press **Review in Proof** to check the change in the page's own words; **Put back** undoes any one of them.",
+          "see": "Nothing the assistant does is live until someone presses **Publish**."
+        }
+      ]
+    },
+    {
+      "slug": "proof-and-publish",
+      "title": "Check, publish and undo",
+      "summary": "See every change before it goes live, keep only the ones you want, and take a publish back if you need to.",
+      "guide": "/docs/editing/proof-and-publish/",
+      "steps": [
+        {
+          "image": "howto/proof-and-publish-1",
+          "alt": "Proof with 3 changes waiting to be published: Home page, Journal and The atelier on the left, each marked Edited; on the right the home page's changes in its own words — the campaign heading, its button and the Pieces heading — each with Put back.",
+          "do": "Press **Proof** in the top bar. Choose a page on the left to see **What changed**, in the page's own words."
+        },
+        {
+          "image": "howto/proof-and-publish-2",
+          "alt": "Proof after putting one change back: the home page now lists two changes — the campaign heading and its button — and the Pieces heading is gone from the list; 3 pages still have changes waiting.",
+          "do": "Press **Put back** beside a change you don't want. **Discard** on a row throws away every change to that page.",
+          "see": "What you put back returns to what is published; the rest stays waiting."
+        },
+        {
+          "image": "howto/proof-and-publish-3",
+          "alt": "The Publish 3 changes? window: it saves the changes as a new version on this computer, a suggested Note for version history, the three pages ticked under What goes — Home page, Journal and The atelier — and the buttons Not yet and Publish 3 changes.",
+          "do": "Press **Publish** in the top bar. Check the **Note for version history** and, under **What goes**, untick anything to keep back. Press **Publish 3 changes** (the number is yours).",
+          "see": "**Not yet** closes the window and publishes nothing."
+        },
+        {
+          "image": "howto/proof-and-publish-4",
+          "alt": "Version history: the newest version, with the note written in the Publish window, marked Latest and Published here, by Tobiah Rusk a moment ago, with Put this site online and Undo this publish; the earlier versions below it.",
+          "do": "Every publish is a new version in **Version history**, with who published it and when. To take one back, press **Undo this publish** beside it."
+        },
+        {
+          "image": "howto/proof-and-publish-5",
+          "alt": "The Undo this publish? window over Version history: it takes back the newest version and adds a new version on top, so Version history keeps everything; buttons Keep it and Undo this publish.",
+          "do": "Press **Undo this publish** to go ahead, or **Keep it**.",
+          "see": "The undo is published straight away as a new version called Undo “…”; undoing that one puts the changes back."
+        }
+      ]
+    },
+    {
       "slug": "build-a-page",
       "title": "Build a page from sections",
       "summary": "Put a page together from the site's own sections, on the page itself.",
@@ -228,6 +321,43 @@
           "alt": "The AI crawlers panel after the change: Blocks AI training (GPTBot), kept in src/data/visibility.json; OpenAI's training crawler is blocked, the rest allowed. Proof in the top bar shows 2.",
           "see": "The choice waits in Proof with the fix; the site writes it into robots.txt when you publish.",
           "do": "Check the panel's summary, then open **Proof** and **Publish**."
+        }
+      ]
+    },
+    {
+      "slug": "put-online",
+      "title": "Put the site online",
+      "summary": "Give the site a real address on Cloudflare, then your own domain.",
+      "guide": "/docs/editing/online/",
+      "needs": "A Cloudflare account and an access key from it.",
+      "steps": [
+        {
+          "image": "howto/put-online-1",
+          "alt": "Step 1 of 4 of Put this site online, over the Online screen: Cloudflare, marked Recommended, and Vercel, each with a line about what it suits and a link to its prices, and the buttons Not now and Continue.",
+          "do": "Open **Online** in the sidebar and press **Put this site online**. Choose **Cloudflare** and press **Continue**."
+        },
+        {
+          "image": "howto/put-online-2",
+          "alt": "Step 2 of 4, Connect Cloudflare: four short instructions for making an access key on Cloudflare's own page, the button Open Cloudflare's page, what the key lets the app do, and an empty Access key box above Back and Connect.",
+          "do": "Press **Open Cloudflare's page**, make the key there as the window says, paste it in **Access key** and press **Connect**.",
+          "see": "The key is checked with Cloudflare before it is saved, and kept on this computer only."
+        },
+        {
+          "image": "howto/put-online-3",
+          "alt": "Step 4 of 4, Name it: the project name caddow, with the note It's free. The address will be caddow.example-studio.workers.dev, and What's live is what you've published; buttons Back and Put it online.",
+          "do": "Choose the account, then name it — the name becomes part of the address — and press **Put it online**.",
+          "see": "What goes live is the last published version; changes waiting in Proof stay here."
+        },
+        {
+          "image": "howto/put-online-4",
+          "alt": "The site is online: live at caddow.example-studio.workers.dev with Open and Copy, an offer to compare Proof against the live site (Use this address), Use your own domain…, and the switch Put changes live every time I publish.",
+          "do": "Press **Open** to see it. **Put changes live every time I publish** makes each publish go live by itself."
+        },
+        {
+          "image": "howto/put-online-5",
+          "alt": "Your address answers: the site's live address is now www.caddow.example, with Open and Copy and an offer to compare Proof against it (Use this address).",
+          "do": "To use your own domain, press **Use your own domain…**, type the address — www.caddow.example here — press **Check**, read what will change, then **Use this address**.",
+          "see": "Cloudflare answers the address with the site and sets up its certificate; it can take a few minutes, and nothing else on the domain changes."
         }
       ]
     },

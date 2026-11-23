@@ -15,7 +15,7 @@ Every move is one small change to the page, waiting in Proof like any other.
 1. Open the page in the editor and choose **Arrange** above the page. **Show the Arrange panel** opens the panel beside it.
 2. **Select** a section by clicking it. Its name and place appear (**Photo and text 1/8**), with a toolbar: drag handle, move up, move down, duplicate, remove, **Options** and **Edit content**.
 
-<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/arrange@1x.webp" srcset="/docs/arrange@1x.webp 1x, /docs/arrange.webp 2x" alt="Arrange on the Caddow atelier page: the selected Photo and text section outlined with its toolbar, and the Arrange panel showing its options — Tone, Image side, Ratio — above Add a section with pictures of Campaign hero, Photo and text and Lookbook grid." width="1044" height="636" loading="lazy" decoding="async"></figure>
+<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/arrange@1x.webp" srcset="/docs/arrange@1x.webp 1x, /docs/arrange.webp 2x" alt="Arrange on the Caddow atelier page: the selected Photo and text section outlined with its toolbar, and the Arrange panel showing its options — Tone, Image side, Ratio — above Add a section with pictures of Campaign hero and Photo and text." width="1044" height="636" loading="lazy" decoding="async"></figure>
 
 3. **Move** a section by dragging its handle; a line shows where it will land. **Escape** leaves it where it was.
 4. **Options** — tone, alignment, which side the picture is on — are switches in the panel. The page updates a moment after each one.

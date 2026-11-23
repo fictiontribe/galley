@@ -12,7 +12,7 @@ For people who edit a site. When you can see the words you want to change, click
 1. Open the page in the editor. Above the page, **Click to edit** is chosen.
 2. Point at the words. They get a dotted outline and a **Click to edit** tag.
 
-<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/on-the-page-click-to-edit@1x.webp" srcset="/docs/on-the-page-click-to-edit@1x.webp 1x, /docs/on-the-page-click-to-edit.webp 2x" alt="The Caddow home page in the editor with Click to edit chosen: the line under the big heading has a dotted blue outline and a blue Click to edit tag above it." width="756" height="547" loading="lazy" decoding="async"></figure>
+<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/on-the-page-click-to-edit@1x.webp" srcset="/docs/on-the-page-click-to-edit@1x.webp 1x, /docs/on-the-page-click-to-edit.webp 2x" alt="The top of the Caddow home page in the editor with Click to edit chosen: the campaign heading, Coats for the long afternoon, has a dotted blue outline and a blue Click to edit tag above it." width="756" height="547" loading="lazy" decoding="async"></figure>
 
 3. Click, and type over the words.
 4. Press **Enter** to keep the change, or **Escape** to leave the words as they were.

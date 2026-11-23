@@ -112,13 +112,14 @@ command-line options can still change between minor versions
   scripts with consent; plugins, image and video generation among them;
   one-click deploys to Cloudflare, verified on the real service; many sites
   in one app; the macOS desktop app and the web app; MCP; three starters;
-  redirects; the brand set-up; the Search and AI checks.
+  redirects; the brand set-up; the Search and AI checks; on Astro sites with
+  the site kit, a markdown copy of every page, `llms.txt` and a switch per
+  AI crawler written into `robots.txt`.
 - **New, in final checks**: the guided move from WordPress (run against an
   export file and a stand-in WordPress site, not yet a real one).
 - **Preview**: the page builder.
 - **In progress**: deploys to Vercel (built, not yet run on the real
-  service); agent-readable pages for the sites Galley builds; a switch per
-  AI-crawler family; the Shopify storefront starter.
+  service); the Shopify storefront starter.
 - **Not verified yet**: Windows and Linux; code signing (the desktop app is
   unsigned); the OpenAI and Google image providers; the assistant's fallback
   request profile; setting redirects on Cloudflare itself (Bulk Redirects)

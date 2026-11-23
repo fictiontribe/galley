@@ -10,6 +10,7 @@ import { site } from "../../lib/site";
 import docsData from "../../data/docs.json";
 import { docHref, getDocs } from "../../lib/docs";
 import { howtoHref, howtos, stepPicture, type Howto } from "../../lib/howto";
+import { getPage } from "../../lib/pages";
 
 export function getStaticPaths() {
   return howtos.map((g, i) => ({ params: { slug: g.slug }, props: { g, prev: howtos[i - 1], next: howtos[i + 1] } }));
@@ -29,6 +30,9 @@ if (!doc) console.warn(`[site] howto.json: "${g.slug}" names the guide ${g.guide
 const guideHref = doc ? g.guide : "/docs/";
 const guideTitle = doc ? doc.data.title : "";
 const steps = g.steps.map((step) => ({ step, pic: stepPicture(step) }));
+// A quiet line on how a guide's pictures were made, where a reader would wonder (src/content/pages/how-to.md → notes).
+const { data: page } = await getPage("how-to");
+const note: string | undefined = (page.notes as Record<string, string> | undefined)?.[g.slug];
 ---
 
 <Site title={g.title} description={g.summary} type="article">
@@ -36,6 +40,7 @@ const steps = g.steps.map((step) => ({ step, pic: stepPicture(step) }));
     <header class="howto__head">
       <h1 class="h1" id="howto-h">{g.title}</h1>
       <p class="lead">{g.summary}</p>
+      {note && <p class="howto__note">{note}</p>}
       {
         g.needs && (
           <p class="howto__needs">
@@ -73,7 +78,7 @@ const steps = g.steps.map((step) => ({ step, pic: stepPicture(step) }));
 
     <footer class="howto__foot">
       <p class="howto__guide">
-        {ui.howtoGuideLine} <a class="link link--accent" href={guideHref}>{ui.howtoGuide}{guideTitle && <span class="howto__guide-t">: {guideTitle}</span>}</a>
+        {ui.howtoGuideLine} <a class="link link--accent" href={guideHref}>{guideTitle ? `${ui.howtoGuide}: ${guideTitle}` : ui.howtoGuide}</a>
       </p>
       <nav class="docs__pager howto__pager" aria-label={ui.howtoPager}>
         {

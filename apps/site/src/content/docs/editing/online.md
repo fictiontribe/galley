@@ -31,7 +31,7 @@ In **Proof**, **Share a preview link** puts the site as it is now — unpublishe
 
 ## Your own domain
 
-Galley puts the site at the host's own address (`…workers.dev` or `…vercel.app`). To use your own domain, add it on the host — Galley doesn't change domain or DNS settings — then set it in **Settings › Addresses › Live site**.
+Galley first puts the site at the host's own address (`…workers.dev` or `…vercel.app`). To use an address of yours, such as `www.example.com`, choose **Use your own domain…** on the **Online** screen. Galley shows what will change, attaches the address when you say yes, waits until it answers over HTTPS, then makes it the site's live address. It never replaces a DNS record that is already there. On Cloudflare the domain has to be in the same account as the site; on Vercel you're shown the one DNS record to add where your domain's DNS is managed. *Status: new in 0.1.1; attaching a fresh address is tested against stand-ins of the hosts, not yet on the real services.* The details: [Deploying, for developers](/docs/running/deploy/#your-own-domain).
 
 ## If something's different
 

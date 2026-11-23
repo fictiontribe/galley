@@ -299,6 +299,10 @@ const tourSection = z.object({
       /** Where "How to do it" goes while there is no such how-to (a docs page). */
       guide: z.string().optional(),
       layout: z.enum(["full", "wide", "flip", "half"]).default("wide"),
+      /** The panel's shape on wide screens when its picture needs more height (e.g. "5/4"). */
+      ratio: z.string().optional(),
+      /** One quiet line under the link: how the pictures were made, when a reader would wonder. */
+      note: z.string().optional(),
       visual,
       inset: visual.optional(),
     }),

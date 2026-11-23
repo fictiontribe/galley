@@ -61,7 +61,7 @@ sections:
         visual:
           kind: screen
           src: assistant
-          x: -330
+          x: -500
           alt: The assistant’s reply beside the Caddow page after changing the campaign heading and its first button, with Review in Proof and Undo beneath.
   - type: proof
     id: proof
@@ -166,29 +166,33 @@ sections:
       - label: Forms
         href: /tour/#forms
         visual:
-          src: docs/form-builder
-          alt: The form builder.
+          src: forms
+          x: -148
+          alt: The Forms screen.
       - label: Redirects
         href: /tour/#redirects
         visual:
-          src: docs/redirects-list
+          src: redirects
+          x: -148
           alt: The Redirects screen.
       - label: Brand
         href: /tour/#brand
         visual:
-          src: brand-proposal
-          x: -150
-          y: -24
-          alt: The brand proposal.
+          src: brand-type
+          x: -376
+          y: -175
+          alt: The brand’s type, set large in the site’s own heading face.
       - label: Search and AI
         href: /tour/#search
         visual:
-          src: docs/search-and-ai
+          src: search-ai
+          x: -148
           alt: The Search & AI checks.
       - label: Your sites
         href: /tour/#sites
         visual:
-          src: docs/sites
+          src: sites
+          x: -148
           alt: The list of your sites.
   - type: status
     id: whats-in

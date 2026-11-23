@@ -112,8 +112,8 @@
     {
       "id": "twins",
       "label": "Agent-readable pages",
-      "line": "Markdown twins and llms.txt for the sites Galley builds.",
-      "status": "progress"
+      "line": "A markdown copy of every page, llms.txt and agent.md, on Astro sites with the site kit.",
+      "status": "built"
     },
     {
       "id": "wordpress-guided",
@@ -130,8 +130,8 @@
     {
       "id": "crawlers",
       "label": "A switch per AI-crawler family",
-      "line": "Allow citing in answers, training, or neither, written into robots.txt.",
-      "status": "progress",
+      "line": "Allow or block each AI crawler; the site’s robots.txt follows.",
+      "status": "built",
       "home": false
     },
     {

@@ -1,11 +1,11 @@
 ---
 title: AI-first websites
-description: A website people and AI assistants can both read. Your pages are already plain files in git; Galley is adding a script-free copy of every page for AI agents, and checks that find what search engines and assistants miss.
+description: A website people and AI assistants can both read. Your pages are already plain files in git; Galley's site kit adds a script-free copy of every page for AI agents, and its checks find what search engines and assistants miss.
 sections:
   - type: hero
     layout: split
     heading: A website people and AI assistants can both read.
-    text: Your pages are already plain files in git. Galley is adding a script-free copy of every page for AI agents, and checks that find what search engines and assistants miss.
+    text: Your pages are already plain files in git. Galley’s site kit adds a script-free copy of every page for AI agents, and its checks find what search engines and assistants miss.
     cta:
       label: Read this page as an agent does
       href: /ai-first.md
@@ -18,7 +18,7 @@ sections:
       alt: This page’s markdown copy, served at /ai-first.md — the same words, no scripts or layout.
   - type: status
     id: today
-    heading: Today, and in progress.
+    heading: What’s in it today.
     only: [mcp, checks, twins, crawlers]
     groups: [built, new, progress]
   - type: split

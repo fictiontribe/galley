@@ -30,7 +30,7 @@ Nothing is guessed: a line that isn't plainly one redirect comes back with its l
 
 The first time, the screen asks **Where is this site hosted?** — **Cloudflare**, **Netlify**, **Vercel** or **Another host**. Galley then writes the file that host reads and keeps it in step with the list.
 
-<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/redirects-list@1x.webp" srcset="/docs/redirects-list@1x.webp 1x, /docs/redirects-list.webp 2x" alt="The Redirects screen: eight redirects listed by old address, new address, kind and where they came from, one of them marked with a warning; beside them, Cloudflare as the host, the file public/_redirects In step with the list, how full it is (7 of 2,000 exact addresses, 1 of 100 wildcards), and Set them on Cloudflare…" width="1122" height="515" loading="lazy" decoding="async"></figure>
+<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/redirects-list@1x.webp" srcset="/docs/redirects-list@1x.webp 1x, /docs/redirects-list.webp 2x" alt="The Redirects screen: eight redirects listed by old address, new address, kind and where they came from, one (/winter-sale/ → /sale/) marked with a warning sign; beside them, Cloudflare as the host, the file public/_redirects In step with the list, 7 of 2,000 exact addresses and 1 of 100 wildcards, and Set them on Cloudflare…" width="1122" height="515" loading="lazy" decoding="async"></figure>
 
 For another host, **Download** the list in its format. On Cloudflare, **Set them on Cloudflare…** can also put the list on Cloudflare itself, for more than the file holds; that needs the site's Cloudflare key with two more permissions, and the docs haven't run it against Cloudflare.
 

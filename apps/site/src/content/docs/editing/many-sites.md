@@ -19,7 +19,7 @@ On the **Sites** screen (**Your sites**), press **Add sites**:
 - **New group** names a client and gives it a colour.
 - A site's **⋯** menu: **Move to group…**, **Pin to the top**, **Add a note…** ("Hesper is the contact; spring lookbook due in March"), **Details…**, **Remove from this app…** (its folder is never touched).
 
-<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/sites@1x.webp" srcset="/docs/sites@1x.webp 1x, /docs/sites.webp 2x" alt="Your sites: a group called Caddow Ltd holding the Caddow site's card, with its picture, No live address yet, the chips 8 changes and Preview running, and a note; above it the search box, Every group, Needs attention · 1, and the New group and Add sites buttons." width="1160" height="560" loading="lazy" decoding="async"></figure>
+<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/sites@1x.webp" srcset="/docs/sites@1x.webp 1x, /docs/sites.webp 2x" alt="Your sites with two groups: Caddow Ltd holding the Caddow site's card — its picture, No live address yet, the chips 3 unread, 3 changes and Preview running, and the note “Hesper is the contact; spring lookbook due in March.” — and Fernhill Garden Studio below; above them the search box, Every group, Needs attention · 2, and the New group and Add sites buttons." width="1160" height="560" loading="lazy" decoding="async"></figure>
 
 Groups, pins and notes are kept on this computer, not in any site.
 
