@@ -1,0 +1,270 @@
+{
+  "about": "How-to sequences captured from the running app. Written by scripts/capture-screens.mjs; the wording of do/see may be polished by hand, the facts may not.",
+  "captured": "2026-11-24, Galley 0.1.2",
+  "guides": [
+    {
+      "slug": "change-a-page",
+      "title": "Change a page in the form",
+      "summary": "Retype any words on a page in its form and see the change on the page before anyone else does.",
+      "guide": "/docs/editing/form/",
+      "steps": [
+        {
+          "image": "howto/change-a-page-1",
+          "alt": "The Pages list for Caddow: eight pages by title and address — the home page, Collections, Contact, Journal, Page not found, Privacy, Stockists and The atelier — with Search pages, a sort, and All, Edited, New and Unchanged.",
+          "do": "Open **Pages** in the sidebar and choose the page — here **The atelier**."
+        },
+        {
+          "image": "howto/change-a-page-2",
+          "alt": "The editor on The atelier: in the form, the section Photo and text opened to show its fields — ID, Tone, Eyebrow and Heading, whose words are “A workroom over the ropewalk, *three streets from the sea*.” — beside the page.",
+          "do": "In the form on the left, click the section — **Photo and text** — to open its fields, and find **Heading**."
+        },
+        {
+          "image": "howto/change-a-page-3",
+          "alt": "The Heading field marked Edited with a Put back button, now reading “A workroom over the ropewalk, *two streets from the sea*.”, and beside it the page showing the new heading: A workroom over the ropewalk, two streets from the sea.",
+          "do": "Type. The asterisks around words make them italic, as they are on the page.",
+          "see": "The change is saved as you type: the field shows **Edited**, the page shows it a moment later, and **Put back** returns it to what is published."
+        },
+        {
+          "image": "howto/change-a-page-4",
+          "alt": "Proof with 1 change waiting to be published: The atelier, Edited — Changed the heading; under What changed, Photo and text › Heading with three struck through and two written in, beside Show as stored and Put back.",
+          "do": "Press **Proof** in the top bar to see the change waiting, in the page's own words.",
+          "see": "Nothing is live until someone presses **Publish**."
+        }
+      ]
+    },
+    {
+      "slug": "build-a-page",
+      "title": "Build a page from sections",
+      "summary": "Put a page together from the site's own sections, on the page itself.",
+      "guide": "/docs/editing/page-builder/",
+      "steps": [
+        {
+          "image": "howto/build-a-page-1",
+          "alt": "The editor on the Caddow Contact page with Arrange chosen above the page: on the left the Arrange panel (2 sections) with Add a section and pictures of the site's own section types — Campaign hero, Photo and text, Lookbook grid — and the page itself on the right.",
+          "do": "Open the page in the editor and choose **Arrange** above it.",
+          "see": "Click a section on the page to select it and see its options; drag its handle to move it."
+        },
+        {
+          "image": "howto/build-a-page-2",
+          "alt": "The Arrange panel with “Newsletter” typed in Find a section type…, leaving one picture: Newsletter — a sign-up form from the site's forms — beside the Contact page.",
+          "do": "Under **Add a section**, type in **Find a section type…** to narrow the list — here **Newsletter**."
+        },
+        {
+          "image": "howto/build-a-page-3",
+          "alt": "Dragging the Newsletter picture onto the page: a blue line between the contact form and the next section, labelled ADD NEWSLETTER HERE, shows where it will land.",
+          "do": "Drag its picture onto the page. A line shows where it will land; **Escape** leaves everything as it was."
+        },
+        {
+          "image": "howto/build-a-page-4",
+          "alt": "The new Newsletter section on the Contact page, selected as Newsletter 2/3 with its toolbar — handle, up, down, duplicate, remove, Options, Edit content — and in the panel its options: Tone and Layout.",
+          "do": "Let go. The section arrives with the site's own layout and empty words; switch its **Options** in the panel, and **Edit content** opens its words in the form.",
+          "see": "Each move is one change waiting in Proof."
+        }
+      ]
+    },
+    {
+      "slug": "add-a-form",
+      "title": "Make a form and read the answers",
+      "summary": "Change a form's fields, choose where the answers go, and read them in the Inbox.",
+      "guide": "/docs/editing/forms/",
+      "steps": [
+        {
+          "image": "howto/add-a-form-1",
+          "alt": "The Forms screen: Become a stockist, Caddow letters and Write to the workroom, each sending to Inbox, with their number of fields; New form at the top right, and a note asking where the live site should send submissions.",
+          "do": "Open **Forms** in the sidebar and choose a form — here **Write to the workroom**. **New form** starts one from Blank, Contact, Newsletter sign-up and more."
+        },
+        {
+          "image": "howto/add-a-form-2",
+          "alt": "The form builder on Write to the workroom: a new Phone field under Your message, labelled “A phone number, if you’d rather we rang” and marked New; on the right its Label, Placeholder, Help, Required and Width.",
+          "do": "Click a field type on the left — **Phone** here — to add it below the selected field, then give it a **Label** and **Help** on the right.",
+          "see": "The change is saved as you go, and waits in Proof like any other."
+        },
+        {
+          "image": "howto/add-a-form-3",
+          "alt": "The Where it goes tab: Inbox as the main destination, the capture address, Submissions appear in this app's inbox for the site with See submissions, and a note that submissions can only arrive when the app runs on a server visitors can reach.",
+          "do": "Open **Where it goes**. **Inbox** is the first destination; **Add a destination** sends the answers to HubSpot, Marketo, Salesforce, Pardot, a webhook or the visitor's e-mail program as well."
+        },
+        {
+          "image": "howto/add-a-form-4",
+          "alt": "The Inbox: the forms on the left, one submission from Test visitor marked Test in the middle, and on the right every answer — name, email address, what it is about, message, phone number and consent — with Mark unread, Spam and Delete.",
+          "do": "Open **Inbox** (or **See submissions**), choose the form and press **Send a test submission**.",
+          "see": "It goes through the same checks as a visitor's and arrives at the top, marked Test. Choose it to read every answer."
+        }
+      ]
+    },
+    {
+      "slug": "add-analytics",
+      "title": "Add Google Analytics",
+      "summary": "Count visits with Google Analytics 4, loaded only once visitors agree to it.",
+      "guide": "/docs/editing/scripts/",
+      "steps": [
+        {
+          "image": "howto/add-analytics-1",
+          "alt": "The Scripts screen with the Add a script window open: Google Tag Manager, Google Analytics 4, Plausible, Segment, Hotjar, Microsoft Clarity, Meta Pixel and more, each with a line about what it does.",
+          "do": "Open **Scripts** in the sidebar and press **Add a script**, then choose **Google Analytics 4**."
+        },
+        {
+          "image": "howto/add-analytics-2",
+          "alt": "The Add Google Analytics 4 window with the measurement ID G-7K2M4Q9XRB filled in, and under Already chosen for you: straight away, in the page head, consent: Analytics, every page.",
+          "do": "Paste your **Measurement ID** (it looks like G-XXXXXXXXXX) and press **Add Google Analytics 4**.",
+          "see": "**Already chosen for you** says when and where it loads, and that it waits for the visitor's consent to analytics."
+        },
+        {
+          "image": "howto/add-analytics-3",
+          "alt": "Google Analytics 4 under Installed, switched on and marked New, with Every page, Straight away and Consent: Analytics chosen; beside it the Consent panel with Ask visitors first set to Built-in banner.",
+          "do": "Check it under **Installed**: it's switched on, and its **Consent** is **Analytics**. Under **Consent**, **Ask visitors first** is **Built-in banner**, so it loads only after a visitor agrees."
+        },
+        {
+          "image": "howto/add-analytics-4",
+          "alt": "Proof with 1 change waiting to be published: Scripts, src/data/scripts.json, Edited — Added a script.",
+          "do": "Open **Proof** to see the change waiting, then press **Publish**.",
+          "see": "Nothing loads on the live site until you publish."
+        }
+      ]
+    },
+    {
+      "slug": "set-up-brand",
+      "title": "Set up the brand",
+      "summary": "Write the site's colours, type and voice down once, so every change fits the rest.",
+      "guide": "/docs/editing/brand/",
+      "needs": "The assistant connected for the voice guide and for reading your material (colours and type are measured without it).",
+      "steps": [
+        {
+          "image": "howto/set-up-brand-1",
+          "alt": "The Brand screen for Caddow before anything is written down: Read it from this site on the left, and on the right Set it up from your material, with a drop area for guidelines, logos, screenshots, photos or notes and a box for an existing website.",
+          "do": "Open **Brand** in the sidebar and press **Read it from this site**.",
+          "see": "It measures a few pages in the preview and reads the site's styles; nothing about the site changes."
+        },
+        {
+          "image": "howto/set-up-brand-2",
+          "alt": "The proposal read from Caddow: Worth a look notes (11 greys in use, three nearly the same; body text contrast on the home page; no logo found), and the first colours — Lime-wash, Paper white, Chalk grey and Ink — each with its role, value, where it was found and Measured or Declared.",
+          "do": "Check the proposal. Each colour, font and size says where it came from and whether it was **Measured** on the pages or **Declared** in the styles; **Worth a look** lists anything odd. Click any name, value or colour to change it."
+        },
+        {
+          "image": "howto/set-up-brand-3",
+          "alt": "The Voice part of the proposal: the words plain, patient, exact, quietly dry and unhurried, then numbered rules such as “Use short sentences, often two together, the second one landing the point.”, each with a line quoted from the site and a struck-through example of what not to write beside the better one.",
+          "do": "Read the **Voice**: written by the assistant from the site's own words, with real lines from the pages as examples."
+        },
+        {
+          "image": "howto/set-up-brand-4",
+          "alt": "The Material part of the brand: caddow-brand-notes.pdf (2 pages, the fonts and colours inside it), caddow-wordmark.png (its colours by area) and window-notes.md (a note to read with the rest), each with its note in quotes and Leave out and Remove; below, the drop area and Choose files….",
+          "do": "Under **Material**, drop brand guidelines, logos, screenshots or notes — or press **Choose files…** — add a note to each, and press **Add 3 files**.",
+          "see": "Each file says what it can be read for. **Read them** (at the top) has the assistant read them for the look and the voice."
+        },
+        {
+          "image": "howto/set-up-brand-5",
+          "alt": "The saved brand for Caddow: The site’s look and voice. The assistant works inside it. A note says 3 new files to read, with Read them; Proof in the top bar counts 6 changes — the brand and its material — and the colours follow below.",
+          "do": "Press **Save the brand**.",
+          "see": "The brand is written into the site as changes waiting in Proof; publish them to keep it. From then on the assistant writes in the site's voice and uses its colours by name."
+        }
+      ]
+    },
+    {
+      "slug": "bulk-redirects",
+      "title": "Add many redirects at once",
+      "summary": "Paste a whole list of old addresses and let the checks catch the mistakes before any visitor does.",
+      "guide": "/docs/editing/redirects/",
+      "steps": [
+        {
+          "image": "howto/bulk-redirects-1",
+          "alt": "The Redirects screen with no redirects yet: Add many and Add one in the middle, Where is this site hosted? and Try an address on the right.",
+          "do": "Open **Redirects** in the sidebar and press **Add many**."
+        },
+        {
+          "image": "howto/bulk-redirects-2",
+          "alt": "The Add many redirects window with eleven pasted lines on the left; on the right, Understood 11 lines, New 10, and the review: 1 loop in red (/workroom/ → /our-workroom/ → /workroom/ goes round in a circle) with Leave them out, 1 new address not found on this site, and 1 duplicate. Add 10 redirects is greyed out until the loop is dealt with.",
+          "do": "Paste your list — two columns from a spreadsheet, a _redirects file, .htaccess or nginx lines — or press **Choose a file…**.",
+          "see": "It shows straight away what it understood, and stops on anything that would go wrong: here a loop, a duplicate and an address that isn't on the site yet."
+        },
+        {
+          "image": "howto/bulk-redirects-3",
+          "alt": "The same window after leaving the loop out: New 8, Left out 2; 1 new address not found on this site with Keep them chosen, 1 duplicate (Keep the first), 1 loop (Leave them out); the button now reads Add 8 redirects.",
+          "do": "Press **Leave them out** for the loop, decide about the rest (**Keep them** keeps an address whose page is still to come), then press **Add 8 redirects** (the number is yours)."
+        },
+        {
+          "image": "howto/bulk-redirects-4",
+          "alt": "The Redirects screen with 8 redirects listed by old address, new address and kind; /winter-sale/ → /sale/ marked with a warning sign. On the right, Where they take effect: Cloudflare, the file public/_redirects In step with the list, 7 of 2,000 exact addresses and 1 of 100 wildcards.",
+          "do": "Check the list. A warning sign marks a redirect that leads nowhere yet; **Health** lists it too.",
+          "see": "The whole list is one change in Proof, with the host's own redirects file kept in step beside it."
+        },
+        {
+          "image": "howto/bulk-redirects-5",
+          "alt": "Try an address with /about-us/ typed in: one step, /about-us/ → /atelier/, Permanent 301, ending on The atelier. Below it, Health: 1 leads nowhere, /winter-sale/ → /sale/.",
+          "do": "Type an old address under **Try an address** and press **Try**.",
+          "see": "It shows every step a visitor takes and the page they end on."
+        }
+      ]
+    },
+    {
+      "slug": "search-and-ai",
+      "title": "Check how search and AI see the site",
+      "summary": "Find what search engines and AI assistants trip over, fix it, and choose which AI crawlers may visit.",
+      "guide": "/docs/editing/search-and-ai/",
+      "steps": [
+        {
+          "image": "howto/search-and-ai-1",
+          "alt": "Search & AI for Caddow: 2 must fix, 1 should fix and 2 ideas; a note that the rendered checks used the running preview; the groups Titles & descriptions, Headings & content, Images, Links and more, each marked; and on the right How AI systems see this site, with the AI crawlers.",
+          "do": "Open **Search & AI** in the sidebar. The checks run straight away; with the preview running they also check the pages as visitors get them. **Check again** runs them after a change."
+        },
+        {
+          "image": "howto/search-and-ai-2",
+          "alt": "The Links group with 1 must fix: Link to a page that doesn't exist, on How to keep a wool coat for 20 years. Found “/about-us/”; that page now lives at /atelier/. Buttons: Point it at the new address and Open the page.",
+          "do": "Open a group to see its findings. Where the right fix is certain, the finding offers it — here **Point it at the new address**."
+        },
+        {
+          "image": "howto/search-and-ai-3",
+          "alt": "Search & AI after the fix: Links is now In good shape, Proof in the top bar shows 1, and a message says Fixed — The change is waiting in Proof. Nothing is live until you publish — with Undo.",
+          "do": "Press **Point it at the new address**.",
+          "see": "The fix is an ordinary change waiting in Proof, and the checks run again. **Undo** puts it back."
+        },
+        {
+          "image": "howto/search-and-ai-4",
+          "alt": "The AI crawlers panel: under OpenAI, ChatGPT's search crawler set to Allow, OpenAI's training crawler (GPTBot, model training) switched to Block, and ChatGPT fetching a page for someone set to Allow.",
+          "do": "Under **AI crawlers**, choose **Allow** or **Block** for each one — here **Block** for OpenAI's training crawler — then press **Change 1 rule** at the foot of the panel.",
+          "see": "Search crawlers decide whether AI assistants can find and link to the site; training crawlers decide whether its pages may train models."
+        },
+        {
+          "image": "howto/search-and-ai-5",
+          "alt": "The AI crawlers panel after the change: Blocks AI training (GPTBot), kept in src/data/visibility.json; OpenAI's training crawler is blocked, the rest allowed. Proof in the top bar shows 2.",
+          "see": "The choice waits in Proof with the fix; the site writes it into robots.txt when you publish.",
+          "do": "Check the panel's summary, then open **Proof** and **Publish**."
+        }
+      ]
+    },
+    {
+      "slug": "move-from-wordpress",
+      "title": "Bring a site over from WordPress",
+      "summary": "Move a WordPress site's posts, pages and images into this site, checked before anything goes live.",
+      "guide": "/docs/editing/wordpress/",
+      "steps": [
+        {
+          "image": "howto/move-from-wordpress-1",
+          "alt": "Site home for Lowfield: under Moving from WordPress?, a line saying its posts, pages, images and SEO details come across as changes you check, and the button Bring your WordPress site.",
+          "do": "On **Site home**, under **Moving from WordPress?**, press **Bring your WordPress site**."
+        },
+        {
+          "image": "howto/move-from-wordpress-2",
+          "alt": "Step 1 of 4, Where is your WordPress site?: the address pasted in and checked — Fernhill Garden Studio, a WordPress site, with 12 posts, 6 pages, 18 images and files, and 37 comments that stay behind — above Or drop an export file here and the Continue button.",
+          "do": "Paste the site's address (it's checked as you type), or drop an export file, then press **Continue**."
+        },
+        {
+          "image": "howto/move-from-wordpress-3",
+          "alt": "Step 2, What comes across: one thing to decide — who Journal entries should be credited to, with Ines Ferreira marked Suggested — then Search rankings (16 search descriptions come across, 12 old addresses will redirect), What stays behind, and the button Bring over 18 entries.",
+          "do": "Check **What comes across**: where posts and pages go, anything to decide, your search rankings and what stays behind. Then press **Bring over 18 entries** (the number is yours)."
+        },
+        {
+          "image": "howto/move-from-wordpress-4",
+          "alt": "Step 3, Bringing it over…: Reading the old site and Downloading images (18 of 18) done, Bringing over posts under way with its progress bar, then Bringing over pages and Writing the report still to come; Stop the import below.",
+          "do": "Wait while it brings everything over — reading the old site, downloading images, posts, pages.",
+          "see": "Everything lands as pending changes; you can leave the screen and it keeps going."
+        },
+        {
+          "image": "howto/move-from-wordpress-5",
+          "alt": "Step 4, Your WordPress site is here: five next steps — Review it in Proof (Open Proof), Rebuild the page-builder pages (Rebuild all…), Set the redirects (Review redirects), Put the site online, Switch the domain — and What arrived: 12 posts, 5 pages, 18 images.",
+          "do": "Read the report, then work down its list: **Open Proof** to review everything, **Rebuild all…** for page-builder pages, **Review redirects** so old links keep working.",
+          "see": "Nothing is live until you publish; keep WordPress running until the new site looks right online."
+        }
+      ]
+    }
+  ]
+}

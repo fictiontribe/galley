@@ -5,7 +5,7 @@ group: site
 order: 5
 ---
 
-For people who look after a site. The brand is the site's colours, fonts and sizes, its logo, its sections and the way it speaks, written down in the site. Once it's saved, the assistant writes in the site's voice and uses its colours and fonts by name. *Status: new, in final checks.*
+For people who look after a site. The brand is the site's colours, fonts and sizes, its logo, its sections and the way it speaks, written down in the site. Once it's saved, the assistant writes in the site's voice and uses its colours and fonts by name.
 
 ## Read it from the site
 

@@ -21,11 +21,16 @@ const visual = z.object({
   kind: z.enum(["screen", "site", "recording", "file"]).default("screen"),
   src: z.string(),
   alt: z.string(),
-  /** screen only: the capture to show until `src` has been captured (a named slot waiting for its picture). */
+  /** screen only: the capture to show until `src` has been captured (a named slot waiting for its picture): a screen's name, or a picture in another folder ("docs/brand"). */
   fallback: z.string().optional(),
-  /** Move the capture inside its panel, in CSS pixels (negative pulls it up or left). */
+  /** What the stand-in shows, while it is the one shown. */
+  fallbackAlt: z.string().optional(),
+  /** Move the capture inside its panel, in CSS pixels (negative pulls it up or left). On the tour, only the capture itself moves, never its stand-in. */
   x: z.number().optional(),
   y: z.number().optional(),
+  /** Tour insets only: show just this much of the capture (CSS pixels from where x and y put it), as a detail. */
+  w: z.number().optional(),
+  h: z.number().optional(),
 });
 
 const common = {
@@ -266,6 +271,50 @@ const faqSection = z.object({
   items: z.array(z.object({ q: z.string(), a: z.string() })),
 });
 
+/**
+ * One part of the product tour (/tour/): a heading, one line, and the screens
+ * that belong to it. Each item is one thing the app does, captioned in a
+ * sentence, with its status badge and a link to its how-to.
+ *   full — the words in a row above a wide capture
+ *   wide — the words beside a large capture (flip: the capture on the left)
+ *   half — two half items side by side, each capture above its words
+ * An `inset` is a second, smaller capture laid over the first one's corner.
+ */
+const tourSection = z.object({
+  type: z.literal("tour"),
+  ...common,
+  /** The part's name in the tour's index. */
+  label: z.string(),
+  heading: z.string(),
+  text: z.string().optional(),
+  items: z.array(
+    z.object({
+      id: z.string().optional(),
+      heading: z.string(),
+      text: z.string(),
+      /** An id in src/data/status.json, shown as its badge. */
+      status: z.string().optional(),
+      /** A guide's slug in src/data/howto.json: "How to do it" links to it. */
+      howto: z.string().optional(),
+      /** Where "How to do it" goes while there is no such how-to (a docs page). */
+      guide: z.string().optional(),
+      layout: z.enum(["full", "wide", "flip", "half"]).default("wide"),
+      visual,
+      inset: visual.optional(),
+    }),
+  ),
+});
+
+/** A row of small captures, each a link into the tour, with one action. */
+const filmstripSection = z.object({
+  type: z.literal("filmstrip"),
+  ...common,
+  heading: z.string(),
+  text: z.string(),
+  link: link,
+  items: z.array(z.object({ label: z.string(), href: z.string(), visual })),
+});
+
 const section = z.discriminatedUnion("type", [
   heroSection,
   filmSection,
@@ -282,6 +331,8 @@ const section = z.discriminatedUnion("type", [
   stepsSection,
   faqSection,
   teamSection,
+  tourSection,
+  filmstripSection,
 ]);
 
 /** Anything else is kept and skipped, so a half-written section never breaks the build. */

@@ -4,7 +4,9 @@
 // (starters/README.md §5), so Galley can find, select and arrange it on the
 // page. The first section shown carries the page's one h1. A section with
 // `hidden: true` stays in the file and is left out of the page (GALLEY_SHOW_HIDDEN=1
-// at build time shows it, for the section thumbnails).
+// at build time shows it, for the section thumbnails). `from` and `to` render a
+// slice of the list (positions among the sections shown), so a page can put
+// something of its own between them; indexes and the h1 stay the whole list's.
 import Hero from "./sections/Hero.astro";
 import Film from "./sections/Film.astro";
 import Tabs from "./sections/Tabs.astro";
@@ -20,17 +22,23 @@ import Comparison from "./sections/Comparison.astro";
 import Steps from "./sections/Steps.astro";
 import Faq from "./sections/Faq.astro";
 import Team from "./sections/Team.astro";
+import Tour from "./sections/Tour.astro";
+import Filmstrip from "./sections/Filmstrip.astro";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { sections = [], field = "sections" } = Astro.props as { sections: any[]; field?: string };
-const components: Record<string, unknown> = { hero: Hero, film: Film, tabs: Tabs, proof: Proof, band: Band, starters: Starters, split: Split, status: Status, cards: Cards, close: Close, lists: Lists, comparison: Comparison, steps: Steps, faq: Faq, team: Team };
+const { sections = [], field = "sections", from = 0, to } = Astro.props as { sections: any[]; field?: string; from?: number; to?: number };
+const components: Record<string, unknown> = { hero: Hero, film: Film, tabs: Tabs, proof: Proof, band: Band, starters: Starters, split: Split, status: Status, cards: Cards, close: Close, lists: Lists, comparison: Comparison, steps: Steps, faq: Faq, team: Team, tour: Tour, filmstrip: Filmstrip };
 const showHidden = process.env.GALLEY_SHOW_HIDDEN === "1";
 const shown = sections.map((s, index) => ({ s, index })).filter(({ s }) => components[s.type] && (!s.hidden || showHidden));
+// Each section's place among the shown sections of its own type (the tour numbers its parts).
+const seen: Record<string, number> = {};
+const nths = shown.map(({ s }) => (seen[s.type] = (seen[s.type] ?? -1) + 1));
+const slice = shown.map((entry, i) => ({ ...entry, i, nth: nths[i] })).slice(from, to);
 ---
 
 {
-  shown.map(({ s, index }, i) => {
+  slice.map(({ s, index, i, nth }) => {
     const Component = components[s.type] as typeof Hero;
-    return <Component s={s} first={i === 0} block={{ key: `${field}.${index}`, type: s.type }} />;
+    return <Component s={s} first={i === 0} nth={nth} block={{ key: `${field}.${index}`, type: s.type }} />;
   })
 }

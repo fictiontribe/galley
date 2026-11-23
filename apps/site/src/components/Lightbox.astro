@@ -1,0 +1,23 @@
+---
+// One native <dialog> per page that shows a capture at full size: Escape, the
+// Close button or a click outside the picture closes it, focus goes back to
+// what opened it, and ← → move between a panel's pictures. Opened by Zoom.astro
+// controls (src/scripts/site.ts); without JavaScript those are plain links.
+import { site } from "../lib/site";
+---
+
+<dialog class="lightbox" data-lightbox aria-labelledby="lightbox-cap" data-galley-agent="skip" data-of={site.ui.zoomOf}>
+  <div class="lightbox__in">
+    <div class="lightbox__bar">
+      <p class="lightbox__cap" id="lightbox-cap" data-lb-cap></p>
+      <div class="lightbox__acts">
+        <button type="button" class="lightbox__btn" data-lb-prev hidden aria-label={site.ui.zoomPrev}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" /></svg></button>
+        <button type="button" class="lightbox__btn" data-lb-next hidden aria-label={site.ui.zoomNext}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg></button>
+        <button type="button" class="lightbox__btn lightbox__close" data-lb-close>{site.ui.close}</button>
+      </div>
+    </div>
+    <div class="lightbox__pic">
+      <img data-lb-img alt="" decoding="async" />
+    </div>
+  </div>
+</dialog>

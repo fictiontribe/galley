@@ -5,6 +5,8 @@ import { docHref, getDocGroups, getDocs, type Doc } from "../../lib/docs";
 import { renderMarkdown } from "../../lib/markdown";
 import { editUrl } from "../../lib/site";
 import docsData from "../../data/docs.json";
+import { howtoHref, howtosForDoc } from "../../lib/howto";
+import { site } from "../../lib/site";
 
 export async function getStaticPaths() {
   const docs = await getDocs();
@@ -26,6 +28,8 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 const groups = await getDocGroups();
 const groupLabel = docsData.groups.find((g) => g.id === doc.data.group)?.label ?? doc.data.group;
 const ui = docsData.ui;
+// The how-tos whose full guide is this page get one line under its description.
+const howtos = howtosForDoc(docHref(doc.id));
 ---
 
 <Site title={doc.id === "index" ? doc.data.title : `${doc.data.title} · ${ui.docs}`} description={doc.data.description} type="article">
@@ -36,6 +40,19 @@ const ui = docsData.ui;
       <p class="label">{ui.docs} › {groupLabel}</p>
       <h1 class="docs__title">{doc.data.title}</h1>
       <p class="docs__desc">{doc.data.description}</p>
+      {
+        howtos.length > 0 && (
+          <p class="docs__howto">
+            <span>{site.ui.stepByStep}</span>
+            {howtos.map((g, i) => (
+              <>
+                {i > 0 && <span aria-hidden="true">·</span>}
+                <a href={howtoHref(g.slug)}>{g.title}</a>
+              </>
+            ))}
+          </p>
+        )
+      }
       <div class="prose" set:html={html} />
 
       <footer class="docs__foot" data-galley-agent="skip">

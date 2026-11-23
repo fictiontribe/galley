@@ -61,6 +61,44 @@ Updated 2026-11-24 (Galley on npm; “for static sites” instead of “for Astr
 | Fiction Tribe is "a creative agency in Portland, Oregon" | /team/, /open-source/ | Fiction Tribe's own site says Portland (coordinator, 2026-11-23). No founding year is stated |
 | "Built for Astro" — never official, partner or endorsed | /astro/, /privacy/ | Trademark notes on /privacy/ and /astro/; WordPress/Elementor note under the comparison table |
 
+## The tour (/tour/), the how-to guides (/how-to/) and the home filmstrip
+
+Added 2026-11-24. Words in `src/content/pages/tour.md`, `src/content/pages/how-to.md`
+and the `filmstrip` section of `src/content/pages/index.md`; the how-to steps
+are `src/data/howto.json` (written with the captures, checked by the capture
+engineer). Every status badge on the tour comes from `status.json`. Each
+caption was written against the matching guide in `docs/editing/`.
+
+| Statement | Where | Support |
+| --- | --- | --- |
+| “Every picture here is a capture of Galley, most of them on Caddow — a fashion label we made up.” | /tour/ hero | `screens.json` (captures of a throwaway Caddow copy; the WordPress move on a throwaway Lowfield copy); footer note on the starters |
+| “Three ways in. Each ends the same way, as a change waiting in Proof.” | /tour/ part 1 | `docs/editing/form.md`, `on-the-page.md`, `assistant.md` |
+| Form: every field in the site’s own words, beside the page; saved as you type and marked Edited | /tour/ “In the form” | `docs/editing/form.md` “Change a field”; captures `form`, `docs/form-field-edited` |
+| On the page: click and type over the words; when the same words come from two places it asks which one you meant | /tour/ “On the page” | `docs/editing/on-the-page.md` (“Which one did you mean?”) |
+| The assistant says exactly what it changed, and Undo puts it back | /tour/ “By asking” | `docs/editing/assistant.md` (reply quotes the new words; **Undo this change**); capture `assistant` |
+| “Nothing is live until someone presses Publish, and a publish can be undone.” | /tour/ part 2 | `docs/editing/proof-and-publish.md`, `history.md` (not “every publish”: the guide lists versions that can’t be undone automatically) |
+| Proof: every change waiting in the site’s own words, old struck out, new written in; Put back any one | /tour/ “Proof” | `docs/editing/proof-and-publish.md`; capture `proof-changes` |
+| Publish: a one-line note for version history, a list of what goes, untick to keep back | /tour/ “Publish” | `docs/editing/proof-and-publish.md` “Publish”; capture `docs/publish-dialog` |
+| Version history: newest first, who and when; undoing adds a new version, nothing erased | /tour/ “Version history” | `docs/editing/history.md` |
+| Arrange: drag a section from the panel, move it, switch options; every move offers Undo and waits in Proof (badge: Preview) | /tour/ “Arrange” | `docs/editing/page-builder.md`; recording `arrange-drag` |
+| Forms send to HubSpot, Marketo, Salesforce, Pardot, a webhook or the app’s own inbox | /tour/ “Forms and the inbox” | `docs/editing/forms.md` “Choose where submissions go” (the guide notes the docs haven’t sent to a real CRM; the status table’s “maintainers’ check” covers it) |
+| Scripts: Google Analytics, Tag Manager and others from a list; with the built-in banner each loads only after the visitor agrees | /tour/ “Scripts, with consent” | `docs/editing/scripts.md` “Ask visitors first” |
+| Media: upload pictures, video and documents, or make an image from a description and save it to media | /tour/ “Images and video” | `docs/editing/media.md` (without an image service the pictures are built-in placeholders; the tour doesn’t claim a real image service) |
+| Redirects: paste a list; loops, chains and doubles caught before anything is added; the host’s file stays in step | /tour/ “Redirects” | `docs/editing/redirects.md`; the hand run of 2026-11-24 in the status table; captures `redirects-review`, `redirects-try` |
+| Brand: read from the site or from guidelines, logos and screenshots; colours, type, logo and voice, each saying where it came from | /tour/ “The brand” | `docs/editing/brand.md` (the voice needs the assistant’s key) |
+| Search & AI: titles, headings, images, links, indexing and structured data checked; certain fixes land in Proof | /tour/ “Search and AI checks” | `docs/editing/search-and-ai.md`; the per-crawler switch (in progress) is not mentioned on the tour |
+| Put it online: a real address on Cloudflare in four steps, even for a site only on your computer; your own domain is added at the host | /tour/ “Put it online” | `docs/editing/online.md`; status `deploy-cloudflare` (built). Vercel (in progress) is not mentioned on the tour |
+| Many sites: one list, filed by client, each card saying what it waits on — changes, unread submissions, versions not yet live | /tour/ “Many sites, one app” | `docs/editing/many-sites.md` “See what each is waiting on” |
+| WordPress: posts, pages, images and search details in four steps, as changes checked before anything goes live (badge: New, in final checks) | /tour/ “Move from WordPress” | `docs/editing/wordpress.md`; captures `wordpress-plan`, `wordpress-report` |
+| “Run this in your site’s folder and Galley opens in your browser.” | /tour/ close | docs index “The quickest way in”; the install row above |
+| “Forms and their inbox, scripts with consent, redirects, the brand, search checks and every site you look after — all in the same app.” | home, “The rest of the app.” | the rows above |
+| How-to steps (`do`, `see`) | /how-to/<slug>/ | Each guide’s own run in `src/data/howto.json` (“captured”), and its `guide` in the docs |
+
+**Known differences, not changed here.** `docs/editing/brand.md`,
+`redirects.md` and `search-and-ai.md` still say “Status: new, in final
+checks”, while `status.json` (and so the tour) says Built for `brand`,
+`redirects` and `checks`. One of the two should move.
+
 ## Install commands
 
 Every command a page shows comes from `src/data/site.json → install`.

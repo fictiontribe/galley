@@ -1,0 +1,44 @@
+---
+// /how-to/ — every guide in src/data/howto.json, each with its first picture.
+// The words around them are src/content/pages/how-to.md.
+import Site from "../layouts/Site.astro";
+import { getPage } from "../lib/pages";
+import { inline } from "../lib/markdown";
+import { site } from "../lib/site";
+import { firstPicture, howtoHref, howtos } from "../lib/howto";
+
+const { data: p } = await getPage("how-to");
+const cards = howtos.map((g) => ({ g, first: firstPicture(g) }));
+---
+
+<Site title={p.title} description={p.description} noindex={p.noindex}>
+  <section class="wrap howto-index" aria-labelledby="howto-h">
+    <div class="page-head">
+      <h1 class="h1" id="howto-h" set:html={inline(p.heading)} />
+      <p class="lead">{p.lead}</p>
+    </div>
+    <ol class="howto-cards">
+      {
+        cards.map(({ g, first }, i) => (
+          <li class="howto-card">
+            <a href={howtoHref(g.slug)}>
+              {first && (
+                <span class:list={["frame", "howto-card__frame", first.pic.width >= 1200 && "howto-card__frame--window"]}>
+                  <span class="stage">
+                    <span class="shot" style={`--w:${first.pic.width}px`}>
+                      <img src={first.pic.src} srcset={first.pic.srcset} sizes={first.pic.width >= 1200 ? "(max-width: 639px) 150vw, (max-width: 1023px) 70vw, 620px" : `(max-width: 639px) calc(100vw - 72px), (max-width: 1023px) calc(50vw - 80px), ${Math.min(first.pic.width, 360)}px`} width={first.pic.width} height={first.pic.height} alt="" loading={i < 3 ? "eager" : "lazy"} decoding="async" />
+                    </span>
+                  </span>
+                </span>
+              )}
+              <h2 class="howto-card__t">{g.title}</h2>
+              <p class="howto-card__d">{g.summary}</p>
+              <p class="howto-card__n">{g.steps.length === 1 ? site.ui.howtoStepsOne : site.ui.howtoSteps.replace("{n}", String(g.steps.length))}</p>
+            </a>
+          </li>
+        ))
+      }
+    </ol>
+    {p.tour && <p class="howto-index__more">{p.tour.text} <a class="link link--accent" href={p.tour.href}>{p.tour.label}</a></p>}
+  </section>
+</Site>

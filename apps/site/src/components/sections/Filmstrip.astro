@@ -1,0 +1,44 @@
+---
+// A row of small captures, each a way into the tour, under one heading and one
+// action. Below 1024 px the row scrolls sideways (snapping to each capture)
+// rather than shrinking the pictures further.
+import { inline } from "../../lib/markdown";
+import { fill } from "../../lib/site";
+import { resolveVisual } from "../../lib/visual";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const hid = `${s.id ?? "filmstrip"}-h`;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const items = (s.items as any[]).map((item) => ({ ...item, r: resolveVisual(item.visual) })).filter((item) => item.r);
+// The captures are drawn at 56% of their size, so a panel shows a screen's top corner: its name, its first controls.
+const SCALE = 0.56;
+---
+
+<section class="section wrap filmstrip" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class="filmstrip__head">
+    <div class="filmstrip__words">
+      <H class="h2" id={hid} set:html={inline(s.heading)} />
+      <p class="lead">{fill(s.text)}</p>
+    </div>
+    <a class="btn btn--primary" href={fill(s.link.href)}>{s.link.label}</a>
+  </div>
+  <ul class="filmstrip__list">
+    {
+      items.map((item) => (
+        <li>
+          <a class="filmstrip__item" href={fill(item.href)}>
+            <span class="frame filmstrip__frame">
+              <span class="stage">
+                <span class="shot" style={[item.r.style, `width:${Math.round(item.r.pic.width * SCALE)}px`].filter(Boolean).join(";")}>
+                  <img src={item.r.pic.src} srcset={item.r.pic.srcset} sizes={`${Math.round(item.r.pic.width * SCALE)}px`} width={item.r.pic.width} height={item.r.pic.height} alt={item.r.alt} loading="lazy" decoding="async" />
+                </span>
+              </span>
+            </span>
+            <span class="filmstrip__label">{item.label}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</section>

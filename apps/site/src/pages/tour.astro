@@ -1,0 +1,42 @@
+---
+// /tour/ — what the app looks like, part by part. Words and pictures are in
+// src/content/pages/tour.md (a hero, then one `tour` section per part, then a
+// close). Between the hero and the parts sits a quiet index of the parts that
+// stays in view while the page scrolls.
+import { getEntry } from "astro:content";
+import Site from "../layouts/Site.astro";
+import Sections from "../components/Sections.astro";
+import Lightbox from "../components/Lightbox.astro";
+import { site } from "../lib/site";
+
+const entry = await getEntry("pages", "tour");
+if (!entry) throw new Error("Missing page src/content/pages/tour.md");
+const p = entry.data;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sections = (p.sections as any[]).filter((s) => !s.hidden);
+const parts = sections.filter((s) => s.type === "tour");
+---
+
+<Site title={p.title} description={p.description} noindex={p.noindex} class="page-tour">
+  <Sections sections={p.sections as any[]} to={1} />
+  <div class="tour">
+    <nav class="tour-index" aria-label={site.ui.tourIndex} data-tour-index data-galley-agent="skip">
+      <div class="wrap">
+        <ol class="tour-index__list">
+          {
+            parts.map((part, i) => (
+              <li>
+                <a href={`#${part.id}`}>
+                  <span class="tour-index__n" aria-hidden="true">{i + 1}</span>
+                  {part.label}
+                </a>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+    </nav>
+    <Sections sections={p.sections as any[]} from={1} />
+  </div>
+  <Lightbox />
+</Site>

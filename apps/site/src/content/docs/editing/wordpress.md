@@ -16,7 +16,7 @@ For people who look after a site. The guided move reads a WordPress site — its
 4. **Bringing it over** shows each step as it happens: reading the old site, downloading images, posts, pages.
 5. **The report** says what arrived and what to do next.
 
-<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/wordpress-report@1x.webp" srcset="/docs/wordpress-report@1x.webp 1x, /docs/wordpress-report.webp 2x" alt="The report after bringing a WordPress site into Caddow: Your WordPress site is here, then five steps — Review it in Proof, Rebuild the page-builder pages, Set the redirects, Put the site online, Switch the domain — and What arrived: 8 posts, 4 pages, 12 images." width="800" height="710" loading="lazy" decoding="async"></figure>
+<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/wordpress-report@1x.webp" srcset="/docs/wordpress-report@1x.webp 1x, /docs/wordpress-report.webp 2x" alt="The report after bringing a WordPress site into Caddow: Your WordPress site is here, then five steps — Review it in Proof, Rebuild the page-builder pages, Set the redirects, Put the site online, Switch the domain — and What arrived: 12 posts, 5 pages, 18 images." width="800" height="710" loading="lazy" decoding="async"></figure>
 
 ## After the import
 

@@ -1,0 +1,100 @@
+---
+// /how-to/<slug>/ — one task from src/data/howto.json: what it does, what's
+// needed first, then each step's instruction beside (on a phone, above) its
+// picture, large. Ends with the full guide in the docs and the next how-to.
+import Site from "../../layouts/Site.astro";
+import Zoom from "../../components/Zoom.astro";
+import Lightbox from "../../components/Lightbox.astro";
+import { inline } from "../../lib/markdown";
+import { site } from "../../lib/site";
+import docsData from "../../data/docs.json";
+import { docHref, getDocs } from "../../lib/docs";
+import { howtoHref, howtos, stepPicture, type Howto } from "../../lib/howto";
+
+export function getStaticPaths() {
+  return howtos.map((g, i) => ({ params: { slug: g.slug }, props: { g, prev: howtos[i - 1], next: howtos[i + 1] } }));
+}
+
+interface Props {
+  g: Howto;
+  prev?: Howto;
+  next?: Howto;
+}
+const { g, prev, next } = Astro.props;
+const ui = site.ui;
+const docs = await getDocs();
+const guidePath = g.guide.split("#")[0];
+const doc = docs.find((d) => docHref(d.id) === guidePath);
+if (!doc) console.warn(`[site] howto.json: "${g.slug}" names the guide ${g.guide}, which is not a documentation page; its link goes to /docs/ instead.`);
+const guideHref = doc ? g.guide : "/docs/";
+const guideTitle = doc ? doc.data.title : "";
+const steps = g.steps.map((step) => ({ step, pic: stepPicture(step) }));
+---
+
+<Site title={g.title} description={g.summary} type="article">
+  <article class="wrap howto" aria-labelledby="howto-h" data-galley-agent="main">
+    <header class="howto__head">
+      <h1 class="h1" id="howto-h">{g.title}</h1>
+      <p class="lead">{g.summary}</p>
+      {
+        g.needs && (
+          <p class="howto__needs">
+            <b>{ui.howtoNeeds}</b> <span set:html={inline(g.needs)} />
+          </p>
+        )
+      }
+    </header>
+
+    <ol class="howto__steps">
+      {
+        steps.map(({ step, pic }, i) => (
+          <li class:list={["howto-step", !pic && "howto-step--text"]}>
+            <div class="howto-step__text">
+              <span class="howto-step__n" aria-hidden="true">{i + 1}</span>
+              <p class="howto-step__do" set:html={inline(step.do)} />
+              {step.see && (
+                <p class="howto-step__see">
+                  <span class="howto-step__label">{ui.howtoSee}<span class="sr">:</span></span> <span set:html={inline(step.see)} />
+                </p>
+              )}
+            </div>
+            {pic && (
+              <div class="frame howto-step__frame" data-zoom-panel>
+                <div class="howto-shot" data-zoom-at="0" style={`max-width:${pic.width}px`}>
+                  <img src={pic.src} srcset={pic.srcset} sizes={`(max-width: 1023px) calc(100vw - 2 * var(--gutter) - 24px), min(${pic.width}px, 760px)`} width={pic.width} height={pic.height} alt={step.alt ?? ""} loading={i < 2 ? "eager" : "lazy"} decoding="async" fetchpriority={i === 0 ? "high" : undefined} />
+                </div>
+                <Zoom items={[{ src: pic.src, w: pic.width, h: pic.height, alt: step.alt ?? "" }]} label={ui.howtoStep.replace("{n}", String(i + 1))} />
+              </div>
+            )}
+          </li>
+        ))
+      }
+    </ol>
+
+    <footer class="howto__foot">
+      <p class="howto__guide">
+        {ui.howtoGuideLine} <a class="link link--accent" href={guideHref}>{ui.howtoGuide}{guideTitle && <span class="howto__guide-t">: {guideTitle}</span>}</a>
+      </p>
+      <nav class="docs__pager howto__pager" aria-label={ui.howtoPager}>
+        {
+          prev && (
+            <a class="prev" href={howtoHref(prev.slug)} rel="prev">
+              <span>{docsData.ui.previous}</span>
+              <b>{prev.title}</b>
+            </a>
+          )
+        }
+        {
+          next && (
+            <a class="next" href={howtoHref(next.slug)} rel="next">
+              <span>{docsData.ui.next}</span>
+              <b>{next.title}</b>
+            </a>
+          )
+        }
+      </nav>
+      <p class="howto__all"><a class="link" href="/how-to/">{ui.howtoAll}</a></p>
+    </footer>
+  </article>
+  <Lightbox />
+</Site>

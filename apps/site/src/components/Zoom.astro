@@ -1,0 +1,25 @@
+---
+// The small round "see it larger" control in a capture panel's corner. It is a
+// plain link to the full-size file (so it works without JavaScript); with
+// JavaScript it opens the page's one <dialog> (Lightbox.astro) on these
+// pictures. A click anywhere on the panel's pictures does the same.
+import { site } from "../lib/site";
+
+interface Item { src: string; w: number; h: number; alt: string }
+interface Props {
+  items: Item[];
+  /** What the pictures are of, for the control's name and the dialog's caption. */
+  label: string;
+  class?: string;
+}
+const { items, label, class: cls } = Astro.props;
+const name = site.ui.zoom.replace("{name}", label);
+---
+
+{
+  items.length > 0 && (
+    <a class:list={["zoom", cls]} href={items[0].src} data-zoom={JSON.stringify(items)} data-zoom-label={label} data-galley-agent="skip" aria-label={name} title={name}>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9" /></svg>
+    </a>
+  )
+}

@@ -13,7 +13,7 @@ For people who edit a site. Every change — yours, a colleague's, the assistant
 2. The list on the left has one row per page or file: **Edited**, **New** or **Deleted**, with how much changed. Choose one.
 3. **What changed** shows each field in the site's own words — the section and field, the old words struck through and the new ones written in.
 
-<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/proof-what-changed@1x.webp" srcset="/docs/proof-what-changed@1x.webp 1x, /docs/proof-what-changed.webp 2x" alt="Proof with 1 change waiting: The atelier on the left, and on the right Photo and text › Heading with the word three struck through and two written in, beside the Show as stored and Put back buttons." width="870" height="260" loading="lazy" decoding="async"></figure>
+<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/proof-what-changed@1x.webp" srcset="/docs/proof-what-changed@1x.webp 1x, /docs/proof-what-changed.webp 2x" alt="Proof › What changed for The atelier: under Photo and text › Heading, the word three struck through and two written in, beside the Show as stored and Put back buttons." width="870" height="260" loading="lazy" decoding="async"></figure>
 
 4. **On the page** shows the page with your changes beside the live site — once the site's live or staging address is set in **Settings › Addresses**. Until then it says **No live site to compare with.** **Source** shows the file itself.
 

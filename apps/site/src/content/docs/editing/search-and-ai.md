@@ -6,7 +6,7 @@ group: site
 order: 6
 ---
 
-For people who look after a site. **Search & AI** lists what search engines and AI assistants need from the site and what is wrong or missing, in plain words. *Status: new, in final checks.* It makes no promise of rankings, traffic or citations.
+For people who look after a site. **Search & AI** lists what search engines and AI assistants need from the site and what is wrong or missing, in plain words. It makes no promise of rankings, traffic or citations.
 
 ## Run the checks
 

@@ -12,7 +12,7 @@ For people who look after a site. The **Inbox** keeps what visitors send through
 1. Open **Inbox** in the sidebar. Its badge is the number of unread submissions.
 2. Choose a form on the left. Its submissions are in the middle, newest first; choose one to read it in full on the right — every answer with its label, and the page it was sent from.
 
-<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/inbox@1x.webp" srcset="/docs/inbox@1x.webp 1x, /docs/inbox.webp 2x" alt="The Inbox for Caddow: the forms on the left, one test submission from Test visitor in the middle, and on the right its answers — name, email address, what it is about, the message and consent — with Mark unread, Spam and Delete." width="1125" height="750" loading="lazy" decoding="async"></figure>
+<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/inbox@1x.webp" srcset="/docs/inbox@1x.webp 1x, /docs/inbox.webp 2x" alt="The Inbox for Caddow: the forms on the left, one test submission from Test visitor in the middle, and on the right its answers — name, email address, what it is about, the message, a phone number and consent — with Mark unread, Spam and Delete." width="1125" height="750" loading="lazy" decoding="async"></figure>
 
 - **Search answers…** looks through every answer. **All**, **Unread** and **Spam** filter the list.
 - Select one or more to **Mark unread**, move to or from **Spam**, or **Delete**.

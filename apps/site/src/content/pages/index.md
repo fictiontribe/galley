@@ -154,8 +154,42 @@ sections:
     visual:
       kind: screen
       src: proof-source
-      fallback: proof-changes
       alt: The proof’s Source view of the same change — one line of the page’s markdown file struck out and one written in.
+  - type: filmstrip
+    id: tour
+    heading: The rest of the app.
+    text: Forms and their inbox, scripts with consent, redirects, the brand, search checks and every site you look after — all in the same app.
+    link:
+      label: Take the tour
+      href: /tour/
+    items:
+      - label: Forms
+        href: /tour/#forms
+        visual:
+          src: docs/form-builder
+          alt: The form builder.
+      - label: Redirects
+        href: /tour/#redirects
+        visual:
+          src: docs/redirects-list
+          alt: The Redirects screen.
+      - label: Brand
+        href: /tour/#brand
+        visual:
+          src: brand-proposal
+          x: -150
+          y: -24
+          alt: The brand proposal.
+      - label: Search and AI
+        href: /tour/#search
+        visual:
+          src: docs/search-and-ai
+          alt: The Search & AI checks.
+      - label: Your sites
+        href: /tour/#sites
+        visual:
+          src: docs/sites
+          alt: The list of your sites.
   - type: status
     id: whats-in
     heading: What’s in {version}.

@@ -20,6 +20,8 @@ Galley is at **version {version}**, on npm as `{package}`. Where something is ne
 
 **If you edit a site** — write, update pages, look after forms and analytics — start with [Find your way around](/docs/editing/tour/). Those pages use the app's own words (Publish, Proof, Discard) and never need git.
 
+To see every screen first, take the [tour of the app](/tour/). To do one job at a time with a picture of every step, use the [how-to guides](/how-to/).
+
 - **Edit a site**: [change a page](/docs/editing/form/), [on the page itself](/docs/editing/on-the-page/), [ask the assistant](/docs/editing/assistant/), [images and video](/docs/editing/media/), [build a page from sections](/docs/editing/page-builder/), [check and publish](/docs/editing/proof-and-publish/), [undo a publish](/docs/editing/history/).
 - **Look after a site**: [forms](/docs/editing/forms/) and [the inbox](/docs/editing/inbox/), [Google Analytics and other scripts](/docs/editing/scripts/), [redirects](/docs/editing/redirects/), [the brand](/docs/editing/brand/), [search and AI checks](/docs/editing/search-and-ai/), [putting the site online](/docs/editing/online/), [moving from WordPress](/docs/editing/wordpress/), [many sites](/docs/editing/many-sites/).
 

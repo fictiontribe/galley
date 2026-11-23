@@ -1,0 +1,91 @@
+---
+// One part of the product tour: its heading and line, then its items — each a
+// thing the app does, shown by real captures in the tan panel, captioned in a
+// sentence, with its status badge and "How to do it". Items laid out `half`
+// pair up side by side; `full`, `wide` and `flip` take the row. A capture not
+// captured yet shows its stand-in, or is left out (lib/visual.ts).
+import Shot from "../Shot.astro";
+import Zoom from "../Zoom.astro";
+import { badgeOf } from "../../lib/status";
+import { inline } from "../../lib/markdown";
+import { fill, site } from "../../lib/site";
+import { howtoHref, howtoOf } from "../../lib/howto";
+import { resolveVisual, zoomOf } from "../../lib/visual";
+
+const { s, block, first, nth = 0 } = Astro.props;
+const H = first ? "h1" : "h2";
+const hid = `${s.id ?? "part"}-h`;
+const part = nth + 1;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const items = (s.items as any[]).map((item) => {
+  const main = resolveVisual(item.visual);
+  const inset = item.visual.kind === "recording" ? null : resolveVisual(item.inset);
+  const howto = howtoOf(item.howto);
+  const href = howto ? howtoHref(howto.slug) : item.guide;
+  return { ...item, main, inset, href, badge: badgeOf(item.status) };
+});
+
+// Rows: a run of `half` items pairs up two by two; everything else is a row of its own.
+const rows: (typeof items)[] = [];
+for (const item of items) {
+  const last = rows[rows.length - 1];
+  if (item.layout === "half" && last && last.length === 1 && last[0].layout === "half") last.push(item);
+  else rows.push([item]);
+}
+---
+
+<section class="section wrap tour-part" id={s.id} aria-labelledby={hid} data-tour-part data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class="tour-part__head">
+    <H class="h2" id={hid}><span class="tour-part__n" aria-hidden="true">{part}</span>{s.heading}</H>
+    {s.text && <p class="lead">{fill(s.text)}</p>}
+  </div>
+  <div class="tour-part__rows">
+    {
+      rows.map((row) => (
+        <div class:list={["tour-row", row.length === 2 ? "tour-row--pair" : `tour-row--${row[0].layout}`]}>
+          {row.map((item) => (
+            <div class:list={["tour-item", `tour-item--${item.layout}`]} id={item.id}>
+              <div class="tour-item__text">
+                <h3 class="tour-item__h">
+                  <span set:html={inline(item.heading)} />
+                  {item.badge && <span class:list={["badge", `badge--${item.badge.status}`]}>{item.badge.label}</span>}
+                </h3>
+                <p class="body">{fill(item.text)}</p>
+                {item.href && <a class="link link--accent" href={item.href}>{site.ui.howTo}<span class="sr">: {item.heading}</span></a>}
+              </div>
+              {item.main && (
+                <div class:list={["frame", "tour-frame", item.main.rec && "rec"]} data-rec={item.main.rec ? "" : undefined} data-zoom-panel={item.main.rec ? undefined : ""}>
+                  {item.main.rec ? (
+                    <>
+                      <div class="stage">
+                        <Shot visual={item.visual} />
+                      </div>
+                      <button type="button" class="loop-pause" data-galley-agent="skip" data-rec-toggle aria-label={site.ui.play} data-play={site.ui.play} data-pause={site.ui.pause} hidden>
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path class="i-pause" d="M5 3.5v9M11 3.5v9" /><path class="i-play" d="M5 3.2v9.6L12.8 8z" /></svg>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div class="stage">
+                        <div class="shot" style={[item.main.style, `width:${item.main.pic.width}px`].filter(Boolean).join(";")} data-zoom-at="0">
+                          <img src={item.main.pic.src} srcset={item.main.pic.srcset} sizes={`${item.main.pic.width}px`} width={item.main.pic.width} height={item.main.pic.height} alt={item.main.alt} loading="lazy" decoding="async" />
+                        </div>
+                      </div>
+                      {item.inset && (
+                        <div class:list={["shot", "tour-inset", item.inset.crop && "tour-inset--crop"]} style={[`--w:${item.inset.pic.width}px`, item.inset.style, item.inset.crop?.w && `--cw:${item.inset.crop.w}px`, item.inset.crop?.h && `--ch:${item.inset.crop.h}px`].filter(Boolean).join(";")} data-zoom-at="1">
+                          <img src={item.inset.pic.src} srcset={item.inset.pic.srcset} sizes={`${item.inset.pic.width}px`} width={item.inset.pic.width} height={item.inset.pic.height} alt={item.inset.alt} loading="lazy" decoding="async" />
+                        </div>
+                      )}
+                      <Zoom items={[zoomOf(item.main), ...(item.inset ? [zoomOf(item.inset)] : [])]} label={item.heading} />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ))
+    }
+  </div>
+</section>

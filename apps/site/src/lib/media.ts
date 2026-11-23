@@ -53,7 +53,54 @@ export const siteShot = (name: string) => picture("sites", name);
 
 /** A named slot: the capture when it exists, else the stand-in named in the content until it is captured. */
 export function screenOr(name: string, fallback?: string): Picture {
-  return fallback && !existsSync(join(PUBLIC, "screens", `${name}.webp`)) ? screen(fallback) : screen(name);
+  if (!fallback || existsSync(join(PUBLIC, "screens", `${name}.webp`))) return screen(name);
+  const stand = findPicture(fallback);
+  if (!stand) return screen(fallback);
+  noteMissing(`screens/${name}`, `showing ${fallback} until it is captured`);
+  return stand;
+}
+
+/**
+ * A picture named by its place under public/, without extension: "docs/brand",
+ * "howto/bulk-redirects-1", "screens/form" — or a bare name, which is a screen.
+ */
+function placeOf(ref: string): { folder: string; name: string } {
+  const at = ref.lastIndexOf("/");
+  return at === -1 ? { folder: "screens", name: ref } : { folder: ref.slice(0, at).replace(/^\/+/, ""), name: ref.slice(at + 1) };
+}
+
+export const pictureExists = (ref: string) => {
+  const { folder, name } = placeOf(ref);
+  return existsSync(join(PUBLIC, folder, `${name}.webp`));
+};
+
+/** The picture, or null when its file isn't there (never throws). */
+export function findPicture(ref: string): Picture | null {
+  const { folder, name } = placeOf(ref);
+  return pictureExists(ref) ? picture(folder, name) : null;
+}
+
+const noted = new Set<string>();
+/** Says once in the build log that a picture is missing, and what is shown instead. */
+export function noteMissing(ref: string, instead: string): void {
+  const { folder, name } = placeOf(ref);
+  const key = `${folder}/${name}`;
+  if (noted.has(key)) return;
+  noted.add(key);
+  console.warn(`[site] Missing picture public/${key}.webp — ${instead}.`);
+}
+
+/**
+ * A capture for a slot that may not be captured yet: `src`, else `fallback`
+ * (marked as such, so the caller can use the stand-in's own description), else
+ * null. Missing files are listed in the build log; nothing throws.
+ */
+export function capture(src: string, fallback?: string): { pic: Picture; stand: boolean } | null {
+  const pic = findPicture(src);
+  if (pic) return { pic, stand: false };
+  const stand = fallback ? findPicture(fallback) : null;
+  noteMissing(src, stand ? `showing ${fallback} until it is captured` : fallback ? `and its stand-in ${fallback} is missing too; left out` : "left out until it is captured");
+  return stand ? { pic: stand, stand: true } : null;
 }
 
 export interface Recording extends Picture {

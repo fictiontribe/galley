@@ -1,6 +1,13 @@
 {
   "header": [
     {
+      "label": "Tour",
+      "href": "/tour/",
+      "also": [
+        "/how-to/"
+      ]
+    },
+    {
       "label": "Starters",
       "href": "/starters/"
     },
@@ -11,10 +18,6 @@
     {
       "label": "AI-first",
       "href": "/ai-first/"
-    },
-    {
-      "label": "Community",
-      "href": "/open-source/"
     },
     {
       "label": "Docs",
@@ -30,6 +33,10 @@
     "href": "/docs/getting-started/quickstart/"
   },
   "footer": [
+    {
+      "label": "Tour",
+      "href": "/tour/"
+    },
     {
       "label": "Starters",
       "href": "/starters/"
@@ -49,6 +56,10 @@
     {
       "label": "Docs",
       "href": "/docs/"
+    },
+    {
+      "label": "How-to guides",
+      "href": "/how-to/"
     },
     {
       "label": "Changelog",
