@@ -21,7 +21,8 @@ const inGroup = (g: StatusId) => chosen.filter((i) => (i.status === "preview" ? 
   </div>
   <div class:list={["spec", !s.lines && "spec--labels", s.only && "spec--even"]}>
     {
-      groups.map((g) => (
+      // A group with nothing in it (everything it listed has since been built) isn't shown.
+      groups.filter((g) => inGroup(g).length > 0).map((g) => (
         <div class="spec__group">
           <h3 class="h3"><span class:list={["badge", `badge--${g}`]}>{statusLabels[g]}</span></h3>
           <ul>
