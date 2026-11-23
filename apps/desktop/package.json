@@ -1,6 +1,6 @@
 {
   "name": "@galley/desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "The desktop app: a Tauri 2 shell that runs the server privately and shows its UI in a native window.",

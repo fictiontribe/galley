@@ -5,6 +5,36 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## 0.1.2 — 2026-11-24
+
+### Fixed
+
+- **Redirects are no longer read as page links.** The Search and AI checks
+  and Proof's "things to check" reported every old address in the redirects
+  list as a broken link, and **Point it at the new address** rewrote the
+  redirect itself. The list and the host files written from it are now left
+  out of link checks, and a fix can never edit them. A real broken link in a
+  page still gets its fix.
+- **Brand: material added after the brand is saved can be read.** New files
+  are offered as "new files to read" whenever there are any, and stay offered
+  across a restart.
+- **The Brand screen opens at once** instead of staying blank while it reads
+  the site's styles.
+- **From a WordPress move to its redirects**: "Review redirects" opens the
+  review with the import's old addresses already chosen, and a list that
+  already has redirects says how many of them are still waiting.
+- A command whose output is cut short (`galley starters | head`) ends quietly.
+- `galley mcp config` prints the `npx -y galley-cms mcp …` form first.
+- Wording: the path of a redirect loop, the contrast notes and type sample on
+  the Brand screen, the summary of the Search and AI checks, and the WordPress
+  report (no command-line option in the app's text; it says when entries were
+  left out).
+
+### Changed
+
+- Redirects, the brand set-up and the Search and AI checks are no longer
+  marked "new, in final checks".
+
 ## 0.1.1 — 2026-11-24
 
 ### Added
@@ -29,12 +59,12 @@ entry says how.
 - A site's live address stays the one you chose: a deploy no longer replaces
   an own domain with the host's default address.
 
-### Known problems
+### Known problems (fixed in 0.1.2)
 
 - The Search and AI checks, and Proof's "things to check", read the redirects
   list as page links and report every old address as a broken link. Don't use
   **Point it at the new address** or **Fix all** on those findings: it
-  rewrites the redirect. A fix is on its way.
+  rewrites the redirect.
 - `galley starters | head` (any command whose output is cut short) ends with
   an error message.
 

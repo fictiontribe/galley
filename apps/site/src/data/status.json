@@ -89,19 +89,19 @@
       "id": "redirects",
       "label": "Redirects",
       "line": "Paste a list; checks run and the host’s file stays in step.",
-      "status": "new"
+      "status": "built"
     },
     {
       "id": "brand",
       "label": "Brand setup",
       "line": "Read from the site, or from guidelines, logos and screenshots.",
-      "status": "new"
+      "status": "built"
     },
     {
       "id": "checks",
       "label": "Search and AI checks",
       "line": "Findings, with fixes that land in Proof.",
-      "status": "new"
+      "status": "built"
     },
     {
       "id": "deploy-vercel",

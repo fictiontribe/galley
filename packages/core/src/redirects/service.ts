@@ -35,7 +35,7 @@ import { derivedPath, hostOf, isGeneratedHost, listFileOf, slashStyleOf } from "
 
 export { slashStyleOf } from "./locate";
 import { canonicalOrder } from "./match";
-import { hostOf as hostOfUrl, isAbsoluteUrl, isWildcard } from "./path";
+import { hostOf as hostOfUrl, isAbsoluteUrl, isWildcard, lookupKey } from "./path";
 import { parseRedirects } from "./parse";
 import { reviewImport } from "./review";
 import { siteRoutes, type SiteRoutes } from "./routes";
@@ -308,8 +308,10 @@ export function createRedirectsService(options: RedirectsServiceOptions): Redire
     return { context, outcome: await planCloudflare(context.api, context.target, context.list) };
   }
 
-  async function importSources(site: SiteService, model: SiteModel, derived: DerivedPlan | null): Promise<RedirectImportSource[]> {
+  async function importSources(site: SiteService, model: SiteModel, derived: DerivedPlan | null, list: Redirect[]): Promise<RedirectImportSource[]> {
     const out: RedirectImportSource[] = [];
+    // So the offer can stay on a list that already has redirects, until these are in it.
+    const inList = new Set(list.map((redirect) => lookupKey(redirect.from)));
     const candidates = [
       { path: "wordpress-import/redirects.mjs", label: "The WordPress import's redirects" },
       { path: "wordpress-import/_redirects", label: "The WordPress import's redirects" },
@@ -327,7 +329,7 @@ export function createRedirectsService(options: RedirectsServiceOptions): Redire
       // The importer writes both files with the same list; offer it once.
       if (parsed.redirects.length === 0 || (candidate.path.startsWith("wordpress-import/") && seen.has("wordpress"))) continue;
       if (candidate.path.startsWith("wordpress-import/")) seen.add("wordpress");
-      out.push({ ...candidate, count: parsed.redirects.length });
+      out.push({ ...candidate, count: parsed.redirects.length, waiting: parsed.redirects.filter((redirect) => !inList.has(lookupKey(redirect.from))).length });
     }
     return out;
   }
@@ -389,7 +391,7 @@ export function createRedirectsService(options: RedirectsServiceOptions): Redire
           }
         : null,
       leftovers: await leftoversOf(site, model),
-      imports: await importSources(site, model, derived),
+      imports: await importSources(site, model, derived, list),
       cloudflare: host.id === "cloudflare" || model.deploy?.target === "cloudflare" ? await cloudflareSummary(site, model, list, Boolean(usage?.over)) : null,
       siteHosts: siteHostsOf(model),
       trailingSlash: slashStyleOf(model),

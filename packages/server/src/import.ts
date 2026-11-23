@@ -619,7 +619,7 @@ function startRun(ctx: RouteContext, site: SiteService, source: ImportSource, gi
 
       status.message = report.stopped
         ? `Stopped. ${kept} ${kept === 1 ? "entry" : "entries"} and ${view.arrived.images} ${view.arrived.images === 1 ? "image" : "images"} had arrived; they're kept as pending changes. Start again to bring the rest — nothing is duplicated.`
-        : `Done. ${view.arrived.posts} ${view.arrived.posts === 1 ? "post" : "posts"}, ${view.arrived.pages} ${view.arrived.pages === 1 ? "page" : "pages"} and ${view.arrived.images} ${view.arrived.images === 1 ? "image" : "images"} are waiting in Proof.`;
+        : doneMessage(view);
       emitter.finish("done", { label: report.stopped ? "Import stopped — what arrived is kept" : "WordPress import finished", detail: status.message, progress: 1 });
     } catch (error) {
       const clean = scrub(error, secret);
@@ -771,6 +771,19 @@ function startRebuildAll(ctx: RouteContext, site: SiteService, stored: Stored, p
 // ─────────────────────────────────────────────────────────── uploads
 
 /** Whether the first bytes are a WordPress export (an RSS file in WordPress's export namespace). */
+/**
+ * The line a finished import ends on. When entries were left out it says so
+ * and points at the report: "0 posts … are waiting in Proof" alone reads as
+ * if the old site had no posts.
+ */
+export function doneMessage(view: Pick<ImportReportView, "arrived" | "notImported">): string {
+  const { posts, pages, images } = view.arrived;
+  const left = view.notImported.length;
+  const arrived = `${posts} ${posts === 1 ? "post" : "posts"}, ${pages} ${pages === 1 ? "page" : "pages"} and ${images} ${images === 1 ? "image" : "images"} are waiting in Proof.`;
+
+  return left ? `Done. ${arrived} ${left === 1 ? "1 entry was" : `${left} entries were`} left out; the report says why.` : `Done. ${arrived}`;
+}
+
 export function looksLikeWordPressExport(head: Buffer): boolean {
   const text = head.subarray(0, 64 * 1024).toString("utf8").replace(/^﻿/, "");
 

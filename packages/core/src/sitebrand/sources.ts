@@ -60,6 +60,12 @@ export interface StoredSource extends BrandSource {
   facts: SourceFacts;
   /** Not saved into the site yet. */
   staged: boolean;
+  /**
+   * Added and not read yet. Kept here, beside the bytes, so it survives a
+   * restart and doesn't depend on a proposal being open: material added to a
+   * saved brand is offered for reading too.
+   */
+  unread?: boolean;
 }
 
 const TEXT_DECODER = new TextDecoder("utf-8", { fatal: true });

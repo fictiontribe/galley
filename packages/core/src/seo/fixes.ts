@@ -7,16 +7,29 @@
  */
 import { randomUUID } from "node:crypto";
 import { GalleyError } from "../errors";
-import type { Checkpoint, SiteService } from "../types";
+import { isRedirectsFile } from "../redirects/locate";
+import type { Checkpoint, SiteModel, SiteService } from "../types";
 import { auditSite, lastFinding } from "./audit";
-import type { FixResult } from "./types";
+import type { FixProposal, FixResult } from "./types";
 
 const UNDO_KEEP = 20;
 const undo = new Map<string, { root: string; checkpoint: Checkpoint }>();
 
+/**
+ * Why a fix may not be applied at all, or null. A second guard behind the
+ * audit, which already leaves the redirects list out: its old addresses are
+ * meant to match no page, and "pointing" one at the new address turns a
+ * redirect into a page redirecting to itself.
+ */
+export function fixRefusal(model: Pick<SiteModel, "collections" | "media" | "redirects">, fix: Pick<FixProposal, "edits">): string | null {
+  if (fix.edits.some((edit) => isRedirectsFile(model, edit.path))) return "Redirects are changed on the Redirects screen, not by a fix.";
+  return null;
+}
+
 export async function applyFixes(site: SiteService, ids: string[]): Promise<FixResult> {
   if (!ids.length) return { applied: [], refused: [], undoId: null };
   if (ids.some((id) => !lastFinding(site, id))) await auditSite(site);
+  const model = await site.model();
   const checkpoint = site.checkpoint("Search & AI fixes");
   const hashes = new Map<string, string>();
   const result: FixResult = { applied: [], refused: [], undoId: null };
@@ -33,6 +46,12 @@ export async function applyFixes(site: SiteService, ids: string[]): Promise<FixR
 
       if (!fix) {
         result.refused.push({ id, reason: "This one needs a person (or the assistant) to decide what to write." });
+        continue;
+      }
+      const refusal = fixRefusal(model, fix);
+
+      if (refusal) {
+        result.refused.push({ id, reason: refusal });
         continue;
       }
       let ok = true;

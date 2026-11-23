@@ -19,6 +19,17 @@ export const ROLE_LABEL: Record<ColorRole, string> = {
   other: "Other",
 };
 
+/** A text colour's partner ground: the role its own name already says it sits on. */
+const PARTNER: Partial<Record<ColorRole, ColorRole>> = { "accent-text": "accent", "inverse-text": "inverse-background" };
+/** Those text colours as a noun when they sit on some other ground. */
+const TEXT_NOUN: Partial<Record<ColorRole, string>> = { "accent-text": "The accent’s text colour", "inverse-text": "The dark ground’s text colour" };
+
+/** A contrast pair in words: "Text on background", "Text on accent" — never "Text on accent on accent". */
+export function pairWords(text: ColorRole, ground: ColorRole): string {
+  if (PARTNER[text] === ground) return ROLE_LABEL[text];
+  return `${TEXT_NOUN[text] ?? ROLE_LABEL[text]} on ${ROLE_LABEL[ground].toLowerCase()}`;
+}
+
 export const COLOR_ROLE_ORDER: ColorRole[] = ["background", "surface", "surface-muted", "text", "text-muted", "accent", "accent-text", "accent-strong", "border", "inverse-background", "inverse-text", "positive", "negative", "notice", "other"];
 
 /** "Easy to read" / "Only for large text" / "Hard to read". */

@@ -556,7 +556,7 @@ export function planImport(wp: WordPressSite, model: SiteModel, options: PlanOpt
         const fallback = options.defaults?.[collection.id]?.[roles.image.path[0]!];
 
         if (fallback === undefined) {
-          skip(`Every ${collection.singular} in ${collection.label} needs an image, and this one has none on WordPress (no featured image, no image in the text). Give one for every import (--default ${roles.image.path.join(".")}=/images/…) or add it by hand afterwards.`);
+          skip(`Every ${collection.singular} in ${collection.label} needs an image, and this one has none on WordPress (no featured image, no image in the text). Give it a featured image on WordPress, then import again to bring it over.`);
           continue;
         }
         setPath(data, roles.image.path, fallback);

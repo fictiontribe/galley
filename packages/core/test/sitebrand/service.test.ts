@@ -225,3 +225,79 @@ describe("reading the brand from the site", () => {
     expect((await service.state(site.id)).analysis?.state).toBe("cancelled");
   });
 });
+
+describe("material added after the brand is saved", () => {
+  it("is offered for reading, stays unread across a restart, and reading it opens a proposal from the saved brand", async () => {
+    const reading = emptyReading({ summary: "A one-line palette.", colors: [{ hex: "#C2410C", name: "Rust", role: "accent", page: 0, how: "stated" }] });
+    const { site, home, settings, script, service, finished } = await setup([answer(emptyReading({ summary: "A palette." })), ...together(synthesis()), answer(reading)]);
+
+    await addFile(service, site.id, "palette.txt", Buffer.from("Paper #F6F1E7, ink #1A1712."));
+    await finished(await service.analyse(site.id, { from: "material" }));
+    expect((await service.state(site.id)).unread).toEqual([]);
+    await service.save(site.id);
+    const savedBrand = (await service.state(site.id)).brand!;
+
+    const added = await addFile(service, site.id, "accent.txt", Buffer.from("Accent: rust #C2410C."));
+    let state = await service.state(site.id);
+
+    expect(state.proposal).toBeNull();
+    expect(state.unread).toEqual([added.id]);
+    // A restart: a new service over the same folder still knows it hasn't been read.
+    const again = createSiteBrandService({ home, registry: registryOf(site), settings, events: recordingBus(), client: testClient(script.fetch), now: () => new Date("2026-11-23T11:00:00Z"), logger: () => undefined });
+
+    expect((await again.state(site.id)).unread).toEqual([added.id]);
+    const done = await finished(await service.analyse(site.id, { from: "material", sources: [added.id] }));
+
+    expect(done.job.state).toBe("done");
+    state = await service.state(site.id);
+    expect(state.unread).toEqual([]);
+    expect(state.proposal).toMatchObject({ from: "both" });
+    // It starts from the saved brand and adds what the material says.
+    for (const color of savedBrand.colors) expect(state.proposal!.brand.colors.some((c) => c.role === color.role && c.value === color.value)).toBe(true);
+    expect([...state.proposal!.findings, ...state.proposal!.questions].map((f) => f.text).join(" ")).toMatch(/#C2410C/);
+    expect((await again.state(site.id)).unread).toEqual([]);
+  });
+
+  it("isn't offered once ignored", async () => {
+    const { site, service } = await setup([]);
+    const added = await addFile(service, site.id, "accent.txt", Buffer.from("Accent: rust #C2410C."));
+
+    expect((await service.state(site.id)).unread).toEqual([added.id]);
+    await service.updateSource(site.id, added.id, { ignored: true });
+    expect((await service.state(site.id)).unread).toEqual([]);
+  });
+});
+
+describe("checking changes against the brand", () => {
+  it("is a quiet empty answer when the site has no brand", async () => {
+    const { site, service } = await setup([]);
+
+    await site.writeFile("src/components/Probe.astro", "<style>\n  .x { color: #ff00aa; }\n</style>\n", { origin: "user", mode: "build" });
+    await expect(service.check(site.id)).resolves.toEqual([]);
+  });
+});
+
+describe("opening the Brand screen", () => {
+  it("doesn't build the full change set, and doesn't wait long for the scan of the site's styles", async () => {
+    const { site, service } = await setup([]);
+    let changeSets = 0;
+    const changes = site.changes.bind(site);
+
+    site.changes = async () => {
+      changeSets += 1;
+      return changes();
+    };
+    const state = await service.state(site.id);
+
+    expect(changeSets).toBe(0);
+    expect(state.pending).toEqual([]);
+    // Either the scan finished within the wait, or the state says it is still going and the fonts come later.
+    if (state.scanning) expect(state.webFonts).toEqual([]);
+    for (let i = 0; i < 40 && (await service.state(site.id)).scanning; i += 1) await new Promise((resolve) => setTimeout(resolve, 250));
+    const later = await service.state(site.id);
+
+    expect(later.scanning).toBeUndefined();
+    expect(later.settings.tokensFile).toBe("src/styles/tokens.css");
+    expect(changeSets).toBe(0);
+  });
+});

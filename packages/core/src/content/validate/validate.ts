@@ -7,6 +7,7 @@
  */
 import type { Entry, Field, FieldPath, JsonValue, SiteModel, ValidationIssue } from "../../types";
 import type { ValidationContext } from "../model";
+import { isRedirectsFile } from "../../redirects/locate";
 import { validateKitFile } from "../../site-kit/validate";
 import { isObject } from "../util/json";
 
@@ -18,6 +19,8 @@ interface Walk {
   ctx: ValidationContext;
   path: string;
   issues: ValidationIssue[];
+  /** Off for the redirects list: its addresses are old and new addresses, not links (see isRedirectsFile). */
+  links: boolean;
 }
 
 function severity(field: Field): ValidationIssue["severity"] {
@@ -42,7 +45,7 @@ function looksLikeFile(path: string): boolean {
 }
 
 function checkLink(walk: Walk, href: string, label: string, field?: FieldPath): void {
-  if (!LOCAL_LINK.test(href)) return;
+  if (!walk.links || !LOCAL_LINK.test(href)) return;
   const target = linkTarget(href);
 
   if (target === "" || target === "/") return;
@@ -188,7 +191,8 @@ function checkValue(walk: Walk, field: Field, value: JsonValue | undefined, path
 
 export function validateEntry(model: SiteModel, entry: Entry, ctx: ValidationContext): ValidationIssue[] {
   const collection = model.collections.find((candidate) => candidate.id === entry.collection);
-  const walk: Walk = { ctx, path: entry.path, issues: [] };
+  // An old address in the redirects list is meant to match no page; the Redirects screen reports the ones that lead nowhere.
+  const walk: Walk = { ctx, path: entry.path, issues: [], links: !isRedirectsFile(model, entry.path) };
 
   if (!collection) return [];
   // Site-kit files (forms, the scripts setup) are checked with the kit's own schema, in its own words.

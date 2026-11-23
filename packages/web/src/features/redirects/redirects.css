@@ -74,6 +74,7 @@
 
 .redir-empty { padding-block-end: var(--space-4); }
 .redir-empty__offers { display: flex; justify-content: center; flex-wrap: wrap; gap: var(--space-2); }
+.redir-offer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); margin-block-end: var(--space-3); font-size: var(--text-sm); }
 
 /* Side panels */
 .redir-panel { display: grid; gap: var(--space-3); }

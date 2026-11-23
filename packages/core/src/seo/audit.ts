@@ -9,6 +9,8 @@
  */
 import { entryUrl, slugForPath } from "../content/entries/paths";
 import { parseDocument } from "../content/document/parse";
+import { readList } from "../redirects/file";
+import { isRedirectsFile, listFileOf } from "../redirects/locate";
 import type { Collection, EditOp, Entry, JsonValue, MediaItem, SiteModel, SiteService } from "../types";
 import { checkCatalogue, GROUP_ORDER, spec, type CheckCode } from "./catalog";
 import { readContentPage, type ContentPage } from "./content";
@@ -128,8 +130,10 @@ interface Collected {
 async function collect(site: SiteService, model: SiteModel, state: SiteState, only?: string): Promise<Collected> {
   const listed: Array<{ path: string; collection: Collection; modifiedAt: number }> = [];
 
+  // The redirects list and the host files written from it are not page content: their addresses are
+  // not links (an old address is meant to match no page), and a fix must never rewrite them.
   if (only && state.pages.size > 0) {
-    const collection = model.collections.find((c) => only.startsWith(c.path.replace(/\/?$/, "/")) || c.path === only);
+    const collection = isRedirectsFile(model, only) ? undefined : model.collections.find((c) => only.startsWith(c.path.replace(/\/?$/, "/")) || c.path === only);
 
     if (collection) listed.push({ path: only, collection, modifiedAt: Date.now() });
     for (const [path, cached] of state.pages) if (path !== only) listed.push({ path, collection: model.collections.find((c) => c.id === cached.page.collection)!, modifiedAt: 0 });
@@ -137,7 +141,7 @@ async function collect(site: SiteService, model: SiteModel, state: SiteState, on
     for (const collection of model.collections) {
       const list = await site.listEntries(collection.id).catch(() => null);
 
-      for (const item of list?.items ?? []) listed.push({ path: item.path, collection, modifiedAt: item.modifiedAt });
+      for (const item of list?.items ?? []) if (!isRedirectsFile(model, item.path)) listed.push({ path: item.path, collection, modifiedAt: item.modifiedAt });
     }
   }
   let reused = 0;
@@ -200,8 +204,14 @@ async function collect(site: SiteService, model: SiteModel, state: SiteState, on
 /** Site files that tell the engine where moved pages went. */
 const REDIRECT_FILES = new Set(["_redirects", "public/_redirects", "static/_redirects", "netlify.toml", "vercel.json"]);
 
-async function readRedirects(site: SiteService, files: string[]): Promise<Redirect[]> {
+async function readRedirects(site: SiteService, model: SiteModel, files: string[]): Promise<Redirect[]> {
   const out: Redirect[] = [];
+  // The site's own list first: it is the source the host's file is written from, and the only one when the host is "other".
+  const list = (await site.readFile(listFileOf(model)).catch(() => null))?.content;
+
+  for (const redirect of list ? readList(list).redirects : []) {
+    if (!/[*:]/.test(redirect.from) && !/[*:]/.test(redirect.to.replace(/^https?:/, ""))) out.push({ from: redirect.from, to: redirect.to, status: redirect.status });
+  }
 
   for (const file of files.filter((path) => REDIRECT_FILES.has(path))) {
     const text = (await site.readFile(file).catch(() => null))?.content;
@@ -342,10 +352,13 @@ async function renderedAudit(site: SiteService, source: RenderSource, model: Sit
   const rendered: RenderedPage[] = [];
   // Pages labelled HTML that aren't (a broken dev server, an error dump): checking them would only invent findings.
   const unreadable: string[] = [];
+  // Pages that didn't answer at all (or answered with a server error): a preview still starting, usually.
+  const unanswered: string[] = [];
 
   await mapLimit(chosen, RENDER_CONCURRENCY, async (urlPath) => {
     const got = await source.get(urlPath);
 
+    if (source.kind === "preview" && (!got || got.status >= 500)) unanswered.push(urlPath);
     if (!got || !/html/.test(got.type) || got.status >= 400) return;
     if (!/<(html|head|body|!doctype|title|main|div|p)\b/i.test(got.body.slice(0, 4000))) {
       unreadable.push(urlPath);
@@ -438,7 +451,7 @@ async function renderedAudit(site: SiteService, source: RenderSource, model: Sit
   }
   const info: RenderInfo = {
     source: source.kind,
-    detail: `Rendered checks used ${source.detail}.${unreadable.length ? ` ${unreadable.length} ${unreadable.length === 1 ? "page" : "pages"} came back as something other than HTML (${unreadable.slice(0, 3).join(", ")}) and ${unreadable.length === 1 ? "was" : "were"} skipped.` : ""}`,
+    detail: `Rendered checks used ${source.detail}.${unreadable.length ? ` ${unreadable.length} ${unreadable.length === 1 ? "page" : "pages"} came back as something other than HTML (${unreadable.slice(0, 3).join(", ")}) and ${unreadable.length === 1 ? "was" : "were"} skipped.` : ""}${unanswered.length ? ` ${unanswered.length === 1 ? "1 page" : `${unanswered.length} pages`} didn't answer (the preview may still be starting), so ${unanswered.length === 1 ? "it wasn't" : "they weren't"} checked. Check again in a moment.` : ""}`,
     sampled: rendered.length,
     total: only ? 1 : all.length,
     cap,
@@ -618,12 +631,18 @@ async function agentReport(source: RenderSource, rendered: RenderedPage[], quick
   if (kit?.agentReadable.markdownTwins && advertised > 0 && withoutTwin.length) {
     findings.push(finding("agent-readable-broken", { rendered: true, key: "missing-twins", evidence: { pages: withoutTwin.slice(0, 8).map((item) => ({ url: item.urlPath, ...(item.facts.title ? { title: item.facts.title } : {}) })), note: `${withoutTwin.length} of ${eligible.length} pages checked have no markdown version, though the site kit makes one for every page it doesn't leave out on purpose.` } }));
   }
-  if (!quick && !llmsPresent && advertised === 0) {
+  const where = source.kind === "preview" ? "the preview" : "the last build";
+  // A kit that writes llms.txt at build time: its absence from the preview is no finding.
+  const previewOnly = !llmsPresent && source.kind === "preview" && Boolean(kit?.agentReadable.llmsTxt);
+
+  if (!quick && !llmsPresent && !previewOnly && advertised === 0) {
     findings.push(finding("agent-readable-missing", { rendered: true, evidence: { note: kit ? `The site kit is set not to publish it (${kit.file} → agentReadable).` : "No /llms.txt, and no page advertises a markdown version. See “Agent-readable version” in the Search & AI guide for how to turn it on." } }));
   }
   const published = [llmsPresent ? "llms.txt" : null, fullText ? "llms-full.txt" : null, agentPage ? "agent.md" : null].filter(Boolean);
   const parts = [
-    quick ? null : published.length ? `served: ${published.length === 1 ? published[0] : `${published.slice(0, -1).join(", ")} and ${published[published.length - 1]}`}${llmsPresent && !llmsReport.valid ? " (llms.txt with problems)" : ""}` : "no llms.txt is served",
+    // Say which copy of the site was read: beside "This site publishes llms.txt" (the kit's setting), a bare
+    // "no llms.txt is served" reads as a contradiction when only the preview was asked.
+    quick ? null : published.length ? `${where} serves ${published.length === 1 ? published[0] : `${published.slice(0, -1).join(", ")} and ${published[published.length - 1]}`}${llmsPresent && !llmsReport.valid ? " (llms.txt with problems)" : ""}` : previewOnly ? "the preview doesn't serve llms.txt; the site kit writes it when the site is built" : `${where} serves no llms.txt`,
     advertised ? `${advertised} of ${eligible.length} pages checked have a markdown version` : `none of the ${eligible.length} pages checked has a markdown version`,
     eligible.length < rendered.length ? `${rendered.length - eligible.length} left out on purpose (kept out of search, redirects or copies)` : null,
   ].filter(Boolean);
@@ -797,7 +816,7 @@ async function prepare(site: SiteService, options: AuditOptions, only?: string):
   const routes = model.routesDir ? `,${model.routesDir.replace(/\/+$/, "")}/**/*` : "";
   const files = await site.listFiles({ glob: `{_redirects,public/_redirects,static/_redirects,netlify.toml,vercel.json,${ROBOTS_GLOB.slice(1, -1)},${KIT_GLOB.slice(1, -1)}${routes}}` }).catch(() => [] as string[]);
   const kit = await detectKit(site, files);
-  const redirects = await readRedirects(site, files);
+  const redirects = await readRedirects(site, model, files);
   // Moves only matter for links that are broken; reading the pending changes is slow on big sites.
   const broken = collected.pages.some((page) => page.issues.some((issue) => issue.code === "broken-link"));
   const moves = broken ? await pendingMoves(site, model, collected.pages) : new Map<string, string>();
@@ -825,6 +844,7 @@ function contentFindings(prepared: PreparedAudit): Finding[] {
  */
 export function auditEntries(model: SiteModel, entries: Entry[], options: { now?: Date } = {}): Finding[] {
   const pages = entries
+    .filter((entry) => !isRedirectsFile(model, entry.path))
     .map((entry) => {
       const collection = model.collections.find((c) => c.id === entry.collection);
 

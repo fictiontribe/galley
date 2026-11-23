@@ -385,6 +385,16 @@ export interface SiteBrandState {
   problem: string | null;
   /** Sources added but not saved into the site yet. */
   staged: string[];
+  /**
+   * Sources added and not read yet ("2 new files to read · Read them"), with
+   * or without a proposal open. Ignored ones are left out.
+   */
+  unread?: string[];
+  /**
+   * The site's styles are still being scanned for its web fonts and tokens
+   * file (the first open after the app starts); ask again shortly for them.
+   */
+  scanning?: boolean;
   /** The site's own web fonts the Brand screen can load (served by the API), one per family. */
   webFonts: Array<{ family: string; weight: string; style: string; url: string }>;
 }

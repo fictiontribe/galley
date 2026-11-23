@@ -362,6 +362,8 @@ export interface RedirectImportSource {
   path: string;
   label: string;
   count: number;
+  /** How many of its old addresses aren't in the list yet; 0 once they all are. Absent where not worked out. */
+  waiting?: number;
 }
 
 export interface RedirectsOverview {

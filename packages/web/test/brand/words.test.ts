@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { bytes, contrastWords, evidenceWords, inkFor, plan, whereFrom } from "../../src/features/brand/words";
+import { bytes, contrastWords, evidenceWords, inkFor, pairWords, plan, whereFrom } from "../../src/features/brand/words";
 
 describe("the Brand screen's words", () => {
+  it("names a contrast pair once, not “Text on accent on accent”", () => {
+    expect(pairWords("text", "background")).toBe("Text on background");
+    expect(pairWords("accent-text", "accent")).toBe("Text on accent");
+    expect(pairWords("inverse-text", "inverse-background")).toBe("Text on dark");
+    expect(pairWords("accent-text", "background")).toBe("The accent’s text colour on background");
+  });
+
   it("says contrast in plain words", () => {
     expect(contrastWords("aaa")).toBe("Easy to read");
     expect(contrastWords("aa")).toBe("Easy to read");

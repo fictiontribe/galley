@@ -487,6 +487,13 @@ function confidenceOf(onPages: boolean, declared: boolean, inFile: boolean): Con
 const collapseText = (text: string) => text.replace(/[“”"]/g, '"').replace(/[‘’']/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
 
 const TEXT_ROLES: ColorRole[] = ["text", "text-muted", "accent"];
+/**
+ * Below this, the text measured is all but the colour of the ground measured
+ * behind it: a page nobody could read. In practice it means the ground
+ * wasn't the one the text sits on (a photograph, a video or a layer drawn
+ * behind it), so such a pair is left out rather than reported.
+ */
+export const UNKNOWN_GROUND_RATIO = 1.5;
 const GROUND_ROLES: ColorRole[] = ["background", "surface", "surface-muted"];
 
 export function contrastPairs(colors: BrandColor[], measured: MergedMeasurements | null): ContrastPair[] {
@@ -508,6 +515,7 @@ export function contrastPairs(colors: BrandColor[], measured: MergedMeasurements
   for (const text of colors.filter((c) => c.role === "inverse-text")) for (const g of colors.filter((c) => c.role === "inverse-background")) add(text, g);
   // Pairs the pages really show, between brand colours, that the role grid didn't cover.
   for (const seen of measured?.pairs.slice(0, 30) ?? []) {
+    if (seen.ratio < UNKNOWN_GROUND_RATIO) continue;
     const text = colors.find((c) => deltaE(c.value, seen.text) < 2);
     const ground = colors.find((c) => deltaE(c.value, seen.background) < 2);
 
@@ -527,20 +535,24 @@ export function measuredFindings(measured: MergedMeasurements | null, colors: Br
   if (neutrals.length >= 5 && close.size >= 2) {
     findings.push({ id: "near-greys", kind: "issue", text: `${neutrals.length} greys in use; ${close.size} are within 2% of each other.`, about: [...close].slice(0, 8) });
   }
+  // A brand colour by the name the brand gives it ("Paper"), else by its role ("the muted text colour"); any other colour by its value.
   const nameOf = (hex: string) => {
     const brand = colors.find((c) => deltaE(c.value, hex) < 2);
 
-    return brand ? `${roleWords(brand.role) === "colour" ? brand.name : roleWords(brand.role)}` : hex;
+    if (!brand) return hex;
+    const name = brand.name.trim();
+
+    return name && name.toLowerCase() !== roleWords(brand.role) ? name : `the ${roleWords(brand.role)} colour`;
   };
 
   for (const pair of measured.pairs.slice(0, 40)) {
     const headingOnly = pair.roles.every((role) => role === "heading");
     const needed = headingOnly ? 3 : 4.5;
 
-    if (pair.ratio >= needed || findings.length > 8) continue;
-    const what = pair.roles.includes("body") ? "Body text" : pair.roles.includes("link") ? "Links" : pair.roles.includes("button") ? "Button text" : headingOnly ? "Headings" : "Text";
+    if (pair.ratio >= needed || pair.ratio < UNKNOWN_GROUND_RATIO || findings.length > 8) continue;
+    const [what, verb] = pair.roles.includes("body") ? ["Body text", "is"] : pair.roles.includes("link") ? ["Links", "are"] : pair.roles.includes("button") ? ["Button text", "is"] : headingOnly ? ["Headings", "are"] : ["Text", "is"];
     const where = pagesWords(pair.pages);
-    const text = `${what} in ${nameOf(pair.text)} on the ${nameOf(pair.background)} is ${pair.ratio.toFixed(1)}:1${where ? ` ${where}` : ""}.`;
+    const text = `${what} in ${nameOf(pair.text)} on ${nameOf(pair.background)} ${verb} ${pair.ratio.toFixed(1)}:1${where ? ` ${where}` : ""}.`;
 
     findings.push({ id: `contrast-${pair.text}-${pair.background}`.toLowerCase(), kind: "issue", text: text.charAt(0).toUpperCase() + text.slice(1), about: [pair.text, pair.background] });
   }
@@ -667,8 +679,14 @@ export function buildProposal(input: BuildInput): BrandProposal {
   // Type scale: what the pages set, by role.
   const scale: TypeStyle[] = [];
 
+  // Body is what paragraphs are set in. The most frequent paragraph style can be a label (a mono eyebrow
+  // written as <p>), so mono faces and label sizes only count when there is nothing else.
+  const paragraphs = (measured?.type ?? []).filter((t) => t.role === "body" && t.tag === "p");
+  const prose = paragraphs.filter((t) => fontFor(t.family)?.role !== "mono" && !/mono|code/i.test(t.family) && t.size >= 14);
+  const bodyPick = prose.find((t) => fontFor(t.family)?.role === "body") ?? prose[0] ?? paragraphs[0] ?? measured?.type.find((t) => t.role === "body");
+
   for (const role of ["h1", "h2", "h3", "h4", "body", "small", "button", "link"] as const) {
-    const pick = measured?.type.find((t) => (role.startsWith("h") ? t.tag === role : role === "body" ? t.role === "body" && t.tag === "p" : role === "small" ? t.role === "label" : t.role === role)) ?? (role === "body" ? measured?.type.find((t) => t.role === "body") : undefined);
+    const pick = role === "body" ? bodyPick : measured?.type.find((t) => (role.startsWith("h") ? t.tag === role : role === "small" ? t.role === "label" : t.role === role));
     const owner = pick ? fontFor(pick.family) : undefined;
 
     if (!pick || !owner) continue;

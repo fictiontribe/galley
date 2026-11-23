@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.1.1 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.1.2 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // A small, tolerant HTML reader for the pages a site builds: enough of the
 // HTML parsing rules to turn Astro's (and any static generator's) output

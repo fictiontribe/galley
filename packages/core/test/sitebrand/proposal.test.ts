@@ -131,7 +131,37 @@ describe("the proposal", () => {
     const texts = proposal.findings.map((f) => f.text);
 
     expect(texts.some((t) => /^\d+ greys in use; \d+ are within 2% of each other\.$/.test(t))).toBe(true);
-    expect(texts.some((t) => /^Body text in #59606B on the #F1EEE9 is 3\.9:1/.test(t))).toBe(true);
+    expect(texts.some((t) => /^Body text in #59606B on #F1EEE9 is 3\.9:1 on the home page\.$/.test(t))).toBe(true);
+  });
+
+  it("leaves out text measured on a ground it doesn't sit on (1.0:1), from the findings and the pairs", () => {
+    const base = measuredPage("/");
+    const page = measuredPage("/", { pairs: [...base.pairs, { text: "#FBF9F6", background: "#FBF9F6", area: 5_000, count: 6, roles: ["link"], ratio: 1 }] });
+    const pages = mergeMeasurements(parseMeasurements([page, measuredPage("/collections/", { pairs: page.pairs })]));
+    const candidates = buildCandidates({ declared: null, measured: pages, sources: [], website: null });
+    const proposal = buildProposal({ ...pack, measured: pages, candidates, sources: [], from: "site", declared: null, previous: null, now, cost: null, model: null, synthesis: synthesis() });
+
+    expect(proposal.findings.map((f) => f.text).filter((t) => /1\.0:1|^Links/.test(t))).toEqual([]);
+    expect(proposal.brand.contrast.some((p) => p.ratio < 1.5)).toBe(false);
+  });
+
+  it("takes the body style from paragraphs, not from a mono label set as a paragraph", () => {
+    const base = measuredPage("/");
+    const page = measuredPage("/", {
+      type: [
+        ...base.type,
+        { role: "body" as const, tag: "p", family: "Spline Sans Mono Variable", size: 12, weight: 500, lineHeight: 17, letterSpacing: 1.2, count: 60 },
+      ].sort((a, b) => b.count - a.count),
+      fonts: [...base.fonts, { family: "Spline Sans Mono Variable", status: "loaded" }],
+    });
+    const pages = mergeMeasurements(parseMeasurements([page]));
+    const candidates = buildCandidates({ declared: null, measured: pages, sources: [], website: null });
+    const fonts = candidates.fonts.map((f) => ({ candidate: f.id, role: /Mono/.test(f.family) ? ("mono" as const) : /Geist/.test(f.family) ? ("body" as const) : ("display" as const) }));
+    const proposal = buildProposal({ ...pack, measured: pages, candidates, sources: [], from: "site", declared: null, previous: null, now, cost: null, model: null, synthesis: synthesis({ fonts }) });
+    const body = proposal.brand.typography.scale.find((style) => style.role === "body")!;
+
+    expect(body).toMatchObject({ px: 17, weight: 400 });
+    expect(proposal.brand.typography.fonts.find((f) => f.id === body.font)?.family).toBe("Geist Variable");
   });
 
   it("notes a document that spoke to the assistant, and treats it as content", () => {

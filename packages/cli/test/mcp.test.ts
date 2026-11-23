@@ -102,25 +102,41 @@ describe("galley mcp token", () => {
 });
 
 describe("galley mcp config", () => {
-  it.each(MCP_CLIENTS)("prints a stdio configuration for %s, and the npx form", async (client) => {
+  it.each(MCP_CLIENTS)("prints the npx form first for %s, then the form from a copy of the code", async (client) => {
     const root = site(`config-${client}`);
     const { io, stdout } = testIo();
 
     expect(await main(["mcp", "config", root, "--client", client], io)).toBe(0);
     const output = stdout.join("\n");
+    const copyAt = output.indexOf("From a copy of the code");
 
-    expect(output).toContain("/opt/galley/packages/cli/bin/galley.js");
+    expect(output).not.toContain("is published to npm");
+    expect(copyAt).toBeGreaterThan(0);
+    expect(output.indexOf("galley-cms")).toBeLessThan(copyAt);
+    expect(output.indexOf("/opt/galley/packages/cli/bin/galley.js")).toBeGreaterThan(copyAt);
     expect(output).toContain(root);
-    expect(output).toContain("galley-cms");
     if (client === "claude-code") {
+      expect(output).toContain(`claude mcp add --transport stdio galley -- npx -y galley-cms mcp ${root}`);
       expect(output).toContain(`claude mcp add --transport stdio galley -- /usr/bin/node /opt/galley/packages/cli/bin/galley.js mcp ${root}`);
     } else {
       const json = output.slice(output.indexOf("{"), output.indexOf("\n}") + 2);
       const parsed = JSON.parse(json);
       const entry = client === "generic" ? parsed : parsed.mcpServers.galley;
 
-      expect(entry).toMatchObject({ command: "/usr/bin/node", args: ["/opt/galley/packages/cli/bin/galley.js", "mcp", root] });
+      expect(entry).toMatchObject({ command: "npx", args: ["-y", "galley-cms", "mcp", root] });
     }
+  });
+
+  it("offers only the npx form when this copy runs from npx's cache", async () => {
+    const root = site("config-npx-cache");
+    const { io, stdout } = testIo({ launcher: { command: "/usr/bin/node", args: ["/Users/someone/.npm/_npx/0f1e2d/node_modules/galley-cms/bin/galley.js"] } });
+
+    expect(await main(["mcp", "config", root, "--client", "cursor"], io)).toBe(0);
+    const output = stdout.join("\n");
+
+    expect(output).toContain('"npx"');
+    expect(output).not.toContain("From a copy of the code");
+    expect(output).not.toContain("_npx");
   });
 
   it("passes --build and --read-only on", async () => {

@@ -117,3 +117,17 @@ export function redirectsCount(count: number): string {
 export function share(used: number, limit: number | null): number | null {
   return limit ? Math.min(1, used / limit) : null;
 }
+
+/** The query value the WordPress import's report links with: /sites/:id/redirects?add=wordpress-import. */
+export const WORDPRESS_IMPORT = "wordpress-import";
+
+/** The import a link asks to open (`?add=`), by its folder or its exact path; null when it isn't there. */
+export function importToOpen<T extends { path: string }>(imports: T[], wanted: string | null): T | null {
+  if (!wanted) return null;
+  return imports.find((source) => source.path === wanted || source.path.startsWith(`${wanted}/`)) ?? null;
+}
+
+/** Imports with redirects still to bring in, for the offer above a list that isn't empty. */
+export function waitingImports<T extends { count: number; waiting?: number }>(imports: T[]): T[] {
+  return imports.filter((source) => (source.waiting ?? source.count) > 0);
+}

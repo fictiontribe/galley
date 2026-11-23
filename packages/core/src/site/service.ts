@@ -843,6 +843,10 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       return sortChanges(await workspace.changes(createEnricher(() => model)));
     },
 
+    pendingPaths() {
+      return workspace.pendingPaths();
+    },
+
     diff(path) {
       return workspace.diff(path);
     },

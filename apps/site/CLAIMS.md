@@ -30,9 +30,9 @@ Updated 2026-11-24 (Galley on npm; “for static sites” instead of “for Astr
 | Desktop app (macOS) and web app | Built | maintainers' check |
 | MCP | Built | `docs/mcp.md`, `galley mcp` |
 | Three starters, three looks each | Built | `starters/*/starter.json`, previews; the site reads them at build time |
-| Redirects | New, in final checks | Used by this site: `src/data/redirects.json` and `public/_redirects` were written by Galley's redirects API (below) |
-| Per-site brand setup | New, in final checks | maintainers' check; `docs/brand.md` |
-| Search and AI checks | New, in final checks | maintainers' check; `docs/seo-and-ai-visibility.md` |
+| Redirects | Built | Run by hand in a browser on 2026-11-24 on a fresh Caddow site: a pasted list with a planted loop, duplicate, missing page and unreadable line was reviewed correctly, the list and `public/_redirects` were written, “Try an address” answered correctly, and the changes waited in Proof. Also used by this site (below). Setting them on Cloudflare itself (Bulk Redirects) has not been run on the real service. |
+| Per-site brand setup | Built | Run by hand in a browser on 2026-11-24 on a fresh Caddow site, with the assistant: read from the site (colours, type, contrast, a voice guide quoting the site) and saved as `galley/brand/`; and set up from a guidelines PDF, a screenshot and a note (proposal citing the PDF's pages). `docs/brand.md` |
+| Search and AI checks | Built | Run by hand in a browser on 2026-11-24 on a fresh Caddow site: findings by category, a fix that corrected a page's broken link, and an AI-crawler block written to `src/data/visibility.json` as a pending change. `docs/seo-and-ai-visibility.md` |
 | Guided move from WordPress in the app | New, in final checks | Captured 2026-11-23 (`wordpress-plan`, `wordpress-report`) importing the importer's invented WordPress site into a throwaway Lowfield copy; changed from "in progress" on the maintainers's word |
 | Agent-readable pages for customer sites | In progress | The site kit's generic version now runs on this site (below). Flip to "new" when the maintainers confirm the app side ships. |
 | Shopify storefront starter (`storefront`, “Caddow Shop” on /starters/) | In progress (badge on its card) | `starters/astro-storefront` with its own previews and 24 sections; listed as the fourth card. Flip `shopify` in status.json to `new` when it reaches final checks |
@@ -43,7 +43,7 @@ Updated 2026-11-24 (Galley on npm; “for static sites” instead of “for Astr
 
 | Statement | Where | Support |
 | --- | --- | --- |
-| Version 0.1.1, Apache-2.0, on npm as `galley-cms` (and `create-galley`); the site no longer calls it “pre-release” | everywhere (`site.json` → `statusNote`, docs index, FAQ, agent.md, `visibility.json` summary → llms.txt) | `packages/core/src/brand.ts` (the version is read from it), `LICENSE`; `npm view galley-cms` and `npm view create-galley`: 0.1.0 published 2026-11-23, 0.1.1 on 2026-11-24 |
+| Version 0.1.2, Apache-2.0, on npm as `galley-cms` (and `create-galley`); the site no longer calls it “pre-release” | everywhere (`site.json` → `statusNote`, docs index, FAQ, agent.md, `visibility.json` summary → llms.txt) | `packages/core/src/brand.ts` (the version is read from it), `LICENSE`; `npm view galley-cms` and `npm view create-galley`: 0.1.0 published 2026-11-23, 0.1.1 and 0.1.2 on 2026-11-24 |
 | The install commands: `npm create galley@latest`, `npm create galley@latest my-site -- --starter caddow`, `npx galley-cms` | home hero (the command `npm create galley@latest`, and the note “Already have a site? Run npx galley-cms in its folder.”) and close (`npx galley-cms`), quickstart, new site, docs index, agent.md, README, `packages/cli/README.md`, the starters' READMEs | Run from the registry in a clean folder on 2026-11-24: `npm create galley@latest my-site -- --starter caddow --no-install --no-start` (site made, first version recorded), then `npx galley-cms --no-open` in it (the app opened in a browser with no errors). The interactive form, `npm create galley@latest` with no arguments, was not test-run from the registry; it is the same program asking for the name and starter. The docs re-ran them on 2026-11-24 with a throwaway `HOME` and `GALLEY_HOME`: `npm create galley@latest my-site -- --starter caddow --no-install --no-start` and `… t2 -- --starter lowfield --look sage --no-install --no-start` (copied, first version recorded, the “To start Galley on it” hint), then `npx galley-cms --no-open` in that site (printed `Galley is running at http://127.0.0.1:4400` and an `Open:` link), `npx galley-cms doctor`, `starters`, `init`. Not run by the docs: an install (`--no-install` every time, disk), and the `pnpm create` / `yarn create` / `bun create` forms (new-site says so) |
 | Running Galley from a clone is for changing Galley itself | quickstart (last line), README, CONTRIBUTING.md | `CONTRIBUTING.md` “Dev setup”; the from-a-clone steps stay in `site.json` → `install.fromClone` but no page shows them while `install.published` is true |
 | “The open-source AI CMS for static sites” (not “for Astro”) | home title and description, `site.json` → `descriptor`/`description`, `visibility.json` summary (llms.txt), docs index, README, `packages/cli` and `packages/create-galley` descriptions and READMEs | Galley reads and edits any site whose content is files in git: `packages/core/src/adapters/` (astro, conventions, generic) |
@@ -112,12 +112,12 @@ tier"); Fiction Tribe's Portland/2011 facts (the /fiction-tribe/ page is cut).
   still work). Re-vendor the kit into the starters.
 - The reference pages have since been regenerated; `check-docs` passes and
   `pnpm --filter @galley/site build` builds.
-- **`galley mcp config` from the npm package** (0.1.0, checked 2026-11-24;
-  unchanged in 0.1.1)
+- **Fixed in 0.1.2.** `galley mcp config` from the npm package (0.1.0 and
+  0.1.1)
   prints first a `node …/_npx/<hash>/node_modules/galley-cms/bin/galley.js`
   command — a path into npx's cache, which npx may clear — and then the
   lasting `npx -y galley-cms mcp …` form under “Once galley-cms is published
   to npm, the same works without this checkout” (`packages/cli/src/commands/mcp.ts`).
   `docs/mcp.md` tells readers to use the second form.
-- **`galley starters | head`** still crashes with an unhandled `EPIPE` in
-  0.1.0, 0.1.1 and the source (nothing handles a closed standard output).
+- **Fixed in 0.1.2.** `galley starters | head` crashed with an unhandled
+  `EPIPE` in 0.1.0 and 0.1.1 (nothing handles a closed standard output).

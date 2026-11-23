@@ -52,6 +52,13 @@ describe("checks", () => {
     expect(issues).toHaveLength(1);
     expect(issues[0]!.indices.sort()).toEqual([0, 1, 2]);
     expect(issues[0]!.severity).toBe("error");
+    expect(issues[0]!.message).toBe("/a/ → /b/ → /c/ → /a/ goes round in a circle. Visitors would never arrive anywhere.");
+  });
+
+  it("prints a two-step loop in the order a visitor walks it", () => {
+    const [loop] = checkRedirects([r("/loop-a/", "/loop-b/"), r("/loop-b/", "/loop-a/")], { routes, host: null }).filter((issue) => issue.code === "loop");
+
+    expect(loop!.message).toBe("/loop-a/ → /loop-b/ → /loop-a/ goes round in a circle. Visitors would never arrive anywhere.");
   });
 
   it("live pages: names the page that would disappear; wildcards count the pages they hide", () => {

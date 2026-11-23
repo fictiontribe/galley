@@ -76,6 +76,14 @@ export interface WebFont {
 }
 
 const STYLE_GLOB = "**/*.{css,scss,sass,less,pcss,astro,vue,svelte}";
+/**
+ * How long the Brand screen's first read waits for the scan of the site's
+ * styles (its web fonts and tokens file). The scan lists every file and
+ * reads up to 300; on a big or busy site that is seconds, and the brand
+ * itself doesn't need it. Past this, the state goes back without the fonts,
+ * says `scanning`, and the screen asks again.
+ */
+const SCAN_WAIT_MS = 800;
 const FONT_TYPES: Record<string, string> = { woff2: "font/woff2", woff: "font/woff", ttf: "font/ttf", otf: "font/otf" };
 
 /** Reads a font package's stylesheet from the site's own node_modules — only @fontsource packages, only .css. */
@@ -121,6 +129,8 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
   const fonts = new Map<string, WebFont[]>();
   /** The tokens file the last scan of each site found. */
   const scannedTokens = new Map<string, string | null>();
+  /** The scan in progress per site, so concurrent reads share one. */
+  const scans = new Map<string, Promise<void>>();
   const guarded = options.fetch ?? createGuardedFetch();
   const stateDir = (siteId: string) => join(options.home, "state", siteId, "brand");
 
@@ -266,27 +276,56 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
   }
 
   function publicSource(source: StoredSource): BrandSource {
-    const { bytesPath: _b, analysisPath: _a, facts: _f, staged: _s, ...rest } = source;
+    const { bytesPath: _b, analysisPath: _a, facts: _f, staged: _s, unread: _u, ...rest } = source;
 
     return rest;
   }
 
   // ── state
 
+  /** Scans the site's styles once per site at a time; a scan that fails leaves no fonts rather than asking forever. */
+  function scanOnce(site: SiteService, location: BrandLocation): Promise<void> {
+    let running = scans.get(site.id);
+
+    if (!running) {
+      running = declaredOf(site, location)
+        .then(() => undefined, () => void (fonts.has(site.id) || fonts.set(site.id, [])))
+        .finally(() => scans.delete(site.id));
+      scans.set(site.id, running);
+    }
+    return running;
+  }
+
+  /** The brand's files with unpublished changes: from the cached file status when the site keeps one, not a full change set. */
+  async function pendingIn(site: SiteService, dir: string): Promise<string[]> {
+    const paths = site.pendingPaths ? site.pendingPaths() : ((await site.changes().catch(() => null))?.files ?? []).map((f) => f.path);
+
+    return paths.filter((path) => path.startsWith(`${dir}/`));
+  }
+
   async function state(siteId: string): Promise<SiteBrandState> {
     const site = await siteFor(siteId);
     const location = await where(site);
-    const [saved, proposal, sources, model, key, changes] = await Promise.all([
+    // Started first so it runs beside the reads below instead of after them.
+    const scan = fonts.has(siteId) ? null : scanOnce(site, location);
+    const [saved, proposal, sources, model, key, pending] = await Promise.all([
       readSavedBrand(site, location),
       loadProposal(siteId),
       allSources(site, location),
       site.model(),
       options.client ? Promise.resolve("test") : options.settings.readSecret("anthropic", { siteId }).catch(() => null),
-      site.changes().catch(() => null),
+      pendingIn(site, location.dir),
     ]);
     const analysis = analyses.get(siteId);
 
-    if (!fonts.has(siteId)) await declaredOf(site, location).catch(() => null);
+    if (scan) {
+      let timer: NodeJS.Timeout | undefined;
+
+      await Promise.race([scan, new Promise<void>((resolve) => (timer = setTimeout(resolve, SCAN_WAIT_MS)))]);
+      clearTimeout(timer);
+    }
+    // Unread material, with or without a proposal; ids a proposal recorded before the flag existed count too.
+    const unread = sources.filter((s) => !s.ignored && (s.unread || proposal?.pendingSources.includes(s.id))).map((s) => s.id);
     // A brand set up from material doesn't know the site's tokens file; the site's own styles do.
     const tokensFile = saved.brand?.tokensFile ?? proposal?.brand.tokensFile ?? location.tokensFile ?? scannedTokens.get(siteId) ?? null;
 
@@ -303,7 +342,9 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
       assistant: Boolean(key),
       digest: saved.brand ? brandDigest(saved.brand, saved.guide) : null,
       imagery: saved.brand ? imageryBrief(saved.brand) : null,
-      pending: (changes?.files ?? []).map((f) => f.path).filter((path) => path.startsWith(`${location.dir}/`)),
+      pending,
+      unread,
+      ...(fonts.has(siteId) ? {} : { scanning: true }),
       webFonts: (fonts.get(siteId) ?? []).map((font) => ({ family: font.family, weight: font.weight, style: font.style, url: `/api/sites/${encodeURIComponent(siteId)}/brand/fonts/${font.id}` })),
     };
   }
@@ -539,9 +580,12 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
 
       if (extending) {
         // Adding to a proposal under review: new values become additions or questions, nothing is overwritten.
-        const proposal = await loadProposal(siteId);
+        // No proposal open: start one from the saved brand, so new material adds to it and nothing is overwritten.
+        const open = await loadProposal(siteId);
+        const saved = open ? null : (await readSavedBrand(site, location)).brand;
+        const proposal: BrandProposal | null = open ?? (saved ? { id: now().getTime().toString(36), createdAt: now().toISOString(), from: "both", brand: structuredClone(saved), questions: [], findings: [], pendingSources: [], cost: null, model: null } : null);
 
-        if (!proposal) throw new GalleyError("not-found", "There's no proposal to add to. Set the brand up first.");
+        if (!proposal) throw new GalleyError("not-found", "There's no brand to add to. Set the brand up first.");
         const candidates = buildCandidates({ declared: null, measured: null, sources: inputs, website: web.website });
         let added = 0;
 
@@ -577,6 +621,7 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
         proposal.brand = refresh(proposal.brand);
         proposal.cost = (proposal.cost ?? 0) + (usage.cost ?? 0);
         await saveProposal(siteId, proposal);
+        await markRead(siteId, inputs);
         setStep(analysis, index, { state: "done", detail: added === 1 ? "1 new finding to review" : `${added} new findings to review` }, job);
       } else {
         // Put it together.
@@ -633,6 +678,7 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
 
         if (!anthropic) proposal.findings.unshift({ id: "no-assistant", kind: "note", text: "No assistant key is set, so the voice and guide weren't written. Add a key in Settings and read it again." });
         await saveProposal(siteId, proposal);
+        await markRead(siteId, inputs);
         const fails = proposal.brand.contrast.filter((p) => p.result === "fail").length;
 
         setStep(analysis, index, { state: "done", detail: fails ? `${fails} pair${fails === 1 ? "" : "s"} hard to read` : "Every pair is easy to read" }, job);
@@ -909,8 +955,11 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
 
   async function check(siteId: string, paths?: string[]): Promise<BrandCheckItem[]> {
     const site = await siteFor(siteId);
-    const brand = await brandFor(site, siteId);
     const location = await where(site);
+    const brand = (await readSavedBrand(site, location)).brand ?? (await loadProposal(siteId))?.brand ?? null;
+
+    // Proof asks after every change; a site without a brand simply has nothing to check against.
+    if (!brand) return [];
     const changes = await site.changes();
     const files: ChangedFile[] = [];
 
@@ -1012,7 +1061,13 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
     return publicSource(source);
   }
 
+  /** Only once what they said is in a saved proposal: a reading that stops part-way leaves them unread. */
+  async function markRead(siteId: string, inputs: SourceInput[]): Promise<void> {
+    for (const input of inputs) await store.update(siteId, input.source.id, (stored) => void delete stored.unread);
+  }
+
   async function markPending(siteId: string, id: string): Promise<void> {
+    await store.update(siteId, id, (stored) => void (stored.unread = true));
     const proposal = await loadProposal(siteId);
 
     if (proposal && !proposal.pendingSources.includes(id)) {
@@ -1133,7 +1188,7 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
       if (!fonts.has(siteId)) {
         const site = await siteFor(siteId);
 
-        await declaredOf(site, await where(site)).catch(() => null);
+        await scanOnce(site, await where(site));
       }
       const font = fonts.get(siteId)?.find((f) => f.id === id);
 

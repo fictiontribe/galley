@@ -101,7 +101,7 @@ The principles behind it are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Status
 
-Version 0.1.1, on npm as `galley-cms` and `create-galley` (first released
+Version 0.1.2, on npm as `galley-cms` and `create-galley` (first released
 2026-11-23).
 While the version starts with `0.`, the config file, the API and the
 command-line options can still change between minor versions
@@ -111,9 +111,10 @@ command-line options can still change between minor versions
   Proof; publishing to your own repository, with undo; forms and the inbox;
   scripts with consent; plugins, image and video generation among them;
   one-click deploys to Cloudflare, verified on the real service; many sites
-  in one app; the macOS desktop app and the web app; MCP; three starters.
-- **New, in final checks**: redirects; the brand set-up; the Search and AI
-  checks; the guided move from WordPress.
+  in one app; the macOS desktop app and the web app; MCP; three starters;
+  redirects; the brand set-up; the Search and AI checks.
+- **New, in final checks**: the guided move from WordPress (run against an
+  export file and a stand-in WordPress site, not yet a real one).
 - **Preview**: the page builder.
 - **In progress**: deploys to Vercel (built, not yet run on the real
   service); agent-readable pages for the sites Galley builds; a switch per

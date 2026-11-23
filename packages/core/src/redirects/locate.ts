@@ -50,6 +50,20 @@ export function listFileOf(model: Pick<SiteModel, "collections" | "redirects">):
   return model.redirects?.file?.replace(/^\.?\/+/, "") || defaultListFile(model);
 }
 
+/**
+ * Whether a repo path is the redirects list or a host file written from it
+ * (`_redirects` in the public folder, vercel.json). Their addresses are not
+ * links: an old address is meant to match no page, so link checks and link
+ * fixes leave these files alone. Every host's file counts, not only the
+ * current host's, because a file left from an earlier host is still a list
+ * of redirects. The Redirects screen reports on them itself.
+ */
+export function isRedirectsFile(model: Pick<SiteModel, "collections" | "media" | "redirects">, path: string): boolean {
+  const normalized = path.replace(/^\.?\/+/, "");
+
+  return normalized === listFileOf(model) || normalized === derivedPath("cloudflare", model) || normalized === derivedPath("vercel", model);
+}
+
 /** The deploy target wins: it is where the site actually goes. */
 export function hostOf(model: { deploy?: SiteModel["deploy"]; redirects?: RedirectsConfig }): { id: RedirectHostId | null; from: "deploy" | "config" | null } {
   const target = model.deploy?.target;

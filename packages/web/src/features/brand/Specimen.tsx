@@ -11,7 +11,7 @@ import type { BrandColor, BrandFont, SiteBrandFile, SiteBrandState, TypeStyle } 
 import { rawFileUrl } from "@/lib/api";
 import { Badge, Icon, Tag, Tooltip } from "@/ui";
 import { useFontViews } from "./fonts";
-import { COLOR_ROLE_ORDER, CONFIDENCE_HINT, CONFIDENCE_LABEL, contrastWords, inkFor, ROLE_LABEL, whereFrom } from "./words";
+import { COLOR_ROLE_ORDER, CONFIDENCE_HINT, CONFIDENCE_LABEL, contrastWords, inkFor, pairWords, ROLE_LABEL, whereFrom } from "./words";
 
 interface SheetProps {
   siteId: string;
@@ -149,7 +149,7 @@ function Contrast({ brand }: { brand: SiteBrandFile }) {
                 Aa
               </span>
               <span className="brand-contrast__words">
-                {ROLE_LABEL[text.role]} on {ROLE_LABEL[ground.role].toLowerCase()}
+                {pairWords(text.role, ground.role)}
                 {pair.measuredOn?.length ? <span className="brand-contrast__seen">seen on {pair.measuredOn.slice(0, 3).join(", ")}</span> : null}
               </span>
               <span className="brand-contrast__ratio">{pair.ratio.toFixed(1)}:1</span>

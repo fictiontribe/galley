@@ -4,8 +4,8 @@
  * address", where they take effect on this site's host (and on Cloudflare
  * itself), and their health. Every change is a pending change for Proof.
  */
-import { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import type { Redirect, RedirectImportSource } from "@galley/core/redirects-info";
 import { useTopBar } from "@/app/chrome";
 import { useServerEvent } from "@/lib/events";
@@ -18,7 +18,7 @@ import { HealthCard } from "./HealthCard";
 import { RedirectEditor, RedirectTable, type Row } from "./RedirectTable";
 import { TryAddress } from "./TryAddress";
 import { WhereCard } from "./WhereCard";
-import { issuesByRow, matchesSearch, problemFilters, redirectsCount } from "./words";
+import { importToOpen, issuesByRow, matchesSearch, problemFilters, redirectsCount, waitingImports } from "./words";
 import "./redirects.css";
 
 const EMPTY: Redirect = { from: "", to: "", status: 301, source: "manual" };
@@ -33,6 +33,25 @@ export function RedirectsScreen() {
   const [adding, setAdding] = useState(false);
   const [many, setMany] = useState<{ open: boolean; start: RedirectImportSource | null }>({ open: false, start: null });
   const [cloudflare, setCloudflare] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const wanted = params.get("add");
+
+  // A link that asks for an import's list (the WordPress report's “Review redirects”) opens its review straight away, once.
+  useEffect(() => {
+    if (!wanted || !overview) return;
+    const source = importToOpen(overview.imports, wanted);
+
+    if (source) setMany({ open: true, start: source });
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+
+        next.delete("add");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [wanted, overview, setParams]);
 
   useTopBar({ crumbs: [{ label: "Redirects" }] });
   // The list or the host's file changed (here, in Proof, by the assistant, outside the app): read it again.
@@ -174,6 +193,16 @@ export function RedirectsScreen() {
               </div>
             ) : (
               <>
+                {waitingImports(overview.imports)
+                  .filter((source) => source.path.startsWith("wordpress-import/"))
+                  .map((source) => (
+                    <div key={source.path} className="app-card redir-offer" role="note">
+                      <span>{`${source.label}: ${(source.waiting ?? source.count).toLocaleString()} ${(source.waiting ?? source.count) === 1 ? "isn’t" : "aren’t"} in the list yet.`}</span>
+                      <Button size="sm" variant="secondary" icon="download" disabled={Boolean(overview.problem)} onClick={() => setMany({ open: true, start: source })}>
+                        Review them
+                      </Button>
+                    </div>
+                  ))}
                 <div className="redir-toolbar">
                   <Input size="sm" type="search" value={search} placeholder="Find an address or note" aria-label="Find a redirect" onChange={(event) => setSearch(event.target.value)} />
                   <Select

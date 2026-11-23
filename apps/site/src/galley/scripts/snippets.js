@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.1.1 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.1.2 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // One snippet builder per known integration, each written from the vendor's
 // current install code with only the ids from `settings` substituted (the

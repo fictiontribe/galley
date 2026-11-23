@@ -6,7 +6,7 @@
  * review (questions first, then the sheet, then Save) · the saved brand
  * (the same sheet; any edit becomes a proposal again).
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { ApplyPlan, BrandFinding, BrandProposal, BrandQuestion, DriftReport, SiteBrandFile, SiteBrandState } from "@galley/core/sitebrand/types";
 import { useTopBar } from "@/app/chrome";
@@ -325,13 +325,31 @@ export function BrandScreen() {
     refresh();
   };
 
+  // The first open after the app starts may come back before the site's fonts are scanned: ask again for them.
+  const scanning = Boolean(state?.scanning);
+
+  useEffect(() => {
+    if (!scanning) return;
+    const timer = window.setTimeout(() => void query.refetch(), 1500);
+
+    return () => window.clearTimeout(timer);
+  }, [scanning, state, query.refetch]);
+
   if (query.status === "error" && !state) return <div className="app-screen"><div className="app-screen__inner"><ErrorState title="Couldn't open the brand" error={query.error} onRetry={refresh} /></div></div>;
   if (!state) {
+    // The heading straight away, so the screen is plainly the Brand screen while the brand is read.
     return (
-      <div className="app-screen" aria-busy="true">
+      <div className="app-screen brand-screen" aria-busy="true">
         <div className="app-screen__inner app-screen__inner--wide">
-          <Skeleton width={180} height={14} />
-          <Skeleton width={420} height={40} />
+          <header className="brand-head">
+            <div className="brand-head__text">
+              <span className="g-eyebrow">Brand</span>
+              <h1 className="brand-head__title">{siteName ?? "This site"}</h1>
+              <p className="brand-head__lede brand-loading" role="status">
+                <Spinner label="Loading" /> Opening the brand…
+              </p>
+            </div>
+          </header>
           <div className="brand-swatches brand-swatches--skeleton">
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} height={200} />
@@ -344,6 +362,8 @@ export function BrandScreen() {
   const measuring = starting ? ("starting" as const) : progress;
   const running = measuring !== null || state.analysis?.state === "running";
   const proposal = state.proposal;
+  // New material to read, whether or not a proposal is open (older servers only report it inside a proposal).
+  const unread = (state.unread ?? proposal?.pendingSources ?? []).filter((id) => state.sources.some((source) => source.id === id && !source.ignored));
   const shown: SiteBrandFile | null = proposal?.brand ?? state.brand;
   const brand = local && local.id === (proposal?.id ?? "saved") ? local.brand : shown;
   const edit = (next: SiteBrandFile) => {
@@ -490,11 +510,11 @@ export function BrandScreen() {
               </div>
             ) : null}
             {proposal ? <Questions questions={proposal.questions} onAnswer={(id, value) => brand && saver.save(brand, { [id]: value })} /> : null}
-            {proposal?.pendingSources.length ? (
+            {unread.length ? (
               <div className="brand-new">
-                <span>{proposal.pendingSources.length === 1 ? "1 new file to read" : `${proposal.pendingSources.length} new files to read`}</span>
-                <Button size="sm" variant="secondary" onClick={() => void readMaterial(proposal.pendingSources)}>
-                  Read {proposal.pendingSources.length === 1 ? "it" : "them"}
+                <span>{unread.length === 1 ? "1 new file to read" : `${unread.length} new files to read`}</span>
+                <Button size="sm" variant="secondary" onClick={() => void readMaterial(unread)}>
+                  Read {unread.length === 1 ? "it" : "them"}
                 </Button>
               </div>
             ) : null}

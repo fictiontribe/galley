@@ -107,7 +107,7 @@ export function checkRedirects(list: Redirect[], ctx: CheckContext): RedirectIss
       const members = [index, ...route.hops.map((hop) => hop.index)].filter((member, at, all) => all.indexOf(member) === at);
 
       for (const member of members) inLoop.add(member);
-      issues.push({ code: "loop", severity: "error", indices: members, message: `${[redirect.from, ...route.hops.map((hop) => hop.to)].join(" → ")} goes round in a circle. Visitors would never arrive anywhere.` });
+      issues.push({ code: "loop", severity: "error", indices: members, message: `${loopPath(redirect.from, target, route.hops).join(" → ")} goes round in a circle. Visitors would never arrive anywhere.` });
       return;
     }
     if (route.hops.length > 0 && route.hops[0]!.index !== index) {
@@ -212,4 +212,22 @@ export function checkRedirects(list: Redirect[], ctx: CheckContext): RedirectIss
     }
   }
   return all;
+}
+
+/**
+ * The circle as a visitor walks it, from the redirect's old address back to
+ * the first address seen again: /a/ → /b/ → /a/. `follow` starts from the new
+ * address, so the old one and the new one lead the list.
+ */
+function loopPath(from: string, to: string, hops: ReadonlyArray<{ to: string }>): string[] {
+  const path = [from, to];
+  const seen = new Set([lookupKey(from), lookupKey(to)]);
+
+  if (lookupKey(from) === lookupKey(to)) return path;
+  for (const hop of hops) {
+    path.push(hop.to);
+    if (seen.has(lookupKey(hop.to))) break;
+    seen.add(lookupKey(hop.to));
+  }
+  return path;
 }

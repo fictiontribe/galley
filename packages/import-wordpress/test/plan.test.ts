@@ -96,6 +96,8 @@ describe("planning against the real starter", () => {
     expect(reasons[307]).toMatch(/isn't published on WordPress \(it's private\), and Pages has no draft setting/);
     expect(reasons[106]).toMatch(/password-protected/);
     expect(reasons[105]).toMatch(/needs an image, and this one has none/);
+    // The app shows this reason as it is: plain words, no command-line flag.
+    expect(reasons[105]).not.toMatch(/--default/);
   });
 
   it("fills a required field from --default instead of holding the post back", () => {

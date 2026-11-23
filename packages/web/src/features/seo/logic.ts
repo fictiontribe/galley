@@ -73,3 +73,9 @@ export function pageName(finding: Finding): string | null {
 export function editorLink(siteId: string, path: string): string {
   return `/sites/${encodeURIComponent(siteId)}/edit?path=${encodeURIComponent(path)}`;
 }
+
+/** "1 of 14 pages was checked as sent." — the rendered sample, when it isn't every page; empty when it is. */
+export function sampleWords(rendering: { sampled: number; total: number }): string {
+  if (rendering.sampled >= rendering.total) return "";
+  return `${rendering.sampled} of ${rendering.total} ${rendering.total === 1 ? "page" : "pages"} ${rendering.sampled === 1 ? "was" : "were"} checked as sent.`;
+}

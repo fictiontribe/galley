@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.1.1 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.1.2 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // The site kit's build step for a vendored kit: the agent-readable version of
 // the site (markdown twins, llms.txt, llms-full.txt, agent.md, structured

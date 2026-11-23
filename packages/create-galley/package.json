@@ -1,6 +1,6 @@
 {
   "name": "create-galley",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Make a new site with Galley, the open-source AI CMS for static sites, in one command: npm create galley@latest",
   "keywords": [

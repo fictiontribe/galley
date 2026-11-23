@@ -113,10 +113,23 @@ describe("derived file sync", () => {
 
     expect(read(FILE)).toBe("/legacy/ /about/ 301\n/legacy-two/ /contact/ 301\n");
     expect(overview.derived!.state).toBe("foreign");
-    expect(overview.imports).toEqual([{ path: FILE, label: `The redirects already in ${FILE}`, count: 2 }]);
+    expect(overview.imports).toEqual([{ path: FILE, label: `The redirects already in ${FILE}`, count: 2, waiting: 2 }]);
     const review = await redirects.review(site, { path: FILE });
 
     expect(review.counts.add).toBe(2);
+  });
+
+  it("keeps offering the WordPress import's redirects on a list that has others, until they are in it", async () => {
+    const { root, site, redirects, commitAll } = await rig();
+
+    writeTree(root, { "wordpress-import/_redirects": "/2019/05/coat-notes/ /blog/ 301\n/old-about/ /about/ 301\n/gone/ /contact/ 301\n" });
+    commitAll();
+    let overview = await redirects.save(site, { redirects: [{ from: "/a/", to: "/about/", status: 301 }], baseHash: null });
+
+    expect(overview.imports).toEqual([{ path: "wordpress-import/_redirects", label: "The WordPress import's redirects", count: 3, waiting: 3 }]);
+    overview = (await redirects.confirm(site, { path: "wordpress-import/_redirects" })).overview;
+    expect(overview.redirects).toHaveLength(4);
+    expect(overview.imports[0]).toMatchObject({ count: 3, waiting: 0 });
   });
 
   it("refuses a save made on top of a list that changed underneath", async () => {

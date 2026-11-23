@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import type { ImportReportView } from "@galley/core/types";
 import { count } from "@/lib/format";
 import { Button, Icon, buttonClass, cx } from "@/ui";
+import { WORDPRESS_IMPORT } from "@/features/redirects/words";
 import { nextSteps, shortAddress, type NextStep } from "./logic";
 
 interface ReportStepProps {
@@ -45,7 +46,7 @@ function StepAction({ step, siteId, onRebuildAll, onAgain, first }: { step: Next
       );
     case "redirects":
       return (
-        <Link className={buttonClass("secondary", "sm")} to={`/sites/${siteId}/redirects`}>
+        <Link className={buttonClass("secondary", "sm")} to={`/sites/${siteId}/redirects?add=${WORDPRESS_IMPORT}`}>
           Review redirects
         </Link>
       );
@@ -191,7 +192,7 @@ export function ReportStep({ siteId, report, onAgain, onRebuild, onRebuildAll, r
             <h2 className="imp-block__title" id="imp-redirects">
               {`${count(report.redirects.count, "old address", "old addresses")} will be redirected`}
             </h2>
-            <Link className={buttonClass("secondary", "sm")} to={`/sites/${siteId}/redirects`}>
+            <Link className={buttonClass("secondary", "sm")} to={`/sites/${siteId}/redirects?add=${WORDPRESS_IMPORT}`}>
               Review them
             </Link>
           </div>

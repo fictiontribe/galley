@@ -36,12 +36,11 @@ command. For Claude Desktop, Cursor or VS Code it prints the JSON block for
 their config file instead. Paste it, restart the client if it asks, and ask
 it to “describe my site”.
 
-It prints two forms. Use the second, `npx -y galley-cms mcp …`: the first is
-an absolute `node …/galley.js` command that points at the copy npx happened
-to download, which npx may clear. (Versions 0.1.0 and 0.1.1 still introduce the
-second with “Once galley-cms is published to npm”; it is.) From a clone of this
-repository, run `node packages/cli/bin/galley.js mcp config …` instead and
-use the first form. Nothing else needs to be running — the client starts
+It prints the form to use first: `npx -y galley-cms mcp …`. (Versions 0.1.0
+and 0.1.1 printed it second, after a command pointing at the copy npx had
+downloaded, which npx may clear.) From a clone of this repository, run
+`node packages/cli/bin/galley.js mcp config …` instead and use the second
+form, “From a copy of the code”. Nothing else needs to be running — the client starts
 `galley mcp` itself, and it stops when the client disconnects.
 
 ## Setup for each client

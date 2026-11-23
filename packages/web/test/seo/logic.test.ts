@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { finding } from "@galley/core/seo";
-import { batchesFor, kindLabel, pageName, sourceOwner, WRITE_LABEL } from "@/features/seo/logic";
+import { batchesFor, kindLabel, pageName, sampleWords, sourceOwner, WRITE_LABEL } from "@/features/seo/logic";
 
 describe("Search & AI copy", () => {
+  it("says how many rendered pages were checked in good grammar", () => {
+    expect(sampleWords({ sampled: 1, total: 14 })).toBe("1 of 14 pages was checked as sent.");
+    expect(sampleWords({ sampled: 3, total: 14 })).toBe("3 of 14 pages were checked as sent.");
+    expect(sampleWords({ sampled: 14, total: 14 })).toBe("");
+  });
+
   it("names who documents a finding, and marks judgements as such", () => {
     const documented = finding("title-duplicate", { path: "a.md", url: "/a/", pageTitle: "About" });
     const judged = finding("thin-page", { path: "a.md", url: "/a/" });

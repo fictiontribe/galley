@@ -223,6 +223,8 @@ export function renderReport(report: ImportReport): string {
     section("Not imported");
     for (const item of skipped.slice(0, 30)) line(`  · ${item.title} — ${item.reason ?? "skipped"}`);
     if (skipped.length > 30) line(`  … and ${skipped.length - 30} more (see --json)`);
+    // The reason is in the app's plain words; on the command line the flag that answers it is worth naming.
+    if (skipped.some((item) => /needs an image, and this one has none/.test(item.reason ?? ""))) line("  To give each of those the same image, run the import again with --default <field>=/images/… (for example --default image=/images/cover.jpg).");
   }
   section("Left behind on purpose");
   for (const entry of report.notImported) line(`  · ${entry.what}: ${entry.why}`);

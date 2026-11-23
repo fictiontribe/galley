@@ -15,7 +15,7 @@ export { canonicalOrder, compareRedirects, createMatcher } from "./match";
 export { readList, serializeList } from "./file";
 export { renderRedirectsFile, renderVercelRedirects, renderExport, exportInfo, EXPORT_FORMATS, checksum, readGeneratedHeader } from "./generate";
 export { planDerived, safeToWrite } from "./derived";
-export { defaultListFile, derivedPath, hostOf, isGeneratedHost, listFileOf, publicDir, redirectPaths } from "./locate";
+export { defaultListFile, derivedPath, hostOf, isGeneratedHost, isRedirectsFile, listFileOf, publicDir, redirectPaths } from "./locate";
 export { routesFrom, siteRoutes } from "./routes";
 export type { SitePage, SiteRoutes } from "./routes";
 export { applyCloudflare, checkCloudflare, desiredItems, listNameFor, planCloudflare, probeCloudflare, removeCloudflare, hostnameProblem, CLOUDFLARE_API } from "./cloudflare";

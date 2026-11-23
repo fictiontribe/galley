@@ -11,7 +11,8 @@
  * other stdout write at stderr before the session starts.
  */
 import { realpathSync, statSync } from "node:fs";
-import { resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { resolve, sep } from "node:path";
 import { PRODUCT, VERSION } from "@galley/core/brand";
 import type { AgentMode } from "@galley/core/types";
 import { clientConfig, CLIENT_TITLES, createMcpServer, ensureMcpToken, MCP_CLIENTS, serveStdio, singleSite, type ConfigRequest, type McpClient } from "@galley/mcp";
@@ -20,7 +21,7 @@ import { parse, UsageError } from "../args";
 import type { Io } from "../io";
 import { NOT_A_SITE_MARKERS } from "./open";
 
-/** The name the package will be published under, for the `npx` form. */
+/** The name the package is published under on npm, for the `npx` form. */
 export const PACKAGE_NAME = `${PRODUCT.slug}-cms`;
 export const TOKEN_ENV = `${PRODUCT.slug.toUpperCase()}_MCP_TOKEN`;
 
@@ -99,6 +100,22 @@ function launcherOf(io: Io): { command: string; args: string[] } {
   return { command: process.execPath, args: [script] };
 }
 
+/**
+ * Whether this CLI runs from a throwaway install: npx's cache (…/_npx/…),
+ * pnpm or yarn dlx, bunx, or the system's temporary folder. A configuration
+ * pointing there stops working when the cache is cleared, so only the npx
+ * form is offered then.
+ */
+export function isTemporaryInstall(script: string, temp: string = tmpdir()): boolean {
+  const path = script.replace(/\\/g, "/");
+
+  if (/\/_npx\//.test(path) || /\/dlx[-/]/.test(path) || /\/bunx-/.test(path)) return true;
+  // macOS hands out /var/folders/…, which resolves to /private/var/folders/…; the script path is resolved.
+  const temps = [temp, (() => { try { return realpathSync(temp); } catch { return temp; } })()];
+
+  return temps.some((dir) => script.startsWith(dir.endsWith(sep) ? dir : `${dir}${sep}`));
+}
+
 function printConfig(io: Io, config: ReturnType<typeof clientConfig>): void {
   io.out(config.where);
   io.out();
@@ -156,12 +173,19 @@ async function configCommand(argv: string[], io: Io): Promise<number> {
 
   io.out(`${CLIENT_TITLES[client]} — ${transport === "stdio" ? "runs this site on this computer (stdio)" : `connects to ${url}`}`);
   io.out();
-  printConfig(io, clientConfig(base));
-  if (transport === "stdio") {
+  if (transport !== "stdio") {
+    printConfig(io, clientConfig(base));
+    return 0;
+  }
+  // The lasting form first: npx fetches the published package, so it doesn't depend on where this copy lives.
+  printConfig(io, clientConfig({ ...base, launcher: { command: "npx", args: ["-y", PACKAGE_NAME] } }));
+  const own = base.launcher.args[0] ?? "";
+
+  if (!isTemporaryInstall(own)) {
     io.out();
-    io.out(`Once ${PACKAGE_NAME} is published to npm, the same works without this checkout:`);
+    io.out("From a copy of the code (this one, at its own path):");
     io.out();
-    io.out(clientConfig({ ...base, launcher: { command: "npx", args: ["-y", PACKAGE_NAME] } }).text);
+    io.out(clientConfig(base).text);
   }
   return 0;
 }

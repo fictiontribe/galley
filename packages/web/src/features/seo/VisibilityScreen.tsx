@@ -13,7 +13,7 @@ import { Badge, Button, EmptyState, ErrorState, Icon, PageHeader, Skeleton } fro
 import { AgentPanel, CrawlerPanel } from "./AiPanel";
 import { BatchDialog } from "./BatchDialog";
 import { FindingRow } from "./FindingRow";
-import { batchesFor, count, SEVERITY, WRITE_LABEL } from "./logic";
+import { batchesFor, count, sampleWords, SEVERITY, WRITE_LABEL } from "./logic";
 import { useFixes, useSiteAudit, visibilityKeys } from "./useVisibility";
 import { isVisibilitySettings } from "@/features/forms/logic/locate";
 
@@ -154,7 +154,7 @@ function RenderNote({ siteId, audit }: { siteId: string; audit: SiteAudit }) {
   if (audit.rendering.source !== "none") {
     return (
       <p className="seo-note">
-        <Icon name="eye" /> {audit.rendering.detail} {audit.rendering.sampled < audit.rendering.total ? `${count(audit.rendering.sampled, "page")} of ${audit.rendering.total} were checked as sent.` : ""}
+        <Icon name="eye" /> {audit.rendering.detail} {sampleWords(audit.rendering)}
         {audit.rendering.stale ? " Start the preview to check your latest changes." : ""}
       </p>
     );

@@ -139,7 +139,7 @@ describe("the kit's agent-readable output", () => {
       llmsTxt: { present: true, valid: true, links: 7 },
       markdownTwins: { checked: 7, advertised: 7, reachable: 7 },
     });
-    expect(audit.agentReadable.summary).toMatch(/^The site kit publishes a markdown version of each page, llms.txt, llms-full.txt and agent.md, set in src\/data\/visibility.json\. Served: llms.txt, llms-full.txt and agent.md/);
+    expect(audit.agentReadable.summary).toMatch(/^The site kit publishes a markdown version of each page, llms.txt, llms-full.txt and agent.md, set in src\/data\/visibility.json\. The last build serves llms.txt, llms-full.txt and agent.md/);
     expect(audit.crawlers.policy).toBe("Blocks AI training (CCBot).");
   });
 

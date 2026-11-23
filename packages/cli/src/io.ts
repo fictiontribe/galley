@@ -129,6 +129,20 @@ function waitForSignal(): Promise<void> {
   });
 }
 
+/**
+ * Output whose reader went away (`galley starters | head`) is not an error:
+ * the command has said all anyone will read. Node reports a closed pipe as
+ * an EPIPE "error" event on the stream, which crashes the process when no
+ * one listens, so every command's stdout and stderr get this listener: on
+ * EPIPE, exit quietly with status 0; anything else is still a real error.
+ */
+export function tolerateClosedPipe(stream: NodeJS.EventEmitter, exit: (code: number) => void = (code) => process.exit(code)): void {
+  stream.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code === "EPIPE" || error.code === "ERR_STREAM_DESTROYED") return exit(0);
+    throw error;
+  });
+}
+
 /** True when a person is at the keyboard: both ends are a terminal and this isn't CI. */
 export function isInteractive(env: NodeJS.ProcessEnv = process.env): boolean {
   return Boolean(process.stdin.isTTY && process.stdout.isTTY) && !env.CI;
