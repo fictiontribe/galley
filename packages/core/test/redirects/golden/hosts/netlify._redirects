@@ -1,0 +1,10 @@
+# Redirects for Netlify, kept in step with src/data/redirects.json by Galley.
+# Change the list there (or on the app's Redirects screen), not this file: this file is rewritten from the list.
+# galley-redirects-checksum: bbc0a4e0d5ed7400
+/about/                        /contact/                  301!
+/home                          /                          301
+/jobs/customer-ninja-rockstar  /careers/support-engineer  301
+/my-redirect                   /                          302
+/store                         id=12  /blog/twelve/       301
+/jobs/*                        /careers/:splat            301
+/news/*                        /blog/:splat               301

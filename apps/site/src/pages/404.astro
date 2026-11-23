@@ -1,0 +1,24 @@
+---
+import Site from "../layouts/Site.astro";
+import { getPage } from "../lib/pages";
+import { inline } from "../lib/markdown";
+
+const { data: p } = await getPage("404");
+---
+
+<Site title={p.title} description={p.description} noindex>
+  <section class="notfound wrap" aria-labelledby="nf-h">
+    <p class="label">{p.eyebrow}</p>
+    <h1 class="h1" id="nf-h" set:html={inline(p.heading)} />
+    <p class="notfound__path"><del class="del"><span class="sr">{p.removed} </span><span data-path>{p.pathFallback}</span></del></p>
+    <p class="lead">{p.lead}</p>
+    <p class="hero__actions">
+      {p.links.map((link: { label: string; href: string }, i: number) => <a class:list={["btn", i === 0 ? "btn--primary" : "btn--quiet"]} href={link.href}>{link.label}</a>)}
+    </p>
+  </section>
+  <script>
+    // Show the address that was asked for, struck through like a proof.
+    const target = document.querySelector("[data-path]");
+    if (target) target.textContent = decodeURIComponent(location.pathname);
+  </script>
+</Site>

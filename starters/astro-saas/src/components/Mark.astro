@@ -1,0 +1,54 @@
+---
+// One cell of a comparison or plan table: "yes", "no" and "partial" become
+// a mark with a hidden label (from site.json `labels.table`); anything else
+// is shown as written.
+import Icon from "./Icon.astro";
+import { cellMark, labels } from "../lib/site";
+
+interface Props {
+  value: string;
+}
+
+const { value } = Astro.props;
+const mark = cellMark(value);
+const icon = mark === "yes" ? "check" : mark === "partial" ? "half" : "dash";
+---
+
+{
+  mark ? (
+    <span class:list={["mark", `mark--${mark}`]}>
+      <Icon name={icon} size={18} />
+      <span class="visually-hidden">{labels.table[mark]}</span>
+    </span>
+  ) : (
+    <span class="mark-text">{value}</span>
+  )
+}
+
+<style>
+  .mark {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 1.6rem;
+    block-size: 1.6rem;
+    border-radius: 50%;
+  }
+
+  .mark--yes {
+    background: var(--color-positive-soft);
+    color: var(--color-positive);
+  }
+
+  .mark--partial {
+    background: var(--color-notice-soft);
+    color: var(--color-notice);
+  }
+
+  .mark--no {
+    color: var(--tone-muted);
+  }
+
+  .mark-text {
+    font-size: var(--step--1);
+  }
+</style>

@@ -1,0 +1,11 @@
+# Redirects for Cloudflare, kept in step with src/data/redirects.json by Galley.
+# Change the list there (or on the app's Redirects screen), not this file: this file is rewritten from the list.
+# galley-redirects-checksum: f0e45c80cc8eecae
+/home301       /                              301
+/home302       /                              302
+/notrailing/   /nottrailing                   301
+/page/         /page2/#fragment               301
+/querystrings  /?query=string                 301
+/trailing      /trailing/                     301
+/twitch        https://twitch.tv              302
+/blog/*        https://blog.my.domain/:splat  302

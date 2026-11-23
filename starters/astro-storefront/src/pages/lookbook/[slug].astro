@@ -1,0 +1,23 @@
+---
+// One lookbook per file in src/content/lookbooks/, at /lookbook/<file name>/.
+import { getCollection, type CollectionEntry } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import LookbookEntry from "../../components/LookbookEntry.astro";
+import { fill, labels } from "../../lib/site";
+
+export async function getStaticPaths() {
+  const lookbooks = await getCollection("lookbooks", (entry) => import.meta.env.DEV || !entry.data.draft);
+  return lookbooks.map((lookbook) => ({ params: { slug: lookbook.id }, props: { lookbook } }));
+}
+
+interface Props {
+  lookbook: CollectionEntry<"lookbooks">;
+}
+
+const { lookbook } = Astro.props;
+const data = lookbook.data;
+---
+
+<Base title={fill(labels.lookbooks.title, { title: data.title, season: data.season })} description={data.summary} image={data.cover} imageAlt={data.coverAlt}>
+  <LookbookEntry {...data} />
+</Base>

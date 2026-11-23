@@ -1,0 +1,36 @@
+{
+  "redirects": [
+    {
+      "source": "/a/",
+      "destination": "/about/",
+      "statusCode": 301
+    },
+    {
+      "source": "/far/",
+      "destination": "https://elsewhere.example/page?ref=1",
+      "permanent": true
+    },
+    {
+      "source": "/noted/",
+      "destination": "/about/",
+      "statusCode": 301
+    },
+    {
+      "source": "/q",
+      "destination": "/contact/",
+      "has": [
+        {
+          "type": "query",
+          "key": "x",
+          "value": "1"
+        }
+      ],
+      "statusCode": 301
+    },
+    {
+      "source": "/blog/:path*",
+      "destination": "/journal/:path*",
+      "statusCode": 302
+    }
+  ]
+}

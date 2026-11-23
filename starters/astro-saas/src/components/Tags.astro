@@ -1,0 +1,67 @@
+---
+// A row of tag links, each to the page that lists the posts filed under it.
+// `current` marks the tag whose page this is.
+import { labels } from "../lib/site";
+import { tagSlug, tagUrl } from "../lib/posts";
+
+interface Props {
+  tags: string[];
+  current?: string;
+  /** Names the list for screen readers. */
+  label?: string;
+  class?: string;
+}
+
+const { tags, current, label = labels.blog.tags, class: className } = Astro.props;
+---
+
+{
+  tags.length > 0 && (
+    <ul class:list={["tags", className]} role="list" aria-label={label}>
+      {tags.map((tag) => (
+        <li>
+          <a class="tag" href={tagUrl(tag)} aria-current={current && tagSlug(tag) === tagSlug(current) ? "page" : undefined}>
+            {tag}
+          </a>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+<style>
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs);
+    padding: 0;
+    list-style: none;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.2em 0.85em;
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-pill);
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    color: var(--tone-muted);
+    text-decoration: none;
+    transition:
+      color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .tag:hover {
+    color: var(--tone-text);
+    border-color: var(--tone-control);
+  }
+
+  .tag[aria-current="page"] {
+    color: var(--tone-bg);
+    background: var(--tone-text);
+    border-color: var(--tone-text);
+  }
+</style>

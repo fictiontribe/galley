@@ -1,0 +1,73 @@
+{
+  "$comment": "How the voiceover lines become the film's clock. One entry per line of voiceover.txt, in order. pauseBefore = silence before the line starts (seconds). preRoll = how long before its line a scene cuts in. endCard = seconds the end card holds after the last line's scene. scripts/apply-timings.mjs reads this file and assets/audio/voiceover.timings.json and rewrites the scene timings in index.html.",
+  "fps": 30,
+  "lines": [
+    {
+      "id": "need",
+      "scene": "s1-need",
+      "pauseBefore": 0.5
+    },
+    {
+      "id": "ask",
+      "scene": "s2-ask",
+      "pauseBefore": 0.55
+    },
+    {
+      "id": "proof",
+      "scene": "s3-proof",
+      "pauseBefore": 0.45
+    },
+    {
+      "id": "publish",
+      "scene": "s4-publish",
+      "pauseBefore": 1.5
+    },
+    {
+      "id": "start",
+      "scene": "s5-start",
+      "pauseBefore": 0.55
+    }
+  ],
+  "preRoll": 0.3,
+  "tailAfterLastLine": 0.45,
+  "endCard": {
+    "scene": "s6-end",
+    "duration": 3.69
+  },
+  "voice": {
+    "kokoro": {
+      "voice": "af_heart",
+      "speed": 0.95,
+      "alternatives": [
+        "am_michael",
+        "bf_emma"
+      ]
+    },
+    "elevenlabs": {
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "voiceName": "George",
+      "alternatives": [
+        {
+          "voiceId": "21m00Tcm4TlvDq8ikWAM",
+          "voiceName": "Rachel"
+        },
+        {
+          "voiceId": "nPczCjzI2devNBz1zQrb",
+          "voiceName": "Brian"
+        }
+      ],
+      "modelId": "eleven_v4",
+      "outputFormat": "mp3_44100_128",
+      "voiceSettings": {
+        "stability": 0.6,
+        "similarity_boost": 0.75,
+        "style": 0,
+        "use_speaker_boost": true,
+        "speed": 1.0
+      },
+      "modelAlternatives": [
+        "eleven_multilingual_v2"
+      ]
+    }
+  }
+}

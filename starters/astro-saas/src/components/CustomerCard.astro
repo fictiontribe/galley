@@ -1,0 +1,147 @@
+---
+// A customer story teaser: logo, industry, headline (the link), the lead
+// result. `size: "large"` sets it as the featured story beside its picture.
+import type { CollectionEntry } from "astro:content";
+import Media from "./Media.astro";
+import Icon from "./Icon.astro";
+import { labels } from "../lib/site";
+import { customerUrl } from "../lib/customers";
+
+interface Props {
+  story: CollectionEntry<"customers">;
+  headingLevel?: 2 | 3;
+  size?: "default" | "large";
+}
+
+const { story, headingLevel = 3, size = "default" } = Astro.props;
+const Heading = `h${headingLevel}` as "h2" | "h3";
+const lead = story.data.results[0];
+---
+
+<article class:list={["customer-card", "card", "card-link", `customer-card--${size}`]}>
+  {
+    size === "large" && story.data.image && (
+      <div class="customer-card__media">
+        <Media src={story.data.image} alt={story.data.imageAlt ?? ""} ratio="16/10" />
+      </div>
+    )
+  }
+  <div class="customer-card__body">
+    <div class="customer-card__top">
+      <Media src={story.data.logo} alt={story.data.company} ratio="3/1" contain class="customer-card__logo" />
+      <span class="chip">{story.data.industry}</span>
+    </div>
+    <Heading class="customer-card__title">
+      <a class="card-link__target" href={customerUrl(story)}>{story.data.headline}</a>
+    </Heading>
+    {size === "large" && <p class="customer-card__summary">{story.data.summary}</p>}
+    {
+      lead && (
+        <p class="customer-card__result">
+          <span class="customer-card__value">{lead.value}</span>
+          <span class="customer-card__label">{lead.label}</span>
+        </p>
+      )
+    }
+    <span class="text-link customer-card__more" aria-hidden="true">
+      {labels.customers.readStory}
+      <Icon name="arrow-right" size={16} />
+    </span>
+  </div>
+</article>
+
+<style>
+  .customer-card {
+    display: grid;
+    overflow: hidden;
+    transition: border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .customer-card:hover {
+    border-color: var(--tone-control);
+  }
+
+  .customer-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-s);
+    padding: var(--space-m);
+  }
+
+  .customer-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-s);
+    color: var(--tone-text);
+  }
+
+  .customer-card :global(.customer-card__logo) {
+    inline-size: 7.5rem;
+    block-size: 2.5rem;
+  }
+
+  .customer-card__title {
+    font-size: var(--step-1);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .customer-card__summary {
+    color: var(--tone-muted);
+  }
+
+  .customer-card__result {
+    margin-block-start: auto;
+    display: grid;
+    gap: 0.1em;
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .customer-card__value {
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-display);
+    line-height: 1;
+    color: var(--tone-link);
+  }
+
+  .customer-card__label {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .customer-card__more {
+    align-self: flex-start;
+    margin-block-start: var(--space-2xs);
+  }
+
+  .customer-card:hover .customer-card__more {
+    color: var(--tone-link);
+  }
+
+  .customer-card__media {
+    padding: var(--space-s) var(--space-s) 0;
+  }
+
+  @media (min-width: 56rem) {
+    .customer-card--large {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      align-items: center;
+    }
+
+    .customer-card--large .customer-card__media {
+      padding: var(--space-s);
+    }
+
+    .customer-card--large .customer-card__body {
+      padding: var(--space-l);
+    }
+
+    .customer-card--large .customer-card__title {
+      font-size: var(--step-3);
+    }
+  }
+</style>

@@ -1,0 +1,196 @@
+---
+// Plans side by side. Set `featured: true` on one plan to raise it and give
+// it the inverse treatment, and `badge` for the small label on its edge.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Icon from "../Icon.astro";
+import { withBase, type BlockMarker, type Link, type Tone } from "../../lib/site";
+
+interface Plan {
+  name: string;
+  price: string;
+  period?: string;
+  text?: string;
+  features?: string[];
+  cta?: Link;
+  featured?: boolean;
+  badge?: string;
+}
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  items: Plan[];
+  note?: string;
+  align?: "left" | "center";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, items, note, align = "center", index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
+---
+
+<Section type="pricing" id={id} tone={tone} block={block} labelledby={headingId}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} align={align} />
+  <ul class="plans" role="list" style={`--count: ${items.length}`}>
+    {
+      items.map((plan) => (
+        <li class:list={["plan", { "plan--featured tone-inverse": plan.featured }]}>
+          <div class="plan__head">
+            <div class="plan__name-row">
+              <ItemHeading class="plan__name">{plan.name}</ItemHeading>
+              {plan.badge && <span class="plan__badge">{plan.badge}</span>}
+            </div>
+            <p class="plan__price">
+              <span class="plan__amount">{plan.price}</span>
+              {plan.period && <span class="plan__period">{plan.period}</span>}
+            </p>
+            {plan.text && <p class="plan__text">{plan.text}</p>}
+          </div>
+          {plan.cta && (
+            <a class:list={["button button--block plan__cta", { "button--secondary": !plan.featured }]} href={withBase(plan.cta.href)}>
+              {plan.cta.label}
+            </a>
+          )}
+          {plan.features && plan.features.length > 0 && (
+            <ul class="plan__features" role="list">
+              {plan.features.map((feature) => (
+                <li>
+                  <Icon name="check" size={18} />
+                  <span>{feature}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+  {note && <p class:list={["plans__note", `plans__note--${align}`]}>{note}</p>}
+</Section>
+
+<style>
+  .plans {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    gap: var(--space-m);
+    align-items: stretch;
+    padding: 0;
+    list-style: none;
+  }
+
+  .plan {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-l);
+    padding: var(--space-l);
+    background: var(--tone-surface);
+    color: var(--tone-text);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+  }
+
+  .plan--featured {
+    border-color: var(--tone-link);
+    background: var(--tone-bg);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .plan__head {
+    display: grid;
+    gap: var(--space-xs);
+  }
+
+  .plan__name-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2xs);
+  }
+
+  .plan__name {
+    font-size: var(--step-1);
+    letter-spacing: -0.015em;
+  }
+
+  .plan__badge {
+    padding: 0.15em 0.65em;
+    border-radius: var(--radius-pill);
+    background: var(--tone-link);
+    color: var(--tone-bg);
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+  }
+
+  .plan__price {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4em;
+  }
+
+  .plan__amount {
+    font-family: var(--font-display);
+    font-size: var(--step-5);
+    font-weight: var(--weight-display);
+    letter-spacing: -0.045em;
+    line-height: 1;
+  }
+
+  .plan__period,
+  .plan__text {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .plan__features {
+    display: grid;
+    gap: var(--space-2xs);
+    padding: var(--space-m) 0 0;
+    border-block-start: var(--border-width) solid var(--tone-line);
+    list-style: none;
+    font-size: var(--step--1);
+  }
+
+  .plan__features li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-xs);
+  }
+
+  .plan__features :global(svg) {
+    margin-block-start: 0.15em;
+    color: var(--tone-link);
+  }
+
+  .plans__note {
+    margin-block-start: var(--space-l);
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+    max-width: 48em;
+  }
+
+  .plans__note--center {
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  @media (min-width: 64rem) {
+    .plans {
+      grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+    }
+
+    .plan--featured {
+      margin-block: calc(-1 * var(--space-s));
+      padding-block: calc(var(--space-l) + var(--space-s));
+    }
+  }
+</style>

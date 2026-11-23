@@ -1,0 +1,35 @@
+---
+// The closing card on the inked plate: a heading, one line, the actions, and
+// optionally the real commands to run.
+import Terminal from "../Terminal.astro";
+import { inline } from "../../lib/markdown";
+import { fill } from "../../lib/site";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const hid = `${s.id ?? "close"}-h`;
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class:list={["close", !s.terminal && "close--solo"]}>
+    <div class="close__text">
+      <H class="h2" id={hid} set:html={inline(s.heading)} />
+      <p class="body">{fill(s.text)}</p>
+      {s.points.length > 0 && <ul class="points">{s.points.map((p: string) => <li set:html={inline(p)} />)}</ul>}
+      {s.terminal && s.actions.length > 0 && (
+        <div class="close__actions">
+          {s.actions.map((a: { label: string; href: string }, i: number) => <a class:list={["btn", i === 0 ? "btn--primary" : "btn--quiet"]} href={fill(a.href)}>{a.label}</a>)}
+        </div>
+      )}
+    </div>
+    {s.terminal ? (
+      <Terminal {...s.terminal} copy />
+    ) : (
+      s.actions.length > 0 && (
+        <div class="close__actions">
+          {s.actions.map((a: { label: string; href: string }, i: number) => <a class:list={["btn", i === 0 ? "btn--primary" : "btn--quiet"]} href={fill(a.href)}>{a.label}</a>)}
+        </div>
+      )
+    )}
+  </div>
+</section>

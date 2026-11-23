@@ -1,0 +1,136 @@
+---
+// The section gallery (see integration.mjs). Three kinds of page:
+//   /__gallery/                       every section type, one after another
+//   /__gallery/sections/<type>/       one section type alone, for its thumbnail
+//   /__gallery/templates/<id>/        one page template, as a full page
+// Sections come from ./sections.md; templates from galley.config.json
+// `templates`. Both are validated against src/content.config.ts, so a
+// template that would not build as a page fails here too.
+import Base from "../../src/layouts/Base.astro";
+import Sections from "../../src/components/Sections.astro";
+import Media from "../../src/components/Media.astro";
+import Tags from "../../src/components/Tags.astro";
+import "../../src/styles/tokens.css";
+import "../../src/styles/global.css";
+import { pageSchema } from "../../src/content.config";
+import { plain, site } from "../../src/lib/site";
+import config from "../../galley.config.json";
+
+export async function getStaticPaths() {
+  const fixtures = import.meta.glob("./sections.md", { eager: true }) as Record<string, { frontmatter: Record<string, unknown> }>;
+  const fixture = Object.values(fixtures)[0]!.frontmatter;
+  const templateFiles = import.meta.glob("../../galley/templates/*.md", { eager: true }) as Record<string, { frontmatter: Record<string, unknown>; Content: unknown }>;
+  const sections = (fixture.sections as Array<{ type: string }>) ?? [];
+  const templates = config.templates.map((template) => {
+    const file = Object.entries(templateFiles).find(([path]) => path.endsWith(`/${template.file.split("/").pop()}`));
+    if (!file) throw new Error(`section-gallery: ${template.file} is missing.`);
+    return { template, module: file[1] };
+  });
+  return [
+    { params: { path: undefined }, props: { kind: "index", sections } },
+    ...sections.map((section) => ({ params: { path: `sections/${section.type}` }, props: { kind: "section", sections: [section] } })),
+    ...templates.map(({ template, module }) => ({
+      params: { path: `templates/${template.id}` },
+      props: { kind: "template", collection: template.collection, frontmatter: module.frontmatter, Content: module.Content },
+    })),
+  ];
+}
+
+interface Props {
+  kind: "index" | "section" | "template";
+  sections?: Array<{ type: string }>;
+  collection?: string;
+  frontmatter?: Record<string, unknown>;
+  Content?: any;
+}
+
+const { kind, sections = [], collection, frontmatter = {}, Content } = Astro.props;
+const blocks = new Map(
+  (config.collections.find((entry) => entry.id === "pages")?.fields?.find((field) => field.key === "sections")?.blocks ?? []).map((block) => [block.type, block]),
+);
+const page = kind === "template" && collection === "pages" ? pageSchema.parse(frontmatter) : undefined;
+// A journal post template: its cover, title, tags and body, as the post page lays them out.
+const post = kind === "template" && collection === "blog" ? (frontmatter as { title: string; description: string; image: string; imageAlt?: string; tags?: string[] }) : undefined;
+const shown = kind === "template" ? [] : (pageSchema.parse({ title: "gallery", description: "gallery", sections }).sections as Array<{ type: string }>);
+---
+
+{
+  page && (
+    <Base title={page.title} description={page.description} noindex>
+      <Sections sections={page.sections as Array<{ type: string }>} title={page.title} />
+      {Content && <div class="section tone-default"><div class="container prose"><Content /></div></div>}
+    </Base>
+  )
+}
+{
+  post && (
+    <Base title={post.title} description={post.description} noindex>
+      <article class="section tone-default">
+        <div class="container container--narrow gallery-post">
+          <Tags tags={post.tags ?? []} />
+          <h1 class="gallery-post__title">{post.title}</h1>
+          <p class="lede">{post.description}</p>
+          <Media src={post.image} alt={post.imageAlt ?? ""} ratio="16/9" eager />
+          <div class="prose">{Content && <Content />}</div>
+        </div>
+      </article>
+    </Base>
+  )
+}
+{
+  kind !== "template" && (
+    <html lang={site.lang}>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex" />
+        <title>{kind === "section" ? sections[0]?.type : site.name}</title>
+      </head>
+      <body class:list={["gallery", `gallery--${kind}`]}>
+        <main>
+          {kind === "section" ? (
+            <Sections sections={shown} title={site.name} />
+          ) : (
+            shown.map((section) => (
+              <div class="gallery__item" id={section.type}>
+                <p class="gallery__label container">
+                  <code>{section.type}</code> <strong>{plain(blocks.get(section.type)?.label ?? section.type)}</strong> {blocks.get(section.type)?.description}
+                </p>
+                <Sections sections={[section]} title={site.name} ownsHeading={false} />
+              </div>
+            ))
+          )}
+        </main>
+      </body>
+    </html>
+  )
+}
+
+<style is:global>
+  .gallery__item {
+    border-block-end: 4px solid var(--color-accent);
+  }
+
+  .gallery__label {
+    padding-block: var(--space-s);
+    font-size: var(--step--1);
+    color: var(--color-text-muted);
+  }
+
+  .gallery__label code {
+    color: var(--color-accent);
+  }
+
+  .gallery-post {
+    display: grid;
+    gap: var(--space-m);
+  }
+
+  .gallery-post__title {
+    font-family: var(--font-display);
+    font-size: var(--step-5);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-display);
+    line-height: var(--leading-tight);
+  }
+</style>

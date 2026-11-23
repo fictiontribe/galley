@@ -1,0 +1,94 @@
+/* The page builder: the Arrange panel beside the page, the palette, the drag ghost. Tokens only. */
+.preview-body { position: relative; flex: 1; min-block-size: 0; display: flex; }
+.preview-body > .preview-stage { flex: 1; min-inline-size: 0; }
+
+.builder-panel {
+  flex: none; inline-size: 288px; display: flex; flex-direction: column; min-block-size: 0;
+  background: var(--surface-raised); border-inline-end: var(--border-hair) solid var(--border-subtle);
+}
+.builder-panel--rail { inline-size: 44px; align-items: center; gap: var(--space-1); padding-block: var(--space-2); }
+.builder-panel__head { display: flex; align-items: center; gap: var(--space-2); block-size: 36px; flex: none; padding: 0 var(--space-1) 0 var(--space-3); border-block-end: var(--border-hair) solid var(--border-subtle); }
+.builder-panel__count { font-family: var(--font-mono); font-size: var(--text-2xs); }
+.builder-panel__body { flex: 1; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: var(--space-4); padding: var(--space-3); }
+.builder-panel__status, .builder-panel__hint { margin: 0; display: flex; gap: var(--space-2); align-items: center; font-size: var(--text-xs); line-height: var(--leading-xs); color: var(--ink-secondary); }
+.builder-panel__hint { display: block; color: var(--ink-tertiary); }
+.builder-panel__selected { display: grid; gap: var(--space-2); padding-block-end: var(--space-4); border-block-end: var(--border-hair) solid var(--border-subtle); }
+.builder-panel__selected > .g-eyebrow, .builder-panel__sub { margin: 0; }
+.builder-panel__title-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.builder-panel__title { margin: 0; font: var(--weight-medium) var(--text-xl) / var(--leading-xl) var(--font-display); overflow-wrap: anywhere; }
+.builder-panel__sub { margin-block-start: var(--space-1); }
+.builder-panel__add { display: grid; gap: var(--space-2); }
+
+.builder-options { display: grid; gap: var(--space-3); }
+.builder-option { display: grid; gap: var(--space-1); }
+.builder-option__label { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.builder-option__row { display: flex; align-items: center; gap: var(--space-2); min-inline-size: 0; }
+.builder-option__row > .g-segmented { flex-wrap: wrap; block-size: auto; }
+.builder-option__row > .app-toggle-row { flex: 1; }
+.builder-option .g-error-text { margin: 0; }
+
+.builder-note { display: grid; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-sunken); font-size: var(--text-xs); line-height: var(--leading-xs); color: var(--ink-secondary); }
+.builder-note > p { margin: 0; }
+.builder-note__title { display: flex; gap: var(--space-2); align-items: baseline; font: var(--weight-medium) var(--text-md) / var(--leading-md) var(--font-display) !important; color: var(--ink-primary); }
+.builder-note__title .g-mark { color: var(--warning); }
+.builder-note__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-block-start: var(--space-1); }
+.builder-note__link { display: inline-flex; align-items: center; gap: 4px; }
+.builder-note__detail p { margin: var(--space-1) 0 0; font-size: var(--text-2xs); overflow-wrap: anywhere; }
+
+.builder-placing { display: grid; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--accent-subtle); border: var(--border-hair) solid var(--accent-line); font-size: var(--text-xs); line-height: var(--leading-xs); }
+.builder-placing > p { margin: 0; }
+.builder-placing__actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+
+/* The palette (also the form's "Add section" dialog). */
+.builder-palette { display: grid; gap: var(--space-2); min-inline-size: 0; }
+.builder-palette__list { display: grid; gap: var(--space-3); }
+.builder-palette--grid .builder-palette__list { max-block-size: min(56vh, 520px); overflow-y: auto; padding: 2px; }
+.builder-palette__group { display: grid; gap: var(--space-2); }
+.builder-palette--grid .builder-palette__group { grid-template-columns: repeat(auto-fill, minmax(188px, 1fr)); }
+.builder-palette__heading { grid-column: 1 / -1; margin: var(--space-1) 0 0; }
+.builder-palette__empty { margin: 0; padding: var(--space-6) var(--space-3); color: var(--ink-tertiary); text-align: center; font-size: var(--text-xs); }
+
+.builder-card {
+  position: relative; display: grid; gap: var(--space-2); align-content: start; min-inline-size: 0;
+  padding: var(--space-2); border: var(--border-hair) solid var(--border-default); border-radius: var(--radius-md);
+  background: var(--surface-raised); cursor: pointer; user-select: none;
+  transition: border-color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+}
+.builder-palette--rows .builder-card { grid-template-columns: 92px minmax(0, 1fr); align-items: center; cursor: grab; touch-action: pan-y; }
+.builder-card--active { border-color: var(--accent-line); background: var(--accent-subtle); }
+.builder-card--current { border-color: var(--accent-fill); box-shadow: inset 0 0 0 1px var(--accent-fill); }
+.builder-card[aria-disabled="true"] { cursor: default; opacity: 0.6; }
+.builder-card__text { display: grid; gap: 2px; min-inline-size: 0; }
+.builder-card__label { font: var(--weight-medium) var(--text-md) / var(--leading-md) var(--font-display); }
+.builder-palette--grid .builder-card__label { font-size: var(--text-lg); line-height: var(--leading-lg); }
+.builder-card__description { font-size: var(--text-xs); line-height: var(--leading-xs); color: var(--ink-secondary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+
+.builder-thumb { display: block; aspect-ratio: 16 / 10; border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-sunken); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+.builder-thumb img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: top center; }
+/* No picture: a set page in miniature — the section's name in the serif, three ruled lines, crop marks. */
+.builder-thumb--plain { --crop-o: 3px; position: relative; display: grid; align-content: center; gap: 6px; padding: 10% 12%; overflow: visible; background: var(--surface-overlay); box-shadow: inset 0 0 0 1px var(--border-default); }
+.builder-thumb__title { font: var(--weight-medium) 12px / 1.15 var(--font-display); color: var(--ink-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.builder-palette--grid .builder-thumb__title { font-size: var(--text-lg); }
+.builder-thumb__rules { display: grid; gap: 4px; }
+.builder-thumb__rules > span { display: block; block-size: 2px; border-radius: 1px; background: var(--border-default); }
+.builder-thumb__rules > span:nth-child(2) { inline-size: 86%; }
+.builder-thumb__rules > span:nth-child(3) { inline-size: 58%; }
+
+/* While a palette card is dragged, frames stop taking the pointer so the app sees every move. */
+.app-placing iframe { pointer-events: none; }
+.app-placing, .app-placing * { cursor: grabbing !important; user-select: none !important; }
+.builder-ghost {
+  position: fixed; inset-block-start: 0; inset-inline-start: 0; z-index: var(--z-toast, 1000); pointer-events: none;
+  display: inline-flex; align-items: center; gap: var(--space-2); padding: 7px 12px; border-radius: var(--radius-pill);
+  background: var(--surface-overlay); color: var(--ink-primary); border: var(--border-hair) solid var(--border-strong); box-shadow: var(--shadow-3);
+  font: var(--weight-medium) var(--text-sm) / 1 var(--font-text); white-space: nowrap; will-change: transform;
+}
+.builder-ghost::before { content: ""; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--border-strong); }
+.builder-ghost--over::before { background: var(--accent-fill); }
+
+/* A narrow preview keeps the whole page: the panel floats over its left edge instead of squeezing it. */
+@container preview (max-width: 759px) {
+  .builder-panel:not(.builder-panel--rail) { position: absolute; inset-block: 0; inset-inline-start: 0; z-index: var(--z-raised); box-shadow: var(--shadow-3); inline-size: min(288px, 86%); }
+  .builder-panel--rail { position: relative; }
+}
+@media (prefers-reduced-motion: reduce) { .builder-card { transition: none; } }

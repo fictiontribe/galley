@@ -1,0 +1,51 @@
+{
+  "name": "Caddow — storefront",
+  "description": "A shop for a small fashion label, run from Galley: campaign, lookbook, journal and the story around every piece are plain files; products, prices, stock, the cart and checkout come from a Shopify store. Works with no store connected — a demo catalogue of seventeen pieces and a bag that never takes payment.",
+  "framework": "astro",
+  "tags": [
+    "shop",
+    "ecommerce",
+    "fashion",
+    "editorial"
+  ],
+  "tokens": "src/styles/tokens.css",
+  "preview": "galley/previews/chalk.webp",
+  "looks": [
+    {
+      "id": "chalk",
+      "label": "Chalk",
+      "file": "src/styles/themes/chalk.css",
+      "swatches": [
+        "#f7f6f3",
+        "#110f0d",
+        "#1c3dbb",
+        "#e9e6e1"
+      ],
+      "preview": "galley/previews/chalk.webp"
+    },
+    {
+      "id": "paper",
+      "label": "Paper",
+      "file": "src/styles/themes/paper.css",
+      "swatches": [
+        "#f3ece1",
+        "#231811",
+        "#4a561a",
+        "#e6dbca"
+      ],
+      "preview": "galley/previews/paper.webp"
+    },
+    {
+      "id": "night",
+      "label": "Night",
+      "file": "src/styles/themes/night.css",
+      "swatches": [
+        "#0e0c0a",
+        "#edebe6",
+        "#f1af57",
+        "#1c1916"
+      ],
+      "preview": "galley/previews/night.webp"
+    }
+  ]
+}

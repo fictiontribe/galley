@@ -1,0 +1,39 @@
+{
+  "name": "Tell us about your home",
+  "submitLabel": "Send message",
+  "fields": [
+    { "id": "name", "type": "text", "label": "Your name", "required": true, "width": "half" },
+    { "id": "email", "type": "email", "label": "Email address", "required": true, "width": "half" },
+    { "id": "phone", "type": "tel", "label": "Phone", "help": "If you'd rather we rang you.", "width": "half" },
+    {
+      "id": "project",
+      "type": "select",
+      "label": "What are you planning?",
+      "width": "half",
+      "placeholder": "Choose one",
+      "options": [
+        { "value": "extension", "label": "An extension" },
+        { "value": "renovation", "label": "A renovation" },
+        { "value": "garden-room", "label": "A garden room" },
+        { "value": "not-sure", "label": "Not sure yet" }
+      ]
+    },
+    { "id": "message", "type": "textarea", "label": "Tell us about your home and what you would like to change", "required": true },
+    {
+      "id": "visit",
+      "type": "checkbox",
+      "label": "I'd like to book a first visit (free, about an hour)"
+    }
+  ],
+  "destinations": [{ "provider": "galley", "settings": {} }],
+  "afterSubmit": [
+    { "type": "event", "name": "contact_sent", "params": { "project": "{{project}}" } },
+    {
+      "type": "message",
+      "title": "Thank you, {{name}}",
+      "text": "Nell or Tomás will reply to **{{email}}** within two working days — usually sooner, unless we're on site."
+    }
+  ],
+  "errorMessage": "Your message couldn't be sent just now. Your answers are still here — try again, or email hello@example.com.",
+  "spam": { "honeypot": true, "minSeconds": 3 }
+}

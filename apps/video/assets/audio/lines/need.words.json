@@ -1,0 +1,79 @@
+{
+ "voice": {
+  "provider": "elevenlabs",
+  "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+  "model": "eleven_v4"
+ },
+ "words": [
+  {
+   "text": "Your",
+   "start": 0.0,
+   "end": 0.24
+  },
+  {
+   "text": "site",
+   "start": 0.32,
+   "end": 0.56
+  },
+  {
+   "text": "is",
+   "start": 0.64,
+   "end": 0.8
+  },
+  {
+   "text": "fast.",
+   "start": 0.88,
+   "end": 1.68
+  },
+  {
+   "text": "So",
+   "start": 1.92,
+   "end": 2.08
+  },
+  {
+   "text": "why",
+   "start": 2.32,
+   "end": 2.4
+  },
+  {
+   "text": "does",
+   "start": 2.48,
+   "end": 2.64
+  },
+  {
+   "text": "every",
+   "start": 2.8,
+   "end": 3.04
+  },
+  {
+   "text": "small",
+   "start": 3.2,
+   "end": 3.44
+  },
+  {
+   "text": "change",
+   "start": 3.52,
+   "end": 3.92
+  },
+  {
+   "text": "wait",
+   "start": 4.0,
+   "end": 4.24
+  },
+  {
+   "text": "for",
+   "start": 4.28,
+   "end": 4.32
+  },
+  {
+   "text": "a",
+   "start": 4.4,
+   "end": 4.44
+  },
+  {
+   "text": "developer?",
+   "start": 4.48,
+   "end": 5.2
+  }
+ ]
+}

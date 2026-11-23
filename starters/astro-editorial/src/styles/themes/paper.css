@@ -1,0 +1,181 @@
+/*
+ * DESIGN TOKENS — the one file that decides how this site looks.
+ *
+ * Look: PAPER — unbleached paper, espresso ink, an olive accent.
+ *
+ * Every colour, font, size, radius and motion value used anywhere on the
+ * site is a custom property here. Components only reference these names.
+ * Three complete looks live in src/styles/themes/ — chalk (the default),
+ * paper and night. To switch, copy one over src/styles/tokens.css:
+ *
+ *   cp src/styles/themes/night.css src/styles/tokens.css
+ *
+ * Colour roles:
+ *   background        page ground
+ *   surface           raised things: inputs, the mobile menu
+ *   surface-muted     ground of `tone: muted` sections
+ *   text / text-muted body copy / secondary copy (≥ 4.5:1 on every ground)
+ *   border            hairlines; border-strong for form controls
+ *   accent            links, primary buttons, ground of `tone: accent`
+ *   accent-contrast   text placed on accent (≥ 4.5:1)
+ *   inverse-*         ground, text, muted text and lines of `tone: inverse`
+ *                     sections and the footer
+ *   shade             the scrim laid under any text set on a photograph
+ *   on-image          text set on a photograph, over the shade
+ *   placeholder-*     the tonal fields of the "before the shoot" placeholder
+ *                     images (scripts/make-placeholders.mjs reads them)
+ *
+ * Legibility over photographs never depends on the photograph: wherever type
+ * sits on an image, a shade is laid under it first. --shade-strong goes under
+ * text of any size: at 0.8 a pure white photograph still gives better than
+ * 7:1; never go below 0.72, where small text drops under 4.5:1 over white.
+ * --shade-large goes only under display type (24px and up), which needs
+ * 3:1; at 0.6 a white photograph still gives better than 4:1; never go
+ * below 0.52.
+ *
+ * Colours are oklch(lightness chroma hue).
+ */
+
+@import "@fontsource-variable/bodoni-moda/opsz.css";
+@import "@fontsource-variable/bodoni-moda/opsz-italic.css";
+@import "@fontsource-variable/albert-sans/wght.css";
+@import "@fontsource-variable/spline-sans-mono/wght.css";
+
+:root {
+  color-scheme: light;
+
+  /* ── Colour ─────────────────────────────────────────────────────────── */
+  --color-background: oklch(94.6% 0.017 82);
+  --color-surface: oklch(97.6% 0.009 85);
+  --color-surface-muted: oklch(89.6% 0.026 78);
+  --color-text: oklch(22% 0.022 52);
+  --color-text-muted: oklch(42% 0.03 56);
+  --color-border: oklch(82.5% 0.026 74);
+  --color-border-strong: oklch(50% 0.03 58);
+
+  --color-accent: oklch(43% 0.085 120);
+  --color-accent-strong: oklch(36% 0.075 120);
+  --color-accent-contrast: oklch(97% 0.012 85);
+  --color-accent-on-inverse: oklch(80% 0.09 112);
+
+  --color-inverse-background: oklch(24% 0.024 50);
+  --color-inverse-surface: oklch(30% 0.026 50);
+  --color-inverse-text: oklch(94.5% 0.017 82);
+  --color-inverse-muted: oklch(79% 0.03 75);
+  --color-inverse-border: oklch(41% 0.028 52);
+
+  /* Form errors: on the page's grounds, and on the inverse ground. */
+  --color-error: oklch(46% 0.16 30);
+  --color-error-on-inverse: oklch(78% 0.11 30);
+
+  --color-shade: oklch(17% 0.02 50);
+  --color-on-image: oklch(97% 0.012 85);
+  --color-on-image-muted: oklch(89% 0.02 80);
+  --shade-strong: 0.8;
+  --shade-large: 0.6;
+  --shade-header: 0.74;
+
+  --placeholder-light: oklch(88% 0.03 78);
+  --placeholder-mid: oklch(72% 0.04 70);
+  --placeholder-dark: oklch(32% 0.03 50);
+  --placeholder-warm: oklch(64% 0.08 55);
+  --placeholder-accent: oklch(48% 0.07 118);
+
+  /* ── Type ───────────────────────────────────────────────────────────── */
+  --font-display: "Bodoni Moda Variable", "Bodoni 72", Didot, "Times New Roman", serif;
+  --font-body: "Albert Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Spline Sans Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --weight-display: 480;
+  --weight-display-strong: 600;
+  --weight-body: 400;
+  --weight-medium: 520;
+  --weight-bold: 640;
+  --weight-mono: 420;
+
+  --tracking-display: -0.022em;
+  --tracking-caps: 0.16em;
+  --tracking-mono: 0.08em;
+  --leading-tight: 0.92;
+  --leading-snug: 1.14;
+  --leading-body: 1.62;
+
+  /* Fluid scale. -2 … 0 for text, 1 … 5 for headings, 6 … 7 for statements and campaigns. */
+  --step--2: clamp(0.7rem, 0.68rem + 0.08vw, 0.76rem);
+  --step--1: clamp(0.82rem, 0.79rem + 0.14vw, 0.9rem);
+  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.1rem);
+  --step-1: clamp(1.18rem, 1.08rem + 0.45vw, 1.45rem);
+  --step-2: clamp(1.42rem, 1.22rem + 0.9vw, 2rem);
+  --step-3: clamp(1.75rem, 1.4rem + 1.6vw, 2.9rem);
+  --step-4: clamp(2.1rem, 1.5rem + 2.8vw, 4.1rem);
+  --step-5: clamp(2.5rem, 1.5rem + 4.6vw, 6rem);
+  --step-6: clamp(2.9rem, 1.2rem + 7.4vw, 8.6rem);
+  --step-7: clamp(3.4rem, 0.9rem + 10.6vw, 12rem);
+  /* One size for every section heading (h2) and every sub-heading (h3). */
+  --h2-size: clamp(2.2rem, 1.2rem + 3.8vw, 5rem);
+  --h3-size: var(--step-2);
+
+  --measure: 62ch;
+
+  /* ── Space ──────────────────────────────────────────────────────────── */
+  /* One scale for every gap on the site. 3xs–s inside a component (a label
+     and its value, a card's lines), m–xl between the blocks of a section (a
+     heading and what follows it), 2xl between groups inside a long section,
+     and --space-section between sections: every section has it above its
+     first line and below its last, and two sections on the same ground share
+     one (global.css), so the rhythm down a page is the same step everywhere.
+     Sections are as tall as what they hold; only the campaign hero is sized
+     to the screen. */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-s: 1rem;
+  --space-m: clamp(1.25rem, 1.1rem + 0.6vw, 1.7rem);
+  --space-l: clamp(1.75rem, 1.4rem + 1.4vw, 2.75rem);
+  --space-xl: clamp(2.5rem, 1.9rem + 2.6vw, 4.5rem);
+  --space-2xl: clamp(3.5rem, 2.4rem + 4.8vw, 7rem);
+  --space-section: clamp(4rem, 2.6rem + 5.6vw, 8rem);
+
+  --container: 92rem;
+  --container-narrow: 46rem;
+  /* The page's one left and right margin, and the twelve-column grid's gutter. */
+  --page-margin: 1.25rem;
+  --gutter: 24px;
+  --header-height: 4.75rem;
+
+  /* ── Shape ──────────────────────────────────────────────────────────── */
+  --radius-s: 0;
+  --radius-m: 0;
+  --radius-button: 0;
+  --radius-image: 0;
+  --border-width: 1px;
+
+  --shadow-raised: 0 18px 40px -18px oklch(22% 0.022 52 / 0.3);
+
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 160ms;
+  --duration: 280ms;
+  --duration-slow: 1400ms;
+  --marquee-duration: 48s;
+}
+
+@media (min-width: 40rem) {
+  :root {
+    --page-margin: 3rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --page-margin: clamp(4.5rem, 5vw, 7.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration: 0ms;
+    --duration-slow: 0ms;
+  }
+}

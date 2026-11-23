@@ -1,0 +1,85 @@
+---
+// Every page's <html>, <head>, header and footer. Titles, descriptions and
+// share images come from front matter, falling back to src/data/site.json.
+import "../styles/tokens.css";
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { absolute, fill, labels, plain, site } from "../lib/site";
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Social share image path, e.g. /images/share.png. */
+  image?: string;
+  imageAlt?: string;
+  noindex?: boolean;
+  /** Leave the title as written instead of applying site.titleTemplate. */
+  bareTitle?: boolean;
+  type?: "website" | "article";
+  publishedTime?: Date;
+  author?: string;
+}
+
+const {
+  title,
+  description = site.description,
+  image = site.shareImage,
+  imageAlt = site.shareImageAlt,
+  noindex = false,
+  bareTitle = false,
+  type = "website",
+  publishedTime,
+  author,
+} = Astro.props;
+
+const pageTitle = bareTitle ? plain(title) : fill(site.titleTemplate, { title: plain(title), site: site.name });
+const canonical = absolute(Astro.url.pathname);
+const shareImage = absolute(image);
+---
+
+<!doctype html>
+<html lang={site.lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="sitemap" href="/sitemap.xml" />
+    <meta name="generator" content={Astro.generator} />
+
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:locale" content={site.locale.replace("-", "_")} />
+    <meta property="og:title" content={plain(title)} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={shareImage} />
+    <meta property="og:image:alt" content={imageAlt} />
+    {publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
+    {author && <meta property="article:author" content={author} />}
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={plain(title)} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={shareImage} />
+    <meta name="twitter:image:alt" content={imageAlt} />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">{labels.skipLink}</a>
+    <Header />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>
+
+<style>
+  main:focus {
+    outline: none;
+  }
+</style>

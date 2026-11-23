@@ -1,0 +1,30 @@
+---
+// The footer: one row of links, one legal line, and who makes it.
+import mark from "../../../../brand/logo/mark.svg?raw";
+import navigation from "../data/navigation.json";
+import { fill, site } from "../lib/site";
+
+const icon = mark.replace(/<svg /, '<svg aria-hidden="true" ').replace(/ width="[^"]+" height="[^"]+"/, "").replace(/<title[^>]*>.*?<\/title>/, "").replace(/ role="img"[^>]*?(?=>)/, "");
+---
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__top">
+      <a class="footer__mark" href="/" aria-label={site.ui.home} set:html={icon} />
+      <nav class="footer__links" aria-label={site.ui.footer}>
+        {navigation.footer.map((l) => <a href={fill(l.href)}>{l.label}</a>)}
+      </nav>
+    </div>
+    <div class="footer__base">
+      <p class="footer__legal">
+        {navigation.legal.map((item, i) => (
+          <>
+            {i > 0 && <span aria-hidden="true"> · </span>}
+            {item.href ? <a href={fill(item.href)}>{fill(item.label)}</a> : <span>{fill(item.label)}</span>}
+          </>
+        ))}
+      </p>
+      <a class="footer__maker" href={fill(navigation.maker.href)}>{navigation.maker.label}</a>
+    </div>
+  </div>
+</footer>

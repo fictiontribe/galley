@@ -1,0 +1,12 @@
+# Render outputs and caches (the deliverables live in ../site/public/video/)
+renders/
+*.mp4.tmp
+# HyperFrames working state: snapshots, check reports, frame caches (project history is kept locally)
+.hyperframes/
+.media/
+# Frame dumps and scratch
+frames/
+*.png.tmp
+# Never commit credentials
+.env
+.env.*

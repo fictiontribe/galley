@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Galley",
+  "version": "../package.json",
+  "identifier": "com.fictiontribe.galley",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "windows": [],
+    "withGlobalTauri": false,
+    "security": {
+      "csp": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src ipc: http://ipc.localhost",
+      "capabilities": ["startup-window"]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "publisher": "Fiction Tribe",
+    "homepage": "https://galley.fictiontribe.com",
+    "copyright": "Copyright © Fiction Tribe. Apache-2.0.",
+    "license": "Apache-2.0",
+    "category": "DeveloperTool",
+    "shortDescription": "The AI CMS for static sites",
+    "longDescription": "Edit a git-based static site three ways — in a form, on the page, or by asking the assistant — proof every change, and publish it.",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.plist"
+    }
+  }
+}

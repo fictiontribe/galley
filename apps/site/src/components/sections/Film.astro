@@ -1,0 +1,48 @@
+---
+// The film: its poster first, nothing of the video loaded until someone
+// presses play; then it plays with controls and English captions. Chapters
+// jump to a point in it.
+import { join } from "node:path";
+import { webpSize } from "../../lib/media";
+import { inline } from "../../lib/markdown";
+import { fill } from "../../lib/site";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const hid = `${s.id ?? "film"}-h`;
+const base = `/video/${s.video}`;
+const poster = webpSize(join(process.cwd(), "public", "video", `${s.video}-poster.webp`));
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class="film__grid">
+    <div class="head">
+      <H class="h2" id={hid} set:html={inline(s.heading)} />
+      <p class="lead">{fill(s.text)}</p>
+      {s.transcript && <a class="link" href={fill(s.transcript.href)}>{s.transcript.label}</a>}
+    </div>
+    <div data-film>
+      <div class="film__screen">
+        <video preload="none" playsinline controls poster={`${base}-poster.webp`} width={poster.width / 2} height={poster.height / 2} aria-label={s.title} data-film-video>
+          <source src={`${base}.webm`} type="video/webm" />
+          <source src={`${base}.mp4`} type="video/mp4" />
+          <track kind="captions" src={`${base}.en.vtt`} srclang="en" label={s.captions} default />
+        </video>
+      </div>
+      {
+        s.chapters.length > 0 && (
+          <ol class="chapters" aria-label={s.chaptersLabel}>
+            {s.chapters.map((c: { label: string; time: number }) => (
+              <li>
+                <button type="button" data-film-seek={c.time}>
+                  <span>{`0:${String(c.time).padStart(2, "0")}`}</span>
+                  {c.label}
+                </button>
+              </li>
+            ))}
+          </ol>
+        )
+      }
+    </div>
+  </div>
+</section>

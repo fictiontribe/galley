@@ -1,0 +1,10 @@
+{
+  "consent": {
+    "mode": "banner",
+    "googleConsentMode": true,
+    "banner": {
+      "policyUrl": "/privacy/"
+    }
+  },
+  "scripts": []
+}

@@ -1,0 +1,101 @@
+---
+// A blog post teaser: cover image, date, title (the link) and description.
+import type { CollectionEntry } from "astro:content";
+import Media from "./Media.astro";
+import { fill, formatDate, labels, readingMinutes } from "../lib/site";
+import { postUrl } from "../lib/posts";
+
+interface Props {
+  post: CollectionEntry<"blog">;
+  headingLevel?: 2 | 3;
+  eager?: boolean;
+}
+
+const { post, headingLevel = 3, eager = false } = Astro.props;
+const Heading = `h${headingLevel}` as "h2" | "h3";
+const minutes = readingMinutes(post.body);
+---
+
+<article class="post-card">
+  <Media src={post.data.image} alt={post.data.imageAlt ?? ""} ratio="3/2" eager={eager} />
+  <div class="post-card__body">
+    <p class="post-card__meta">
+      <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+      <span aria-hidden="true">·</span>
+      <span>{fill(labels.blog.readingTime, { minutes })}</span>
+    </p>
+    <Heading class="post-card__title">
+      <a href={postUrl(post)}>{post.data.title}</a>
+    </Heading>
+    <p class="post-card__text">{post.data.description}</p>
+  </div>
+</article>
+
+<style>
+  .post-card {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: var(--space-s);
+  }
+
+  .post-card :global(.media) {
+    transition: opacity var(--duration) var(--ease-out);
+  }
+
+  .post-card:hover :global(.media) {
+    opacity: 0.9;
+  }
+
+  .post-card__body {
+    display: grid;
+    gap: var(--space-2xs);
+  }
+
+  .post-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    font-size: var(--step--2);
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .post-card__title {
+    font-size: var(--step-2);
+    line-height: 1.15;
+  }
+
+  .post-card__title a {
+    color: var(--tone-text);
+    text-decoration-color: transparent;
+  }
+
+  /* The whole card is clickable through the title link. */
+  .post-card__title a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .post-card:hover .post-card__title a {
+    text-decoration-color: var(--tone-link);
+  }
+
+  .post-card__title a:focus-visible {
+    outline: none;
+  }
+
+  .post-card:has(a:focus-visible) {
+    outline: 2px solid var(--tone-focus);
+    outline-offset: 6px;
+    border-radius: var(--radius-s);
+  }
+
+  .post-card__text {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+</style>

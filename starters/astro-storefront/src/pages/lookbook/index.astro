@@ -1,0 +1,66 @@
+---
+// The lookbook page: the sections of src/content/pages/lookbook.md,
+// then every published lookbook, newest season first.
+import { getEntry } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import PageEntry from "../../components/PageEntry.astro";
+import LookbookCard from "../../components/LookbookCard.astro";
+import { getLookbooks } from "../../lib/lookbooks";
+import { labels } from "../../lib/site";
+
+const entry = await getEntry("pages", "lookbook");
+if (!entry) throw new Error("src/content/pages/lookbook.md is missing.");
+const lookbooks = await getLookbooks();
+---
+
+<Base
+  title={entry.data.title}
+  description={entry.data.description}
+  image={entry.data.image}
+  noindex={entry.data.noindex}
+  overlayHeader={entry.data.sections[0]?.type === "campaign-hero"}
+>
+  <PageEntry page={entry}>
+    <section class="section section--free tone-default collections" aria-label={labels.lookbooks.list}>
+      <div class="container">
+        {
+          lookbooks.length > 0 ? (
+            <ul class="collections__list" role="list">
+              {lookbooks.map((lookbook, i) => (
+                <li>
+                  <LookbookCard lookbook={lookbook} eager={i === 0} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p class="lede">{labels.lookbooks.empty}</p>
+          )
+        }
+      </div>
+    </section>
+  </PageEntry>
+</Base>
+
+<style>
+  .collections__list {
+    display: grid;
+    gap: var(--space-2xl) var(--gutter);
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 56rem) {
+    .collections__list {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .collections__list > li:nth-child(odd) {
+      grid-column: 1 / span 6;
+    }
+
+    .collections__list > li:nth-child(even) {
+      grid-column: 8 / span 5;
+      margin-block-start: var(--space-section);
+    }
+  }
+</style>

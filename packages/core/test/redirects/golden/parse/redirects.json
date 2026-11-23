@@ -1,0 +1,109 @@
+{
+  "format": "redirects-file",
+  "redirects": [
+    {
+      "line": 2,
+      "from": "/home301",
+      "to": "/",
+      "status": 301
+    },
+    {
+      "line": 3,
+      "from": "/home302",
+      "to": "/",
+      "status": 302
+    },
+    {
+      "line": 4,
+      "from": "/querystrings",
+      "to": "/?query=string",
+      "status": 301
+    },
+    {
+      "line": 5,
+      "from": "/twitch",
+      "to": "https://twitch.tv",
+      "status": 301,
+      "statusMissing": true
+    },
+    {
+      "line": 6,
+      "from": "/trailing",
+      "to": "/trailing/",
+      "status": 301
+    },
+    {
+      "line": 7,
+      "from": "/notrailing/",
+      "to": "/nottrailing/",
+      "status": 301,
+      "notes": [
+        "Added a trailing slash, as this site's addresses have one."
+      ]
+    },
+    {
+      "line": 8,
+      "from": "/page/",
+      "to": "/page2/#fragment",
+      "status": 301
+    },
+    {
+      "line": 9,
+      "from": "/blog/*",
+      "to": "https://blog.my.domain/:splat",
+      "status": 301,
+      "statusMissing": true
+    },
+    {
+      "line": 11,
+      "from": "/jobs/customer-ninja-rockstar",
+      "to": "/careers/support-engineer/",
+      "status": 301,
+      "statusMissing": true,
+      "notes": [
+        "Added a trailing slash, as this site's addresses have one."
+      ]
+    },
+    {
+      "line": 12,
+      "from": "/jobs/*",
+      "to": "/careers/:splat",
+      "status": 301,
+      "statusMissing": true
+    },
+    {
+      "line": 14,
+      "from": "/forced",
+      "to": "/elsewhere/",
+      "status": 301,
+      "notes": [
+        "Dropped the “!” (force): redirects here always apply.",
+        "Added a trailing slash, as this site's addresses have one."
+      ]
+    }
+  ],
+  "rejected": [
+    {
+      "line": 10,
+      "kind": "needs-person",
+      "reason": "This uses a placeholder (like “:slug”), which isn't a one-to-one redirect."
+    },
+    {
+      "line": 13,
+      "kind": "needs-person",
+      "reason": "This matches a query parameter with a placeholder, which isn't a one-to-one redirect."
+    },
+    {
+      "line": 15,
+      "kind": "needs-person",
+      "reason": "Status 200 shows another page at the same address. That isn't a redirect, so it was left for a person to set up."
+    },
+    {
+      "line": 16,
+      "kind": "needs-person",
+      "reason": "This redirect only applies to some visitors (by country, language, role or cookie), which isn't a plain redirect."
+    }
+  ],
+  "ignored": 1,
+  "unknownHosts": []
+}

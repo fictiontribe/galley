@@ -1,0 +1,47 @@
+---
+// The docs navigation, generated from the docs collection (grouped by
+// src/data/docs.json, ordered by each page's `order`): a sticky column on wide
+// screens, a disclosure on narrow ones; the filter (docs.ts) narrows it by
+// title and section headings.
+import type { DocGroup } from "../lib/docs";
+import docsData from "../data/docs.json";
+
+interface Props {
+  groups: DocGroup[];
+  current: string;
+}
+
+const { groups, current } = Astro.props;
+const ui = docsData.ui;
+---
+
+<details class="docs__nav" data-docs-nav open>
+  <summary>{ui.menu}</summary>
+  <nav class="docs__navin" aria-label={ui.docs}>
+    <div class="docs__filter" data-filter-wrap hidden>
+      <label class="sr" for="docs-filter">{ui.filterLabel}</label>
+      <input id="docs-filter" type="search" placeholder={ui.filterPlaceholder} autocomplete="off" spellcheck="false" data-filter />
+    </div>
+    <p class="small" data-filter-empty role="status" hidden>{ui.filterEmpty}</p>
+    {
+      groups.map((group) => (
+        <div class="docs__group" data-group>
+          <p class="label" id={`docs-group-${group.id}`}>{group.label}</p>
+          <ul aria-labelledby={`docs-group-${group.id}`}>
+            {group.items.map((item) => (
+              <li data-terms={`${item.title} ${item.navTitle} ${item.terms}`.toLowerCase()}>
+                <a href={item.href} aria-current={item.href === current ? "page" : undefined}>
+                  {item.navTitle}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))
+    }
+  </nav>
+</details>
+{/* Closed by default on narrow screens, decided before first paint so nothing jumps. */}
+<script is:inline>
+  (function (d) { if (d && matchMedia("(max-width: 1023px)").matches) d.open = false; })(document.currentScript && document.currentScript.previousElementSibling);
+</script>

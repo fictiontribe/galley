@@ -1,0 +1,96 @@
+---
+// A passage of writing (markdown): the atelier's story, directions, the small
+// print. two-column hangs the heading in the left margin.
+import Section from "../Section.astro";
+import { inline, markdown, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text: string;
+  layout?: "single" | "two-column";
+  dropCap?: boolean;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, layout = "single", dropCap = false, index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+---
+
+<Section type="story" id={id} tone={tone} labelledby={headingId} label={eyebrow} block={block}>
+  <div class:list={["story", `story--${layout}`, { "story--lead": level === 1 }]}>
+    {
+      (eyebrow || heading) && (
+        <header class="story__header">
+          {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+          {heading && <Heading id={headingId} class="story__heading" set:html={inline(heading)} />}
+        </header>
+      )
+    }
+    <div class:list={["prose story__text", { "story__text--drop": dropCap }]} set:html={markdown(text)} />
+  </div>
+</Section>
+
+<style>
+  .story {
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  .story__header {
+    display: grid;
+    gap: var(--space-s);
+    align-content: start;
+  }
+
+  .story__heading {
+    max-inline-size: 14em;
+  }
+
+  .story--lead .story__heading {
+    font-size: var(--step-5);
+    line-height: var(--leading-tight);
+  }
+
+  .story__text {
+    font-size: var(--step-1);
+    line-height: 1.6;
+  }
+
+  .story--single {
+    max-inline-size: 48rem;
+  }
+
+  .story__text--drop > :global(p:first-child)::first-letter {
+    float: inline-start;
+    margin-block: 0.06em 0;
+    margin-inline-end: 0.08em;
+    font-family: var(--font-display);
+    font-size: 4.4em;
+    font-weight: var(--weight-display);
+    line-height: 0.8;
+  }
+
+  @media (min-width: 60rem) {
+    .story--two-column {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--gutter);
+    }
+
+    .story--two-column .story__header {
+      grid-column: 1 / span 6;
+      position: sticky;
+      top: var(--space-l);
+      align-self: start;
+    }
+
+    .story--two-column .story__text {
+      grid-column: 7 / -1;
+    }
+  }
+</style>

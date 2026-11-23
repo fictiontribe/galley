@@ -1,0 +1,86 @@
+{
+  "name": "Caddow",
+  "tagline": "Coats and knitwear, made in runs of forty.",
+  "description": "Caddow is a small label making coats and knitwear in undyed wool, waxed cotton and linen: forty of each piece, cut by hand in a workroom in Marrowby.",
+  "url": "https://www.example.com",
+  "lang": "en",
+  "locale": "en-GB",
+  "email": "studio@example.com",
+  "address": "The Ropewalk, Marrowby",
+  "titleTemplate": "{title} — {site}",
+  "shareImage": "/images/share.jpg",
+  "shareImageAlt": "Caddow — a woman in a long rust coat against a sunlit harbour wall",
+  "social": [
+    {
+      "label": "Instagram",
+      "href": "https://www.instagram.com/"
+    },
+    {
+      "label": "Pinterest",
+      "href": "https://www.pinterest.com/"
+    },
+    {
+      "label": "Vimeo",
+      "href": "https://vimeo.com/"
+    }
+  ],
+  "footerText": "Caddow is a fictional label. Every coat, person, shop and town on this site is invented.",
+  "journal": {
+    "pageSize": 9
+  },
+  "labels": {
+    "skipLink": "Skip to content",
+    "copyright": "© {year} {site}",
+    "nav": {
+      "main": "Main",
+      "footer": "Footer",
+      "menu": "Menu",
+      "close": "Close",
+      "social": "Elsewhere",
+      "contact": "The workroom"
+    },
+    "journal": {
+      "allPosts": "All stories",
+      "published": "Published",
+      "by": "Words by",
+      "tags": "Filed under",
+      "topics": "Topics",
+      "tagTitle": "Filed under {tag}",
+      "tagDescription": "Every story in the Caddow journal filed under {tag}.",
+      "readingTime": "{minutes} min read",
+      "backToJournal": "The journal",
+      "newer": "Newer",
+      "older": "Older",
+      "pageOf": "Page {current} of {total}",
+      "pagination": "Journal pages",
+      "empty": "Nothing here yet. The next story is being written."
+    },
+    "lookbooks": {
+      "list": "Collections",
+      "title": "{title} — {season}",
+      "look": "Look {number}",
+      "pieces": "In this look",
+      "count": "{count} looks",
+      "view": "See the lookbook",
+      "back": "All collections",
+      "empty": "The first lookbook is still being shot."
+    },
+    "film": {
+      "play": "Play the film",
+      "duration": "Running time {duration}",
+      "external": "Opens on another site"
+    },
+    "stockists": {
+      "list": "Stockists",
+      "website": "Website",
+      "email": "Write to us",
+      "visit": "Plan a visit"
+    },
+    "dev": {
+      "unknownSection": "This section type has no component yet"
+    },
+    "marquee": {
+      "pause": "Pause"
+    }
+  }
+}

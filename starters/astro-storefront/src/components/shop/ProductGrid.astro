@@ -1,0 +1,297 @@
+---
+// Every product of a listing, with the filters that narrow it: the options
+// the products have (sizes, colours), "only what can be sent now", and an
+// order. The filters are plain form controls; src/scripts/shop.ts hides
+// the cards that don't fit, so no request is made. Without JavaScript the
+// form stays hidden and every product shows.
+import ProductCard from "./ProductCard.astro";
+import { fill, labels } from "../../lib/site";
+import { optionChoices } from "../../lib/shop/data";
+import type { ShopProduct } from "../../lib/shop/types";
+
+interface Props {
+  products: ShopProduct[];
+  /** Collection links shown above the grid. */
+  links?: Array<{ label: string; href: string; current: boolean }>;
+}
+
+const { products, links = [] } = Astro.props;
+const L = labels.shop;
+const choices = optionChoices(products).filter((option) => option.values.length > 1);
+---
+
+<div class="product-grid">
+  {
+    links.length > 0 && (
+      <nav class="product-grid__links" aria-label={L.shop}>
+        <ul role="list">
+          {links.map((link) => (
+            <li>
+              <a href={link.href} aria-current={link.current ? "page" : undefined}>
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    )
+  }
+
+  {/* On a phone the filters fold away behind one button (src/scripts/shop.ts). */}
+  <button class="text-link filters__open" type="button" data-filters-open aria-expanded="false" aria-controls="shop-filters" hidden>
+    {L.filterOpen}
+    <span data-filters-count></span>
+  </button>
+
+  <form class="filters" id="shop-filters" data-filters hidden aria-label={L.filters}>
+    {
+      choices.map((option) => (
+        <fieldset class="filters__group">
+          <legend class="label">{option.name}</legend>
+          <div class="filters__choices">
+            {option.values.map((value) => (
+              <label class="chip">
+                <input type="checkbox" name={`option:${option.name}`} value={value} />
+                <span>{value}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ))
+    }
+    <div class="filters__end">
+      <label class="filters__toggle">
+        <input type="checkbox" name="available" value="1" />
+        <span>{L.availableOnly}</span>
+      </label>
+      <label class="filters__sort">
+        <span class="label">{L.sort}</span>
+        <select name="sort">
+          <option value="featured">{L.sortFeatured}</option>
+          <option value="low">{L.sortLow}</option>
+          <option value="high">{L.sortHigh}</option>
+        </select>
+      </label>
+      <button class="text-link" type="reset">{L.clearFilters}</button>
+    </div>
+  </form>
+
+  <p class="label product-grid__count" data-results aria-live="polite">{products.length === 1 ? L.resultsOne : fill(L.results, { count: products.length })}</p>
+
+  {
+    products.length > 0 ? (
+      <ul class="product-grid__list" role="list" data-product-grid>
+        {products.map((product, index) => (
+          <li>
+            <ProductCard product={product} filterable order={index} eager={index < 4} sizes="(min-width: 60rem) 25vw, 50vw" headingLevel={2} showType />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="lede">{L.noProducts}</p>
+    )
+  }
+  <p class="lede product-grid__none" data-no-results hidden>{L.noResults}</p>
+</div>
+
+<style>
+  .product-grid {
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  .product-grid__links ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  .product-grid__links a {
+    display: inline-block;
+    padding-block: 0.5rem;
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    letter-spacing: var(--tracking-display);
+    color: var(--tone-muted);
+    text-decoration: none;
+  }
+
+  .product-grid__links a:hover,
+  .product-grid__links a[aria-current="page"] {
+    color: var(--tone-text);
+  }
+
+  .product-grid__links a[aria-current="page"] {
+    font-style: italic;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--space-m) var(--space-xl);
+    padding-block: var(--space-m);
+    border-block: var(--border-width) solid var(--tone-line);
+  }
+
+  .filters[hidden],
+  .filters__open[hidden] {
+    display: none;
+  }
+
+  .filters__open {
+    justify-self: start;
+    border: 0;
+    padding: 0;
+    background-color: transparent;
+  }
+
+  .filters__open::after {
+    content: "+";
+    font-size: 1.2em;
+    line-height: 1;
+  }
+
+  .filters__open[aria-expanded="true"]::after {
+    content: "\2212";
+  }
+
+  @media (max-width: 39.99rem) {
+    .filters:not(.is-open) {
+      display: none;
+    }
+  }
+
+  @media (min-width: 40rem) {
+    .filters__open {
+      display: none;
+    }
+  }
+
+  .filters__group {
+    display: grid;
+    gap: var(--space-2xs);
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .filters__choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3xs);
+  }
+
+  .chip {
+    position: relative;
+  }
+
+  .chip input,
+  .filters__toggle input {
+    position: absolute;
+    opacity: 0;
+    inline-size: 1px;
+    block-size: 1px;
+  }
+
+  .chip span {
+    display: inline-grid;
+    place-items: center;
+    min-inline-size: 2.75rem;
+    min-block-size: 2.75rem;
+    padding-inline: 0.8em;
+    border: var(--border-width) solid var(--tone-line);
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .chip:hover span {
+    border-color: var(--tone-text);
+  }
+
+  .chip input:checked + span {
+    background: var(--tone-text);
+    border-color: var(--tone-text);
+    color: var(--tone-bg);
+  }
+
+  .chip input:focus-visible + span,
+  .filters__toggle input:focus-visible + span {
+    outline: 2px solid var(--tone-focus);
+    outline-offset: 2px;
+  }
+
+  .filters__end {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-s) var(--space-l);
+    margin-inline-start: auto;
+  }
+
+  .filters__end button[type="reset"] {
+    border: 0;
+    padding: 0;
+    background-color: transparent;
+  }
+
+  .filters__toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 2.75rem;
+    cursor: pointer;
+  }
+
+  .filters__toggle span::before {
+    content: "";
+    display: inline-block;
+    inline-size: 1.1rem;
+    block-size: 1.1rem;
+    margin-inline-end: 0.6em;
+    vertical-align: -0.2em;
+    border: var(--border-width) solid var(--tone-control);
+  }
+
+  .filters__toggle input:checked + span::before {
+    background: var(--tone-text);
+    border-color: var(--tone-text);
+    box-shadow: inset 0 0 0 3px var(--tone-bg);
+  }
+
+  .filters__sort {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .filters__sort select {
+    min-block-size: 2.75rem;
+    padding-inline: 0.6em;
+    border: var(--border-width) solid var(--tone-control);
+    border-radius: var(--radius-s);
+    background: var(--tone-surface);
+  }
+
+  .product-grid__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-xl) var(--gutter);
+    padding: 0;
+    list-style: none;
+  }
+
+  .product-grid__list > li[hidden] {
+    display: none;
+  }
+
+  @media (min-width: 60rem) {
+    .product-grid__list {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+</style>

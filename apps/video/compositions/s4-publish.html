@@ -1,0 +1,104 @@
+<template>
+  <style>
+    @font-face { font-family: "Newsreader"; src: url("assets/fonts/newsreader-latin-opsz-normal.woff2") format("woff2"); font-weight: 200 800; font-style: normal; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: #f6f1e7; color: #1a1712; }
+    .win { position: absolute; inset: 0; clip-path: inset(236px 96px 54px 96px round 4px); background: #ede6d8; }
+    .plane { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+    .plane img { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+    .ptr { position: absolute; left: 0; top: 0; width: 19px; height: 28px; overflow: visible; }
+    .cm { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+    .cm i { position: absolute; background: #857b69; display: block; }
+    .cm .h { width: 28px; height: 1.5px; top: -0.75px; }
+    .cm .v { width: 1.5px; height: 28px; left: -0.75px; }
+    .cm.l .h { left: -42px; } .cm.r .h { left: 14px; }
+    .cm.t .v { top: -42px; } .cm.b .v { top: 14px; }
+    .beat { position: absolute; left: 192px; top: 100px; font-family: "Newsreader", Georgia, serif; font-weight: 400; font-size: 104px; line-height: 1; letter-spacing: -0.015em; white-space: nowrap; }
+    .mark { position: absolute; left: 96px; top: 150px; width: 72px; height: 24px; overflow: visible; }
+    .mark circle { fill: #2e2bff; }
+  </style>
+  <div
+    id="root"
+    data-composition-id="s4-publish"
+    data-width="1920"
+    data-height="1080"
+    data-composition-variables='[{"id":"s4Title","type":"string","label":"Publish · title","default":"Publish"}]'
+  >
+    <div class="win" id="s4-win">
+      <div class="plane" id="s4-plane" data-layout-allow-overflow>
+        <img id="s4-dialog" class="clip" src="assets/footage/publish-dialog.jpg" alt="The Publish dialog: Publish 1 change?" data-start="0" data-duration="0.95" data-track-index="3" />
+        <img id="s4-done" class="clip" src="assets/footage/publish-done.jpg" alt="Published. 1 change is live." data-start="0.95" data-duration="0.8" data-track-index="3" />
+        <img id="s4-hist" class="clip" src="assets/footage/history.jpg" alt="Version history: “Shorter campaign heading”, Hesper Lowe, just now, at the top" data-start="1.75" data-duration="1.966" data-track-index="3" />
+        <svg id="s4-ptr" class="ptr" viewBox="0 0 13 19" aria-hidden="true"><path d="M1 1 L1 15.2 L4.6 11.9 L7.1 17.6 L9.6 16.5 L7.1 10.9 L12 10.9 Z" fill="#1a1712" stroke="#fdfaf4" stroke-width="1.1" stroke-linejoin="round" /></svg>
+      </div>
+    </div>
+    <div class="cm l t" id="s4-publish-cm-tl"><i class="h"></i><i class="v"></i></div>
+    <div class="cm r t" id="s4-publish-cm-tr"><i class="h"></i><i class="v"></i></div>
+    <div class="cm l b" id="s4-publish-cm-bl"><i class="h"></i><i class="v"></i></div>
+    <div class="cm r b" id="s4-publish-cm-br"><i class="h"></i><i class="v"></i></div>
+
+    <!-- The beat's title, with its proofreader's mark hung in the margin: stet (let it stand). -->
+    <svg class="mark" viewBox="0 0 72 24" aria-hidden="true"><circle id="s4-dot1" cx="12" cy="12" r="6" /><circle id="s4-dot2" cx="36" cy="12" r="6" /><circle id="s4-dot3" cx="60" cy="12" r="6" /></svg>
+    <h1 id="s4-title" class="beat" data-var-text="s4Title">Publish</h1>
+
+    <audio id="s4-sfx-click" class="clip" src="assets/audio/sfx/click-soft.mp3" data-start="0.86" data-duration="0.37" data-track-index="20" data-volume="0.55"></audio>
+  </div>
+  <script>
+    (function () {
+      const ID = "s4-publish";
+      const F = window.__FILM || {};
+      const SC = (F.scenes && F.scenes[ID]) || { start: 19.2, duration: 3.716 };
+      const VW = 1440, VH = 900;
+      const RT = { x: 96, y: 236, w: 1728, h: 790 }, RF = { x: 96, y: 54, w: 1728, h: 972 };
+      function cam(b, R, max) {
+        let s = Math.min(R.w / b.w, R.h / b.h, max || 2.4);
+        s = Math.max(s, R.w / VW, R.h / VH);
+        let x = R.x + R.w / 2 - (b.x + b.w / 2) * s, y = R.y + R.h / 2 - (b.y + b.h / 2) * s;
+        x = Math.min(R.x, Math.max(x, R.x + R.w - VW * s));
+        y = Math.min(R.y, Math.max(y, R.y + R.h - VH * s));
+        return { x, y, scale: s };
+      }
+      const corners = (R) => [[R.x, R.y], [R.x + R.w, R.y], [R.x, R.y + R.h], [R.x + R.w, R.y + R.h]];
+      const fp = F.footage || {};
+      const pub = (fp.proof && fp.proof.boxes && fp.proof.boxes.publish) || { x: 1363.5, y: 7.5, w: 64.5, h: 28 };
+      const dlg = (fp.publish && fp.publish.dialog) || { x: 460, y: 268.5, w: 520, h: 363 };
+      const ok = (fp.publish && fp.publish.confirm) || { x: 829.5, y: 586.5, w: 129.5, h: 32 };
+      const done = (fp.publish && fp.publish.done) || { x: 460, y: 315.5, w: 520, h: 269 };
+      const row = (fp.history && fp.history.row) || { x: 306, y: 294, w: 880, h: 65 };
+
+      const T_OK = 0.9, T_DONE = 0.95, T_HIST = 1.75;
+      // The whole dialog: its question, what goes, and the button that publishes it.
+      const camDlg = cam({ x: dlg.x - 20, y: dlg.y - 20, w: dlg.w + 40, h: dlg.h + 40 }, RT, 2.4);
+      // "Published." and the line under it.
+      const camDone = cam({ x: done.x + 10, y: done.y + 10, w: done.w - 20, h: 140 }, RT, 3.1);
+      // Version history: the page's title, then the new version at the top of the list.
+      const camHist = cam({ x: row.x - 10, y: 66, w: 560, h: row.y + row.h + 8 - 66 }, RT, 3.1);
+
+      const tl = gsap.timeline({ paused: true });
+      corners(RT).forEach((p, i) => gsap.set(`#${ID}-cm-${["tl", "tr", "bl", "br"][i]}`, { x: p[0], y: p[1] }));
+      gsap.set("#s4-plane", { x: camDlg.x, y: camDlg.y, scale: camDlg.scale, transformOrigin: "0 0" });
+      // Title: stet dots, then the word.
+      const ink = "cubic-bezier(0.13,0.6,0.23,0.98)";
+      gsap.set(["#s4-dot1", "#s4-dot2", "#s4-dot3"], { opacity: 0 });
+      [1, 2, 3].forEach((n) => tl.to(`#s4-dot${n}`, { opacity: 1, duration: 0.08, ease: "none" }, 0.02 + n * 0.07));
+      tl.fromTo("#s4-title", { clipPath: "inset(-10% 100% -20% 0%)" }, { clipPath: "inset(-10% 0% -20% 0%)", duration: 0.48, ease: ink }, 0.14);
+
+      // The dialog arrives (the screen dims behind it, as in the product) and the camera goes to it.
+      // Cut on the click: the dialog over the dimmed proof (a hard cut reads cleaner than a fade here).
+      gsap.set("#s4-ptr", { x: ok.x - 40, y: ok.y + ok.h + 70, transformOrigin: "1px 1px", opacity: 0 });
+      tl.to("#s4-ptr", { opacity: 1, duration: 0.1 }, 0.2);
+      tl.to("#s4-ptr", { x: ok.x + ok.w * 0.55, y: ok.y + ok.h / 2 - 2, duration: 0.55, ease: "power2.inOut" }, 0.24);
+      tl.to("#s4-ptr", { scale: 0.86, duration: 0.06 }, T_OK - 0.02);
+      tl.to("#s4-ptr", { scale: 1, duration: 0.1 }, T_OK + 0.05);
+      // Published: cut on the click's rebound.
+      tl.set("#s4-ptr", { opacity: 0 }, T_DONE);
+      tl.set("#s4-plane", { x: camDone.x, y: camDone.y, scale: camDone.scale }, T_DONE);
+      // The new version, signed and dated, in Version history.
+      tl.set("#s4-plane", { x: camHist.x, y: camHist.y + 18, scale: camHist.scale }, T_HIST);
+      tl.to("#s4-plane", { y: camHist.y, duration: 0.6, ease: "power2.out" }, T_HIST);
+
+      // Exit: the title goes; the window opens to the full frame (scene 5 starts there).
+      tl.to(["#s4-title", "#s4-dot1", "#s4-dot2", "#s4-dot3"], { opacity: 0, duration: 0.2, ease: "power3.in" }, SC.duration - 0.22);
+      window.__timelines[ID] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,164 @@
+---
+// A line of words that drifts across the page. CSS only: the list is set
+// twice and slid by half its length, so it loops without a seam. It stops on
+// hover, on focus within, when the visitor ticks "Pause" (a plain checkbox,
+// no script), and never moves at all with reduced motion — then the words
+// simply wrap.
+import Section from "../Section.astro";
+import { labels, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  items: string[];
+  speed?: "slow" | "normal";
+  size?: "medium" | "large";
+  index?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone = "inverse", items, speed = "slow", size = "medium", index = 0, block } = Astro.props;
+const pauseId = `${id ?? `section-${index}`}-pause`;
+---
+
+<Section type="marquee" id={id} tone={tone} width="full" label={items.join(", ")} block={block}>
+  <div class:list={["marquee", `marquee--${speed}`, `marquee--${size}`]}>
+    <div class="marquee__track">
+      <ul class="marquee__list" role="list">
+        {items.map((item) => <li>{item}</li>)}
+      </ul>
+      <ul class="marquee__list marquee__list--copy" role="list" aria-hidden="true">
+        {items.map((item) => <li>{item}</li>)}
+      </ul>
+    </div>
+    <label class="marquee__pause" for={pauseId}>
+      <input id={pauseId} type="checkbox" />
+      <span>{labels.marquee.pause}</span>
+    </label>
+  </div>
+</Section>
+
+<style>
+  :global(.section.section--marquee) {
+    min-block-size: 0;
+    padding-block: var(--space-m);
+  }
+
+  .marquee {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .marquee__track {
+    display: flex;
+    inline-size: max-content;
+  }
+
+  .marquee__list {
+    display: flex;
+    flex: none;
+    align-items: center;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    font-style: italic;
+    line-height: 1.1;
+    letter-spacing: var(--tracking-display);
+    white-space: nowrap;
+  }
+
+  .marquee--large .marquee__list {
+    font-size: var(--step-5);
+    line-height: 1;
+  }
+
+  .marquee__list li {
+    display: flex;
+    align-items: center;
+  }
+
+  /* A small diamond between the words. */
+  .marquee__list li::after {
+    content: "";
+    inline-size: 0.32em;
+    block-size: 0.32em;
+    margin-inline: 0.8em;
+    background: currentColor;
+    transform: rotate(45deg);
+  }
+
+  .marquee__pause {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-end: var(--page-margin);
+    translate: 0 -50%;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.35em 0.7em;
+    background: var(--tone-bg);
+    border: var(--border-width) solid var(--tone-line);
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-mono);
+    text-transform: uppercase;
+    color: var(--tone-text);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--duration) var(--ease-out);
+  }
+
+  .marquee__pause input {
+    inline-size: 1rem;
+    block-size: 1rem;
+    margin: 0;
+    accent-color: currentColor;
+  }
+
+  .marquee:hover .marquee__pause,
+  .marquee:focus-within .marquee__pause,
+  .marquee:has(input:checked) .marquee__pause {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .marquee__track {
+      animation: marquee var(--marquee-duration) linear infinite;
+    }
+
+    .marquee--normal .marquee__track {
+      animation-duration: calc(var(--marquee-duration) / 2);
+    }
+
+    .marquee:hover .marquee__track,
+    .marquee:focus-within .marquee__track,
+    .marquee:has(input:checked) .marquee__track {
+      animation-play-state: paused;
+    }
+  }
+
+  /* Still: the words wrap instead, and the copy and the pause control go. */
+  @media (prefers-reduced-motion: reduce) {
+    .marquee__track {
+      inline-size: auto;
+      padding-inline: var(--page-margin);
+    }
+
+    .marquee__list {
+      flex-wrap: wrap;
+      white-space: normal;
+    }
+
+    .marquee__list--copy,
+    .marquee__pause {
+      display: none;
+    }
+  }
+
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+</style>

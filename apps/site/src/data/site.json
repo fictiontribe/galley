@@ -1,0 +1,69 @@
+{
+  "name": "Galley",
+  "tagline": "Prompt it. Proof it. Publish it.",
+  "descriptor": "The open-source AI CMS for Astro",
+  "description": "Galley is an open-source AI CMS for Astro. Change a page in a form, on the page or by asking, check every change beside the live site, then publish it to your own git repository.",
+  "url": "https://galley.fictiontribe.com",
+  "repository": "https://github.com/fictiontribe/galley",
+  "repositoryBranch": "main",
+  "sitePath": "apps/site",
+  "npmPackage": "galley-cms",
+  "installCommand": "npx galley-cms",
+  "cloneCommand": "git clone {repository}.git",
+  "versionFile": "packages/core/src/brand.ts",
+  "license": "Apache-2.0",
+  "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+  "securityContact": "PLACEHOLDER — security report email, not set up yet (e.g. security@<domain>)",
+  "conductContact": "PLACEHOLDER — code-of-conduct report email, not set up yet (e.g. conduct@<domain>)",
+  "status": "Pre-release",
+  "statusNote": "Pre-release {version}. Not on npm yet: Galley runs from a clone of the repository.",
+  "lang": "en",
+  "titleTemplate": "{title} · Galley",
+  "shareImage": "/og.png",
+  "shareImageAlt": "Galley — Prompt it. Proof it. Publish it. The open-source AI CMS for Astro.",
+  "maker": {
+    "name": "Fiction Tribe",
+    "url": "https://fictiontribe.com",
+    "contact": "https://www.fictiontribe.com/talk/"
+  },
+  "astro": {
+    "url": "https://astro.build",
+    "disclaimer": "Astro is a trademark of its owner. Galley is built for Astro and is not affiliated with or endorsed by the Astro project."
+  },
+  "mainAction": {
+    "label": "Get started",
+    "href": "/docs/getting-started/quickstart/"
+  },
+  "cloud": {
+    "email": "cloud@galley.example",
+    "emailNote": "PLACEHOLDER — the owner has not supplied the Galley Cloud sign-up address yet (CLAIMS.md). Until then the Cloud page links to Fiction Tribe's contact page (maker.contact) and no page uses this address.",
+    "subject": "Email me when Galley Cloud opens",
+    "discussion": "{repository}/discussions"
+  },
+  "ui": {
+    "skip": "Skip to content",
+    "nav": "Main",
+    "menu": "Menu",
+    "close": "Close",
+    "home": "Galley, home",
+    "footer": "Footer",
+    "github": "GitHub",
+    "pause": "Pause the recording",
+    "play": "Play the recording",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyFailed": "Select and copy",
+    "putBack": "Put back",
+    "undo": "Undo",
+    "changes": "{n} changes",
+    "change": "1 change",
+    "before": "Before:",
+    "after": "After:",
+    "removed": "removed:",
+    "added": "added:",
+    "agentCopied": "Copied the agent context",
+    "lookOf": "Looks for {name}",
+    "lookAlt": "{name} in its {look} look",
+    "newWindow": "opens on GitHub"
+  }
+}

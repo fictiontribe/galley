@@ -1,0 +1,150 @@
+---
+// One photograph and the pieces in it, each with its price and a link to
+// it — "shop the look". The pieces come from the shop by handle; one that
+// is gone is left out.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Actions from "../Actions.astro";
+import Media from "../Media.astro";
+import Icon from "../Icon.astro";
+import ProductImage from "../shop/ProductImage.astro";
+import { labels, type Link, type Tone } from "../../lib/site";
+import { priceLabel, productUrl, productsByHandle } from "../../lib/shop/data";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  image: string;
+  imageAlt: string;
+  imageSide?: "left" | "right";
+  products: string[];
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, image, imageAlt, imageSide = "right", products, cta, index = 0, level = 2, block } = Astro.props;
+// Text left, picture right is the house order (imageSide: left swaps them).
+const headingId = `${id ?? `section-${index}`}-heading`;
+const pieces = await productsByHandle(products);
+---
+
+<Section type="shop-the-look" id={id} tone={tone} labelledby={headingId} block={block}>
+  <div class:list={["stl", `stl--${imageSide}`]}>
+    <div class="stl__image frame">
+      <Media src={image} alt={imageAlt} ratio="tall" eager={index === 0} class="media--capped" />
+    </div>
+    <div class="stl__copy">
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+      <ul class="stl__pieces" role="list">
+        {
+          pieces.map((product) => (
+            <li>
+              <a class="stl__piece" href={productUrl(product.handle)}>
+                <span class="stl__thumb frame">
+                  <ProductImage image={product.images[0]} alt="" ratio="portrait" sizes="5rem" />
+                </span>
+                <span class="stl__name">{product.title}</span>
+                <span class="stl__price">{product.availableForSale ? priceLabel(product) : labels.shop.soldOut}</span>
+                <Icon name="arrow-right" size={16} class="stl__arrow" />
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <Actions secondaryCta={cta} />
+    </div>
+  </div>
+</Section>
+
+<style>
+  .stl {
+    display: grid;
+    gap: var(--space-l) var(--gutter);
+    align-items: start;
+  }
+
+  .stl__copy {
+    display: grid;
+    gap: var(--space-m);
+    align-content: start;
+  }
+
+  .stl__copy :global(.section-header) {
+    margin-block-end: 0;
+  }
+
+  .stl__pieces {
+    padding: 0;
+    list-style: none;
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .stl__piece {
+    display: grid;
+    grid-template-columns: 3rem 1fr auto auto;
+    align-items: center;
+    gap: var(--space-s);
+    padding-block: var(--space-xs);
+    border-block-end: var(--border-width) solid var(--tone-line);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .stl__name {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    line-height: 1.15;
+  }
+
+  .stl__piece:hover .stl__name {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+  }
+
+  .stl__price {
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stl__piece :global(.stl__arrow) {
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .stl__piece:hover :global(.stl__arrow) {
+    transform: translateX(0.25em);
+  }
+
+  @media (min-width: 56rem) {
+    .stl {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      align-items: start;
+    }
+
+    .stl__image {
+      grid-column: 7 / -1;
+      grid-row: 1;
+    }
+
+    .stl__copy {
+      grid-column: 1 / span 6;
+      grid-row: 1;
+      padding-inline-end: var(--space-l);
+    }
+
+    .stl--left .stl__image {
+      grid-column: 1 / span 6;
+    }
+
+    .stl--left .stl__copy {
+      grid-column: 7 / -1;
+      padding-inline: var(--space-l) 0;
+    }
+  }
+</style>

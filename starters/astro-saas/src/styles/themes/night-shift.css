@@ -1,0 +1,173 @@
+/*
+ * DESIGN TOKENS — the one file that decides how this site looks.
+ * Look: Night shift — the default's ink and signal orange on a dark ground, for teams who live in the product after hours.
+ *
+ * Every colour, font, size, radius and shadow used anywhere on the site is a
+ * custom property defined here. Components only reference these names, so
+ * restyling the site means editing this file and nothing else.
+ *
+ * Other looks: src/styles/themes/ holds complete alternatives with exactly
+ * the same properties (signal.css is a copy of this file). To switch, copy
+ * one over this file:   cp src/styles/themes/night-shift.css src/styles/tokens.css
+ *
+ * Colour roles:
+ *   background        page ground
+ *   surface           raised things: cards, inputs, menus, window frames
+ *   surface-muted     ground of `tone: muted` sections
+ *   text / text-muted body copy / secondary copy (≥ 4.5:1 on background,
+ *                     surface and surface-muted)
+ *   border            hairlines; border-strong for form controls (≥ 3:1)
+ *   accent            links, primary buttons, ground of `tone: accent`
+ *   accent-strong     hover partner of accent
+ *   accent-contrast   text placed on accent (≥ 4.5:1)
+ *   accent-soft       pale tint for highlights (never under text that is
+ *                     not --color-text)
+ *   accent-on-inverse the accent, lightened for dark grounds (≥ 4.5:1)
+ *   inverse-*         ground, text, muted text and borders of
+ *                     `tone: inverse` sections and the footer
+ *   positive/negative status colours for comparison ticks and changelog tags
+ *
+ * Product imagery: the SVG "screenshots" in public/images/ are drawn with
+ * the --shot-* properties below (they are inlined into the page, so they
+ * follow the look). Change these and every screenshot changes with them.
+ *
+ * Colours are oklch(lightness chroma hue). Keep text ≥ 40 points of L away
+ * from its ground to hold WCAG AA.
+ */
+
+@import "@fontsource-variable/schibsted-grotesk/wght.css";
+@import "@fontsource-variable/geist/wght.css";
+@import "@fontsource-variable/geist-mono/wght.css";
+
+:root {
+  color-scheme: dark;
+
+  /* ── Colour ─────────────────────────────────────────────────────────── */
+  --color-background: oklch(17.5% 0.02 258);
+  --color-surface: oklch(22.5% 0.022 258);
+  --color-surface-muted: oklch(20.5% 0.022 258);
+  --color-text: oklch(95.5% 0.006 85);
+  --color-text-muted: oklch(77% 0.018 258);
+  --color-border: oklch(31% 0.022 258);
+  --color-border-strong: oklch(56% 0.02 258);
+
+  --color-accent: oklch(73% 0.15 52);
+  --color-accent-strong: oklch(80% 0.12 58);
+  --color-accent-contrast: oklch(18% 0.02 258);
+  --color-accent-soft: oklch(30% 0.055 48);
+  --color-accent-on-inverse: oklch(74% 0.15 52);
+
+  --color-inverse-background: oklch(12.5% 0.016 258);
+  --color-inverse-surface: oklch(18% 0.02 258);
+  --color-inverse-text: oklch(95.5% 0.006 85);
+  --color-inverse-muted: oklch(75% 0.018 258);
+  --color-inverse-border: oklch(26% 0.02 258);
+
+  --color-positive: oklch(78% 0.13 155);
+  --color-positive-soft: oklch(30% 0.05 155);
+  --color-negative: oklch(74% 0.14 25);
+  --color-negative-soft: oklch(30% 0.05 25);
+  --color-notice: oklch(82% 0.12 85);
+  --color-notice-soft: oklch(32% 0.05 85);
+
+  /* Overlay used behind image placeholders and the open menu. */
+  --color-scrim: oklch(95% 0.006 85 / 0.05);
+
+  /* ── Product imagery (inlined SVG screenshots, logos, portraits) ───── */
+  --shot-bg: oklch(19.5% 0.02 258);
+  --shot-panel: oklch(23.5% 0.022 258);
+  --shot-sunk: oklch(17% 0.02 258);
+  --shot-line: oklch(31% 0.022 258);
+  --shot-ink: oklch(93% 0.006 85);
+  --shot-muted: oklch(68% 0.016 258);
+  --shot-faint: oklch(37% 0.02 258);
+  --shot-accent: oklch(73% 0.15 52);
+  --shot-accent-soft: oklch(32% 0.06 50);
+  --shot-ok: oklch(72% 0.13 155);
+  --shot-ok-soft: oklch(30% 0.05 155);
+  --shot-warn: oklch(81% 0.13 82);
+  --shot-warn-soft: oklch(33% 0.05 85);
+  --shot-bad: oklch(70% 0.15 25);
+  --shot-bad-soft: oklch(31% 0.06 25);
+  --shot-data: oklch(76% 0.06 258);
+  --shot-data-soft: oklch(37% 0.04 258);
+  --shot-frame: oklch(27% 0.022 258);
+  /* Portrait placeholders: skin and two hair tones, kept natural in every look. */
+  --shot-skin: oklch(74% 0.014 70);
+  --shot-hair: oklch(24% 0.02 258);
+  --shot-hair-alt: oklch(45% 0.015 258);
+
+  /* ── Type ───────────────────────────────────────────────────────────── */
+  --font-display: "Schibsted Grotesk Variable", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --weight-display: 700;
+  --weight-display-strong: 800;
+  --weight-body: 400;
+  --weight-medium: 520;
+  --weight-bold: 640;
+
+  --tracking-display: -0.032em;
+  --tracking-caps: 0.09em;
+  --leading-tight: 1;
+  --leading-snug: 1.16;
+  --leading-body: 1.6;
+
+  /* Fluid type scale: ~1.2× per step on phones to ~1.3× on wide screens. */
+  --step--2: clamp(0.75rem, 0.73rem + 0.08vw, 0.8rem);
+  --step--1: clamp(0.85rem, 0.82rem + 0.12vw, 0.92rem);
+  --step-0: clamp(0.98rem, 0.95rem + 0.16vw, 1.075rem);
+  --step-1: clamp(1.13rem, 1.06rem + 0.34vw, 1.34rem);
+  --step-2: clamp(1.32rem, 1.18rem + 0.68vw, 1.75rem);
+  --step-3: clamp(1.58rem, 1.34rem + 1.2vw, 2.4rem);
+  --step-4: clamp(1.9rem, 1.5rem + 2vw, 3.3rem);
+  --step-5: clamp(2.25rem, 1.6rem + 3.2vw, 4.5rem);
+  --step-6: clamp(2.6rem, 1.6rem + 4.8vw, 6rem);
+
+  --measure: 66ch;
+
+  /* ── Space ──────────────────────────────────────────────────────────── */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-s: 1rem;
+  --space-m: clamp(1.25rem, 1.12rem + 0.55vw, 1.6rem);
+  --space-l: clamp(1.75rem, 1.5rem + 1.1vw, 2.5rem);
+  --space-xl: clamp(2.4rem, 1.95rem + 2vw, 3.75rem);
+  --space-2xl: clamp(3.25rem, 2.5rem + 3.6vw, 5.5rem);
+  --space-section: clamp(4rem, 2.8rem + 5.6vw, 8rem);
+
+  --container: 80rem;
+  --container-narrow: 48rem;
+  --gutter: clamp(1.25rem, 0.6rem + 3vw, 3rem);
+  --header-height: 4.25rem;
+
+  /* ── Shape ──────────────────────────────────────────────────────────── */
+  --radius-s: 3px;
+  --radius-m: 6px;
+  --radius-l: 10px;
+  --radius-button: 6px;
+  --radius-image: 8px;
+  --radius-pill: 999px;
+  --border-width: 1px;
+
+  --shadow-raised: 0 1px 2px oklch(5% 0.01 258 / 0.5), 0 16px 40px -12px oklch(5% 0.01 258 / 0.7);
+  --shadow-shot: 0 1px 1px oklch(5% 0.01 258 / 0.4), 0 28px 70px -24px oklch(5% 0.01 258 / 0.85);
+
+  /* Hairline grid drawn behind heroes (the "planner" texture). */
+  --grid-line: oklch(95% 0.006 85 / 0.045);
+  --grid-size: 4.5rem;
+
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 140ms;
+  --duration: 240ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration: 0ms;
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "Id": 1234,
+  "Vid": 1234,
+  "Status": "approved",
+  "Name": "Contact us",
+  "Description": "",
+  "Layout": "above",
+  "ButtonLabel": "Submit",
+  "rows": [
+    [ { "Id": "Email", "Name": "Email", "IsRequired": true, "Datatype": "email", "Maxlength": 255, "InputLabel": "Email Address:", "InputInitialValue": "", "InputSourceChannel": "constant", "ValidationMessage": "Must be valid email.", "PlaceholderText": "you@company.com" } ],
+    [
+      { "Id": "FirstName", "Name": "FirstName", "Datatype": "string", "Maxlength": 255, "InputLabel": "First Name:", "IsRequired": false },
+      { "Id": "LastName", "Name": "LastName", "Datatype": "string", "Maxlength": 255, "InputLabel": "Last Name:", "IsRequired": true }
+    ],
+    [ { "Id": "Phone", "Name": "Phone", "Datatype": "phone", "InputLabel": "Phone Number:" } ],
+    [
+      {
+        "Id": "Country",
+        "Name": "Country",
+        "Datatype": "picklist",
+        "InputLabel": "Country:",
+        "IsRequired": true,
+        "PicklistValues": [ { "label": "Select...", "value": "", "selected": true, "isDefault": true }, { "label": "United States", "value": "USA" }, { "label": "Canada", "value": "Canada" } ]
+      }
+    ],
+    [ { "Id": "Comments__c", "Name": "Comments__c", "Datatype": "text", "InputLabel": "<b>Comments</b>", "VisibleRows": 4 } ],
+    [ { "Id": "OptIn", "Name": "OptIn", "Datatype": "checkbox", "InputLabel": "", "PicklistValues": [ { "label": "Yes, send me updates", "value": "yes" } ] } ],
+    [
+      {
+        "Id": "fieldset_1",
+        "Datatype": "fieldset",
+        "InputLabel": "About your company",
+        "fieldList": [
+          { "Id": "Company", "Name": "Company", "Datatype": "string", "InputLabel": "Company Name:", "IsRequired": true },
+          { "Id": "Industry", "Name": "Industry", "Datatype": "picklist", "IsMultiselect": true, "InputLabel": "Industry:", "PicklistValues": [ { "label": "Retail", "value": "Retail" }, { "label": "Education", "value": "Education" } ] }
+        ]
+      }
+    ],
+    [ { "Id": "HtmlText_2026-01-01T00:00:00", "Datatype": "htmltext", "Htmltext": "<p>We respect your privacy.</p>" } ],
+    [ { "Id": "UTM_Source__c", "Name": "UTM_Source__c", "Datatype": "hidden", "InputLabel": "", "InputInitialValue": "", "InputSourceChannel": "url", "InputSourceSelector": "utm_source" } ]
+  ],
+  "fieldsetRows": []
+}

@@ -1,0 +1,142 @@
+---
+// Two to four steps, each with its own photograph: how a coat is made, how a
+// fitting goes. On a wide screen each step is a row, the photograph on the
+// left and the step's words on the right, and the words hold their place
+// (position: sticky) while their photograph scrolls past, so the reader
+// always has the step and its picture together. No script: it reads the same
+// with reduced motion and with script off. On a phone each step stands above
+// its photograph.
+import Section from "../Section.astro";
+import Media from "../Media.astro";
+import { inline, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  items: Array<{ heading: string; text: string; image: string; imageAlt: string }>;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, items, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+const number = (i: number) => String(i + 1).padStart(2, "0");
+---
+
+<Section type="chapters" id={id} tone={tone} labelledby={headingId} block={block}>
+  <header class="chapters__head">
+    {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+    <Heading id={headingId} set:html={inline(heading)} />
+    {text && <p class="chapters__intro">{text}</p>}
+  </header>
+  <ol class="chapters" role="list">
+    {
+      items.map((item, i) => (
+        <li class="chapter">
+          <div class="chapter__copy">
+            <span class="chapter__number" aria-hidden="true">
+              {number(i)}
+            </span>
+            <h3 class="chapter__heading">{item.heading}</h3>
+            <p class="chapter__text">{item.text}</p>
+          </div>
+          <div class="chapter__figure frame">
+            <Media src={item.image} alt={item.imageAlt} ratio="4/3" />
+          </div>
+        </li>
+      ))
+    }
+  </ol>
+</Section>
+
+<style>
+  .chapters__head {
+    display: grid;
+    gap: var(--space-s);
+    max-inline-size: 52rem;
+    margin-block-end: var(--space-xl);
+  }
+
+  .chapters__intro {
+    max-inline-size: 34em;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--tone-muted);
+  }
+
+  .chapters {
+    display: grid;
+    gap: var(--space-xl);
+    padding: 0;
+    list-style: none;
+  }
+
+  .chapter {
+    display: grid;
+    gap: var(--space-m);
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .chapter__copy {
+    display: grid;
+    gap: var(--space-2xs);
+    align-content: start;
+  }
+
+  .chapter__number {
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    font-style: italic;
+    line-height: 1;
+    color: var(--tone-muted);
+  }
+
+  .chapter__heading {
+    font-size: var(--h3-size);
+  }
+
+  .chapter__text {
+    max-inline-size: 30em;
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 56rem) {
+    .chapters {
+      gap: var(--space-2xl);
+    }
+
+    .chapter {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--gutter);
+      padding-block-start: 0;
+      border-block-start: 0;
+    }
+
+    .chapter__figure {
+      grid-column: 1 / span 7;
+      grid-row: 1;
+    }
+
+    /* The step's words stay in view while its photograph passes. */
+    .chapter__copy {
+      grid-column: 9 / -1;
+      grid-row: 1;
+      align-self: start;
+      position: sticky;
+      inset-block-start: var(--space-xl);
+      padding-block-start: var(--space-s);
+      border-block-start: var(--border-width) solid var(--tone-line);
+    }
+
+    .chapter__number {
+      font-size: var(--step-5);
+      margin-block-end: var(--space-xs);
+    }
+  }
+</style>

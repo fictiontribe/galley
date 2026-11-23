@@ -1,0 +1,30 @@
+---
+import Icon from "./Icon.astro";
+import { withBase, type Link } from "../lib/site";
+
+interface Props {
+  cta?: Link;
+  secondaryCta?: Link;
+  class?: string;
+}
+
+const { cta, secondaryCta, class: className } = Astro.props;
+---
+
+{
+  (cta || secondaryCta) && (
+    <div class:list={["actions", className]}>
+      {cta && (
+        <a class="button" href={withBase(cta.href)}>
+          {cta.label}
+          <Icon name="arrow-right" size={18} />
+        </a>
+      )}
+      {secondaryCta && (
+        <a class="button button--secondary" href={withBase(secondaryCta.href)}>
+          {secondaryCta.label}
+        </a>
+      )}
+    </div>
+  )
+}

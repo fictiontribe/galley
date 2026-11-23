@@ -1,0 +1,29 @@
+{
+  "consent": {
+    "mode": "banner",
+    "defaults": [],
+    "googleConsentMode": true,
+    "banner": {
+      "title": "Counting visits",
+      "text": "We would like to count visits to see which coats people look at. Nothing is counted until you say yes, and your answer is passed to the shop's checkout too. The bag works either way.",
+      "acceptLabel": "Count my visit",
+      "rejectLabel": "Don't count it",
+      "settingsLabel": "Choose…",
+      "saveLabel": "Save choices",
+      "policyUrl": "/privacy/",
+      "policyLabel": "Privacy"
+    }
+  },
+  "scripts": [
+    {
+      "id": "plausible",
+      "kind": "plausible",
+      "enabled": false,
+      "settings": {
+        "domain": "www.example.com"
+      },
+      "note": "An example, switched off. Set your own domain and turn it on to count visits; it waits for the visitor's yes in the banner (consent: analytics).",
+      "consent": "analytics"
+    }
+  ]
+}

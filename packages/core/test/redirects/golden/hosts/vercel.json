@@ -1,0 +1,39 @@
+[
+  {
+    "source": "/me",
+    "destination": "/profile.html",
+    "permanent": false
+  },
+  {
+    "source": "/me-too",
+    "destination": "/profile.html",
+    "permanent": true
+  },
+  {
+    "source": "/odd\\(name\\)",
+    "destination": "/about/",
+    "statusCode": 301
+  },
+  {
+    "source": "/old",
+    "destination": "/new/",
+    "has": [
+      {
+        "type": "query",
+        "key": "page",
+        "value": "home"
+      }
+    ],
+    "statusCode": 301
+  },
+  {
+    "source": "/user",
+    "destination": "/api/user",
+    "statusCode": 301
+  },
+  {
+    "source": "/blog/:path*",
+    "destination": "/news/:path*",
+    "permanent": true
+  }
+]

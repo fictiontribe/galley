@@ -1,0 +1,26 @@
+{
+  "name": "@galley/mcp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Galley over the Model Context Protocol: the engine's tools for any LLM harness, on stdio or Streamable HTTP.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fictiontribe/galley.git",
+    "directory": "packages/mcp"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "docs": "node --import tsx scripts/docs.ts"
+  },
+  "dependencies": {
+    "@galley/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  }
+}

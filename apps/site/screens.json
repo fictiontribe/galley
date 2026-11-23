@@ -1,0 +1,31 @@
+{
+  "about": "Real captures used on the marketing site: the Galley app (public/screens/) and the Caddow example site itself (public/sites/). Every one comes from scripts/capture-screens.mjs, run against a live Galley with a throwaway copy of the fashion starter (astro-editorial, “Caddow”) — and, for the WordPress move, a second throwaway copy (astro-starter, “Lowfield Studio”) importing the importer's invented WordPress site. 1440 × 900 window at 2× device scale, light theme, WebP, with a 1× copy (<name>@1x.webp). Each is shown on the site at half its pixel width.",
+  "setup": [
+    "From the repository root: pnpm --filter @galley/web exec vite build --outDir /tmp/galley-site3/web --emptyOutDir",
+    "Throwaway sites: /tmp/galley-verify/mksite-from.sh astro-editorial /tmp/galley-site3/caddow and /tmp/galley-verify/mksite-from.sh astro-starter /tmp/galley-site3/lowfield",
+    "Server with the assistant (one request, the 'assistant' step): /tmp/galley-verify/keyed-server.sh 4722 /tmp/galley-site3/caddow /tmp/galley-site3/home /tmp/galley-site3/web <token>",
+    "Open the second site: POST /api/sites/open {\"path\":\"/tmp/galley-site3/lowfield\"}; site ids: GET /api/sites (Authorization: Bearer <token>)",
+    "The importer's stand-in WordPress site: (packages/import-wordpress) node --import tsx test/serve-fake-site.ts --port 4723"
+  ],
+  "command": "GALLEY_ORIGIN=http://127.0.0.1:4722 GALLEY_TOKEN=<token> GALLEY_SITE=<caddow id> SITE_DIR=/tmp/galley-site3/caddow WP_SITE=<lowfield id> WP_URL=http://127.0.0.1:4723 PLAYWRIGHT_MODULES=<node_modules with playwright-core> node scripts/capture-screens.mjs reset site looks arrange drag click assistant chat form proof source wordpress",
+  "captured": "2026-11-23, web UI built from the repository that day; one assistant request",
+  "screens": [
+    { "file": "public/sites/caddow-home.webp", "step": "site", "shows": "The Caddow starter's home page as visitors see it (its own dev server, 1100 px wide), before any change.", "used": ["/ hero, the live site"] },
+    { "file": "public/sites/caddow-tall-{chalk,paper,night}.webp", "step": "looks", "shows": "The top 2,900 px of Caddow's home page in each of its three looks (1× captures, 1280 px wide).", "used": ["/ starters (the tall Caddow card)"] },
+    { "file": "public/screens/proof-changes.webp", "step": "proof", "shows": "Proof › What changed: the campaign heading and button renamed by the assistant and the Pieces heading retyped on the page, each with Put back.", "used": ["/ hero, laid over the live site", "/wordpress/ step 3", "/cloud/"] },
+    { "file": "public/screens/proof-source.webp", "step": "source", "shows": "Proof › Source: the same changes as lines of src/content/pages/index.md.", "used": ["/ It's just your repo"] },
+    { "file": "public/screens/form.webp", "step": "form", "shows": "The editor: the page's form beside the preview, sections listed with their edits marked.", "used": ["/ tabs: Form", "/cloud/ hero", "/astro/ hero"] },
+    { "file": "public/screens/click.webp", "step": "click", "shows": "The Pieces heading retyped in place on the page (“Coats and knits to start with”).", "used": ["/ tabs: On the page"] },
+    { "file": "public/screens/assistant.webp", "step": "assistant + chat", "shows": "The assistant's real reply after changing the campaign heading and first button, with Review in Proof and Undo this change, beside the page.", "used": ["/ tabs: Ask"] },
+    { "file": "public/screens/arrange.webp", "step": "arrange", "shows": "Arrange: a selected section's options beside the page and the section library.", "used": ["/wordpress/ step 2", "/astro/"] },
+    { "file": "public/screens/arrange-drag.webm", "poster": "public/screens/arrange-drag-poster.webp", "step": "drag", "shows": "Recording (muted, loops): a Newsletter section found in the library and dragged onto the page under the campaign photograph.", "used": ["/ starters (page builder line)"] },
+    { "file": "public/screens/wordpress-plan.webp", "step": "wordpress", "shows": "Bring your WordPress site, step 2 “Here's what comes across from Fernhill Garden Studio”: the counts and where each goes.", "used": ["/wordpress/ hero"] },
+    { "file": "public/screens/wordpress-report.webp", "step": "wordpress", "shows": "Bring your WordPress site, step 4: “Your WordPress site is here” and the five next steps.", "used": ["/wordpress/ step 1"] }
+  ],
+  "notes": [
+    "The site captures are taken from the starter's own dev server, not the preview proxy (which answers only inside the app); the dev toolbar is hidden in every capture.",
+    "On 2026-11-23 the vendored kit's dev HTML hook in every starter (src/galley/visibility/integration.js, interceptHtml) turned Astro's Uint8Array chunks into comma-separated numbers, so `astro dev` and Galley's preview showed digits instead of the page. The throwaway copies were patched (Buffer.from(chunk) for Uint8Array) for these captures; the kit and the starters need the same fix.",
+    "The recording is WebM (VP9) only. Browsers that can't play it show the poster.",
+    "Agent files are not captures: the /ai-first/ page shows this site's own files, read at build time."
+  ]
+}

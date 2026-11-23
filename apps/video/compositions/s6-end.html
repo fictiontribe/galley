@@ -1,0 +1,66 @@
+<template>
+  <style>
+    @font-face { font-family: "Newsreader"; src: url("assets/fonts/newsreader-latin-opsz-normal.woff2") format("woff2"); font-weight: 200 800; font-style: normal; }
+    @font-face { font-family: "Figtree"; src: url("assets/fonts/figtree-latin-wght-normal.woff2") format("woff2"); font-weight: 300 900; font-style: normal; }
+    @font-face { font-family: "IBM Plex Mono"; src: url("assets/fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-style: normal; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: #f6f1e7; color: #1a1712; }
+    .logo { position: absolute; left: 192px; top: 258px; width: 621.9px; height: 160px; overflow: visible; }
+    .tag { position: absolute; left: 190px; top: 474px; font-family: "Newsreader", Georgia, serif; font-weight: 400; font-size: 100px; line-height: 1; letter-spacing: -0.01em; white-space: nowrap; }
+    .tag span { display: inline-block; margin-right: 0.24em; }
+    .desc { position: absolute; left: 196px; top: 618px; font-family: "Figtree", system-ui, sans-serif; font-weight: 500; font-size: 44px; line-height: 1.2; color: #514a3f; white-space: nowrap; }
+    .url { position: absolute; left: 196px; top: 722px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 500; font-size: 44px; line-height: 1.2; color: #1a1712; white-space: nowrap; }
+    .url-rule { position: absolute; left: 196px; top: 784px; width: 620px; height: 3px; background: #2e2bff; transform-origin: 0 50%; }
+  </style>
+  <div
+    id="root"
+    data-composition-id="s6-end"
+    data-width="1920"
+    data-height="1080"
+    data-composition-variables='[{"id":"s6Desc","type":"string","label":"End · descriptor","default":"Open source · built for Astro"},{"id":"s6Url","type":"string","label":"End · site address","default":"galley.fictiontribe.com"}]'
+  >
+    <!-- The Galley lockup (galley/brand/logo/lockup.svg), drawn in two layers so the mark can set itself. -->
+    <svg id="s6-mark" class="logo" viewBox="0 0 155.86 40.1" role="img" aria-label="Galley">
+      <g transform="translate(-2.89 -8.67) scale(1.45)">
+        <path id="s6-bar1" fill="#1A1712" d="M2 6h28v4H2z" />
+        <path id="s6-bar2" fill="#1A1712" d="M2 14h10v4H2z" />
+        <path id="s6-bar3" fill="#1A1712" d="M20 14h10v4H20z" />
+        <path id="s6-caret" fill="#2E2BFF" d="M8.76 24.24 16 15.33l7.24 8.91-3.1 2.52L16 21.67l-4.14 5.09z" />
+      </g>
+    </svg>
+    <svg id="s6-word" class="logo" viewBox="0 0 155.86 40.1" aria-hidden="true">
+      <g transform="translate(51.46)"><path d="M10 12.1a7.9 7.9 0 1 1 0 15.8a7.9 7.9 0 1 1 0-15.8M17.9 10V31a7 7 0 0 1-7 7H3.5M34 12.1a7.9 7.9 0 1 1 0 15.8a7.9 7.9 0 1 1 0-15.8M41.9 10V30M49.1 0V30M56.3 0V30M63.5 20H79.3A7.9 7.9 0 1 0 76.99 25.59M86.5 10V20a7.9 7.9 0 0 0 15.8 0M102.3 10V31a7 7 0 0 1-7 7H87.9" fill="none" stroke="#1A1712" stroke-width="4.2" /></g>
+    </svg>
+    <h1 id="s6-tag" class="tag"><span id="s6-t1">Prompt it.</span><span id="s6-t2">Proof it.</span><span id="s6-t3">Publish it.</span></h1>
+    <p id="s6-desc" class="desc" data-var-text="s6Desc">Open source · built for Astro</p>
+    <p id="s6-url" class="url" data-var-text="s6Url">galley.fictiontribe.com</p>
+    <div id="s6-rule" class="url-rule"></div>
+  </div>
+  <script>
+    (function () {
+      const ID = "s6-end";
+      const tl = gsap.timeline({ paused: true });
+      const ink = "cubic-bezier(0.13,0.6,0.23,0.98)";
+      // The address is underlined in blue pencil to its own length.
+      // (IBM Plex Mono advances 0.6 em per character: measured from the text, not the layout,
+      // so it does not depend on the font having loaded.)
+      const urlW = document.getElementById("s6-url").textContent.trim().length * 44 * 0.6;
+      document.getElementById("s6-rule").style.width = Math.round(urlW) + "px";
+      // Frame 0: the caret alone, on paper (the sheet has just closed); the mark sets itself round it.
+      gsap.set(["#s6-bar1", "#s6-bar2", "#s6-bar3"], { scaleX: 0, transformOrigin: "0% 50%" });
+      gsap.set("#s6-word", { clipPath: "inset(0% 100% 0% 0%)" });
+      gsap.set(["#s6-t1", "#s6-t2", "#s6-t3", "#s6-desc", "#s6-url"], { opacity: 0 });
+      gsap.set("#s6-rule", { scaleX: 0 });
+      tl.to("#s6-bar1", { scaleX: 1, duration: 0.48, ease: ink }, 0.08);
+      tl.to("#s6-bar2", { scaleX: 1, duration: 0.36, ease: ink }, 0.2);
+      tl.to("#s6-bar3", { scaleX: 1, duration: 0.36, ease: ink }, 0.3);
+      tl.to("#s6-word", { clipPath: "inset(0% 0% 0% 0%)", duration: 0.6, ease: ink }, 0.36);
+      // The line, one beat a phrase.
+      ["#s6-t1", "#s6-t2", "#s6-t3"].forEach((sel, i) =>
+        tl.fromTo(sel, { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.16, ease: "power4.out" }, 0.7 + i * 0.2)
+      );
+      tl.to(["#s6-desc", "#s6-url"], { opacity: 1, duration: 0.3, ease: "power2.out", stagger: 0.12 }, 1.0);
+      tl.to("#s6-rule", { scaleX: 1, duration: 0.48, ease: ink }, 1.3);
+      window.__timelines[ID] = tl;
+    })();
+  </script>
+</template>

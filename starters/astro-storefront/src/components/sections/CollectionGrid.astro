@@ -1,0 +1,116 @@
+---
+// The shop's collections as tiles: a photograph, the name, how many pieces,
+// each linking to its collection page.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Icon from "../Icon.astro";
+import ProductImage from "../shop/ProductImage.astro";
+import { fill, labels, type Tone } from "../../lib/site";
+import { collectionUrl, getCollections, getShopCollection } from "../../lib/shop/data";
+import type { ShopCollection } from "../../lib/shop/types";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  collections?: string[];
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, collections = [], index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const shown: ShopCollection[] = collections.length
+  ? (await Promise.all(collections.map((handle) => getShopCollection(handle)))).filter((item): item is ShopCollection => Boolean(item))
+  : await getCollections();
+---
+
+<Section type="collection-grid" id={id} tone={tone} labelledby={headingId} block={block}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+  <ul class="collection-grid" role="list" style={`--count: ${Math.max(1, Math.min(shown.length, 4))}`}>
+    {
+      shown.map((collection) => (
+        <li>
+          <a class="collection-tile" href={collectionUrl(collection.handle)}>
+            <div class="frame collection-tile__frame">
+              <ProductImage image={collection.image ?? undefined} alt="" ratio="portrait" sizes="(min-width: 60rem) 33vw, 100vw" />
+            </div>
+            <span class="collection-tile__name">
+              {collection.title}
+              <Icon name="arrow-right" size={20} />
+            </span>
+            <span class="label">{fill(labels.shop.count, { count: collection.products.length })}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .collection-grid {
+    display: grid;
+    gap: var(--space-xl) var(--gutter);
+    padding: 0;
+    list-style: none;
+  }
+
+  .collection-tile {
+    display: grid;
+    gap: var(--space-2xs);
+    color: inherit;
+    text-decoration: none;
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  @media (hover: hover) {
+    .collection-tile:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  /* On a phone the tiles stack: a wide crop keeps each one short. People stand
+     in these photographs, so the crop keeps the top, where their heads are. */
+  @media (max-width: 47.99rem) {
+    .collection-tile__frame :global(.media) {
+      aspect-ratio: 3 / 2;
+      object-position: 50% 22%;
+    }
+  }
+
+  .collection-tile__name {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block-start: var(--space-xs);
+    border-block-start: var(--border-width) solid var(--tone-line);
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    letter-spacing: var(--tracking-display);
+    line-height: 1.05;
+  }
+
+  /* The larger name only where three or four tiles still give it room. */
+  @media (min-width: 80rem) {
+    .collection-tile__name {
+      font-size: var(--step-3);
+    }
+  }
+
+  .collection-tile__name :global(svg) {
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .collection-tile:hover .collection-tile__name :global(svg) {
+    transform: translateX(0.3em);
+  }
+
+  @media (min-width: 48rem) {
+    .collection-grid {
+      grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+    }
+  }
+</style>

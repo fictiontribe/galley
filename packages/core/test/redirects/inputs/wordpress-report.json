@@ -1,0 +1,8 @@
+{
+  "dryRun": false,
+  "redirects": [
+    { "from": "/2019/05/survey-notes/", "to": "/blog/measured-survey/", "title": "Survey notes" },
+    { "from": "/sample-page/", "to": "/about/", "title": "About us" }
+  ],
+  "snippets": { "astro": "", "netlify": "" }
+}

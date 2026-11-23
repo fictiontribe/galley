@@ -1,0 +1,71 @@
+---
+// An example proof set in real text: each change struck out and written in
+// with the brand's marks (never colour alone), each with a working Put back,
+// and the proofreader's margin notes explaining the marks.
+import { inline } from "../../lib/markdown";
+import { fill, site } from "../../lib/site";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const hid = `${s.id ?? "proof"}-h`;
+const n = s.sheet.changes.length;
+const count = (k: number) => (k === 1 ? site.ui.change : site.ui.changes.replace("{n}", String(k)));
+/** "Coats and knits to [begin|start] with" → parts. */
+const parts = (text: string) => text.split(/(\[[^\]|]*\|[^\]]*\])/).map((p) => (p.startsWith("[") ? { old: p.slice(1, -1).split("|")[0], new: p.slice(1, -1).split("|")[1] } : p));
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class="proof">
+    <div class="head">
+      <H class="h2" id={hid} set:html={inline(s.heading)} />
+      <p class="lead">{fill(s.text)}</p>
+    </div>
+    <div class="sheet" role="group" aria-label={s.sheet.label} data-sheet data-one={site.ui.change} data-many={site.ui.changes} data-put={site.ui.putBack} data-undo={site.ui.undo}>
+      <div class="sheet__top">
+        <p class="sheet__title">{s.sheet.title} <span class="chip"><span class="mk mk--change" aria-hidden="true" />{s.sheet.badge}</span></p>
+        <p class="label" data-count aria-live="polite">{count(n)}</p>
+      </div>
+      {
+        s.sheet.changes.map((c: { path: string; before?: string; after?: string; inline?: string }, i: number) =>
+          c.inline ? (
+            <div class="change">
+              <p class="change__path" id={`${hid}-c${i}`}>{c.path}</p>
+              <span class="change__g" aria-hidden="true"><span class="mk mk--change" /></span>
+              <p class="change__line">
+                {parts(c.inline).map((p) =>
+                  typeof p === "string" ? p : (
+                    <>
+                      <del class="del"><span class="sr">{site.ui.removed} </span>{p.old}</del>{" "}
+                      <ins class="ins"><span class="sr">{site.ui.added} </span>{p.new}</ins>
+                    </>
+                  ),
+                )}
+              </p>
+              <button type="button" class="change__act" aria-describedby={`${hid}-c${i}`}>{site.ui.putBack}</button>
+            </div>
+          ) : (
+            <div class="change">
+              <p class="change__path" id={`${hid}-c${i}`}>{c.path}</p>
+              <span class="change__g" aria-hidden="true"><span class="mk mk--delete" /></span>
+              <p class="change__line"><del class="del"><span class="sr">{site.ui.before} </span>{c.before}</del></p>
+              <span class="change__g change__g--after" aria-hidden="true"><span class="mk mk--insert" /></span>
+              <p class="change__line change__line--after"><ins class="ins"><span class="sr">{site.ui.after} </span>{c.after}</ins></p>
+              <button type="button" class="change__act" aria-describedby={`${hid}-c${i}`}>{site.ui.putBack}</button>
+            </div>
+          ),
+        )
+      }
+    </div>
+    <aside class="notes" aria-label={s.notesLabel}>
+      {
+        s.notes.map((note: { mark: string; title: string; text: string }) => (
+          <p class="note">
+            <span class:list={["mk", `mk--${note.mark}`]} aria-hidden="true" />
+            <span><b>{note.title}</b> {note.text}</span>
+          </p>
+        ))
+      }
+    </aside>
+    {s.link && <p class="proof__more"><a class="link" href={fill(s.link.href)}>{s.link.label}</a></p>}
+  </div>
+</section>

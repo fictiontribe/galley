@@ -1,0 +1,128 @@
+---
+// The opening statement of a page. With an image and align "left" it is a
+// two-column split; with align "center" the image runs full width below.
+import Section from "../Section.astro";
+import Actions from "../Actions.astro";
+import Media from "../Media.astro";
+import { inline, paragraphs, type Link, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  cta?: Link;
+  secondaryCta?: Link;
+  image?: string;
+  imageAlt?: string;
+  align?: "left" | "center";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, cta, secondaryCta, image, imageAlt = "", align = "left", index = 0, level = 1, block } =
+  Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+const layout = image && align === "left" ? "split" : align === "center" ? "center" : "text";
+---
+
+<Section type="hero" block={block} id={id} tone={tone} labelledby={headingId}>
+  <div class:list={["hero", `hero--${layout}`]}>
+    <div class="hero__copy">
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <Heading id={headingId} class="hero__heading" set:html={inline(heading)} />
+      {
+        text && (
+          <div class="hero__text">
+            {paragraphs(text).map((part) => (
+              <p>{part}</p>
+            ))}
+          </div>
+        )
+      }
+      <Actions cta={cta} secondaryCta={secondaryCta} class="hero__actions" />
+    </div>
+    {
+      image && (
+        <div class="hero__media">
+          <Media src={image} alt={imageAlt} ratio={layout === "split" ? "4/5" : "21/9"} eager={index === 0} />
+        </div>
+      )
+    }
+  </div>
+</Section>
+
+<style>
+  :global(.section--hero) {
+    padding-block: var(--space-2xl) var(--space-section);
+  }
+
+  .hero {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  .hero__copy {
+    display: grid;
+    gap: var(--space-m);
+    align-content: center;
+  }
+
+  .hero__heading {
+    font-size: var(--step-6);
+    line-height: var(--leading-tight);
+    max-width: 14em;
+  }
+
+  .hero__text {
+    display: grid;
+    gap: var(--space-xs);
+    max-width: 34em;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--tone-muted);
+  }
+
+  .hero :global(.hero__actions) {
+    margin-block-start: var(--space-xs);
+  }
+
+  .hero--center .hero__copy {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .hero--center .hero__heading,
+  .hero--center .hero__text {
+    margin-inline: auto;
+  }
+
+  .hero--center :global(.hero__actions) {
+    justify-content: center;
+  }
+
+  .hero--center .hero__media {
+    margin-block-start: var(--space-l);
+  }
+
+  @media (max-width: 55.99rem) {
+    .hero--split :global(.media) {
+      aspect-ratio: 4 / 3;
+    }
+  }
+
+  @media (min-width: 56rem) {
+    .hero--split {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      gap: var(--space-2xl);
+      align-items: center;
+    }
+
+    .hero--split .hero__heading {
+      font-size: var(--step-6);
+    }
+  }
+</style>

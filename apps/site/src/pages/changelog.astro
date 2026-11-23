@@ -1,0 +1,21 @@
+---
+// Rendered from the repository's CHANGELOG.md at build time. When the file
+// does not exist yet, the page says so plainly instead of failing the build.
+import Site from "../layouts/Site.astro";
+import PageHead from "../components/PageHead.astro";
+import { getPage } from "../lib/pages";
+import { renderMarkdown } from "../lib/markdown";
+import { readRepoFile, site } from "../lib/site";
+
+const { data: p } = await getPage("changelog");
+const source = readRepoFile("CHANGELOG.md");
+const html = source ? renderMarkdown(source.replace(/^# .*\n/, ""), { anchors: false }).html : "";
+---
+
+<Site title={p.title} description={p.description}>
+  <div class="wrap">
+    <PageHead eyebrow={p.eyebrow} heading={p.heading} lead={p.lead} />
+    {source ? <div class="prose" set:html={html} /> : <p class="lead">{p.empty}</p>}
+    <p class="docs__editline"><a href={`${site.repository}/blob/${site.repositoryBranch}/CHANGELOG.md`}>{p.source}</a></p>
+  </div>
+</Site>

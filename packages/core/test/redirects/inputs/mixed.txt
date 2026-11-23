@@ -1,0 +1,6 @@
+/semi/;/about/;301
+/space/   /contact/    302
+/comma/,/pricing/
+https://lowfield.example/full/ https://lowfield.example/blog/
+this is not a redirect
+/only-one-address

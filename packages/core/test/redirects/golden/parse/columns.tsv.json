@@ -1,0 +1,21 @@
+{
+  "format": "columns",
+  "redirects": [
+    {
+      "line": 1,
+      "from": "/tabbed/",
+      "to": "/about/",
+      "status": 308
+    },
+    {
+      "line": 2,
+      "from": "/tab-two/",
+      "to": "/contact/",
+      "status": 301,
+      "statusMissing": true
+    }
+  ],
+  "rejected": [],
+  "ignored": 0,
+  "unknownHosts": []
+}

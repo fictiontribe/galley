@@ -1,0 +1,51 @@
+/* Proofed text and source lines (ui/diff). Tokens only. */
+.ui-proof { overflow-wrap: anywhere; }
+.ui-proof__gap { color: var(--ink-tertiary); letter-spacing: 0.1em; }
+/* Inline Markdown shown as it reads: link words underlined, the address quiet beside them. */
+.ui-md-link { text-decoration: underline; text-decoration-thickness: var(--border-hair); text-underline-offset: 0.18em; }
+.ui-md-address { margin-inline-start: 0.4em; font: var(--text-xs) / 1 var(--font-mono); color: var(--ink-tertiary); }
+.ui-md-code { font-family: var(--font-mono); font-size: 0.9em; }
+.ui-md-stored { font-size: 0.9em; }
+
+.ui-source { display: grid; gap: var(--space-4); }
+.ui-source__hunk {
+  inline-size: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--text-xs) / 1.65 var(--font-mono);
+  background: var(--surface-raised);
+  border: var(--border-hair) solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.ui-source__head {
+  caption-side: top;
+  text-align: start;
+  padding: 0 0 var(--space-1-5);
+}
+.ui-source__row > td { padding: 0; vertical-align: top; }
+.ui-source__col-num { inline-size: 5.5ch; }
+.ui-source__col-mark { inline-size: 22px; }
+.ui-source__num {
+  padding-inline: var(--space-1-5) !important;
+  text-align: end;
+  color: var(--ink-tertiary);
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+.ui-source__mark { text-align: center; font-size: 10px; }
+.ui-source__mark .g-mark { vertical-align: -1px; }
+.ui-source__text {
+  padding-inline: var(--space-1) var(--space-3) !important;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink-secondary);
+}
+.ui-source__row:first-child > td { padding-block-start: var(--space-1-5); }
+.ui-source__row:last-child > td { padding-block-end: var(--space-1-5); }
+.ui-source__row--add > .ui-source__text { color: var(--ink-primary); }
+.ui-source__row--del > .ui-source__text { color: var(--proof-delete-ink); }
+/* Marks, not blocks: a hairline in the margin beside each changed line, the words themselves proofed. */
+.ui-source__row--add > .ui-source__mark { box-shadow: inset 2px 0 0 var(--proof-insert); }
+.ui-source__row--del > .ui-source__mark { box-shadow: inset 2px 0 0 var(--proof-delete); }
+.ui-source .g-ins, .ui-source .g-del { padding-inline: 0.06em; }

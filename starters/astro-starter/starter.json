@@ -1,0 +1,50 @@
+{
+  "name": "Small business",
+  "description": "A site for a small studio or local business, built from 17 section types: a home page, services, about, pricing and contact pages, a journal with authors and tags, a team, a contact form, five page templates and three looks.",
+  "framework": "astro",
+  "tags": [
+    "business",
+    "studio",
+    "portfolio"
+  ],
+  "tokens": "src/styles/tokens.css",
+  "preview": "galley/previews/home.webp",
+  "looks": [
+    {
+      "id": "lowfield",
+      "label": "Lowfield",
+      "file": "src/styles/themes/lowfield.css",
+      "swatches": [
+        "#f9f6f0",
+        "#231b15",
+        "#a5401b",
+        "#271f18"
+      ],
+      "preview": "galley/previews/lowfield.webp"
+    },
+    {
+      "id": "sage",
+      "label": "Sage",
+      "file": "src/styles/themes/sage.css",
+      "swatches": [
+        "#f3f8f4",
+        "#111e18",
+        "#1c613f",
+        "#0f231b"
+      ],
+      "preview": "galley/previews/sage.webp"
+    },
+    {
+      "id": "evening",
+      "label": "Evening",
+      "file": "src/styles/themes/evening.css",
+      "swatches": [
+        "#191410",
+        "#f1ece4",
+        "#eb9c65",
+        "#0c0806"
+      ],
+      "preview": "galley/previews/evening.webp"
+    }
+  ]
+}

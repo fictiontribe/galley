@@ -1,0 +1,5 @@
+lowfield.example/old-docs,https://lowfield.example/blog/,301
+lowfield.example/draft,https://lowfield.example/pricing/,302,,TRUE
+lowfield.example/folder/,https://lowfield.example/blog/,301,TRUE,FALSE,TRUE,TRUE
+lowfield.example/sub,https://lowfield.example/about/,301,FALSE,TRUE,FALSE,FALSE
+other.example/x,https://lowfield.example/,301

@@ -1,0 +1,122 @@
+---
+// Customer or partner logos: a quiet row under a hero, or a grid of tiles.
+// Logos are images (SVG logos are drawn in the colour of the text around
+// them); `name` is the alt text and `href` an optional link.
+import Section from "../Section.astro";
+import Media from "../Media.astro";
+import { withBase, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  heading?: string;
+  items: Array<{ name: string; image: string; href?: string }>;
+  layout?: "row" | "grid";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, heading, items, layout = "row", index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+---
+
+<Section type="logos" id={id} tone={tone} block={block} labelledby={headingId} class="section--compact">
+  <div class:list={["logos", `logos--${layout}`]}>
+    {heading && <Heading id={headingId} class="logos__heading">{heading}</Heading>}
+    <ul class="logos__list" role="list" style={`--count: ${items.length}`}>
+      {
+        items.map((item) => (
+          <li class="logos__item">
+            {item.href ? (
+              <a href={withBase(item.href)} class="logos__link">
+                <Media src={item.image} alt={item.name} ratio="3/1" contain />
+              </a>
+            ) : (
+              <Media src={item.image} alt={item.name} ratio="3/1" contain />
+            )}
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Section>
+
+<style>
+  .logos {
+    display: grid;
+    gap: var(--space-m);
+  }
+
+  .logos__heading {
+    font-family: var(--font-body);
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    letter-spacing: 0;
+    line-height: 1.4;
+    color: var(--tone-muted);
+  }
+
+  .logos__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+    align-items: center;
+    gap: var(--space-m) var(--space-l);
+    padding: 0;
+    list-style: none;
+  }
+
+  .logos__item {
+    color: var(--tone-text);
+    opacity: 0.72;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .logos__item :global(.media) {
+    max-inline-size: 9.5rem;
+    margin-inline: auto;
+  }
+
+  .logos__link {
+    display: block;
+    color: inherit;
+  }
+
+  .logos__item:has(a:hover) {
+    opacity: 1;
+  }
+
+  .logos--row {
+    text-align: center;
+  }
+
+  .logos--grid .logos__list {
+    gap: 0;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr));
+    border-block-start: var(--border-width) solid var(--tone-line);
+    border-inline-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .logos--grid .logos__item {
+    padding: var(--space-l) var(--space-m);
+    border-inline-end: var(--border-width) solid var(--tone-line);
+    border-block-end: var(--border-width) solid var(--tone-line);
+    opacity: 0.85;
+  }
+
+  .logos--grid .logos__heading {
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-display);
+    color: var(--tone-text);
+    max-width: 20em;
+  }
+
+  @media (min-width: 60rem) {
+    .logos--row .logos__list {
+      grid-template-columns: repeat(var(--count, 6), minmax(0, 1fr));
+    }
+  }
+</style>

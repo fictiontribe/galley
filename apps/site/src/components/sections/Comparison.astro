@@ -1,0 +1,33 @@
+---
+// A fair comparison: short values in two columns, a note where the other tool
+// does more, and the trademark note under the table.
+import { inline } from "../../lib/markdown";
+import { fill } from "../../lib/site";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const hid = `${s.id ?? "comparison"}-h`;
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class="head">
+    <H class="h2" id={hid} set:html={inline(s.heading)} />
+    <p class="lead">{fill(s.text)}</p>
+  </div>
+  <table class="compare">
+    <caption class="sr">{s.caption}</caption>
+    <thead><tr>{s.columns.map((c: string) => <th scope="col">{c}</th>)}</tr></thead>
+    <tbody>
+      {
+        s.rows.map((r: { label: string; ours: string; theirs: string; more?: string }) => (
+          <tr>
+            <th scope="row">{r.label}</th>
+            <td class="us" data-col={s.columns[1]}>{fill(r.ours)}</td>
+            <td data-col={s.columns[2]}>{fill(r.theirs)}{r.more && " "}{r.more && <span class="more">{r.more}</span>}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+  {s.note && <p class="small compare-note">{fill(s.note)}</p>}
+</section>

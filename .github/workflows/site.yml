@@ -1,0 +1,53 @@
+# Builds the website and documentation (apps/site) and deploys it to GitHub
+# Pages. Off until the owner turns it on: enable Pages with "GitHub Actions"
+# as the source in the repository's settings, then run this by hand or add the
+# push trigger below. Not run yet.
+#
+# The site is built for the address in apps/site/src/data/site.json ("url").
+# For a custom domain, set it there and in the Pages settings. Served from a
+# project path instead (https://<owner>.github.io/<repo>/), it would also need
+# `base` in apps/site/astro.config.mjs.
+name: Site
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths: ["apps/site/**", "packages/core/src/**", "packages/cli/src/**", "packages/server/src/**", "docs/**", "CHANGELOG.md", "RELEASING.md", "brand/**"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      # check-docs runs first and fails the build if a page disagrees with the code.
+      - run: pnpm --filter @galley/site build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,289 @@
+---
+// One blog post. `author` names a file in src/content/authors/; its name,
+// photo, role and bio are shown with the post.
+import { getEntry, render, type CollectionEntry } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import Media from "../../components/Media.astro";
+import Icon from "../../components/Icon.astro";
+import Tags from "../../components/Tags.astro";
+import { getPosts, postUrl } from "../../lib/posts";
+import { fill, formatDate, labels, readingMinutes, withBase } from "../../lib/site";
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post, i) => ({
+    params: { slug: post.id },
+    props: { post, newer: posts[i - 1], older: posts[i + 1] },
+  }));
+}
+
+interface Props {
+  post: CollectionEntry<"blog">;
+  newer?: CollectionEntry<"blog">;
+  older?: CollectionEntry<"blog">;
+}
+
+const { post, newer, older } = Astro.props;
+const { Content } = await render(post);
+const author = await getEntry(post.data.author);
+if (!author) throw new Error(`${post.id}: no author called “${post.data.author.id}” in src/content/authors/.`);
+const authorName = author.data.name;
+const minutes = readingMinutes(post.body);
+---
+
+<Base
+  title={post.data.title}
+  description={post.data.description}
+  image={post.data.image}
+  imageAlt={post.data.imageAlt}
+  type="article"
+  publishedTime={post.data.date}
+  author={authorName}
+>
+  <article class="post">
+    <header class="post__header container">
+      <a class="text-link post__back" href={withBase("/blog/")}>
+        <Icon name="arrow-left" size={18} />
+        {labels.blog.backToBlog}
+      </a>
+      <Tags tags={post.data.tags} />
+      <h1 class="post__title">{post.data.title}</h1>
+      <p class="post__dek">{post.data.description}</p>
+      <div class="post__meta">
+        {author.data.photo && <Media src={author.data.photo} alt="" ratio="1/1" class="post__avatar" />}
+        <p>
+          <span class="post__author">
+            {labels.blog.by} {authorName}
+          </span>
+          <span class="post__facts">
+            <span class="visually-hidden">{labels.blog.published}</span>
+            <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+            <span aria-hidden="true">·</span>
+            {fill(labels.blog.readingTime, { minutes })}
+          </span>
+        </p>
+      </div>
+    </header>
+
+    <div class="post__cover container">
+      <Media src={post.data.image} alt={post.data.imageAlt ?? ""} ratio="16/9" eager />
+    </div>
+
+    <div class="post__body container">
+      <div class="prose post__prose">
+        <Content />
+      </div>
+    </div>
+
+    <footer class="post__footer container">
+      <aside class:list={["author", { "author--no-photo": !author.data.photo }]} aria-labelledby="author-heading">
+        {author.data.photo && <Media src={author.data.photo} alt={author.data.name} ratio="4/5" class="author__photo" />}
+        <div class="author__body">
+          <h2 id="author-heading" class="author__label">
+            {labels.blog.aboutAuthor}
+          </h2>
+          <p class="author__name">{author.data.name}</p>
+          {author.data.role && <p class="author__role">{author.data.role}</p>}
+          <p class="author__bio">{author.data.bio}</p>
+        </div>
+      </aside>
+
+      {
+        (newer || older) && (
+          <nav class="post__nav" aria-label={labels.blog.allPosts}>
+            {newer ? (
+              <a href={postUrl(newer)} class="post__nav-link">
+                <span class="post__nav-label">
+                  <Icon name="arrow-left" size={16} /> {labels.blog.newer}
+                </span>
+                <span class="post__nav-title">{newer.data.title}</span>
+              </a>
+            ) : (
+              <span />
+            )}
+            {older && (
+              <a href={postUrl(older)} class="post__nav-link post__nav-link--older">
+                <span class="post__nav-label">
+                  {labels.blog.older} <Icon name="arrow-right" size={16} />
+                </span>
+                <span class="post__nav-title">{older.data.title}</span>
+              </a>
+            )}
+          </nav>
+        )
+      }
+    </footer>
+  </article>
+</Base>
+
+<style>
+  .post {
+    padding-block: var(--space-xl) var(--space-section);
+  }
+
+  .post__header {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+    max-width: min(100% - 2 * var(--gutter), 56rem);
+  }
+
+  .post__back {
+    margin-block-end: var(--space-l);
+  }
+
+  .post__title {
+    font-size: var(--step-5);
+    line-height: var(--leading-tight);
+  }
+
+  .post__dek {
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    line-height: 1.35;
+    color: var(--tone-muted);
+    max-width: 34em;
+  }
+
+  .post__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    margin-block-start: var(--space-xs);
+    font-size: var(--step--1);
+  }
+
+  .post__meta :global(.post__avatar) {
+    inline-size: 3rem;
+    block-size: 3rem;
+    border-radius: 50%;
+  }
+
+  .post__author {
+    display: block;
+    font-weight: var(--weight-bold);
+  }
+
+  .post__facts {
+    display: flex;
+    gap: 0.5em;
+    color: var(--tone-muted);
+  }
+
+  .post__cover {
+    margin-block: var(--space-xl) var(--space-2xl);
+  }
+
+  .post__body,
+  .post__footer {
+    max-width: min(100% - 2 * var(--gutter), 56rem);
+  }
+
+  .post__prose {
+    font-size: var(--step-1);
+    line-height: 1.65;
+  }
+
+  .post__footer {
+    display: grid;
+    gap: var(--space-xl);
+    margin-block-start: var(--space-2xl);
+  }
+
+  .author {
+    display: grid;
+    grid-template-columns: 6rem 1fr;
+    gap: var(--space-m);
+    padding-block: var(--space-l);
+    border-block: var(--border-width) solid var(--tone-line);
+  }
+
+  .author__body {
+    display: grid;
+    gap: var(--space-3xs);
+    align-content: start;
+  }
+
+  .author__label {
+    font-family: var(--font-body);
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .author__name {
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    line-height: 1.2;
+  }
+
+  .author__role {
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    color: var(--tone-link);
+  }
+
+  .author__bio {
+    margin-block-start: var(--space-2xs);
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .post__nav {
+    display: grid;
+    gap: var(--space-m);
+  }
+
+  .post__nav-link {
+    display: grid;
+    gap: var(--space-2xs);
+    color: var(--tone-text);
+    text-decoration: none;
+  }
+
+  .post__nav-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .post__nav-title {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    line-height: 1.3;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 0.2em;
+    transition: text-decoration-color var(--duration-fast) var(--ease-out);
+  }
+
+  .post__nav-link:hover .post__nav-title {
+    text-decoration-color: var(--tone-link);
+  }
+
+  @media (min-width: 44rem) {
+    .post__nav {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .post__nav-link--older {
+      text-align: end;
+      justify-items: end;
+    }
+
+    .author {
+      grid-template-columns: 9rem 1fr;
+    }
+  }
+
+  .author.author--no-photo {
+    grid-template-columns: 1fr;
+  }
+</style>

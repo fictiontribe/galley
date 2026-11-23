@@ -1,0 +1,64 @@
+---
+// One entry of the pages collection: its sections, then anything passed in
+// the default slot, then the markdown body (if the file has one) as prose.
+// A page with no sections gets a plain title header so it still has an <h1>.
+import { render, type CollectionEntry } from "astro:content";
+import Sections from "./Sections.astro";
+
+interface Props {
+  page: CollectionEntry<"pages">;
+}
+
+const { page } = Astro.props;
+const { Content } = await render(page);
+const sections = page.data.sections;
+const hasBody = Boolean(page.body?.trim());
+---
+
+{
+  sections.length > 0 ? (
+    <Sections sections={sections} title={page.data.title} />
+  ) : (
+    <header class="section section--free tone-default page-header">
+      <div class="container">
+        <h1 class="page-header__title">{page.data.title}</h1>
+        <p class="lede">{page.data.description}</p>
+      </div>
+    </header>
+  )
+}
+<slot />
+{
+  hasBody && (
+    <div class="section section--free tone-default page-body">
+      <div class="container">
+        <div class="prose">
+          <Content />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+<style>
+  .page-header {
+    padding-block-end: var(--space-xl);
+  }
+
+  .page-header .container {
+    display: grid;
+    gap: var(--space-s);
+    padding-block-end: var(--space-xl);
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .page-header__title {
+    font-size: var(--step-6);
+    line-height: var(--leading-tight);
+    max-width: 16em;
+  }
+
+  .page-header + .page-body {
+    padding-block-start: 0;
+  }
+</style>

@@ -1,0 +1,60 @@
+{
+  "header": [
+    {
+      "label": "Collections",
+      "href": "/collections/"
+    },
+    {
+      "label": "Atelier",
+      "href": "/atelier/"
+    },
+    {
+      "label": "Journal",
+      "href": "/journal/"
+    },
+    {
+      "label": "Stockists",
+      "href": "/stockists/"
+    }
+  ],
+  "cta": {
+    "label": "Enquiries",
+    "href": "/contact/"
+  },
+  "footer": [
+    {
+      "heading": "The label",
+      "links": [
+        {
+          "label": "Collections",
+          "href": "/collections/"
+        },
+        {
+          "label": "Atelier",
+          "href": "/atelier/"
+        },
+        {
+          "label": "Journal",
+          "href": "/journal/"
+        }
+      ]
+    },
+    {
+      "heading": "Find us",
+      "links": [
+        {
+          "label": "Stockists",
+          "href": "/stockists/"
+        },
+        {
+          "label": "Contact",
+          "href": "/contact/"
+        },
+        {
+          "label": "Privacy",
+          "href": "/privacy/"
+        }
+      ]
+    }
+  ]
+}

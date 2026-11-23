@@ -1,0 +1,21 @@
+---
+// The dark band: one idea beside what a terminal shows. Once a page.
+import Terminal from "../Terminal.astro";
+import { inline } from "../../lib/markdown";
+import { fill } from "../../lib/site";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const hid = `${s.id ?? "band"}-h`;
+---
+
+<section class="band" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class="wrap band__grid">
+    <div class="band__text">
+      <H class="h2" id={hid} set:html={inline(s.heading)} />
+      <p class="lead">{fill(s.text)}</p>
+      {s.link && <a class="link" href={fill(s.link.href)}>{s.link.label}</a>}
+    </div>
+    <Terminal {...s.terminal} />
+  </div>
+</section>

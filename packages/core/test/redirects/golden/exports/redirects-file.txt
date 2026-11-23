@@ -1,0 +1,5 @@
+# Redirects exported from src/data/redirects.json. Every line: old address, new address, status.
+/a/      /about/                               301
+/far/    https://elsewhere.example/page?ref=1  308
+/noted/  /about/                               301
+/blog/*  /journal/:splat                       302

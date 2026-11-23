@@ -1,0 +1,158 @@
+{
+  "name": "Galley website",
+  "framework": "astro",
+  "urls": {
+    "production": "https://galley.fictiontribe.com"
+  },
+  "media": {
+    "dir": "public",
+    "publicPath": "/"
+  },
+  "publish": {
+    "mode": "pull-request"
+  },
+  "collections": [
+    {
+      "id": "pages",
+      "label": "Pages",
+      "singular": "page",
+      "url": "/{slug}/",
+      "fields": [
+        {
+          "key": "sections",
+          "blocks": [
+            {
+              "type": "hero",
+              "label": "Hero",
+              "description": "The page's first screen: a short heading, one sentence, one action and one picture — or, on the home page, the live site with Galley's proof laid over it.",
+              "thumbnail": "galley/sections/hero.webp"
+            },
+            {
+              "type": "film",
+              "label": "Film",
+              "description": "A captioned video with chapters that loads only when played, beside a heading and one line.",
+              "thumbnail": "galley/sections/film.webp"
+            },
+            {
+              "type": "tabs",
+              "label": "Tabbed captures",
+              "description": "Two to four jobs as tabs beside one capture panel; choosing a tab swaps the capture.",
+              "thumbnail": "galley/sections/tabs.webp"
+            },
+            {
+              "type": "proof",
+              "label": "Proof sheet",
+              "description": "An example proof set in real text, each change struck out and written in with a working Put back, and margin notes on the marks.",
+              "thumbnail": "galley/sections/proof.webp"
+            },
+            {
+              "type": "band",
+              "label": "Dark band",
+              "description": "One idea on the dark ground beside what a terminal shows; once a page.",
+              "thumbnail": "galley/sections/band.webp"
+            },
+            {
+              "type": "starters",
+              "label": "Starters",
+              "description": "The starters with large real pictures and look buttons, read from each starter's own files, with an optional page-builder line.",
+              "thumbnail": "galley/sections/starters.webp"
+            },
+            {
+              "type": "split",
+              "label": "Text and capture",
+              "description": "One idea, with optional points and a link, beside the capture that shows it.",
+              "thumbnail": "galley/sections/split.webp"
+            },
+            {
+              "type": "status",
+              "label": "What's in the release",
+              "description": "Features grouped by status, rendered from src/data/status.json, the only place the site states a status.",
+              "thumbnail": "galley/sections/status.webp"
+            },
+            {
+              "type": "cards",
+              "label": "Linked cards",
+              "description": "Two or three cards, each a title and one line, linking on.",
+              "thumbnail": "galley/sections/cards.webp"
+            },
+            {
+              "type": "close",
+              "label": "Closing card",
+              "description": "A heading, one line and the actions on the dark ground, optionally with the real commands to run.",
+              "thumbnail": "galley/sections/close.webp"
+            },
+            {
+              "type": "lists",
+              "label": "Marked lists",
+              "description": "Up to four short lists side by side, each headed by a proof mark: what comes, what changes, what stays behind.",
+              "thumbnail": "galley/sections/lists.webp"
+            },
+            {
+              "type": "comparison",
+              "label": "Comparison table",
+              "description": "A fair two-column comparison in short cells, saying where the other tool does more, with a note under it.",
+              "thumbnail": "galley/sections/comparison.webp"
+            },
+            {
+              "type": "steps",
+              "label": "Steps",
+              "description": "Three numbered steps, each with one line, a status badge if needed and a capture of its result.",
+              "thumbnail": "galley/sections/steps.webp"
+            },
+            {
+              "type": "faq",
+              "label": "Questions",
+              "description": "Three to six questions with their answers open; a calm section near the end.",
+              "thumbnail": "galley/sections/faq.webp"
+            },
+            {
+              "type": "team",
+              "label": "Team",
+              "description": "People with their photograph, name, title and one line: one featured first, the rest as equals; the alt text is the person's name.",
+              "thumbnail": "galley/sections/team.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "docs",
+      "label": "Documentation",
+      "singular": "doc page",
+      "url": "/docs/{slug}/",
+      "titleField": "title"
+    }
+  ],
+  "templates": [
+    {
+      "id": "landing",
+      "label": "Landing page",
+      "description": "A product or feature page: hero, a text-and-capture section, a marked list, questions and a closing card.",
+      "collection": "pages",
+      "file": "galley/templates/landing.md"
+    },
+    {
+      "id": "comparison",
+      "label": "Comparison page",
+      "description": "For people moving from another tool: hero, what moves and what stays, a fair comparison table, three steps and an honest close.",
+      "collection": "pages",
+      "file": "galley/templates/comparison.md"
+    },
+    {
+      "id": "coming-soon",
+      "label": "Coming soon",
+      "description": "Something announced but not ready: hero with an email link, who it is for and what is planned, and the promise.",
+      "collection": "pages",
+      "file": "galley/templates/coming-soon.md"
+    }
+  ],
+  "redirects": {
+    "file": "src/data/redirects.json",
+    "host": "cloudflare"
+  },
+  "deploy": {
+    "target": "cloudflare",
+    "account": "0cc7327da4f3d67ccdcb0e075d72eccc",
+    "project": "galley"
+  }
+}

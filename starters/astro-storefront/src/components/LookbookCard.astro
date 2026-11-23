@@ -1,0 +1,76 @@
+---
+// A lookbook on the collections page: cover, season, title, summary.
+import Media from "./Media.astro";
+import { fill, labels, lookbookUrl } from "../lib/site";
+import type { Lookbook } from "../lib/lookbooks";
+
+interface Props {
+  lookbook: Lookbook;
+  eager?: boolean;
+}
+
+const { lookbook, eager = false } = Astro.props;
+const { title, season, summary, cover, coverAlt, looks } = lookbook.data;
+---
+
+<article class="lookbook-card">
+  <div class="frame">
+    <Media src={cover} alt={coverAlt} ratio="portrait" eager={eager} />
+  </div>
+  <div class="lookbook-card__body">
+    <p class="label">{season} <span aria-hidden="true">/</span> {fill(labels.lookbooks.count, { count: looks.length })}</p>
+    <h2 class="lookbook-card__title">
+      <a href={lookbookUrl(lookbook.id)}>{title}</a>
+    </h2>
+    <p class="lookbook-card__summary">{summary}</p>
+    <span class="text-link" aria-hidden="true">{labels.lookbooks.view}</span>
+  </div>
+</article>
+
+<style>
+  .lookbook-card {
+    position: relative;
+    display: grid;
+    gap: var(--space-m);
+  }
+
+  .lookbook-card__body {
+    display: grid;
+    gap: var(--space-xs);
+    justify-items: start;
+  }
+
+  .lookbook-card {
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .lookbook-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .lookbook-card__title a {
+    color: var(--tone-text);
+    text-decoration: none;
+  }
+
+  .lookbook-card__title a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .lookbook-card:hover .lookbook-card__title {
+    font-style: italic;
+  }
+
+  @media (hover: hover) {
+    .lookbook-card:hover :global(.media) {
+      transform: scale(1.025);
+    }
+  }
+
+  .lookbook-card__summary {
+    max-inline-size: 30em;
+    color: var(--tone-muted);
+  }
+</style>

@@ -1,0 +1,29 @@
+---
+// One idea beside the picture that shows it.
+import Panel from "../Panel.astro";
+import Shot from "../Shot.astro";
+import { badgeOf } from "../../lib/status";
+import { inline } from "../../lib/markdown";
+import { fill } from "../../lib/site";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const hid = `${s.id ?? "split"}-h`;
+const badge = badgeOf(s.status);
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class:list={["split", s.flip && "split--flip"]}>
+    <div class="split__text">
+      {s.eyebrow && <p class="label">{s.eyebrow}</p>}
+      {badge && <span class:list={["badge", `badge--${badge.status}`]}>{badge.label}</span>}
+      <H class:list={[first ? "h1" : "h2"]} id={hid} set:html={inline(s.heading)} />
+      <p class="lead">{fill(s.text)}</p>
+      {s.points.length > 0 && <ul class="points">{s.points.map((p: string) => <li set:html={inline(p)} />)}</ul>}
+      {s.link && <a class="link" href={fill(s.link.href)}>{s.link.label}</a>}
+    </div>
+    <Panel rec={s.visual.kind === "recording"}>
+      <Shot visual={s.visual} />
+    </Panel>
+  </div>
+</section>

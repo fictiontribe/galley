@@ -1,0 +1,70 @@
+---
+// Eyebrow, heading and intro text at the top of a section. Headings accept
+// inline markdown, so `*word*` is set in the display italic.
+import { inline, paragraphs } from "../lib/site";
+
+interface Props {
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  /** 1 for the first section on a page, 2 otherwise. */
+  level?: number;
+  headingId?: string;
+  align?: "left" | "center";
+  size?: "default" | "large" | "small";
+  class?: string;
+}
+
+const { eyebrow, heading, text, level = 2, headingId, align = "left", size = "default", class: className } = Astro.props;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+---
+
+{
+  (eyebrow || heading || text) && (
+    <header class:list={["section-header", `section-header--${align}`, `section-header--${size}`, { "section-header--lead": level === 1 }, className]}>
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      {heading && <Heading id={headingId} class="section-heading" set:html={inline(heading)} />}
+      {text && (
+        <div class="section-intro">
+          {paragraphs(text).map((part) => (
+            <p>{part}</p>
+          ))}
+        </div>
+      )}
+    </header>
+  )
+}
+
+<style>
+  .section-header {
+    display: grid;
+    gap: var(--space-s);
+    max-width: 52rem;
+    margin-block-end: var(--space-xl);
+  }
+
+  .section-header--center {
+    margin-inline: auto;
+    text-align: center;
+    justify-items: center;
+  }
+
+  /* Every h2 is one size (--h2-size); the page's h1 is larger. */
+  .section-header--lead .section-heading {
+    font-size: var(--step-5);
+    line-height: var(--leading-tight);
+  }
+
+  .section-intro {
+    display: grid;
+    gap: var(--space-xs);
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--tone-muted);
+    max-width: 34em;
+  }
+
+  .section-header--center .section-intro {
+    margin-inline: auto;
+  }
+</style>

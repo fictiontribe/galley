@@ -1,0 +1,489 @@
+---
+// Site header. Links, drop-down groups and the two buttons come from
+// src/data/navigation.json; the name from src/data/site.json.
+//
+// A header entry with `items` is a group: on wide screens it opens a panel
+// (a native <details>, so it works with the keyboard and without
+// JavaScript); a few lines of script close it on Escape, on a click outside
+// and when another group opens. Below 64rem everything folds into one
+// <details> menu.
+import Icon from "./Icon.astro";
+import Logo from "./Logo.astro";
+import { isCurrent, labels, navigation, site, withBase } from "../lib/site";
+
+interface NavLink {
+  label: string;
+  href: string;
+  text?: string;
+}
+interface NavEntry {
+  label: string;
+  href?: string;
+  items?: NavLink[];
+}
+
+const pathname = Astro.url.pathname;
+const entries = navigation.header as NavEntry[];
+const cta = navigation.cta;
+const secondaryCta = navigation.secondaryCta;
+const groupHasCurrent = (entry: NavEntry) => entry.items?.some((item) => isCurrent(item.href, pathname)) ?? false;
+---
+
+<header class="site-header">
+  <div class="container site-header__inner">
+    <a class="wordmark" href={withBase("/")} aria-label={labels.home} aria-current={isCurrent("/", pathname) ? "page" : undefined}>
+      <Logo />
+      <span aria-hidden="true">{site.name}</span>
+    </a>
+
+    <nav class="site-nav" aria-label={labels.nav.main}>
+      <ul class="site-nav__list" role="list">
+        {
+          entries.map((entry) =>
+            entry.items ? (
+              <li>
+                <details class="nav-group" name="site-nav" data-nav-group>
+                  <summary class:list={["nav-group__toggle", { "is-current": groupHasCurrent(entry) }]}>
+                    {entry.label}
+                    <Icon name="chevron-down" size={16} class="nav-group__chevron" />
+                  </summary>
+                  <div class="nav-group__panel">
+                    <ul role="list">
+                      {entry.items.map((item) => (
+                        <li>
+                          <a class="nav-group__link" href={withBase(item.href)} aria-current={isCurrent(item.href, pathname) ? "page" : undefined}>
+                            <span class="nav-group__label">{item.label}</span>
+                            {item.text && <span class="nav-group__text">{item.text}</span>}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </details>
+              </li>
+            ) : (
+              <li>
+                <a class="site-nav__link" href={withBase(entry.href ?? "/")} aria-current={entry.href && isCurrent(entry.href, pathname) ? "page" : undefined}>
+                  {entry.label}
+                </a>
+              </li>
+            ),
+          )
+        }
+      </ul>
+    </nav>
+
+    <div class="site-header__actions">
+      {secondaryCta && <a class="site-header__secondary" href={withBase(secondaryCta.href)}>{secondaryCta.label}</a>}
+      {cta && <a class="button button--small" href={withBase(cta.href)}>{cta.label}</a>}
+    </div>
+
+    <details class="menu" data-menu>
+      <summary class="menu__toggle">
+        <span class="menu__label menu__label--open">{labels.nav.menu}</span>
+        <span class="menu__label menu__label--close">{labels.nav.close}</span>
+        <span class="menu__icon" aria-hidden="true"></span>
+      </summary>
+      <div class="menu__panel">
+        <nav aria-label={labels.nav.main}>
+          <ul class="menu__groups" role="list">
+            {
+              entries.map((entry) =>
+                entry.items ? (
+                  <li class="menu__group">
+                    <p class="menu__heading">{entry.label}</p>
+                    <ul role="list">
+                      {entry.items.map((item) => (
+                        <li>
+                          <a class="menu__link" href={withBase(item.href)} aria-current={isCurrent(item.href, pathname) ? "page" : undefined}>
+                            {item.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ) : (
+                  <li class="menu__group">
+                    <a class="menu__link menu__link--top" href={withBase(entry.href ?? "/")} aria-current={entry.href && isCurrent(entry.href, pathname) ? "page" : undefined}>
+                      {entry.label}
+                      <Icon name="arrow-right" size={18} />
+                    </a>
+                  </li>
+                ),
+              )
+            }
+          </ul>
+        </nav>
+        <div class="menu__actions">
+          {cta && <a class="button" href={withBase(cta.href)}>{cta.label}</a>}
+          {secondaryCta && <a class="button button--secondary" href={withBase(secondaryCta.href)}>{secondaryCta.label}</a>}
+        </div>
+      </div>
+    </details>
+  </div>
+</header>
+
+<script is:inline>
+  (() => {
+    // Drop-down groups: one open at a time; Escape and a click outside close.
+    const groups = [...document.querySelectorAll("[data-nav-group]")];
+    const closeAll = (except) => groups.forEach((group) => group !== except && (group.open = false));
+    groups.forEach((group) => {
+      group.addEventListener("toggle", () => group.open && closeAll(group));
+      group.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && group.open) {
+          group.open = false;
+          group.querySelector("summary").focus();
+        }
+      });
+      group.addEventListener("focusout", (event) => {
+        if (group.open && event.relatedTarget && !group.contains(event.relatedTarget)) group.open = false;
+      });
+    });
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest("[data-nav-group]")) closeAll();
+    });
+    // The mobile menu closes on Escape and after following a link.
+    document.querySelectorAll("[data-menu]").forEach((menu) => {
+      menu.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && menu.open) {
+          menu.open = false;
+          menu.querySelector("summary").focus();
+        }
+      });
+      menu.addEventListener("click", (event) => {
+        if (event.target.closest("a")) menu.open = false;
+      });
+    });
+  })();
+</script>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--color-background);
+    border-block-end: var(--border-width) solid var(--color-border);
+  }
+
+  .site-header__inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-m);
+    min-height: var(--header-height);
+  }
+
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-inline-end: auto;
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: var(--weight-display-strong);
+    letter-spacing: -0.035em;
+    color: var(--color-text);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .site-nav,
+  .site-header__actions {
+    display: none;
+  }
+
+  .site-nav__list {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3xs);
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-nav__link,
+  .nav-group__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    min-height: 2.5rem;
+    padding-inline: 0.75rem;
+    border-radius: var(--radius-m);
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    color: var(--color-text);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .site-nav__link:hover,
+  .nav-group__toggle:hover,
+  .nav-group[open] .nav-group__toggle {
+    background: var(--color-surface-muted);
+  }
+
+  .site-nav__link[aria-current="page"],
+  .nav-group__toggle.is-current {
+    color: var(--color-accent);
+  }
+
+  .nav-group {
+    position: relative;
+  }
+
+  .nav-group__toggle {
+    list-style: none;
+  }
+
+  .nav-group__toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .nav-group__toggle :global(.nav-group__chevron) {
+    color: var(--color-text-muted);
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .nav-group[open] :global(.nav-group__chevron) {
+    transform: rotate(180deg);
+  }
+
+  .nav-group__panel {
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    left: -0.5rem;
+    inline-size: 22rem;
+    padding: var(--space-2xs);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .nav-group__panel ul {
+    display: grid;
+    padding: 0;
+    list-style: none;
+  }
+
+  .nav-group__link {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius-m);
+    color: var(--color-text);
+    text-decoration: none;
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .nav-group__link:hover {
+    background: var(--color-surface-muted);
+  }
+
+  .nav-group__label {
+    font-size: var(--step--1);
+    font-weight: var(--weight-bold);
+  }
+
+  .nav-group__link[aria-current="page"] .nav-group__label {
+    color: var(--color-accent);
+  }
+
+  .nav-group__text {
+    font-size: var(--step--2);
+    color: var(--color-text-muted);
+    line-height: 1.4;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .nav-group[open] .nav-group__panel {
+      animation: drop-in var(--duration) var(--ease-out);
+    }
+  }
+
+  @keyframes drop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-0.35rem);
+    }
+  }
+
+  .site-header__actions {
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .site-header__secondary {
+    padding-inline: 0.5rem;
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .site-header__secondary:hover {
+    color: var(--color-accent);
+  }
+
+  /* Mobile menu */
+  .menu__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-height: 2.75rem;
+    padding-inline: var(--space-xs);
+    margin-inline-end: calc(-1 * var(--space-xs));
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    list-style: none;
+    cursor: pointer;
+    border-radius: var(--radius-m);
+  }
+
+  .menu__toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .menu__label--close,
+  .menu[open] .menu__label--open {
+    display: none;
+  }
+
+  .menu[open] .menu__label--close {
+    display: inline;
+  }
+
+  .menu__icon {
+    position: relative;
+    inline-size: 1.25rem;
+    block-size: 0.6rem;
+  }
+
+  .menu__icon::before,
+  .menu__icon::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    block-size: 1.5px;
+    background: currentColor;
+    transition:
+      transform var(--duration) var(--ease-out),
+      top var(--duration) var(--ease-out);
+  }
+
+  .menu__icon::before {
+    top: 0;
+  }
+
+  .menu__icon::after {
+    top: calc(100% - 1.5px);
+  }
+
+  .menu[open] .menu__icon::before {
+    top: calc(50% - 0.75px);
+    transform: rotate(45deg);
+  }
+
+  .menu[open] .menu__icon::after {
+    top: calc(50% - 0.75px);
+    transform: rotate(-45deg);
+  }
+
+  .menu__panel {
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    display: grid;
+    gap: var(--space-l);
+    max-block-size: calc(100dvh - var(--header-height));
+    overflow-y: auto;
+    padding: var(--space-m) var(--gutter) var(--space-xl);
+    background: var(--color-background);
+    border-block-end: var(--border-width) solid var(--color-border);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .menu__groups {
+    display: grid;
+    padding: 0;
+    list-style: none;
+  }
+
+  .menu__group {
+    padding-block: var(--space-s);
+    border-block-end: var(--border-width) solid var(--color-border);
+  }
+
+  .menu__group ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: 0 var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  .menu__heading {
+    margin-block-end: var(--space-3xs);
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .menu__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 2.75rem;
+    font-weight: var(--weight-medium);
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .menu__link--top {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: var(--weight-display);
+    letter-spacing: -0.02em;
+  }
+
+  .menu__link :global(svg) {
+    color: var(--color-accent);
+  }
+
+  .menu__link[aria-current="page"] {
+    color: var(--color-accent);
+  }
+
+  .menu__actions {
+    display: grid;
+    gap: var(--space-xs);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .menu[open] .menu__panel {
+      animation: drop-in var(--duration) var(--ease-out);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .site-nav,
+    .site-header__actions {
+      display: flex;
+    }
+
+    .menu {
+      display: none;
+    }
+
+    .wordmark {
+      margin-inline-end: var(--space-s);
+    }
+
+    .site-nav {
+      margin-inline-end: auto;
+    }
+  }
+</style>

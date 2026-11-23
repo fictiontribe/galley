@@ -1,0 +1,109 @@
+---
+// One product, large: a photograph that fills the screen's height beside
+// its name, a line on why it matters, the price and the way to it. The
+// photograph is the product's own unless the section names another.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Media from "../Media.astro";
+import Icon from "../Icon.astro";
+import ProductImage from "../shop/ProductImage.astro";
+import { fill, labels, type Tone } from "../../lib/site";
+import { getProduct, priceLabel, productUrl } from "../../lib/shop/data";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  product: string;
+  image?: string;
+  imageAlt?: string;
+  imageSide?: "left" | "right";
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, product: handle, image, imageAlt, imageSide = "right", index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const product = await getProduct(handle);
+const intro = text ?? product?.description.split(/(?<=\.)\s/)[0];
+---
+
+{
+  product && (
+    <Section type="featured-product" id={id} tone={tone} labelledby={headingId} block={block}>
+      <div class:list={["featured", `featured--${imageSide}`]}>
+        <a class="featured__image frame" href={productUrl(product.handle)} tabindex="-1" aria-hidden="true">
+          {image ? <Media src={image} alt={imageAlt ?? ""} ratio="portrait" eager={index === 0} /> : <ProductImage image={product.images[0]} alt="" ratio="portrait" sizes="(min-width: 60rem) 50vw, 100vw" eager={index === 0} />}
+        </a>
+        <div class="featured__copy">
+          <SectionHeader eyebrow={eyebrow} heading={heading ?? product.title} text={intro} level={level} headingId={headingId} />
+          <p class="featured__price">{product.availableForSale ? priceLabel(product) : labels.shop.soldOut}</p>
+          <a class="button" href={productUrl(product.handle)}>
+            {fill(labels.shop.see, { product: product.title })}
+            <Icon name="arrow-right" size={16} />
+          </a>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
+<style>
+  .featured {
+    display: grid;
+    gap: var(--space-l) var(--gutter);
+    align-items: start;
+  }
+
+  .featured__image {
+    display: block;
+  }
+
+  .featured__image :global(.media) {
+    max-block-size: calc(100svh - 2 * var(--space-l));
+  }
+
+  .featured__copy {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+  }
+
+  .featured__copy :global(.section-header) {
+    margin-block-end: 0;
+  }
+
+  .featured__price {
+    font-family: var(--font-mono);
+    font-size: var(--step-0);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (min-width: 56rem) {
+    .featured {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      align-items: start;
+    }
+
+    .featured__image {
+      grid-column: 7 / -1;
+      grid-row: 1;
+    }
+
+    .featured__copy {
+      grid-column: 1 / span 5;
+      grid-row: 1;
+    }
+
+    .featured--left .featured__image {
+      grid-column: 1 / span 6;
+    }
+
+    .featured--left .featured__copy {
+      grid-column: 7 / -1;
+    }
+  }
+</style>

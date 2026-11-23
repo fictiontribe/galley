@@ -1,0 +1,139 @@
+---
+// The shops that carry the label, grouped by town, from
+// src/data/stockists.json. `groups` picks and orders the towns shown.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import { isExternal, labels, stockists, withBase, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  groups?: string[];
+  layout?: "columns" | "list";
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, groups, layout = "columns", index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+const shown = groups ? groups.map((group) => stockists.find((entry) => entry.id === group)).filter((entry) => entry !== undefined) : stockists;
+// Towns are one level below the section's heading, or h2 when it has none.
+const Group = (heading && level !== 1 ? "h3" : "h2") as "h2" | "h3";
+---
+
+<Section type="stockists" id={id} tone={tone} labelledby={headingId} label={labels.stockists.list} block={block}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+  <div class:list={["stockists", `stockists--${layout}`]}>
+    {
+      shown.map((group) => (
+        <section class="stockists__group" aria-labelledby={`stockists-${group.id}`}>
+          <header class="stockists__town">
+            <Group id={`stockists-${group.id}`} class="stockists__name">
+              {group.label}
+            </Group>
+            {group.note && <p class="label">{group.note}</p>}
+          </header>
+          <ul role="list" class="stockists__list">
+            {group.items.map((item) => (
+              <li class="stockist">
+                <p class="stockist__name">{item.name}</p>
+                {item.address && <p class="stockist__address">{item.address}</p>}
+                {item.note && <p class="stockist__note">{item.note}</p>}
+                {item.href && (
+                  <a class="text-link stockist__link" href={withBase(item.href)} rel={isExternal(item.href) ? "noopener" : undefined}>
+                    {isExternal(item.href) ? labels.stockists.website : item.href.startsWith("mailto:") ? labels.stockists.email : labels.stockists.visit}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+  </div>
+</Section>
+
+<style>
+  .stockists {
+    display: grid;
+    gap: var(--space-xl) var(--gutter);
+  }
+
+  .stockists--columns {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  }
+
+  .stockists__group {
+    display: grid;
+    gap: var(--space-m);
+    align-content: start;
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-text);
+  }
+
+  .stockists__town {
+    display: grid;
+    gap: var(--space-3xs);
+  }
+
+  .stockists__name {
+    font-size: var(--step-3);
+    line-height: 1;
+  }
+
+  .stockists__list {
+    display: grid;
+    gap: var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  .stockist {
+    display: grid;
+    gap: 0.15em;
+  }
+
+  .stockist__name {
+    font-weight: var(--weight-medium);
+  }
+
+  .stockist__address {
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    letter-spacing: 0.02em;
+    color: var(--tone-muted);
+  }
+
+  .stockist__note {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+    max-inline-size: 30em;
+  }
+
+  .stockist__link {
+    justify-self: start;
+    min-height: 2.5rem;
+  }
+
+  @media (min-width: 60rem) {
+    .stockists--list .stockists__group {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--gutter);
+    }
+
+    .stockists--list .stockists__town {
+      grid-column: 1 / span 4;
+      align-content: start;
+    }
+
+    .stockists--list .stockists__list {
+      grid-column: 5 / -1;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: var(--gutter);
+    }
+  }
+</style>

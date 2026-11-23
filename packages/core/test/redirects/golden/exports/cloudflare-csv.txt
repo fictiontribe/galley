@@ -1,0 +1,4 @@
+www.lowfield.example/a/,https://www.lowfield.example/about/,301,TRUE,FALSE,FALSE,FALSE
+www.lowfield.example/far/,https://elsewhere.example/page?ref=1,308,FALSE,FALSE,FALSE,FALSE
+www.lowfield.example/noted/,https://www.lowfield.example/about/,301,TRUE,FALSE,FALSE,FALSE
+www.lowfield.example/blog/,https://www.lowfield.example/journal/,302,TRUE,FALSE,TRUE,TRUE

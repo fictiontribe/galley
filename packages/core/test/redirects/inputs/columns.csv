@@ -1,0 +1,7 @@
+Old URL,New URL,Status
+/old-page/,/about/,301
+https://www.lowfield.example/2019/05/survey-notes/,/blog/measured-survey/,301
+"/with,comma/",/contact/,302
+/temporary/,https://shop.example.org/sale,temporary
+/no-status/,/pricing/
+/gone/,,410

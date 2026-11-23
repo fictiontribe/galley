@@ -1,0 +1,661 @@
+/*
+ * Base styles, layout primitives, the four section tones and the shared
+ * editorial details (mono labels, indices, captions, the photograph shade).
+ * Values come from tokens.css only — edit that file to restyle the site.
+ */
+
+/* ── Reset ─────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: var(--space-l);
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  font-weight: var(--weight-body);
+  line-height: var(--leading-body);
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+main {
+  flex: 1;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+h2 {
+  font-size: var(--h2-size);
+  line-height: 1.02;
+}
+
+h3 {
+  font-size: var(--h3-size);
+  line-height: 1.12;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  font-optical-sizing: auto;
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-snug);
+  text-wrap: balance;
+}
+
+h1 em,
+h2 em,
+h3 em,
+.display em {
+  font-style: italic;
+  font-weight: var(--weight-display);
+}
+
+p,
+li,
+dd,
+blockquote,
+figcaption {
+  text-wrap: pretty;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+/* ── Links & focus ─────────────────────────────────────────────────────── */
+
+a {
+  color: var(--tone-link);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  text-decoration-color: color-mix(in oklch, currentColor 45%, transparent);
+  transition: text-decoration-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+a:hover {
+  text-decoration-color: currentColor;
+}
+
+:focus-visible {
+  outline: 2px solid var(--tone-focus);
+  outline-offset: 3px;
+  border-radius: var(--radius-s);
+}
+
+/* The skip link is a .button too, parked above the header's .wrap until it has focus. */
+.skip-link {
+  position: absolute;
+  top: var(--space-s);
+  left: 0;
+  z-index: 100;
+  transform: translateY(-300%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Tones ─────────────────────────────────────────────────────────────── */
+/* Each tone sets the same contextual roles; components only use --tone-*. */
+
+:root,
+.tone-default {
+  --tone-bg: var(--color-background);
+  --tone-surface: var(--color-surface);
+  --tone-text: var(--color-text);
+  --tone-muted: var(--color-text-muted);
+  --tone-line: var(--color-border);
+  --tone-control: var(--color-border-strong);
+  --tone-link: var(--color-accent);
+  --tone-focus: var(--color-accent);
+  --tone-button-bg: var(--color-accent);
+  --tone-button-text: var(--color-accent-contrast);
+  --tone-button-hover: var(--color-accent-strong);
+  --tone-button-hover-text: var(--color-accent-contrast);
+  --tone-error: var(--color-error);
+}
+
+.tone-muted {
+  --tone-bg: var(--color-surface-muted);
+  --tone-surface: var(--color-surface);
+  --tone-text: var(--color-text);
+  --tone-muted: var(--color-text-muted);
+  --tone-line: color-mix(in oklch, var(--color-border) 75%, var(--color-text-muted));
+  --tone-control: var(--color-border-strong);
+  --tone-link: var(--color-accent-strong);
+  --tone-focus: var(--color-accent-strong);
+  --tone-button-bg: var(--color-accent);
+  --tone-button-text: var(--color-accent-contrast);
+  --tone-button-hover: var(--color-accent-strong);
+  --tone-button-hover-text: var(--color-accent-contrast);
+  --tone-error: var(--color-error);
+}
+
+.tone-inverse {
+  --tone-bg: var(--color-inverse-background);
+  --tone-surface: var(--color-inverse-surface);
+  --tone-text: var(--color-inverse-text);
+  --tone-muted: var(--color-inverse-muted);
+  --tone-line: var(--color-inverse-border);
+  --tone-control: var(--color-inverse-muted);
+  --tone-link: var(--color-accent-on-inverse);
+  --tone-focus: var(--color-accent-on-inverse);
+  --tone-button-bg: var(--color-accent);
+  --tone-button-text: var(--color-accent-contrast);
+  --tone-button-hover: var(--color-accent-strong);
+  --tone-button-hover-text: var(--color-accent-contrast);
+  --tone-error: var(--color-error-on-inverse);
+}
+
+.tone-accent {
+  --tone-bg: var(--color-accent);
+  --tone-surface: var(--color-accent-strong);
+  --tone-text: var(--color-accent-contrast);
+  --tone-muted: var(--color-accent-contrast);
+  --tone-line: color-mix(in oklch, var(--color-accent-contrast) 40%, var(--color-accent));
+  --tone-control: var(--color-accent-contrast);
+  --tone-link: var(--color-accent-contrast);
+  --tone-focus: var(--color-accent-contrast);
+  --tone-button-bg: var(--color-inverse-background);
+  --tone-button-text: var(--color-inverse-text);
+  --tone-button-hover: var(--color-inverse-text);
+  --tone-button-hover-text: var(--color-inverse-background);
+  --tone-error: var(--color-accent-contrast);
+}
+
+/* Type set on a photograph: always over the shade (see .shade-* below). */
+.on-image {
+  --tone-text: var(--color-on-image);
+  --tone-muted: var(--color-on-image-muted);
+  --tone-link: var(--color-on-image);
+  --tone-focus: var(--color-on-image);
+  --tone-line: color-mix(in oklch, var(--color-on-image) 45%, transparent);
+  --tone-button-bg: var(--color-accent);
+  --tone-button-text: var(--color-accent-contrast);
+  --tone-button-hover: var(--color-accent-strong);
+  --tone-button-hover-text: var(--color-accent-contrast);
+  color: var(--tone-text);
+}
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+
+.container {
+  width: min(100% - 2 * var(--page-margin), var(--container));
+  margin-inline: auto;
+}
+
+.container--narrow {
+  width: min(100% - 2 * var(--page-margin), var(--container-narrow));
+}
+
+/* The twelve-column grid every section aligns to. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--gutter);
+}
+
+/*
+ * Every section is as tall as what it holds: --space-section above its first
+ * line and below its last (tokens.css), its content in one .wrap on the
+ * container lines. Two sections on the same ground share one step of air
+ * instead of stacking two. A photograph behind the words is a layer under the
+ * .wrap (absolute, inset 0); the campaign hero is the one section sized to the
+ * screen. .section--free (listings) uses the same padding.
+ */
+.section {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding-block: var(--space-section);
+  background: var(--tone-bg);
+  color: var(--tone-text);
+}
+
+.section > .wrap {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.section.tone-default + .section.tone-default,
+.section.tone-muted + .section.tone-muted,
+.section.tone-inverse:not(.campaign) + .section.tone-inverse:not(.campaign),
+.section.tone-accent + .section.tone-accent {
+  padding-block-start: 0;
+}
+
+/* A page's own opening block (a lookbook, a story, a product) ends with the
+   same step, and shares it with a section on the same ground after it. */
+:is(.lookbook, .story-page, .product) + .section.tone-default {
+  padding-block-start: 0;
+}
+
+/* A photograph beside words is never taller than the screen it sits on. */
+.media--capped {
+  max-block-size: calc(100svh - 2 * var(--space-l));
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ── Editorial details ─────────────────────────────────────────────────── */
+
+.eyebrow,
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  font-weight: var(--weight-mono);
+  letter-spacing: var(--tracking-mono);
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: var(--tone-muted);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.9em;
+}
+
+.eyebrow::before {
+  content: "";
+  flex: none;
+  inline-size: 2.25rem;
+  block-size: 1px;
+  align-self: center;
+  background: currentColor;
+}
+
+.caption {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  color: var(--tone-muted);
+}
+
+.lede {
+  font-size: var(--step-1);
+  line-height: 1.5;
+  color: var(--tone-muted);
+  max-width: 34em;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  font-optical-sizing: auto;
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-tight);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-l);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75em;
+  min-height: 3rem;
+  padding: 0.85em 1.6em;
+  border: var(--border-width) solid var(--tone-button-bg);
+  border-radius: var(--radius-button);
+  background: var(--tone-button-bg);
+  color: var(--tone-button-text);
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-mono);
+  line-height: 1.2;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+/* A step up on hover, a press on click. */
+.button:hover {
+  background: var(--tone-button-hover);
+  border-color: var(--tone-button-hover);
+  color: var(--tone-button-hover-text);
+  transform: translateY(-2px);
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+.button svg {
+  transition: transform var(--duration) var(--ease-out);
+}
+
+.button:hover svg {
+  transform: translateX(0.25em);
+}
+
+/* The quiet partner: an underlined label, no box. */
+/* Its underline draws in from the left on hover. */
+.text-link {
+  background: linear-gradient(currentColor, currentColor) 0 calc(50% + 0.95em) / 0 1px no-repeat;
+  transition: background-size var(--duration) var(--ease-out), color var(--duration-fast) var(--ease-out);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  min-height: 2.75rem;
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+  color: var(--tone-text);
+  text-decoration-color: currentColor;
+  text-underline-offset: 0.45em;
+}
+
+.text-link:hover {
+  color: var(--tone-link);
+  text-decoration-color: transparent;
+  background-size: 100% 1px;
+}
+
+.text-link svg {
+  transition: transform var(--duration) var(--ease-out);
+}
+
+.text-link:hover svg {
+  transform: translateX(0.25em);
+}
+
+/* ── Media ─────────────────────────────────────────────────────────────── */
+
+.media {
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--ratio, 4 / 5);
+  object-fit: cover;
+  object-position: var(--focus, 50% 50%);
+  border-radius: var(--radius-image);
+  background: var(--placeholder-mid);
+}
+
+/* A frame that clips a slow zoom on hover (cards, looks). */
+.frame {
+  overflow: hidden;
+}
+
+.frame .media {
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+@media (hover: hover) {
+  a:hover .frame .media,
+  .frame:hover .media {
+    transform: scale(1.025);
+  }
+}
+
+/*
+ * The shade under type on a photograph. A band, solid where the type is and
+ * feathered at its open edge, sized from the type block itself — so it
+ * covers the words whatever their length, and the photograph never decides
+ * whether they can be read.
+ */
+.shade {
+  position: relative;
+  isolation: isolate;
+}
+
+.shade::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset-inline: -200vw;
+  pointer-events: none;
+  background: linear-gradient(
+    var(--shade-direction, to top),
+    color-mix(in oklch, var(--color-shade) calc(var(--shade-level, var(--shade-strong)) * 100%), transparent) 0%,
+    color-mix(in oklch, var(--color-shade) calc(var(--shade-level, var(--shade-strong)) * 100%), transparent) calc(100% - var(--shade-feather)),
+    color-mix(in oklch, var(--color-shade) 0%, transparent) 100%
+  );
+}
+
+/* Display type only (24px and up) may sit on the lighter shade. */
+.shade--large {
+  --shade-level: var(--shade-large);
+}
+
+.shade--strong {
+  --shade-level: var(--shade-strong);
+}
+
+/* Anchored to the bottom edge, feathered upwards. */
+.shade--bottom {
+  --shade-direction: to top;
+  --shade-feather: clamp(6rem, 18vh, 12rem);
+}
+
+.shade--bottom::before {
+  inset-block: calc(-1 * var(--shade-feather)) calc(-1 * var(--shade-reach, 100vh));
+}
+
+/* Anchored to the top edge, feathered downwards. */
+.shade--top {
+  --shade-direction: to bottom;
+  --shade-feather: clamp(6rem, 18vh, 12rem);
+}
+
+.shade--top::before {
+  inset-block: calc(-1 * var(--shade-reach, 100vh)) calc(-1 * var(--shade-feather));
+}
+
+/* Floating mid-frame, feathered both ways. */
+.shade--middle {
+  --shade-feather: clamp(5rem, 14vh, 9rem);
+}
+
+.shade--middle::before {
+  inset-block: calc(-1 * var(--shade-feather));
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--color-shade) 0%, transparent) 0%,
+    color-mix(in oklch, var(--color-shade) calc(var(--shade-level, var(--shade-strong)) * 100%), transparent) var(--shade-feather),
+    color-mix(in oklch, var(--color-shade) calc(var(--shade-level, var(--shade-strong)) * 100%), transparent) calc(100% - var(--shade-feather)),
+    color-mix(in oklch, var(--color-shade) 0%, transparent) 100%
+  );
+}
+
+/* ── Prose (markdown bodies, story sections) ───────────────────────────── */
+
+.prose {
+  max-width: var(--measure);
+  font-size: var(--step-0);
+}
+
+.prose > * + * {
+  margin-block-start: 1.1em;
+}
+
+.prose h2 {
+  font-size: var(--step-3);
+  line-height: var(--leading-snug);
+  margin-block-start: 1.7em;
+}
+
+.prose h3 {
+  font-size: var(--step-2);
+  margin-block-start: 1.5em;
+}
+
+.prose h4 {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+  margin-block-start: 1.6em;
+}
+
+.prose h2 + *,
+.prose h3 + *,
+.prose h4 + * {
+  margin-block-start: 0.6em;
+}
+
+.prose > :first-child {
+  margin-block-start: 0;
+}
+
+.prose ul,
+.prose ol {
+  padding-inline-start: 1.25em;
+}
+
+.prose li + li {
+  margin-block-start: 0.4em;
+}
+
+.prose li::marker {
+  color: var(--tone-muted);
+}
+
+.prose ol li::marker {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.prose blockquote {
+  margin-block: 1.8em;
+  padding-inline-start: var(--space-m);
+  border-inline-start: var(--border-width) solid var(--tone-text);
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  font-style: italic;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.prose blockquote p + p {
+  margin-block-start: 0.6em;
+}
+
+.prose strong {
+  font-weight: var(--weight-bold);
+}
+
+.prose hr {
+  border: 0;
+  border-block-start: var(--border-width) solid var(--tone-line);
+  margin-block: 2.5em;
+}
+
+.prose img {
+  border-radius: var(--radius-image);
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--step--1);
+}
+
+.prose th,
+.prose td {
+  text-align: start;
+  padding: 0.6em 0.8em 0.6em 0;
+  border-block-end: var(--border-width) solid var(--tone-line);
+}
+
+.prose th {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+}
+
+/* ── Motion preference ─────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

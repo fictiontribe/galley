@@ -1,0 +1,36 @@
+---
+// Renders a page's `sections` list. Each section's root element carries
+// data-galley-block="sections.<index>" and data-galley-block-type="<type>"
+// (starters/README.md §5), so Galley can find, select and arrange it on the
+// page. The first section shown carries the page's one h1. A section with
+// `hidden: true` stays in the file and is left out of the page (GALLEY_SHOW_HIDDEN=1
+// at build time shows it, for the section thumbnails).
+import Hero from "./sections/Hero.astro";
+import Film from "./sections/Film.astro";
+import Tabs from "./sections/Tabs.astro";
+import Proof from "./sections/Proof.astro";
+import Band from "./sections/Band.astro";
+import Starters from "./sections/Starters.astro";
+import Split from "./sections/Split.astro";
+import Status from "./sections/Status.astro";
+import Cards from "./sections/Cards.astro";
+import Close from "./sections/Close.astro";
+import Lists from "./sections/Lists.astro";
+import Comparison from "./sections/Comparison.astro";
+import Steps from "./sections/Steps.astro";
+import Faq from "./sections/Faq.astro";
+import Team from "./sections/Team.astro";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { sections = [], field = "sections" } = Astro.props as { sections: any[]; field?: string };
+const components: Record<string, unknown> = { hero: Hero, film: Film, tabs: Tabs, proof: Proof, band: Band, starters: Starters, split: Split, status: Status, cards: Cards, close: Close, lists: Lists, comparison: Comparison, steps: Steps, faq: Faq, team: Team };
+const showHidden = process.env.GALLEY_SHOW_HIDDEN === "1";
+const shown = sections.map((s, index) => ({ s, index })).filter(({ s }) => components[s.type] && (!s.hidden || showHidden));
+---
+
+{
+  shown.map(({ s, index }, i) => {
+    const Component = components[s.type] as typeof Hero;
+    return <Component s={s} first={i === 0} block={{ key: `${field}.${index}`, type: s.type }} />;
+  })
+}

@@ -1,0 +1,94 @@
+---
+// An email sign-up: heading and a one-field form, side by side (inline) or
+// stacked. The form is a file in src/content/forms/ (`form`, default
+// "newsletter"): its field, button, destination and thank-you live there.
+import Section from "../Section.astro";
+import FormEmbed from "../FormEmbed.astro";
+import { inline, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  form?: string | { id: string };
+  note?: string;
+  layout?: "inline" | "stacked";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, form = "newsletter", note, layout = "inline", index = 0, level = 2, block } = Astro.props;
+const key = id ?? `section-${index}`;
+const headingId = `${key}-heading`;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+---
+
+<Section type="newsletter" id={id} tone={tone} block={block} labelledby={headingId} class="section--compact">
+  <div class:list={["newsletter", `newsletter--${layout}`]}>
+    <div class="newsletter__copy">
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <Heading id={headingId} class="newsletter__heading" set:html={inline(heading)} />
+      {text && <p class="newsletter__text">{text}</p>}
+    </div>
+    <div class="newsletter__form">
+      <FormEmbed form={form} />
+      {note && <p class="form-note">{note}</p>}
+    </div>
+  </div>
+</Section>
+
+<style>
+  .newsletter {
+    display: grid;
+    gap: var(--space-l);
+    padding-block: var(--space-l);
+    border-block: var(--border-width) solid var(--tone-line);
+  }
+
+  .newsletter__copy {
+    display: grid;
+    gap: var(--space-2xs);
+    justify-items: start;
+  }
+
+  .newsletter__heading {
+    font-size: var(--step-3);
+    line-height: 1.08;
+    max-width: 18em;
+  }
+
+  .newsletter__text {
+    color: var(--tone-muted);
+    max-width: 36em;
+  }
+
+  .newsletter__form {
+    display: grid;
+    gap: var(--space-2xs);
+    align-content: center;
+  }
+
+  .newsletter--stacked {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .newsletter--stacked .newsletter__copy {
+    justify-items: center;
+  }
+
+  .newsletter--stacked .newsletter__form {
+    inline-size: min(100%, 32rem);
+  }
+
+  @media (min-width: 60rem) {
+    .newsletter--inline {
+      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+      gap: var(--space-2xl);
+      align-items: center;
+    }
+  }
+</style>

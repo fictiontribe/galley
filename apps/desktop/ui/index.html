@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title></title>
+    <link rel="stylesheet" href="startup.css" />
+    <script src="startup.js" defer></script>
+  </head>
+  <body>
+    <main class="frame" aria-live="polite">
+      <svg class="mark" viewBox="0 0 32 32" width="56" height="56" aria-hidden="true">
+        <path class="mark-ink" d="M2 6h28v4H2zM2 14h10v4H2zM20 14h10v4H20z" />
+        <path class="mark-accent" d="M8.76 24.24 16 15.33l7.24 8.91-3.1 2.52L16 21.67l-4.14 5.09z" />
+      </svg>
+
+      <section id="starting" class="state">
+        <p class="product" data-product></p>
+        <p class="status"><span class="spinner" aria-hidden="true"></span>Starting…</p>
+      </section>
+
+      <section id="missing" class="state" hidden>
+        <h1 id="missing-title"></h1>
+        <p id="missing-body"></p>
+        <ul class="tools" id="tools"></ul>
+        <div class="actions">
+          <button type="button" class="primary" id="check-again">Check again</button>
+          <button type="button" id="continue">Continue without them</button>
+        </div>
+        <details>
+          <summary>Technical details</summary>
+          <pre id="missing-detail"></pre>
+        </details>
+      </section>
+
+      <section id="failed" class="state" hidden>
+        <h1 id="failed-title"></h1>
+        <p id="failed-body"></p>
+        <div class="actions">
+          <button type="button" class="primary" id="retry">Try again</button>
+          <button type="button" id="quit">Quit</button>
+        </div>
+        <details>
+          <summary>Technical details</summary>
+          <pre id="failed-detail"></pre>
+        </details>
+      </section>
+    </main>
+  </body>
+</html>

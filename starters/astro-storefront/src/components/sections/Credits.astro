@@ -1,0 +1,62 @@
+---
+// Who made it: roles and names, like the credits of a shoot.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import type { Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  columns?: number;
+  items: Array<{ role: string; name: string }>;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, columns = 3, items, index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+---
+
+<Section type="credits" id={id} tone={tone} labelledby={headingId} label={eyebrow} block={block}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} level={level} headingId={headingId} size="small" />
+  <dl class="credits" style={`--columns: ${columns}`}>
+    {
+      items.map((item) => (
+        <div class="credit">
+          <dt class="label">{item.role}</dt>
+          <dd class="credit__name">{item.name}</dd>
+        </div>
+      ))
+    }
+  </dl>
+</Section>
+
+<style>
+  .credits {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+    gap: 0 var(--gutter);
+  }
+
+  .credit {
+    display: grid;
+    gap: var(--space-3xs);
+    padding-block: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .credit__name {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    line-height: 1.2;
+  }
+
+  @media (min-width: 60rem) {
+    .credits {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    }
+  }
+</style>

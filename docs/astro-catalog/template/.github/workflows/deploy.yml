@@ -1,0 +1,53 @@
+# Builds the site and publishes it with GitHub Pages on every push to main.
+#
+# It runs in the template's own repository, and in yours once you opt in:
+#   1. Settings › Pages › Build and deployment › Source: GitHub Actions.
+#   2. Settings › Secrets and variables › Actions › Variables:
+#      add DEPLOY_TO_GITHUB_PAGES with the value true.
+# Deploying somewhere else? Delete this file.
+#
+# The address comes from GitHub: a project site lives at
+# https://<owner>.github.io/<repository>/, so the build gets that origin as
+# --site and /<repository> as --base. With a custom domain, both follow it.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == '__REPOSITORY__' || vars.DEPLOY_TO_GITHUB_PAGES == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - id: pages
+        uses: actions/configure-pages@v6
+      - run: npm install
+      - run: npm run build -- --site "${{ steps.pages.outputs.origin }}" --base "${{ steps.pages.outputs.base_path || '/' }}"
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

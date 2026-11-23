@@ -1,0 +1,41 @@
+name: Bug report
+description: Galley did something it shouldn't, or didn't do what the docs say
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: The steps, the message you saw (exactly), and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: galley doctor --json
+      description: Run it in the site's folder and paste the output. It contains no API keys or passwords; check it anyway.
+      render: json
+  - type: input
+    id: version
+    attributes:
+      label: galley version --json
+      placeholder: '{"name":"galley","version":"0.1.0","node":"22.23.4"}'
+  - type: dropdown
+    id: where
+    attributes:
+      label: How were you running it?
+      options:
+        - Command line (galley in a site's folder)
+        - Hosted (galley serve, or the container)
+        - Desktop app
+        - From source while developing Galley
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: macOS 15.1
+  - type: input
+    id: framework
+    attributes:
+      label: The site's framework and version
+      placeholder: Astro 7.4.13

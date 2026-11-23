@@ -1,0 +1,49 @@
+{
+  "name": "Write to the workroom",
+  "submitLabel": "Send to the workroom",
+  "fields": [
+    { "id": "name", "type": "text", "label": "Your name", "required": true, "width": "half" },
+    { "id": "email", "type": "email", "label": "Email address", "required": true, "width": "half" },
+    {
+      "id": "topic",
+      "type": "select",
+      "label": "What it is about",
+      "required": true,
+      "placeholder": "Choose one",
+      "options": [
+        { "value": "size", "label": "A size or a fit" },
+        { "value": "stock", "label": "Whether a piece is in stock" },
+        { "value": "repair", "label": "A repair" },
+        { "value": "visit", "label": "Visiting the workroom" },
+        { "value": "press", "label": "Press" }
+      ]
+    },
+    {
+      "id": "height",
+      "type": "text",
+      "label": "Your height, and the coat you are thinking of",
+      "help": "We measure one off the rail against it.",
+      "showWhen": { "field": "topic", "equals": "size" }
+    },
+    { "id": "message", "type": "textarea", "label": "Your message", "required": true },
+    {
+      "id": "consent",
+      "type": "consent",
+      "required": true,
+      "text": "Keep my message to answer it, as the privacy page at the foot of this site says."
+    }
+  ],
+  "destinations": [
+    { "provider": "galley", "settings": {} }
+  ],
+  "afterSubmit": [
+    {
+      "type": "message",
+      "title": "Thank you, {{name}}.",
+      "text": "Your message is in the workroom. One of the four of us will answer **{{email}}**, usually the same day."
+    }
+  ],
+  "errorMessage": "Your message couldn't be sent. Everything you wrote is still here.",
+  "spam": { "honeypot": true, "minSeconds": 3 },
+  "appearance": { "layout": "stacked", "size": "regular", "labels": "above" }
+}

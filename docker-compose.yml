@@ -1,0 +1,37 @@
+# Example: Galley in hosted mode. Put the variables in a .env file beside
+# this one (or export them), then: docker compose up -d
+#
+# Put HTTPS in front (Caddy, nginx, a load balancer) and set GALLEY_PUBLIC_URL
+# to that address and GALLEY_TRUST_PROXY=1, so sign-in cookies are Secure.
+services:
+  galley:
+    build: .
+    image: galley:local
+    restart: unless-stopped
+    ports:
+      - "4400:4400"
+      # Previews: each open preview uses one port here, two when it shows the
+      # live site beside it. Keep it the same range as GALLEY_PREVIEW_PORTS.
+      - "4410-4429:4410-4429"
+    environment:
+      # Required: the sign-in password, 12 characters or more.
+      GALLEY_PASSWORD: ${GALLEY_PASSWORD:?Set GALLEY_PASSWORD (12 characters or more)}
+      # The address people use. Requests for any other hostname are refused.
+      GALLEY_PUBLIC_URL: ${GALLEY_PUBLIC_URL:-http://localhost:4400}
+      GALLEY_TRUST_PROXY: ${GALLEY_TRUST_PROXY:-0}
+      # The ports previews are offered on (published above). Over HTTPS they
+      # need TLS in front too: see packages/server/README.md, "Previews".
+      GALLEY_PREVIEW_PORTS: ${GALLEY_PREVIEW_PORTS:-4410-4429}
+      # Optional: white-label name and accent color.
+      # GALLEY_BRAND_NAME: "Site editor"
+      # GALLEY_BRAND_ACCENT: "#1a2b3c"
+      # Provider keys: no value here means "pass through from the shell when set".
+      ANTHROPIC_API_KEY:
+      OPENAI_API_KEY:
+      GEMINI_API_KEY:
+    volumes:
+      # Settings, stored keys, the cookie-signing key, and sites (/data/sites).
+      - galley-data:/data
+
+volumes:
+  galley-data:

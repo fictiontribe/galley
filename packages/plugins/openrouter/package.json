@@ -1,0 +1,37 @@
+{
+  "name": "@galley/plugin-openrouter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Image and video generation for Galley through OpenRouter: one key, the image and video models OpenRouter routes to, prices as OpenRouter reports them.",
+  "keywords": [
+    "galley",
+    "galley-plugin",
+    "openrouter",
+    "image-generation",
+    "video-generation"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fictiontribe/galley.git",
+    "directory": "packages/plugins/openrouter"
+  },
+  "galley": {
+    "apiVersion": 1
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "smoke": "node --import tsx test/live-smoke.mts"
+  },
+  "dependencies": {
+    "@galley/plugin-kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@galley/core": "workspace:*"
+  }
+}

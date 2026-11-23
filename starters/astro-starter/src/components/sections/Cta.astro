@@ -1,0 +1,96 @@
+---
+// The closing call to action. Put one at the end of most pages.
+import Section from "../Section.astro";
+import Actions from "../Actions.astro";
+import { inline, paragraphs, type Link, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  cta: Link;
+  secondaryCta?: Link;
+  align?: "left" | "center";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone = "accent", eyebrow, heading, text, cta, secondaryCta, align = "left", index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+---
+
+<Section type="cta" block={block} id={id} tone={tone} labelledby={headingId}>
+  <div class:list={["cta", `cta--${align}`]}>
+    <div class="cta__copy">
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <Heading id={headingId} class="cta__heading" set:html={inline(heading)} />
+      {
+        text && (
+          <div class="cta__text">
+            {paragraphs(text).map((part) => (
+              <p>{part}</p>
+            ))}
+          </div>
+        )
+      }
+    </div>
+    <Actions cta={cta} secondaryCta={secondaryCta} class="cta__actions" />
+  </div>
+</Section>
+
+<style>
+  .cta {
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  .cta__copy {
+    display: grid;
+    gap: var(--space-s);
+  }
+
+  .cta__heading {
+    font-size: var(--step-5);
+    line-height: var(--leading-tight);
+    max-width: 16em;
+  }
+
+  .cta__text {
+    display: grid;
+    gap: var(--space-xs);
+    max-width: 34em;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--tone-muted);
+  }
+
+  .cta--center {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .cta--center .cta__copy {
+    justify-items: center;
+  }
+
+  .cta--center .cta__heading,
+  .cta--center .cta__text {
+    margin-inline: auto;
+  }
+
+  .cta--center :global(.cta__actions) {
+    justify-content: center;
+  }
+
+  @media (min-width: 60rem) {
+    .cta--left {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: var(--space-2xl);
+    }
+  }
+</style>

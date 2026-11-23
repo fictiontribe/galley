@@ -1,0 +1,142 @@
+---
+// One product in a grid or a rail: its photograph, name, price and, when
+// nothing can be bought, that it is sold out. The whole card is one link.
+// `facts` become data attributes the shop's filters read (sizes and
+// colours that can be bought now, the collections it is in, its price).
+import ProductImage from "./ProductImage.astro";
+import { labels } from "../../lib/site";
+import { filterFacts, priceLabel, productUrl } from "../../lib/shop/data";
+import type { ShopProduct } from "../../lib/shop/types";
+
+interface Props {
+  product: ShopProduct;
+  ratio?: "portrait" | "square" | "tall";
+  sizes?: string;
+  eager?: boolean;
+  /** Add the attributes the shop page's filters read. */
+  filterable?: boolean;
+  /** Its place in the store's order, for "Featured" sorting. */
+  order?: number;
+  headingLevel?: 2 | 3;
+  /** The product's type under its name (the shop's listings; rails leave it out to fit their screen). */
+  showType?: boolean;
+}
+
+const { product, ratio = "portrait", sizes, eager = false, filterable = false, order = 0, headingLevel = 3, showType = false } = Astro.props;
+const facts = filterable ? filterFacts(product) : {};
+const second = product.images[1];
+const Heading = `h${headingLevel}` as "h2" | "h3";
+---
+
+<article
+  class:list={["product-card", { "product-card--sold-out": !product.availableForSale }]}
+  data-product-card={filterable ? product.handle : undefined}
+  data-collections={filterable ? product.collections.join(" ") : undefined}
+  data-options={filterable ? JSON.stringify(facts) : undefined}
+  data-available={filterable ? String(product.availableForSale) : undefined}
+  data-price={filterable ? product.priceRange.min.amount : undefined}
+  data-order={filterable ? String(order) : undefined}
+>
+  <a class="product-card__link" href={productUrl(product.handle)}>
+    <div class:list={["frame", "product-card__frame", { "product-card__frame--swap": Boolean(second) }]}>
+      <ProductImage image={product.images[0]} ratio={ratio} sizes={sizes} eager={eager} />
+      {second && <ProductImage image={second} alt="" ratio={ratio} sizes={sizes} class="product-card__second" />}
+    </div>
+    <div class="product-card__body">
+      <Heading class="product-card__name">{product.title}</Heading>
+      <p class="product-card__price">{product.availableForSale ? priceLabel(product) : labels.shop.soldOut}</p>
+      {showType && product.productType && <p class="product-card__type">{product.productType}</p>}
+    </div>
+  </a>
+</article>
+
+<style>
+  .product-card__link {
+    display: grid;
+    gap: var(--space-xs);
+    color: inherit;
+    text-decoration: none;
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  /* A linked card lifts 2px; its photograph zooms inside the frame (global.css). */
+  @media (hover: hover) {
+    .product-card__link:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  .product-card__frame {
+    position: relative;
+  }
+
+  /* The second photograph (the piece worn) shows on hover, where the pointer can hover. */
+  .product-card__frame :global(.product-card__second) {
+    position: absolute;
+    inset: 0;
+    block-size: 100%;
+    opacity: 0;
+    transition: opacity var(--duration) var(--ease-out), transform var(--duration-slow) var(--ease-out);
+  }
+
+  @media (hover: hover) {
+    .product-card__link:hover :global(.product-card__second),
+    .product-card__link:focus-visible :global(.product-card__second) {
+      opacity: 1;
+    }
+  }
+
+  .product-card__body {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-3xs) var(--space-s);
+    padding-block-start: var(--space-2xs);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  /* Every sub-heading on a page is one size (--h3-size). */
+  .product-card__name {
+    font-family: var(--font-display);
+    font-size: var(--h3-size);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-display);
+    line-height: 1.15;
+  }
+
+  .product-card__link:hover .product-card__name {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+  }
+
+  .product-card__price {
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .product-card--sold-out .product-card__price {
+    color: var(--tone-muted);
+  }
+
+  /* Two cards share a phone's row: the price goes under the name, so neither wraps. */
+  @media (max-width: 39.99rem) {
+    .product-card__body {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .product-card__name {
+      font-size: var(--step-1);
+    }
+  }
+
+  .product-card__type {
+    grid-column: 1 / -1;
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-mono);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+</style>

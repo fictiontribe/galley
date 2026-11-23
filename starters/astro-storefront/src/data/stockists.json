@@ -1,0 +1,81 @@
+{
+  "groups": [
+    {
+      "id": "marrowby",
+      "label": "Marrowby",
+      "note": "Where the coats are made",
+      "items": [
+        {
+          "name": "The Caddow workroom",
+          "address": "The Ropewalk",
+          "note": "Thursday to Saturday, 10 till 5, or by appointment. Every piece in every size, and the cloth it is cut from.",
+          "href": "/contact/"
+        },
+        {
+          "name": "Hollin & Daughter",
+          "address": "Chandler Row",
+          "note": "Coats and the heavier knits."
+        }
+      ]
+    },
+    {
+      "id": "vellamy",
+      "label": "Vellamy",
+      "items": [
+        {
+          "name": "Ordinary Goods",
+          "address": "Weir Street",
+          "note": "The full autumn collection.",
+          "href": "https://www.example.com/"
+        },
+        {
+          "name": "Pell Room",
+          "address": "Market Steps, first floor",
+          "note": "Knitwear only."
+        }
+      ]
+    },
+    {
+      "id": "kestrelmouth",
+      "label": "Kestrelmouth",
+      "items": [
+        {
+          "name": "Loft Nine",
+          "address": "Harbour Arcade",
+          "note": "Waxed cotton and the field coat.",
+          "href": "https://www.example.com/"
+        }
+      ]
+    },
+    {
+      "id": "haldenmoor",
+      "label": "Haldenmoor",
+      "items": [
+        {
+          "name": "Sett & Weft",
+          "address": "Tanners Yard",
+          "note": "The full collection, and repairs taken in."
+        },
+        {
+          "name": "Ostley's",
+          "address": "Upper Close",
+          "note": "Coats.",
+          "href": "https://www.example.com/"
+        }
+      ]
+    },
+    {
+      "id": "post",
+      "label": "By post",
+      "note": "Anywhere",
+      "items": [
+        {
+          "name": "Write to the workroom",
+          "address": "studio@example.com",
+          "note": "Tell us your height and the coat you are thinking of. We will measure one off the rail and post it; send it back within a month if it is wrong.",
+          "href": "mailto:studio@example.com"
+        }
+      ]
+    }
+  ]
+}

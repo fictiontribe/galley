@@ -1,0 +1,59 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #f6f1e7; color: #1a1712; }
+    .win { position: absolute; inset: 0; clip-path: inset(236px 96px 54px 96px round 4px); background: #ede6d8; }
+    .plane { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+    .plane img { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+    .cm { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+    .cm i { position: absolute; background: #857b69; display: block; }
+    .cm .h { width: 28px; height: 1.5px; top: -0.75px; }
+    .cm .v { width: 1.5px; height: 28px; left: -0.75px; }
+    .cm.l .h { left: -42px; } .cm.r .h { left: 14px; }
+    .cm.t .v { top: -42px; } .cm.b .v { top: 14px; }
+  </style>
+  <div id="root" data-composition-id="s5-start" data-width="1920" data-height="1080">
+    <!-- The page with its new heading, on its own (assets/footage/site-after.jpg): the change, made. -->
+    <div class="win" id="s5-win">
+      <div class="plane" id="s5-plane" data-layout-allow-overflow>
+        <img id="s5-site" src="assets/footage/site-after.jpg" alt="Caddow's home page with its new heading, “Coats for low sun.”, over the same photograph" />
+      </div>
+    </div>
+    <div class="cm l t" id="s5-start-cm-tl"><i class="h"></i><i class="v"></i></div>
+    <div class="cm r t" id="s5-start-cm-tr"><i class="h"></i><i class="v"></i></div>
+    <div class="cm l b" id="s5-start-cm-bl"><i class="h"></i><i class="v"></i></div>
+    <div class="cm r b" id="s5-start-cm-br"><i class="h"></i><i class="v"></i></div>
+  </div>
+  <script>
+    (function () {
+      const ID = "s5-start";
+      const F = window.__FILM || {};
+      const SC = (F.scenes && F.scenes[ID]) || { start: 22.916, duration: 4.768 };
+      const VW = 1440, VH = 900;
+      const RT = { x: 96, y: 236, w: 1728, h: 790 }, RF = { x: 96, y: 54, w: 1728, h: 972 };
+      const clipOf = (R) => `inset(${R.y}px ${1920 - R.x - R.w}px ${1080 - R.y - R.h}px ${R.x}px round 4px)`;
+      const corners = (R) => [[R.x, R.y], [R.x + R.w, R.y], [R.x, R.y + R.h], [R.x + R.w, R.y + R.h]];
+      const H = (F.footage && F.footage.after && F.footage.after.heading) || { x: 72, y: 344.5, w: 966, h: 322 };
+
+      const tl = gsap.timeline({ paused: true });
+      corners(RT).forEach((p, i) => gsap.set(`#${ID}-cm-${["tl", "tr", "bl", "br"][i]}`, { x: p[0], y: p[1] }));
+      gsap.set("#s5-win", { clipPath: clipOf(RT) });
+      // Opens close on the new heading, then the window opens to the full frame and the camera eases
+      // back to the whole page: the model, the wall, the heading.
+      const s0 = 1.55;
+      gsap.set("#s5-plane", { x: RT.x - (H.x - 40) * s0, y: RT.y + RT.h / 2 - (H.y + H.h / 2) * s0, scale: s0, transformOrigin: "0 0" });
+      tl.to("#s5-win", { clipPath: clipOf(RF), duration: 0.8, ease: "power2.inOut" }, 0.1);
+      corners(RF).forEach((p, i) => tl.to(`#${ID}-cm-${["tl", "tr", "bl", "br"][i]}`, { x: p[0], y: p[1], duration: 0.8, ease: "power2.inOut" }, 0.1));
+      // Ends on the heading and the model whole, between the nav and the buttons (neither cut by the edge).
+      const s1 = RF.h / (777 - 62);
+      tl.to("#s5-plane", { x: RF.x - 66 * s1, y: RF.y - 62 * s1, scale: s1, duration: SC.duration - 0.6, ease: "power2.inOut" }, 0.1);
+
+      // Exit: the sheet closes to a hairline; the crop marks go with it.
+      const mid = RF.y + RF.h / 2;
+      const flat = { x: RF.x, y: mid, w: RF.w, h: 0 };
+      const T_OUT = SC.duration - 0.3;
+      tl.to("#s5-win", { clipPath: clipOf(flat), duration: 0.28, ease: "power3.in" }, T_OUT);
+      corners(flat).forEach((p, i) => tl.to(`#${ID}-cm-${["tl", "tr", "bl", "br"][i]}`, { x: p[0], y: p[1], opacity: 0, duration: 0.28, ease: "power3.in" }, T_OUT));
+      window.__timelines[ID] = tl;
+    })();
+  </script>
+</template>

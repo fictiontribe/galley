@@ -1,0 +1,206 @@
+---
+// Site footer: the tagline, link columns from
+// src/data/navigation.json, contact details and social links from
+// src/data/site.json, the name set across the container, then the legal row.
+// The name is sized from its length so it always spans the container.
+import { fill, labels, navigation, site, withBase } from "../lib/site";
+
+const year = new Date().getFullYear();
+// The address may break before the @, never inside a word.
+const [mailbox, domain] = site.email.split("@");
+---
+
+<footer class="closing site-footer tone-inverse">
+  <div class="wrap container">
+    <div class="site-footer__main">
+      <div class="site-footer__top">
+        <p class="site-footer__tagline">{site.tagline}</p>
+
+        <nav class="site-footer__nav" aria-label={labels.nav.footer}>
+          {
+            navigation.footer.map((column) => (
+              <div class="site-footer__column">
+                <p class="label">{column.heading}</p>
+                <ul role="list">
+                  {column.links.map((link) => (
+                    <li>
+                      <a href={withBase(link.href)}>{link.label}</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          }
+          <div class="site-footer__column">
+            <p class="label">{labels.nav.contact}</p>
+            <ul role="list">
+              <li>
+                <a href={`mailto:${site.email}`}>
+                  {mailbox}
+                  {domain && (
+                    <>
+                      <wbr />@{domain}
+                    </>
+                  )}
+                </a>
+              </li>
+              {site.address && <li class="site-footer__address">{site.address}</li>}
+            </ul>
+          </div>
+        </nav>
+      </div>
+      <p class="site-footer__name" aria-hidden="true" style={`--letters: ${Math.max(site.name.length, 4)}`}>{site.name}</p>
+    </div>
+
+    <div class="site-footer__base">
+      <p>{site.footerText}</p>
+      {
+        site.social.length > 0 && (
+          <ul class="site-footer__social" role="list" aria-label={labels.nav.social}>
+            {site.social.map((link) => (
+              <li>
+                <a href={link.href} rel="me noopener">{link.label}</a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+      <p>{fill(labels.copyright, { year, site: site.name })}</p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    display: flex;
+    flex-direction: column;
+    padding-block: var(--space-section) var(--space-l);
+    background: var(--tone-bg);
+    color: var(--tone-text);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .site-footer > .wrap {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  .site-footer__main {
+    display: grid;
+    gap: var(--space-xl);
+    container-type: inline-size;
+  }
+
+  .site-footer__top {
+    display: grid;
+    gap: var(--space-xl) var(--gutter);
+    align-items: start;
+  }
+
+  .site-footer__tagline {
+    max-width: 14em;
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    font-style: italic;
+    line-height: 1.08;
+    letter-spacing: var(--tracking-display);
+  }
+
+  .site-footer__nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-l) var(--gutter);
+  }
+
+  .site-footer__nav .label {
+    margin-block-end: var(--space-xs);
+  }
+
+  .site-footer ul {
+    display: grid;
+    padding: 0;
+    list-style: none;
+    font-size: var(--step--1);
+  }
+
+  .site-footer ul a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 2.75rem;
+    color: var(--tone-text);
+    text-decoration-color: transparent;
+  }
+
+  .site-footer ul a:hover {
+    text-decoration-color: currentColor;
+  }
+
+  .site-footer__address {
+    padding-block: 0.6rem;
+    color: var(--tone-muted);
+  }
+
+  .site-footer__name {
+    font-family: var(--font-display);
+    /* As wide as the container: the width of one capital, measured for this
+       face, times the number of letters. */
+    font-size: calc(100cqi / (var(--letters) * var(--cap-width, 0.73)));
+    font-weight: var(--weight-display);
+    font-optical-sizing: auto;
+    letter-spacing: -0.03em;
+    line-height: 0.8;
+    margin-inline-start: -0.03em;
+    overflow-x: clip;
+    text-transform: uppercase;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .site-footer .site-footer__social {
+    display: flex;
+    gap: var(--space-m);
+    font-size: inherit;
+  }
+
+  .site-footer .site-footer__social a {
+    color: var(--tone-muted);
+  }
+
+  .site-footer .site-footer__social a:hover {
+    color: var(--tone-text);
+  }
+
+  .site-footer__base {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-2xs) var(--space-l);
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    letter-spacing: 0.02em;
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 60rem) {
+    .site-footer__nav {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  /* Wide: the tagline beside the columns, which keep at least 9.5rem each. */
+  @media (min-width: 80rem) {
+    .site-footer__top {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .site-footer__tagline {
+      grid-column: 1 / span 5;
+    }
+
+    .site-footer__nav {
+      grid-column: 6 / -1;
+    }
+  }
+</style>

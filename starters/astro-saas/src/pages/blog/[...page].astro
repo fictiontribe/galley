@@ -1,0 +1,49 @@
+---
+// The blog index: the sections of src/content/pages/blog.md, the topics
+// (tags) in use, then every published post, `blog.pageSize` (site.json) per
+// page — /blog/, /blog/2/, …
+import type { GetStaticPaths, Page } from "astro";
+import { getEntry, type CollectionEntry } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import PageEntry from "../../components/PageEntry.astro";
+import PostList from "../../components/PostList.astro";
+import Tags from "../../components/Tags.astro";
+import { getPosts, postsByTag } from "../../lib/posts";
+import { fill, labels, site } from "../../lib/site";
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const posts = await getPosts();
+  const tags = postsByTag(posts).map((entry) => entry.tag);
+  return paginate(posts, { pageSize: site.blog.pageSize, props: { tags } });
+}) satisfies GetStaticPaths;
+
+interface Props {
+  page: Page<CollectionEntry<"blog">>;
+  tags: string[];
+}
+
+const { page: listing, tags } = Astro.props;
+const entry = await getEntry("pages", "blog");
+if (!entry) throw new Error("src/content/pages/blog.md is missing.");
+const title =
+  listing.currentPage > 1
+    ? `${entry.data.title} — ${fill(labels.blog.pageOf, { current: listing.currentPage, total: listing.lastPage })}`
+    : entry.data.title;
+---
+
+<Base title={title} description={entry.data.description} image={entry.data.image} noindex={entry.data.noindex}>
+  <PageEntry page={entry}>
+    <section class="section tone-default blog-list" aria-label={labels.blog.allPosts}>
+      <div class="container">
+        <Tags tags={tags} label={labels.blog.topics} class="blog-list__topics" />
+        <PostList listing={listing} lead />
+      </div>
+    </section>
+  </PageEntry>
+</Base>
+
+<style>
+  .blog-list :global(.blog-list__topics) {
+    margin-block-end: var(--space-xl);
+  }
+</style>

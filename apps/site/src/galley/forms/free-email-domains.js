@@ -1,0 +1,62 @@
+// Vendored from @galley/astro 0.1.0 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// @ts-check
+// Free mailbox providers, for `validation.businessEmailOnly`: an address at
+// one of these domains is refused as "not a work address". The list is kept
+// short on purpose — the providers with the most personal mailboxes
+// worldwide, and their best-known country variants — so it stays a few
+// hundred bytes in the page. It is a courtesy check in the browser, not a
+// guarantee: anyone determined can type another address. Sites that need
+// more add domains with `forms.freeEmailDomains` in the integration options.
+export const FREE_EMAIL_DOMAINS = [
+  "gmail.com",
+  "googlemail.com",
+  "outlook.com",
+  "hotmail.com",
+  "hotmail.co.uk",
+  "hotmail.fr",
+  "live.com",
+  "msn.com",
+  "yahoo.com",
+  "yahoo.co.uk",
+  "yahoo.co.jp",
+  "yahoo.fr",
+  "ymail.com",
+  "rocketmail.com",
+  "aol.com",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "proton.me",
+  "protonmail.com",
+  "pm.me",
+  "gmx.com",
+  "gmx.de",
+  "gmx.net",
+  "web.de",
+  "mail.com",
+  "zoho.com",
+  "yandex.com",
+  "yandex.ru",
+  "mail.ru",
+  "qq.com",
+  "163.com",
+  "126.com",
+  "naver.com",
+  "hanmail.net",
+  "libero.it",
+  "orange.fr",
+  "free.fr",
+  "laposte.net",
+  "t-online.de",
+  "btinternet.com",
+  "comcast.net",
+  "verizon.net",
+  "att.net",
+  "fastmail.com",
+  "hey.com",
+  "tutanota.com",
+  "tuta.io",
+  "rediffmail.com",
+  "uol.com.br",
+  "bol.com.br",
+];

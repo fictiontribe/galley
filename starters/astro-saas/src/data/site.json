@@ -1,0 +1,105 @@
+{
+  "name": "Ferrow",
+  "tagline": "Planned maintenance, inspections and compliance for organizations with many sites.",
+  "description": "Ferrow puts planned maintenance, inspections and contractor work for every site you run into one schedule, with the evidence to prove it when an auditor asks.",
+  "url": "https://www.example.com",
+  "lang": "en",
+  "locale": "en-US",
+  "email": "hello@example.com",
+  "phone": "+1 555 0142",
+  "titleTemplate": "{title} · {site}",
+  "shareImage": "/images/share.png",
+  "shareImageAlt": "Ferrow — every inspection planned, done and proven",
+  "social": [
+    {
+      "label": "LinkedIn",
+      "href": "https://www.linkedin.com/"
+    },
+    {
+      "label": "YouTube",
+      "href": "https://www.youtube.com/"
+    },
+    {
+      "label": "GitHub",
+      "href": "https://github.com/"
+    }
+  ],
+  "footerText": "Ferrow is a fictional company. Its customers, people and figures are invented for this template.",
+  "blog": {
+    "pageSize": 9
+  },
+  "labels": {
+    "skipLink": "Skip to content",
+    "home": "Ferrow home page",
+    "nav": {
+      "main": "Main",
+      "footer": "Footer",
+      "legal": "Legal",
+      "menu": "Menu",
+      "close": "Close",
+      "social": "Follow",
+      "contact": "Talk to us",
+      "privacyChoices": "Privacy choices"
+    },
+    "blog": {
+      "allPosts": "All posts",
+      "published": "Published",
+      "by": "By",
+      "tags": "Filed under",
+      "topics": "Topics",
+      "tagTitle": "Filed under “{tag}”",
+      "tagDescription": "Every Ferrow article filed under “{tag}”.",
+      "readingTime": "{minutes} min read",
+      "aboutAuthor": "About the author",
+      "backToBlog": "Back to the blog",
+      "newer": "Newer posts",
+      "older": "Older posts",
+      "pageOf": "Page {current} of {total}",
+      "pagination": "Blog pages",
+      "empty": "Nothing published yet. The first article is on its way."
+    },
+    "customers": {
+      "backToAll": "All customer stories",
+      "atAGlance": "At a glance",
+      "industry": "Industry",
+      "results": "Results",
+      "readStory": "Read the story",
+      "more": "More customer stories",
+      "empty": "No customer stories here yet.",
+      "cta": {
+        "heading": "See what Ferrow would change on your estate",
+        "text": "Bring a list of your sites and your hardest compliance deadline. We will show you the schedule Ferrow would build from it, in thirty minutes.",
+        "button": {
+          "label": "Book a demo",
+          "href": "/contact/"
+        },
+        "secondary": {
+          "label": "See pricing",
+          "href": "/pricing/"
+        }
+      }
+    },
+    "changelog": {
+      "version": "Version {version}",
+      "kind": "Type of change",
+      "permalink": "Link to this update",
+      "all": "Every update",
+      "empty": "No updates published yet."
+    },
+    "table": {
+      "feature": "Feature",
+      "yes": "Included",
+      "no": "Not included",
+      "partial": "Partly included",
+      "highlighted": "Recommended"
+    },
+    "tabs": {
+      "list": "Product areas"
+    },
+    "dev": {
+      "unknownSection": "This section type has no component yet",
+      "chooseForm": "Choose a form for this section.",
+      "unknownForm": "There is no form called “{id}”. Choose one from the forms."
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+ "voice": {
+  "provider": "elevenlabs",
+  "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+  "model": "eleven_v4"
+ },
+ "words": [
+  {
+   "text": "Publish,",
+   "start": 0.0,
+   "end": 0.72
+  },
+  {
+   "text": "and",
+   "start": 0.8,
+   "end": 0.88
+  },
+  {
+   "text": "it's",
+   "start": 0.92,
+   "end": 1.04
+  },
+  {
+   "text": "a",
+   "start": 1.08,
+   "end": 1.12
+  },
+  {
+   "text": "commit",
+   "start": 1.2,
+   "end": 1.6
+  },
+  {
+   "text": "in",
+   "start": 1.68,
+   "end": 1.76
+  },
+  {
+   "text": "your",
+   "start": 1.84,
+   "end": 1.92
+  },
+  {
+   "text": "own",
+   "start": 2.0,
+   "end": 2.16
+  },
+  {
+   "text": "repository.",
+   "start": 2.24,
+   "end": 3.52
+  }
+ ]
+}

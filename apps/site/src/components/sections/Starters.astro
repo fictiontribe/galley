@@ -1,0 +1,120 @@
+---
+// The starters: a large real picture each, read from the starter's own files,
+// with its looks as buttons that swap the picture. An item with no starter
+// folder is a plain card (one in progress, or "make your own").
+//   feature — the first starter tall beside the others, then the page builder line
+//   gallery — two columns, the starters' own page
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import Panel from "../Panel.astro";
+import Shot from "../Shot.astro";
+import { getStarter, sectionThumb } from "../../lib/starters";
+import { siteShot } from "../../lib/media";
+import { badgeOf } from "../../lib/status";
+import { inline } from "../../lib/markdown";
+import { fill, site } from "../../lib/site";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const Hi = first ? "h2" : "h3";
+const hid = `${s.id ?? "starters"}-h`;
+const t = site.ui;
+const items = s.items.map((item: { starter?: string; tall?: string; status?: string }, i: number) => {
+  const st = item.starter ? getStarter(item.starter) : null;
+  const tall = s.layout === "feature" && i === 0;
+  const looks = (st?.looks ?? []).map((look) => {
+    const name = item.tall ? `${item.tall}-${look.id}` : null;
+    const pic = tall && name && existsSync(join(process.cwd(), "public", "sites", `${name}.webp`)) ? siteShot(name) : null;
+    return pic
+      ? { ...look, src: pic.src, srcset: pic.srcset, width: pic.width, height: pic.height }
+      : { ...look, src: look.preview, srcset: undefined };
+  });
+  return { ...item, looks, tall, badge: badgeOf(item.status) };
+});
+const sizes = (tall: boolean) =>
+  s.layout === "gallery" ? "(max-width: 639px) calc(100vw - 66px), (max-width: 1440px) 46vw, 610px" : tall ? "(max-width: 639px) calc(100vw - 66px), (max-width: 1023px) 92vw, 510px" : "(max-width: 639px) calc(100vw - 66px), (max-width: 1023px) 45vw, 720px";
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class:list={["head", s.link && "head--row"]}>
+    <div class="head" style="margin:0">
+      <H class:list={[first ? "h1" : "h2"]} id={hid} set:html={inline(s.heading)} />
+      <p class="lead">{fill(s.text)}</p>
+    </div>
+    {s.link && <p><a class="link" href={fill(s.link.href)}>{s.link.label}</a></p>}
+  </div>
+  <div class:list={["starters", `starters--${s.layout}`]}>
+    {
+      items.filter((item: any) => item.looks.length).map((item: any) =>
+        (
+          <article class:list={["starter", item.tall && "starter--tall"]} data-starter aria-labelledby={`${hid}-${item.starter}`}>
+            <div class="starter__pic">
+              {item.looks.map((look: any, i: number) => (
+                <img src={look.src} srcset={look.srcset} sizes={look.srcset ? sizes(item.tall) : undefined} width={look.width} height={look.height} alt={t.lookAlt.replace("{name}", item.name).replace("{look}", look.label)} loading="lazy" decoding="async" data-look={look.id} hidden={i !== 0} />
+              ))}
+            </div>
+            <div class="starter__body">
+              <Hi class="starter__name" id={`${hid}-${item.starter}`}>{item.name}</Hi>
+              <span class="label">{item.kind}</span>
+              <p class="starter__meta">{fill(item.text)}</p>
+              <div class="starter__foot">
+                <div class="looks" data-galley-agent="skip" role="group" aria-label={t.lookOf.replace("{name}", item.name)}>
+                  {item.looks.map((look: any, i: number) => (
+                    <button class="look" type="button" data-look-to={look.id} aria-pressed={i === 0 ? "true" : "false"}>
+                      <span class="look__sw" aria-hidden="true"><span style={`background:${look.swatches[0]}`} /><span style={`background:${look.swatches[2] ?? look.swatches[1]}`} /></span>
+                      {look.label}
+                    </button>
+                  ))}
+                </div>
+                {item.link && <a class="link link--accent" href={fill(item.link.href)}>{item.link.label}<span class="sr">: {item.name}</span></a>}
+              </div>
+            </div>
+          </article>
+        ),
+      )
+    }
+    {
+      items.some((item: any) => !item.looks.length) && (
+        <div class="starters__aside">
+          {items.filter((item: any) => !item.looks.length).map((item: any) => (
+          <article class="starter starter--soon">
+            <div class="starter__body">
+              <Hi class="starter__name">{item.name}</Hi>
+              {item.badge ? <span class:list={["badge", `badge--${item.badge.status}`]}>{item.badge.label}</span> : <span class="label">{item.kind}</span>}
+              <p class="starter__meta">{fill(item.text)}</p>
+              {item.link && <p><a class="link link--accent" href={fill(item.link.href)}>{item.link.label}</a></p>}
+            </div>
+          </article>
+          ))}
+        </div>
+      )
+    }
+  </div>
+  {s.note && <p class="small starters__more">{fill(s.note)}</p>}
+  {
+    s.builder && (
+      <div class="builder">
+        <div class="builder__text">
+          {badgeOf(s.builder.status) && <span class:list={["badge", `badge--${badgeOf(s.builder.status)!.status}`]}>{badgeOf(s.builder.status)!.label}</span>}
+          <p class="lead">{fill(s.builder.text)}</p>
+          {s.builder.starter && s.builder.sections.length > 0 && (
+            <ul class="lib" aria-label={s.builder.sectionsLabel}>
+              {s.builder.sections.map((type: string) => {
+                const t = sectionThumb(s.builder.starter, type);
+                return (
+                  <li>
+                    <img src={t.src} width={t.width} height={t.height} alt="" loading="lazy" decoding="async" />
+                    <span>{t.label}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+        <Panel rec={s.builder.visual.kind === "recording"}>
+          <Shot visual={s.builder.visual} />
+        </Panel>
+      </div>
+    )
+  }
+</section>

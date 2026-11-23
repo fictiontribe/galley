@@ -1,0 +1,112 @@
+---
+// The garments in a look: name, the cloth, and a price. A piece that names
+// a product (`product: field-coat`) links to it and shows the shop's own
+// price and availability — "shop the look" on every lookbook page.
+import Icon from "./Icon.astro";
+import { labels } from "../lib/site";
+import { getProduct, priceLabel, productUrl } from "../lib/shop/data";
+
+interface Props {
+  pieces: Array<{ name: string; detail?: string; price?: string; product?: string }>;
+  class?: string;
+}
+
+const { pieces, class: className } = Astro.props;
+const rows = await Promise.all(
+  pieces.map(async (piece) => {
+    const product = await getProduct(piece.product);
+
+    return { ...piece, href: product ? productUrl(product.handle) : undefined, price: product ? priceLabel(product) : piece.price, soldOut: product ? !product.availableForSale : false };
+  }),
+);
+---
+
+{
+  rows.length > 0 && (
+    <div class:list={["piece-list", className]}>
+      <p class="label piece-list__label">{labels.lookbooks.pieces}</p>
+      <ul role="list">
+        {rows.map((piece) => (
+          <li>
+            {piece.href ? (
+              <a class="piece-list__name piece-list__link" href={piece.href}>
+                {piece.name}
+                <Icon name="arrow-right" size={14} />
+              </a>
+            ) : (
+              <span class="piece-list__name">{piece.name}</span>
+            )}
+            {piece.detail && <span class="piece-list__detail">{piece.detail}</span>}
+            {piece.price && <span class="piece-list__price">{piece.soldOut ? labels.shop.soldOut : piece.price}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+<style>
+  .piece-list__label {
+    margin-block-end: var(--space-2xs);
+    font-family: var(--font-mono);
+    letter-spacing: var(--tracking-mono);
+  }
+
+  .piece-list ul {
+    padding: 0;
+    list-style: none;
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .piece-list li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: var(--space-s);
+    padding-block: var(--space-xs);
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .piece-list__name {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    line-height: 1.2;
+  }
+
+  .piece-list__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    min-block-size: 2.75rem;
+    margin-block: -0.6rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .piece-list__link :global(svg) {
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .piece-list__link:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  .piece-list__link:hover :global(svg) {
+    transform: translateX(0.25em);
+  }
+
+  .piece-list__detail {
+    grid-column: 1;
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .piece-list__price {
+    grid-column: 2;
+    grid-row: 1;
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+  }
+</style>

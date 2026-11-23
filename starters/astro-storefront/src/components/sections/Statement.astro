@@ -1,0 +1,178 @@
+---
+// A sentence set large, with no picture: what the label believes, or the
+// opening of a page that needs no image. With `highlight` the words turn from
+// grey to ink one by one as the sentence crosses the screen, a **bold** word
+// to the accent (the script below); under reduced motion or without script
+// the whole sentence is simply ink.
+import Section from "../Section.astro";
+import Actions from "../Actions.astro";
+import { inline, paragraphs, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  cta?: Link;
+  size?: "large" | "medium";
+  align?: "left" | "center";
+  highlight?: boolean;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, cta, size = "large", align = "left", highlight = false, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+---
+
+<Section type="statement" id={id} tone={tone} labelledby={headingId} block={block}>
+  <div class:list={["statement", `statement--${size}`, `statement--${align}`, { "statement--lead": level === 1 }]}>
+    {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+    <Heading id={headingId} class="statement__heading" data-ink={highlight && level !== 1 ? "" : undefined} set:html={inline(heading)} />
+    {
+      (text || cta) && (
+        <div class="statement__foot">
+          {text && (
+            <div class="statement__text">
+              {paragraphs(text).map((part) => (
+                <p>{part}</p>
+              ))}
+            </div>
+          )}
+          <Actions secondaryCta={cta} />
+        </div>
+      )
+    }
+  </div>
+</Section>
+
+<style>
+  .statement {
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  .statement__heading {
+    max-inline-size: 16em;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .statement--lead .statement__heading {
+    font-size: var(--step-6);
+    line-height: 0.95;
+  }
+
+  .statement--lead.statement--medium .statement__heading {
+    font-size: var(--step-5);
+  }
+
+  .statement__heading :global(strong) {
+    font-weight: inherit;
+    color: var(--tone-link);
+  }
+
+  .statement__foot {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+  }
+
+  .statement__text {
+    display: grid;
+    gap: var(--space-xs);
+    max-inline-size: 30em;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--tone-muted);
+  }
+
+  .statement--center {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .statement--center .statement__heading,
+  .statement--center .statement__text {
+    margin-inline: auto;
+  }
+
+  .statement--center .statement__foot {
+    justify-items: center;
+  }
+
+  /* Inking: each word rests at half strength until the scroll reaches it. */
+  .statement__heading:global(.is-inking) :global(.ink) {
+    color: color-mix(in oklch, currentColor 50%, var(--tone-bg));
+    transition: color var(--duration) var(--ease-out);
+  }
+
+  .statement__heading:global(.is-inking) :global(.ink.is-on) {
+    color: inherit;
+  }
+
+  @media (min-width: 60rem) {
+    .statement {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--gutter);
+    }
+
+    .statement > * {
+      grid-column: 1 / -1;
+    }
+
+    .statement--left .statement__foot {
+      grid-column: 7 / -1;
+    }
+  }
+</style>
+
+<script>
+  // Highlighted statements ([data-ink]): split into words, which turn from
+  // grey to ink as the sentence crosses the screen, the first when its top is
+  // 85% of the way down, the last when its bottom reaches 55%. Nothing happens
+  // under reduced motion, and without script the sentence is ink already.
+  const statements = [...document.querySelectorAll<HTMLElement>("[data-ink]")];
+  if (statements.length && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const sets = statements.map((el) => {
+      const texts: Text[] = [];
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) texts.push(walker.currentNode as Text);
+      const words: HTMLElement[] = [];
+      for (const node of texts) {
+        const parts = node.data.split(/(\s+)/).filter(Boolean);
+        node.replaceWith(...parts.map((part) => {
+          if (/^\s+$/.test(part)) return part;
+          const word = document.createElement("span");
+          word.className = "ink";
+          word.textContent = part;
+          words.push(word);
+          return word;
+        }));
+      }
+      el.classList.add("is-inking");
+      return { el, words };
+    });
+    let queued = false;
+    const update = () => {
+      queued = false;
+      const screen = innerHeight;
+      const atEnd = screen + scrollY >= document.documentElement.scrollHeight - 2;
+      for (const { el, words } of sets) {
+        const box = el.getBoundingClientRect();
+        const progress = atEnd ? 1 : Math.min(1, Math.max(0, (screen * 0.85 - box.top) / (screen * 0.3 + box.height)));
+        const lit = Math.round(progress * words.length);
+        words.forEach((word, i) => word.classList.toggle("is-on", i < lit));
+      }
+    };
+    const queue = () => {
+      if (!queued) (queued = true), requestAnimationFrame(update);
+    };
+    addEventListener("scroll", queue, { passive: true });
+    addEventListener("resize", queue);
+    update();
+  }
+</script>

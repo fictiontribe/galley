@@ -1,0 +1,7 @@
+{
+  "$comment": "The store this site sells from. Leave domain empty for the demo shop (the bag works, nothing is charged). Set it to your-store.myshopify.com to sell: products and collections are read from the store when the site is built, and the bag hands over to the store's own checkout. publicToken is optional (the store can be read without one); it is a public Storefront API token, meant to be seen by shoppers. The build also reads SHOPIFY_STORE_DOMAIN and PUBLIC_SHOPIFY_STOREFRONT_TOKEN, which win over this file. See README.",
+  "domain": "",
+  "publicToken": "",
+  "apiVersion": "2026-10",
+  "checkoutDomain": ""
+}

@@ -1,0 +1,11 @@
+/* Everything the app's look depends on, in cascade order: self-hosted fonts
+   (npm packages, never a font CDN), the brand's tokens and components, then
+   the app layer. */
+@import "@fontsource-variable/newsreader/opsz.css";
+@import "@fontsource-variable/newsreader/opsz-italic.css";
+@import "@fontsource-variable/figtree/wght.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@brand/tokens.css";
+@import "@brand/components.css";
+@import "./app.css";

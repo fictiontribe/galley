@@ -1,0 +1,77 @@
+{
+  "header": [
+    {
+      "label": "Shop",
+      "href": "/shop/"
+    },
+    {
+      "label": "Lookbook",
+      "href": "/lookbook/"
+    },
+    {
+      "label": "Atelier",
+      "href": "/atelier/"
+    },
+    {
+      "label": "Journal",
+      "href": "/journal/"
+    }
+  ],
+  "cta": {
+    "label": "Stockists",
+    "href": "/stockists/"
+  },
+  "footer": [
+    {
+      "heading": "Shop",
+      "links": [
+        {
+          "label": "Coats and jackets",
+          "href": "/shop/coats/"
+        },
+        {
+          "label": "Knitwear",
+          "href": "/shop/knitwear/"
+        },
+        {
+          "label": "Trousers",
+          "href": "/shop/trousers/"
+        }
+      ]
+    },
+    {
+      "heading": "The label",
+      "links": [
+        {
+          "label": "Lookbook",
+          "href": "/lookbook/"
+        },
+        {
+          "label": "Atelier",
+          "href": "/atelier/"
+        },
+        {
+          "label": "Journal",
+          "href": "/journal/"
+        }
+      ]
+    },
+    {
+      "heading": "Find us",
+      "links": [
+        {
+          "label": "Stockists",
+          "href": "/stockists/"
+        },
+        {
+          "label": "Contact",
+          "href": "/contact/"
+        },
+        {
+          "label": "Privacy",
+          "href": "/privacy/"
+        }
+      ]
+    }
+  ]
+}

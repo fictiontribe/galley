@@ -1,0 +1,70 @@
+---
+// The garments in a look: name, the cloth, and a price shown as text.
+import { labels } from "../lib/site";
+
+interface Props {
+  pieces: Array<{ name: string; detail?: string; price?: string }>;
+  class?: string;
+}
+
+const { pieces, class: className } = Astro.props;
+---
+
+{
+  pieces.length > 0 && (
+    <div class:list={["piece-list", className]}>
+      <p class="label piece-list__label">{labels.lookbooks.pieces}</p>
+      <ul role="list">
+        {pieces.map((piece) => (
+          <li>
+            <span class="piece-list__name">{piece.name}</span>
+            {piece.detail && <span class="piece-list__detail">{piece.detail}</span>}
+            {piece.price && <span class="piece-list__price">{piece.price}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+<style>
+  .piece-list__label {
+    margin-block-end: var(--space-2xs);
+    font-family: var(--font-mono);
+    letter-spacing: var(--tracking-mono);
+  }
+
+  .piece-list ul {
+    padding: 0;
+    list-style: none;
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .piece-list li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: var(--space-s);
+    padding-block: var(--space-xs);
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .piece-list__name {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    line-height: 1.2;
+  }
+
+  .piece-list__detail {
+    grid-column: 1;
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .piece-list__price {
+    grid-column: 2;
+    grid-row: 1;
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+  }
+</style>

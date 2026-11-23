@@ -1,0 +1,132 @@
+---
+// The latest journal stories. grid: covers in three columns. list: an index
+// of dates and titles, no pictures.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Actions from "../Actions.astro";
+import PostCard from "../PostCard.astro";
+import { formatDate, type Link, type Tone } from "../../lib/site";
+import { getPosts, postUrl, tagSlug } from "../../lib/journal";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  limit?: number;
+  tag?: string;
+  layout?: "grid" | "list";
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, limit = 3, tag, layout = "grid", cta, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const all = await getPosts();
+const posts = (tag ? all.filter((post) => post.data.tags.some((t) => tagSlug(t) === tagSlug(tag))) : all).slice(0, limit);
+---
+
+<Section type="journal-list" id={id} tone={tone} labelledby={headingId} block={block}>
+  <div class="journal-list__head">
+    <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} class="journal-list__header" />
+    <Actions secondaryCta={cta} />
+  </div>
+  {
+    layout === "grid" ? (
+      <ul class="journal-list journal-list--grid" role="list">
+        {posts.map((post) => (
+          <li>
+            <PostCard post={post} />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <ul class="journal-list journal-list--list" role="list">
+        {posts.map((post) => (
+          <li>
+            <a class="journal-row" href={postUrl(post)}>
+              <time class="label" datetime={post.data.date.toISOString()}>
+                {formatDate(post.data.date)}
+              </time>
+              <span class="journal-row__title">{post.data.title}</span>
+              <span class="journal-row__text">{post.data.description}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</Section>
+
+<style>
+  .journal-list__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-s) var(--space-xl);
+    margin-block-end: var(--space-xl);
+  }
+
+  .journal-list__head :global(.journal-list__header) {
+    margin-block-end: 0;
+  }
+
+  .journal-list {
+    padding: 0;
+    list-style: none;
+  }
+
+  .journal-list--grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: var(--space-xl) var(--gutter);
+  }
+
+  .journal-list--list {
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .journal-list--list li {
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .journal-row {
+    display: grid;
+    gap: var(--space-2xs);
+    padding-block: var(--space-m);
+    color: var(--tone-text);
+    text-decoration: none;
+  }
+
+  .journal-row__title {
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    line-height: 1.05;
+    letter-spacing: var(--tracking-display);
+  }
+
+  .journal-row:hover .journal-row__title {
+    font-style: italic;
+  }
+
+  .journal-row__text {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 60rem) {
+    .journal-list--grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .journal-row {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 6fr) minmax(0, 4fr);
+      align-items: baseline;
+      gap: var(--gutter);
+    }
+  }
+</style>

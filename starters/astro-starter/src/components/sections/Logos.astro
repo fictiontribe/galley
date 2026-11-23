@@ -1,0 +1,99 @@
+---
+// A quiet row of client or partner logos. `name` is the alt text and `href`
+// an optional link. SVG logos drawn in currentColor are inlined, so they take
+// the section's muted text colour in every look; other images stay <img>.
+import Section from "../Section.astro";
+import { inlineSvg, withBase, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  heading?: string;
+  items: Array<{ name: string; image: string; href?: string }>;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, heading, items, index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+---
+
+<Section type="logos" block={block} id={id} tone={tone} labelledby={headingId}>
+  <div class="logos">
+    {heading && <Heading id={headingId} class="logos__heading">{heading}</Heading>}
+    <ul class="logos__list" role="list">
+      {
+        items.map((item) => {
+          const svg = inlineSvg(item.image);
+          const logo = svg ? (
+            <span class="logos__logo" role="img" aria-label={item.name} set:html={svg.replace("<svg", `<svg aria-hidden="true" focusable="false"`)} />
+          ) : (
+            <img class="logos__logo" src={withBase(item.image)} alt={item.name} width="180" height="60" loading="lazy" decoding="async" />
+          );
+          return <li>{item.href ? <a href={withBase(item.href)}>{logo}</a> : logo}</li>;
+        })
+      }
+    </ul>
+  </div>
+</Section>
+
+<style>
+  :global(.section--logos) {
+    padding-block: var(--space-xl);
+  }
+
+  .logos {
+    display: grid;
+    gap: var(--space-m);
+    padding-block: var(--space-l);
+    border-block: var(--border-width) solid var(--tone-line);
+  }
+
+  .logos__heading {
+    font-family: var(--font-body);
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    letter-spacing: 0;
+    color: var(--tone-muted);
+  }
+
+  .logos__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    align-items: center;
+    gap: var(--space-m) var(--space-l);
+    padding: 0;
+    list-style: none;
+  }
+
+  .logos__logo {
+    display: block;
+    width: 100%;
+    max-width: 10rem;
+    height: auto;
+    aspect-ratio: 3 / 1;
+    object-fit: contain;
+    color: var(--tone-muted);
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+
+  .logos__logo :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .logos__list a:hover .logos__logo {
+    color: var(--tone-text);
+  }
+
+  @media (min-width: 60rem) {
+    .logos {
+      grid-template-columns: 14rem 1fr;
+      align-items: center;
+      gap: var(--space-xl);
+    }
+  }
+</style>

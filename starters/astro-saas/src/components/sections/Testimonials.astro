@@ -1,0 +1,119 @@
+---
+// Several shorter quotes in a grid of two or three columns, as cards or set
+// plainly between hairlines.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Media from "../Media.astro";
+import type { BlockMarker, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  items: Array<{ quote: string; name: string; role?: string; company?: string; image?: string }>;
+  columns?: number;
+  style?: "cards" | "plain";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, items, columns = 3, style = "cards", index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+---
+
+<Section type="testimonials" id={id} tone={tone} block={block} labelledby={headingId}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+  <ul class:list={["quotes", `quotes--${style}`]} role="list" style={`--columns: ${columns}`}>
+    {
+      items.map((item) => (
+        <li>
+          <figure class:list={["quote", { card: style === "cards" }]}>
+            <blockquote class="quote__text">
+              <p>{item.quote}</p>
+            </blockquote>
+            <figcaption class="quote__by">
+              {item.image && <Media src={item.image} alt="" ratio="1/1" class="quote__photo" />}
+              <span>
+                <span class="quote__name">{item.name}</span>
+                {(item.role || item.company) && <span class="quote__role">{[item.role, item.company].filter(Boolean).join(", ")}</span>}
+              </span>
+            </figcaption>
+          </figure>
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .quotes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  .quote {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--space-l);
+    block-size: 100%;
+  }
+
+  .quotes--cards .quote {
+    padding: var(--space-l);
+  }
+
+  .quotes--plain .quote {
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .quote__text {
+    font-size: var(--step-1);
+    line-height: 1.45;
+  }
+
+  .quote__text p::before {
+    content: "“";
+  }
+
+  .quote__text p::after {
+    content: "”";
+  }
+
+  .quote__by {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .quote__by :global(.quote__photo) {
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    border-radius: 50%;
+  }
+
+  .quote__name {
+    display: block;
+    font-size: var(--step--1);
+    font-weight: var(--weight-bold);
+  }
+
+  .quote__role {
+    display: block;
+    font-size: var(--step--2);
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 60rem) {
+    .quotes {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    }
+  }
+</style>

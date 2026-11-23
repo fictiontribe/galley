@@ -1,0 +1,49 @@
+{
+  "name": "galley-astro-storefront",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A storefront for a small fashion label, in Astro: the shop's pages, campaigns, lookbooks and journal are plain files, and products, prices, stock, the cart and checkout come from a Shopify store. Works with no store connected: a demo catalogue of seventeen pieces and a bag that never takes payment. Real photographs, three looks, 24 section types, ready to edit by hand or with Galley.",
+  "keywords": [
+    "astro",
+    "astro-template",
+    "astro-theme",
+    "starter",
+    "template",
+    "ecommerce",
+    "shop",
+    "storefront",
+    "headless",
+    "shopify",
+    "fashion",
+    "lookbook",
+    "cms",
+    "galley"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.23.4"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "galley": "npx --yes galley-cms",
+    "seed": "node scripts/seed-shopify.mjs",
+    "sizes": "node scripts/make-sizes.mjs",
+    "placeholders": "node scripts/make-placeholders.mjs",
+    "photos": "node scripts/ingest-photos.mjs",
+    "thumbnails": "node scripts/make-thumbnails.mjs",
+    "check:type": "node scripts/check-type.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/albert-sans": "^5.3.0",
+    "@fontsource-variable/bodoni-moda": "^5.3.0",
+    "@fontsource-variable/spline-sans-mono": "^5.3.0",
+    "astro": "^7.4.13",
+    "marked": "^18.2.1"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
+  }
+}

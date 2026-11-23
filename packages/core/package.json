@@ -1,0 +1,59 @@
+{
+  "name": "@galley/core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Galley engine: site detection, format-preserving content edits, git-native proof and publish, the assistant.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fictiontribe/galley.git",
+    "directory": "packages/core"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./adapter": "./src/adapter/index.ts",
+    "./api": "./src/api.ts",
+    "./kit": "./src/kit.ts",
+    "./kit-catalog": "./src/kit-catalog.ts",
+    "./brand": "./src/brand.ts",
+    "./content": "./src/content/index.ts",
+    "./workspace": "./src/workspace/index.ts",
+    "./site": "./src/site/index.ts",
+    "./ai": "./src/ai/index.ts",
+    "./plugins": "./src/plugins/index.ts",
+    "./deploy": "./src/deploy/index.ts",
+    "./deploy-info": "./src/deploy/info.ts",
+    "./forms": "./src/forms/index.ts",
+    "./forms/shared": "./src/forms/shared.ts",
+    "./site-kit": "./src/site-kit/index.ts",
+    "./seo": "./src/seo/index.ts",
+    "./seo/types": "./src/seo/types.ts",
+    "./seo/text": "./src/seo/text.ts",
+    "./seo/catalog": "./src/seo/catalog.ts",
+    "./redirects": "./src/redirects/index.ts",
+    "./redirects-info": "./src/redirects/info.ts",
+    "./sitebrand": "./src/sitebrand/index.ts",
+    "./sitebrand/color": "./src/sitebrand/color.ts",
+    "./sitebrand/types": "./src/sitebrand/types.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
+    "diff": "^9.0.0",
+    "image-size": "^2.1.0",
+    "nodemailer": "^10.6.1",
+    "picomatch": "^4.0.7",
+    "smol-toml": "^1.9.1",
+    "tinyglobby": "^0.2.17",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/picomatch": "^4.0.0"
+  }
+}

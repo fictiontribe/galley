@@ -1,0 +1,32 @@
+---
+// One customer story from src/content/customers/. The page itself is
+// src/components/CustomerStory.astro; the closing invitation comes from
+// site.json → labels.customers.cta.
+import { getCollection, render, type CollectionEntry } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import CustomerStory from "../../components/CustomerStory.astro";
+
+export async function getStaticPaths() {
+  const stories = (await getCollection("customers", (story) => import.meta.env.DEV || !story.data.draft)).sort(
+    (a, b) => b.data.date.getTime() - a.data.date.getTime(),
+  );
+  return stories.map((story) => ({
+    params: { slug: story.id },
+    props: { story, others: stories.filter((other) => other.id !== story.id).slice(0, 3) },
+  }));
+}
+
+interface Props {
+  story: CollectionEntry<"customers">;
+  others: CollectionEntry<"customers">[];
+}
+
+const { story, others } = Astro.props;
+const { Content } = await render(story);
+---
+
+<Base title={story.data.headline} description={story.data.summary} image={story.data.image} imageAlt={story.data.imageAlt} type="article">
+  <CustomerStory data={story.data} others={others}>
+    <Content />
+  </CustomerStory>
+</Base>

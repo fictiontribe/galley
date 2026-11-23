@@ -1,0 +1,425 @@
+/* ==========================================================================
+   Galley — design tokens
+   Single source of truth for the UI. Plain CSS custom properties, no build.
+
+   Themes
+     :root / [data-theme="light"]     light (default) — warm paper, printing ink
+     [data-theme="dark"]              dark — inked plate
+     [data-theme="system"]            follows prefers-color-scheme
+
+   White-label
+     A deployment sets ONE value — --accent — on :root (or on any element that
+     also carries [data-theme] or .g-scope). Every accent role below is
+     re-derived from it: fill, on-accent text, hover, pressed, tints, the
+     accent-as-text colour and the focus ring. Proof and status colours are
+     deliberately NOT derived from the accent: an insertion stays an insertion
+     whatever the brand colour is.
+
+   Contrast
+     Ratios in comments are WCAG 2.x, measured (sRGB relative luminance), not
+     estimated. "AA" = 4.5:1 for text, 3:1 for UI boundaries and large text.
+     Re-measure with brand/README.md → "Checking contrast".
+
+   Fonts (self-hosted, open licence — install, never link a font CDN)
+     @fontsource-variable/newsreader   → import "@fontsource-variable/newsreader/opsz.css"
+                                          + "@fontsource-variable/newsreader/opsz-italic.css"
+     @fontsource-variable/figtree      → import "@fontsource-variable/figtree/wght.css"
+     @fontsource/ibm-plex-mono         → import "@fontsource/ibm-plex-mono/400.css"
+                                          + "@fontsource/ibm-plex-mono/500.css"
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Theme-independent tokens + light theme
+   -------------------------------------------------------------------------- */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* ---- Brand input (white-label: override this one) -------------------- */
+  --accent: #2E2BFF;                 /* "Blue Pencil" — the editor's pencil */
+
+  /* ---- Surfaces --------------------------------------------------------- */
+  --surface-paper:   #F6F1E7;        /* app background — newsprint */
+  --surface-raised:  #FDFAF4;        /* panes, cards, inputs */
+  --surface-sunken:  #EDE6D8;        /* wells, code, preview gutter */
+  --surface-overlay: #FFFCF7;        /* menus, popovers, dialogs, toasts */
+  --surface-inverse: #1A1712;        /* tooltips, inverse chips */
+  --scrim:           rgb(26 23 18 / 0.42);
+
+  /* ---- Ink -------------------------------------------------------------- */
+  /*                                   paper  raised sunken overlay          */
+  --ink-primary:   #1A1712;          /* 15.87  17.15  14.39  17.46  AAA     */
+  --ink-secondary: #514A3F;          /*  7.77   8.39   7.04   8.55  AAA     */
+  --ink-tertiary:  #6B6356;          /*  5.26   5.69   4.77   5.79  AA      */
+  --ink-disabled:  #A0978A;          /*  2.56   2.77   2.32   2.82  (exempt: disabled) */
+  --ink-inverse:   #F6F1E7;          /* on --surface-inverse: 15.87         */
+
+  /* ---- Lines ------------------------------------------------------------ */
+  --border-subtle:  #E3DACA;         /* dividers inside a surface (decorative) */
+  --border-default: #D2C7B4;         /* pane edges, cards (decorative)         */
+  --border-strong:  #857B69;         /* input + control boundaries: paper 3.71,
+                                        raised 4.00, sunken 3.36, overlay 4.08 (≥3:1, WCAG 1.4.11) */
+
+  /* ---- Proof colours (insertions, deletions, changes) --------------------
+     A pencil set chosen from the Okabe–Ito colour-blind-safe family:
+     bluish green inserts, vermilion deletes, reddish purple changes/moves.
+     NEVER colour alone — always paired with a mark:
+       insert  → solid underline + caret ‸      delete → strike-through + dele ꝺ
+       change  → dashed underline + transpose ∽
+                                 mark/text on: paper  raised  tint │ ink-on-tint */
+  --proof-insert:        #0B6E55;  /*         5.53   5.97   5.11 │            */
+  --proof-insert-tint:   #DCEDE2;
+  --proof-insert-ink:    #064534;  /*                            │  9.04      */
+  --proof-delete:        #B8361A;  /*         5.21   5.63   4.68 │            */
+  --proof-delete-tint:   #F8E1D7;
+  --proof-delete-ink:    #7A2210;  /*                            │  8.11      */
+  --proof-change:        #8E3A7A;  /*         6.14   6.64   5.50 │            */
+  --proof-change-tint:   #F1E1EA;
+  --proof-change-ink:    #5E2050;  /*                            │  9.29      */
+
+  /* ---- Status ------------------------------------------------------------
+                                 text on: paper  raised  tint │ ink-on-tint */
+  --success:       #2D6A2E;      /*        5.81   6.27   5.40 │            */
+  --success-tint:  #E2EDD9;
+  --success-ink:   #1D4A1E;      /*                           │  8.46      */
+  --warning:       #8A5800;      /*        5.37   5.80   4.89 │            */
+  --warning-tint:  #F5E6C3;
+  --warning-ink:   #5C3A00;      /*                           │  8.25      */
+  --danger:        #A8233A;      /*        6.29   6.79   5.47 │            */
+  --danger-tint:   #F6DCDF;
+  --danger-ink:    #74172A;      /*                           │  8.54      */
+  --danger-fill:   #A8233A;      /* danger button fill */
+  --danger-on:     #FFFFFF;      /* on --danger-fill: 7.08                  */
+  --info:          #2E5A8C;      /*        6.31   6.82   5.68 │            */
+  --info-tint:     #DEE7F1;
+  --info-ink:      #1D3D63;      /*                           │  8.85      */
+
+  /* ---- Accent-as-text (light) -------------------------------------------
+     Accent hue, lightness capped so it reads on paper whatever the brand
+     colour is. Default resolves to #2910F1: paper 7.65, raised 8.27, sunken 6.93,
+     overlay 8.41, accent-subtle 6.46. Sweep of 251 accents (24 hues × 2
+     saturations × 5 lightnesses + 11 extremes incl. black/white): worst case
+     4.83:1 across paper/raised/sunken. */
+  --accent-text: oklch(from var(--accent) min(l, 0.45) c h);
+
+  /* ---- Shadows (warm, restrained: paper on a desk, not glass) ----------- */
+  --shadow-color: 26 23 18;
+  --shadow-0: none;
+  --shadow-1: 0 1px 0 rgb(var(--shadow-color) / 0.04), 0 1px 3px rgb(var(--shadow-color) / 0.07);
+  --shadow-2: 0 1px 2px rgb(var(--shadow-color) / 0.06), 0 8px 24px -8px rgb(var(--shadow-color) / 0.18);
+  --shadow-3: 0 2px 6px rgb(var(--shadow-color) / 0.08), 0 24px 56px -16px rgb(var(--shadow-color) / 0.30);
+
+  /* ---- Typography ------------------------------------------------------- */
+  --font-display: "Newsreader Variable", "Newsreader", "Iowan Old Style", "Charter", "Georgia", serif;
+  --font-text:    "Figtree Variable", "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Roboto", sans-serif;
+  --font-mono:    "IBM Plex Mono", ui-monospace, "SF Mono", "Menlo", "Consolas", monospace;
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* App scale — fixed rem, tuned for a dense desktop UI (13 px base). */
+  --text-2xs: 0.6875rem;  --leading-2xs: 1rem;      /* 11/16 mono labels, counts      */
+  --text-xs:  0.75rem;    --leading-xs:  1rem;      /* 12/16 meta, hints, tags        */
+  --text-sm:  0.8125rem;  --leading-sm:  1.25rem;   /* 13/20 UI base, buttons, nav    */
+  --text-md:  0.875rem;   --leading-md:  1.375rem;  /* 14/22 inputs, chat, body copy  */
+  --text-lg:  1rem;       --leading-lg:  1.5rem;    /* 16/24 dialog + section titles  */
+  --text-xl:  1.25rem;    --leading-xl:  1.75rem;   /* 20/28 pane titles (display)    */
+  --text-2xl: 1.625rem;   --leading-2xl: 2rem;      /* 26/32 screen titles (display)  */
+  --text-3xl: 2.125rem;   --leading-3xl: 2.5rem;    /* 34/40 empty-state headline     */
+
+  /* Marketing / docs scale — fluid between 390 px and 1440 px viewports. */
+  --text-lead:  clamp(1.125rem, 1.03rem + 0.38vw, 1.375rem);  /* 18 → 22  */
+  --display-sm: clamp(1.75rem,  1.45rem + 1.14vw, 2.5rem);    /* 28 → 40  */
+  --display-md: clamp(2.25rem,  1.7rem + 2.29vw, 3.75rem);    /* 36 → 60  */
+  --display-lg: clamp(2.75rem,  1.86rem + 3.66vw, 5.25rem);   /* 44 → 84  */
+  --display-xl: clamp(3.25rem,  1.91rem + 5.49vw, 7rem);      /* 52 → 112 */
+  --leading-display: 1.02;
+  --leading-heading: 1.15;
+  --leading-body:    1.55;
+
+  --tracking-display: -0.022em;  /* Newsreader at display sizes */
+  --tracking-heading: -0.012em;
+  --tracking-normal:  0;
+  --tracking-ui:      0.004em;   /* Figtree at 12–14 px */
+  --tracking-label:   0.08em;    /* mono uppercase labels */
+
+  /* ---- Space (4 px base) ----------------------------------------------- */
+  --space-0:   0;
+  --space-px:  1px;
+  --space-0-5: 0.125rem;  /*  2 */
+  --space-1:   0.25rem;   /*  4 */
+  --space-1-5: 0.375rem;  /*  6 */
+  --space-2:   0.5rem;    /*  8 */
+  --space-3:   0.75rem;   /* 12 */
+  --space-4:   1rem;      /* 16 */
+  --space-5:   1.25rem;   /* 20 */
+  --space-6:   1.5rem;    /* 24 */
+  --space-8:   2rem;      /* 32 */
+  --space-10:  2.5rem;    /* 40 */
+  --space-12:  3rem;      /* 48 */
+  --space-16:  4rem;      /* 64 */
+  --space-20:  5rem;      /* 80 */
+  --space-24:  6rem;      /* 96 */
+  --space-32:  8rem;      /* 128 */
+  --space-section: clamp(4rem, 2.6rem + 5.7vw, 8rem);   /* marketing section rhythm */
+
+  /* ---- Radii ------------------------------------------------------------
+     Paper has square corners: surfaces are nearly square. Things you press
+     are pills (the family trait). */
+  --radius-0:    0;
+  --radius-xs:   2px;     /* inline proof marks, kbd        */
+  --radius-sm:   4px;     /* inputs, selects, checkboxes    */
+  --radius-md:   6px;     /* cards, panes, menus, toasts    */
+  --radius-lg:   10px;    /* dialogs, app frame             */
+  --radius-pill: 999px;   /* buttons, tags, chips, toggles  */
+
+  /* ---- Border widths ---------------------------------------------------- */
+  --border-hair:  1px;
+  --border-thick: 1.5px;  /* buttons, focus-adjacent controls */
+  --border-heavy: 2px;    /* proof underline, selected tab    */
+  --focus-width:  2px;
+  --focus-offset: 2px;
+
+  /* ---- Proof mark geometry --------------------------------------------- */
+  --proof-underline:  2px;      /* insertion underline thickness */
+  --proof-strike:     1.5px;    /* deletion strike thickness     */
+  --proof-offset:     0.2em;    /* underline offset              */
+
+  /* ---- Layers ----------------------------------------------------------- */
+  --z-base:     0;
+  --z-raised:   1;
+  --z-sticky:   100;
+  --z-dropdown: 1000;
+  --z-overlay:  1100;   /* scrim */
+  --z-dialog:   1200;
+  --z-popover:  1300;
+  --z-toast:    1400;
+  --z-tooltip:  1500;
+
+  /* ---- Motion -----------------------------------------------------------
+     Fast and calm. Marks "ink in" (draw left → right); nothing bounces. */
+  --duration-instant:    80ms;   /* press, toggle thumb            */
+  --duration-fast:      140ms;   /* hover, focus, colour           */
+  --duration-base:      200ms;   /* menus, tabs, toasts in         */
+  --duration-slow:      320ms;   /* panes, dialogs                 */
+  --duration-ink:       480ms;   /* proof marks drawing in         */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out:      cubic-bezier(0.16, 1, 0.3, 1);       /* expo-out: entrances  */
+  --ease-in:       cubic-bezier(0.7, 0, 0.84, 0);       /* exits                */
+  --ease-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-ink:      cubic-bezier(0.13, 0.6, 0.23, 0.98); /* inherited from the Fiction Tribe reveal */
+
+  /* ---- Layout ----------------------------------------------------------- */
+  --sidebar-width:           232px;
+  --sidebar-width-collapsed: 52px;
+  --toolbar-height:          44px;
+  --statusbar-height:        24px;
+  --form-width:              380px;   /* editor form pane default */
+  --chat-width:              360px;   /* assistant pane default   */
+  --pane-min-width:          280px;
+  --control-height-sm:       28px;
+  --control-height-md:       32px;
+  --control-height-lg:       40px;
+  --control-height-xl:       48px;    /* marketing CTAs */
+  --content-max-width:       1200px;  /* marketing + docs container */
+  --prose-max-width:         68ch;    /* docs body measure */
+  --dialog-width:            440px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Accent derivations — re-computed wherever --accent or the theme changes.
+   Declared on every scope that may set --accent or [data-theme], because a
+   custom property that references another is resolved where it is declared.
+   -------------------------------------------------------------------------- */
+:root,
+[data-theme],
+.g-scope {
+  /* Fallback for engines without relative colour syntax (pre-2024): correct
+     for dark accents such as the default; see the @supports block below. */
+  --accent-fill:    var(--accent);
+  --accent-on:      #FFFFFF;
+  --accent-away:    #000000;
+
+  /* Hover/pressed move AWAY from the on-accent colour, so contrast only grows.
+     Default: on #FEFEFE — fill #2E2BFF 7.17 · hover #2421D1 9.41 · pressed #1A18A4 12.17 */
+  --accent-hover:   color-mix(in oklab, var(--accent-fill) 86%, var(--accent-away));
+  --accent-pressed: color-mix(in oklab, var(--accent-fill) 72%, var(--accent-away));
+
+  /* Tints for selected rows, active nav, highlights. Text on them: ink-primary
+     (light #E2DDE9 13.40:1, dark #181627 15.10:1 for the default accent)
+     or --accent-text (light 6.46:1, dark 7.71:1). */
+  --accent-subtle:       color-mix(in srgb, var(--accent) 10%, var(--surface-paper));
+  --accent-subtle-hover: color-mix(in srgb, var(--accent) 16%, var(--surface-paper));
+  --accent-line:         color-mix(in srgb, var(--accent) 45%, var(--surface-paper));
+  /* Non-repro guide colour — baselines, column guides, crop-mark echoes. */
+  --accent-guide:        color-mix(in srgb, var(--accent) 22%, var(--surface-paper));
+
+  --focus-ring:     var(--accent-text);
+  --selection-bg:   color-mix(in srgb, var(--accent) 22%, var(--surface-paper));
+  --selection-ink:  var(--ink-primary);
+}
+
+/* On-accent text is chosen by luminance, not by hue:
+     Y < 0.199 → near-white text, else → near-black text
+   (0.199 is where white and black give equal contrast). Accents whose
+   luminance sits in the dead band 0.175–0.227 — where neither reaches 4.5:1 —
+   get their FILL nudged just outside the band (darkened or lightened in
+   linear light, hue kept). Everything else renders the exact brand colour.
+   Verified for 251 accents: on-accent ≥ 4.59:1 on fill, hover and pressed. */
+@supports (color: color(from red srgb-linear r g b)) {
+  :root,
+  [data-theme],
+  .g-scope {
+    --accent-on: color(from var(--accent) srgb-linear
+      calc(0.0103 + 0.9797 * clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1))
+      calc(0.0103 + 0.9797 * clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1))
+      calc(0.0103 + 0.9797 * clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1)));
+    --accent-away: color(from var(--accent) srgb-linear
+      calc(1 - clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1))
+      calc(1 - clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1))
+      calc(1 - clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1)));
+    --accent-fill: color(from var(--accent) srgb-linear
+      calc(clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1) * r * min(1, 0.175 / (0.2126 * r + 0.7152 * g + 0.0722 * b))
+        + (1 - clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1)) * (r + max(0, (0.2274 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) / (1 - (0.2126 * r + 0.7152 * g + 0.0722 * b))) * (1 - r)))
+      calc(clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1) * g * min(1, 0.175 / (0.2126 * r + 0.7152 * g + 0.0722 * b))
+        + (1 - clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1)) * (g + max(0, (0.2274 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) / (1 - (0.2126 * r + 0.7152 * g + 0.0722 * b))) * (1 - g)))
+      calc(clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1) * b * min(1, 0.175 / (0.2126 * r + 0.7152 * g + 0.0722 * b))
+        + (1 - clamp(0, (0.199 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1)) * (b + max(0, (0.2274 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) / (1 - (0.2126 * r + 0.7152 * g + 0.0722 * b))) * (1 - b))));
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3. Dark theme — the inked plate. Same roles, re-measured.
+   (Duplicated for [data-theme="system"] under the media query below; keep
+   the two blocks identical.)
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-paper:   #16140F;
+  --surface-raised:  #201D17;
+  --surface-sunken:  #0F0D0A;
+  --surface-overlay: #27231C;
+  --surface-inverse: #F2ECE1;
+  --scrim:           rgb(8 7 5 / 0.62);
+
+  /*                                   paper  raised sunken overlay */
+  --ink-primary:   #F2ECE1;          /* 15.65  14.29  16.50  13.29  */
+  --ink-secondary: #BDB3A3;          /*  8.89   8.12   9.37   7.55  */
+  --ink-tertiary:  #968C7C;          /*  5.56   5.07   5.86   4.72  */
+  --ink-disabled:  #5E574C;          /*  2.58   2.36   2.72   2.19  (exempt) */
+  --ink-inverse:   #16140F;          /* on --surface-inverse: 15.65 */
+
+  --border-subtle:  #2E2A22;
+  --border-default: #39342B;
+  --border-strong:  #7A7162;         /* paper 3.83, raised 3.49, sunken 4.03, overlay 3.25 */
+
+  /*                       mark/text on: paper  raised  tint │ ink-on-tint */
+  --proof-insert:        #5FD0AE;  /*  9.75   8.90   7.12 │            */
+  --proof-insert-tint:   #17342A;
+  --proof-insert-ink:    #9BE6CB;  /*                      │  9.34      */
+  --proof-delete:        #FF8A6B;  /*  7.97   7.28   6.52 │            */
+  --proof-delete-tint:   #3D1E15;
+  --proof-delete-ink:    #FFB9A5;  /*                      │  9.13      */
+  --proof-change:        #E58BD0;  /*  7.83   7.15   6.32 │            */
+  --proof-change-tint:   #3A1E33;
+  --proof-change-ink:    #F3BFE6;  /*                      │  9.48      */
+
+  --success:       #8BCF7A;  /*  9.91   9.05   7.59 │            */
+  --success-tint:  #1D3019;
+  --success-ink:   #B8E6AA;  /*                      │ 10.03      */
+  --warning:       #E7B44C;  /*  9.67   8.83   7.13 │            */
+  --warning-tint:  #3A2C10;
+  --warning-ink:   #F3D18E;  /*                      │  9.25      */
+  --danger:        #FF7D8F;  /*  7.52   6.87   6.18 │            */
+  --danger-tint:   #401A21;
+  --danger-ink:    #FFB3BE;  /*                      │  8.97      */
+  --danger-fill:   #F07A88;
+  --danger-on:     #16140F;  /* on --danger-fill: 6.87 */
+  --info:          #8DB8F0;  /*  8.98   8.20   7.11 │            */
+  --info-tint:     #172A40;
+  --info-ink:      #BCD5F7;  /*                      │  9.71      */
+
+  /* Accent-as-text (dark): mix toward ink first (keeps the hue in gamut),
+     then lift lightness. Default resolves to #A4A1FF: paper 7.99, raised 7.30,
+     sunken 8.43, overlay 6.79. 251-accent sweep worst case: 7.04:1. */
+  --accent-text: oklch(from color-mix(in srgb, var(--accent), var(--ink-primary) 45%) max(l, 0.76) c h);
+
+  --shadow-color: 0 0 0;
+  --shadow-1: 0 1px 0 rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.30);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 28px -8px rgb(0 0 0 / 0.55);
+  --shadow-3: 0 2px 6px rgb(0 0 0 / 0.40), 0 28px 64px -16px rgb(0 0 0 / 0.70);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    color-scheme: dark;
+
+    --surface-paper:   #16140F;
+    --surface-raised:  #201D17;
+    --surface-sunken:  #0F0D0A;
+    --surface-overlay: #27231C;
+    --surface-inverse: #F2ECE1;
+    --scrim:           rgb(8 7 5 / 0.62);
+
+    --ink-primary:   #F2ECE1;
+    --ink-secondary: #BDB3A3;
+    --ink-tertiary:  #968C7C;
+    --ink-disabled:  #5E574C;
+    --ink-inverse:   #16140F;
+
+    --border-subtle:  #2E2A22;
+    --border-default: #39342B;
+    --border-strong:  #7A7162;
+
+    --proof-insert:        #5FD0AE;
+    --proof-insert-tint:   #17342A;
+    --proof-insert-ink:    #9BE6CB;
+    --proof-delete:        #FF8A6B;
+    --proof-delete-tint:   #3D1E15;
+    --proof-delete-ink:    #FFB9A5;
+    --proof-change:        #E58BD0;
+    --proof-change-tint:   #3A1E33;
+    --proof-change-ink:    #F3BFE6;
+
+    --success:       #8BCF7A;
+    --success-tint:  #1D3019;
+    --success-ink:   #B8E6AA;
+    --warning:       #E7B44C;
+    --warning-tint:  #3A2C10;
+    --warning-ink:   #F3D18E;
+    --danger:        #FF7D8F;
+    --danger-tint:   #401A21;
+    --danger-ink:    #FFB3BE;
+    --danger-fill:   #F07A88;
+    --danger-on:     #16140F;
+    --info:          #8DB8F0;
+    --info-tint:     #172A40;
+    --info-ink:      #BCD5F7;
+
+    --accent-text: oklch(from color-mix(in srgb, var(--accent), var(--ink-primary) 45%) max(l, 0.76) c h);
+
+    --shadow-color: 0 0 0;
+    --shadow-1: 0 1px 0 rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.30);
+    --shadow-2: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 28px -8px rgb(0 0 0 / 0.55);
+    --shadow-3: 0 2px 6px rgb(0 0 0 / 0.40), 0 28px 64px -16px rgb(0 0 0 / 0.70);
+  }
+}
+
+/* Engines without relative colour syntax cannot derive accent text; fall
+   back to the raw accent (correct for the default and other dark accents). */
+@supports not (color: oklch(from red l c h)) {
+  :root, [data-theme], .g-scope { --accent-text: var(--accent); }
+}
+
+/* Reduced motion: keep state changes, drop travel. */
+@media (prefers-reduced-motion: reduce) {
+  :root, [data-theme] {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --duration-ink:  0ms;
+  }
+}

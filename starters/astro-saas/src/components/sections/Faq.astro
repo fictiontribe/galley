@@ -1,0 +1,142 @@
+---
+// Questions and answers as native <details>. Answers accept markdown.
+// `layout: split` keeps the heading beside the questions on wide screens.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Icon from "../Icon.astro";
+import { markdown, withBase, type BlockMarker, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  items: Array<{ question: string; answer: string }>;
+  layout?: "split" | "stacked";
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, items, layout = "split", cta, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+---
+
+<Section type="faq" id={id} tone={tone} block={block} labelledby={headingId}>
+  <div class:list={["faq", `faq--${layout}`]}>
+    <div class="faq__head">
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} size="small" align={layout === "stacked" ? "center" : "left"} class="faq__header" />
+      {
+        cta && (
+          <a class="text-link" href={withBase(cta.href)}>
+            {cta.label}
+            <Icon name="arrow-right" size={18} />
+          </a>
+        )
+      }
+    </div>
+    <div class="faq__list">
+      {
+        items.map((item) => (
+          <details class="faq__item">
+            <summary class="faq__question">
+              <span>{item.question}</span>
+              <Icon name="plus" size={20} class="faq__icon" />
+            </summary>
+            <div class="faq__answer prose" set:html={markdown(item.answer)} />
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</Section>
+
+<style>
+  .faq {
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  .faq__head {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+  }
+
+  .faq--stacked .faq__head {
+    justify-items: center;
+  }
+
+  .faq__head :global(.faq__header) {
+    margin-block-end: 0;
+  }
+
+  .faq--stacked .faq__list {
+    inline-size: 100%;
+    max-width: 52rem;
+    margin-inline: auto;
+  }
+
+  .faq__list {
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .faq__item {
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .faq__question {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-m);
+    padding-block: var(--space-s);
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: var(--weight-medium);
+    letter-spacing: -0.015em;
+    line-height: 1.3;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .faq__question::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq__question:hover {
+    color: var(--tone-link);
+  }
+
+  .faq__question :global(.faq__icon) {
+    flex: none;
+    margin-block-start: 0.15em;
+    color: var(--tone-link);
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .faq__item[open] :global(.faq__icon) {
+    transform: rotate(45deg);
+  }
+
+  .faq__answer {
+    padding-block-end: var(--space-m);
+    padding-inline-end: var(--space-xl);
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 60rem) {
+    .faq--split {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: var(--space-2xl);
+      align-items: start;
+    }
+
+    .faq--split .faq__head {
+      position: sticky;
+      top: calc(var(--header-height) + var(--space-l));
+    }
+  }
+</style>

@@ -1,0 +1,54 @@
+---
+// An image that reserves its space before it loads: the box is sized by
+// `ratio` (CSS aspect-ratio). SVG files from public/ are inlined, so they are
+// drawn in the current look's colours (see the .s-* classes in global.css);
+// anything else is an <img>, cropped to fit with object-fit.
+import { inlineSvg, withBase } from "../lib/site";
+
+interface Props {
+  src: string;
+  alt: string;
+  /** Width / height, e.g. "4/3". */
+  ratio?: string;
+  /** Load straight away (above the fold) instead of lazily. */
+  eager?: boolean;
+  /** Fit the whole picture in the box instead of cropping it. */
+  contain?: boolean;
+  /** Always use an <img>, even for an SVG. */
+  noInline?: boolean;
+  class?: string;
+}
+
+const { src, alt, ratio = "4/3", eager = false, contain = false, noInline = false, class: className } = Astro.props;
+const [w, h] = ratio.split("/").map((part) => Number(part.trim()));
+const width = 1200;
+const height = Math.round((width * h) / w);
+const svg = noInline ? undefined : inlineSvg(src);
+// Inline drawings fit the box the way object-fit would.
+const fitted = svg?.replace("<svg", `<svg preserveAspectRatio="${contain ? "xMidYMid meet" : "xMidYMid slice"}" aria-hidden="true" focusable="false"`);
+---
+
+{
+  fitted ? (
+    <div
+      class:list={["media", "media--inline", { "media--contain": contain }, className]}
+      style={`--ratio: ${w} / ${h}`}
+      role={alt ? "img" : undefined}
+      aria-label={alt || undefined}
+      aria-hidden={alt ? undefined : "true"}
+      set:html={fitted}
+    />
+  ) : (
+    <img
+      class:list={["media", { "media--contain": contain }, className]}
+      src={withBase(src)}
+      alt={alt}
+      width={width}
+      height={height}
+      loading={eager ? "eager" : "lazy"}
+      decoding="async"
+      fetchpriority={eager ? "high" : undefined}
+      style={`--ratio: ${w} / ${h}`}
+    />
+  )
+}

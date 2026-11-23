@@ -1,0 +1,167 @@
+---
+// How the product protects customers' data: practices as icon items, plus a
+// row of short reassurance chips. Write what is actually true of your
+// product — never name a certification you do not hold.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Icon from "../Icon.astro";
+import { withBase, type BlockMarker, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  items: Array<{ icon?: string; heading: string; text: string }>;
+  badges?: string[];
+  layout?: "grid" | "split";
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, items, badges = [], layout = "grid", cta, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
+---
+
+<Section type="security" id={id} tone={tone} block={block} labelledby={headingId}>
+  <div class:list={["security", `security--${layout}`]}>
+    <div class="security__head">
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} class="security__header" />
+      {
+        badges.length > 0 && (
+          <ul class="security__badges" role="list">
+            {badges.map((badge) => (
+              <li class="security__badge">
+                <Icon name="shield" size={16} />
+                {badge}
+              </li>
+            ))}
+          </ul>
+        )
+      }
+      {
+        cta && (
+          <a class="text-link" href={withBase(cta.href)}>
+            {cta.label}
+            <Icon name="arrow-right" size={18} />
+          </a>
+        )
+      }
+    </div>
+    <ul class="security__items" role="list">
+      {
+        items.map((item) => (
+          <li class="security__item">
+            <span class="security__icon" aria-hidden="true">
+              <Icon name={item.icon ?? "shield"} size={20} />
+            </span>
+            <div>
+              <ItemHeading class="security__item-heading">{item.heading}</ItemHeading>
+              <p class="security__item-text">{item.text}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Section>
+
+<style>
+  .security {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  .security__head {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+    align-content: start;
+  }
+
+  .security__head :global(.security__header) {
+    margin-block-end: 0;
+  }
+
+  .security__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs);
+    padding: 0;
+    list-style: none;
+  }
+
+  .security__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    padding: 0.35em 0.8em;
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-pill);
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+  }
+
+  .security__badge :global(svg) {
+    color: var(--tone-link);
+  }
+
+  .security__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-l) var(--space-l);
+    padding: 0;
+    list-style: none;
+  }
+
+  .security__item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-s);
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .security__icon {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: 50%;
+    color: var(--tone-link);
+  }
+
+  .security__item-heading {
+    font-size: var(--step-0);
+    font-family: var(--font-body);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0;
+    line-height: 1.35;
+  }
+
+  .security__item-text {
+    margin-block-start: var(--space-3xs);
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 60rem) {
+    .security--split {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: var(--space-2xl);
+    }
+
+    .security--split .security__items {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .security--grid .security__items {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

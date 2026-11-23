@@ -1,0 +1,131 @@
+---
+// Single garments as cards: a still-life photograph, the name, a note, a
+// price shown as text, and a link (enquire, find a stockist). For things the
+// shop doesn't sell (samples, seconds); product-rail shows what it does.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Actions from "../Actions.astro";
+import Media from "../Media.astro";
+import Icon from "../Icon.astro";
+import { withBase, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  columns?: number;
+  ratio?: "portrait" | "square";
+  items: Array<{ image: string; imageAlt: string; name: string; note?: string; price?: string; link?: Link }>;
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, columns = 4, ratio = "portrait", items, cta, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+---
+
+<Section type="pieces" id={id} tone={tone} labelledby={headingId} block={block}>
+  <div class="pieces__head">
+    <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} class="pieces__header" />
+    <Actions secondaryCta={cta} />
+  </div>
+  <ul class="pieces" role="list" style={`--columns: ${columns}`}>
+    {
+      items.map((item) => (
+        <li class="piece">
+          <div class="frame">
+            <Media src={item.image} alt={item.imageAlt} ratio={ratio} />
+          </div>
+          <div class="piece__body">
+            <p class="piece__name">{item.name}</p>
+            {item.price && <p class="piece__price">{item.price}</p>}
+            {item.note && <p class="piece__note">{item.note}</p>}
+          </div>
+          {item.link && (
+            <a class="text-link piece__link" href={withBase(item.link.href)}>
+              {item.link.label}
+              <Icon name="arrow-right" size={14} />
+            </a>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .pieces__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-s) var(--space-xl);
+    margin-block-end: var(--space-xl);
+  }
+
+  .pieces__head :global(.pieces__header) {
+    margin-block-end: 0;
+  }
+
+  .pieces {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-xl) var(--gutter);
+    padding: 0;
+    list-style: none;
+  }
+
+  .piece {
+    display: grid;
+    gap: var(--space-xs);
+    align-content: start;
+  }
+
+  .piece__body {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-3xs) var(--space-s);
+    padding-block-start: var(--space-2xs);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .piece__name {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    line-height: 1.15;
+  }
+
+  .piece__price {
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .piece__note {
+    grid-column: 1 / -1;
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  /* On a phone two pieces share a row: the name, price and link, no note. */
+  @media (max-width: 39.99rem) {
+    .piece__note {
+      display: none;
+    }
+  }
+
+  .piece__link {
+    justify-self: start;
+    min-height: 2.75rem;
+  }
+
+  @media (min-width: 60rem) {
+    .pieces {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    }
+  }
+</style>

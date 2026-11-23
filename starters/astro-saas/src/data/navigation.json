@@ -1,0 +1,146 @@
+{
+  "header": [
+    {
+      "label": "Product",
+      "items": [
+        {
+          "label": "Platform overview",
+          "href": "/product/",
+          "text": "Plan, inspect, fix and prove, in one schedule"
+        },
+        {
+          "label": "Planned maintenance",
+          "href": "/product/#planning",
+          "text": "Every recurring task for every asset, on time"
+        },
+        {
+          "label": "Inspections",
+          "href": "/product/#inspections",
+          "text": "Checklists on the phone, offline, with photos"
+        },
+        {
+          "label": "Work orders",
+          "href": "/product/#work-orders",
+          "text": "Reactive jobs routed to the right contractor"
+        },
+        {
+          "label": "Integrations",
+          "href": "/product/#integrations",
+          "text": "Single sign-on, finance exports and an open API"
+        }
+      ]
+    },
+    {
+      "label": "Solutions",
+      "items": [
+        {
+          "label": "Facilities teams",
+          "href": "/solutions/facilities-teams/",
+          "text": "For in-house estates and operations teams"
+        },
+        {
+          "label": "Service contractors",
+          "href": "/solutions/service-contractors/",
+          "text": "For maintenance firms serving many clients"
+        },
+        {
+          "label": "Customer stories",
+          "href": "/customers/",
+          "text": "How teams like yours run Ferrow"
+        }
+      ]
+    },
+    {
+      "label": "Pricing",
+      "href": "/pricing/"
+    },
+    {
+      "label": "Resources",
+      "items": [
+        {
+          "label": "Blog",
+          "href": "/blog/",
+          "text": "Notes on running buildings well"
+        },
+        {
+          "label": "Guides",
+          "href": "/blog/tags/guides/",
+          "text": "Step-by-step help for compliance work"
+        },
+        {
+          "label": "Changelog",
+          "href": "/changelog/",
+          "text": "What shipped this month"
+        }
+      ]
+    },
+    {
+      "label": "Company",
+      "items": [
+        {
+          "label": "About",
+          "href": "/about/",
+          "text": "Who we are and why we build Ferrow"
+        },
+        {
+          "label": "Security",
+          "href": "/security/",
+          "text": "How we look after your data"
+        },
+        {
+          "label": "Contact",
+          "href": "/contact/",
+          "text": "Sales, support and everything else"
+        }
+      ]
+    }
+  ],
+  "cta": {
+    "label": "Book a demo",
+    "href": "/contact/"
+  },
+  "secondaryCta": {
+    "label": "Sign in",
+    "href": "https://app.example.com/"
+  },
+  "footer": [
+    {
+      "heading": "Product",
+      "links": [
+        { "label": "Platform overview", "href": "/product/" },
+        { "label": "Pricing", "href": "/pricing/" },
+        { "label": "Integrations", "href": "/product/#integrations" },
+        { "label": "Changelog", "href": "/changelog/" }
+      ]
+    },
+    {
+      "heading": "Solutions",
+      "links": [
+        { "label": "Facilities teams", "href": "/solutions/facilities-teams/" },
+        { "label": "Service contractors", "href": "/solutions/service-contractors/" },
+        { "label": "Customer stories", "href": "/customers/" }
+      ]
+    },
+    {
+      "heading": "Resources",
+      "links": [
+        { "label": "Blog", "href": "/blog/" },
+        { "label": "Guides", "href": "/blog/tags/guides/" },
+        { "label": "Security", "href": "/security/" }
+      ]
+    },
+    {
+      "heading": "Company",
+      "links": [
+        { "label": "About", "href": "/about/" },
+        { "label": "Leadership", "href": "/about/#leadership" },
+        { "label": "Contact", "href": "/contact/" }
+      ]
+    }
+  ],
+  "legal": [
+    { "label": "Privacy", "href": "/privacy/" },
+    { "label": "Terms", "href": "/terms/" },
+    { "label": "Security", "href": "/security/" }
+  ]
+}

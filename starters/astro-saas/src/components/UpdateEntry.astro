@@ -1,0 +1,145 @@
+---
+// One changelog entry: date, version and kind of change beside the title and
+// body. `full` renders the body (the changelog page); otherwise the title
+// links to the entry on that page.
+import { render, type CollectionEntry } from "astro:content";
+import Media from "./Media.astro";
+import { fill, formatShortDate, labels } from "../lib/site";
+import { updateUrl } from "../lib/posts";
+
+interface Props {
+  entry: CollectionEntry<"changelog">;
+  full?: boolean;
+  headingLevel?: 2 | 3;
+}
+
+const { entry, full = false, headingLevel = 3 } = Astro.props;
+const Heading = `h${headingLevel}` as "h2" | "h3";
+const { Content } = full ? await render(entry) : { Content: null };
+---
+
+<article class:list={["update", { "update--full": full }]} id={full ? entry.id : undefined}>
+  <div class="update__meta">
+    <time datetime={entry.data.date.toISOString()} class="update__date">{formatShortDate(entry.data.date)}</time>
+    {entry.data.version && <span class="update__version mono">{fill(labels.changelog.version, { version: entry.data.version })}</span>}
+  </div>
+  <div class="update__body">
+    {
+      entry.data.tags.length > 0 && (
+        <ul class="update__tags" role="list" aria-label={labels.changelog.kind}>
+          {entry.data.tags.map((tag) => (
+            <li class:list={["chip", `chip--${tag.toLowerCase()}`]}>{tag}</li>
+          ))}
+        </ul>
+      )
+    }
+    <Heading class="update__title">
+      {full ? (
+        <a href={`#${entry.id}`} class="update__anchor" aria-label={`${entry.data.title} — ${labels.changelog.permalink}`}>
+          {entry.data.title}
+        </a>
+      ) : (
+        <a href={updateUrl(entry)}>{entry.data.title}</a>
+      )}
+    </Heading>
+    {
+      full && (
+        <>
+          {entry.data.image && <Media src={entry.data.image} alt={entry.data.imageAlt ?? ""} ratio="16/9" class="update__media" />}
+          <div class="prose update__prose">{Content && <Content />}</div>
+        </>
+      )
+    }
+  </div>
+</article>
+
+<style>
+  .update {
+    display: grid;
+    gap: var(--space-2xs) var(--space-l);
+    padding-block: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .update--full {
+    padding-block: var(--space-xl);
+  }
+
+  .update__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2xs) var(--space-s);
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .update__date {
+    font-weight: var(--weight-medium);
+    color: var(--tone-text);
+  }
+
+  .update__version {
+    font-size: var(--step--2);
+  }
+
+  .update__body {
+    display: grid;
+    gap: var(--space-xs);
+    min-width: 0;
+  }
+
+  .update__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3xs);
+    padding: 0;
+    list-style: none;
+  }
+
+  .update__title {
+    font-size: var(--step-1);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .update--full .update__title {
+    font-size: var(--step-3);
+    line-height: 1.08;
+  }
+
+  .update__title a {
+    color: var(--tone-text);
+    text-decoration-color: transparent;
+  }
+
+  .update__title a:hover {
+    text-decoration-color: var(--tone-link);
+  }
+
+  .update :global(.update__media) {
+    margin-block: var(--space-s);
+    border: var(--border-width) solid var(--tone-line);
+  }
+
+  .update__prose {
+    color: var(--tone-text);
+  }
+
+  @media (min-width: 52rem) {
+    .update {
+      grid-template-columns: 11rem minmax(0, 1fr);
+    }
+
+    .update__meta {
+      flex-direction: column;
+      gap: var(--space-3xs);
+    }
+
+    .update--full .update__meta {
+      position: sticky;
+      top: calc(var(--header-height) + var(--space-l));
+      align-self: start;
+    }
+  }
+</style>

@@ -1,0 +1,37 @@
+---
+// Rendered for a section whose `type` has no component. Visible while
+// developing so the gap is obvious; renders nothing in a production build.
+import { labels, type BlockMarker } from "../../lib/site";
+
+interface Props {
+  type: string;
+  block?: BlockMarker;
+}
+
+const { type, block } = Astro.props;
+const dev = import.meta.env.DEV;
+---
+
+{
+  dev && (
+    <div class="unknown-section container" role="note" data-galley-block={block?.key} data-galley-block-type={block?.type}>
+      <strong>{labels.dev.unknownSection}</strong>
+      <code>{type}</code>
+    </div>
+  )
+}
+
+<style>
+  .unknown-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: center;
+    margin-block: var(--space-l);
+    padding: var(--space-m);
+    border: 2px dashed var(--color-accent);
+    border-radius: var(--radius-m);
+    color: var(--color-text);
+    font-size: var(--step--1);
+  }
+</style>

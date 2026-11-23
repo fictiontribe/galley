@@ -1,0 +1,31 @@
+{
+  "name": "Contact",
+  "submitLabel": "Send message",
+  "fields": [
+    { "id": "name", "type": "text", "label": "Full name", "required": true, "width": "half" },
+    { "id": "email", "type": "email", "label": "Work email", "required": true, "width": "half" },
+    { "id": "company", "type": "text", "label": "Company", "width": "half" },
+    {
+      "id": "topic",
+      "type": "select",
+      "label": "What is this about?",
+      "width": "half",
+      "placeholder": "Choose one",
+      "options": [
+        { "value": "demo", "label": "Book a demo" },
+        { "value": "pricing", "label": "Pricing and plans" },
+        { "value": "account", "label": "Help with my account" },
+        { "value": "partnerships", "label": "Partnerships" },
+        { "value": "other", "label": "Something else" }
+      ]
+    },
+    { "id": "message", "type": "textarea", "label": "How can we help?", "required": true }
+  ],
+  "destinations": [{ "provider": "galley", "settings": {} }],
+  "afterSubmit": [
+    { "type": "event", "name": "contact_sent", "params": { "topic": "{{topic}}" } },
+    { "type": "message", "title": "Thanks, {{name}}", "text": "A person on our team will reply to **{{email}}** within one working day." }
+  ],
+  "errorMessage": "Your message couldn't be sent just now. Your answers are still here — try again, or write to hello@example.com.",
+  "spam": { "honeypot": true, "minSeconds": 3 }
+}

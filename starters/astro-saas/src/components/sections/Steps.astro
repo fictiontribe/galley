@@ -1,0 +1,177 @@
+---
+// How it works, in order: numbered steps along a row, or down a timeline
+// with a label (a week, an owner) beside each step.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Actions from "../Actions.astro";
+import type { BlockMarker, Link, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  items: Array<{ heading: string; text: string; label?: string }>;
+  layout?: "row" | "timeline";
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, items, layout = "row", cta, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
+---
+
+<Section type="steps" id={id} tone={tone} block={block} labelledby={headingId}>
+  <div class:list={["steps-layout", `steps-layout--${layout}`]}>
+    <div class="steps-layout__head">
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} size={layout === "timeline" ? "small" : "default"} class="steps__header" />
+      <Actions cta={cta} />
+    </div>
+    <ol class="steps" role="list" style={`--count: ${items.length}`}>
+      {
+        items.map((item, i) => (
+          <li class="step">
+            <span class="step__marker" aria-hidden="true">
+              <span class="step__number mono">{String(i + 1).padStart(2, "0")}</span>
+            </span>
+            <div class="step__body">
+              {item.label && <p class="step__label">{item.label}</p>}
+              <ItemHeading class="step__heading">{item.heading}</ItemHeading>
+              <p class="step__text">{item.text}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</Section>
+
+<style>
+  .steps-layout {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  .steps-layout__head {
+    display: grid;
+    gap: var(--space-l);
+    justify-items: start;
+  }
+
+  .steps-layout__head :global(.steps__header) {
+    margin-block-end: 0;
+  }
+
+  .steps {
+    display: grid;
+    gap: var(--space-l);
+    padding: 0;
+    list-style: none;
+  }
+
+  .step {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-s);
+  }
+
+  .step__marker {
+    position: relative;
+    display: grid;
+    justify-items: center;
+  }
+
+  .step__number {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
+    border: var(--border-width) solid var(--tone-control);
+    border-radius: 50%;
+    background: var(--tone-bg);
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    color: var(--tone-text);
+  }
+
+  .step:first-child .step__number {
+    border-color: var(--tone-link);
+    background: var(--tone-link);
+    color: var(--tone-bg);
+  }
+
+  /* The line joining one step to the next. */
+  .step:not(:last-child) .step__marker::after {
+    content: "";
+    position: absolute;
+    top: 2.5rem;
+    bottom: calc(-1 * var(--space-l));
+    inline-size: 1px;
+    background: var(--tone-line);
+  }
+
+  .step__body {
+    display: grid;
+    gap: var(--space-3xs);
+    padding-block-start: 0.4rem;
+  }
+
+  .step__label {
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-link);
+  }
+
+  .step__heading {
+    font-size: var(--step-1);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .step__text {
+    color: var(--tone-muted);
+    max-width: 34em;
+  }
+
+  @media (min-width: 60rem) {
+    .steps-layout--row .steps {
+      grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+      gap: var(--space-m);
+    }
+
+    .steps-layout--row .step {
+      grid-template-columns: 1fr;
+    }
+
+    .steps-layout--row .step__marker {
+      justify-items: start;
+    }
+
+    .steps-layout--row .step:not(:last-child) .step__marker::after {
+      top: 1.25rem;
+      bottom: auto;
+      left: 3.25rem;
+      right: calc(-1 * var(--space-m) + 0.75rem);
+      inline-size: auto;
+      block-size: 1px;
+    }
+
+    .steps-layout--timeline {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: var(--space-2xl);
+      align-items: start;
+    }
+
+    .steps-layout--timeline .steps-layout__head {
+      position: sticky;
+      top: calc(var(--header-height) + var(--space-l));
+    }
+  }
+</style>

@@ -1,0 +1,61 @@
+{
+  "ui": {
+    "docs": "Documentation",
+    "menu": "Documentation menu",
+    "pager": "Previous and next page",
+    "previous": "Previous",
+    "next": "Next",
+    "edit": "Edit this page on GitHub",
+    "editNote": "Every page here is a markdown file in the repository — and editable with Galley.",
+    "onThisPage": "On this page",
+    "filterLabel": "Filter the documentation",
+    "filterPlaceholder": "Filter pages and sections",
+    "filterEmpty": "No page matches. Try a shorter word."
+  },
+  "groups": [
+    {
+      "id": "start",
+      "label": "Start here"
+    },
+    {
+      "id": "editing",
+      "label": "Edit a site"
+    },
+    {
+      "id": "site",
+      "label": "Look after a site"
+    },
+    {
+      "id": "getting-started",
+      "label": "Set up (developers)"
+    },
+    {
+      "id": "concepts",
+      "label": "How it works"
+    },
+    {
+      "id": "astro",
+      "label": "Your Astro site"
+    },
+    {
+      "id": "configuration",
+      "label": "Configuration"
+    },
+    {
+      "id": "extend",
+      "label": "Extend Galley"
+    },
+    {
+      "id": "running",
+      "label": "Run Galley"
+    },
+    {
+      "id": "reference",
+      "label": "Reference"
+    },
+    {
+      "id": "project",
+      "label": "Project"
+    }
+  ]
+}

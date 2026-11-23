@@ -1,0 +1,145 @@
+{
+  "about": "The only feature statuses this site may state. Every built / preview / new / in progress / later label on the site is rendered from this file: flip a status here and every page follows. Keep CLAIMS.md in step.",
+  "labels": {
+    "built": "Built",
+    "preview": "Preview",
+    "new": "New, in final checks",
+    "progress": "In progress",
+    "later": "Later"
+  },
+  "groups": [
+    "built",
+    "new",
+    "progress"
+  ],
+  "items": [
+    {
+      "id": "edit",
+      "label": "Edit three ways",
+      "line": "In a form, on the page itself, or by asking the assistant.",
+      "status": "built"
+    },
+    {
+      "id": "proof",
+      "label": "Proof",
+      "line": "Every change marked up beside the live site. Put any one back.",
+      "status": "built"
+    },
+    {
+      "id": "publish",
+      "label": "Publish to git",
+      "line": "To your own repository. Undo is a new commit.",
+      "status": "built"
+    },
+    {
+      "id": "builder",
+      "label": "Page builder",
+      "line": "Drag the site’s own sections onto the page.",
+      "status": "preview"
+    },
+    {
+      "id": "forms",
+      "label": "Forms and form builder",
+      "line": "HubSpot, Marketo, Salesforce, Pardot, webhooks or Galley’s own inbox.",
+      "status": "built"
+    },
+    {
+      "id": "scripts",
+      "label": "Scripts with consent",
+      "line": "Tag Manager, Analytics and others, loaded after consent.",
+      "status": "built"
+    },
+    {
+      "id": "plugins",
+      "label": "Plugins",
+      "line": "Image and video generation among them.",
+      "status": "built"
+    },
+    {
+      "id": "deploy-cloudflare",
+      "label": "Deploy to Cloudflare",
+      "line": "Verified on the real service, redirects file included.",
+      "status": "built"
+    },
+    {
+      "id": "agencies",
+      "label": "Many sites, one app",
+      "line": "For agencies: your brand, client changes as pull requests.",
+      "status": "built"
+    },
+    {
+      "id": "apps",
+      "label": "Desktop and web apps",
+      "line": "A macOS desktop app, and a web app.",
+      "status": "built"
+    },
+    {
+      "id": "mcp",
+      "label": "MCP for AI tools",
+      "line": "Drive Galley from Claude, Cursor or your own agent.",
+      "status": "built"
+    },
+    {
+      "id": "starters",
+      "label": "Three starters",
+      "line": "Caddow, Ferrow and Lowfield Studio.",
+      "status": "built"
+    },
+    {
+      "id": "redirects",
+      "label": "Redirects",
+      "line": "Paste a list; checks run and the host’s file stays in step.",
+      "status": "new"
+    },
+    {
+      "id": "brand",
+      "label": "Brand setup",
+      "line": "Read from the site, or from guidelines, logos and screenshots.",
+      "status": "new"
+    },
+    {
+      "id": "checks",
+      "label": "Search and AI checks",
+      "line": "Findings, with fixes that land in Proof.",
+      "status": "new"
+    },
+    {
+      "id": "deploy-vercel",
+      "label": "Deploy to Vercel",
+      "line": "Built; not yet verified on the real service.",
+      "status": "progress"
+    },
+    {
+      "id": "twins",
+      "label": "Agent-readable pages",
+      "line": "Markdown twins and llms.txt for the sites Galley builds.",
+      "status": "progress"
+    },
+    {
+      "id": "wordpress-guided",
+      "label": "Guided WordPress move",
+      "line": "Bring a WordPress site into the app in four steps.",
+      "status": "new"
+    },
+    {
+      "id": "shopify",
+      "label": "Shopify storefront starter",
+      "line": "A shop built from sections.",
+      "status": "progress"
+    },
+    {
+      "id": "crawlers",
+      "label": "A switch per AI-crawler family",
+      "line": "Allow citing in answers, training, or neither, written into robots.txt.",
+      "status": "progress",
+      "home": false
+    },
+    {
+      "id": "cloud",
+      "label": "Galley Cloud",
+      "line": "Galley, hosted. No date or price yet.",
+      "status": "later",
+      "home": false
+    }
+  ]
+}

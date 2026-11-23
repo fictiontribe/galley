@@ -1,0 +1,66 @@
+{
+  "name": "Lowfield Studio",
+  "tagline": "Architecture for the homes people already love",
+  "description": "Lowfield is a small architecture studio in Wrenhallow. We design extensions, renovations and garden rooms for homes that are good, and could be better.",
+  "url": "https://www.example.com",
+  "lang": "en",
+  "locale": "en-GB",
+  "email": "hello@example.com",
+  "phone": "01632 960 418",
+  "address": "4 Tannery Yard, Wrenhallow",
+  "titleTemplate": "{title} · {site}",
+  "shareImage": "/images/share.png",
+  "shareImageAlt": "Lowfield Studio — architecture for the homes people already love",
+  "social": [
+    {
+      "label": "Instagram",
+      "href": "https://www.instagram.com/"
+    },
+    {
+      "label": "Pinterest",
+      "href": "https://www.pinterest.com/"
+    },
+    {
+      "label": "LinkedIn",
+      "href": "https://www.linkedin.com/"
+    }
+  ],
+  "footerText": "Lowfield Studio is a fictional practice. Registered architects, insured, and always happy to talk over a cup of tea.",
+  "blog": {
+    "pageSize": 9
+  },
+  "labels": {
+    "skipLink": "Skip to content",
+    "nav": {
+      "main": "Main",
+      "footer": "Footer",
+      "menu": "Menu",
+      "close": "Close",
+      "social": "Elsewhere",
+      "contact": "Get in touch",
+      "privacyChoices": "Privacy choices"
+    },
+    "blog": {
+      "allPosts": "All posts",
+      "published": "Published",
+      "by": "By",
+      "tags": "Filed under",
+      "topics": "Topics",
+      "tagTitle": "Filed under “{tag}”",
+      "tagDescription": "Every post in the journal filed under “{tag}”.",
+      "readingTime": "{minutes} min read",
+      "aboutAuthor": "About the author",
+      "backToBlog": "Back to the journal",
+      "newer": "Newer posts",
+      "older": "Older posts",
+      "pageOf": "Page {current} of {total}",
+      "pagination": "Journal pages",
+      "empty": "Nothing published yet. The first post is on its way."
+    },
+    "dev": {
+      "unknownSection": "This section type has no component yet",
+      "chooseForm": "Choose a form for this section.",
+      "unknownForm": "There is no form called “{id}”. Choose one from the forms."
+    }
+  }
+}

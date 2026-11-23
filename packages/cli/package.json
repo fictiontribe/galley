@@ -1,0 +1,44 @@
+{
+  "name": "galley-cms",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Galley — the AI CMS for static sites. Run `galley` in a site folder.",
+  "keywords": [
+    "cms",
+    "static-site",
+    "astro",
+    "git",
+    "ai",
+    "mcp"
+  ],
+  "license": "Apache-2.0",
+  "homepage": "https://galley.fictiontribe.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fictiontribe/galley.git",
+    "directory": "packages/cli"
+  },
+  "bugs": "https://github.com/fictiontribe/galley/issues",
+  "bin": {
+    "galley": "./bin/galley.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@galley/core": "workspace:*",
+    "@galley/mcp": "workspace:*",
+    "@galley/server": "workspace:*",
+    "esbuild": "^0.28.0"
+  }
+}

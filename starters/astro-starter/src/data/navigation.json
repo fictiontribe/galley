@@ -1,0 +1,64 @@
+{
+  "header": [
+    {
+      "label": "Services",
+      "href": "/services/"
+    },
+    {
+      "label": "About",
+      "href": "/about/"
+    },
+    {
+      "label": "Pricing",
+      "href": "/pricing/"
+    },
+    {
+      "label": "Journal",
+      "href": "/blog/"
+    }
+  ],
+  "cta": {
+    "label": "Book a visit",
+    "href": "/contact/"
+  },
+  "footer": [
+    {
+      "heading": "Studio",
+      "links": [
+        {
+          "label": "About",
+          "href": "/about/"
+        },
+        {
+          "label": "Our team",
+          "href": "/about/#team"
+        },
+        {
+          "label": "Journal",
+          "href": "/blog/"
+        },
+        {
+          "label": "Privacy",
+          "href": "/privacy/"
+        }
+      ]
+    },
+    {
+      "heading": "Work with us",
+      "links": [
+        {
+          "label": "Services",
+          "href": "/services/"
+        },
+        {
+          "label": "Pricing",
+          "href": "/pricing/"
+        },
+        {
+          "label": "Book a visit",
+          "href": "/contact/"
+        }
+      ]
+    }
+  ]
+}

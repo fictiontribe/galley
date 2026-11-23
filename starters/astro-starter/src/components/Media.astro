@@ -1,0 +1,32 @@
+---
+// An image that reserves its space before it loads: the box is sized by
+// `ratio` (CSS aspect-ratio) and the file is cropped to fit with object-fit.
+import { withBase } from "../lib/site";
+
+interface Props {
+  src: string;
+  alt: string;
+  /** Width / height, e.g. "4/3". */
+  ratio?: string;
+  /** Load straight away (above the fold) instead of lazily. */
+  eager?: boolean;
+  class?: string;
+}
+
+const { src, alt, ratio = "4/3", eager = false, class: className } = Astro.props;
+const [w, h] = ratio.split("/").map((part) => Number(part.trim()));
+const width = 1200;
+const height = Math.round((width * h) / w);
+---
+
+<img
+  class:list={["media", className]}
+  src={withBase(src)}
+  alt={alt}
+  width={width}
+  height={height}
+  loading={eager ? "eager" : "lazy"}
+  decoding="async"
+  fetchpriority={eager ? "high" : undefined}
+  style={`--ratio: ${w} / ${h}`}
+/>

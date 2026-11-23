@@ -1,0 +1,22 @@
+{
+  "format": "wordpress",
+  "redirects": [
+    {
+      "line": 4,
+      "from": "/2019/05/survey-notes/",
+      "to": "/blog/measured-survey/",
+      "status": 301,
+      "note": "Survey notes"
+    },
+    {
+      "line": 5,
+      "from": "/sample-page/",
+      "to": "/about/",
+      "status": 301,
+      "note": "About us"
+    }
+  ],
+  "rejected": [],
+  "ignored": 0,
+  "unknownHosts": []
+}

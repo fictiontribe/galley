@@ -1,0 +1,234 @@
+/* The start-up window. Values copied from brand/tokens.css (this page is
+   bundled into the app on its own, before the UI is reachable). */
+:root {
+  color-scheme: light dark;
+  --accent: #2e2bff;
+  --surface-paper: #f6f1e7;
+  --surface-raised: #fdfaf4;
+  --surface-sunken: #ede6d8;
+  --ink-primary: #1a1712;
+  --ink-secondary: #514a3f;
+  --ink-tertiary: #6b6356;
+  --border-default: #d2c7b4;
+  --border-strong: #857b69;
+  --danger: #a8233a;
+  --on-accent: #ffffff;
+  --accent-text: #2910f1;
+  --font-display: "Newsreader Variable", "Newsreader", "Iowan Old Style", "Charter", "Georgia", serif;
+  --font-text: "Figtree Variable", "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Roboto", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Menlo", "Consolas", monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-pill: 999px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-paper: #16140f;
+    --surface-raised: #201d17;
+    --surface-sunken: #0f0d0a;
+    --ink-primary: #f2ece1;
+    --ink-secondary: #bdb3a3;
+    --ink-tertiary: #968c7c;
+    --border-default: #39342b;
+    --border-strong: #7a7162;
+    --danger: #ff7d8f;
+    --accent-text: #a4a1ff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--surface-paper);
+  color: var(--ink-primary);
+  font: 400 14px/1.5 var(--font-text);
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+.frame {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 2.5rem;
+  text-align: center;
+}
+
+.mark {
+  flex: none;
+  margin-bottom: 1.25rem;
+}
+
+.mark-ink {
+  fill: var(--ink-primary);
+}
+
+.mark-accent {
+  fill: var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .mark-accent {
+    fill: var(--accent-text);
+  }
+}
+
+.state {
+  width: 100%;
+  max-width: 420px;
+}
+
+.product {
+  margin: 0 0 0.5rem;
+  color: var(--ink-primary);
+  font: 500 26px/1.15 var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.status {
+  margin: 0;
+  color: var(--ink-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+h1 {
+  margin: 0 0 0.5rem;
+  font: 500 22px/1.2 var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0 0 1rem;
+  color: var(--ink-secondary);
+}
+
+.tools {
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  text-align: left;
+}
+
+.tools li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border-default);
+}
+
+.tools li:last-child {
+  border-bottom: 1px solid var(--border-default);
+}
+
+.tools strong {
+  display: block;
+  font-weight: 600;
+}
+
+.tools span {
+  color: var(--ink-secondary);
+  font-size: 13px;
+}
+
+.tools code,
+pre {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+button,
+.link {
+  font: 600 13px/1 var(--font-text);
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--ink-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+details {
+  text-align: left;
+  color: var(--ink-tertiary);
+  font-size: 12px;
+}
+
+summary {
+  cursor: pointer;
+  text-align: center;
+}
+
+pre {
+  margin: 0.5rem 0 0;
+  max-height: 140px;
+  overflow: auto;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+  color: var(--ink-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}

@@ -1,0 +1,40 @@
+{
+  "format": "vercel-json",
+  "redirects": [
+    {
+      "line": 4,
+      "from": "/me",
+      "to": "/profile.html",
+      "status": 307
+    },
+    {
+      "line": 5,
+      "from": "/user",
+      "to": "/api/user/",
+      "status": 301,
+      "notes": [
+        "Added a trailing slash, as this site's addresses have one."
+      ]
+    },
+    {
+      "line": 6,
+      "from": "/blog/*",
+      "to": "/news/:splat",
+      "status": 308
+    }
+  ],
+  "rejected": [
+    {
+      "line": 7,
+      "kind": "needs-person",
+      "reason": "This uses a pattern (placeholders or a regular expression), which isn't a one-to-one redirect."
+    },
+    {
+      "line": 8,
+      "kind": "needs-person",
+      "reason": "This redirect only applies when a header, cookie or query is present, which isn't a plain redirect."
+    }
+  ],
+  "ignored": 0,
+  "unknownHosts": []
+}

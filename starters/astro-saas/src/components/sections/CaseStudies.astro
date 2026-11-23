@@ -1,0 +1,101 @@
+---
+// Cards from the customers collection (src/content/customers/). List
+// `items` by file name to choose the stories; leave it out for the newest.
+// `industry` keeps only that industry's stories; `layout: featured` sets the
+// first story large.
+import { getEntries } from "astro:content";
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import CustomerCard from "../CustomerCard.astro";
+import Icon from "../Icon.astro";
+import { labels, withBase, type BlockMarker, type Link, type Tone } from "../../lib/site";
+import { getCustomers, referenceId } from "../../lib/customers";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  items?: Array<string | { collection: "customers"; id: string }>;
+  industry?: string;
+  limit?: number;
+  layout?: "grid" | "featured";
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, items, industry, limit = 3, layout = "grid", cta, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const chosen = items?.length
+  ? (await getEntries(items.map((item) => ({ collection: "customers" as const, id: referenceId(item) })))).filter(Boolean)
+  : await getCustomers();
+const stories = chosen.filter((story) => !industry || story.data.industry === industry).slice(0, limit);
+const headingLevel = level === 1 ? 2 : 3;
+---
+
+<Section type="case-studies" id={id} tone={tone} block={block} labelledby={headingId}>
+  <div class="case-studies__top">
+    <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} class="case-studies__header" />
+    {
+      cta && (
+        <a class="text-link" href={withBase(cta.href)}>
+          {cta.label}
+          <Icon name="arrow-right" size={18} />
+        </a>
+      )
+    }
+  </div>
+  {
+    stories.length > 0 ? (
+      <ul class:list={["case-studies", `case-studies--${layout}`]} role="list">
+        {stories.map((story, i) => (
+          <li class:list={{ "case-studies__lead": layout === "featured" && i === 0 }}>
+            <CustomerCard story={story} headingLevel={headingLevel} size={layout === "featured" && i === 0 ? "large" : "default"} />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="lede">{labels.customers.empty}</p>
+    )
+  }
+</Section>
+
+<style>
+  .case-studies__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-s) var(--space-l);
+    margin-block-end: var(--space-xl);
+  }
+
+  .case-studies__top :global(.case-studies__header) {
+    margin-block-end: 0;
+  }
+
+  .case-studies {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+    gap: var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  .case-studies > li > :global(*) {
+    block-size: 100%;
+  }
+
+  @media (min-width: 60rem) {
+    .case-studies {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .case-studies__lead {
+      grid-column: 1 / -1;
+    }
+  }
+</style>

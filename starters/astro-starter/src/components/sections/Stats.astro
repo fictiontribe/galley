@@ -1,0 +1,83 @@
+---
+// A handful of numbers that prove a point. `value` is free text ("140+",
+// "9 weeks"), so units and symbols stay editable.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import type { BlockMarker, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  columns?: number;
+  items: Array<{ value: string; label: string; text?: string }>;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, columns = 4, items, index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+---
+
+<Section type="stats" block={block} id={id} tone={tone} labelledby={headingId}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} size="small" />
+  <dl class="stats" style={`--columns: ${columns}`}>
+    {
+      items.map((item) => (
+        <div class="stat">
+          <dt class="stat__label">{item.label}</dt>
+          <dd class="stat__value">{item.value}</dd>
+          {item.text && <dd class="stat__text">{item.text}</dd>}
+        </div>
+      ))
+    }
+  </dl>
+</Section>
+
+<style>
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    gap: var(--space-l) var(--space-l);
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xs);
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .stat__label {
+    order: 2;
+    font-weight: var(--weight-medium);
+  }
+
+  .stat__value {
+    order: 1;
+    font-family: var(--font-display);
+    font-size: var(--step-5);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-display);
+    line-height: 1;
+    font-variant-numeric: lining-nums tabular-nums;
+    color: var(--tone-text);
+  }
+
+  .stat__text {
+    order: 3;
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+    max-width: 24em;
+  }
+
+  @media (min-width: 60rem) {
+    .stats {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    }
+  }
+</style>

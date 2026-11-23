@@ -1,0 +1,11 @@
+---
+import { inline } from "../lib/markdown";
+interface Props { eyebrow?: string; heading: string; lead?: string }
+const { eyebrow, heading, lead } = Astro.props;
+---
+
+<header class="page-head">
+  {eyebrow && <p class="label">{eyebrow}</p>}
+  <h1 class="h1" set:html={inline(heading)} />
+  {lead && <p class="lead" set:html={inline(lead)} />}
+</header>

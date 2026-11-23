@@ -1,0 +1,81 @@
+---
+// Renders a list of `sections` in order, choosing a component by `type`.
+// To add a section type, import its component and add it to `components`.
+//
+// Each section is handed `block` — { key: "sections.<index>", type } — which
+// its component passes to Section.astro, where it becomes the root element's
+// data-galley-block and data-galley-block-type attributes.
+import CampaignHero from "./sections/CampaignHero.astro";
+import SplitEditorial from "./sections/SplitEditorial.astro";
+import LookbookGrid from "./sections/LookbookGrid.astro";
+import Look from "./sections/Look.astro";
+import Gallery from "./sections/Gallery.astro";
+import ImageBand from "./sections/ImageBand.astro";
+import Quote from "./sections/Quote.astro";
+import Statement from "./sections/Statement.astro";
+import Pieces from "./sections/Pieces.astro";
+import Story from "./sections/Story.astro";
+import JournalList from "./sections/JournalList.astro";
+import Stockists from "./sections/Stockists.astro";
+import Marquee from "./sections/Marquee.astro";
+import Newsletter from "./sections/Newsletter.astro";
+import Cta from "./sections/Cta.astro";
+import Contact from "./sections/Contact.astro";
+import Film from "./sections/Film.astro";
+import Chapters from "./sections/Chapters.astro";
+import FormSection from "./sections/FormSection.astro";
+import Credits from "./sections/Credits.astro";
+import Unknown from "./sections/Unknown.astro";
+import { plain } from "../lib/site";
+
+const components: Record<string, (props: any) => any> = {
+  "campaign-hero": CampaignHero,
+  "split-editorial": SplitEditorial,
+  "lookbook-grid": LookbookGrid,
+  look: Look,
+  gallery: Gallery,
+  "image-band": ImageBand,
+  quote: Quote,
+  statement: Statement,
+  pieces: Pieces,
+  story: Story,
+  "journal-list": JournalList,
+  stockists: Stockists,
+  marquee: Marquee,
+  newsletter: Newsletter,
+  cta: Cta,
+  contact: Contact,
+  film: Film,
+  form: FormSection,
+  chapters: Chapters,
+  credits: Credits,
+};
+
+interface Props {
+  sections: Array<{ type: string; [key: string]: unknown }>;
+  /** The page title, used as a hidden <h1> when the first section has no heading. */
+  title: string;
+  /** Set false when the route has already rendered the page's <h1>. */
+  ownsHeading?: boolean;
+  /** The key of the list these sections come from, for the block markers. */
+  field?: string;
+}
+
+const { sections, title, ownsHeading = true, field = "sections" } = Astro.props;
+const first = sections[0];
+const firstHasHeading = Boolean(first && components[first.type] && typeof first.heading === "string" && first.heading);
+const level = (index: number) => (ownsHeading && index === 0 && firstHasHeading ? 1 : 2);
+---
+
+{ownsHeading && !firstHasHeading && <h1 class="visually-hidden">{plain(title)}</h1>}
+{
+  sections.map((section, index) => {
+    const Component = components[section.type];
+    const block = { key: `${field}.${index}`, type: section.type };
+    return Component ? (
+      <Component {...section} index={index} level={level(index)} block={block} />
+    ) : (
+      <Unknown type={section.type} block={block} />
+    );
+  })
+}

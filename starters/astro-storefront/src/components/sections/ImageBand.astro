@@ -1,0 +1,33 @@
+---
+// One photograph across the container, panoramic or wide, between sections.
+import Section from "../Section.astro";
+import Media from "../Media.astro";
+import type { Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  image: string;
+  imageAlt: string;
+  ratio?: "panorama" | "wide";
+  index?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, image, imageAlt, ratio = "panorama", index = 0, block } = Astro.props;
+---
+
+<Section type="image-band" id={id} tone={tone} label={imageAlt} block={block}>
+  <div class="band frame">
+    <Media src={image} alt={imageAlt} ratio={ratio} eager={index === 0} class="band__media" />
+  </div>
+</Section>
+
+<style>
+  /* At its own crop; on a phone a panorama would be a sliver, so it opens up to 4:3. */
+  @media (max-width: 39.99rem) {
+    .band :global(.band__media) {
+      aspect-ratio: 4 / 3;
+    }
+  }
+</style>

@@ -1,0 +1,19 @@
+Galley
+Copyright 2026 Fiction Tribe and the Galley contributors
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+"Galley" and the Galley logo are marks of Fiction Tribe (see TRADEMARKS.md).
+Astro is a trademark of its respective owner; Galley is an independent
+project and is not affiliated with or endorsed by the Astro project.
+
+The web interface and the website bundle the Newsreader, Figtree and IBM Plex
+Mono typefaces (from the @fontsource packages), distributed under the SIL Open
+Font License 1.1 by their respective authors; the licence texts are in
+brand/fonts/. The Astro starter depends on the Instrument Sans and Newsreader
+typefaces, also under the SIL Open Font License 1.1, which are installed from
+npm into each new site rather than bundled here.
+
+The desktop app's installers include the Node.js runtime, which is under the
+MIT licence; its licence text, with those of the components it bundles, ships
+beside it as NODE-LICENSE.txt.

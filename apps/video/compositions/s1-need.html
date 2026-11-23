@@ -1,0 +1,94 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #f6f1e7; color: #1a1712; }
+    .win { position: absolute; inset: 0; clip-path: inset(54px 96px 54px 96px round 4px); background: #ede6d8; }
+    .plane { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+    .plane img { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+    .plane svg.marks { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; overflow: visible; }
+    .cm { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+    .cm i { position: absolute; background: #857b69; display: block; }
+    .cm .h { width: 28px; height: 1.5px; top: -0.75px; }
+    .cm .v { width: 1.5px; height: 28px; left: -0.75px; }
+    .cm.l .h { left: -42px; } .cm.r .h { left: 14px; }
+    .cm.t .v { top: -42px; } .cm.b .v { top: 14px; }
+  </style>
+  <div id="root" data-composition-id="s1-need" data-width="1920" data-height="1080">
+    <!-- The live Caddow home page (assets/footage/site-live.jpg), full frame: the photograph is the subject. -->
+    <div class="win" id="s1-win">
+      <div class="plane" id="s1-plane" data-layout-allow-overflow>
+        <img id="s1-site" src="assets/footage/site-live.jpg" alt="Caddow's live home page: a model in a rust coat against a sunlit harbour wall, the heading “Coats for the long afternoon.”" />
+        <svg class="marks" viewBox="0 0 1440 900" aria-hidden="true">
+          <path id="s1-loop" d="M0 0" fill="none" stroke="#2e2bff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" pathLength="100" stroke-dasharray="100 120" stroke-dashoffset="110" />
+        </svg>
+      </div>
+    </div>
+    <div class="cm l t" id="s1-need-cm-tl"><i class="h"></i><i class="v"></i></div>
+    <div class="cm r t" id="s1-need-cm-tr"><i class="h"></i><i class="v"></i></div>
+    <div class="cm l b" id="s1-need-cm-bl"><i class="h"></i><i class="v"></i></div>
+    <div class="cm r b" id="s1-need-cm-br"><i class="h"></i><i class="v"></i></div>
+
+    <audio id="s1-sfx-pencil" class="clip" src="assets/audio/sfx/pencil-writing-elliotlp.mp3" data-start="0.9" data-duration="0.8" data-track-index="20" data-volume="0.5"></audio>
+    <audio id="s1-sfx-whoosh" class="clip" src="assets/audio/sfx/whoosh-short.mp3" data-start="5.761" data-duration="0.179" data-track-index="21" data-volume="0.32"></audio>
+  </div>
+  <script>
+    (function () {
+      const ID = "s1-need";
+      const F = window.__FILM || {};
+      const SC = (F.scenes && F.scenes[ID]) || { start: 0, duration: 5.95 };
+      const VW = 1440, VH = 900;
+      // RF: the full window; RT: the window under a beat title (scenes 2–4).
+      const RF = { x: 96, y: 54, w: 1728, h: 972 }, RT = { x: 96, y: 236, w: 1728, h: 790 };
+      function cam(b, R, max) {
+        let s = Math.min(R.w / b.w, R.h / b.h, max || 2.4);
+        s = Math.max(s, R.w / VW, R.h / VH);
+        let x = R.x + R.w / 2 - (b.x + b.w / 2) * s, y = R.y + R.h / 2 - (b.y + b.h / 2) * s;
+        x = Math.min(R.x, Math.max(x, R.x + R.w - VW * s));
+        y = Math.min(R.y, Math.max(y, R.y + R.h - VH * s));
+        return { x, y, scale: s };
+      }
+      const clipOf = (R) => `inset(${R.y}px ${1920 - R.x - R.w}px ${1080 - R.y - R.h}px ${R.x}px round 4px)`;
+      const corners = (R) => [[R.x, R.y], [R.x + R.w, R.y], [R.x, R.y + R.h], [R.x + R.w, R.y + R.h]];
+      const fp = F.footage || {};
+      // The heading on the live site, and on the editor's preview (where scene 2 opens).
+      const H = (fp.live && fp.live.heading) || { x: 72, y: 343, w: 966, h: 324 };
+      const E = (fp.ask && fp.ask.heading) || { x: 152, y: 421.6, w: 642, h: 225 };
+
+      // A blue-pencil loop round the heading: one pass and a little overshoot, like a hand.
+      const cx = H.x + H.w / 2, cy = H.y + H.h / 2, rx = H.w / 2 + 40, ry = H.h / 2 + 34;
+      let d = "";
+      for (let k = 0; k <= 64; k++) {
+        const a = -2.75 + (k / 64) * (Math.PI * 2 + 0.55);
+        const wob = 1 + 0.018 * Math.sin(k * 0.9) + 0.012 * Math.sin(k * 2.3);
+        const grow = 1 + (k / 64) * 0.035;
+        const px = cx + Math.cos(a) * rx * wob * grow, py = cy + Math.sin(a) * ry * wob * grow - (k / 64) * 6;
+        d += (k ? " L" : "M") + px.toFixed(1) + " " + py.toFixed(1);
+      }
+      document.getElementById("s1-loop").setAttribute("d", d);
+
+      const tl = gsap.timeline({ paused: true });
+      corners(RF).forEach((p, i) => gsap.set(`#${ID}-cm-${["tl", "tr", "bl", "br"][i]}`, { x: p[0], y: p[1] }));
+      gsap.set("#s1-win", { clipPath: clipOf(RF) });
+      // The whole page across the window (nav to buttons), then a slow push towards the heading.
+      const s0 = RF.w / VW;
+      const start = { x: RF.x, y: Math.min(RF.y, RF.y - 22 * s0), scale: s0 };
+      gsap.set("#s1-plane", { x: start.x, y: start.y, scale: start.scale, transformOrigin: "0 0" });
+      const pushS = s0 * 1.06;
+      tl.to("#s1-plane", { x: RF.x + RF.w * 0.46 - (cx + 60) * pushS, y: RF.y + RF.h / 2 - (cy - 20) * pushS, scale: pushS, duration: SC.duration - 0.9, ease: "power1.inOut" }, 0.1);
+
+      // The pencil circles the heading.
+      tl.to("#s1-loop", { attr: { "stroke-dashoffset": 0 }, duration: 0.78, ease: "power1.inOut" }, 0.9);
+
+      // Hand-off: the window drops under the title line and the heading lands exactly where the
+      // editor's preview shows it when scene 2 opens (a match cut on the heading).
+      // (Same formula as scene 2's opening camera: ×2, the preview's left edge at the window's edge.)
+      const open = { scale: 2, x: RT.x - (E.x - 48) * 2, y: RT.y + RT.h / 2 - (E.y + E.h / 2) * 2 };
+      const ms = (E.w * open.scale) / H.w;
+      const T0 = SC.duration - 0.62;
+      tl.to("#s1-win", { clipPath: clipOf(RT), duration: 0.62, ease: "power3.inOut" }, T0);
+      corners(RT).forEach((p, i) => tl.to(`#${ID}-cm-${["tl", "tr", "bl", "br"][i]}`, { x: p[0], y: p[1], duration: 0.62, ease: "power3.inOut" }, T0));
+      tl.to("#s1-plane", { x: Math.min(RT.x, open.x + E.x * open.scale - H.x * ms), y: Math.min(RT.y, open.y + E.y * open.scale - H.y * ms), scale: ms, duration: 0.62, ease: "power3.inOut" }, T0);
+      tl.to("#s1-loop", { opacity: 0, duration: 0.3, ease: "power2.in" }, T0 + 0.2);
+      window.__timelines[ID] = tl;
+    })();
+  </script>
+</template>

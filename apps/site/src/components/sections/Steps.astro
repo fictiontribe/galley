@@ -1,0 +1,40 @@
+---
+// Numbered steps, each with one line and a picture of its result.
+import Panel from "../Panel.astro";
+import Shot from "../Shot.astro";
+import { badgeOf } from "../../lib/status";
+import { inline } from "../../lib/markdown";
+import { fill } from "../../lib/site";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const Hi = first ? "h2" : "h3";
+const hid = `${s.id ?? "steps"}-h`;
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class="head">
+    <H class="h2" id={hid} set:html={inline(s.heading)} />
+    <p class="lead">{fill(s.text)}</p>
+  </div>
+  <ol class="steps">
+    {
+      s.items.map((item: any, i: number) => {
+        const badge = badgeOf(item.status);
+        return (
+          <li class="step">
+            <Panel rec={item.visual.kind === "recording"}>
+              <Shot visual={item.visual} />
+            </Panel>
+            <div class="step__head">
+              <span class="step__n" aria-hidden="true">{i + 1}</span>
+              <Hi>{item.title}</Hi>
+              {badge && <span class:list={["badge", `badge--${badge.status}`]}>{badge.label}</span>}
+            </div>
+            <p class="body">{fill(item.text)}</p>
+          </li>
+        );
+      })
+    }
+  </ol>
+</section>

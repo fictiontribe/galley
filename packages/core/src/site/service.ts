@@ -1,0 +1,971 @@
+/**
+ * SiteService: one open site, with content and workspace composed behind the
+ * single surface the server and the assistant's tools use.
+ *
+ * The model and the content index are cached. Every change the workspace
+ * reports — our own writes, the watcher's external edits, publish, discard,
+ * undo, pull — goes through one serial pipeline that patches the index file by
+ * file, recounts the collections it touched, re-detects only when a
+ * model-shaping file changed, and then emits `changes.updated`. Reads that
+ * depend on the index wait for that pipeline, so a search right after an edit
+ * sees the edit.
+ */
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { PRODUCT } from "../brand";
+import {
+  applyEdits,
+  buildContentIndex,
+  buildEntry,
+  collectionForPath,
+  detectSiteModel,
+  findFrontMatter,
+  formatForPath,
+  hashContent,
+  listEntries,
+  loadSiteModel,
+  normalizeSlug,
+  parseDocument,
+  pathForSlug,
+  primeCache,
+  readConfig,
+  serializeEntry,
+  updateConfigText,
+  validateConfig,
+} from "../content/index";
+import { listCollectionFiles } from "../content/entries/files";
+import type { ContentIndex, ValidationContext } from "../content/index";
+import { GalleyError } from "../errors";
+import type {
+  ChangeOrigin,
+  ChangeSet,
+  Checkpoint,
+  Collection,
+  CreateEntryInput,
+  EditOp,
+  EditRefusal,
+  EditResult,
+  Entry,
+  EntrySummary,
+  EventBus,
+  GalleyConfig,
+  PreviewController,
+  PreviewStatus,
+  PublishResult,
+  SiteDetail,
+  SiteModel,
+  SiteService,
+  SiteSummary,
+  ValidationIssue,
+} from "../types";
+import {
+  createPreviewController,
+  createWorkspace,
+  isBinary,
+  isMediaFile,
+  listMedia,
+  normalizeRepoPath,
+  redactRemoteUrl,
+  runBuild,
+  saveMedia,
+  type PreviewControllerHandle,
+  type Workspace,
+} from "../workspace/index";
+import type { PortPool } from "../workspace/preview/ports";
+import type { AuthorLayers } from "../workspace/author";
+import { formCodeRefusal } from "../site-kit/guard";
+import { createEnricher, describeChanges, sortChanges } from "./enrich";
+import { shapesModel } from "./model-files";
+import { resolvePublishConfig, type PublishFacts } from "./publish-config";
+import { createKeyedLock, folderName, prettifyName } from "./util";
+
+type Author = { name: string; email: string } | null;
+
+export interface SiteDeps {
+  id: string;
+  events: EventBus;
+  overlayScript: () => string | Promise<string>;
+  /** Commit author; null falls back to git config. */
+  author: () => Promise<Author> | Author;
+  /**
+   * The site's own author and the app's, as saved (never filled in from the
+   * computer). When given, publishing chooses the author in the order
+   * workspace/author.ts describes — the repository's own git settings
+   * between the two — and `author` is not used.
+   */
+  authorLayers?: () => Promise<AuthorLayers> | AuthorLayers;
+  /** Interface preview proxies bind (default 127.0.0.1). */
+  host?: string;
+  /** Hostname browsers use to reach them. */
+  publicHost?: string;
+  /** The operator's port range for the preview proxies, shared by every site of the process. */
+  previewPorts?: PortPool;
+  /** Scheme browsers reach the preview proxies with ("https" behind a TLS-terminating proxy). */
+  publicProtocol?: "http" | "https";
+  /** Watch the tree for edits made outside the app. Default true. */
+  watch?: boolean;
+  /**
+   * Called after a publish (or an undo of one) recorded a new version — how
+   * "put it live after publishing" hooks in. It runs after the result is
+   * settled and anything it throws is swallowed: it can never fail the publish.
+   */
+  onPublished?: (result: PublishResult) => void;
+  /** A request reached this site's preview proxy (the multi-site preview policy counts use with it). */
+  onPreviewActivity?: () => void;
+  /**
+   * This app's capture address for the site's forms, handed to the previewed
+   * pages at run time (`<html data-galley-endpoint>`) so a form in the
+   * preview reaches the inbox with no setting in the site's files.
+   */
+  captureAddress?: () => string | null;
+}
+
+/** What the registry reads without awaiting anything, so listing sites stays instant. */
+export interface SiteSnapshot {
+  name: string;
+  framework: SiteModel["framework"];
+  branch?: string;
+  remoteUrl?: string;
+  pendingChanges: number;
+}
+
+/** SiteService plus what the registry needs. */
+export interface OpenSite extends SiteService {
+  snapshot(): SiteSnapshot;
+  /** The preview's controller when one was ever made — without making one (the preview policy reads and pauses it). */
+  previewHandle(): PreviewControllerHandle | null;
+  /** The live address the site's settings name, for the list. */
+  liveUrl(): string | undefined;
+}
+
+/** External bursts (a terminal `git pull`) are gathered this long into one refresh. */
+const EXTERNAL_COALESCE_MS = 120;
+/** …but never held back longer than this while events keep arriving. */
+const EXTERNAL_MAX_WAIT_MS = 1_000;
+/** Text files above this size are not indexed (matches the index's own source limit). */
+const MAX_INDEX_BYTES = 6 * 1024 * 1024;
+
+const NOT_CONTENT = "This file isn't part of any collection, so it can't be opened as content.";
+const BUILD_OFF = "Build mode is turned off for this site, so only its content can be changed. The site's settings (ai.allowBuild) control it.";
+const GONE = "This item no longer exists. It may have been moved or deleted.";
+
+function siteName(root: string, detected: SiteModel, config: GalleyConfig | null): string {
+  if (config?.name?.trim()) return config.name.trim();
+  // Detection uses the package name when it looks deliberate, else the folder.
+  return detected.name === folderName(root) ? detected.name : prettifyName(detected.name);
+}
+
+/** The name a folder would show as a site, read without opening or registering it. */
+export async function siteNameAt(root: string): Promise<string> {
+  const [model, config] = await Promise.all([loadSiteModel(root), readConfigQuietly(root)]);
+
+  return siteName(root, model, config);
+}
+
+async function readConfigQuietly(root: string): Promise<GalleyConfig | null> {
+  try {
+    return await readConfig(root);
+  } catch {
+    // An unreadable config is reported by loadSiteModel's notes; here it simply sets nothing.
+    return null;
+  }
+}
+
+/**
+ * A whole-file replacement must still be a file that parses: refuse it with
+ * the parser's own plain words rather than write something the site can't read.
+ */
+function rawRefusal(value: string, format: Entry["format"]): string | null {
+  const parsed = parseDocument(value, format);
+
+  if (parsed.errors.length > 0) return `${parsed.errors[0]} Nothing was changed.`;
+  if ((format === "markdown" || format === "mdx") && !findFrontMatter(value) && /^﻿?(---|\+\+\+)[ \t]*\r?\n/.test(value)) {
+    return "The fields at the top of the page start but never end (the closing --- line is missing). Nothing was changed.";
+  }
+  return null;
+}
+
+export async function openSiteService(rootInput: string, deps: SiteDeps): Promise<OpenSite> {
+  let author: Author = null;
+  let layers: AuthorLayers | null = null;
+  let model: SiteModel;
+  let facts: PublishFacts;
+  let hasConfig = false;
+  let disposed = false;
+  const openedAt = Date.now();
+
+  const refreshAuthor = async () => {
+    try {
+      author = (await deps.author()) ?? null;
+    } catch {
+      author = null;
+    }
+    try {
+      layers = deps.authorLayers ? await deps.authorLayers() : null;
+    } catch {
+      layers = null;
+    }
+  };
+
+  const workspace: Workspace = await createWorkspace(rootInput, {
+    writable: () => model.writable,
+    author: () => author,
+    ...(deps.authorLayers ? { authorLayers: () => layers } : {}),
+    watch: deps.watch !== false,
+  });
+  const root = workspace.root;
+
+  async function loadModel(): Promise<SiteModel> {
+    const [detected, config] = await Promise.all([loadSiteModel(root), readConfigQuietly(root)]);
+
+    facts = await resolvePublishConfig(root, config, detected.publish);
+    hasConfig = existsSync(join(root, PRODUCT.configFile));
+    return { ...detected, name: siteName(root, detected, config), publish: facts.config };
+  }
+
+  try {
+    [model] = await Promise.all([loadModel(), refreshAuthor()]);
+  } catch (error) {
+    await workspace.dispose();
+    throw error;
+  }
+
+  // ── the content index, built on first need and patched per file afterwards
+
+  let index: ContentIndex | null = null;
+  let indexBuild: Promise<ContentIndex> | null = null;
+  /** Bumped whenever the model is re-detected; an index built for an older model is thrown away. */
+  let modelVersion = 0;
+  /** Files that changed while a build was reading the tree: re-read once it finishes. */
+  const changedDuringBuild = new Set<string>();
+
+  async function buildIndex(version: number): Promise<ContentIndex> {
+    const built = await buildContentIndex(root, model);
+
+    while (changedDuringBuild.size > 0) {
+      const paths = [...changedDuringBuild];
+
+      changedDuringBuild.clear();
+      for (const path of paths) built.update(path, (await workspace.exists(path)) ? await readIfText(path) : null);
+    }
+    // No await between the last catch-up and publishing the index, so no change slips between them.
+    if (version === modelVersion) index = built;
+    return built;
+  }
+
+  async function ensureIndex(): Promise<ContentIndex> {
+    for (;;) {
+      if (index) return index;
+      if (!indexBuild) {
+        indexBuild = buildIndex(modelVersion).finally(() => {
+          indexBuild = null;
+        });
+      }
+      const built = await indexBuild;
+
+      if (index === built) return built;
+    }
+  }
+
+  const statusOf = (path: string) => workspace.statusOf(path);
+
+  async function readIfText(path: string): Promise<string | null> {
+    const info = await workspace.stat(path).catch(() => null);
+
+    if (!info || info.size > MAX_INDEX_BYTES) return null;
+    const bytes = await workspace.readBytes(path).catch(() => null);
+
+    return bytes && !isBinary(bytes) ? Buffer.from(bytes).toString("utf8") : null;
+  }
+
+  // ── the change pipeline
+
+  let queue: Promise<void> = Promise.resolve();
+  let externalPaths = new Set<string>();
+  let externalTimer: NodeJS.Timeout | null = null;
+  let externalSince = 0;
+
+  const enqueue = (task: () => Promise<void>) => {
+    queue = queue.then(task).catch(() => undefined);
+    return queue;
+  };
+
+  /** Resolves once every change reported so far has reached the caches. */
+  const settled = () => queue;
+
+  async function remodel(): Promise<void> {
+    model = await loadModel();
+    modelVersion += 1;
+    index = null;
+    changedDuringBuild.clear();
+  }
+
+  async function processChange(paths: string[], origin: ChangeOrigin): Promise<void> {
+    if (disposed) return;
+    const existing = new Map<string, boolean>();
+
+    for (const path of paths) existing.set(path, await workspace.exists(path).catch(() => false));
+    let siteChanged = false;
+
+    try {
+      if (paths.some((path) => shapesModel(model, path, existing.get(path) ?? false))) {
+        await remodel();
+        siteChanged = true;
+      } else {
+        const live = index;
+
+        if (live) {
+          for (const path of paths) {
+            if (isMediaFile(path)) continue;
+            live.update(path, existing.get(path) ? await readIfText(path) : null);
+          }
+        } else if (indexBuild) {
+          for (const path of paths) if (!isMediaFile(path)) changedDuringBuild.add(path);
+        }
+        siteChanged = await recount(paths);
+        // Publishing, pulling or a terminal checkout can move the branch or add a remote.
+        if (origin === "external" || origin === "publish") siteChanged = (await refreshPublish()) || siteChanged;
+      }
+    } catch {
+      // A transient failure (a file vanishing mid-read, a busy git lock): drop the
+      // index so the next read rebuilds it rather than serving a half-applied update.
+      index = null;
+    }
+    if (disposed) return;
+    if (siteChanged) deps.events.emit({ type: "site.updated", siteId: deps.id });
+    deps.events.emit({ type: "changes.updated", siteId: deps.id, paths, origin });
+  }
+
+  /** Recounts only the collections these paths belong to — one listing each, no parsing. */
+  async function recount(paths: string[]): Promise<boolean> {
+    const touched = new Set<Collection>();
+
+    for (const path of paths) {
+      const collection = collectionForPath(model, path);
+
+      if (collection) touched.add(collection);
+    }
+    if (touched.size === 0) return false;
+    let changed = false;
+    const collections = await Promise.all(
+      model.collections.map(async (collection) => {
+        if (!touched.has(collection)) return collection;
+        const count = (await listCollectionFiles(root, model, collection)).length;
+
+        if (count === collection.count) return collection;
+        changed = true;
+        return { ...collection, count };
+      })
+    );
+
+    if (changed) model = { ...model, collections };
+    return changed;
+  }
+
+  async function refreshPublish(): Promise<boolean> {
+    const before = JSON.stringify([facts.config, facts.branch, facts.remoteUrl]);
+
+    facts = await resolvePublishConfig(root, await readConfigQuietly(root), model.publish);
+    model = { ...model, publish: facts.config };
+    return JSON.stringify([facts.config, facts.branch, facts.remoteUrl]) !== before;
+  }
+
+  function flushExternal() {
+    if (externalTimer) clearTimeout(externalTimer);
+    externalTimer = null;
+    const paths = [...externalPaths].sort();
+
+    externalPaths = new Set();
+    if (paths.length > 0) void enqueue(() => processChange(paths, "external"));
+  }
+
+  const unsubscribe = workspace.onChange((paths, origin) => {
+    if (origin !== "external") {
+      void enqueue(() => processChange(paths, origin));
+      return;
+    }
+    if (externalPaths.size === 0) externalSince = Date.now();
+    for (const path of paths) externalPaths.add(path);
+    if (externalTimer) clearTimeout(externalTimer);
+    const wait = Math.max(0, Math.min(EXTERNAL_COALESCE_MS, externalSince + EXTERNAL_MAX_WAIT_MS - Date.now()));
+
+    externalTimer = setTimeout(flushExternal, wait);
+    externalTimer.unref?.();
+  });
+
+  // ── helpers shared by the content methods
+
+  async function validationContext(): Promise<ValidationContext> {
+    const live = await ensureIndex();
+
+    return {
+      mediaExists(siteUrl) {
+        let path = siteUrl.split(/[?#]/)[0] ?? "";
+
+        try {
+          path = decodeURI(path);
+        } catch {
+          // Keep the raw path when it is not valid percent-encoding.
+        }
+        if (path.split("/").includes("..")) return false;
+        for (const mediaRoot of model.media.roots) {
+          const prefix = mediaRoot.publicPath.replace(/\/+$/, "");
+
+          if (prefix !== "" && !path.startsWith(`${prefix}/`)) continue;
+          const rest = path.slice(prefix.length).replace(/^\/+/, "");
+
+          if (rest !== "" && existsSync(join(root, ...`${mediaRoot.dir}/${rest}`.split("/").filter(Boolean)))) return true;
+        }
+        return false;
+      },
+      routeExists: (urlPath) => live.routeExists(urlPath),
+    };
+  }
+
+  function requireCollection(path: string): { path: string; collection: Collection } {
+    const normalized = normalizeRepoPath(path);
+    const collection = collectionForPath(model, normalized);
+
+    if (!collection || formatForPath(normalized) === null) throw new GalleyError("not-found", NOT_CONTENT, normalized);
+    return { path: normalized, collection };
+  }
+
+  async function entryFromText(path: string, raw: string): Promise<Entry> {
+    const info = await workspace.stat(path);
+
+    // The parse cache keys on mtime and size; recording what we just wrote
+    // makes the next listing skip a re-parse and never serve the old text.
+    if (info) {
+      const collection = collectionForPath(model, path);
+
+      if (collection) primeCache(root, path, raw, formatForPath(path) ?? collection.format, info.mtimeMs, info.size);
+    }
+    const context = await validationContext();
+    const live = await ensureIndex();
+
+    return buildEntry(model, path, raw, info ?? { mtimeMs: Date.now() }, statusOf(path), context, (id, slug) => live.titleOf(id, slug));
+  }
+
+  async function readEntryText(path: string): Promise<string> {
+    try {
+      return await workspace.readText(path);
+    } catch (error) {
+      if (error instanceof GalleyError && error.code === "not-found") throw new GalleyError("not-found", GONE, path);
+      throw error;
+    }
+  }
+
+  /**
+   * A new entry's text from a template: the template file as it is written,
+   * with the given values edited into it in place and the given body put in
+   * — so it reads as if made by hand, in the template's own key order and
+   * style. Only when an edit can't be made in place (a TOML template) is it
+   * written out afresh.
+   */
+  async function fromTemplate(collection: Collection, path: string, input: CreateEntryInput): Promise<string> {
+    const template = (model.templates ?? []).find((candidate) => candidate.id === input.template);
+
+    if (!template) throw new GalleyError("invalid", "That template isn't one of this site's templates.", String(input.template));
+    if (template.collection !== collection.id) {
+      throw new GalleyError("invalid", `The template “${template.label}” is for a different kind of entry, not a ${collection.singular}.`, template.id);
+    }
+    const format = formatForPath(path) ?? collection.format;
+
+    if ((formatForPath(template.file) ?? collection.format) !== format) {
+      throw new GalleyError("invalid", `The template “${template.label}” is in a different file format from this collection's entries, so it can't be used.`, template.file);
+    }
+    let raw: string;
+
+    try {
+      raw = await workspace.readText(template.file);
+    } catch (error) {
+      if (error instanceof GalleyError && error.code === "not-found") {
+        throw new GalleyError("not-found", `The template “${template.label}” is missing its file (${template.file}).`, template.file);
+      }
+      throw error;
+    }
+    const parsed = parseDocument(raw, format);
+
+    if (parsed.errors.length > 0) throw new GalleyError("invalid", `The template “${template.label}” can't be read: ${parsed.errors[0]}`, template.file);
+    const ops: EditOp[] = Object.entries(input.data ?? {})
+      .filter(([key, value]) => JSON.stringify(parsed.data[key]) !== JSON.stringify(value))
+      .map(([key, value]) => ({ op: "set", path: [key], value }));
+
+    if (input.body !== undefined && collection.body) ops.push({ op: "body", value: input.body });
+    const edited = ops.length ? applyEdits(raw, format, ops) : { content: raw, refused: [] };
+
+    if (edited.refused.length === 0 && parseDocument(edited.content, format).errors.length === 0) return edited.content;
+    return serializeEntry(collection, { ...parsed.data, ...input.data }, input.body ?? parsed.body ?? undefined);
+  }
+
+  const pathLock = createKeyedLock();
+  let preview: PreviewControllerHandle | null = null;
+
+  function afterPublish(result: PublishResult): PublishResult {
+    if (result.ok && result.commit && deps.onPublished) {
+      try {
+        deps.onPublished(result);
+      } catch {
+        // Whatever happens after a publish is reported on its own; the publish already happened.
+      }
+    }
+    return result;
+  }
+
+  const service: OpenSite = {
+    id: deps.id,
+    root,
+
+    previewHandle() {
+      return preview;
+    },
+
+    liveUrl() {
+      return model.deploy?.productionUrl ?? model.urls.production;
+    },
+
+    snapshot() {
+      return {
+        name: model.name,
+        framework: model.framework,
+        ...(facts.branch ? { branch: facts.branch } : {}),
+        ...(facts.remoteUrl ? { remoteUrl: redactRemoteUrl(facts.remoteUrl) } : {}),
+        pendingChanges: workspace.pendingPaths().length,
+      };
+    },
+
+    async summary(): Promise<SiteSummary> {
+      await settled();
+      const snap = service.snapshot();
+
+      return {
+        id: deps.id,
+        name: snap.name,
+        root,
+        framework: snap.framework,
+        ...(snap.branch ? { branch: snap.branch } : {}),
+        ...(snap.remoteUrl ? { remoteUrl: snap.remoteUrl } : {}),
+        lastOpenedAt: openedAt,
+        pendingChanges: snap.pendingChanges,
+      };
+    },
+
+    async detail(): Promise<SiteDetail> {
+      const [summary, git] = await Promise.all([service.summary(), workspace.gitStatus()]);
+
+      return {
+        ...summary,
+        // gitStatus refreshed the status cache; count from it.
+        pendingChanges: workspace.pendingPaths().length,
+        model,
+        git,
+        hasConfig,
+        preview: preview?.status() ?? { state: "idle", url: null, baselineUrl: null, baselineSource: null, log: [] },
+      };
+    },
+
+    async model() {
+      await settled();
+      return model;
+    },
+
+    async refresh() {
+      await enqueue(async () => {
+        await remodel();
+        deps.events.emit({ type: "site.updated", siteId: deps.id });
+      });
+      return model;
+    },
+
+    async detected() {
+      const detected = await detectSiteModel(root);
+      const publish = await resolvePublishConfig(root, null, detected.publish);
+
+      return { ...detected, name: siteName(root, detected, null), publish: publish.config };
+    },
+
+    readConfig() {
+      return readConfig(root);
+    },
+
+    async saveConfig(config, options = {}) {
+      // An assistant or AI tool changing the site's settings is a build-mode change.
+      if (options.mode === "content") {
+        throw new GalleyError("forbidden", "Changing the site's settings needs build mode. Content mode can change pages, posts, data files and images only.");
+      }
+      if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF);
+      const result = validateConfig(config);
+
+      if (!result.ok) {
+        throw new GalleyError(
+          "invalid",
+          `The site settings have ${result.errors.length === 1 ? "a problem" : `${result.errors.length} problems`}: ${result.errors.join(" ")}`,
+          result.errors.join("\n")
+        );
+      }
+      // The config file belongs to the site owner and sits outside every content
+      // glob, so it goes through the workspace's system write: containment and
+      // atomic replace, without the mode's glob check.
+      await pathLock(PRODUCT.configFile, async () => {
+        const previous = (await workspace.exists(PRODUCT.configFile)) ? await workspace.readText(PRODUCT.configFile) : null;
+
+        await workspace.writeFile(PRODUCT.configFile, updateConfigText(previous, result.config), {
+          origin: options.mode ? "agent" : "user",
+          mode: "content",
+          system: true,
+        });
+      });
+      // The pipeline re-detects (the config shapes the model) and emits site.updated.
+      await settled();
+      return model;
+    },
+
+    // ── content
+
+    async listEntries(collectionId, query) {
+      await settled();
+      // Author references are resolved by listEntries itself, from the parse cache: listing never waits for the full index.
+      return listEntries(root, model, collectionId, query, statusOf);
+    },
+
+    async readEntry(path) {
+      const target = requireCollection(path);
+
+      return entryFromText(target.path, await readEntryText(target.path));
+    },
+
+    async updateEntry(path, ops, options = {}) {
+      const target = requireCollection(path);
+
+      if (!Array.isArray(ops)) throw new GalleyError("invalid", "The edit didn't say what to change.");
+      return pathLock(target.path, async () => {
+        const raw = await readEntryText(target.path);
+        const format = formatForPath(target.path) ?? target.collection.format;
+        const refused: EditRefusal[] = [];
+        const kept: Array<{ index: number; op: EditOp }> = [];
+
+        ops.forEach((op, index) => {
+          const reason = op?.op === "raw" && typeof op.value === "string" ? rawRefusal(op.value, format) : null;
+
+          if (reason) refused.push({ index, op, reason });
+          else kept.push({ index, op });
+        });
+        const result = applyEdits(raw, format, kept.map((item) => item.op));
+
+        for (const refusal of result.refused) refused.push({ ...refusal, index: kept[refusal.index]!.index });
+        refused.sort((a, b) => a.index - b.index);
+        if (result.applied === 0 || result.content === raw) {
+          return { entry: await entryFromText(target.path, raw), applied: 0, refused };
+        }
+        // A form's custom code is build-mode-only, whoever asks (site-kit/guard.ts).
+        const codeRefusal = target.collection.kit === "forms" ? formCodeRefusal(raw, result.content, { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}), allowBuild: model.ai.allowBuild }) : null;
+
+        if (codeRefusal) {
+          return { entry: await entryFromText(target.path, raw), applied: 0, refused: [...refused, ...kept.filter((item) => !refused.some((r) => r.index === item.index)).map((item) => ({ ...item, reason: codeRefusal }))].sort((a, b) => a.index - b.index) };
+        }
+        // A structural edit that leaves a readable file unreadable is a bug
+        // somewhere below us; never let it reach the disk.
+        if (parseDocument(raw, format).errors.length === 0 && parseDocument(result.content, format).errors.length > 0) {
+          const reason = "This change would have left the page unreadable, so nothing was changed.";
+
+          return {
+            entry: await entryFromText(target.path, raw),
+            applied: 0,
+            refused: [...refused, ...kept.filter((item) => !refused.some((r) => r.index === item.index)).map((item) => ({ ...item, reason }))].sort(
+              (a, b) => a.index - b.index
+            ),
+          };
+        }
+        await workspace.writeFile(target.path, result.content, {
+          origin: options.origin ?? "user",
+          mode: "content",
+          ...(options.baseHash ? { baseHash: options.baseHash } : {}),
+        });
+        const edit: EditResult = { entry: await entryFromText(target.path, result.content), applied: result.applied, refused };
+
+        return edit;
+      });
+    },
+
+    async createEntry(input, options = {}) {
+      const collection = model.collections.find((candidate) => candidate.id === input?.collection);
+
+      if (!collection) throw new GalleyError("not-found", "That collection doesn't exist on this site.", String(input?.collection));
+      if (collection.kind === "data" || !collection.create) {
+        throw new GalleyError("forbidden", `New items can't be added to ${collection.label} from here.`, collection.id);
+      }
+      const slug = normalizeSlug(String(input.slug ?? ""));
+      const path = pathForSlug(collection, slug);
+
+      // A slug the collection's pattern doesn't cover (a nested slug in a flat
+      // folder) would write a file the site never shows.
+      if (collectionForPath(model, path)?.id !== collection.id) {
+        throw new GalleyError("invalid", `That address can't be used for a ${collection.singular}. Use plain words without slashes.`, path);
+      }
+      const text = input.template !== undefined ? await fromTemplate(collection, path, input) : serializeEntry(collection, input.data ?? {}, input.body);
+      const codeRefusal = collection.kit === "forms" ? formCodeRefusal(null, text, { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}), allowBuild: model.ai.allowBuild }) : null;
+
+      if (codeRefusal) throw new GalleyError("forbidden", codeRefusal, path);
+      const taken = new GalleyError("conflict", `A ${collection.singular} with that address already exists. Choose a different name.`, path);
+
+      return pathLock(path, async () => {
+        if (await workspace.exists(path)) throw taken;
+        try {
+          await workspace.writeFile(path, text, { origin: options.origin ?? "user", mode: "content", createOnly: true });
+        } catch (error) {
+          if (error instanceof GalleyError && error.code === "conflict") throw taken;
+          throw error;
+        }
+        return entryFromText(path, text);
+      });
+    },
+
+    async deleteEntry(path, options = {}) {
+      const target = requireCollection(path);
+
+      if (target.collection.kind === "data") {
+        throw new GalleyError("forbidden", `${target.collection.label} can be edited but not deleted.`, target.path);
+      }
+      await pathLock(target.path, async () => {
+        if (!(await workspace.exists(target.path))) throw new GalleyError("not-found", GONE, target.path);
+        await workspace.deleteFile(target.path, { origin: options.origin ?? "user", mode: "content" });
+      });
+    },
+
+    async search(query, options) {
+      await settled();
+      return (await ensureIndex()).search(String(query ?? ""), options);
+    },
+
+    async resolveText(request, options = {}) {
+      await settled();
+      return (await ensureIndex()).resolve(request, { mode: options.mode ?? "content" });
+    },
+
+    async entryForUrl(urlPath): Promise<EntrySummary | null> {
+      await settled();
+      const hit = (await ensureIndex()).entryForUrl(urlPath);
+
+      if (!hit) return null;
+      const info = await workspace.stat(hit.path);
+
+      // The index records summaries as "clean"; the status and mtime are live facts.
+      return { ...hit, status: statusOf(hit.path), ...(info ? { modifiedAt: info.mtimeMs } : {}) };
+    },
+
+    async validate(paths) {
+      await settled();
+      const targets = (paths ?? workspace.pendingPaths()).map((path) => normalizeRepoPath(path));
+      const issues: ValidationIssue[] = [];
+
+      for (const path of [...new Set(targets)]) {
+        if (!collectionForPath(model, path) || formatForPath(path) === null) continue;
+        let raw: string;
+
+        try {
+          raw = await workspace.readText(path);
+        } catch {
+          continue; // Deleted entries have nothing left to check.
+        }
+        issues.push(...(await entryFromText(path, raw)).issues);
+      }
+      return issues;
+    },
+
+    // ── files
+
+    listFiles(options) {
+      return workspace.listFiles(options);
+    },
+
+    async readFile(path) {
+      const normalized = normalizeRepoPath(path);
+      const bytes = await workspace.readBytes(normalized);
+
+      if (isBinary(bytes)) {
+        throw new GalleyError("invalid", "This file isn't text (it may be an image or another kind of file), so it can't be opened here.", normalized);
+      }
+      return { path: normalized, content: Buffer.from(bytes).toString("utf8"), hash: hashContent(bytes), binary: false };
+    },
+
+    async writeFile(path, content, options) {
+      const normalized = normalizeRepoPath(path);
+
+      if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF, normalized);
+      if (collectionForPath(model, normalized)?.kit === "forms") {
+        const before = (await workspace.exists(normalized)) ? await workspace.readText(normalized).catch(() => null) : null;
+        const after = typeof content === "string" ? content : Buffer.from(content).toString("utf8");
+        const codeRefusal = formCodeRefusal(before, after, { origin: options.origin, mode: options.mode, allowBuild: model.ai.allowBuild });
+
+        if (codeRefusal) throw new GalleyError("forbidden", codeRefusal, normalized);
+      }
+      // Only the public options pass through: engine-internal flags (system,
+      // createOnly) must not be reachable from a request body.
+      await pathLock(normalized, () =>
+        workspace.writeFile(normalized, content, {
+          origin: options.origin,
+          mode: options.mode,
+          ...(options.baseHash ? { baseHash: options.baseHash } : {}),
+        })
+      );
+    },
+
+    async deleteFile(path, options) {
+      const normalized = normalizeRepoPath(path);
+
+      if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF, normalized);
+      await pathLock(normalized, () =>
+        workspace.deleteFile(normalized, {
+          origin: options.origin,
+          mode: options.mode,
+          ...(options.baseHash ? { baseHash: options.baseHash } : {}),
+        })
+      );
+    },
+
+    // ── media
+
+    listMedia() {
+      return listMedia(workspace, model.media);
+    },
+
+    saveMedia(input, options) {
+      return saveMedia(workspace, model.media, input, options);
+    },
+
+    resolvePath(path) {
+      return workspace.resolvePath(path);
+    },
+
+    // ── proof & publish
+
+    async changes(): Promise<ChangeSet> {
+      return sortChanges(await workspace.changes(createEnricher(() => model)));
+    },
+
+    diff(path) {
+      return workspace.diff(path);
+    },
+
+    readBase(path) {
+      return workspace.readBase(path);
+    },
+
+    async discard(paths) {
+      await workspace.discard(paths);
+      await settled();
+      return service.changes();
+    },
+
+    async publish(request = {}) {
+      await refreshAuthor();
+      // Resolved now, not at open: the branch may have been switched since.
+      await enqueue(async () => {
+        await refreshPublish();
+      });
+      const describe = async (files: string[]) => {
+        const wanted = new Set(files);
+        const set = await service.changes();
+
+        return describeChanges(set.files.filter((file) => wanted.has(file.path)));
+      };
+
+      return afterPublish(await workspace.publish(request, model.publish, describe));
+    },
+
+    history(limit) {
+      return workspace.history(limit);
+    },
+
+    async send() {
+      await enqueue(async () => {
+        await refreshPublish();
+      });
+      return workspace.send(model.publish);
+    },
+
+    async revert(commit) {
+      await refreshAuthor();
+      await enqueue(async () => {
+        await refreshPublish();
+      });
+      return afterPublish(await workspace.revert(commit, model.publish));
+    },
+
+    gitStatus() {
+      return workspace.gitStatus();
+    },
+
+    async pull() {
+      const status = await workspace.pull();
+
+      // A pull reports its files as external; don't make the caller wait out the coalescing window.
+      flushExternal();
+      await settled();
+      return status;
+    },
+
+    checkpoint(label): Checkpoint {
+      return workspace.checkpoint(label);
+    },
+
+    // ── preview & build
+
+    preview(): PreviewController {
+      preview ??= createPreviewController({
+        root,
+        // Read at start time so a changed dev command or port applies on restart.
+        settings: () => ({
+          dev: model.dev,
+          packageManager: model.packageManager,
+          installed: existsSync(join(root, "node_modules")),
+          urls: model.urls,
+          ...(model.environment ? { environment: model.environment } : {}),
+        }),
+        overlayScript: deps.overlayScript,
+        // Every previewed page is marked as the preview (the site kit keeps its third-party scripts inert)
+        // and told where its forms reach this app's inbox.
+        pageAttributes: () => {
+          const address = deps.captureAddress?.() ?? null;
+
+          return { "data-galley-preview": "", ...(address ? { "data-galley-endpoint": address } : {}) };
+        },
+        ...(deps.host ? { host: deps.host } : {}),
+        ...(deps.publicHost ? { publicHost: deps.publicHost } : {}),
+        ...(deps.previewPorts ? { ports: deps.previewPorts } : {}),
+        ...(deps.publicProtocol ? { publicProtocol: deps.publicProtocol } : {}),
+        ...(deps.onPreviewActivity ? { onActivity: deps.onPreviewActivity } : {}),
+        onStatus: (status: PreviewStatus) => {
+          if (!disposed) deps.events.emit({ type: "preview.status", siteId: deps.id, status });
+        },
+      });
+      return preview;
+    },
+
+    async build(options = {}) {
+      if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF);
+      if (!model.build) {
+        throw new GalleyError("unconfigured", "This site has no build command yet. Add one in the site settings (for example “npm run build”).");
+      }
+      return runBuild(root, model.build.command, model.environment ? { env: model.environment } : {});
+    },
+
+    async dispose() {
+      if (disposed) return;
+      // The preview goes first so its final "stopped" status still reaches the UI.
+      await preview?.dispose();
+      disposed = true;
+      unsubscribe();
+      if (externalTimer) clearTimeout(externalTimer);
+      externalTimer = null;
+      await workspace.dispose();
+      await queue;
+    },
+  };
+
+  return service;
+}
+
+export async function createSiteService(root: string, deps: SiteDeps): Promise<SiteService> {
+  return openSiteService(root, deps);
+}

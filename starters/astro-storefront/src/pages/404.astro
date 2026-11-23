@@ -1,0 +1,13 @@
+---
+// The not-found page, written in src/content/pages/404.md.
+import { getEntry } from "astro:content";
+import Base from "../layouts/Base.astro";
+import PageEntry from "../components/PageEntry.astro";
+
+const page = await getEntry("pages", "404");
+if (!page) throw new Error("src/content/pages/404.md is missing.");
+---
+
+<Base title={page.data.title} description={page.data.description} image={page.data.image} noindex overlayHeader={page.data.sections[0]?.type === "campaign-hero"}>
+  <PageEntry page={page} />
+</Base>

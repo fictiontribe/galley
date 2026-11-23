@@ -1,0 +1,30 @@
+---
+// A terminal, from lines in the content: "$ …" a command (the $ is not
+// copied), "# …" a comment, "✓ …" a passed check, anything else output.
+// With `copy`, a button copies the commands only.
+import { fill, site } from "../lib/site";
+
+interface Props { title: string; note?: string; label: string; lines: string[]; copy?: boolean; id?: string }
+const { title, note, label, lines, copy = false, id } = Astro.props;
+const filled = lines.map(fill);
+const commands = filled.filter((l) => l.startsWith("$ ")).map((l) => l.slice(2)).join("\n");
+const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const html = filled
+  .map((l) => {
+    if (l.startsWith("$ ")) return `<span class="p">$ </span>${esc(l.slice(2))}`;
+    if (l.startsWith("#")) return `<span class="c">${esc(l)}</span>`;
+    if (l.startsWith("✓")) return `<span class="ok">✓</span><span class="o">${esc(l.slice(1))}</span>`;
+    const stat = l.match(/^(.*?)(\++)(-*)$/);
+    if (stat && /\|/.test(l)) return `<span class="o">${esc(stat[1])}</span><span class="a">${stat[2]}</span><span class="d">${stat[3]}</span>`;
+    return `<span class="o">${esc(l)}</span>`;
+  })
+  .join("\n");
+---
+
+<figure class="term" aria-label={label}>
+  <figcaption class="term__bar">
+    <span>{title}</span>
+    {copy ? <button type="button" class="term__copy" data-copy={commands}>{site.ui.copy}</button> : note && <span>{note}</span>}
+  </figcaption>
+  <pre tabindex="0" id={id}><code set:html={html} /></pre>
+</figure>

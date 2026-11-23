@@ -1,0 +1,284 @@
+---
+// Site header. Links and the call to action come from src/data/navigation.json;
+// the name from src/data/site.json. Below 52rem the links fold into a
+// <details> menu, which works without JavaScript.
+import Icon from "./Icon.astro";
+import { isCurrent, labels, navigation, site, withBase } from "../lib/site";
+
+const pathname = Astro.url.pathname;
+const links = navigation.header;
+const cta = navigation.cta;
+---
+
+<header class="site-header">
+  <div class="container site-header__inner">
+    <a class="wordmark" href={withBase("/")} aria-current={isCurrent("/", pathname) ? "page" : undefined}>{site.name}</a>
+
+    <nav class="site-nav" aria-label={labels.nav.main}>
+      <ul role="list">
+        {
+          links.map((link) => (
+            <li>
+              <a href={withBase(link.href)} aria-current={isCurrent(link.href, pathname) ? "page" : undefined}>
+                {link.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      {cta && <a class="button button--small" href={withBase(cta.href)}>{cta.label}</a>}
+    </nav>
+
+    <details class="menu" data-menu>
+      <summary class="menu__toggle">
+        <span class="menu__label menu__label--open">{labels.nav.menu}</span>
+        <span class="menu__label menu__label--close">{labels.nav.close}</span>
+        <span class="menu__icon" aria-hidden="true"></span>
+      </summary>
+      <div class="menu__panel">
+        <nav aria-label={labels.nav.main}>
+          <ul role="list">
+            {
+              links.map((link) => (
+                <li>
+                  <a href={withBase(link.href)} aria-current={isCurrent(link.href, pathname) ? "page" : undefined}>
+                    {link.label}
+                    <Icon name="arrow-right" size={20} />
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+        {cta && <a class="button" href={withBase(cta.href)}>{cta.label}</a>}
+      </div>
+    </details>
+  </div>
+</header>
+
+<script is:inline>
+  // Close the mobile menu on Escape and after following an in-page link.
+  document.querySelectorAll("[data-menu]").forEach((menu) => {
+    menu.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && menu.open) {
+        menu.open = false;
+        menu.querySelector("summary").focus();
+      }
+    });
+    menu.addEventListener("click", (event) => {
+      if (event.target.closest("a")) menu.open = false;
+    });
+  });
+</script>
+
+<style>
+  .site-header {
+    position: relative;
+    z-index: 20;
+    background: var(--color-background);
+    border-block-end: var(--border-width) solid var(--color-border);
+  }
+
+  .site-header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-m);
+    min-height: var(--header-height);
+  }
+
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: var(--weight-display-strong);
+    letter-spacing: -0.01em;
+    color: var(--color-text);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .wordmark::before {
+    content: "";
+    inline-size: 0.62em;
+    block-size: 0.62em;
+    border-radius: 50% 50% 0 0;
+    background: var(--color-accent);
+  }
+
+  .site-nav {
+    display: none;
+    align-items: center;
+    gap: var(--space-l);
+  }
+
+  .site-nav ul {
+    display: flex;
+    gap: var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-nav ul a {
+    position: relative;
+    display: block;
+    padding-block: var(--space-2xs);
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .site-nav ul a::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0.2rem;
+    block-size: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .site-nav ul a:hover::after,
+  .site-nav ul a[aria-current="page"]::after {
+    transform: scaleX(1);
+  }
+
+  .site-nav ul a[aria-current="page"] {
+    color: var(--color-accent);
+  }
+
+  /* Mobile menu */
+  .menu__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-height: 2.75rem;
+    padding-inline: var(--space-xs);
+    margin-inline-end: calc(-1 * var(--space-xs));
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    list-style: none;
+    cursor: pointer;
+    border-radius: var(--radius-s);
+  }
+
+  .menu__toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .menu__label--close,
+  .menu[open] .menu__label--open {
+    display: none;
+  }
+
+  .menu[open] .menu__label--close {
+    display: inline;
+  }
+
+  .menu__icon {
+    position: relative;
+    inline-size: 1.25rem;
+    block-size: 0.6rem;
+  }
+
+  .menu__icon::before,
+  .menu__icon::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    block-size: 1.5px;
+    background: currentColor;
+    transition: transform var(--duration) var(--ease-out), top var(--duration) var(--ease-out);
+  }
+
+  .menu__icon::before {
+    top: 0;
+  }
+
+  .menu__icon::after {
+    top: calc(100% - 1.5px);
+  }
+
+  .menu[open] .menu__icon::before {
+    top: calc(50% - 0.75px);
+    transform: rotate(45deg);
+  }
+
+  .menu[open] .menu__icon::after {
+    top: calc(50% - 0.75px);
+    transform: rotate(-45deg);
+  }
+
+  .menu__panel {
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    display: grid;
+    gap: var(--space-l);
+    padding: var(--space-m) var(--gutter) var(--space-xl);
+    background: var(--color-background);
+    border-block-end: var(--border-width) solid var(--color-border);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .menu__panel ul {
+    padding: 0;
+    list-style: none;
+  }
+
+  .menu__panel li + li {
+    border-block-start: var(--border-width) solid var(--color-border);
+  }
+
+  .menu__panel ul a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: var(--space-s);
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    letter-spacing: var(--tracking-display);
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .menu__panel ul a :global(svg) {
+    color: var(--color-accent);
+  }
+
+  .menu__panel ul a[aria-current="page"] {
+    color: var(--color-accent);
+  }
+
+  .menu__panel .button {
+    justify-self: start;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .menu[open] .menu__panel {
+      animation: menu-in var(--duration) var(--ease-out);
+    }
+  }
+
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(-0.5rem);
+    }
+  }
+
+  @media (min-width: 52rem) {
+    .site-nav {
+      display: flex;
+    }
+
+    .menu {
+      display: none;
+    }
+  }
+</style>

@@ -1,0 +1,15 @@
+{
+  "name": "Lowfield Studio",
+  "ai": {
+    "instructions": ["CONTENT-GUIDE.md"]
+  },
+  "media": {
+    "dir": "public/images",
+    "publicPath": "/images"
+  },
+  "collections": [
+    { "id": "pages", "url": "/{slug}/" },
+    { "id": "blog", "label": "Journal", "singular": "post", "url": "/blog/{slug}/" },
+    { "id": "team", "label": "Team", "singular": "team member", "url": null }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@galley/import-wordpress",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bring a WordPress site (REST API or export file) into a Galley site as pending changes: posts, pages, images, SEO details, redirects and page-builder rebuild briefs.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@galley/core": "workspace:*",
+    "@mixmark-io/domino": "^2.2.0",
+    "saxes": "^6.0.0",
+    "turndown": "^7.2.5"
+  },
+  "devDependencies": {
+    "@types/turndown": "^5.0.6"
+  }
+}

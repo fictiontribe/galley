@@ -1,0 +1,24 @@
+User-agent: *
+Disallow: /drafts/
+
+# OpenAI's training crawler (AI training: collects pages that may be used to train AI models): blocked
+User-agent: GPTBot
+Disallow: /
+
+# ChatGPT's search crawler (AI search: finds pages to show and cite in an assistant's answers): allowed
+User-agent: OAI-SearchBot
+Disallow: /drafts/
+
+# Google's Gemini training control (AI training: decides whether pages already crawled may train AI models): blocked
+User-agent: Google-Extended
+Disallow: /
+
+# Common Crawl's crawler (Open web archive, widely reused as AI training data): blocked
+User-agent: CCBot
+Disallow: /
+
+# Another crawler named in the visibility settings: blocked
+User-agent: Bytespider
+Disallow: /
+
+Sitemap: https://www.example.com/sitemap.xml

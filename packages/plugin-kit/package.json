@@ -1,0 +1,51 @@
+{
+  "name": "@galley/plugin-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Write and test Galley plugins: the plugin types, definePlugin, ProviderError, and checkPlugin — the structural and behaviour checks that say whether a plugin is correct.",
+  "keywords": [
+    "galley",
+    "galley-plugin",
+    "cms",
+    "static-site"
+  ],
+  "license": "Apache-2.0",
+  "homepage": "https://galley.fictiontribe.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fictiontribe/galley.git",
+    "directory": "packages/plugin-kit"
+  },
+  "bugs": "https://github.com/fictiontribe/galley/issues",
+  "exports": {
+    ".": "./src/index.ts",
+    "./vitest": "./src/vitest.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@galley/adapter-kit": "workspace:*",
+    "@galley/core": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  },
+  "peerDependencies": {
+    "vitest": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

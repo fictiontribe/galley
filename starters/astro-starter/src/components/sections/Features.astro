@@ -1,0 +1,105 @@
+---
+// A grid of short points: optional icon, heading, text and link. Use for
+// services, benefits or principles; 2–4 columns.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Icon from "../Icon.astro";
+import { withBase, type Link, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  columns?: number;
+  items: Array<{ icon?: string; heading: string; text: string; cta?: Link }>;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, columns = 3, items, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
+---
+
+<Section type="features" block={block} id={id} tone={tone} labelledby={headingId}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+  <ul class="features" role="list" style={`--columns: ${columns}`}>
+    {
+      items.map((item, i) => (
+        <li class="feature">
+          <div class="feature__top">
+            {item.icon ? <Icon name={item.icon} size={28} class="feature__icon" /> : <span class="feature__number">{String(i + 1).padStart(2, "0")}</span>}
+          </div>
+          <ItemHeading class="feature__heading">{item.heading}</ItemHeading>
+          <p class="feature__text">{item.text}</p>
+          {item.cta && (
+            <a class="text-link feature__link" href={withBase(item.cta.href)}>
+              {item.cta.label}
+            </a>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-xl) var(--space-l);
+    padding: 0;
+    list-style: none;
+  }
+
+  .feature {
+    display: grid;
+    align-content: start;
+    gap: var(--space-xs);
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .feature__top {
+    display: flex;
+    align-items: center;
+    block-size: 1.75rem;
+    margin-block-end: var(--space-xs);
+  }
+
+  .feature :global(.feature__icon) {
+    color: var(--tone-link);
+  }
+
+  .feature__number {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-style: italic;
+    color: var(--tone-link);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .feature__heading {
+    font-size: var(--step-2);
+    line-height: 1.15;
+  }
+
+  .feature__text {
+    color: var(--tone-muted);
+    max-width: 34em;
+  }
+
+  .feature__link {
+    margin-block-start: var(--space-2xs);
+    justify-self: start;
+  }
+
+  @media (min-width: 60rem) {
+    .features {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    }
+  }
+</style>

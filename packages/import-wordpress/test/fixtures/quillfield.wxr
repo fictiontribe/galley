@@ -1,0 +1,1035 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- An invented WordPress export used by the importer's tests. Every name, place and word in it is made up. -->
+<rss version="2.0"
+	xmlns:excerpt="http://wordpress.org/export/1.2/excerpt/"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:wp="http://wordpress.org/export/1.2/"
+>
+<channel>
+	<title>Quillfield Pottery</title>
+	<link>https://old.example.org</link>
+	<description>A small pottery studio with classes</description>
+	<pubDate>Mon, 03 Jun 2024 10:00:00 +0000</pubDate>
+	<language>en-GB</language>
+	<wp:wxr_version>1.2</wp:wxr_version>
+	<wp:base_site_url>https://old.example.org</wp:base_site_url>
+	<wp:base_blog_url>https://old.example.org</wp:base_blog_url>
+	<wp:author><wp:author_id>1</wp:author_id><wp:author_login><![CDATA[ana]]></wp:author_login><wp:author_email><![CDATA[ana@example.org]]></wp:author_email><wp:author_display_name><![CDATA[Ana Whitcombe]]></wp:author_display_name><wp:author_first_name><![CDATA[Ana]]></wp:author_first_name><wp:author_last_name><![CDATA[Whitcombe]]></wp:author_last_name></wp:author>
+	<wp:author><wp:author_id>2</wp:author_id><wp:author_login><![CDATA[sam]]></wp:author_login><wp:author_email><![CDATA[sam@example.org]]></wp:author_email><wp:author_display_name><![CDATA[Sam Okoro]]></wp:author_display_name></wp:author>
+	<wp:category><wp:term_id>11</wp:term_id><wp:category_nicename><![CDATA[news]]></wp:category_nicename><wp:category_parent><![CDATA[]]></wp:category_parent><wp:cat_name><![CDATA[News]]></wp:cat_name></wp:category>
+	<wp:category><wp:term_id>12</wp:term_id><wp:category_nicename><![CDATA[workshops]]></wp:category_nicename><wp:category_parent><![CDATA[]]></wp:category_parent><wp:cat_name><![CDATA[Workshops]]></wp:cat_name></wp:category>
+	<wp:category><wp:term_id>13</wp:term_id><wp:category_nicename><![CDATA[beginners]]></wp:category_nicename><wp:category_parent><![CDATA[workshops]]></wp:category_parent><wp:cat_name><![CDATA[Beginners]]></wp:cat_name></wp:category>
+	<wp:category><wp:term_id>1</wp:term_id><wp:category_nicename><![CDATA[uncategorized]]></wp:category_nicename><wp:category_parent><![CDATA[]]></wp:category_parent><wp:cat_name><![CDATA[Uncategorized]]></wp:cat_name></wp:category>
+	<wp:tag><wp:term_id>21</wp:term_id><wp:tag_slug><![CDATA[kiln]]></wp:tag_slug><wp:tag_name><![CDATA[kiln]]></wp:tag_name></wp:tag>
+	<wp:tag><wp:term_id>22</wp:term_id><wp:tag_slug><![CDATA[studio]]></wp:tag_slug><wp:tag_name><![CDATA[studio]]></wp:tag_name></wp:tag>
+	<wp:tag><wp:term_id>23</wp:term_id><wp:tag_slug><![CDATA[glaze]]></wp:tag_slug><wp:tag_name><![CDATA[glaze]]></wp:tag_name></wp:tag>
+	<wp:term><wp:term_id>31</wp:term_id><wp:term_taxonomy><![CDATA[nav_menu]]></wp:term_taxonomy><wp:term_slug><![CDATA[main]]></wp:term_slug><wp:term_name><![CDATA[Main]]></wp:term_name></wp:term>
+	<generator>https://wordpress.org/?v=6.5</generator>
+	<item>
+		<title><![CDATA[kiln-room]]></title>
+		<link>https://old.example.org/?attachment_id=201</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=201</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>201</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[kiln-room]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>101</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/03/kiln-room.png]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/03/kiln-room.png]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_image_alt]]></wp:meta_key>
+			<wp:meta_value><![CDATA[The kiln room with its new kiln]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_metadata]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:2:{s:4:"file";s:19:"2024/03/kiln-room.png";s:5:"sizes";a:1:{s:6:"medium";a:1:{s:4:"file";s:21:"kiln-room-300x200.png";}}}]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[glaze-tiles]]></title>
+		<link>https://old.example.org/?attachment_id=202</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=202</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>202</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[glaze-tiles]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>102</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/03/glaze-tiles.png]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/03/glaze-tiles.png]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_image_alt]]></wp:meta_key>
+			<wp:meta_value><![CDATA[Test tiles in three glazes]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[bowl]]></title>
+		<link>https://old.example.org/?attachment_id=203</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=203</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[Speckled bowl]]></excerpt:encoded>
+		<wp:post_id>203</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[bowl]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/04/bowl.png]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/04/bowl.png]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_image_alt]]></wp:meta_key>
+			<wp:meta_value><![CDATA[A speckled bowl]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[mugs]]></title>
+		<link>https://old.example.org/?attachment_id=204</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=204</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>204</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[mugs]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/04/mugs.png]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/04/mugs.png]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_image_alt]]></wp:meta_key>
+			<wp:meta_value><![CDATA[Four mugs in a row]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[throwing]]></title>
+		<link>https://old.example.org/?attachment_id=205</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=205</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>205</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[throwing]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/04/throwing.png]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/04/throwing.png]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_image_alt]]></wp:meta_key>
+			<wp:meta_value><![CDATA[Hands on a wheel]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[price-list]]></title>
+		<link>https://old.example.org/?attachment_id=206</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=206</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>206</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[price-list]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/03/price-list.pdf]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/03/price-list.pdf]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[throwing-demo]]></title>
+		<link>https://old.example.org/?attachment_id=207</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=207</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>207</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[throwing-demo]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/04/throwing-demo.mp4]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/04/throwing-demo.mp4]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[mara]]></title>
+		<link>https://old.example.org/?attachment_id=208</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=208</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>208</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[mara]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/02/mara.png]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/02/mara.png]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_image_alt]]></wp:meta_key>
+			<wp:meta_value><![CDATA[Mara at the wheel]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[banner-1200x600]]></title>
+		<link>https://old.example.org/?attachment_id=209</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=209</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>209</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[banner-1200x600]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/01/banner-1200x600.png]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/01/banner-1200x600.png]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_image_alt]]></wp:meta_key>
+			<wp:meta_value><![CDATA[Studio banner]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[logo-arts-council]]></title>
+		<link>https://old.example.org/?attachment_id=211</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=211</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>211</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[logo-arts-council]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/01/logo-arts-council.png]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/01/logo-arts-council.png]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_image_alt]]></wp:meta_key>
+			<wp:meta_value><![CDATA[Arts council logo]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[logo-clay-guild]]></title>
+		<link>https://old.example.org/?attachment_id=212</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=212</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>212</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[logo-clay-guild]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/01/logo-clay-guild.png]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/01/logo-clay-guild.png]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_image_alt]]></wp:meta_key>
+			<wp:meta_value><![CDATA[Clay guild logo]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[logo-town-trust]]></title>
+		<link>https://old.example.org/?attachment_id=213</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=213</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>213</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[logo-town-trust]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/01/logo-town-trust.png]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/01/logo-town-trust.png]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_image_alt]]></wp:meta_key>
+			<wp:meta_value><![CDATA[Town trust logo]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[logo-kiln-co]]></title>
+		<link>https://old.example.org/?attachment_id=214</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=214</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>214</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[logo-kiln-co]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:attachment_url><![CDATA[https://old.example.org/wp-content/uploads/2024/01/logo-kiln-co.png]]></wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attached_file]]></wp:meta_key>
+			<wp:meta_value><![CDATA[2024/01/logo-kiln-co.png]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_image_alt]]></wp:meta_key>
+			<wp:meta_value><![CDATA[Kiln Co logo]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[Summer hours]]></title>
+		<link>https://old.example.org/?wp_block=150</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=150</guid>
+		<description></description>
+		<content:encoded><![CDATA[<!-- wp:paragraph -->
+<p>Studio hours change in August.</p>
+<!-- /wp:paragraph -->]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>150</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[summer-hours]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[wp_block]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[Opening the new kiln room]]></title>
+		<link>https://old.example.org/2024/03/opening-the-new-kiln-room/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=101</guid>
+		<description></description>
+		<content:encoded><![CDATA[The new kiln arrived on a Tuesday &amp; it took four of us to carry it in. It's the first "proper" kiln we've owned.
+
+<!--more-->
+
+[caption id="attachment_201" align="aligncenter" width="300"]<a href="https://old.example.org/wp-content/uploads/2024/03/kiln-room.png"><img class="size-medium wp-image-201" src="https://old.example.org/wp-content/uploads/2024/03/kiln-room-300x200.png" alt="The kiln room with its new kiln" width="300" height="200" /></a> The kiln room, the week it opened[/caption]
+
+Read our <a href="https://old.example.org/2024/03/glaze-notes/">glaze notes</a> before your first firing, check the <a href="https://old.example.org/opening-hours/">opening hours</a>, or browse the <a href="https://old.example.org/shop/">shop</a>.
+
+Download the <a href="https://old.example.org/wp-content/uploads/2024/03/price-list.pdf">price list</a>.
+
+<img src="https://old.example.org/wp-content/uploads/2024/03/missing-photo.png" alt="A photo that no longer exists" />]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>101</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[opening-the-new-kiln-room]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="category" nicename="news"><![CDATA[News]]></category>
+		<category domain="post_tag" nicename="kiln"><![CDATA[kiln]]></category>
+		<category domain="post_tag" nicename="studio"><![CDATA[studio]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_thumbnail_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[201]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_yoast_wpseo_title]]></wp:meta_key>
+			<wp:meta_value><![CDATA[%%title%% %%sep%% %%sitename%%]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_yoast_wpseo_metadesc]]></wp:meta_key>
+			<wp:meta_value><![CDATA[Our new kiln room is open: what changed, and how firing works from April.]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_yoast_wpseo_primary_category]]></wp:meta_key>
+			<wp:meta_value><![CDATA[11]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:comment>
+			<wp:comment_id>1</wp:comment_id>
+			<wp:comment_author><![CDATA[A visitor]]></wp:comment_author>
+			<wp:comment_author_email><![CDATA[visitor@example.net]]></wp:comment_author_email>
+			<wp:comment_content><![CDATA[Lovely!]]></wp:comment_content>
+			<wp:comment_approved><![CDATA[1]]></wp:comment_approved>
+		</wp:comment>
+		<wp:comment>
+			<wp:comment_id>2</wp:comment_id>
+			<wp:comment_author><![CDATA[A visitor]]></wp:comment_author>
+			<wp:comment_author_email><![CDATA[visitor@example.net]]></wp:comment_author_email>
+			<wp:comment_content><![CDATA[Can't wait.]]></wp:comment_content>
+			<wp:comment_approved><![CDATA[1]]></wp:comment_approved>
+		</wp:comment>
+		<wp:comment>
+			<wp:comment_id>3</wp:comment_id>
+			<wp:comment_author><![CDATA[A visitor]]></wp:comment_author>
+			<wp:comment_author_email><![CDATA[visitor@example.net]]></wp:comment_author_email>
+			<wp:comment_content><![CDATA[Buy now]]></wp:comment_content>
+			<wp:comment_approved><![CDATA[spam]]></wp:comment_approved>
+		</wp:comment>
+	</item>
+	<item>
+		<title><![CDATA[Glaze notes: three recipes we keep coming back to]]></title>
+		<link>https://old.example.org/2024/03/glaze-notes/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[sam]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=102</guid>
+		<description></description>
+		<content:encoded><![CDATA[<!-- wp:paragraph -->
+<p>Three glazes do most of the work in this studio.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">The recipes</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list {"ordered":true} -->
+<ol><li>Celadon<ul><li>Pools in carved lines</li></ul></li><li>Tenmoku</li></ol>
+<!-- /wp:list -->
+
+<!-- wp:table -->
+<figure class="wp-block-table"><table><thead><tr><th>Glaze</th><th>Cone</th></tr></thead><tbody><tr><td>Celadon</td><td>10</td></tr><tr><td>Tenmoku</td><td>10</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code class="language-python">cone = 10</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:image {"id":205} -->
+<figure class="wp-block-image size-large"><img src="https://old.example.org/wp-content/uploads/2024/04/throwing-1024x683.png" alt="Hands on a wheel" class="wp-image-205"/><figcaption class="wp-element-caption">Throwing a test bowl</figcaption></figure>
+<!-- /wp:image -->
+
+<!-- wp:gallery {"linkTo":"none"} -->
+<figure class="wp-block-gallery has-nested-images columns-default"><!-- wp:image {"id":203} -->
+<figure class="wp-block-image"><img src="https://old.example.org/wp-content/uploads/2024/04/bowl-768x512.png" alt="A speckled bowl" class="wp-image-203"/></figure>
+<!-- /wp:image -->
+<!-- wp:image {"id":204} -->
+<figure class="wp-block-image"><img src="https://old.example.org/wp-content/uploads/2024/04/mugs-768x512.png" alt="Four mugs in a row" class="wp-image-204"/></figure>
+<!-- /wp:image --></figure>
+<!-- /wp:gallery -->
+
+<!-- wp:quote -->
+<blockquote class="wp-block-quote"><p>Write every recipe down, even the failures.</p><cite>Sam Okoro</cite></blockquote>
+<!-- /wp:quote -->
+
+<!-- wp:embed {"url":"https://www.youtube.com/watch?v=Zq3fR2b8kXw","type":"video","providerNameSlug":"youtube"} -->
+<figure class="wp-block-embed is-type-video is-provider-youtube"><div class="wp-block-embed__wrapper">
+https://www.youtube.com/watch?v=Zq3fR2b8kXw
+</div></figure>
+<!-- /wp:embed -->
+
+<!-- wp:html -->
+<iframe src="https://www.openstreetmap.org/export/embed.html?bbox=-0.1%2C51.5%2C-0.09%2C51.51" width="600" height="450" style="border:0"></iframe>
+<!-- /wp:html -->
+
+<!-- wp:video {"id":207} -->
+<figure class="wp-block-video"><video controls src="https://old.example.org/wp-content/uploads/2024/04/throwing-demo.mp4"></video></figure>
+<!-- /wp:video -->
+
+<!-- wp:separator -->
+<hr class="wp-block-separator has-alpha-channel-opacity"/>
+<!-- /wp:separator -->
+
+<!-- wp:block {"ref":150} /-->
+
+<!-- wp:latest-posts {"postsToShow":3} /-->
+
+<!-- wp:buttons -->
+<div class="wp-block-buttons"><!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://old.example.org/2024/03/opening-the-new-kiln-room/">See the kiln room</a></div>
+<!-- /wp:button --></div>
+<!-- /wp:buttons -->]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>102</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-20 09:30:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-20 09:30:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-04-02 12:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-04-02 12:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[glaze-notes]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="category" nicename="beginners"><![CDATA[Beginners]]></category>
+		<category domain="post_tag" nicename="glaze"><![CDATA[glaze]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_thumbnail_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[202]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[rank_math_title]]></wp:meta_key>
+			<wp:meta_value><![CDATA[%title% %sep% %sitename%]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[rank_math_description]]></wp:meta_key>
+			<wp:meta_value><![CDATA[Celadon, tenmoku and a reliable clear: the three glazes we use most, with firing notes.]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[Studio diary: spring term]]></title>
+		<link>https://old.example.org/2024/04/studio-diary-spring-term/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=103</guid>
+		<description></description>
+		<content:encoded><![CDATA[A few things from this term's shelf.
+
+[gallery ids="203,204" columns="2"]
+
+How we wedge clay:
+
+[embed]https://vimeo.com/76979871[/embed]
+
+The kiln, recorded on a quiet night:
+
+[audio mp3="https://old.example.org/wp-content/uploads/2024/04/kiln-sounds.mp3"][/audio]
+
+Sign up for the spring list: [newsletter_signup list="spring"]
+
+[contact-form-7 id="5" title="Contact"]
+
+<img src="https://old.example.org/wp-content/uploads/2024/01/banner-1200x600.png" alt="Studio banner" />]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>103</wp:post_id>
+		<wp:post_date><![CDATA[2024-04-12 16:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-04-12 15:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-04-12 16:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-04-12 16:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[studio-diary-spring-term]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<category domain="category" nicename="news"><![CDATA[News]]></category>
+		<category domain="category" nicename="uncategorized"><![CDATA[Uncategorized]]></category>
+		<category domain="post_tag" nicename="studio"><![CDATA[studio]]></category>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_aioseo_description]]></wp:meta_key>
+			<wp:meta_value><![CDATA[What we made, broke and learned in the spring term.]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[Notes for the summer open studio]]></title>
+		<link>https://old.example.org/?p=104</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=104</guid>
+		<description></description>
+		<content:encoded><![CDATA[<!-- wp:paragraph -->
+<p>Ideas for the open studio in July.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:image -->
+<figure class="wp-block-image"><img src="https://old.example.org/wp-content/uploads/2024/04/mugs.png" alt="Four mugs in a row"/></figure>
+<!-- /wp:image -->]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>104</wp:post_id>
+		<wp:post_date><![CDATA[2024-05-01 08:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[0000-00-00 00:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-05-01 08:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-05-01 08:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[]]></wp:post_name>
+		<wp:status><![CDATA[draft]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[A short note on bank holidays]]></title>
+		<link>https://old.example.org/2024/05/bank-holidays/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=105</guid>
+		<description></description>
+		<content:encoded><![CDATA[We're closed on bank holiday Mondays.]]></content:encoded>
+		<excerpt:encoded><![CDATA[Closed on bank holiday Mondays.]]></excerpt:encoded>
+		<wp:post_id>105</wp:post_id>
+		<wp:post_date><![CDATA[2024-05-03 09:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-05-03 09:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-05-03 09:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-05-03 09:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[bank-holidays]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[Members' firing schedule]]></title>
+		<link>https://old.example.org/2024/05/members-firing-schedule/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=106</guid>
+		<description></description>
+		<content:encoded><![CDATA[<p>Secret schedule.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>106</wp:post_id>
+		<wp:post_date><![CDATA[2024-05-04 09:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-05-04 09:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-05-04 09:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-05-04 09:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[members-firing-schedule]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<wp:post_password><![CDATA[kiln]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[Opening hours]]></title>
+		<link>https://old.example.org/opening-hours/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=301</guid>
+		<description></description>
+		<content:encoded><![CDATA[We're open Tuesday to Saturday.
+
+Tuesday–Friday: 10:00–18:00
+Saturday: 09:00–13:00
+
+The studio is closed in the last week of August.]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>301</wp:post_id>
+		<wp:post_date><![CDATA[2024-01-10 09:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-01-10 09:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-01-10 09:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-01-10 09:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[opening-hours]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[page]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_yoast_wpseo_metadesc]]></wp:meta_key>
+			<wp:meta_value><![CDATA[When the studio is open, and when it closes for the summer.]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[Visiting]]></title>
+		<link>https://old.example.org/visiting/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=302</guid>
+		<description></description>
+		<content:encoded><![CDATA[<!-- wp:paragraph -->
+<p>The studio is a five-minute walk from the station.</p>
+<!-- /wp:paragraph -->]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>302</wp:post_id>
+		<wp:post_date><![CDATA[2024-01-10 09:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-01-10 09:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-01-10 09:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-01-10 09:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[visiting]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[page]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[The kiln room]]></title>
+		<link>https://old.example.org/visiting/kiln-room/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=303</guid>
+		<description></description>
+		<content:encoded><![CDATA[<!-- wp:paragraph -->
+<p>Visitors are welcome in the kiln room when nothing is firing.</p>
+<!-- /wp:paragraph -->]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>303</wp:post_id>
+		<wp:post_date><![CDATA[2024-01-11 09:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-01-11 09:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-01-11 09:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-01-11 09:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[kiln-room]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>302</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[page]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_yoast_wpseo_canonical]]></wp:meta_key>
+			<wp:meta_value><![CDATA[https://old.example.org/visiting/]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[Classes]]></title>
+		<link>https://old.example.org/classes/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=304</guid>
+		<description></description>
+		<content:encoded><![CDATA[<h1>Make something with your hands</h1><p>Evening and weekend classes.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>304</wp:post_id>
+		<wp:post_date><![CDATA[2024-02-01 09:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-02-01 09:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-02-01 09:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-02-01 09:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[classes]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[page]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_elementor_edit_mode]]></wp:meta_key>
+			<wp:meta_value><![CDATA[builder]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_elementor_template_type]]></wp:meta_key>
+			<wp:meta_value><![CDATA[wp-page]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_elementor_data]]></wp:meta_key>
+			<wp:meta_value><![CDATA[[{"id":"a1","elType":"section","settings":{"_element_id":"intro"},"elements":[{"id":"a2","elType":"column","settings":{"_column_size":100},"elements":[{"id":"a3","elType":"widget","widgetType":"heading","settings":{"title":"Make something with your hands","header_size":"h1"}},{"id":"a4","elType":"widget","widgetType":"text-editor","settings":{"editor":"<p>Evening and weekend classes for complete beginners and returning potters, in a small studio with six wheels.</p>"}},{"id":"a5","elType":"widget","widgetType":"button","settings":{"text":"Book a class","link":{"url":"https://old.example.org/opening-hours/"}}}]}]},{"id":"b1","elType":"section","settings":{},"elements":[{"id":"b2","elType":"column","settings":{"_column_size":33},"elements":[{"id":"b3","elType":"widget","widgetType":"icon-box","settings":{"selected_icon":{"value":"fas fa-hand-paper","library":"fa-solid"},"title_text":"Throwing","description_text":"Learn to centre, open and pull a cylinder on the wheel."}}]},{"id":"b4","elType":"column","settings":{"_column_size":33},"elements":[{"id":"b5","elType":"widget","widgetType":"icon-box","settings":{"selected_icon":{"value":"fas fa-shapes","library":"fa-solid"},"title_text":"Hand-building","description_text":"Pinch, coil and slab pots without a wheel."}}]},{"id":"b6","elType":"column","settings":{"_column_size":33},"elements":[{"id":"b7","elType":"widget","widgetType":"icon-box","settings":{"selected_icon":{"value":"fas fa-fill-drip","library":"fa-solid"},"title_text":"Glazing","description_text":"Mix, dip and layer the studio's own glazes."}}]}]},{"id":"c1","elType":"section","settings":{},"elements":[{"id":"c2","elType":"column","settings":{"_column_size":100},"elements":[{"id":"c3","elType":"widget","widgetType":"testimonial","settings":{"testimonial_content":"I came for one evening and stayed for three terms.","testimonial_name":"Mara Ellison","testimonial_job":"Weekend class, 2024","testimonial_image":{"url":"https://old.example.org/wp-content/uploads/2024/02/mara.png","id":208}}}]}]},{"id":"d1","elType":"section","settings":{},"elements":[{"id":"d2","elType":"column","settings":{"_column_size":100},"elements":[{"id":"d3","elType":"widget","widgetType":"heading","settings":{"title":"Questions people ask","header_size":"h2"}},{"id":"d4","elType":"widget","widgetType":"accordion","settings":{"tabs":[{"tab_title":"Do I need any experience?","tab_content":"<p>None at all. Most people in the evening class have never touched clay.</p>"},{"tab_title":"What should I wear?","tab_content":"<p>Clothes you don't mind getting muddy, and short nails.</p>"},{"tab_title":"Can I take my pots home?","tab_content":"<p>Yes — after they've been fired twice, about three weeks later.</p>"}]}}]}]},{"id":"e1","elType":"container","settings":{"flex_direction":"row"},"elements":[{"id":"e2","elType":"container","settings":{},"elements":[{"id":"e3","elType":"widget","widgetType":"price-table","settings":{"heading":"Evening class","price":"180","currency_symbol":"pound","period":"per term","features_list":[{"item_text":"Eight sessions"},{"item_text":"Clay and firing included"}],"button_text":"Book evenings","link":{"url":"https://old.example.org/opening-hours/"}}}]},{"id":"e4","elType":"container","settings":{},"elements":[{"id":"e5","elType":"widget","widgetType":"price-table","settings":{"heading":"Weekend course","price":"95","currency_symbol":"pound","period":"per weekend","features_list":[{"item_text":"Two full days"},{"item_text":"Lunch included"}],"button_text":"Book a weekend","link":{"url":"https://old.example.org/opening-hours/"},"show_ribbon":"yes"}}]}]},{"id":"f1","elType":"section","settings":{},"elements":[{"id":"f2","elType":"column","settings":{"_column_size":100},"elements":[{"id":"f3","elType":"widget","widgetType":"heading","settings":{"title":"Supported by","header_size":"h4"}},{"id":"f4","elType":"widget","widgetType":"image-carousel","settings":{"carousel":[{"id":211,"url":"https://old.example.org/wp-content/uploads/2024/01/logo-arts-council.png"},{"id":212,"url":"https://old.example.org/wp-content/uploads/2024/01/logo-clay-guild.png"},{"id":213,"url":"https://old.example.org/wp-content/uploads/2024/01/logo-town-trust.png"},{"id":214,"url":"https://old.example.org/wp-content/uploads/2024/01/logo-kiln-co.png"}]}}]}]},{"id":"g1","elType":"section","settings":{},"elements":[{"id":"g2","elType":"column","settings":{"_column_size":100},"elements":[{"id":"g3","elType":"widget","widgetType":"heading","settings":{"title":"Ask about a class","header_size":"h2"}},{"id":"g4","elType":"widget","widgetType":"form","settings":{"form_name":"Class enquiry","form_fields":[{"custom_id":"name","field_label":"Name"},{"custom_id":"email","field_label":"Email","field_type":"email"},{"custom_id":"message","field_label":"Message","field_type":"textarea"}]}}]}]}]]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_page_template]]></wp:meta_key>
+			<wp:meta_value><![CDATA[elementor_header_footer]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[Commissions]]></title>
+		<link>https://old.example.org/commissions/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=305</guid>
+		<description></description>
+		<content:encoded><![CDATA[[et_pb_section fb_built="1"][et_pb_row][et_pb_column type="4_4"][et_pb_text]<h2>Pots made for you</h2><p>Dinner sets, wedding gifts and one-off pieces.</p>[/et_pb_text][et_pb_button button_text="Start a commission" button_url="https://old.example.org/opening-hours/"][/et_pb_button][/et_pb_column][/et_pb_row][/et_pb_section][et_pb_section][et_pb_row][et_pb_column type="1_3"][et_pb_blurb title="Talk" font_icon="%%1%%"]<p>Tell us what you need.</p>[/et_pb_blurb][/et_pb_column][et_pb_column type="1_3"][et_pb_blurb title="Sketch" font_icon="%%2%%"]<p>We draw it and send a price.</p>[/et_pb_blurb][/et_pb_column][et_pb_column type="1_3"][et_pb_blurb title="Make" font_icon="%%3%%"]<p>Six weeks later it's yours.</p>[/et_pb_blurb][/et_pb_column][/et_pb_row][/et_pb_section]]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>305</wp:post_id>
+		<wp:post_date><![CDATA[2024-02-02 09:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-02-02 09:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-02-02 09:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-02-02 09:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[commissions]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[page]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_et_pb_use_builder]]></wp:meta_key>
+			<wp:meta_value><![CDATA[on]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+	<item>
+		<title><![CDATA[About us]]></title>
+		<link>https://old.example.org/about/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=306</guid>
+		<description></description>
+		<content:encoded><![CDATA[We are a small pottery.]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>306</wp:post_id>
+		<wp:post_date><![CDATA[2024-01-05 09:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-01-05 09:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-01-05 09:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-01-05 09:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[about]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[page]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[Private notes]]></title>
+		<link>https://old.example.org/private-notes/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=307</guid>
+		<description></description>
+		<content:encoded><![CDATA[Not for visitors.]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>307</wp:post_id>
+		<wp:post_date><![CDATA[2024-01-05 09:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-01-05 09:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-01-05 09:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-01-05 09:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[private-notes]]></wp:post_name>
+		<wp:status><![CDATA[private]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[page]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[Beginners wheel course]]></title>
+		<link>https://old.example.org/course/beginners-wheel/</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=401</guid>
+		<description></description>
+		<content:encoded><![CDATA[Six weeks on the wheel.]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>401</wp:post_id>
+		<wp:post_date><![CDATA[2024-02-10 09:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-02-10 09:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-02-10 09:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-02-10 09:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[beginners-wheel]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[course]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+	<item>
+		<title><![CDATA[]]></title>
+		<link>https://old.example.org/?p=501</link>
+		<pubDate>Tue, 05 Mar 2024 10:00:00 +0000</pubDate>
+		<dc:creator><![CDATA[ana]]></dc:creator>
+		<guid isPermaLink="false">https://old.example.org/?p=501</guid>
+		<description></description>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>501</wp:post_id>
+		<wp:post_date><![CDATA[2024-03-05 10:00:00]]></wp:post_date>
+		<wp:post_date_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_date_gmt>
+		<wp:post_modified><![CDATA[2024-03-05 10:00:00]]></wp:post_modified>
+		<wp:post_modified_gmt><![CDATA[2024-03-05 10:00:00]]></wp:post_modified_gmt>
+		<wp:comment_status><![CDATA[open]]></wp:comment_status>
+		<wp:ping_status><![CDATA[closed]]></wp:ping_status>
+		<wp:post_name><![CDATA[501]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:menu_order>0</wp:menu_order>
+		<wp:post_type><![CDATA[nav_menu_item]]></wp:post_type>
+		<wp:post_password><![CDATA[]]></wp:post_password>
+		<wp:is_sticky>0</wp:is_sticky>
+	</item>
+</channel>
+</rss>

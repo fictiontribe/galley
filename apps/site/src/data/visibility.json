@@ -1,0 +1,15 @@
+{
+  "site": {
+    "name": "Galley",
+    "summary": "Galley is an open-source AI CMS for Astro: change a page in a form, on the page or by asking, check every change beside the live site, then publish it to your own git repository. Pre-release 0.1.0, Apache-2.0."
+  },
+  "crawlers": {},
+  "structuredData": {
+    "website": true,
+    "articles": [],
+    "breadcrumbs": true
+  },
+  "agentReadable": {
+    "optional": ["/privacy/", "/changelog/"]
+  }
+}

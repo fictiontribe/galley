@@ -1,0 +1,166 @@
+---
+// Site footer: columns from src/data/navigation.json; name, tagline, contact,
+// social links and the closing line from src/data/site.json. "Privacy
+// choices" (reopens the consent banner) shows only on pages where
+// src/data/scripts.json puts the built-in banner.
+import { consentBannerShown, labels, navigation, site, withBase } from "../lib/site";
+
+const privacyChoices = consentBannerShown(Astro.url.pathname, Astro.site);
+---
+
+<footer class="site-footer tone-inverse">
+  <div class="container">
+    <div class="site-footer__top">
+      <div class="site-footer__brand">
+        <a class="site-footer__name" href={withBase("/")}>{site.name}</a>
+        <p class="site-footer__tagline">{site.tagline}</p>
+      </div>
+
+      <nav class="site-footer__nav" aria-label={labels.nav.footer}>
+        {
+          navigation.footer.map((column) => (
+            <div class="site-footer__column">
+              <h2 class="site-footer__heading">{column.heading}</h2>
+              <ul role="list">
+                {column.links.map((link) => (
+                  <li>
+                    <a href={withBase(link.href)}>{link.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+        <div class="site-footer__column">
+          <h2 class="site-footer__heading">{labels.nav.contact}</h2>
+          <ul role="list">
+            <li><a href={`mailto:${site.email}`}>{site.email}</a></li>
+            {site.phone && <li><a href={`tel:${site.phone.replace(/\s+/g, "")}`}>{site.phone}</a></li>}
+            {site.address && <li class="site-footer__address">{site.address}</li>}
+          </ul>
+        </div>
+        {
+          site.social.length > 0 && (
+            <div class="site-footer__column">
+              <h2 class="site-footer__heading">{labels.nav.social}</h2>
+              <ul role="list">
+                {site.social.map((link) => (
+                  <li>
+                    <a href={link.href} rel="me noopener">{link.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+      </nav>
+    </div>
+
+    <div class="site-footer__bottom">
+      <p class="site-footer__text">{site.footerText}</p>
+      {
+        privacyChoices && (
+          <a class="site-footer__choices" href={withBase("/privacy/")} data-galley-consent-open>
+            {labels.nav.privacyChoices}
+          </a>
+        )
+      }
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    padding-block: var(--space-2xl) var(--space-l);
+    background: var(--tone-bg);
+    color: var(--tone-text);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .site-footer__top {
+    display: grid;
+    gap: var(--space-xl);
+    padding-block-end: var(--space-xl);
+  }
+
+  .site-footer__brand {
+    display: grid;
+    gap: var(--space-xs);
+    align-content: start;
+  }
+
+  .site-footer__name {
+    font-family: var(--font-display);
+    font-size: var(--step-4);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-display);
+    line-height: 1;
+    color: var(--tone-text);
+    text-decoration: none;
+  }
+
+  .site-footer__tagline {
+    max-width: 24em;
+    color: var(--tone-muted);
+  }
+
+  .site-footer__nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: var(--space-l) var(--space-m);
+  }
+
+  .site-footer__heading {
+    margin-block-end: var(--space-xs);
+    font-family: var(--font-body);
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .site-footer ul {
+    display: grid;
+    gap: var(--space-2xs);
+    padding: 0;
+    list-style: none;
+    font-size: var(--step--1);
+  }
+
+  .site-footer ul a {
+    color: var(--tone-text);
+    text-decoration-color: transparent;
+    overflow-wrap: anywhere;
+  }
+
+  .site-footer ul a:hover {
+    text-decoration-color: var(--tone-link);
+  }
+
+  .site-footer__address {
+    color: var(--tone-muted);
+  }
+
+  .site-footer__bottom {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-xs) var(--space-l);
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
+    font-size: var(--step--2);
+  }
+
+  .site-footer__text {
+    flex: 1 1 24rem;
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 60rem) {
+    .site-footer__top {
+      grid-template-columns: 5fr 7fr;
+    }
+  }
+</style>

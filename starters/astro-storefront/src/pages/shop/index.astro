@@ -1,0 +1,33 @@
+---
+// The shop: the words of src/content/pages/shop.md (its title, description
+// and any sections), then every product with its filters.
+import { getEntry } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import PageEntry from "../../components/PageEntry.astro";
+import ProductGrid from "../../components/shop/ProductGrid.astro";
+import { labels, withBase } from "../../lib/site";
+import { collectionUrl, getCollections, getProducts } from "../../lib/shop/data";
+import { breadcrumbData } from "../../lib/shop/structured";
+
+const entry = await getEntry("pages", "shop");
+if (!entry) throw new Error("src/content/pages/shop.md is missing.");
+const products = await getProducts();
+const collections = await getCollections();
+const links = [{ label: labels.shop.everything, href: withBase("/shop/"), current: true }, ...collections.map((collection) => ({ label: collection.title, href: collectionUrl(collection.handle), current: false }))];
+---
+
+<Base title={entry.data.title} description={entry.data.description} image={entry.data.image} noindex={entry.data.noindex} jsonLd={breadcrumbData([{ label: labels.shop.shop, href: withBase("/shop/") }])}>
+  <PageEntry page={entry}>
+    <section class="section section--free tone-default shop-listing" aria-label={labels.shop.shop}>
+      <div class="container">
+        <ProductGrid products={products} links={links} />
+      </div>
+    </section>
+  </PageEntry>
+</Base>
+
+<style>
+  .shop-listing {
+    padding-block-start: 0;
+  }
+</style>

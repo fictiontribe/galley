@@ -1,0 +1,13 @@
+{
+  "name": "The Ferrow brief",
+  "submitLabel": "Subscribe",
+  "fields": [{ "id": "email", "type": "email", "label": "Email address", "required": true }],
+  "destinations": [{ "provider": "galley", "settings": {} }],
+  "afterSubmit": [
+    { "type": "event", "name": "sign_up", "params": { "method": "newsletter" } },
+    { "type": "message", "title": "You're subscribed", "text": "The next issue goes to **{{email}}**. Unsubscribe from any email with one click." }
+  ],
+  "errorMessage": "That didn't go through. Try again in a moment.",
+  "spam": { "honeypot": true, "minSeconds": 2 },
+  "appearance": { "layout": "inline", "labels": "hidden" }
+}

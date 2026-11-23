@@ -1,0 +1,5 @@
+Your site is fast. So why does every small change wait for a developer?
+With Galley, click the text on the page, or just ask for the change in plain words.
+Then proof it: every change marked up like an editor's proof, beside your live site.
+Publish, and it's a commit in your own repository.
+Built for Astro. Open source. Free to use.

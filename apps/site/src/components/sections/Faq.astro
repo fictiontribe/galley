@@ -1,0 +1,24 @@
+---
+// Questions with their answers open: a calm section near the end.
+import { inline } from "../../lib/markdown";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const hid = `${s.id ?? "faq"}-h`;
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class="faq">
+    <H class="h2" id={hid} set:html={inline(s.heading)} />
+    <dl>
+      {
+        s.items.map((q: { q: string; a: string }) => (
+          <>
+            <dt>{q.q}</dt>
+            <dd set:html={inline(q.a)} />
+          </>
+        ))
+      }
+    </dl>
+  </div>
+</section>

@@ -1,0 +1,108 @@
+# Ferrow
+
+> Ferrow puts planned maintenance, inspections and contractor work into one schedule.
+
+Every page of https://www.example.com/ as markdown, one after another. The list of pages is https://www.example.com/llms.txt.
+
+---
+
+Source: https://www.example.com/
+
+New: offline inspections
+
+# Every inspection planned, done and *proven*.
+
+Ferrow brings planned maintenance & inspections into one schedule.
+
+[Book a demo](https://www.example.com/contact/) [See how it works](https://www.example.com/product/)
+
+## From the plan to the proof
+
+- Schedules from templates
+- Reminders before anything falls due
+  - by email
+  - in the app
+
+![The schedule view, with this week's inspections](https://www.example.com/images/schedule.png)
+
+The schedule, shared with contractors.
+
+---
+
+Source: https://www.example.com/about/
+
+# About Ferrow
+
+Started by a facilities manager and an engineer.
+
+| Year | What happened |
+| --- | --- |
+| 2019 | First customer \| a school |
+| 2024 | Twenty-one **thousand** sites |
+
+> We were tired of finding out from the inspector.
+
+Registered office: 1 Example Street.
+
+---
+
+Source: https://www.example.com/contact/
+
+# Contact
+
+A person replies within one working day.
+
+---
+
+Source: https://www.example.com/thanks/
+
+# Thanks
+
+We will be in touch.
+
+---
+
+Source: https://www.example.com/blog/
+
+# Blog
+
+- ## [How to run a certificate register](https://www.example.com/blog/certificate-register/)
+
+  A practical guide.
+
+---
+
+Source: https://www.example.com/blog/certificate-register/
+
+# How to run a certificate register
+
+By Joel Marchetti Published August 20, 2026 4 min read
+
+Most lapsed certificates are not missed inspections. Use `expires_at` and the [guides](https://www.example.com/blog/tags/guides/).
+
+## File by asset
+
+```json
+{ "asset": "boiler-1",
+  "expires": "2027-01-01" }
+```
+
+Read the start again, or [the standard](https://example.org/standard).
+
+[A walk through the register](https://www.youtube-nocookie.com/embed/abc)
+
+---
+
+Source: https://www.example.com/blog/tags/guides/
+
+# Filed under “Guides”
+
+Every guide.
+
+---
+
+Source: https://www.example.com/privacy/
+
+# Privacy policy
+
+What we collect.

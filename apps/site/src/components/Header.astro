@@ -1,0 +1,32 @@
+---
+// The header: the logo, five links, GitHub and one action. Below 1024 px the
+// links fold into a menu (a native disclosure: it works without JavaScript).
+import lockup from "../../../../brand/logo/lockup.svg?raw";
+import navigation from "../data/navigation.json";
+import { fill, site } from "../lib/site";
+
+const path = Astro.url.pathname;
+const isCurrent = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+const logo = lockup.replace(/ width="[^"]+" height="[^"]+"/, "").replace(' role="img" aria-labelledby="t"', ' aria-hidden="true"').replace(/<title[^>]*>.*?<\/title>/, "");
+---
+
+<header class="header" data-header>
+  <div class="wrap header__in">
+    <a class="header__logo" href="/" aria-label={site.ui.home} set:html={logo} />
+    <nav class="nav" aria-label={site.ui.nav}>
+      {navigation.header.map((l) => <a href={l.href} aria-current={isCurrent(l.href) ? "page" : undefined}>{l.label}</a>)}
+    </nav>
+    <div class="header__end">
+      <a class="gh" href={fill(navigation.github.href)}>{navigation.github.label}</a>
+      <a class="btn btn--primary btn--sm header__cta" href={navigation.action.href}>{navigation.action.label}</a>
+      <details class="menu" data-menu>
+        <summary>{site.ui.menu}</summary>
+        <nav class="menu__panel" aria-label={site.ui.nav}>
+          {navigation.header.map((l) => <a href={l.href} aria-current={isCurrent(l.href) ? "page" : undefined}>{l.label}</a>)}
+          <a href={fill(navigation.github.href)}>{navigation.github.label}</a>
+          <a class="btn btn--primary" href={navigation.action.href}>{navigation.action.label}</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>

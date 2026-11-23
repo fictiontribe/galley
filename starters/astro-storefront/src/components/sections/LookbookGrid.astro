@@ -1,0 +1,139 @@
+---
+// Looks from one lookbook, in a grid that links each look to its place in
+// the lookbook. `crop` sets the frame; `offset` drops every other column.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Actions from "../Actions.astro";
+import Media from "../Media.astro";
+import { fill, labels, lookbookUrl, lookNumber, type Link, type Tone } from "../../lib/site";
+import { findLookbook } from "../../lib/lookbooks";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  lookbook?: string | { id: string };
+  limit?: number;
+  columns?: number;
+  crop?: "tall" | "portrait" | "square";
+  offset?: boolean;
+  captions?: boolean;
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const {
+  id,
+  tone,
+  eyebrow,
+  heading,
+  text,
+  lookbook,
+  limit,
+  columns = 3,
+  crop = "tall",
+  offset = false,
+  captions = false,
+  cta,
+  index = 0,
+  level = 2,
+  block,
+} = Astro.props;
+const entry = await findLookbook(lookbook);
+const looks = entry ? entry.data.looks.slice(0, limit ?? entry.data.looks.length) : [];
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+---
+
+{
+  entry && (
+    <Section type="lookbook-grid" id={id} tone={tone} labelledby={headingId} label={entry.data.title} block={block}>
+      <div class="lookbook-grid__head">
+        <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} class="lookbook-grid__header" />
+        <Actions secondaryCta={cta} />
+      </div>
+      <ol class:list={["lookbook-grid", `lookbook-grid--cols-${columns}`, { "lookbook-grid--offset": offset }]} role="list" style={`--columns: ${columns}`}>
+        {looks.map((look, i) => (
+          <li>
+            <a class="lookbook-grid__look" href={`${lookbookUrl(entry.id)}#look-${lookNumber(i)}`}>
+              <div class="frame">
+                <Media src={look.image} alt={look.alt} ratio={crop} />
+              </div>
+              <span class="label lookbook-grid__number">{fill(labels.lookbooks.look, { number: lookNumber(i) })}</span>
+              {captions && look.caption && <span class="caption lookbook-grid__caption">{look.caption}</span>}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </Section>
+  )
+}
+
+<style>
+  .lookbook-grid__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-s) var(--space-xl);
+    margin-block-end: var(--space-xl);
+  }
+
+  .lookbook-grid__head :global(.lookbook-grid__header) {
+    margin-block-end: 0;
+  }
+
+  .lookbook-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-l) var(--gutter);
+    padding: 0;
+    list-style: none;
+  }
+
+  .lookbook-grid__look {
+    display: grid;
+    gap: var(--space-2xs);
+    color: var(--tone-text);
+    text-decoration: none;
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .lookbook-grid__look:hover {
+    transform: translateY(-2px);
+  }
+
+  .lookbook-grid__number {
+    margin-block-start: var(--space-3xs);
+    color: var(--tone-text);
+  }
+
+  .lookbook-grid__caption {
+    max-inline-size: 30em;
+  }
+
+  .lookbook-grid__look:hover .lookbook-grid__number {
+    text-decoration: underline;
+    text-underline-offset: 0.35em;
+  }
+
+
+  @media (min-width: 60rem) {
+    .lookbook-grid {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+      row-gap: var(--space-xl);
+    }
+
+    .lookbook-grid--offset.lookbook-grid--cols-3 > li:nth-child(2n) {
+      margin-block-start: 0;
+    }
+
+    .lookbook-grid--offset > li:nth-child(even),
+    .lookbook-grid--offset.lookbook-grid--cols-3 > li:nth-child(3n + 2) {
+      margin-block-start: var(--space-2xl);
+    }
+  }
+</style>

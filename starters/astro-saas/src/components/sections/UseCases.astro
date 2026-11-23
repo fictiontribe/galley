@@ -1,0 +1,166 @@
+---
+// Cards that send each kind of visitor to the page written for them (a
+// solution page, an industry, a team). The whole card is the link.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Media from "../Media.astro";
+import Icon from "../Icon.astro";
+import { withBase, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  items: Array<{ icon?: string; label?: string; heading: string; text: string; href: string; image?: string; imageAlt?: string }>;
+  columns?: number;
+  style?: "cards" | "list";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, items, columns = 3, style = "cards", index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
+---
+
+<Section type="use-cases" id={id} tone={tone} block={block} labelledby={headingId}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+  <ul class:list={["use-cases", `use-cases--${style}`]} role="list" style={`--columns: ${columns}`}>
+    {
+      items.map((item) => (
+        <li class:list={["use-case", "card-link", { card: style === "cards" }]}>
+          {item.image && style === "cards" && <Media src={item.image} alt={item.imageAlt ?? ""} ratio="16/10" class="use-case__media" />}
+          <div class="use-case__body">
+            <div class="use-case__top">
+              {item.icon && (
+                <span class="use-case__icon" aria-hidden="true">
+                  <Icon name={item.icon} size={20} />
+                </span>
+              )}
+              {item.label && <span class="use-case__label">{item.label}</span>}
+            </div>
+            <ItemHeading class="use-case__heading">
+              <a class="card-link__target" href={withBase(item.href)}>
+                {item.heading}
+              </a>
+            </ItemHeading>
+            <p class="use-case__text">{item.text}</p>
+            <span class="use-case__arrow" aria-hidden="true">
+              <Icon name="arrow-up-right" size={20} />
+            </span>
+          </div>
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .use-cases {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    gap: var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  .use-case {
+    display: grid;
+    align-content: start;
+    overflow: hidden;
+    transition: border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .use-case.card:hover {
+    border-color: var(--tone-control);
+  }
+
+  .use-case :global(.use-case__media) {
+    border-radius: 0;
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .use-case__body {
+    position: relative;
+    display: grid;
+    gap: var(--space-2xs);
+    padding: var(--space-l) var(--space-l) var(--space-xl);
+  }
+
+  .use-case__top {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-block-end: var(--space-xs);
+  }
+
+  .use-case__icon {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    border-radius: var(--radius-m);
+    background: var(--tone-mark);
+    color: var(--tone-link);
+  }
+
+  .use-case__label {
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .use-case__heading {
+    font-size: var(--step-2);
+    line-height: 1.12;
+  }
+
+  .use-case__text {
+    color: var(--tone-muted);
+  }
+
+  .use-case__arrow {
+    position: absolute;
+    top: var(--space-l);
+    right: var(--space-l);
+    color: var(--tone-muted);
+    transition:
+      transform var(--duration) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .use-case:hover .use-case__arrow {
+    color: var(--tone-link);
+    transform: translate(0.15rem, -0.15rem);
+  }
+
+  .use-cases--list {
+    gap: 0;
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .use-cases--list .use-case__body {
+    padding: var(--space-m) var(--space-xl) var(--space-m) 0;
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .use-cases--list .use-case__arrow {
+    top: var(--space-m);
+    right: 0;
+  }
+
+  @media (min-width: 60rem) {
+    .use-cases {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    }
+
+    .use-cases--list {
+      column-gap: var(--space-l);
+    }
+  }
+</style>

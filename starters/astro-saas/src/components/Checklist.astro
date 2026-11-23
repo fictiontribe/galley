@@ -1,0 +1,55 @@
+---
+// A short list of proof points with check marks ("No card needed").
+import Icon from "./Icon.astro";
+
+interface Props {
+  items?: string[];
+  /** Run the points along one line (wrapping) instead of stacking them. */
+  inline?: boolean;
+  class?: string;
+}
+
+const { items = [], inline = false, class: className } = Astro.props;
+---
+
+{
+  items.length > 0 && (
+    <ul class:list={["checklist", { "checklist--inline": inline }, className]} role="list">
+      {items.map((item) => (
+        <li>
+          <Icon name="check" size={18} />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+<style>
+  .checklist {
+    display: grid;
+    gap: var(--space-2xs);
+    padding: 0;
+    list-style: none;
+  }
+
+  .checklist--inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs) var(--space-m);
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .checklist li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: start;
+    gap: 0.5em;
+  }
+
+  .checklist :global(svg) {
+    margin-block-start: 0.15em;
+    color: var(--tone-link);
+  }
+</style>

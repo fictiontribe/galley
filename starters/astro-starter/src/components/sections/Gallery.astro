@@ -1,0 +1,69 @@
+---
+// A grid of images with optional captions. Images are cropped to 4:3.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Media from "../Media.astro";
+import type { BlockMarker, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  columns?: number;
+  items: Array<{ image: string; imageAlt: string; caption?: string }>;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, columns = 3, items, index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+---
+
+<Section type="gallery" block={block} id={id} tone={tone} labelledby={headingId}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+  <ul class:list={["gallery", { "gallery--stagger": columns === 3 && items.length >= 3 }]} role="list" style={`--columns: ${columns}`}>
+    {
+      items.map((item) => (
+        <li>
+          <figure class="gallery__item">
+            <Media src={item.image} alt={item.imageAlt} ratio="4/3" />
+            {item.caption && <figcaption class="gallery__caption">{item.caption}</figcaption>}
+          </figure>
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-l) var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  .gallery__item {
+    display: grid;
+    gap: var(--space-xs);
+  }
+
+  .gallery__caption {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 60rem) {
+    .gallery {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    }
+
+    .gallery--stagger > li:nth-child(3n + 2) {
+      margin-block-start: var(--space-xl);
+    }
+  }
+</style>

@@ -1,0 +1,21 @@
+{
+  "format": "json",
+  "redirects": [
+    {
+      "line": 3,
+      "from": "/a/",
+      "to": "/about/",
+      "status": 301,
+      "note": "Moved in 2024"
+    },
+    {
+      "line": 4,
+      "from": "/shop/*",
+      "to": "https://shop.example.org/:splat",
+      "status": 302
+    }
+  ],
+  "rejected": [],
+  "ignored": 0,
+  "unknownHosts": []
+}

@@ -1,0 +1,6 @@
+# Redirects from src/data/redirects.json. RedirectMatch, so each matches its own address only (a plain Redirect also catches everything below).
+RedirectMatch 301 ^/a/$ /about/
+RedirectMatch 308 ^/far/$ https://elsewhere.example/page?ref=1
+RedirectMatch 301 ^/noted/$ /about/
+# Left out (needs a RewriteCond on the query string): /q?x=1 → /contact/
+RedirectMatch 302 ^/blog/(.*)$ /journal/$1

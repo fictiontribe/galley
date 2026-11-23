@@ -1,0 +1,27 @@
+---
+// Two or three linked cards: where to go next.
+import { inline } from "../../lib/markdown";
+import { fill } from "../../lib/site";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const Hi = first ? "h2" : "h3";
+const hid = `${s.id ?? "cards"}-h`;
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <H class:list={[s.quiet ? "sr" : "h2 head"]} id={hid} set:html={inline(s.heading)} />
+  <ul class="cards">
+    {
+      s.items.map((c: { eyebrow?: string; title: string; text: string; href: string }) => (
+        <li style="display:grid">
+          <a class="card" href={fill(c.href)}>
+            {c.eyebrow && <span class="label">{c.eyebrow}</span>}
+            <Hi class="card__t">{c.title}</Hi>
+            <span class="body">{fill(c.text)}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</section>

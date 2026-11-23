@@ -1,0 +1,100 @@
+---
+// Renders a page's `sections` in order, choosing a component by `type`.
+// To add a section type, import its component and add it to `components`.
+//
+// Each section is handed `block` — { key: "sections.<index>", type } — which
+// its component passes to Section.astro, where it becomes the root element's
+// data-galley-block and data-galley-block-type attributes. The visual page
+// builder uses them to map what is on screen to the entry's list.
+import Hero from "./sections/Hero.astro";
+import HeroSplit from "./sections/HeroSplit.astro";
+import HeroForm from "./sections/HeroForm.astro";
+import Logos from "./sections/Logos.astro";
+import Metrics from "./sections/Metrics.astro";
+import Testimonial from "./sections/Testimonial.astro";
+import Testimonials from "./sections/Testimonials.astro";
+import CaseStudies from "./sections/CaseStudies.astro";
+import Awards from "./sections/Awards.astro";
+import Features from "./sections/Features.astro";
+import FeatureSplit from "./sections/FeatureSplit.astro";
+import FeatureTabs from "./sections/FeatureTabs.astro";
+import Steps from "./sections/Steps.astro";
+import Integrations from "./sections/Integrations.astro";
+import Comparison from "./sections/Comparison.astro";
+import UseCases from "./sections/UseCases.astro";
+import Screenshot from "./sections/Screenshot.astro";
+import Pricing from "./sections/Pricing.astro";
+import PricingTable from "./sections/PricingTable.astro";
+import Faq from "./sections/Faq.astro";
+import RichText from "./sections/RichText.astro";
+import Posts from "./sections/Posts.astro";
+import Changelog from "./sections/Changelog.astro";
+import Team from "./sections/Team.astro";
+import Security from "./sections/Security.astro";
+import Cta from "./sections/Cta.astro";
+import Contact from "./sections/Contact.astro";
+import Newsletter from "./sections/Newsletter.astro";
+import FormSection from "./sections/FormSection.astro";
+import Unknown from "./sections/Unknown.astro";
+import { plain } from "../lib/site";
+
+const components: Record<string, (props: any) => any> = {
+  hero: Hero,
+  "hero-split": HeroSplit,
+  "hero-form": HeroForm,
+  logos: Logos,
+  metrics: Metrics,
+  testimonial: Testimonial,
+  testimonials: Testimonials,
+  "case-studies": CaseStudies,
+  awards: Awards,
+  features: Features,
+  "feature-split": FeatureSplit,
+  "feature-tabs": FeatureTabs,
+  steps: Steps,
+  integrations: Integrations,
+  comparison: Comparison,
+  "use-cases": UseCases,
+  screenshot: Screenshot,
+  pricing: Pricing,
+  "pricing-table": PricingTable,
+  faq: Faq,
+  "rich-text": RichText,
+  posts: Posts,
+  changelog: Changelog,
+  team: Team,
+  security: Security,
+  cta: Cta,
+  contact: Contact,
+  newsletter: Newsletter,
+  form: FormSection,
+};
+
+interface Props {
+  sections: Array<{ type: string; [key: string]: unknown }>;
+  /** The page title, used as a hidden <h1> when the first section has no heading. */
+  title: string;
+  /** Set false when the route has already rendered the page's <h1>. */
+  ownsHeading?: boolean;
+  /** The key of the blocks field these sections come from. */
+  field?: string;
+}
+
+const { sections, title, ownsHeading = true, field = "sections" } = Astro.props;
+const first = sections[0];
+const firstHasHeading = Boolean(first && components[first.type] && typeof first.heading === "string" && first.heading);
+const level = (index: number) => (ownsHeading && index === 0 && firstHasHeading ? 1 : 2);
+---
+
+{ownsHeading && !firstHasHeading && <h1 class="visually-hidden">{plain(title)}</h1>}
+{
+  sections.map((section, index) => {
+    const Component = components[section.type];
+    const block = { key: `${field}.${index}`, type: section.type };
+    return Component ? (
+      <Component {...section} index={index} level={level(index)} block={block} />
+    ) : (
+      <Unknown type={section.type} block={block} />
+    );
+  })
+}

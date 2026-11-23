@@ -1,0 +1,286 @@
+{
+  "name": "Ferrow",
+  "ai": {
+    "instructions": [
+      "CONTENT-GUIDE.md"
+    ]
+  },
+  "media": {
+    "dir": "public/images",
+    "publicPath": "/images"
+  },
+  "collections": [
+    {
+      "id": "pages",
+      "url": "/{slug}/",
+      "fields": [
+        {
+          "key": "sections",
+          "blocks": [
+            {
+              "type": "hero",
+              "label": "Hero",
+              "description": "The opening statement of a page: a large heading, a line of text, the main buttons. Use first, once.",
+              "thumbnail": "galley/sections/hero.webp"
+            },
+            {
+              "type": "hero-split",
+              "label": "Hero with screenshot",
+              "description": "The opening statement beside a product screenshot. The home page's first section.",
+              "thumbnail": "galley/sections/hero-split.webp"
+            },
+            {
+              "type": "hero-form",
+              "label": "Hero with form",
+              "description": "The opening statement beside a lead form from the forms collection (the two-step demo request by default), for pages whose only job is to start a conversation.",
+              "thumbnail": "galley/sections/hero-form.webp"
+            },
+            {
+              "type": "logos",
+              "label": "Logo row",
+              "description": "Customer or partner logos, in a quiet row under a hero or as a grid of tiles.",
+              "thumbnail": "galley/sections/logos.webp"
+            },
+            {
+              "type": "metrics",
+              "label": "Metrics",
+              "description": "Two to four figures that prove a claim, with an optional source note.",
+              "thumbnail": "galley/sections/metrics.webp"
+            },
+            {
+              "type": "testimonial",
+              "label": "Testimonial",
+              "description": "One quotation, set large, with the person and their company. Once per page.",
+              "thumbnail": "galley/sections/testimonial.webp"
+            },
+            {
+              "type": "testimonials",
+              "label": "Testimonials",
+              "description": "Several shorter quotes in a grid of cards.",
+              "thumbnail": "galley/sections/testimonials.webp"
+            },
+            {
+              "type": "case-studies",
+              "label": "Case studies",
+              "description": "Cards from the customer stories, newest first or chosen by name, optionally one industry only.",
+              "thumbnail": "galley/sections/case-studies.webp"
+            },
+            {
+              "type": "awards",
+              "label": "Awards and ratings",
+              "description": "A row of badges or ratings. Keep every claim true and checkable.",
+              "thumbnail": "galley/sections/awards.webp"
+            },
+            {
+              "type": "features",
+              "label": "Feature grid",
+              "description": "Short points with icons, two to four columns: benefits, capabilities, principles.",
+              "thumbnail": "galley/sections/features.webp"
+            },
+            {
+              "type": "feature-split",
+              "label": "Feature with screenshot",
+              "description": "One capability beside its screenshot. Alternate the side when several run in a row.",
+              "thumbnail": "galley/sections/feature-split.webp"
+            },
+            {
+              "type": "feature-tabs",
+              "label": "Feature tabs",
+              "description": "Several product areas, one shown at a time, each with a screenshot.",
+              "thumbnail": "galley/sections/feature-tabs.webp"
+            },
+            {
+              "type": "steps",
+              "label": "Steps",
+              "description": "How it works, in order: along a row, or down a timeline with a label per step.",
+              "thumbnail": "galley/sections/steps.webp"
+            },
+            {
+              "type": "integrations",
+              "label": "Integrations",
+              "description": "What the product connects to, as tiles grouped by category.",
+              "thumbnail": "galley/sections/integrations.webp"
+            },
+            {
+              "type": "comparison",
+              "label": "Comparison table",
+              "description": "You against the alternatives, row by row, with ticks, dashes or short text.",
+              "thumbnail": "galley/sections/comparison.webp"
+            },
+            {
+              "type": "use-cases",
+              "label": "Use cases",
+              "description": "Cards that send each kind of visitor to the page written for them.",
+              "thumbnail": "galley/sections/use-cases.webp"
+            },
+            {
+              "type": "screenshot",
+              "label": "Screenshot",
+              "description": "One large, framed product picture with a caption and numbered notes.",
+              "thumbnail": "galley/sections/screenshot.webp"
+            },
+            {
+              "type": "pricing",
+              "label": "Pricing plans",
+              "description": "Plans side by side, one of them featured.",
+              "thumbnail": "galley/sections/pricing.webp"
+            },
+            {
+              "type": "pricing-table",
+              "label": "Plan comparison",
+              "description": "Every plan's features, group by group, under the pricing plans.",
+              "thumbnail": "galley/sections/pricing-table.webp"
+            },
+            {
+              "type": "faq",
+              "label": "FAQ",
+              "description": "Questions and answers that open one at a time.",
+              "thumbnail": "galley/sections/faq.webp"
+            },
+            {
+              "type": "rich-text",
+              "label": "Rich text",
+              "description": "A passage of formatted text: a story, a policy, small print.",
+              "thumbnail": "galley/sections/rich-text.webp"
+            },
+            {
+              "type": "posts",
+              "label": "Latest posts",
+              "description": "The newest blog posts, optionally one tag only.",
+              "thumbnail": "galley/sections/posts.webp"
+            },
+            {
+              "type": "changelog",
+              "label": "Latest updates",
+              "description": "The newest product updates from the changelog.",
+              "thumbnail": "galley/sections/changelog.webp"
+            },
+            {
+              "type": "team",
+              "label": "Team",
+              "description": "People from the team collection, chosen by name or everyone in order.",
+              "thumbnail": "galley/sections/team.webp"
+            },
+            {
+              "type": "security",
+              "label": "Security",
+              "description": "How customers' data is protected: practices with icons and reassurance chips.",
+              "thumbnail": "galley/sections/security.webp"
+            },
+            {
+              "type": "cta",
+              "label": "Call to action",
+              "description": "The closing invitation, as a band or an inset panel. Last on most pages.",
+              "thumbnail": "galley/sections/cta.webp"
+            },
+            {
+              "type": "contact",
+              "label": "Contact",
+              "description": "Ways to reach you beside a form from the forms collection (the contact form by default). The contact page's main section.",
+              "thumbnail": "galley/sections/contact.webp"
+            },
+            {
+              "type": "newsletter",
+              "label": "Newsletter",
+              "description": "A one-line email sign-up, beside its heading or under it, using the newsletter form.",
+              "thumbnail": "galley/sections/newsletter.webp"
+            },
+            {
+              "type": "form",
+              "label": "Form",
+              "description": "Any form from the forms collection, with a heading above it or beside it — drop a demo request, a sign-up or a survey onto any page.",
+              "thumbnail": "galley/sections/form.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "customers",
+      "label": "Customer stories",
+      "singular": "customer story",
+      "url": "/customers/{slug}/",
+      "titleField": "headline",
+      "dateField": "date",
+      "imageField": "logo",
+      "draftField": "draft"
+    },
+    {
+      "id": "blog",
+      "label": "Blog",
+      "singular": "post",
+      "url": "/blog/{slug}/"
+    },
+    {
+      "id": "changelog",
+      "label": "Changelog",
+      "singular": "update",
+      "url": null,
+      "draftField": "draft"
+    },
+    {
+      "id": "team",
+      "label": "Team",
+      "singular": "team member",
+      "url": null
+    }
+  ],
+  "templates": [
+    {
+      "id": "landing",
+      "label": "Landing page",
+      "description": "A campaign page: hero with screenshot, logos, benefits, proof and one call to action.",
+      "collection": "pages",
+      "file": "galley/templates/landing.md",
+      "thumbnail": "galley/templates/landing.webp"
+    },
+    {
+      "id": "product",
+      "label": "Product page",
+      "description": "One product area: a statement, three features with screenshots, metrics, a quote and a call to action.",
+      "collection": "pages",
+      "file": "galley/templates/product.md",
+      "thumbnail": "galley/templates/product.webp"
+    },
+    {
+      "id": "solution",
+      "label": "Solution page",
+      "description": "For one industry or team: their problem, what changes, proof from someone like them and an FAQ.",
+      "collection": "pages",
+      "file": "galley/templates/solution.md",
+      "thumbnail": "galley/templates/solution.webp"
+    },
+    {
+      "id": "pricing",
+      "label": "Pricing page",
+      "description": "Plans, the full comparison, ratings and the questions buyers ask about price.",
+      "collection": "pages",
+      "file": "galley/templates/pricing.md",
+      "thumbnail": "galley/templates/pricing.webp"
+    },
+    {
+      "id": "customer-story",
+      "label": "Customer story",
+      "description": "A case study: the customer, the problem, what they did and the results in numbers.",
+      "collection": "customers",
+      "file": "galley/templates/customer-story.md",
+      "thumbnail": "galley/templates/customer-story.webp"
+    },
+    {
+      "id": "about",
+      "label": "About page",
+      "description": "The company's story, figures, leadership and values.",
+      "collection": "pages",
+      "file": "galley/templates/about.md",
+      "thumbnail": "galley/templates/about.webp"
+    },
+    {
+      "id": "contact",
+      "label": "Contact page",
+      "description": "A contact form beside the ways to reach you, and a newsletter sign-up.",
+      "collection": "pages",
+      "file": "galley/templates/contact.md",
+      "thumbnail": "galley/templates/contact.webp"
+    }
+  ]
+}

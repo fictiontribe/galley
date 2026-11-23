@@ -1,0 +1,70 @@
+/*
+ * The site kit's forms, consent banner and email-link dialog (src/galley/),
+ * drawn in this site's tokens. The kit ships structure only; these lines are
+ * the whole theme. Forms use the --tone-* roles, so a form inside a muted,
+ * inverse or accent section follows it, and every look applies unchanged.
+ * The banner and the dialog sit outside any section, on the page's colours.
+ */
+
+.galley-form {
+  --galley-form-gap: var(--space-s);
+  --galley-field-bg: var(--tone-bg);
+  --galley-field-text: var(--tone-text);
+  --galley-field-border: var(--tone-control);
+  --galley-field-radius: var(--radius-m);
+  --galley-field-height: 2.875rem;
+  --galley-field-focus: var(--tone-focus);
+  --galley-form-error: var(--color-negative);
+  --galley-form-muted: var(--tone-muted);
+  --galley-label-weight: var(--weight-medium);
+  --galley-button-bg: var(--tone-button-bg);
+  --galley-button-text: var(--tone-button-text);
+  --galley-button-radius: var(--radius-button);
+}
+
+.galley-form__label,
+.galley-form__group > legend {
+  font-size: var(--step--1);
+}
+
+.galley-form__control {
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+/* One height for every single-line control, so a select sits level with the input beside it. */
+:where(input, select).galley-form__control {
+  block-size: var(--galley-field-height);
+  padding-block: 0;
+}
+
+.galley-form__control:hover {
+  border-color: var(--tone-text);
+}
+
+.galley-form__step-title,
+.galley-form__success-title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-display-strong);
+}
+
+.galley-consent {
+  --galley-consent-bg: var(--color-surface);
+  --galley-consent-text: var(--color-text);
+  --galley-consent-border: var(--color-border);
+  --galley-consent-radius: var(--radius-l);
+  --galley-consent-shadow: var(--shadow-raised);
+  --galley-button-bg: var(--color-accent);
+  --galley-button-text: var(--color-accent-contrast);
+  --galley-button-radius: var(--radius-button);
+  --galley-field-focus: var(--color-accent);
+}
+
+.galley-mailto {
+  --galley-mailto-bg: var(--color-surface);
+  --galley-mailto-text: var(--color-text);
+  --galley-mailto-border: var(--color-border);
+  --galley-mailto-radius: var(--radius-m);
+  --galley-mailto-shadow: var(--shadow-raised);
+  --galley-mailto-hover: var(--color-surface-muted);
+  --galley-field-focus: var(--color-accent);
+}

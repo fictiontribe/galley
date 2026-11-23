@@ -1,0 +1,41 @@
+---
+// The changelog: the sections of src/content/pages/changelog.md, then every
+// published update from src/content/changelog/, newest first. Each update
+// has an anchor (/changelog/#<file name>) that the `changelog` section and
+// the update's own heading link to.
+import { getCollection, getEntry } from "astro:content";
+import Base from "../layouts/Base.astro";
+import PageEntry from "../components/PageEntry.astro";
+import UpdateEntry from "../components/UpdateEntry.astro";
+import { labels } from "../lib/site";
+
+const entry = await getEntry("pages", "changelog");
+if (!entry) throw new Error("src/content/pages/changelog.md is missing.");
+const updates = (await getCollection("changelog", (update) => import.meta.env.DEV || !update.data.draft)).sort(
+  (a, b) => b.data.date.getTime() - a.data.date.getTime(),
+);
+---
+
+<Base title={entry.data.title} description={entry.data.description} image={entry.data.image} noindex={entry.data.noindex}>
+  <PageEntry page={entry}>
+    <section class="section tone-default timeline" aria-label={labels.changelog.all}>
+      <div class="container timeline__inner">
+        {updates.length > 0 ? updates.map((update) => <UpdateEntry entry={update} full headingLevel={2} />) : <p class="lede">{labels.changelog.empty}</p>}
+      </div>
+    </section>
+  </PageEntry>
+</Base>
+
+<style>
+  .timeline {
+    padding-block-start: 0;
+  }
+
+  .timeline__inner > :global(*) {
+    max-width: 64rem;
+  }
+
+  .timeline__inner > :global(:last-child) {
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+</style>

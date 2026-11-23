@@ -1,0 +1,389 @@
+/* Vendored from @galley/astro 0.1.0 by scripts/vendor.mjs. Don't edit: run the script again to update. */
+/*
+ * Galley forms — structural CSS. It sets layout and states only; colours,
+ * radii and spacing come from these custom properties, so a site themes every
+ * form from its own tokens in a few lines (docs/forms.md, "Styling"):
+ *
+ *   --galley-form-gap        space between fields             (1rem)
+ *   --galley-field-bg        input background                 (Canvas)
+ *   --galley-field-text      input text                       (inherit)
+ *   --galley-field-border    input border colour              (currentColor at 45%)
+ *   --galley-field-radius    input corner radius              (0.375rem)
+ *   --galley-field-height    minimum control height           (2.75rem)
+ *   --galley-field-padding   control padding                  (0.6em 0.8em)
+ *   --galley-field-focus     focus ring and focused border    (Highlight)
+ *   --galley-form-error      error text, border and summary   (#b3261e)
+ *   --galley-form-muted      help text, optional marks        (currentColor at 72%)
+ *   --galley-label-weight    label font weight                (600)
+ *   --galley-button-bg       submit button background         (CanvasText)
+ *   --galley-button-text     submit button text               (Canvas)
+ *   --galley-button-radius   button corner radius             (--galley-field-radius)
+ *
+ * Font family and size are inherited from the page. Every part has a stable
+ * class (.galley-form__…) and data- hooks ([data-state], [data-invalid],
+ * [data-type], [data-width]) for anything further.
+ */
+
+.galley-form {
+  --_gap: var(--galley-form-gap, 1rem);
+  --_border: var(--galley-field-border, color-mix(in srgb, currentColor 45%, transparent));
+  --_radius: var(--galley-field-radius, 0.375rem);
+  --_focus: var(--galley-field-focus, Highlight);
+  --_error: var(--galley-form-error, #b3261e);
+  --_muted: var(--galley-form-muted, color-mix(in srgb, currentColor 72%, transparent));
+  display: grid;
+  gap: var(--_gap);
+}
+
+.galley-form__form,
+.galley-form__fields,
+.galley-form__step {
+  display: grid;
+  gap: var(--_gap);
+  min-width: 0;
+}
+
+.galley-form__fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.galley-form__fields > * {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 36rem) {
+  .galley-form__fields > [data-width="half"] {
+    grid-column: auto / span 1;
+  }
+}
+
+.galley-form__step,
+.galley-form__group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.galley-form__step-title {
+  padding: 0;
+  font-weight: var(--galley-label-weight, 600);
+  font-size: 1.1em;
+}
+
+.galley-form__field {
+  display: grid;
+  align-content: start;
+  gap: 0.35em;
+  min-width: 0;
+}
+
+.galley-form__label {
+  font-weight: var(--galley-label-weight, 600);
+}
+
+.galley-form__group > legend {
+  float: left;
+  width: 100%;
+  margin-block-end: 0.35em;
+  padding: 0;
+}
+
+.galley-form__required {
+  margin-inline-start: 0.2em;
+  color: var(--_error);
+}
+
+.galley-form__optional,
+.galley-form__help {
+  color: var(--_muted);
+  font-size: 0.875em;
+  font-weight: normal;
+}
+
+.galley-form__help,
+.galley-form__error,
+.galley-form__text p,
+.galley-form__heading {
+  margin: 0;
+}
+
+.galley-form__heading {
+  font-size: 1.1em;
+}
+
+.galley-form__control {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--galley-field-height, 2.75rem);
+  padding: var(--galley-field-padding, 0.6em 0.8em);
+  border: 1px solid var(--_border);
+  border-radius: var(--_radius);
+  background: var(--galley-field-bg, Canvas);
+  color: var(--galley-field-text, inherit);
+  font: inherit;
+}
+
+textarea.galley-form__control {
+  resize: vertical;
+}
+
+.galley-form__control:focus-visible,
+.galley-form__choice:focus-visible,
+.galley-form button:focus-visible {
+  outline: 2px solid var(--_focus);
+  outline-offset: 2px;
+}
+
+.galley-form__control:focus-visible {
+  outline-offset: 0;
+  border-color: var(--_focus);
+}
+
+.galley-form__options {
+  display: grid;
+  gap: 0.4em;
+}
+
+.galley-form__option,
+.galley-form__check {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.6em;
+  align-items: start;
+}
+
+.galley-form__check > :not(input) {
+  grid-column: 2;
+}
+
+.galley-form__check > .galley-form__label {
+  font-weight: normal;
+}
+
+.galley-form__choice {
+  width: 1.15em;
+  height: 1.15em;
+  margin: 0.2em 0 0;
+  accent-color: var(--_focus);
+}
+
+/* Floating labels: the label sits in the box until there is an answer. */
+.galley-form__field[data-floating] {
+  position: relative;
+}
+
+.galley-form__field[data-floating] > .galley-form__label {
+  position: absolute;
+  inset-block-start: 0.85em;
+  inset-inline-start: 0.85em;
+  font-weight: normal;
+  color: var(--_muted);
+  pointer-events: none;
+  transform-origin: left top;
+  transition: transform 120ms ease;
+}
+
+.galley-form__field[data-floating] > .galley-form__control {
+  padding-block: 1.35em 0.35em;
+}
+
+.galley-form__field[data-floating] > .galley-form__control:focus + .galley-form__label,
+.galley-form__field[data-floating] > .galley-form__control:not(:placeholder-shown) + .galley-form__label {
+  transform: translateY(-0.6em) scale(0.78);
+}
+
+/* Errors */
+.galley-form__error {
+  color: var(--_error);
+  font-size: 0.875em;
+  font-weight: 600;
+}
+
+.galley-form__field[data-invalid] .galley-form__control {
+  border-color: var(--_error);
+}
+
+.galley-form__summary {
+  padding: 0.75em 1em;
+  border: 2px solid var(--_error);
+  border-radius: var(--_radius);
+}
+
+.galley-form__summary:focus-visible {
+  outline: 2px solid var(--_focus);
+  outline-offset: 2px;
+}
+
+.galley-form__summary-title {
+  margin: 0 0 0.35em;
+  font-weight: 700;
+}
+
+.galley-form__summary-list {
+  margin: 0;
+  padding-inline-start: 1.2em;
+}
+
+.galley-form__summary-list a {
+  color: inherit;
+}
+
+/* Actions */
+.galley-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75em;
+}
+
+.galley-form__submit:not([class*=" "]),
+.galley-form__next:not([class*=" "]),
+.galley-form__back:not([class*=" "]) {
+  min-height: var(--galley-field-height, 2.75rem);
+  padding: 0.6em 1.2em;
+  /* System colours, not currentColor: on the button, currentColor would be its
+     own text colour (Canvas), so a site that sets none of the custom
+     properties got a button the colour of its own label. CanvasText on Canvas
+     is the browser's own text-on-page pair, legible in light and dark. */
+  border: 1px solid var(--galley-button-bg, CanvasText);
+  border-radius: var(--galley-button-radius, var(--_radius));
+  background: var(--galley-button-bg, CanvasText);
+  color: var(--galley-button-text, Canvas);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.galley-form__back:not([class*=" "]) {
+  background: transparent;
+  color: inherit;
+  border-color: var(--_border);
+}
+
+.galley-form[data-state="sending"] [data-galley-submit] {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.galley-form__status:empty {
+  display: none;
+}
+
+.galley-form__status {
+  margin: 0;
+}
+
+.galley-form__status[data-tone="error"] {
+  color: var(--_error);
+  font-weight: 600;
+}
+
+.galley-form__progress {
+  margin: 0;
+  color: var(--_muted);
+  font-size: 0.875em;
+}
+
+/* Inline layout: one row of fields beside the button (a newsletter sign-up). */
+.galley-form[data-layout="inline"] .galley-form__form {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* The button takes the height of the field beside it, whatever the site's padding. */
+.galley-form[data-layout="inline"] .galley-form__actions {
+  align-items: stretch;
+}
+
+.galley-form[data-layout="inline"] .galley-form__form > :not(.galley-form__fields, .galley-form__actions) {
+  grid-column: 1 / -1;
+}
+
+.galley-form[data-layout="inline"] .galley-form__fields {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.galley-form[data-layout="inline"] .galley-form__fields > * {
+  flex: 1 1 12rem;
+}
+
+.galley-form[data-size="compact"] {
+  --_gap: var(--galley-form-gap, 0.6rem);
+  font-size: 0.9375em;
+}
+
+/* Thank-you */
+.galley-form__success {
+  display: grid;
+  gap: 0.5em;
+}
+
+/* The thank-you is focused by script after sending (tabindex="-1"), so a
+   screen reader announces it and the keyboard continues from there. It isn't
+   in the tab order, so WCAG 2.4.7 (Focus Visible) doesn't strictly require a
+   ring — but someone using the keyboard should still see where focus went, so
+   it gets one when the browser decides focus should show (:focus-visible: after
+   a key press, not after a click — browsers show no ring for a click). Wrapped
+   in :where() so it weighs nothing: any focus style of the site's own wins. */
+:where(.galley-form__success:focus-visible) {
+  outline: 2px solid var(--galley-field-focus, Highlight);
+  outline-offset: 4px;
+}
+
+.galley-form__success-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.15em;
+}
+
+.galley-form__success-text p {
+  margin: 0;
+}
+
+/* Without JavaScript, a capture endpoint returns the visitor to #galley-sent-<form>. */
+.galley-form__success:target {
+  display: grid;
+}
+
+/* Spam trap: out of sight and out of the accessibility tree, but not display:none. */
+.galley-form__hp {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.galley-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+/* First paint with JavaScript on: steps after the first and conditional
+   fields that start hidden are out of the way before the runtime starts.
+   Without JavaScript everything shows, so every answer can be given. */
+@media (scripting: enabled) {
+  .galley-form:not([data-galley-ready]) [data-galley-hidden],
+  .galley-form[data-steps]:not([data-galley-ready]) .galley-form__step:not([data-galley-step="0"]) {
+    display: none;
+  }
+}
+
+.galley-form [hidden] {
+  display: none !important;
+}
+
+.galley-form__success:target[hidden] {
+  display: grid !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .galley-form__field[data-floating] > .galley-form__label {
+    transition: none;
+  }
+}

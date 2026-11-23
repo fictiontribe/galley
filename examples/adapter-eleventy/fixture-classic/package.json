@@ -1,0 +1,6 @@
+{
+  "name": "lantern-walks",
+  "private": true,
+  "scripts": { "build": "eleventy" },
+  "devDependencies": { "@11ty/eleventy": "^2.0.1" }
+}

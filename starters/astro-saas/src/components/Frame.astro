@@ -1,0 +1,88 @@
+---
+// A product screenshot in an app-window frame (or bare). The picture keeps
+// its own proportions: pass `ratio` to match the file (16/10 for the
+// screenshots in public/images/product/).
+import Media from "./Media.astro";
+
+interface Props {
+  image: string;
+  imageAlt: string;
+  ratio?: string;
+  frame?: "window" | "bare";
+  eager?: boolean;
+  class?: string;
+}
+
+const { image, imageAlt, ratio = "16/10", frame = "window", eager = false, class: className } = Astro.props;
+---
+
+<div class:list={["frame", `frame--${frame}`, className]}>
+  {
+    frame === "window" && (
+      <div class="frame__bar" aria-hidden="true">
+        <span class="frame__dots">
+          <span />
+          <span />
+          <span />
+        </span>
+        <span class="frame__address" />
+      </div>
+    )
+  }
+  <Media src={image} alt={imageAlt} ratio={ratio} eager={eager} contain class="frame__media" />
+</div>
+
+<style>
+  .frame {
+    position: relative;
+    border-radius: var(--radius-l);
+  }
+
+  .frame--window {
+    padding: 0 0.35rem 0.35rem;
+    background: var(--shot-frame);
+    border: var(--border-width) solid var(--shot-line);
+    box-shadow: var(--shadow-shot);
+  }
+
+  .frame--bare {
+    box-shadow: var(--shadow-shot);
+  }
+
+  .frame__bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    block-size: 2rem;
+    padding-inline: 0.45rem;
+  }
+
+  .frame__dots {
+    display: flex;
+    gap: 0.3rem;
+  }
+
+  .frame__dots span {
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    border-radius: 50%;
+    background: var(--shot-faint);
+  }
+
+  .frame__address {
+    flex: 0 1 16rem;
+    block-size: 0.95rem;
+    margin-inline: auto;
+    border-radius: var(--radius-pill);
+    background: var(--shot-sunk);
+  }
+
+  .frame :global(.frame__media) {
+    border-radius: calc(var(--radius-l) - 0.3rem);
+    background: var(--shot-bg);
+  }
+
+  .frame--bare :global(.frame__media) {
+    border-radius: var(--radius-l);
+  }
+</style>

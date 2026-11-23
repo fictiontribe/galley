@@ -1,0 +1,151 @@
+---
+// Every plan's features, group by group. `plans` are the column headings;
+// each row's `values` line up with them — "yes", "no" and "partial" become
+// marks, anything else ("Unlimited", "5 sites") is shown as text.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Mark from "../Mark.astro";
+import { labels, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  plans: string[];
+  items: Array<{ heading: string; rows: Array<{ label: string; values: string[] }> }>;
+  highlight?: number;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, plans, items, highlight = 2, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const hi = highlight - 1;
+---
+
+<Section type="pricing-table" id={id} tone={tone} block={block} labelledby={headingId}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+  <div class="table-scroll" role="region" aria-labelledby={headingId} tabindex="0">
+    <table class="plan-table" style={`--plans: ${plans.length}`}>
+      <thead>
+        <tr>
+          <th scope="col" class="plan-table__corner">
+            <span class="visually-hidden">{labels.table.feature}</span>
+          </th>
+          {
+            plans.map((plan, i) => (
+              <th scope="col" class:list={{ "is-highlight": i === hi }}>
+                {i === hi && <span class="plan-table__flag">{labels.table.highlighted}</span>}
+                {plan}
+              </th>
+            ))
+          }
+        </tr>
+      </thead>
+      {
+        items.map((group) => (
+          <tbody>
+            <tr class="plan-table__group">
+              <th scope="colgroup" colspan={plans.length + 1}>
+                {group.heading}
+              </th>
+            </tr>
+            {group.rows.map((row) => (
+              <tr>
+                <th scope="row">{row.label}</th>
+                {plans.map((_, i) => (
+                  <td class:list={{ "is-highlight": i === hi }}>
+                    <Mark value={row.values[i] ?? ""} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        ))
+      }
+    </table>
+  </div>
+</Section>
+
+<style>
+  .table-scroll {
+    position: relative;
+    overflow-x: auto;
+  }
+
+  .plan-table {
+    width: 100%;
+    min-width: 40rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: var(--step--1);
+  }
+
+  .plan-table th,
+  .plan-table td {
+    padding: var(--space-xs) var(--space-s);
+    border-block-end: var(--border-width) solid var(--tone-line);
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .plan-table thead th {
+    padding-block: var(--space-s);
+    background: var(--tone-bg);
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: var(--weight-display);
+    letter-spacing: -0.015em;
+    vertical-align: bottom;
+  }
+
+  .plan-table__flag {
+    display: block;
+    margin-block-end: 0.2em;
+    font-family: var(--font-body);
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-link);
+  }
+
+  .plan-table thead th.is-highlight {
+    border-block-start: 3px solid var(--tone-link);
+    border-start-start-radius: var(--radius-m);
+    border-start-end-radius: var(--radius-m);
+    background: var(--tone-surface);
+  }
+
+  .plan-table tbody th[scope="row"] {
+    text-align: start;
+    font-weight: var(--weight-medium);
+    inline-size: 34%;
+  }
+
+  .plan-table__group th {
+    padding-block: var(--space-l) var(--space-xs);
+    text-align: start;
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .plan-table td.is-highlight {
+    background: var(--tone-surface);
+  }
+
+  /* On narrow screens the table scrolls; the row labels stay put. */
+  .plan-table tbody th[scope="row"],
+  .plan-table thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--tone-bg);
+  }
+</style>

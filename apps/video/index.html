@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Galley — Prompt it. Proof it. Publish it.</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      /* Brand fonts (OFL-1.1, files and licences in assets/fonts/). */
+      @font-face { font-family: "Newsreader"; src: url("assets/fonts/newsreader-latin-opsz-normal.woff2") format("woff2"); font-weight: 200 800; font-style: normal; }
+      @font-face { font-family: "Newsreader"; src: url("assets/fonts/newsreader-latin-opsz-italic.woff2") format("woff2"); font-weight: 200 800; font-style: italic; }
+      @font-face { font-family: "Figtree"; src: url("assets/fonts/figtree-latin-wght-normal.woff2") format("woff2"); font-weight: 300 900; font-style: normal; }
+      @font-face { font-family: "IBM Plex Mono"; src: url("assets/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      @font-face { font-family: "IBM Plex Mono"; src: url("assets/fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-style: normal; }
+      /* Colours from galley/brand/tokens.css (light theme). */
+      :root {
+        --paper: #f6f1e7;
+        --raised: #fdfaf4;
+        --sunken: #ede6d8;
+        --ink: #1a1712;
+        --ink-2: #514a3f;
+        --ink-3: #6b6356;
+        --border: #d2c7b4;
+        --border-strong: #857b69;
+        --accent: #2e2bff;
+        --insert: #0b6e55;
+        --delete: #b8361a;
+        --font-display: "Newsreader", Georgia, serif;
+        --font-text: "Figtree", system-ui, sans-serif;
+        --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--paper); }
+      #root { position: relative; width: 100%; height: 100%; font-family: var(--font-text); color: var(--ink); }
+      #ground { position: absolute; inset: 0; background: var(--paper); }
+    </style>
+    <!-- film-data:start (written by scripts/apply-timings.mjs; do not edit by hand) -->
+    <script>window.__FILM = {"total":31.374,"scenes":{"s1-need":{"start":0,"duration":5.95},"s2-ask":{"start":5.95,"duration":5.986},"s3-proof":{"start":11.936,"duration":7.264},"s4-publish":{"start":19.2,"duration":3.716},"s5-start":{"start":22.916,"duration":4.768},"s6-end":{"start":27.684,"duration":3.69}},"vo":[{"id":"need","scene":"s1-need","start":0.5,"end":5.7,"words":[{"t":"Your","s":0.5,"e":0.74},{"t":"site","s":0.82,"e":1.06},{"t":"is","s":1.14,"e":1.3},{"t":"fast.","s":1.38,"e":2.18},{"t":"So","s":2.42,"e":2.58},{"t":"why","s":2.82,"e":2.9},{"t":"does","s":2.98,"e":3.14},{"t":"every","s":3.3,"e":3.54},{"t":"small","s":3.7,"e":3.94},{"t":"change","s":4.02,"e":4.42},{"t":"wait","s":4.5,"e":4.74},{"t":"for","s":4.78,"e":4.82},{"t":"a","s":4.9,"e":4.94},{"t":"developer?","s":4.98,"e":5.7}]},{"id":"ask","scene":"s2-ask","start":6.25,"end":11.786,"words":[{"t":"With","s":6.25,"e":6.49},{"t":"Galley,","s":6.57,"e":7.21},{"t":"click","s":7.29,"e":7.45},{"t":"the","s":7.53,"e":7.61},{"t":"text","s":7.69,"e":8.01},{"t":"on","s":8.05,"e":8.09},{"t":"the","s":8.17,"e":8.25},{"t":"page,","s":8.33,"e":9.05},{"t":"or","s":9.13,"e":9.37},{"t":"just","s":9.45,"e":9.69},{"t":"ask","s":9.77,"e":10.01},{"t":"for","s":10.05,"e":10.09},{"t":"the","s":10.17,"e":10.25},{"t":"change","s":10.41,"e":10.57},{"t":"in","s":10.65,"e":10.73},{"t":"plain","s":10.81,"e":11.05},{"t":"words.","s":11.13,"e":11.786}]},{"id":"proof","scene":"s3-proof","start":12.236,"end":18,"words":[{"t":"Then","s":12.236,"e":12.396},{"t":"proof","s":12.556,"e":12.876},{"t":"it:","s":12.956,"e":13.596},{"t":"every","s":13.676,"e":13.916},{"t":"change","s":13.996,"e":14.396},{"t":"marked","s":14.476,"e":14.796},{"t":"up","s":14.876,"e":15.036},{"t":"like","s":15.116,"e":15.196},{"t":"an","s":15.276,"e":15.356},{"t":"editor's","s":15.436,"e":15.836},{"t":"proof,","s":15.916,"e":16.476},{"t":"beside","s":16.596,"e":16.876},{"t":"your","s":16.956,"e":17.036},{"t":"live","s":17.116,"e":17.356},{"t":"site.","s":17.436,"e":18}]},{"id":"publish","scene":"s4-publish","start":19.5,"end":22.666,"words":[{"t":"Publish,","s":19.5,"e":20.22},{"t":"and","s":20.3,"e":20.38},{"t":"it's","s":20.42,"e":20.54},{"t":"a","s":20.58,"e":20.62},{"t":"commit","s":20.7,"e":21.1},{"t":"in","s":21.18,"e":21.26},{"t":"your","s":21.34,"e":21.42},{"t":"own","s":21.5,"e":21.66},{"t":"repository.","s":21.74,"e":22.666}]},{"id":"start","scene":"s5-start","start":23.216,"end":27.234,"words":[{"t":"Built","s":23.216,"e":23.536},{"t":"for","s":23.616,"e":23.776},{"t":"Astro.","s":23.936,"e":24.816},{"t":"Open","s":24.976,"e":25.136},{"t":"source.","s":25.216,"e":26.096},{"t":"Free","s":26.176,"e":26.336},{"t":"to","s":26.416,"e":26.576},{"t":"use.","s":26.656,"e":27.234}]}],"s2":{"cuts":{"s2-vid-a":{"start":0,"duration":2.8,"mediaStart":0.062,"rate":1},"s2-vid-b":{"start":2.8,"mediaStart":4.077,"rate":2.001,"duration":1.027},"s2-vid-c1":{"mediaStart":6.237,"rate":4,"start":3.827,"duration":0.663},"s2-vid-c2":{"mediaStart":12.473,"rate":1,"start":4.49,"duration":1.496}},"events":{"click":1.34,"popover":1.374,"typeStart":2.85,"headingChanged":4.86}},"footage":{"viewport":{"width":1440,"height":900},"live":{"heading":{"x":72,"y":343,"w":966,"h":323.7},"url":"/"},"after":{"heading":{"x":72,"y":344.5,"w":966,"h":322.2}},"ask":{"heading":{"x":152,"y":421.6,"w":642,"h":225},"popover":{"x":152,"y":657,"w":380,"h":204},"leaveAsIs":{"x":375.5,"y":814,"w":83.9,"h":28},"composer":{"x":1101,"y":767,"w":282,"h":52},"reviewInProof":{"x":1116,"y":346,"w":133,"h":28},"headingAfter":{"x":152,"y":422.6,"w":642,"h":224},"assistantPanel":null},"proof":{"boxes":{"inserted":{"x":494.7,"y":383.5,"w":113.5,"h":17},"row":null,"deleted":{"x":494.7,"y":357.5,"w":183.1,"h":17},"publish":{"x":1363.5,"y":7.5,"w":64.5,"h":28},"tabOnThePage":{"x":564.2,"y":265,"w":74.4,"h":36}},"onThePage":{"headings":[{"side":"live","text":"Coats for the long afternoon.","box":{"x":464,"y":536.1,"w":435.5,"h":125.4}},{"side":"proposed","text":"Coats for low sun.","box":{"x":972.5,"y":595.4,"w":398.4,"h":66.6}}],"publish":{"x":1363.5,"y":7.5,"w":64.5,"h":28}}},"publish":{"dialog":{"x":460,"y":268.5,"w":520,"h":363},"confirm":{"x":829.5,"y":586.5,"w":129.5,"h":32},"done":{"x":460,"y":315.5,"w":520,"h":269}},"history":{"latest":{"x":346,"y":294,"w":179.6,"h":24},"row":{"x":306,"y":294,"w":880,"h":65}}},"s3":{"click":3.16}};</script>
+    <!-- film-data:end -->
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="31.374" data-width="1920" data-height="1080">
+      <div id="ground"></div>
+
+      <div id="s1-need" data-composition-id="s1-need" data-composition-src="compositions/s1-need.html" data-start="0" data-duration="5.95" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s2-ask" data-composition-id="s2-ask" data-composition-src="compositions/s2-ask.html" data-start="5.95" data-duration="5.986" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s3-proof" data-composition-id="s3-proof" data-composition-src="compositions/s3-proof.html" data-start="11.936" data-duration="7.264" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s4-publish" data-composition-id="s4-publish" data-composition-src="compositions/s4-publish.html" data-start="19.2" data-duration="3.716" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s5-start" data-composition-id="s5-start" data-composition-src="compositions/s5-start.html" data-start="22.916" data-duration="4.768" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s6-end" data-composition-id="s6-end" data-composition-src="compositions/s6-end.html" data-start="27.684" data-duration="3.69" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+
+      <!-- Voice: one file laid out by scripts/make-voiceover.mjs (Kokoro today; ElevenLabs when a key is set). -->
+      <audio id="voice" class="clip" src="assets/audio/voiceover.wav" data-start="0" data-duration="27.484" data-track-index="10" data-volume="1"></audio>
+      <!-- Music: "Piano loops 030" by josefpres (CC0), from 36 s into the source. Under the voice ~0.14, lifted on the end card. -->
+      <audio
+        id="music"
+        class="clip"
+        src="assets/audio/music/piano-loops-030-josefpres.mp3"
+        data-start="0"
+        data-duration="31.374"
+        data-media-start="36"
+        data-track-index="11"
+        data-volume="1"
+        data-fade-in="0.4"
+        data-fade-out="1.5"
+        data-automation="{&quot;version&quot;:1,&quot;lanes&quot;:[{&quot;target&quot;:&quot;volume&quot;,&quot;points&quot;:[{&quot;t&quot;:0,&quot;v&quot;:0.26},{&quot;t&quot;:0.45,&quot;v&quot;:0.15},{&quot;t&quot;:18.05,&quot;v&quot;:0.15},{&quot;t&quot;:18.5,&quot;v&quot;:0.3},{&quot;t&quot;:19.15,&quot;v&quot;:0.3},{&quot;t&quot;:19.45,&quot;v&quot;:0.15},{&quot;t&quot;:27.284,&quot;v&quot;:0.15},{&quot;t&quot;:28.284,&quot;v&quot;:0.55}]}]}"
+      ></audio>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

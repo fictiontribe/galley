@@ -1,0 +1,133 @@
+/*
+ * DESIGN TOKENS — the one file that decides how this site looks.
+ *
+ * Every colour, font, size, radius and shadow used anywhere on the site is
+ * defined here as a CSS custom property. Components only ever reference these
+ * names, so restyling the site means editing this file and nothing else.
+ *
+ * To re-skin quickly:
+ *   1. Fonts — swap the two @import lines below for another pair of
+ *      @fontsource-variable packages (add them to package.json), then update
+ *      --font-display and --font-body to the new family names.
+ *   2. Accent — change --color-accent (and its -strong hover partner and
+ *      --color-accent-on-inverse, the same hue lightened for dark grounds).
+ *   3. Neutrals — the background / surface / text / border values share one
+ *      warm hue; shift that hue to cool or warm the whole site.
+ *
+ * Colour roles:
+ *   background        page ground
+ *   surface           raised things: inputs, cards, the mobile menu
+ *   surface-muted     ground of `tone: muted` sections
+ *   text / text-muted body copy / secondary copy (keep ≥ 4.5:1 on surface-muted)
+ *   border            hairlines and dividers; border-strong for form controls
+ *   accent            links, primary buttons, ground of `tone: accent` sections
+ *   accent-contrast   text placed on accent (keep ≥ 4.5:1)
+ *   inverse-*         ground, text, muted text and borders of `tone: inverse`
+ *                     sections and the footer
+ *   negative          form errors
+ *
+ * Colours are written in oklch(lightness chroma hue): lightness is
+ * perceptual, so two colours with the same L look equally light. Keep text
+ * colours ≥ 40 points of L away from their ground to hold WCAG AA.
+ */
+
+@import "@fontsource-variable/newsreader/opsz.css";
+@import "@fontsource-variable/newsreader/opsz-italic.css";
+@import "@fontsource-variable/instrument-sans/wdth.css";
+
+:root {
+  color-scheme: light;
+
+  /* ── Colour ─────────────────────────────────────────────────────────── */
+  --color-background: oklch(97.4% 0.009 84);
+  --color-surface: oklch(99.3% 0.004 84);
+  --color-surface-muted: oklch(93.6% 0.016 80);
+  --color-text: oklch(23% 0.016 60);
+  --color-text-muted: oklch(43% 0.02 62);
+  --color-border: oklch(86% 0.018 76);
+  --color-border-strong: oklch(56% 0.02 66);
+
+  --color-accent: oklch(50.5% 0.142 39);
+  --color-accent-strong: oklch(43% 0.13 37);
+  --color-accent-contrast: oklch(98.6% 0.008 84);
+  --color-accent-on-inverse: oklch(78% 0.11 50);
+
+  --color-inverse-background: oklch(24.5% 0.018 60);
+  --color-inverse-surface: oklch(30% 0.02 60);
+  --color-inverse-text: oklch(95.5% 0.012 84);
+  --color-inverse-muted: oklch(79% 0.02 76);
+  --color-inverse-border: oklch(40% 0.02 62);
+
+  /* Error text and borders on forms (keep ≥ 4.5:1 on surface). */
+  --color-negative: oklch(48% 0.16 27);
+
+  /* Overlay used behind the mobile menu and image placeholders. */
+  --color-scrim: oklch(23% 0.016 60 / 0.06);
+
+  /* ── Type ───────────────────────────────────────────────────────────── */
+  --font-display: "Newsreader Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-body: "Instrument Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --weight-display: 380;
+  --weight-display-strong: 520;
+  --weight-body: 400;
+  --weight-medium: 520;
+  --weight-bold: 620;
+
+  --tracking-display: -0.022em;
+  --tracking-caps: 0.12em;
+  --leading-tight: 1.04;
+  --leading-snug: 1.22;
+  --leading-body: 1.6;
+
+  /* Fluid type scale: each step ~1.2× (small screens) to ~1.33× (large). */
+  --step--2: clamp(0.74rem, 0.72rem + 0.08vw, 0.8rem);
+  --step--1: clamp(0.84rem, 0.81rem + 0.14vw, 0.92rem);
+  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+  --step-1: clamp(1.18rem, 1.09rem + 0.42vw, 1.45rem);
+  --step-2: clamp(1.4rem, 1.24rem + 0.8vw, 1.95rem);
+  --step-3: clamp(1.68rem, 1.4rem + 1.4vw, 2.65rem);
+  --step-4: clamp(2rem, 1.55rem + 2.25vw, 3.6rem);
+  --step-5: clamp(2.35rem, 1.65rem + 3.5vw, 4.9rem);
+  --step-6: clamp(2.6rem, 1.6rem + 5vw, 6.5rem);
+
+  --measure: 64ch;
+
+  /* ── Space ──────────────────────────────────────────────────────────── */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-s: 1rem;
+  --space-m: clamp(1.25rem, 1.1rem + 0.6vw, 1.6rem);
+  --space-l: clamp(1.75rem, 1.45rem + 1.2vw, 2.5rem);
+  --space-xl: clamp(2.5rem, 2rem + 2.2vw, 4rem);
+  --space-2xl: clamp(3.5rem, 2.6rem + 4vw, 6rem);
+  --space-section: clamp(4rem, 2.6rem + 6.5vw, 8.5rem);
+
+  --container: 78rem;
+  --container-narrow: 46rem;
+  --gutter: clamp(1.25rem, 0.55rem + 3.2vw, 3rem);
+  --header-height: 4.5rem;
+
+  /* ── Shape ──────────────────────────────────────────────────────────── */
+  --radius-s: 2px;
+  --radius-m: 4px;
+  --radius-l: 10px;
+  --radius-button: 2px;
+  --radius-image: 2px;
+  --border-width: 1px;
+
+  --shadow-raised: 0 1px 2px oklch(23% 0.016 60 / 0.06), 0 12px 32px -8px oklch(23% 0.016 60 / 0.16);
+
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 140ms;
+  --duration: 240ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration: 0ms;
+  }
+}

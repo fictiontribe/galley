@@ -1,0 +1,132 @@
+---
+// How you compare with the alternatives, row by row. `columns` are the
+// headings (usually you first); each row's `values` line up with them —
+// "yes", "no" and "partial" become marks, anything else is shown as text.
+// The table scrolls sideways on small screens.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Mark from "../Mark.astro";
+import { labels, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  columns: string[];
+  items: Array<{ label: string; values: string[] }>;
+  highlight?: number;
+  note?: string;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, columns, items, highlight = 1, note, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const hi = highlight - 1;
+---
+
+<Section type="comparison" id={id} tone={tone} block={block} labelledby={headingId}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} align="center" />
+  <div class="table-scroll" role="region" aria-labelledby={headingId} tabindex="0">
+    <table class="comparison">
+      <thead>
+        <tr>
+          <th scope="col" class="comparison__corner"><span class="visually-hidden">{labels.table.feature}</span></th>
+          {
+            columns.map((column, i) => (
+              <th scope="col" class:list={{ "is-highlight": i === hi }}>
+                {column}
+              </th>
+            ))
+          }
+        </tr>
+      </thead>
+      <tbody>
+        {
+          items.map((row) => (
+            <tr>
+              <th scope="row">{row.label}</th>
+              {columns.map((_, i) => (
+                <td class:list={{ "is-highlight": i === hi }}>
+                  <Mark value={row.values[i] ?? ""} />
+                </td>
+              ))}
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  {note && <p class="comparison__note">{note}</p>}
+</Section>
+
+<style>
+  .table-scroll {
+    position: relative;
+    overflow-x: auto;
+    max-width: 60rem;
+    margin-inline: auto;
+    border-radius: var(--radius-l);
+  }
+
+  .comparison {
+    width: 100%;
+    min-width: 36rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: var(--step--1);
+  }
+
+  .comparison th,
+  .comparison td {
+    padding: var(--space-xs) var(--space-s);
+    border-block-end: var(--border-width) solid var(--tone-line);
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .comparison thead th {
+    padding-block: var(--space-s);
+    font-family: var(--font-display);
+    font-size: var(--step-0);
+    font-weight: var(--weight-display);
+    letter-spacing: -0.015em;
+  }
+
+  .comparison tbody th {
+    text-align: start;
+    font-weight: var(--weight-medium);
+    inline-size: 38%;
+  }
+
+  .comparison .is-highlight {
+    background: var(--tone-surface);
+    border-inline: var(--border-width) solid var(--tone-line);
+  }
+
+  .comparison thead .is-highlight {
+    border-block-start: 3px solid var(--tone-link);
+    border-start-start-radius: var(--radius-m);
+    border-start-end-radius: var(--radius-m);
+    color: var(--tone-link);
+  }
+
+  .comparison__note {
+    max-width: 60rem;
+    margin: var(--space-m) auto 0;
+    font-size: var(--step--2);
+    color: var(--tone-muted);
+  }
+
+  /* On narrow screens the table scrolls; the row labels stay put. */
+  .comparison tbody th[scope="row"],
+  .comparison thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--tone-bg);
+  }
+</style>

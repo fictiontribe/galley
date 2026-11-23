@@ -1,0 +1,167 @@
+# Desktop installers for macOS (Apple silicon + Intel), Windows and Linux.
+#
+# Runs on version tags (v1.2.3) and by hand. Every build is unsigned unless
+# the signing secrets below exist in the repository; then the same job signs
+# (and on macOS notarises) without any other change.
+#
+#   macOS signing      APPLE_CERTIFICATE           base64 of the "Developer ID Application" .p12
+#                      APPLE_CERTIFICATE_PASSWORD  the .p12's export password
+#                      APPLE_SIGNING_IDENTITY      e.g. "Developer ID Application: Name (TEAMID)"
+#   macOS notarising   APPLE_ID                    Apple ID e-mail
+#   (needs signing)    APPLE_PASSWORD              an app-specific password for it
+#                      APPLE_TEAM_ID               the 10-character team id
+#   Windows signing    WINDOWS_CERTIFICATE         base64 of the code-signing .pfx (certutil -encode)
+#                      WINDOWS_CERTIFICATE_PASSWORD
+#   Linux              not signed
+#
+# The packaged app runs its server on the Node.js that runs this job
+# (apps/desktop/scripts/prepare-sidecar.mjs copies process.execPath), so the
+# Node version below is the version every installer ships.
+#
+# This workflow has not been run yet; it was written against the Tauri 2
+# docs (distribute/sign/macos, distribute/sign/windows, start/prerequisites).
+name: Desktop
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (Apple silicon)
+            os: macos-14
+            target: aarch64-apple-darwin
+            bundles: app,dmg
+          - name: macOS (Intel)
+            # GitHub's Intel macOS runner. Its Node is x64, matching the target.
+            os: macos-15-intel
+            target: x86_64-apple-darwin
+            bundles: app,dmg
+          - name: Windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis,msi
+          - name: Linux
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: appimage,deb
+    runs-on: ${{ matrix.os }}
+    env:
+      # Secrets can't be tested in `if:` directly; these say whether each one is set.
+      HAS_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      HAS_APPLE_NOTARY: ${{ secrets.APPLE_ID != '' && secrets.APPLE_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
+      HAS_WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
+      GALLEY_SKIP_WEB_BUILD: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # LTS: this exact runtime is bundled into the app.
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Rust tests
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --target ${{ matrix.target }}
+
+      # ── macOS signing (only with APPLE_CERTIFICATE) ─────────────────────
+      - name: Import the Apple signing certificate
+        if: runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE == 'true'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import "$RUNNER_TEMP/certificate.p12" -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          rm "$RUNNER_TEMP/certificate.p12"
+
+      # ── Windows signing (only with WINDOWS_CERTIFICATE) ─────────────────
+      - name: Import the Windows signing certificate
+        if: runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          New-Item -ItemType directory -Path certificate | Out-Null
+          Set-Content -Path certificate/tempCert.txt -Value $env:WINDOWS_CERTIFICATE
+          certutil -decode certificate/tempCert.txt certificate/certificate.pfx
+          Remove-Item -Path certificate/tempCert.txt
+          $password = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
+          $cert = Import-PfxCertificate -FilePath certificate/certificate.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
+          Remove-Item -Recurse -Force certificate
+          $config = @{ bundle = @{ windows = @{ certificateThumbprint = $cert.Thumbprint; digestAlgorithm = "sha256"; timestampUrl = "http://timestamp.digicert.com" } } } | ConvertTo-Json -Depth 4 -Compress
+          Set-Content -Path apps/desktop/src-tauri/tauri.signing.conf.json -Value $config
+
+      # ── Build ──────────────────────────────────────────────────────────
+      # tauri.bundle.conf.json adds the sidecar and the server bundle and runs
+      # scripts/prepare-sidecar.mjs first (TAURI_ENV_TARGET_TRIPLE tells it the target).
+      - name: Build (unsigned)
+        if: (runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE != 'true') || (runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE != 'true') || runner.os == 'Linux'
+        working-directory: apps/desktop
+        run: pnpm exec tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config src-tauri/tauri.bundle.conf.json
+
+      - name: Build (signed, macOS)
+        if: runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE == 'true'
+        working-directory: apps/desktop
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # Notarisation runs when all three are present (Tauri reads them from the environment).
+          APPLE_ID: ${{ env.HAS_APPLE_NOTARY == 'true' && secrets.APPLE_ID || '' }}
+          APPLE_PASSWORD: ${{ env.HAS_APPLE_NOTARY == 'true' && secrets.APPLE_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ env.HAS_APPLE_NOTARY == 'true' && secrets.APPLE_TEAM_ID || '' }}
+        run: pnpm exec tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config src-tauri/tauri.bundle.conf.json
+
+      - name: Build (signed, Windows)
+        if: runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE == 'true'
+        working-directory: apps/desktop
+        run: pnpm exec tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.signing.conf.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target }}
+          if-no-files-found: error
+          path: |
+            apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
+            apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+            apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
+            apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+            apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb

@@ -1,0 +1,88 @@
+---
+import Site from "../../layouts/Site.astro";
+import DocsNav from "../../components/DocsNav.astro";
+import { docHref, getDocGroups, getDocs, type Doc } from "../../lib/docs";
+import { renderMarkdown } from "../../lib/markdown";
+import { editUrl } from "../../lib/site";
+import docsData from "../../data/docs.json";
+
+export async function getStaticPaths() {
+  const docs = await getDocs();
+  return docs.map((doc, i) => ({
+    params: { slug: doc.id === "index" ? undefined : doc.id.replace(/\/index$/, "") },
+    props: { doc, prev: docs[i - 1], next: docs[i + 1] },
+  }));
+}
+
+interface Props {
+  doc: Doc;
+  prev?: Doc;
+  next?: Doc;
+}
+
+const { doc, prev, next } = Astro.props;
+const { html, headings } = renderMarkdown(doc.body ?? "");
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const groups = await getDocGroups();
+const groupLabel = docsData.groups.find((g) => g.id === doc.data.group)?.label ?? doc.data.group;
+const ui = docsData.ui;
+---
+
+<Site title={doc.id === "index" ? doc.data.title : `${doc.data.title} · ${ui.docs}`} description={doc.data.description} type="article">
+  <div class="wrap docs">
+    <DocsNav groups={groups} current={docHref(doc.id)} />
+
+    <article class="docs__main" data-galley-agent="main">
+      <p class="label">{ui.docs} › {groupLabel}</p>
+      <h1 class="docs__title">{doc.data.title}</h1>
+      <p class="docs__desc">{doc.data.description}</p>
+      <div class="prose" set:html={html} />
+
+      <footer class="docs__foot" data-galley-agent="skip">
+        <nav class="docs__pager" aria-label={ui.pager}>
+          {
+            prev && (
+              <a class="prev" href={docHref(prev.id)} rel="prev">
+                <span>{ui.previous}</span>
+                <b>{prev.data.navTitle ?? prev.data.title}</b>
+              </a>
+            )
+          }
+          {
+            next && (
+              <a class="next" href={docHref(next.id)} rel="next">
+                <span>{ui.next}</span>
+                <b>{next.data.navTitle ?? next.data.title}</b>
+              </a>
+            )
+          }
+        </nav>
+        <p class="docs__editline">
+          <a href={editUrl(`src/content/docs/${doc.filePath?.split("src/content/docs/")[1] ?? `${doc.id}.md`}`)} rel="external">{ui.edit}</a>
+          <span>{ui.editNote}</span>
+        </p>
+      </footer>
+    </article>
+
+    <aside class="docs__toc" aria-labelledby="toc-h">
+      {
+        toc.length > 0 && (
+          <>
+            <h2 class="label" id="toc-h">{ui.onThisPage}</h2>
+            <ul data-toc>
+              {toc.map((h) => (
+                <li class={`d${h.depth}`}>
+                  <a href={`#${h.slug}`}>{h.text}</a>
+                </li>
+              ))}
+            </ul>
+          </>
+        )
+      }
+      <p class="docs__edit"><a href={editUrl(`src/content/docs/${doc.filePath?.split("src/content/docs/")[1] ?? `${doc.id}.md`}`)} rel="external">{ui.edit}</a></p>
+    </aside>
+  </div>
+  <script>
+    import "../../scripts/docs.ts";
+  </script>
+</Site>

@@ -1,0 +1,2431 @@
+{
+  "$comment": "The demo catalogue: what the shop shows when no store is connected (src/data/shop/store.json has no domain). Same shape the store loader produces, the seed script sends and the test store serves. Prices in GBP. Every product is invented.",
+  "shop": {
+    "name": "Caddow",
+    "currencyCode": "GBP",
+    "countryCode": "GB",
+    "moneyFormat": "£{{amount}}"
+  },
+  "collections": [
+    {
+      "handle": "coats",
+      "title": "Coats and jackets",
+      "description": "Nine coats and jackets in undyed wool, waxed cotton and linen. Forty of each, cut by hand.",
+      "image": {
+        "url": "/images/lookbooks/ss26/look-02.webp",
+        "altText": "An older woman in the light putty trench walks down pale steps with the arch's shadow across her.",
+        "width": 1600,
+        "height": 2400
+      },
+      "products": [
+        "field-coat",
+        "car-coat",
+        "wrap-coat",
+        "overcoat",
+        "smock",
+        "raincoat",
+        "liner-jacket",
+        "linen-jacket",
+        "trench"
+      ]
+    },
+    {
+      "handle": "knitwear",
+      "title": "Knitwear",
+      "description": "Ganseys, polos and a rollneck, knitted in the Borders and finished in the workroom.",
+      "image": {
+        "url": "/images/pieces/rib-polo.webp",
+        "altText": "The oat rib polo folded on a stone ledge in low sun.",
+        "width": 1200,
+        "height": 1500
+      },
+      "products": [
+        "gansey",
+        "rib-polo",
+        "rollneck",
+        "loose-knit",
+        "blanket-scarf"
+      ]
+    },
+    {
+      "handle": "trousers",
+      "title": "Trousers",
+      "description": "Three trousers, all of them wide or straight, none of them tight.",
+      "image": {
+        "url": "/images/lookbooks/aw26/look-05.webp",
+        "altText": "A man in wide oat trousers and a navy gansey walks along the quay.",
+        "width": 1600,
+        "height": 2400
+      },
+      "products": [
+        "wide-trouser",
+        "linen-trouser",
+        "drill-trouser"
+      ]
+    }
+  ],
+  "products": [
+    {
+      "handle": "field-coat",
+      "title": "Field coat",
+      "productType": "Coat",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A plain field coat in undyed Shetland wool, cut long and straight so it hangs from the shoulders, not the waist. The wool keeps the colour of the sheep it came from, which is why no two runs are quite the same. The liner jacket buttons into it in January. Undyed Shetland wool, woven in the Borders Horn buttons, a single back vent Cut and sewn in the workroom in Marrowby, forty of each size Brush it, air it, and have it cleaned once a year at most",
+      "descriptionHtml": "<p>A plain field coat in undyed Shetland wool, cut long and straight so it hangs from the shoulders, not the waist. The wool keeps the colour of the sheep it came from, which is why no two runs are quite the same.</p><p>The liner jacket buttons into it in January.</p><ul><li>Undyed Shetland wool, woven in the Borders</li><li>Horn buttons, a single back vent</li><li>Cut and sewn in the workroom in Marrowby, forty of each size</li><li>Brush it, air it, and have it cleaned once a year at most</li></ul>",
+      "seo": {
+        "title": "Field coat — undyed Shetland wool",
+        "description": "A long, straight field coat in undyed Shetland wool, made in a run of forty in the workroom in Marrowby."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/pieces/field-coat.webp",
+          "altText": "The field coat in undyed wool, on a wooden hanger against a sunlit wall.",
+          "width": 1200,
+          "height": 1500
+        },
+        {
+          "url": "/images/lookbooks/aw26/look-01.webp",
+          "altText": "A woman in the field coat, worn open, walks along the foot of a sunlit wall.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-FC-XS",
+          "title": "XS",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XS"
+            }
+          ],
+          "price": {
+            "amount": "640.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0
+        },
+        {
+          "sku": "CDW-FC-S",
+          "title": "S",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "640.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 4
+        },
+        {
+          "sku": "CDW-FC-M",
+          "title": "M",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "640.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 11
+        },
+        {
+          "sku": "CDW-FC-L",
+          "title": "L",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "640.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 1
+        },
+        {
+          "sku": "CDW-FC-XL",
+          "title": "XL",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "price": {
+            "amount": "640.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 9
+        }
+      ]
+    },
+    {
+      "handle": "car-coat",
+      "title": "Car coat",
+      "productType": "Coat",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A short car coat in boiled wool, dyed rust. The colour took eleven tries to get right: the first ten were too orange, too brown, or too pleased with themselves. Boiled wool is knitted, then shrunk until it is dense enough to keep out wind. It doesn't fray, so the edges are left raw. Boiled merino wool, dyed rust Raw edges, three buttons, two deep pockets Cut and sewn in Marrowby, forty of each size Air it; it rarely needs cleaning",
+      "descriptionHtml": "<p>A short car coat in boiled wool, dyed rust. The colour took eleven tries to get right: the first ten were too orange, too brown, or too pleased with themselves.</p><p>Boiled wool is knitted, then shrunk until it is dense enough to keep out wind. It doesn't fray, so the edges are left raw.</p><ul><li>Boiled merino wool, dyed rust</li><li>Raw edges, three buttons, two deep pockets</li><li>Cut and sewn in Marrowby, forty of each size</li><li>Air it; it rarely needs cleaning</li></ul>",
+      "seo": {
+        "title": "Car coat — boiled wool, rust",
+        "description": "A short car coat in rust boiled wool with raw edges, made in a run of forty."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/aw26/look-04.webp",
+          "altText": "A woman in the rust car coat looks over her shoulder at the low sun.",
+          "width": 1600,
+          "height": 2400
+        },
+        {
+          "url": "/images/campaign/aw26-harbour-wall.webp",
+          "altText": "A woman in a long rust coat stands against a sunlit harbour wall, her shadow across it.",
+          "width": 2400,
+          "height": 1600
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-CC-XS",
+          "title": "XS",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XS"
+            }
+          ],
+          "price": {
+            "amount": "580.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 7
+        },
+        {
+          "sku": "CDW-CC-S",
+          "title": "S",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "580.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 1
+        },
+        {
+          "sku": "CDW-CC-M",
+          "title": "M",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "580.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 2
+        },
+        {
+          "sku": "CDW-CC-L",
+          "title": "L",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "580.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 5
+        },
+        {
+          "sku": "CDW-CC-XL",
+          "title": "XL",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "price": {
+            "amount": "580.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 12
+        }
+      ]
+    },
+    {
+      "handle": "wrap-coat",
+      "title": "Wrap coat",
+      "productType": "Coat",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A long wrap coat with no buttons. It is tied, and it stays tied. Double-faced wool means two cloths woven together, so the coat has no lining and no inside to speak of. The edges are hand-finished: each one takes most of a day. Double-faced wool, bone Unlined, hand-finished edges, a self belt Cut and sewn in Marrowby, forty of each size Hang it on a broad hanger; steam out creases",
+      "descriptionHtml": "<p>A long wrap coat with no buttons. It is tied, and it stays tied. Double-faced wool means two cloths woven together, so the coat has no lining and no inside to speak of.</p><p>The edges are hand-finished: each one takes most of a day.</p><ul><li>Double-faced wool, bone</li><li>Unlined, hand-finished edges, a self belt</li><li>Cut and sewn in Marrowby, forty of each size</li><li>Hang it on a broad hanger; steam out creases</li></ul>",
+      "seo": {
+        "title": "Wrap coat — double-faced wool, bone",
+        "description": "A long, unlined wrap coat in bone double-faced wool with hand-finished edges."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/aw26/look-03.webp",
+          "altText": "An older woman in the long belted bone wrap coat stands side-on to a wall.",
+          "width": 1600,
+          "height": 2400
+        },
+        {
+          "url": "/images/lookbooks/aw26/cover.webp",
+          "altText": "An older woman with a silver bob, wrapped in the pale wool coat, leans on the corner of a sunlit wall.",
+          "width": 1600,
+          "height": 2000
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-WC-XS",
+          "title": "XS",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XS"
+            }
+          ],
+          "price": {
+            "amount": "720.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 10
+        },
+        {
+          "sku": "CDW-WC-S",
+          "title": "S",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "720.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 8
+        },
+        {
+          "sku": "CDW-WC-M",
+          "title": "M",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "720.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 6
+        },
+        {
+          "sku": "CDW-WC-L",
+          "title": "L",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "720.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 4
+        },
+        {
+          "sku": "CDW-WC-XL",
+          "title": "XL",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "price": {
+            "amount": "720.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0
+        }
+      ]
+    },
+    {
+      "handle": "overcoat",
+      "title": "Overcoat",
+      "productType": "Coat",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A black overcoat in heavy melton, the felted wool that navy coats were once made from. It is cut generously enough to go over a gansey and still close. It is the darkest thing we make, and the plainest. Wool melton, black Half-lined in cotton, four horn buttons Cut and sewn in Marrowby, forty of each size Brush after wearing; clean once a year at most",
+      "descriptionHtml": "<p>A black overcoat in heavy melton, the felted wool that navy coats were once made from. It is cut generously enough to go over a gansey and still close.</p><p>It is the darkest thing we make, and the plainest.</p><ul><li>Wool melton, black</li><li>Half-lined in cotton, four horn buttons</li><li>Cut and sewn in Marrowby, forty of each size</li><li>Brush after wearing; clean once a year at most</li></ul>",
+      "seo": {
+        "title": "Overcoat — melton, black",
+        "description": "A plain black overcoat in heavy wool melton, cut to go over knitwear."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/aw26/look-08.webp",
+          "altText": "A man in the long black overcoat with a pale scarf stands against the wall as the sun drops.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-OC-XS",
+          "title": "XS",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XS"
+            }
+          ],
+          "price": {
+            "amount": "690.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 11
+        },
+        {
+          "sku": "CDW-OC-S",
+          "title": "S",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "690.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 9
+        },
+        {
+          "sku": "CDW-OC-M",
+          "title": "M",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "690.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 7
+        },
+        {
+          "sku": "CDW-OC-L",
+          "title": "L",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "690.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 5
+        },
+        {
+          "sku": "CDW-OC-XL",
+          "title": "XL",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "price": {
+            "amount": "690.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 12
+        }
+      ]
+    },
+    {
+      "handle": "smock",
+      "title": "Smock",
+      "productType": "Jacket",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "An over-the-head smock in olive waxed cotton. It goes darker where you hold it and paler where the sun lands, and after a year it looks like yours. A half placket, a deep front pocket, a hood that folds into the collar. Waxed cotton, olive Half placket, kangaroo pocket, folding hood Cut and sewn in Marrowby, forty of each size Wipe it clean; re-wax it every second winter",
+      "descriptionHtml": "<p>An over-the-head smock in olive waxed cotton. It goes darker where you hold it and paler where the sun lands, and after a year it looks like yours.</p><p>A half placket, a deep front pocket, a hood that folds into the collar.</p><ul><li>Waxed cotton, olive</li><li>Half placket, kangaroo pocket, folding hood</li><li>Cut and sewn in Marrowby, forty of each size</li><li>Wipe it clean; re-wax it every second winter</li></ul>",
+      "seo": {
+        "title": "Smock — waxed cotton, olive",
+        "description": "An olive waxed-cotton smock that darkens with wear, made in a run of forty."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/aw26/look-02.webp",
+          "altText": "A man in the olive waxed-cotton smock sits on a stone bollard by the wall, his hands in his pockets.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-SM-XS",
+          "title": "XS",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XS"
+            }
+          ],
+          "price": {
+            "amount": "390.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 10
+        },
+        {
+          "sku": "CDW-SM-S",
+          "title": "S",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "390.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 8
+        },
+        {
+          "sku": "CDW-SM-M",
+          "title": "M",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "390.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 3
+        },
+        {
+          "sku": "CDW-SM-L",
+          "title": "L",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "390.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 6
+        },
+        {
+          "sku": "CDW-SM-XL",
+          "title": "XL",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "price": {
+            "amount": "390.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 4
+        }
+      ]
+    },
+    {
+      "handle": "raincoat",
+      "title": "Raincoat",
+      "productType": "Coat",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A long raincoat in waxed linen. Linen is lighter than cotton and creases like paper; waxed, it keeps off the kind of rain that comes sideways off the sea. A collar that turns up and stays up. Waxed linen, ink Storm collar, raglan sleeves, deep pockets Cut and sewn in Marrowby, forty of each size Wipe it clean; never wash it",
+      "descriptionHtml": "<p>A long raincoat in waxed linen. Linen is lighter than cotton and creases like paper; waxed, it keeps off the kind of rain that comes sideways off the sea.</p><p>A collar that turns up and stays up.</p><ul><li>Waxed linen, ink</li><li>Storm collar, raglan sleeves, deep pockets</li><li>Cut and sewn in Marrowby, forty of each size</li><li>Wipe it clean; never wash it</li></ul>",
+      "seo": {
+        "title": "Raincoat — waxed linen, ink",
+        "description": "A long raincoat in ink waxed linen with a storm collar."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/aw26/look-06.webp",
+          "altText": "An older woman in the long dark waxed-linen raincoat, collar turned up, stands in a strip of sun.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-RC-XS",
+          "title": "XS",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XS"
+            }
+          ],
+          "price": {
+            "amount": "560.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0
+        },
+        {
+          "sku": "CDW-RC-S",
+          "title": "S",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "560.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0
+        },
+        {
+          "sku": "CDW-RC-M",
+          "title": "M",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "560.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 11
+        },
+        {
+          "sku": "CDW-RC-L",
+          "title": "L",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "560.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 9
+        },
+        {
+          "sku": "CDW-RC-XL",
+          "title": "XL",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "price": {
+            "amount": "560.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 7
+        }
+      ]
+    },
+    {
+      "handle": "liner-jacket",
+      "title": "Liner jacket",
+      "productType": "Jacket",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A quilted liner that buttons into the field coat in January and goes out on its own in May. Sold out for this season; the next run is cut in the spring. Diamond quilting in cotton thread, a wool wadding that stays warm when it is damp. Cotton shell, wool wadding, putty Buttons into the field coat Cut and sewn in Marrowby, forty of each size Wash cool, dry flat",
+      "descriptionHtml": "<p>A quilted liner that buttons into the field coat in January and goes out on its own in May. Sold out for this season; the next run is cut in the spring.</p><p>Diamond quilting in cotton thread, a wool wadding that stays warm when it is damp.</p><ul><li>Cotton shell, wool wadding, putty</li><li>Buttons into the field coat</li><li>Cut and sewn in Marrowby, forty of each size</li><li>Wash cool, dry flat</li></ul>",
+      "seo": {
+        "title": "Liner jacket — quilted cotton, putty",
+        "description": "A quilted putty liner jacket that buttons into the field coat or goes out alone."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/aw26/look-07.webp",
+          "altText": "A woman in the short quilted putty jacket sits on the edge of the quay wall.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-LJ-XS",
+          "title": "XS",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XS"
+            }
+          ],
+          "price": {
+            "amount": "320.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0
+        },
+        {
+          "sku": "CDW-LJ-S",
+          "title": "S",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "320.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0
+        },
+        {
+          "sku": "CDW-LJ-M",
+          "title": "M",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "320.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0
+        },
+        {
+          "sku": "CDW-LJ-L",
+          "title": "L",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "320.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0
+        },
+        {
+          "sku": "CDW-LJ-XL",
+          "title": "XL",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "price": {
+            "amount": "320.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0
+        }
+      ]
+    },
+    {
+      "handle": "linen-jacket",
+      "title": "Linen jacket",
+      "productType": "Jacket",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A jacket in linen heavy enough to keep its shape in a sea wind. Three patch pockets, no lining, and a collar that sits flat whether or not you want it to. It softens with every wash and creases from the first wearing. Both are the point. Heavy linen, oat Unlined, three patch pockets Cut and sewn in Marrowby, forty of each size Wash cool; hang to dry",
+      "descriptionHtml": "<p>A jacket in linen heavy enough to keep its shape in a sea wind. Three patch pockets, no lining, and a collar that sits flat whether or not you want it to.</p><p>It softens with every wash and creases from the first wearing. Both are the point.</p><ul><li>Heavy linen, oat</li><li>Unlined, three patch pockets</li><li>Cut and sewn in Marrowby, forty of each size</li><li>Wash cool; hang to dry</li></ul>",
+      "seo": {
+        "title": "Linen jacket — heavy linen, oat",
+        "description": "An unlined oat linen jacket with patch pockets, heavy enough to hold its shape."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/ss26/look-01.webp",
+          "altText": "Someone in the matching oat linen jacket and trousers stands in a plastered archway.",
+          "width": 1600,
+          "height": 2400
+        },
+        {
+          "url": "/images/lookbooks/ss26/cover.webp",
+          "altText": "Someone in the loose oat linen jacket sits on pale plaster steps, face turned into the sun.",
+          "width": 1600,
+          "height": 2000
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-LN-XS",
+          "title": "XS",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XS"
+            }
+          ],
+          "price": {
+            "amount": "340.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 5
+        },
+        {
+          "sku": "CDW-LN-S",
+          "title": "S",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "340.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 12
+        },
+        {
+          "sku": "CDW-LN-M",
+          "title": "M",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "340.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 10
+        },
+        {
+          "sku": "CDW-LN-L",
+          "title": "L",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "340.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 8
+        },
+        {
+          "sku": "CDW-LN-XL",
+          "title": "XL",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "price": {
+            "amount": "340.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 6
+        }
+      ]
+    },
+    {
+      "handle": "trench",
+      "title": "Trench",
+      "productType": "Coat",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "An unlined trench in putty cotton gabardine, for a summer that keeps not arriving. No epaulettes, no gun flap, no D-rings: the parts of a trench that were for something else. It packs small and comes out of the bag looking as if it meant to. Cotton gabardine, putty Unlined, raglan sleeves, a self belt Cut and sewn in Marrowby, forty of each size Wash cool; hang to dry",
+      "descriptionHtml": "<p>An unlined trench in putty cotton gabardine, for a summer that keeps not arriving. No epaulettes, no gun flap, no D-rings: the parts of a trench that were for something else.</p><p>It packs small and comes out of the bag looking as if it meant to.</p><ul><li>Cotton gabardine, putty</li><li>Unlined, raglan sleeves, a self belt</li><li>Cut and sewn in Marrowby, forty of each size</li><li>Wash cool; hang to dry</li></ul>",
+      "seo": {
+        "title": "Trench — unlined cotton gabardine, putty",
+        "description": "An unlined putty trench in cotton gabardine, without the trimmings."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/ss26/look-02.webp",
+          "altText": "An older woman in the light putty trench walks down pale steps with the arch's shadow across her.",
+          "width": 1600,
+          "height": 2400
+        },
+        {
+          "url": "/images/campaign/ss26-plaster-steps.webp",
+          "altText": "A figure in pale linen on rendered steps below a plastered arch.",
+          "width": 2400,
+          "height": 1600
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-TR-XS",
+          "title": "XS",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XS"
+            }
+          ],
+          "price": {
+            "amount": "480.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 4
+        },
+        {
+          "sku": "CDW-TR-S",
+          "title": "S",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "480.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 1
+        },
+        {
+          "sku": "CDW-TR-M",
+          "title": "M",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "480.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 11
+        },
+        {
+          "sku": "CDW-TR-L",
+          "title": "L",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "480.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 9
+        },
+        {
+          "sku": "CDW-TR-XL",
+          "title": "XL",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "XL"
+            }
+          ],
+          "price": {
+            "amount": "480.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 7
+        }
+      ]
+    },
+    {
+      "handle": "gansey",
+      "title": "Gansey",
+      "productType": "Knitwear",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A fisherman's gansey knitted in the round, so it has no side seams to give way. The band of stitches across the chest is the pattern of one harbour; every harbour had its own. Tight enough to keep the wind out, loose enough to go under the overcoat. Five-ply worsted wool Knitted in the round, gusseted underarms Knitted in the Borders, finished in Marrowby Hand wash, dry flat",
+      "descriptionHtml": "<p>A fisherman's gansey knitted in the round, so it has no side seams to give way. The band of stitches across the chest is the pattern of one harbour; every harbour had its own.</p><p>Tight enough to keep the wind out, loose enough to go under the overcoat.</p><ul><li>Five-ply worsted wool</li><li>Knitted in the round, gusseted underarms</li><li>Knitted in the Borders, finished in Marrowby</li><li>Hand wash, dry flat</li></ul>",
+      "seo": {
+        "title": "Gansey — worsted wool",
+        "description": "A fisherman's gansey knitted in the round in worsted wool, in navy or ecru."
+      },
+      "options": [
+        {
+          "name": "Colour",
+          "values": [
+            "Navy",
+            "Ecru"
+          ]
+        },
+        {
+          "name": "Size",
+          "values": [
+            "S",
+            "M",
+            "L"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/pieces/gansey.webp",
+          "altText": "The navy gansey laid flat on unbleached linen, its stitch pattern caught by low light.",
+          "width": 1200,
+          "height": 1500
+        },
+        {
+          "url": "/images/lookbooks/aw26/look-02.webp",
+          "altText": "A man in the olive smock over an ecru gansey sits on a stone bollard.",
+          "width": 1600,
+          "height": 2400
+        },
+        {
+          "url": "/images/lookbooks/aw26/look-05.webp",
+          "altText": "A man in the navy gansey carries a folded coat over one arm along the quay.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-GN-NAV-S",
+          "title": "Navy / S",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Navy"
+            },
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "260.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 5,
+          "image": 0
+        },
+        {
+          "sku": "CDW-GN-NAV-M",
+          "title": "Navy / M",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Navy"
+            },
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "260.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 12,
+          "image": 0
+        },
+        {
+          "sku": "CDW-GN-NAV-L",
+          "title": "Navy / L",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Navy"
+            },
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "260.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 10,
+          "image": 0
+        },
+        {
+          "sku": "CDW-GN-ECR-S",
+          "title": "Ecru / S",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Ecru"
+            },
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "260.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 8,
+          "image": 1
+        },
+        {
+          "sku": "CDW-GN-ECR-M",
+          "title": "Ecru / M",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Ecru"
+            },
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "260.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 6,
+          "image": 1
+        },
+        {
+          "sku": "CDW-GN-ECR-L",
+          "title": "Ecru / L",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Ecru"
+            },
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "260.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0,
+          "image": 1
+        }
+      ]
+    },
+    {
+      "handle": "rib-polo",
+      "title": "Rib polo",
+      "productType": "Knitwear",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A ribbed polo in lambswool with a deep collar that stands up under a coat and lies flat without one. It goes under everything we make, which is why there are two colours of it. Lambswool, rib knit Three-button placket, deep collar Knitted in the Borders, finished in Marrowby Hand wash, dry flat",
+      "descriptionHtml": "<p>A ribbed polo in lambswool with a deep collar that stands up under a coat and lies flat without one.</p><p>It goes under everything we make, which is why there are two colours of it.</p><ul><li>Lambswool, rib knit</li><li>Three-button placket, deep collar</li><li>Knitted in the Borders, finished in Marrowby</li><li>Hand wash, dry flat</li></ul>",
+      "seo": {
+        "title": "Rib polo — lambswool",
+        "description": "A lambswool rib polo with a deep collar, in oat or ink."
+      },
+      "options": [
+        {
+          "name": "Colour",
+          "values": [
+            "Oat",
+            "Ink"
+          ]
+        },
+        {
+          "name": "Size",
+          "values": [
+            "S",
+            "M",
+            "L"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/pieces/rib-polo.webp",
+          "altText": "The oat rib polo folded on a stone ledge in low sun.",
+          "width": 1200,
+          "height": 1500
+        },
+        {
+          "url": "/images/lookbooks/aw26/look-04.webp",
+          "altText": "A woman in the rust car coat over an ink rib polo, looking at the low sun.",
+          "width": 1600,
+          "height": 2400
+        },
+        {
+          "url": "/images/lookbooks/aw26/look-07.webp",
+          "altText": "A woman in the quilted liner jacket over an oat rib polo sits on the quay wall.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-RP-OAT-S",
+          "title": "Oat / S",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 4,
+          "image": 0
+        },
+        {
+          "sku": "CDW-RP-OAT-M",
+          "title": "Oat / M",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 11,
+          "image": 0
+        },
+        {
+          "sku": "CDW-RP-OAT-L",
+          "title": "Oat / L",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 9,
+          "image": 0
+        },
+        {
+          "sku": "CDW-RP-INK-S",
+          "title": "Ink / S",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Ink"
+            },
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 7,
+          "image": 1
+        },
+        {
+          "sku": "CDW-RP-INK-M",
+          "title": "Ink / M",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Ink"
+            },
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 1,
+          "image": 1
+        },
+        {
+          "sku": "CDW-RP-INK-L",
+          "title": "Ink / L",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Ink"
+            },
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 5,
+          "image": 1
+        }
+      ]
+    },
+    {
+      "handle": "rollneck",
+      "title": "Rollneck",
+      "productType": "Knitwear",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A fine rollneck in ink merino, thin enough to wear under a shirt and warm enough to wear without one. The neck rolls down once. If you want it to roll twice, buy the size up. Extra-fine merino, ink Fully fashioned, linked seams Knitted in the Borders, finished in Marrowby Hand wash, dry flat",
+      "descriptionHtml": "<p>A fine rollneck in ink merino, thin enough to wear under a shirt and warm enough to wear without one.</p><p>The neck rolls down once. If you want it to roll twice, buy the size up.</p><ul><li>Extra-fine merino, ink</li><li>Fully fashioned, linked seams</li><li>Knitted in the Borders, finished in Marrowby</li><li>Hand wash, dry flat</li></ul>",
+      "seo": {
+        "title": "Rollneck — merino, ink",
+        "description": "A fine ink merino rollneck, fully fashioned, thin enough to layer."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "S",
+            "M",
+            "L"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/pieces/rollneck.webp",
+          "altText": "The ink merino rollneck folded on a stone ledge in low sun.",
+          "width": 1200,
+          "height": 1500
+        },
+        {
+          "url": "/images/lookbooks/aw26/look-03.webp",
+          "altText": "An older woman in the bone wrap coat over an ink rollneck stands side-on to a wall.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-RN-S",
+          "title": "S",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "180.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 12
+        },
+        {
+          "sku": "CDW-RN-M",
+          "title": "M",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "180.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 10
+        },
+        {
+          "sku": "CDW-RN-L",
+          "title": "L",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "180.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 8
+        }
+      ]
+    },
+    {
+      "handle": "loose-knit",
+      "title": "Loose knit",
+      "productType": "Knitwear",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A knit loose enough to sleep in. People have. Cotton and linen, so it is cool in the sun and does not mind the sea. Dropped shoulders, a wide neck, a hem that stops at the hip. Cotton and linen, rust Dropped shoulders, wide neck Knitted in the Borders, finished in Marrowby Wash cool, dry flat",
+      "descriptionHtml": "<p>A knit loose enough to sleep in. People have. Cotton and linen, so it is cool in the sun and does not mind the sea.</p><p>Dropped shoulders, a wide neck, a hem that stops at the hip.</p><ul><li>Cotton and linen, rust</li><li>Dropped shoulders, wide neck</li><li>Knitted in the Borders, finished in Marrowby</li><li>Wash cool, dry flat</li></ul>",
+      "seo": {
+        "title": "Loose knit — cotton and linen, rust",
+        "description": "A loose rust knit in cotton and linen with dropped shoulders."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "S",
+            "M",
+            "L"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/ss26/look-03.webp",
+          "altText": "Someone in the loose rust-coloured knit leans against a plaster wall, eyes closed against the sun.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-LK-S",
+          "title": "S",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "S"
+            }
+          ],
+          "price": {
+            "amount": "190.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 6
+        },
+        {
+          "sku": "CDW-LK-M",
+          "title": "M",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "M"
+            }
+          ],
+          "price": {
+            "amount": "190.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 4
+        },
+        {
+          "sku": "CDW-LK-L",
+          "title": "L",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "L"
+            }
+          ],
+          "price": {
+            "amount": "190.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 11
+        }
+      ]
+    },
+    {
+      "handle": "blanket-scarf",
+      "title": "Blanket scarf",
+      "productType": "Accessories",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A scarf the size of a small blanket, woven in oat lambswool with one ultramarine stripe near one end. It is the only blue thing in the collection. Fringed ends, twisted by hand. Lambswool, oat with one blue stripe 200 × 60 cm, hand-twisted fringe Woven in the Borders Hand wash, dry flat",
+      "descriptionHtml": "<p>A scarf the size of a small blanket, woven in oat lambswool with one ultramarine stripe near one end. It is the only blue thing in the collection.</p><p>Fringed ends, twisted by hand.</p><ul><li>Lambswool, oat with one blue stripe</li><li>200 × 60 cm, hand-twisted fringe</li><li>Woven in the Borders</li><li>Hand wash, dry flat</li></ul>",
+      "seo": {
+        "title": "Blanket scarf — lambswool, oat with one blue stripe",
+        "description": "A large oat lambswool blanket scarf with one ultramarine stripe."
+      },
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "One size"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/pieces/blanket-scarf.webp",
+          "altText": "The oat lambswool blanket scarf with its one blue stripe, draped over the back of a wooden chair.",
+          "width": 1200,
+          "height": 1500
+        },
+        {
+          "url": "/images/lookbooks/aw26/look-08.webp",
+          "altText": "A man wears the pale blanket scarf under a black overcoat.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-BS-One size",
+          "title": "One size",
+          "selectedOptions": [
+            {
+              "name": "Size",
+              "value": "One size"
+            }
+          ],
+          "price": {
+            "amount": "120.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 9
+        }
+      ]
+    },
+    {
+      "handle": "wide-trouser",
+      "title": "Wide trouser",
+      "productType": "Trousers",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A wide, high trouser in wool twill, with a deep hem you can let down. It falls straight from the hip and breaks once on the shoe. Two pleats, side pockets, a button fly. Wool twill Two pleats, button fly, 6 cm hem Cut and sewn in Marrowby, forty of each size Brush, air, press with a cloth",
+      "descriptionHtml": "<p>A wide, high trouser in wool twill, with a deep hem you can let down. It falls straight from the hip and breaks once on the shoe.</p><p>Two pleats, side pockets, a button fly.</p><ul><li>Wool twill</li><li>Two pleats, button fly, 6 cm hem</li><li>Cut and sewn in Marrowby, forty of each size</li><li>Brush, air, press with a cloth</li></ul>",
+      "seo": {
+        "title": "Wide trouser — wool twill",
+        "description": "A wide, high wool twill trouser with two pleats, in ink or oat."
+      },
+      "options": [
+        {
+          "name": "Colour",
+          "values": [
+            "Ink",
+            "Oat"
+          ]
+        },
+        {
+          "name": "Waist",
+          "values": [
+            "28",
+            "30",
+            "32",
+            "34",
+            "36"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/aw26/look-01.webp",
+          "altText": "A woman in wide ink trousers and the field coat walks along a sunlit wall.",
+          "width": 1600,
+          "height": 2400
+        },
+        {
+          "url": "/images/lookbooks/aw26/look-05.webp",
+          "altText": "A man in wide oat trousers and a navy gansey walks along the quay.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-WT-INK-28",
+          "title": "Ink / 28",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Ink"
+            },
+            {
+              "name": "Waist",
+              "value": "28"
+            }
+          ],
+          "price": {
+            "amount": "280.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0,
+          "image": 0
+        },
+        {
+          "sku": "CDW-WT-INK-30",
+          "title": "Ink / 30",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Ink"
+            },
+            {
+              "name": "Waist",
+              "value": "30"
+            }
+          ],
+          "price": {
+            "amount": "280.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 7,
+          "image": 0
+        },
+        {
+          "sku": "CDW-WT-INK-32",
+          "title": "Ink / 32",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Ink"
+            },
+            {
+              "name": "Waist",
+              "value": "32"
+            }
+          ],
+          "price": {
+            "amount": "280.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 5,
+          "image": 0
+        },
+        {
+          "sku": "CDW-WT-INK-34",
+          "title": "Ink / 34",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Ink"
+            },
+            {
+              "name": "Waist",
+              "value": "34"
+            }
+          ],
+          "price": {
+            "amount": "280.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 12,
+          "image": 0
+        },
+        {
+          "sku": "CDW-WT-INK-36",
+          "title": "Ink / 36",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Ink"
+            },
+            {
+              "name": "Waist",
+              "value": "36"
+            }
+          ],
+          "price": {
+            "amount": "280.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 10,
+          "image": 0
+        },
+        {
+          "sku": "CDW-WT-OAT-28",
+          "title": "Oat / 28",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Waist",
+              "value": "28"
+            }
+          ],
+          "price": {
+            "amount": "280.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 8,
+          "image": 1
+        },
+        {
+          "sku": "CDW-WT-OAT-30",
+          "title": "Oat / 30",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Waist",
+              "value": "30"
+            }
+          ],
+          "price": {
+            "amount": "280.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 6,
+          "image": 1
+        },
+        {
+          "sku": "CDW-WT-OAT-32",
+          "title": "Oat / 32",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Waist",
+              "value": "32"
+            }
+          ],
+          "price": {
+            "amount": "280.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 4,
+          "image": 1
+        },
+        {
+          "sku": "CDW-WT-OAT-34",
+          "title": "Oat / 34",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Waist",
+              "value": "34"
+            }
+          ],
+          "price": {
+            "amount": "280.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 11,
+          "image": 1
+        },
+        {
+          "sku": "CDW-WT-OAT-36",
+          "title": "Oat / 36",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Waist",
+              "value": "36"
+            }
+          ],
+          "price": {
+            "amount": "280.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": false,
+          "quantityAvailable": 0,
+          "image": 1
+        }
+      ]
+    },
+    {
+      "handle": "linen-trouser",
+      "title": "Linen trouser",
+      "productType": "Trousers",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "The wide trouser again, in linen for the summer. It creases where you sit, and the creases fall out by lunch. A drawstring inside the waistband for the days after a big lunch. Linen Button fly, inner drawstring, side pockets Cut and sewn in Marrowby, forty of each size Wash cool; hang to dry",
+      "descriptionHtml": "<p>The wide trouser again, in linen for the summer. It creases where you sit, and the creases fall out by lunch.</p><p>A drawstring inside the waistband for the days after a big lunch.</p><ul><li>Linen</li><li>Button fly, inner drawstring, side pockets</li><li>Cut and sewn in Marrowby, forty of each size</li><li>Wash cool; hang to dry</li></ul>",
+      "seo": {
+        "title": "Linen trouser — linen",
+        "description": "A wide linen trouser with an inner drawstring, in bone or oat."
+      },
+      "options": [
+        {
+          "name": "Colour",
+          "values": [
+            "Bone",
+            "Oat"
+          ]
+        },
+        {
+          "name": "Waist",
+          "values": [
+            "28",
+            "30",
+            "32",
+            "34",
+            "36"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/ss26/look-03.webp",
+          "altText": "Someone in wide bone linen trousers and a rust knit leans against a plaster wall.",
+          "width": 1600,
+          "height": 2400
+        },
+        {
+          "url": "/images/lookbooks/ss26/look-01.webp",
+          "altText": "Someone in matching oat linen jacket and wide trousers stands in an archway.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-LT-BON-28",
+          "title": "Bone / 28",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Bone"
+            },
+            {
+              "name": "Waist",
+              "value": "28"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 9,
+          "image": 0
+        },
+        {
+          "sku": "CDW-LT-BON-30",
+          "title": "Bone / 30",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Bone"
+            },
+            {
+              "name": "Waist",
+              "value": "30"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 1,
+          "image": 0
+        },
+        {
+          "sku": "CDW-LT-BON-32",
+          "title": "Bone / 32",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Bone"
+            },
+            {
+              "name": "Waist",
+              "value": "32"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 7,
+          "image": 0
+        },
+        {
+          "sku": "CDW-LT-BON-34",
+          "title": "Bone / 34",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Bone"
+            },
+            {
+              "name": "Waist",
+              "value": "34"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 5,
+          "image": 0
+        },
+        {
+          "sku": "CDW-LT-BON-36",
+          "title": "Bone / 36",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Bone"
+            },
+            {
+              "name": "Waist",
+              "value": "36"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 12,
+          "image": 0
+        },
+        {
+          "sku": "CDW-LT-OAT-28",
+          "title": "Oat / 28",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Waist",
+              "value": "28"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 10,
+          "image": 1
+        },
+        {
+          "sku": "CDW-LT-OAT-30",
+          "title": "Oat / 30",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Waist",
+              "value": "30"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 8,
+          "image": 1
+        },
+        {
+          "sku": "CDW-LT-OAT-32",
+          "title": "Oat / 32",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Waist",
+              "value": "32"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 6,
+          "image": 1
+        },
+        {
+          "sku": "CDW-LT-OAT-34",
+          "title": "Oat / 34",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Waist",
+              "value": "34"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 4,
+          "image": 1
+        },
+        {
+          "sku": "CDW-LT-OAT-36",
+          "title": "Oat / 36",
+          "selectedOptions": [
+            {
+              "name": "Colour",
+              "value": "Oat"
+            },
+            {
+              "name": "Waist",
+              "value": "36"
+            }
+          ],
+          "price": {
+            "amount": "210.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 11,
+          "image": 1
+        }
+      ]
+    },
+    {
+      "handle": "drill-trouser",
+      "title": "Drill trouser",
+      "productType": "Trousers",
+      "vendor": "Caddow",
+      "tags": [],
+      "description": "A straight work trouser in heavy cotton drill, the cloth sails used to be sewn to. It starts stiff and takes a month to become yours. Flat front, a ruler pocket you will use for something else. Heavy cotton drill, putty Flat front, ruler pocket, button fly Cut and sewn in Marrowby, forty of each size Wash warm; it will soften",
+      "descriptionHtml": "<p>A straight work trouser in heavy cotton drill, the cloth sails used to be sewn to. It starts stiff and takes a month to become yours.</p><p>Flat front, a ruler pocket you will use for something else.</p><ul><li>Heavy cotton drill, putty</li><li>Flat front, ruler pocket, button fly</li><li>Cut and sewn in Marrowby, forty of each size</li><li>Wash warm; it will soften</li></ul>",
+      "seo": {
+        "title": "Drill trouser — heavy cotton, putty",
+        "description": "A straight putty work trouser in heavy cotton drill."
+      },
+      "options": [
+        {
+          "name": "Waist",
+          "values": [
+            "28",
+            "30",
+            "32",
+            "34",
+            "36"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "url": "/images/lookbooks/aw26/look-02.webp",
+          "altText": "A man in putty drill trousers and an olive smock sits on a stone bollard.",
+          "width": 1600,
+          "height": 2400
+        }
+      ],
+      "variants": [
+        {
+          "sku": "CDW-DT-28",
+          "title": "28",
+          "selectedOptions": [
+            {
+              "name": "Waist",
+              "value": "28"
+            }
+          ],
+          "price": {
+            "amount": "190.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 9
+        },
+        {
+          "sku": "CDW-DT-30",
+          "title": "30",
+          "selectedOptions": [
+            {
+              "name": "Waist",
+              "value": "30"
+            }
+          ],
+          "price": {
+            "amount": "190.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 7
+        },
+        {
+          "sku": "CDW-DT-32",
+          "title": "32",
+          "selectedOptions": [
+            {
+              "name": "Waist",
+              "value": "32"
+            }
+          ],
+          "price": {
+            "amount": "190.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 2
+        },
+        {
+          "sku": "CDW-DT-34",
+          "title": "34",
+          "selectedOptions": [
+            {
+              "name": "Waist",
+              "value": "34"
+            }
+          ],
+          "price": {
+            "amount": "190.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 5
+        },
+        {
+          "sku": "CDW-DT-36",
+          "title": "36",
+          "selectedOptions": [
+            {
+              "name": "Waist",
+              "value": "36"
+            }
+          ],
+          "price": {
+            "amount": "190.00",
+            "currencyCode": "GBP"
+          },
+          "compareAtPrice": null,
+          "availableForSale": true,
+          "quantityAvailable": 12
+        }
+      ]
+    }
+  ]
+}

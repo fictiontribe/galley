@@ -1,0 +1,29 @@
+---
+// The managed scripts of src/data/scripts.json, placed by hand. The
+// integration already puts them into every page, so most sites never use
+// this; it is for layouts that want to decide the spot — and for the one
+// spot an integration can't reach on its own when vendored (body start):
+//
+//   <head> … <Scripts placement="head" /> … </head>
+//   <body> <Scripts placement="body-start" /> … <Scripts placement="body-end" /> </body>
+//
+// A placement written here is not injected again. The body-end placement
+// also carries the email-link dialog unless it is turned off.
+import { planPage, renderPlacement, resolveEntries } from "../scripts/plan.js";
+import { mailtoTag } from "../mailto/config.js";
+import { mailto, scripts, utm } from "../runtime/site-config.js";
+
+interface Props {
+  placement?: "head" | "body-start" | "body-end";
+}
+
+const { placement = "head" } = Astro.props;
+const base = (import.meta.env.BASE_URL || "/").replace(/\/+$/, "");
+const pathname = Astro.url.pathname;
+const path = base && pathname.startsWith(base) ? pathname.slice(base.length) || "/" : pathname;
+const plan = planPage(scripts, { path, dev: import.meta.env.DEV, host: Astro.site?.hostname ?? "", utm, resolved: scripts ? resolveEntries(scripts) : [] });
+// The email-link dialog rides along at the end of the body (docs/mailto.md).
+const html = renderPlacement(plan, placement, { consent: scripts?.consent, base }) + (placement === "body-end" && mailto ? mailtoTag(mailto) : "");
+---
+
+<Fragment set:html={html} />

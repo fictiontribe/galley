@@ -1,0 +1,134 @@
+/*
+ * DESIGN TOKENS — the “Sage” look. Cool sage paper, deep green and rounded
+ * corners, set in Bricolage Grotesque and Figtree.
+ * Use it with: cp src/styles/themes/sage.css src/styles/tokens.css
+ *
+ * Every colour, font, size, radius and shadow used anywhere on the site is
+ * defined here as a CSS custom property. Components only ever reference these
+ * names, so restyling the site means editing this file and nothing else.
+ *
+ * To re-skin quickly:
+ *   1. Fonts — swap the two @import lines below for another pair of
+ *      @fontsource-variable packages (add them to package.json), then update
+ *      --font-display and --font-body to the new family names.
+ *   2. Accent — change --color-accent (and its -strong hover partner and
+ *      --color-accent-on-inverse, the same hue lightened for dark grounds).
+ *   3. Neutrals — the background / surface / text / border values share one
+ *      warm hue; shift that hue to cool or warm the whole site.
+ *
+ * Colour roles:
+ *   background        page ground
+ *   surface           raised things: inputs, cards, the mobile menu
+ *   surface-muted     ground of `tone: muted` sections
+ *   text / text-muted body copy / secondary copy (keep ≥ 4.5:1 on surface-muted)
+ *   border            hairlines and dividers; border-strong for form controls
+ *   accent            links, primary buttons, ground of `tone: accent` sections
+ *   accent-contrast   text placed on accent (keep ≥ 4.5:1)
+ *   inverse-*         ground, text, muted text and borders of `tone: inverse`
+ *                     sections and the footer
+ *   negative          form errors
+ *
+ * Colours are written in oklch(lightness chroma hue): lightness is
+ * perceptual, so two colours with the same L look equally light. Keep text
+ * colours ≥ 40 points of L away from their ground to hold WCAG AA.
+ */
+
+@import "@fontsource-variable/bricolage-grotesque/standard.css";
+@import "@fontsource-variable/figtree/index.css";
+
+:root {
+  color-scheme: light;
+
+  /* ── Colour ─────────────────────────────────────────────────────────── */
+  --color-background: oklch(97.4% 0.008 150);
+  --color-surface: oklch(99.4% 0.004 150);
+  --color-surface-muted: oklch(93.4% 0.016 150);
+  --color-text: oklch(22% 0.022 165);
+  --color-text-muted: oklch(41% 0.024 165);
+  --color-border: oklch(86.5% 0.016 152);
+  --color-border-strong: oklch(54% 0.022 162);
+
+  --color-accent: oklch(44% 0.088 158);
+  --color-accent-strong: oklch(37.5% 0.078 160);
+  --color-accent-contrast: oklch(98.8% 0.006 150);
+  --color-accent-on-inverse: oklch(82% 0.1 148);
+
+  --color-inverse-background: oklch(23.5% 0.03 168);
+  --color-inverse-surface: oklch(29% 0.032 168);
+  --color-inverse-text: oklch(96% 0.01 150);
+  --color-inverse-muted: oklch(80% 0.024 155);
+  --color-inverse-border: oklch(39% 0.03 168);
+
+  /* Error text and borders on forms (keep ≥ 4.5:1 on surface). */
+  --color-negative: oklch(48% 0.16 27);
+
+  /* Overlay used behind the mobile menu and image placeholders. */
+  --color-scrim: oklch(22% 0.022 165 / 0.06);
+
+  /* ── Type ───────────────────────────────────────────────────────────── */
+  --font-display: "Bricolage Grotesque Variable", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Figtree Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --weight-display: 560;
+  --weight-display-strong: 700;
+  --weight-body: 400;
+  --weight-medium: 560;
+  --weight-bold: 680;
+
+  --tracking-display: -0.035em;
+  --tracking-caps: 0.12em;
+  --leading-tight: 1.02;
+  --leading-snug: 1.22;
+  --leading-body: 1.6;
+
+  /* Fluid type scale: each step ~1.2× (small screens) to ~1.33× (large). */
+  --step--2: clamp(0.74rem, 0.72rem + 0.08vw, 0.8rem);
+  --step--1: clamp(0.84rem, 0.81rem + 0.14vw, 0.92rem);
+  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+  --step-1: clamp(1.18rem, 1.09rem + 0.42vw, 1.45rem);
+  --step-2: clamp(1.4rem, 1.24rem + 0.8vw, 1.95rem);
+  --step-3: clamp(1.68rem, 1.4rem + 1.4vw, 2.65rem);
+  --step-4: clamp(2rem, 1.55rem + 2.25vw, 3.6rem);
+  --step-5: clamp(2.35rem, 1.65rem + 3.5vw, 4.9rem);
+  --step-6: clamp(2.6rem, 1.6rem + 5vw, 6.5rem);
+
+  --measure: 64ch;
+
+  /* ── Space ──────────────────────────────────────────────────────────── */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-s: 1rem;
+  --space-m: clamp(1.25rem, 1.1rem + 0.6vw, 1.6rem);
+  --space-l: clamp(1.75rem, 1.45rem + 1.2vw, 2.5rem);
+  --space-xl: clamp(2.5rem, 2rem + 2.2vw, 4rem);
+  --space-2xl: clamp(3.5rem, 2.6rem + 4vw, 6rem);
+  --space-section: clamp(4rem, 2.6rem + 6.5vw, 8.5rem);
+
+  --container: 78rem;
+  --container-narrow: 46rem;
+  --gutter: clamp(1.25rem, 0.55rem + 3.2vw, 3rem);
+  --header-height: 4.5rem;
+
+  /* ── Shape ──────────────────────────────────────────────────────────── */
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 18px;
+  --radius-button: 999px;
+  --radius-image: 14px;
+  --border-width: 1px;
+
+  --shadow-raised: 0 1px 2px oklch(22% 0.022 165 / 0.06), 0 14px 34px -10px oklch(22% 0.022 165 / 0.18);
+
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 140ms;
+  --duration: 240ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration: 0ms;
+  }
+}

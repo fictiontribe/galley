@@ -1,0 +1,56 @@
+{
+  "form": {
+    "portalId": 12345678,
+    "guid": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "name": "Contact us",
+    "formFieldGroups": [
+      {
+        "fields": [
+          { "name": "firstname", "label": "First name", "type": "string", "fieldType": "text", "required": true, "hidden": false, "enabled": true, "options": [], "placeholder": "" },
+          { "name": "lastname", "label": "Last name", "type": "string", "fieldType": "text", "required": false, "hidden": false, "enabled": true, "options": [] }
+        ],
+        "default": true,
+        "isSmartGroup": false
+      },
+      {
+        "fields": [
+          { "name": "email", "label": "Email", "type": "string", "fieldType": "text", "required": true, "hidden": false, "enabled": true, "options": [], "validation": { "name": "", "message": "", "data": "", "useDefaultBlockList": false, "blockedEmailAddresses": [] } }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "name": "company_size",
+            "label": "Company size",
+            "type": "enumeration",
+            "fieldType": "select",
+            "required": false,
+            "hidden": false,
+            "options": [
+              { "label": "1–10", "value": "1-10", "displayOrder": 0, "doubleData": 0, "hidden": false, "description": "", "readOnly": false },
+              { "label": "11–50", "value": "11-50", "displayOrder": 1, "doubleData": 0, "hidden": false, "description": "", "readOnly": false },
+              { "label": "Retired option", "value": "old", "displayOrder": 2, "hidden": true }
+            ],
+            "dependentFieldFilters": [
+              {
+                "filters": [{ "operator": "EQ", "strValue": "11-50" }],
+                "dependentFormField": { "name": "procurement_contact", "label": "Procurement contact", "type": "string", "fieldType": "text", "required": false, "hidden": false, "options": [] },
+                "formFieldAction": "DISPLAY"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "fields": [
+          { "name": "message", "label": "<p>How can we help?</p>", "type": "string", "fieldType": "textarea", "required": false, "hidden": false, "options": [] },
+          { "name": "phone", "label": "Phone number", "type": "string", "fieldType": "phonenumber", "required": false, "hidden": false, "options": [] },
+          { "name": "newsletter", "label": "Send me the newsletter", "type": "enumeration", "fieldType": "booleancheckbox", "required": false, "hidden": false, "options": [] },
+          { "name": "lead_source", "label": "Lead source", "type": "string", "fieldType": "text", "required": false, "hidden": true, "options": [] }
+        ]
+      },
+      { "fields": [], "richText": { "content": "<p>We'll reply within a day.</p>" } }
+    ],
+    "submitText": "Send"
+  }
+}

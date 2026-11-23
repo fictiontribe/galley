@@ -1,0 +1,65 @@
+---
+// One page per collection in the shop, at /shop/<handle>/: its name and
+// description from the store, then its products with their filters.
+import Base from "../../layouts/Base.astro";
+import Breadcrumbs from "../../components/shop/Breadcrumbs.astro";
+import ProductGrid from "../../components/shop/ProductGrid.astro";
+import { labels, withBase } from "../../lib/site";
+import { collectionProducts, collectionUrl, getCollections } from "../../lib/shop/data";
+import { breadcrumbData } from "../../lib/shop/structured";
+import type { ShopCollection } from "../../lib/shop/types";
+
+export async function getStaticPaths() {
+  const collections = await getCollections();
+
+  return collections.map((collection) => ({ params: { collection: collection.handle }, props: { collection, all: collections } }));
+}
+
+interface Props {
+  collection: ShopCollection;
+  all: ShopCollection[];
+}
+
+const { collection, all } = Astro.props;
+const products = await collectionProducts(collection);
+const trail = [
+  { label: labels.shop.shop, href: withBase("/shop/") },
+  { label: collection.title, href: collectionUrl(collection.handle) },
+];
+const links = [{ label: labels.shop.everything, href: withBase("/shop/"), current: false }, ...all.map((item) => ({ label: item.title, href: collectionUrl(item.handle), current: item.handle === collection.handle }))];
+---
+
+<Base title={collection.title} description={collection.description || collection.title} image={collection.image && !/^https?:/.test(collection.image.url) ? collection.image.url : undefined} jsonLd={breadcrumbData(trail)}>
+  <header class="section section--free tone-default collection-head">
+    <div class="container collection-head__inner">
+      <Breadcrumbs items={trail} />
+      <h1 class="collection-head__title">{collection.title}</h1>
+      {collection.description && <p class="lede">{collection.description}</p>}
+    </div>
+  </header>
+  <section class="section section--free tone-default shop-listing" aria-label={collection.title}>
+    <div class="container">
+      <ProductGrid products={products} links={links} />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .collection-head {
+    padding-block-end: var(--space-l);
+  }
+
+  .collection-head__inner {
+    display: grid;
+    gap: var(--space-s);
+  }
+
+  .collection-head__title {
+    font-size: var(--step-6);
+    line-height: var(--leading-tight);
+  }
+
+  .shop-listing {
+    padding-block-start: 0;
+  }
+</style>

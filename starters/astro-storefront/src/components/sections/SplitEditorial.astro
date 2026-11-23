@@ -1,0 +1,81 @@
+---
+// A short piece of writing beside a photograph, on the page's one split line
+// (six columns each): the words left, the picture right (`imageSide`), cropped
+// to `ratio` and never taller than the screen.
+import Section from "../Section.astro";
+import Actions from "../Actions.astro";
+import Media from "../Media.astro";
+import SectionHeader from "../SectionHeader.astro";
+import type { Link, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  image: string;
+  imageAlt: string;
+  imageSide?: "left" | "right";
+  ratio?: "portrait" | "square" | "landscape";
+  cta?: Link;
+  secondaryCta?: Link;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, image, imageAlt, imageSide = "right", ratio = "portrait", cta, secondaryCta, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+---
+
+<Section type="split-editorial" id={id} tone={tone} labelledby={headingId} block={block}>
+  <div class:list={["split", `split--${imageSide}`]}>
+    <div class="split__figure frame">
+      <Media src={image} alt={imageAlt} ratio={ratio} eager={index === 0} class="split__media media--capped" />
+    </div>
+    <div class="split__copy">
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} class="split__header" />
+      <Actions cta={cta} secondaryCta={secondaryCta} />
+    </div>
+  </div>
+</Section>
+
+<style>
+  .split {
+    display: grid;
+    gap: var(--space-l) var(--gutter);
+    align-items: start;
+  }
+
+  .split__copy {
+    display: grid;
+    gap: var(--space-l);
+    justify-items: start;
+  }
+
+  .split__copy :global(.split__header) {
+    margin-block-end: 0;
+  }
+
+  @media (min-width: 56rem) {
+    .split {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .split__figure,
+    .split__copy {
+      grid-row: 1;
+    }
+
+    .split--left .split__figure,
+    .split--right .split__copy {
+      grid-column: 1 / span 6;
+    }
+
+    .split--left .split__copy,
+    .split--right .split__figure {
+      grid-column: 7 / -1;
+    }
+  }
+</style>

@@ -1,0 +1,137 @@
+---
+// Search: the words of src/content/pages/search.md, a search box, and the
+// results — read from /search.json (built with the site) in the browser, so
+// searching asks no one else anything. ?q= in the address searches at once.
+import { getEntry } from "astro:content";
+import Base from "../layouts/Base.astro";
+import PageEntry from "../components/PageEntry.astro";
+import Icon from "../components/Icon.astro";
+import { labels, withBase } from "../lib/site";
+
+const entry = await getEntry("pages", "search");
+if (!entry) throw new Error("src/content/pages/search.md is missing.");
+const S = labels.search;
+---
+
+<Base title={entry.data.title} description={entry.data.description} noindex={entry.data.noindex}>
+  <PageEntry page={entry}>
+    <section class="section section--free tone-default search" aria-label={S.label} data-search data-index={withBase("/search.json")} data-labels={JSON.stringify(S)}>
+      <div class="container">
+        <form class="search__form" role="search" action={withBase("/search/")} method="get">
+          <label class="visually-hidden" for="search-q">{S.label}</label>
+          <input id="search-q" name="q" type="search" placeholder={S.placeholder} autocomplete="off" />
+          <button class="button" type="submit">
+            {S.submit}
+            <Icon name="search" size={16} />
+          </button>
+        </form>
+        <p class="label search__summary" data-search-summary role="status"></p>
+        <div class="search__results" data-search-results></div>
+        <noscript><p class="lede">{S.noScript} <a href={withBase("/shop/")}>{labels.shop.shop}</a></p></noscript>
+      </div>
+    </section>
+  </PageEntry>
+</Base>
+
+<template data-search-product>
+  <li class="search-hit search-hit--product">
+    <a href="#">
+      <img alt="" width="160" height="200" loading="lazy" decoding="async" />
+      <span class="search-hit__title" data-title></span>
+      <span class="search-hit__meta" data-meta></span>
+    </a>
+  </li>
+</template>
+<template data-search-page>
+  <li class="search-hit">
+    <a href="#">
+      <span class="search-hit__meta" data-meta></span>
+      <span class="search-hit__title" data-title></span>
+    </a>
+  </li>
+</template>
+
+<style>
+  .search {
+    padding-block-start: 0;
+  }
+
+  .search__form {
+    display: flex;
+    gap: var(--space-xs);
+    max-inline-size: 44rem;
+  }
+
+  .search__form input {
+    flex: 1;
+    min-inline-size: 0;
+    min-block-size: 3rem;
+    padding-inline: var(--space-s);
+    border: var(--border-width) solid var(--tone-control);
+    border-radius: var(--radius-s);
+    background: var(--tone-surface);
+    font-size: var(--step-1);
+  }
+
+  .search__summary {
+    margin-block: var(--space-l) var(--space-m);
+  }
+
+  .search__results {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  .search__results :global(.search__group) {
+    margin-block-end: var(--space-s);
+  }
+
+  .search__results :global(.search__list) {
+    display: grid;
+    gap: var(--space-l) var(--gutter);
+    padding: 0;
+    list-style: none;
+  }
+
+  .search__results :global(.search__list--products) {
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  }
+
+  .search__results :global(.search-hit a) {
+    display: grid;
+    gap: var(--space-3xs);
+    color: inherit;
+    text-decoration: none;
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .search__results :global(.search-hit a:hover) {
+    transform: translateY(-2px);
+  }
+
+  .search__results :global(.search-hit img) {
+    inline-size: 100%;
+    block-size: auto;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    background: var(--placeholder-light);
+  }
+
+  .search__results :global(.search-hit__title) {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    line-height: 1.15;
+  }
+
+  .search__results :global(.search-hit a:hover .search-hit__title) {
+    text-decoration: underline;
+  }
+
+  .search__results :global(.search-hit__meta) {
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-mono);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+</style>

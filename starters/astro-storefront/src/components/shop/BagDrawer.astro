@@ -1,0 +1,114 @@
+---
+// The bag as a drawer: a modal <dialog> from the right, opened by the
+// header's bag link (which goes to the bag page without JavaScript), closed
+// by its button, Escape or a click outside. Also holds the template for one
+// line, which src/scripts/shop.ts copies for each thing in the bag.
+import BagView from "./BagView.astro";
+import Icon from "../Icon.astro";
+import { labels } from "../../lib/site";
+
+interface Props {
+  demo: boolean;
+}
+
+const { demo } = Astro.props;
+const L = labels.shop;
+---
+
+<dialog class="bag-drawer tone-default" data-bag aria-labelledby="bag-drawer-title">
+  <div class="bag-drawer__panel">
+    <div class="bag-drawer__head">
+      <h2 class="bag-drawer__title" id="bag-drawer-title">{L.bag}</h2>
+      <button class="bag-drawer__close" type="button" data-bag-close aria-label={L.close}>
+        <Icon name="close" size={22} />
+      </button>
+    </div>
+    <p class="visually-hidden" role="status" data-bag-status></p>
+    <BagView demo={demo} inDrawer />
+  </div>
+</dialog>
+
+<template data-bag-line-template>
+  <li class="bag-line">
+    <img class="bag-line__image" data-image alt="" width="144" height="180" loading="lazy" decoding="async" />
+    <a class="bag-line__name" data-name href="#"></a>
+    <p class="bag-line__price" data-price></p>
+    <p class="bag-line__variant" data-variant-title></p>
+    <div class="bag-line__controls">
+      <div class="bag-line__qty" role="group" data-label={L.quantityOf}>
+        <button type="button" data-decrease data-label={L.decrease}><Icon name="minus" size={16} /></button>
+        <output data-quantity></output>
+        <button type="button" data-increase data-label={L.increase}><Icon name="plus" size={16} /></button>
+      </div>
+      <button class="text-link bag-line__remove" type="button" data-remove data-label={L.removeItem}>{L.remove}</button>
+    </div>
+  </li>
+</template>
+
+<style>
+  .bag-drawer {
+    position: fixed;
+    inset: 0 0 0 auto;
+    inline-size: min(100vw, 30rem);
+    max-inline-size: 100vw;
+    block-size: 100dvh;
+    max-block-size: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-inline-start: var(--border-width) solid var(--tone-line);
+    background: var(--tone-bg);
+    color: var(--tone-text);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .bag-drawer::backdrop {
+    background: color-mix(in oklch, var(--color-shade) 45%, transparent);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .bag-drawer[open] {
+      animation: bag-in var(--duration) var(--ease-out);
+    }
+  }
+
+  @keyframes bag-in {
+    from {
+      transform: translateX(2rem);
+      opacity: 0;
+    }
+  }
+
+  .bag-drawer__panel {
+    display: grid;
+    gap: var(--space-m);
+    align-content: start;
+    min-block-size: 100%;
+    padding: var(--space-m) var(--space-l) var(--space-xl);
+  }
+
+  .bag-drawer__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .bag-drawer__title {
+    font-size: var(--step-3);
+  }
+
+  .bag-drawer__close {
+    display: grid;
+    place-items: center;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    margin-inline-end: calc(-1 * var(--space-xs));
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .bag-drawer__close:hover {
+    background: var(--tone-surface);
+  }
+</style>

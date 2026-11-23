@@ -1,0 +1,38 @@
+{
+  "name": "@galley/plugin-shopify",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A store's products, collections and cart for a Galley site: product and collection pickers for page sections, read-only store tools for the assistant, a publish check for products that are gone, and — only when switched on — product copy edits that change the store directly.",
+  "keywords": [
+    "galley",
+    "galley-plugin",
+    "shopify",
+    "headless",
+    "commerce"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fictiontribe/galley.git",
+    "directory": "packages/plugins/shopify"
+  },
+  "galley": {
+    "apiVersion": 1
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./fake": "./test/fake/shopify-fake.mjs"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "fake": "node test/fake/serve.mjs"
+  },
+  "dependencies": {
+    "@galley/plugin-kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@galley/core": "workspace:*"
+  }
+}

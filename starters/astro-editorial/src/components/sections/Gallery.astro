@@ -1,0 +1,82 @@
+---
+// Several photographs. mosaic: one large frame beside a column of smaller
+// ones, on the twelve-column grid (repeats every five pictures). row: one
+// even row. grid: three columns. Each layout sets its own crops.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Media from "../Media.astro";
+import type { Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  layout?: "mosaic" | "row" | "grid";
+  items: Array<{ image: string; imageAlt: string }>;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, layout = "mosaic", items, index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+// The crop of each frame in the mosaic's five-picture pattern.
+const mosaic = ["portrait", "square", "portrait", "portrait", "square"] as const;
+const ratio = (i: number) => (layout === "mosaic" ? mosaic[i % 5] : "portrait");
+---
+
+<Section type="gallery" id={id} tone={tone} labelledby={headingId} label={eyebrow} block={block}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+  <ul class:list={["gallery", `gallery--${layout}`]} role="list">
+    {
+      items.map((item, i) => (
+        <li>
+          <div class="gallery__item frame">
+            <Media src={item.image} alt={item.imageAlt} ratio={ratio(i)} />
+          </div>
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--gutter);
+    align-items: start;
+    padding: 0;
+    list-style: none;
+  }
+
+  .gallery--mosaic > li:nth-child(5n + 1) {
+    grid-column: 1 / -1;
+  }
+
+  @media (min-width: 60rem) {
+    .gallery {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    /* mosaic: a large frame (6 columns) and four small ones (3 each) beside it, two rows */
+    .gallery--mosaic > li:nth-child(5n + 1) {
+      grid-column: 1 / span 6;
+      grid-row: span 2;
+    }
+
+    .gallery--mosaic > li:not(:nth-child(5n + 1)) {
+      grid-column: span 3;
+    }
+
+    .gallery--row {
+      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    }
+
+    .gallery--grid > li {
+      grid-column: span 4;
+    }
+  }
+</style>

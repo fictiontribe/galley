@@ -1,0 +1,22 @@
+# Ferrow
+
+> Ferrow puts planned maintenance, inspections and contractor work into one schedule.
+
+Each page below is linked to its markdown version: the page's own text, with no scripts or layout. Everything in one file: https://www.example.com/llms-full.txt. How to use and cite this site: https://www.example.com/agent.md.
+
+## Pages
+
+- [Ferrow — maintenance and compliance](https://www.example.com/index.md): Ferrow puts planned maintenance, inspections and contractor work into one schedule.
+- [About Ferrow](https://www.example.com/about.md): Who started Ferrow, and why.
+- [Contact](https://www.example.com/contact.md): Book a demo or get help.
+- [Thanks](https://www.example.com/thanks.md): Sent.
+
+## Blog
+
+- [Blog](https://www.example.com/blog.md): Practical notes on maintenance and compliance.
+- [How to run a certificate register](https://www.example.com/blog/certificate-register.md): A lapsed certificate is usually missing paperwork.
+- [Filed under “Guides”](https://www.example.com/blog/tags/guides.md): Every Ferrow guide.
+
+## Optional
+
+- [Privacy policy](https://www.example.com/privacy.md): What personal information Ferrow collects.

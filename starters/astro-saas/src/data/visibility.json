@@ -1,0 +1,32 @@
+{
+  "crawlers": {},
+  "robots": {
+    "disallow": []
+  },
+  "sitemap": {
+    "exclude": [],
+    "lastmod": "content"
+  },
+  "structuredData": {
+    "website": true,
+    "organization": {
+      "sameAs": []
+    },
+    "articles": [
+      "blog",
+      "customers"
+    ],
+    "breadcrumbs": true
+  },
+  "agentReadable": {
+    "llmsTxt": true,
+    "llmsFullTxt": true,
+    "markdownTwins": true,
+    "agentPage": true,
+    "optional": [
+      "/privacy/",
+      "/terms/"
+    ],
+    "exclude": []
+  }
+}

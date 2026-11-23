@@ -1,0 +1,97 @@
+---
+// Two to four figures that prove a claim, with an optional source note.
+// `style: cards` puts each figure on its own card.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import type { BlockMarker, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  items: Array<{ value: string; label: string; text?: string }>;
+  columns?: number;
+  style?: "plain" | "cards";
+  note?: string;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, items, columns = 4, style = "plain", note, index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+---
+
+<Section type="metrics" id={id} tone={tone} block={block} labelledby={headingId}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+  <dl class:list={["metrics", `metrics--${style}`]} style={`--columns: ${columns}`}>
+    {
+      items.map((item) => (
+        <div class:list={["metric", { card: style === "cards" }]}>
+          <dt class="metric__label">{item.label}</dt>
+          <dd class="metric__value">{item.value}</dd>
+          {item.text && <dd class="metric__text">{item.text}</dd>}
+        </div>
+      ))
+    }
+  </dl>
+  {note && <p class="metrics__note">{note}</p>}
+</Section>
+
+<style>
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+    gap: var(--space-l) var(--space-m);
+  }
+
+  .metric {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xs);
+  }
+
+  .metrics--plain .metric {
+    padding-block-start: var(--space-s);
+    border-block-start: 2px solid var(--tone-text);
+  }
+
+  .metrics--cards .metric {
+    padding: var(--space-m);
+  }
+
+  /* The figure reads first; the label follows it visually. */
+  .metric__value {
+    order: -1;
+    font-family: var(--font-display);
+    font-size: var(--step-5);
+    font-weight: var(--weight-display);
+    letter-spacing: -0.045em;
+    line-height: 1;
+  }
+
+  .metric__label {
+    font-weight: var(--weight-bold);
+    line-height: 1.35;
+  }
+
+  .metric__text {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .metrics__note {
+    margin-block-start: var(--space-l);
+    font-size: var(--step--2);
+    color: var(--tone-muted);
+    max-width: 60em;
+  }
+
+  @media (min-width: 60rem) {
+    .metrics {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    }
+  }
+</style>

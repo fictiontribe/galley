@@ -1,0 +1,288 @@
+---
+// A full-screen campaign photograph with the headline set over it.
+//
+// The words are always legible, whatever the photograph: with `scrim: shade`
+// a dark band is laid under the type block (solid behind the words, feathered
+// at its open edge — see .shade in global.css); with `scrim: plate` the words
+// sit on a solid block of the section's tone. The photograph is the section's
+// one layer, under its .wrap. As the first section of a page the header sits
+// over the picture on its own shade (Header.astro), and the hero enters once
+// on load (data-enter).
+import Section from "../Section.astro";
+import Actions from "../Actions.astro";
+import { focusFor, inline, paragraphs, withBase, type Focus, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  cta?: Link;
+  secondaryCta?: Link;
+  image: string;
+  imageAlt: string;
+  position?: "bottom-left" | "bottom-right" | "center" | "top-left";
+  scrim?: "shade" | "plate";
+  size?: "full" | "tall";
+  imageFocus?: Focus;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const {
+  id,
+  tone = "inverse",
+  eyebrow,
+  heading,
+  text,
+  cta,
+  secondaryCta,
+  image,
+  imageAlt,
+  position = "bottom-left",
+  scrim = "shade",
+  size = "full",
+  imageFocus = "center",
+  index = 0,
+  level = 1,
+  block,
+} = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+const shade = scrim === "shade";
+const edge = position.startsWith("top") ? "top" : position === "center" ? "middle" : "bottom";
+---
+
+<Section
+  type="campaign-hero"
+  id={id}
+  tone={tone}
+  labelledby={headingId}
+  enter={index === 0}
+  block={block}
+  class:list={["campaign", `campaign--${position}`, `campaign--${scrim}`, `campaign--${size}`, { "campaign--first": index === 0 }]}
+>
+  <img
+    slot="layer"
+    class="campaign__image"
+    src={withBase(image)}
+    alt={imageAlt}
+    width="2400"
+    height="1600"
+    loading={index === 0 ? "eager" : "lazy"}
+    fetchpriority={index === 0 ? "high" : undefined}
+    decoding="async"
+    style={`--focus: ${focusFor(image, imageFocus)}`}
+  />
+  {/* Shade: the headline sits on the lighter shade (display type needs 3:1),
+      the small type below it on the full-strength one, the eyebrow on a chip. */}
+  <div class:list={["hero-text", "campaign__copy", shade ? ["on-image", "shade", "shade--large", `shade--${edge}`] : "campaign__plate"]}>
+    {eyebrow && <p class="eyebrow campaign__eyebrow">{eyebrow}</p>}
+    <Heading id={headingId} class="campaign__heading" set:html={inline(heading)} />
+    {
+      (text || cta || secondaryCta) && (
+        <div class:list={["campaign__foot", shade && ["shade", "shade--strong", edge === "bottom" ? "shade--bottom" : "shade--middle"]]}>
+          {text && (
+            <div class="campaign__text">
+              {paragraphs(text).map((part) => (
+                <p>{part}</p>
+              ))}
+            </div>
+          )}
+          <Actions cta={cta} secondaryCta={secondaryCta} class="campaign__actions" />
+        </div>
+      )
+    }
+  </div>
+</Section>
+
+<style>
+  /* The one section sized to the screen: `full` fills it, `tall` leaves the
+     next section's top in view. */
+  :global(.section.campaign) {
+    min-block-size: max(36rem, 100svh);
+    padding-block: calc(var(--header-height) + var(--space-l)) var(--space-xl);
+    overflow: clip;
+    background: var(--placeholder-dark);
+  }
+
+  .campaign__image {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+    object-position: var(--focus, 50% 50%);
+  }
+
+  :global(.section.campaign > .wrap) {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gutter);
+  }
+
+  .campaign__copy {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: var(--space-s);
+    align-self: end;
+    justify-items: start;
+  }
+
+  :global(.campaign--top-left) .campaign__copy {
+    align-self: start;
+  }
+
+  :global(.campaign--center) .campaign__copy {
+    align-self: center;
+    justify-items: center;
+    text-align: center;
+  }
+
+  :global(.campaign--center) :global(.campaign__actions) {
+    justify-content: center;
+  }
+
+  /* Above the small type's shade band, whose feather reaches up behind it. */
+  .campaign__heading,
+  .campaign__eyebrow {
+    position: relative;
+    z-index: 1;
+  }
+
+  .campaign__heading {
+    max-inline-size: 11em;
+    padding-block-end: 0.12em;
+    font-size: var(--step-7);
+    font-weight: var(--weight-display);
+    line-height: 0.9;
+    letter-spacing: -0.035em;
+    color: inherit;
+  }
+
+  :global(.section.campaign--tall) {
+    min-block-size: max(32rem, 80svh);
+  }
+
+  :global(.campaign--tall) .campaign__heading,
+  :global(.campaign--plate) .campaign__heading {
+    font-size: var(--step-6);
+  }
+
+  .campaign__heading :global(em) {
+    font-style: italic;
+  }
+
+  .campaign__eyebrow {
+    color: var(--tone-text);
+  }
+
+  /* The chip's width is a shadow, so its words stay on the container line. */
+  :global(.campaign--shade) .campaign__eyebrow {
+    --chip: color-mix(in oklch, var(--color-shade) calc(var(--shade-strong) * 100%), transparent);
+    padding-block: 0.4em;
+    background: var(--chip);
+    box-shadow:
+      -0.75em 0 0 var(--chip),
+      0.75em 0 0 var(--chip);
+  }
+
+  :global(.campaign--shade) .campaign__eyebrow::before {
+    display: none;
+  }
+
+  .campaign__foot {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: inherit;
+    margin-block-start: var(--space-2xs);
+    --shade-feather: 6rem;
+  }
+
+  .campaign__text {
+    display: grid;
+    gap: var(--space-xs);
+    max-inline-size: 30em;
+    font-size: var(--step-1);
+    line-height: 1.45;
+    color: var(--tone-text);
+  }
+
+  :global(.campaign--center) .campaign__text {
+    margin-inline: auto;
+  }
+
+  .campaign__plate {
+    padding: var(--space-l) var(--space-l) var(--space-m);
+    background: var(--tone-bg);
+    color: var(--tone-text);
+  }
+
+  .campaign__plate .campaign__eyebrow {
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 56rem) {
+    :global(.campaign--bottom-left) .campaign__copy,
+    :global(.campaign--top-left) .campaign__copy {
+      grid-column: 1 / span 9;
+    }
+
+    :global(.campaign--bottom-right) .campaign__copy {
+      grid-column: 7 / -1;
+    }
+
+    :global(.campaign--center) .campaign__copy {
+      grid-column: 2 / -2;
+    }
+
+    :global(.campaign--plate.campaign--bottom-left) .campaign__copy,
+    :global(.campaign--plate.campaign--top-left) .campaign__copy {
+      grid-column: 1 / span 6;
+    }
+
+    :global(.campaign--plate.campaign--center) .campaign__copy {
+      grid-column: 4 / -4;
+    }
+
+    .campaign__plate {
+      padding: var(--space-xl) var(--space-xl) var(--space-l);
+    }
+  }
+
+  /* The entrance: once, on load, when the head line has set html.m-enter. */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html.m-enter [data-enter]) .campaign__image {
+      animation: campaign-settle calc(var(--duration-slow) * 1.8) var(--ease-out) both;
+    }
+
+    :global(html.m-enter [data-enter]) .campaign__copy > * {
+      animation: campaign-rise var(--duration-slow) var(--ease-out) both;
+    }
+
+    :global(html.m-enter [data-enter]) .campaign__copy > :nth-child(2) {
+      animation-delay: 120ms;
+    }
+
+    :global(html.m-enter [data-enter]) .campaign__copy > :nth-child(3) {
+      animation-delay: 260ms;
+    }
+  }
+
+  @keyframes campaign-settle {
+    from {
+      transform: scale(1.06);
+    }
+  }
+
+  @keyframes campaign-rise {
+    from {
+      opacity: 0;
+      transform: translateY(1.25rem);
+    }
+  }
+</style>

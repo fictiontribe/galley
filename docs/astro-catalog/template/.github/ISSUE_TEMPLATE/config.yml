@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions about Galley, the editor
+    url: https://github.com/fictiontribe/galley/issues
+    about: Opening this site in Galley, the assistant, publishing — ask in Galley's own repository.
+  - name: Questions about Astro
+    url: https://astro.build/chat
+    about: Astro itself — builds, config, integrations — is best asked on Astro's Discord.

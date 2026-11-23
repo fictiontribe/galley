@@ -1,0 +1,37 @@
+---
+// The bag as a page (where the header's bag link goes without JavaScript):
+// the words of src/content/pages/bag.md, then what is in the bag.
+import { getEntry } from "astro:content";
+import Base from "../layouts/Base.astro";
+import PageEntry from "../components/PageEntry.astro";
+import BagView from "../components/shop/BagView.astro";
+import { labels } from "../lib/site";
+import { shopMode } from "../lib/shop/data";
+
+const entry = await getEntry("pages", "bag");
+if (!entry) throw new Error("src/content/pages/bag.md is missing.");
+const demo = (await shopMode()) === "demo";
+---
+
+<Base title={entry.data.title} description={entry.data.description} noindex>
+  <PageEntry page={entry}>
+    <section class="section section--free tone-default bag-page" aria-label={labels.shop.bag}>
+      <div class="container">
+        <div class="bag-page__view">
+          <BagView demo={demo} />
+        </div>
+      </div>
+    </section>
+  </PageEntry>
+</Base>
+
+<style>
+  .bag-page {
+    padding-block-start: 0;
+  }
+
+  /* On the page's left line, under the heading, at a reading width. */
+  .bag-page__view {
+    max-inline-size: var(--container-narrow);
+  }
+</style>

@@ -1,0 +1,32 @@
+---
+title: Galley & Astro
+description: Edit the content of your Astro project with Galley, an open-source, Git-based AI CMS.
+sidebar:
+  label: Galley
+type: cms
+stub: true
+logo: galley
+i18nReady: true
+---
+
+[Galley](https://galley.fictiontribe.com/) is an open-source, Git-based CMS for static sites, built for Astro. It reads your project's content collections and their schemas without configuration, then lets you change content by editing a form, by clicking text in a live preview of your site, or by asking an AI assistant. Every change is a plain edit to your Markdown and data files that you review before publishing it as a Git commit.
+
+## Getting started
+
+1. In the folder of an Astro project that keeps its content in content collections, run `npx galley-cms`.
+
+2. Galley opens in your browser, with the collections and fields it found in `src/content.config.ts` and a preview of your site running on Astro's dev server.
+
+3. Make your changes, review them, and publish them as a commit to your repository.
+
+To start a new site that is already set up for Galley, use the Galley + Astro starter template:
+
+```sh
+npm create astro@latest -- --template fictiontribe/galley-astro-starter
+```
+
+## Official Resources
+
+- [Galley documentation](https://galley.fictiontribe.com/docs/)
+- [Galley source code](https://github.com/fictiontribe/galley)
+- [Galley + Astro starter template](https://github.com/fictiontribe/galley-astro-starter)

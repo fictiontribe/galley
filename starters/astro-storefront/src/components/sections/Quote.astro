@@ -1,0 +1,112 @@
+---
+// One quotation, set large, with an optional portrait beside it.
+import Section from "../Section.astro";
+import Media from "../Media.astro";
+import type { Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  quote: string;
+  name: string;
+  role?: string;
+  image?: string;
+  imageAlt?: string;
+  size?: "large" | "medium";
+  align?: "left" | "center";
+  index?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, quote, name, role, image, imageAlt = "", size = "large", align = "left", block } = Astro.props;
+---
+
+<Section type="quote" id={id} tone={tone} label={name} block={block}>
+  <div class:list={["quote", `quote--${size}`, `quote--${align}`, { "quote--portrait": image }]}>
+    <div class="quote__body">
+      <blockquote class="quote__text">
+        <p>{quote}</p>
+      </blockquote>
+      <p class="quote__cite">
+        <span class="quote__name">{name}</span>
+        {role && <span class="label">{role}</span>}
+      </p>
+    </div>
+    {
+      image && (
+        <div class="quote__portrait frame">
+          <Media src={image} alt={imageAlt} ratio="portrait" class="quote__media media--capped" />
+        </div>
+      )
+    }
+  </div>
+</Section>
+
+<style>
+  .quote {
+    display: grid;
+    gap: var(--space-l) var(--gutter);
+    align-items: start;
+  }
+
+  .quote__body {
+    display: grid;
+    gap: var(--space-l);
+    align-content: start;
+  }
+
+  .quote__text {
+    font-family: var(--font-display);
+    font-size: var(--step-5);
+    font-style: italic;
+    font-weight: var(--weight-display);
+    line-height: 1.02;
+    letter-spacing: var(--tracking-display);
+    max-inline-size: 16em;
+  }
+
+  .quote--medium .quote__text {
+    font-size: var(--step-3);
+    line-height: 1.12;
+    max-inline-size: 24em;
+  }
+
+  .quote__cite {
+    display: grid;
+    gap: var(--space-3xs);
+  }
+
+  .quote__name {
+    font-size: var(--step-0);
+    font-weight: var(--weight-medium);
+  }
+
+  .quote--center .quote__body {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .quote--center .quote__text {
+    margin-inline: auto;
+  }
+
+  @media (min-width: 56rem) {
+    .quote {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .quote__portrait {
+      grid-column: 7 / -1;
+      grid-row: 1;
+    }
+
+    .quote__body {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+
+    .quote--portrait .quote__body {
+      grid-column: 1 / span 6;
+    }
+  }
+</style>

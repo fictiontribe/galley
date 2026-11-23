@@ -1,0 +1,50 @@
+{
+  "name": "B2B / SaaS",
+  "description": "A marketing site for a software company, built entirely from 29 section types: heroes, proof, product, pricing, content and conversion. Customer stories, a changelog, a blog with tags, a team, seven page templates and three looks.",
+  "framework": "astro",
+  "tags": [
+    "saas",
+    "b2b",
+    "corporate"
+  ],
+  "tokens": "src/styles/tokens.css",
+  "preview": "galley/previews/home.webp",
+  "looks": [
+    {
+      "id": "signal",
+      "label": "Signal",
+      "file": "src/styles/themes/signal.css",
+      "swatches": [
+        "#fbf9f6",
+        "#121922",
+        "#c53500",
+        "#121a25"
+      ],
+      "preview": "galley/previews/signal.webp"
+    },
+    {
+      "id": "meridian",
+      "label": "Meridian",
+      "file": "src/styles/themes/meridian.css",
+      "swatches": [
+        "#f5faf7",
+        "#0c1e1c",
+        "#006952",
+        "#0b2722"
+      ],
+      "preview": "galley/previews/meridian.webp"
+    },
+    {
+      "id": "night-shift",
+      "label": "Night shift",
+      "file": "src/styles/themes/night-shift.css",
+      "swatches": [
+        "#0b1119",
+        "#f2f0ec",
+        "#f08944",
+        "#04070c"
+      ],
+      "preview": "galley/previews/night-shift.webp"
+    }
+  ]
+}

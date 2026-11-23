@@ -1,0 +1,16 @@
+---
+// A section's action and its quieter second link.
+import { fill } from "../lib/site";
+interface Link { label: string; href: string }
+interface Props { cta?: Link; secondary?: Link }
+const { cta, secondary } = Astro.props;
+---
+
+{
+  (cta || secondary) && (
+    <div class="hero__actions">
+      {cta && <a class="btn btn--primary" href={fill(cta.href)}>{cta.label}</a>}
+      {secondary && <a class="link" href={fill(secondary.href)}>{secondary.label}</a>}
+    </div>
+  )
+}

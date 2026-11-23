@@ -1,0 +1,144 @@
+---
+// A row of recognition: badge pictures with a label, or plain ratings
+// ("4.8 out of 5" + where from). Keep every claim true and checkable.
+import Section from "../Section.astro";
+import Media from "../Media.astro";
+import Icon from "../Icon.astro";
+import type { BlockMarker, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  heading?: string;
+  text?: string;
+  items: Array<{ label: string; detail?: string; image?: string; imageAlt?: string }>;
+  style?: "badges" | "ratings";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, heading, text, items, style = "badges", index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+---
+
+<Section type="awards" id={id} tone={tone} block={block} labelledby={headingId} class="section--compact">
+  <div class:list={["awards", `awards--${style}`]}>
+    {
+      (heading || text) && (
+        <div class="awards__intro">
+          {heading && <Heading id={headingId} class="awards__heading">{heading}</Heading>}
+          {text && <p class="awards__text">{text}</p>}
+        </div>
+      )
+    }
+    <ul class="awards__list" role="list">
+      {
+        items.map((item) => (
+          <li class="award">
+            {style === "badges" && item.image ? (
+              <Media src={item.image} alt={item.imageAlt ?? ""} ratio="1/1" contain class="award__badge" />
+            ) : (
+              <span class="award__stars" aria-hidden="true">
+                <Icon name="star" size={16} />
+                <Icon name="star" size={16} />
+                <Icon name="star" size={16} />
+                <Icon name="star" size={16} />
+                <Icon name="star" size={16} />
+              </span>
+            )}
+            <span class="award__body">
+              <span class="award__label">{item.label}</span>
+              {item.detail && <span class="award__detail">{item.detail}</span>}
+            </span>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Section>
+
+<style>
+  .awards {
+    display: grid;
+    gap: var(--space-l);
+    align-items: center;
+  }
+
+  .awards__intro {
+    display: grid;
+    gap: var(--space-2xs);
+    max-width: 26rem;
+  }
+
+  .awards__heading {
+    font-size: var(--step-2);
+  }
+
+  .awards__text {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .awards__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    gap: var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  .award {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+  }
+
+  .awards--ratings .award {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2xs);
+    padding-inline-start: var(--space-s);
+    border-inline-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .award :global(.award__badge) {
+    flex: none;
+    inline-size: 4.25rem;
+    block-size: 4.25rem;
+    color: var(--tone-text);
+  }
+
+  .award__stars {
+    display: flex;
+    gap: 0.1rem;
+    color: var(--tone-link);
+  }
+
+  .award__stars :global(svg) {
+    fill: currentColor;
+  }
+
+  .award__body {
+    display: grid;
+    gap: 0.1em;
+  }
+
+  .award__label {
+    font-weight: var(--weight-bold);
+    line-height: 1.3;
+  }
+
+  .award__detail {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 60rem) {
+    .awards:has(.awards__intro) {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+      gap: var(--space-2xl);
+    }
+  }
+</style>

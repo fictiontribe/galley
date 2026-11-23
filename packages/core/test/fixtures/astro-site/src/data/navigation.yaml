@@ -1,0 +1,7 @@
+# Main menu
+links:
+  - label: About
+    href: /about/
+  - label: Blog
+    href: /blog/
+footerNote: Lit by volunteers since 1898

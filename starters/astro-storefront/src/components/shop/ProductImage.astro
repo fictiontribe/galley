@@ -1,0 +1,53 @@
+---
+// A product photograph from the shop: the store's CDN copies (or the demo
+// catalogue's smaller copy) in srcset, its box reserved by `ratio` before it
+// loads, cropped to fit like Media.astro.
+import { ratios, type RatioName } from "../../lib/site";
+import { imageSources } from "../../lib/shop/data";
+import type { ShopImage } from "../../lib/shop/types";
+
+interface Props {
+  image: ShopImage | undefined;
+  /** Leave out to use the picture's own alt text. */
+  alt?: string;
+  ratio?: RatioName | string;
+  /** The `sizes` attribute: how wide it is shown. */
+  sizes?: string;
+  eager?: boolean;
+  class?: string;
+  [data: `data-${string}`]: string | undefined;
+}
+
+const { image, alt, ratio = "portrait", sizes = "(min-width: 60rem) 25vw, 50vw", eager = false, class: className, ...rest } = Astro.props;
+const value = (ratios as Record<string, string>)[ratio] ?? ratio;
+const [w, h] = value.split("/").map((part) => Number(part.trim()));
+const sources = image ? imageSources(image) : null;
+---
+
+{
+  image && sources ? (
+    <img
+      class:list={["media", className]}
+      src={sources.src}
+      srcset={sources.srcset}
+      sizes={sources.srcset ? sizes : undefined}
+      alt={alt ?? image.altText}
+      width={image.width}
+      height={Math.round((image.width * h) / w)}
+      loading={eager ? "eager" : "lazy"}
+      decoding="async"
+      fetchpriority={eager ? "high" : undefined}
+      style={`--ratio: ${w} / ${h}`}
+      {...rest}
+    />
+  ) : (
+    <span class:list={["media", "media--empty", className]} style={`--ratio: ${w} / ${h}`} aria-hidden="true" />
+  )
+}
+
+<style>
+  .media--empty {
+    display: block;
+    background: var(--placeholder-light);
+  }
+</style>

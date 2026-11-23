@@ -1,0 +1,11 @@
+packages:
+  - "packages/*"
+  - "packages/plugins/*"
+  - "apps/*"
+  - "starters/*"
+  - "examples/*"
+
+# pnpm 10 only runs install scripts for packages listed here.
+onlyBuiltDependencies:
+  - esbuild
+  - sharp

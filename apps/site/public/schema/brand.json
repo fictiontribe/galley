@@ -1,0 +1,1473 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "updatedAt": {
+      "type": "string",
+      "maxLength": 40
+    },
+    "colors": {
+      "maxItems": 80,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "background",
+              "surface",
+              "surface-muted",
+              "text",
+              "text-muted",
+              "accent",
+              "accent-text",
+              "accent-strong",
+              "border",
+              "inverse-background",
+              "inverse-text",
+              "positive",
+              "negative",
+              "notice",
+              "other"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "value": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
+          },
+          "token": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "usage": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "measured",
+              "declared",
+              "inferred"
+            ]
+          },
+          "evidence": {
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "page",
+                    "source",
+                    "website"
+                  ]
+                },
+                "file": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "page": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "element": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "source": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "sourceName": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "sourcePage": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "name",
+          "value",
+          "confidence",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "contrast": {
+      "maxItems": 200,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "background": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "ratio": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 21
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "aaa",
+              "aa",
+              "large",
+              "fail"
+            ]
+          },
+          "measuredOn": {
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          }
+        },
+        "required": [
+          "text",
+          "background",
+          "ratio",
+          "result"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "typography": {
+      "type": "object",
+      "properties": {
+        "fonts": {
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "display",
+                  "body",
+                  "mono",
+                  "other"
+                ]
+              },
+              "family": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "fallbacks": {
+                "maxItems": 12,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 120
+                }
+              },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "package",
+                      "file",
+                      "embedded",
+                      "system",
+                      "unknown"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string",
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "weights": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000
+                }
+              },
+              "token": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "measured",
+                  "declared",
+                  "inferred"
+                ]
+              },
+              "evidence": {
+                "maxItems": 40,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "file",
+                        "page",
+                        "source",
+                        "website"
+                      ]
+                    },
+                    "file": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "line": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "page": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "element": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "source": {
+                      "type": "string",
+                      "maxLength": 80
+                    },
+                    "sourceName": {
+                      "type": "string",
+                      "maxLength": 300
+                    },
+                    "sourcePage": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "url": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "note": {
+                      "type": "string",
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "role",
+              "family",
+              "fallbacks",
+              "source",
+              "weights",
+              "confidence",
+              "evidence"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "scale": {
+          "maxItems": 24,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "h1",
+                  "h2",
+                  "h3",
+                  "h4",
+                  "h5",
+                  "h6",
+                  "lead",
+                  "body",
+                  "small",
+                  "button",
+                  "label",
+                  "link"
+                ]
+              },
+              "font": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "size": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "px": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000
+              },
+              "weight": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              },
+              "lineHeight": {
+                "type": "string",
+                "maxLength": 60
+              },
+              "letterSpacing": {
+                "type": "string",
+                "maxLength": 60
+              },
+              "token": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "measured",
+                  "declared",
+                  "inferred"
+                ]
+              },
+              "evidence": {
+                "maxItems": 40,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "file",
+                        "page",
+                        "source",
+                        "website"
+                      ]
+                    },
+                    "file": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "line": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "page": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "element": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "source": {
+                      "type": "string",
+                      "maxLength": 80
+                    },
+                    "sourceName": {
+                      "type": "string",
+                      "maxLength": 300
+                    },
+                    "sourcePage": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "url": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "note": {
+                      "type": "string",
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "role",
+              "font",
+              "size",
+              "weight",
+              "lineHeight",
+              "confidence",
+              "evidence"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "fonts",
+        "scale"
+      ],
+      "additionalProperties": false
+    },
+    "spacing": {
+      "maxItems": 40,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "token": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "uses": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "measured",
+              "declared",
+              "inferred"
+            ]
+          },
+          "evidence": {
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "page",
+                    "source",
+                    "website"
+                  ]
+                },
+                "file": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "page": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "element": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "source": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "sourceName": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "sourcePage": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "value",
+          "confidence",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "radius": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "token": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "uses": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "measured",
+              "declared",
+              "inferred"
+            ]
+          },
+          "evidence": {
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "page",
+                    "source",
+                    "website"
+                  ]
+                },
+                "file": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "page": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "element": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "source": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "sourceName": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "sourcePage": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "value",
+          "confidence",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "shadows": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "token": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "uses": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "measured",
+              "declared",
+              "inferred"
+            ]
+          },
+          "evidence": {
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "page",
+                    "source",
+                    "website"
+                  ]
+                },
+                "file": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "page": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "element": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "source": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "sourceName": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "sourcePage": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "value",
+          "confidence",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "logos": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "file": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "svg",
+              "png",
+              "jpg",
+              "webp",
+              "gif",
+              "other"
+            ]
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "primary",
+              "reverse",
+              "mono",
+              "mark",
+              "wordmark",
+              "other"
+            ]
+          },
+          "background": {
+            "type": "string",
+            "enum": [
+              "light",
+              "dark",
+              "any"
+            ]
+          },
+          "colors": {
+            "maxItems": 12,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
+            }
+          },
+          "viewBox": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "clearSpace": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "minSize": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "doNotUse": {
+            "type": "boolean"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "measured",
+              "declared",
+              "inferred"
+            ]
+          },
+          "evidence": {
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "page",
+                    "source",
+                    "website"
+                  ]
+                },
+                "file": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "page": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "element": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "source": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "sourceName": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "sourcePage": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "file",
+          "format",
+          "variant",
+          "background",
+          "colors",
+          "confidence",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "imagery": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "direction": {
+              "type": "string",
+              "maxLength": 600
+            },
+            "subjects": {
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 200
+              }
+            },
+            "light": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "palette": {
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
+              }
+            },
+            "avoid": {
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 200
+              }
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "measured",
+                "declared",
+                "inferred"
+              ]
+            },
+            "evidence": {
+              "maxItems": 40,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "file",
+                      "page",
+                      "source",
+                      "website"
+                    ]
+                  },
+                  "file": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "line": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "page": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "element": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "source": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "sourceName": {
+                    "type": "string",
+                    "maxLength": 300
+                  },
+                  "sourcePage": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "url": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "direction",
+            "subjects",
+            "light",
+            "palette",
+            "avoid",
+            "confidence",
+            "evidence"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "components": {
+      "maxItems": 80,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "whenToUse": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "usedOn": {
+            "maxItems": 60,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "file": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "thumbnail": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "measured",
+              "declared",
+              "inferred"
+            ]
+          },
+          "evidence": {
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "page",
+                    "source",
+                    "website"
+                  ]
+                },
+                "file": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "page": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "element": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "source": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "sourceName": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "sourcePage": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "type",
+          "label",
+          "whenToUse",
+          "usedOn",
+          "count",
+          "confidence",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "voice": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": "string",
+              "maxLength": 800
+            },
+            "tone": {
+              "maxItems": 10,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 80
+              }
+            },
+            "rules": {
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "rule": {
+                    "type": "string",
+                    "maxLength": 400
+                  },
+                  "quote": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "maxLength": 400
+                      },
+                      "where": {
+                        "type": "string",
+                        "maxLength": 300
+                      }
+                    },
+                    "required": [
+                      "text",
+                      "where"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "before": {
+                    "type": "string",
+                    "maxLength": 400
+                  },
+                  "after": {
+                    "type": "string",
+                    "maxLength": 400
+                  }
+                },
+                "required": [
+                  "rule"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "vocabulary": {
+              "maxItems": 40,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "say": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "insteadOf": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 120
+                    }
+                  },
+                  "why": {
+                    "type": "string",
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "say",
+                  "insteadOf"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "formatting": {
+              "type": "object",
+              "properties": {
+                "headlineCase": {
+                  "type": "string",
+                  "enum": [
+                    "sentence",
+                    "title",
+                    "upper",
+                    "mixed"
+                  ]
+                },
+                "punctuation": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "numbers": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "cta": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "required": [
+                "headlineCase",
+                "punctuation",
+                "numbers",
+                "cta"
+              ],
+              "additionalProperties": false
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "measured",
+                "declared",
+                "inferred"
+              ]
+            },
+            "evidence": {
+              "maxItems": 40,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "file",
+                      "page",
+                      "source",
+                      "website"
+                    ]
+                  },
+                  "file": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "line": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "page": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "element": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "source": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "sourceName": {
+                    "type": "string",
+                    "maxLength": 300
+                  },
+                  "sourcePage": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "url": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "summary",
+            "tone",
+            "rules",
+            "vocabulary",
+            "formatting",
+            "confidence",
+            "evidence"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "layout": {
+      "type": "object",
+      "properties": {
+        "do": {
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "dont": {
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 300
+          }
+        }
+      },
+      "required": [
+        "do",
+        "dont"
+      ],
+      "additionalProperties": false
+    },
+    "tokensFile": {
+      "type": "string",
+      "maxLength": 500
+    }
+  },
+  "required": [
+    "version",
+    "name",
+    "updatedAt",
+    "colors",
+    "contrast",
+    "typography",
+    "spacing",
+    "radius",
+    "shadows",
+    "logos",
+    "imagery",
+    "components",
+    "voice",
+    "layout"
+  ],
+  "additionalProperties": false,
+  "$id": "https://galley.fictiontribe.com/schema/brand.json",
+  "title": "Galley brand file",
+  "description": "A site's brand: colours, fonts, type and spacing scales, logo rules, imagery direction, section types and the voice guide (galley/brand/brand.json)."
+}

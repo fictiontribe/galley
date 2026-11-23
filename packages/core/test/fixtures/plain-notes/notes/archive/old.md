@@ -1,0 +1,5 @@
+---
+title: Old note
+---
+
+Archived.

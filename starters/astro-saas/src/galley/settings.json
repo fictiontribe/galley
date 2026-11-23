@@ -1,0 +1,18 @@
+{
+  "forms": {
+    "collection": "forms",
+    "endpoint": "",
+    "allowFormScripts": false,
+    "messages": {},
+    "freeEmailDomains": []
+  },
+  "mailto": {
+    "options": [
+      "gmail",
+      "outlook",
+      "app",
+      "copy"
+    ],
+    "strings": {}
+  }
+}

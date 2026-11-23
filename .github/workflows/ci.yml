@@ -1,0 +1,47 @@
+# Checks every push and pull request: a frozen install, typecheck and tests in
+# every package, the web UI build, and the website build (which runs the
+# documentation checks first). Written to be correct by construction; it has
+# not been run yet, because the repository isn't on GitHub yet.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 22: the engine needs 20.11+, but the site and the Astro starter
+      # need Astro 7's 22.23.4+.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # pnpm at the version in package.json's "packageManager".
+      - run: corepack enable
+
+      # The engine's tests make real commits in temporary repositories.
+      - run: |
+          git config --global user.name "Galley CI"
+          git config --global user.email "ci@example.invalid"
+          git config --global init.defaultBranch main
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r --if-present typecheck
+      # One package at a time: the suites start real git repositories and dev servers,
+      # and a small runner times out when several run at once.
+      - run: pnpm -r --workspace-concurrency=1 --if-present test
+      - run: pnpm --filter @galley/web build
+      # Runs scripts/check-docs.mjs, then astro build.
+      - run: pnpm --filter @galley/site build

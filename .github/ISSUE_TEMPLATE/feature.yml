@@ -1,0 +1,20 @@
+name: Feature request
+description: Something Galley should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The situation and the person in it (an editor, a developer, an operator), before the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like Galley to do?
+  - type: textarea
+    id: principles
+    attributes:
+      label: Anything it must not break?
+      description: Galley's principles are in docs/ARCHITECTURE.md — surgical edits, the working tree as the draft, never guessing, a closed write surface, plain words, no telemetry.

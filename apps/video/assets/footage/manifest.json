@@ -1,0 +1,230 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "scale": 2,
+  "request": "Make it shorter: “Coats for low sun.”",
+  "heading": "Coats for low sun.",
+  "live": {
+    "heading": {
+      "x": 72,
+      "y": 343,
+      "w": 966,
+      "h": 323.7
+    },
+    "url": "/"
+  },
+  "askDry": {
+    "events": {
+      "hover": 0.906,
+      "click": 1.424,
+      "popover": 1.464,
+      "leave": 3.351,
+      "typeStart": 4.135,
+      "typeEnd": 5.852,
+      "end": 6.354
+    },
+    "boxes": {
+      "heading": {
+        "x": 152,
+        "y": 421.6,
+        "w": 642,
+        "h": 225
+      },
+      "popover": {
+        "x": 152,
+        "y": 657,
+        "w": 380,
+        "h": 204
+      },
+      "leaveAsIs": {
+        "x": 375.5,
+        "y": 814,
+        "w": 83.9,
+        "h": 28
+      },
+      "composer": {
+        "x": 1101,
+        "y": 767,
+        "w": 282,
+        "h": 52
+      }
+    }
+  },
+  "modelCalls": 0,
+  "capturedWith": {
+    "app": "local Galley",
+    "sampleSite": "astro-editorial (Caddow)",
+    "note": "Times in ask.events are seconds into editor-ask.mp4; boxes are CSS px in the viewport (multiply by scale for image px)."
+  },
+  "ask": {
+    "file": "editor-ask.mp4",
+    "events": {
+      "hover": 0.894,
+      "click": 1.402,
+      "popover": 1.436,
+      "leave": 3.317,
+      "typeStart": 4.177,
+      "typeEnd": 5.882,
+      "send": 6.387,
+      "headingChanged": 12.843,
+      "replyDone": 13.634,
+      "end": 15.435
+    },
+    "boxes": {
+      "heading": {
+        "x": 152,
+        "y": 421.6,
+        "w": 642,
+        "h": 225
+      },
+      "popover": {
+        "x": 152,
+        "y": 657,
+        "w": 380,
+        "h": 204
+      },
+      "leaveAsIs": {
+        "x": 375.5,
+        "y": 814,
+        "w": 83.9,
+        "h": 28
+      },
+      "composer": {
+        "x": 1101,
+        "y": 767,
+        "w": 282,
+        "h": 52
+      },
+      "reviewInProof": {
+        "x": 1116,
+        "y": 346,
+        "w": 133,
+        "h": 28
+      },
+      "headingAfter": {
+        "x": 152,
+        "y": 422.6,
+        "w": 642,
+        "h": 224
+      },
+      "assistantPanel": null
+    }
+  },
+  "after": {
+    "heading": {
+      "x": 72,
+      "y": 344.5,
+      "w": 966,
+      "h": 322.2
+    }
+  },
+  "proof": {
+    "boxes": {
+      "inserted": {
+        "x": 494.7,
+        "y": 383.5,
+        "w": 113.5,
+        "h": 17
+      },
+      "row": null,
+      "deleted": {
+        "x": 494.7,
+        "y": 357.5,
+        "w": 183.1,
+        "h": 17
+      },
+      "publish": {
+        "x": 1363.5,
+        "y": 7.5,
+        "w": 64.5,
+        "h": 28
+      },
+      "tabOnThePage": {
+        "x": 564.2,
+        "y": 265,
+        "w": 74.4,
+        "h": 36
+      }
+    },
+    "onThePage": {
+      "headings": [
+        {
+          "side": "live",
+          "text": "Coats for the long afternoon.",
+          "box": {
+            "x": 464,
+            "y": 536.1,
+            "w": 435.5,
+            "h": 125.4
+          }
+        },
+        {
+          "side": "proposed",
+          "text": "Coats for low sun.",
+          "box": {
+            "x": 972.5,
+            "y": 595.4,
+            "w": 398.4,
+            "h": 66.6
+          }
+        }
+      ],
+      "publish": {
+        "x": 1363.5,
+        "y": 7.5,
+        "w": 64.5,
+        "h": 28
+      }
+    }
+  },
+  "publish": {
+    "dialog": {
+      "x": 460,
+      "y": 268.5,
+      "w": 520,
+      "h": 363
+    },
+    "confirm": {
+      "x": 829.5,
+      "y": 586.5,
+      "w": 129.5,
+      "h": 32
+    },
+    "note": "Shorter campaign heading",
+    "done": {
+      "x": 460,
+      "y": 315.5,
+      "w": 520,
+      "h": 269
+    },
+    "commit": {
+      "sha": "7f69b41",
+      "subject": "Shorter campaign heading",
+      "author": "Hesper Lowe",
+      "files": [
+        "src/content/pages/index.md | 2 +-",
+        " 1 file changed, 1 insertion(+), 1 deletion(-)"
+      ],
+      "diff": [
+        "-    heading: Coats for *the long afternoon*.",
+        "+    heading: Coats for *low sun*."
+      ]
+    }
+  },
+  "history": {
+    "latest": {
+      "x": 346,
+      "y": 294,
+      "w": 179.6,
+      "h": 24
+    },
+    "row": {
+      "x": 306,
+      "y": 294,
+      "w": 880,
+      "h": 65
+    }
+  }
+}

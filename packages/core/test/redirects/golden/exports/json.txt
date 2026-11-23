@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {"from":"/a/","to":"/about/","status":301},
+    {"from":"/far/","to":"https://elsewhere.example/page?ref=1","status":308},
+    {"from":"/noted/","to":"/about/","status":301,"note":"Old \"team\" page, moved"},
+    {"from":"/q?x=1","to":"/contact/","status":301},
+    {"from":"/blog/*","to":"/journal/:splat","status":302}
+  ]
+}

@@ -1,0 +1,136 @@
+---
+// Contact details beside a form, with an optional photograph. The form is a
+// file in src/content/forms/ (`form`, default "contact"), rendered by the site
+// kit: its fields, wording and where it sends (the Galley inbox by default)
+// live there. Email addresses in the details open the email-link chooser.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Media from "../Media.astro";
+import { Form } from "../../galley/components/index.js";
+import { withBase, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  form?: string | { id: string };
+  items?: Array<{ label: string; value: string; href?: string }>;
+  image?: string;
+  imageAlt?: string;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, form = "contact", items = [], image, imageAlt = "", index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const formId = typeof form === "string" ? form : form.id;
+---
+
+<Section type="contact" id={id} tone={tone} labelledby={headingId} block={block}>
+  <div class:list={["contact", { "contact--image": image }]}>
+    {
+      image && (
+        <div class="contact__image">
+          <Media src={image} alt={imageAlt} ratio="portrait" eager={index === 0} />
+        </div>
+      )
+    }
+    <div class="contact__info">
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} size={level === 1 ? "large" : "default"} class="contact__header" />
+      {
+        items.length > 0 && (
+          <dl class="contact__details">
+            {items.map((item) => (
+              <div>
+                <dt class="label">{item.label}</dt>
+                <dd>{item.href ? <a href={withBase(item.href)}>{item.value}</a> : item.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )
+      }
+    </div>
+
+    <div class="contact__form">
+      <Form id={formId} submitClass="button" />
+    </div>
+  </div>
+</Section>
+
+<style>
+  .contact {
+    display: grid;
+    gap: var(--space-xl) var(--gutter);
+    align-items: start;
+  }
+
+  .contact__info {
+    display: grid;
+    gap: var(--space-l);
+    align-content: start;
+  }
+
+  .contact__info :global(.contact__header) {
+    margin-block-end: 0;
+  }
+
+  .contact__details {
+    display: grid;
+    gap: var(--space-s);
+  }
+
+  .contact__details > div {
+    display: grid;
+    gap: 0.15em;
+    padding-block-start: var(--space-xs);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .contact__details dd {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    overflow-wrap: anywhere;
+  }
+
+  .contact__details a {
+    color: var(--tone-text);
+  }
+
+  .contact__details a:hover {
+    color: var(--tone-link);
+  }
+
+  .contact__form {
+    display: grid;
+    gap: var(--space-m);
+    align-content: start;
+  }
+
+
+  @media (min-width: 60rem) {
+    .contact {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .contact__info {
+      grid-column: 1 / span 6;
+    }
+
+    .contact__form {
+      grid-column: 7 / -1;
+    }
+
+    .contact--image .contact__image {
+      grid-column: 7 / -1;
+      grid-row: 1 / span 2;
+    }
+
+    .contact--image .contact__info,
+    .contact--image .contact__form {
+      grid-column: 1 / span 6;
+    }
+  }
+</style>

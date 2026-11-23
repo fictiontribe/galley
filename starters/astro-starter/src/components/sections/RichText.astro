@@ -1,0 +1,61 @@
+---
+// A block of markdown. With a heading and align "left", the heading sits in a
+// narrow column beside the text; with align "center", everything is centred.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import { markdown, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text: string;
+  align?: "left" | "center";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, align = "left", index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+---
+
+<Section type="rich-text" block={block} id={id} tone={tone} labelledby={headingId}>
+  <div class:list={["rich-text", `rich-text--${align}`, { "rich-text--headed": heading || eyebrow }]}>
+    <SectionHeader eyebrow={eyebrow} heading={heading} level={level} headingId={headingId} align={align} size="small" class="rich-text__header" />
+    <div class="prose rich-text__body" set:html={markdown(text)} />
+  </div>
+</Section>
+
+<style>
+  .rich-text {
+    display: grid;
+  }
+
+  .rich-text :global(.rich-text__header) {
+    margin-block-end: var(--space-l);
+  }
+
+  .rich-text__body {
+    font-size: var(--step-1);
+    line-height: 1.55;
+  }
+
+  .rich-text--center .rich-text__body {
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  @media (min-width: 60rem) {
+    .rich-text--left.rich-text--headed {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: var(--space-2xl);
+      align-items: start;
+    }
+
+    .rich-text--left :global(.rich-text__header) {
+      margin-block-end: 0;
+    }
+  }
+</style>

@@ -1,0 +1,27 @@
+node_modules/
+dist/
+# The example plugin ships its built output: it is installed as is (docs/plugins.md).
+!examples/plugin-example/dist/
+out/
+.astro/
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+!.env.example
+coverage/
+# Rust / Tauri
+target/
+apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/binaries/
+# Local Galley state when developing against this repo
+.galley-home/
+tmp/
+
+# Sound effects bundled with the film's authoring tool (Pixabay Content License):
+# usable in the rendered film, but not to be redistributed as standalone files.
+# apps/video/README.md says where they come from.
+apps/video/assets/audio/sfx/click-soft.mp3
+apps/video/assets/audio/sfx/click.mp3
+apps/video/assets/audio/sfx/typing.mp3
+apps/video/assets/audio/sfx/whoosh-short.mp3

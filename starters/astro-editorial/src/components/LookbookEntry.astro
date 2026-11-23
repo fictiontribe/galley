@@ -1,0 +1,175 @@
+---
+// One lookbook as a page: the season, title and cover, every look in order
+// with its pieces, then the lookbook's own sections (credits, a film, an
+// invitation). Each look has an anchor — #look-01, #look-02, … — that the
+// lookbook-grid section links to. Used by src/pages/collections/[slug].astro
+// (and by the section gallery, to picture the lookbook template).
+import Media from "./Media.astro";
+import Icon from "./Icon.astro";
+import PieceList from "./PieceList.astro";
+import Sections from "./Sections.astro";
+import { fill, labels, lookNumber, withBase } from "../lib/site";
+
+interface Props {
+  title: string;
+  season: string;
+  summary: string;
+  cover: string;
+  coverAlt: string;
+  looks: Array<{ image: string; alt: string; caption?: string; pieces: Array<{ name: string; detail?: string; price?: string }> }>;
+  sections: Array<{ type: string; [key: string]: unknown }>;
+}
+
+const { title, season, summary, cover, coverAlt, looks, sections } = Astro.props;
+---
+
+<article class="lookbook">
+  <header class="lookbook__header container">
+    <div class="lookbook__intro">
+      <a class="text-link" href={withBase("/collections/")}>
+        <Icon name="arrow-left" size={16} />
+        {labels.lookbooks.back}
+      </a>
+      <p class="eyebrow">{season}</p>
+      <h1 class="lookbook__title">{title}</h1>
+      <p class="lookbook__summary">{summary}</p>
+      <p class="label">{fill(labels.lookbooks.count, { count: looks.length })}</p>
+    </div>
+    <div class="lookbook__cover">
+      <Media src={cover} alt={coverAlt} ratio="portrait" eager />
+    </div>
+  </header>
+
+  <ol class="lookbook__looks container" role="list">
+    {
+      looks.map((look, i) => (
+        <li id={`look-${lookNumber(i)}`} class="lookbook__look">
+          <figure>
+            <div class="frame">
+              <Media src={look.image} alt={look.alt} ratio="tall" />
+            </div>
+            <figcaption class="lookbook__caption">
+              <h2 class="label lookbook__number">{fill(labels.lookbooks.look, { number: lookNumber(i) })}</h2>
+              {look.caption && <span class="lookbook__text">{look.caption}</span>}
+            </figcaption>
+          </figure>
+          <PieceList pieces={look.pieces} class="lookbook__pieces" />
+        </li>
+      ))
+    }
+  </ol>
+</article>
+<Sections sections={sections} title={title} ownsHeading={false} />
+
+<style>
+  .lookbook {
+    padding-block: var(--space-l) var(--space-section);
+  }
+
+  .lookbook__header {
+    display: grid;
+    gap: var(--space-xl) var(--gutter);
+    align-items: end;
+  }
+
+  .lookbook__intro {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+  }
+
+  .lookbook__intro .text-link {
+    margin-block-end: var(--space-l);
+  }
+
+  .lookbook__title {
+    font-size: var(--step-7);
+    line-height: 0.86;
+    letter-spacing: -0.04em;
+  }
+
+  .lookbook__summary {
+    max-inline-size: 28em;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--tone-muted);
+  }
+
+  .lookbook__looks {
+    display: grid;
+    gap: var(--space-2xl) var(--gutter);
+    margin-block-start: var(--space-section);
+    padding: 0;
+    list-style: none;
+  }
+
+  .lookbook__look {
+    display: grid;
+    gap: var(--space-m);
+    align-content: start;
+    scroll-margin-top: var(--space-l);
+  }
+
+  .lookbook__look:nth-child(even) {
+    margin-inline-start: 16%;
+  }
+
+  .lookbook__caption {
+    display: grid;
+    gap: var(--space-3xs);
+  }
+
+  .lookbook__number {
+    color: var(--tone-text);
+  }
+
+  .lookbook__text {
+    max-inline-size: 30em;
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-style: italic;
+    line-height: 1.3;
+  }
+
+  @media (min-width: 56rem) {
+    .lookbook__header {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .lookbook__intro {
+      grid-column: 1 / span 6;
+      padding-block-end: var(--space-l);
+    }
+
+    .lookbook__cover {
+      grid-column: 8 / -1;
+    }
+
+    .lookbook__looks {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      row-gap: var(--space-section);
+    }
+
+    .lookbook__look:nth-child(even) {
+      margin-inline-start: 0;
+    }
+
+    .lookbook__look:nth-child(4n + 1) {
+      grid-column: 1 / span 6;
+    }
+
+    .lookbook__look:nth-child(4n + 2) {
+      grid-column: 8 / span 5;
+      margin-block-start: var(--space-section);
+    }
+
+    .lookbook__look:nth-child(4n + 3) {
+      grid-column: 3 / span 4;
+    }
+
+    .lookbook__look:nth-child(4n) {
+      grid-column: 8 / span 4;
+      margin-block-start: var(--space-2xl);
+    }
+  }
+</style>

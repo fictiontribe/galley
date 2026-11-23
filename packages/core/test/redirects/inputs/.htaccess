@@ -1,0 +1,15 @@
+RewriteEngine On
+RewriteBase /
+Redirect 301 /old-about.html /about/
+Redirect permanent /team.php /about/
+Redirect /temp-page /pricing/
+RedirectPermanent /services /services/
+RedirectMatch 301 ^/news/(.*)$ /blog/$1
+RedirectMatch 301 ^/exact-page/?$ /contact/
+RedirectMatch 301 ^/(\d+)/(.*)$ /archive/$2
+RewriteRule ^old-blog/?$ /blog/ [R=301,L]
+RewriteRule ^category/(.*)$ /blog/$1 [R=302,L,NC]
+RewriteRule ^internal$ /index.php [L]
+RewriteCond %{HTTP_HOST} ^old\.example\.com$ [NC]
+RewriteRule ^(.*)$ https://lowfield.example/$1 [R=301,L]
+Redirect gone /removed

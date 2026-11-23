@@ -1,0 +1,51 @@
+---
+// The small linked line above a hero heading ("New: offline inspections").
+import Icon from "./Icon.astro";
+import { withBase, type Link } from "../lib/site";
+
+interface Props {
+  link: Link;
+}
+
+const { link } = Astro.props;
+---
+
+<a class="announcement" href={withBase(link.href)}>
+  <span class="announcement__dot" aria-hidden="true"></span>
+  <span>{link.label}</span>
+  <Icon name="arrow-right" size={16} />
+</a>
+
+<style>
+  .announcement {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55em;
+    justify-self: start;
+    padding: 0.3em 0.85em 0.3em 0.6em;
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-pill);
+    background: var(--tone-surface);
+    color: var(--tone-text);
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
+    transition: border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .announcement:hover {
+    border-color: var(--tone-control);
+  }
+
+  .announcement__dot {
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    border-radius: 50%;
+    background: var(--tone-link);
+    box-shadow: 0 0 0 3px var(--tone-mark);
+  }
+
+  .announcement :global(svg) {
+    color: var(--tone-link);
+  }
+</style>

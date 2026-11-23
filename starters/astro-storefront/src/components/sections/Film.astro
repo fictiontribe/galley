@@ -1,0 +1,110 @@
+---
+// A film, shown as its poster frame with a play mark. The link opens the film
+// where it is hosted; no third-party player is embedded, so nothing loads
+// from anywhere else until the visitor asks for it.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Media from "../Media.astro";
+import Icon from "../Icon.astro";
+import { fill, isExternal, labels, withBase, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  image: string;
+  imageAlt: string;
+  href: string;
+  duration?: string;
+  ratio?: "wide" | "panorama";
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone = "inverse", eyebrow, heading, text, image, imageAlt, href, duration, ratio = "wide", index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const external = isExternal(href);
+---
+
+<Section type="film" id={id} tone={tone} labelledby={headingId} block={block}>
+  <div class="film">
+    <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} class="film__header" />
+    <a class="film__poster frame" href={withBase(href)} target={external ? "_blank" : undefined} rel={external ? "noopener" : undefined}>
+      <Media src={image} alt={imageAlt} ratio={ratio} class="film__media" />
+      <span class="film__play on-image shade shade--bottom">
+        <span class="film__mark" aria-hidden="true"><Icon name="play" size={22} /></span>
+        <span class="film__label">{labels.film.play}</span>
+        {duration && <span class="label film__duration">{fill(labels.film.duration, { duration })}</span>}
+        {external && <span class="visually-hidden">{labels.film.external}</span>}
+      </span>
+    </a>
+  </div>
+</Section>
+
+<style>
+  .film :global(.film__header) {
+    margin-block-end: var(--space-l);
+  }
+
+  .film__poster {
+    position: relative;
+    display: grid;
+    overflow: clip;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* The poster and its play mark fit one screen with the heading's last line. */
+  .film__poster :global(.film__media) {
+    max-block-size: 70svh;
+  }
+
+  .film__play {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-s) var(--space-m);
+    padding: var(--space-m) var(--space-l);
+    --shade-feather: 5rem;
+  }
+
+  .film__mark {
+    display: grid;
+    place-items: center;
+    inline-size: 3.5rem;
+    block-size: 3.5rem;
+    border: var(--border-width) solid currentColor;
+    border-radius: 50%;
+    transition:
+      background-color var(--duration) var(--ease-out),
+      color var(--duration) var(--ease-out);
+  }
+
+  .film__mark :global(svg) {
+    fill: currentColor;
+    translate: 2px 0;
+  }
+
+  .film__poster:hover .film__mark,
+  .film__poster:focus-visible .film__mark {
+    background: var(--color-on-image);
+    color: var(--color-shade);
+  }
+
+  .film__label {
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    font-style: italic;
+  }
+
+  .film__duration {
+    margin-inline-start: auto;
+    color: var(--tone-muted);
+  }
+</style>

@@ -1,0 +1,133 @@
+{
+  "name": "Request a walkthrough",
+  "submitLabel": "Request a walkthrough",
+  "steps": [
+    {
+      "title": "About you",
+      "nextLabel": "Continue"
+    },
+    {
+      "title": "Your estate"
+    }
+  ],
+  "fields": [
+    {
+      "id": "first_name",
+      "type": "text",
+      "label": "First name",
+      "required": true,
+      "width": "half"
+    },
+    {
+      "id": "last_name",
+      "type": "text",
+      "label": "Last name",
+      "required": true,
+      "width": "half"
+    },
+    {
+      "id": "email",
+      "type": "email",
+      "label": "Work email",
+      "required": true,
+      "help": "We send the invitation here. Use the address you work from.",
+      "validation": {
+        "businessEmailOnly": true
+      }
+    },
+    {
+      "id": "role",
+      "type": "text",
+      "label": "Job title"
+    },
+    {
+      "id": "company",
+      "type": "text",
+      "label": "Company",
+      "required": true,
+      "step": 1
+    },
+    {
+      "id": "sites",
+      "type": "radio",
+      "label": "How many sites do you look after?",
+      "required": true,
+      "step": 1,
+      "options": [
+        {
+          "value": "1-9",
+          "label": "1–9"
+        },
+        {
+          "value": "10-49",
+          "label": "10–49"
+        },
+        {
+          "value": "50-199",
+          "label": "50–199"
+        },
+        {
+          "value": "200+",
+          "label": "200 or more"
+        }
+      ]
+    },
+    {
+      "id": "consent",
+      "type": "consent",
+      "required": true,
+      "step": 1,
+      "text": "I agree to Ferrow contacting me about this request, as the [privacy policy](/privacy/) describes."
+    },
+    {
+      "id": "utm_source",
+      "type": "hidden",
+      "autofill": {
+        "from": "query",
+        "key": "utm_source"
+      }
+    },
+    {
+      "id": "utm_medium",
+      "type": "hidden",
+      "autofill": {
+        "from": "query",
+        "key": "utm_medium"
+      }
+    },
+    {
+      "id": "utm_campaign",
+      "type": "hidden",
+      "autofill": {
+        "from": "query",
+        "key": "utm_campaign"
+      }
+    }
+  ],
+  "destinations": [
+    {
+      "provider": "galley",
+      "settings": {}
+    }
+  ],
+  "afterSubmit": [
+    {
+      "type": "event",
+      "name": "generate_lead",
+      "params": {
+        "form": "demo",
+        "sites": "{{sites}}"
+      }
+    },
+    {
+      "type": "message",
+      "title": "Thanks, {{first_name}}. Your walkthrough is on its way.",
+      "text": "We'll write to **{{email}}** within one working day with three times to choose from. Bring a list of your sites — we'll build the schedule from it while you watch."
+    }
+  ],
+  "errorMessage": "Your request couldn't be sent just now. Your answers are still here — try again in a moment.",
+  "spam": {
+    "honeypot": true,
+    "minSeconds": 3
+  }
+}

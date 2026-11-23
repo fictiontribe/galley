@@ -1,0 +1,47 @@
+---
+// The outer box of every section: anchor id, tone, the air above and below
+// (--space-section) and the block markers. Its content sits in one .wrap on
+// the page's container lines; a photograph behind the words goes in the
+// "layer" slot (absolute, inset 0, under the .wrap). A section is as tall as
+// what it holds.
+//
+// `block` comes from Sections.astro (the one place that renders a section
+// list) and becomes data-galley-block="sections.<index>" and
+// data-galley-block-type="<type>" on the root element, so a visual editor can
+// map what is on screen back to the entry's list. Plain sites ignore them.
+import type { Tone } from "../lib/site";
+
+interface Props {
+  type: string;
+  id?: string;
+  tone?: Tone;
+  /** id of the heading that names this section, for aria-labelledby. */
+  labelledby?: string;
+  /** Names the section when it has no visible heading. */
+  label?: string;
+  width?: "normal" | "narrow";
+  /** The page's opening section: it enters once on load. */
+  enter?: boolean;
+  block?: { key: string; type: string };
+  class?: string;
+  /** Extra classes on the .wrap. */
+  wrapClass?: string;
+}
+
+const { type, id, tone = "default", labelledby, label, width = "normal", enter = false, block, class: className, wrapClass } = Astro.props;
+---
+
+<section
+  id={id}
+  class:list={["section", `section--${type}`, `tone-${tone}`, className]}
+  aria-labelledby={labelledby}
+  aria-label={labelledby ? undefined : label}
+  data-enter={enter ? "" : undefined}
+  data-galley-block={block?.key}
+  data-galley-block-type={block?.type}
+>
+  {Astro.slots.has("layer") && <slot name="layer" />}
+  <div class:list={["wrap", "container", { "container--narrow": width === "narrow" }, wrapClass]}>
+    <slot />
+  </div>
+</section>

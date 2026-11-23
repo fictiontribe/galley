@@ -1,0 +1,570 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "framework": {
+      "description": "The adapter that describes this site, by id. Leave it out to let detection choose.",
+      "anyOf": [
+        {
+          "enum": [
+            "astro",
+            "eleventy",
+            "hugo",
+            "jekyll",
+            "next",
+            "nuxt",
+            "sveltekit",
+            "docusaurus",
+            "generic"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        }
+      ]
+    },
+    "adapters": {
+      "description": "Adapters to load from this site, before the built-in ones: package names installed in its node_modules, or paths to files inside it, such as \"./tools/my-adapter.mjs\".",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "plugins": {
+      "description": "Plugins to load from this site: package names installed in its node_modules, or paths to files inside it, such as \"./tools/plugin.mjs\". This runs the site's own code inside the app, so only what is listed is loaded.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "dev": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "build": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "outDir": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "urls": {
+      "type": "object",
+      "properties": {
+        "production": {
+          "type": "string",
+          "format": "uri"
+        },
+        "staging": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    },
+    "media": {
+      "type": "object",
+      "properties": {
+        "dir": {
+          "type": "string"
+        },
+        "publicPath": {
+          "type": "string"
+        },
+        "roots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "dir": {
+                "type": "string",
+                "minLength": 1
+              },
+              "publicPath": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "dir",
+              "publicPath"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "publish": {
+      "type": "object",
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "commit",
+            "pull-request"
+          ]
+        },
+        "remote": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "push": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ai": {
+      "type": "object",
+      "properties": {
+        "instructions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowBuild": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "writable": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "build": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "collections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Matches a detected collection to adjust it, or adds a new one."
+          },
+          "label": {
+            "type": "string"
+          },
+          "singular": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "entries",
+              "data"
+            ]
+          },
+          "path": {
+            "description": "Folder (entries) or file (data), relative to the repository root.",
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "markdown",
+              "mdx",
+              "json",
+              "yaml",
+              "toml"
+            ]
+          },
+          "body": {
+            "type": "boolean"
+          },
+          "url": {
+            "description": "Public URL pattern with {slug}, e.g. \"/blog/{slug}/\". null = no page of its own.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "titleField": {
+            "type": "string"
+          },
+          "dateField": {
+            "type": "string"
+          },
+          "imageField": {
+            "type": "string"
+          },
+          "draftField": {
+            "type": "string"
+          },
+          "create": {
+            "type": "boolean"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "templates": {
+      "description": "Ready-made entries to start a new one from (a landing page, a pricing page).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "collection": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The collection a new entry made from it goes in."
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The template file, repo-relative, in the same format as that collection's entries."
+          },
+          "thumbnail": {
+            "description": "A picture of the finished page, repo-relative.",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "collection",
+          "file"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "deploy": {
+      "description": "Where the site is put online. Ids only: the host's access key is kept in the app's secrets, never in this file.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "account": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "project": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,52}[a-z0-9])?$"
+        },
+        "productionUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "autoDeploy": {
+          "type": "boolean"
+        },
+        "previewOnShare": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "target",
+        "account",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "redirects": {
+      "description": "Where the redirects list lives and which host applies it. See the redirects guide.",
+      "type": "object",
+      "properties": {
+        "file": {
+          "description": "The redirects list, relative to the repository root. Default: beside the site's data files.",
+          "type": "string",
+          "pattern": "^(?!\\/)(?!.*\\.\\.)[^\\\\]+\\.json$"
+        },
+        "host": {
+          "description": "Where the site is served from, when `deploy` doesn't say. Decides which redirect file is generated.",
+          "type": "string",
+          "enum": [
+            "cloudflare",
+            "netlify",
+            "vercel",
+            "other"
+          ]
+        },
+        "cloudflare": {
+          "description": "Setting the redirects on Cloudflare itself (Bulk Redirects): the account and the site's own domains. Ids only.",
+          "type": "object",
+          "properties": {
+            "account": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "hostnames": {
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9-]+(\\.[a-z0-9-]+)+$"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "siteBrand": {
+      "description": "The site's own brand (look and voice): where its files live, the size above which added material stays out of the repository, and the stylesheet that holds its design values. See the brand guide.",
+      "type": "object",
+      "properties": {
+        "dir": {
+          "type": "string",
+          "pattern": "^(?!\\/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$"
+        },
+        "largeFileMB": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "tokensFile": {
+          "type": "string",
+          "pattern": "^(?!\\/)(?!.*\\.\\.)[^\\\\]+\\.(css|scss|less|pcss)$"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The field's key in the file."
+        },
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "text",
+            "markdown",
+            "number",
+            "boolean",
+            "date",
+            "datetime",
+            "image",
+            "url",
+            "color",
+            "select",
+            "tags",
+            "list",
+            "object",
+            "blocks",
+            "reference",
+            "json"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "description": {
+          "description": "Help text shown under the field and given to the assistant.",
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "discriminator": {
+          "type": "string"
+        },
+        "collection": {
+          "type": "string"
+        },
+        "default": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "dataSource": {
+          "description": "Pick the value from a plugin's data source (a product, a collection). The file keeps a plain string.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "of": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "label": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number"
+              },
+              "example": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/$defs/__schema1"
+                }
+              },
+              "thumbnail": {
+                "description": "A picture of this section, repo-relative, shown in the section palette.",
+                "type": "string",
+                "minLength": 1
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/__schema0"
+                }
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "additionalProperties": false
+    },
+    "__schema1": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        }
+      ]
+    }
+  },
+  "$id": "https://galley.fictiontribe.com/schema/galley.config.json",
+  "title": "Galley site configuration",
+  "description": "Optional corrections and additions to what Galley detects in a site."
+}

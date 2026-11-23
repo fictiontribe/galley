@@ -1,0 +1,9 @@
+{
+  "label": "About this template",
+  "text": "This is a free Astro template for a small studio or business, shown with sample content for a made-up architecture practice. Every page is built from sections you can reorder and edit.",
+  "link": {
+    "label": "How to use it",
+    "href": "https://github.com/fictiontribe/galley-astro-starter#readme"
+  },
+  "dismiss": "Hide this notice"
+}

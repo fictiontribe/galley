@@ -1,0 +1,121 @@
+---
+// The closing call to action. A full-width band, or a panel inset in the
+// page; defaults to `tone: inverse`. Put one at the end of most pages.
+import Section from "../Section.astro";
+import Actions from "../Actions.astro";
+import { inline, paragraphs, type BlockMarker, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  cta: Link;
+  secondaryCta?: Link;
+  align?: "left" | "center";
+  style?: "band" | "panel";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone = "inverse", eyebrow, heading, text, cta, secondaryCta, align = "left", style = "band", index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+// A panel sits on the page's own ground and carries the tone itself.
+const sectionTone = style === "panel" ? "default" : tone;
+---
+
+<Section type="cta" id={id} tone={sectionTone} block={block} labelledby={headingId} grid={style === "band"} class={`section--cta-${style}`}>
+  <div class:list={["cta", `cta--${align}`, `cta--${style}`, { [`tone-${tone}`]: style === "panel" }]}>
+    {style === "panel" && <div class="grid-texture" aria-hidden="true" />}
+    <div class="cta__copy">
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <Heading id={headingId} class="cta__heading" set:html={inline(heading)} />
+      {
+        text && (
+          <div class="cta__text">
+            {paragraphs(text).map((part) => (
+              <p>{part}</p>
+            ))}
+          </div>
+        )
+      }
+    </div>
+    <Actions cta={cta} secondaryCta={secondaryCta} class="cta__actions" />
+  </div>
+</Section>
+
+<style>
+  .cta {
+    position: relative;
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  .cta--panel {
+    padding: var(--space-xl) var(--space-l);
+    overflow: hidden;
+    border-radius: var(--radius-l);
+    background: var(--tone-bg);
+    color: var(--tone-text);
+  }
+
+  .cta__copy {
+    position: relative;
+    display: grid;
+    gap: var(--space-s);
+    justify-items: start;
+  }
+
+  .cta__heading {
+    font-size: var(--step-5);
+    font-weight: var(--weight-display-strong);
+    line-height: var(--leading-tight);
+    max-width: 15em;
+  }
+
+  .cta__text {
+    display: grid;
+    gap: var(--space-xs);
+    max-width: 36em;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--tone-muted);
+  }
+
+  .cta :global(.cta__actions) {
+    position: relative;
+  }
+
+  .cta--center {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .cta--center .cta__copy {
+    justify-items: center;
+  }
+
+  .cta--center .cta__heading,
+  .cta--center .cta__text {
+    margin-inline: auto;
+  }
+
+  .cta--center :global(.cta__actions) {
+    justify-content: center;
+  }
+
+  @media (min-width: 60rem) {
+    .cta--left {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: var(--space-2xl);
+    }
+
+    .cta--panel {
+      padding: var(--space-2xl) var(--space-xl);
+    }
+  }
+</style>

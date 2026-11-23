@@ -1,0 +1,91 @@
+---
+// Any form from src/content/forms/, on any page: pick it with `form` (its
+// file name). The heading and text introduce it; `layout` puts them above
+// the form or beside it. Everything inside the form — fields, wording, where
+// it sends, the thank-you — lives in the form's own file.
+import { getEntry } from "astro:content";
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import FormEmbed from "../FormEmbed.astro";
+import { plain, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  form?: string | { id: string };
+  note?: string;
+  layout?: "stacked" | "split";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, form, note, layout = "stacked", index = 0, level = 2, block } = Astro.props;
+const key = id ?? `section-${index}`;
+const headingId = heading ? `${key}-heading` : undefined;
+// Without a heading, the section is named after the form.
+const formId = (typeof form === "string" ? form : form?.id) ?? "";
+const entry = heading || !formId ? undefined : await getEntry("forms", formId);
+const label = entry ? plain(entry.data.name) : undefined;
+---
+
+<Section type="form" id={id} tone={tone} block={block} labelledby={headingId} label={label}>
+  <div class:list={["form-section", `form-section--${layout}`]}>
+    {
+      heading && (
+        <SectionHeader
+          eyebrow={eyebrow}
+          heading={heading}
+          text={text}
+          level={level}
+          headingId={headingId}
+          size="small"
+          align={layout === "stacked" ? "center" : "left"}
+          class="form-section__header"
+        />
+      )
+    }
+    <div class="form-section__form">
+      <FormEmbed form={form} headingLevel={Math.min(level + 1, 6)} />
+      {note && <p class="form-note">{note}</p>}
+    </div>
+  </div>
+</Section>
+
+<style>
+  .form-section {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  .form-section :global(.form-section__header) {
+    align-self: start;
+    align-content: start;
+    margin-block-end: 0;
+  }
+
+  .form-section__form {
+    display: grid;
+    gap: var(--space-s);
+    align-self: start;
+    padding: var(--space-l);
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-m);
+  }
+
+  .form-section--stacked .form-section__form {
+    justify-self: center;
+    inline-size: min(100%, 40rem);
+  }
+
+  @media (min-width: 60rem) {
+    .form-section--split {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      gap: var(--space-2xl);
+    }
+  }
+</style>

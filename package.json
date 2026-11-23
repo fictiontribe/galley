@@ -1,0 +1,30 @@
+{
+  "name": "galley",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Galley — the AI CMS for static sites. Prompt it. Proof it. Publish it.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fictiontribe/galley.git"
+  },
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @galley/server dev",
+    "dev:web": "pnpm --filter @galley/web dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "check": "pnpm typecheck && pnpm test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0",
+    "vitest": "^5.1.1"
+  }
+}

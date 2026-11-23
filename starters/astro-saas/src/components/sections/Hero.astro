@@ -1,0 +1,102 @@
+---
+// The opening statement of a page: a large heading, a line of text, the main
+// buttons and a few proof points, centred or left-aligned, on the planner
+// grid. For a hero with a product picture, use hero-split.
+import Section from "../Section.astro";
+import Actions from "../Actions.astro";
+import Announcement from "../Announcement.astro";
+import Checklist from "../Checklist.astro";
+import { inline, paragraphs, type BlockMarker, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  announcement?: Link;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  cta?: Link;
+  secondaryCta?: Link;
+  items?: string[];
+  align?: "left" | "center";
+  grid?: boolean;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, announcement, eyebrow, heading, text, cta, secondaryCta, items, align = "center", grid = true, index = 0, level = 1, block } =
+  Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+---
+
+<Section type="hero" id={id} tone={tone} block={block} labelledby={headingId} grid={grid}>
+  <div class:list={["hero", `hero--${align}`]}>
+    {announcement && <Announcement link={announcement} />}
+    {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+    <Heading id={headingId} class="hero__heading" set:html={inline(heading)} />
+    {
+      text && (
+        <div class="hero__text">
+          {paragraphs(text).map((part) => (
+            <p>{part}</p>
+          ))}
+        </div>
+      )
+    }
+    <Actions cta={cta} secondaryCta={secondaryCta} class="hero__actions" />
+    <Checklist items={items} inline class="hero__points" />
+  </div>
+</Section>
+
+<style>
+  :global(.section--hero) {
+    padding-block: var(--space-2xl) var(--space-section);
+  }
+
+  .hero {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+  }
+
+  .hero__heading {
+    font-size: var(--step-6);
+    font-weight: var(--weight-display-strong);
+    line-height: var(--leading-tight);
+    max-width: 15em;
+  }
+
+  .hero__text {
+    display: grid;
+    gap: var(--space-xs);
+    max-width: 36em;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--tone-muted);
+  }
+
+  .hero :global(.hero__actions) {
+    margin-block-start: var(--space-2xs);
+  }
+
+  .hero--center {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .hero--center .hero__heading,
+  .hero--center .hero__text {
+    margin-inline: auto;
+  }
+
+  .hero--center :global(.hero__actions),
+  .hero--center :global(.hero__points) {
+    justify-content: center;
+  }
+
+  .hero--center :global(.announcement) {
+    justify-self: center;
+  }
+</style>

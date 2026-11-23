@@ -1,0 +1,35 @@
+{
+  "name": "@galley/server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Galley HTTP server: the engine behind an API, live events, and the web UI.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fictiontribe/galley.git",
+    "directory": "packages/server"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/dev.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@galley/core": "workspace:*",
+    "@galley/import-wordpress": "workspace:*",
+    "@galley/mcp": "workspace:*",
+    "@galley/overlay": "workspace:*",
+    "@galley/plugin-openrouter": "workspace:*",
+    "@galley/plugin-shopify": "workspace:*",
+    "@hono/node-server": "^2.1.11",
+    "hono": "^4.13.20",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2"
+  }
+}

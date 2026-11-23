@@ -1,0 +1,82 @@
+---
+// One quotation, set large. Use once per page at most.
+import Section from "../Section.astro";
+import Media from "../Media.astro";
+import Icon from "../Icon.astro";
+import type { BlockMarker, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  quote: string;
+  name: string;
+  role?: string;
+  image?: string;
+  imageAlt?: string;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, quote, name, role, image, imageAlt, block } = Astro.props;
+---
+
+<Section type="testimonial" block={block} id={id} tone={tone}>
+  <figure class="testimonial">
+    <Icon name="quote" size={44} class="testimonial__mark" />
+    <blockquote class="testimonial__quote">
+      <p>{quote}</p>
+    </blockquote>
+    <figcaption class="testimonial__by">
+      {image && <Media src={image} alt={imageAlt ?? name} ratio="1/1" class="testimonial__photo" />}
+      <span>
+        <span class="testimonial__name">{name}</span>
+        {role && <span class="testimonial__role">{role}</span>}
+      </span>
+    </figcaption>
+  </figure>
+</Section>
+
+<style>
+  .testimonial {
+    display: grid;
+    gap: var(--space-l);
+    max-width: 56rem;
+  }
+
+  .testimonial :global(.testimonial__mark) {
+    color: var(--tone-link);
+  }
+
+  .testimonial__quote {
+    font-family: var(--font-display);
+    font-size: var(--step-4);
+    font-weight: var(--weight-display);
+    line-height: 1.16;
+    letter-spacing: var(--tracking-display);
+    text-wrap: balance;
+  }
+
+  .testimonial__by {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+  }
+
+  .testimonial__by :global(.testimonial__photo) {
+    inline-size: 3.5rem;
+    block-size: 3.5rem;
+    border-radius: 50%;
+  }
+
+  .testimonial__name {
+    display: block;
+    font-weight: var(--weight-bold);
+  }
+
+  .testimonial__role {
+    display: block;
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+</style>

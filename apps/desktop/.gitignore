@@ -1,0 +1,3 @@
+# Produced by scripts/prepare-sidecar.mjs for `tauri build`
+src-tauri/resources/
+src-tauri/binaries/

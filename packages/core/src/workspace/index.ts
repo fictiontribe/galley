@@ -1,0 +1,32 @@
+/**
+ * workspace — the checkout: guarded files, git, the change set and diffs,
+ * publish/history/undo, checkpoints, preview proxies, build, media, watcher,
+ * and getting a site onto the machine. See docs/ARCHITECTURE.md §3.2.
+ */
+export { createWorkspace, NEUTRAL_AUTHOR } from "./workspace";
+export { chooseAuthor, DEFAULT_AUTHOR, type AuthorLayers, type AuthorSource, type ChosenAuthor } from "./author";
+export type { Workspace, WorkspaceOptions, WorkspaceWriteOptions } from "./workspace";
+export type { ChangeEnricher, PendingStatus } from "./changes";
+export { classifyKind, computeHunks, defaultSummary, parsePorcelain, MAX_DIFF_BYTES } from "./changes";
+export type { WorkspaceCheckpoint } from "./checkpoint";
+export { SPILL_BYTES } from "./checkpoint";
+
+export { createPreviewController, detectPid, detectPort, expandOutputLine } from "./preview/controller";
+export type { PreviewOptions, PreviewSettings, PreviewControllerHandle } from "./preview/controller";
+export { injectIntoHtml, stripFrameAncestors, rewriteLocation, OVERLAY_TAG } from "./preview/proxy";
+export { createPortPool, parsePortRange, freePort, portIsFree } from "./preview/ports";
+export type { PortPool, PortRange } from "./preview/ports";
+export { portOwnership, type Ownership } from "./preview/owner";
+
+export { runBuild, installDependencies, detectPackageManager } from "./build";
+export { AGENT_ENV_NAMES, AGENT_ENV_PREFIXES, isAgentMarker, parseCommand, resolveCommand, withoutAgentMarkers } from "./command";
+export { listMedia, saveMedia, sanitizeMediaName, isMediaFile, MAX_UPLOAD_BYTES } from "./media";
+export { cloneRepository, scaffoldFromStarter, isGitRepository, parseCloneProgress, packageName } from "./scaffold";
+
+export { git, runGit, GitCommandError } from "./git";
+export type { Git, GitResult, GitRunOptions, RepoInfo } from "./git";
+export { hashContent, isBinary } from "./files";
+export { normalizeRepoPath } from "./paths";
+export { deniedReason, writeRefusal } from "./policy";
+export { compareUrl, parseRemoteUrl, redactRemoteUrl, classifyPushError } from "./remote";
+export type { Identity } from "./publish";

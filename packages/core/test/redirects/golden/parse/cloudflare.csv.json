@@ -1,0 +1,50 @@
+{
+  "format": "cloudflare-csv",
+  "redirects": [
+    {
+      "line": 1,
+      "from": "/old-docs",
+      "to": "/blog/",
+      "status": 301,
+      "notes": [
+        "Removed the site's own address from the start.",
+        "Shortened the site's own address to its path."
+      ]
+    },
+    {
+      "line": 3,
+      "from": "/folder/*",
+      "to": "/blog/:splat",
+      "status": 301,
+      "notes": [
+        "Read “subpath matching” as everything under the old address.",
+        "Removed the site's own address from the start.",
+        "Shortened the site's own address to its path."
+      ]
+    }
+  ],
+  "rejected": [
+    {
+      "line": 2,
+      "kind": "needs-person",
+      "reason": "This redirect also covers every subdomain, which a site's own redirects can't do."
+    },
+    {
+      "line": 4,
+      "kind": "needs-person",
+      "reason": "This redirect also covers every subdomain, which a site's own redirects can't do."
+    },
+    {
+      "line": 5,
+      "kind": "other-domain",
+      "reason": "The old address is on other.example, which isn't this site's address. This site's redirects only see its own addresses."
+    }
+  ],
+  "ignored": 0,
+  "unknownHosts": [
+    {
+      "host": "other.example",
+      "count": 1
+    }
+  ]
+}

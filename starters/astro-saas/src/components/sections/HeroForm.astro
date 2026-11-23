@@ -1,0 +1,129 @@
+---
+// The opening statement beside a short lead form. The form is a file in
+// src/content/forms/ (`form`, default "demo" — two steps, a work-email rule
+// and campaign fields); `formHeading` and `formText` title the card it sits in.
+import Section from "../Section.astro";
+import Checklist from "../Checklist.astro";
+import FormEmbed from "../FormEmbed.astro";
+import { inline, paragraphs, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  items?: string[];
+  formHeading: string;
+  formText?: string;
+  form?: string | { id: string };
+  note?: string;
+  grid?: boolean;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, items, formHeading, formText, form = "demo", note, grid = true, index = 0, level = 1, block } = Astro.props;
+const key = id ?? `section-${index}`;
+const headingId = `${key}-heading`;
+const formHeadingId = `${key}-form-heading`;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+const FormHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
+---
+
+<Section type="hero-form" id={id} tone={tone} block={block} labelledby={headingId} grid={grid}>
+  <div class="hero-form">
+    <div class="hero-form__copy">
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <Heading id={headingId} class="hero-form__heading" set:html={inline(heading)} />
+      {
+        text && (
+          <div class="hero-form__text">
+            {paragraphs(text).map((part) => (
+              <p>{part}</p>
+            ))}
+          </div>
+        )
+      }
+      <Checklist items={items} class="hero-form__points" />
+    </div>
+
+    <div class="hero-form__form card" role="group" aria-labelledby={formHeadingId}>
+      <div class="hero-form__form-head">
+        <FormHeading id={formHeadingId} class="hero-form__form-heading">{formHeading}</FormHeading>
+        {formText && <p class="hero-form__form-text">{formText}</p>}
+      </div>
+      <FormEmbed form={form} headingLevel={level === 1 ? 3 : 4} />
+      {note && <p class="form-note">{note}</p>}
+    </div>
+  </div>
+</Section>
+
+<style>
+  :global(.section--hero-form) {
+    padding-block: var(--space-2xl) var(--space-section);
+  }
+
+  .hero-form {
+    display: grid;
+    gap: var(--space-2xl);
+    align-items: center;
+  }
+
+  .hero-form__copy {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+  }
+
+  .hero-form__heading {
+    font-size: var(--step-5);
+    font-weight: var(--weight-display-strong);
+    line-height: var(--leading-tight);
+    max-width: 13em;
+  }
+
+  .hero-form__text {
+    display: grid;
+    gap: var(--space-xs);
+    max-width: 34em;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--tone-muted);
+  }
+
+  .hero-form__copy :global(.hero-form__points) {
+    margin-block-start: var(--space-xs);
+  }
+
+  .hero-form__form {
+    display: grid;
+    align-content: start;
+    gap: var(--space-s);
+    padding: var(--space-l);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .hero-form__form-head {
+    display: grid;
+    gap: var(--space-3xs);
+    margin-block-end: var(--space-2xs);
+  }
+
+  .hero-form__form-heading {
+    font-size: var(--step-2);
+  }
+
+  .hero-form__form-text {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 64rem) {
+    .hero-form {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      gap: var(--space-2xl);
+    }
+  }
+</style>

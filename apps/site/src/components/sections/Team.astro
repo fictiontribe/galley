@@ -1,0 +1,38 @@
+---
+// People: the featured person first, larger, beside their line; the rest as
+// equals below. Photographs as they are, in the site's rounded frames; the
+// alt text is the person's name, never a description of them.
+import { portrait } from "../../lib/media";
+import { inline } from "../../lib/markdown";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const Hi = first ? "h2" : "h3";
+const hid = `${s.id ?? "team"}-h`;
+type Person = { name: string; title: string; line: string; photo: string; alt: string; featured?: boolean };
+const people = (s.people as Person[]).map((p) => ({ ...p, pic: portrait(p.photo) }));
+const featured = people.filter((p) => p.featured);
+const rest = people.filter((p) => !p.featured);
+const sizes = {
+  featured: "(max-width: 639px) calc(100vw - 40px), (max-width: 1180px) 46vw, 630px",
+  rest: "(max-width: 639px) calc(100vw - 40px), (max-width: 1023px) 30vw, 410px",
+};
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <H class:list={[s.quiet ? "sr" : "h2 head"]} id={hid} set:html={inline(s.heading)} />
+  <ul class="team">
+    {
+      [...featured, ...rest].map((p) => (
+        <li class:list={["person", p.featured && "person--featured"]}>
+          <img class="person__photo" src={p.pic.src} srcset={p.pic.srcset} sizes={p.featured ? sizes.featured : sizes.rest} width={p.pic.width} height={p.pic.height} alt={p.alt} loading="lazy" decoding="async" />
+          <div class="person__text">
+            <Hi class="person__name">{p.name}</Hi>
+            <p class="label">{p.title}</p>
+            <p class="person__line">{p.line}</p>
+          </div>
+        </li>
+      ))
+    }
+  </ul>
+</section>

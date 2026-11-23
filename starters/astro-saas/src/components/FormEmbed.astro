@@ -1,0 +1,51 @@
+---
+// One form from src/content/forms/, rendered by the site kit's <Form>
+// (src/galley/). Sections pass `form` as written in front matter — a
+// reference or a bare file name — and the site's own button classes. The
+// form's fields, wording, destination and thank-you all live in its file.
+//
+// A form that isn't chosen yet (a section just added in the page builder) or
+// doesn't exist shows a notice while developing, so the preview keeps
+// working; a production build stops with the reason.
+import { getEntry } from "astro:content";
+import { Form } from "../galley/components/index.js";
+import { fill, labels, rebaseForm } from "../lib/site";
+
+interface Props {
+  form?: string | { id: string };
+  submitClass?: string;
+  backClass?: string;
+  headingLevel?: number;
+  class?: string;
+}
+
+const { form, submitClass = "button", backClass = "button button--secondary", headingLevel, class: className } = Astro.props;
+const id = (typeof form === "string" ? form : form?.id) ?? "";
+const entry = id ? await getEntry("forms", id) : undefined;
+if (!entry && !import.meta.env.DEV) {
+  throw new Error(id ? `No form called “${id}”: add src/content/forms/${id}.json or choose another form.` : "A section has no form chosen: set its `form` to a file name in src/content/forms/.");
+}
+// Under a sub-path, the definition is handed over with its links rebased.
+const definition = entry ? rebaseForm(entry.data) : undefined;
+const rebased = entry !== undefined && JSON.stringify(definition) !== JSON.stringify(entry.data);
+---
+
+{
+  entry ? (
+    <Form id={id} definition={rebased ? (definition as any) : undefined} submitClass={submitClass} backClass={backClass} headingLevel={headingLevel} class={className} />
+  ) : (
+    <p class="form-missing" role="note">
+      {id ? fill(labels.dev.unknownForm, { id }) : labels.dev.chooseForm}
+    </p>
+  )
+}
+
+<style>
+  .form-missing {
+    padding: var(--space-m);
+    border: 2px dashed var(--tone-line);
+    border-radius: var(--radius-m);
+    color: var(--tone-muted);
+    font-size: var(--step--1);
+  }
+</style>

@@ -1,0 +1,54 @@
+{
+  "format": "nginx",
+  "redirects": [
+    {
+      "line": 3,
+      "from": "/old-contact",
+      "to": "/contact/",
+      "status": 301,
+      "notes": [
+        "The pattern allowed the address with or without a trailing slash; one form was kept."
+      ]
+    },
+    {
+      "line": 4,
+      "from": "/press/*",
+      "to": "/blog/:splat",
+      "status": 302
+    },
+    {
+      "line": 6,
+      "from": "/old-pricing",
+      "to": "/pricing/",
+      "status": 301
+    },
+    {
+      "line": 8,
+      "from": "/two-line",
+      "to": "/about/",
+      "status": 308,
+      "notes": [
+        "Shortened the site's own address to its path."
+      ]
+    }
+  ],
+  "rejected": [
+    {
+      "line": 5,
+      "kind": "needs-person",
+      "reason": "This rewrite changes what page is shown without sending the visitor anywhere (no “permanent” or “redirect”), so it isn't a redirect."
+    },
+    {
+      "line": 10,
+      "kind": "needs-person",
+      "reason": "Only exact locations (“location = /old { return 301 /new; }”) are plain redirects."
+    },
+    {
+      "line": 11,
+      "kind": "needs-person",
+      "reason": "A return outside a “location = …” block sends a whole server somewhere, which isn't one redirect."
+    }
+  ],
+  "ignored": 5,
+  "unknownHosts": []
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "startup-window",
+  "description": "The start-up window is a page bundled with the app. It may read start-up progress, retry, continue past missing tools, quit, and open the download pages it links to. Nothing else.",
+  "local": true,
+  "windows": ["startup"],
+  "permissions": [
+    "allow-startup-state",
+    "allow-startup-retry",
+    "allow-startup-continue",
+    "allow-startup-quit",
+    "allow-open-external"
+  ]
+}

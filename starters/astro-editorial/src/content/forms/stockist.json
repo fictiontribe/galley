@@ -1,0 +1,35 @@
+{
+  "name": "Become a stockist",
+  "description": "We add two or three shops a year, ones we can visit. Tell us about yours.",
+  "submitLabel": "Send the enquiry",
+  "fields": [
+    { "id": "shop", "type": "text", "label": "Shop name", "required": true, "width": "half" },
+    { "id": "town", "type": "text", "label": "Town", "required": true, "width": "half" },
+    { "id": "name", "type": "text", "label": "Your name", "required": true, "width": "half" },
+    { "id": "email", "type": "email", "label": "Email address", "required": true, "width": "half" },
+    {
+      "id": "carries",
+      "type": "checkboxes",
+      "label": "What you would carry",
+      "options": [
+        { "value": "coats", "label": "Coats" },
+        { "value": "knitwear", "label": "Knitwear" },
+        { "value": "both", "label": "Both" }
+      ]
+    },
+    { "id": "message", "type": "textarea", "label": "Tell us about the shop" }
+  ],
+  "destinations": [
+    { "provider": "galley", "settings": {} }
+  ],
+  "afterSubmit": [
+    {
+      "type": "message",
+      "title": "Thank you.",
+      "text": "Hesper reads every stockist enquiry herself and will write to **{{email}}** within a week."
+    }
+  ],
+  "errorMessage": "The enquiry couldn't be sent. Your answers are still here.",
+  "spam": { "honeypot": true, "minSeconds": 3 },
+  "appearance": { "layout": "stacked", "size": "regular", "labels": "above" }
+}

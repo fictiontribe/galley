@@ -1,0 +1,99 @@
+---
+// A blog post teaser: cover image, first tag, date, title (the link) and
+// description. `layout: "row"` sets the picture beside the words.
+import type { CollectionEntry } from "astro:content";
+import Media from "./Media.astro";
+import { fill, formatDate, labels, readingMinutes } from "../lib/site";
+import { postUrl } from "../lib/posts";
+
+interface Props {
+  post: CollectionEntry<"blog">;
+  headingLevel?: 2 | 3;
+  eager?: boolean;
+  layout?: "card" | "row";
+}
+
+const { post, headingLevel = 3, eager = false, layout = "card" } = Astro.props;
+const Heading = `h${headingLevel}` as "h2" | "h3";
+const minutes = readingMinutes(post.body);
+const tag = post.data.tags[0];
+---
+
+<article class:list={["post-card", "card-link", `post-card--${layout}`]}>
+  <Media src={post.data.image} alt={post.data.imageAlt ?? ""} ratio="16/10" eager={eager} class="post-card__media" />
+  <div class="post-card__body">
+    <p class="post-card__meta">
+      {tag && <span class="post-card__tag">{tag}</span>}
+      <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+      <span aria-hidden="true">·</span>
+      <span>{fill(labels.blog.readingTime, { minutes })}</span>
+    </p>
+    <Heading class="post-card__title">
+      <a class="card-link__target" href={postUrl(post)}>{post.data.title}</a>
+    </Heading>
+    <p class="post-card__text">{post.data.description}</p>
+  </div>
+</article>
+
+<style>
+  .post-card {
+    display: grid;
+    align-content: start;
+    gap: var(--space-s);
+    border-radius: var(--radius-image);
+  }
+
+  .post-card :global(.post-card__media) {
+    border: var(--border-width) solid var(--tone-line);
+    transition: border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .post-card:hover :global(.post-card__media) {
+    border-color: var(--tone-control);
+  }
+
+  .post-card__body {
+    display: grid;
+    gap: var(--space-2xs);
+  }
+
+  .post-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em;
+    font-size: var(--step--2);
+    color: var(--tone-muted);
+  }
+
+  .post-card__tag {
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-link);
+  }
+
+  .post-card__title {
+    font-size: var(--step-1);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .post-card:hover .post-card__title a {
+    text-decoration: underline;
+    text-decoration-color: var(--tone-link);
+  }
+
+  .post-card__text {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 44rem) {
+    .post-card--row {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      gap: var(--space-l);
+      align-items: center;
+    }
+  }
+</style>

@@ -1,0 +1,34 @@
+---
+// One marketing page: the entry src/content/pages/<id>.md, its `sections`
+// list rendered through the one Sections renderer.
+import { getEntry } from "astro:content";
+import Site from "../layouts/Site.astro";
+import Sections from "./Sections.astro";
+import { absoluteUrl, site, version } from "../lib/site";
+
+const entry = await getEntry("pages", Astro.props.id);
+if (!entry) throw new Error(`Missing page src/content/pages/${Astro.props.id}.md`);
+const p = entry.data;
+const jsonLd =
+  entry.id === "index"
+    ? {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: site.name,
+        description: site.description,
+        url: site.url,
+        applicationCategory: "DeveloperApplication",
+        operatingSystem: "macOS, Linux, Windows",
+        softwareVersion: version,
+        license: site.licenseUrl,
+        codeRepository: site.repository,
+        isAccessibleForFree: true,
+        image: absoluteUrl(site.shareImage),
+        author: { "@type": "Organization", name: site.maker.name, url: site.maker.url },
+      }
+    : undefined;
+---
+
+<Site title={p.title} description={p.description} bareTitle={entry.id === "index"} noindex={p.noindex} jsonLd={jsonLd}>
+  <Sections sections={p.sections as any[]} />
+</Site>

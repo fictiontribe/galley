@@ -1,0 +1,112 @@
+---
+// One large, framed product picture with a caption and optional numbered
+// notes beneath it. `width: wide` lets it run past the text column.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Frame from "../Frame.astro";
+import type { BlockMarker, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  image: string;
+  imageAlt: string;
+  caption?: string;
+  items?: Array<{ heading: string; text: string }>;
+  frame?: "window" | "bare";
+  width?: "normal" | "wide";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, image, imageAlt, caption, items = [], frame = "window", width = "wide", index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+const NoteHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
+---
+
+<Section type="screenshot" id={id} tone={tone} block={block} labelledby={headingId} label={headingId ? undefined : imageAlt}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} align="center" />
+  <figure class:list={["screenshot", `screenshot--${width}`]}>
+    <Frame image={image} imageAlt={imageAlt} frame={frame} eager={index === 0} />
+    {caption && <figcaption class="screenshot__caption">{caption}</figcaption>}
+  </figure>
+  {
+    items.length > 0 && (
+      <ol class="screenshot__notes" role="list">
+        {items.map((item, i) => (
+          <li class="screenshot__note">
+            <span class="screenshot__number mono" aria-hidden="true">
+              {i + 1}
+            </span>
+            <div>
+              <NoteHeading class="screenshot__note-heading">{item.heading}</NoteHeading>
+              <p class="screenshot__note-text">{item.text}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    )
+  }
+</Section>
+
+<style>
+  .screenshot {
+    display: grid;
+    gap: var(--space-s);
+    max-width: 64rem;
+    margin-inline: auto;
+  }
+
+  .screenshot--wide {
+    max-width: none;
+  }
+
+  .screenshot__caption {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+    text-align: center;
+  }
+
+  .screenshot__notes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: var(--space-l) var(--space-m);
+    margin-block-start: var(--space-xl);
+    padding: 0;
+    list-style: none;
+  }
+
+  .screenshot__note {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-s);
+  }
+
+  .screenshot__number {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    border-radius: 50%;
+    background: var(--tone-link);
+    color: var(--tone-bg);
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+  }
+
+  .screenshot__note-heading {
+    font-size: var(--step-0);
+    font-family: var(--font-body);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0;
+  }
+
+  .screenshot__note-text {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+</style>

@@ -1,0 +1,862 @@
+/* ==========================================================================
+   Galley — components
+   Requires tokens.css. Every class is prefixed g-. No element selectors leak
+   outside .g-root, so this file can be imported straight into the web app.
+
+   Contents
+     1  Base (.g-root), utilities, focus, selection
+     2  Proof marks (glyph set as CSS masks)
+     3  Buttons
+     4  Form controls: field, input, textarea, select, toggle, segmented
+     5  Tabs
+     6  Tags, badges, counts, kbd
+     7  Inline diff: .g-ins / .g-del / .g-chg
+     8  Change rows: field change, file change, tallies
+     9  Toast, dialog, menu surface
+    10  Chat: messages, tool activity, quick replies, composer
+    11  Empty state, sheet, crop marks, rules, guides
+    12  App frame: sidebar, nav, toolbar, panes, preview, status bar
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Base
+   -------------------------------------------------------------------------- */
+.g-root {
+  font-family: var(--font-text);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  letter-spacing: var(--tracking-ui);
+  color: var(--ink-primary);
+  background: var(--surface-paper);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01" 0, "cv11" 1;
+}
+.g-root,
+.g-root *,
+.g-root *::before,
+.g-root *::after { box-sizing: border-box; }
+.g-root ::selection { background: var(--selection-bg); color: var(--selection-ink); }
+.g-root :focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+.g-root :focus:not(:focus-visible) { outline: none; }
+
+.g-sr {
+  position: absolute !important;
+  width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+/* Type helpers */
+.g-display {
+  font-family: var(--font-display);
+  font-weight: var(--weight-regular);
+  font-optical-sizing: auto;
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-display);
+  text-wrap: balance;
+}
+.g-display em, .g-display i { font-style: italic; }
+.g-title {          /* pane + screen titles inside the app */
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-heading);
+}
+.g-eyebrow {        /* mono labels: section numbers, field keys, paths */
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-2xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+}
+.g-mono { font-family: var(--font-mono); font-size: 0.92em; letter-spacing: 0; }
+.g-muted { color: var(--ink-secondary); }
+.g-faint { color: var(--ink-tertiary); }
+.g-link {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  text-decoration-color: var(--accent-line);
+  transition: text-decoration-color var(--duration-fast) var(--ease-standard);
+}
+.g-link:hover { text-decoration-color: currentColor; }
+
+/* --------------------------------------------------------------------------
+   2. Proof marks — the glyph set. Drawn as masks so they take currentColor
+   and render with no icon font. Use <span class="g-mark g-mark--caret"
+   aria-hidden="true"></span> and always pair with words.
+   -------------------------------------------------------------------------- */
+.g-root, .g-scope, :root {
+  --g-mark-caret:     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.6 10.4 6 3.2l4.4 7.2' fill='none' stroke='%23000' stroke-width='1.8'/%3E%3C/svg%3E");
+  --g-mark-dele:      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M.8 7.4h5.6c2.2 0 3.4-1.3 3-2.7-.4-1.3-2.2-1.4-2.6-.1-.5 1.7 1.3 3.6 4.4 3.9' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  --g-mark-stet:      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Ccircle cx='2' cy='7' r='1.3'/%3E%3Ccircle cx='6' cy='7' r='1.3'/%3E%3Ccircle cx='10' cy='7' r='1.3'/%3E%3C/svg%3E");
+  --g-mark-transpose: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.2 8.6C2.6 3 5 2.4 6 6s3.4 3 4.8-2.6' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  --g-mark-reg:       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.4'%3E%3Ccircle cx='6' cy='6' r='3.1'/%3E%3Cpath d='M.5 6h11M6 .5v11'/%3E%3C/g%3E%3C/svg%3E");
+  --g-mark-pilcrow:   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M5.2 1.5h5.3M7 1.5v9.5M9.4 1.5v9.5' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3Cpath d='M7 1.5H5.4a2.4 2.4 0 0 0 0 4.8H7z'/%3E%3C/svg%3E");
+  --g-mark-bang:      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 .8 11.4 10.8H.6z' fill='none' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M6 4.4v3.2' stroke='%23000' stroke-width='1.4'/%3E%3Ccircle cx='6' cy='9.1' r='.8'/%3E%3C/svg%3E");
+  --g-mark-chevron:   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.6 3 3 3-3' fill='none' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E");
+  --g-mark-send:      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 10.5V2M2.4 5.4 6 1.8l3.6 3.6' fill='none' stroke='%23000' stroke-width='1.6'/%3E%3C/svg%3E");
+}
+.g-mark {
+  display: inline-block;
+  inline-size: 1em;
+  block-size: 1em;
+  flex: none;
+  vertical-align: -0.125em;
+  background: currentColor;
+  -webkit-mask: var(--g-mark, var(--g-mark-caret)) center / contain no-repeat;
+          mask: var(--g-mark, var(--g-mark-caret)) center / contain no-repeat;
+}
+.g-mark--caret     { --g-mark: var(--g-mark-caret); }
+.g-mark--dele      { --g-mark: var(--g-mark-dele); }
+.g-mark--stet      { --g-mark: var(--g-mark-stet); }
+.g-mark--transpose { --g-mark: var(--g-mark-transpose); }
+.g-mark--reg       { --g-mark: var(--g-mark-reg); }
+.g-mark--pilcrow   { --g-mark: var(--g-mark-pilcrow); }
+.g-mark--bang      { --g-mark: var(--g-mark-bang); }
+.g-mark--chevron   { --g-mark: var(--g-mark-chevron); }
+.g-mark--send      { --g-mark: var(--g-mark-send); }
+.g-mark--insert    { color: var(--proof-insert); }
+.g-mark--delete    { color: var(--proof-delete); }
+.g-mark--change    { color: var(--proof-change); }
+
+/* Working indicator: stet dots ("let it stand" — wait for it). */
+.g-dots { display: inline-flex; gap: 0.22em; align-items: center; vertical-align: middle; }
+.g-dots > i {
+  inline-size: 0.3em; block-size: 0.3em; border-radius: 50%;
+  background: currentColor; opacity: 0.25;
+  animation: g-dot 1.1s var(--ease-in-out) infinite;
+}
+.g-dots > i:nth-child(2) { animation-delay: 0.15s; }
+.g-dots > i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes g-dot { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .g-dots > i { animation: none; opacity: 0.7; } }
+
+/* --------------------------------------------------------------------------
+   3. Buttons — pills (the family trait). One primary per view.
+   -------------------------------------------------------------------------- */
+.g-btn {
+  --_h: var(--control-height-md);
+  --_px: 14px;
+  --_fs: var(--text-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  block-size: var(--_h);
+  padding-inline: var(--_px);
+  border: var(--border-thick) solid transparent;
+  border-radius: var(--radius-pill);
+  font: var(--weight-semibold) var(--_fs) / 1 var(--font-text);
+  letter-spacing: var(--tracking-ui);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  color: var(--ink-primary);
+  background: transparent;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-instant) var(--ease-standard);
+}
+.g-btn:active:not(:disabled, [aria-disabled="true"]) { transform: translateY(0.5px); }
+.g-btn:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.g-btn > .g-mark { font-size: 1.1em; }
+
+.g-btn--primary { background: var(--accent-fill); color: var(--accent-on); }
+.g-btn--primary:hover { background: var(--accent-hover); }
+.g-btn--primary:active { background: var(--accent-pressed); }
+
+.g-btn--secondary { border-color: var(--border-strong); background: var(--surface-raised); }
+.g-btn--secondary:hover { border-color: var(--ink-primary); }
+.g-btn--secondary:active { background: var(--surface-sunken); }
+
+.g-btn--quiet { color: var(--ink-secondary); }
+.g-btn--quiet:hover { color: var(--ink-primary); background: color-mix(in srgb, var(--ink-primary) 7%, transparent); }
+.g-btn--quiet:active { background: color-mix(in srgb, var(--ink-primary) 12%, transparent); }
+
+.g-btn--danger { background: var(--danger-fill); color: var(--danger-on); }
+.g-btn--danger:hover { background: color-mix(in oklab, var(--danger-fill) 86%, var(--ink-primary)); }
+.g-btn--danger:active { background: color-mix(in oklab, var(--danger-fill) 74%, var(--ink-primary)); }
+.g-btn--danger.g-btn--quiet { background: transparent; color: var(--danger); }
+.g-btn--danger.g-btn--quiet:hover { background: var(--danger-tint); color: var(--danger-ink); }
+
+.g-btn--sm { --_h: var(--control-height-sm); --_px: 11px; --_fs: var(--text-xs); }
+.g-btn--lg { --_h: var(--control-height-lg); --_px: 18px; --_fs: var(--text-md); }
+.g-btn--xl { --_h: var(--control-height-xl); --_px: 24px; --_fs: var(--text-lg); }
+.g-btn--icon { inline-size: var(--_h); padding-inline: 0; }
+.g-btn--block { inline-size: 100%; }
+
+.g-btn:disabled,
+.g-btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: var(--ink-disabled);
+  background: var(--surface-sunken);
+  border-color: transparent;
+}
+.g-btn--quiet:disabled, .g-btn--quiet[aria-disabled="true"] { background: transparent; }
+.g-btn[aria-busy="true"] { cursor: progress; }
+.g-btn[aria-busy="true"] > .g-dots { margin-inline-start: 2px; }
+
+.g-btn__kbd {
+  font: var(--weight-medium) var(--text-2xs) / 1 var(--font-mono);
+  opacity: 0.72;
+  margin-inline-start: 2px;
+}
+.g-btn-group { display: inline-flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+
+/* --------------------------------------------------------------------------
+   4. Form controls
+   -------------------------------------------------------------------------- */
+.g-field { display: grid; gap: var(--space-1-5); align-content: start; min-inline-size: 0; }
+.g-field__head { display: flex; align-items: baseline; gap: var(--space-2); min-inline-size: 0; }
+.g-label {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+}
+.g-field__key {             /* the content key, for people who want it */
+  font: var(--text-2xs) / var(--leading-2xs) var(--font-mono);
+  color: var(--ink-tertiary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.g-field__state {           /* "Edited" marker — mark + word, never colour alone */
+  margin-inline-start: auto;
+  display: inline-flex; align-items: center; gap: 4px;
+  font: var(--weight-medium) var(--text-2xs) / 1 var(--font-mono);
+  color: var(--proof-insert);
+  white-space: nowrap;
+}
+.g-hint { font-size: var(--text-xs); line-height: var(--leading-xs); color: var(--ink-tertiary); }
+.g-error-text {
+  display: flex; gap: 6px; align-items: flex-start;
+  font-size: var(--text-xs); line-height: var(--leading-xs);
+  color: var(--danger);
+}
+.g-error-text > .g-mark { margin-top: 2px; }
+
+.g-input,
+.g-textarea,
+.g-select {
+  inline-size: 100%;
+  min-inline-size: 0;
+  block-size: var(--control-height-md);
+  padding: 0 10px;
+  border: var(--border-hair) solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--ink-primary);
+  font: var(--weight-regular) var(--text-md) / var(--leading-md) var(--font-text);
+  letter-spacing: var(--tracking-normal);
+  transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+}
+.g-textarea { block-size: auto; min-block-size: 76px; padding-block: 6px; resize: vertical; }
+.g-input::placeholder, .g-textarea::placeholder { color: var(--ink-tertiary); opacity: 1; }
+.g-input:hover, .g-textarea:hover, .g-select:hover { border-color: var(--ink-secondary); }
+.g-input:focus-visible, .g-textarea:focus-visible, .g-select:focus-visible {
+  outline: none;
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
+}
+.g-input[aria-invalid="true"], .g-textarea[aria-invalid="true"] { border-color: var(--danger); }
+.g-input[aria-invalid="true"]:focus-visible { box-shadow: 0 0 0 1px var(--danger); }
+.g-input:disabled, .g-textarea:disabled, .g-select:disabled {
+  color: var(--ink-disabled); background: var(--surface-sunken); border-color: var(--border-default); cursor: not-allowed;
+}
+.g-input--sm { block-size: var(--control-height-sm); font-size: var(--text-sm); padding: 0 8px; }
+.g-input--mono { font-family: var(--font-mono); font-size: var(--text-sm); }
+
+.g-select-wrap { position: relative; display: block; min-inline-size: 0; }
+.g-select { appearance: none; padding-inline-end: 30px; cursor: pointer; }
+.g-select-wrap::after {
+  content: "";
+  position: absolute; inset-inline-end: 10px; inset-block-start: 50%;
+  inline-size: 12px; block-size: 12px; translate: 0 -50%;
+  background: var(--ink-secondary);
+  -webkit-mask: var(--g-mark-chevron) center / contain no-repeat;
+          mask: var(--g-mark-chevron) center / contain no-repeat;
+  pointer-events: none;
+}
+
+/* Toggle: <input type="checkbox" role="switch" class="g-toggle"> */
+.g-toggle {
+  appearance: none;
+  position: relative;
+  flex: none;
+  inline-size: 30px; block-size: 18px;
+  margin: 0;
+  border-radius: var(--radius-pill);
+  border: var(--border-hair) solid var(--border-strong);
+  background: var(--surface-sunken);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+.g-toggle::before {
+  content: "";
+  position: absolute; inset-block-start: 2px; inset-inline-start: 2px;
+  inline-size: 12px; block-size: 12px; border-radius: 50%;
+  background: var(--ink-secondary);
+  transition: translate var(--duration-base) var(--ease-out), background-color var(--duration-fast) var(--ease-standard);
+}
+.g-toggle:checked { background: var(--accent-fill); border-color: var(--accent-fill); }
+.g-toggle:checked::before { translate: 12px 0; background: var(--accent-on); }
+.g-toggle:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.g-toggle:disabled { opacity: 0.45; cursor: not-allowed; }
+.g-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+
+/* Segmented control: a row of radio-like pills. */
+.g-segmented {
+  display: inline-flex; padding: 2px; gap: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  border: var(--border-hair) solid var(--border-default);
+}
+.g-segmented > button {
+  block-size: 24px; padding: 0 10px;
+  border: 0; border-radius: var(--radius-pill);
+  background: transparent; color: var(--ink-secondary);
+  font: var(--weight-semibold) var(--text-xs) / 1 var(--font-text);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.g-segmented > button:hover { color: var(--ink-primary); }
+.g-segmented > button[aria-pressed="true"],
+.g-segmented > button[aria-checked="true"] {
+  background: var(--surface-raised); color: var(--ink-primary); box-shadow: var(--shadow-1);
+}
+
+/* --------------------------------------------------------------------------
+   5. Tabs — <div role="tablist" class="g-tabs"><button role="tab" class="g-tab">
+   -------------------------------------------------------------------------- */
+.g-tabs {
+  display: flex; gap: var(--space-5);
+  border-block-end: var(--border-hair) solid var(--border-default);
+  overflow-x: auto; scrollbar-width: none;
+}
+.g-tab {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 6px;
+  block-size: 36px; padding: 0 1px;
+  border: 0; background: none; cursor: pointer;
+  color: var(--ink-secondary);
+  font: var(--weight-medium) var(--text-sm) / 1 var(--font-text);
+  white-space: nowrap;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.g-tab:hover { color: var(--ink-primary); }
+.g-tab::after {
+  content: ""; position: absolute; inset-inline: 0; inset-block-end: -1px;
+  block-size: var(--border-heavy); background: var(--ink-primary);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+.g-tab[aria-selected="true"] { color: var(--ink-primary); font-weight: var(--weight-semibold); }
+.g-tab[aria-selected="true"]::after { transform: scaleX(1); }
+
+/* --------------------------------------------------------------------------
+   6. Tags, badges, counts, kbd
+   -------------------------------------------------------------------------- */
+.g-tag {                      /* neutral metadata: collection, file kind */
+  display: inline-flex; align-items: center; gap: 4px;
+  block-size: 20px; padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--ink-secondary);
+  font: var(--weight-medium) var(--text-xs) / 1 var(--font-text);
+  white-space: nowrap;
+}
+.g-tag--outline { background: transparent; box-shadow: inset 0 0 0 1px var(--border-default); }
+.g-tag--mono { font-family: var(--font-mono); font-size: var(--text-2xs); letter-spacing: 0.02em; }
+
+.g-badge {                    /* status: always a mark AND a word */
+  --_c: var(--ink-secondary); --_t: var(--surface-sunken); --_i: var(--ink-secondary);
+  display: inline-flex; align-items: center; gap: 5px;
+  block-size: 20px; padding: 0 8px 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--_t); color: var(--_i);
+  font: var(--weight-semibold) var(--text-xs) / 1 var(--font-text);
+  white-space: nowrap;
+}
+.g-badge > .g-mark { color: var(--_c); font-size: 11px; }
+.g-badge--insert  { --_c: var(--proof-insert); --_t: var(--proof-insert-tint); --_i: var(--proof-insert-ink); }
+.g-badge--delete  { --_c: var(--proof-delete); --_t: var(--proof-delete-tint); --_i: var(--proof-delete-ink); }
+.g-badge--change  { --_c: var(--proof-change); --_t: var(--proof-change-tint); --_i: var(--proof-change-ink); }
+.g-badge--success { --_c: var(--success); --_t: var(--success-tint); --_i: var(--success-ink); }
+.g-badge--warning { --_c: var(--warning); --_t: var(--warning-tint); --_i: var(--warning-ink); }
+.g-badge--danger  { --_c: var(--danger);  --_t: var(--danger-tint);  --_i: var(--danger-ink); }
+.g-badge--info    { --_c: var(--info);    --_t: var(--info-tint);    --_i: var(--info-ink); }
+.g-badge--accent  { --_c: var(--accent-text); --_t: var(--accent-subtle); --_i: var(--ink-primary); }
+
+.g-count {
+  display: inline-grid; place-items: center;
+  min-inline-size: 18px; block-size: 18px; padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-fill); color: var(--accent-on);
+  font: var(--weight-medium) var(--text-2xs) / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.g-count--quiet { background: var(--surface-sunken); color: var(--ink-secondary); }
+
+.g-kbd {
+  display: inline-grid; place-items: center;
+  min-inline-size: 18px; block-size: 18px; padding: 0 4px;
+  border-radius: var(--radius-xs);
+  border: var(--border-hair) solid var(--border-default);
+  border-block-end-width: 2px;
+  background: var(--surface-raised); color: var(--ink-secondary);
+  font: var(--weight-medium) var(--text-2xs) / 1 var(--font-mono);
+}
+
+/* --------------------------------------------------------------------------
+   7. Inline diff — proof marks, not boxes.
+   insert: tint + solid underline + caret at the insertion point
+   delete: tint + strike-through + dele loop
+   change: tint + dashed underline (+ transpose mark when moved)
+   Markup: <ins class="g-ins"><span class="g-sr">Added: </span>text</ins>
+   -------------------------------------------------------------------------- */
+.g-ins, .g-del, .g-chg {
+  position: relative;
+  text-decoration: none;
+  border-radius: var(--radius-xs);
+  padding-inline: 0.12em;
+  margin-inline: 0.02em;
+  -webkit-box-decoration-break: clone;
+          box-decoration-break: clone;
+  background-repeat: no-repeat;
+}
+.g-ins {
+  color: var(--proof-insert-ink);
+  background-image: linear-gradient(var(--proof-insert), var(--proof-insert));
+  background-size: 100% var(--proof-underline);
+  background-position: 0 100%;
+  background-color: var(--proof-insert-tint);
+}
+.g-ins::before {              /* the caret, standing below the line at the insertion point */
+  content: "";
+  display: inline-block;
+  inline-size: 0.56em; block-size: 0.46em;
+  margin-inline: -0.4em -0.16em;   /* zero net width: sits on the insertion point */
+  vertical-align: -0.62em;
+  background: var(--proof-insert);
+  -webkit-mask: var(--g-mark-caret) center / contain no-repeat;
+          mask: var(--g-mark-caret) center / contain no-repeat;
+}
+.g-ins--plain::before { content: none; }
+
+.g-del {
+  color: var(--proof-delete-ink);
+  background-image: linear-gradient(var(--proof-delete), var(--proof-delete));
+  background-size: 100% var(--proof-strike);
+  background-position: 0 58%;
+  background-color: var(--proof-delete-tint);
+}
+.g-del::after {               /* the dele: the strike runs on into a pigtail loop */
+  content: "";
+  display: inline-block;
+  inline-size: 0.7em; block-size: 0.7em;
+  margin-inline-start: -0.04em;
+  margin-inline-end: -0.12em;
+  vertical-align: -0.02em;
+  background: var(--proof-delete);
+  -webkit-mask: var(--g-mark-dele) center / contain no-repeat;
+          mask: var(--g-mark-dele) center / contain no-repeat;
+}
+.g-del--plain::after { content: none; }
+
+.g-chg {
+  color: var(--proof-change-ink);
+  background-image: repeating-linear-gradient(90deg, var(--proof-change) 0 0.32em, transparent 0.32em 0.52em);
+  background-size: 100% var(--proof-underline);
+  background-position: 0 100%;
+  background-color: var(--proof-change-tint);
+}
+
+/* Ink-in: add .g-ink-in when a change first appears; marks draw left→right. */
+.g-ink-in.g-ins, .g-ink-in.g-del, .g-ink-in.g-chg { animation: g-ink-in var(--duration-ink) var(--ease-ink) both; }
+.g-ink-in.g-ins::before, .g-ink-in.g-del::after { animation: g-fade-in var(--duration-ink) var(--ease-ink) both; }
+@keyframes g-ink-in { from { background-size: 0% var(--proof-underline); } }
+@keyframes g-fade-in { from { opacity: 0; } }
+
+/* Windows high-contrast / forced colours: tints vanish, so fall back to real
+   decorations — the marks still carry the meaning. */
+@media (forced-colors: active) {
+  .g-ins { text-decoration: underline 2px; }
+  .g-del { text-decoration: line-through 2px; }
+  .g-chg { text-decoration: underline dashed 2px; }
+  .g-ins::before, .g-del::after, .g-mark { background: CanvasText; }
+}
+
+/* Proof prose: set text the way it will appear (display face), with room for marks. */
+.g-proof-text {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: 1.85;
+  font-optical-sizing: auto;
+}
+
+/* --------------------------------------------------------------------------
+   8. Change rows
+   -------------------------------------------------------------------------- */
+/* Field change: <article class="g-change"> path, before line, after line */
+.g-change {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  column-gap: var(--space-2);
+  row-gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-2);
+  border-block-end: var(--border-hair) solid var(--border-subtle);
+  align-items: start;
+}
+.g-change__head { grid-column: 2; display: flex; align-items: baseline; gap: var(--space-2); min-inline-size: 0; flex-wrap: wrap; }
+.g-change__path { font: var(--weight-medium) var(--text-2xs) / var(--leading-2xs) var(--font-mono); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-tertiary); }
+.g-change__path b { color: var(--ink-secondary); font-weight: var(--weight-medium); }
+.g-change__entry { font-size: var(--text-xs); color: var(--ink-tertiary); }
+.g-change__actions { grid-column: 3; grid-row: 1 / span 3; display: flex; gap: var(--space-1); align-self: center; }
+.g-change__gutter { grid-column: 1; display: grid; place-items: center; block-size: var(--leading-md); font-size: 12px; }
+.g-change__line { grid-column: 2; font-size: var(--text-md); line-height: var(--leading-md); min-inline-size: 0; overflow-wrap: anywhere; }
+.g-change__line--before { color: var(--proof-delete-ink); }
+.g-change__line--before > span {
+  background: linear-gradient(var(--proof-delete), var(--proof-delete)) 0 58% / 100% var(--proof-strike) no-repeat, var(--proof-delete-tint);
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  padding-inline: 0.12em; border-radius: var(--radius-xs);
+}
+.g-change__line--after > span {
+  color: var(--proof-insert-ink);
+  background: linear-gradient(var(--proof-insert), var(--proof-insert)) 0 100% / 100% var(--proof-underline) no-repeat, var(--proof-insert-tint);
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  padding-inline: 0.12em; border-radius: var(--radius-xs);
+}
+/* Word-level marks inside an "after" line that is mostly unchanged */
+.g-change__line--words { color: var(--ink-primary); }
+
+/* File change: <div class="g-file"> */
+.g-file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: 44px;
+  padding: var(--space-1-5) var(--space-3);
+  border-block-end: var(--border-hair) solid var(--border-subtle);
+}
+.g-file:hover { background: color-mix(in srgb, var(--ink-primary) 3%, transparent); }
+.g-file[aria-current="true"] { background: var(--accent-subtle); }
+.g-file__main { display: grid; min-inline-size: 0; }
+.g-file__title { font-weight: var(--weight-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-file__path { font: var(--text-2xs) / var(--leading-2xs) var(--font-mono); color: var(--ink-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; }
+.g-file__path b { color: var(--ink-secondary); font-weight: var(--weight-medium); }
+
+.g-tally { display: inline-flex; gap: var(--space-2); font: var(--weight-medium) var(--text-2xs) / 1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.g-tally > span { display: inline-flex; align-items: center; gap: 3px; }
+.g-tally__ins { color: var(--proof-insert); }
+.g-tally__del { color: var(--proof-delete); }
+.g-tally__chg { color: var(--proof-change); }
+
+/* Margin note: precise annotation beside a proof (no handwriting, no italics). */
+.g-margin-note {
+  display: grid; grid-template-columns: 14px 1fr; gap: 6px; align-items: start;
+  padding-block-start: var(--space-1);
+  border-block-start: var(--border-hair) solid var(--border-strong);
+  font: var(--text-2xs) / var(--leading-2xs) var(--font-mono);
+  color: var(--ink-secondary);
+}
+.g-margin-note > .g-mark { margin-top: 2px; font-size: 11px; }
+
+/* --------------------------------------------------------------------------
+   9. Toast, dialog, menu surface
+   -------------------------------------------------------------------------- */
+.g-toast {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: start;
+  inline-size: min(380px, calc(100vw - 32px));
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  border: var(--border-hair) solid var(--border-default);
+  box-shadow: var(--shadow-2);
+  animation: g-rise var(--duration-base) var(--ease-out) both;
+}
+.g-toast > .g-mark { font-size: 16px; margin-top: 2px; color: var(--ink-secondary); }
+.g-toast__title { font-weight: var(--weight-semibold); }
+.g-toast__body { grid-column: 2; color: var(--ink-secondary); font-size: var(--text-xs); line-height: var(--leading-xs); }
+.g-toast__actions { grid-column: 3; grid-row: 1 / span 2; display: flex; gap: var(--space-1); align-self: center; }
+.g-toast--success > .g-mark { color: var(--success); }
+.g-toast--danger  > .g-mark { color: var(--danger); }
+.g-toast--warning > .g-mark { color: var(--warning); }
+.g-toast-region {
+  position: fixed; inset-block-end: var(--space-4); inset-inline-end: var(--space-4);
+  display: grid; gap: var(--space-2); z-index: var(--z-toast);
+}
+@keyframes g-rise { from { opacity: 0; translate: 0 6px; } }
+
+.g-dialog {
+  inline-size: min(var(--dialog-width), calc(100vw - 32px));
+  padding: 0;
+  border: var(--border-hair) solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  color: var(--ink-primary);
+  box-shadow: var(--shadow-3);
+}
+.g-dialog[open] { animation: g-rise var(--duration-slow) var(--ease-out) both; }
+.g-dialog::backdrop { background: var(--scrim); }
+.g-dialog__inner { display: grid; gap: var(--space-3); padding: var(--space-5) var(--space-5) var(--space-4); }
+.g-dialog__title {
+  margin: 0;
+  font: var(--weight-medium) var(--text-xl) / var(--leading-xl) var(--font-display);
+  letter-spacing: var(--tracking-heading);
+}
+.g-dialog__body { margin: 0; color: var(--ink-secondary); font-size: var(--text-md); line-height: var(--leading-md); }
+.g-dialog__actions {
+  display: flex; justify-content: flex-end; gap: var(--space-2); flex-wrap: wrap;
+  padding: var(--space-3) var(--space-5);
+  border-block-start: var(--border-hair) solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-sunken) 45%, var(--surface-overlay));
+  border-end-start-radius: var(--radius-lg); border-end-end-radius: var(--radius-lg);
+}
+
+.g-menu {
+  min-inline-size: 200px; padding: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  border: var(--border-hair) solid var(--border-default);
+  box-shadow: var(--shadow-2);
+}
+.g-menu__item {
+  display: flex; align-items: center; gap: var(--space-2);
+  inline-size: 100%; block-size: 30px; padding: 0 var(--space-2);
+  border: 0; border-radius: var(--radius-sm); background: none;
+  color: var(--ink-primary); font: inherit; text-align: start; cursor: pointer;
+}
+.g-menu__item:hover, .g-menu__item:focus-visible { background: var(--accent-subtle); outline: none; }
+
+/* --------------------------------------------------------------------------
+   10. Chat
+   -------------------------------------------------------------------------- */
+.g-chat { display: flex; flex-direction: column; gap: var(--space-4); font-size: var(--text-md); line-height: var(--leading-md); }
+.g-msg { max-inline-size: 100%; overflow-wrap: anywhere; }
+.g-msg p { margin: 0; }
+.g-msg p + p { margin-block-start: var(--space-2); }
+.g-msg--user {
+  align-self: flex-end;
+  max-inline-size: 88%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md) var(--radius-md) var(--radius-xs) var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--ink-primary);
+}
+.g-msg--assistant { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: var(--space-3); }
+.g-msg__by {                   /* the assistant's marker: a dot of the accent, not a logo or avatar */
+  inline-size: 8px; block-size: 8px; margin-block-start: 7px;
+  border-radius: 50%; background: var(--accent-text);
+}
+.g-msg__body { display: grid; gap: var(--space-2); }
+
+.g-activity {                  /* one line per tool call — what actually happened */
+  display: flex; align-items: center; gap: 6px; min-inline-size: 0;
+  font: var(--text-xs) / var(--leading-xs) var(--font-mono);
+  color: var(--ink-tertiary);
+}
+.g-activity > .g-mark, .g-activity > .g-dots { flex: none; font-size: 11px; }
+.g-activity__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-activity--done > .g-mark { color: var(--ink-tertiary); }       /* read / search: stet — nothing changed */
+.g-activity--edit > .g-mark { color: var(--proof-insert); }       /* caret — something was inserted/edited */
+.g-activity--remove > .g-mark { color: var(--proof-delete); }     /* dele — something was removed */
+.g-activity--failed { color: var(--danger); }
+.g-activity--running { color: var(--ink-secondary); }
+
+.g-quick-replies { display: flex; flex-wrap: wrap; gap: var(--space-1-5); }
+.g-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-block-size: 28px; padding: 3px 12px;
+  border-radius: var(--radius-pill);
+  border: var(--border-hair) solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--ink-primary);
+  font: var(--weight-medium) var(--text-sm) / 1.3 var(--font-text);
+  text-align: start; cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+.g-chip:hover { background: var(--accent-subtle); border-color: var(--accent-line); }
+.g-chip:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+
+.g-composer {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); align-items: end;
+  padding: var(--space-2);
+  border: var(--border-hair) solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+}
+.g-composer:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring); }
+.g-composer textarea {
+  border: 0; outline: 0; resize: none; background: transparent; color: var(--ink-primary);
+  font: var(--text-md) / var(--leading-md) var(--font-text); padding: 4px 4px; min-block-size: 44px;
+}
+.g-composer textarea::placeholder { color: var(--ink-tertiary); }
+.g-composer__foot { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--ink-tertiary); }
+
+/* --------------------------------------------------------------------------
+   11. Empty state, sheet, crop marks, rules, guides, registration
+   -------------------------------------------------------------------------- */
+.g-crop { position: relative; --crop-o: 14px; --crop-gap: 4px; --crop-color: var(--border-strong); }
+.g-crop::before {
+  content: ""; position: absolute; inset: calc(var(--crop-o) * -1); pointer-events: none;
+  --l: calc(var(--crop-o) - var(--crop-gap));
+  background:
+    linear-gradient(var(--crop-color), var(--crop-color)) left 0 top calc(var(--crop-o) - 1px) / var(--l) 1px,
+    linear-gradient(var(--crop-color), var(--crop-color)) left calc(var(--crop-o) - 1px) top 0 / 1px var(--l),
+    linear-gradient(var(--crop-color), var(--crop-color)) right 0 top calc(var(--crop-o) - 1px) / var(--l) 1px,
+    linear-gradient(var(--crop-color), var(--crop-color)) right calc(var(--crop-o) - 1px) top 0 / 1px var(--l),
+    linear-gradient(var(--crop-color), var(--crop-color)) left 0 bottom calc(var(--crop-o) - 1px) / var(--l) 1px,
+    linear-gradient(var(--crop-color), var(--crop-color)) left calc(var(--crop-o) - 1px) bottom 0 / 1px var(--l),
+    linear-gradient(var(--crop-color), var(--crop-color)) right 0 bottom calc(var(--crop-o) - 1px) / var(--l) 1px,
+    linear-gradient(var(--crop-color), var(--crop-color)) right calc(var(--crop-o) - 1px) bottom 0 / 1px var(--l);
+  background-repeat: no-repeat;
+}
+.g-crop--accent { --crop-color: var(--accent-line); }
+
+.g-ruled {                     /* baselines on a sheet — non-repro guide colour */
+  --rule: var(--leading-md);
+  background-image: linear-gradient(to bottom, transparent calc(var(--rule) - 1px), var(--accent-guide) calc(var(--rule) - 1px));
+  background-size: 100% var(--rule);
+}
+.g-guides {                    /* column guides */
+  --cols: 12; --gutter: 24px;
+  background-image: repeating-linear-gradient(to right,
+    var(--accent-guide) 0 1px, transparent 1px calc((100% - var(--gutter) * (var(--cols) - 1)) / var(--cols)),
+    var(--accent-guide) calc((100% - var(--gutter) * (var(--cols) - 1)) / var(--cols)) calc((100% - var(--gutter) * (var(--cols) - 1)) / var(--cols) + 1px),
+    transparent 0 calc((100% - var(--gutter) * (var(--cols) - 1)) / var(--cols) + var(--gutter)));
+}
+
+.g-sheet {
+  background: var(--surface-raised);
+  border: var(--border-hair) solid var(--border-default);
+  border-radius: var(--radius-0);
+  box-shadow: var(--shadow-1);
+}
+
+.g-empty {
+  display: grid; justify-items: center; text-align: center; gap: var(--space-3);
+  padding: var(--space-10) var(--space-6);
+  max-inline-size: 420px; margin-inline: auto;
+}
+.g-empty__mark { font-size: 28px; color: var(--accent-line); }
+.g-empty__title {
+  margin: 0;
+  font: var(--weight-regular) var(--text-2xl) / var(--leading-2xl) var(--font-display);
+  letter-spacing: var(--tracking-heading);
+  text-wrap: balance;
+}
+.g-empty__body { margin: 0; color: var(--ink-secondary); font-size: var(--text-md); line-height: var(--leading-md); max-inline-size: 36ch; text-wrap: pretty; }
+.g-empty__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: center; margin-block-start: var(--space-2); }
+
+/* --------------------------------------------------------------------------
+   12. App frame
+   -------------------------------------------------------------------------- */
+.g-app {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) var(--statusbar-height);
+  block-size: 100%;
+  background: var(--surface-paper);
+  color: var(--ink-primary);
+}
+.g-sidebar {
+  grid-row: 1 / span 2;
+  display: flex; flex-direction: column; gap: var(--space-1);
+  min-block-size: 0;
+  padding: var(--space-3) var(--space-2);
+  border-inline-end: var(--border-hair) solid var(--border-default);
+  background: var(--surface-paper);
+}
+/* Brand slot: the logo is decoration, never layout. Fixed box; any logo fits;
+   a text name is the fallback. Width/height never depend on the image. */
+.g-brand {
+  display: flex; align-items: center; gap: var(--space-2);
+  block-size: 32px; padding: 0 var(--space-2); margin-block-end: var(--space-2);
+  color: var(--ink-primary); text-decoration: none;
+}
+.g-brand__logo { block-size: 20px; inline-size: auto; max-inline-size: 132px; object-fit: contain; object-position: left center; flex: none; }
+.g-brand__name { font-weight: var(--weight-bold); font-size: var(--text-md); letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.g-nav { display: grid; gap: 1px; }
+.g-nav__label { padding: var(--space-3) var(--space-2) var(--space-1); }
+.g-nav__item {
+  display: flex; align-items: center; gap: var(--space-2);
+  block-size: 30px; padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--ink-secondary); text-decoration: none;
+  font-weight: var(--weight-medium);
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.g-nav__item:hover { background: color-mix(in srgb, var(--ink-primary) 6%, transparent); color: var(--ink-primary); }
+.g-nav__item[aria-current="page"] { background: var(--accent-subtle); color: var(--ink-primary); }
+.g-nav__item[aria-current="page"] > .g-icon { color: var(--accent-text); }
+.g-nav__item > .g-count, .g-nav__item > .g-nav__meta { margin-inline-start: auto; }
+.g-nav__meta { font: var(--text-2xs) / 1 var(--font-mono); color: var(--ink-tertiary); font-variant-numeric: tabular-nums; }
+
+.g-icon { inline-size: 16px; block-size: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.5; }
+
+.g-main { display: grid; grid-template-rows: var(--toolbar-height) minmax(0, 1fr); min-inline-size: 0; min-block-size: 0; }
+.g-toolbar {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border-block-end: var(--border-hair) solid var(--border-default);
+  background: var(--surface-paper);
+  min-inline-size: 0;
+}
+.g-toolbar__spacer { flex: 1; }
+.g-crumbs { display: flex; align-items: center; gap: 6px; min-inline-size: 0; font-weight: var(--weight-medium); color: var(--ink-secondary); white-space: nowrap; overflow: hidden; }
+.g-crumbs > [aria-current] { color: var(--ink-primary); font-weight: var(--weight-semibold); overflow: hidden; text-overflow: ellipsis; }
+.g-crumbs__sep { color: var(--ink-tertiary); }
+
+.g-workspace { display: grid; grid-template-columns: var(--form-width) minmax(0, 1fr) var(--chat-width); min-block-size: 0; }
+.g-pane { display: flex; flex-direction: column; min-inline-size: 0; min-block-size: 0; background: var(--surface-raised); }
+.g-pane + .g-pane { border-inline-start: var(--border-hair) solid var(--border-default); }
+.g-pane__head {
+  display: flex; align-items: center; gap: var(--space-2);
+  block-size: 38px; flex: none; padding: 0 var(--space-3);
+  border-block-end: var(--border-hair) solid var(--border-subtle);
+}
+.g-pane__body { flex: 1; min-block-size: 0; overflow: auto; padding: var(--space-4); }
+.g-pane__foot { flex: none; padding: var(--space-3); border-block-start: var(--border-hair) solid var(--border-subtle); }
+
+/* Blocks inside the form (page sections) */
+.g-block { border: var(--border-hair) solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-raised); }
+.g-block__head { display: flex; align-items: center; gap: var(--space-2); block-size: 34px; padding: 0 var(--space-2) 0 var(--space-3); border-block-end: var(--border-hair) solid var(--border-subtle); }
+.g-block__body { display: grid; gap: var(--space-4); padding: var(--space-3); }
+
+/* Preview: the site's own pages, framed like a sheet on the proofing table. */
+.g-preview { position: relative; flex: 1; min-block-size: 0; padding: var(--space-6); background: var(--surface-sunken); overflow: auto; }
+.g-preview__frame { background: #FFFFFF; color: #111111; box-shadow: var(--shadow-2); min-block-size: 100%; }
+/* Click-to-edit outline (mirrored by the overlay script inside the page).
+   It is painted on the customer's own site, whose background we don't know;
+   most sites are light, so the accent is pulled a quarter toward black. */
+.g-editable-hover { outline: 1.5px dashed color-mix(in oklab, var(--accent-fill) 75%, #000); outline-offset: 3px; border-radius: 2px; cursor: text; }
+.g-editable-active { outline: 2px solid color-mix(in oklab, var(--accent-fill) 75%, #000); outline-offset: 3px; border-radius: 2px; }
+
+.g-statusbar {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: 0 var(--space-3);
+  border-block-start: var(--border-hair) solid var(--border-default);
+  font: var(--text-2xs) / 1 var(--font-mono);
+  color: var(--ink-tertiary);
+  background: var(--surface-paper);
+}
+.g-statusbar__item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }

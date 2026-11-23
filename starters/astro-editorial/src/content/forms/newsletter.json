@@ -1,0 +1,30 @@
+{
+  "name": "Caddow letters",
+  "submitLabel": "Subscribe",
+  "fields": [
+    {
+      "id": "email",
+      "type": "email",
+      "label": "Email address",
+      "required": true
+    },
+    {
+      "id": "source",
+      "type": "hidden",
+      "autofill": { "from": "page-url" }
+    }
+  ],
+  "destinations": [
+    { "provider": "galley", "settings": {} }
+  ],
+  "afterSubmit": [
+    {
+      "type": "message",
+      "title": "You are on the list.",
+      "text": "The next letter goes to **{{email}}** when the next lookbook is ready. Every letter has a one-click way out."
+    }
+  ],
+  "errorMessage": "That didn't reach the workroom. Your address is still here; try again in a minute.",
+  "spam": { "honeypot": true, "minSeconds": 2 },
+  "appearance": { "layout": "inline", "size": "regular", "labels": "above" }
+}

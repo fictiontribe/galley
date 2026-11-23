@@ -1,0 +1,43 @@
+---
+// Jobs in tabs beside one capture panel: choosing a tab swaps the capture.
+// Arrow keys, Home and End move between tabs (the ARIA tabs pattern).
+import Panel from "../Panel.astro";
+import Shot from "../Shot.astro";
+import { inline } from "../../lib/markdown";
+import { fill } from "../../lib/site";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const id = s.id ?? "tabs";
+const hid = `${id}-h`;
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class="ways">
+    <div class="ways__text">
+      <H class="h2" id={hid} set:html={inline(s.heading)} />
+      <p class="lead">{fill(s.text)}</p>
+      <div class="ways__list" role="tablist" aria-label={s.tabsLabel} data-tabs>
+        {
+          s.tabs.map((t: { label: string; text?: string }, i: number) => (
+            <button class="way" type="button" role="tab" id={`${id}-t${i}`} aria-controls={`${id}-p${i}`} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? undefined : -1}>
+              <span class="way__n" aria-hidden="true">{i + 1}</span>
+              <span class="way__t">{t.label}</span>
+              {t.text && <span class="way__d">{t.text}</span>}
+            </button>
+          ))
+        }
+      </div>
+      {s.link && <p class="ways__more"><a class="link" href={fill(s.link.href)}>{s.link.label}</a></p>}
+    </div>
+    <Panel class="ways__frame">
+      {
+        s.tabs.map((t: { visual: { kind?: string; src: string; alt: string } }, i: number) => (
+          <div role="tabpanel" id={`${id}-p${i}`} aria-labelledby={`${id}-t${i}`} hidden={i !== 0}>
+            <Shot visual={t.visual} />
+          </div>
+        ))
+      }
+    </Panel>
+  </div>
+</section>

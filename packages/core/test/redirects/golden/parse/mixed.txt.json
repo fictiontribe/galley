@@ -1,0 +1,49 @@
+{
+  "format": "columns",
+  "redirects": [
+    {
+      "line": 1,
+      "from": "/semi/",
+      "to": "/about/",
+      "status": 301
+    },
+    {
+      "line": 2,
+      "from": "/space/",
+      "to": "/contact/",
+      "status": 302
+    },
+    {
+      "line": 3,
+      "from": "/comma/",
+      "to": "/pricing/",
+      "status": 301,
+      "statusMissing": true
+    },
+    {
+      "line": 4,
+      "from": "/full/",
+      "to": "/blog/",
+      "status": 301,
+      "statusMissing": true,
+      "notes": [
+        "Removed the site's own address from the start.",
+        "Shortened the site's own address to its path."
+      ]
+    }
+  ],
+  "rejected": [
+    {
+      "line": 5,
+      "kind": "malformed",
+      "reason": "The old address “this” should start with “/” or “https://”."
+    },
+    {
+      "line": 6,
+      "kind": "malformed",
+      "reason": "Two addresses — the old one and the new one — weren't found on this line."
+    }
+  ],
+  "ignored": 0,
+  "unknownHosts": []
+}

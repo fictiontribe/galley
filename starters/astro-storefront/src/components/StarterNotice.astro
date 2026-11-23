@@ -1,0 +1,97 @@
+---
+// The template's demo notice: two sentences about what this site is and a
+// link to the README, in a slim bar above the header. It reads
+// `starterNotice` from src/data/site.json and renders nothing without it.
+// "Hide" remembers the choice in this browser (localStorage); Base.astro
+// applies it before the page paints, so a hidden bar never flashes.
+import Icon from "./Icon.astro";
+import { starterNotice as notice, withBase } from "../lib/site";
+---
+
+{
+  notice && (
+    <aside class="starter-notice tone-inverse" aria-label={notice.label} data-starter-notice>
+      <div class="container starter-notice__inner">
+        <p class="starter-notice__text">
+          {notice.text}
+          {notice.link && (
+            <>
+              {" "}
+              <a href={withBase(notice.link.href)}>{notice.link.label}</a>
+            </>
+          )}
+        </p>
+        <button class="starter-notice__hide" type="button" aria-label={notice.dismiss} title={notice.dismiss} data-starter-notice-hide>
+          <Icon name="close" size={18} />
+        </button>
+      </div>
+      <script is:inline>
+        document.querySelectorAll("[data-starter-notice-hide]").forEach((button) => {
+          button.addEventListener("click", () => {
+            document.documentElement.classList.add("starter-notice-hidden");
+            try {
+              localStorage.setItem("starter-notice", "hidden");
+            } catch {}
+            document.getElementById("main")?.focus();
+          });
+        });
+      </script>
+    </aside>
+  )
+}
+
+<style>
+  .starter-notice {
+    background: var(--tone-bg);
+    color: var(--tone-text);
+    font-size: var(--step--2);
+    line-height: var(--leading-snug);
+  }
+
+  @media (min-width: 48rem) {
+    .starter-notice {
+      font-size: var(--step--1);
+    }
+  }
+
+  :global(.starter-notice-hidden) .starter-notice {
+    display: none;
+  }
+
+  .starter-notice__inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    padding-block: var(--space-2xs);
+  }
+
+  .starter-notice__text {
+    flex: 1;
+    max-width: 72rem;
+  }
+
+  .starter-notice__text a {
+    color: var(--tone-link);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+  }
+
+  .starter-notice__hide {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    margin-inline-end: calc(-1 * var(--space-xs));
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-s);
+    background: transparent;
+    color: var(--tone-muted);
+    cursor: pointer;
+  }
+
+  .starter-notice__hide:hover {
+    color: var(--tone-text);
+  }
+</style>

@@ -1,0 +1,18 @@
+{
+  "id": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "name": "Demo request",
+  "formType": "hubspot",
+  "fieldGroups": [
+    {
+      "groupType": "default_group",
+      "richTextType": "text",
+      "fields": [
+        { "objectTypeId": "0-1", "name": "email", "label": "Work email", "required": true, "hidden": false, "fieldType": "email", "validation": { "blockedEmailDomains": [], "useDefaultBlockList": true } },
+        { "objectTypeId": "0-1", "name": "industry", "label": "Industry", "required": false, "hidden": false, "fieldType": "dropdown", "options": [ { "label": "Retail", "value": "retail", "displayOrder": 0, "description": "" }, { "label": "Hospitality", "value": "hospitality", "displayOrder": 1, "description": "" } ] },
+        { "objectTypeId": "0-1", "name": "interests", "label": "Interests", "required": false, "hidden": false, "fieldType": "multiple_checkboxes", "options": [ { "label": "Pricing", "value": "pricing", "displayOrder": 0 } ] },
+        { "objectTypeId": "0-1", "name": "consent", "label": "I agree", "required": true, "hidden": false, "fieldType": "single_checkbox" },
+        { "objectTypeId": "0-1", "name": "start", "label": "Start date", "required": false, "hidden": false, "fieldType": "datepicker" }
+      ]
+    }
+  ]
+}

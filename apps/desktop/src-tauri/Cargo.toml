@@ -1,0 +1,56 @@
+[package]
+name = "galley-desktop"
+version = "0.1.0"
+description = "Desktop shell: runs the server privately and shows its UI in a native window"
+license = "Apache-2.0"
+edition = "2021"
+rust-version = "1.90"
+publish = false
+
+[[bin]]
+name = "galley-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+serde_json = "1"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+getrandom = "0.3"
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = "2"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+# The Dock menu (dock.rs): Tauri has no API for it. Both crates are already in
+# the build through Tauri itself (same versions), so nothing new is compiled.
+[target.'cfg(target_os = "macos")'.dependencies]
+muda = { version = "0.20", default-features = false }
+objc2 = "0.6"
+
+# The disk this is built on is small, and debug info is most of a debug build's size.
+[profile.dev]
+debug = 0
+incremental = false
+# With no debug info cargo would strip it anyway, through rust-objcopy, which
+# isn't in every toolchain (it aborts on a stable toolchain without llvm-tools).
+strip = "none"
+
+[profile.dev.package."*"]
+debug = false
+opt-level = 0
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

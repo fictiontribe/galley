@@ -1,0 +1,6 @@
+{
+  "redirects": [
+    {"from":"/a/","to":"/about/","status":301,"note":"Moved in 2024","source":"manual"},
+    {"from":"/shop/*","to":"https://shop.example.org/:splat","status":302}
+  ]
+}

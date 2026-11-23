@@ -1,0 +1,204 @@
+---
+// Site footer: columns and legal links from src/data/navigation.json; name,
+// tagline, contact details, social links and the closing line from
+// src/data/site.json. "Privacy choices" (reopens the consent banner) shows
+// only on pages where src/data/scripts.json puts the built-in banner.
+import Logo from "./Logo.astro";
+import { consentBannerShown, labels, navigation, site, withBase } from "../lib/site";
+
+const year = new Date().getUTCFullYear();
+const privacyChoices = consentBannerShown(Astro.url.pathname, Astro.site);
+const policy = navigation.legal.find((link) => /privacy/i.test(link.href))?.href ?? "/privacy/";
+---
+
+<footer class="site-footer tone-inverse">
+  <div class="container">
+    <div class="site-footer__top">
+      <div class="site-footer__brand">
+        <a class="site-footer__name" href={withBase("/")} aria-label={labels.home}>
+          <Logo size={32} />
+          <span aria-hidden="true">{site.name}</span>
+        </a>
+        <p class="site-footer__tagline">{site.tagline}</p>
+        <ul class="site-footer__contact" role="list" aria-label={labels.nav.contact}>
+          <li><a href={`mailto:${site.email}`}>{site.email}</a></li>
+          {site.phone && <li><a href={`tel:${site.phone.replace(/\s+/g, "")}`}>{site.phone}</a></li>}
+        </ul>
+      </div>
+
+      <nav class="site-footer__nav" aria-label={labels.nav.footer}>
+        {
+          navigation.footer.map((column) => (
+            <div class="site-footer__column">
+              <h2 class="site-footer__heading">{column.heading}</h2>
+              <ul role="list">
+                {column.links.map((link) => (
+                  <li>
+                    <a href={withBase(link.href)}>{link.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </nav>
+    </div>
+
+    <div class="site-footer__bottom">
+      <p class="site-footer__text">
+        <span>© {year} {site.name}.</span>{" "}
+        {site.footerText}
+      </p>
+      <nav aria-label={labels.nav.legal}>
+        <ul class="site-footer__legal" role="list">
+          {
+            navigation.legal.map((link) => (
+              <li>
+                <a href={withBase(link.href)}>{link.label}</a>
+              </li>
+            ))
+          }
+          {
+            privacyChoices && (
+              <li>
+                <a href={withBase(policy)} data-galley-consent-open>
+                  {labels.nav.privacyChoices}
+                </a>
+              </li>
+            )
+          }
+        </ul>
+      </nav>
+      {
+        site.social.length > 0 && (
+          <ul class="site-footer__social" role="list" aria-label={labels.nav.social}>
+            {site.social.map((link) => (
+              <li>
+                <a href={link.href} rel="me noopener">
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    padding-block: var(--space-2xl) var(--space-l);
+    border-block-start: var(--border-width) solid var(--tone-line);
+    background: var(--tone-bg);
+    color: var(--tone-text);
+  }
+
+  .site-footer__top {
+    display: grid;
+    gap: var(--space-xl);
+    padding-block-end: var(--space-xl);
+  }
+
+  .site-footer__brand {
+    display: grid;
+    gap: var(--space-s);
+    align-content: start;
+    justify-items: start;
+  }
+
+  .site-footer__name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    font-weight: var(--weight-display-strong);
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--tone-text);
+    text-decoration: none;
+  }
+
+  .site-footer__tagline {
+    max-width: 24em;
+    color: var(--tone-muted);
+  }
+
+  .site-footer__contact {
+    display: grid;
+    gap: var(--space-3xs);
+    padding: 0;
+    list-style: none;
+    font-size: var(--step--1);
+  }
+
+  .site-footer__nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--space-l) var(--space-m);
+  }
+
+  .site-footer__heading {
+    margin-block-end: var(--space-xs);
+    font-family: var(--font-body);
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .site-footer ul {
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-footer__column ul {
+    display: grid;
+    gap: var(--space-2xs);
+    font-size: var(--step--1);
+  }
+
+  .site-footer a {
+    color: var(--tone-text);
+    text-decoration-color: transparent;
+    overflow-wrap: anywhere;
+  }
+
+  .site-footer a:hover {
+    text-decoration-color: var(--tone-link);
+  }
+
+  .site-footer__bottom {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-s) var(--space-l);
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
+    font-size: var(--step--2);
+  }
+
+  .site-footer__text {
+    flex: 1 1 24rem;
+    color: var(--tone-muted);
+  }
+
+  .site-footer__text span {
+    color: var(--tone-text);
+  }
+
+  .site-footer__legal,
+  .site-footer__social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs) var(--space-m);
+  }
+
+  @media (min-width: 60rem) {
+    .site-footer__top {
+      grid-template-columns: 4fr 8fr;
+    }
+  }
+</style>

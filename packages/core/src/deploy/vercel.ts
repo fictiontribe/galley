@@ -1,0 +1,266 @@
+/**
+ * Vercel, through its REST API with plain `fetch` — no CLI, no SDK.
+ *
+ * Protocol (vercel.com/docs/rest-api, the "Upload Deployment Files",
+ * "Create a new deployment" and "Create a new project" pages, read
+ * 2026-11-23):
+ *   - POST /v2/files, body = the file's bytes (application/octet-stream),
+ *     `x-vercel-digest: <sha1>` and its size. 200 whether or not Vercel already
+ *     had it.
+ *   - POST /v13/deployments { name, project, target?, files: [{ file, sha,
+ *     size }], projectSettings } — `target: "production"` for the live
+ *     address, absent for a preview. `projectSettings` is required on a
+ *     project's first deployment; `framework: null` with no build command
+ *     makes Vercel serve the uploaded files as they are.
+ *     `skipAutoDetectionConfirmation=1` keeps Vercel from stopping to ask
+ *     about a framework it thinks it sees.
+ *   - The deployment then moves QUEUED → … → READY (or ERROR); we poll
+ *     GET /v13/deployments/:id. Its `url` is the deployment's own address.
+ *   - Projects: GET /v9/projects/:name, POST /v11/projects { name, framework }.
+ *   - Accounts: GET /v2/teams (and GET /v2/user for the default team).
+ * Every call carries `teamId` when the site lives in a team.
+ */
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { DeployError } from "./errors";
+import { cloudflareHash, eachLimited, sha1, type DeployFile } from "./files";
+import { describeResponse, hostRequest, type HostResponse } from "./http";
+import { VERCEL_CREDENTIALS, VERCEL_INFO, projectNameProblem } from "./info";
+import { vercelRoutingConfig } from "./routing";
+import type { DeployContext, DeployTarget } from "./types";
+
+export const VERCEL_API = "https://api.vercel.com";
+const NAME = "Vercel";
+/** A personal Vercel account, which takes no teamId. */
+export const VERCEL_PERSONAL = "personal";
+const UPLOAD_PARALLEL = 8;
+const READY_TIMEOUT_MS = 10 * 60_000;
+const POLL_MS = 1500;
+
+interface VercelError {
+  error?: { code?: string; message?: string; missing?: string[]; invalidToken?: boolean };
+}
+
+const STATIC_SETTINGS = { framework: null, buildCommand: null, installCommand: null, devCommand: null, outputDirectory: null };
+
+function team(account: string): Record<string, string | undefined> {
+  return account && account !== VERCEL_PERSONAL ? { teamId: account } : {};
+}
+
+function failure(response: HostResponse<VercelError>, method: string, path: string, doing: string): DeployError {
+  const detail = describeResponse(method, path, response);
+  const code = response.body?.error?.code ?? "";
+  const message = response.body?.error?.message;
+
+  // Vercel refuses an unknown key with 403 and `invalidToken: true`; a known key without access is a plain 403.
+  if (response.status === 401 || code === "invalidToken" || code === "not_authorized" || response.body?.error?.invalidToken) {
+    return new DeployError("unauthorized", "Vercel didn't accept the access key. It may have been deleted or have expired. Create a new one and paste it here.", detail);
+  }
+  if (response.status === 403) {
+    return new DeployError(
+      "permission",
+      `Vercel didn't let the access key ${doing}. Create a key whose scope is the team the site should live in (not a single project), paste it here, and try again.`,
+      detail
+    );
+  }
+  if (response.status === 429) return new DeployError("rate-limited", "Vercel is asking for a pause — accounts can only upload so much each day. Wait a while, then try again. Nothing on the live site changed.", detail);
+  if (response.status === 402) return new DeployError("host", "Vercel says the account needs its payment details updated before it can take new uploads. Nothing on the live site changed.", detail);
+  return new DeployError("host", `Vercel couldn't ${doing}${message ? `: “${message.slice(0, 200)}”` : ""}. Nothing on the live site changed. Try again in a moment.`, detail);
+}
+
+async function vercel<T>(ctx: DeployContext, method: string, path: string, doing: string, init: { json?: unknown; query?: Record<string, string | undefined>; allow?: number[] } = {}): Promise<{ status: number; body: T | null }> {
+  const response = await hostRequest<T & VercelError>(ctx, NAME, {
+    method,
+    path,
+    ...(init.query ? { query: init.query } : {}),
+    ...(init.json !== undefined ? { body: JSON.stringify(init.json), headers: { "content-type": "application/json" } } : {}),
+  });
+
+  // An allowed status never covers a key Vercel doesn't know.
+  if (!response.ok && (!(init.allow ?? []).includes(response.status) || response.body?.error?.invalidToken)) throw failure(response, method, path, doing);
+  return { status: response.status, body: response.body };
+}
+
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+
+    signal?.addEventListener("abort", () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
+function https(host: string): string {
+  return /^https?:\/\//.test(host) ? host : `https://${host}`;
+}
+
+/**
+ * Vercel reads vercel.json (redirects, rewrites, headers…) from the root of a
+ * deployment's files. The site keeps it at its own root, not in the build
+ * output, so it is added to the upload — as a routing-only copy (see
+ * routing.ts) — in place of any vercel.json the build happened to copy.
+ */
+async function withVercelConfig(files: DeployFile[], siteRoot: string | undefined): Promise<DeployFile[]> {
+  if (!siteRoot) return files;
+  const text = await readFile(join(siteRoot, "vercel.json"), "utf8").catch(() => null);
+
+  if (text === null) return files;
+  const routing = vercelRoutingConfig(text);
+  const rest = files.filter((file) => file.path !== "vercel.json");
+
+  if (!routing) return rest;
+  const bytes = Buffer.from(routing, "utf8");
+
+  return [...rest, { path: "vercel.json", absolute: join(siteRoot, "vercel.json"), size: bytes.byteLength, sha1: sha1(bytes), cfHash: cloudflareHash(bytes, "vercel.json"), type: "application/json; charset=utf-8", bytes }];
+}
+
+export function createVercelTarget(): DeployTarget {
+  async function upload(ctx: DeployContext, account: string, files: DeployFile[], onSent: (sent: number) => void): Promise<void> {
+    let sent = 0;
+
+    await eachLimited(files, UPLOAD_PARALLEL, async (file) => {
+      const bytes = file.bytes ?? (await readFile(file.absolute));
+      const response = await hostRequest<VercelError>(ctx, NAME, {
+        method: "POST",
+        path: "v2/files",
+        query: team(account),
+        headers: { "content-type": "application/octet-stream", "x-vercel-digest": file.sha1, "x-now-size": String(bytes.byteLength) },
+        body: bytes,
+        retry: true,
+      });
+
+      if (!response.ok) throw failure(response, "POST", "v2/files", "take the site's files");
+      sent += 1;
+      onSent(sent);
+    });
+  }
+
+  return {
+    id: "vercel",
+    name: NAME,
+    apiBase: VERCEL_API,
+    credentials: VERCEL_CREDENTIALS,
+    info: VERCEL_INFO,
+
+    async connect(ctx) {
+      const [user, teams] = await Promise.all([
+        vercel<{ user?: { id?: string; username?: string; name?: string; defaultTeamId?: string | null } }>(ctx, "GET", "v2/user", "read your account", { allow: [403] }),
+        vercel<{ teams?: Array<{ id?: string; slug?: string; name?: string | null }> }>(ctx, "GET", "v2/teams", "list your teams", { allow: [403] }),
+      ]);
+      const accounts = (teams.body?.teams ?? []).filter((entry) => entry.id).map((entry) => ({ id: entry.id!, name: entry.name?.trim() || entry.slug || entry.id! }));
+      const defaultTeam = user.body?.user?.defaultTeamId;
+
+      // The default team first: it is where Vercel puts things unless told otherwise.
+      accounts.sort((a, b) => (a.id === defaultTeam ? -1 : b.id === defaultTeam ? 1 : 0));
+      if (accounts.length === 0 && user.status === 200 && user.body?.user) {
+        accounts.push({ id: VERCEL_PERSONAL, name: user.body.user.name?.trim() || user.body.user.username || "Your account" });
+      }
+      if (accounts.length === 0) {
+        throw new DeployError(
+          "permission",
+          "Vercel accepted the access key but it can't see any team. Create a key whose scope is the team the site should live in (not a single project), and paste it here.",
+          `v2/user → ${user.status}, v2/teams → ${teams.status}`
+        );
+      }
+      return { accounts };
+    },
+
+    async checkProject(ctx, { account, name }) {
+      const problem = projectNameProblem(name);
+
+      if (problem) return { name, available: false, existing: false, message: problem };
+      const found = await vercel<{ id?: string }>(ctx, "GET", `v9/projects/${encodeURIComponent(name)}`, "look up the project", { query: team(account), allow: [404] });
+      const existing = found.status === 200;
+
+      return {
+        name,
+        available: true,
+        existing,
+        ...(existing ? { message: `There's already a project called “${name}” in this team. Putting the site there replaces what it serves.` } : {}),
+      };
+    },
+
+    async ensureProject(ctx, { account, name }) {
+      const problem = projectNameProblem(name);
+
+      if (problem) throw new DeployError("taken", problem, name);
+      const found = await vercel<{ name?: string }>(ctx, "GET", `v9/projects/${encodeURIComponent(name)}`, "look up the project", { query: team(account), allow: [404] });
+
+      if (found.status === 404) {
+        const created = await vercel<VercelError>(ctx, "POST", "v11/projects", "create the project", { query: team(account), json: { name, ...STATIC_SETTINGS }, allow: [409] });
+
+        if (created.status === 409) {
+          throw new DeployError("taken", `Vercel says the name “${name}” can't be used. Choose a different name.`, JSON.stringify(created.body).slice(0, 500));
+        }
+      }
+      // Vercel settles the live address on the first production upload (it may add a suffix); until then this is the likely one.
+      return { project: name, productionUrl: `https://${name}.vercel.app` };
+    },
+
+    async deploy(ctx, input) {
+      const { account, project, kind } = input;
+      const files = await withVercelConfig(input.files, input.siteRoot);
+      const unique = [...new Map(files.map((file) => [file.sha1, file])).values()];
+
+      input.onProgress({ detail: `Uploading ${files.length.toLocaleString("en-US")} ${files.length === 1 ? "file" : "files"}…`, progress: 0 });
+      await upload(ctx, account, unique, (sent) =>
+        input.onProgress({ detail: `Uploading ${sent.toLocaleString("en-US")} of ${unique.length.toLocaleString("en-US")} files…`, progress: sent / unique.length })
+      );
+      const body = {
+        name: project,
+        project,
+        ...(kind === "production" ? { target: "production" } : {}),
+        files: files.map((file) => ({ file: file.path, sha: file.sha1, size: file.size })),
+        projectSettings: STATIC_SETTINGS,
+        meta: { source: "site-editor", kind, ...(input.commit ? { commit: input.commit.slice(0, 40) } : {}), ...(input.label ? { label: input.label.slice(0, 200) } : {}) },
+      };
+      const query = { ...team(account), skipAutoDetectionConfirmation: "1" };
+      let created = await hostRequest<{ id?: string; url?: string; readyState?: string; alias?: string[] } & VercelError>(ctx, NAME, {
+        method: "POST",
+        path: "v13/deployments",
+        query,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      // Vercel names files it doesn't have after all (one expired between upload and use): send those and ask again, once.
+      if (created.status === 400 && created.body?.error?.code === "missing_files" && created.body.error.missing?.length) {
+        const missing = new Set(created.body.error.missing);
+
+        await upload(ctx, account, unique.filter((file) => missing.has(file.sha1)), () => undefined);
+        created = await hostRequest(ctx, NAME, { method: "POST", path: "v13/deployments", query, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      }
+      if (!created.ok || !created.body?.id) throw failure(created, "POST", "v13/deployments", kind === "production" ? "put the site live" : "make the preview");
+      const id = created.body.id;
+      let deployment = created.body;
+      const started = Date.now();
+
+      input.onProgress({ detail: kind === "production" ? "Vercel is putting it live…" : "Vercel is preparing the preview…", progress: 1 });
+      while (deployment.readyState !== "READY") {
+        if (deployment.readyState === "ERROR" || deployment.readyState === "CANCELED") {
+          throw new DeployError("host", "Vercel couldn't finish putting the files up. Nothing on the live site changed. Open the deployment on Vercel to see why.", JSON.stringify(deployment).slice(0, 2000));
+        }
+        if (Date.now() - started > READY_TIMEOUT_MS) {
+          throw new DeployError("host", "Vercel is taking unusually long to finish. Check the project on Vercel; the upload may still complete there.", `deployment ${id} still ${deployment.readyState}`);
+        }
+        // Static uploads are usually ready within a second or two: look soon, then settle into a steady pace.
+        await wait(Date.now() - started < 5_000 ? 400 : POLL_MS, ctx.signal);
+        const polled = await vercel<{ id?: string; url?: string; readyState?: string; alias?: string[] }>(ctx, "GET", `v13/deployments/${encodeURIComponent(id)}`, "say how the upload is going", { query: team(account) });
+
+        deployment = { ...deployment, ...polled.body };
+      }
+      const aliases = (deployment.alias ?? []).filter((alias) => typeof alias === "string");
+      const production = kind === "production" ? (aliases.find((alias) => alias.endsWith(".vercel.app")) ?? aliases[0]) : undefined;
+
+      return {
+        id,
+        url: https(kind === "production" && production ? production : (deployment.url ?? "")),
+        kind,
+        createdAt: new Date().toISOString(),
+        ...(production ? { productionUrl: https(production) } : {}),
+      };
+    },
+  };
+}

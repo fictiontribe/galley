@@ -1,0 +1,55 @@
+{
+  "name": "@galley/adapter-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Write and test Galley framework adapters: the adapter types, defineAdapter/conventionAdapter, and a conformance check that says whether an adapter is correct.",
+  "keywords": [
+    "galley",
+    "galley-adapter",
+    "cms",
+    "static-site"
+  ],
+  "license": "Apache-2.0",
+  "homepage": "https://galley.fictiontribe.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fictiontribe/galley.git",
+    "directory": "packages/adapter-kit"
+  },
+  "bugs": "https://github.com/fictiontribe/galley/issues",
+  "exports": {
+    ".": "./src/index.ts",
+    "./vitest": "./src/vitest.ts"
+  },
+  "bin": {
+    "galley-adapter-check": "./bin/galley-adapter-check.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "fixtures"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@galley/core": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  },
+  "peerDependencies": {
+    "vitest": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

@@ -1,0 +1,43 @@
+---
+// The outer box of every section: anchor id, tone, container width — and the
+// block markers the visual page builder maps the page by. Sections.astro
+// hands every section a `block` ({ key: "sections.3", type: "hero" }); each
+// section component passes it straight through to here, and this is the one
+// place the data-galley-block attributes are written.
+import type { BlockMarker, Tone } from "../lib/site";
+
+interface Props {
+  type: string;
+  id?: string;
+  tone?: Tone;
+  /** Where this section sits in its entry (from Sections.astro). */
+  block?: BlockMarker;
+  /** id of the heading that names this section, for aria-labelledby. */
+  labelledby?: string;
+  /** Names the section for screen readers when it has no heading. */
+  label?: string;
+  width?: "normal" | "narrow" | "full";
+  class?: string;
+}
+
+const { type, id, tone = "default", block, labelledby, label, width = "normal", class: className } = Astro.props;
+---
+
+<section
+  id={id}
+  class:list={["section", `section--${type}`, `tone-${tone}`, className]}
+  aria-labelledby={labelledby}
+  aria-label={labelledby ? undefined : label}
+  data-galley-block={block?.key}
+  data-galley-block-type={block?.type}
+>
+  {
+    width === "full" ? (
+      <slot />
+    ) : (
+      <div class:list={["container", { "container--narrow": width === "narrow" }]}>
+        <slot />
+      </div>
+    )
+  }
+</section>

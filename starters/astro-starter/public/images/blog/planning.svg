@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000" role="img"><title>House elevation with dimensions</title><rect width="1600" height="1000" fill="#D3DBD6"/><rect y="800" width="1600" height="200" fill="#8F9C7C"/>
+<path d="M520 800 V420 L800 220 L1080 420 V800Z" fill="#F7F3EC" stroke="#2B241E" stroke-width="12" stroke-linejoin="round"/>
+<rect x="1080" y="560" width="260" height="240" fill="#C79C6B" stroke="#2B241E" stroke-width="12"/>
+<rect x="620" y="480" width="120" height="150" fill="#2B241E"/><rect x="860" y="480" width="120" height="150" fill="#2B241E"/>
+<line x1="1080" y1="880" x2="1340" y2="880" stroke="#A3482C" stroke-width="5"/><line x1="1080" y1="860" x2="1080" y2="900" stroke="#A3482C" stroke-width="5"/><line x1="1340" y1="860" x2="1340" y2="900" stroke="#A3482C" stroke-width="5"/>
+<line x1="1420" y1="560" x2="1420" y2="800" stroke="#A3482C" stroke-width="5"/><line x1="1400" y1="560" x2="1440" y2="560" stroke="#A3482C" stroke-width="5"/><line x1="1400" y1="800" x2="1440" y2="800" stroke="#A3482C" stroke-width="5"/>
+<path d="M200 120 H1400 V960 H200Z" fill="none" stroke="#A3482C" stroke-width="5" stroke-dasharray="26 18"/></svg>

@@ -1,0 +1,63 @@
+---
+// Where this page sits: Shop › Coats and jackets › Field coat. The last
+// item is the page itself. The same trail goes to search engines as a
+// schema.org BreadcrumbList (see breadcrumbData).
+import { labels } from "../../lib/site";
+
+interface Props {
+  items: Array<{ label: string; href?: string }>;
+}
+
+const { items } = Astro.props;
+---
+
+<nav class="breadcrumbs" aria-label={labels.shop.breadcrumbs}>
+  <ol role="list">
+    {
+      items.map((item, index) => (
+        <li>
+          {item.href && index < items.length - 1 ? <a href={item.href}>{item.label}</a> : <span aria-current="page">{item.label}</span>}
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+
+<style>
+  .breadcrumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.6em;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-mono);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .breadcrumbs li + li::before {
+    content: "/";
+    margin-inline-end: 0.6em;
+    color: var(--tone-line);
+  }
+
+  .breadcrumbs a {
+    display: inline-block;
+    padding-block: 0.7rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .breadcrumbs a:hover {
+    color: var(--tone-text);
+    text-decoration: underline;
+  }
+
+  .breadcrumbs span {
+    display: inline-block;
+    padding-block: 0.7rem;
+    color: var(--tone-text);
+  }
+</style>

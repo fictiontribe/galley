@@ -1,0 +1,100 @@
+{
+  "header": [
+    {
+      "label": "Starters",
+      "href": "/starters/"
+    },
+    {
+      "label": "From WordPress",
+      "href": "/wordpress/"
+    },
+    {
+      "label": "AI-first",
+      "href": "/ai-first/"
+    },
+    {
+      "label": "Community",
+      "href": "/open-source/"
+    },
+    {
+      "label": "Docs",
+      "href": "/docs/"
+    }
+  ],
+  "github": {
+    "label": "GitHub",
+    "href": "{repository}"
+  },
+  "action": {
+    "label": "Get started",
+    "href": "/docs/getting-started/quickstart/"
+  },
+  "footer": [
+    {
+      "label": "Starters",
+      "href": "/starters/"
+    },
+    {
+      "label": "From WordPress",
+      "href": "/wordpress/"
+    },
+    {
+      "label": "AI-first websites",
+      "href": "/ai-first/"
+    },
+    {
+      "label": "Galley Cloud",
+      "href": "/cloud/"
+    },
+    {
+      "label": "Docs",
+      "href": "/docs/"
+    },
+    {
+      "label": "Changelog",
+      "href": "/changelog/"
+    },
+    {
+      "label": "Community",
+      "href": "/open-source/"
+    },
+    {
+      "label": "Team",
+      "href": "/team/"
+    },
+    {
+      "label": "GitHub",
+      "href": "{repository}"
+    },
+    {
+      "label": "For agents",
+      "href": "/agent.md"
+    }
+  ],
+  "legal": [
+    {
+      "label": "© 2026 Fiction Tribe"
+    },
+    {
+      "label": "Apache-2.0",
+      "href": "{license}"
+    },
+    {
+      "label": "{version} pre-release"
+    },
+    {
+      "label": "No cookies"
+    },
+    {
+      "label": "Starter photographs are AI-generated"
+    },
+    {
+      "label": "Privacy",
+      "href": "/privacy/"
+    }
+  ],
+  "maker": {
+    "label": "Galley by Fiction Tribe",
+    "href": "{maker}"
+  }
+}

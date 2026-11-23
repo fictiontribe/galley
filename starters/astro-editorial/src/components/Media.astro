@@ -1,0 +1,37 @@
+---
+// An image that reserves its space before it loads: the box is sized by
+// `ratio` (CSS aspect-ratio) and the file is cropped to fit with object-fit,
+// anchored on `focus` (left, right) or else on the photograph's own focus
+// point in galley/photography/shots.json, so the subject stays in frame at
+// every ratio.
+import { focusFor, ratios, withBase, type Focus, type RatioName } from "../lib/site";
+
+interface Props {
+  src: string;
+  alt: string;
+  /** A named crop ("portrait") or width / height ("4/5"). */
+  ratio?: RatioName | string;
+  focus?: Focus;
+  /** Load straight away (above the fold) instead of lazily. */
+  eager?: boolean;
+  class?: string;
+}
+
+const { src, alt, ratio = "portrait", focus = "center", eager = false, class: className } = Astro.props;
+const value = (ratios as Record<string, string>)[ratio] ?? ratio;
+const [w, h] = value.split("/").map((part) => Number(part.trim()));
+const width = 1600;
+const height = Math.round((width * h) / w);
+---
+
+<img
+  class:list={["media", className]}
+  src={withBase(src)}
+  alt={alt}
+  width={width}
+  height={height}
+  loading={eager ? "eager" : "lazy"}
+  decoding="async"
+  fetchpriority={eager ? "high" : undefined}
+  style={`--ratio: ${w} / ${h}; --focus: ${focusFor(src, focus)}`}
+/>

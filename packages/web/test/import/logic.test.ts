@@ -1,0 +1,76 @@
+import { describe, expect, it } from "vitest";
+import type { ImportReportView, ImportRunStatus } from "@galley/core/types";
+import { addressReady, costRange, exportFileProblem, inspectionFacts, nextSteps, shortAddress, stepLine, toBase64, visibleSteps } from "@/features/import/logic";
+
+const report = (patch: Partial<ImportReportView> = {}): ImportReportView => ({
+  runId: "r",
+  finishedAt: 0,
+  stopped: false,
+  source: { title: "Old", siteUrl: "https://old.example", kind: "address" },
+  arrived: { posts: 41, pages: 9, images: 120, updated: 0, unchanged: 0, embeds: 0 },
+  entries: [],
+  needsLook: [],
+  notImported: [],
+  leftBehind: [],
+  rebuilds: [],
+  redirects: { count: 0, file: null, list: [] },
+  seo: { descriptions: 0, descriptionsWritten: 0, titlesKept: 0, titlesNotKept: 0, canonicals: 0 },
+  files: [],
+  ...patch,
+});
+
+describe("the WordPress move's words and checks", () => {
+  it("looks at an address only once it could be one", () => {
+    expect(addressReady("exa")).toBe(false);
+    expect(addressReady("example.com")).toBe(true);
+    expect(addressReady("https://blog.example.org/news/")).toBe(true);
+    expect(addressReady("127.0.0.1:4641")).toBe(true);
+    expect(addressReady("http://localhost:8080")).toBe(true);
+    expect(addressReady("my site.com")).toBe(false);
+    expect(shortAddress("https://www.example.com/")).toBe("www.example.com");
+  });
+
+  it("says what the site has, with comments marked as staying behind", () => {
+    const facts = inspectionFacts({ ok: true, kind: "address", title: "", siteUrl: "", counts: { posts: 312, pages: 1, media: null, comments: 4 }, signedIn: false, notes: [] });
+
+    expect(facts).toEqual([
+      { value: "312", label: "posts" },
+      { value: "1", label: "page" },
+      { value: "4", label: "comments — stay behind", muted: true },
+    ]);
+  });
+
+  it("counts steps the way people read them", () => {
+    expect(stepLine({ id: "posts", label: "Bringing over posts", state: "running", done: 41, total: 312 })).toBe("Bringing over posts — 41 of 312");
+    expect(stepLine({ id: "read", label: "Reading the old site", state: "running" })).toBe("Reading the old site");
+    const status = { state: "done", steps: [{ id: "read", label: "", state: "done" }, { id: "media", label: "", state: "skipped" }, { id: "pages", label: "", state: "done" }] } as unknown as ImportRunStatus;
+
+    expect(visibleSteps(status).map((step) => step.id)).toEqual(["read"]);
+  });
+
+  it("lists the next steps in order, with only the ones this import needs", () => {
+    expect(nextSteps(report()).map((step) => step.id)).toEqual(["proof", "online", "domain"]);
+    const full = nextSteps(report({ redirects: { count: 412, file: "wordpress-import/_redirects", list: [] }, rebuilds: [{ title: "Home", path: "p.md", url: "/", originalUrl: "", builder: "Elementor", sections: 5, matched: 4 }] }));
+
+    expect(full.map((step) => step.id)).toEqual(["proof", "rebuild", "redirects", "online", "domain"]);
+    expect(full[0]!.body).toBe("50 entries and 120 images are waiting there. Nothing is live until you publish.");
+    expect(full[2]!.body).toBe("So 412 old addresses keep working, and search engines follow them.");
+  });
+
+  it("turns away files that can't be exports before sending them", () => {
+    expect(exportFileProblem({ name: "site.WordPress.2026-11-23.xml", size: 10 })).toBeNull();
+    expect(exportFileProblem({ name: "photo.jpg", size: 10 })).toMatch(/ends in \.xml/);
+    expect(exportFileProblem({ name: "huge.xml", size: 300 * 1024 * 1024 })).toMatch(/over 200 MB/);
+  });
+
+  it("encodes a chunk the way the server decodes it", () => {
+    const bytes = new TextEncoder().encode("<rss xmlns:wp=\"http://wordpress.org/export/1.2/\">é</rss>");
+
+    expect(Buffer.from(toBase64(bytes), "base64").toString("utf8")).toBe("<rss xmlns:wp=\"http://wordpress.org/export/1.2/\">é</rss>");
+  });
+
+  it("shows the cost as a range", () => {
+    expect(costRange({ low: 0.42, high: 1.6 })).toBe("about $0.42–$1.60");
+    expect(costRange(null)).toBeNull();
+  });
+});

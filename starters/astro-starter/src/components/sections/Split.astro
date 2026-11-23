@@ -1,0 +1,117 @@
+---
+// Image beside text. `imageSide` puts the image left or right on wide
+// screens; on small screens the image always comes first.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Actions from "../Actions.astro";
+import Media from "../Media.astro";
+import Icon from "../Icon.astro";
+import type { Link, BlockMarker, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  items?: string[];
+  image: string;
+  imageAlt: string;
+  imageSide?: "left" | "right";
+  cta?: Link;
+  secondaryCta?: Link;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, items, image, imageAlt, imageSide = "right", cta, secondaryCta, index = 0, level = 2, block } =
+  Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+---
+
+<Section type="split" block={block} id={id} tone={tone} labelledby={headingId}>
+  <div class:list={["split", `split--image-${imageSide}`]}>
+    <div class="split__media">
+      <Media src={image} alt={imageAlt} ratio="5/4" eager={index === 0} />
+    </div>
+    <div class="split__copy">
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} size="small" class="split__header" />
+      {
+        items && items.length > 0 && (
+          <ul class="split__list" role="list">
+            {items.map((item) => (
+              <li>
+                <Icon name="check" size={20} />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+      <Actions cta={cta} secondaryCta={secondaryCta} />
+    </div>
+  </div>
+</Section>
+
+<style>
+  .split {
+    display: grid;
+    gap: var(--space-xl);
+    align-items: center;
+  }
+
+  .split__copy {
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  .split__copy :global(.split__header) {
+    margin-block-end: 0;
+  }
+
+  .split__list {
+    display: grid;
+    gap: var(--space-xs);
+    padding: 0;
+    list-style: none;
+  }
+
+  .split__list li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-xs);
+    padding-block-end: var(--space-xs);
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .split__list :global(svg) {
+    margin-block-start: 0.2em;
+    color: var(--tone-link);
+  }
+
+  @media (min-width: 56rem) {
+    .split {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: var(--space-l);
+    }
+
+    .split__media {
+      grid-column: 1 / span 6;
+      grid-row: 1;
+    }
+
+    .split__copy {
+      grid-column: 8 / span 5;
+      grid-row: 1;
+    }
+
+    .split--image-right .split__media {
+      grid-column: 7 / span 6;
+    }
+
+    .split--image-right .split__copy {
+      grid-column: 1 / span 5;
+    }
+  }
+</style>

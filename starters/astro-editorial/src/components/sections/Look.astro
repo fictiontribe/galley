@@ -1,0 +1,82 @@
+---
+// One look, large, with the pieces it is made of.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Actions from "../Actions.astro";
+import Media from "../Media.astro";
+import PieceList from "../PieceList.astro";
+import type { Link, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  image: string;
+  imageAlt: string;
+  pieces?: Array<{ name: string; detail?: string; price?: string }>;
+  imageSide?: "left" | "right";
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone, eyebrow, heading, text, image, imageAlt, pieces = [], imageSide = "right", cta, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+---
+
+<Section type="look" id={id} tone={tone} labelledby={headingId} block={block}>
+  <div class:list={["look", `look--${imageSide}`]}>
+    <div class="look__image frame">
+      <Media src={image} alt={imageAlt} ratio="tall" eager={index === 0} class="media--capped" />
+    </div>
+    <div class="look__copy">
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} class="look__header" />
+      <PieceList pieces={pieces} />
+      <Actions secondaryCta={cta} />
+    </div>
+  </div>
+</Section>
+
+<style>
+  .look {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--space-l) var(--gutter);
+    align-items: start;
+  }
+
+  .look__image,
+  .look__copy {
+    grid-column: 1 / -1;
+  }
+
+  .look__copy {
+    display: grid;
+    gap: var(--space-l);
+    align-content: start;
+  }
+
+  .look__copy :global(.look__header) {
+    margin-block-end: 0;
+  }
+
+  @media (min-width: 56rem) {
+    .look__image,
+    .look__copy {
+      grid-row: 1;
+    }
+
+    .look--left .look__image,
+    .look--right .look__copy {
+      grid-column: 1 / span 6;
+    }
+
+    .look--left .look__copy,
+    .look--right .look__image {
+      grid-column: 7 / -1;
+    }
+  }
+</style>

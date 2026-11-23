@@ -1,0 +1,118 @@
+---
+// One quotation, set large, with the person, their company's logo and an
+// optional link to the full story. Use once per page at most.
+import Section from "../Section.astro";
+import Media from "../Media.astro";
+import Icon from "../Icon.astro";
+import { withBase, type BlockMarker, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  quote: string;
+  name: string;
+  role?: string;
+  company?: string;
+  image?: string;
+  imageAlt?: string;
+  logo?: string;
+  cta?: Link;
+  align?: "left" | "center";
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, quote, name, role, company, image, imageAlt, logo, cta, align = "left", block } = Astro.props;
+const byline = [role, company].filter(Boolean).join(", ");
+---
+
+<Section type="testimonial" id={id} tone={tone} block={block} label={name}>
+  <figure class:list={["testimonial", `testimonial--${align}`]}>
+    {logo && company ? <Media src={logo} alt={company} ratio="3/1" contain class="testimonial__logo" /> : <Icon name="quote" size={40} class="testimonial__mark" />}
+    <blockquote class="testimonial__quote">
+      <p>{quote}</p>
+    </blockquote>
+    <figcaption class="testimonial__by">
+      {image && <Media src={image} alt={imageAlt ?? ""} ratio="1/1" class="testimonial__photo" />}
+      <span>
+        <span class="testimonial__name">{name}</span>
+        {byline && <span class="testimonial__role">{byline}</span>}
+      </span>
+    </figcaption>
+    {
+      cta && (
+        <a class="text-link testimonial__link" href={withBase(cta.href)}>
+          {cta.label}
+          <Icon name="arrow-right" size={18} />
+        </a>
+      )
+    }
+  </figure>
+</Section>
+
+<style>
+  .testimonial {
+    display: grid;
+    gap: var(--space-l);
+    justify-items: start;
+    max-width: 60rem;
+  }
+
+  .testimonial--center {
+    justify-items: center;
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .testimonial :global(.testimonial__logo) {
+    inline-size: 9rem;
+    block-size: 3rem;
+    color: var(--tone-text);
+  }
+
+  .testimonial :global(.testimonial__mark) {
+    color: var(--tone-link);
+  }
+
+  .testimonial__quote {
+    font-family: var(--font-display);
+    font-size: var(--step-4);
+    font-weight: var(--weight-medium);
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  .testimonial__quote p::before {
+    content: "“";
+  }
+
+  .testimonial__quote p::after {
+    content: "”";
+  }
+
+  .testimonial__by {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    text-align: start;
+  }
+
+  .testimonial__by :global(.testimonial__photo) {
+    inline-size: 3.5rem;
+    block-size: 3.5rem;
+    border-radius: 50%;
+  }
+
+  .testimonial__name {
+    display: block;
+    font-weight: var(--weight-bold);
+  }
+
+  .testimonial__role {
+    display: block;
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+</style>

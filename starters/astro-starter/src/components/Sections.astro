@@ -1,0 +1,76 @@
+---
+// Renders a page's `sections` in order, choosing a component by `type`.
+// To add a section type, import its component and add it to `components`.
+//
+// Each section is handed `block` — { key: "sections.<index>", type } — which
+// its component passes to Section.astro, where it becomes the root element's
+// data-galley-block and data-galley-block-type attributes. The visual page
+// builder uses them to map what is on screen to the entry's list.
+import Hero from "./sections/Hero.astro";
+import Logos from "./sections/Logos.astro";
+import Features from "./sections/Features.astro";
+import Split from "./sections/Split.astro";
+import Stats from "./sections/Stats.astro";
+import Steps from "./sections/Steps.astro";
+import Testimonial from "./sections/Testimonial.astro";
+import Testimonials from "./sections/Testimonials.astro";
+import Pricing from "./sections/Pricing.astro";
+import Faq from "./sections/Faq.astro";
+import Gallery from "./sections/Gallery.astro";
+import Team from "./sections/Team.astro";
+import Posts from "./sections/Posts.astro";
+import RichText from "./sections/RichText.astro";
+import Cta from "./sections/Cta.astro";
+import Contact from "./sections/Contact.astro";
+import FormSection from "./sections/FormSection.astro";
+import Unknown from "./sections/Unknown.astro";
+import { plain } from "../lib/site";
+
+const components: Record<string, (props: any) => any> = {
+  hero: Hero,
+  logos: Logos,
+  features: Features,
+  split: Split,
+  stats: Stats,
+  steps: Steps,
+  testimonial: Testimonial,
+  testimonials: Testimonials,
+  pricing: Pricing,
+  faq: Faq,
+  gallery: Gallery,
+  team: Team,
+  posts: Posts,
+  "rich-text": RichText,
+  cta: Cta,
+  contact: Contact,
+  form: FormSection,
+};
+
+interface Props {
+  sections: Array<{ type: string; [key: string]: unknown }>;
+  /** The page title, used as a hidden <h1> when the first section has no heading. */
+  title: string;
+  /** Set false when the route has already rendered the page's <h1>. */
+  ownsHeading?: boolean;
+  /** The key of the blocks field these sections come from. */
+  field?: string;
+}
+
+const { sections, title, ownsHeading = true, field = "sections" } = Astro.props;
+const first = sections[0];
+const firstHasHeading = Boolean(first && components[first.type] && typeof first.heading === "string" && first.heading);
+const level = (index: number) => (ownsHeading && index === 0 && firstHasHeading ? 1 : 2);
+---
+
+{ownsHeading && !firstHasHeading && <h1 class="visually-hidden">{plain(title)}</h1>}
+{
+  sections.map((section, index) => {
+    const Component = components[section.type];
+    const block = { key: `${field}.${index}`, type: section.type };
+    return Component ? (
+      <Component {...section} index={index} level={level(index)} block={block} />
+    ) : (
+      <Unknown type={section.type} block={block} />
+    );
+  })
+}

@@ -1,0 +1,48 @@
+{
+  "format": "columns",
+  "redirects": [
+    {
+      "line": 2,
+      "from": "/old-page/",
+      "to": "/about/",
+      "status": 301
+    },
+    {
+      "line": 3,
+      "from": "/2019/05/survey-notes/",
+      "to": "/blog/measured-survey/",
+      "status": 301,
+      "notes": [
+        "Removed the site's own address from the start."
+      ]
+    },
+    {
+      "line": 4,
+      "from": "/with,comma/",
+      "to": "/contact/",
+      "status": 302
+    },
+    {
+      "line": 5,
+      "from": "/temporary/",
+      "to": "https://shop.example.org/sale",
+      "status": 302
+    },
+    {
+      "line": 6,
+      "from": "/no-status/",
+      "to": "/pricing/",
+      "status": 301,
+      "statusMissing": true
+    }
+  ],
+  "rejected": [
+    {
+      "line": 7,
+      "kind": "malformed",
+      "reason": "Two addresses — the old one and the new one — weren't found on this line."
+    }
+  ],
+  "ignored": 1,
+  "unknownHosts": []
+}

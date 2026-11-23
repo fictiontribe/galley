@@ -1,0 +1,77 @@
+---
+// The section gallery (see integration.mjs). Three kinds of page:
+//   /__gallery/                       every section type, one after another
+//   /__gallery/sections/<type>/       one section type alone, for its thumbnail
+//   /__gallery/templates/<id>/        one template, rendered as its page would be
+// Sections come from ./sections.md; templates from galley.config.json
+// `templates`. Both are validated against src/content.config.ts, so a
+// template that would not build as a page fails here too.
+import Base from "../../src/layouts/Base.astro";
+import Sections from "../../src/components/Sections.astro";
+import LookbookEntry from "../../src/components/LookbookEntry.astro";
+import { lookbookSchema, pageSchema } from "../../src/content.config";
+import config from "../../galley.config.json";
+
+export async function getStaticPaths() {
+  const fixtures = import.meta.glob("./sections.md", { eager: true }) as Record<string, { frontmatter: Record<string, unknown> }>;
+  const fixture = Object.values(fixtures)[0]!.frontmatter;
+  const files = import.meta.glob("../../galley/templates/*.md", { eager: true }) as Record<string, { frontmatter: Record<string, unknown>; Content: unknown }>;
+  const sections = (fixture.sections as Array<{ type: string }>) ?? [];
+  const templates = config.templates.map((template) => {
+    const file = Object.entries(files).find(([path]) => path.endsWith(`/${template.file.split("/").pop()}`));
+    if (!file) throw new Error(`section-gallery: ${template.file} is missing.`);
+    return { template, module: file[1] };
+  });
+  return [
+    { params: { path: undefined }, props: { kind: "index", sections } },
+    ...sections.map((section) => ({ params: { path: `sections/${section.type}` }, props: { kind: "section", sections: [section] } })),
+    ...templates.map(({ template, module }) => ({
+      params: { path: `templates/${template.id}` },
+      props: { kind: "template", collection: template.collection, frontmatter: module.frontmatter, Content: module.Content },
+    })),
+  ];
+}
+
+interface Props {
+  kind: "index" | "section" | "template";
+  sections?: Array<{ type: string }>;
+  collection?: string;
+  frontmatter?: Record<string, unknown>;
+  Content?: any;
+}
+
+const { kind, sections = [], collection, frontmatter = {}, Content } = Astro.props;
+const page = kind === "template" && collection === "pages" ? pageSchema.parse(frontmatter) : undefined;
+const lookbook = kind === "template" && collection === "lookbooks" ? lookbookSchema.parse(frontmatter) : undefined;
+const shown = kind === "template" ? [] : (pageSchema.parse({ title: "gallery", description: "gallery", sections }).sections as Array<{ type: string }>);
+const first = shown[0]?.type ?? page?.sections[0]?.type;
+---
+
+{
+  page && (
+    <Base title={page.title} description={page.description} noindex overlayHeader={first === "campaign-hero"}>
+      <Sections sections={page.sections as Array<{ type: string }>} title={page.title} />
+      {Content && (
+        <div class="section tone-default">
+          <div class="container prose">
+            <Content />
+          </div>
+        </div>
+      )}
+    </Base>
+  )
+}
+{
+  lookbook && (
+    <Base title={lookbook.title} description={lookbook.summary} noindex>
+      <LookbookEntry {...lookbook} sections={lookbook.sections as Array<{ type: string }>} />
+    </Base>
+  )
+}
+{
+  kind !== "template" && (
+    <Base title={kind === "index" ? "gallery" : (shown[0]?.type ?? "gallery")} noindex overlayHeader={kind === "section" && first === "campaign-hero"}>
+      <Sections sections={shown} title={kind} />
+    </Base>
+  )
+}

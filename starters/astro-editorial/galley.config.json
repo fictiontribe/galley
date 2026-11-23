@@ -1,0 +1,334 @@
+{
+  "name": "Caddow",
+  "ai": {
+    "instructions": [
+      "CONTENT-GUIDE.md"
+    ]
+  },
+  "media": {
+    "dir": "public/images",
+    "publicPath": "/images"
+  },
+  "collections": [
+    {
+      "id": "pages",
+      "url": "/{slug}/",
+      "fields": [
+        {
+          "key": "sections",
+          "blocks": [
+            {
+              "type": "campaign-hero",
+              "label": "Campaign hero",
+              "description": "A full-bleed photograph with the headline set over it, on a built-in shade or plate so it reads over any picture. First on a page.",
+              "thumbnail": "galley/sections/campaign-hero.webp"
+            },
+            {
+              "type": "split-editorial",
+              "label": "Photo and text",
+              "description": "Words beside a photograph on the page's split line (text left, picture right by default); the picture keeps its crop (`ratio`) and is never taller than the screen.",
+              "thumbnail": "galley/sections/split-editorial.webp"
+            },
+            {
+              "type": "lookbook-grid",
+              "label": "Lookbook grid",
+              "description": "Looks from one lookbook in a grid of two to four columns, each linking to its place in the lookbook.",
+              "thumbnail": "galley/sections/lookbook-grid.webp"
+            },
+            {
+              "type": "look",
+              "label": "Single look",
+              "description": "One look, large, with the pieces it is made of and their prices.",
+              "thumbnail": "galley/sections/look.webp"
+            },
+            {
+              "type": "gallery",
+              "label": "Gallery",
+              "description": "Several photographs: one large frame beside four small ones, an even row, or three columns. No captions.",
+              "thumbnail": "galley/sections/gallery.webp"
+            },
+            {
+              "type": "image-band",
+              "label": "Image band",
+              "description": "One photograph across the container, panoramic or wide, at its own crop (4:3 on a phone).",
+              "thumbnail": "galley/sections/image-band.webp"
+            },
+            {
+              "type": "quote",
+              "label": "Quote",
+              "description": "One quotation set large in italic, with a name and an optional portrait.",
+              "thumbnail": "galley/sections/quote.webp"
+            },
+            {
+              "type": "statement",
+              "label": "Statement",
+              "description": "A sentence set large with no picture; with `highlight` its words turn from grey to ink one by one as it crosses the screen.",
+              "thumbnail": "galley/sections/statement.webp"
+            },
+            {
+              "type": "pieces",
+              "label": "Pieces",
+              "description": "Garments as cards: a still-life photograph, the name, a note, a price as text and a link.",
+              "thumbnail": "galley/sections/pieces.webp"
+            },
+            {
+              "type": "story",
+              "label": "Story",
+              "description": "A passage of writing in markdown, in one column or with the heading in the margin; optional drop cap.",
+              "thumbnail": "galley/sections/story.webp"
+            },
+            {
+              "type": "journal-list",
+              "label": "Journal stories",
+              "description": "The latest journal stories, as covers in a grid or as an index of titles.",
+              "thumbnail": "galley/sections/journal-list.webp"
+            },
+            {
+              "type": "stockists",
+              "label": "Stockists",
+              "description": "The shops that carry the label, grouped by town, from src/data/stockists.json.",
+              "thumbnail": "galley/sections/stockists.webp"
+            },
+            {
+              "type": "marquee",
+              "label": "Ticker",
+              "description": "A line of words drifting across the page; CSS only, pausable, still with reduced motion. Use sparingly: never on the home page.",
+              "thumbnail": "galley/sections/marquee.webp"
+            },
+            {
+              "type": "newsletter",
+              "label": "Newsletter",
+              "description": "A sign-up form from src/content/forms/ (default: newsletter) beside an optional photograph; sends to the Galley inbox.",
+              "thumbnail": "galley/sections/newsletter.webp"
+            },
+            {
+              "type": "cta",
+              "label": "Invitation",
+              "description": "The closing invitation with one or two buttons, on a colour or beside a photograph.",
+              "thumbnail": "galley/sections/cta.webp"
+            },
+            {
+              "type": "contact",
+              "label": "Contact",
+              "description": "Contact details beside a form from src/content/forms/ (default: contact), with an optional photograph; email links open the email-link chooser.",
+              "thumbnail": "galley/sections/contact.webp"
+            },
+            {
+              "type": "film",
+              "label": "Film",
+              "description": "A film's poster frame with a play mark, linking to where the film is hosted; nothing is embedded.",
+              "thumbnail": "galley/sections/film.webp"
+            },
+            {
+              "type": "form",
+              "label": "Form",
+              "description": "Any form from src/content/forms/ (a stockist enquiry, a fitting request) beside an optional photograph; sends to the Galley inbox.",
+              "thumbnail": "galley/sections/form.webp"
+            },
+            {
+              "type": "chapters",
+              "label": "Chapters",
+              "description": "Two to four steps, each with its own photograph; on a wide screen each step's words stay in view while its photograph scrolls past.",
+              "thumbnail": "galley/sections/chapters.webp"
+            },
+            {
+              "type": "credits",
+              "label": "Credits",
+              "description": "Roles and names, like the credits of a shoot.",
+              "thumbnail": "galley/sections/credits.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lookbooks",
+      "label": "Lookbooks",
+      "singular": "lookbook",
+      "url": "/collections/{slug}/",
+      "fields": [
+        {
+          "key": "sections",
+          "blocks": [
+            {
+              "type": "campaign-hero",
+              "label": "Campaign hero",
+              "description": "A full-bleed photograph with the headline set over it, on a built-in shade or plate so it reads over any picture. First on a page.",
+              "thumbnail": "galley/sections/campaign-hero.webp"
+            },
+            {
+              "type": "split-editorial",
+              "label": "Photo and text",
+              "description": "Words beside a photograph on the page's split line (text left, picture right by default); the picture keeps its crop (`ratio`) and is never taller than the screen.",
+              "thumbnail": "galley/sections/split-editorial.webp"
+            },
+            {
+              "type": "lookbook-grid",
+              "label": "Lookbook grid",
+              "description": "Looks from one lookbook in a grid of two to four columns, each linking to its place in the lookbook.",
+              "thumbnail": "galley/sections/lookbook-grid.webp"
+            },
+            {
+              "type": "look",
+              "label": "Single look",
+              "description": "One look, large, with the pieces it is made of and their prices.",
+              "thumbnail": "galley/sections/look.webp"
+            },
+            {
+              "type": "gallery",
+              "label": "Gallery",
+              "description": "Several photographs: one large frame beside four small ones, an even row, or three columns. No captions.",
+              "thumbnail": "galley/sections/gallery.webp"
+            },
+            {
+              "type": "image-band",
+              "label": "Image band",
+              "description": "One photograph across the container, panoramic or wide, at its own crop (4:3 on a phone).",
+              "thumbnail": "galley/sections/image-band.webp"
+            },
+            {
+              "type": "quote",
+              "label": "Quote",
+              "description": "One quotation set large in italic, with a name and an optional portrait.",
+              "thumbnail": "galley/sections/quote.webp"
+            },
+            {
+              "type": "statement",
+              "label": "Statement",
+              "description": "A sentence set large with no picture; with `highlight` its words turn from grey to ink one by one as it crosses the screen.",
+              "thumbnail": "galley/sections/statement.webp"
+            },
+            {
+              "type": "pieces",
+              "label": "Pieces",
+              "description": "Garments as cards: a still-life photograph, the name, a note, a price as text and a link.",
+              "thumbnail": "galley/sections/pieces.webp"
+            },
+            {
+              "type": "story",
+              "label": "Story",
+              "description": "A passage of writing in markdown, in one column or with the heading in the margin; optional drop cap.",
+              "thumbnail": "galley/sections/story.webp"
+            },
+            {
+              "type": "journal-list",
+              "label": "Journal stories",
+              "description": "The latest journal stories, as covers in a grid or as an index of titles.",
+              "thumbnail": "galley/sections/journal-list.webp"
+            },
+            {
+              "type": "stockists",
+              "label": "Stockists",
+              "description": "The shops that carry the label, grouped by town, from src/data/stockists.json.",
+              "thumbnail": "galley/sections/stockists.webp"
+            },
+            {
+              "type": "marquee",
+              "label": "Ticker",
+              "description": "A line of words drifting across the page; CSS only, pausable, still with reduced motion. Use sparingly: never on the home page.",
+              "thumbnail": "galley/sections/marquee.webp"
+            },
+            {
+              "type": "newsletter",
+              "label": "Newsletter",
+              "description": "A sign-up form from src/content/forms/ (default: newsletter) beside an optional photograph; sends to the Galley inbox.",
+              "thumbnail": "galley/sections/newsletter.webp"
+            },
+            {
+              "type": "cta",
+              "label": "Invitation",
+              "description": "The closing invitation with one or two buttons, on a colour or beside a photograph.",
+              "thumbnail": "galley/sections/cta.webp"
+            },
+            {
+              "type": "contact",
+              "label": "Contact",
+              "description": "Contact details beside a form from src/content/forms/ (default: contact), with an optional photograph; email links open the email-link chooser.",
+              "thumbnail": "galley/sections/contact.webp"
+            },
+            {
+              "type": "film",
+              "label": "Film",
+              "description": "A film's poster frame with a play mark, linking to where the film is hosted; nothing is embedded.",
+              "thumbnail": "galley/sections/film.webp"
+            },
+            {
+              "type": "form",
+              "label": "Form",
+              "description": "Any form from src/content/forms/ (a stockist enquiry, a fitting request) beside an optional photograph; sends to the Galley inbox.",
+              "thumbnail": "galley/sections/form.webp"
+            },
+            {
+              "type": "chapters",
+              "label": "Chapters",
+              "description": "Two to four steps, each with its own photograph; on a wide screen each step's words stay in view while its photograph scrolls past.",
+              "thumbnail": "galley/sections/chapters.webp"
+            },
+            {
+              "type": "credits",
+              "label": "Credits",
+              "description": "Roles and names, like the credits of a shoot.",
+              "thumbnail": "galley/sections/credits.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "journal",
+      "label": "Journal",
+      "singular": "story",
+      "url": "/journal/{slug}/"
+    }
+  ],
+  "templates": [
+    {
+      "id": "campaign",
+      "label": "Campaign page",
+      "description": "A full-screen campaign photograph with the headline over it, a statement, looks, pieces and an invitation.",
+      "collection": "pages",
+      "file": "galley/templates/campaign.md",
+      "thumbnail": "galley/templates/campaign.webp"
+    },
+    {
+      "id": "lookbook",
+      "label": "Lookbook",
+      "description": "A season's lookbook: cover, looks with their pieces, credits and an invitation to try them on.",
+      "collection": "lookbooks",
+      "file": "galley/templates/lookbook.md",
+      "thumbnail": "galley/templates/lookbook.webp"
+    },
+    {
+      "id": "story",
+      "label": "Feature story",
+      "description": "An image-led long read: a statement opening, photographs, writing, a quote and a gallery.",
+      "collection": "pages",
+      "file": "galley/templates/story.md",
+      "thumbnail": "galley/templates/story.webp"
+    },
+    {
+      "id": "about",
+      "label": "About / atelier",
+      "description": "Who makes the clothes and where: a portrait, the story, the workroom, the people.",
+      "collection": "pages",
+      "file": "galley/templates/about.md",
+      "thumbnail": "galley/templates/about.webp"
+    },
+    {
+      "id": "stockists",
+      "label": "Stockists",
+      "description": "Where to try the clothes on, grouped by town, with an invitation to order by post.",
+      "collection": "pages",
+      "file": "galley/templates/stockists.md",
+      "thumbnail": "galley/templates/stockists.webp"
+    },
+    {
+      "id": "contact",
+      "label": "Contact",
+      "description": "Contact details and a form, with opening hours and directions.",
+      "collection": "pages",
+      "file": "galley/templates/contact.md",
+      "thumbnail": "galley/templates/contact.webp"
+    }
+  ]
+}

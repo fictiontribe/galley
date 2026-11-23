@@ -1,0 +1,112 @@
+---
+// People from the team collection (src/content/team/). List `members` by file
+// name to choose who appears and in what order; leave it out to show
+// everyone, sorted by their `order`.
+import { getCollection, getEntries } from "astro:content";
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Media from "../Media.astro";
+import { withBase, type BlockMarker, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  members?: Array<{ collection: "team"; id: string }>;
+  columns?: number;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, members, columns = 4, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
+
+const people = members?.length
+  ? await getEntries(members)
+  : (await getCollection("team")).sort((a, b) => a.data.order - b.data.order);
+---
+
+<Section type="team" block={block} id={id} tone={tone} labelledby={headingId}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+  <ul class="team" role="list" style={`--columns: ${columns}`}>
+    {
+      people.map((person) => (
+        <li class="person">
+          <Media src={person.data.photo} alt={person.data.name} ratio="4/5" />
+          <div class="person__body">
+            <ItemHeading class="person__name">{person.data.name}</ItemHeading>
+            <p class="person__role">{person.data.role}</p>
+            <p class="person__bio">{person.data.bio}</p>
+            {person.data.links.length > 0 && (
+              <ul class="person__links" role="list">
+                {person.data.links.map((link) => (
+                  <li>
+                    <a href={withBase(link.href)}>{link.label}</a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .team {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+    gap: var(--space-xl) var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  .person {
+    display: grid;
+    align-content: start;
+    gap: var(--space-s);
+  }
+
+  .person__body {
+    display: grid;
+    gap: var(--space-3xs);
+  }
+
+  .person__name {
+    font-size: var(--step-2);
+    line-height: 1.15;
+  }
+
+  .person__role {
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+    color: var(--tone-link);
+  }
+
+  .person__bio {
+    margin-block-start: var(--space-2xs);
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .person__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs) var(--space-s);
+    margin-block-start: var(--space-2xs);
+    padding: 0;
+    list-style: none;
+    font-size: var(--step--1);
+  }
+
+  @media (min-width: 64rem) {
+    .team {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    }
+  }
+</style>

@@ -1,0 +1,48 @@
+---
+// One real picture inside a capture panel: an app capture, a capture of an
+// example site, a looping recording (with its pause button, outside this
+// element), or a file this site serves (an agent file the site kit writes at build
+// time), fetched and shown as text — a plain link to it without JavaScript. Shown at its true size
+// (half the 2× file) unless `width` says otherwise; never larger than the file.
+import { recording, screenOr, siteShot } from "../lib/media";
+
+interface Visual { kind?: string; src: string; alt: string; fallback?: string; x?: number; y?: number }
+interface Props {
+  visual: Visual;
+  /** Extra classes on the window (e.g. "site", "over"). */
+  class?: string;
+  /** The `sizes` attribute when the shown width is not the capture's own. */
+  sizes?: string;
+  /** A label bar over the picture, like a window title. */
+  bar?: string;
+  eager?: boolean;
+}
+
+const { visual: v, class: cls, sizes, bar, eager = false } = Astro.props;
+const kind = v.kind ?? "screen";
+const style = [v.x !== undefined ? `--dx:${v.x}px` : "", v.y !== undefined ? `--dy:${v.y}px` : ""].filter(Boolean).join(";") || undefined;
+let pic = null;
+let rec = null;
+if (kind === "screen") pic = screenOr(v.src, v.fallback);
+if (kind === "site") pic = siteShot(v.src);
+if (kind === "recording") rec = recording(v.src);
+const width = pic ? pic.width : rec ? rec.width : 0;
+---
+
+{
+  kind === "file" ? (
+    <pre class:list={["file", cls]} data-galley-agent="skip" style={style} aria-label={v.alt} tabindex="0" data-fetch-file={v.src}><a href={v.src}>{v.src}</a></pre>
+  ) : (
+    <div class:list={["shot", cls]} style={[style, !sizes && width ? `width:${width}px` : ""].filter(Boolean).join(";") || undefined}>
+      {bar && <div class="window__bar" data-galley-agent="skip"><i aria-hidden="true" />{bar}</div>}
+      {pic && (
+        <img src={pic.src} srcset={pic.srcset} sizes={sizes ?? `${pic.width}px`} width={pic.width} height={pic.height} alt={v.alt} loading={eager ? "eager" : "lazy"} decoding="async" fetchpriority={eager ? "high" : undefined} />
+      )}
+      {rec && (
+        <video muted loop playsinline preload="none" poster={rec.src} width={rec.width} height={rec.height} aria-label={v.alt} data-src={rec.video}>
+          <source src={rec.video} type="video/webm" />
+        </video>
+      )}
+    </div>
+  )
+}

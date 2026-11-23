@@ -1,0 +1,455 @@
+---
+// One page per product, at /products/<handle>/, built when the site is
+// built: the photographs, the name, price and choices, the bag; the story
+// around it from src/content/products/ (any file whose `product` is this
+// handle); then the pieces that go with it. Price and stock are checked
+// with the store again in the browser once the visitor does something.
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import Breadcrumbs from "../../components/shop/Breadcrumbs.astro";
+import ProductImage from "../../components/shop/ProductImage.astro";
+import ProductCard from "../../components/shop/ProductCard.astro";
+import Sections from "../../components/Sections.astro";
+import { fill, labels, withBase } from "../../lib/site";
+import { collectionUrl, firstVariant, formatMoney, getCollections, getProducts, imageSources, priceLabel, productUrl, productsByHandle, variantImage } from "../../lib/shop/data";
+import { breadcrumbData, productData } from "../../lib/shop/structured";
+import type { ShopProduct } from "../../lib/shop/types";
+
+export async function getStaticPaths() {
+  const products = await getProducts();
+
+  return products.map((product) => ({ params: { handle: product.handle }, props: { product } }));
+}
+
+interface Props {
+  product: ShopProduct;
+}
+
+const { product } = Astro.props;
+const L = labels.shop;
+const story = (await getCollection("products")).find((entry) => entry.data.product === product.handle);
+const collection = (await getCollections()).find((item) => item.handle === product.collections[0]);
+const chosen = firstVariant(product);
+const lead = variantImage(product, chosen);
+const relatedHandles = story?.data.related.length ? story.data.related : (collection?.products ?? []).filter((handle) => handle !== product.handle);
+const related = (await productsByHandle(relatedHandles)).filter((item) => item.handle !== product.handle).slice(0, 4);
+const url = productUrl(product.handle);
+const trail = [
+  { label: L.shop, href: withBase("/shop/") },
+  ...(collection ? [{ label: collection.title, href: collectionUrl(collection.handle) }] : []),
+  { label: product.title, href: url },
+];
+// The variants as the buy box reads them; a picture per variant so a colour changes the photograph.
+const variants = product.variants.map((variant) => {
+  const image = variantImage(product, variant);
+  const sources = image ? imageSources(image) : null;
+
+  return {
+    id: variant.id,
+    title: variant.title,
+    options: Object.fromEntries(variant.selectedOptions.map((option) => [option.name, option.value])),
+    price: variant.price,
+    available: variant.availableForSale,
+    // `thumb`: the smallest copy, for the bag's line.
+    image: image && sources ? { src: sources.src, srcset: sources.srcset, alt: image.altText, thumb: image.sizes[0] ? imageSources({ ...image, url: image.sizes[0][0], sizes: [] }).src : sources.src } : null,
+  };
+});
+const selected = Object.fromEntries((chosen?.selectedOptions ?? []).map((option) => [option.name, option.value]));
+const singleDefault = product.options.length === 1 && product.options[0]!.values.length === 1;
+const intro = product.description.split(/(?<=\.)\s/)[0] ?? "";
+// The choices in words, for readers without the buttons (and the page's markdown version): "XS, S, M, L, XL (XS sold out)".
+const facts = singleDefault
+  ? []
+  : product.options.map((option) => {
+      const gone = option.values.filter((value) => !product.variants.some((variant) => variant.availableForSale && variant.selectedOptions.some((selected) => selected.name === option.name && selected.value === value)));
+      const text = option.values.join(", ");
+
+      return { name: option.name, text: gone.length === option.values.length ? `${text} (${L.soldOut.toLowerCase()})` : gone.length ? `${text} (${fill(L.soldOutIn, { values: gone.join(", ") })})` : text };
+    });
+// Three or four across: a short list fills the row instead of leaving a gap.
+const relatedColumns = Math.max(3, Math.min(related.length, 4));
+---
+
+<Base
+  title={product.seo.title ?? product.title}
+  description={product.seo.description ?? intro}
+  image={lead && !/^https?:/.test(lead.url) ? lead.url : undefined}
+  imageAlt={lead?.altText}
+  jsonLd={[productData(product, url), breadcrumbData(trail)]}
+>
+  <article class="product">
+    <div class="container product__top">
+      <div class="product__crumbs"><Breadcrumbs items={trail} /></div>
+
+      <div class="product__gallery" data-gallery aria-label={fill(L.photos, { product: product.title })} role="group">
+        <div class="product__lead frame">
+          <ProductImage image={lead} ratio="portrait" sizes="(min-width: 60rem) 55vw, 100vw" eager data-lead-image="" />
+        </div>
+        {
+          product.images.length > 1 && (
+            <ul class="product__thumbs" role="list">
+              {product.images.map((image, index) => {
+                const sources = imageSources(image);
+
+                return (
+                  <li>
+                    <button
+                      class="product__thumb"
+                      type="button"
+                      data-show={sources.src}
+                      data-srcset={sources.srcset}
+                      data-alt={image.altText}
+                      aria-pressed={String(image === lead)}
+                      aria-label={fill(L.showPhoto, { number: index + 1 })}
+                    >
+                      <ProductImage image={image} alt="" ratio="portrait" sizes="6rem" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )
+        }
+      </div>
+
+      <div class="product__buy" data-buy-scope>
+        {product.productType && <p class="eyebrow">{product.productType}</p>}
+        <h1 class="product__title">{product.title}</h1>
+
+        {/* Outside the form, so the page's markdown version (which leaves forms out) keeps the price. */}
+        <p class="buy__price" data-price>{chosen ? formatMoney(chosen.price) : priceLabel(product)}</p>
+        <form class="buy" data-buy data-handle={product.handle} data-title={product.title} data-variant={chosen?.id}>
+          <script type="application/json" data-variants set:html={JSON.stringify(variants).replace(/</g, "\\u003c")} />
+          {
+            !singleDefault &&
+              product.options.map((option) => (
+                <fieldset class="buy__option" data-option={option.name}>
+                  <legend class="label">{option.name}</legend>
+                  <div class="buy__choices">
+                    {option.values.map((value) => (
+                      <label class="buy__choice">
+                        <input type="radio" name={option.name} value={value} checked={selected[option.name] === value} />
+                        <span>
+                          {value}
+                          <span class="visually-hidden" data-choice-note hidden>
+                            {L.soldOut}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ))
+          }
+          <button class="button buy__add" type="submit" data-add data-needs-js disabled>
+            {product.availableForSale ? L.addToBag : L.soldOut}
+          </button>
+          <noscript><p class="buy__noscript">{L.noScript}</p></noscript>
+          <p class="buy__message" data-buy-message role="status"></p>
+        </form>
+        {/* Also outside the form, for the markdown version: whether the chosen piece can be sent. */}
+        <p class="buy__stock" data-stock aria-live="polite" data-sold-out={chosen?.availableForSale ? undefined : ""}>
+          {chosen?.availableForSale ? L.available : L.soldOut}
+        </p>
+
+        {
+          story?.data.fit && (
+            <div class="product__fit">
+              <p class="label">{L.fit}</p>
+              <p>{story.data.fit}</p>
+            </div>
+          )
+        }
+        <div class="product__details">
+          <p class="label">{L.details}</p>
+          <div class="prose product__description" set:html={product.descriptionHtml} />
+          {
+            facts.length > 0 && (
+              <ul class="product__facts" role="list">
+                {facts.map((fact) => (
+                  <li>
+                    <span class="product__fact-name">{fact.name}</span>
+                    <span>{fact.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+        </div>
+      </div>
+    </div>
+  </article>
+
+  {story && story.data.sections.length > 0 && <Sections sections={story.data.sections} title={product.title} ownsHeading={false} />}
+
+  {
+    related.length > 0 && (
+      <section class="section section--free tone-muted related" aria-labelledby="related-heading">
+        <div class="container">
+          <h2 class="related__heading" id="related-heading">{L.related}</h2>
+          <ul class="related__list" role="list" style={`--columns: ${relatedColumns}`}>
+            {related.map((item) => (
+              <li>
+                <ProductCard product={item} sizes={`(min-width: 60rem) ${Math.round(100 / relatedColumns)}vw, 50vw`} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    )
+  }
+</Base>
+
+<style>
+  .product {
+    padding-block: var(--space-m) var(--space-section);
+  }
+
+  .product__top {
+    display: grid;
+    gap: var(--space-l) var(--gutter);
+  }
+
+  .product__gallery {
+    display: grid;
+    gap: var(--space-xs);
+    align-content: start;
+  }
+
+  .product__lead :global(.media) {
+    max-block-size: calc(100svh - var(--header-height) - var(--space-l));
+  }
+
+  .product__thumbs {
+    display: flex;
+    gap: var(--space-2xs);
+    padding: 0;
+    list-style: none;
+    overflow-x: auto;
+  }
+
+  .product__thumb {
+    display: block;
+    inline-size: 4.5rem;
+    padding: 0;
+    border: var(--border-width) solid transparent;
+    background: none;
+    transition: border-color var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+  }
+
+  .product__thumb:hover {
+    transform: translateY(-2px);
+  }
+
+  .product__thumb[aria-pressed="true"] {
+    border-color: var(--tone-text);
+  }
+
+  .product__buy {
+    display: grid;
+    gap: var(--space-m);
+    align-content: start;
+  }
+
+  .product__title {
+    font-size: var(--step-5);
+    line-height: var(--leading-tight);
+  }
+
+  .product__facts {
+    display: grid;
+    gap: var(--space-3xs);
+    margin-block-start: var(--space-s);
+    padding: 0;
+    list-style: none;
+    font-size: var(--step--1);
+  }
+
+  .product__facts li {
+    display: grid;
+    grid-template-columns: 6rem 1fr;
+    gap: var(--space-s);
+  }
+
+  .product__fact-name {
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-mono);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+    padding-block-start: 0.15em;
+  }
+
+  /* The form and the stock line under it read as one box: the line closes it. */
+  .buy {
+    display: grid;
+    gap: var(--space-m);
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  /* One line, always: a live price that changes never moves what is below it. */
+  .buy__price {
+    min-block-size: 1.5em;
+    font-family: var(--font-mono);
+    font-size: var(--step-1);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .buy__option {
+    display: grid;
+    gap: var(--space-2xs);
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .buy__choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3xs);
+  }
+
+  .buy__choice {
+    position: relative;
+  }
+
+  .buy__choice input {
+    position: absolute;
+    opacity: 0;
+    inline-size: 1px;
+    block-size: 1px;
+  }
+
+  .buy__choice > span {
+    display: inline-grid;
+    place-items: center;
+    min-inline-size: 3rem;
+    min-block-size: 3rem;
+    padding-inline: 0.9em;
+    border: var(--border-width) solid var(--tone-line);
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+  }
+
+  .buy__choice:hover > span {
+    border-color: var(--tone-text);
+    transform: translateY(-1px);
+  }
+
+  .buy__choice input:checked + span {
+    border-color: var(--tone-text);
+    background: var(--tone-text);
+    color: var(--tone-bg);
+  }
+
+  .buy__choice input:focus-visible + span {
+    outline: 2px solid var(--tone-focus);
+    outline-offset: 2px;
+  }
+
+  /* A choice that can't be bought with the others: struck through, still choosable (to say so). */
+  .buy__choice[data-sold-out] > span {
+    color: var(--tone-muted);
+    text-decoration: line-through;
+  }
+
+  .buy__choice[data-sold-out] input:checked + span {
+    color: var(--tone-bg);
+  }
+
+  .buy__stock {
+    min-block-size: 1.5em;
+    margin-block-start: calc(-1 * var(--space-s));
+    padding-block-end: var(--space-m);
+    border-block-end: var(--border-width) solid var(--tone-line);
+    font-size: var(--step--1);
+  }
+
+  .buy__stock::before {
+    content: "";
+    display: inline-block;
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    margin-inline-end: 0.6em;
+    border-radius: 50%;
+    background: var(--color-accent);
+    vertical-align: 0.05em;
+  }
+
+  .buy__stock[data-sold-out] {
+    color: var(--tone-muted);
+  }
+
+  .buy__stock[data-sold-out]::before {
+    background: transparent;
+    border: var(--border-width) solid var(--tone-muted);
+  }
+
+  .buy__add {
+    inline-size: 100%;
+  }
+
+  .buy__add:disabled {
+    cursor: not-allowed;
+    background: var(--tone-surface);
+    border-color: var(--tone-line);
+    color: var(--tone-muted);
+    transform: none;
+  }
+
+  .buy__noscript,
+  .buy__message:empty {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .product__fit,
+  .product__details {
+    display: grid;
+    gap: var(--space-2xs);
+  }
+
+  .product__description {
+    font-size: var(--step--1);
+  }
+
+  .related__heading {
+    margin-block-end: var(--space-xl);
+  }
+
+  .related__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-xl) var(--gutter);
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 60rem) {
+    .product__top {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      align-items: start;
+    }
+
+    .product__crumbs {
+      grid-column: 1 / -1;
+    }
+
+    .product__gallery {
+      grid-column: 1 / span 6;
+    }
+
+    .product__buy {
+      grid-column: 8 / -1;
+      position: sticky;
+      top: var(--space-l);
+    }
+
+    .related__list {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    }
+  }
+</style>

@@ -1,0 +1,106 @@
+---
+// Every page's <html>, <head>, header and footer. Titles, descriptions and
+// share images come from front matter, falling back to src/data/site.json.
+// The three <Scripts> write what src/data/scripts.json asks for (tags, the
+// consent banner, the email-link dialog) at the head, body start and body end.
+import "../styles/tokens.css";
+import "../styles/global.css";
+import "../styles/kit.css";
+import { Scripts } from "../galley/components/index.js";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import StarterNotice from "../components/StarterNotice.astro";
+import { absolute, fill, labels, plain, site, starterNotice, withBase } from "../lib/site";
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Social share image path, e.g. /images/share.png. */
+  image?: string;
+  imageAlt?: string;
+  noindex?: boolean;
+  /** Leave the title as written instead of applying site.titleTemplate. */
+  bareTitle?: boolean;
+  type?: "website" | "article";
+  publishedTime?: Date;
+  author?: string;
+}
+
+const {
+  title,
+  description = site.description,
+  image = site.shareImage,
+  imageAlt = site.shareImageAlt,
+  noindex = false,
+  bareTitle = false,
+  type = "website",
+  publishedTime,
+  author,
+} = Astro.props;
+
+const pageTitle = bareTitle ? plain(title) : fill(site.titleTemplate, { title: plain(title), site: site.name });
+// A page kept out of search (the 404 page, `noindex: true`) gets no canonical address.
+const canonical = noindex ? undefined : absolute(Astro.url.pathname);
+// Share images must be raster files: an SVG picture falls back to the site's.
+const shareImage = absolute(withBase(/\.svg$/i.test(image) ? site.shareImage : image));
+const shareImageAlt = /\.svg$/i.test(image) ? site.shareImageAlt : imageAlt;
+---
+
+<!doctype html>
+<html lang={site.lang}>
+  <head>
+    <meta charset="utf-8" />
+    <Scripts placement="head" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="icon" href={withBase("/favicon.svg")} type="image/svg+xml" />
+    <link rel="sitemap" href={withBase("/sitemap.xml")} />
+    <meta name="generator" content={Astro.generator} />
+
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:locale" content={site.locale.replace("-", "_")} />
+    <meta property="og:title" content={plain(title)} />
+    <meta property="og:description" content={description} />
+    {canonical && <meta property="og:url" content={canonical} />}
+    <meta property="og:image" content={shareImage} />
+    <meta property="og:image:alt" content={shareImageAlt} />
+    {publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
+    {author && <meta property="article:author" content={author} />}
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={plain(title)} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={shareImage} />
+    <meta name="twitter:image:alt" content={shareImageAlt} />
+    {
+      starterNotice && (
+        <script is:inline>
+          try {
+            if (localStorage.getItem("starter-notice") === "hidden") document.documentElement.classList.add("starter-notice-hidden");
+          } catch {}
+        </script>
+      )
+    }
+  </head>
+  <body>
+    <Scripts placement="body-start" />
+    <a class="skip-link" href="#main">{labels.skipLink}</a>
+    <StarterNotice />
+    <Header />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+    <Scripts placement="body-end" />
+  </body>
+</html>
+
+<style>
+  main:focus {
+    outline: none;
+  }
+</style>

@@ -1,0 +1,16 @@
+{
+  "name": "video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.9.41 preview",
+    "check": "npx --yes hyperframes@0.9.41 check",
+    "capture": "node scripts/capture-footage.mjs",
+    "voice": "node scripts/make-voiceover.mjs",
+    "voice:test": "node scripts/test-elevenlabs.mjs",
+    "timings": "node scripts/apply-timings.mjs",
+    "captions": "node scripts/make-captions.mjs",
+    "render": "npx --yes hyperframes@0.9.41 render --quality delivery -o renders/galley-explainer-master.mp4",
+    "deliver": "node scripts/encode-deliverables.mjs"
+  }
+}

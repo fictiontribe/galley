@@ -1,0 +1,101 @@
+{
+  "format": "apache",
+  "redirects": [
+    {
+      "line": 3,
+      "from": "/old-about.html",
+      "to": "/about/",
+      "status": 301,
+      "notes": [
+        "Apache's Redirect also sends every address below the old one; only the exact address was kept."
+      ]
+    },
+    {
+      "line": 4,
+      "from": "/team.php",
+      "to": "/about/",
+      "status": 301,
+      "notes": [
+        "Apache's Redirect also sends every address below the old one; only the exact address was kept."
+      ]
+    },
+    {
+      "line": 5,
+      "from": "/temp-page",
+      "to": "/pricing/",
+      "status": 302,
+      "notes": [
+        "Apache's Redirect also sends every address below the old one; only the exact address was kept.",
+        "Apache treats a Redirect without a status as temporary."
+      ]
+    },
+    {
+      "line": 6,
+      "from": "/services",
+      "to": "/services/",
+      "status": 301,
+      "notes": [
+        "Apache's Redirect also sends every address below the old one; only the exact address was kept."
+      ]
+    },
+    {
+      "line": 7,
+      "from": "/news/*",
+      "to": "/blog/:splat",
+      "status": 301
+    },
+    {
+      "line": 8,
+      "from": "/exact-page",
+      "to": "/contact/",
+      "status": 301,
+      "notes": [
+        "The pattern allowed the address with or without a trailing slash; one form was kept."
+      ]
+    },
+    {
+      "line": 10,
+      "from": "/old-blog",
+      "to": "/blog/",
+      "status": 301,
+      "notes": [
+        "The pattern allowed the address with or without a trailing slash; one form was kept."
+      ]
+    },
+    {
+      "line": 11,
+      "from": "/category/*",
+      "to": "/blog/:splat",
+      "status": 302
+    }
+  ],
+  "rejected": [
+    {
+      "line": 9,
+      "kind": "needs-person",
+      "reason": "This pattern matches more than one plain address (or rearranges it), so a person should check how to carry it over."
+    },
+    {
+      "line": 12,
+      "kind": "needs-person",
+      "reason": "This RewriteRule changes what page is shown without sending the visitor anywhere (it has no R flag), so it isn't a redirect."
+    },
+    {
+      "line": 13,
+      "kind": "needs-person",
+      "reason": "A RewriteCond makes the next rule depend on a condition, so that rule isn't a plain redirect."
+    },
+    {
+      "line": 14,
+      "kind": "needs-person",
+      "reason": "This rule only applies when the RewriteCond above it holds, so it isn't a plain redirect."
+    },
+    {
+      "line": 15,
+      "kind": "needs-person",
+      "reason": "“gone” says the page was removed, not moved, so there's no new address."
+    }
+  ],
+  "ignored": 2,
+  "unknownHosts": []
+}

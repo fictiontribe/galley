@@ -1,0 +1,6 @@
+# Redirects from src/data/redirects.json. Put these inside the site's server { } block.
+location = /a/ { return 301 /about/; }
+location = /far/ { return 308 https://elsewhere.example/page?ref=1; }
+location = /noted/ { return 301 /about/; }
+# Left out (nginx locations don't match query strings): /q?x=1 → /contact/
+location ~ ^/blog/(.*)$ { return 302 /journal/$1; }

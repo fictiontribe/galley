@@ -1,0 +1,83 @@
+---
+// One page per tag: every published story filed under it, newest first,
+// `journal.pageSize` (site.json) per page — /journal/tags/cloth/, …/2/, …
+// Tags are free text on each story; their pages are made from whatever tags
+// the stories use, so there is nothing to set up.
+import type { GetStaticPaths, Page } from "astro";
+import { getCollection } from "astro:content";
+import Base from "../../../../layouts/Base.astro";
+import PostList from "../../../../components/PostList.astro";
+import Tags from "../../../../components/Tags.astro";
+import Icon from "../../../../components/Icon.astro";
+import { postsByTag, type Post } from "../../../../lib/journal";
+import { fill, labels, site, withBase } from "../../../../lib/site";
+
+export const getStaticPaths = (async ({ paginate }) => {
+  // Read with getCollection() here, not the getPosts() helper, so tools that
+  // read routes statically (Galley among them) can see which collection this
+  // page lists. Same filter and order as getPosts().
+  const posts = (await getCollection("journal", (post) => import.meta.env.DEV || !post.data.draft)).sort(
+    (a, b) => b.data.date.getTime() - a.data.date.getTime(),
+  );
+  const tags = postsByTag(posts);
+  const names = tags.map((entry) => entry.tag);
+
+  return tags.flatMap((entry) =>
+    paginate(entry.posts, { params: { tag: entry.slug }, props: { tag: entry.tag, tags: names }, pageSize: site.journal.pageSize }),
+  );
+}) satisfies GetStaticPaths;
+
+interface Props {
+  page: Page<Post>;
+  tag: string;
+  tags: string[];
+}
+
+const { page: listing, tag, tags } = Astro.props;
+const heading = fill(labels.journal.tagTitle, { tag });
+const title =
+  listing.currentPage > 1 ? `${heading} — ${fill(labels.journal.pageOf, { current: listing.currentPage, total: listing.lastPage })}` : heading;
+---
+
+<Base title={title} description={fill(labels.journal.tagDescription, { tag })}>
+  <header class="section section--free tone-default tag-header">
+    <div class="container">
+      <a class="text-link" href={withBase("/journal/")}>
+        <Icon name="arrow-left" size={16} />
+        {labels.journal.allPosts}
+      </a>
+      <h1 class="tag-header__title">{heading}</h1>
+      <Tags tags={tags} current={tag} label={labels.journal.topics} />
+    </div>
+  </header>
+  <section class="section section--free tone-default tag-list" aria-label={heading}>
+    <div class="container">
+      <PostList listing={listing} />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .tag-header {
+    padding-block: var(--space-xl) 0;
+  }
+
+  .tag-header .container {
+    display: grid;
+    gap: var(--space-l);
+    justify-items: start;
+    padding-block-end: var(--space-xl);
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .tag-header__title {
+    font-size: var(--step-6);
+    line-height: 0.95;
+    letter-spacing: -0.032em;
+    max-inline-size: 14em;
+  }
+
+  .tag-list {
+    padding-block-start: var(--space-xl);
+  }
+</style>

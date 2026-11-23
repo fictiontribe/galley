@@ -1,0 +1,108 @@
+---
+// The latest product updates from the changelog collection, newest first,
+// as dated rows or as cards. Each links to its entry on /changelog/.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import UpdateEntry from "../UpdateEntry.astro";
+import Icon from "../Icon.astro";
+import { getUpdates } from "../../lib/posts";
+import { labels, withBase, type BlockMarker, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  limit?: number;
+  layout?: "list" | "cards";
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, limit = 4, layout = "list", cta, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const updates = (await getUpdates()).slice(0, limit);
+---
+
+<Section type="changelog" id={id} tone={tone} block={block} labelledby={headingId}>
+  <div class:list={["changelog", `changelog--${layout}`]}>
+    <div class="changelog__head">
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} size="small" class="changelog__header" />
+      {
+        cta && (
+          <a class="text-link" href={withBase(cta.href)}>
+            {cta.label}
+            <Icon name="arrow-right" size={18} />
+          </a>
+        )
+      }
+    </div>
+    {
+      updates.length > 0 ? (
+        <ul class="changelog__list" role="list">
+          {updates.map((entry) => (
+            <li class:list={{ card: layout === "cards" }}>
+              <UpdateEntry entry={entry} headingLevel={level === 1 ? 2 : 3} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="lede">{labels.changelog.empty}</p>
+      )
+    }
+  </div>
+</Section>
+
+<style>
+  .changelog {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  .changelog__head {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+    align-content: start;
+  }
+
+  .changelog__head :global(.changelog__header) {
+    margin-block-end: 0;
+  }
+
+  .changelog__list {
+    padding: 0;
+    list-style: none;
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .changelog--cards .changelog__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-m);
+    border: 0;
+  }
+
+  .changelog--cards .changelog__list > li {
+    padding: 0 var(--space-m);
+  }
+
+  .changelog--cards .changelog__list :global(.update) {
+    grid-template-columns: 1fr;
+    border: 0;
+  }
+
+  .changelog--cards .changelog__list :global(.update__meta) {
+    flex-direction: row;
+  }
+
+  @media (min-width: 60rem) {
+    .changelog--list {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+      gap: var(--space-2xl);
+    }
+  }
+</style>

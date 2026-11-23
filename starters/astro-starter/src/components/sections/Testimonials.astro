@@ -1,0 +1,107 @@
+---
+// Several shorter quotations in a grid of 2 or 3 columns.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import type { BlockMarker, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  columns?: number;
+  items: Array<{ quote: string; name: string; role?: string }>;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, columns = 3, items, index = 0, level = 2, block } = Astro.props;
+const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+---
+
+<Section type="testimonials" block={block} id={id} tone={tone} labelledby={headingId}>
+  <SectionHeader eyebrow={eyebrow} heading={heading} level={level} headingId={headingId} />
+  <ul class="quotes" role="list" style={`--columns: ${columns}`}>
+    {
+      items.map((item) => (
+        <li>
+          <figure class="quote">
+            <blockquote class="quote__text">
+              <p>{item.quote}</p>
+            </blockquote>
+            <figcaption class="quote__by">
+              <span class="quote__name">{item.name}</span>
+              {item.role && <span class="quote__role">{item.role}</span>}
+            </figcaption>
+          </figure>
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .quotes {
+    columns: 1;
+    column-gap: var(--space-l);
+    padding: 0;
+    list-style: none;
+  }
+
+  .quotes > li {
+    break-inside: avoid;
+    margin-block-end: var(--space-l);
+  }
+
+  .quote {
+    display: grid;
+    gap: var(--space-m);
+    padding: var(--space-l);
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-m);
+  }
+
+  .quote__text {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    line-height: 1.4;
+  }
+
+  .quote__text p::before {
+    content: open-quote;
+  }
+
+  .quote__text p::after {
+    content: close-quote;
+  }
+
+  .quote__by {
+    display: grid;
+    gap: 0.1em;
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
+    font-size: var(--step--1);
+  }
+
+  .quote__name {
+    font-weight: var(--weight-bold);
+  }
+
+  .quote__role {
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 44rem) {
+    .quotes {
+      columns: 2;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .quotes {
+      columns: var(--columns);
+    }
+  }
+</style>

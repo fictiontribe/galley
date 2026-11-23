@@ -1,0 +1,205 @@
+---
+// One journal story: tags, title, standfirst and byline, the cover, the
+// body, then the newer and older stories.
+import { render } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import Media from "../../components/Media.astro";
+import Icon from "../../components/Icon.astro";
+import Tags from "../../components/Tags.astro";
+import { getPosts, postUrl, type Post } from "../../lib/journal";
+import { fill, formatDate, labels, readingMinutes, withBase } from "../../lib/site";
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post, i) => ({
+    params: { slug: post.id },
+    props: { post, newer: posts[i - 1], older: posts[i + 1] },
+  }));
+}
+
+interface Props {
+  post: Post;
+  newer?: Post;
+  older?: Post;
+}
+
+const { post, newer, older } = Astro.props;
+const { Content } = await render(post);
+const minutes = readingMinutes(post.body);
+---
+
+<Base
+  title={post.data.title}
+  description={post.data.description}
+  image={post.data.image}
+  imageAlt={post.data.imageAlt}
+  type="article"
+  publishedTime={post.data.date}
+  author={post.data.author}
+>
+  <article class="story-page">
+    <header class="story-page__header container">
+      <a class="text-link" href={withBase("/journal/")}>
+        <Icon name="arrow-left" size={16} />
+        {labels.journal.backToJournal}
+      </a>
+      <div class="story-page__intro">
+        <Tags tags={post.data.tags} />
+        <h1 class="story-page__title">{post.data.title}</h1>
+        <p class="story-page__dek">{post.data.description}</p>
+        <p class="label story-page__meta">
+          <span>{labels.journal.by} {post.data.author}</span>
+          <span aria-hidden="true">/</span>
+          <span class="visually-hidden">{labels.journal.published}</span>
+          <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+          <span aria-hidden="true">/</span>
+          <span>{fill(labels.journal.readingTime, { minutes })}</span>
+        </p>
+      </div>
+    </header>
+
+    <div class="story-page__cover container">
+      <Media src={post.data.image} alt={post.data.imageAlt ?? ""} ratio="landscape" eager />
+    </div>
+
+    <div class="story-page__body container">
+      <div class="prose story-page__prose">
+        <Content />
+      </div>
+    </div>
+
+    {
+      (newer || older) && (
+        <nav class="story-page__nav container" aria-label={labels.journal.allPosts}>
+          {newer ? (
+            <a href={postUrl(newer)} class="story-page__nav-link">
+              <span class="label">
+                <Icon name="arrow-left" size={14} /> {labels.journal.newer}
+              </span>
+              <span class="story-page__nav-title">{newer.data.title}</span>
+            </a>
+          ) : (
+            <span />
+          )}
+          {older && (
+            <a href={postUrl(older)} class="story-page__nav-link story-page__nav-link--older">
+              <span class="label">
+                {labels.journal.older} <Icon name="arrow-right" size={14} />
+              </span>
+              <span class="story-page__nav-title">{older.data.title}</span>
+            </a>
+          )}
+        </nav>
+      )
+    }
+  </article>
+</Base>
+
+<style>
+  .story-page {
+    padding-block: var(--space-l) var(--space-section);
+  }
+
+  .story-page__header {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  .story-page__intro {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+    max-inline-size: 62rem;
+  }
+
+  .story-page__title {
+    font-size: var(--step-6);
+    line-height: 0.95;
+    letter-spacing: -0.032em;
+  }
+
+  .story-page__dek {
+    max-inline-size: 30em;
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    font-style: italic;
+    line-height: 1.3;
+    color: var(--tone-muted);
+  }
+
+  .story-page__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6em;
+  }
+
+  .story-page__cover {
+    margin-block: var(--space-xl) var(--space-2xl);
+  }
+
+  .story-page__body {
+    display: grid;
+  }
+
+  .story-page__prose {
+    font-size: var(--step-1);
+    line-height: 1.65;
+  }
+
+  .story-page__prose > :global(p:first-child) {
+    font-size: var(--step-2);
+    line-height: 1.45;
+  }
+
+  .story-page__nav {
+    display: grid;
+    gap: var(--space-l);
+    margin-block-start: var(--space-2xl);
+    padding-block-start: var(--space-l);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .story-page__nav-link {
+    display: grid;
+    gap: var(--space-2xs);
+    color: var(--tone-text);
+    text-decoration: none;
+  }
+
+  .story-page__nav-link .label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+  }
+
+  .story-page__nav-title {
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    line-height: 1.05;
+    letter-spacing: var(--tracking-display);
+  }
+
+  .story-page__nav-link:hover .story-page__nav-title {
+    font-style: italic;
+  }
+
+  @media (min-width: 60rem) {
+    .story-page__body {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      column-gap: var(--gutter);
+    }
+
+    .story-page__prose {
+      grid-column: 4 / span 7;
+    }
+
+    .story-page__nav {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .story-page__nav-link--older {
+      text-align: end;
+      justify-items: end;
+    }
+  }
+</style>

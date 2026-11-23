@@ -1,0 +1,113 @@
+---
+// A numbered process. Numbers are generated from the order of `items`.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import Actions from "../Actions.astro";
+import type { Link, BlockMarker, Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  items: Array<{ heading: string; text: string }>;
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const { id, tone, eyebrow, heading, text, items, cta, index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
+---
+
+<Section type="steps" block={block} id={id} tone={tone} labelledby={headingId}>
+  <div class="steps-layout">
+    <div class="steps-layout__intro">
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+      <Actions cta={cta} />
+    </div>
+    <ol class="steps" role="list">
+      {
+        items.map((item, i) => (
+          <li class="step">
+            <span class="step__number" aria-hidden="true">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <div class="step__body">
+              <ItemHeading class="step__heading">{item.heading}</ItemHeading>
+              <p class="step__text">{item.text}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</Section>
+
+<style>
+  .steps-layout {
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  .steps {
+    padding: 0;
+    list-style: none;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr;
+    gap: var(--space-m);
+    padding-block: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .step:last-child {
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .step__number {
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    font-style: italic;
+    line-height: 1;
+    color: var(--tone-link);
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  .step__body {
+    display: grid;
+    gap: var(--space-2xs);
+  }
+
+  .step__heading {
+    font-size: var(--step-2);
+    line-height: 1.15;
+  }
+
+  .step__text {
+    color: var(--tone-muted);
+    max-width: 36em;
+  }
+
+  @media (min-width: 60rem) {
+    .steps-layout {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: var(--space-2xl);
+      align-items: start;
+    }
+
+    .steps-layout__intro {
+      position: sticky;
+      top: var(--space-l);
+    }
+
+    .step {
+      grid-template-columns: 5rem 1fr;
+    }
+  }
+</style>

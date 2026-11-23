@@ -1,0 +1,161 @@
+{
+  "name": "Caddow",
+  "tagline": "Coats and knitwear, made in runs of forty.",
+  "description": "Caddow makes coats and knitwear in undyed wool, waxed cotton and linen: forty of each piece, cut by hand in a workroom in Marrowby, and sold here.",
+  "url": "https://www.example.com",
+  "lang": "en",
+  "locale": "en-GB",
+  "email": "studio@example.com",
+  "address": "The Ropewalk, Marrowby",
+  "titleTemplate": "{title} — {site}",
+  "shareImage": "/images/share.jpg",
+  "shareImageAlt": "Caddow — a woman in a long rust coat against a sunlit harbour wall",
+  "social": [
+    {
+      "label": "Instagram",
+      "href": "https://www.instagram.com/"
+    },
+    {
+      "label": "Pinterest",
+      "href": "https://www.pinterest.com/"
+    },
+    {
+      "label": "Vimeo",
+      "href": "https://vimeo.com/"
+    }
+  ],
+  "footerText": "Caddow is a fictional label. Every coat, person, shop and town on this site is invented, and the shop is a demo until it is connected to a store.",
+  "journal": {
+    "pageSize": 9
+  },
+  "labels": {
+    "skipLink": "Skip to content",
+    "copyright": "© {year} {site}",
+    "nav": {
+      "main": "Main",
+      "footer": "Footer",
+      "menu": "Menu",
+      "close": "Close",
+      "social": "Elsewhere",
+      "contact": "The workroom",
+      "shop": "Shop",
+      "search": "Search"
+    },
+    "journal": {
+      "allPosts": "All stories",
+      "published": "Published",
+      "by": "Words by",
+      "tags": "Filed under",
+      "topics": "Topics",
+      "tagTitle": "Filed under {tag}",
+      "tagDescription": "Every story in the Caddow journal filed under {tag}.",
+      "readingTime": "{minutes} min read",
+      "backToJournal": "The journal",
+      "newer": "Newer",
+      "older": "Older",
+      "pageOf": "Page {current} of {total}",
+      "pagination": "Journal pages",
+      "empty": "Nothing here yet. The next story is being written."
+    },
+    "lookbooks": {
+      "list": "Lookbook",
+      "title": "{title} — {season}",
+      "look": "Look {number}",
+      "pieces": "In this look",
+      "count": "{count} looks",
+      "view": "See the lookbook",
+      "back": "The lookbook",
+      "empty": "The first lookbook is still being shot."
+    },
+    "film": {
+      "play": "Play the film",
+      "duration": "Running time {duration}",
+      "external": "Opens on another site"
+    },
+    "stockists": {
+      "list": "Stockists",
+      "website": "Website",
+      "email": "Write to us",
+      "visit": "Plan a visit"
+    },
+    "dev": {
+      "unknownSection": "This section type has no component yet"
+    },
+    "marquee": {
+      "pause": "Pause"
+    },
+    "shop": {
+      "shop": "Shop",
+      "everything": "Everything",
+      "from": "from {price}",
+      "soldOut": "Sold out",
+      "see": "See the {product}",
+      "count": "{count} pieces",
+      "bag": "Bag",
+      "bagWithCount": "Bag, {count} in it",
+      "addToBag": "Add to bag",
+      "adding": "Adding…",
+      "chooseSize": "Choose a size first",
+      "unavailable": "Sold out in this choice",
+      "available": "Ready to send",
+      "fewLeft": "Only a few left",
+      "liveChecked": "Checked with the shop just now",
+      "quantity": "Quantity",
+      "quantityOf": "Quantity of {product}",
+      "increase": "One more {product}",
+      "decrease": "One fewer {product}",
+      "remove": "Remove",
+      "removeItem": "Remove {product} from the bag",
+      "subtotal": "Subtotal",
+      "afterSubtotal": "Delivery and any tax are worked out at checkout.",
+      "checkout": "Check out",
+      "checkingOut": "Opening the checkout…",
+      "empty": "The bag is empty.",
+      "keepLooking": "See the shop",
+      "close": "Close the bag",
+      "viewBag": "See the whole bag",
+      "demoLabel": "Demo shop",
+      "demoNote": "This is a demo shop. Nothing is charged and no order is placed: the bag only keeps what you chose, on this device.",
+      "demoCheckoutTitle": "There is no checkout in the demo",
+      "demoCheckoutText": "This shop isn't connected to a store yet, so nothing can be paid for. Once it is, this button opens the store's own checkout.",
+      "backToBag": "Back to the bag",
+      "checkoutError": "The checkout couldn't be opened just now. Try again in a moment.",
+      "bagError": "The bag couldn't be changed just now. Try again in a moment.",
+      "stockChanged": "There were fewer left than you asked for, so the bag holds what there is.",
+      "noScript": "The bag needs JavaScript. To order without it, write to the workroom.",
+      "filters": "Filter the pieces",
+      "filterOpen": "Filter and sort",
+      "filterBy": "Filter by {option}",
+      "availableOnly": "Only what can be sent now",
+      "sort": "Order",
+      "sortFeatured": "As arranged",
+      "sortLow": "Price, low to high",
+      "sortHigh": "Price, high to low",
+      "results": "{count} pieces",
+      "resultsOne": "1 piece",
+      "noResults": "Nothing matches those filters.",
+      "clearFilters": "Clear the filters",
+      "details": "The details",
+      "fit": "Fit",
+      "related": "Goes with",
+      "breadcrumbs": "You are here",
+      "photos": "Photographs of the {product}",
+      "photo": "Photograph {number} of {total}",
+      "showPhoto": "Show photograph {number}",
+      "option": "{option}",
+      "noProducts": "Nothing here yet. The next run is being cut.",
+      "soldOutIn": "{values} sold out"
+    },
+    "search": {
+      "label": "Search the shop and the journal",
+      "placeholder": "A coat, a cloth, a colour",
+      "submit": "Search",
+      "results": "{count} results for “{query}”",
+      "resultsOne": "1 result for “{query}”",
+      "none": "Nothing found for “{query}”. Try one word, like wool or coat.",
+      "products": "In the shop",
+      "stories": "Elsewhere on the site",
+      "noScript": "Searching needs JavaScript. Every piece is on the shop page."
+    }
+  }
+}

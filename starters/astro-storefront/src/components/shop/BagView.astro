@@ -1,0 +1,241 @@
+---
+// What is in the bag: the lines, the subtotal, the way to checkout — and in
+// the demo shop, a plain notice that nothing is charged. The same markup
+// sits in the drawer and on the bag page; src/scripts/shop.ts fills it.
+// Every word comes from site.json (labels.shop).
+import Icon from "../Icon.astro";
+import { labels, withBase } from "../../lib/site";
+
+interface Props {
+  demo: boolean;
+  /** The drawer links to the bag page; the bag page doesn't. */
+  inDrawer?: boolean;
+}
+
+const { demo, inDrawer = false } = Astro.props;
+const L = labels.shop;
+---
+
+<div class="bag-view" data-bag-view>
+  {demo && <p class="bag-view__demo"><span class="label">{L.demoLabel}</span> {L.demoNote}</p>}
+  <ul class="bag-view__lines" role="list" data-bag-lines></ul>
+  <div class="bag-view__empty" data-bag-empty>
+    <p>{L.empty}</p>
+    <a class="text-link" href={withBase("/shop/")}>{L.keepLooking} <Icon name="arrow-right" size={14} /></a>
+  </div>
+  <div class="bag-view__foot" data-bag-filled hidden>
+    <p class="bag-view__subtotal"><span>{L.subtotal}</span> <span data-bag-subtotal></span></p>
+    <p class="bag-view__note">{L.afterSubtotal}</p>
+    <button class="button bag-view__checkout" type="button" data-checkout>{L.checkout}</button>
+    {inDrawer && <a class="text-link bag-view__page" href={withBase("/bag/")}>{L.viewBag}</a>}
+    {
+      demo && (
+        <div class="bag-view__demo-checkout" data-demo-checkout hidden>
+          <p class="bag-view__demo-title" tabindex="-1" data-demo-checkout-title>{L.demoCheckoutTitle}</p>
+          <p>{L.demoCheckoutText}</p>
+          <button class="text-link" type="button" data-demo-back>{L.backToBag}</button>
+        </div>
+      )
+    }
+  </div>
+  <noscript><p class="bag-view__noscript">{L.noScript}</p></noscript>
+</div>
+
+<style>
+  .bag-view {
+    display: grid;
+    gap: var(--space-m);
+    align-content: start;
+  }
+
+  .bag-view[aria-busy="true"] .bag-view__lines {
+    opacity: 0.55;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .bag-view__demo {
+    padding: var(--space-xs) var(--space-s);
+    border: var(--border-width) solid var(--tone-line);
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .bag-view__demo .label {
+    color: var(--tone-text);
+    margin-inline-end: 0.4em;
+  }
+
+  .bag-view__lines {
+    padding: 0;
+    list-style: none;
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .bag-view__lines:empty {
+    border: 0;
+  }
+
+  .bag-view__empty {
+    display: grid;
+    gap: var(--space-xs);
+    justify-items: start;
+    font-size: var(--step-1);
+  }
+
+  .bag-view__foot {
+    display: grid;
+    gap: var(--space-s);
+  }
+
+  .bag-view__foot[hidden],
+  .bag-view__empty[hidden] {
+    display: none;
+  }
+
+  .bag-view__subtotal {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+  }
+
+  .bag-view__subtotal span:last-child {
+    font-family: var(--font-mono);
+    font-size: var(--step-0);
+    font-variant-numeric: tabular-nums;
+    align-self: center;
+  }
+
+  .bag-view__note {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .bag-view__checkout {
+    inline-size: 100%;
+  }
+
+  .bag-view__page {
+    justify-self: start;
+  }
+
+  .bag-view__demo-checkout {
+    display: grid;
+    gap: var(--space-xs);
+    justify-items: start;
+    padding: var(--space-s);
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+  }
+
+  .bag-view__demo-checkout button {
+    border: 0;
+    padding: 0;
+    background-color: transparent;
+  }
+
+  .bag-view__demo-checkout[hidden] {
+    display: none;
+  }
+
+  .bag-view__demo-title {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+  }
+
+  /* One line in the bag (from the template in BagDrawer.astro). */
+  .bag-view :global(.bag-line) {
+    display: grid;
+    grid-template-columns: 4.5rem 1fr auto;
+    gap: var(--space-2xs) var(--space-s);
+    padding-block: var(--space-s);
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .bag-view :global(.bag-line__image) {
+    grid-row: span 2;
+    inline-size: 4.5rem;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    background: var(--placeholder-light);
+  }
+
+  .bag-view :global(.bag-line__name) {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    line-height: 1.15;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .bag-view :global(.bag-line__name:hover) {
+    text-decoration: underline;
+  }
+
+  .bag-view :global(.bag-line__variant) {
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-mono);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .bag-view :global(.bag-line__price) {
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+  }
+
+  .bag-view :global(.bag-line__controls) {
+    grid-column: 2 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-s);
+  }
+
+  .bag-view :global(.bag-line__qty) {
+    display: inline-flex;
+    align-items: center;
+    border: var(--border-width) solid var(--tone-control);
+  }
+
+  .bag-view :global(.bag-line__qty button) {
+    display: grid;
+    place-items: center;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .bag-view :global(.bag-line__qty button:hover:not(:disabled)) {
+    background: var(--tone-surface);
+  }
+
+  .bag-view :global(.bag-line__qty button:active:not(:disabled)) {
+    transform: translateY(1px);
+  }
+
+  .bag-view :global(.bag-line__qty button:disabled) {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .bag-view :global(.bag-line__qty output) {
+    min-inline-size: 2ch;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bag-view :global(.bag-line__remove) {
+    min-block-size: 2.75rem;
+    border: 0;
+    background-color: transparent;
+    padding: 0;
+  }
+</style>

@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galley — brand specimen</title>
+<link rel="icon" href="logo/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components.css">
+<style>
+/* Local font files (latin subset from the @fontsource packages named in
+   tokens.css). If they are missing, the fallback stacks take over. */
+@font-face { font-family: "Newsreader Variable"; font-style: normal; font-weight: 200 800; font-display: swap; src: url(fonts/newsreader-latin-opsz-normal.woff2) format("woff2-variations"); }
+@font-face { font-family: "Newsreader Variable"; font-style: italic; font-weight: 200 800; font-display: swap; src: url(fonts/newsreader-latin-opsz-italic.woff2) format("woff2-variations"); }
+@font-face { font-family: "Figtree Variable"; font-style: normal; font-weight: 300 900; font-display: swap; src: url(fonts/figtree-latin-wght-normal.woff2) format("woff2-variations"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/ibm-plex-mono-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url(fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2"); }
+
+/* ---- Specimen page layout (s-*). Not part of the component library. ---- */
+html { background: var(--surface-paper); scroll-padding-top: 72px; }
+body { margin: 0; }
+.s-wrap { max-inline-size: 1240px; margin-inline: auto; padding-inline: clamp(20px, 4vw, 56px); }
+.s-top {
+  position: sticky; top: 0; z-index: var(--z-sticky);
+  background: color-mix(in srgb, var(--surface-paper) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-block-end: 1px solid var(--border-default);
+}
+.s-top__in { display: flex; align-items: center; gap: var(--space-4); block-size: 56px; }
+.s-top__logo { block-size: 22px; color: var(--ink-primary); flex: none; }
+.s-top__title { color: var(--ink-tertiary); }
+.s-top__controls { margin-inline-start: auto; display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; justify-content: flex-end; }
+.s-swatches { display: flex; gap: 4px; align-items: center; }
+.s-swatches button {
+  inline-size: 22px; block-size: 22px; border-radius: 50%; border: 0; cursor: pointer; padding: 0;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / .15);
+}
+.s-swatches button[aria-pressed="true"] { outline: 2px solid var(--ink-primary); outline-offset: 2px; }
+.s-swatches input[type="color"] { inline-size: 26px; block-size: 26px; padding: 0; border: 1px solid var(--border-strong); border-radius: 50%; background: none; cursor: pointer; }
+.s-swatches input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+.s-swatches input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
+
+/* Hero: a proof sheet */
+.s-hero { padding-block: clamp(40px, 7vw, 96px) clamp(48px, 7vw, 104px); }
+.s-hero__sheet { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 0 clamp(24px, 4vw, 56px); padding: clamp(24px, 4vw, 56px); --crop-o: 18px; }
+.s-hero__sheet::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: -1; opacity: .55; }
+.s-hero h1 { margin: var(--space-6) 0 var(--space-6); font-size: var(--display-xl); font-weight: 400; }
+.s-hero h1 .s-line { display: block; }
+.s-hero h1 em { font-style: italic; }
+.s-hero h1 .g-ins { padding-inline: 0.06em; }
+.s-hero h1 .g-ins::before { inline-size: 0.3em; block-size: 0.24em; margin-inline: -0.5em 0.2em; vertical-align: -0.12em; }
+.s-hero__lead { max-inline-size: 46ch; font-size: var(--text-lead); line-height: 1.5; color: var(--ink-secondary); margin: 0; text-wrap: pretty; }
+.s-hero__cta { margin-block-start: var(--space-8); }
+.s-margin { border-inline-start: 1px solid var(--border-strong); padding-inline-start: var(--space-4); display: grid; align-content: start; gap: var(--space-6); padding-block-start: var(--space-12); }
+.s-margin .g-margin-note { border-block-start-color: var(--border-default); }
+
+/* Sections */
+.s-section { padding-block: clamp(48px, 7vw, 96px); border-block-start: 1px solid var(--border-default); }
+.s-section__head { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: var(--space-6); margin-block-end: var(--space-10); align-items: baseline; }
+.s-section__head h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: var(--display-md); line-height: var(--leading-display); letter-spacing: var(--tracking-display); }
+.s-section__head p { grid-column: 2; margin: var(--space-3) 0 0; color: var(--ink-secondary); max-inline-size: 62ch; font-size: var(--text-md); line-height: 1.6; }
+.s-sub { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: var(--space-6); margin-block-start: var(--space-12); }
+.s-sub:first-of-type { margin-block-start: 0; }
+.s-sub > h3 { margin: 0; font-size: var(--text-sm); font-weight: 600; }
+.s-sub > h3 small { display: block; margin-block-start: 4px; font-weight: 400; color: var(--ink-tertiary); font-size: var(--text-xs); line-height: 1.45; }
+.s-row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.s-stack { display: grid; gap: var(--space-4); }
+.s-grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.s-caption { font: var(--text-2xs)/var(--leading-2xs) var(--font-mono); color: var(--ink-tertiary); }
+.s-card { background: var(--surface-raised); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+
+/* Logo */
+.s-logos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: var(--space-4); }
+.s-logo-tile { display: grid; place-items: center; min-block-size: 180px; border-radius: var(--radius-md); position: relative; }
+.s-logo-tile .s-caption { position: absolute; inset-block-end: 10px; inset-inline-start: 12px; }
+.s-logo-tile--light { background: #F6F1E7; border: 1px solid #D2C7B4; }
+.s-logo-tile--light .s-caption { color: #6B6356; }
+.s-logo-tile--dark { background: #16140F; }
+.s-logo-tile--dark .s-caption { color: #968C7C; }
+.s-logo-tile--accent { background: var(--accent-fill); color: var(--accent-on); }
+.s-logo-tile--accent .s-caption { color: var(--accent-on); opacity: .8; }
+.s-sizes { display: flex; align-items: flex-end; gap: var(--space-6); flex-wrap: wrap; }
+.s-sizes figure { margin: 0; display: grid; gap: 6px; justify-items: start; }
+.s-construct { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--space-6); align-items: start; }
+.s-construct svg { inline-size: 100%; block-size: auto; max-inline-size: 360px; }
+.s-dodont { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: var(--space-3); }
+
+/* Colour */
+.s-swatch { display: grid; grid-template-rows: 88px auto; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-default); background: var(--surface-raised); }
+.s-swatch__chip { display: flex; align-items: flex-end; justify-content: space-between; padding: 10px 12px; font: 500 var(--text-2xs)/1 var(--font-mono); }
+.s-swatch__meta { display: grid; gap: 2px; padding: 10px 12px 12px; }
+.s-swatch__meta b { font-size: var(--text-sm); }
+.s-swatch__meta code { font: var(--text-2xs)/1.5 var(--font-mono); color: var(--ink-tertiary); }
+.s-ratio { font: 500 var(--text-2xs)/1 var(--font-mono); padding: 3px 6px; border-radius: var(--radius-pill); background: color-mix(in srgb, currentColor 12%, transparent); }
+.s-pairs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: var(--space-2); }
+.s-pair { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-size: var(--text-sm); }
+.s-pair code { font: 500 var(--text-2xs)/1 var(--font-mono); white-space: nowrap; }
+.s-proofset { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: var(--space-4); }
+.s-proofcard { border-radius: var(--radius-md); padding: var(--space-4); display: grid; gap: var(--space-3); border: 1px solid var(--border-default); background: var(--surface-raised); }
+.s-proofcard__chips { display: flex; gap: 6px; }
+.s-proofcard__chips span { flex: 1; block-size: 36px; border-radius: var(--radius-sm); }
+
+/* Type */
+.s-family { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: var(--space-6); padding-block: var(--space-6); border-block-end: 1px solid var(--border-subtle); align-items: end; }
+.s-family:first-child { padding-block-start: 0; }
+.s-family__sample { margin: 0; line-height: 1.05; overflow-wrap: anywhere; }
+.s-family__meta { display: grid; gap: 4px; font-size: var(--text-xs); color: var(--ink-secondary); }
+.s-family__meta code { font: var(--text-2xs)/1.5 var(--font-mono); color: var(--ink-tertiary); }
+.s-scale { display: grid; }
+.s-scale__row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: var(--space-4); align-items: baseline; padding-block: 10px; border-block-end: 1px solid var(--border-subtle); }
+.s-scale__row > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Proof marks table */
+.s-marks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: var(--space-3); }
+.s-markcell { display: grid; grid-template-columns: 44px 1fr; gap: var(--space-3); align-items: center; padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-raised); }
+.s-markcell .g-mark { font-size: 28px; }
+.s-markcell b { display: block; font-size: var(--text-sm); }
+.s-markcell span { font-size: var(--text-xs); color: var(--ink-secondary); line-height: 1.45; }
+.s-proofsheet { padding: var(--space-8) clamp(16px, 4vw, 48px); max-inline-size: 760px; }
+.s-proofsheet p { margin: 0; }
+
+/* Component demos */
+.s-btn-matrix { display: grid; grid-template-columns: 90px repeat(4, max-content); gap: var(--space-3) var(--space-4); align-items: center; overflow-x: auto; padding-block: 4px; }
+.s-btn-matrix .s-caption { white-space: nowrap; }
+.s-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: var(--space-5); max-inline-size: 860px; }
+.s-dialog-stage { display: grid; --scrim-demo: 1; place-items: center; padding: var(--space-10) var(--space-4); border-radius: var(--radius-md); background: var(--scrim); }
+.s-dialog-stage .g-dialog { position: static; display: block; margin: 0; }
+.s-chat { max-inline-size: 440px; padding: var(--space-4); }
+
+/* Mini app frame */
+.s-frame { container-type: inline-size; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border-strong); box-shadow: var(--shadow-3); }
+.s-frame__chrome { display: flex; align-items: center; gap: 6px; block-size: 28px; padding: 0 12px; background: var(--surface-sunken); border-block-end: 1px solid var(--border-default); }
+.s-frame__chrome i { inline-size: 10px; block-size: 10px; border-radius: 50%; background: var(--border-strong); opacity: .6; }
+.s-frame__chrome span { margin-inline: auto; font: var(--text-2xs)/1 var(--font-mono); color: var(--ink-tertiary); }
+.s-frame .g-app { block-size: 760px; }
+.s-frame .g-app { --sidebar-width: 196px; }
+.s-frame .g-workspace { --form-width: 300px; --chat-width: 296px; }
+.s-frame .g-preview { padding: var(--space-4); }
+@container (max-width: 1100px) {
+  .s-frame .g-app { grid-template-columns: var(--sidebar-width-collapsed) minmax(0, 1fr); }
+  .s-frame .g-sidebar .s-hide-collapsed { display: none; }
+  .s-frame .g-sidebar .g-nav__item { justify-content: center; padding: 0; }
+  .s-frame .g-brand { padding: 0; justify-content: center; }
+  .s-frame .g-workspace { grid-template-columns: 300px minmax(0, 1fr); }
+  .s-frame .s-chatpane { display: none; }
+}
+@container (max-width: 700px) {
+  .s-frame .g-app { grid-template-columns: 1fr; block-size: auto; }
+  .s-frame .g-sidebar { display: none; }
+  .s-frame .g-workspace { grid-template-columns: 1fr; }
+  .s-frame .s-chatpane { display: flex; }
+  .s-frame .g-pane + .g-pane { border-inline-start: 0; border-block-start: 1px solid var(--border-default); }
+  .s-frame .s-formpane .g-pane__body { max-block-size: 420px; }
+  .s-frame .g-preview { min-block-size: 360px; padding: var(--space-3); }
+  .s-frame .s-hide-narrow { display: none; }
+}
+
+/* The sample site inside the preview (deliberately not Galley-styled) */
+.s-site { font-family: ui-sans-serif, system-ui, sans-serif; color: #15171a; }
+.s-site__nav { display: flex; justify-content: space-between; align-items: center; padding: 14px 22px; font-size: 12px; border-bottom: 1px solid #ececec; }
+.s-site__nav b { letter-spacing: .14em; font-size: 11px; }
+.s-site__nav > span { display: flex; gap: 12px; color: #555; flex-wrap: wrap; justify-content: flex-end; }
+.s-site__hero { padding: 40px 22px 34px; background: #f3efe6; }
+.s-site__hero h4 { margin: 0 0 10px; font: 600 30px/1.08 Georgia, serif; letter-spacing: -.01em; max-inline-size: 15ch; }
+.s-site__hero p { margin: 0 0 18px; font-size: 13px; color: #4b4f55; max-inline-size: 40ch; line-height: 1.5; }
+.s-site__btn { display: inline-block; padding: 8px 14px; border-radius: 3px; background: #15171a; color: #fff; font-size: 12px; font-weight: 600; }
+.s-site__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 22px; }
+.s-site__grid div { aspect-ratio: 4/3; background: linear-gradient(135deg, #e6e0d3, #d7cfbe); border-radius: 2px; }
+.s-site__tip { position: absolute; transform: translate(-2px, -30px); background: var(--accent-fill); color: var(--accent-on); font: 600 11px/1 var(--font-text); padding: 5px 8px; border-radius: var(--radius-pill); white-space: nowrap; box-shadow: var(--shadow-2); }
+
+.s-foot { padding-block: var(--space-12); border-block-start: 1px solid var(--border-default); display: flex; gap: var(--space-4); flex-wrap: wrap; align-items: center; justify-content: space-between; color: var(--ink-tertiary); font-size: var(--text-xs); }
+
+@media (max-width: 860px) {
+  .s-hero__sheet { grid-template-columns: 1fr; }
+  .s-margin { border-inline-start: 0; border-block-start: 1px solid var(--border-strong); padding: var(--space-4) 0 0; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-4); margin-block-start: var(--space-8); }
+  .s-section__head, .s-sub, .s-family { grid-template-columns: 1fr; gap: var(--space-3); }
+  .s-section__head p { grid-column: 1; }
+  .s-top__title { display: none; }
+  .s-scale__row { grid-template-columns: 1fr; gap: 2px; }
+}
+@media (max-width: 520px) {
+  .s-top__in { block-size: auto; padding-block: 10px; flex-wrap: wrap; gap: var(--space-2); }
+  .s-top__controls { margin-inline-start: 0; justify-content: flex-start; inline-size: 100%; }
+}
+</style>
+</head>
+<body class="g-root">
+
+<!-- Inline sprite: logo geometry, drawn with currentColor + the live accent -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="s-mark-lines"><path d="M2 6h28v4H2zM2 14h10v4H2zM20 14h10v4H20z"/></g>
+    <g id="s-mark-caret"><path d="M8.76 24.24 16 15.33l7.24 8.91-3.1 2.52L16 21.67l-4.14 5.09z"/></g>
+  </defs>
+</svg>
+
+<header class="s-top">
+  <div class="s-wrap s-top__in">
+    <img class="s-top__logo" src="logo/lockup.svg" alt="Galley" data-theme-src-dark="logo/lockup-reverse.svg">
+    <span class="g-eyebrow s-top__title">Brand specimen · v1.0</span>
+    <div class="s-top__controls">
+      <div class="g-segmented" role="group" aria-label="Theme">
+        <button type="button" data-theme-set="light" aria-pressed="true">Light</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+        <button type="button" data-theme-set="system" aria-pressed="false">System</button>
+      </div>
+      <div class="s-swatches" role="group" aria-label="Accent colour (white-label test)">
+        <button type="button" data-accent="#2E2BFF" style="background:#2E2BFF" aria-label="Blue Pencil (default)" aria-pressed="true"></button>
+        <button type="button" data-accent="#00A86B" style="background:#00A86B" aria-label="Green" aria-pressed="false"></button>
+        <button type="button" data-accent="#FF7A00" style="background:#FF7A00" aria-label="Orange" aria-pressed="false"></button>
+        <button type="button" data-accent="#C6F432" style="background:#C6F432" aria-label="Lime" aria-pressed="false"></button>
+        <button type="button" data-accent="#E6007E" style="background:#E6007E" aria-label="Magenta" aria-pressed="false"></button>
+        <label class="g-sr" for="s-accent">Custom accent</label>
+        <input id="s-accent" type="color" value="#2E2BFF" title="Custom accent">
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- =================================================================== HERO -->
+<section class="s-wrap s-hero">
+  <div class="s-hero__sheet g-crop">
+    <div>
+      <p class="g-eyebrow">Galley — the AI CMS for static sites</p>
+      <h1 class="g-display">
+        <span class="s-line">Prompt it.</span>
+        <span class="s-line"><ins class="g-ins g-ink-in"><span class="g-sr">Added: </span><em>Proof it.</em></ins></span>
+        <span class="s-line">Publish it.</span>
+      </h1>
+      <p class="s-hero__lead">Every change is a proof before it goes to press. Type in a form, click the page, or ask in chat — see exactly what changed — then publish. It’s just your repo underneath.</p>
+      <div class="s-hero__cta g-btn-group">
+        <a class="g-btn g-btn--primary g-btn--xl" href="#s-app">See it in the app</a>
+        <a class="g-btn g-btn--secondary g-btn--xl" href="#s-proof">The proof marks</a>
+      </div>
+    </div>
+    <aside class="s-margin" aria-label="Margin notes">
+      <div class="g-margin-note"><span class="g-mark g-mark--caret g-mark--insert" aria-hidden="true"></span><span>insert — something new goes here</span></div>
+      <div class="g-margin-note"><span class="g-mark g-mark--dele g-mark--delete" aria-hidden="true"></span><span>dele — take this out</span></div>
+      <div class="g-margin-note"><span class="g-mark g-mark--transpose g-mark--change" aria-hidden="true"></span><span>transpose — changed or moved</span></div>
+      <div class="g-margin-note"><span class="g-mark g-mark--reg" aria-hidden="true"></span><span>in register — published</span></div>
+    </aside>
+  </div>
+</section>
+
+<!-- =================================================================== 01 LOGO -->
+<section class="s-section s-wrap" id="s-logo">
+  <div class="s-section__head">
+    <span class="g-eyebrow">§ 01 — Logo</span>
+    <h2>Two lines of type, one caret.</h2>
+    <p>The mark is a line of set type opened by a proofreader’s caret: something is being inserted, and it hasn’t gone to press yet. The wordmark is drawn, not typed — circles, stems and one shared descender hook — so it renders anywhere without a font.</p>
+  </div>
+
+  <div class="s-sub">
+    <h3>Lockups<small>Ink on paper is the default. Reverse on dark. One colour on anything else.</small></h3>
+    <div class="s-logos">
+      <div class="s-logo-tile s-logo-tile--light"><img src="logo/lockup.svg" alt="Galley lockup on paper" height="44"><span class="s-caption">lockup.svg</span></div>
+      <div class="s-logo-tile s-logo-tile--dark"><img src="logo/lockup-reverse.svg" alt="Galley lockup reversed on ink" height="44"><span class="s-caption">lockup-reverse.svg</span></div>
+      <div class="s-logo-tile s-logo-tile--accent">
+        <svg viewBox="0 0 155.86 40.1" height="44" role="img" aria-label="Galley lockup, one colour on the accent" style="color:currentColor">
+          <g transform="translate(-2.89 -8.67) scale(1.45)" fill="currentColor"><use href="#s-mark-lines"/><use href="#s-mark-caret"/></g>
+          <g transform="translate(51.46)"><path d="M10 12.1a7.9 7.9 0 1 1 0 15.8a7.9 7.9 0 1 1 0-15.8M17.9 10V31a7 7 0 0 1-7 7H3.5M34 12.1a7.9 7.9 0 1 1 0 15.8a7.9 7.9 0 1 1 0-15.8M41.9 10V30M49.1 0V30M56.3 0V30M63.5 20H79.3A7.9 7.9 0 1 0 76.99 25.59M86.5 10V20a7.9 7.9 0 0 0 15.8 0M102.3 10V31a7 7 0 0 1-7 7H87.9" fill="none" stroke="currentColor" stroke-width="4.2"/></g>
+        </svg>
+        <span class="s-caption">lockup-mono.svg · currentColor</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Mark at size<small>Drawn on a 32-unit grid; every edge lands on a whole pixel at 16 px.</small></h3>
+    <div class="s-sizes">
+      <figure><img src="logo/mark.svg" width="16" height="16" alt=""><figcaption class="s-caption">16</figcaption></figure>
+      <figure><img src="logo/mark.svg" width="20" height="20" alt=""><figcaption class="s-caption">20</figcaption></figure>
+      <figure><img src="logo/mark.svg" width="24" height="24" alt=""><figcaption class="s-caption">24</figcaption></figure>
+      <figure><img src="logo/mark.svg" width="32" height="32" alt=""><figcaption class="s-caption">32</figcaption></figure>
+      <figure><img src="logo/mark.svg" width="64" height="64" alt=""><figcaption class="s-caption">64</figcaption></figure>
+      <figure><img src="logo/app-icon.svg" width="128" height="128" alt="Galley app icon"><figcaption class="s-caption">app-icon.svg</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Construction<small>Clear space = one bar-pitch (8 units) on every side. Minimum: mark 16 px, lockup 80 px wide.</small></h3>
+    <div class="s-construct">
+      <svg viewBox="-11 -13 54 55" role="img" aria-label="Mark construction on a 32-unit grid with clear space">
+        <rect x="-8" y="-8" width="48" height="48" fill="none" stroke="var(--accent-line)" stroke-dasharray="1 1" stroke-width=".25"/>
+        <g stroke="var(--border-default)" stroke-width=".12">
+          <path d="M0 0v32M4 0v32M8 0v32M12 0v32M16 0v32M20 0v32M24 0v32M28 0v32M32 0v32M0 0h32M0 4h32M0 8h32M0 12h32M0 16h32M0 20h32M0 24h32M0 28h32M0 32h32"/>
+        </g>
+        <g fill="var(--ink-primary)"><use href="#s-mark-lines"/></g>
+        <g fill="var(--accent-fill)"><use href="#s-mark-caret"/></g>
+        <g fill="none" stroke="var(--proof-change)" stroke-width=".2"><path d="M16 15.33 8.76 24.24M16 15.33l7.24 8.91"/><circle cx="16" cy="15.33" r=".7"/></g>
+        <g font-family="IBM Plex Mono, monospace" font-size="1.5" fill="var(--ink-tertiary)"><text x="-8" y="-9.4">clear space 8u</text><text x="32.6" y="8.5">bar 4u</text><text x="32.6" y="16.5">gap 8u</text><text x="21" y="30.6">apex 78°</text></g>
+      </svg>
+      <div class="s-stack" style="align-content:start">
+        <p class="g-muted" style="margin:0;max-inline-size:52ch;font-size:var(--text-md);line-height:1.6">Bars are 4 units thick with a 4-unit leading. The lower line breaks for 8 units; the caret’s apex rises into that gap and its feet stop about one bar-pitch below the line — a caret sits <em>under</em> the insertion point, never on it. The upper bar and the caret always share a colour pair: ink + accent, or one colour throughout.</p>
+        <div class="s-dodont">
+          <div class="s-pair"><span><span class="g-mark g-mark--caret g-mark--insert" aria-hidden="true"></span> Recolour with one flat colour</span></div>
+          <div class="s-pair"><span><span class="g-mark g-mark--dele g-mark--delete" aria-hidden="true"></span> Don’t outline, gradient or shadow it</span></div>
+          <div class="s-pair"><span><span class="g-mark g-mark--dele g-mark--delete" aria-hidden="true"></span> Don’t rotate the caret into an arrow</span></div>
+          <div class="s-pair"><span><span class="g-mark g-mark--dele g-mark--delete" aria-hidden="true"></span> Don’t set “galley” in a font</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Share image<small>social-card.svg · 1200 × 630 · all letterforms are paths.</small></h3>
+    <img src="logo/social-card.svg" alt="Social card: Prompt it. Proof it. Publish it." style="inline-size:100%;max-inline-size:900px;block-size:auto;border:1px solid var(--border-default);border-radius:var(--radius-md)">
+  </div>
+</section>
+
+<!-- =================================================================== 02 COLOUR -->
+<section class="s-section s-wrap" id="s-colour">
+  <div class="s-section__head">
+    <span class="g-eyebrow">§ 02 — Colour</span>
+    <h2>Paper, ink, one blue pencil.</h2>
+    <p>Warm newsprint and printing ink carry the interface. The accent is reserved for the action and the current place — never decoration. Proof colours mean one thing each and always travel with a mark. Ratios below are measured live from the tokens on this page, so they stay true when you switch the theme or the accent.</p>
+  </div>
+
+  <div class="s-sub">
+    <h3>Surfaces &amp; ink</h3>
+    <div class="s-grid" data-swatches="--surface-paper:Paper,--surface-raised:Raised,--surface-sunken:Sunken,--surface-overlay:Overlay,--ink-primary:Ink,--ink-secondary:Ink secondary,--ink-tertiary:Ink tertiary,--border-strong:Border strong"></div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Accent family<small>Derived from <code class="g-mono">--accent</code> alone. Try the swatches in the header.</small></h3>
+    <div class="s-stack">
+      <div class="s-grid" data-swatches="--accent-fill:Accent fill,--accent-hover:Hover,--accent-pressed:Pressed,--accent-subtle:Subtle,--accent-text:Accent text,--accent-guide:Guide"></div>
+      <div class="s-pairs" data-pairs="--accent-on/--accent-fill:On accent,--accent-on/--accent-hover:On hover,--accent-on/--accent-pressed:On pressed,--accent-text/--surface-paper:Link on paper,--accent-text/--surface-raised:Link on raised,--ink-primary/--accent-subtle:Ink on subtle"></div>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Proof colours<small>Okabe–Ito family: distinct under protanopia, deuteranopia and tritanopia. Never colour alone.</small></h3>
+    <div class="s-proofset">
+      <div class="s-proofcard">
+        <div class="s-proofcard__chips"><span style="background:var(--proof-insert)"></span><span style="background:var(--proof-insert-tint)"></span><span style="background:var(--proof-insert-ink)"></span></div>
+        <p class="g-proof-text" style="margin:0">Fresh <ins class="g-ins"><span class="g-sr">Added: </span>sourdough</ins> daily</p>
+        <div class="s-pairs" data-pairs="--proof-insert/--surface-paper:Mark,--proof-insert-ink/--proof-insert-tint:Text on tint"></div>
+        <span class="s-caption">insert · solid underline + caret</span>
+      </div>
+      <div class="s-proofcard">
+        <div class="s-proofcard__chips"><span style="background:var(--proof-delete)"></span><span style="background:var(--proof-delete-tint)"></span><span style="background:var(--proof-delete-ink)"></span></div>
+        <p class="g-proof-text" style="margin:0">Fresh <del class="g-del"><span class="g-sr">Removed: </span>white</del> bread daily</p>
+        <div class="s-pairs" data-pairs="--proof-delete/--surface-paper:Mark,--proof-delete-ink/--proof-delete-tint:Text on tint"></div>
+        <span class="s-caption">delete · strike + dele loop</span>
+      </div>
+      <div class="s-proofcard">
+        <div class="s-proofcard__chips"><span style="background:var(--proof-change)"></span><span style="background:var(--proof-change-tint)"></span><span style="background:var(--proof-change-ink)"></span></div>
+        <p class="g-proof-text" style="margin:0">Open <mark class="g-chg"><span class="g-sr">Changed: </span>7 days</mark> a week</p>
+        <div class="s-pairs" data-pairs="--proof-change/--surface-paper:Mark,--proof-change-ink/--proof-change-tint:Text on tint"></div>
+        <span class="s-caption">change / move · dashed underline + transpose</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Status</h3>
+    <div class="s-stack">
+      <div class="s-row">
+        <span class="g-badge g-badge--success"><span class="g-mark g-mark--reg" aria-hidden="true"></span>Published</span>
+        <span class="g-badge g-badge--warning"><span class="g-mark g-mark--bang" aria-hidden="true"></span>Needs a look</span>
+        <span class="g-badge g-badge--danger"><span class="g-mark g-mark--bang" aria-hidden="true"></span>Couldn’t publish</span>
+        <span class="g-badge g-badge--info"><span class="g-mark g-mark--pilcrow" aria-hidden="true"></span>Preview starting</span>
+      </div>
+      <div class="s-pairs" data-pairs="--success/--surface-paper:Success,--warning/--surface-paper:Warning,--danger/--surface-paper:Danger,--info/--surface-paper:Info,--success-ink/--success-tint:Success on tint,--warning-ink/--warning-tint:Warning on tint,--danger-ink/--danger-tint:Danger on tint,--danger-on/--danger-fill:On danger fill"></div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== 03 TYPE -->
+<section class="s-section s-wrap" id="s-type">
+  <div class="s-section__head">
+    <span class="g-eyebrow">§ 03 — Type</span>
+    <h2>A set page and a working margin.</h2>
+    <p>Newsreader sets the page: headlines, titles and the proof itself. Figtree runs the interface. IBM Plex Mono labels things precisely — field keys, paths, counts, section numbers. All three are open-licence and self-hosted from <code class="g-mono">@fontsource</code>.</p>
+  </div>
+  <div>
+    <div class="s-family">
+      <p class="s-family__sample g-display" style="font-size:var(--display-lg)">Every change is a <em>proof</em>.</p>
+      <div class="s-family__meta"><b>Newsreader — display &amp; proof</b><span>400–500, italic for emphasis. Optical sizes on.</span><code>@fontsource-variable/newsreader</code><code>--font-display</code></div>
+    </div>
+    <div class="s-family">
+      <p class="s-family__sample" style="font-family:var(--font-text);font-size:var(--display-sm);font-weight:500;letter-spacing:-0.01em">Edit the hero, check the change, publish when it’s right.</p>
+      <div class="s-family__meta"><b>Figtree — interface</b><span>400 body · 500 nav · 600 labels &amp; buttons · 700 rarely.</span><code>@fontsource-variable/figtree</code><code>--font-text</code></div>
+    </div>
+    <div class="s-family">
+      <p class="s-family__sample" style="font-family:var(--font-mono);font-size:var(--display-sm);letter-spacing:-0.02em">hero.heading · +4 · 2 min ago</p>
+      <div class="s-family__meta"><b>IBM Plex Mono — labels</b><span>400/500. Uppercase + tracking for eyebrows; as-is for keys and paths.</span><code>@fontsource/ibm-plex-mono</code><code>--font-mono</code></div>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>App scale<small>Fixed. 13 px is the UI base; 14 px for anything you type into.</small></h3>
+    <div class="s-scale">
+      <div class="s-scale__row"><span class="s-caption">2xs 11/16 mono</span><span class="g-eyebrow">Hero › Heading</span></div>
+      <div class="s-scale__row"><span class="s-caption">xs 12/16</span><span style="font-size:var(--text-xs)">Last published 2 hours ago by Sam</span></div>
+      <div class="s-scale__row"><span class="s-caption">sm 13/20 · base</span><span style="font-size:var(--text-sm)">Pages · Blog posts · Team · Media · Version history</span></div>
+      <div class="s-scale__row"><span class="s-caption">md 14/22 · input</span><span style="font-size:var(--text-md)">Brand and web design for teams that ship.</span></div>
+      <div class="s-scale__row"><span class="s-caption">lg 16/24</span><span style="font-size:var(--text-lg);font-weight:600">Publish 3 changes?</span></div>
+      <div class="s-scale__row"><span class="s-caption">xl 20/28 display</span><span class="g-title">Home page</span></div>
+      <div class="s-scale__row"><span class="s-caption">2xl 26/32 display</span><span style="font:400 var(--text-2xl)/var(--leading-2xl) var(--font-display)">Nothing to proof yet.</span></div>
+    </div>
+  </div>
+  <div class="s-sub">
+    <h3>Display scale<small>Fluid, 390 → 1440 px. Marketing and docs only.</small></h3>
+    <div class="s-scale">
+      <div class="s-scale__row"><span class="s-caption">display-xl 52→112</span><span class="g-display" style="font-size:var(--display-xl)">Proof it.</span></div>
+      <div class="s-scale__row"><span class="s-caption">display-lg 44→84</span><span class="g-display" style="font-size:var(--display-lg)">It’s just your repo.</span></div>
+      <div class="s-scale__row"><span class="s-caption">display-md 36→60</span><span class="g-display" style="font-size:var(--display-md)">See everything first.</span></div>
+      <div class="s-scale__row"><span class="s-caption">display-sm 28→40</span><span class="g-display" style="font-size:var(--display-sm)">No database. No lock-in.</span></div>
+      <div class="s-scale__row"><span class="s-caption">lead 18→22</span><span style="font-size:var(--text-lead);color:var(--ink-secondary)">Point Galley at a site and start editing in a minute.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== 04 PROOF -->
+<section class="s-section s-wrap" id="s-proof">
+  <div class="s-section__head">
+    <span class="g-eyebrow">§ 04 — Proof marks</span>
+    <h2>Diffs, the way editors mark them.</h2>
+    <p>Insertions and deletions are the product, so they get the care of a set page: tinted like a highlighter, marked like a proof. Each kind of change has its own mark, so meaning survives colour-blindness, greyscale and forced-colours mode.</p>
+  </div>
+
+  <div class="s-sub">
+    <h3>The glyph set<small>CSS masks in components.css — <code class="g-mono">.g-mark--*</code>. Inherit currentColor.</small></h3>
+    <div class="s-marks">
+      <div class="s-markcell"><span class="g-mark g-mark--caret g-mark--insert" aria-hidden="true"></span><div><b>Caret</b><span>Insertion. Added text, new entries, “edited” fields.</span></div></div>
+      <div class="s-markcell"><span class="g-mark g-mark--dele g-mark--delete" aria-hidden="true"></span><div><b>Dele</b><span>Deletion. Removed text, deleted entries, discard.</span></div></div>
+      <div class="s-markcell"><span class="g-mark g-mark--transpose g-mark--change" aria-hidden="true"></span><div><b>Transpose</b><span>Changed or moved. Reordered blocks, renamed files.</span></div></div>
+      <div class="s-markcell"><span class="g-mark g-mark--stet" aria-hidden="true"></span><div><b>Stet</b><span>“Let it stand.” Working / waiting; restored after undo.</span></div></div>
+      <div class="s-markcell"><span class="g-mark g-mark--reg" aria-hidden="true"></span><div><b>Registration</b><span>In register: published, live, in sync.</span></div></div>
+      <div class="s-markcell"><span class="g-mark g-mark--pilcrow" aria-hidden="true"></span><div><b>Pilcrow</b><span>A paragraph or body block. Empty pages.</span></div></div>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Inline proof<small><code class="g-mono">.g-ins</code> · <code class="g-mono">.g-del</code> · <code class="g-mono">.g-chg</code> inside <code class="g-mono">.g-proof-text</code></small></h3>
+    <div class="g-sheet s-proofsheet g-crop">
+      <p class="g-eyebrow" style="margin-block-end:var(--space-3)">About › Body · paragraph 2</p>
+      <p class="g-proof-text">We are a small studio <del class="g-del"><span class="g-sr">Removed: </span>who make</del> <ins class="g-ins"><span class="g-sr">Added: </span>making</ins> brands and websites for teams that ship. Most of our clients <mark class="g-chg"><span class="g-sr">Changed: </span>stay for years</mark>, and we <ins class="g-ins"><span class="g-sr">Added: </span>still</ins> answer the phone ourselves.<del class="g-del"><span class="g-sr">Removed: </span> We love what we do!</del></p>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Field changes<small>What changed, said in content terms — collection › block › field.</small></h3>
+    <div class="s-card" style="max-inline-size:760px">
+      <article class="g-change">
+        <div class="g-change__head"><span class="g-change__path"><b>Hero</b> › Heading</span><span class="g-change__entry">Home page</span></div>
+        <div class="g-change__actions"><button class="g-btn g-btn--quiet g-btn--sm" type="button">Undo</button></div>
+        <span class="g-change__gutter"><span class="g-mark g-mark--dele g-mark--delete" aria-hidden="true"></span></span>
+        <div class="g-change__line g-change__line--before"><span><span class="g-sr">Before: </span>We make brands for the web.</span></div>
+        <span class="g-change__gutter"><span class="g-mark g-mark--caret g-mark--insert" aria-hidden="true"></span></span>
+        <div class="g-change__line g-change__line--after"><span><span class="g-sr">After: </span>Brand and web design for teams that ship.</span></div>
+      </article>
+      <article class="g-change">
+        <div class="g-change__head"><span class="g-change__path"><b>Hero</b> › Subheading</span><span class="g-change__entry">Home page</span></div>
+        <div class="g-change__actions"><button class="g-btn g-btn--quiet g-btn--sm" type="button">Undo</button></div>
+        <span class="g-change__gutter"><span class="g-mark g-mark--transpose g-mark--change" aria-hidden="true"></span></span>
+        <div class="g-change__line g-change__line--words">Identity, websites and campaigns<del class="g-del g-del--plain"><span class="g-sr">Removed: </span>, built carefully and delivered on time by a team of six</del>. <ins class="g-ins"><span class="g-sr">Added: </span>Delivered on time.</ins></div>
+      </article>
+      <article class="g-change">
+        <div class="g-change__head"><span class="g-change__path"><b>Features</b> › Moved up</span><span class="g-change__entry">Home page</span></div>
+        <div class="g-change__actions"><button class="g-btn g-btn--quiet g-btn--sm" type="button">Undo</button></div>
+        <span class="g-change__gutter"><span class="g-mark g-mark--transpose g-mark--change" aria-hidden="true"></span></span>
+        <div class="g-change__line g-muted">“Testimonials” now comes before “Our work”.</div>
+      </article>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>File changes<small>Title first, path second. Counts carry their marks.</small></h3>
+    <div class="s-card" style="max-inline-size:760px" role="list">
+      <div class="g-file" role="listitem" aria-current="true">
+        <span class="g-badge g-badge--change"><span class="g-mark g-mark--transpose" aria-hidden="true"></span>Edited</span>
+        <div class="g-file__main"><span class="g-file__title">Home page</span><span class="g-file__path">src/content/pages/<b>index.md</b></span></div>
+        <span class="g-tally"><span class="g-tally__ins"><span class="g-mark g-mark--caret" aria-hidden="true"></span>4<span class="g-sr"> lines added</span></span><span class="g-tally__del"><span class="g-mark g-mark--dele" aria-hidden="true"></span>2<span class="g-sr"> lines removed</span></span></span>
+        <button class="g-btn g-btn--quiet g-btn--sm" type="button">Discard</button>
+      </div>
+      <div class="g-file" role="listitem">
+        <span class="g-badge g-badge--insert"><span class="g-mark g-mark--caret" aria-hidden="true"></span>New</span>
+        <div class="g-file__main"><span class="g-file__title">Notes from the print shop</span><span class="g-file__path">src/content/blog/<b>notes-from-the-print-shop.md</b></span></div>
+        <span class="g-tally"><span class="g-tally__ins"><span class="g-mark g-mark--caret" aria-hidden="true"></span>38<span class="g-sr"> lines added</span></span></span>
+        <button class="g-btn g-btn--quiet g-btn--sm" type="button">Discard</button>
+      </div>
+      <div class="g-file" role="listitem">
+        <span class="g-badge g-badge--insert"><span class="g-mark g-mark--caret" aria-hidden="true"></span>New</span>
+        <div class="g-file__main"><span class="g-file__title">hero-studio.webp</span><span class="g-file__path">public/images/<b>hero-studio.webp</b> · 1600 × 900 · 214 KB</span></div>
+        <span class="g-tally"><span class="g-tally__chg">image</span></span>
+        <button class="g-btn g-btn--quiet g-btn--sm" type="button">Discard</button>
+      </div>
+      <div class="g-file" role="listitem">
+        <span class="g-badge g-badge--delete"><span class="g-mark g-mark--dele" aria-hidden="true"></span>Deleted</span>
+        <div class="g-file__main"><span class="g-file__title">Old team page</span><span class="g-file__path">src/content/pages/<b>team-2023.md</b></span></div>
+        <span class="g-tally"><span class="g-tally__del"><span class="g-mark g-mark--dele" aria-hidden="true"></span>22<span class="g-sr"> lines removed</span></span></span>
+        <button class="g-btn g-btn--quiet g-btn--sm" type="button">Restore</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== 05 COMPONENTS -->
+<section class="s-section s-wrap" id="s-components">
+  <div class="s-section__head">
+    <span class="g-eyebrow">§ 05 — Components</span>
+    <h2>Things you press are pills.</h2>
+    <p>Surfaces are nearly square, like paper. Controls are pills, like the parent brand. One primary action per view — usually Publish.</p>
+  </div>
+
+  <div class="s-sub">
+    <h3>Buttons<small><code class="g-mono">.g-btn</code> + <code class="g-mono">--primary --secondary --quiet --danger</code> · <code class="g-mono">--sm --lg --xl --icon</code></small></h3>
+    <div class="s-stack">
+      <div class="s-btn-matrix">
+        <span class="s-caption">default</span>
+        <button class="g-btn g-btn--primary" type="button">Publish</button>
+        <button class="g-btn g-btn--secondary" type="button">Proof</button>
+        <button class="g-btn g-btn--quiet" type="button">Discard</button>
+        <button class="g-btn g-btn--danger" type="button">Discard 3 changes</button>
+        <span class="s-caption">hover</span>
+        <button class="g-btn g-btn--primary" type="button" style="background:var(--accent-hover)">Publish</button>
+        <button class="g-btn g-btn--secondary" type="button" style="border-color:var(--ink-primary)">Proof</button>
+        <button class="g-btn g-btn--quiet" type="button" style="color:var(--ink-primary);background:color-mix(in srgb, var(--ink-primary) 7%, transparent)">Discard</button>
+        <button class="g-btn g-btn--danger" type="button" style="background:color-mix(in oklab, var(--danger-fill) 86%, var(--ink-primary))">Discard 3 changes</button>
+        <span class="s-caption">focus</span>
+        <button class="g-btn g-btn--primary" type="button" style="outline:2px solid var(--focus-ring);outline-offset:2px">Publish</button>
+        <button class="g-btn g-btn--secondary" type="button" style="outline:2px solid var(--focus-ring);outline-offset:2px">Proof</button>
+        <button class="g-btn g-btn--quiet" type="button" style="outline:2px solid var(--focus-ring);outline-offset:2px">Discard</button>
+        <button class="g-btn g-btn--danger" type="button" style="outline:2px solid var(--focus-ring);outline-offset:2px">Discard 3 changes</button>
+        <span class="s-caption">busy</span>
+        <button class="g-btn g-btn--primary" type="button" aria-busy="true">Publishing<span class="g-dots" aria-hidden="true"><i></i><i></i><i></i></span></button>
+        <button class="g-btn g-btn--secondary" type="button" aria-busy="true">Checking<span class="g-dots" aria-hidden="true"><i></i><i></i><i></i></span></button>
+        <span></span><span></span>
+        <span class="s-caption">disabled</span>
+        <button class="g-btn g-btn--primary" type="button" disabled>Publish</button>
+        <button class="g-btn g-btn--secondary" type="button" disabled>Proof</button>
+        <button class="g-btn g-btn--quiet" type="button" disabled>Discard</button>
+        <button class="g-btn g-btn--danger" type="button" disabled>Discard 3 changes</button>
+      </div>
+      <div class="s-row">
+        <button class="g-btn g-btn--primary g-btn--sm" type="button">Small</button>
+        <button class="g-btn g-btn--primary" type="button">Medium <span class="g-btn__kbd">⌘↵</span></button>
+        <button class="g-btn g-btn--primary g-btn--lg" type="button">Large</button>
+        <button class="g-btn g-btn--primary g-btn--xl" type="button">Start with your site</button>
+        <button class="g-btn g-btn--secondary g-btn--icon" type="button" aria-label="Send"><span class="g-mark g-mark--send" aria-hidden="true"></span></button>
+        <button class="g-btn g-btn--danger g-btn--quiet g-btn--sm" type="button">Delete page</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Inputs<small><code class="g-mono">.g-field</code> · <code class="g-mono">.g-input</code> · <code class="g-mono">.g-select</code> · <code class="g-mono">.g-toggle</code></small></h3>
+    <div class="s-form">
+      <div class="g-field">
+        <div class="g-field__head"><label class="g-label" for="f1">Heading</label><span class="g-field__key">hero.heading</span><span class="g-field__state"><span class="g-mark g-mark--caret" aria-hidden="true"></span>Edited</span></div>
+        <input class="g-input" id="f1" value="Brand and web design for teams that ship.">
+      </div>
+      <div class="g-field">
+        <div class="g-field__head"><label class="g-label" for="f2">Button link</label><span class="g-field__key">hero.cta.href</span></div>
+        <input class="g-input" id="f2" value="/contat/" aria-invalid="true" aria-describedby="f2e">
+        <p class="g-error-text" id="f2e"><span class="g-mark g-mark--bang" aria-hidden="true"></span>No page lives at /contat/. Did you mean /contact/?</p>
+      </div>
+      <div class="g-field">
+        <div class="g-field__head"><label class="g-label" for="f3">Author</label><span class="g-field__key">author</span></div>
+        <span class="g-select-wrap"><select class="g-select" id="f3"><option>Sam Okafor</option><option>Rae Lindqvist</option><option>Jo Marsh</option></select></span>
+        <p class="g-hint">From the Team collection.</p>
+      </div>
+      <div class="g-field">
+        <div class="g-field__head"><label class="g-label" for="f4">Description</label><span class="g-field__key">description</span></div>
+        <textarea class="g-textarea" id="f4" placeholder="One or two sentences for search results and link previews"></textarea>
+      </div>
+      <div class="g-field">
+        <span class="g-label">Options</span>
+        <label class="g-toggle-row"><span>Show on home page</span><input class="g-toggle" type="checkbox" role="switch" checked></label>
+        <label class="g-toggle-row"><span>Draft</span><input class="g-toggle" type="checkbox" role="switch"></label>
+      </div>
+      <div class="g-field">
+        <label class="g-label" for="f6">Disabled</label>
+        <input class="g-input" id="f6" value="Set by the site's configuration" disabled>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Tabs &amp; tags</h3>
+    <div class="s-stack">
+      <div class="g-tabs" role="tablist" aria-label="Proof views">
+        <button class="g-tab" role="tab" aria-selected="true" type="button">Changes <span class="g-count">3</span></button>
+        <button class="g-tab" role="tab" aria-selected="false" type="button">Side by side</button>
+        <button class="g-tab" role="tab" aria-selected="false" type="button">Files <span class="g-count g-count--quiet">4</span></button>
+      </div>
+      <div class="s-row">
+        <span class="g-tag">Pages</span>
+        <span class="g-tag g-tag--outline">Blog posts · 42</span>
+        <span class="g-tag g-tag--mono">astro</span>
+        <span class="g-badge g-badge--insert"><span class="g-mark g-mark--caret" aria-hidden="true"></span>New</span>
+        <span class="g-badge g-badge--change"><span class="g-mark g-mark--transpose" aria-hidden="true"></span>Edited</span>
+        <span class="g-badge g-badge--delete"><span class="g-mark g-mark--dele" aria-hidden="true"></span>Deleted</span>
+        <span class="g-badge g-badge--accent"><span class="g-mark g-mark--stet" aria-hidden="true"></span>Assistant working</span>
+        <span class="g-kbd">⌘</span><span class="g-kbd">K</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Toasts<small>role="status" · bottom right · 6 s, or until dismissed when there’s an action.</small></h3>
+    <div class="s-stack" style="max-inline-size:400px">
+      <div class="g-toast g-toast--success" role="status">
+        <span class="g-mark g-mark--reg" aria-hidden="true"></span>
+        <span class="g-toast__title">Published</span>
+        <div class="g-toast__actions"><button class="g-btn g-btn--quiet g-btn--sm" type="button">Undo</button></div>
+        <span class="g-toast__body">3 changes are live. The site usually updates within a minute.</span>
+      </div>
+      <div class="g-toast g-toast--danger" role="alert">
+        <span class="g-mark g-mark--bang" aria-hidden="true"></span>
+        <span class="g-toast__title">Couldn’t publish</span>
+        <div class="g-toast__actions"><button class="g-btn g-btn--secondary g-btn--sm" type="button">Try again</button></div>
+        <span class="g-toast__body">Your changes are saved here, but the site’s host didn’t answer. Check your connection and try again.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Dialog<small>Native &lt;dialog&gt;. Confirm only what can’t be undone in one click.</small></h3>
+    <div class="s-stack">
+      <div class="s-dialog-stage">
+        <div class="g-dialog" role="dialog" aria-labelledby="dlg-t" aria-describedby="dlg-b">
+          <div class="g-dialog__inner">
+            <h3 class="g-dialog__title" id="dlg-t">Discard 3 changes?</h3>
+            <p class="g-dialog__body" id="dlg-b">This removes your unpublished edits to Home page, About page and one image. What’s already published stays as it is.</p>
+          </div>
+          <div class="g-dialog__actions"><button class="g-btn g-btn--secondary" type="button">Keep editing</button><button class="g-btn g-btn--danger" type="button">Discard 3 changes</button></div>
+        </div>
+      </div>
+      <div><button class="g-btn g-btn--secondary g-btn--sm" type="button" id="open-dialog">Open as a real dialog</button></div>
+      <dialog class="g-dialog" id="real-dialog" aria-labelledby="rdlg-t">
+        <form method="dialog">
+          <div class="g-dialog__inner">
+            <h3 class="g-dialog__title" id="rdlg-t">Publish 3 changes?</h3>
+            <p class="g-dialog__body">Home page, About page and one new image will go live. You can undo this from Version history.</p>
+          </div>
+          <div class="g-dialog__actions"><button class="g-btn g-btn--secondary" value="cancel">Not yet</button><button class="g-btn g-btn--primary" value="ok">Publish</button></div>
+        </form>
+      </dialog>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Chat<small>Tool lines say what actually happened. Questions come with options.</small></h3>
+    <div class="s-grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr))">
+      <div class="s-card s-chat">
+        <div class="g-chat">
+          <div class="g-msg g-msg--user"><p>Make the hero heading say we work with teams that ship, and shorten the subheading.</p></div>
+          <div class="g-msg g-msg--assistant">
+            <span class="g-msg__by" aria-hidden="true"></span>
+            <div class="g-msg__body">
+              <div class="g-activity g-activity--done"><span class="g-mark g-mark--stet" aria-hidden="true"></span><span class="g-activity__text">Read Home page</span></div>
+              <div class="g-activity g-activity--edit"><span class="g-mark g-mark--caret" aria-hidden="true"></span><span class="g-activity__text">Edited Home › Hero › Heading</span></div>
+              <div class="g-activity g-activity--edit"><span class="g-mark g-mark--caret" aria-hidden="true"></span><span class="g-activity__text">Edited Home › Hero › Subheading</span></div>
+              <p>The heading now reads “Brand and web design for teams that ship.” and the subheading is down to one sentence. Both are waiting in Proof — nothing is published.</p>
+              <div class="g-quick-replies"><button class="g-chip" type="button">Show me the proof</button><button class="g-chip" type="button">Try a shorter heading</button><button class="g-chip" type="button">Undo this</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="s-card s-chat">
+        <div class="g-chat">
+          <div class="g-msg g-msg--user"><p>Update the pricing page to say prices include VAT.</p></div>
+          <div class="g-msg g-msg--assistant">
+            <span class="g-msg__by" aria-hidden="true"></span>
+            <div class="g-msg__body">
+              <div class="g-activity g-activity--done"><span class="g-mark g-mark--stet" aria-hidden="true"></span><span class="g-activity__text">Searched for “pricing” · 2 pages</span></div>
+              <p>There are two pricing pages. Which one?</p>
+              <div class="g-quick-replies"><button class="g-chip" type="button">Pricing · /pricing/</button><button class="g-chip" type="button">Team plans · /teams/pricing/</button><button class="g-chip" type="button">Both</button></div>
+            </div>
+          </div>
+          <div class="g-activity g-activity--running" role="status"><span class="g-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="g-activity__text">Waiting for your answer</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-sub">
+    <h3>Empty state<small>Say what will appear here and how to make it appear.</small></h3>
+    <div class="s-card" style="padding:var(--space-8) var(--space-4)">
+      <div class="g-empty">
+        <div class="g-sheet g-crop g-ruled" style="inline-size:96px;block-size:120px;display:grid;place-items:center;--crop-o:10px"><span class="g-mark g-mark--pilcrow g-empty__mark" aria-hidden="true"></span></div>
+        <h3 class="g-empty__title">Nothing to proof yet.</h3>
+        <p class="g-empty__body">Edit a field, click text on the page, or ask in chat. Every change lands here before anything goes live.</p>
+        <div class="g-empty__actions"><button class="g-btn g-btn--primary" type="button">Open Home page</button><button class="g-btn g-btn--quiet" type="button">How proofing works</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== 06 APP -->
+<section class="s-section s-wrap" id="s-app">
+  <div class="s-section__head">
+    <span class="g-eyebrow">§ 06 — In the app</span>
+    <h2>Form, page, assistant.</h2>
+    <p>The editor at real density: 13 px interface, 14 px inputs, hairline panes on warm paper. The site’s own page sits on a sunken proofing table; hovering text outlines it for click-to-edit. Narrow the window to see the frame adapt.</p>
+  </div>
+
+  <div class="s-frame">
+    <div class="s-frame__chrome" aria-hidden="true"><i></i><i></i><i></i><span>galley — lantern-studio</span></div>
+    <div class="g-app">
+      <nav class="g-sidebar" aria-label="Site">
+        <a class="g-brand" href="#s-app" aria-label="Galley — Sites">
+          <img class="g-brand__logo" src="logo/mark.svg" alt="" width="20" height="20" data-theme-src-dark="logo/mark-reverse.svg">
+          <span class="g-brand__name s-hide-collapsed">Lantern Studio</span>
+        </a>
+        <div class="g-nav">
+          <a class="g-nav__item" href="#s-app"><svg class="g-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 7.2 8 2.8l5.5 4.4v6.3h-11z"/></svg><span class="s-hide-collapsed">Site home</span></a>
+          <a class="g-nav__item" href="#s-app"><svg class="g-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4h10M3 8h3.5m3 0H13M5.6 13.2 8 9.8l2.4 3.4"/></svg><span class="s-hide-collapsed">Proof</span><span class="g-count s-hide-collapsed">3</span></a>
+          <span class="g-eyebrow g-nav__label s-hide-collapsed">Content</span>
+          <a class="g-nav__item" href="#s-app" aria-current="page"><svg class="g-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h6l3 3v8h-9zM9.5 2.5v3h3"/></svg><span class="s-hide-collapsed">Pages</span><span class="g-nav__meta s-hide-collapsed">8</span></a>
+          <a class="g-nav__item" href="#s-app"><svg class="g-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3.5h10M3 6.8h10M3 10.1h10M3 13.4h6"/></svg><span class="s-hide-collapsed">Blog posts</span><span class="g-nav__meta s-hide-collapsed">42</span></a>
+          <a class="g-nav__item" href="#s-app"><svg class="g-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 13.5c.6-2.6 2.6-4 5-4s4.4 1.4 5 4"/></svg><span class="s-hide-collapsed">Team</span><span class="g-nav__meta s-hide-collapsed">6</span></a>
+          <a class="g-nav__item" href="#s-app"><svg class="g-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.5h11v9h-11zM2.5 10.5l3-3 3 3 2-2 3 3"/><circle cx="10.5" cy="6" r="1"/></svg><span class="s-hide-collapsed">Media</span></a>
+          <span class="g-eyebrow g-nav__label s-hide-collapsed">Site</span>
+          <a class="g-nav__item" href="#s-app"><svg class="g-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.8 8a5.2 5.2 0 1 0 1.5-3.7M2.5 2.8v2.6h2.6M8 5.2V8l2 1.4"/></svg><span class="s-hide-collapsed">Version history</span></a>
+          <a class="g-nav__item" href="#s-app"><svg class="g-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.5h11M2.5 11.5h11"/><circle cx="6" cy="4.5" r="1.6" fill="var(--surface-paper)"/><circle cx="10" cy="11.5" r="1.6" fill="var(--surface-paper)"/></svg><span class="s-hide-collapsed">Settings</span></a>
+        </div>
+      </nav>
+
+      <div class="g-main">
+        <div class="g-toolbar">
+          <div class="g-crumbs"><span>Pages</span><span class="g-crumbs__sep">›</span><span aria-current="page">Home</span></div>
+          <span class="g-badge g-badge--change s-hide-narrow"><span class="g-mark g-mark--transpose" aria-hidden="true"></span>Edited</span>
+          <span class="g-toolbar__spacer"></span>
+          <button class="g-btn g-btn--quiet g-btn--sm s-hide-narrow" type="button">Discard</button>
+          <button class="g-btn g-btn--secondary g-btn--sm" type="button">Proof <span class="g-count g-count--quiet">3</span></button>
+          <button class="g-btn g-btn--primary g-btn--sm" type="button">Publish</button>
+        </div>
+
+        <div class="g-workspace">
+          <section class="g-pane s-formpane" aria-label="Form">
+            <div class="g-pane__head"><span class="g-eyebrow">Home page</span><span class="g-toolbar__spacer"></span><span class="g-tag g-tag--mono">index.md</span></div>
+            <div class="g-pane__body" style="display:grid;gap:var(--space-4);align-content:start">
+              <div class="g-field">
+                <div class="g-field__head"><label class="g-label" for="a1">Title</label><span class="g-field__key">title</span></div>
+                <input class="g-input" id="a1" value="Lantern Studio — brand and web design">
+              </div>
+              <div class="g-block">
+                <div class="g-block__head"><span class="g-mark g-mark--chevron" aria-hidden="true" style="color:var(--ink-tertiary)"></span><b style="font-size:var(--text-sm)">Hero</b><span class="g-field__key">blocks[0] · hero</span><span class="g-toolbar__spacer"></span><span class="g-field__state"><span class="g-mark g-mark--caret" aria-hidden="true"></span>2 edits</span></div>
+                <div class="g-block__body">
+                  <div class="g-field">
+                    <div class="g-field__head"><label class="g-label" for="a2">Heading</label><span class="g-field__state"><span class="g-mark g-mark--caret" aria-hidden="true"></span>Edited</span></div>
+                    <input class="g-input" id="a2" value="Brand and web design for teams that ship.">
+                  </div>
+                  <div class="g-field">
+                    <div class="g-field__head"><label class="g-label" for="a3">Subheading</label><span class="g-field__state"><span class="g-mark g-mark--caret" aria-hidden="true"></span>Edited</span></div>
+                    <textarea class="g-textarea" id="a3" style="min-block-size:60px">Identity, websites and campaigns. Delivered on time.</textarea>
+                  </div>
+                  <div class="g-field">
+                    <div class="g-field__head"><label class="g-label" for="a4">Button label</label></div>
+                    <input class="g-input" id="a4" value="Book a call">
+                  </div>
+                </div>
+              </div>
+              <div class="g-block">
+                <div class="g-block__head"><span class="g-mark g-mark--chevron" aria-hidden="true" style="color:var(--ink-tertiary);rotate:-90deg"></span><b style="font-size:var(--text-sm)">Testimonials</b><span class="g-field__key">blocks[1]</span><span class="g-toolbar__spacer"></span><span class="g-tally"><span class="g-tally__chg"><span class="g-mark g-mark--transpose" aria-hidden="true"></span>moved</span></span></div>
+              </div>
+              <div class="g-block">
+                <div class="g-block__head"><span class="g-mark g-mark--chevron" aria-hidden="true" style="color:var(--ink-tertiary);rotate:-90deg"></span><b style="font-size:var(--text-sm)">Our work</b><span class="g-field__key">blocks[2]</span></div>
+              </div>
+              <button class="g-btn g-btn--quiet g-btn--sm" type="button" style="justify-self:start">+ Add section</button>
+            </div>
+          </section>
+
+          <section class="g-pane" aria-label="Preview">
+            <div class="g-pane__head">
+              <div class="g-segmented" role="group" aria-label="Preview mode"><button type="button" aria-pressed="true">Proposed</button><button type="button" aria-pressed="false">Live site</button><button type="button" aria-pressed="false">Side by side</button></div>
+              <span class="g-toolbar__spacer"></span>
+              <span class="g-faint g-mono s-hide-narrow" style="font-size:var(--text-2xs)">/</span>
+            </div>
+            <div class="g-preview">
+              <div class="g-preview__frame g-crop" style="--crop-o:12px">
+                <div class="s-site">
+                  <div class="s-site__nav"><b>LANTERN</b><span><span>Work</span><span>Journal</span><span>Contact</span></span></div>
+                  <div class="s-site__hero">
+                    <h4><span class="s-site__tip" aria-hidden="true">Click to edit</span><span class="g-editable-hover">Brand and web design for teams that ship.</span></h4>
+                    <p>Identity, websites and campaigns. Delivered on time.</p>
+                    <span class="s-site__btn">Book a call</span>
+                  </div>
+                  <div class="s-site__grid"><div></div><div></div><div></div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="g-pane s-chatpane" aria-label="Assistant">
+            <div class="g-pane__head"><span class="g-eyebrow">Assistant</span><span class="g-toolbar__spacer"></span><button class="g-btn g-btn--quiet g-btn--sm" type="button">Undo last turn</button></div>
+            <div class="g-pane__body">
+              <div class="g-chat">
+                <div class="g-msg g-msg--user"><p>Make the hero heading say we work with teams that ship, and shorten the subheading.</p></div>
+                <div class="g-msg g-msg--assistant">
+                  <span class="g-msg__by" aria-hidden="true"></span>
+                  <div class="g-msg__body">
+                    <div class="g-activity g-activity--edit"><span class="g-mark g-mark--caret" aria-hidden="true"></span><span class="g-activity__text">Edited Home › Hero › Heading</span></div>
+                    <div class="g-activity g-activity--edit"><span class="g-mark g-mark--caret" aria-hidden="true"></span><span class="g-activity__text">Edited Home › Hero › Subheading</span></div>
+                    <p>Done — both are in Proof. Nothing is published yet.</p>
+                    <div class="g-quick-replies"><button class="g-chip" type="button">Show me the proof</button><button class="g-chip" type="button">Shorter</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="g-pane__foot">
+              <div class="g-composer">
+                <label class="g-sr" for="cmp">Ask for a change</label>
+                <textarea id="cmp" rows="2" placeholder="Ask for a change…"></textarea>
+                <button class="g-btn g-btn--primary g-btn--icon g-btn--sm" type="button" aria-label="Send"><span class="g-mark g-mark--send" aria-hidden="true"></span></button>
+                <div class="g-composer__foot"><span class="g-kbd">↵</span> to send · <span class="g-kbd">⇧↵</span> new line</div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <footer class="g-statusbar">
+        <span class="g-statusbar__item"><span class="g-mark g-mark--reg" aria-hidden="true" style="color:var(--success)"></span>Preview running</span>
+        <span class="g-statusbar__item s-hide-narrow">3 unpublished changes</span>
+        <span class="g-statusbar__item s-hide-narrow">Last published 2 h ago</span>
+      </footer>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="s-wrap s-foot">
+  <span>Galley by Fiction Tribe · brand v1.0</span>
+  <span class="g-mono">tokens.css · components.css · logo/ · voice.md · positioning.md</span>
+</footer>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const params = new URLSearchParams(location.search);
+
+  // ---- Theme
+  const themeBtns = document.querySelectorAll('[data-theme-set]');
+  const isDark = () => root.dataset.theme === 'dark' || (root.dataset.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  function setTheme(t) {
+    root.dataset.theme = t;
+    themeBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeSet === t)));
+    document.querySelectorAll('[data-theme-src-dark]').forEach(img => {
+      img.dataset.themeSrcLight ||= img.getAttribute('src');
+      img.src = isDark() ? img.dataset.themeSrcDark : img.dataset.themeSrcLight;
+    });
+    requestAnimationFrame(measure);
+  }
+  themeBtns.forEach(b => b.addEventListener('click', () => setTheme(b.dataset.themeSet)));
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => setTheme(root.dataset.theme));
+
+  // ---- Accent (white-label test)
+  const accBtns = document.querySelectorAll('[data-accent]');
+  const picker = document.getElementById('s-accent');
+  function setAccent(v) {
+    if (v.toUpperCase() === '#2E2BFF') root.style.removeProperty('--accent'); else root.style.setProperty('--accent', v);
+    accBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.accent.toUpperCase() === v.toUpperCase())));
+    picker.value = v;
+    requestAnimationFrame(measure);
+  }
+  accBtns.forEach(b => b.addEventListener('click', () => setAccent(b.dataset.accent)));
+  picker.addEventListener('input', e => setAccent(e.target.value));
+
+  // ---- Live colour + contrast
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  const probe = document.createElement('i'); probe.style.display = 'none'; document.body.appendChild(probe);
+  function rgbOf(token) {
+    probe.style.color = `var(${token})`;
+    ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = '#000'; ctx.fillStyle = getComputedStyle(probe).color; ctx.fillRect(0, 0, 1, 1);
+    return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3);
+  }
+  const hex = a => '#' + a.map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+  const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const Y = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  const ratio = (a, b) => { const [x, y] = [Y(a), Y(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const grade = (r, ui) => r >= 7 ? 'AAA' : r >= 4.5 ? 'AA' : (ui && r >= 3) ? 'AA UI' : r >= 3 ? 'AA large' : 'fail';
+
+  document.querySelectorAll('[data-swatches]').forEach(host => {
+    host.dataset.swatches.split(',').forEach(spec => {
+      const [token, name] = spec.split(':');
+      const el = document.createElement('div'); el.className = 's-swatch';
+      el.innerHTML = `<div class="s-swatch__chip" style="background:var(${token})"><span data-hex></span><span class="s-ratio" data-ratio></span></div><div class="s-swatch__meta"><b>${name}</b><code>${token}</code></div>`;
+      el.dataset.token = token; host.appendChild(el);
+    });
+  });
+  document.querySelectorAll('[data-pairs]').forEach(host => {
+    host.dataset.pairs.split(',').forEach(spec => {
+      const [pair, name] = spec.split(':'); const [fg, bg] = pair.split('/');
+      const el = document.createElement('div'); el.className = 's-pair';
+      el.style.background = `var(${bg})`; el.style.color = `var(${fg})`; el.style.borderColor = 'var(--border-subtle)';
+      el.innerHTML = `<span>${name}</span><code data-r></code>`; el.dataset.fg = fg; el.dataset.bg = bg; host.appendChild(el);
+    });
+  });
+
+  function measure() {
+    const paper = rgbOf('--surface-paper'), ink = rgbOf('--ink-primary');
+    document.querySelectorAll('.s-swatch').forEach(el => {
+      const c = rgbOf(el.dataset.token);
+      const onInk = ratio(c, ink) >= ratio(c, paper);
+      const chip = el.querySelector('.s-swatch__chip');
+      chip.style.color = onInk ? 'var(--ink-primary)' : 'var(--surface-paper)';
+      el.querySelector('[data-hex]').textContent = hex(c);
+      const isSurface = /surface|subtle|guide/.test(el.dataset.token);
+      const isFill = /accent-(fill|hover|pressed)/.test(el.dataset.token);
+      const r = isFill ? ratio(rgbOf('--accent-on'), c) : isSurface ? ratio(ink, c) : ratio(c, paper);
+      if (isFill) chip.style.color = 'var(--accent-on)';
+      el.querySelector('[data-ratio]').textContent = (isFill ? 'text ' : isSurface ? 'ink ' : 'on paper ') + r.toFixed(2);
+    });
+    document.querySelectorAll('.s-pair[data-fg]').forEach(el => {
+      const r = ratio(rgbOf(el.dataset.fg), rgbOf(el.dataset.bg));
+      el.querySelector('[data-r]').textContent = `${r.toFixed(2)} ${grade(r)}`;
+    });
+  }
+
+  // ---- Dialog
+  const dlg = document.getElementById('real-dialog');
+  document.getElementById('open-dialog').addEventListener('click', () => dlg.showModal());
+
+  // ---- Tabs + segmented demos
+  document.querySelectorAll('.g-tabs').forEach(list => list.addEventListener('click', e => {
+    const t = e.target.closest('[role="tab"]'); if (!t) return;
+    list.querySelectorAll('[role="tab"]').forEach(x => x.setAttribute('aria-selected', String(x === t)));
+  }));
+  document.querySelectorAll('.g-segmented:not([aria-label="Theme"])').forEach(g => g.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    g.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+
+  setTheme(params.get('theme') || root.dataset.theme || 'light');
+  if (params.get('accent')) setAccent(params.get('accent'));
+  document.fonts?.ready.then(measure);
+})();
+</script>
+</body>
+</html>

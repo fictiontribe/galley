@@ -1,0 +1,132 @@
+<template>
+  <style>
+    @font-face { font-family: "Newsreader"; src: url("assets/fonts/newsreader-latin-opsz-normal.woff2") format("woff2"); font-weight: 200 800; font-style: normal; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: #f6f1e7; color: #1a1712; }
+    .win { position: absolute; inset: 0; clip-path: inset(236px 96px 54px 96px round 4px); background: #ede6d8; }
+    .plane { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+    .plane img { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+    .cover { position: absolute; left: 0; top: 0; background: #fdfaf4; }
+    .ptr { position: absolute; left: 0; top: 0; width: 19px; height: 28px; overflow: visible; }
+    .cm { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+    .cm i { position: absolute; background: #857b69; display: block; }
+    .cm .h { width: 28px; height: 1.5px; top: -0.75px; }
+    .cm .v { width: 1.5px; height: 28px; left: -0.75px; }
+    .cm.l .h { left: -42px; } .cm.r .h { left: 14px; }
+    .cm.t .v { top: -42px; } .cm.b .v { top: 14px; }
+    .beat { position: absolute; left: 192px; top: 100px; font-family: "Newsreader", Georgia, serif; font-weight: 400; font-size: 104px; line-height: 1; letter-spacing: -0.015em; white-space: nowrap; }
+    .mark { position: absolute; left: 92px; top: 118px; width: 80px; height: 80px; overflow: visible; }
+  </style>
+  <div
+    id="root"
+    data-composition-id="s3-proof"
+    data-width="1920"
+    data-height="1080"
+    data-composition-variables='[{"id":"s3Title","type":"string","label":"Proof · title","default":"Proof"}]'
+  >
+    <div class="win" id="s3-win">
+      <div class="plane" id="s3-plane" data-layout-allow-overflow>
+        <img id="s3-what" class="clip" src="assets/footage/proof-what-changed.jpg" alt="Proof, What changed: “Coats for the long afternoon.” struck out, “Coats for low sun.” written in" data-start="0" data-duration="3.21" data-track-index="2" />
+        <img id="s3-page" class="clip" src="assets/footage/proof-on-the-page.jpg" alt="Proof, On the page: the live Caddow page beside the proposed one, each with its photograph, the headings different" data-start="3.21" data-duration="4.054" data-track-index="2" />
+        <div id="s3-cover-del" class="cover"></div>
+        <div id="s3-cover-ins" class="cover"></div>
+        <svg id="s3-ptr" class="ptr" viewBox="0 0 13 19" aria-hidden="true"><path d="M1 1 L1 15.2 L4.6 11.9 L7.1 17.6 L9.6 16.5 L7.1 10.9 L12 10.9 Z" fill="#1a1712" stroke="#fdfaf4" stroke-width="1.1" stroke-linejoin="round" /></svg>
+      </div>
+    </div>
+    <div class="cm l t" id="s3-proof-cm-tl"><i class="h"></i><i class="v"></i></div>
+    <div class="cm r t" id="s3-proof-cm-tr"><i class="h"></i><i class="v"></i></div>
+    <div class="cm l b" id="s3-proof-cm-bl"><i class="h"></i><i class="v"></i></div>
+    <div class="cm r b" id="s3-proof-cm-br"><i class="h"></i><i class="v"></i></div>
+
+    <!-- The beat's title, with its proofreader's mark hung in the margin: the dele (take out). -->
+    <svg class="mark" viewBox="0 0 12 12" aria-hidden="true"><path id="s3-mark" d="M.8 7.4h5.6c2.2 0 3.4-1.3 3-2.7-.4-1.3-2.2-1.4-2.6-.1-.5 1.7 1.3 3.6 4.4 3.9" fill="none" stroke="#2e2bff" stroke-width="0.85" stroke-linecap="round" stroke-linejoin="round" pathLength="100" stroke-dasharray="100 120" stroke-dashoffset="110" /></svg>
+    <h1 id="s3-title" class="beat" data-var-text="s3Title">Proof</h1>
+
+    <audio id="s3-sfx-pencil" class="clip" src="assets/audio/sfx/pencil-strokes-ani_music.mp3" data-start="0.28" data-duration="0.85" data-track-index="20" data-volume="0.45"></audio>
+    <audio id="s3-sfx-tab" class="clip" src="assets/audio/sfx/click-soft.mp3" data-start="3.12" data-duration="0.37" data-track-index="21" data-volume="0.5"></audio>
+    <audio id="s3-sfx-publish" class="clip" src="assets/audio/sfx/click.mp3" data-start="6.964" data-duration="0.2" data-track-index="22" data-volume="0.4"></audio>
+  </div>
+  <script>
+    (function () {
+      const ID = "s3-proof";
+      const F = window.__FILM || {};
+      const SC = (F.scenes && F.scenes[ID]) || { start: 11.936, duration: 7.264 };
+      const LINE = (F.vo || []).find((l) => l.scene === ID);
+      const norm = (s) => s.toLowerCase().replace(/[^a-z']/g, "");
+      const w = (text, n, fb) => {
+        const h = LINE ? LINE.words.filter((x) => norm(x.t) === text) : [];
+        return h[n || 0] ? +(h[n || 0].s - SC.start).toFixed(3) : fb;
+      };
+      const VW = 1440, VH = 900;
+      const RT = { x: 96, y: 236, w: 1728, h: 790 };
+      function cam(b, R, max) {
+        let s = Math.min(R.w / b.w, R.h / b.h, max || 2.4);
+        s = Math.max(s, R.w / VW, R.h / VH);
+        let x = R.x + R.w / 2 - (b.x + b.w / 2) * s, y = R.y + R.h / 2 - (b.y + b.h / 2) * s;
+        x = Math.min(R.x, Math.max(x, R.x + R.w - VW * s));
+        y = Math.min(R.y, Math.max(y, R.y + R.h - VH * s));
+        return { x, y, scale: s };
+      }
+      const corners = (R) => [[R.x, R.y], [R.x + R.w, R.y], [R.x, R.y + R.h], [R.x + R.w, R.y + R.h]];
+
+      const pf = (F.footage && F.footage.proof) || {};
+      const PB = pf.boxes || {};
+      const del = PB.deleted || { x: 494.7, y: 357.5, w: 183.1, h: 17 };
+      const ins = PB.inserted || { x: 494.7, y: 383.5, w: 113.5, h: 17 };
+      const tab = PB.tabOnThePage || { x: 564.2, y: 265, w: 74.4, h: 36 };
+      const pub = PB.publish || { x: 1363.5, y: 7.5, w: 64.5, h: 28 };
+      const heads = (pf.onThePage && pf.onThePage.headings) || [];
+      const live = (heads.find((h) => h.side === "live") || { box: { x: 464, y: 536, w: 436, h: 125 } }).box;
+      const prop = (heads.find((h) => h.side === "proposed") || { box: { x: 972.5, y: 595, w: 398, h: 67 } }).box;
+
+      // The two lines of the change are inked in left to right (the product's own 480 ms ink-in).
+      const lineL = del.x - 34, lineW = 400;
+      const place = (id, l, t, wd, ht) => Object.assign(document.getElementById(id).style, { left: l + "px", top: t + "px", width: wd + "px", height: ht + "px" });
+      place("s3-cover-del", lineL, del.y - 6, lineW, ins.y - del.y + 1);
+      place("s3-cover-ins", lineL, ins.y - 5, lineW, ins.h + 9);
+
+      // What changed: the field's path, the struck heading, the written-in one, and the tabs above.
+      // ×3.2: the card's left edge just inside the window, the status line ("Edited · Changed the heading.") at the top.
+      const camWhat = { scale: 3.2, x: RT.x - (del.x - 54) * 3.2, y: RT.y - (tab.y - 37) * 3.2 };
+      const T_CLICK = (F.s3 && F.s3.click) || Math.max(2.6, w("beside", 0, 4.66) - 1.5);
+      const tl = gsap.timeline({ paused: true });
+      corners(RT).forEach((p, i) => gsap.set(`#${ID}-cm-${["tl", "tr", "bl", "br"][i]}`, { x: p[0], y: p[1] }));
+      gsap.set("#s3-plane", { x: camWhat.x, y: camWhat.y + 24, scale: camWhat.scale, transformOrigin: "0 0" });
+      gsap.set(["#s3-cover-del", "#s3-cover-ins"], { scaleX: 1, transformOrigin: "100% 50%" });
+      tl.to("#s3-plane", { y: camWhat.y, duration: 0.8, ease: "power2.out" }, 0);
+      tl.to("#s3-cover-del", { scaleX: 0, duration: 0.48, ease: "cubic-bezier(0.13,0.6,0.23,0.98)" }, 0.3);
+      tl.to("#s3-cover-ins", { scaleX: 0, duration: 0.48, ease: "cubic-bezier(0.13,0.6,0.23,0.98)" }, 0.66);
+
+      // Title: the dele, then the word.
+      const ink = "cubic-bezier(0.13,0.6,0.23,0.98)";
+      tl.to("#s3-mark", { attr: { "stroke-dashoffset": 0 }, duration: 0.4, ease: "power1.inOut" }, 0.04);
+      tl.fromTo("#s3-title", { clipPath: "inset(-10% 100% -20% 0%)" }, { clipPath: "inset(-10% 0% -20% 0%)", duration: 0.48, ease: ink }, 0.14);
+
+      // Pointer to "On the page"; click.
+      gsap.set("#s3-ptr", { x: tab.x + 150, y: tab.y + 120, opacity: 0, transformOrigin: "1px 1px" });
+      tl.to("#s3-ptr", { opacity: 1, duration: 0.12, ease: "none" }, T_CLICK - 0.75);
+      tl.to("#s3-ptr", { x: tab.x + tab.w / 2 - 6, y: tab.y + tab.h / 2 - 4, duration: 0.6, ease: "power2.inOut" }, T_CLICK - 0.72);
+      tl.to("#s3-ptr", { scale: 0.86, duration: 0.06 }, T_CLICK - 0.02);
+      tl.to("#s3-ptr", { scale: 1, duration: 0.12 }, T_CLICK + 0.06);
+      tl.to("#s3-ptr", { opacity: 0, duration: 0.15 }, T_CLICK + 0.2);
+
+      // On the page: the live site beside the proposed page, the photograph in both — the longest hold.
+      const both = { x: live.x - 30, y: live.y - 190, w: prop.x + prop.w - live.x + 90, h: 485 };
+      const camPage = cam(both, RT);
+      tl.to("#s3-plane", { x: camPage.x, y: camPage.y, scale: camPage.scale, duration: 0.95, ease: "power2.inOut" }, T_CLICK + 0.15);
+
+      // To the Publish button, top right, and press it.
+      const T_PUB = SC.duration - 0.26;
+      const camPub = cam({ x: pub.x - 230, y: 0, w: 300, h: 120 }, RT, 3.0);
+      // (The two pages hold until the voice has finished "…beside your live site.")
+      tl.to("#s3-plane", { x: camPub.x, y: camPub.y, scale: camPub.scale, duration: 0.5, ease: "power2.inOut" }, T_PUB - 0.82);
+      tl.set("#s3-ptr", { x: pub.x - 90, y: pub.y + 60 }, T_PUB - 0.5);
+      tl.to("#s3-ptr", { opacity: 1, duration: 0.08 }, T_PUB - 0.42);
+      tl.to("#s3-ptr", { x: pub.x + pub.w / 2 - 4, y: pub.y + pub.h / 2 - 3, duration: 0.36, ease: "power2.inOut" }, T_PUB - 0.4);
+      tl.to("#s3-ptr", { scale: 0.86, duration: 0.06 }, T_PUB - 0.03);
+      tl.to("#s3-ptr", { scale: 1, duration: 0.1 }, T_PUB + 0.05);
+
+      tl.to(["#s3-title", "#s3-mark"], { opacity: 0, duration: 0.18, ease: "power3.in" }, SC.duration - 0.2);
+      window.__timelines[ID] = tl;
+    })();
+  </script>
+</template>

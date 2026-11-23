@@ -1,0 +1,117 @@
+<template>
+  <style>
+    @font-face { font-family: "Newsreader"; src: url("assets/fonts/newsreader-latin-opsz-normal.woff2") format("woff2"); font-weight: 200 800; font-style: normal; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: #f6f1e7; color: #1a1712; }
+    .win { position: absolute; inset: 0; clip-path: inset(236px 96px 54px 96px round 4px); background: #ede6d8; }
+    .plane { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+    .plane video { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+    .ptr { position: absolute; left: 0; top: 0; width: 19px; height: 28px; overflow: visible; }
+    .cm { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+    .cm i { position: absolute; background: #857b69; display: block; }
+    .cm .h { width: 28px; height: 1.5px; top: -0.75px; }
+    .cm .v { width: 1.5px; height: 28px; left: -0.75px; }
+    .cm.l .h { left: -42px; } .cm.r .h { left: 14px; }
+    .cm.t .v { top: -42px; } .cm.b .v { top: 14px; }
+    .beat { position: absolute; left: 192px; top: 100px; font-family: "Newsreader", Georgia, serif; font-weight: 400; font-size: 104px; line-height: 1; letter-spacing: -0.015em; white-space: nowrap; }
+    .mark { position: absolute; left: 100px; top: 122px; width: 64px; height: 64px; overflow: visible; }
+  </style>
+  <div
+    id="root"
+    data-composition-id="s2-ask"
+    data-width="1920"
+    data-height="1080"
+    data-composition-variables='[{"id":"s2Title","type":"string","label":"Prompt · title","default":"Prompt"}]'
+  >
+    <div class="win" id="s2-win">
+      <div class="plane" id="s2-plane" data-layout-allow-overflow>
+        <!-- One recording (assets/footage/editor-ask.mp4), four cuts. Timings written by scripts/apply-timings.mjs. -->
+        <video id="s2-vid-a" class="clip" src="assets/footage/editor-ask.mp4" data-start="0" data-duration="2.8" data-media-start="0.062" data-playback-rate="1" data-track-index="2" muted playsinline></video>
+        <video id="s2-vid-b" class="clip" src="assets/footage/editor-ask.mp4" data-start="2.8" data-duration="1.027" data-media-start="4.077" data-playback-rate="2.001" data-track-index="2" muted playsinline></video>
+        <video id="s2-vid-c1" class="clip" src="assets/footage/editor-ask.mp4" data-start="3.827" data-duration="0.663" data-media-start="6.237" data-playback-rate="4" data-track-index="2" muted playsinline></video>
+        <video id="s2-vid-c2" class="clip" src="assets/footage/editor-ask.mp4" data-start="4.49" data-duration="1.496" data-media-start="12.473" data-playback-rate="1" data-track-index="2" muted playsinline></video>
+        <svg id="s2-ptr" class="ptr" viewBox="0 0 13 19" aria-hidden="true"><path d="M1 1 L1 15.2 L4.6 11.9 L7.1 17.6 L9.6 16.5 L7.1 10.9 L12 10.9 Z" fill="#1a1712" stroke="#fdfaf4" stroke-width="1.1" stroke-linejoin="round" /></svg>
+      </div>
+    </div>
+    <div class="cm l t" id="s2-ask-cm-tl"><i class="h"></i><i class="v"></i></div>
+    <div class="cm r t" id="s2-ask-cm-tr"><i class="h"></i><i class="v"></i></div>
+    <div class="cm l b" id="s2-ask-cm-bl"><i class="h"></i><i class="v"></i></div>
+    <div class="cm r b" id="s2-ask-cm-br"><i class="h"></i><i class="v"></i></div>
+
+    <!-- The beat's title, with its proofreader's mark hung in the margin: the caret (insert). -->
+    <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><path id="s2-mark" d="M10 52 L32 14 L54 52" fill="none" stroke="#2e2bff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" pathLength="100" stroke-dasharray="100 120" stroke-dashoffset="110" /></svg>
+    <h1 id="s2-title" class="beat" data-var-text="s2Title">Prompt</h1>
+
+    <audio id="s2-sfx-click" class="clip" src="assets/audio/sfx/click-soft.mp3" data-start="1.3" data-duration="0.37" data-track-index="20" data-volume="0.55"></audio>
+    <audio id="s2-sfx-type" class="clip" src="assets/audio/sfx/typing.mp3" data-start="2.376" data-duration="1.384" data-track-index="21" data-volume="0.3" data-fade-out="0.15"></audio>
+  </div>
+  <script>
+    (function () {
+      const ID = "s2-ask";
+      const F = window.__FILM || {};
+      const SC = (F.scenes && F.scenes[ID]) || { start: 5.95, duration: 5.986 };
+      const VW = 1440, VH = 900;
+      const RT = { x: 96, y: 236, w: 1728, h: 790 };
+      function cam(b, R, max) {
+        let s = Math.min(R.w / b.w, R.h / b.h, max || 2.4);
+        s = Math.max(s, R.w / VW, R.h / VH);
+        let x = R.x + R.w / 2 - (b.x + b.w / 2) * s, y = R.y + R.h / 2 - (b.y + b.h / 2) * s;
+        x = Math.min(R.x, Math.max(x, R.x + R.w - VW * s));
+        y = Math.min(R.y, Math.max(y, R.y + R.h - VH * s));
+        return { x, y, scale: s };
+      }
+      const S2 = F.s2 || { cuts: {}, events: {} };
+      const cut = (id, fb) => (S2.cuts && S2.cuts[id]) || fb;
+      const B = cut("s2-vid-b", { start: 2.8 }), C1 = cut("s2-vid-c1", { start: 3.827 }), C2 = cut("s2-vid-c2", { start: 4.49 });
+      const EV = Object.assign({ click: 1.34, popover: 1.37 }, S2.events);
+      const bx = (F.footage && F.footage.ask) || {};
+      const Hh = bx.heading || { x: 152, y: 421.6, w: 642, h: 225 };
+      const P = bx.popover || { x: 152, y: 657, w: 380, h: 204 };
+      const C = bx.composer || { x: 1101, y: 767, w: 282, h: 52 };
+
+      // Opening: ×2, the preview's left edge on the window's edge, the heading centred (scene 1 lands on this).
+      const camOpen = { scale: 2, x: RT.x - (Hh.x - 48) * 2, y: RT.y + RT.h / 2 - (Hh.y + Hh.h / 2) * 2 };
+      // After the click: down a little, so the field that opened under the heading (its path and its
+      // text, as stored) is in, and the window's bottom edge falls just under the field's box.
+      const camA = { scale: 2, x: camOpen.x, y: RT.y + RT.h - (P.y + 95) * 2 };
+      // The request being typed: the box with the clicked heading riding along as a chip.
+      const camB = cam({ x: C.x - 6, y: C.y - 67, w: C.w + 52, h: 170 }, RT, 3.4);
+      // Sent: the request at the top of the conversation and the assistant's first steps.
+      const camC1 = cam({ x: C.x - 11, y: 95, w: 350, h: 130 }, RT, 3.4);
+      // The page: the heading over the photograph as it changes.
+      const camC = cam({ x: 104, y: Hh.y - 150, w: 960, h: 450 }, RT, 1.75);
+      const camC2 = cam({ x: Hh.x - 40, y: Hh.y - 110, w: 860, h: 400 }, RT, 2.0);
+
+      const tl = gsap.timeline({ paused: true });
+      const pts = [[RT.x, RT.y], [RT.x + RT.w, RT.y], [RT.x, RT.y + RT.h], [RT.x + RT.w, RT.y + RT.h]];
+      ["tl", "tr", "bl", "br"].forEach((k, i) => gsap.set(`#${ID}-cm-${k}`, { x: pts[i][0], y: pts[i][1] }));
+      gsap.set("#s2-plane", { x: camOpen.x, y: camOpen.y, scale: camOpen.scale, transformOrigin: "0 0" });
+
+      // Title: the caret, then the word inked in left to right (the product's 480 ms ink-in).
+      const ink = "cubic-bezier(0.13,0.6,0.23,0.98)";
+      tl.to("#s2-mark", { attr: { "stroke-dashoffset": 0 }, duration: 0.32, ease: "power2.out" }, 0.04);
+      tl.fromTo("#s2-title", { clipPath: "inset(-10% 100% -20% 0%)" }, { clipPath: "inset(-10% 0% -20% 0%)", duration: 0.48, ease: ink }, 0.14);
+
+      // The pointer finds the heading and clicks it on the word "click".
+      const clickX = Hh.x + Hh.w * 0.42, clickY = Hh.y + Hh.h * 0.32;
+      gsap.set("#s2-ptr", { x: Hh.x + Hh.w * 0.86, y: Hh.y + Hh.h * 1.05, transformOrigin: "1px 1px", opacity: 1 });
+      tl.to("#s2-ptr", { x: clickX, y: clickY, duration: 0.78, ease: "power2.inOut" }, Math.max(EV.click - 0.86, 0.05));
+      tl.to("#s2-ptr", { scale: 0.86, duration: 0.06, ease: "power2.out" }, EV.click - 0.03);
+      tl.to("#s2-ptr", { scale: 1, duration: 0.12, ease: "power2.out" }, EV.click + 0.05);
+      // The field opens under the heading: the camera follows it down.
+      tl.to("#s2-plane", { x: camA.x, y: camA.y, scale: camA.scale, duration: 0.7, ease: "power2.inOut" }, EV.popover + 0.12);
+
+      // Cut: the request is typed (shown at speed); no pointer while typing.
+      tl.set("#s2-ptr", { opacity: 0 }, B.start);
+      tl.set("#s2-plane", { x: camB.x, y: camB.y, scale: camB.scale }, B.start);
+      // Cut: sent; the assistant reads the page (shown fast).
+      tl.set("#s2-plane", { x: camC1.x, y: camC1.y, scale: camC1.scale }, C1.start);
+      // Cut: the page as its heading changes, then a slow push on the new heading.
+      tl.set("#s2-plane", { x: camC.x, y: camC.y, scale: camC.scale }, C2.start);
+      tl.to("#s2-plane", { x: camC2.x, y: camC2.y, scale: camC2.scale, duration: SC.duration - C2.start, ease: "power2.inOut" }, C2.start);
+
+      // The title leaves with the scene.
+      tl.to(["#s2-title", "#s2-mark"], { opacity: 0, duration: 0.18, ease: "power3.in" }, SC.duration - 0.2);
+      window.__timelines[ID] = tl;
+    })();
+  </script>
+</template>

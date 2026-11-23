@@ -1,0 +1,187 @@
+{
+  "name": "Lowfield Studio",
+  "ai": {
+    "instructions": [
+      "CONTENT-GUIDE.md"
+    ]
+  },
+  "media": {
+    "dir": "public/images",
+    "publicPath": "/images"
+  },
+  "collections": [
+    {
+      "id": "pages",
+      "url": "/{slug}/",
+      "fields": [
+        {
+          "key": "sections",
+          "blocks": [
+            {
+              "type": "hero",
+              "label": "Hero",
+              "description": "The opening statement of a page: a large heading, a line of text, the main buttons and an optional picture. Use first, once.",
+              "thumbnail": "galley/sections/hero.webp"
+            },
+            {
+              "type": "logos",
+              "label": "Logo row",
+              "description": "A quiet row of client, partner or supplier logos under a hero.",
+              "thumbnail": "galley/sections/logos.webp"
+            },
+            {
+              "type": "features",
+              "label": "Feature grid",
+              "description": "Short points with icons in two to four columns: services, benefits, principles.",
+              "thumbnail": "galley/sections/features.webp"
+            },
+            {
+              "type": "split",
+              "label": "Text and picture",
+              "description": "A heading, text and a short list beside one picture, left or right — the workhorse section.",
+              "thumbnail": "galley/sections/split.webp"
+            },
+            {
+              "type": "stats",
+              "label": "Figures",
+              "description": "Two to four numbers that prove a claim, each with a label and a line of context.",
+              "thumbnail": "galley/sections/stats.webp"
+            },
+            {
+              "type": "steps",
+              "label": "Steps",
+              "description": "A numbered process, from first contact to the finished job.",
+              "thumbnail": "galley/sections/steps.webp"
+            },
+            {
+              "type": "testimonial",
+              "label": "Testimonial",
+              "description": "One quotation, set large, with the person and an optional portrait. Once per page.",
+              "thumbnail": "galley/sections/testimonial.webp"
+            },
+            {
+              "type": "testimonials",
+              "label": "Testimonials",
+              "description": "Several shorter quotes in a grid.",
+              "thumbnail": "galley/sections/testimonials.webp"
+            },
+            {
+              "type": "pricing",
+              "label": "Pricing",
+              "description": "Two to four packages or plans with a price, what is included and a button; one can be highlighted.",
+              "thumbnail": "galley/sections/pricing.webp"
+            },
+            {
+              "type": "faq",
+              "label": "Questions",
+              "description": "Questions and answers that open one at a time. Answers take Markdown.",
+              "thumbnail": "galley/sections/faq.webp"
+            },
+            {
+              "type": "gallery",
+              "label": "Gallery",
+              "description": "A grid of pictures with optional captions — recent work, the studio, the team at work.",
+              "thumbnail": "galley/sections/gallery.webp"
+            },
+            {
+              "type": "team",
+              "label": "Team",
+              "description": "The people from the team collection, everyone or a chosen few, with photo and role.",
+              "thumbnail": "galley/sections/team.webp"
+            },
+            {
+              "type": "posts",
+              "label": "Latest posts",
+              "description": "The newest journal posts as cards, optionally only those with one tag.",
+              "thumbnail": "galley/sections/posts.webp"
+            },
+            {
+              "type": "rich-text",
+              "label": "Text",
+              "description": "A heading and Markdown prose: lists, links, emphasis. For directions, policies and longer explanations.",
+              "thumbnail": "galley/sections/rich-text.webp"
+            },
+            {
+              "type": "cta",
+              "label": "Call to action",
+              "description": "A closing band with one strong heading and one or two buttons. Usually last on a page.",
+              "thumbnail": "galley/sections/cta.webp"
+            },
+            {
+              "type": "contact",
+              "label": "Contact",
+              "description": "Ways to reach you beside the contact form. The contact page's main section.",
+              "thumbnail": "galley/sections/contact.webp"
+            },
+            {
+              "type": "form",
+              "label": "Form",
+              "description": "Any form from the forms collection with a heading above or beside it — drop an enquiry or a quote request onto any page.",
+              "thumbnail": "galley/sections/form.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "blog",
+      "label": "Journal",
+      "singular": "post",
+      "url": "/blog/{slug}/"
+    },
+    {
+      "id": "authors",
+      "label": "Authors",
+      "singular": "author",
+      "url": null
+    },
+    {
+      "id": "team",
+      "label": "Team",
+      "singular": "team member",
+      "url": null
+    }
+  ],
+  "templates": [
+    {
+      "id": "service",
+      "label": "Service page",
+      "description": "One service in depth: what it covers, how it works, what it costs and the questions people ask.",
+      "collection": "pages",
+      "file": "galley/templates/service.md",
+      "thumbnail": "galley/templates/service.webp"
+    },
+    {
+      "id": "project",
+      "label": "Project story",
+      "description": "One finished job: the brief, pictures of the result, the client's words and an invitation to talk.",
+      "collection": "pages",
+      "file": "galley/templates/project.md",
+      "thumbnail": "galley/templates/project.webp"
+    },
+    {
+      "id": "about",
+      "label": "About page",
+      "description": "Who you are, what you believe, the team and some recent work.",
+      "collection": "pages",
+      "file": "galley/templates/about.md",
+      "thumbnail": "galley/templates/about.webp"
+    },
+    {
+      "id": "contact",
+      "label": "Contact page",
+      "description": "The contact form beside your details, and how to find you.",
+      "collection": "pages",
+      "file": "galley/templates/contact.md",
+      "thumbnail": "galley/templates/contact.webp"
+    },
+    {
+      "id": "journal-post",
+      "label": "Journal post",
+      "description": "A practical article for the journal: a clear title, a one-line summary, a cover picture and a few short sections.",
+      "collection": "blog",
+      "file": "galley/templates/journal-post.md",
+      "thumbnail": "galley/templates/journal-post.webp"
+    }
+  ]
+}

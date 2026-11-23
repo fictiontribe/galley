@@ -1,0 +1,140 @@
+---
+// The opening statement beside a product screenshot. `imageSide` puts the
+// picture left or right on wide screens; on phones it follows the text.
+import Section from "../Section.astro";
+import Actions from "../Actions.astro";
+import Announcement from "../Announcement.astro";
+import Checklist from "../Checklist.astro";
+import Frame from "../Frame.astro";
+import { inline, paragraphs, type BlockMarker, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  announcement?: Link;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  cta?: Link;
+  secondaryCta?: Link;
+  items?: string[];
+  image: string;
+  imageAlt: string;
+  imageSide?: "left" | "right";
+  frame?: "window" | "bare";
+  grid?: boolean;
+  index?: number;
+  level?: number;
+  block?: BlockMarker;
+}
+
+const {
+  id,
+  tone,
+  announcement,
+  eyebrow,
+  heading,
+  text,
+  cta,
+  secondaryCta,
+  items,
+  image,
+  imageAlt,
+  imageSide = "right",
+  frame = "window",
+  grid = true,
+  index = 0,
+  level = 1,
+  block,
+} = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
+---
+
+<Section type="hero-split" id={id} tone={tone} block={block} labelledby={headingId} grid={grid}>
+  <div class:list={["hero-split", `hero-split--image-${imageSide}`]}>
+    <div class="hero-split__copy">
+      {announcement && <Announcement link={announcement} />}
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <Heading id={headingId} class="hero-split__heading" set:html={inline(heading)} />
+      {
+        text && (
+          <div class="hero-split__text">
+            {paragraphs(text).map((part) => (
+              <p>{part}</p>
+            ))}
+          </div>
+        )
+      }
+      <Actions cta={cta} secondaryCta={secondaryCta} class="hero-split__actions" />
+      <Checklist items={items} inline />
+    </div>
+    <div class="hero-split__media">
+      <Frame image={image} imageAlt={imageAlt} frame={frame} eager={index === 0} />
+    </div>
+  </div>
+</Section>
+
+<style>
+  :global(.section--hero-split) {
+    padding-block: var(--space-2xl) var(--space-section);
+    overflow: hidden;
+  }
+
+  .hero-split {
+    display: grid;
+    gap: var(--space-2xl);
+    align-items: center;
+  }
+
+  .hero-split__copy {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+  }
+
+  .hero-split__heading {
+    font-size: var(--step-6);
+    font-weight: var(--weight-display-strong);
+    line-height: var(--leading-tight);
+    max-width: 12em;
+  }
+
+  .hero-split__text {
+    display: grid;
+    gap: var(--space-xs);
+    max-width: 32em;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--tone-muted);
+  }
+
+  .hero-split__copy :global(.hero-split__actions) {
+    margin-block-start: var(--space-2xs);
+  }
+
+  @media (min-width: 64rem) {
+    .hero-split {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: var(--space-2xl);
+    }
+
+    .hero-split__heading {
+      font-size: var(--step-5);
+    }
+
+    /* The picture runs off the container's edge, like a window left open. */
+    .hero-split--image-right .hero-split__media {
+      margin-inline-end: calc(-1 * min(var(--gutter) + 2rem, 8vw));
+    }
+
+    .hero-split--image-left {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    }
+
+    .hero-split--image-left .hero-split__media {
+      order: -1;
+      margin-inline-start: calc(-1 * min(var(--gutter) + 2rem, 8vw));
+    }
+  }
+</style>

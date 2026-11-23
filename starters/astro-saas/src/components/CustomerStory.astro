@@ -1,0 +1,343 @@
+---
+// The page of one customer story: logo, industry and headline; the facts and
+// results beside the story (the default slot); the customer's quote; other
+// stories; and the closing invitation from site.json → labels.customers.cta.
+import type { CollectionEntry } from "astro:content";
+import Media from "./Media.astro";
+import Frame from "./Frame.astro";
+import Icon from "./Icon.astro";
+import CustomerCard from "./CustomerCard.astro";
+import Cta from "./sections/Cta.astro";
+import { labels, withBase } from "../lib/site";
+
+type Story = CollectionEntry<"customers">["data"];
+
+interface Props {
+  data: Story;
+  others?: CollectionEntry<"customers">[];
+}
+
+const { data, others = [] } = Astro.props;
+const copy = labels.customers;
+---
+
+<article class="story">
+  <header class="section tone-muted story__header">
+    <div class="grid-texture" aria-hidden="true"></div>
+    <div class="container story__header-inner">
+      <a class="text-link story__back" href={withBase("/customers/")}>
+        <Icon name="arrow-left" size={18} />
+        {copy.backToAll}
+      </a>
+      <div class="story__brand">
+        <Media src={data.logo} alt={data.company} ratio="3/1" contain class="story__logo" />
+        <span class="chip">{data.industry}</span>
+      </div>
+      <h1 class="story__title">{data.headline}</h1>
+      <p class="story__summary">{data.summary}</p>
+    </div>
+  </header>
+
+  {
+    data.image && (
+      <div class="container story__cover">
+        <Frame image={data.image} imageAlt={data.imageAlt ?? ""} eager />
+      </div>
+    )
+  }
+
+  <div class="section tone-default story__main">
+    <div class="container story__grid">
+      <aside class="story__aside">
+        {
+          data.facts.length > 0 && (
+            <section aria-labelledby="story-facts">
+              <h2 id="story-facts" class="story__label">
+                {copy.atAGlance}
+              </h2>
+              <dl class="story__facts">
+                <div>
+                  <dt>{copy.industry}</dt>
+                  <dd>{data.industry}</dd>
+                </div>
+                {data.facts.map((fact) => (
+                  <div>
+                    <dt>{fact.label}</dt>
+                    <dd>{fact.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )
+        }
+        {
+          data.results.length > 0 && (
+            <section aria-labelledby="story-results">
+              <h2 id="story-results" class="story__label">
+                {copy.results}
+              </h2>
+              <dl class="story__results">
+                {data.results.map((result) => (
+                  <div>
+                    <dt>{result.label}</dt>
+                    <dd class="story__value">{result.value}</dd>
+                    {result.text && <dd class="story__note">{result.text}</dd>}
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )
+        }
+      </aside>
+
+      <div class="story__body">
+        <div class="prose story__prose">
+          <slot />
+        </div>
+        {
+          data.quote && (
+            <figure class="story__quote">
+              <blockquote>
+                <p>{data.quote.text}</p>
+              </blockquote>
+              <figcaption>
+                {data.quote.image && <Media src={data.quote.image} alt="" ratio="1/1" class="story__quote-photo" />}
+                <span>
+                  <span class="story__quote-name">{data.quote.name}</span>
+                  {data.quote.role && <span class="story__quote-role">{data.quote.role}</span>}
+                </span>
+              </figcaption>
+            </figure>
+          )
+        }
+      </div>
+    </div>
+  </div>
+
+  {
+    others.length > 0 && (
+      <section class="section tone-muted story__more" aria-labelledby="story-more">
+        <div class="container">
+          <h2 id="story-more" class="story__more-heading">
+            {copy.more}
+          </h2>
+          <ul class="story__more-list" role="list">
+            {others.map((other) => (
+              <li>
+                <CustomerCard story={other} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    )
+  }
+</article>
+
+<Cta heading={copy.cta.heading} text={copy.cta.text} cta={copy.cta.button} secondaryCta={copy.cta.secondary} />
+
+<style>
+  .story__header {
+    padding-block: var(--space-xl) var(--space-2xl);
+    overflow: hidden;
+  }
+
+  .story__header-inner {
+    position: relative;
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+  }
+
+  .story__back {
+    margin-block-end: var(--space-s);
+  }
+
+  .story__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    color: var(--tone-text);
+  }
+
+  .story__brand :global(.story__logo) {
+    inline-size: 9rem;
+    block-size: 3rem;
+  }
+
+  .story__title {
+    font-size: var(--step-5);
+    font-weight: var(--weight-display-strong);
+    line-height: var(--leading-tight);
+    max-width: 18em;
+  }
+
+  .story__summary {
+    max-width: 40em;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--tone-muted);
+  }
+
+  .story__cover {
+    margin-block-start: calc(-1 * var(--space-xl));
+    position: relative;
+  }
+
+  .story__main {
+    padding-block-start: var(--space-2xl);
+  }
+
+  .story__grid {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  .story__aside {
+    display: grid;
+    gap: var(--space-l);
+    align-content: start;
+  }
+
+  .story__label {
+    margin-block-end: var(--space-xs);
+    font-family: var(--font-body);
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .story__facts,
+  .story__results {
+    display: grid;
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .story__facts > div,
+  .story__results > div {
+    display: grid;
+    gap: 0.1em;
+    padding-block: var(--space-xs);
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .story__facts > div {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-s);
+  }
+
+  .story__facts dt,
+  .story__results dt {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .story__facts dd {
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
+  }
+
+  .story__results > div {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .story__value {
+    order: -1;
+    font-family: var(--font-display);
+    font-size: var(--step-4);
+    font-weight: var(--weight-display);
+    letter-spacing: -0.045em;
+    line-height: 1;
+    color: var(--tone-link);
+  }
+
+  .story__note {
+    font-size: var(--step--2);
+    color: var(--tone-muted);
+  }
+
+  .story__prose {
+    font-size: var(--step-1);
+    line-height: 1.65;
+  }
+
+  .story__quote {
+    display: grid;
+    gap: var(--space-m);
+    margin-block-start: var(--space-xl);
+    padding: var(--space-l);
+    border-radius: var(--radius-l);
+    background: var(--tone-raised);
+  }
+
+  .story__quote blockquote {
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    font-weight: var(--weight-medium);
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+
+  .story__quote blockquote p::before {
+    content: "“";
+  }
+
+  .story__quote blockquote p::after {
+    content: "”";
+  }
+
+  .story__quote figcaption {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+  }
+
+  .story__quote :global(.story__quote-photo) {
+    inline-size: 3rem;
+    block-size: 3rem;
+    border-radius: 50%;
+  }
+
+  .story__quote-name {
+    display: block;
+    font-weight: var(--weight-bold);
+  }
+
+  .story__quote-role {
+    display: block;
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+  }
+
+  .story__more-heading {
+    margin-block-end: var(--space-l);
+    font-size: var(--step-3);
+  }
+
+  .story__more-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 60rem) {
+    .story__grid {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+      gap: var(--space-2xl);
+    }
+
+    .story__aside {
+      position: sticky;
+      top: calc(var(--header-height) + var(--space-l));
+    }
+
+    .story__more-list {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

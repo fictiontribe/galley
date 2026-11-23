@@ -1,0 +1,721 @@
+{
+  "$comment": "The shot list for the Caddow starter. Every photograph the site uses is here, with its exact file, size, where it is used, the alt text the content already carries, a self-contained generation prompt and what to exclude. Read galley/photography/ART-DIRECTION.md first. scripts/make-placeholders.mjs paints a placeholder for each; scripts/ingest-photos.mjs crops real photographs (named <id>.<ext>) to these slots using `focus`.",
+  "artDirection": "galley/photography/ART-DIRECTION.md",
+  "fields": {
+    "id": "Name the generated file <id>.jpg / .png / .webp — ingest matches on it.",
+    "file": "Final path, relative to the project.",
+    "width, height, ratio": "Exact output size; the layout reserves this ratio.",
+    "usage": "Where the picture appears (entry › field).",
+    "alt": "The alt text the content uses. Change both together.",
+    "prompt": "Complete, standalone generation prompt.",
+    "negative": "What the generator must avoid.",
+    "seedGroup": "Shots that share a model, outfit or set. Generate a group with the same reference image / character reference / seed.",
+    "cast, set": "The person and the location, as named in ART-DIRECTION.md.",
+    "focus": "The point to keep when cropping, x and y from 0 (left/top) to 1.",
+    "tone": "The placeholder's field colour: light, mid, dark, warm or accent (from the active look's --placeholder-* tokens).",
+    "priority": "1 = needed for the product demo's first screens; 3 = last.",
+    "labelCorner": "Optional: where the placeholder prints its title (bottom-right, bottom-left, top-right, upper-right), away from any type set on the picture."
+  },
+  "shots": [
+    {
+      "id": "campaign-aw26",
+      "title": "Campaign — harbour wall",
+      "file": "public/images/campaign/aw26-harbour-wall.webp",
+      "width": 2400,
+      "height": 1600,
+      "ratio": "3:2",
+      "usage": [
+        "Home page › campaign-hero (sections.0) — full screen, headline bottom-left",
+        "Mobile crops it to about 9:19 around her (imageFocus: right)"
+      ],
+      "alt": "A woman in a long rust-coloured coat stands against a lime-washed harbour wall, her shadow thrown long across it by a low sun.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. She wears the rust car coat: knee-length, single-breasted, boiled wool in a deep oxide rust, a small round collar, covered buttons; over an oat rib-knit polo, wide ink wool trousers and plain black leather shoes. Model A: a woman in her late twenties of East African heritage, close-cropped natural hair, tall and long-necked, no jewellery. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame right; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: landscape 3:2, full length, she stands in the right third (about 72% across), body turned three-quarters to the left, looking past the camera; her shadow runs long to the left across the wall. Leave headroom and footroom; nothing cut at the feet. Negative space: the left two-thirds of the frame is sunlit wall crossed only by her long shadow, and the lowest third is plain pale stone — the headline is set over the bottom-left, so keep it free of anything busy. Keep a calm strip along the top edge too: the site's navigation sits there. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "aw26-a-rust-coat",
+      "cast": "a",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.68,
+        "y": 0.5
+      },
+      "tone": "warm",
+      "priority": 1,
+      "labelCorner": "upper-right"
+    },
+    {
+      "id": "campaign-ss26",
+      "title": "Campaign — plaster steps",
+      "file": "public/images/campaign/ss26-plaster-steps.webp",
+      "width": 2400,
+      "height": 1600,
+      "ratio": "3:2",
+      "usage": [
+        "Collections page › campaign-hero (sections.0) — tall, headline on a plate bottom-right"
+      ],
+      "alt": "Someone in a pale linen trench sits on plastered steps beneath an arch, half in sun and half in the arch's shadow.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. They wear an unlined trench in putty cotton gabardine, open, over a bone linen shirt and bone linen trousers, bare ankles, plain tan leather sandals. Model D: an androgynous adult in their early twenties of East Asian heritage, straight black hair to the jaw tucked behind the ears, slight build. Set: pale pink-grey rendered steps and a deep plastered archway in an invented harbour town, the render softly mottled, edges worn round; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: landscape 3:2, they sit on the third step in the left third of the frame (about 30% across), knees up, forearms resting on them, face turned towards the sun with eyes half closed. Negative space: the right half of the frame is plain plaster steps and wall, cut diagonally by the hard shadow of the arch — the headline sits on a solid plate over the bottom-right, so the right half must stay simple. Keep a calm strip along the top edge for the navigation. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "ss26-d-plaster",
+      "cast": "d",
+      "set": "plaster-steps",
+      "focus": {
+        "x": 0.3,
+        "y": 0.55
+      },
+      "tone": "light",
+      "priority": 1,
+      "labelCorner": "bottom-left"
+    },
+    {
+      "id": "band-wall",
+      "title": "Band — coat on a hook",
+      "file": "public/images/campaign/wall-shadow.webp",
+      "width": 2400,
+      "height": 1029,
+      "ratio": "21:9",
+      "usage": [
+        "Home page › image-band (sections.5), caption below",
+        "Stockists page › image-band",
+        "Atelier page › cta background (words over the lower left, on the shade)"
+      ],
+      "alt": "A coat hangs from an iron hook on a long sunlit wall, its shadow stretched out beside it.",
+      "prompt": "Still-life photograph of a single garment for Caddow, a small independent coat and knitwear label. The undyed oat-grey Shetland field coat hangs by its loop from a single old iron hook driven into the wall, sleeves falling straight. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame right; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, no sky in frame. Camera: full-frame, 50mm lens at f/8, camera level and square to the wall. Framing: 21:9 panorama, the wall fills the frame edge to edge; the coat is small, about a quarter of the frame's height. Negative space: a panorama: the coat sits at about 62% across and two-thirds up; everything left of it is bare sunlit wall and its long raking shadow, and the bottom fifth is the flat stone quay. Words are set over the lower left in one use, so keep that corner empty and even. No person, no hands, no mannequin. Real cloth with real weight: visible weave, creases where it has been worn, a frayed thread or two. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "readable text, letters, numbers, labels, swing tags, logos, brand marks, watermark, plastic sheen, CGI, 3D render, illustration, over-saturation, orange cast, HDR, lens flare, mannequin, hanger hooks melting into the wall, impossible folds, duplicated sleeves",
+      "seedGroup": "harbour-wall-set",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.62,
+        "y": 0.5
+      },
+      "tone": "light",
+      "priority": 2
+    },
+    {
+      "id": "aw26-cover",
+      "title": "AW26 — cover",
+      "file": "public/images/lookbooks/aw26/cover.webp",
+      "width": 1600,
+      "height": 2000,
+      "ratio": "4:5",
+      "usage": [
+        "Lookbook ‘The Long Afternoon’ › cover (lookbook header, collections page card)"
+      ],
+      "alt": "An older woman with a silver bob, wrapped in a pale wool coat, leans on the corner of a sunlit wall.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. She wears the bone double-faced wool wrap coat, collar turned up, arms folded inside it, over an ink merino rollneck. Model C: a woman in her sixties of Northern European heritage, a blunt silver bob, strong dark brows, upright posture. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 50mm lens at f/4, eye level, verticals kept straight. Framing: portrait 4:5, three-quarter length from mid-thigh, she leans her shoulder on the wall's end where it turns a corner; the sun lights the left side of her face and the right half of the frame falls into the wall's deep shadow. Negative space: the upper third behind her head is plain pale sky over the wall's top edge; the cover is shown beside the title, not under it, so no type sits on this picture. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "aw26-c-wrap-coat",
+      "cast": "c",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.45,
+        "y": 0.45
+      },
+      "tone": "light",
+      "priority": 2
+    },
+    {
+      "id": "aw26-look-01",
+      "title": "AW26 — look 01",
+      "file": "public/images/lookbooks/aw26/look-01.webp",
+      "width": 1600,
+      "height": 2400,
+      "ratio": "2:3",
+      "usage": [
+        "Lookbook ‘The Long Afternoon’ › looks[0]",
+        "Home page › lookbook-grid (crop: tall)",
+        "Atelier page › look section"
+      ],
+      "alt": "A woman in an open, undyed wool field coat and wide dark trousers walks along the foot of a sunlit wall.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. She wears the field coat — mid-thigh, raglan sleeves, undyed oat-grey Shetland wool with a visible twill, worn open — over an oat rib-knit polo and wide ink wool twill trousers, black leather shoes. Model A: a woman in her late twenties of East African heritage, close-cropped natural hair, tall and long-necked, no jewellery. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: portrait 2:3, full length with headroom and footroom, the figure centred, mid-stride along the foot of the wall, moving right to left across the frame, caught at the moment one heel lifts. Negative space: about a sixth of the frame above the head is plain wall or sky; no type sits on this picture, but the grid crops it to 3:4 and 1:1, so keep the figure central and whole. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "aw26-a-field-coat",
+      "cast": "a",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.45
+      },
+      "tone": "warm",
+      "priority": 1
+    },
+    {
+      "id": "aw26-look-02",
+      "title": "AW26 — look 02",
+      "file": "public/images/lookbooks/aw26/look-02.webp",
+      "width": 1600,
+      "height": 2400,
+      "ratio": "2:3",
+      "usage": [
+        "Lookbook ‘The Long Afternoon’ › looks[1]",
+        "Home page › lookbook-grid (crop: tall)"
+      ],
+      "alt": "A man in an olive waxed-cotton smock and putty trousers sits on a stone bollard by the wall, his hands in his pockets.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. He wears the smock — hip-length, pull-on, olive-black waxed cotton with a single large front pocket and a funnel neck, no zips — over an ecru gansey, with putty cotton drill trousers and brown leather boots. Model B: a man in his forties of Mediterranean heritage, short dark hair flecked with grey, close stubble, lean build. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame right; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: portrait 2:3, full length with headroom and footroom, the figure centred, seated on a squat stone mooring bollard in front of the wall, feet planted wide, both hands deep in the smock's front pocket, looking down and to the side. Negative space: about a sixth of the frame above the head is plain wall or sky; no type sits on this picture, but the grid crops it to 3:4 and 1:1, so keep the figure central and whole. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "aw26-b-smock",
+      "cast": "b",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "mid",
+      "priority": 1
+    },
+    {
+      "id": "aw26-look-03",
+      "title": "AW26 — look 03",
+      "file": "public/images/lookbooks/aw26/look-03.webp",
+      "width": 1600,
+      "height": 2400,
+      "ratio": "2:3",
+      "usage": [
+        "Lookbook ‘The Long Afternoon’ › looks[2]",
+        "Home page › lookbook-grid (crop: tall)",
+        "Atelier page › gallery"
+      ],
+      "alt": "An older woman in a long belted bone-coloured wrap coat stands side-on to a wall, her shadow crisp beside her.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. She wears the wrap coat — ankle-length, double-faced bone wool, no buttons, tied at the waist with its own belt — over an ink merino rollneck and ink trousers. Model C: a woman in her sixties of Northern European heritage, a blunt silver bob, strong dark brows, upright posture. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: portrait 2:3, full length with headroom and footroom, the figure centred, standing in strict profile facing right, a step away from the wall, her own shadow printed sharp on the wall behind her at full height. Negative space: about a sixth of the frame above the head is plain wall or sky; no type sits on this picture, but the grid crops it to 3:4 and 1:1, so keep the figure central and whole. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "aw26-c-wrap-coat",
+      "cast": "c",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "light",
+      "priority": 1
+    },
+    {
+      "id": "aw26-look-04",
+      "title": "AW26 — look 04",
+      "file": "public/images/lookbooks/aw26/look-04.webp",
+      "width": 1600,
+      "height": 2400,
+      "ratio": "2:3",
+      "usage": [
+        "Lookbook ‘The Long Afternoon’ › looks[3]",
+        "Home page › lookbook-grid (crop: tall)"
+      ],
+      "alt": "A woman in a buttoned rust car coat looks over her shoulder at the low sun.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. She wears the rust car coat — knee-length, single-breasted, boiled wool in deep oxide rust, small round collar, covered buttons, fastened — over an ink rib polo, wide oat wool trousers, black leather shoes. Model A: a woman in her late twenties of East African heritage, close-cropped natural hair, tall and long-necked, no jewellery. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame right; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: portrait 2:3, full length with headroom and footroom, the figure centred, standing with her back half-turned to camera, looking over her right shoulder into the sun, the coat's back seam and hem swing visible. Negative space: about a sixth of the frame above the head is plain wall or sky; no type sits on this picture, but the grid crops it to 3:4 and 1:1, so keep the figure central and whole. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "aw26-a-rust-coat",
+      "cast": "a",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.45
+      },
+      "tone": "warm",
+      "priority": 1
+    },
+    {
+      "id": "aw26-look-05",
+      "title": "AW26 — look 05",
+      "file": "public/images/lookbooks/aw26/look-05.webp",
+      "width": 1600,
+      "height": 2400,
+      "ratio": "2:3",
+      "usage": [
+        "Lookbook ‘The Long Afternoon’ › looks[4]",
+        "Home page › lookbook-grid (crop: tall)"
+      ],
+      "alt": "A man in a navy fisherman's jumper carries a folded coat over one arm along the quay.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. He wears the gansey — dark navy worsted wool, knitted in the round, a band of textured stitch across the chest, slightly too long in the sleeve — with wide oat wool trousers; the black melton overcoat is folded over his left forearm. Model B: a man in his forties of Mediterranean heritage, short dark hair flecked with grey, close stubble, lean build. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: portrait 2:3, full length with headroom and footroom, the figure centred, walking towards camera along the quay with the wall to his right, the folded coat over his forearm, his other hand relaxed at his side. Negative space: about a sixth of the frame above the head is plain wall or sky; no type sits on this picture, but the grid crops it to 3:4 and 1:1, so keep the figure central and whole. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "aw26-b-gansey",
+      "cast": "b",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.45
+      },
+      "tone": "dark",
+      "priority": 1
+    },
+    {
+      "id": "aw26-look-06",
+      "title": "AW26 — look 06",
+      "file": "public/images/lookbooks/aw26/look-06.webp",
+      "width": 1600,
+      "height": 2400,
+      "ratio": "2:3",
+      "usage": [
+        "Lookbook ‘The Long Afternoon’ › looks[5]",
+        "Home page › lookbook-grid (crop: tall)"
+      ],
+      "alt": "An older woman in a long dark waxed-linen raincoat, collar turned up, stands in a strip of sun between two shadows.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. She wears the raincoat — calf-length, ink waxed linen that creases like paper, collar turned up, a hood folded flat at the back — over bone trousers and black shoes. Model C: a woman in her sixties of Northern European heritage, a blunt silver bob, strong dark brows, upright posture. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame right; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: portrait 2:3, full length with headroom and footroom, the figure centred, standing still, facing camera, in a single bright vertical strip of sun between the shadows of two buttresses on the wall; hands in the coat's pockets. Negative space: about a sixth of the frame above the head is plain wall or sky; no type sits on this picture, but the grid crops it to 3:4 and 1:1, so keep the figure central and whole. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "aw26-c-raincoat",
+      "cast": "c",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "dark",
+      "priority": 1
+    },
+    {
+      "id": "aw26-look-07",
+      "title": "AW26 — look 07",
+      "file": "public/images/lookbooks/aw26/look-07.webp",
+      "width": 1600,
+      "height": 2400,
+      "ratio": "2:3",
+      "usage": [
+        "Lookbook ‘The Long Afternoon’ › looks[6]"
+      ],
+      "alt": "A woman in a short quilted putty jacket sits on the edge of the quay wall, the sea behind her out of focus.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. She wears the liner jacket — hip-length, flat diamond-quilted putty cotton, collarless, press studs hidden — over an oat rib polo, wide ink trousers, black leather shoes. Model A: a woman in her late twenties of East African heritage, close-cropped natural hair, tall and long-necked, no jewellery. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: portrait 2:3, full length with headroom and footroom, the figure centred, sitting sideways on the low seaward edge of the quay, one knee drawn up, forearm resting on it; a soft, out-of-focus band of grey-blue sea and pale sky behind her. Negative space: about a sixth of the frame above the head is plain wall or sky; no type sits on this picture, but the grid crops it to 3:4 and 1:1, so keep the figure central and whole. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "aw26-a-liner",
+      "cast": "a",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "light",
+      "priority": 2
+    },
+    {
+      "id": "aw26-look-08",
+      "title": "AW26 — look 08",
+      "file": "public/images/lookbooks/aw26/look-08.webp",
+      "width": 1600,
+      "height": 2400,
+      "ratio": "2:3",
+      "usage": [
+        "Lookbook ‘The Long Afternoon’ › looks[7]"
+      ],
+      "alt": "A man in a long black overcoat with a pale scarf stands against the wall as the sun drops.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. He wears the overcoat — below the knee, black melton, single-breasted, worn open — with the oat lambswool blanket scarf wrapped once, its single ultramarine stripe just showing, over an ecru gansey and black trousers. Model B: a man in his forties of Mediterranean heritage, short dark hair flecked with grey, close stubble, lean build. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame right; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: portrait 2:3, full length with headroom and footroom, the figure centred, leaning his back flat against the wall, chin slightly lifted, eyes closed against the sun; the sun is lower than in the other looks and his shadow falls almost horizontal. Negative space: about a sixth of the frame above the head is plain wall or sky; no type sits on this picture, but the grid crops it to 3:4 and 1:1, so keep the figure central and whole. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "aw26-b-overcoat",
+      "cast": "b",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.45
+      },
+      "tone": "dark",
+      "priority": 2
+    },
+    {
+      "id": "ss26-cover",
+      "title": "SS26 — cover",
+      "file": "public/images/lookbooks/ss26/cover.webp",
+      "width": 1600,
+      "height": 2000,
+      "ratio": "4:5",
+      "usage": [
+        "Lookbook ‘Plaster’ › cover (lookbook header, collections page card)"
+      ],
+      "alt": "Someone in a loose oat linen jacket sits on pale plaster steps, face turned into the sun.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. They wear the linen jacket — boxy, heavy oat linen, patch pockets, sleeves pushed up — over a bone linen shirt buttoned to the top. Model D: an androgynous adult in their early twenties of East Asian heritage, straight black hair to the jaw tucked behind the ears, slight build. Set: pale pink-grey rendered steps and a deep plastered archway in an invented harbour town, the render softly mottled, edges worn round; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 50mm lens at f/4, eye level, verticals kept straight. Framing: portrait 4:5, half length, seated on a step, face lifted into the sun with eyes closed, the arch's curved shadow crossing the wall behind. Negative space: the top third is plain plaster wall; no type sits on this picture. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "ss26-d-plaster",
+      "cast": "d",
+      "set": "plaster-steps",
+      "focus": {
+        "x": 0.5,
+        "y": 0.45
+      },
+      "tone": "light",
+      "priority": 2
+    },
+    {
+      "id": "ss26-look-01",
+      "title": "SS26 — look 01",
+      "file": "public/images/lookbooks/ss26/look-01.webp",
+      "width": 1600,
+      "height": 2400,
+      "ratio": "2:3",
+      "usage": [
+        "Lookbook ‘Plaster’ › looks[0]"
+      ],
+      "alt": "Someone in a matching oat linen jacket and trousers stands in a plastered archway.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. They wear the linen jacket and matching wide trousers in heavy oat linen, a bone shirt, tan leather sandals. Model D: an androgynous adult in their early twenties of East Asian heritage, straight black hair to the jaw tucked behind the ears, slight build. Set: pale pink-grey rendered steps and a deep plastered archway in an invented harbour town, the render softly mottled, edges worn round; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: portrait 2:3, full length with headroom and footroom, the figure centred, standing in the mouth of the archway, one shoulder on the curved plaster, half the body in sun, the arch's inside in cool shadow. Negative space: about a sixth of the frame above the head is plain plaster; keep the figure central and whole so 3:4 and 1:1 crops still work. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "ss26-d-plaster",
+      "cast": "d",
+      "set": "plaster-steps",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "light",
+      "priority": 3
+    },
+    {
+      "id": "ss26-look-02",
+      "title": "SS26 — look 02",
+      "file": "public/images/lookbooks/ss26/look-02.webp",
+      "width": 1600,
+      "height": 2400,
+      "ratio": "2:3",
+      "usage": [
+        "Lookbook ‘Plaster’ › looks[1]",
+        "Atelier page › gallery"
+      ],
+      "alt": "An older woman in a light putty trench walks down pale steps with the arch's shadow across her.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. She wears the unlined trench — knee-length, putty cotton gabardine, belt hanging loose — over a bone linen shirt and bone trousers, flat tan shoes. Model C: a woman in her sixties of Northern European heritage, a blunt silver bob, strong dark brows, upright posture. Set: pale pink-grey rendered steps and a deep plastered archway in an invented harbour town, the render softly mottled, edges worn round; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame right; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: portrait 2:3, full length with headroom and footroom, the figure centred, walking down the steps towards camera, mid-step, the hard curved shadow of the arch falling diagonally across her body. Negative space: about a sixth of the frame above the head is plain plaster; keep the figure central and whole so 3:4 and 1:1 crops still work. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "ss26-c-trench",
+      "cast": "c",
+      "set": "plaster-steps",
+      "focus": {
+        "x": 0.5,
+        "y": 0.45
+      },
+      "tone": "mid",
+      "priority": 3
+    },
+    {
+      "id": "ss26-look-03",
+      "title": "SS26 — look 03",
+      "file": "public/images/lookbooks/ss26/look-03.webp",
+      "width": 1600,
+      "height": 2400,
+      "ratio": "2:3",
+      "usage": [
+        "Lookbook ‘Plaster’ › looks[2]"
+      ],
+      "alt": "Someone in a loose rust-coloured knit leans against a plaster wall, eyes closed against the sun.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. They wear the loose knit — an oversized crew-neck in rust cotton and linen, open and airy, sleeves past the wrists — with wide bone linen trousers. Model D: an androgynous adult in their early twenties of East Asian heritage, straight black hair to the jaw tucked behind the ears, slight build. Set: pale pink-grey rendered steps and a deep plastered archway in an invented harbour town, the render softly mottled, edges worn round; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, eye level, verticals kept straight. Framing: portrait 2:3, full length with headroom and footroom, the figure centred, leaning the back of the head and shoulders against the plaster wall, eyes closed, face to the sun, arms loose. Negative space: about a sixth of the frame above the head is plain plaster; keep the figure central and whole so 3:4 and 1:1 crops still work. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "ss26-d-plaster",
+      "cast": "d",
+      "set": "plaster-steps",
+      "focus": {
+        "x": 0.5,
+        "y": 0.45
+      },
+      "tone": "warm",
+      "priority": 3
+    },
+    {
+      "id": "piece-field-coat",
+      "title": "Piece — field coat",
+      "file": "public/images/pieces/field-coat.webp",
+      "width": 1200,
+      "height": 1500,
+      "ratio": "4:5",
+      "usage": [
+        "Home page › pieces (ratio: portrait)"
+      ],
+      "alt": "The undyed wool field coat on a wooden hanger against a sunlit white wall.",
+      "prompt": "Still-life photograph of a single garment for Caddow, a small independent coat and knitwear label. The field coat — mid-thigh, raglan sleeves, undyed oat-grey Shetland twill — hangs on a plain pale wooden hanger against the lime-washed wall, front view, buttons done up. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, no sky in frame. Camera: full-frame, 50mm lens at f/8, camera square to the wall. Framing: portrait 4:5, the coat centred, filling about two-thirds of the height, its sharp shadow falling to the right. Negative space: a calm margin all round the garment; no type sits on this picture, and it is cropped to 1:1 when the section is set to square, so keep the garment central. No person, no hands, no mannequin. Real cloth with real weight: visible weave, creases where it has been worn, a frayed thread or two. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "readable text, letters, numbers, labels, swing tags, logos, brand marks, watermark, plastic sheen, CGI, 3D render, illustration, over-saturation, orange cast, HDR, lens flare, mannequin, hanger hooks melting into the wall, impossible folds, duplicated sleeves",
+      "seedGroup": "aw26-field-coat",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "warm",
+      "priority": 2
+    },
+    {
+      "id": "piece-rib-polo",
+      "title": "Piece — rib polo",
+      "file": "public/images/pieces/rib-polo.webp",
+      "width": 1200,
+      "height": 1500,
+      "ratio": "4:5",
+      "usage": [
+        "Home page › pieces (ratio: portrait)"
+      ],
+      "alt": "An oat rib-knit polo folded on a stone ledge in low sun.",
+      "prompt": "Still-life photograph of a single garment for Caddow, a small independent coat and knitwear label. The rib polo — oat lambswool, a deep ribbed collar — folded in a neat square with the collar on top, lying on a broad pale stone ledge. Set: the flat top of the harbour wall, pale weathered stone, a soft bright wall surface behind. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, no sky in frame. Camera: full-frame, 50mm lens at f/8 from about 30 degrees above. Framing: portrait 4:5, the folded knit in the lower middle, the stone ledge receding behind into soft light. Negative space: a calm margin all round the garment; no type sits on this picture, and it is cropped to 1:1 when the section is set to square, so keep the garment central. No person, no hands, no mannequin. Real cloth with real weight: visible weave, creases where it has been worn, a frayed thread or two. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "readable text, letters, numbers, labels, swing tags, logos, brand marks, watermark, plastic sheen, CGI, 3D render, illustration, over-saturation, orange cast, HDR, lens flare, mannequin, hanger hooks melting into the wall, impossible folds, duplicated sleeves",
+      "seedGroup": "aw26-rib-polo",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "light",
+      "priority": 2
+    },
+    {
+      "id": "piece-gansey",
+      "title": "Piece — gansey",
+      "file": "public/images/pieces/gansey.webp",
+      "width": 1200,
+      "height": 1500,
+      "ratio": "4:5",
+      "usage": [
+        "Home page › pieces (ratio: portrait)"
+      ],
+      "alt": "A navy fisherman's gansey laid flat on unbleached linen, its stitch pattern caught by low light.",
+      "prompt": "Still-life photograph of a single garment for Caddow, a small independent coat and knitwear label. The gansey — dark navy worsted wool, a band of textured stitch across the chest — laid flat, sleeves folded behind, on a sheet of unbleached linen with soft creases. Set: a sheet of unbleached linen on the floor by a window. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, no sky in frame. Camera: full-frame, 50mm lens at f/8, directly overhead. Framing: portrait 4:5, top-down, the jumper centred with a margin of linen all round; raking sun brings out the stitch relief. Negative space: a calm margin all round the garment; no type sits on this picture, and it is cropped to 1:1 when the section is set to square, so keep the garment central. No person, no hands, no mannequin. Real cloth with real weight: visible weave, creases where it has been worn, a frayed thread or two. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "readable text, letters, numbers, labels, swing tags, logos, brand marks, watermark, plastic sheen, CGI, 3D render, illustration, over-saturation, orange cast, HDR, lens flare, mannequin, hanger hooks melting into the wall, impossible folds, duplicated sleeves",
+      "seedGroup": "aw26-gansey",
+      "set": "studio-floor",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "dark",
+      "priority": 2
+    },
+    {
+      "id": "piece-blanket-scarf",
+      "title": "Piece — blanket scarf",
+      "file": "public/images/pieces/blanket-scarf.webp",
+      "width": 1200,
+      "height": 1500,
+      "ratio": "4:5",
+      "usage": [
+        "Home page › pieces (ratio: portrait)"
+      ],
+      "alt": "A folded oat lambswool scarf with a single blue stripe, draped over the back of a wooden chair.",
+      "prompt": "Still-life photograph of a single garment for Caddow, a small independent coat and knitwear label. The blanket scarf — oat lambswool, fringed ends, one narrow ultramarine stripe near one end — folded twice and draped over the top rail of a plain pale wooden chair. Set: a plain pale wooden chair in front of a limewashed wall. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame right; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, no sky in frame. Camera: full-frame, 85mm lens at f/5.6. Framing: portrait 4:5, the chair back and scarf centred, the chair cut at the seat; long shadow of the chair on the wall. Negative space: a calm margin all round the garment; no type sits on this picture, and it is cropped to 1:1 when the section is set to square, so keep the garment central. No person, no hands, no mannequin. Real cloth with real weight: visible weave, creases where it has been worn, a frayed thread or two. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "readable text, letters, numbers, labels, swing tags, logos, brand marks, watermark, plastic sheen, CGI, 3D render, illustration, over-saturation, orange cast, HDR, lens flare, mannequin, hanger hooks melting into the wall, impossible folds, duplicated sleeves",
+      "seedGroup": "aw26-blanket-scarf",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "light",
+      "priority": 2
+    },
+    {
+      "id": "atelier-workroom",
+      "title": "Atelier — workroom",
+      "file": "public/images/atelier/workroom.webp",
+      "width": 2400,
+      "height": 1600,
+      "ratio": "3:2",
+      "usage": [
+        "Home page › split-editorial (ratio: landscape, bleed)",
+        "Contact page › split-editorial (ratio: square — cropped centrally)",
+        "Atelier page › gallery"
+      ],
+      "alt": "The Caddow workroom: a long cutting table under tall windows, rolls of undyed cloth and a rail of coats, low sun across the floor.",
+      "prompt": "Documentary interior photograph for Caddow, a small independent coat and knitwear label. Wide view down the length of the room: the cutting table runs from the left foreground to the far windows; a rail of coats in calico toiles stands on the right; rolls of undyed wool lean in a corner; one pattern cutter works at the far end of the table, small in the frame. Tobiah Rusk (invented): a man in his thirties, Black, short beard, sleeves rolled, seen small and from behind three-quarters. Set: a first-floor workroom above a rope-maker's: limewashed walls, a scrubbed pine floor, tall multi-pane windows letting hard sun in as sharp rectangles of light, a long cutting table covered in brown pattern paper, rolls of undyed cloth. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from the windows on the left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail; the sun comes in through the windows. Camera: full-frame, 28mm lens at f/5.6, camera at standing eye height, verticals straight. Framing: landscape 3:2, deep perspective, the far window wall a little brighter than the rest. Negative space: the left foreground is the bare table top and floor lit by the window rectangles — calm enough for a crop to square from the centre to still read. Real working mess, nothing styled to look perfect: offcuts, chalk dust, pins. Any writing on paper is abstract pencil lines and notch marks only, never letters or numbers. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "workroom-set",
+      "cast": "tobiah",
+      "set": "workroom",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "mid",
+      "priority": 1
+    },
+    {
+      "id": "atelier-hands",
+      "title": "Atelier — chalk and rule",
+      "file": "public/images/atelier/hands.webp",
+      "width": 1600,
+      "height": 2000,
+      "ratio": "4:5",
+      "usage": [
+        "Atelier page › gallery",
+        "Contact page › contact (image)"
+      ],
+      "alt": "Hands marking undyed wool with tailor's chalk along a wooden rule.",
+      "prompt": "Documentary interior photograph for Caddow, a small independent coat and knitwear label. Close view from just above the cutting table: two hands — one flat on a long boxwood metre rule, the other drawing a line with a flat square of white tailor's chalk along its edge — on a length of undyed oat wool. Ten fingers in total, each correctly formed, short clean nails, a plaster on one knuckle; sleeves of an ink jumper pushed up. Set: a first-floor workroom above a rope-maker's: limewashed walls, a scrubbed pine floor, tall multi-pane windows letting hard sun in as sharp rectangles of light, a long cutting table covered in brown pattern paper, rolls of undyed cloth. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail; the sun comes in through the windows. Camera: full-frame, 85mm lens at f/4, looking down at about 60 degrees. Framing: portrait 4:5, hands in the lower-middle of the frame, the rule running diagonally from lower left to upper right; the rule has plain graduation ticks only, no numbers. Negative space: the top third is plain wool cloth in soft focus. Real working mess, nothing styled to look perfect: offcuts, chalk dust, pins. Any writing on paper is abstract pencil lines and notch marks only, never letters or numbers. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame, numbers on the ruler",
+      "seedGroup": "workroom-set",
+      "set": "workroom",
+      "focus": {
+        "x": 0.5,
+        "y": 0.6
+      },
+      "tone": "light",
+      "priority": 3
+    },
+    {
+      "id": "atelier-weave",
+      "title": "Atelier — the cloth",
+      "file": "public/images/atelier/weave.webp",
+      "width": 1600,
+      "height": 1600,
+      "ratio": "1:1",
+      "usage": [
+        "Atelier page › gallery (square frame)"
+      ],
+      "alt": "Close up, the twill of undyed Shetland wool and its loose selvedge, in raking light.",
+      "prompt": "Still-life photograph of a single garment for Caddow, a small independent coat and knitwear label. An extreme close-up of undyed oat-grey Shetland wool twill at the selvedge: the diagonal twill lines, loose fibres catching the light, the slightly irregular selvedge edge with a few loose warp threads. Set: the cloth lying on the cutting table. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, no sky in frame. Camera: full-frame, 100mm macro lens at f/8. Framing: square 1:1, the selvedge running diagonally across the lower right, the twill filling the rest; sun skimming almost parallel to the surface. Negative space: the texture is the picture; no type sits on it. No person, no hands, no mannequin. Real cloth with real weight: visible weave, creases where it has been worn, a frayed thread or two. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "readable text, letters, numbers, labels, swing tags, logos, brand marks, watermark, plastic sheen, CGI, 3D render, illustration, over-saturation, orange cast, HDR, lens flare, mannequin, hanger hooks melting into the wall, impossible folds, duplicated sleeves",
+      "seedGroup": "workroom-set",
+      "set": "workroom",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "mid",
+      "priority": 3
+    },
+    {
+      "id": "portrait-hesper",
+      "title": "Portrait — Hesper Lowe",
+      "file": "public/images/people/hesper-lowe.webp",
+      "width": 1600,
+      "height": 2000,
+      "ratio": "4:5",
+      "usage": [
+        "Atelier page › split-editorial (sections.0, ratio: portrait, bleed)",
+        "Home page › quote (portrait)"
+      ],
+      "alt": "Hesper Lowe, Caddow's founder, by the workroom window with a tape measure round her neck.",
+      "prompt": "Documentary interior photograph for Caddow, a small independent coat and knitwear label. Portrait of the label's founder standing by a tall workroom window in an ink merino rollneck, a cloth tape measure hanging round her neck, one shoulder against the window frame, looking straight at the camera with a level, unbothered expression. Hesper Lowe (invented): a woman in her early fifties, freckled, greying auburn hair loosely pinned up, reading glasses pushed into her hair. Set: a first-floor workroom above a rope-maker's: limewashed walls, a scrubbed pine floor, tall multi-pane windows letting hard sun in as sharp rectangles of light, a long cutting table covered in brown pattern paper, rolls of undyed cloth. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from the window at frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail; the sun comes in through the windows. Camera: full-frame, 85mm lens at f/2.8, at her eye level. Framing: portrait 4:5, from the waist up, a hard bar of window light across half her face and shoulder, the other half in soft shade. Negative space: the right third is the soft, shadowed workroom behind her; this portrait sits beside text, not under it. Real working mess, nothing styled to look perfect: offcuts, chalk dust, pins. Any writing on paper is abstract pencil lines and notch marks only, never letters or numbers. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "hesper",
+      "cast": "hesper",
+      "set": "workroom",
+      "focus": {
+        "x": 0.45,
+        "y": 0.4
+      },
+      "tone": "mid",
+      "priority": 2
+    },
+    {
+      "id": "film-poster",
+      "title": "Film — poster frame",
+      "file": "public/images/film/the-long-afternoon.webp",
+      "width": 1920,
+      "height": 1080,
+      "ratio": "16:9",
+      "usage": [
+        "Home page › film (poster, ratio: wide) — the play mark and label sit over the lower edge, on the shade"
+      ],
+      "alt": "A still from the film: a woman in a rust coat walks the length of the harbour wall at sunset.",
+      "prompt": "Editorial fashion photograph for Caddow, a small independent coat and knitwear label. A still from a short fashion film. She wears the rust car coat, fastened, and walks away along the broad top of the harbour wall, the sea to one side. Model A: a woman in her late twenties of East African heritage, close-cropped natural hair, tall and long-necked, no jewellery. Set: the north harbour wall of an invented small northern harbour town — a long, slightly uneven lime-washed wall, chalk white with faint grey weathering, above a quay of large flat pale stone flags; nothing else in frame. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame right, very low — the last ten minutes before sunset; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, a clear pale sky. Camera: full-frame, 35mm lens at f/5.6, from behind and slightly above, eye level, verticals kept straight. Framing: landscape 16:9, wide: she is small, about a fifth of the frame height, in the upper-middle; her shadow stretches long towards the camera. Negative space: the lowest quarter is plain stone of the wall top; the play control is laid over it on a shade. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. Natural, unretouched skin with visible pores and texture; a relaxed, self-possessed expression, not smiling for the camera; an invented person who resembles no real individual; hands, if visible, relaxed with five correctly formed fingers. Clothing plain and well made, with no logos, labels, lettering or brand marks anywhere. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame, motion blur smears, letterbox bars",
+      "seedGroup": "aw26-a-rust-coat",
+      "cast": "a",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.5,
+        "y": 0.45
+      },
+      "tone": "dark",
+      "priority": 2,
+      "labelCorner": "top-right"
+    },
+    {
+      "id": "journal-rust",
+      "title": "Journal — 11 tries at a rust coat",
+      "file": "public/images/journal/eleven-tries-at-rust.webp",
+      "width": 1800,
+      "height": 1200,
+      "ratio": "3:2",
+      "usage": [
+        "Journal story ‘11 tries at a rust coat’ › image (story page, journal list, home journal-list)"
+      ],
+      "alt": "Eleven swatches of wool, each a slightly different rust, pinned in a row on a white board.",
+      "prompt": "Still-life photograph of a single garment for Caddow, a small independent coat and knitwear label. Eleven small squares of boiled wool, each dyed a slightly different rust — from a brick orange to a deep oxide brown — pinned in one straight row with plain steel pins to a white-painted board. No labels or writing anywhere. Set: a white-painted board leant against the workroom wall. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, no sky in frame. Camera: full-frame, 50mm lens at f/8, square to the board. Framing: a 3:2 frame, the row of swatches across the middle, a wide margin of white board above and below. Negative space: the picture is shown above or beside the headline, never under it; keep the subject clear of the very edges because cards crop a little on hover. No person, no hands, no mannequin. Real cloth with real weight: visible weave, creases where it has been worn, a frayed thread or two. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "readable text, letters, numbers, labels, swing tags, logos, brand marks, watermark, plastic sheen, CGI, 3D render, illustration, over-saturation, orange cast, HDR, lens flare, mannequin, hanger hooks melting into the wall, impossible folds, duplicated sleeves",
+      "seedGroup": "aw26-rust-coat",
+      "set": "workroom",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "light",
+      "priority": 3
+    },
+    {
+      "id": "journal-forty",
+      "title": "Journal — why we make 40",
+      "file": "public/images/journal/why-we-make-forty.webp",
+      "width": 1800,
+      "height": 1200,
+      "ratio": "3:2",
+      "usage": [
+        "Journal story ‘why we make 40’ › image (story page, journal list, home journal-list)"
+      ],
+      "alt": "A long rail of coats in the workroom, most of them undyed field coats, in a strip of sun.",
+      "prompt": "Still-life photograph of a single garment for Caddow, a small independent coat and knitwear label. A long steel rail packed with identical undyed field coats on identical pale wooden hangers, shoulders overlapping, receding into the room. Set: a first-floor workroom above a rope-maker's: limewashed walls, a scrubbed pine floor, tall multi-pane windows letting hard sun in as sharp rectangles of light, a long cutting table covered in brown pattern paper, rolls of undyed cloth. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from the windows on the right; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, no sky in frame. Camera: full-frame, 35mm lens at f/5.6, at shoulder height, looking along the rail. Framing: a 3:2 frame, the rail running from the left foreground deep into the room, one hard strip of sun lighting a few coats mid-way. Negative space: the picture is shown above or beside the headline, never under it; keep the subject clear of the very edges because cards crop a little on hover. No person, no hands, no mannequin. Real cloth with real weight: visible weave, creases where it has been worn, a frayed thread or two. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "readable text, letters, numbers, labels, swing tags, logos, brand marks, watermark, plastic sheen, CGI, 3D render, illustration, over-saturation, orange cast, HDR, lens flare, mannequin, hanger hooks melting into the wall, impossible folds, duplicated sleeves",
+      "seedGroup": "aw26-field-coat",
+      "set": "workroom",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "mid",
+      "priority": 3
+    },
+    {
+      "id": "journal-pattern",
+      "title": "Journal — a coat pattern is a letter",
+      "file": "public/images/journal/a-pattern-is-a-letter.webp",
+      "width": 1800,
+      "height": 1200,
+      "ratio": "3:2",
+      "usage": [
+        "Journal story ‘a coat pattern is a letter’ › image (story page, journal list, home journal-list)"
+      ],
+      "alt": "Brown paper pattern pieces for a coat laid out on the cutting table, with pencil lines and notches.",
+      "prompt": "Still-life photograph of a single garment for Caddow, a small independent coat and knitwear label. Brown paper pattern pieces for a coat — a front, a back, a raglan sleeve, a collar — laid edge to edge on the cutting table, with pencil grain lines, notch marks and a few pins; a pencil and a pair of heavy black shears lie beside them. No letters or numbers on the paper. Set: a first-floor workroom above a rope-maker's: limewashed walls, a scrubbed pine floor, tall multi-pane windows letting hard sun in as sharp rectangles of light, a long cutting table covered in brown pattern paper, rolls of undyed cloth. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, no sky in frame. Camera: full-frame, 35mm lens at f/8, directly overhead. Framing: a 3:2 top-down frame, the pieces filling the middle, table edge visible at the bottom. Negative space: the picture is shown above or beside the headline, never under it; keep the subject clear of the very edges because cards crop a little on hover. No person, no hands, no mannequin. Real cloth with real weight: visible weave, creases where it has been worn, a frayed thread or two. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "readable text, letters, numbers, labels, swing tags, logos, brand marks, watermark, plastic sheen, CGI, 3D render, illustration, over-saturation, orange cast, HDR, lens flare, mannequin, hanger hooks melting into the wall, impossible folds, duplicated sleeves",
+      "seedGroup": "workroom-set",
+      "set": "workroom",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "light",
+      "priority": 3
+    },
+    {
+      "id": "journal-care",
+      "title": "Journal — keeping a wool coat",
+      "file": "public/images/journal/keeping-a-wool-coat.webp",
+      "width": 1800,
+      "height": 1200,
+      "ratio": "3:2",
+      "usage": [
+        "Journal story ‘keeping a wool coat’ › image (story page, journal list, home journal-list)"
+      ],
+      "alt": "A wooden clothes brush resting on the shoulder of a wool coat hung by a sunny window.",
+      "prompt": "Still-life photograph of a single garment for Caddow, a small independent coat and knitwear label. The undyed wool field coat hangs on a wooden hanger from a window catch; a plain wooden clothes brush with natural bristles rests on its shoulder. Set: a first-floor workroom above a rope-maker's: limewashed walls, a scrubbed pine floor, tall multi-pane windows letting hard sun in as sharp rectangles of light, a long cutting table covered in brown pattern paper, rolls of undyed cloth. Light: hard, low late-afternoon sun about fifteen degrees above the horizon, coming from the window at frame left; clean, slightly warm white light (not orange), crisp long shadows with deep but open, cool shadow detail, no sky in frame. Camera: full-frame, 50mm lens at f/4. Framing: a 3:2 frame, the coat's shoulder and the brush in the right half, the soft bright window and wall to the left. Negative space: the picture is shown above or beside the headline, never under it; keep the subject clear of the very edges because cards crop a little on hover. No person, no hands, no mannequin. Real cloth with real weight: visible weave, creases where it has been worn, a frayed thread or two. Palette held to chalk white, bone, oat, putty, rust, ink navy and olive-grey. The look of medium-speed colour negative film: fine, even, natural grain, soft highlight roll-off, muted true-to-life colour, gentle contrast, no digital sharpening, no HDR. Spare, assured and a little dry: restraint and attitude, not gloss or glamour.",
+      "negative": "readable text, letters, numbers, labels, swing tags, logos, brand marks, watermark, plastic sheen, CGI, 3D render, illustration, over-saturation, orange cast, HDR, lens flare, mannequin, hanger hooks melting into the wall, impossible folds, duplicated sleeves",
+      "seedGroup": "aw26-field-coat",
+      "set": "workroom",
+      "focus": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "tone": "light",
+      "priority": 3
+    },
+    {
+      "id": "share",
+      "title": "Share image",
+      "file": "public/images/share.jpg",
+      "width": 1200,
+      "height": 630,
+      "ratio": "1.91:1",
+      "usage": [
+        "Every page's social share image (site.json shareImage) unless a page sets its own"
+      ],
+      "alt": "Caddow — a woman in a long rust coat against a sunlit harbour wall",
+      "prompt": "Optional: leave this out and scripts/ingest-photos.mjs crops it from campaign-aw26. If generated separately, use the campaign-aw26 prompt unchanged except for the frame: landscape 1.91:1, she stands at about 70% across; the left half is sunlit wall with her long shadow, plain enough for a share card.",
+      "negative": "plastic or airbrushed skin, beauty filter, symmetrical posed glamour, fashion-catalogue smile, extra or fused fingers, mangled hands, distorted limbs, warped face, crossed eyes, over-saturation, orange golden-hour cast, teal-and-orange grade, HDR, lens flare, bokeh balls, readable text, letters, numbers, signage, logos, labels, brand marks, watermark, signature, heavy make-up, jewellery clutter, sexualised pose, cleavage, sheer clothing, illustration, painting, 3D render, CGI, collage, border, frame",
+      "seedGroup": "aw26-a-rust-coat",
+      "cast": "a",
+      "set": "harbour-wall",
+      "focus": {
+        "x": 0.68,
+        "y": 0.5
+      },
+      "tone": "warm",
+      "priority": 1,
+      "derivedFrom": "campaign-aw26",
+      "note": "JPEG, not WebP: several social networks still ignore WebP share images."
+    }
+  ]
+}

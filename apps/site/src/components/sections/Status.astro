@@ -1,0 +1,41 @@
+---
+// What is in the release, grouped by status: rendered from
+// src/data/status.json, the one place the site states a status.
+import { statusGroups, statusItems, statusLabels, type StatusId } from "../../lib/status";
+import { inline } from "../../lib/markdown";
+import { fill } from "../../lib/site";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const hid = `${s.id ?? "status"}-h`;
+const groups: StatusId[] = (s.groups ?? statusGroups) as StatusId[];
+const chosen = statusItems.filter((i) => (s.only ? s.only.includes(i.id) : i.home !== false));
+// "preview" sits with what is built, marked as such.
+const inGroup = (g: StatusId) => chosen.filter((i) => (i.status === "preview" ? "built" : i.status) === g);
+---
+
+<section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+  <div class="head">
+    <H class:list={[first ? "h1" : "h2"]} id={hid} set:html={inline(s.heading)} />
+    {s.text && <p class="lead">{fill(s.text)}</p>}
+  </div>
+  <div class:list={["spec", !s.lines && "spec--labels", s.only && "spec--even"]}>
+    {
+      groups.map((g) => (
+        <div class="spec__group">
+          <h3 class="h3"><span class:list={["badge", `badge--${g}`]}>{statusLabels[g]}</span></h3>
+          <ul>
+            {inGroup(g).map((i) => (
+              <li>
+                <b>{i.label}</b>
+                {(s.lines || s.linesFor.includes(i.id)) && <span>{i.line}</span>}
+                {i.status === "preview" && <span class="badge badge--preview">{statusLabels.preview}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))
+    }
+  </div>
+  {s.link && <p class="spec__more"><a class="link" href={fill(s.link.href)}>{s.link.label}</a></p>}
+</section>

@@ -1,0 +1,17 @@
+---
+// Vendored from @galley/astro 0.1.0 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// The consent banner, where the layout wants it (by default the integration
+// adds it before </body>). Rendered only when scripts.json uses
+// `consent.mode: "banner"` and some script — or a form's UTM memory — needs consent.
+import { renderBanner } from "../scripts/banner.js";
+import { planPage, resolveEntries } from "../scripts/plan.js";
+import { scripts, utm } from "../runtime/site-config.js";
+
+const consent = scripts?.consent;
+const base = (import.meta.env.BASE_URL || "/").replace(/\/+$/, "");
+const path = base && Astro.url.pathname.startsWith(base) ? Astro.url.pathname.slice(base.length) || "/" : Astro.url.pathname;
+const plan = planPage(scripts, { path, utm, resolved: scripts ? resolveEntries(scripts) : [] });
+const html = consent && plan.banner ? renderBanner(consent, plan.categories, { base }) : "";
+---
+
+<Fragment set:html={html} />

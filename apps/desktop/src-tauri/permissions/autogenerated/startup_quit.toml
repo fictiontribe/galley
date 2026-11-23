@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-startup-quit"
+description = "Enables the startup_quit command without any pre-configured scope."
+commands.allow = ["startup_quit"]
+
+[[permission]]
+identifier = "deny-startup-quit"
+description = "Denies the startup_quit command without any pre-configured scope."
+commands.deny = ["startup_quit"]

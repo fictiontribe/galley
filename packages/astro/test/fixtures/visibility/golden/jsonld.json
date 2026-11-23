@@ -1,0 +1,87 @@
+{
+  "/": [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Ferrow",
+      "url": "https://www.example.com/"
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Ferrow",
+      "url": "https://www.example.com/",
+      "logo": "https://www.example.com/images/logo.png",
+      "sameAs": [
+        "https://www.linkedin.com/company/ferrow"
+      ]
+    }
+  ],
+  "/blog/certificate-register/": [
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": "How to run a certificate register",
+      "datePublished": "2026-08-20T00:00:00.000Z",
+      "dateModified": "2026-09-01T00:00:00.000Z",
+      "author": [
+        {
+          "@type": "Person",
+          "name": "Joel Marchetti"
+        }
+      ],
+      "url": "https://www.example.com/blog/certificate-register/"
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Ferrow",
+          "item": "https://www.example.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://www.example.com/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "How to run a certificate register",
+          "item": "https://www.example.com/blog/certificate-register/"
+        }
+      ]
+    }
+  ],
+  "/blog/tags/guides/": [
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Ferrow",
+          "item": "https://www.example.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://www.example.com/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Filed under “Guides”",
+          "item": "https://www.example.com/blog/tags/guides/"
+        }
+      ]
+    }
+  ],
+  "/about/": []
+}
