@@ -43,9 +43,13 @@ jobs:
     timeout-minutes: 45
     env:
       PUBLISH: ${{ github.event_name == 'push' || inputs.dry-run == false }}
-      PACK: ${{ github.workspace }}/../pack
     steps:
       - uses: actions/checkout@v4
+
+      # Packed files go in the runner's temp folder: outside the repository, so the
+      # site made from them cannot see the workspace, and a path the artifact upload accepts.
+      - name: Choose where the packed files go
+        run: echo "PACK=${RUNNER_TEMP}/pack" >> "$GITHUB_ENV"
 
       # Node 22: the starters are Astro 7 sites (22.23.4+); registry-url writes
       # the .npmrc that reads NODE_AUTH_TOKEN when publishing.
