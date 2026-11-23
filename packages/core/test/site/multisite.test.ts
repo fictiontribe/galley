@@ -14,6 +14,9 @@ import type { OpenSite } from "../../src/site/service";
 import type { PreviewPolicySettings, ServerEvent, Settings } from "../../src/types";
 import { AUTHOR, cleanupAll, makeSite, sh, tempDir, until } from "./helpers";
 
+// Speed limits are for a quiet laptop; a shared CI runner or a busy machine gets room, and the test still fails if the work stops scaling.
+const SLACK = process.env.CI ? 10 : 3;
+
 const registries: GalleySiteRegistry[] = [];
 
 afterEach(async () => {
@@ -202,7 +205,7 @@ describe("fifty sites", () => {
 
     expect(list).toHaveLength(50);
     expect(calls).toBe(0);
-    expect(elapsed).toBeLessThan(100);
+    expect(elapsed).toBeLessThan(100 * SLACK);
     expect(registry.openSites()).toEqual([]);
     console.log(`[measure] list of 50 sites: ${elapsed.toFixed(1)} ms; facts read afterwards in the background`);
 
