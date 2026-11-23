@@ -20,8 +20,11 @@ When someone opens the preview (`POST /api/sites/<id>/preview/start`), Galley:
 The dev command runs with the same environment an ordinary terminal would give it, minus two kinds of variable: those that say an AI coding agent is driving the terminal (`CLAUDECODE`, `CLAUDE_*`, `CURSOR_AGENT`, `CODEX_*`, `GEMINI_CLI`, …) — Astro 7 moves its dev server into the background and exits when it sees them — and those that say a test runner started the process (`VITEST`, `JEST_WORKER_ID`), which make Astro serve nothing. ([`workspace/command.ts`]({repository}/blob/main/packages/core/src/workspace/command.ts))
 
 ```sh
-$ curl -s -X POST -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/sites/$SITE/preview/start
-{"state":"ready","url":"http://127.0.0.1:62851","baselineUrl":null,"baselineSource":null,"log":["> galley-astro-starter@1.0.0 dev","> astro dev",…," astro  v7.4.13 ready in 561 ms","┃ Local    http://localhost:4321/",…],"detail":"The preview is ready.",…}
+curl -s -X POST -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/sites/$SITE/preview/start
+```
+
+```output
+{"state":"ready","url":"http://127.0.0.1:62851",…,"detail":"The preview is ready.",…}
 ```
 
 The `url` is the proxy, not `astro dev` itself.
@@ -35,9 +38,18 @@ The preview proxy listens on a free port of its own and forwards everything to t
 - **The overlay script added** to HTML responses, just before `</head>`:
 
 ```sh
-$ curl -s http://127.0.0.1:62851/ | grep -o '<script[^>]*__galley[^>]*>'
+curl -s http://127.0.0.1:62851/ | grep -o '<script[^>]*__galley[^>]*>'
+```
+
+```output
 <script src="/__galley/overlay.js" defer>
-$ curl -s http://127.0.0.1:62851/__galley/health
+```
+
+```sh
+curl -s http://127.0.0.1:62851/__galley/health
+```
+
+```output
 {"ok":true,"kind":"preview"}
 ```
 

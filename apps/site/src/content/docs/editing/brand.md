@@ -33,7 +33,7 @@ Under **Set it up from your material**, drop brand guidelines (PDF), logos, scre
 
 Colours, fonts and sizes are read on this computer and need no key. **The voice guide needs the assistant**: the site's styles, a sample of its words and its list of sections are sent to the AI provider (Anthropic), and so is every file you add as material — billed to the assistant's key like any request. Nothing is sent until you press a button that reads. Without a key the proposal says the voice and guide weren't written. The docs read Caddow's brand without a key.
 
-## What can go wrong
+## If something's different
 
 - **Fonts show in a fallback face.** A font the site doesn't have installed is named, and the next font in its list is used until it's added.
 - **A file over 10 MB** stays in this app's own folder for the site, not in the site, so a large PDF never lands in the site by accident.

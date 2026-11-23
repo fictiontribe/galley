@@ -14,7 +14,7 @@ Galley is an open-source AI CMS for static sites, built for [Astro](/astro/) fir
 | **Proof** | Checks each change beside the live site; puts back what they don't want | A diff against the last commit, shown in the site's own words |
 | **Publish** | Presses Publish | A git commit, and a push — or a branch and a pull request |
 
-Galley is **pre-release, version 0.1.0**. It isn't on npm yet: it runs from a clone of the [repository]({repository}). Where something is new or still being built, the page says so.
+Galley is **pre-release, version {version}**. <!-- if install.published -->It is on npm as `{package}`.<!-- else -->It isn't on npm yet: it runs from a copy of the [repository]({repository}).<!-- end --> Where something is new or still being built, the page says so.
 
 ## Two kinds of reader
 
@@ -25,7 +25,7 @@ Galley is **pre-release, version 0.1.0**. It isn't on npm yet: it runs from a cl
 
 **If you set Galley up or look after a site's code**, start with the [Quickstart](/docs/getting-started/quickstart/). Those pages use git, files and configuration freely.
 
-- **Set up**: the quickstart, a new site from a starter, an existing repository, the assistant's key, handing a site to an editor, moving from WordPress.
+- **Set up**: the [quickstart](/docs/getting-started/quickstart/), [a new site](/docs/getting-started/new-site/), [a site from GitHub](/docs/getting-started/clone/), [the assistant's key](/docs/getting-started/assistant/), [handing a site over](/docs/getting-started/handover/).
 - **How it works**: [prompt, proof, publish](/docs/concepts/prompt-proof-publish/), [the working tree as the draft](/docs/concepts/working-tree/), [surgical edits](/docs/concepts/surgical-edits/), [detection](/docs/concepts/detection/), [modes](/docs/concepts/modes/), [never guessing](/docs/concepts/never-guess/).
 - **Your Astro site**: what Galley reads, the preview, making a site easy to edit, [the site kit](/docs/astro/site-kit/), [forms](/docs/forms/), [scripts](/docs/scripts/), [what Arrange needs](/docs/visual-builder/), [the starters](/docs/astro/starters/).
 - **Configuration**: [`galley.config.json`](/docs/configuration/), for correcting what detection found.
@@ -35,13 +35,22 @@ Galley is **pre-release, version 0.1.0**. It isn't on npm yet: it runs from a cl
 
 ## The quickest way in
 
-```sh
-$ git clone {repository}.git galley && cd galley
-$ corepack enable && pnpm install && pnpm --filter @galley/web build
-$ node packages/cli/bin/galley.js new my-site --starter astro-editorial --dir ~/sites
-```
+<!-- if install.published -->
+One command makes a new site from the Caddow starter and opens it in Galley:
 
-That opens a copy of the Caddow starter in your browser. The [quickstart](/docs/getting-started/quickstart/) goes through it, and through opening your own Astro site.
+```sh
+{install.createStarter folder=my-site starter=caddow}
+```
+<!-- else -->
+Galley isn't on npm yet. Today, get it once, then make a new site from the Caddow starter:
+
+```sh
+{install.fromClone take=5}
+node packages/cli/bin/galley.js new my-site --starter caddow --dir ~/sites
+```
+<!-- end -->
+
+Your browser opens on the new site. [Create a new site](/docs/getting-started/new-site/) goes through it; the [quickstart](/docs/getting-started/quickstart/) opens a site you already have.
 
 ## What it costs
 

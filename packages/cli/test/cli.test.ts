@@ -93,7 +93,7 @@ describe("argument routing", () => {
   it.each([
     [["init", "--bogus"], /--bogus isn't an option here/],
     [["doctor", "a", "b"], /Too many arguments/],
-    [["new"], /Name the new site/],
+    [["new", "--use", "deno"], /--use takes npm, pnpm, yarn or bun, not “deno”/],
     [[".", "--port", "eighty"], /--port must be a number/],
     [["serve", "--port"], /--port needs a value/],
     [["version", "--wat"], /isn't an option/],
@@ -425,7 +425,7 @@ describe("galley new", () => {
     expect(JSON.parse(readFileSync(join(target, "package.json"), "utf8")).name).toBe("harbour-notes");
     expect(existsSync(join(target, "node_modules"))).toBe(false);
     expect(execFileSync("git", ["log", "--format=%s"], { cwd: target, encoding: "utf8" })).toContain("Harbour Notes");
-    expect(io.stdout.join("\n")).toContain("Next: galley harbour-notes");
+    expect(io.stdout.join("\n")).toContain("To start Galley on it: cd harbour-notes, then npm install, then npx galley-cms");
   });
 
   it("puts the site's name where the site and the app read it, and leaves nothing pending", async () => {
@@ -455,7 +455,7 @@ describe("galley new", () => {
       const io = testIo({ cwd: tmp, env: { PATH: process.env.PATH, HOME: tmp, GALLEY_STARTERS_DIR: starters } });
 
       expect(await main(["new", "Linked Notes", "--starter", "tiny", "--no-start", "--skip-install", "--dir", join(link, "nested")], io)).toBe(0);
-      expect(io.stdout.at(-1)).toBe("Next: galley nested/linked-notes");
+      expect(io.stdout.at(-1)).toBe("To start Galley on it: cd nested/linked-notes, then npm install, then npx galley-cms");
       expect(shownPath(tmp, join(link, "nested", "linked-notes"))).toBe("nested/linked-notes");
       expect(shownPath(join(tmp, "nested"), "/elsewhere/site")).toBe("/elsewhere/site");
     } finally {
@@ -475,15 +475,17 @@ describe("galley new", () => {
     const list = testIo({ env });
 
     expect(await main(["starters"], list)).toBe(0);
-    expect(list.stdout).toContain("looks — Looks (generic) · looks: day (default), night");
+    expect(list.stdout).toContain("looks: Looks");
+    expect(list.stdout).toContain("  looks: day (default), night");
+    expect(list.stdout).toContain("  npm create galley@latest my-site -- --starter looks");
     const help = testIo({ env });
 
     expect(await main(["new", "--help"], help)).toBe(0);
-    expect(help.stdout.join("\n")).toContain("  looks — Looks (generic) · looks: day (default), night");
+    expect(help.stdout.join("\n")).toContain("  looks: Looks\n");
     const wrong = testIo({ env });
 
     expect(await main(["new", "Moon", "--starter", "looks", "--look", "dusk", "--no-start", "--skip-install"], wrong)).toBe(1);
-    expect(wrong.stderr[0]).toBe("looks has no look called “dusk”. Available: day, night.");
+    expect(wrong.stderr[0]).toBe("Looks has no look called “dusk”. Choose day, night.");
     expect(existsSync(join(tmp, "moon"))).toBe(false);
     const right = testIo({ env });
 
@@ -496,14 +498,24 @@ describe("galley new", () => {
     const io = testIo({ env: { PATH: process.env.PATH, HOME: tmp, GALLEY_STARTERS_DIR: starters } });
 
     expect(await main(["new", "x", "--starter", "nope", "--no-start"], io)).toBe(1);
-    expect(io.stderr[0]).toMatch(/^There's no starter called “nope”\. Available: .*tiny/);
+    expect(io.stderr[0]).toMatch(/^There's no starter called “nope”\. Choose .*tiny, or run `galley starters` to see what each one is\.$/);
   });
 
-  it("refuses a folder that already exists", async () => {
+  it("refuses a folder that already has files in it, and suggests a free name", async () => {
     mkdirSync(join(tmp, "taken"), { recursive: true });
+    writeFileSync(join(tmp, "taken", "notes.txt"), "mine\n");
     const io = testIo({ env: { PATH: process.env.PATH, HOME: tmp, GALLEY_STARTERS_DIR: starters } });
 
-    expect(await main(["new", "taken", "--no-start"], io)).toBe(1);
-    expect(io.stderr[0]).toMatch(/already exists/);
+    expect(await main(["new", "taken", "--starter", "tiny", "--no-start"], io)).toBe(1);
+    expect(io.stderr[0]).toBe("taken already has files in it, and a new site needs an empty folder, so nothing was copied. Choose another name — for example taken-2 — or empty that folder first.");
+    expect(readFileSync(join(tmp, "taken", "notes.txt"), "utf8")).toBe("mine\n");
+  });
+
+  it("uses an empty folder that is already there", async () => {
+    mkdirSync(join(tmp, "ready"), { recursive: true });
+    const io = testIo({ env: { PATH: process.env.PATH, HOME: tmp, GALLEY_STARTERS_DIR: starters } });
+
+    expect(await main(["new", "ready", "--starter", "tiny", "--no-start", "--no-install"], io)).toBe(0);
+    expect(existsSync(join(tmp, "ready", "package.json"))).toBe(true);
   });
 });

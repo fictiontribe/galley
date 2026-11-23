@@ -12,7 +12,7 @@ Shopify is a trademark of Shopify Inc. Galley is not made, sponsored or endorsed
 ## The two pieces
 
 - **`@galley/plugin-shopify`** ([`packages/plugins/shopify`]({repository}/tree/main/packages/plugins/shopify)) — built into the app, can be turned off on the **Plugins** screen. It adds product and collection pickers for section fields (the `shopify-products` data source), five tools for the assistant and MCP (`shopify_store_status`, `shopify_search_products`, `shopify_get_product`, `shopify_list_collections`, `shopify_update_product_copy`), and a check before publishing.
-- **`starters/astro-storefront`** — a Caddow shop that works with no store connected: a demo catalogue and a bag that never takes payment. It is in `galley new --starter`'s list, but isn't presented as a starter yet.
+- **`starters/astro-storefront`** — a Caddow shop that works with no store connected: a demo catalogue and a bag that never takes payment. `galley starters` lists it as `storefront`; it is still in progress.
 
 ## Connect a store
 

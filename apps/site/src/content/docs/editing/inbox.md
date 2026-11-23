@@ -16,7 +16,7 @@ For people who look after a site. The **Inbox** keeps what visitors send through
 
 - **Search answers…** looks through every answer. **All**, **Unread** and **Spam** filter the list.
 - Select one or more to **Mark unread**, move to or from **Spam**, or **Delete**.
-- **Export** downloads what's shown as a spreadsheet file (CSV), one column per field.
+- **Export** downloads what's shown as a spreadsheet file, one column per field.
 
 Opening a submission marks it read.
 
@@ -41,7 +41,7 @@ Visitors' browsers can only reach an inbox that is on the internet. When Galley 
 
 Search for their name or e-mail address, select every match (check **Spam** too) and **Delete**. It's gone from this app at once; **Undo** in the message that follows brings it back only for a moment. Copies outside the app — exported files, e-mail alerts, forwarded webhooks, backups — are yours to delete where they are.
 
-## What can go wrong
+## If something's different
 
 - **Spam you wanted.** Open **Spam**, select it, and move it back.
 - **Nothing arrives from the live site.** See [On the live site](#on-the-live-site).

@@ -55,6 +55,7 @@ const TYPES: Record<string, string> = {
   map: "application/json; charset=utf-8",
   webmanifest: "application/manifest+json",
   txt: "text/plain; charset=utf-8",
+  md: "text/markdown; charset=utf-8",
   xml: "application/xml; charset=utf-8",
   rss: "application/rss+xml; charset=utf-8",
   csv: "text/csv; charset=utf-8",

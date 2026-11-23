@@ -103,7 +103,7 @@ document.addEventListener("click", (e) => {
   if (btn.dataset.copyFile) copy(btn, fetch(btn.dataset.copyFile).then((r) => r.text()));
   else copy(btn, btn.dataset.copy ?? btn.dataset.copyText ?? "");
 });
-for (const b of $$("[data-copy-text]")) b.hidden = false;
+for (const b of $$("[data-copy], [data-copy-text]")) b.hidden = false;
 
 // The example proof: Put back restores a change's old words, as in the app.
 for (const sheet of $$("[data-sheet]")) {

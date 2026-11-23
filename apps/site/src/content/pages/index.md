@@ -4,16 +4,13 @@ description: Galley is an open-source AI CMS for Astro. Change a page in a form,
 sections:
   - type: hero
     layout: showcase
-    notice:
-      label: "Galley {version} · pre-release · Apache-2.0 · what’s in it"
-      href: "#whats-in"
-    eyebrow: Open-source AI CMS for Astro
-    heading: Prompt it. Proof it. Publish it.
-    text: Change a page in a form, on the page or by asking, check every change beside the live site, then publish it to your own repository.
+    heading: The open-source AI CMS for Astro.
+    text: Prompt it. Proof it. Publish it. Ask for a change, type it in a form or click the page — check it beside the live site, then publish to your own repository.
     cta:
       label: Get started
       href: /docs/getting-started/quickstart/
     note: "Pre-release: runs from a clone until it’s on npm."
+    notePublished: Run it in your Astro site’s folder.
     command: true
     copyFile:
       label: Setting it up with an agent? Copy its context
@@ -190,13 +187,5 @@ sections:
         href: /docs/getting-started/quickstart/
       - label: GitHub
         href: "{repository}"
-    terminal:
-      title: Terminal
-      label: The commands to run Galley from a clone
-      lines:
-        - "$ {clone}"
-        - "$ cd galley && corepack enable && pnpm install"
-        - "$ pnpm --filter @galley/web build"
-        - "$ node packages/cli/bin/galley.js ~/sites/your-site"
-        - Galley is running at http://127.0.0.1:4400
+    commands: true
 ---

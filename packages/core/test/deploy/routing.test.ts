@@ -7,7 +7,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { collectFiles, createCloudflareTarget, createVercelTarget, type DeployContext, type DeployInput } from "../../src/deploy/index";
-import { checkCloudflareRedirects, vercelRoutingConfig } from "../../src/deploy/routing";
+import { CLOUDFLARE_MARKDOWN_RULE, VERCEL_MARKDOWN_RULE, checkCloudflareRedirects, vercelRoutingConfig, withCloudflareMarkdownHeader } from "../../src/deploy/routing";
 import { cleanupAll, tempDir, writeTree } from "../workspace/helpers";
 import { startFakeCloudflare, type FakeCloudflare } from "./fakes/cloudflare";
 import { startFakeVercel, type FakeVercel } from "./fakes/vercel";
@@ -155,5 +155,81 @@ describe("Vercel: vercel.json rides along at the root of the deployment", () => 
   it("keeps only the members that say how files are served", () => {
     expect(vercelRoutingConfig(JSON.stringify({ framework: "astro", installCommand: "npm ci" }))).toBeNull();
     expect(JSON.parse(vercelRoutingConfig(JSON.stringify({ headers: [{ source: "/(.*)", headers: [] }], cleanUrls: true, functions: {} }))!)).toEqual({ headers: [{ source: "/(.*)", headers: [] }], cleanUrls: true });
+  });
+});
+
+describe("markdown copies of pages are served as text", () => {
+  let cf: FakeCloudflare | null = null;
+  let vercel: FakeVercel | null = null;
+  const MD = { "about.md": "# About", "index.md": "# Home", "llms.txt": "# Site" };
+
+  afterEach(async () => {
+    await cf?.close();
+    await vercel?.close();
+    cf = vercel = null;
+  });
+
+  async function cloudflareConfig(extra: Record<string, string>) {
+    cf = await startFakeCloudflare();
+    const target = createCloudflareTarget();
+    const ctx: DeployContext = { token: cf.token, fetch, apiBase: cf.api };
+    const site = await built(extra);
+
+    await target.ensureProject(ctx, { account: ACCOUNT, name: "lowfield" });
+    await target.deploy(ctx, input(site.dir, site.files));
+    const deployed = cf.deployments.at(-1)!;
+
+    await cf.close();
+    cf = null;
+    return deployed;
+  }
+
+  it("Cloudflare: a text/markdown rule for /*.md when the site has none; .md files are uploaded as text/markdown too", async () => {
+    const deployed = await cloudflareConfig(MD);
+
+    expect(deployed.config._headers).toBe(CLOUDFLARE_MARKDOWN_RULE);
+    expect(CLOUDFLARE_MARKDOWN_RULE).toBe("/*.md\n  Content-Type: text/markdown; charset=utf-8\n");
+    expect(deployed.files.has("about.md")).toBe(true);
+  });
+
+  it("Cloudflare: merged after the site's own rules, never over a Content-Type rule the site wrote", async () => {
+    const merged = await cloudflareConfig({ ...MD, _headers: HEADERS });
+
+    expect(merged.config._headers).toBe(`${HEADERS}\n${CLOUDFLARE_MARKDOWN_RULE}`);
+    const own = "/*\n  Content-Type: text/plain\n";
+
+    expect((await cloudflareConfig({ ...MD, _headers: own })).config._headers).toBe(own);
+    expect(withCloudflareMarkdownHeader("/docs/*.md\n  content-type: text/x-markdown\n")).toBe("/docs/*.md\n  content-type: text/x-markdown\n");
+    // A rule for other paths doesn't count, and the 100-rule limit is respected.
+    expect(withCloudflareMarkdownHeader("/fonts/x.woff2\n  Content-Type: font/woff2\n")).toContain(CLOUDFLARE_MARKDOWN_RULE);
+    const full = Array.from({ length: 100 }, (_, index) => `/p${index}\n  X-A: b`).join("\n");
+
+    expect(withCloudflareMarkdownHeader(full)).toBe(full);
+    // No markdown in the output: no rule.
+    expect((await cloudflareConfig({})).config).not.toHaveProperty("_headers");
+  });
+
+  it("Vercel: the same rule in the uploaded vercel.json, beside the site's redirects, never over its own", async () => {
+    vercel = await startFakeVercel();
+    const target = createVercelTarget();
+    const ctx: DeployContext = { token: vercel.token, fetch, apiBase: vercel.url };
+    const site = await built(MD);
+    const siteRoot = tempDir("deploy-vercel-md-");
+
+    await target.ensureProject(ctx, { account: TEAM, name: "lowfield" });
+    await target.deploy(ctx, input(site.dir, site.files, { account: TEAM, siteRoot }));
+    expect(vercel.deployments.at(-1)!.config).toEqual({ headers: [VERCEL_MARKDOWN_RULE] });
+
+    const redirects = [{ source: "/a", destination: "/b", permanent: true }];
+
+    writeFileSync(join(siteRoot, "vercel.json"), JSON.stringify({ redirects }));
+    await target.deploy(ctx, input(site.dir, site.files, { account: TEAM, siteRoot }));
+    expect(vercel.deployments.at(-1)!.config).toEqual({ redirects, headers: [VERCEL_MARKDOWN_RULE] });
+
+    const own = [{ source: "/(.*)", headers: [{ key: "content-type", value: "text/plain" }] }];
+
+    writeFileSync(join(siteRoot, "vercel.json"), JSON.stringify({ headers: own }));
+    await target.deploy(ctx, input(site.dir, site.files, { account: TEAM, siteRoot }));
+    expect(vercel.deployments.at(-1)!.config).toEqual({ headers: own });
   });
 });

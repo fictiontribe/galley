@@ -59,4 +59,4 @@ Like every other edit, a new image is an uncommitted file in the working tree un
 ## Next
 
 - [Assistant instructions and build mode](/docs/configuration/assistant/).
-- [Connect the assistant](/docs/getting-started/assistant/#images) — the image providers.
+- [Connect the assistant](/docs/reference/assistant/#images) — the image providers.

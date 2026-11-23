@@ -1,18 +1,20 @@
 {
   "name": "galley-cms",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
-  "description": "Galley — the AI CMS for static sites. Run `galley` in a site folder.",
+  "description": "Galley, the open-source AI CMS for Astro: change a page, check it in Proof, publish it to your own git repository. Run `npx galley-cms` in a site's folder.",
   "keywords": [
     "cms",
+    "ai-cms",
+    "headless-cms",
+    "git-cms",
     "static-site",
     "astro",
-    "git",
-    "ai",
+    "visual-editor",
     "mcp"
   ],
   "license": "Apache-2.0",
+  "author": "Fiction Tribe (https://fictiontribe.com)",
   "homepage": "https://galley.fictiontribe.com",
   "repository": {
     "type": "git",
@@ -21,17 +23,25 @@
   },
   "bugs": "https://github.com/fictiontribe/galley/issues",
   "bin": {
-    "galley": "./bin/galley.js"
+    "galley": "bin/galley.js",
+    "galley-cms": "bin/galley.js"
   },
   "files": [
-    "bin",
+    "bin/galley.js",
     "dist"
   ],
   "engines": {
     "node": ">=20.11"
   },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "node build.mjs",
+    "prepack": "node build.mjs --release",
+    "postpack": "node build.mjs --clean",
+    "verify-pack": "node scripts/verify-pack.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run"
   },

@@ -26,7 +26,7 @@ A unique match can be retyped in place only when the stored value equals what is
 On the starter, *Book a free first visit* is a button label on two pages: the home page's hero and the pricing page's closing section.
 
 ```sh
-$ curl -s -X POST -H "Authorization: Bearer $GALLEY_TOKEN" -H "Content-Type: application/json" \
+curl -s -X POST -H "Authorization: Bearer $GALLEY_TOKEN" -H "Content-Type: application/json" \
     "http://127.0.0.1:4400/api/sites/$SITE/resolve" -d '{"urlPath":"/","text":"Book a free first visit"}'
 ```
 

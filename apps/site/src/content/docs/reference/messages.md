@@ -44,7 +44,7 @@ The app's wording is being polished before the first release, so a message may r
 
 | Message | What it means | What to do |
 | --- | --- | --- |
-| **This page changed while you were editing** | The page changed at the very moment you were typing, so your last edit wasn't saved on top of it. What you typed is listed. | **Put my edits back** to apply them to the newer version, or **Keep the newer version**. See [the form](/docs/editing/form/#what-can-go-wrong). |
+| **This page changed while you were editing** | The page changed at the very moment you were typing, so your last edit wasn't saved on top of it. What you typed is listed. | **Put my edits back** to apply them to the newer version, or **Keep the newer version**. See [the form](/docs/editing/form/#if-somethings-different). |
 | **Couldn’t save your last edit** · *Your edit is still in the form. Check that the app’s server is running, then try again.* | The app's server couldn't be reached when it tried to save. | **Try again** once the app is running. Don't close the window first. |
 | *The assistant changed this page. The form shows its edits.* | A quiet note: the form now includes the assistant's change. | Nothing. |
 | *This page changed outside the app. The form shows the latest version.* | Another program on this computer changed the page — a developer's editor, for example. | Nothing. The form is up to date. |
@@ -71,7 +71,7 @@ The app's wording is being polished before the first release, so a message may r
 | **Which one did you mean?** · *This text appears in 2 places. Choose the one you meant.* | The same words are stored in more than one place. | Choose the one you clicked. See [“Which one did you mean?”](/docs/editing/on-the-page/#when-it-asks-which-one-did-you-mean). |
 | *This text appears in 12 places, which is too many to tell which one this is.* | Too many places hold these words. | Change it in the form instead. |
 | *The selected text is too short to find reliably.* · *The selected text has no words to look for.* | The words clicked are too short (a single letter, a symbol) to look for. | Change it in the form. |
-| **This text is part of the site’s design.** | The words aren't stored with the page's content. | See [what to do about design text](/docs/editing/on-the-page/#what-can-go-wrong). |
+| **This text is part of the site’s design.** | The words aren't stored with the page's content. | See [what to do about design text](/docs/editing/on-the-page/#if-somethings-different). |
 | **This image can’t be swapped by clicking.** | The image isn't one of the page's own image fields: it's in a section, or part of the design. | **Show the form** and change it in the section's image field; if it's part of the design, **Ask the assistant** (in Build mode) or whoever looks after the design. |
 | *Couldn’t find where this text lives.* · *Couldn’t find where this image lives.* | The app couldn't look it up just then. | Try again, or change it in the form. |
 | *Couldn’t change it.* followed by a reason | The change was refused, and the reason says why. | The page reloads to show what's really stored. Follow the reason, or use the form. |
@@ -143,7 +143,7 @@ The app's wording is being polished before the first release, so a message may r
 | **Couldn’t load the version history** · **Couldn’t check for newer versions** | The list couldn't be read just now. | **Try again**. |
 | **Couldn’t get the latest versions** · *Some files you've changed here were also changed in the latest version. Publish or discard your changes to those files, then try again.* | Someone else changed the same pages you're working on. | Publish (or discard) your changes to those pages, then **Get latest** again. |
 | **Couldn’t get the latest versions** · *This copy has versions that aren't on the code host yet, and the code host has newer ones, so they can't be combined automatically. Ask a developer to combine them.* | One of your publishes wasn't sent, and someone else has published since. | Ask whoever looks after your site to combine them. Your edits are safe. |
-| **Couldn’t undo this publish** followed by a reason | The undo would have overwritten other work, so nothing was changed. | See [When an undo can't be done automatically](/docs/editing/history/#what-can-go-wrong). |
+| **Couldn’t undo this publish** followed by a reason | The undo would have overwritten other work, so nothing was changed. | See [When an undo can't be done automatically](/docs/editing/history/#if-somethings-different). |
 | **Undone here, not live yet** · *The undo is recorded on this computer but didn’t reach the site’s host.* followed by the reason | As with **Saved, not live yet**: recorded here, not sent. | **Send now**, in the note or in Version history. |
 
 ## Settings

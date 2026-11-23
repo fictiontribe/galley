@@ -76,11 +76,11 @@ export const GENERATED = [
     source: "docs/wordpress-import.md",
     target: "src/content/docs/getting-started/wordpress.md",
     frontMatter: {
-      title: "Moving a WordPress site to Galley",
-      navTitle: "Moving from WordPress",
+      title: "Moving a WordPress site to Galley, in full",
+      navTitle: "WordPress import in full",
       description: "What comes across from WordPress and what doesn't, the guided move in the app and the command, the report, rebuilding page-builder pages, keeping your search rankings, and the go-live checklist.",
-      group: "getting-started",
-      order: 6,
+      group: "reference",
+      order: 7,
     },
     intro:
       "> This page is [`docs/wordpress-import.md`]({repository}/blob/main/docs/wordpress-import.md) from the repository, rendered as it is. It is the developer's version; the editor's is [Bring a site over from WordPress](/docs/editing/wordpress/). The guided move in the app is new, in final checks; the docs ran it against the importer's own invented WordPress site, not a real one.",
@@ -121,6 +121,10 @@ export function render(entry) {
   let droppedTitle = false;
   let markConfig = false;
   let inFence = false;
+  let fenceLang = "";
+  let lastFenceLang = "";
+  let headingSinceFence = false;
+  let fenceNotes = [];
 
   for (const line of lines) {
     if (!inFence && !droppedTitle && /^# /.test(line)) {
@@ -137,17 +141,47 @@ export function render(entry) {
         out.push("```json galley.config.json");
         markConfig = false;
         inFence = true;
+        fenceLang = "json";
         continue;
       }
-      inFence = !inFence;
       markConfig = false;
+      if (!inFence) {
+        // The docs' block convention (check-docs.mjs): a fence with no language that
+        // follows a command block is that command's output; any other is plain text.
+        const indent = /^\s*/.exec(line)[0];
+        fenceLang = line.trim().replace(/^(```|~~~)/, "").trim().split(/\s+/)[0];
+        inFence = true;
+        if (!fenceLang) {
+          fenceLang = lastFenceLang === "sh" && !headingSinceFence ? "output" : "text";
+          out.push(`${indent}\`\`\`${fenceLang}`);
+          continue;
+        }
+        out.push(line);
+        continue;
+      }
+      inFence = false;
       out.push(line);
+      // A comment after a command moves out of the command block, as a sentence of its own.
+      if (fenceLang === "sh" && fenceNotes.length) {
+        const indent = /^\s*/.exec(line)[0];
+        for (const note of fenceNotes) out.push("", `${indent}${note.charAt(0).toUpperCase()}${note.slice(1)}${/[.!?]$/.test(note) ? "" : "."}`);
+        fenceNotes = [];
+      }
+      lastFenceLang = fenceLang;
+      headingSinceFence = false;
       continue;
     }
     if (inFence) {
+      const comment = fenceLang === "sh" ? /^(.*?\S)\s+#\s+(.+)$/.exec(line) : null;
+      if (comment && !/['"]/.test(comment[1])) {
+        out.push(comment[1]);
+        fenceNotes.push(comment[2].replace(/^or:\s*(\S.*)$/, "or: `$1`"));
+        continue;
+      }
       out.push(line);
       continue;
     }
+    if (/^#{1,6} /.test(line)) headingSinceFence = true;
     out.push(
       line.replace(/\]\((\.{1,2}\/[^)\s#]*)(#[^)\s]*)?\)/g, (_match, path, anchor = "") => {
         const repoPath = posix.normalize(posix.join(sourceDir, path));

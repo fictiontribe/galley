@@ -29,7 +29,7 @@ Without an image service, the **Provider** is **Built-in placeholders**: plain a
 
 **Generate a video** works the same way, through the OpenRouter plugin. It needs OpenRouter's key (in **Plugins**), and the window shows what the video will cost before anything starts; OpenRouter charges the key's account. The docs haven't run video generation against the real service.
 
-## What can go wrong
+## If something's different
 
 - **"That file is larger than 25 MB."** Make it smaller and upload again.
 - **The window says the images will be placeholders.** No image service is chosen; ask whoever looks after the app to choose one in **App settings › Images**.

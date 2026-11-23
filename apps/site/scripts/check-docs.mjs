@@ -240,7 +240,7 @@ function scan(text, firstLine = 1) {
   return { blocks, prose };
 }
 
-const INVOCATION = /^(?:[A-Z_][A-Z0-9_]*=\S*\s+)*(?:galley|npx galley-cms|\{install\}|node (?:\S*\/)?packages\/cli\/bin\/galley\.js)(?=\s|$)(.*)$/;
+const INVOCATION = /^(?:[A-Z_][A-Z0-9_]*=(?:'[^']*'|"[^"]*"|\S*)\s+)*(?:galley|npx galley-cms|\{install(?:\.run)?\}|node (?:\S*\/)?packages\/cli\/bin\/galley\.js)(?=\s|$)(.*)$/;
 
 function checkInvocation(file, number, command) {
   const match = INVOCATION.exec(command.trim());
@@ -353,7 +353,174 @@ function checkConfigBlock(file, block) {
 const INLINE_CODE = /(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g;
 const LINK = /\]\(([^)\s]+(?:\s+"[^"]*")?)\)/g;
 
-const counts = { pages: 0, configExamples: 0, invalidExamples: 0, invocations: 0, links: 0, env: 0, helpQuotes: 0, envVars: 0, kitOptions: 0, pictures: 0 };
+const counts = { placeholders: 0, outputs: 0, pages: 0, configExamples: 0, invalidExamples: 0, invocations: 0, links: 0, env: 0, helpQuotes: 0, envVars: 0, kitOptions: 0, pictures: 0 };
+
+// ─────────────────────────────────────────────────────────────── code blocks in the docs
+//
+// The convention every docs page follows:
+//   ```sh      only what a person types: one command per line, no prompt ($ or >),
+//              no output, no comments. It gets the Copy button, which copies exactly it.
+//   ```output  what the person then sees ("You'll see", no Copy button), at most a
+//              few lines, trimmed with "…". It belongs to the sh block before it:
+//              the nearest block above it, with no heading in between.
+//   ```text    reference text, such as a command's whole --help.
+
+/** A line a person would type: an optional VAR=value, then a command or a path, or one of the install placeholders. */
+const COMMAND_LINE = /^(?:[A-Z_][A-Z0-9_]*=(?:'[^']*'|"[^"]*"|\S*)\s+)*(?:[a-z][\w.@-]*|\.{0,2}\/\S*|~\/\S*|\{install\.[a-zA-Z]+(?: [^}]*)?\})(?:\s|$)/;
+
+/** The real output of a command whose output a page may show, when it doesn't depend on this computer. */
+function realOutput(command) {
+  const m = INVOCATION.exec(command.replace(/\{install\.run\}/g, "galley").trim());
+  if (!m) return null;
+  const args = m[1].trim().split(/\s+/).filter(Boolean);
+  const last = args.at(-1);
+
+  if (last === "--help" || last === "-h") {
+    const name = args[0] && !args[0].startsWith("-") ? (commandNames.includes(args[0]) ? args[0] : "open") : "";
+    const sub = name && name !== "open" && args[1] && subcommandsOf(name).includes(args[1]) ? `${name} ${args[1]}` : name;
+    return helpText.get(sub) ?? null;
+  }
+  if (args.length === 1 && ["version", "starters"].includes(args[0])) return runCli(args);
+  if (args.length === 1 && ["--version", "-v"].includes(args[0])) return runCli(["version"]);
+  return null;
+}
+
+/** Every shown line appears in the real output, in order; "…" stands for anything left out. */
+function compareShown(file, firstLine, shown, real) {
+  const realLines = normalise(real).split("\n").map((l) => l.trimEnd());
+  let at = 0;
+
+  const productVersion = /export const VERSION\s*=\s*["']([^"']+)["']/.exec(readFileSync(join(repoRoot, site.versionFile), "utf8"))?.[1] ?? "";
+
+  shown.forEach((line, i) => {
+    // Placeholders the page fills in ({version}) are compared filled in.
+    const want = line.trimEnd().replaceAll("{version}", productVersion);
+    if (want.trim() === "…" || want.trim() === "") return;
+    const pieces = want.split("…").map((piece) => piece.trim()).filter(Boolean);
+    const matches = (real) => {
+      if (!want.includes("…")) return real === want;
+      let from = 0;
+      for (const piece of pieces) {
+        const found = real.indexOf(piece, from);
+        if (found === -1) return false;
+        from = found + piece.length;
+      }
+      return true;
+    };
+    const found = realLines.findIndex((real, j) => j >= at && matches(real));
+
+    if (found === -1) report(file, firstLine + i, `this output line isn't in what the command really prints (in this order): “${want}”.`);
+    else at = found + 1;
+  });
+}
+
+function checkBlockConvention(file, block, blocks, prose) {
+  const kind = block.info.split(/\s+/)[0];
+  const texts = block.lines.map((l) => l.text);
+
+  if (/^(shell|bash|console)$/.test(kind)) report(file, block.line, `use \`\`\`sh for commands (not ${kind}): only what a person types, and the output in an \`\`\`output block after it.`);
+  if (/^(sh|shell|bash|console)$/.test(kind)) {
+    if (!texts.some((t) => t.trim())) report(file, block.line, "this sh block is empty.");
+    const prompted = texts.some((t) => /^\s*\$ /.test(t));
+    block.lines.forEach((line, i) => {
+      const t = line.text;
+      const continued = i > 0 && /\\\s*$/.test(block.lines[i - 1].text);
+
+      if (!t.trim() || continued) return;
+      if (/^\s*[$>] /.test(t) || /^\s*[$>]$/.test(t)) report(file, line.number, "no prompt in a command block: write the command alone, so Copy takes exactly it.");
+      else if (/^\s*#/.test(t)) report(file, line.number, "no comments in a command block: say it in a sentence before or after the block.");
+      else if (prompted && !/^\s*[$>]/.test(t)) report(file, line.number, `this line follows a prompt, so it is output; put it in an \`\`\`output block after the command: “${t.trim().slice(0, 60)}”.`);
+      else if (!COMMAND_LINE.test(t.trimStart())) report(file, line.number, `this looks like output, not a command; put what the person sees in an \`\`\`output block after the command: “${t.trim().slice(0, 60)}”.`);
+      else if (/\s#\s/.test(t.replace(/'[^']*'|"[^"]*"/g, ""))) report(file, line.number, "no trailing comment on a command: say it in a sentence before or after the block.");
+    });
+  }
+  if (kind === "output") {
+    const index = blocks.indexOf(block);
+    const before = blocks[index - 1];
+    const lastLine = before ? before.line + before.lines.length + 1 : 0;
+    const heading = before && prose.some((p) => p.number > lastLine && p.number < block.line && /^#{1,6} /.test(p.text));
+
+    if (!before || before.info.split(/\s+/)[0] !== "sh" || heading) {
+      report(file, block.line, "an output block shows what a command printed, so it follows that command's sh block (no heading in between).");
+      return;
+    }
+    if (texts.filter((t) => t.trim()).length > 8) report(file, block.line, `keep an output block short (at most about 6 lines, trimmed with “…”); this one has ${texts.length}.`);
+    const command = before.lines.map((l) => l.text).filter((t) => t.trim()).at(-1) ?? "";
+    const real = realOutput(command);
+
+    if (real !== null) {
+      counts.outputs += 1;
+      compareShown(file, block.line + 1, texts, real);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────── placeholders
+const installData = site.install ?? null;
+const KNOWN_PLACEHOLDERS = new Set(["repository", "version", "site", "license", "maker", "package", "clone"]);
+
+/** {install.KEY …} must name a command in src/data/site.json → install; the published branches must be well formed. */
+function checkPlaceholders(file, text, firstLine) {
+  let depth = 0;
+  let sawElse = false;
+
+  text.split("\n").forEach((line, i) => {
+    const number = firstLine + i;
+
+    for (const m of line.matchAll(/\{install\.([a-zA-Z]+)((?: [a-z][a-zA-Z]*=[^\s}]+)*)\}/g)) {
+      counts.placeholders += 1;
+      const value = installData?.[m[1]];
+      // Until the first npm release, a page may show these only for after it.
+      if (installData && installData.published !== true && ["create", "createStarter", "run"].includes(m[1]) && !inPublishedBranch(text, i)) report(file, number, `{install.${m[1]}} doesn't work until Galley is on npm (install.published is false); put it inside <!-- if install.published --> … <!-- else --> … <!-- end -->.`);
+      if (installData === null) report(file, number, `{install.${m[1]}} needs src/data/site.json → install, which doesn't exist yet.`);
+      else if (value === undefined || typeof value === "boolean") report(file, number, `{install.${m[1]}} isn't a command in src/data/site.json → install (it has: ${Object.keys(installData).filter((k) => typeof installData[k] !== "boolean").join(", ")}).`);
+      else {
+        const filled = [...m[2].matchAll(/ ([a-z][a-zA-Z]*)=/g)].map((a) => a[1]).filter((name) => name !== "take");
+        const wanted = [...String(value).matchAll(/\{([a-z][a-zA-Z]*)\}/g)].map((a) => a[1]).filter((name) => !["repoSlug", "repository"].includes(name));
+        if (/ take=/.test(m[2]) && !Array.isArray(value)) report(file, number, `{install.${m[1]}} is one command; take= is for lists.`);
+        for (const name of wanted) if (!filled.includes(name)) report(file, number, `{install.${m[1]}} needs ${name}=… (its command has {${name}}).`);
+        for (const name of filled) if (!wanted.includes(name)) report(file, number, `{install.${m[1]}} has no {${name}} to fill.`);
+      }
+    }
+    if (/\{install\}/.test(line)) report(file, number, "{install} is the old placeholder; use one of src/data/site.json → install, e.g. {install.run}.");
+    for (const m of line.matchAll(/(?<![$\w])\{([a-z][a-zA-Z]*)\}/g)) {
+      if (m[1] !== "install" && !KNOWN_PLACEHOLDERS.has(m[1]) && /^\s*(```|~~~)/.test(line) === false && inShell(file, number)) report(file, number, `{${m[1]}} isn't a placeholder the docs know (${[...KNOWN_PLACEHOLDERS].join(", ")}, install.…).`);
+    }
+    for (const marker of line.matchAll(/<!-- (if (!?)([\w.]+)|else|end) -->/g)) {
+      if (marker[1].startsWith("if")) {
+        if (marker[3] !== "install.published") report(file, number, `the only condition is install.published, not ${marker[3]}.`);
+        if (depth > 0) report(file, number, "these branches can't be nested.");
+        depth += 1;
+        sawElse = false;
+      } else if (marker[1] === "else") {
+        if (depth === 0 || sawElse) report(file, number, "<!-- else --> without its <!-- if install.published -->.");
+        sawElse = true;
+      } else {
+        if (depth === 0) report(file, number, "<!-- end --> without its <!-- if install.published -->.");
+        depth = Math.max(0, depth - 1);
+      }
+    }
+  });
+  if (depth > 0) report(file, firstLine, "an <!-- if install.published --> is never closed with <!-- end -->.");
+}
+
+/** Whether line i of text is inside the published half of an <!-- if install.published --> branch. */
+function inPublishedBranch(text, i) {
+  const before = text.split("\n").slice(0, i);
+  let state = null;
+  for (const m of before.flatMap((line) => [...line.matchAll(/<!-- (if (!?)install\.published|else|end) -->/g)])) {
+    if (m[1].startsWith("if")) state = m[2] === "!" ? "unpublished" : "published";
+    else if (m[1] === "else") state = state === "published" ? "unpublished" : "published";
+    else state = null;
+  }
+  return state === "published";
+}
+
+/** Lines inside sh blocks, per file, for checkPlaceholders. */
+const shellLines = new Map();
+function inShell(file, number) {
+  return shellLines.get(file)?.has(number) ?? false;
+}
 
 function checkFile(file, { inDocs }) {
   const text = readFileSync(file, "utf8");
@@ -368,11 +535,19 @@ function checkFile(file, { inDocs }) {
   }
   const { blocks, prose } = scan(fm.body ?? text, fm.lines + 1);
 
+  if (inDocs) {
+    shellLines.set(file, new Set(blocks.filter((b) => b.info.split(/\s+/)[0] === "sh").flatMap((b) => b.lines.map((l) => l.number))));
+    checkPlaceholders(file, fm.body ?? text, fm.lines + 1);
+  }
+
   for (const block of blocks) {
     const outcome = checkConfigBlock(file, block);
     const kind = block.info.split(/\s+/)[0];
     const texts = block.lines.map((l) => l.text);
 
+    // A text block that starts like a command's --help is that help, quoted whole.
+    const helpByFirstLine = [...helpText].find(([, help]) => normalise(help).split("\n")[0] === (texts[0] ?? "").trimEnd() && !/^Usage: galley\b/.test(texts[0] ?? ""));
+    if (kind === "text" && helpByFirstLine) checkHelpQuote(file, block.line + 1, helpByFirstLine[0], texts.join("\n"));
     if (kind === "text" && /^Usage: galley\b/.test(texts[0] ?? "")) {
       const m = /^Usage: galley(?: ([a-z]+))?(?: ([a-z][a-z-]+))?/.exec(texts[0]);
       const name = m[1] && commandNames.includes(m[1]) ? m[1] : "open";
@@ -381,7 +556,8 @@ function checkFile(file, { inDocs }) {
 
       checkHelpQuote(file, block.line + 1, sub, texts.join("\n"));
     }
-    if (/^(sh|shell|bash|console)$/.test(kind)) {
+    if (/^(sh|shell|bash|console)$/.test(kind) && !inDocs) {
+      // Repository files may still quote `$ galley … --help` with its output.
       texts.forEach((text, i) => {
         const m = /^\$ galley(?: ([a-z]+))? --help$/.exec(text.trim());
 
@@ -393,13 +569,14 @@ function checkFile(file, { inDocs }) {
         checkHelpQuote(file, block.line + i + 2, name, output);
       });
     }
+    if (inDocs) checkBlockConvention(file, block, blocks, prose);
 
     if (outcome === "valid") counts.configExamples += 1;
     if (outcome === "invalid") counts.invalidExamples += 1;
     for (const line of block.lines) {
       checkEnv(file, line.number, line.text);
       if (/^(sh|shell|bash|console)$/.test(block.info.split(/\s+/)[0])) {
-        const command = line.text.replace(/^\$ /, "");
+        const command = line.text.replace(/^\$ /, "").replace(/\{install\.run\}/g, "galley");
 
         if (line.text.startsWith("$ ") || INVOCATION.test(command.trim())) {
           if (INVOCATION.test(command.trim())) counts.invocations += 1;
@@ -606,5 +783,5 @@ console.log(
     `${counts.configExamples} config examples valid, ${counts.invalidExamples} marked invalid and rejected, ` +
     `${counts.invocations} galley invocations checked against ${commandNames.length + 1} commands' --help, ${counts.helpQuotes} quoted help texts identical to the real ones, ` +
     `${counts.links} links resolved, config reference matches ${schemaPaths(configJsonSchema()).size} schema keys, ` +
-    `API reference matches ${apiRoutes.size} routes, ${counts.envVars} environment variables and ${counts.kitOptions} site kit options documented, ${counts.pictures} pictures sized and described, MCP tool reference current, ${counts.schemas} JSON Schemas in public/schema current.`
+    `API reference matches ${apiRoutes.size} routes, ${counts.envVars} environment variables and ${counts.kitOptions} site kit options documented, ${counts.pictures} pictures sized and described, MCP tool reference current, ${counts.schemas} JSON Schemas in public/schema current; every command block holds commands only, ${counts.outputs} shown output${counts.outputs === 1 ? "" : "s"} identical to the real one${counts.outputs === 1 ? "" : "s"}, ${counts.placeholders} install placeholders filled from site.json.`
 );

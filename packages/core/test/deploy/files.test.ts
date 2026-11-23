@@ -78,6 +78,7 @@ describe("helpers", () => {
     expect(cloudflareHash(Buffer.from("abc"), "x.css")).toBe(createHash("sha256").update("YWJjcss").digest("hex").slice(0, 32));
     expect(contentTypeFor("a/b/c.woff2")).toBe("font/woff2");
     expect(contentTypeFor("README")).toBe("application/octet-stream");
+    expect(contentTypeFor("about.md")).toBe("text/markdown; charset=utf-8");
   });
 
   it("names projects from the site's name, within both hosts' rules", () => {

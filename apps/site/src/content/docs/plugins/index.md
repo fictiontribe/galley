@@ -24,11 +24,11 @@ It **cannot** take a built-in tool's name, read another plugin's settings, recei
 For everyone on this computer (or server):
 
 ```sh
-$ cp -R examples/plugin-example ../galley-plugin-example
-$ galley plugin add ../galley-plugin-example
-$ galley plugin list
-$ galley plugin disable galley-plugin-example
-$ galley plugin remove galley-plugin-example
+cp -R examples/plugin-example ../galley-plugin-example
+galley plugin add ../galley-plugin-example
+galley plugin list
+galley plugin disable galley-plugin-example
+galley plugin remove galley-plugin-example
 ```
 
 `add` takes a folder, a packed `.tgz`, or an npm package name (no Galley plugins are on npm yet). Installed plugins live in `<GALLEY_HOME>/plugins`, installed with `npm --ignore-scripts` (a package's own install scripts never run), and the exact version is recorded. A package must have the keyword `galley-plugin` and export a plugin that passes the structural check. A running Galley picks up changes when it restarts. The app's **Plugins** screen shows each plugin, what it adds and where it shows up, and its settings; it adds nothing itself — adding is a terminal command on purpose.

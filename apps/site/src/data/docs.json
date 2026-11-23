@@ -10,7 +10,10 @@
     "onThisPage": "On this page",
     "filterLabel": "Filter the documentation",
     "filterPlaceholder": "Filter pages and sections",
-    "filterEmpty": "No page matches. Try a shorter word."
+    "filterEmpty": "No page matches. Try a shorter word.",
+    "output": "You’ll see",
+    "copy": "Copy",
+    "anchor": "Link to this section:"
   },
   "groups": [
     {

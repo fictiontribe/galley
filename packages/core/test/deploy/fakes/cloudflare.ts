@@ -120,7 +120,17 @@ export async function startFakeCloudflare(options: FakeCloudflareOptions = {}): 
       const rest = parts.slice(2).join("/");
 
       if (request.method === "GET" && rest === "workers/subdomain") return subdomain ? ok({ subdomain }) : fail(404, 10007, "This account doesn't have a workers.dev subdomain");
-      if (request.method === "GET" && rest === "workers/scripts") return ok([...scripts.keys()].map((id) => ({ id })));
+      // Like the real list: a Worker with no version yet isn't in it.
+      if (request.method === "GET" && rest === "workers/scripts") return ok([...scripts.keys()].filter((id) => deployments.some((entry) => entry.script === id)).map((id) => ({ id })));
+      const worker = /^workers\/workers\/([^/]+)(\/versions)?$/.exec(rest);
+
+      if (request.method === "GET" && worker) {
+        const name = decodeURIComponent(worker[1]!);
+
+        if (!scripts.has(name)) return fail(404, 10007, "This Worker does not exist on your account.");
+        if (worker[2]) return ok(deployments.filter((entry) => entry.script === name).map((entry, index) => ({ id: entry.id, number: index + 1 })).slice(0, Number(request.url.searchParams.get("per_page") ?? 100)));
+        return ok({ id: `w-${name}`, name, created_on: new Date().toISOString() });
+      }
       if (request.method === "POST" && rest === "workers/workers") {
         const body = request.json<{ name?: string; subdomain?: { enabled?: boolean; previews_enabled?: boolean } }>();
 

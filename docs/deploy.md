@@ -162,18 +162,29 @@ packages/core/src/deploy/
 ```
 
 **The flow** (`deploy.start(site, { kind })` → `Job` of kind `"deploy"`):
-connect to the host and create/find the project (so a refused key is reported
-in seconds, not after a long build) → build → walk and check the output
-folder (`model.build.outDir`) → upload with the host's protocol → record the
+a read-only look at the host (so a refused key, a missing permission or a
+name in use is reported in seconds, not after a long build) → build → walk
+and check the output folder (`model.build.outDir`) → create or find the
+project on the host — only now, so a site that doesn't build leaves nothing
+behind on either host → upload with the host's protocol → record the
 deployment → after a production deploy, write the live address into
 `galley.config.json` (`deploy.productionUrl`) with the engine's surgical
 config edit. The UI offers to make that address `urls.production`, which is
 what Proof's side-by-side compares against.
 
 **Production builds what is published.** The publish branch's tip (else HEAD)
-is checked out with `git worktree add --detach` into a temporary folder, the
-site's installed `node_modules` is linked in (or dependencies are installed
-when the site has none), the site's own build command runs there with the
+is checked out with `git worktree add --detach` into a temporary folder —
+the whole repository, so a site in a monorepo sub-folder builds from its own
+folder and sees the *published* versions of everything it reaches by
+relative path (shared code, brand files). Every `node_modules` the working
+tree has (the site's, the repository root's, each workspace package's) is
+made available at the same place in the checkout, because Node looks for
+packages in every ancestor folder: linked whole when nothing in it points
+back into the repository; otherwise rebuilt entry by entry, with links to
+workspace packages (pnpm/npm workspace links) pointing at the checkout's
+published copy and everything else at the installed package
+(`packages/core/src/deploy/modules.ts`). Dependencies are installed only
+when the working tree has none. The site's own build command runs there with the
 cleaned environment the engine uses for every site command, and the worktree
 is removed afterwards (`git worktree remove --force` + `prune`). Files that
 aren't in version history (for example a `.env`) aren't in that build.
@@ -236,8 +247,14 @@ documented through wrangler and drag-and-drop. The Workers static-assets
 Direct Upload *is* documented over the REST API, so Galley uses it with plain
 `fetch` — **wrangler is not involved**.
 
-1. `POST /accounts/:a/workers/workers` `{ name, subdomain: { enabled: true, previews_enabled: true } }`
-   creates the Worker (once), so a preview can be the first thing shared.
+1. `GET /accounts/:a/workers/workers/:name` (and `…/versions?per_page=1`)
+   looks the Worker up through the same Workers API it is created with — the
+   scripts list leaves out a Worker with no version yet. An existing Worker
+   is used only when it is empty or is the one this site's settings name; a
+   Worker with content that this site doesn't name is "that name is in use —
+   choose another". Nothing is ever deleted. After the site has built,
+   `POST /accounts/:a/workers/workers` `{ name, subdomain: { enabled: true, previews_enabled: true } }`
+   creates it when it doesn't exist, so a preview can be the first thing shared.
 2. `POST /accounts/:a/workers/scripts/:name/assets-upload-session`
    `{ manifest: { "/path": { hash, size } } }` → `{ jwt, buckets }`. Every
    path, unchanged ones included. `hash` = first 32 hex of
@@ -310,6 +327,22 @@ file its host reads. Galley's deploy passes them on the way each host wants:
   address: exact rules answer 301 and 302 as written, a wildcard rule
   redirects, and `_redirects` itself isn't served. Vercel's redirects are not
   verified live yet.
+
+**Markdown copies of pages.** Sites built with the kit publish a markdown
+copy of every page (`/about.md`) and `/llms.txt`. Served as
+`application/octet-stream`, browsers download them and agents may not read
+them as text, so when the build output has `.md` files Galley adds
+`Content-Type: text/markdown; charset=utf-8`:
+
+- Cloudflare: a `/*.md` rule appended to the `_headers` text it already
+  passes in `assets.config._headers` (and `.md` parts are uploaded with that
+  type too). It is skipped when the site's own `_headers` already sets
+  Content-Type for a path that could match `.md` (one naming `.md`, or with a
+  wildcard or placeholder), or already has Cloudflare's 100 rules.
+- Vercel: a `{ "source": "/(.*).md", "headers": [{ "key": "Content-Type", … }] }`
+  entry appended to `headers` in the uploaded routing-only `vercel.json`
+  (made for the upload when the site has none), under the same rule: never
+  over a Content-Type header the site set itself, and not past 2,048 routes.
 
 Sources (read 2026-11-23): Cloudflare
 [Redirects](https://developers.cloudflare.com/workers/static-assets/redirects/),
@@ -458,7 +491,7 @@ VERCEL_TOKEN=… $G deploy --preview --target vercel --yes
 ```
 
 Success looks like: progress lines (`Connecting to Cloudflare…`, `Building
-the site with your changes…`, `Uploading 57 files (985 KB)…`, `Cloudflare is
+the site with your changes…`, `Sending 57 files (985 KB) to Cloudflare…`, `Cloudflare is
 preparing the preview…`), then `✓ Preview at https://…` and exit code 0;
 opening the address shows the starter. Then run `$G deploy --yes` (no
 `--preview`) for the live address — `✓ Live at https://verify-cloudflare.<subdomain>.workers.dev`

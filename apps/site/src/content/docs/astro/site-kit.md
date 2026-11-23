@@ -26,10 +26,10 @@ The quickest way: open the site in Galley, go to **Forms** or **Scripts**, and p
 By hand, from a clone of Galley:
 
 ```sh
-$ node packages/astro/scripts/vendor.mjs path/to/site
+node packages/astro/scripts/vendor.mjs path/to/site
 ```
 
-copies the components, the browser runtime, the schemas, the CSS and the build step into `src/galley/`, each file headed with the kit version it came from. Running it again replaces the kit files and keeps `src/galley/settings.json`. Then:
+It copies the components, the browser runtime, the schemas, the CSS and the build step into `src/galley/`, each file headed with the kit version it came from. Running it again replaces the kit files and keeps `src/galley/settings.json`. Then:
 
 - the forms collection in `src/content.config.ts`: `import { formSchema } from "./galley/schema.js"`;
 - the three placements in the layout: `<Scripts placement="head" />` after `<meta charset>`, `"body-start"` after `<body>`, `"body-end"` before `</body>` (`import { Scripts } from "../galley/components/index.js"`);

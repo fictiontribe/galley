@@ -5,6 +5,7 @@
 import { spawn } from "node:child_process";
 import type { Writable } from "node:stream";
 import { openSingleSite, startServer } from "@galley/server";
+import { terminalPrompter, type Prompter } from "./prompt";
 
 export interface Io {
   out(line?: string): void;
@@ -25,6 +26,14 @@ export interface Io {
   stdio?: { stdin?: NodeJS.ReadableStream; stdout?: Writable };
   /** `mcp config`: how this CLI was started (command + script). Default: this process's. */
   launcher?: { command: string; args: string[] };
+  /** `new`: asks questions. Present only when a person can answer (both ends are a terminal). */
+  ask?: Prompter;
+  /** A line that replaces itself (progress), shown only on a terminal; null clears it. */
+  status?(line: string | null): void;
+  /** The Node version to check starters against. Default: this process's. */
+  nodeVersion?: string;
+  /** The platform for setup advice. Default: this process's. */
+  platform?: NodeJS.Platform;
 }
 
 export interface ParentWatch {
@@ -120,7 +129,14 @@ function waitForSignal(): Promise<void> {
   });
 }
 
+/** True when a person is at the keyboard: both ends are a terminal and this isn't CI. */
+export function isInteractive(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY) && !env.CI;
+}
+
 export function processIo(): Io {
+  const terminal = Boolean(process.stdout.isTTY);
+
   return {
     out: (line = "") => process.stdout.write(`${line}\n`),
     err: (line = "") => process.stderr.write(`${line}\n`),
@@ -130,6 +146,8 @@ export function processIo(): Io {
     openSite: openSingleSite,
     openBrowser: openInBrowser,
     waitForStop: waitForSignal,
+    ...(isInteractive() ? { ask: terminalPrompter() } : {}),
+    ...(terminal ? { status: (line: string | null) => process.stdout.write(line === null ? "\r\u001b[2K" : `\r\u001b[2K${line}`) } : {}),
     watchParent() {
       const watch = watchStdin();
 

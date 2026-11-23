@@ -37,4 +37,4 @@ The preview is your site running on this computer.
 
 ## Still stuck
 
-Every message, grouped by situation, is in [Messages in the app](/docs/reference/messages/). For the assistant: [Ask the assistant](/docs/editing/assistant/#what-can-go-wrong). For whoever looks after the site: [Troubleshooting for developers](/docs/reference/troubleshooting/).
+Every message, grouped by situation, is in [Messages in the app](/docs/reference/messages/). For the assistant: [Ask the assistant](/docs/editing/assistant/#if-somethings-different). For whoever looks after the site: [Troubleshooting for developers](/docs/reference/troubleshooting/).

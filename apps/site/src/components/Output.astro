@@ -1,0 +1,11 @@
+---
+// What a person then sees: a quieter block, labelled, never copied.
+import { site } from "../lib/site";
+interface Props { lines: string[]; class?: string }
+const { lines, class: cls } = Astro.props;
+---
+
+<figure class:list={["out", cls]}>
+  <figcaption class="out__label">{site.ui.output}</figcaption>
+  <pre tabindex="0"><code>{lines.join("\n")}</code></pre>
+</figure>

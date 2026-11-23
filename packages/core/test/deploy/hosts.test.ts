@@ -168,10 +168,24 @@ describe("Cloudflare (Workers static assets, Direct Upload)", () => {
     expect(await target.checkProject(ctx(), { account: ACCOUNT, name: "lowfield-studio" })).toMatchObject({ available: true });
   });
 
-  it("reports an existing Worker as usable, with a caution", async () => {
+  it("looks a Worker up the way it creates one: an empty Worker is adopted, a stranger's with content is refused", async () => {
     fake = await startFakeCloudflare();
-    fake.scripts.set("taken", { subdomain: true, previews: true });
-    expect(await target.checkProject(ctx(), { account: ACCOUNT, name: "taken" })).toMatchObject({ available: true, existing: true, message: expect.stringContaining("replaces what it serves") });
+    // An empty Worker (left by an attempt whose build failed) isn't in the scripts list, but the Workers API knows it.
+    fake.scripts.set("empty", { subdomain: true, previews: true });
+    expect(await target.checkProject(ctx(), { account: ACCOUNT, name: "empty" })).toMatchObject({ available: true, existing: true });
+    expect(await target.ensureProject(ctx(), { account: ACCOUNT, name: "empty" })).toEqual({ project: "empty", productionUrl: "https://empty.studio.workers.dev" });
+    expect(fake.log.filter((entry) => entry.method === "POST" && entry.path.endsWith("/workers/workers"))).toHaveLength(0);
+
+    // A Worker with a version this site's settings don't name: in use, choose another — nothing replaced, nothing deleted.
+    const { dir, files } = await siteFiles();
+
+    await target.deploy(ctx(), input(dir, files, { account: ACCOUNT, project: "empty" }));
+    expect(await target.checkProject(ctx(), { account: ACCOUNT, name: "empty" })).toMatchObject({ available: false, existing: true, message: expect.stringContaining("has a site on it. Choose another name.") });
+    await expect(target.ensureProject(ctx(), { account: ACCOUNT, name: "empty" })).rejects.toMatchObject({ reason: "taken" });
+    // …unless it is the one this site uses.
+    expect(await target.checkProject(ctx(), { account: ACCOUNT, name: "empty", ours: true })).toMatchObject({ available: true, existing: true });
+    expect(await target.ensureProject(ctx(), { account: ACCOUNT, name: "empty", ours: true })).toMatchObject({ project: "empty" });
+    expect(fake.log.some((entry) => entry.method === "DELETE")).toBe(false);
     expect(await target.checkProject(ctx(), { account: ACCOUNT, name: "Bad Name" })).toMatchObject({ available: false });
   });
 });

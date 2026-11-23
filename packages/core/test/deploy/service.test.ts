@@ -137,7 +137,11 @@ describe("deploying a site", () => {
 
     expect(status).toMatchObject({ behind: 0, liveAddressSet: false, production: { id: deployment.id } });
     expect(status.job).toMatchObject({ kind: "deploy", state: "done", url: deployment.url, siteId: site.id });
-    expect(jobs().map((job) => job.detail)).toEqual(expect.arrayContaining(["Building the published version…", "Live"]));
+    // Every step reaches the event stream, in order, however fast the machine: none may be coalesced away.
+    const details = jobs().map((job) => job.detail);
+    const steps = ["Getting ready…", "Connecting to Cloudflare…", "Building the published version…", "Checking the files…", "Sending 3 files (46 B) to Cloudflare…", "Checking which of 3 files Cloudflare already has…", "Uploading 3 files…", "Uploading 3 of 3 files…", "Cloudflare is putting it live…", "Live"];
+
+    expect(details.filter((detail) => steps.includes(detail ?? "")), JSON.stringify(details)).toEqual(steps);
     expect(await deploy.deployments(site)).toEqual([deployment]);
 
     // Offer accepted: the live address becomes urls.production, so Proof compares against the real site.
@@ -200,6 +204,9 @@ describe("deploying a site", () => {
     expect((error as { detail: string }).detail).toContain("content/about.md can't be built");
     expect(jobs().at(-1)).toMatchObject({ state: "error", output: expect.stringContaining("can't be built") });
     expect(fakeCf!.deployments).toHaveLength(0);
+    // Nothing was created on the host for a site that didn't build.
+    expect(fakeCf!.scripts.has("lowfield-studio")).toBe(false);
+    expect(fakeCf!.log.some((entry) => entry.method !== "GET")).toBe(false);
   });
 
   it("counts published versions that aren't live yet", async () => {
@@ -322,6 +329,29 @@ describe("deploying a site", () => {
     expect(fakeVercel.deployments.at(-1)!.config).toEqual({ redirects: [{ source: "/old", destination: "/published/", permanent: true }] });
     await deploy.run(harness.site, { kind: "preview" });
     expect(fakeVercel.deployments.at(-1)!.config).toEqual({ redirects: [{ source: "/old", destination: "/unpublished/", permanent: true }] });
+  });
+
+  it("Vercel: a site that doesn't build creates no project", async () => {
+    fakeVercel = await startFakeVercel();
+    const root = makeTinySite();
+    const { harness, deploy } = await rig(root);
+
+    await deploy.configure(harness.site, { target: "vercel", account: TEAM, project: "lowfield-studio" });
+    writeFileSync(join(root, "content/about.md"), "---\ntitle: BREAK\n---\n");
+    await expect(deploy.run(harness.site, { kind: "preview" })).rejects.toMatchObject({ reason: "build" });
+    expect(fakeVercel.projects.has("lowfield-studio")).toBe(false);
+    expect(fakeVercel.log.some((entry) => entry.method !== "GET")).toBe(false);
+  });
+
+  it("a retry after a failed attempt adopts the empty Worker it left, instead of failing with “already exists”", async () => {
+    const root = makeTinySite();
+    const { harness, deploy } = await rig(root);
+
+    // An older build of this app created the Worker before building; the build failed; the Worker stayed, empty.
+    fakeCf!.scripts.set("lowfield-studio", { subdomain: true, previews: true });
+    await deploy.configure(harness.site, { target: "cloudflare", account: ACCOUNT, project: "lowfield-studio" });
+    await expect(deploy.run(harness.site, { kind: "production" })).resolves.toMatchObject({ kind: "production" });
+    expect(fakeCf!.log.filter((entry) => entry.method === "POST" && entry.path.endsWith("/workers/workers"))).toHaveLength(0);
   });
 
   it("Vercel end to end: team, project, production and preview", async () => {

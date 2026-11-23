@@ -142,7 +142,7 @@ const INTRO = `This page is for developers integrating with Galley — scripts, 
 | \`ai\` | 502 | The model or image provider failed. |
 
 \`\`\`sh
-$ curl -s -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/sites
+curl -s -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/sites
 \`\`\`
 
 In the tables, *Takes* is the query (\`?…\`) and body; *Returns* is the response type, both named as in \`api.ts\`. A response of *a file* or *a stream* isn't JSON.
@@ -154,7 +154,7 @@ const OUTRO = `## Events
 \`GET /api/events\` is a Server-Sent Events stream: a \`hello\` event first, then every event as \`data: <json>\`, and a \`: heartbeat\` comment every 20 seconds. Event \`type\`s: ${"{EVENTS}"}. Their shapes are \`ServerEvent\` in [\`packages/core/src/types.ts\`]({repository}/blob/main/packages/core/src/types.ts). \`changes.updated\` carries its origin: \`user\`, \`agent\`, \`external\`, \`publish\`, \`discard\` or \`undo\`.
 
 \`\`\`sh
-$ curl -sN -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/events
+curl -sN -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/events
 \`\`\`
 
 ## Next

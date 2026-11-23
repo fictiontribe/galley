@@ -78,7 +78,11 @@ export interface DeployService {
    */
   connect(target: DeployTargetId, options?: { key?: string }): Promise<{ accounts: DeployAccount[] }>;
   /** Whether a project name can be used in an account. Creates nothing. */
-  checkProject(input: { target: DeployTargetId; account: string; name: string }): Promise<DeployProjectCheck>;
+  /**
+   * `site`: the site asking. A project of that name already holding something
+   * is only usable when it is the one this site's settings name.
+   */
+  checkProject(input: { target: DeployTargetId; account: string; name: string; site?: SiteService }): Promise<DeployProjectCheck>;
   /** The site's deploy settings, latest deployments, running job, and how far behind the live site is. */
   status(site: SiteService): Promise<DeployStatus>;
   /** Change the site's deploy settings (galley.config.json `deploy`). */
@@ -99,6 +103,9 @@ export interface DeployService {
 }
 
 const SECRET_ENV_HINT: Record<string, string> = { cloudflare: "CLOUDFLARE_API_TOKEN", vercel: "VERCEL_TOKEN" };
+
+/** A progress update every person must see, however fast the next one follows (see JobHandle.update). */
+const STEP = { immediate: true } as const;
 
 function normalizeUrl(url: string | undefined): string {
   return (url ?? "").trim().replace(/\/+$/, "").toLowerCase();
@@ -181,17 +188,21 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
 
     try {
       ctx = await contextFor(target);
-      // The host first: a refused key or a missing permission is reported in seconds, not after a long build.
-      job.update({ detail: `Connecting to ${target.name}…`, progress: 0.02 });
-      const project = await target.ensureProject(ctx, { account: config.account, name: config.project });
+      // A read-only look first: a refused key, a missing permission or a name in use is reported in seconds, not after a long build.
+      job.update({ detail: `Connecting to ${target.name}…`, progress: 0.02 }, STEP);
+      const check = await target.checkProject(ctx, { account: config.account, name: config.project, ours: true });
 
-      job.update({ detail: start.kind === "production" ? "Building the published version…" : "Building the site with your changes…", progress: 0.05 });
-      built = await buildForDeploy(site, start.kind, (detail) => job.update({ detail }));
-      job.update({ detail: "Checking the files…", progress: 0.35 });
+      if (!check.available) throw new DeployError("taken", check.message ?? `The name “${config.project}” can't be used. Choose a different one in the site's Online settings.`);
+      job.update({ detail: start.kind === "production" ? "Building the published version…" : "Building the site with your changes…", progress: 0.05 }, STEP);
+      built = await buildForDeploy(site, start.kind, (detail) => job.update({ detail }, STEP));
+      job.update({ detail: "Checking the files…", progress: 0.35 }, STEP);
       const files = await collectFiles(built.dir, target.info.limits, target.name, built.outDir);
       const bytes = files.reduce((sum, file) => sum + file.size, 0);
 
-      job.update({ detail: `Uploading ${files.length.toLocaleString("en-US")} ${files.length === 1 ? "file" : "files"} (${formatBytes(bytes)})…`, progress: 0.4 });
+      // Only now that there is something to upload is anything created on the host.
+      const project = await target.ensureProject(ctx, { account: config.account, name: config.project, ours: true });
+
+      job.update({ detail: `Sending ${files.length.toLocaleString("en-US")} ${files.length === 1 ? "file" : "files"} (${formatBytes(bytes)}) to ${target.name}…`, progress: 0.4 }, STEP);
       const outcome = await target.deploy(ctx, {
         project: project.project,
         account: config.account,
@@ -201,7 +212,9 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
         commit: built.commit,
         siteRoot: built.root,
         label: start.label ?? (start.kind === "production" ? `Published version ${built.commit?.slice(0, 7) ?? ""}`.trim() : "Preview of unpublished changes"),
-        onProgress: ({ detail, progress }) => job.update({ detail, ...(progress !== undefined ? { progress: 0.4 + progress * 0.55 } : {}) }),
+        // The first and last words of an upload are steps; the counts in between may be coalesced.
+        onProgress: ({ detail, progress }) =>
+          job.update({ detail, ...(progress !== undefined ? { progress: 0.4 + progress * 0.55 } : {}) }, progress === undefined || progress === 0 || progress === 1 ? STEP : {}),
       });
       const author = await who();
       const record: Deployment = {
@@ -242,8 +255,12 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
     const job: JobHandle = {
       id: tracked.id,
       snapshot: tracked.snapshot,
-      update(patch) {
-        tracked.update(patch);
+      update(patch, updateOptions) {
+        const current = tracked.snapshot();
+
+        // A step said twice (the service and the build both announce building) is reported once.
+        if ((Object.keys(patch) as Array<keyof typeof patch>).every((key) => patch[key] === current[key])) return;
+        tracked.update(patch, updateOptions);
         for (const listener of listeners) listener(tracked.snapshot());
       },
       finish(state, patch) {
@@ -252,7 +269,7 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       },
     };
 
-    job.update({ siteId: site.id, detail: "Getting ready…", progress: 0 });
+    job.update({ siteId: site.id, detail: "Getting ready…", progress: 0 }, STEP);
     lastJob.set(site.id, job.id);
     const done = execute(site, config, start, job).then(
       (record) => {
@@ -344,13 +361,16 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       return result;
     },
 
-    async checkProject({ target: targetId, account, name }) {
+    async checkProject({ target: targetId, account, name, site }) {
       const target = targetFor(targetId);
       const problem = projectNameProblem(name);
 
       if (problem) return { name, available: false, existing: false, message: problem };
       if (!account?.trim()) return { name, available: false, existing: false, message: `Choose the ${target.info.accountNoun} first.` };
-      return withHost(target, (ctx) => target.checkProject(ctx, { account: account.trim(), name }));
+      const config = site ? await readDeployConfig(site).catch(() => null) : null;
+      const ours = Boolean(config && config.target === target.id && config.account === account.trim() && config.project === name);
+
+      return withHost(target, (ctx) => target.checkProject(ctx, { account: account.trim(), name, ours }));
     },
 
     async status(site) {

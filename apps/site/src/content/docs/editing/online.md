@@ -33,7 +33,7 @@ In **Proof**, **Share a preview link** puts the site as it is now — unpublishe
 
 Galley puts the site at the host's own address (`…workers.dev` or `…vercel.app`). To use your own domain, add it on the host — Galley doesn't change domain or DNS settings — then set it in **Settings › Addresses › Live site**.
 
-## What can go wrong
+## If something's different
 
 - **"…didn't accept the access key."** The key was deleted, expired or mistyped; make a new one and paste it in the key step.
 - **"This Cloudflare account doesn't have a workers.dev address yet."** Open *Workers & Pages* in Cloudflare's dashboard once and choose one.

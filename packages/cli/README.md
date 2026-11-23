@@ -1,11 +1,27 @@
 # galley-cms
 
-The `galley` command: opens a site in the browser, runs Galley for a team,
-writes a starter config, checks a site, and starts new sites. It wraps the
-engine (`@galley/core`) and the server (`@galley/server`); argument parsing is
-`node:util`'s `parseArgs`, with no other dependency.
+[Galley](https://galley.fictiontribe.com) is an open-source AI CMS for Astro:
+change a page in a form, on the page or by asking, check every change in
+Proof beside the live site, then publish it to your own git repository.
+Everything stays on your computer.
 
-Not published yet. From the repository:
+A new site, from one of Galley's starters, with Galley running on it:
+
+```sh
+npm create galley@latest
+```
+
+An Astro site you already have — run this in its folder:
+
+```sh
+npx galley-cms
+```
+
+It needs Node 20.11 or newer (22.23.4 for the starters, which are Astro 7
+sites) and git. There are no install scripts and nothing native: the package
+is one bundled file with the web app and the starters beside it.
+
+Inside this repository, before anything is published:
 
 ```sh
 node packages/cli/bin/galley.js --help
@@ -14,8 +30,7 @@ node packages/cli/bin/galley.js doctor starters/astro-starter
 
 `bin/galley.js` runs the bundle in `dist/galley.mjs` when it exists, and the
 TypeScript source through `tsx` otherwise — so delete `dist/` after building
-it, or it hides changes to the source. Once published, `npx galley-cms` will run
-the same thing.
+it, or it hides changes to the source.
 
 | Command | Does |
 | --- | --- |
@@ -23,8 +38,8 @@ the same thing.
 | `galley serve` | Hosted mode, behind `GALLEY_PASSWORD` |
 | `galley init [path]` | Write `galley.config.json` from what detection finds |
 | `galley doctor [path]` | Check the site and this computer |
-| `galley new <name>` | Start a new site from a starter (`--starter`, `--look`), with its own name and no pending changes |
-| `galley starters` | List the starters and the looks each one ships |
+| `galley new [name]` | Start a new site from a starter (`--starter caddow`, `ferrow`, `lowfield` or `storefront`; `--look`, `--use`, `--no-install`, `--no-open`): asks for what's missing in a terminal, installs with the package manager that ran it, records the first version and opens Galley on it. `npm create galley` runs this |
+| `galley starters` | List the starters: what each is, what's inside, its looks and the command that makes a site from it |
 | `galley mcp [path]` | Let an AI tool edit the site over the Model Context Protocol (`galley mcp config`, `galley mcp token`) |
 | `galley schema` | Print the JSON Schema of `galley.config.json` (what `$schema` in the file points at). `--out <folder>` writes every schema the app's files name (`galley.config.json`, `brand.json`) and lists the address each must be served at |
 | `galley version` | Print the version |
@@ -47,9 +62,16 @@ and exit 1, never a stack trace.
 
 ## What `npm pack` publishes
 
-The published package is the bundle alone: `bin/galley.js` and `dist/`
-(`galley.mjs`, `web/`, `starters/`, `overlay.js`, `LICENSE`, `NOTICE`). It
-has no runtime dependencies — the engine, server and MCP packages are bundled
-in, so they are `devDependencies` here. npm never packs a `.gitignore`, so
-the build stores each starter's as `gitignore` and `galley new` puts the dot
-back.
+`prepack` (`node build.mjs --release`) builds the web UI, the bundle, the
+site kit and the starters into `dist/`; `postpack` deletes `dist/` again.
+The tarball is `bin/galley.js` and `dist/` (`galley.mjs`, `web/`,
+`starters/`, `overlay.js`, `LICENSE`, `NOTICE`), about 13 MB. It has no
+runtime dependencies — the engine, server and MCP packages are bundled in, so
+they are `devDependencies` here. The starters are copied as git lists them,
+never what else is in their folders. npm never packs a `.gitignore`, so the
+build stores each starter's as `gitignore` and `galley new` puts the dot back.
+
+`node scripts/verify-pack.mjs <tarball>…` checks a packed tarball before it
+is published (the release workflow runs it): nothing private, no tests or
+source maps, no paths from the machine that built it, the size limit, and
+that it starts. See [RELEASING.md](../../RELEASING.md).

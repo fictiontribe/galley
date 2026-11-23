@@ -1,0 +1,16 @@
+---
+// What a person types: one command per line, nothing else, with Copy (added
+// by the script; without JavaScript the block is plain, selectable text).
+// Long lines scroll inside the block, never the page.
+import { site } from "../lib/site";
+import { assertAvailable } from "../lib/install";
+
+interface Props { lines: string[]; label?: string; class?: string }
+const { lines, label = site.ui.commandLabel, class: cls } = Astro.props;
+const text = lines.map(assertAvailable).join("\n");
+---
+
+<div class:list={["cmd", lines.length > 1 && "cmd--multi", cls]} role="group" aria-label={label}>
+  <pre tabindex="0"><code>{text}</code></pre>
+  <button type="button" data-copy={text} hidden>{site.ui.copy}</button>
+</div>

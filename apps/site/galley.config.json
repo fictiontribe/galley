@@ -153,6 +153,7 @@
   "deploy": {
     "target": "cloudflare",
     "account": "0cc7327da4f3d67ccdcb0e075d72eccc",
-    "project": "galley"
+    "project": "galley",
+    "productionUrl": "https://galley.fictiontribe.com"
   }
 }

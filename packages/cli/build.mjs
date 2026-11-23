@@ -6,21 +6,47 @@
 // GALLEY_CLI_DIST=<dir> writes the bundle somewhere else (the bundle test
 // builds into a temporary folder, so a dist/ that bin/galley.js would prefer
 // over the sources is never left behind).
+//
+//   node build.mjs            the bundle, with the web UI if it has been built
+//   node build.mjs --release  what `npm pack` ships (prepack): builds the web UI
+//                             first and stops if any part is missing
+//   node build.mjs --clean    removes dist/ again (postpack), so bin/galley.js
+//                             goes back to running the sources
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { build } from "esbuild";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, "..", "..");
 const dist = process.env.GALLEY_CLI_DIST ? resolve(process.env.GALLEY_CLI_DIST) : join(here, "dist");
-const webDist = join(repo, "packages", "web", "dist");
+const webPackage = join(repo, "packages", "web");
+const webDist = join(webPackage, "dist");
 const starters = join(repo, "starters");
 const SKIP = new Set(["node_modules", ".git", "dist", ".astro", ".DS_Store"]);
+/** Never shipped inside a starter, whatever git or the folder holds. */
+const NEVER = [/(^|\/)\.env(\..*)?$/, /\.log$/, /(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$/, /\.map$/];
+const release = process.argv.includes("--release");
 
 rmSync(dist, { recursive: true, force: true });
+if (process.argv.includes("--clean")) process.exit(0);
 mkdirSync(dist, { recursive: true });
+
+function fail(message) {
+  console.error(`✗ ${message}`);
+  process.exit(1);
+}
+
+if (release) {
+  // The web UI is its own package; build it with its own Vite, so packing needs nothing installed globally.
+  const viteRoot = dirname(createRequire(join(webPackage, "package.json")).resolve("vite/package.json"));
+  const viteBin = JSON.parse(readFileSync(join(viteRoot, "package.json"), "utf8")).bin;
+
+  execFileSync(process.execPath, [join(viteRoot, typeof viteBin === "string" ? viteBin : viteBin.vite), "build", "--logLevel", "warn"], { cwd: webPackage, stdio: "inherit" });
+}
+
+const { build } = await import("esbuild");
 
 // The overlay is produced by its own package; run its real entry (through tsx) and embed the result.
 const overlay = execFileSync(
@@ -82,15 +108,44 @@ await build({
 });
 
 if (existsSync(join(webDist, "index.html"))) {
-  cpSync(webDist, join(dist, "web"), { recursive: true });
+  cpSync(webDist, join(dist, "web"), { recursive: true, filter: (source) => !source.endsWith(".map") });
+} else if (release) {
+  fail("The web UI didn't build, so there is nothing to pack.");
 } else {
   console.warn("! The web UI isn't built, so the bundle will show the “not built” page. Run `pnpm --filter @galley/web build` first.");
 }
 
-cpSync(starters, join(dist, "starters"), {
-  recursive: true,
-  filter: (source) => !SKIP.has(basename(source)),
-});
+// The starters as git has them — never what happens to be lying in the
+// folders (an .env, a build, a log). Outside a git checkout, the folder
+// minus what is never shipped.
+let tracked = null;
+
+try {
+  tracked = execFileSync("git", ["ls-files", "-z", "--", "."], { cwd: starters, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+    .split("\0")
+    .filter(Boolean);
+} catch {
+  if (release) fail("Packing needs a git checkout: the starters are copied as git has them.");
+}
+if (tracked) {
+  for (const file of tracked) {
+    if (NEVER.some((pattern) => pattern.test(file)) || !existsSync(join(starters, file))) continue;
+    mkdirSync(dirname(join(dist, "starters", file)), { recursive: true });
+    cpSync(join(starters, file), join(dist, "starters", file));
+  }
+} else {
+  cpSync(starters, join(dist, "starters"), {
+    recursive: true,
+    filter: (source) => !SKIP.has(basename(source)) && !NEVER.some((pattern) => pattern.test(source)),
+  });
+}
+if (release) {
+  for (const id of readdirSync(join(dist, "starters"), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name)) {
+    for (const file of ["package.json", "starter.json", "galley.config.json"]) {
+      if (!existsSync(join(dist, "starters", id, file))) fail(`starters/${id} has no ${file}.`);
+    }
+  }
+}
 // npm never packs a file named .gitignore, so a starter's travels as
 // "gitignore" and scaffolding puts the dot back. Without it a new site's
 // first version would take in node_modules.

@@ -84,7 +84,7 @@ describe("galley deploy", () => {
 
     expect(await main(["deploy", root], io)).toBe(0);
     expect(io.stdout).toEqual(["✓ Live at https://corner-bakery.studio.workers.dev"]);
-    expect(io.stderr).toEqual(expect.arrayContaining(["Building the published version…", "Uploading 2 files (37 B)…", "Uploading 2 of 2 files…", "Cloudflare is putting it live…"]));
+    expect(io.stderr).toEqual(expect.arrayContaining(["Building the published version…", "Sending 2 files (37 B) to Cloudflare…", "Uploading 2 of 2 files…", "Cloudflare is putting it live…"]));
     expect(cf.deployments.at(-1)!.files.get("index.html")!.toString()).toContain("Fresh bread.");
     expect(JSON.parse(readFileSync(join(root, "galley.config.json"), "utf8")).deploy).toEqual({
       target: "cloudflare",

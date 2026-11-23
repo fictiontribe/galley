@@ -6,6 +6,9 @@
  */
 import { Marked, type Tokens } from "marked";
 import { fill } from "./site";
+import docsData from "../data/docs.json";
+
+const docsUi = { output: (docsData.ui as Record<string, string>).output ?? "", copy: (docsData.ui as Record<string, string>).copy ?? "" };
 
 export interface Heading {
   depth: number;
@@ -47,14 +50,17 @@ function createMarked(headings: Heading[], anchors: boolean): Marked {
         if (seen > 0) slug = `${slug}-${seen}`;
         headings.push({ depth: token.depth, slug, text });
         if (!anchors || token.depth === 1) return `<h${token.depth} id="${slug}">${html}</h${token.depth}>\n`;
-        return `<h${token.depth} id="${slug}"><a class="anchor" href="#${slug}"><span class="sr">Link to this section: </span><span aria-hidden="true">#</span></a>${html}</h${token.depth}>\n`;
+        return `<h${token.depth} id="${slug}"><a class="anchor" href="#${slug}"><span class="sr">${escapeHtml((docsData.ui as Record<string, string>).anchor ?? "")} </span><span aria-hidden="true">#</span></a>${html}</h${token.depth}>\n`;
       },
       code(token: Tokens.Code) {
         const lang = (token.lang ?? "").split(/\s+/)[0] ?? "";
-        const label = lang && lang !== "text" ? `<span class="code__lang">${escapeHtml(lang)}</span>` : "";
-        // Shell prompts are shown but never copied.
-        const copyText = lang === "sh" || lang === "shell" || lang === "bash" ? token.text.replace(/^\$ /gm, "") : token.text;
-        return `<div class="code">${label}<pre tabindex="0"${lang ? ` data-lang="${escapeHtml(lang)}"` : ""}><code>${escapeHtml(token.text)}</code></pre><button type="button" class="copy code__copy" data-copy-text="${escapeHtml(copyText)}" hidden>Copy</button></div>\n`;
+        // What a person then sees: a quiet, labelled block with no Copy.
+        if (lang === "output") return `<figure class="out"><figcaption class="out__label">${escapeHtml(docsUi.output)}</figcaption><pre tabindex="0"><code>${escapeHtml(token.text)}</code></pre></figure>\n`;
+        // What a person types (sh) and any other code: the block with Copy. A
+        // shell prompt left in an older page is shown but never copied.
+        const shell = lang === "sh" || lang === "shell" || lang === "bash";
+        const copyText = shell ? token.text.replace(/^\$ /gm, "") : token.text;
+        return `<div class="code${shell ? " code--cmd" : ""}"><pre tabindex="0"${lang ? ` data-lang="${escapeHtml(lang)}"` : ""}><code>${escapeHtml(token.text)}</code></pre><button type="button" class="copy code__copy" data-copy-text="${escapeHtml(copyText)}" hidden>${escapeHtml(docsUi.copy)}</button></div>\n`;
       },
       link(this: { parser: { parseInline(tokens: Tokens.Generic[]): string } }, token: Tokens.Link) {
         const text = this.parser.parseInline(token.tokens);

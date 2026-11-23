@@ -35,7 +35,7 @@ Open **Where it goes**. Every submission goes to each destination in the list; t
 
 Press **Use this form**, choose a page under **Add it as a … section to**, and **Add to page**. The form appears as one of the site's own form sections; check it in Proof, then publish.
 
-## What can go wrong
+## If something's different
 
 - **"Where should the live site send submissions?"** Galley on your own computer can't receive visitors' submissions: the live site's visitors can't reach it. Forms still send to it from the preview, for testing. For the live site, run Galley on a server, or choose a CRM or webhook destination — [See who wrote in](/docs/editing/inbox/#on-the-live-site).
 - **The Forms screen offers "Set it up for me".** The site doesn't have Galley's site kit yet. The button adds it as pending changes for you to check; whoever looks after the site's code should look them over. [Forms, for developers](/docs/forms/).

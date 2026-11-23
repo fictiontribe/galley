@@ -1,5 +1,7 @@
 {
   "name": "Caddow — fashion editorial",
+  "short": "caddow",
+  "summary": "A photography-led site for a small fashion label",
   "description": "A photography-led site for a small fashion label: a full-screen campaign, lookbooks, a journal, stockists and an atelier page, built from 20 image-first sections, with real photographs and the shoot brief they were made from.",
   "framework": "astro",
   "tags": [

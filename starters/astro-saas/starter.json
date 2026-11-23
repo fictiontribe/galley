@@ -1,5 +1,7 @@
 {
-  "name": "B2B / SaaS",
+  "name": "Ferrow — B2B software",
+  "short": "ferrow",
+  "summary": "A marketing site for a software company",
   "description": "A marketing site for a software company, built entirely from 29 section types: heroes, proof, product, pricing, content and conversion. Customer stories, a changelog, a blog with tags, a team, seven page templates and three looks.",
   "framework": "astro",
   "tags": [

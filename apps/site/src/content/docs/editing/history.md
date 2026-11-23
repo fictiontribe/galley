@@ -31,7 +31,7 @@ Not published yet? You don't need Version history: put changes back in [Proof](/
 - **Versions are kept on this computer only** — the site isn't connected to a host or a shared copy yet, so nothing is backed up elsewhere. Ask the site's developer, or [put the site online](/docs/editing/online/).
 - **Put this site online** / **Put live** — for sites put online from Galley: the published version isn't live yet.
 
-## What can go wrong
+## If something's different
 
 - **"That version can't be undone automatically, because later changes edited the same lines."** Nothing was changed. Undo the later version first, or change the page back by hand.
 - **"That version combined two lines of work, so it can't be undone automatically."** Ask the site's developer to undo it.

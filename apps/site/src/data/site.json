@@ -64,6 +64,29 @@
     "agentCopied": "Copied the agent context",
     "lookOf": "Looks for {name}",
     "lookAlt": "{name} in its {look} look",
-    "newWindow": "opens on GitHub"
+    "newWindow": "opens on GitHub",
+    "output": "You’ll see",
+    "starterToday": "Works today with Astro’s installer",
+    "starterPublished": "Creates the site and opens Galley",
+    "inside": "What’s inside",
+    "commandLabel": "Command to copy"
+  },
+  "install": {
+    "about": "The one place the site's install commands come from. published is false until the first npm release; while it is false the site shows only the commands that work today (fromClone, and starterToday for the starters), and the build fails if a page would show create/createStarter/run.",
+    "published": false,
+    "create": "npm create galley@latest",
+    "createStarter": "npm create galley@latest {folder} -- --starter {starter}",
+    "run": "npx galley-cms",
+    "fromClone": [
+      "git clone {repository}.git galley",
+      "cd galley",
+      "corepack enable",
+      "pnpm install",
+      "pnpm --filter @galley/web build",
+      "node packages/cli/bin/galley.js ~/sites/your-site"
+    ],
+    "starterToday": "npm create astro@latest {folder} -- --template {repoSlug}/starters/{dir}",
+    "folder": "my-site",
+    "running": "Galley is running at http://127.0.0.1:4400"
   }
 }

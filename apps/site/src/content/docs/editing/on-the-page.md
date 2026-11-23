@@ -29,7 +29,7 @@ Some words come from more than one place — the same menu item in the header an
 
 Choose the one you meant, then type.
 
-## What can go wrong
+## If something's different
 
 - **Nothing outlines when you point.** Make sure **Click to edit** is chosen, and that the page has finished loading.
 - **"This text is part of the site's design."** It isn't stored with the page's content — it's in the site's design, or worked out from other details (a date, a reading time). Ask the assistant in **Build** mode, or the site's developer.

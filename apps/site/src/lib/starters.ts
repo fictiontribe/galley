@@ -11,7 +11,10 @@ import { repoRoot } from "./site";
 import { webpSize } from "./media";
 
 export interface Look { id: string; label: string; swatches: string[]; preview: string; file: string; width: number; height: number }
-export interface Starter { id: string; sections: number; templates: number; looks: Look[] }
+export interface Starter { id: string; short: string; sections: number; templates: number; looks: Look[] }
+
+/** Short names until each starter.json carries its own (`short`). */
+const SHORT: Record<string, string> = { "astro-editorial": "caddow", "astro-saas": "ferrow", "astro-starter": "lowfield", "astro-storefront": "storefront" };
 
 const dir = repoRoot ? join(repoRoot, "starters") : null;
 
@@ -32,6 +35,7 @@ export function getStarter(id: string): Starter | null {
   }
   return {
     id,
+    short: meta.short ?? meta.slug ?? SHORT[id] ?? id,
     sections: count(join(dir, id, "galley", "sections"), ".webp"),
     templates: count(join(dir, id, "galley", "templates"), ".md"),
     looks,

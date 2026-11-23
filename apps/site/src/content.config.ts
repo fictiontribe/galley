@@ -47,9 +47,11 @@ const heroSection = z.object({
   cta: link.optional(),
   /** A quieter second link beside the action. */
   secondary: link.optional(),
-  /** A short line under the action. */
+  /** A short line under the action (while Galley isn't published). */
   note: z.string().optional(),
-  /** Show the clone command (src/data/site.json → cloneCommand) with a Copy button. */
+  /** The line under the action once install.published is true in site.json. */
+  notePublished: z.string().optional(),
+  /** Show the first command to type (src/data/site.json → install) with a Copy button. */
   command: z.boolean().optional(),
   /** A link that copies a file this site serves (e.g. /agent.md) instead of opening it. */
   copyFile: link.optional(),
@@ -204,7 +206,8 @@ const closeSection = z.object({
   heading: z.string(),
   text: z.string(),
   actions: z.array(link).default([]),
-  terminal: z.object({ title: z.string(), label: z.string(), lines: z.array(z.string()) }).optional(),
+  /** Show the commands that start Galley (src/data/site.json → install) and what they print. */
+  commands: z.boolean().optional(),
   points: z.array(z.string()).default([]),
 });
 

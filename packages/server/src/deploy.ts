@@ -77,8 +77,9 @@ export const deployRoutes: Pick<RouteTable, DeployRouteKey> = {
     const deploy = deployOf(ctx);
     const { target, account, project } = await v.body(c, deployCheckBody);
 
-    await siteOf(c, ctx);
-    return host(() => deploy.checkProject({ target, account, name: project }));
+    const site = await siteOf(c, ctx);
+
+    return host(() => deploy.checkProject({ target, account, name: project, site }));
   },
   "GET /api/sites/:siteId/deploy": async (c, ctx) => deployOf(ctx).status(await siteOf(c, ctx)),
   "PUT /api/sites/:siteId/deploy": async (c, ctx) => {

@@ -5,19 +5,22 @@
  * the publish branch — never the working tree with its pending changes. It is
  * built in a temporary git worktree checked out at that version, beside the
  * site, so an unpublished edit can't slip onto the live site and the person's
- * folder isn't touched. The site's installed packages are linked in rather
- * than installed again.
+ * folder isn't touched. The worktree is of the whole repository, so a site in
+ * a monorepo sub-folder sees the published versions of everything it reaches
+ * by relative path; installed packages are linked in (modules.ts) rather than
+ * installed again.
  *
  * A preview is the opposite: the working tree exactly as it is, pending
  * changes included, built by the site's own build command where it lives.
  */
 import { existsSync } from "node:fs";
-import { mkdtemp, realpath, rm, symlink } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DeployKind, SiteModel, SiteService } from "../types";
 import { git, installDependencies, runBuild, runGit } from "../workspace/index";
 import { DeployError } from "./errors";
+import { linkInstalledPackages } from "./modules";
 
 export interface BuiltSite {
   /** Absolute path of the output folder. */
@@ -108,17 +111,12 @@ async function buildPublished(site: SiteService, model: SiteModel, onDetail: (de
     await runGit(site.root, ["worktree", "add", "--detach", "--quiet", worktree, commit]);
     registered = true;
     const siteDir = info.prefix ? join(worktree, ...info.prefix.replace(/\/+$/, "").split("/")) : worktree;
-    const ownModules = join(siteDir, "node_modules");
-    const installed = join(site.root, "node_modules");
+    // Every node_modules the working tree has (the site's, the repository root's, workspace packages'), at the same places.
+    const linked = await linkInstalledPackages(info.topLevel, worktree);
 
-    if (!existsSync(ownModules)) {
-      if (existsSync(installed)) {
-        // The published version builds with the packages already installed for the site.
-        await symlink(await realpath(installed), ownModules, "dir");
-      } else if (existsSync(join(siteDir, "package.json"))) {
-        onDetail("Installing the site's dependencies…");
-        await installDependencies(siteDir, model.packageManager, undefined, model.environment);
-      }
+    if (linked === 0 && !existsSync(join(siteDir, "node_modules")) && existsSync(join(siteDir, "package.json"))) {
+      onDetail("Installing the site's dependencies…");
+      await installDependencies(siteDir, model.packageManager, undefined, model.environment);
     }
     onDetail("Building the published version…");
     const result = await runBuild(siteDir, build.command, model.environment ? { env: model.environment } : {});

@@ -52,8 +52,8 @@ Ids only ([Config reference](/docs/reference/config/#deploy)). Keys are secrets 
 ## From a terminal
 
 ```sh
-$ galley deploy ./site --preview
-$ galley deploy ./site --target vercel --project my-site --yes
+galley deploy ./site --preview
+galley deploy ./site --target vercel --project my-site --yes
 ```
 
 It asks only what it can't find, only on a terminal (the key is read without echo and stored), saves the choices, prints the address, and exits 1 on failure.

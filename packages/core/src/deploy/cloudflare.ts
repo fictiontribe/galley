@@ -24,9 +24,12 @@
  *      `_redirects` and `_headers` at the root of the output are left out of
  *      the manifest and sent as text in `assets.config` (see routing.ts).
  *
- * A Worker is created ahead of the first upload with the Workers API
- * (POST /accounts/:a/workers/workers, workers.dev and preview addresses on),
- * so a preview can be the very first thing shared. Addresses come from
+ * A Worker is created with the Workers API (POST /accounts/:a/workers/workers,
+ * workers.dev and preview addresses on) once the site has built and there is
+ * something to upload — so a failed build leaves nothing behind, and a
+ * preview can still be the very first thing shared. It is looked up through
+ * the same API (GET …/workers/workers/:name); an existing one is used only
+ * when it is empty or is the one this site's settings name. Addresses come from
  * GET /accounts/:a/workers/subdomain.
  */
 import { readFile } from "node:fs/promises";
@@ -34,7 +37,7 @@ import { DeployError } from "./errors";
 import { eachLimited, type DeployFile } from "./files";
 import { describeResponse, hostRequest, type HostResponse, type RequestBody } from "./http";
 import { CLOUDFLARE_CREDENTIALS, CLOUDFLARE_INFO, projectNameProblem } from "./info";
-import { checkCloudflareHeaders, checkCloudflareRedirects } from "./routing";
+import { checkCloudflareHeaders, checkCloudflareRedirects, hasMarkdown, withCloudflareMarkdownHeader } from "./routing";
 import type { DeployContext, DeployTarget } from "./types";
 
 export const CLOUDFLARE_API = "https://api.cloudflare.com/client/v4";
@@ -118,10 +121,27 @@ async function accountSubdomain(ctx: DeployContext, account: string): Promise<st
   throw failure(response, "GET", path, "read the account's workers.dev address");
 }
 
-async function scriptNames(ctx: DeployContext, account: string): Promise<Set<string>> {
-  const scripts = await cf<Array<{ id?: string }>>(ctx, "GET", `accounts/${encodeURIComponent(account)}/workers/scripts`, "list the Workers in this account");
+/**
+ * A Worker of that name, looked up through the Workers API it is created
+ * with (GET /accounts/:a/workers/workers/:name, which takes a name or an id):
+ * the scripts list leaves out a Worker that has no version yet, so checking
+ * there and creating here would disagree. `versions` counts at most one —
+ * enough to tell an empty Worker from one serving something.
+ */
+async function workerState(ctx: DeployContext, account: string, name: string): Promise<{ exists: boolean; hasVersions: boolean }> {
+  const path = `accounts/${encodeURIComponent(account)}/workers/workers/${encodeURIComponent(name)}`;
+  const found = await cfStatus(ctx, "GET", path);
 
-  return new Set((scripts ?? []).map((script) => script.id ?? "").filter(Boolean));
+  if (found.status === 404) return { exists: false, hasVersions: false };
+  if (!found.ok || found.body?.success === false) throw failure(found, "GET", path, "look up the Worker");
+  const versions = await cf<unknown[]>(ctx, "GET", `${path}/versions`, "look up the Worker's versions", { query: { per_page: "1" } });
+
+  return { exists: true, hasVersions: Array.isArray(versions) && versions.length > 0 };
+}
+
+/** The refusal for a Worker that serves something this site didn't put there. Nothing is ever deleted or replaced. */
+function nameInUse(name: string): string {
+  return `There's already a Worker called “${name}” in this account, and it has a site on it. Choose another name.`;
 }
 
 function productionAddress(name: string, subdomain: string): string {
@@ -154,29 +174,31 @@ export function createCloudflareTarget(): DeployTarget {
       return { accounts: (response.body?.result ?? []).filter((account) => account.id).map((account) => ({ id: account.id!, name: account.name?.trim() || account.id! })) };
     },
 
-    async checkProject(ctx, { account, name }) {
+    async checkProject(ctx, { account, name, ours }) {
       const problem = projectNameProblem(name);
 
       if (problem) return { name, available: false, existing: false, message: problem };
-      const [names, subdomain] = await Promise.all([scriptNames(ctx, account), accountSubdomain(ctx, account)]);
-      const existing = names.has(name);
+      const [state, subdomain] = await Promise.all([workerState(ctx, account, name), accountSubdomain(ctx, account)]);
+      // Usable when it is new, empty (a Worker an earlier attempt created), or the one this site already uses.
+      const available = !state.exists || !state.hasVersions || Boolean(ours);
 
       return {
         name,
-        available: true,
-        existing,
+        available,
+        existing: state.exists,
         productionUrl: productionAddress(name, subdomain),
-        ...(existing ? { message: `There's already a Worker called “${name}” in this account. Putting the site there replaces what it serves.` } : {}),
+        ...(!available ? { message: nameInUse(name) } : state.exists && state.hasVersions ? { message: `“${name}” is this site's Worker. Putting the site online replaces what it serves.` } : {}),
       };
     },
 
-    async ensureProject(ctx, { account, name }) {
+    async ensureProject(ctx, { account, name, ours }) {
       const problem = projectNameProblem(name);
 
       if (problem) throw new DeployError("taken", problem, name);
-      const [names, subdomain] = await Promise.all([scriptNames(ctx, account), accountSubdomain(ctx, account)]);
+      const [state, subdomain] = await Promise.all([workerState(ctx, account, name), accountSubdomain(ctx, account)]);
 
-      if (!names.has(name)) {
+      if (state.exists && state.hasVersions && !ours) throw new DeployError("taken", nameInUse(name), name);
+      if (!state.exists) {
         // Created empty, with its workers.dev and preview addresses on, so a
         // preview can be uploaded before anything is live.
         await cf(ctx, "POST", `accounts/${encodeURIComponent(account)}/workers/workers`, "create the Worker", {
@@ -200,6 +222,13 @@ export function createCloudflareTarget(): DeployTarget {
         routing[file.path] = text;
       }
       const files = input.files.filter((file) => file.path !== "_redirects" && file.path !== "_headers");
+
+      // Markdown copies of pages are served as text, unless the site's own _headers says otherwise.
+      if (hasMarkdown(files.map((file) => file.path))) {
+        const headers = withCloudflareMarkdownHeader(routing._headers);
+
+        if (headers !== undefined) routing._headers = headers;
+      }
       const subdomain = await accountSubdomain(ctx, account);
       const byHash = new Map<string, DeployFile>();
       const manifest: Record<string, { hash: string; size: number }> = {};

@@ -92,7 +92,13 @@ These appear as notes in `galley doctor` (and in the site's model).
 | `This file changed since you opened it, so your edit wasn't saved. …` | `409`: the `baseHash` no longer matches. Read again and retry. |
 | `The fields in this file are written in a format the form can't change yet, so nothing was changed. …` | TOML is read-only. |
 | Publish failures | Every message and its cause: [Publishing](/docs/configuration/publishing/#when-it-doesnt-work). |
-| Clone failures | [Open a site from a git repository](/docs/getting-started/clone/#when-a-clone-fails). |
+| `That repository wasn't found. Check the address — and that you have access to it.` | Clone: a typo, or a private repository your credentials can't see (GitHub answers both the same way). git runs with `GIT_TERMINAL_PROMPT=0`, so a missing sign-in fails instead of hanging. The copy is removed. |
+| `The code host didn't accept your sign-in for that repository. …` | Clone: no credentials for that host on this computer (or, hosted, for the server's user), or rejected ones. |
+| `That branch doesn't exist in the repository.` | Clone: the version field names no branch. |
+| `Couldn't reach the code host. …` | Clone: DNS, a proxy, or the host is down. |
+| `Downloading the site took too long and was stopped. …` | Clone: it ran for 30 minutes. |
+| `That folder already has files in it. …` | Clone: a `directory` was given (API) and isn't empty. |
+| `“url” isn't right: it must be an https or ssh address.` | Clone: local paths, `file://` and `ext::` addresses are refused. |
 
 ## The assistant and images
 

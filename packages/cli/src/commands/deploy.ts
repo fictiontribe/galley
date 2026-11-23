@@ -141,7 +141,7 @@ async function plan(io: DeployIo, deploy: DeployService, site: Parameters<Deploy
     if (ask) project = (await ask(`Project name on ${target.name} [${project}]: `)) || project;
   }
   if (!sameHost || config?.account !== account || config?.project !== project) {
-    const check = await deploy.checkProject({ target: target.id, account, name: project });
+    const check = await deploy.checkProject({ target: target.id, account, name: project, site });
 
     if (!check.available) throw new UsageError(check.message ?? `“${project}” can't be used as a project name.`);
     if (check.existing && ask) {

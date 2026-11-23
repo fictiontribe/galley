@@ -1,9 +1,9 @@
 ---
-title: "Moving a WordPress site to Galley"
-navTitle: "Moving from WordPress"
+title: "Moving a WordPress site to Galley, in full"
+navTitle: "WordPress import in full"
 description: "What comes across from WordPress and what doesn't, the guided move in the app and the command, the report, rebuilding page-builder pages, keeping your search rankings, and the go-live checklist."
-group: "getting-started"
-order: 6
+group: "reference"
+order: 7
 ---
 
 <!-- Generated from docs/wordpress-import.md by apps/site/scripts/sync-docs.mjs. Edit that file, not this one. -->
@@ -185,7 +185,7 @@ From the folder of your new site (or name it as the last argument):
    which old addresses would change. If something can't be decided — two
    collections could take posts — it asks:
 
-   ```
+   ```output
    Questions to answer first
      Posts could go into Journal or News. Which one should they go into?
        · Journal (src/content/blog)  (--posts-into blog)

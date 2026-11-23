@@ -26,7 +26,7 @@ import { DeployError } from "./errors";
 import { cloudflareHash, eachLimited, sha1, type DeployFile } from "./files";
 import { describeResponse, hostRequest, type HostResponse } from "./http";
 import { VERCEL_CREDENTIALS, VERCEL_INFO, projectNameProblem } from "./info";
-import { vercelRoutingConfig } from "./routing";
+import { hasMarkdown, vercelRoutingMembers, withVercelMarkdownHeader } from "./routing";
 import type { DeployContext, DeployTarget } from "./types";
 
 export const VERCEL_API = "https://api.vercel.com";
@@ -103,17 +103,20 @@ function https(host: string): string {
  * routing.ts) — in place of any vercel.json the build happened to copy.
  */
 async function withVercelConfig(files: DeployFile[], siteRoot: string | undefined): Promise<DeployFile[]> {
-  if (!siteRoot) return files;
-  const text = await readFile(join(siteRoot, "vercel.json"), "utf8").catch(() => null);
+  const text = siteRoot ? await readFile(join(siteRoot, "vercel.json"), "utf8").catch(() => null) : null;
+  const markdown = hasMarkdown(files.map((file) => file.path));
 
-  if (text === null) return files;
-  const routing = vercelRoutingConfig(text);
+  if (text === null && !markdown) return files;
+  let routing = text === null ? null : vercelRoutingMembers(text);
+
+  // Markdown copies of pages are served as text, unless the site's own headers say otherwise.
+  if (markdown) routing = withVercelMarkdownHeader(routing);
   const rest = files.filter((file) => file.path !== "vercel.json");
 
-  if (!routing) return rest;
-  const bytes = Buffer.from(routing, "utf8");
+  if (!routing || Object.keys(routing).length === 0) return text === null ? files : rest;
+  const bytes = Buffer.from(`${JSON.stringify(routing, null, 2)}\n`, "utf8");
 
-  return [...rest, { path: "vercel.json", absolute: join(siteRoot, "vercel.json"), size: bytes.byteLength, sha1: sha1(bytes), cfHash: cloudflareHash(bytes, "vercel.json"), type: "application/json; charset=utf-8", bytes }];
+  return [...rest, { path: "vercel.json", absolute: join(siteRoot ?? ".", "vercel.json"), size: bytes.byteLength, sha1: sha1(bytes), cfHash: cloudflareHash(bytes, "vercel.json"), type: "application/json; charset=utf-8", bytes }];
 }
 
 export function createVercelTarget(): DeployTarget {

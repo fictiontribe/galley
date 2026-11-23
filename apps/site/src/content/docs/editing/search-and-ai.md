@@ -28,7 +28,7 @@ Findings come in groups — **Titles & descriptions**, **Headings & content**, *
 
 **What an AI agent reads** shows a page as an AI agent gets it.
 
-## What can go wrong
+## If something's different
 
 - **"Only the content files were checked."** Start the preview to check the pages as served too.
 - **A finding you disagree with.** Findings marked as a judgement are advice, not rules; leave them.

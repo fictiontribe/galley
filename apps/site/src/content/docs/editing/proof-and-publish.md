@@ -43,7 +43,7 @@ Every publish is a version you can undo: [Undo a publish](/docs/editing/history/
 
 On a site that is [online](/docs/editing/online/), **Share a preview link** puts the site as it is now — your changes included — at an address of its own, without touching the live site.
 
-## What can go wrong
+## If something's different
 
 - **"Couldn't publish."** Your changes are safe here. The window says why; **Try again** once it's fixed.
 - **"Saved, not live yet."** The new version is saved here but didn't reach the site's host. The status bar offers **Send now** when it can.

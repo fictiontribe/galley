@@ -13,7 +13,10 @@ The file lives at the root of the site and is committed with it. Other tools ign
 ## Write one with galley init
 
 ```sh
-$ galley init
+galley init
+```
+
+```output
 ✓ Astro 7.4.13 · npm · dev: npm run dev (port 4321)
 ✓ 5 collections: pages (8), blog (4), team (4), navigation (data), site (data)
 ! No live site address found — add urls.production to compare previews with the live site

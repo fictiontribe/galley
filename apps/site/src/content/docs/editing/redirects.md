@@ -40,7 +40,7 @@ Type an old address under **Try an address** and press **Try**: it shows every s
 
 **Health** lists redirects whose new address has gone, and old addresses the site's own pages still link to.
 
-## What can go wrong
+## If something's different
 
 - **A loop (a → b → a)** is refused until you leave it out.
 - **"Hides a live page."** The old address is a page the site still has; redirecting it would make the page unreachable.

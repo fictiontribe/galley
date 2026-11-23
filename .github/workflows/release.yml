@@ -1,0 +1,153 @@
+# Publishes the two npm packages — galley-cms (the `galley` command) and
+# create-galley (`npm create galley@latest`) — with provenance.
+#
+#   On a version tag (vX.Y.Z, pushed by hand: RELEASING.md): install, check
+#   the tag against the versions, typecheck, test, pack both packages, verify
+#   the tarballs, make and start a site from them in a clean folder, then
+#   publish exactly the tarballs that were checked.
+#
+#   By hand (Actions › Release › Run workflow): the same steps. "Dry run" is
+#   on by default: nothing is published, and the tarballs are attached to the
+#   run to download and look at. Turning it off publishes, and only works when
+#   the workflow is run from a tag.
+#
+# Needs one repository secret, NPM_TOKEN: an npm granular access token with
+# read and write access to galley-cms and create-galley (RELEASING.md says
+# how to make it). Nothing else here can publish.
+#
+# This workflow has not been run yet.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Dry run: build, test, pack and verify, but don't publish"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  # npm provenance: the registry checks this workflow's identity token.
+  id-token: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PUBLISH: ${{ github.event_name == 'push' || inputs.dry-run == false }}
+      PACK: ${{ github.workspace }}/../pack
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 22: the starters are Astro 7 sites (22.23.4+); registry-url writes
+      # the .npmrc that reads NODE_AUTH_TOKEN when publishing.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - run: corepack enable
+
+      # The tests make real commits in temporary repositories.
+      - run: |
+          git config --global user.name "Galley CI"
+          git config --global user.email "ci@example.invalid"
+          git config --global init.defaultBranch main
+
+      - name: Publishing needs a tag
+        if: env.PUBLISH == 'true' && github.ref_type != 'tag'
+        run: |
+          echo "::error::Publishing only happens from a version tag. Run the workflow from the tag (Use workflow from › Tags), or leave Dry run on."
+          exit 1
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: The versions agree
+        id: version
+        run: |
+          node --input-type=module -e '
+            import { appendFileSync, readFileSync } from "node:fs";
+            const read = (path) => JSON.parse(readFileSync(path, "utf8")).version;
+            const cli = read("packages/cli/package.json");
+            const create = read("packages/create-galley/package.json");
+            const brand = /VERSION = "([^"]+)"/.exec(readFileSync("packages/core/src/brand.ts", "utf8"))?.[1];
+            const tag = process.env.GITHUB_REF_TYPE === "tag" ? process.env.GITHUB_REF_NAME.replace(/^v/, "") : cli;
+            const all = { "packages/cli": cli, "packages/create-galley": create, "brand.ts VERSION": brand, tag };
+            if (new Set(Object.values(all)).size !== 1) {
+              console.error(`::error::The versions differ: ${JSON.stringify(all)}. Set them all to the same number (RELEASING.md, step 3).`);
+              process.exit(1);
+            }
+            // A pre-release (0.2.0-rc.1) goes out as "next", so npm create galley@latest keeps the last release.
+            const distTag = cli.includes("-") ? "next" : "latest";
+            console.log(`Version ${cli}, npm dist-tag ${distTag}`);
+            appendFileSync(process.env.GITHUB_OUTPUT, `version=${cli}\ndist-tag=${distTag}\n`);
+          '
+
+      - run: pnpm -r --if-present typecheck
+      # One package at a time: the suites start real git repositories and dev servers.
+      - run: pnpm -r --workspace-concurrency=1 --if-present test
+
+      # galley-cms's prepack builds the web UI, the bundle, the site kit and the
+      # starters into dist/; pnpm writes create-galley's workspace range as the
+      # exact version.
+      - name: Pack
+        run: |
+          mkdir -p "$PACK"
+          pnpm --filter galley-cms pack --pack-destination "$PACK"
+          pnpm --filter create-galley pack --pack-destination "$PACK"
+          ls -l "$PACK"
+
+      - name: Verify the tarballs
+        run: node packages/cli/scripts/verify-pack.mjs "$PACK"/*.tgz
+
+      # From the tarballs, outside the repository, with nothing else installed:
+      # make a site, install it, start Galley on it and ask for the site list.
+      - name: Make and open a site from the tarballs
+        run: |
+          set -euo pipefail
+          try="$RUNNER_TEMP/try"
+          mkdir -p "$try/tools" "$try/home"
+          cd "$try/tools"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "$PACK/galley-cms-${{ steps.version.outputs.version }}.tgz" "$PACK/create-galley-${{ steps.version.outputs.version }}.tgz"
+          cd "$try"
+          export HOME="$try/home" GALLEY_TOKEN="release-check-token-0123456789" GALLEY_PREVIEW_PORTS="4785-4789"
+          "$try/tools/node_modules/.bin/create-galley" ci-site --starter caddow --no-open --port 4780 > galley.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 180); do
+            if grep -q "Press Ctrl+C" galley.log; then break; fi
+            if ! kill -0 "$pid" 2> /dev/null; then cat galley.log; exit 1; fi
+            sleep 2
+          done
+          cat galley.log
+          curl -fsS -H "authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4780/api/sites | tee sites.json
+          grep -q '"name":"Ci site"' sites.json
+          test -z "$(git -C ci-site status --porcelain)"
+          kill -TERM "$pid"
+          wait "$pid" || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarballs-${{ steps.version.outputs.version }}
+          path: ${{ env.PACK }}/*.tgz
+          if-no-files-found: error
+
+      # galley-cms first: create-galley depends on that exact version.
+      - name: Publish to npm
+        if: env.PUBLISH == 'true' && github.ref_type == 'tag'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$NODE_AUTH_TOKEN" ]; then echo "::error::The NPM_TOKEN secret isn't set (RELEASING.md)."; exit 1; fi
+          for name in galley-cms create-galley; do
+            npm publish "$PACK/$name-${{ steps.version.outputs.version }}.tgz" --provenance --access public --tag "${{ steps.version.outputs.dist-tag }}"
+          done

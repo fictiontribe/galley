@@ -21,7 +21,7 @@ order: 2                 # position inside the group, lowest first
 ---
 ```
 
-The navigation, previous/next links, “On this page”, the filter, `llms.txt`, `llms-full.txt` and the sitemap all come from the files. Groups and their order are in `src/data/docs.json`. `##` and `###` headings get anchors. Links may use `{repository}`, `{version}`, `{site}` and `{install}` placeholders, filled in from `src/data/site.json`.
+The navigation, previous/next links, “On this page”, the filter, `llms.txt`, `llms-full.txt` and the sitemap all come from the files. Groups and their order are in `src/data/docs.json`. `##` and `###` headings get anchors. Text may use the `{repository}`, `{version}` and `{site}` placeholders, filled in from `src/data/site.json`. Install commands come only from that file's `install`: write `install.` and the command's name in braces (`fromClone`, `create`, …), and put text meant for before or after the first npm release in `if install.published` / `else` / `end` HTML comments. The check fails on an install command the file doesn't have, and on `create`, `createStarter` or `run` outside the published branch while `published` is false.
 
 Two pages are **generated** and must not be edited here: [Writing an adapter](/docs/adapters/writing/) is rendered from `docs/adapters.md`, and [Releases](/docs/project/releases/) from `RELEASING.md`. Edit the source, then run `pnpm --filter @galley/site sync-docs`.
 
@@ -37,7 +37,7 @@ Two pages are **generated** and must not be edited here: [Writing an adapter](/d
 - that generated pages are up to date, and that every page has a title, a description, a known group and real content.
 
 ```sh
-$ pnpm --filter @galley/site check
+pnpm --filter @galley/site check
 ```
 
 A problem prints as `file:line: message`. The build needs Node 22.23.4 or newer (Astro 7). In a terminal driven by an AI coding agent, run Astro commands with a clean environment (`env -i PATH="$PATH" HOME="$HOME" pnpm --filter @galley/site build`): Astro 7 backgrounds its dev server when it sees agent variables.

@@ -30,7 +30,7 @@ For people who look after a site. The guided move reads a WordPress site — its
 
 Comments, user accounts, the theme, menus and widgets, plugin settings, revisions and trashed items stay in WordPress. The report says what needs a person: shortcodes left in the text, links to pages that weren't brought over, descriptions written from an opening paragraph.
 
-## What can go wrong
+## If something's different
 
 - **The address is refused.** The site may block reading its content; use an export file instead.
 - **Drafts and private pages are missing.** Reading them needs a WordPress login; the developer version can do it — [Moving from WordPress, for developers](/docs/getting-started/wordpress/).

@@ -39,7 +39,7 @@ Each request is billed to the key's owner by Anthropic. **App settings › Usage
 
 Opening the **Publish** window with a key set also asks the assistant for a one-line note — one small request.
 
-## What can go wrong
+## If something's different
 
 - **"The assistant can't connect: the API key in Settings was rejected."** Whoever added the key should add a fresh one in **App settings**.
 - **"The assistant's API account is out of credit."** The key's owner adds credit with Anthropic, then you try again.

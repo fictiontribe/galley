@@ -263,8 +263,10 @@ On the machine (or in the container) that runs `galley serve`, with the same
 `GALLEY_HOME`:
 
 ```sh
-docker compose exec galley node dist/galley.mjs mcp token   # or: galley mcp token
+docker compose exec galley node dist/galley.mjs mcp token
 ```
+
+Or: `galley mcp token`.
 
 Then point the client at `https://<your GALLEY_PUBLIC_URL>/mcp` with that
 token. Claude Desktop, claude.ai and the Claude mobile apps reach custom

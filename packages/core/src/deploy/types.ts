@@ -65,10 +65,14 @@ export interface DeployTarget {
   apiBase: string;
   /** Check the credential works and list where the site can go (accounts / teams). */
   connect(ctx: DeployContext): Promise<{ accounts: DeployAccount[] }>;
-  /** Whether `name` can be used in `account`, without creating anything. */
-  checkProject(ctx: DeployContext, input: { account: string; name: string }): Promise<DeployProjectCheck>;
-  /** Create or find the project for this site. */
-  ensureProject(ctx: DeployContext, input: { account: string; name: string }): Promise<{ project: string; productionUrl: string }>;
+  /**
+   * Whether `name` can be used in `account`, without creating anything.
+   * `ours`: the name is the one this site's deploy settings already name, so
+   * a project of that name holding content may be used.
+   */
+  checkProject(ctx: DeployContext, input: { account: string; name: string; ours?: boolean }): Promise<DeployProjectCheck>;
+  /** Create or find the project for this site. Called only once there is something to upload. */
+  ensureProject(ctx: DeployContext, input: { account: string; name: string; ours?: boolean }): Promise<{ project: string; productionUrl: string }>;
   /** Upload a built folder and make it reachable. */
   deploy(ctx: DeployContext, input: DeployInput): Promise<DeployOutcome>;
   /** The host's own list of recent deployments, when it can give one. */

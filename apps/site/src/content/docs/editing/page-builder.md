@@ -32,7 +32,7 @@ Tab to the page's sections, ↑ and ↓ to choose one, Alt+↑ / Alt+↓ to move
 
 Arrange works with the site's own sections. It doesn't change spacing, columns or sizes, and it doesn't invent new kinds of section — a developer adds those (or the assistant, in **Build**), and they then appear in the panel.
 
-## What can go wrong
+## If something's different
 
 - **"Sections can't be arranged on this page."** The site hasn't marked its sections for Arrange. Add, move and remove them in the [form](/docs/editing/form/) instead, and point the site's developer to [what Arrange needs](/docs/visual-builder/).
 - **An option switches back by itself.** The site refused the value; the panel says why.

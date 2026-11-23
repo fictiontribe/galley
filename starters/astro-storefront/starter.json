@@ -1,5 +1,7 @@
 {
   "name": "Caddow — storefront",
+  "short": "storefront",
+  "summary": "A shop for a small fashion label, with products from Shopify",
   "description": "A shop for a small fashion label, run from Galley: campaign, lookbook, journal and the story around every piece are plain files; products, prices, stock, the cart and checkout come from a Shopify store. Works with no store connected — a demo catalogue of seventeen pieces and a bag that never takes payment.",
   "framework": "astro",
   "tags": [

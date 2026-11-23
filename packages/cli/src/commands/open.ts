@@ -17,7 +17,12 @@ Options
 
 export const NOT_A_SITE_MARKERS = "package.json, .git, galley.config.json, hugo.toml or config.toml, _config.yml, or a content/ or src/content/ folder";
 
-export async function openCommand(argv: string[], io: Io): Promise<number> {
+export interface OpenHooks {
+  /** Runs once the site is open, before "Press Ctrl+C to stop." — `galley new` prints its next steps here. */
+  afterStart?(info: { url: string; link: string; opened: boolean }): void;
+}
+
+export async function openCommand(argv: string[], io: Io, hooks: OpenHooks = {}): Promise<number> {
   const { values, positionals } = parse("", argv, { port: { type: "string", short: "p" }, "no-open": { type: "boolean" } });
 
   if (values.help) {
@@ -62,7 +67,10 @@ export async function openCommand(argv: string[], io: Io): Promise<number> {
     io.out(`${PRODUCT.name} is running at ${server.url}`);
     io.out(`Site: ${model.name} (${root})`);
     io.out(`Open: ${link}`);
-    if (!values["no-open"] && !(await io.openBrowser(link))) io.out("Couldn't open a browser. Open the link above instead.");
+    const opened = !values["no-open"] && (await io.openBrowser(link));
+
+    if (!values["no-open"] && !opened) io.out("Couldn't open a browser. Open the link above instead.");
+    hooks.afterStart?.({ url: server.url, link, opened });
     io.out("Press Ctrl+C to stop.");
   } catch (error) {
     await server.close();

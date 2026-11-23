@@ -37,7 +37,7 @@ The main text of a post or page has a toolbar for headings, bold, italic, links,
 - **New page**, at the top of a collection, asks for a title, an address and a description, then **Create page**.
 - **⋯** beside a page in the list › **Delete…**. The page goes when you publish; until then it can be put back in Proof.
 
-## What can go wrong
+## If something's different
 
 - **"This file changed since you opened it, so your edit wasn't saved."** Someone (or the assistant) changed the same page at the same moment. Reopen the page and make the change again.
 - **A field is missing from the form.** The site's developer can name it in the site's settings file ([Collections and fields](/docs/configuration/collections/)); until then, ask the assistant or use **Source**.

@@ -30,7 +30,7 @@ The studio is closed from the 24th.
 Two edits went through the same route the form uses:
 
 ```sh
-$ curl -s -X PATCH -H "Authorization: Bearer $GALLEY_TOKEN" -H "Content-Type: application/json" \
+curl -s -X PATCH -H "Authorization: Bearer $GALLEY_TOKEN" -H "Content-Type: application/json" \
     "http://127.0.0.1:4400/api/sites/$SITE/entry?path=src/content/blog/opening-hours.md" \
     -d '{"ops":[{"op":"set","path":["title"],"value":"Winter opening hours, 2026"},{"op":"set","path":["date"],"value":"2026-11-21"}]}'
 ```
@@ -53,11 +53,7 @@ and `git diff` afterwards:
  tags: [Studio, News]   # keep to two tags
 ```
 
-The title kept its single quotes; the comment, the folded description, the key order and the body are byte-identical. Then a structural edit — adding a tag:
-
-```sh
--d '{"ops":[{"op":"insert","path":["tags"],"index":2,"value":"Hours"}]}'
-```
+The title kept its single quotes; the comment, the folded description, the key order and the body are byte-identical. Then a structural edit — adding a tag, with the same request and the body `{"ops":[{"op":"insert","path":["tags"],"index":2,"value":"Hours"}]}`:
 
 ```diff
 -tags: [Studio, News]   # keep to two tags

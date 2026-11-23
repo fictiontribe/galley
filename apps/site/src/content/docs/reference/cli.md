@@ -7,14 +7,15 @@ order: 1
 
 <!-- Generated from the CLI's own --help output by apps/site/scripts/reference-cli.mjs. Edit that file (or the command's help), not this page. -->
 
-This page is for developers. The `galley` command is the one binary of the `galley-cms` package. **That package isn't on npm yet**: run it from a clone of the repository as `node packages/cli/bin/galley.js`, aliased as `galley` ([Quickstart](/docs/getting-started/quickstart/#get-galley)). The source is [`packages/cli/src/`]({repository}/tree/main/packages/cli/src). **This page is generated from the CLI itself** (`apps/site/scripts/reference-cli.mjs`): every help text below is the command's real output.
+This page is for developers. The `galley` command is the one binary of the `galley-cms` package. **That package isn't on npm yet**: run it from a clone of the repository as `node packages/cli/bin/galley.js`, aliased as `galley` ([Quickstart](/docs/getting-started/quickstart/#open-your-site)). The source is [`packages/cli/src/`]({repository}/tree/main/packages/cli/src). **This page is generated from the CLI itself** (`apps/site/scripts/reference-cli.mjs`): every help text below is the command's real output.
 
 **Exit codes**: `0` success; `1` it couldn't do it (no such folder, a refused start-up, `doctor` found a blocking problem, a failed deploy); `2` the command was typed wrong — an unknown option, a missing value, too many arguments.
 
 Environment variables the commands read: [Environment variables](/docs/reference/environment/).
 
-```sh
-$ galley --help
+Every command, from `galley --help`:
+
+```text
 Galley — The AI CMS for static sites. Prompt it. Proof it. Publish it.
 Usage
   galley [path]          Open the site in [path] (default: this folder) in the browser
@@ -37,12 +38,16 @@ Run `galley <command> --help` for a command's options.
 Opens the site in your browser, signed in. A folder counts as a site when it has a `package.json`, `.git`, `galley.config.json`, `hugo.toml` or `config.toml`, `_config.yml`, or a `content/` or `src/content/` folder. The server keeps running until `Ctrl+C`, which stops the previews it started.
 
 ```sh
-$ galley ~/sites/caddow --no-open
-Galley is running at http://127.0.0.1:4400
-Site: Caddow (/Users/you/sites/caddow)
-Open: http://127.0.0.1:4400/sites/e9f5bf4fa34d?token=…
-Press Ctrl+C to stop.
+galley ~/sites/caddow --no-open
 ```
+
+```output
+Galley is running at http://127.0.0.1:4400
+…
+Open: http://127.0.0.1:4400/sites/e9f5bf4fa34d?token=…
+```
+
+Its help (`--help`):
 
 ```text
 Usage: galley [path] [options]
@@ -57,6 +62,8 @@ Options
 ## `galley serve`
 
 Hosted mode: one Galley for several people, behind one shared password. What it prints at start-up, the container and the reverse proxy: [Self-hosting](/docs/running/hosted/).
+
+Its help (`--help`):
 
 ```text
 Usage: galley serve [options]
@@ -79,6 +86,8 @@ Recommended
 
 Writes the corrections file with what detection found, for you to edit. Without `--force`, an existing file is left alone (exit 1). The file: [galley.config.json](/docs/configuration/).
 
+Its help (`--help`):
+
 ```text
 Usage: galley init [path] [options]
 Write galley.config.json in [path] (default: this folder) from what detection
@@ -94,6 +103,8 @@ Options
 
 Reads the site without running any of its code and prints what Galley sees — framework, package manager, dev and build commands, each collection with its fields, media, git, and the assistant's key. Exits with 1 only when something would stop Galley working. [Detection](/docs/concepts/detection/) explains each line.
 
+Its help (`--help`):
+
 ```text
 Usage: galley doctor [path] [options]
 Check that the site in [path] (default: this folder) and this computer are
@@ -106,36 +117,62 @@ Options
 
 ## `galley new <name>`
 
-Copies a starter into a new folder, installs its dependencies, records a first version and opens it. [Start a new site from a starter](/docs/getting-started/new-site/); the starters: [Starters](/docs/astro/starters/).
+Copies a starter into a new folder named after the site, installs its dependencies, records a first version with git, and opens it — the step-by-step version is [Create a new site](/docs/getting-started/new-site/). In a terminal it asks for a missing name or starter. The options a first site doesn't need:
+
+- `--starter <name>` — `caddow`, `ferrow`, `lowfield` (the default) or `storefront`; `galley starters` describes them. [Starters](/docs/astro/starters/).
+- `--look <id>` — one of the starter's looks (default: its first).
+- `--dir <folder>` — where the site's folder goes (default: the current folder). It is made if it doesn't exist.
+- `--use <manager>` — install with npm, pnpm, yarn or bun.
+- `--no-install`, `--no-start`, `--no-open` — skip installing, stop once the site is made, or start Galley without opening the browser.
+- `--port <port>` — the port Galley listens on.
+
+Its help (`--help`):
 
 ```text
-Usage: galley new <name> [options]
-Start a new site from a starter: copy it into a new folder with your site's
-name, install its dependencies, record a first version with git, then open it
-as `galley <folder>` would.
+Usage: galley new [name] [options]
+Start a new site from a starter: copy it into a new folder named after the
+site, install its dependencies, record the first version, and open
+Galley on it in the browser. In a terminal it asks for the name and
+the starter when they're missing.
 Options
-      --starter <id>    Starter to copy (default: astro-starter)
+      --starter <name>  Which starter (default: lowfield); they're listed below
       --look <id>       One of the starter's looks (default: its first)
-      --dir <folder>    Where to create the site's folder (default: this folder)
-      --no-start        Stop after creating it
-      --skip-install    Don't install dependencies
-  -p, --port <port>     Port for the server when it starts
+      --dir <folder>    Where to make the site's folder (default: this folder)
+      --use <manager>   Install with npm, pnpm, yarn or bun (default: the one that ran this)
+      --no-install      Don't install dependencies
+      --no-open         Start Galley, but don't open the browser
+      --no-start        Stop once the site is made
+  -p, --port <port>     Port for Galley (default 4400, or the next free one)
   -h, --help            Show this help
-Run `galley starters` to see the starters and their looks.
 Starters
-  astro-saas — B2B / SaaS (astro) · looks: signal (default), meridian, night-shift
-  astro-editorial — Caddow — fashion editorial (astro) · looks: chalk (default), paper, night
-  astro-storefront — Caddow — storefront (astro) · looks: chalk (default), paper, night
-  astro-starter — Small business (astro) · looks: lowfield (default), sage, evening
+  lowfield: Lowfield — small business (the default)
+    A site for a small studio or local business
+    17 sections · 5 page templates · looks: lowfield (default), sage, evening
+    npm create galley@latest my-site -- --starter lowfield
+  caddow: Caddow — fashion editorial
+    A photography-led site for a small fashion label
+    20 sections · 6 page templates · looks: chalk (default), paper, night
+    npm create galley@latest my-site -- --starter caddow
+  ferrow: Ferrow — B2B software
+    A marketing site for a software company
+    29 sections · 7 page templates · looks: signal (default), meridian, night-shift
+    npm create galley@latest my-site -- --starter ferrow
+  storefront: Caddow — storefront
+    A shop for a small fashion label, with products from Shopify
+    24 sections · 8 page templates · looks: chalk (default), paper, night
+    npm create galley@latest my-site -- --starter storefront
 ```
 
 ## `galley starters`
 
 The starters `galley new --starter` accepts, with their looks.
 
+Its help (`--help`):
+
 ```text
 Usage: galley starters [--json]
-List the starters `galley new` can copy, with the looks each one ships.
+List the starters `galley new` can copy: what each one is, what is
+inside, and the command that makes a site from it.
 Options
       --json   Print them as JSON
   -h, --help   Show this help
@@ -144,6 +181,8 @@ Options
 ## `galley mcp [path]`
 
 Lets an AI tool work on a site with the same tools as Galley's own assistant. The tool starts `galley mcp` itself; `galley mcp config --client <name>` prints what to paste into its settings. Every tool and setup per client: [Galley over MCP](/docs/integrations/mcp/).
+
+Its help (`--help`):
 
 ```text
 Usage: galley mcp [path] [options]
@@ -176,6 +215,8 @@ galley mcp token
 
 Adds and switches plugins for every site this Galley opens. Adding one runs `npm` with `--ignore-scripts` into Galley's home. [Plugins](/docs/plugins/).
 
+Its help (`--help`):
+
 ```text
 Usage: galley plugin <command> [options]
 Add plugins to Galley on this computer, or turn them on and off.
@@ -197,6 +238,8 @@ app picks up changes when it restarts.
 
 Brings content from another system into a site as pending changes. Each importer has its own help.
 
+Its help (`--help`):
+
 ```text
 Usage: galley import <from> <source> [path] [options]
 Bring another site's content into this one. It arrives as pending changes: check it in Proof, then publish.
@@ -208,12 +251,14 @@ Run `galley import <from> --help` for its options, e.g. `galley import wordpress
 
 ## `galley import wordpress`
 
-The same move as the app's guided one, from a terminal. `--plan` writes nothing. The whole story — what comes across, rebuilding page-builder pages, redirects: [Moving from WordPress](/docs/getting-started/wordpress/).
+The same move as the app's guided one, from a terminal. `--plan` writes nothing; run it first, answer its questions with the options it names, then run the import. The whole story — what comes across, rebuilding page-builder pages, redirects: [Moving from WordPress](/docs/getting-started/wordpress/).
 
 ```sh
-$ galley import wordpress https://old.example.com ./site --plan
-$ galley import wordpress https://old.example.com ./site --posts-into journal --write-redirects
+galley import wordpress https://old.example.com ./site --plan
+galley import wordpress https://old.example.com ./site --posts-into journal --write-redirects
 ```
+
+Its help (`--help`):
 
 ```text
 Usage: galley import wordpress <address|file> [path] [options]
@@ -250,6 +295,8 @@ Options
 
 Puts the site online from a terminal, as the app's **Online** screen does. Not run against the live services by the docs; Cloudflare has been verified by the people who built it, Vercel not yet. Details: [Deploying, for developers](/docs/running/deploy/).
 
+Its help (`--help`):
+
 ```text
 Usage: galley deploy [path] [options]
 Put the site in [path] (default: this folder) online with Cloudflare or
@@ -280,6 +327,8 @@ Examples
 
 Prints the JSON Schema that `galley.config.json` is checked against. The address it names is where the schema will be published; until the site serves it, point `$schema` at a local copy (`galley schema > galley.schema.json`).
 
+Its help (`--help`):
+
 ```text
 Usage: galley schema [--out <folder>]
 Print the JSON Schema of galley.config.json — the file editors fetch from
@@ -297,6 +346,16 @@ Options
 
 `galley --version` and `galley -v` print the same.
 
+```sh
+galley version
+```
+
+```output
+galley {version}
+```
+
+Its help (`--help`):
+
 ```text
 Usage: galley version [--json]
 Print the version.
@@ -305,6 +364,8 @@ Print the version.
 ## `galley desktop`
 
 Not in the main help: the desktop app starts the server with this, and people don't type it. [Desktop app](/docs/running/desktop/).
+
+Its help (`--help`):
 
 ```text
 Usage: galley desktop [options]

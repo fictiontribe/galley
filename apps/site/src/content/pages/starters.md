@@ -6,33 +6,25 @@ sections:
     id: gallery
     layout: gallery
     heading: Start from a finished site.
-    text: Three complete Astro sites built from sections, each in three looks.
+    text: Complete Astro sites built from sections, each in three looks. One command starts yours.
     items:
       - starter: astro-editorial
         name: Caddow
         kind: Fashion
         text: "A fashion label: campaign, lookbooks, journal, stockists. 20 sections, a full set of original photographs."
-        link:
-          label: Use this starter
-          href: /docs/getting-started/new-site/
       - starter: astro-saas
         name: Ferrow
         kind: B2B software
         text: "A B2B software company: product, pricing, customer stories, changelog. 29 sections."
-        link:
-          label: Use this starter
-          href: /docs/getting-started/new-site/
       - starter: astro-starter
         name: Lowfield Studio
         kind: Small business
         text: "A studio or local business: services, pricing, contact form, journal. 17 sections."
-        link:
-          label: Use this starter
-          href: /docs/getting-started/new-site/
-      - name: Shopify storefront
+      - starter: astro-storefront
+        name: Caddow Shop
         kind: Shop
         status: shopify
-        text: A storefront for a Shopify shop, built from sections like the others.
+        text: "A fashion shop: products, cart and checkout from Shopify, everything else plain files. 24 sections."
       - name: Make your own
         kind: Your starter
         text: An Astro site with a picture of each section and a few page templates. The contract is one page.

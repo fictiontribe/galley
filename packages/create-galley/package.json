@@ -1,0 +1,45 @@
+{
+  "name": "create-galley",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Make a new site with Galley, the open-source AI CMS for Astro, in one command: npm create galley@latest",
+  "keywords": [
+    "create",
+    "starter",
+    "astro",
+    "astro-template",
+    "cms",
+    "ai-cms",
+    "galley"
+  ],
+  "license": "Apache-2.0",
+  "author": "Fiction Tribe (https://fictiontribe.com)",
+  "homepage": "https://galley.fictiontribe.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fictiontribe/galley.git",
+    "directory": "packages/create-galley"
+  },
+  "bugs": "https://github.com/fictiontribe/galley/issues",
+  "bin": {
+    "create-galley": "bin/create-galley.js"
+  },
+  "files": [
+    "bin/create-galley.js",
+    "index.js"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "galley-cms": "workspace:*"
+  }
+}

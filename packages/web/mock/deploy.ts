@@ -77,7 +77,7 @@ export function createMockDeploy(mock: MockBackend) {
       [`Connecting to ${target.name}…`, 0.02],
       [kind === "production" ? "Building the published version…" : "Building the site with your changes…", 0.05],
       ["Checking the files…", 0.35],
-      [`Uploading ${count} files (3.1 MB)…`, 0.4],
+      [`Sending ${count} files (3.1 MB) to ${target.name}…`, 0.4],
       [`Uploading 80 of ${count} files…`, 0.6],
       [`Uploading ${count} of ${count} files…`, 0.95],
       [kind === "production" ? `${target.name} is putting it live…` : `${target.name} is preparing the preview…`, 0.95],

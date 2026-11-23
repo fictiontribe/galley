@@ -130,6 +130,12 @@ importers:
         specifier: ^4.0.0
         version: 4.0.3
 
+  packages/create-galley:
+    dependencies:
+      galley-cms:
+        specifier: workspace:*
+        version: link:../cli
+
   packages/import-wordpress:
     dependencies:
       '@galley/core':

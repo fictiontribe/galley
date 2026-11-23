@@ -1,5 +1,7 @@
 {
-  "name": "Small business",
+  "name": "Lowfield — small business",
+  "short": "lowfield",
+  "summary": "A site for a small studio or local business",
   "description": "A site for a small studio or local business, built from 17 section types: a home page, services, about, pricing and contact pages, a journal with authors and tags, a team, a contact form, five page templates and three looks.",
   "framework": "astro",
   "tags": [

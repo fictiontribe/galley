@@ -15,29 +15,21 @@ This page is for whoever runs Galley on a server so several people can use it fr
 Behind a reverse proxy that terminates HTTPS, listening on this computer only, with a fixed range of preview ports:
 
 ```sh
-$ GALLEY_PASSWORD='correct-horse-battery' GALLEY_PUBLIC_URL=https://cms.example.com GALLEY_TRUST_PROXY=1 GALLEY_PREVIEW_PORTS=4410-4429 galley serve --host 127.0.0.1
+GALLEY_PASSWORD='correct-horse-battery' GALLEY_PUBLIC_URL=https://cms.example.com GALLEY_TRUST_PROXY=1 GALLEY_PREVIEW_PORTS=4410-4429 galley serve --host 127.0.0.1
+```
+
+```output
 Galley is serving on 127.0.0.1 (this computer only; put a reverse proxy in front), port 4400.
 Address:   https://cms.example.com
-Sign-in:   password from GALLEY_PASSWORD; after 5 wrong attempts in a minute, that address waits a minute
-Sessions:  signed HttpOnly SameSite=Strict cookie, 30 days; Secure over HTTPS (X-Forwarded-Proto is trusted)
-Requests:  only for cms.example.com and loopback names; changes must come from that address
-AI tools:  MCP at https://cms.example.com/mcp with a token from `galley mcp token` (GALLEY_MCP=off removes it)
-Sites:     /home/galley/.galley/sites (nothing outside it can be opened, cloned into, or created)
+…
 Previews:  each site's preview listens on 127.0.0.1 at a port in 4410-4429 (GALLEY_PREVIEW_PORTS), reached at cms.example.com
-Data:      /home/galley/.galley (settings, stored keys, the cookie-signing key)
+…
 Press Ctrl+C to stop.
 ```
 
-(The docs ran this on a spare port with a throwaway home; the output above is that run's, with the port and folders put back to the defaults.)
+It then lists how sign-in, sessions, requests, the MCP endpoint and the sites folder are set up. The docs ran it on a spare port with a throwaway home.
 
-It refuses to start without a password, or with a short one:
-
-```sh
-$ galley serve
-Galley won't start on 0.0.0.0 without a password: anyone who can reach that address could edit and publish your sites. Set GALLEY_PASSWORD to 12 characters or more, then start it again.
-$ GALLEY_PASSWORD=short galley serve
-GALLEY_PASSWORD is too short. It needs at least 12 characters, because 0.0.0.0 can be reached from other computers.
-```
+Without a password, or with one shorter than 12 characters, it refuses to start and says why.
 
 The password is read from the environment only, so it never appears in a process list.
 
@@ -81,8 +73,8 @@ A `GALLEY_PUBLIC_URL` that starts with `http://` on a non-loopback host gets a w
 The repository's [`Dockerfile`]({repository}/blob/main/Dockerfile) builds the web UI and the single-file CLI bundle on `node:22-bookworm-slim`, and the runtime image adds `git`, `openssh-client` and `tini`, runs as the `node` user, keeps all state in `/data` (`GALLEY_HOME`), listens on `0.0.0.0:4400`, and runs `galley serve`. Its health check calls `/api/meta`. **It has not been built yet**; the commands are what it is written for:
 
 ```sh
-$ docker build -t galley .
-$ docker run -p 4400:4400 -e GALLEY_PASSWORD='correct-horse-battery' \
+docker build -t galley .
+docker run -p 4400:4400 -e GALLEY_PASSWORD='correct-horse-battery' \
     -e GALLEY_PUBLIC_URL=https://cms.example.com -v galley-data:/data galley
 ```
 

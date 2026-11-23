@@ -25,19 +25,17 @@ Whatever screen you're on, the top right shows **Discard**, **Proof** with the n
 
 ## The sidebar
 
-| Item | What it's for |
-| --- | --- |
-| **Site home** | What's waiting, what's on the site, and the quick ways in. |
-| **Proof** | Every change waiting to be published — [Check and publish](/docs/editing/proof-and-publish/). |
-| Your collections (**Pages**, **Journal**…) | The site's content, in its own names. |
-| **Media** | Pictures, videos and documents — [Add images and video](/docs/editing/media/). |
-| **Forms**, **Inbox** | [Make a form](/docs/editing/forms/), [See who wrote in](/docs/editing/inbox/). |
-| **Scripts** | Analytics and tags — [Add Google Analytics](/docs/editing/scripts/). |
-| **Brand** | [Set up the brand](/docs/editing/brand/). |
-| **Search & AI** | [Check how search and AI see the site](/docs/editing/search-and-ai/). |
-| **Version history** | [Undo a publish](/docs/editing/history/). |
-| **Online**, **Redirects** | [Put the site online](/docs/editing/online/), [Move a page without breaking links](/docs/editing/redirects/). |
-| **Settings** | The site's addresses, publishing, preview and keys. |
+- **Site home** — what's waiting, what's on the site, and the quick ways in.
+- **Proof** — every change waiting to be published: [Check and publish](/docs/editing/proof-and-publish/).
+- **Your content** — **Pages**, **Journal** and the rest, in the site's own names.
+- **Media** — pictures, videos and documents: [Add images and video](/docs/editing/media/).
+- **Forms** and **Inbox** — [Make a form](/docs/editing/forms/), [See who wrote in](/docs/editing/inbox/).
+- **Scripts** — [Add Google Analytics](/docs/editing/scripts/).
+- **Brand** — [Set up the brand](/docs/editing/brand/).
+- **Search & AI** — [Search and AI checks](/docs/editing/search-and-ai/).
+- **Version history** — [Undo a publish](/docs/editing/history/).
+- **Online** and **Redirects** — [Put the site online](/docs/editing/online/), [Move a page safely](/docs/editing/redirects/).
+- **Settings** — the site's addresses, publishing, preview and keys.
 
 The site's name at the top of the sidebar switches between sites. **Search** (⌘K, or Ctrl+K) jumps to any page, screen or site.
 
@@ -45,7 +43,7 @@ The site's name at the top of the sidebar switches between sites. **Search** (�
 
 The line along the bottom says whether the preview is running, how many changes are unpublished, when the site was last published and whether it is online.
 
-## If something looks wrong
+## If something's different
 
 - **The middle pane is blank or says the preview stopped.** The preview is your site running on this computer; open **Site home** and press **Start preview**, or see [When something goes wrong](/docs/editing/troubleshooting/).
 - **The assistant says "Connect the assistant."** It needs a key; until someone adds one in **App settings**, you can still change everything in the form and on the page.

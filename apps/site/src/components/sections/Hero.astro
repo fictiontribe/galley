@@ -6,13 +6,15 @@
 import Panel from "../Panel.astro";
 import Shot from "../Shot.astro";
 import Actions from "../Actions.astro";
+import Command from "../Command.astro";
+import { firstCommand, published } from "../../lib/install";
 import { inline } from "../../lib/markdown";
 import { fill, site } from "../../lib/site";
 
 const { s, block, first } = Astro.props;
 const H = first ? "h1" : "h2";
 const hid = `${s.id ?? "hero"}-h`;
-const clone = fill(site.cloneCommand);
+const note = published && s.notePublished !== undefined ? s.notePublished : s.note;
 const isRec = s.visual?.kind === "recording";
 // Short sentences in a heading ("Prompt it. Proof it. Publish it.") wrap whole, never mid-sentence.
 const heading = inline(s.heading).split(/(?<=[.?])\s+(?=[A-Z])/).map((part) => `<span class="nowrap-s">${part}</span>`).join(" ");
@@ -30,9 +32,9 @@ const heading = inline(s.heading).split(/(?<=[.?])\s+(?=[A-Z])/).map((part) => `
             <p class="lead">{fill(s.text)}</p>
             <div class="hero__side">
               <Actions cta={s.cta} secondary={s.secondary} />
-              {s.note && <p class="hero__note">{fill(s.note)}</p>}
+              {note && <p class="hero__note">{fill(note)}</p>}
               {s.command && (
-                <div class="cmd"><code><span class="p">$ </span>{clone}</code><button type="button" data-copy={clone}>{site.ui.copy}</button></div>
+                <Command lines={[firstCommand()]} />
               )}
               {s.copyFile && <button type="button" data-galley-agent="skip" class="link link--plain copyfile" data-copy-file={s.copyFile.href}>{s.copyFile.label}</button>}
             </div>
@@ -53,9 +55,9 @@ const heading = inline(s.heading).split(/(?<=[.?])\s+(?=[A-Z])/).map((part) => `
           <H class="h1" id={hid} set:html={heading} />
           <p class="lead">{fill(s.text)}</p>
           <Actions cta={s.cta} secondary={s.secondary} />
-          {s.note && <p class="hero__note">{fill(s.note)}</p>}
+          {note && <p class="hero__note">{fill(note)}</p>}
           {s.command && (
-            <div class="cmd"><code><span class="p">$ </span>{clone}</code><button type="button" data-copy={clone}>{site.ui.copy}</button></div>
+            <Command lines={[firstCommand()]} />
           )}
         </div>
         {s.visual && (

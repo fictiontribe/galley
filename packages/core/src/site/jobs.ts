@@ -13,8 +13,12 @@ export const JOB_RETENTION_MS = 10 * 60_000;
 
 export interface JobHandle {
   readonly id: string;
-  /** Merge progress into the job; emitted at most every JOB_EMIT_INTERVAL_MS. */
-  update(patch: Partial<Pick<Job, "progress" | "detail" | "label" | "siteId">>): void;
+  /**
+   * Merge progress into the job; emitted at most every JOB_EMIT_INTERVAL_MS.
+   * `immediate`: a step the person must see even when the next one follows
+   * within the interval — emitted now, never coalesced into a later update.
+   */
+  update(patch: Partial<Pick<Job, "progress" | "detail" | "label" | "siteId">>, options?: { immediate?: boolean }): void;
   /** Finish the job and emit straight away. Later calls are ignored. */
   finish(state: "done" | "error", patch?: Partial<Pick<Job, "progress" | "detail" | "siteId" | "url" | "output">>): void;
   snapshot(): Job;
@@ -51,12 +55,12 @@ export function createJobTracker(events: EventBus) {
       emit(tracked);
       return {
         id: tracked.job.id,
-        update(patch) {
+        update(patch, options = {}) {
           if (tracked.job.state !== "running") return;
           tracked.job = { ...tracked.job, ...patch };
           const wait = tracked.lastEmit + JOB_EMIT_INTERVAL_MS - Date.now();
 
-          if (wait <= 0) emit(tracked);
+          if (wait <= 0 || options.immediate) emit(tracked);
           else if (!tracked.timer) {
             // A trailing emit, so the last progress before a quiet spell is still sent.
             tracked.timer = setTimeout(() => emit(tracked), wait);

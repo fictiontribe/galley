@@ -63,7 +63,7 @@ The same rules apply to what is served: the server never sends `.git/` or `.env*
 
 ## What the assistant does not have
 
-No shell and no network tool. In build mode it can run exactly one command — the site's configured build — and read its output. Everything else it does is one of the tools listed in [Connect the assistant](/docs/getting-started/assistant/#what-it-can-do), each going through the checks above.
+No shell and no network tool. In build mode it can run exactly one command — the site's configured build — and read its output. Everything else it does is one of the tools listed in [Connect the assistant](/docs/reference/assistant/#what-it-can-do), each going through the checks above.
 
 ## Next
 

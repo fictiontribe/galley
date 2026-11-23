@@ -108,8 +108,73 @@ export function checkCloudflareHeaders(text: string): void {
  */
 export const VERCEL_ROUTING_MEMBERS = ["$schema", "redirects", "rewrites", "headers", "cleanUrls", "trailingSlash", "routes"] as const;
 
-/** vercel.json text → the routing-only copy to upload, or null when it has nothing for serving. */
-export function vercelRoutingConfig(text: string): string | null {
+// ─────────────────────────────────────────────────────────────── markdown
+
+/**
+ * Sites built with the kit publish a markdown copy of every page (`/about.md`)
+ * and `/llms.txt`. Hosts that don't know `.md` serve it as
+ * `application/octet-stream`, so browsers download it and agents may not read
+ * it as text. When the output has `.md` files, a `text/markdown` rule is added
+ * to the headers the host is given — never over a rule the site wrote itself.
+ */
+export const MARKDOWN_TYPE = "text/markdown; charset=utf-8";
+export const CLOUDFLARE_MARKDOWN_RULE = `/*.md\n  Content-Type: ${MARKDOWN_TYPE}\n`;
+export const VERCEL_MARKDOWN_RULE = { source: "/(.*).md", headers: [{ key: "Content-Type", value: MARKDOWN_TYPE }] };
+
+export function hasMarkdown(paths: string[]): boolean {
+  return paths.some((path) => /\.md$/i.test(path));
+}
+
+/** A path pattern that could match `/something.md`: it names `.md`, or has a wildcard or placeholder. */
+function couldMatchMarkdown(pattern: string): boolean {
+  return /\.md\b/i.test(pattern) || /[*:(]/.test(pattern);
+}
+
+/**
+ * The site's `_headers` with the markdown rule added, or unchanged when the
+ * site already sets Content-Type for paths that could be markdown, or when
+ * one more rule would go past Cloudflare's 100.
+ */
+export function withCloudflareMarkdownHeader(text: string | undefined): string | undefined {
+  if (!text) return CLOUDFLARE_MARKDOWN_RULE;
+  let rules = 0;
+  let pattern: string | null = null;
+
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+
+    if (!line || line.startsWith("#")) continue;
+    if (/^([^\s]+:\/\/|\/)/.test(line)) {
+      rules += 1;
+      pattern = line;
+      continue;
+    }
+    if (pattern && /^!?\s*content-type\s*:/i.test(line) && couldMatchMarkdown(pattern)) return text;
+  }
+  if (rules >= CLOUDFLARE_HEADER_LIMITS.rules) return text;
+  return `${text.replace(/\n*$/, "\n")}\n${CLOUDFLARE_MARKDOWN_RULE}`;
+}
+
+/** A Vercel routing config with the markdown rule added, unless the site's own `headers` already set Content-Type where markdown could match. */
+export function withVercelMarkdownHeader(config: Record<string, unknown> | null): Record<string, unknown> {
+  const base = config ?? {};
+  const headers = Array.isArray(base.headers) ? (base.headers as Array<{ source?: unknown; headers?: unknown }>) : [];
+  const siteSetsIt = headers.some(
+    (rule) =>
+      typeof rule.source === "string" &&
+      couldMatchMarkdown(rule.source) &&
+      Array.isArray(rule.headers) &&
+      rule.headers.some((header) => typeof header?.key === "string" && header.key.toLowerCase() === "content-type")
+  );
+  const routes = ["redirects", "rewrites", "headers"].reduce((sum, key) => sum + (Array.isArray(base[key]) ? (base[key] as unknown[]).length : 0), 0);
+
+  // Vercel takes up to 2,048 routes; at the limit the site's own rules come first.
+  if (siteSetsIt || routes >= 2_048) return base;
+  return { ...base, headers: [...headers, VERCEL_MARKDOWN_RULE] };
+}
+
+/** vercel.json text → its members that say how files are served (no build settings); null when there are none. */
+export function vercelRoutingMembers(text: string): Record<string, unknown> | null {
   let parsed: unknown;
 
   try {
@@ -124,5 +189,12 @@ export function vercelRoutingConfig(text: string): string | null {
   const kept: Record<string, unknown> = {};
 
   for (const member of VERCEL_ROUTING_MEMBERS) if (member in source) kept[member] = source[member];
-  return Object.keys(kept).some((key) => key !== "$schema") ? `${JSON.stringify(kept, null, 2)}\n` : null;
+  return Object.keys(kept).some((key) => key !== "$schema") ? kept : null;
+}
+
+/** vercel.json text → the routing-only copy to upload, or null when it has nothing for serving. */
+export function vercelRoutingConfig(text: string): string | null {
+  const kept = vercelRoutingMembers(text);
+
+  return kept ? `${JSON.stringify(kept, null, 2)}\n` : null;
 }

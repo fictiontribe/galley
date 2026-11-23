@@ -40,21 +40,29 @@ The UI is served from `http://127.0.0.1:<port>`, which Tauri treats as a remote 
 Prerequisites: Rust stable 1.90 or later and the platform's build tools (Xcode command-line tools on macOS), Node.js 20.11+ and pnpm 10. The Tauri CLI comes from the repository's dev dependencies.
 
 ```sh
-$ pnpm install
-$ pnpm --filter @galley/web build
-$ pnpm --filter @galley/desktop dev       # a debug build, running the CLI from source
-$ pnpm --filter @galley/desktop bundle    # installers for this OS, in src-tauri/target/release/bundle/
+pnpm install
+pnpm --filter @galley/web build
+```
+
+Then a debug build, which runs the CLI from source:
+
+```sh
+pnpm --filter @galley/desktop dev
+```
+
+Or the installers for this operating system, in `src-tauri/target/release/bundle/`:
+
+```sh
+pnpm --filter @galley/desktop bundle
 ```
 
 A debug build runs the monorepo's CLI with your own Node, so changes to the server or engine need only a restart. If `packages/cli/dist/galley.mjs` exists, the CLI prefers it — a leftover bundle is what a debug build would run.
 
 ## Tests
 
-```sh
-$ pnpm --filter @galley/desktop test:rust       # unit tests: PATH, ports, tokens, process tree, argument checks
-$ pnpm --filter @galley/desktop test:sidecar    # the end-to-end flow against the server runtime
-$ pnpm --filter @galley/desktop test:shutdown   # launches the real app, quits it twice; macOS, needs a desktop session
-```
+- Unit tests — `PATH`, ports, tokens, the process tree, argument checks: `pnpm --filter @galley/desktop test:rust`
+- The end-to-end flow against the server runtime: `pnpm --filter @galley/desktop test:sidecar`
+- Launching the real app and quitting it twice (macOS, needs a desktop session): `pnpm --filter @galley/desktop test:shutdown`
 
 None of these is part of `pnpm test`.
 

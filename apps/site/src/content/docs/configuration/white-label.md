@@ -38,9 +38,12 @@ Every key is optional, and any other key is refused. The UI sets the CSS custom 
 `GALLEY_BRAND_NAME` and `GALLEY_BRAND_ACCENT` set the name and the accent directly, and beat the brand file:
 
 ```sh
-$ GALLEY_BRAND_FILE=./brand.json GALLEY_BRAND_NAME="Harbour editor" galley --no-open
-$ curl -s http://127.0.0.1:4400/api/meta
-{"version":"","brand":{"productName":"Harbour editor","byline":"","docsUrl":"https://galley.fictiontribe.com/docs","accent":"#0B6E4F","supportUrl":"https://help.example.com"},"mode":"local","authenticated":false,"desktop":false,"platform":""}
+GALLEY_BRAND_FILE=./brand.json GALLEY_BRAND_NAME="Harbour editor" galley --no-open
+curl -s http://127.0.0.1:4400/api/meta
+```
+
+```output
+{"version":"","brand":{"productName":"Harbour editor",…,"accent":"#0B6E4F","supportUrl":"https://help.example.com"},…}
 ```
 
 (The brand file for that run had no `logoUrl` or `docsUrl`, so the default docs link shows.) In the [container](/docs/running/hosted/#run-it-in-a-container), set them as environment variables, or mount the brand file and point `GALLEY_BRAND_FILE` at it.

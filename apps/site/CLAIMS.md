@@ -35,7 +35,7 @@ Updated 2026-11-23 (rebuild of the site).
 | Search and AI checks | New, in final checks | maintainers' check; `docs/seo-and-ai-visibility.md` |
 | Guided move from WordPress in the app | New, in final checks | Captured 2026-11-23 (`wordpress-plan`, `wordpress-report`) importing the importer's invented WordPress site into a throwaway Lowfield copy; changed from "in progress" on the maintainers's word |
 | Agent-readable pages for customer sites | In progress | The site kit's generic version now runs on this site (below). Flip to "new" when the maintainers confirm the app side ships. |
-| Shopify storefront starter | In progress | `starters/astro-storefront` exists but its `starter.json` is still Caddow's; not listed as a starter |
+| Shopify storefront starter (`storefront`, “Caddow Shop” on /starters/) | In progress (badge on its card) | `starters/astro-storefront` with its own previews and 24 sections; listed as the fourth card. Flip `shopify` in status.json to `new` when it reaches final checks |
 | A switch per AI-crawler family | In progress (shown on `/ai-first/` only) | The kit reads `crawlers` from `src/data/visibility.json`; the app's switch is not claimed as built |
 | Galley Cloud | Later (`/cloud/`, "Coming soon", no date or price) | The Cloud plan is kept outside this repository |
 
@@ -53,6 +53,18 @@ Updated 2026-11-23 (rebuild of the site).
 | /team/: James Rice (CEO, Co-founder), Misha Petrov, Sean Burles, Connor Burgess (each "Engineer"), their photographs and one line each | /team/, footer, /open-source/ "Who makes it" | From Fiction Tribe's public team page (photographs and lines verbatim, files in `public/team/` at their natural 999 × 740 with a 500 px copy), titles as the owner specified ("Engineer" for the three developers). Alt text is the name only. No bios, social links, e-mail addresses or Person structured data |
 | Fiction Tribe is "a creative agency in Portland, Oregon" | /team/, /open-source/ | Fiction Tribe's own site says Portland (coordinator, 2026-11-23). No founding year is stated |
 | "Built for Astro" — never official, partner or endorsed | /astro/, /privacy/ | Trademark notes on /privacy/ and /astro/; WordPress/Elementor note under the comparison table |
+
+## Install commands
+
+Every command a page shows comes from `src/data/site.json → install`. While
+`install.published` is false the site shows only what works today: the
+from-a-clone steps (home hero and close) and, on each starter card,
+`npm create astro@latest my-site -- --template fictiontribe/galley/starters/<folder>`
+("Works today with Astro’s installer" — checked 2026-11-24: it copies the
+starter from the public repository). With the flag true the cards show
+`npm create galley@latest my-site -- --starter <caddow|ferrow|lowfield|storefront>`
+and the hero `npx galley-cms`. `src/lib/install.ts` stops the build if a page
+would show `npm create galley` or `npx galley-cms` while the flag is false.
 
 ## Files generated from the code
 
