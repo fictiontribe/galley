@@ -158,6 +158,7 @@
     "domain": {
       "hostname": "galley.fictiontribe.com",
       "attached": false
-    }
+    },
+    "defaultUrl": "https://galley.james-0cc.workers.dev"
   }
 }

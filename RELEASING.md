@@ -99,8 +99,12 @@ would only add a download.
      `examples/` (the desktop app's `tauri.conf.json` reads
      `apps/desktop/package.json`);
    - `version` in `apps/desktop/src-tauri/Cargo.toml`;
-   - the starters keep their own versions, changed only when a starter
-     changes.
+   - the starters and `examples/plugin-example` keep their own versions,
+     changed only when they change;
+   - `KIT_VERSION` in `packages/astro/src/client/forms.js`, then copy the kit
+     into the starters and the website again
+     (`node packages/astro/scripts/vendor.mjs <folder>` for each of
+     `starters/*` and `apps/site`), so every copy says which kit it is.
 
    The release workflow refuses to publish when the tag, the two packages and
    `brand.ts` disagree.

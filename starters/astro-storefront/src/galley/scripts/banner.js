@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.1.0 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.1.1 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // The built-in consent banner: a small, non-modal region at the foot of the
 // page with three equal choices — accept all, reject all, choose — and the

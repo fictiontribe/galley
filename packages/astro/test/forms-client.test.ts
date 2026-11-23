@@ -4,7 +4,7 @@
 // steps, autofill, sending, after-submit actions, spam checks and events.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FormDefinition } from "../src/kit";
-import { initForms, registerFormProvider } from "../src/client/forms.js";
+import { initForms, KIT_VERSION, registerFormProvider } from "../src/client/forms.js";
 import { renderFormHtml, type RenderOptions } from "../src/forms/render.js";
 
 const sleep = (ms = 0) => new Promise((done) => setTimeout(done, ms));
@@ -244,7 +244,7 @@ describe("sending and after-submit actions", () => {
     const body = JSON.parse(String(requests[0]!.init.body));
 
     expect(body).toMatchObject({ form: "contact", values: { name: "Kim <b>Lee</b>", email: "kim@example.com", topic: "", plan: "team" }, page: { url: location.href } });
-    expect(body.meta).toMatchObject({ honeypot: "", kit: "0.1.0" });
+    expect(body.meta).toMatchObject({ honeypot: "", kit: KIT_VERSION });
     const success = page.root.querySelector<HTMLElement>("[data-galley-success]")!;
 
     expect(success.hidden).toBe(false);

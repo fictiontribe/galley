@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.1.0 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.1.1 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // `@galley/astro/catalog` — what the site kit knows how to do, as JSON-able
 // data, so an app can list it: the form destinations, the third-party
