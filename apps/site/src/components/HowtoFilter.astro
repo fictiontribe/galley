@@ -1,0 +1,39 @@
+---
+// The thin bar above the how-to cards: one pill per group of guides, plus
+// "All". Choosing one leaves only that group's guides; the cards that stay
+// glide to their new places (src/scripts/site.ts). It stays in view under the
+// header, like the tour's index, and is only shown once the script is there
+// to work it — without it the page is the full list, as before.
+import type { HowtoGroup } from "../lib/howto";
+import { site } from "../lib/site";
+
+interface Props {
+  groups: HowtoGroup[];
+  total: number;
+}
+const { groups, total } = Astro.props;
+---
+
+<div class="howto-filter" data-howto-filter data-shown={site.ui.howtoShown} data-shown-one={site.ui.howtoShownOne} data-galley-agent="skip" hidden>
+  <div class="wrap">
+    <div class="howto-filter__list" role="group" aria-label={site.ui.howtoFilter}>
+      <span class="howto-filter__thumb" aria-hidden="true"></span>
+      <button class="howto-filter__b" type="button" aria-pressed="true" data-group="">
+        {site.ui.howtoFilterAll}
+        <span class="howto-filter__n">{total}</span>
+      </button>
+      {
+        groups.map((group) => (
+          <button class="howto-filter__b" type="button" aria-pressed="false" data-group={group.id}>
+            {group.label}
+            <span class="howto-filter__n">{group.count}</span>
+          </button>
+        ))
+      }
+    </div>
+  </div>
+  <p class="sr" role="status" data-howto-status></p>
+</div>
+<script is:inline>
+  document.currentScript.previousElementSibling.hidden = false;
+</script>

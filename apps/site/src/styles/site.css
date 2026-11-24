@@ -631,6 +631,21 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
 
 /* ---------- how-to ---------- */
 .howto-index .page-head { margin-bottom: var(--s7); }
+/* the how-to filter: a thin bar of pills under the header, like the tour's index; one marker slides to the chosen pill */
+.howto-index--filtered .page-head { margin-bottom: var(--s6); }
+.howto-filter { position: sticky; top: var(--header-h); z-index: 40; margin-bottom: var(--s7); border-block: 1px solid var(--line); background: color-mix(in oklab, var(--paper) 94%, transparent); backdrop-filter: saturate(1.2) blur(8px); -webkit-backdrop-filter: saturate(1.2) blur(8px); }
+.howto-filter__list { position: relative; display: flex; gap: var(--s1); height: 52px; align-items: center; overflow-x: auto; scrollbar-width: none; margin-inline: -12px; padding-inline: 12px; }
+.howto-filter__list::-webkit-scrollbar { display: none; }
+.howto-filter__b { position: relative; z-index: 1; flex: none; display: inline-flex; align-items: center; gap: var(--s2); height: 36px; padding: 0 var(--s3); border: 0; border-radius: var(--r-pill); background: transparent; font: 500 0.9375rem/1 var(--font-text); color: var(--ink-2); white-space: nowrap; cursor: pointer; transition: background-color .14s, color .14s; }
+.howto-filter__b:hover { color: var(--ink); background: var(--sunken); }
+.howto-filter__b:focus-visible { border-radius: var(--r-pill); }
+.howto-filter__b[aria-pressed="true"] { color: var(--ink); background: transparent; }
+.howto-filter__n { font: 500 0.75rem/1 var(--font-mono); color: var(--ink-3); transition: color .14s; }
+.howto-filter__b[aria-pressed="true"] .howto-filter__n { color: var(--accent-text); }
+.howto-filter__thumb { position: absolute; left: 0; top: 50%; width: var(--w, 0px); height: 36px; margin-top: -18px; border-radius: var(--r-pill); background: var(--raised); box-shadow: inset 0 0 0 1px var(--line-2); translate: var(--x, 0px) 0; pointer-events: none; visibility: hidden; }
+/* Until the script has measured the pills, the chosen one wears the marker itself. */
+.howto-filter:not(.is-ready) .howto-filter__b[aria-pressed="true"] { background: var(--raised); box-shadow: inset 0 0 0 1px var(--line-2); }
+.howto-filter.is-ready .howto-filter__thumb { visibility: visible; transition: translate .32s cubic-bezier(.16, 1, .3, 1), width .32s cubic-bezier(.16, 1, .3, 1); }
 .howto-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s7) var(--gap); }
 .howto-card a { display: grid; gap: var(--s2); align-content: start; height: 100%; text-decoration: none; }
 .howto-card__frame { display: block; aspect-ratio: 4 / 3; margin-bottom: var(--s2); }
@@ -786,6 +801,17 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
   /* Phone: the panel shows its main picture alone; the detail is the second picture in "see full size". */
   .tour-inset { display: none; }
   .zoom { right: 10px; top: 10px; }
+  /* Phone: the bar's lower hairline is the first guide's top rule. */
+  .howto-filter { margin-bottom: 0; }
+  .howto-index--filtered .howto-cards { margin-top: -1px; }
+  /* The bar scrolls from edge to edge with the labels on the page's margin; a soft edge shows there is more that way. */
+  .howto-filter__list { height: 48px; margin-inline: calc(-1 * var(--gutter)); padding-inline: calc(var(--gutter) - 10px); scroll-padding-inline: calc(var(--gutter) - 10px); overscroll-behavior-x: contain; }
+  .howto-filter__list[data-more="end"] { -webkit-mask: linear-gradient(to left, transparent, #000 40px); mask: linear-gradient(to left, transparent, #000 40px); }
+  .howto-filter__list[data-more="start"] { -webkit-mask: linear-gradient(to right, transparent, #000 40px); mask: linear-gradient(to right, transparent, #000 40px); }
+  .howto-filter__list[data-more="both"] { -webkit-mask: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
+  .howto-filter__b { padding: 0 10px; font-size: 0.875rem; }
+  /* A finger gets the bar's whole height. */
+  .howto-filter__b::before { content: ""; position: absolute; inset: -6px 0; }
   /* Phone: one compact row per guide, its picture a small marker beside the words. */
   .howto-cards { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .howto-card a { grid-template-columns: 104px minmax(0, 1fr); gap: 4px var(--s4); padding-block: var(--s4); border-top: 1px solid var(--line-2); }

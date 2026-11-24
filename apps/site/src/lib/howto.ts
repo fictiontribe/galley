@@ -74,6 +74,41 @@ export function howtosForDoc(href: string): Howto[] {
   return howtos.filter((g) => g.guide.split("#")[0] === href);
 }
 
+/** One group of guides in the /how-to/ filter, and how many guides it holds. */
+export interface HowtoGroup {
+  id: string;
+  label: string;
+  count: number;
+}
+
+/**
+ * The how-to index's filter, from the `filter` list in
+ * src/content/pages/how-to.md: each entry is a group with an id (its address,
+ * /how-to/?show=<id>), a label and the slugs of its guides. The groups live
+ * there, not in howto.json, because the capture script rewrites that file. A
+ * guide belongs to the first group that names it; one that no group names
+ * shows under "All" only, and a group with no guide isn't offered.
+ */
+export function howtoGroups(filter: unknown, guides: Howto[] = howtos): { groups: HowtoGroup[]; groupOf: Map<string, string> } {
+  const groupOf = new Map<string, string>();
+  const groups: HowtoGroup[] = [];
+  for (const raw of Array.isArray(filter) ? filter : []) {
+    if (!raw || typeof raw !== "object") continue;
+    const f = raw as Record<string, unknown>;
+    const id = asText(f.id);
+    const label = asText(f.label);
+    if (!id || !label || !/^[a-z0-9-]+$/.test(id) || groups.some((g) => g.id === id)) continue;
+    let count = 0;
+    for (const slug of Array.isArray(f.guides) ? f.guides : []) {
+      if (typeof slug !== "string" || groupOf.has(slug) || !guides.some((g) => g.slug === slug)) continue;
+      groupOf.set(slug, id);
+      count++;
+    }
+    if (count > 0) groups.push({ id, label, count });
+  }
+  return { groups, groupOf };
+}
+
 /** A step's picture, or null (missing files are listed in the build log). */
 export function stepPicture(step: HowtoStep): Picture | null {
   return step.image ? capture(step.image)?.pic ?? null : null;
