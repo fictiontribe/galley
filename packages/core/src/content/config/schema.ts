@@ -123,6 +123,7 @@ const mediaImages = z
     connector: z.literal("cloudflare-images").describe("Cloudflare Images."),
     account: z.string().regex(/^[0-9a-f]{32}$/, { message: "must be the 32-character Cloudflare account ID." }).describe("The Cloudflare account ID."),
     accountHash: z.string().min(8).max(64).describe("The Images account hash, from Hosted Images › Developer Resources."),
+    scope: z.string().regex(/^[a-z0-9-]{8,64}$/, { message: "must be the mark Galley made: lowercase letters, digits and dashes." }).optional().describe("This site's mark on its pictures in the account (Cloudflare's creator field); made by Galley when connecting. Only pictures with it are listed, shown, moved or deleted."),
     variant: z.string().regex(/^[A-Za-z0-9_-]{1,99}$/, { message: "must be a variant's name, like “public”." }).optional().describe("The variant pages ask for. Default: public."),
     deliveryUrl: webAddress.optional().describe("Deliver from a domain of the same Cloudflare account (its /cdn-cgi/imagedelivery/ path). Default: https://imagedelivery.net."),
   })

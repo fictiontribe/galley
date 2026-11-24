@@ -255,6 +255,12 @@ export interface MediaImagesConfig {
   /** The variant pages ask for. Default "public". */
   variant?: string;
   /**
+   * This site's mark on its pictures (Cloudflare's "creator" field): the
+   * account may hold other sites' pictures, and Galley lists, shows, moves
+   * and deletes only the ones with this mark. Made on connect.
+   */
+  scope?: string;
+  /**
    * Deliver from a domain of the same Cloudflare account
    * ("https://www.example.com" → https://www.example.com/cdn-cgi/imagedelivery/…).
    * Absent: https://imagedelivery.net.

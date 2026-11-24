@@ -34,6 +34,7 @@ import type { AddressInfo } from "node:net";
 
 export interface FakeImage {
   id: string;
+  creator?: string;
   filename: string;
   meta: Record<string, unknown>;
   uploaded: string;
@@ -134,6 +135,7 @@ export async function startFakeImages(): Promise<FakeImages> {
 
   const record = (image: FakeImage, base: string, account: FakeImagesAccount) => ({
     id: image.id,
+    creator: image.creator ?? null,
     filename: image.filename,
     meta: image.meta,
     uploaded: image.uploaded,
@@ -213,7 +215,8 @@ export async function startFakeImages(): Promise<FakeImages> {
       const perPage = Number(url.searchParams.get("per_page") ?? 1000);
 
       if (!Number.isInteger(perPage) || perPage < 10 || perPage > 10_000) return envelope(res, 400, null, { code: 5400, message: "per_page must be between 10 and 10000" });
-      const all = [...account.images.values()].sort((a, b) => a.uploaded.localeCompare(b.uploaded) || a.id.localeCompare(b.id));
+      const creator = url.searchParams.get("creator");
+      const all = [...account.images.values()].filter((image) => !creator || image.creator === creator).sort((a, b) => a.uploaded.localeCompare(b.uploaded) || a.id.localeCompare(b.id));
       const after = url.searchParams.get("continuation_token");
       const start = after ? all.findIndex((image) => image.id === Buffer.from(after, "base64url").toString()) + 1 : 0;
       const page = all.slice(start, start + perPage);
@@ -248,7 +251,8 @@ export async function startFakeImages(): Promise<FakeImages> {
       const id = custom || randomUUID();
 
       if (custom && account.images.has(custom)) return envelope(res, 409, null, { code: 5409, message: "Resource already exists" });
-      const image: FakeImage = { id, filename: file.filename ?? "image", meta, uploaded: new Date(Date.now() + account.images.size).toISOString(), body: file.data, type };
+      const creatorPart = parts.get("creator")?.data.toString("utf8");
+      const image: FakeImage = { id, ...(creatorPart ? { creator: creatorPart } : {}), filename: file.filename ?? "image", meta, uploaded: new Date(Date.now() + account.images.size).toISOString(), body: file.data, type };
 
       account.images.set(id, image);
       return envelope(res, 200, record(image, "https://imagedelivery.net", account));

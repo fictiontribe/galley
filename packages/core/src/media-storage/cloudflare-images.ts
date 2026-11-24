@@ -44,6 +44,7 @@ interface Envelope<T> {
 
 interface ImageRecord {
   id: string;
+  creator?: string | null;
   filename?: string;
   meta?: Record<string, unknown> | null;
   uploaded?: string;
@@ -112,6 +113,8 @@ export function createImagesStore(options: ImagesStoreOptions): MediaStore {
   const variant = config.variant || "public";
   const base = deliveryBase(config);
   const now = options.now ?? Date.now;
+  /** This site's mark on its pictures (Cloudflare's "creator"): uploads carry it, listings ask for it. */
+  const creator = config.scope ? `galley:${config.scope}` : null;
   const tokenWords = options.tokenSource === "deploy" ? "The site's Cloudflare key (the one for putting it online)" : "The API token";
 
   async function call<T>(method: string, path: string, body?: FormData): Promise<{ status: number; data: Envelope<T> | null; raw: Response }> {
@@ -197,6 +200,7 @@ export function createImagesStore(options: ImagesStoreOptions): MediaStore {
 
       form.append("file", new Blob([Buffer.from(input.data)], { type: input.type }), name);
       form.append("metadata", JSON.stringify(meta));
+      if (creator) form.append("creator", creator);
       const { status, data } = await call<ImageRecord>("POST", "/v1", form);
 
       if (!data?.success || !data.result?.id) throw explain(status, data, "write");
@@ -227,10 +231,16 @@ export function createImagesStore(options: ImagesStoreOptions): MediaStore {
     },
 
     async list(cursor) {
-      const { status, data } = await call<{ images?: ImageRecord[]; continuation_token?: string | null }>("GET", `/v2?per_page=1000${cursor ? `&continuation_token=${encodeURIComponent(cursor)}` : ""}`);
+      const { status, data } = await call<{ images?: ImageRecord[]; continuation_token?: string | null }>(
+        "GET",
+        `/v2?per_page=1000${creator ? `&creator=${encodeURIComponent(creator)}` : ""}${cursor ? `&continuation_token=${encodeURIComponent(cursor)}` : ""}`
+      );
 
       if (!data?.success) throw explain(status, data, "list");
-      return { items: (data.result?.images ?? []).map(itemOf), next: data.result?.continuation_token || null };
+      // Only this site's pictures, whatever the account holds (and whatever the filter returned).
+      const own = (data.result?.images ?? []).filter((record) => !creator || record.creator === creator);
+
+      return { items: own.map(itemOf), next: data.result?.continuation_token || null };
     },
 
     urlOf(key) {

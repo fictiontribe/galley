@@ -47,6 +47,7 @@ How the file merges over detection: [galley.config.json](/docs/configuration/#ho
 | `media.images.connector` | `"cloudflare-images"`, **required** | Cloudflare Images. |
 | `media.images.account` | string, **required**, 32 hex characters | The Cloudflare account ID. |
 | `media.images.accountHash` | string, **required** | The Images account hash, from Hosted Images › Developer Resources. |
+| `media.images.scope` | string | This site's mark on its pictures (Cloudflare's creator field), made by Galley when connecting. Only pictures with it are listed, shown, moved or deleted, so several sites can share an account. |
 | `media.images.variant` | string | The variant pages ask for. *Default:* `public`. |
 | `media.images.deliveryUrl` | URL | Deliver from a domain of the same Cloudflare account (its `/cdn-cgi/imagedelivery/` path). *Default:* `https://imagedelivery.net`. |
 | `publish` | object | [Publishing](/docs/configuration/publishing/). *Default:* detected. |

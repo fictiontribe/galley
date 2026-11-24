@@ -10,6 +10,7 @@
  * key only replaces the stored one then: a key that doesn't work never
  * replaces one that does. Nothing here returns, throws or logs a key.
  */
+import { randomBytes } from "node:crypto";
 import { GalleyError } from "../errors";
 import type { EventBus, GalleyConfig, Job, MediaImagesConfig, MediaItem, MediaStorageConfig, SettingsService, SiteService } from "../types";
 import { createImagesStore, deliveryBase } from "./cloudflare-images";
@@ -326,7 +327,10 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
 
     async connectImages(site, request) {
       guard("PUT /api/sites/:siteId/media/images");
-      const config = normalizeImagesConfig(request.config);
+      const saved = (await site.model()).media.images;
+      // The site keeps its mark on its pictures; a new connection gets one of its own.
+      const scope = request.config.scope ?? (saved && saved.account === request.config.account.trim().toLowerCase() ? saved.scope : undefined) ?? randomBytes(6).toString("hex");
+      const config = normalizeImagesConfig({ ...request.config, scope });
       const check = await checkImagesWith(site, config, request);
 
       if (!check.ok) return { check };

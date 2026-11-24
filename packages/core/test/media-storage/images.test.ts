@@ -80,7 +80,7 @@ describe("connecting Cloudflare Images", () => {
     const result = await storage.connectImages(site.site, { config: config(), token: TOKEN });
 
     expect(result.check.ok, result.check.message).toBe(true);
-    expect(site.config.media?.images).toEqual(config());
+    expect(site.config.media?.images).toEqual({ ...config(), scope: expect.stringMatching(/^[0-9a-f]{12}$/) });
     expect(JSON.stringify(site.config)).not.toContain(TOKEN);
     expect(result.status?.images).toMatchObject({ connected: true, token: { configured: true, use: "own" } });
     expect(images.accounts.get(ACCOUNT)!.images.size).toBe(0);
@@ -166,6 +166,25 @@ describe("a site with pictures in Images and other files in a bucket", { timeout
 
     expect(pdf.location).toBeUndefined();
     expect(pdf.placement).toMatch(/^Kept in the repository: Cloudflare Images takes only pictures/);
+    await done();
+  });
+
+  it("lists, shows and brings back only this site's pictures, whatever else the account holds", async () => {
+    const { storage, site, root, done } = await setUp(false);
+    const account = images.accounts.get(ACCOUNT)!;
+    const foreign = { filename: "theirs.png", meta: { name: "theirs.png", width: 5, height: 5 }, uploaded: new Date().toISOString(), body: Buffer.from(pngHeader(5, 5)), type: "image/png" };
+
+    account.images.set("no-mark", { id: "no-mark", ...foreign });
+    account.images.set("other-site", { id: "other-site", creator: "galley:0000aaaa1111", ...foreign });
+    const own = await site.saveMedia({ filename: "own.png", data: pngHeader(6, 6) });
+    const listed = (await site.listMedia()).filter((item) => item.location === "images").map((item) => item.key);
+
+    expect(listed).toEqual([own.key]);
+    await storage.move(site, { kind: "move", from: "images", to: "repository" });
+    expect(readFileSync(join(root, "public/images/own.png")).byteLength).toBeGreaterThan(0);
+    expect(() => readFileSync(join(root, "public/images/theirs.png"))).toThrow();
+    account.images.delete("no-mark");
+    account.images.delete("other-site");
     await done();
   });
 

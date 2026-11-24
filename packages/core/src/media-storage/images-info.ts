@@ -83,7 +83,7 @@ const HASH = /^[A-Za-z0-9_-]{8,64}$/;
 const VARIANT = /^[A-Za-z0-9_-]{1,99}$/;
 
 export function normalizeImagesConfig(config: MediaImagesConfig): MediaImagesConfig {
-  const out: MediaImagesConfig = { connector: "cloudflare-images", account: config.account.trim().toLowerCase(), accountHash: config.accountHash.trim() };
+  const out: MediaImagesConfig = { connector: "cloudflare-images", account: config.account.trim().toLowerCase(), accountHash: config.accountHash.trim(), ...(config.scope ? { scope: config.scope } : {}) };
   const variant = config.variant?.trim();
   const delivery = config.deliveryUrl?.trim().replace(/\/+$/, "");
 
