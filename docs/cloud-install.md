@@ -1254,7 +1254,13 @@ the code host, not the clone, so the editor looks for itself:
   latest, a connect or a restore is in progress, while the assistant is
   working on the site, and while the preview is installing the site's
   packages; it never overlaps itself. When a person's look is already going
-  the round uses that one rather than fetching again. The start-up lines say which: `Repository: checked every
+  the round uses that one rather than fetching again. A round skipped for
+  the assistant or for the preview's install still fetches, so "newer
+  versions are waiting" stays true while they can't come in; a round skipped
+  for install-level work (a connect, a restore, a publish job) does not.
+  Rounds skipped for 30 minutes running are said in the log once, with the
+  reason, and once more when they run again. A restore waits for a round in
+  progress before it closes the site. The start-up lines say which: `Repository: checked every
   5 minutes; newer versions are brought in when nothing here is in the way`,
   or `Repository: not checked by itself (GALLEY_SYNC_MINUTES=0)`.
 - **Version history looks when it opens** (`POST /api/sites/:siteId/git/check`,
@@ -1297,17 +1303,37 @@ the code host, not the clone, so the editor looks for itself:
   changed).`, `Repository: couldn't check for newer versions: …`,
   `Repository: the code host answers again.`, `Repository: 1 newer version
   waiting, not brought in: …`, `Repository: nothing is in the way of newer
-  versions any more.`
+  versions any more.`, `Repository: no newer versions have been brought in
+  for 31 minutes, because the assistant is working on the site. They come in
+  once that is over.`, `Repository: newer versions can be brought in again.`
 
 A look holds no save back: it fetches outside the lock that saves take, so
 a code host that hangs (the network timeout is 120 seconds) delays only other
 looks, publishes and Get latest, which take their turn one at a time. The
 save lock is taken only for the moment the fetched commits are brought into
-the files. An edit to an entry is written only over the text it was worked
+the files. Publishing, undoing a publish and sending are different: they
+hold the save lock from start to finish, the push included, so a push to a
+code host that hangs holds saves back for up to those 120 seconds.
+
+Bringing commits in (`git merge --ff-only`) runs with
+`core.hooksPath=/dev/null`: none of the repository's own hooks run for it
+(a `post-merge` hook that installs packages would hold the save lock for as
+long as it took; the preview installs what changed dependencies need).
+Hooks still run for a publish, whose pre-commit checks are the site's own.
+Fetches and that merge also run with `maintenance.auto=false` and
+`gc.auto=0`, so git starts no background tidying that could outlast them.
+A Get latest whose fetch can't reach the code host answers 502 with the
+plain reason; one refused for what is in the way answers 409.
+
+An edit to an entry is written only over the text it was worked
 out from: when a discard, incoming commits or an undone publish rewrote the
 file first, the edit is worked out again from what is there, or, when the
 editor said which version it had open, refused so that the person reopens
-it. The round runs
+it. The assistant's changes are never worked out again: it changes an entry
+or replaces a file only if it has read it in the conversation and the file
+is still that version, and is otherwise told to read it again. What a
+conversation has read is remembered from one reply to the next, for the
+conversations used most recently, until the server restarts. The round runs
 as the engine (core `install/caller.ts` `asEngine`), around the one call that
 brings commits in; the events it causes go out as nobody, so a plugin
 reacting to one can't bring commits in or publish.
