@@ -504,19 +504,22 @@
 [data-theme],
 .g-scope {
   /* Blue Pencil ramp, from the brand input (sRGB mixes keep its violet).
-     Default light → #F3F2FA · #E8E7FB · #D8D6FB · #B7B5FC · #7D7AFD · #2E2BFF
-     · #2421D1 · #1A18A4 · #23207D · #1F1C4D
-     Text on 50/100/200: ink-primary 16.08/14.68/12.71, accent-text 7.75/7.08/6.12. */
-  --pencil-50:  color-mix(in srgb, var(--accent) 5%,  var(--surface-raised));
-  --pencil-100: color-mix(in srgb, var(--accent) 10%, var(--surface-raised));
-  --pencil-200: color-mix(in srgb, var(--accent) 18%, var(--surface-raised));
-  --pencil-300: color-mix(in srgb, var(--accent) 34%, var(--surface-raised));
-  --pencil-400: color-mix(in srgb, var(--accent) 62%, var(--surface-raised));
+     Tints and lines are drawn from the accent TEXT (lightness-clamped), so a
+     pale pencil still gives visible tints and readable lines; fills (500–700)
+     are the accent itself. Quiet light → #F1F0FA · #E7E4F9 · #D6D2F8 ·
+     #B4ACF7 · #6D5CF4 · #2E2BFF · #2421D1 · #1A18A4 · #211476 · #1D1641.
+     Text on 50/100/200: ink-primary ≥ 12.28, accent-text 6.92 on 100,
+     pencil-800 11.82 on 100; pencil-400 as an edge: 4.56 on the sheet. */
+  --pencil-50:  color-mix(in srgb, var(--accent-text) 5%,  var(--surface-raised));
+  --pencil-100: color-mix(in srgb, var(--accent-text) 10%, var(--surface-raised));
+  --pencil-200: color-mix(in srgb, var(--accent-text) 18%, var(--surface-raised));
+  --pencil-300: color-mix(in srgb, var(--accent-text) 34%, var(--surface-raised));
+  --pencil-400: color-mix(in srgb, var(--accent-text) 68%, var(--surface-raised));
   --pencil-500: var(--accent-fill);
   --pencil-600: var(--accent-hover);
   --pencil-700: var(--accent-pressed);
-  --pencil-800: color-mix(in srgb, var(--accent-fill) 45%, var(--ink-primary));
-  --pencil-900: color-mix(in srgb, var(--accent-fill) 25%, var(--ink-primary));
+  --pencil-800: color-mix(in srgb, var(--accent-text) 45%, var(--ink-primary));
+  --pencil-900: color-mix(in srgb, var(--accent-text) 25%, var(--ink-primary));
 
   /* Icons: one ink at rest; the accent part and tint wake up where an icon
      marks the current place (see brand/icons.ts). */
@@ -597,74 +600,229 @@
 }
 
 /* --------------------------------------------------------------------------
-   6. Bold — the second direction, switchable: data-look="bold" on <html>.
-   Same tokens and components as Quiet; this block only adds the plate, the
-   pencil at work, the proof inks given room, and visible depth. Delete this
-   block and packages/web/src/styles/look-bold.css (and the site's bold block)
-   to drop it; delete the attribute's readers to keep it as the only look.
+   6. Themes — the editing app's surfaces, inks and pencil, derived from five
+   seeds per mode. A theme (brand/themes/*.json, contract in
+   brand/themes/README.md) is data: it sets only these custom properties on
+   <html>, after its values have passed the legibility rules:
+     --theme-paper  --theme-ink  --theme-pencil  --theme-plate  --theme-table
+     --theme-dark-paper … --theme-dark-table
+   and four switches as attributes (section 7). With none set, the fallbacks
+   below are Quiet, and every derived value lands within a hair of the
+   hand-set Quiet values in sections 1b, 3 and 5 (largest differences:
+   on-plate-3 1.07:1, dark well 1.03:1 — invisible; re-measured below).
+   This section supersedes 1b for the app; 1b stays as the record of the
+   measured Quiet values and for the desktop start-up window.
 
-   Contrast (measured, WCAG 2):
-     on the plate #1C1915 (light theme sidebar, status line)
-       on-plate #EEE8DD 14.36 · on-plate-2 #B9AF9F 8.08 · on-plate-3 #948A7B 5.15
-       pencil-on-plate #B7B5FC 9.20 (focus, current icon) · #A4A1FF 7.61
-       status/proof inks (dark values) 7.45 – 9.43
-     on the current place (accent 38 % into the plate → #23206E): #FFFFFF 13.97,
-       on-plate-2 6.45, pencil-on-plate 7.34
-     on the plate's hover #2A2620: on-plate 12.33, on-plate-3 4.43 (large/quiet
-       meta only; nav words use on-plate-2 6.94)
-     dark theme plate #0E0C09: on-plate 16.02, on-plate-3 5.75
-     toned desk #E6E0D6 (the sub-choice): ink 13.61, ink-2 6.66, ink-3 4.51,
-       border-strong 3.23
-     pencil tints with text: pencil-800 #23207D on pencil-100 10.96, on
-       pencil-50 12.00; ink-primary on pencil-200 12.71
+   Recipes (one rule for every theme):
+     sheet    paper 30 % into white (light) · ink 5 % into paper (dark)
+     overlay  paper 12 % into white          · ink 9 % into paper
+     well     ink 4 % into paper, warmed      · black 18 % into paper
+     ink 2/3/disabled   ink 73/62/38 % into paper (dark 77/60/36), warmed
+     borders  rule 7 · edge 14 · seam 20 · worn 29 · strong 51 % ink
+              (dark 13 · 18 · 24 · 34 · 48)
+     desk     ink 8 % into paper (dark 7)
+     "warmed" keeps a printing ink's warmth in the mixed steps: OKLCH chroma
+     ×2.5 (dark ×1.7), never above 0.04, so a neutral ink stays neutral.
+     plate inks: on-plate = paper 94 % into the plate, warmed (dark: the ink);
+              on-plate-2/3 = on-plate 78/62 % into the plate
+     pencil-on-plate = the pencil half-mixed with white, lightness ≥ 0.78
+     current place on the plate = the accent fill 38 % into the plate
+   Proof and status inks are not themable; the legibility check may tune
+   their lightness (never their hue) and set them here as overrides.
+
+   Quiet, derived (light | dark), contrast measured:
+     ink on paper/sheet/well/overlay  16.27/17.40/14.88/17.71 | 15.65/14.33/16.53/13.20
+     ink-3 on paper/sheet/well 5.54/5.93/5.07 | well 5.89 · on the desk 4.63 | 4.93
+     strong edge on the well 3.56 | 4.08
+     on-plate-2/3 on the plate 8.41/5.52 · pencil-on-plate on the plate 8.20
    -------------------------------------------------------------------------- */
-[data-look="bold"] {
-  --plate:           #1C1915;
-  --plate-raised:    #2A2620;
-  --plate-sunken:    #141210;
-  --plate-edge:      #332E27;
-  --on-plate:        #EEE8DD;
-  --on-plate-2:      #B9AF9F;
-  --on-plate-3:      #948A7B;
-  --pencil-on-plate: #B7B5FC;
-  --plate-tint:      color-mix(in srgb, #A4A1FF 22%, var(--plate));
-  --plate-current:   color-mix(in srgb, var(--accent-fill) 38%, var(--plate));
-  --desk-toned:      #E6E0D6;
+[data-surfaces="app"] {
+  --seed-paper:  var(--theme-paper,  #F6F4F0);
+  --seed-ink:    var(--theme-ink,    #1A1712);
+  --seed-pencil: var(--theme-pencil, #2E2BFF);
+  --seed-plate:  var(--theme-plate,  #1C1915);
+  --seed-table:  var(--theme-table,  #E3DBCD);
 
-  /* Depth you can see: a crisp edge and a layered soft fall under sheets; a
-     lit top and a cut lower edge on controls; wells pressed in. */
-  --shadow-1:       0 0 0 1px rgb(var(--shadow-color) / 0.05), 0 1px 1px rgb(var(--shadow-color) / 0.04), 0 2px 6px -1px rgb(var(--shadow-color) / 0.07), 0 12px 28px -14px rgb(var(--shadow-color) / 0.16);
-  --shadow-sheet:   var(--shadow-1);
-  --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 0 0 1px var(--border-seam), 0 1px 2px rgb(var(--shadow-color) / 0.12), 0 2px 5px -2px rgb(var(--shadow-color) / 0.12);
-  --shadow-field:   inset 0 1px 2px rgb(var(--shadow-color) / 0.09), inset 0 0 0 1px rgb(var(--shadow-color) / 0.02);
-  --shadow-press:   inset 0 1px 0 rgb(255 255 255 / 0.26), inset 0 -1px 0 rgb(0 0 0 / 0.22), 0 1px 2px rgb(var(--shadow-color) / 0.30), 0 3px 8px -4px rgb(var(--shadow-color) / 0.35);
-  --shadow-band:    0 1px 0 var(--border-default), 0 4px 10px -8px rgb(var(--shadow-color) / 0.25);
+  --accent:          var(--seed-pencil);
+  --surface-paper:   var(--seed-paper);
+  --surface-raised:  color-mix(in oklab, var(--seed-paper) 30%, #FFFFFF);
+  --surface-overlay: color-mix(in oklab, var(--seed-paper) 12%, #FFFFFF);
+  --surface-sunken:  oklch(from color-mix(in oklab, var(--seed-ink) 4%, var(--seed-paper)) l min(calc(c * 1.5), 0.04) h);
+  --surface-inverse: var(--seed-ink);
+  --surface-table:   var(--seed-table);
+  --scrim:           color-mix(in srgb, var(--seed-ink) 42%, transparent);
 
-  /* Icons draw their tint at rest: ink line, pencil wash. */
-  --icon-tint-rest: var(--pencil-200);
+  --ink-primary:   var(--seed-ink);
+  --ink-secondary: oklch(from color-mix(in oklab, var(--seed-ink) 73%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
+  --ink-tertiary:  oklch(from color-mix(in oklab, var(--seed-ink) 62%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
+  --ink-disabled:  oklch(from color-mix(in oklab, var(--seed-ink) 38%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
+  --ink-inverse:   var(--seed-paper);
+
+  --border-subtle:  oklch(from color-mix(in oklab, var(--seed-ink) 7%,  var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
+  --border-default: oklch(from color-mix(in oklab, var(--seed-ink) 14%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
+  --border-seam:    oklch(from color-mix(in oklab, var(--seed-ink) 20%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
+  --border-worn:    oklch(from color-mix(in oklab, var(--seed-ink) 29%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
+  --border-strong:  oklch(from color-mix(in oklab, var(--seed-ink) 51%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
+  --desk-toned:     oklch(from color-mix(in oklab, var(--seed-ink) 8%,  var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
+
+  --plate:           var(--seed-plate);
+  --on-plate:        oklch(from color-mix(in oklab, var(--seed-paper) 94%, var(--seed-plate)) l min(calc(c * 2.5), 0.04) h);
+  --on-plate-2:      oklch(from color-mix(in oklab, var(--on-plate) 78%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
+  --on-plate-3:      oklch(from color-mix(in oklab, var(--on-plate) 62%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
+  --plate-raised:    color-mix(in oklab, var(--seed-plate) 90%, var(--on-plate));
+  --plate-sunken:    color-mix(in oklab, var(--seed-plate) 70%, #000000);
+  --plate-edge:      color-mix(in oklab, var(--seed-plate) 86%, var(--on-plate));
+  --plate-tint:      color-mix(in srgb, var(--pencil-on-plate) 22%, var(--seed-plate));
+  --pencil-on-plate: oklch(from color-mix(in srgb, var(--seed-pencil), #FFFFFF 50%) max(l, 0.78) c h);
+  --plate-current:   color-mix(in srgb, var(--accent-fill) 38%, var(--seed-plate));
+
+  --shadow-ink:     var(--seed-ink);
+  --shadow-1:       0 1px 0 color-mix(in srgb, var(--shadow-ink) 4%, transparent), 0 1px 3px color-mix(in srgb, var(--shadow-ink) 7%, transparent);
+  --shadow-2:       0 1px 2px color-mix(in srgb, var(--shadow-ink) 6%, transparent), 0 8px 24px -8px color-mix(in srgb, var(--shadow-ink) 18%, transparent);
+  --shadow-3:       0 2px 6px color-mix(in srgb, var(--shadow-ink) 8%, transparent), 0 24px 56px -16px color-mix(in srgb, var(--shadow-ink) 30%, transparent);
+  --shadow-sheet:   0 1px 0 color-mix(in srgb, var(--shadow-ink) 3%, transparent), 0 1px 2px color-mix(in srgb, var(--shadow-ink) 5%, transparent);
+  --shadow-control: 0 1px 0 color-mix(in srgb, var(--shadow-ink) 7%, transparent);
+  --shadow-field:   inset 0 1px 1px color-mix(in srgb, var(--shadow-ink) 5%, transparent);
+  --shadow-band:    0 1px 0 var(--border-default);
+  --icon-tint-rest: none;
 }
-[data-look="bold"][data-theme="dark"] {
-  --plate:        #0E0C09;
-  --plate-raised: #1E1B16;
-  --plate-sunken: #080706;
-  --plate-edge:   #2A261F;
-  --desk-toned:   #24201A;   /* dark toned desk: ink-primary 13.78, ink-secondary 7.82, ink-tertiary 4.89 */
-  --shadow-1:       inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.5), 0 2px 6px -1px rgb(0 0 0 / 0.5), 0 12px 28px -14px rgb(0 0 0 / 0.7);
-  --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px var(--border-seam), 0 1px 2px rgb(0 0 0 / 0.5);
-  --shadow-field:   inset 0 1px 3px rgb(0 0 0 / 0.45);
-  --shadow-band:    0 1px 0 var(--border-default), 0 4px 10px -8px rgb(0 0 0 / 0.8);
-  --icon-tint-rest: var(--pencil-200);
+
+[data-surfaces="app"][data-theme="dark"] {
+  --seed-paper:  var(--theme-dark-paper,  #16140F);
+  --seed-ink:    var(--theme-dark-ink,    #F2ECE1);
+  --seed-pencil: var(--theme-dark-pencil, #2E2BFF);
+  --seed-plate:  var(--theme-dark-plate,  #0E0C09);
+  --seed-table:  var(--theme-dark-table,  #2B2620);
+
+  --accent:          var(--seed-pencil);
+  --surface-paper:   var(--seed-paper);
+  --surface-raised:  color-mix(in oklab, var(--seed-ink) 5%, var(--seed-paper));
+  --surface-overlay: color-mix(in oklab, var(--seed-ink) 9%, var(--seed-paper));
+  --surface-sunken:  color-mix(in oklab, #000000 18%, var(--seed-paper));
+  --surface-inverse: var(--seed-ink);
+  --surface-table:   var(--seed-table);
+  --scrim:           rgb(0 0 0 / 0.62);
+
+  --ink-primary:   var(--seed-ink);
+  --ink-secondary: oklch(from color-mix(in oklab, var(--seed-ink) 77%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+  --ink-tertiary:  oklch(from color-mix(in oklab, var(--seed-ink) 60%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+  --ink-disabled:  oklch(from color-mix(in oklab, var(--seed-ink) 36%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+  --ink-inverse:   var(--seed-paper);
+
+  --border-subtle:  oklch(from color-mix(in oklab, var(--seed-ink) 13%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+  --border-default: oklch(from color-mix(in oklab, var(--seed-ink) 18%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+  --border-seam:    oklch(from color-mix(in oklab, var(--seed-ink) 24%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+  --border-worn:    oklch(from color-mix(in oklab, var(--seed-ink) 34%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+  --border-strong:  oklch(from color-mix(in oklab, var(--seed-ink) 48%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+  --desk-toned:     oklch(from color-mix(in oklab, var(--seed-ink) 7%,  var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+
+  --plate:           var(--seed-plate);
+  --on-plate:        var(--seed-ink);
+  --on-plate-2:      oklch(from color-mix(in oklab, var(--on-plate) 78%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
+  --on-plate-3:      oklch(from color-mix(in oklab, var(--on-plate) 62%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
+  --plate-raised:    color-mix(in oklab, var(--seed-plate) 90%, var(--on-plate));
+  --plate-sunken:    color-mix(in oklab, var(--seed-plate) 70%, #000000);
+  --plate-edge:      color-mix(in oklab, var(--seed-plate) 86%, var(--on-plate));
+  --plate-tint:      color-mix(in srgb, var(--pencil-on-plate) 22%, var(--seed-plate));
+  --pencil-on-plate: oklch(from color-mix(in srgb, var(--seed-pencil), #FFFFFF 50%) max(l, 0.78) c h);
+  --plate-current:   color-mix(in srgb, var(--accent-fill) 38%, var(--seed-plate));
+
+  --shadow-1:       0 1px 0 rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.30);
+  --shadow-2:       0 1px 2px rgb(0 0 0 / 0.35), 0 10px 28px -8px rgb(0 0 0 / 0.55);
+  --shadow-3:       0 2px 6px rgb(0 0 0 / 0.40), 0 28px 64px -16px rgb(0 0 0 / 0.70);
+  --shadow-sheet:   inset 0 1px 0 rgb(255 255 255 / 0.035), 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 1px rgb(0 0 0 / 0.45);
+  --shadow-field:   inset 0 1px 2px rgb(0 0 0 / 0.30);
+  --shadow-band:    0 1px 0 var(--border-default);
+  --icon-tint-rest: none;
 }
 @media (prefers-color-scheme: dark) {
-  [data-look="bold"][data-theme="system"] {
-    --plate:        #0E0C09;
-    --plate-raised: #1E1B16;
-    --plate-sunken: #080706;
-    --plate-edge:   #2A261F;
-    --desk-toned:   #24201A;
+  [data-surfaces="app"][data-theme="system"] {
+    --seed-paper:  var(--theme-dark-paper,  #16140F);
+    --seed-ink:    var(--theme-dark-ink,    #F2ECE1);
+    --seed-pencil: var(--theme-dark-pencil, #2E2BFF);
+    --seed-plate:  var(--theme-dark-plate,  #0E0C09);
+    --seed-table:  var(--theme-dark-table,  #2B2620);
+
+    --accent:          var(--seed-pencil);
+    --surface-paper:   var(--seed-paper);
+    --surface-raised:  color-mix(in oklab, var(--seed-ink) 5%, var(--seed-paper));
+    --surface-overlay: color-mix(in oklab, var(--seed-ink) 9%, var(--seed-paper));
+    --surface-sunken:  color-mix(in oklab, #000000 18%, var(--seed-paper));
+    --surface-inverse: var(--seed-ink);
+    --surface-table:   var(--seed-table);
+    --scrim:           rgb(0 0 0 / 0.62);
+
+    --ink-primary:   var(--seed-ink);
+    --ink-secondary: oklch(from color-mix(in oklab, var(--seed-ink) 77%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+    --ink-tertiary:  oklch(from color-mix(in oklab, var(--seed-ink) 60%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+    --ink-disabled:  oklch(from color-mix(in oklab, var(--seed-ink) 36%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+    --ink-inverse:   var(--seed-paper);
+
+    --border-subtle:  oklch(from color-mix(in oklab, var(--seed-ink) 13%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+    --border-default: oklch(from color-mix(in oklab, var(--seed-ink) 18%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+    --border-seam:    oklch(from color-mix(in oklab, var(--seed-ink) 24%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+    --border-worn:    oklch(from color-mix(in oklab, var(--seed-ink) 34%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+    --border-strong:  oklch(from color-mix(in oklab, var(--seed-ink) 48%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+    --desk-toned:     oklch(from color-mix(in oklab, var(--seed-ink) 7%,  var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+
+    --plate:           var(--seed-plate);
+    --on-plate:        var(--seed-ink);
+    --on-plate-2:      oklch(from color-mix(in oklab, var(--on-plate) 78%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
+    --on-plate-3:      oklch(from color-mix(in oklab, var(--on-plate) 62%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
+    --plate-raised:    color-mix(in oklab, var(--seed-plate) 90%, var(--on-plate));
+    --plate-sunken:    color-mix(in oklab, var(--seed-plate) 70%, #000000);
+    --plate-edge:      color-mix(in oklab, var(--seed-plate) 86%, var(--on-plate));
+    --plate-tint:      color-mix(in srgb, var(--pencil-on-plate) 22%, var(--seed-plate));
+    --pencil-on-plate: oklch(from color-mix(in srgb, var(--seed-pencil), #FFFFFF 50%) max(l, 0.78) c h);
+    --plate-current:   color-mix(in srgb, var(--accent-fill) 38%, var(--seed-plate));
+
+    --shadow-1:       0 1px 0 rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.30);
+    --shadow-2:       0 1px 2px rgb(0 0 0 / 0.35), 0 10px 28px -8px rgb(0 0 0 / 0.55);
+    --shadow-3:       0 2px 6px rgb(0 0 0 / 0.40), 0 28px 64px -16px rgb(0 0 0 / 0.70);
+    --shadow-sheet:   inset 0 1px 0 rgb(255 255 255 / 0.035), 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 1px rgb(0 0 0 / 0.45);
+    --shadow-field:   inset 0 1px 2px rgb(0 0 0 / 0.30);
+    --shadow-band:    0 1px 0 var(--border-default);
+    --icon-tint-rest: none;
+}
+}
+
+/* --------------------------------------------------------------------------
+   7. Theme switches — fixed choices, set as attributes on <html>:
+     data-look-sidebar  sheet | desk | plate    the sidebar's material
+     data-look-assist   ruled | washed          where the assistant works
+     data-look-icons    one-tone | duotone      icons at rest
+     data-look-depth    soft | lit              how far things stand off
+   (data-look itself names the theme: quiet, plate, desk or a custom id; it
+   is informational — nothing is drawn from it.) Absent = Quiet's choice
+   (sheet, ruled, one-tone, soft). The rules each switch drives live in
+   packages/web/src/styles/themes.css; the tokens they need are here.
+   -------------------------------------------------------------------------- */
+[data-surfaces="app"][data-look-depth="lit"] {
+  --shadow-1:       0 0 0 1px color-mix(in srgb, var(--shadow-ink) 5%, transparent), 0 1px 1px color-mix(in srgb, var(--shadow-ink) 4%, transparent), 0 2px 6px -1px color-mix(in srgb, var(--shadow-ink) 7%, transparent), 0 12px 28px -14px color-mix(in srgb, var(--shadow-ink) 16%, transparent);
+  --shadow-sheet:   var(--shadow-1);
+  --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 0 0 1px var(--border-seam), 0 1px 2px color-mix(in srgb, var(--shadow-ink) 12%, transparent), 0 2px 5px -2px color-mix(in srgb, var(--shadow-ink) 12%, transparent);
+  --shadow-field:   inset 0 1px 2px color-mix(in srgb, var(--shadow-ink) 9%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--shadow-ink) 2%, transparent);
+  --shadow-press:   inset 0 1px 0 rgb(255 255 255 / 0.26), inset 0 -1px 0 rgb(0 0 0 / 0.22), 0 1px 2px color-mix(in srgb, var(--shadow-ink) 30%, transparent), 0 3px 8px -4px color-mix(in srgb, var(--shadow-ink) 35%, transparent);
+  --shadow-band:    0 1px 0 var(--border-default), 0 4px 10px -8px color-mix(in srgb, var(--shadow-ink) 25%, transparent);
+}
+[data-surfaces="app"][data-look-depth="lit"][data-theme="dark"] {
+  --shadow-1:       inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.5), 0 2px 6px -1px rgb(0 0 0 / 0.5), 0 12px 28px -14px rgb(0 0 0 / 0.7);
+  --shadow-sheet:   var(--shadow-1);
+  --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px var(--border-seam), 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-field:   inset 0 1px 3px rgb(0 0 0 / 0.45);
+  --shadow-press:   inset 0 1px 0 rgb(255 255 255 / 0.16), inset 0 -1px 0 rgb(0 0 0 / 0.22), 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-band:    0 1px 0 var(--border-default), 0 4px 10px -8px rgb(0 0 0 / 0.8);
+}
+@media (prefers-color-scheme: dark) {
+  [data-surfaces="app"][data-look-depth="lit"][data-theme="system"] {
     --shadow-1:       inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.5), 0 2px 6px -1px rgb(0 0 0 / 0.5), 0 12px 28px -14px rgb(0 0 0 / 0.7);
+    --shadow-sheet:   var(--shadow-1);
     --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px var(--border-seam), 0 1px 2px rgb(0 0 0 / 0.5);
     --shadow-field:   inset 0 1px 3px rgb(0 0 0 / 0.45);
+    --shadow-press:   inset 0 1px 0 rgb(255 255 255 / 0.16), inset 0 -1px 0 rgb(0 0 0 / 0.22), 0 1px 2px rgb(0 0 0 / 0.5);
     --shadow-band:    0 1px 0 var(--border-default), 0 4px 10px -8px rgb(0 0 0 / 0.8);
   }
 }
+[data-surfaces="app"][data-look-icons="duotone"] { --icon-tint-rest: var(--pencil-200); }
