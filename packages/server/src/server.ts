@@ -542,6 +542,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   }
   let phase: ServerPhase = "starting";
   let ops: InstallOps | null = null;
+  /** The editor's own rounds, once made (below): a restore waits for one in progress. */
+  let rounds: KeepUp | null = null;
   let draining = false;
   let inflight = 0;
   const readiness = (): ReadyStatus => (ops ? ops.readiness() : phase === "starting" ? { ready: false, state: "starting" } : { ready: true, state: "ready" });
@@ -730,6 +732,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
       log: out,
       restoreMaxBytes: config.restoreMaxBytes,
       phase: { get: () => phase, set: (next) => (phase = next) },
+      // Made further down, once the app is: asked only when a restore runs.
+      roundIdle: () => rounds?.idle() ?? Promise.resolve(),
     });
   }
   const app = createApp(services, {
@@ -777,7 +781,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   handler = (request, env) => app.fetch(request, env as never);
   phase = "running";
   // Hosted: the editor keeps up with its repository by itself (keep-up.ts). A round needs the connected site and an install with nothing else under way.
-  const keepUp: KeepUp | null =
+  const keepUp: KeepUp | null = (rounds =
     install && config.syncMinutes !== null
       ? createKeepUp({
           minutes: config.syncMinutes,
@@ -787,15 +791,24 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
             return id ? services.registry.get(id) : null;
           },
           busy: () => {
+            const jobs = new Set(busyJobs.values());
+
+            if (phase !== "running") return phase === "restoring" ? "a backup is being put back" : "the editor is still starting";
+            if (draining) return "the editor is stopping";
+            if (ops?.restoring() || jobs.has("restore")) return "a backup is being put back";
+            if (jobs.has("publish")) return "a publish is in progress";
+            return jobs.size > 0 ? "the site is being connected" : null;
+          },
+          // An assistant's turn counts as work in progress: it writes from what it read, and versions must not come in under it.
+          working: () => {
             const siteId = install!.siteId();
 
-            // An assistant's turn counts as work in progress: it writes from what it read, and versions coming in under it would be written over.
-            return phase !== "running" || draining || (ops?.restoring() ?? false) || busyJobs.size > 0 || (siteId !== null && (services.agent.working?.(siteId) ?? false));
+            return siteId !== null && (services.agent.working?.(siteId) ?? false) ? "the assistant is working on the site" : null;
           },
           log: (line) => out.event(line),
           ...(options.syncTimer ? { timer: options.syncTimer } : {}),
         })
-      : null;
+      : null);
 
   let closing: Promise<void> | null = null;
 
