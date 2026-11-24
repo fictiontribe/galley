@@ -11,3 +11,4 @@ export { deriveColours, accentRoles, DERIVED_PROPERTY, type DerivedColours } fro
 export { BUILTIN_THEMES, DEFAULT_THEME_ID, QUIET, PLATE, DESK, builtinThemes, isBuiltinTheme } from "./builtin";
 export { contrast, fromHex, toHex, toOklch, fromOklch, isHex } from "./colour";
 export * from "./apply";
+export * from "./catalog";

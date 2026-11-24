@@ -1,11 +1,13 @@
 /**
  * The app's look as the overlay needs it: the accent actually in use (the
- * white-label brand's, or the default) and whether the app is light or dark
- * right now, so outlines and the "Click to edit" tag match a re-branded app.
+ * theme's pencil, which on a white-label install is the brand's accent) and
+ * whether the app is light or dark right now, so outlines and the "Click to
+ * edit" tag match the app.
  */
 import { useEffect, useState } from "react";
 import { useMeta } from "@/lib/stores/meta";
 import { useUi } from "@/lib/stores/ui";
+import { useShownLook } from "@/app/look";
 import { toHex } from "./frames";
 
 export interface AppAppearance {
@@ -25,6 +27,7 @@ function read(): AppAppearance | null {
 export function useAppAppearance(): AppAppearance | null {
   const brandAccent = useMeta((s) => s.meta?.brand.accent);
   const theme = useUi((s) => s.theme);
+  const look = useShownLook();
   const [appearance, setAppearance] = useState<AppAppearance | null>(read);
   useEffect(() => {
     // After BrandEffects has applied the brand and theme to the document.
@@ -36,6 +39,6 @@ export function useAppAppearance(): AppAppearance | null {
       cancelAnimationFrame(frame);
       media.removeEventListener("change", onChange);
     };
-  }, [brandAccent, theme]);
+  }, [brandAccent, theme, look]);
   return appearance;
 }

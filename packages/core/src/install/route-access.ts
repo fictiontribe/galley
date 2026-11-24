@@ -67,6 +67,11 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "GET /api/usage": "manage",
   "GET /api/usage/sites": "manage",
 
+  // ── themes for the app: everyone chooses their own (in their browser); saving one for everyone, and the default, is the install's ──
+  "GET /api/themes": "edit",
+  "PUT /api/themes/:themeId": "manage",
+  "DELETE /api/themes/:themeId": "manage",
+
   // ── sites (adding, removing and filing them is refused on a hosted install anyway) ──
   "GET /api/sites": "edit",
   "POST /api/sites/open": "manage",

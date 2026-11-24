@@ -17,6 +17,7 @@
  * - Live updates arrive over `GET /api/events` (Server-Sent Events, each
  *   `data:` line one JSON `ServerEvent`).
  */
+import type { PluginTheme, ThemeAdjustment, ThemeFile, ThemeWarning } from "./themes";
 import type {
   BuildResult,
   ChangeSet,
@@ -304,6 +305,23 @@ export interface RedirectImportBody {
   siteHosts?: string[];
 }
 
+/** `GET /api/themes`. */
+export interface ThemesInfo {
+  /** Saved for everyone here, in the install's data folder. */
+  saved: ThemeFile[];
+  /** Themes added by plugins, checked like any other. */
+  plugins: PluginTheme[];
+  /** The install's default theme: App settings' choice, else a white-label brand's, else Quiet. */
+  defaultId: string;
+}
+
+/** `PUT /api/themes/:themeId`: the theme as saved (adjusted colours), and what the check changed and warned about. */
+export interface SavedTheme {
+  theme: ThemeFile;
+  adjusted: ThemeAdjustment[];
+  warnings: ThemeWarning[];
+}
+
 export interface ApiRoutes {
   // ── meta & auth ────────────────────────────────────────────────────────
   "GET /api/meta": { response: MetaInfo };
@@ -324,6 +342,13 @@ export interface ApiRoutes {
   /** `value: null` removes a stored secret. */
   "PUT /api/secrets/:name": { body: { value: string | null }; response: SecretStatus };
   "GET /api/usage": { response: UsageSummary };
+
+  // ── themes for the app (docs/themes.md) ────────────────────────────────
+  /** The themes saved for everyone here, the ones plugins add, and the install's default. Built-ins ship with the app. */
+  "GET /api/themes": { response: ThemesInfo };
+  /** Save a theme for everyone here (adding or replacing). It is checked first; a refused theme is a 400 with the check's words, an adjusted one is stored adjusted. */
+  "PUT /api/themes/:themeId": { body: { theme: ThemeFile }; response: SavedTheme };
+  "DELETE /api/themes/:themeId": { response: Ok };
 
   // ── sites ──────────────────────────────────────────────────────────────
   "GET /api/sites": { response: SiteSummary[] };

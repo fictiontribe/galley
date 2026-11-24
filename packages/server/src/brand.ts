@@ -18,6 +18,8 @@ export const brandFileSchema = z
     byline: z.string().max(120).optional(),
     logoUrl: logo.optional(),
     accent: hex.optional(),
+    /** A theme's id (built-in, saved or from a plugin): the one the install starts with. */
+    theme: z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/, "it must be a theme's id, like plate").optional(),
     supportUrl: link.optional(),
     docsUrl: link.optional(),
   })

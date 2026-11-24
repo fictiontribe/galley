@@ -1175,6 +1175,8 @@ export type ServerEvent =
   | { type: "job"; job: Job }
   /** A plugin was enabled, disabled, saved or failed: read GET /api/plugins again. */
   | { type: "plugins.updated" }
+  /** A theme was saved for everyone or deleted, or the install's default theme changed: read GET /api/themes and /api/meta again. */
+  | { type: "themes.updated" }
   /**
    * The form inbox changed: a submission arrived ("added", with the
    * submission), was marked read/spam or got a forwarding result ("updated"),
@@ -1479,7 +1481,12 @@ export interface Settings {
    * repository's own git settings before it (workspace/author.ts).
    */
   authorSaved?: boolean;
-  appearance: { theme: "system" | "light" | "dark" };
+  /**
+   * `theme` is the appearance (light, dark or the system's; its name is
+   * older than themes). `look` is the id of the install's default theme
+   * (docs/themes.md); absent means the brand's, else Quiet.
+   */
+  appearance: { theme: "system" | "light" | "dark"; look?: string };
   secrets: SecretStatus[];
   /** Multi-site: the preview limits. Absent from servers that don't manage previews. */
   previews?: PreviewPolicySettings;
@@ -1490,7 +1497,7 @@ export interface SettingsPatch {
   images?: { provider?: string | null; model?: string | null };
   videos?: { provider?: string | null; model?: string | null };
   author?: { name?: string; email?: string };
-  appearance?: { theme?: "system" | "light" | "dark" };
+  appearance?: { theme?: "system" | "light" | "dark"; look?: string };
   previews?: { maxRunning?: number; idleMinutes?: number };
 }
 
@@ -1538,8 +1545,10 @@ export interface BrandConfig {
   byline: string;
   /** URL or data: URL of a logo mark; absent uses the built-in mark. */
   logoUrl?: string;
-  /** Accent colour override (hex). */
+  /** Accent colour override (hex): the built-in themes' pencil on this install (docs/themes.md). */
   accent?: string;
+  /** The theme this install starts with until App settings names another (a built-in, saved or plugin theme's id). */
+  theme?: string;
   supportUrl?: string;
   docsUrl?: string;
 }
@@ -1558,6 +1567,12 @@ export interface MetaInfo {
   install?: import("./install/types").InstallMeta;
   /** Hosted mode, signed in: who this is and what they may do. Absent in local mode and when signed out. */
   account?: import("./install/accounts").AccountSession;
+  /**
+   * The install's default theme, as it is put on the page (colours and
+   * switches, no words), so the sign-in screen and anyone who hasn't chosen
+   * see it. Absent from servers from before themes: Quiet.
+   */
+  look?: import("./themes").AppliedTheme;
 }
 
 // ─────────────────────────────────────────────────────────────── deploy
