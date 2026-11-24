@@ -8,6 +8,8 @@ import type { StepId } from "./steps";
 
 export interface Target {
   element: HTMLElement | null;
+  /** What the card stays clear of, when that is more than the control: the whole change a button belongs to. */
+  around?: HTMLElement | null;
   /** The next thing to do, in the card. */
   hint?: string;
 }
@@ -64,8 +66,11 @@ export function targetFor(step: StepId): Target {
       return { element: shown(document.querySelector(".chat-composer")) };
     case "proof":
       return { element: proofLink(), hint: "Open Proof" };
-    case "putBack":
-      return { element: byText("button", /^Put back$/), hint: "Press Put back on one change" };
+    case "putBack": {
+      const button = byText("button", /^Put back$/);
+      // Beside the whole change, not over the words it is about.
+      return { element: button, around: shown(button?.closest(".proof-change")), hint: "Press Put back on one change" };
+    }
     case "publish":
       if (dialog) return { element: byText("button", /^Publish \d/, dialog), hint: "Press Publish in the dialog" };
       return { element: byText("button", /^Publish$/), hint: "Press Publish" };
