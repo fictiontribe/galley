@@ -1,0 +1,6 @@
+# Every text file is checked out with LF line endings on every system.
+# Without this, git on Windows rewrites them with CRLF, and whatever reads a
+# file exactly — the site kit's copied files and their checksums, front
+# matter, test fixtures — differs from one computer to the next. (The
+# Windows build of the desktop app stopped on exactly that.)
+* text=auto eol=lf

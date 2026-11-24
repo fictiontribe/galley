@@ -7,8 +7,35 @@ entry says how.
 
 ## Unreleased
 
+### Changed
+
+- **The macOS desktop app is signed and notarised by Apple.** It opens like
+  any other downloaded app, on Apple silicon and Intel.
+- **Desktop installers for Windows and Linux are built on every release**,
+  unsigned, alongside the two for macOS, and gathered with their SHA-256
+  sums into a draft release. On each system the packaged server is started
+  and walked through a site before the installer is kept, and on Windows
+  the app is installed and opened. No person has used it on Windows or Linux
+  yet.
+
 ### Fixed
 
+- **On Windows, a site's preview could not start**: the command lookup found
+  the plain `npm` file that ships beside `npm.cmd`, which Windows can't run.
+  Names are now tried with Windows' own endings first.
+- **The Mac app, started from a terminal through a path with a symbolic link
+  in it** (a copy under `/tmp`, say), said "This copy is incomplete. Reinstall
+  it." with nothing missing. It now finds its server from its own folder,
+  and when something really is missing the details say what was looked for.
+- **On Windows, the desktop app could not start**: it handed its server's
+  path to Node.js in the long `\\?\C:\…` form Windows returns, which Node
+  can't open, so the window said "Couldn't start" on every launch. It now
+  uses the ordinary spelling.
+- **On Windows, the desktop app's start-up check said git was missing** for
+  every Git for Windows install (it reports itself as `2.47.1.windows.1`).
+- **Building on Windows** stopped at the first file read exactly, because
+  git there checked text files out with CRLF line endings. Every text file
+  is now checked out with LF on every system (`.gitattributes`).
 - **Next.js 16 no longer writes an AGENTS.md into the site** when Galley
   is started from Cursor's agent, GitHub Copilot's CLI, Augment or
   Antigravity: the preview's dev server no longer gets the variables those
