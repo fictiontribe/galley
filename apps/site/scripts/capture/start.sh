@@ -17,6 +17,8 @@
 #
 # CAPTURE_DIR (default /tmp/galley-capture) holds home/, galley-home/, hosted-home/, logs/ and pids/.
 # GALLEY_VERSION (default 0.3.1) is the galley-cms release to run.
+# GALLEY_CLI, when set, is a built CLI to run instead of a release: the galley.mjs made by
+#   GALLEY_CLI_DIST=<folder> node packages/cli/build.mjs   (README.md, "Pictures of what isn't released yet")
 # The assistant: set ANTHROPIC_API_KEY in your own shell before "start.sh galley";
 # it is passed to that one process and to nothing else. This script reads no key file.
 # FAKES / WP_FAKES may point at copies of the test helpers (see README.md).
@@ -25,6 +27,8 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../../../.." && pwd)
 C=${CAPTURE_DIR:-/tmp/galley-capture}
 V=${GALLEY_VERSION:-0.3.1}
+# The command that runs the app. Split into words where it is used, on purpose.
+if [ -n "$GALLEY_CLI" ]; then G="node $GALLEY_CLI"; else G="npx --yes galley-cms@$V"; fi
 H="$C/home"
 mkdir -p "$H/sites" "$C/galley-home" "$C/logs" "$C/pids"
 # One npm cache for every npx below, inside the throwaway home.
@@ -37,7 +41,7 @@ stop_tree() { for c in $(pgrep -P "$1" 2>/dev/null); do stop_tree "$c"; done; ki
 case "$1" in
   sites)
     for s in caddow lowfield; do
-      [ -d "$H/sites/$s" ] || clean npx --yes "galley-cms@$V" new "$s" --starter "$s" --no-start --dir "$H/sites"
+      [ -d "$H/sites/$s" ] || clean $G new "$s" --starter "$s" --no-start --dir "$H/sites"
       # Versions are published as an invented person from the starter.
       git -C "$H/sites/$s" config user.name "Tobiah Rusk"
       git -C "$H/sites/$s" config user.email "tobiah@caddow.example"
@@ -66,20 +70,20 @@ case "$1" in
       GALLEY_DEPLOY_CLOUDFLARE_API="http://127.0.0.1:4791/client/v4" \
       GALLEY_DEPLOY_PROBE="http://127.0.0.1:4791/__probe?host={host}" \
       HOSTING_ENV="$C/hosting.env" \
-      sh -c 'if [ -f "$HOSTING_ENV" ]; then . "$HOSTING_ENV"; fi; exec npx --yes "galley-cms@$0" "$1" --no-open --port 4790' "$V" "$H/sites/caddow"
+      sh -c 'if [ -f "$HOSTING_ENV" ]; then . "$HOSTING_ENV"; fi; exec $0 "$1" --no-open --port 4790' "$G" "$H/sites/caddow"
     echo "Galley starting (log: $C/logs/galley.log; its Open: line carries the token)" ;;
   hosted)
     [ "${#HOSTED_PASSWORD}" -ge 12 ] || { echo "Set HOSTED_PASSWORD (12 characters or more) to a throwaway password."; exit 1; }
     mkdir -p "$C/hosted-home/home"
     cd "$C/hosted-home"
     bg hosted GALLEY_HOME="$C/hosted-home" GALLEY_PUBLIC_URL="http://cms.localhost:4797" GALLEY_PASSWORD="$HOSTED_PASSWORD" \
-      npx --yes "galley-cms@$V" serve --host 127.0.0.1 --port 4797
+      $G serve --host 127.0.0.1 --port 4797
     echo "Hosted install starting at http://cms.localhost:4797 (log: $C/logs/hosted.log)" ;;
   people)
     [ -f "$C/people/sites.json" ] || { echo "Make $C/people/sites.json first (README.md, Accounts)."; exit 1; }
     cd "$C/people"
     bg people GALLEY_HOME="$C/people" GALLEY_PUBLIC_URL="http://cms.localhost:4801" \
-      npx --yes "galley-cms@$V" serve --host 127.0.0.1 --port 4801
+      $G serve --host 127.0.0.1 --port 4801
     sleep 15; grep -c "^Setup:" "$C/logs/people.log" >/dev/null && echo "People install up (its Setup: link is in $C/logs/people.log)" ;;
   stop)
     for f in "$C"/pids/*.pid; do

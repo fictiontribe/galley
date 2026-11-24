@@ -6,8 +6,12 @@ browser. These are the steps to set that Galley up. Everything runs with a throw
 real settings, keys or site lists are read or written, and every address in the pictures is made up.
 
 You need: Node 22 or later, `pnpm install` done in this repository (for the stand-in servers'
-`tsx`), network access for `npx`, `cwebp` and `webpinfo` (libwebp), and a `node_modules`
-folder with `playwright-core` and its Chromium. The assistant steps need an Anthropic key.
+`tsx`), network access for `npx`, `cwebp` (libwebp: `brew install webp`), and a `node_modules`
+folder with `playwright-core` and its Chromium. The assistant steps need an Anthropic key. The
+`drag` recording uses the ffmpeg Playwright installs beside its browsers, or `ffmpeg` on the PATH.
+
+The pictures have no scroll bars and no room kept for them, whatever this computer's own setting:
+the script puts a style into every page of its own browser for that. It prints the Chromium it used.
 
 ## 1. Start everything
 
@@ -33,8 +37,8 @@ sh apps/site/scripts/capture/start.sh hosted
   the key it accepts — a fixed test value, not a credential.
 - `wordpress` starts the importer's stand-in WordPress site, Fernhill Garden Studio (12 posts,
   6 pages, 2 of them built with Elementor).
-- `hosting` starts the stand-in Fly.io (and Cloudflare) that "Host the editor online" talks to
-  (`scripts/rehearse-hosting.mjs`), and writes the variables `galley` needs to
+- `hosting` starts the stand-in Fly.io (and Cloudflare, and a stand-in Google Cloud on port 4544)
+  that "Host the editor online" talks to (`scripts/rehearse-hosting.mjs`), and writes the variables `galley` needs to
   `$CAPTURE_DIR/hosting.env` (the stand-ins' addresses and the stand-in Fly.io's made-up key). Run
   it before `galley`.
 - `galley` starts the released app (`npx galley-cms@0.3.1`, or `GALLEY_VERSION`) on port 4790, open
@@ -44,6 +48,22 @@ sh apps/site/scripts/capture/start.sh hosted
 - `hosted` starts a hosted install (`galley serve`, no site connected) at
   `http://cms.localhost:4797`, with `HOSTED_PASSWORD` as its password, for its sign-in and first-run
   pictures. It listens on this computer only.
+
+### Pictures of what isn't released yet
+
+`start.sh` runs the released package. To take the pictures from this repository as it is (a look
+or a screen no release has yet), build the app and a bundle of the CLI once, and give `start.sh`
+the bundle as `GALLEY_CLI`; every command above then runs it instead of `npx galley-cms`:
+
+```sh
+pnpm --filter @galley/web build
+GALLEY_CLI_DIST=$CAPTURE_DIR/cli node packages/cli/build.mjs
+export GALLEY_CLI=$CAPTURE_DIR/cli/galley.mjs
+```
+
+The bundle is a copy: later edits to the repository don't change a run in progress. The words
+"captured … Galley X.Y.Z" in `howto.json` are the version that build reports, which is the last
+release's until the version is raised.
 
 To keep later edits to the repository from changing a run, copy
 `packages/core/test/deploy/fakes/` and `packages/import-wordpress/test/{serve-fake-site,fake-site,png}.ts`
@@ -65,6 +85,12 @@ From `apps/site/`, with the two ids from the last command and the key `host` pri
 ```sh
 GALLEY_ORIGIN=http://127.0.0.1:4790 GALLEY_TOKEN=$TOKEN GALLEY_SITE=<Caddow id> SITE_DIR=$CAPTURE_DIR/home/sites/caddow WP_SITE=<Lowfield id> WP_URL=http://127.0.0.1:4792 CF_KEY=<the stand-in key> HOSTED_URL=http://cms.localhost:4797 HOSTED_PASSWORD=$HOSTED_PASSWORD PLAYWRIGHT_MODULES=<node_modules with playwright-core> node scripts/capture-screens.mjs
 ```
+
+To try a run without touching the committed pictures, add `CAPTURE_OUT=<a folder>`: the pictures
+and `howto.json` go there, in the same layout (`public/screens/…`, `src/data/howto.json`).
+
+The script sets the app to its light appearance and the Quiet theme, so the pictures don't depend
+on the install's default theme.
 
 With no step names it runs the whole session in order (about an hour; the assistant steps cost
 about $0.50 together). Name steps to re-make only those; the header of `capture-screens.mjs` lists
