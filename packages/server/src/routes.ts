@@ -33,7 +33,7 @@ import { installRoutes } from "./install-routes";
 import { accountsMeta, accountsRoutes, eventAccess, signInWithAccount, signOutThisBrowser, streamLimits } from "./accounts-routes";
 import { previewEntry } from "./preview-entry";
 import { hostingRoutes } from "./hosting-routes";
-import { checkLookPatch, defaultLook, themeRoutes } from "./themes-routes";
+import { checkLookPatch, defaultLook, publicLook, themeRoutes } from "./themes-routes";
 import { assertInside, listFolders, looksLikeSite, realDirectory } from "./fs-list";
 import { extensionOf, isImagePath, rawContentTypeFor, UPLOAD_TYPES } from "./mime";
 import type { AppOptions, Services, StreamRegistry } from "./types";
@@ -223,7 +223,7 @@ export const routes: RouteTable = {
       if (account) meta.account = account;
     }
     // The default theme, so the sign-in screen and anyone who hasn't chosen show it: colours and switches only.
-    const look = await defaultLook(ctx).catch(() => null);
+    const look = await (authenticated ? defaultLook(ctx) : publicLook(ctx)).catch(() => null);
 
     if (look) meta.look = look;
     return meta;

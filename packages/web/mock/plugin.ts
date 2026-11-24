@@ -117,7 +117,8 @@ export function galleyMock(): Plugin {
         if ((req.url ?? "").split("?")[0] !== "/theme.js") return next();
         try {
           const script = await readFile(new URL("../public/theme.js", import.meta.url), "utf8");
-          const look = await mock.backend.defaultLook().catch(() => null);
+          const found = await mock.backend.defaultLook().catch(() => null);
+          const look = found ? { ...found, id: "default" } : null;
           const start = JSON.stringify({ keeper: mode === "hosted" ? "browser" : "server", look }).replace(/</g, "\\u003c");
           res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" });
           res.end(`self.galleyStart=${start};\n${script}`);

@@ -2109,6 +2109,12 @@ export interface ImageService {
 
 export interface SettingsService {
   /**
+   * Only the id of the install's default theme (`appearance.look`), read
+   * without resolving anything else: what the start-up script and the
+   * sign-in screen need, on every visit.
+   */
+  look?(): Promise<string | undefined>;
+  /**
    * `siteId` (or, when absent, the site whose request is being served — see
    * site/scope.ts) resolves the keys' status and the author for that site:
    * its own, else the shared ones.

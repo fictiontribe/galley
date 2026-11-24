@@ -366,7 +366,8 @@ export function createHandlers(mock: MockBackend): Handlers {
       const meta: MetaInfo = { version: VERSION, brand: DEFAULT_BRAND, mode: mock.options.mode, authenticated: mock.authenticated, desktop: false, platform: process.platform };
       // The default theme, as the real server adds it (colours and switches only).
       const look = themes.current();
-      if (look) meta.look = look;
+      // To anyone not signed in, under a constant id (its own is a slug of its name), as the real server sends it.
+      if (look) meta.look = mock.authenticated ? look : { ...look, id: "default" };
       return meta;
     },
     "POST /api/auth/login": ({ body }) => {

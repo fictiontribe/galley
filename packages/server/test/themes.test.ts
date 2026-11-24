@@ -94,25 +94,49 @@ describe("the install's default theme", () => {
     // Anyone, signed in or not, gets the default's colours and switches, and no words.
     const meta = await json(await app.request("/api/meta"));
     expect(meta.authenticated).toBe(false);
-    expect(meta.look.id).toBe("fog");
+    // Not its id (a slug of its name): a constant, with Fog's colours and switches.
+    expect(meta.look.id).toBe("default");
+    expect(meta.look.light.pencil).toBe(FOG.light.pencil);
+    expect(meta.look.light.paper).not.toBe(QUIET.light.paper);
     expect(Object.keys(meta.look).sort()).toEqual(["dark", "id", "light", "switches", "tuned"]);
+    expect((await json(await call("GET", "/api/meta"))).look.id).toBe("fog");
     const script = await (await app.request("/theme.js")).text();
     expect(script.startsWith("self.galleyStart={")).toBe(true);
     expect(script).toContain('"keeper":"server"');
-    expect(script).toContain('"id":"fog"');
+    expect(script).toContain('"id":"default"');
+    expect(script).not.toContain("fog");
     expect(script.endsWith("/* the start-up script */")).toBe(true);
     // Deleting the default falls back to Quiet.
     await call("DELETE", "/api/themes/fog");
-    expect((await json(await app.request("/api/meta"))).look.id).toBe("quiet");
+    expect((await json(await app.request("/api/meta"))).look.light.paper).toBe(QUIET.light.paper);
   });
 
   it("starts as a white-label brand's theme, with the brand's accent as the built-ins' pencil", async () => {
     const { app } = setup({ brand: { productName: "Acme Editor", byline: "", accent: "#0F766E", theme: "desk" } });
     const meta = await json(await app.request("/api/meta"));
-    expect(meta.look.id).toBe("desk");
+    expect(meta.look.id).toBe("default");
     expect(meta.look.light.pencil).toBe("#0F766E");
     expect(meta.look.dark.pencil).toBe("#0F766E");
     expect(meta.look.switches.sidebar).toBe("desk");
+  });
+});
+
+describe("a visitor who isn't signed in", () => {
+  it("costs one read of one field, once, until something changes", async () => {
+    const home = mkdtempSync(join(tmpdir(), "galley-themes-"));
+    homes.push(home);
+    const settings = createSettingsService({ home, env: {} });
+    let gets = 0;
+    let looks = 0;
+    const counted = { ...settings, get: (...args: Parameters<typeof settings.get>) => (gets++, settings.get(...args)), look: () => (looks++, settings.look()) };
+    const events = createEventBus();
+    const app = createApp({ ...buildServices({ events, settings: counted }), themes: createThemeStore({ home }) }, appOptions());
+    for (let i = 0; i < 5; i++) await app.request("/api/meta");
+    expect(gets).toBe(0);
+    expect(looks).toBe(1);
+    events.emit({ type: "themes.updated" });
+    await app.request("/api/meta");
+    expect(looks).toBe(2);
   });
 });
 

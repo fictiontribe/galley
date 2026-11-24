@@ -243,6 +243,10 @@ export function createSettingsService(options: SettingsServiceOptions): GalleySe
     get,
     authorLayers,
 
+    async look() {
+      return (await load()).appearance?.look;
+    },
+
     update(patch) {
       const task = async () => {
         await validatePatch(patch);

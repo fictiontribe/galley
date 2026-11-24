@@ -189,7 +189,10 @@ that are exactly `#RRGGBB` and switches from their lists are applied; anything
 else is ignored.
 
 The default also goes out on `GET /api/meta` (`look`), to anyone: colours and
-switches only, never a name, description or author.
+switches only, never a name, description or author, and to anyone not signed
+in (and in `/theme.js`) under the constant id `default` rather than its own.
+The server works it out once and keeps it until a theme, the default or a
+plugin changes, reading only that one setting.
 
 ## Routes
 
