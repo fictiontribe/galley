@@ -222,7 +222,7 @@ export function createMockVisibility(mock: MockBackend) {
       for (const item of held) site.write(item.path, item.raw);
       undo.delete(body.undoId);
       mock.changed(site.id, held.map((h) => h.path), "undo");
-      return { restored: held.map((h) => h.path) };
+      return { restored: held.map((h) => h.path), left: [] };
     },
     "GET /api/sites/:siteId/visibility/crawlers": ({ params }) => crawlers(params.siteId),
     "PUT /api/sites/:siteId/visibility/crawlers": ({ params, body }) => {

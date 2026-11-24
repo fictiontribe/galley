@@ -82,7 +82,7 @@ const LINES = {
   "DELETE /api/sites/:siteId/threads/:threadId": "Delete a conversation.",
   "POST /api/sites/:siteId/threads/:threadId/messages": "Send a message (text, pictures, mode, page context). The reply streams over `/api/events`.",
   "POST /api/sites/:siteId/threads/:threadId/cancel": "Stop the reply in progress.",
-  "POST /api/sites/:siteId/threads/:threadId/undo": "Undo one assistant turn: the files it changed are put back.",
+  "POST /api/sites/:siteId/threads/:threadId/undo": "Undo one assistant turn: the files it changed are put back, except those changed again since, which are left as they are and listed in `left`.",
   "DELETE /api/groups/:groupId": "Remove a group. Its sites stay in the list, ungrouped.",
   "PUT /api/groups/order": "Put the groups in a new order (every group's id).",
   "GET /api/sites/:siteId/visibility": "Run the Search and AI checks. `render=off` checks the content files only; by default a running preview or an existing build is used, never started.",

@@ -1117,6 +1117,12 @@ export interface ChatMessage {
   changedPaths?: string[];
   /** True once the turn's file changes were rolled back. */
   undone?: boolean;
+  /**
+   * Files the undo left as they are, because someone else changed them after
+   * this turn did: they still hold this turn's changes. Absent when
+   * everything was put back.
+   */
+  undoLeft?: string[];
   /** Still streaming. */
   pending?: boolean;
   error?: string;
@@ -1774,14 +1780,35 @@ export interface WriteOptions {
  * Records the pre-image of every file written while it is open, so one AI turn
  * can be undone as a unit without touching the user's other pending changes.
  */
+/**
+ * What an undo did: the files put back, and the files left as they are
+ * because someone else changed them after the work being undone did.
+ */
+export interface UndoResult {
+  restored: string[];
+  left: string[];
+}
+
 export interface Checkpoint {
   readonly id: string;
-  /** Paths written since the checkpoint opened. */
+  /** Paths its own work has written. */
   paths(): string[];
+  /**
+   * Does `work` as this checkpoint's own: what it writes, and what anything
+   * it starts writes, is recorded. A write made outside it is not, whoever
+   * makes it and whichever file it is.
+   */
+  run<T>(work: () => T): T;
   /** Stop recording. Idempotent. */
   close(): void;
-  /** Put every recorded file back the way it was. Returns the restored paths. */
+  /**
+   * Put back every recorded file that is still as this checkpoint's own work
+   * left it. A file someone else has changed since stays as it is. Returns
+   * the restored paths.
+   */
   restore(): Promise<string[]>;
+  /** After `restore()`: the paths it left as they are, because someone else changed them after this checkpoint's own work did. */
+  left(): string[];
 }
 
 export interface PreviewController {
@@ -1978,7 +2005,7 @@ export interface AgentRuntime {
   send(siteId: string, threadId: string, request: SendMessageRequest): Promise<{ turnId: string }>;
   cancel(siteId: string, threadId: string): Promise<void>;
   /** Roll back the files one turn changed. Returns the restored paths. */
-  undoTurn(siteId: string, threadId: string, turnId: string): Promise<string[]>;
+  undoTurn(siteId: string, threadId: string, turnId: string): Promise<UndoResult>;
   /**
    * One plain sentence describing a set of pending changes, for the publish
    * message. Falls back to a deterministic summary when no model is available;

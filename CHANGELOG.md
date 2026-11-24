@@ -86,6 +86,18 @@ entry says how.
 - **Site settings** put each section's title and note beside its fields when
   there is room. **Online** has a heading for each of its three sections.
 
+### Fixed
+
+- **Undoing an assistant reply no longer undoes other people's work.** An
+  undo put back every file written while the reply was being made, whoever
+  wrote it, and put each one back whole. It now puts back only what that
+  reply itself changed, and only the pages still as the reply left them. A
+  page changed again since — by you, by someone else or by another reply —
+  is left as it is, and the reply says which pages those are. The same holds
+  for **Undo** after Search and AI fixes. `POST …/threads/:threadId/undo`
+  and `POST …/visibility/undo` answer `{ restored, left }`, and a chat
+  message gains `undoLeft`.
+
 ## 0.3.1 — 2026-11-24
 
 ### Fixed
