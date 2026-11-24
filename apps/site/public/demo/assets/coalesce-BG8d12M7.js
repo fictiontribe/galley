@@ -1,0 +1,1 @@
+function e(e){let t=null,n=null,r=()=>{let n=e().catch(()=>void 0).finally(()=>{t===n&&(t=null)});return t=n,n},i=(()=>n||(t?(n=t.then(()=>(n=null,r())),n):r()));return Object.defineProperty(i,"busy",{get:()=>t!==null}),i}function t(t){let n=new Map;return r=>{let i=n.get(r);return i||n.set(r,i=e(()=>t(r))),i()}}export{t as n,e as t};

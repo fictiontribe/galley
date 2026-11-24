@@ -1,0 +1,1 @@
+function e(e,t,n){return n?n.kind===`public`?`reachable`:n.kind:e?`reachable`:t?`private-address`:`this-computer`}function t(e){try{return new URL(e).origin}catch{return e.replace(/\/f\/[^/]*$/,``)}}export{e as n,t};
