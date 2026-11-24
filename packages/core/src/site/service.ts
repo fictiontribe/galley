@@ -957,7 +957,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       }
       await pathLock(target.path, async () => {
         if (!(await workspace.exists(target.path))) throw new GalleyError("not-found", GONE, target.path);
-        await workspace.deleteFile(target.path, { origin: options.origin ?? "user", mode: "content" });
+        await workspace.deleteFile(target.path, { origin: options.origin ?? "user", mode: "content", ...(options.baseHash ? { baseHash: options.baseHash } : {}) });
       });
     },
 

@@ -164,7 +164,7 @@ describe("the editor's own rounds", () => {
       expect(lines).toEqual([]);
       later(2);
       expect(await keepUp.round()).toBe("busy");
-      expect(lines).toEqual(["Repository: no newer versions have been brought in for 31 minutes, because the assistant is working on the site. They come in once that is over."]);
+      expect(lines).toEqual(["Repository: the editor's rounds have been skipped for 31 minutes, because the assistant is working on the site. Newer versions, if there are any, come in once that is over."]);
       later(60);
       expect(await keepUp.round()).toBe("busy");
       expect(lines).toHaveLength(1);
@@ -172,7 +172,7 @@ describe("the editor's own rounds", () => {
       // Over: the round runs, and the log says so before it says what came in.
       working = null;
       expect(await keepUp.round()).toBe("brought");
-      expect(lines.slice(1)).toEqual(["Repository: newer versions can be brought in again.", "Repository: brought in 1 newer version (1 file changed)."]);
+      expect(lines.slice(1)).toEqual(["Repository: the editor's rounds run again.", "Repository: brought in 1 newer version (1 file changed)."]);
       expect(readFileSync(join(root, PAGE), "utf8")).toContain("One");
 
       // A short skip says nothing at all, and the half hour is counted afresh each time.
@@ -201,7 +201,7 @@ describe("the editor's own rounds", () => {
     now += SKIPPED_SAID_AFTER_MS;
     expect(await keepUp.round()).toBe("busy");
     expect(lines).toEqual([
-      "Repository: no newer versions have been brought in for 30 minutes, because a save or a publish is in progress on the site, or its preview is installing the site's packages. They come in once that is over.",
+      "Repository: the editor's rounds have been skipped for 30 minutes, because a save or a publish is in progress on the site, or its preview is installing the site's packages. Newer versions, if there are any, come in once that is over.",
     ]);
     // The site did its own looking, if any: the round asks for no second one.
     expect(looks).toBe(0);

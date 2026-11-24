@@ -93,7 +93,8 @@ export function scopedSite(site: SiteService, scope: { readOnly: boolean; mode: 
         };
       }
       if (property === "saveConfig") {
-        return (config: Parameters<SiteService["saveConfig"]>[0]) => target.saveConfig(config, { mode: scope.mode });
+        // The plugin may say which version its settings were made from; the mode is the scope's, whatever it sends.
+        return (config: Parameters<SiteService["saveConfig"]>[0], options?: { baseHash?: string }) => target.saveConfig(config, { ...(options?.baseHash ? { baseHash: options.baseHash } : {}), mode: scope.mode });
       }
       if (property === "build") return () => target.build({ mode: scope.mode });
       return (value as (...args: unknown[]) => unknown).bind(target);

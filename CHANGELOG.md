@@ -109,11 +109,15 @@ entry says how.
   that store too when the copy has moved to another version since the
   preview started. Newer versions that change `package.json` or a lockfile
   make the next start install the site's packages first.
-- **Bringing newer versions in runs none of the repository's own hooks**
-  (Get latest and a hosted editor's round alike), and starts none of git's
-  background tidying. A hook that ran after a merge, to install packages
-  say, no longer runs here: the preview installs what newer versions need.
-  Publishing still runs the site's own checks.
+- **Bringing newer versions in runs none of the repository's own hooks**,
+  and starts none of git's background tidying. That is so wherever the app
+  runs: a hosted editor's own round, and **Get latest** when you press it
+  on your own computer or in the desktop app. A `post-merge` hook no longer
+  runs when versions come in through the app (it still does when you pull
+  in a terminal). The usual reason for one is covered: when the newer
+  versions change `package.json` or a lockfile, the preview installs the
+  site's packages before it starts again. Publishing still runs the site's
+  own checks.
 - **Get latest** no longer starts when it can already tell git would refuse:
   it says which files with unpublished changes the newer versions change.
 - **A quieter, more finished look, in the app and on the site.** Sheets rest
@@ -214,12 +218,20 @@ entry says how.
   worked out again from what is there now; an edit that said which version
   it had open is refused, as before, so the person reopens it. The same now
   holds for the redirects list and the host's redirects file, the site
-  kit's settings and the site's own settings file
-  (`SiteService.saveConfig` takes a `baseHash`).
+  kit's settings, the stylesheet a brand is applied to, and the site's own
+  settings file: Site settings, putting the site online and hosting the
+  editor each save their keys over the version they read, so a key someone
+  else changed in between is not set back. `SiteService.saveConfig` and
+  `deleteEntry` take a `baseHash`; `GET /api/sites/:siteId/config` answers
+  the file's `hash`, and `PUT` takes it back as `baseHash` (409 when the
+  file has changed since).
 - **The assistant changes only what it has read, as it read it.** It
   changes an entry, replaces a file or saves the site's configuration only
   if it has read it in the conversation and it is still that version;
-  otherwise nothing is changed and it reads again. Its edits are never
+  otherwise nothing is changed and it reads again. An entry it has read is
+  deleted only while it is still that version. A file that is already
+  there and can't be read as text (a picture, a font) is not replaced, and
+  the assistant is told so plainly. Its edits are never
   worked out again on newer text. What a conversation has read is
   remembered from one reply to the next, so versions that come in between
   two replies are not written over from the first one's reading. A hosted

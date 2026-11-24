@@ -105,7 +105,7 @@ function PublishModeChoice({ value, detected, onChange }: { value: PublishMode |
 /** The form's id, for the Save button that sits outside it, below the scrolling part of the screen. */
 const SETTINGS_FORM = "site-settings-form";
 
-function SettingsForm({ siteId, model, config, foot }: { siteId: string; model: SiteModel; config: GalleyConfig | null; foot: HTMLElement | null }) {
+function SettingsForm({ siteId, model, config, hash, foot }: { siteId: string; model: SiteModel; config: GalleyConfig | null; hash: string | null; foot: HTMLElement | null }) {
   // `model` is what detection found, before the settings file is applied.
   const initial = useMemo<Draft>(() => config ?? {}, [config]);
   const [draft, setDraft] = useState<Draft>(initial);
@@ -127,9 +127,10 @@ function SettingsForm({ siteId, model, config, foot }: { siteId: string; model: 
     setSaving(true);
     setSaveError(null);
     try {
-      const next = await api("PUT /api/sites/:siteId/config", { params: { siteId }, body: { config: draft } });
-      setQueryData(keys.config(siteId), { config: draft, detected: model });
-      invalidate(keys.config(siteId));
+      // With the version these settings were opened with: if someone else (or the assistant) saved them since, nothing is saved and the answer says so.
+      const next = await api("PUT /api/sites/:siteId/config", { params: { siteId }, body: { config: draft, baseHash: hash } });
+      // The saved file's new version comes with the settings read back; until it has, the form keeps the Save button busy.
+      setQueryData(keys.config(siteId), await api("GET /api/sites/:siteId/config", { params: { siteId } }).catch(() => ({ config: draft, detected: model, hash: null })));
       void useSite.getState().refresh();
       notify({ tone: "success", title: "Settings saved", body: `The site now has ${count(next.collections.length, "collection")}. The settings file waits in Proof like any other change.` });
     } catch (caught) {
@@ -327,7 +328,7 @@ export function SiteSettingsScreen() {
             <ErrorState title="Couldn’t read the site’s settings file" error={config.error} onRetry={() => void config.refetch()} />
           ) : (
             // Older servers send no `detected`; the site's model is the closest stand-in.
-            <SettingsForm siteId={siteId} model={config.data?.detected ?? detail.model} config={config.data?.config ?? null} foot={foot} />
+            <SettingsForm siteId={siteId} model={config.data?.detected ?? detail.model} config={config.data?.config ?? null} hash={config.data?.hash ?? null} foot={foot} />
           )}
           {/* Saved as it changes, outside the settings file: keys never go into the site. */}
           {detail ? <ConnectionsSection siteId={siteId} /> : null}
