@@ -49,6 +49,7 @@ function mergeBlocks(declared: BlockType[], seen: BlockType[]): BlockType[] {
       fields: mergeFields(block.fields, match.fields),
       count: match.count,
       ...(match.example ? { example: match.example } : {}),
+      ...(match.samples ? { samples: match.samples } : {}),
     };
   });
 }

@@ -38,7 +38,8 @@ const width = pic ? pic.width : rec ? rec.width : 0;
       {pic && (
         <img src={pic.src} srcset={pic.srcset} sizes={sizes ?? `${pic.width}px`} width={pic.width} height={pic.height} alt={v.alt} loading={eager ? "eager" : "lazy"} decoding="async" fetchpriority={eager ? "high" : undefined} />
       )}
-      {rec && (
+      {rec && !rec.video && <img src={rec.src} width={rec.width} height={rec.height} alt={v.alt} />}
+      {rec && rec.video && (
         <video muted loop playsinline preload="none" poster={rec.src} width={rec.width} height={rec.height} aria-label={v.alt} data-src={rec.video}>
           <source src={rec.video} type="video/webm" />
         </video>

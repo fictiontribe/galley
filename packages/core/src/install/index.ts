@@ -27,7 +27,7 @@ export { createSingleSiteRegistry, isSingleSiteRegistry, oneSiteOnly, ONE_SITE_M
 export { readStartingValues, APP_SECRET_ENV_NAMES, MIN_SETUP_TOKEN_LENGTH, type StartingSite, type StartingValues, type StartingValuesResult } from "./starting";
 export { createInstall, createInstallRegistry, validFolder, type Install, type InstallOptions, type StartOptions, type StartResult } from "./install";
 export { BACKUP_CHUNK_BYTES, BACKUP_FORMAT_VERSION, BACKUP_MAGIC, BACKUP_SCRYPT, BackupError, RESTORE_STAGING_PREFIX, RESTORE_UPLOADS, SERVER_LOCK_FILE, backupEntries, backupFileStream, checkEntries, createBackupStream, sealArchive, listArchive, openBackup, safeArchivePath, stageRestore, tarFlavour, writeBackupFile, type AppliedRestore, type ArchiveEntry, type BackupManifest, type BackupProblem, type BackupStream, type CreateBackupOptions, type OpenedBackup, type StagedRestore } from "./backup";
-export { holdDataFolder, lockFile, serverHolding, type ServerLock } from "./lock";
+export { HOLD_BEAT_MS, holdDataFolder, lockFile, serverHolding, type DataFolderHold, type HoldOptions, type ServerLock } from "./lock";
 export { createStorageMeter, STORAGE_MAX_AGE_MS, type StorageMeter } from "./storage";
 export { rememberSecret, scrubLine, MIN_SCRUBBED_LENGTH } from "./secrets";
 /** The install's own jobs (a restore) are tracked like every other job. */

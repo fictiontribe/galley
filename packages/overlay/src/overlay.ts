@@ -8,10 +8,11 @@
  * parent sends. Until the parent speaks the protocol, editing stays off and
  * nothing is sent anywhere else.
  */
-import type { HostToOverlay, OverlayRect, OverlayToHost } from "@galley/core/types";
+import type { HostToOverlay, OverlayRect, OverlayToHost, PageDrawState } from "@galley/core/types";
 import { createArrange, type Arrange } from "./arrange";
 import { beginEdit, type EditOutcome, type EditSession } from "./edit";
 import { measurePage } from "./measure";
+import { watchPage, type PageArrival } from "./page";
 import { currentPath, watchNavigation, watchScroll } from "./navigation";
 import { allowedFor, parseHostMessage, type OverlayRole } from "./protocol";
 import { ACTIVE_CLASS, HOVER_CLASS, TAG_ACTION_ATTR, TAG_ATTR, applyAppearance, injectStyles } from "./styles";
@@ -25,6 +26,8 @@ export interface OverlayEnv {
   /** The parent's origin when the browser reports it. */
   ancestorOrigin: string | null;
   role: OverlayRole;
+  /** What the proxy said about this page (its status), when it said anything. */
+  arrival?: PageArrival;
 }
 
 export interface Overlay {
@@ -407,7 +410,7 @@ export function createOverlay(env: OverlayEnv): Overlay {
         if (message.on) setEditMode(false);
         if (!arrange && !message.on) return;
         if (!arrange) {
-          arrange = createArrange(win, send);
+          arrange = createArrange(win, send, () => page?.current() ?? null);
           if (look) arrange.appearance(look);
         }
         arrange.update(message);
@@ -474,7 +477,16 @@ export function createOverlay(env: OverlayEnv): Overlay {
     // No storage: nothing to restore.
   }
 
-  const announce = () => send({ type: "ready", path: currentPath(win), title: doc.title });
+  // Whether this page was drawn, said after every `ready` from the proposed page and again when it changes.
+  const onPage = (state: PageDrawState) => {
+    send({ type: "page-state", ...state });
+    arrange?.refresh();
+  };
+  const page = role === "edit" ? watchPage(win, env.arrival ?? { status: null, unavailable: false }, onPage) : null;
+  const announce = () => {
+    send({ type: "ready", path: currentPath(win), title: doc.title });
+    if (page) send({ type: "page-state", ...page.current() });
+  };
   announce();
 
   return {
@@ -488,6 +500,7 @@ export function createOverlay(env: OverlayEnv): Overlay {
       if (highlightTimer) clearTimeout(highlightTimer);
       if (leaveTimer) clearTimeout(leaveTimer);
       arrange?.dispose();
+      page?.dispose();
       tag.remove();
     },
   };

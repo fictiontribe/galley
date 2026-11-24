@@ -60,7 +60,10 @@ same order as in the content.
 When any of that fails, Arrange is **not offered** for the page. The panel
 says so plainly ("Sections can't be arranged on this page") and links here;
 the form's section list keeps working, so nothing is lost. Galley never uses
-a partial or "probable" mapping. Typical reasons:
+a partial or "probable" mapping. It says this only about a page that drew:
+a page the dev server answered with an error says "This page couldn't be
+drawn" instead (see below), and a preview that isn't answering says so.
+Typical reasons:
 
 - two sections show the same words (a duplicated section, two identical
   calls to action) — so duplicating a section on an unmarked site makes the
@@ -112,8 +115,46 @@ picture. Declare them on the blocks field in `galley.config.json`:
   no other taxonomy.
 
 A new section starts from the most complete existing one of its type (or
-the config's `example`) with its words, links and images left empty and its
-settings kept.
+the config's `example`) with its words and links left empty and its settings
+kept. A required field a blank can't draw — a picture, a video or download
+named by its file, a choice, a reference, a date — starts with what the site
+declares for it (a `default`, or `examples` in the config or zod's
+`.meta({ examples })`), else with the value the nearest section of the same
+type already has (this page, then this collection, then anywhere), and the
+person is told where it came from. When there is nothing to borrow, it stays
+blank — which is why the rule below matters.
+
+### Every section must draw when it is new
+
+People add sections on the page, so a section's component must draw with
+its fields empty: a blank heading, no picture, no video. If it throws, the
+whole page stops drawing. Galley then says "This page couldn't be drawn",
+names the change it began with and offers **Undo**, but the person loses
+their page until they take the section back out.
+
+For a picture or file the component reads from disk, check before you read,
+and show the section's words without it:
+
+```astro
+const file = s.image ? join(process.cwd(), "public", s.image) : "";
+const size = file && existsSync(file) ? imageSize(file) : null;
+```
+
+then render the picture only when `size` is set (in the preview,
+`import.meta.env.DEV`, a marked placeholder that says to add it in the form
+helps). Keep one such guard per site, in the helper every section uses for
+pictures, rather than a check in each section.
+
+### When a page couldn't be drawn
+
+The preview tells the app when the dev server answered a page with an error
+(the overlay's `page-state`). The panel and the preview then say the page
+couldn't be drawn, with the framework's first line about why under
+**Technical details** (the error page itself is one click away, under
+**Show the site's error**). When it began with a change made in the app — a
+section just added, moved or removed — they name it and offer **Undo** for
+exactly that change; the page is reloaded once the file is back, and Arrange
+carries on.
 
 ### Options
 
@@ -173,7 +214,10 @@ and the overlay — which knows where the sections are — draws the drop line,
 scrolls near the edges and names the gap. The protocol is
 `OverlayToHost` / `HostToOverlay` in `packages/core/src/types.ts`
 (`arrange`, `arrange-status`, `arrange-select`, `arrange-action`,
-`placing`, `placing-pointer`, `placing-drop`, `placing-at`, `place`).
+`placing`, `placing-pointer`, `placing-drop`, `placing-at`, `place`,
+`page-state`). The proxy hands the overlay the status a page came with on
+the overlay's own script tag (`data-galley-status`), since a dev server's
+error page often has no `<html>` to mark.
 
 ---
 
@@ -203,3 +247,8 @@ you publish; every change is waiting in Proof.
 If the panel says **Sections can't be arranged on this page**, the site
 hasn't marked its sections for the page builder. Add, move and remove them
 in the form instead, and ask the site's developer to add the markers (above).
+
+If it says **This page couldn't be drawn**, the site ran into a problem
+drawing the page — usually a section just added that needs something filled
+in. Press **Undo** to take the change back, or **Show the form** to fill the
+section in. Nothing is lost, and nothing goes live until you publish.

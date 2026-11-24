@@ -22,9 +22,9 @@ const LISTS: OverlaySectionList[] = [
   },
 ];
 
-function start(role: "edit" | "follow" = "edit") {
+function start(role: "edit" | "follow" = "edit", arrival?: { status: number | null; unavailable: boolean }) {
   parent = { postMessage: vi.fn<PostMessage>() };
-  overlay = createOverlay({ win: window, parent, ancestorOrigin: HOST, role });
+  overlay = createOverlay({ win: window, parent, ancestorOrigin: HOST, role, ...(arrival ? { arrival } : {}) });
 }
 function fromHost(data: Omit<Extract<HostToOverlay, { galley: 1 }>, "galley"> | Record<string, unknown>) {
   const event = new MessageEvent("message", { data: { galley: 1, ...data }, origin: HOST });
@@ -96,6 +96,69 @@ describe("Arrange mode in the page", () => {
     vi.advanceTimersByTime(GRACE_MS + 100);
     expect(last("arrange-status")).toMatchObject({ status: "declined", how: null });
     expect(last("arrange-status")?.reason).toBeTruthy();
+  });
+
+  it("says why it declines: unmarked only when a page that drew marks none of its sections", async () => {
+    vi.useFakeTimers();
+    document.querySelectorAll("[data-galley-block]").forEach((element) => element.removeAttribute("data-galley-block"));
+    $("#s1 h2").textContent = "Welcome heading";
+    start();
+    arrange();
+    vi.advanceTimersByTime(GRACE_MS + 100);
+    expect(last("arrange-status")).toMatchObject({ status: "declined", cause: "unmarked" });
+  });
+
+  it("a page that marks some sections and not others is a mismatch, not unmarked", () => {
+    vi.useFakeTimers();
+    $("#s2").removeAttribute("data-galley-block");
+    start();
+    arrange({ lists: [{ field: "sections", sections: LISTS[0]!.sections }, { field: "more", sections: [{ index: 0, type: "cta", label: "Call to action", texts: ["Closing heading"], images: [] }] }] });
+    vi.advanceTimersByTime(GRACE_MS + 100);
+    expect(last("arrange-status")).toMatchObject({ status: "declined", cause: "mismatch" });
+  });
+
+  it("an error page is declined at once as a page that failed to draw, with the framework's own first line", async () => {
+    // Astro's dev error page: no sections, and the Vite client shows the error in its own element.
+    document.body.innerHTML = "";
+    document.title = "Error";
+    start("edit", { status: 500, unavailable: false });
+    arrange();
+    expect(last("page-state")).toMatchObject({ state: "failed", status: 500, message: null });
+    expect(last("arrange-status")).toMatchObject({ status: "declined", cause: "page-failed", how: null });
+    const shown = document.createElement("vite-error-overlay");
+    const root = shown.attachShadow({ mode: "open" });
+    root.innerHTML = `<h1 id="title">An error occurred.</h1><div id="message-content">\n  ENOENT: no such file or directory, open '/site/public/video/-poster.webp'\n    at Object.openSync (node:fs:573:18)</div>`;
+    document.body.append(shown);
+    await flush();
+    expect(last("page-state")).toMatchObject({ state: "failed", message: "ENOENT: no such file or directory, open '/site/public/video/-poster.webp'" });
+    expect(last("arrange-status")).toMatchObject({ cause: "page-failed", reason: "ENOENT: no such file or directory, open '/site/public/video/-poster.webp'" });
+    // Never "unmarked", however long it is left.
+    expect(sent().filter((message) => message.type === "arrange-status").some((message) => message.type === "arrange-status" && message.cause === "unmarked")).toBe(false);
+  });
+
+  it("the proxy's own page while the dev server doesn't answer says the preview is unavailable", () => {
+    document.body.innerHTML = "The preview isn't answering yet. It will reload by itself.";
+    start("edit", { status: 502, unavailable: true });
+    arrange();
+    expect(last("page-state")).toMatchObject({ state: "unavailable", status: 502 });
+    expect(last("arrange-status")).toMatchObject({ status: "declined", cause: "preview-unavailable" });
+  });
+
+  it("a drawn page says so after ready, and says it failed when the framework's error shows up later", async () => {
+    start();
+    expect(sent().map((message) => message.type).slice(0, 2)).toEqual(["ready", "page-state"]);
+    expect(last("page-state")).toMatchObject({ state: "drawn", status: null });
+    arrange();
+    expect(last("arrange-status")).toMatchObject({ status: "mapped" });
+    const shown = document.createElement("vite-error-overlay");
+    shown.attachShadow({ mode: "open" }).innerHTML = `<div class="message-body">[vite] Internal server error: Cannot read properties of undefined (reading 'width')</div>`;
+    document.body.append(shown);
+    await flush();
+    expect(last("page-state")).toMatchObject({ state: "failed", message: "[vite] Internal server error: Cannot read properties of undefined (reading 'width')" });
+    expect(last("arrange-status")).toMatchObject({ status: "declined", cause: "page-failed" });
+    shown.remove();
+    await flush();
+    expect(last("page-state")).toMatchObject({ state: "drawn" });
   });
 
   it("a click selects the section and doesn't follow its links; the site's navigation still works", () => {

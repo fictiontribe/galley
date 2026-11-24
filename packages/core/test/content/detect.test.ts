@@ -69,6 +69,10 @@ describe("detectSite on an Astro site", async () => {
     ]);
     // The most complete real instance is kept as the scaffold for "add section".
     expect(hero.example).toMatchObject({ type: "hero", heading: "Light for every boat" });
+    // And each entry's own, with the entry it is on: what a new section may borrow where a blank wouldn't draw.
+    expect(hero.samples?.length).toBe(2);
+    expect(hero.samples?.[0]).toMatchObject({ path: expect.stringMatching(/\.md$/), title: expect.any(String), value: { type: "hero" } });
+    expect(new Set(hero.samples?.map((sample) => sample.path)).size).toBe(2);
     const grid = sections.blocks!.find((block) => block.type === "feature-grid")!;
 
     expect(grid.fields.find((field) => field.key === "items")?.of?.fields?.map((field) => field.key)).toEqual(["label", "text"]);
@@ -256,6 +260,45 @@ describe("analyzeAstroConfig (static, never executed)", () => {
       ["quote", "Quote", ["text:string", "by:string"]],
     ]);
     expect(field("blocks").blocks?.[1]?.fields[1]?.description).toBe("Who said it");
+  });
+
+  it("reads zod 4's .meta(): a description, and examples the site declares", () => {
+    const source = `
+      import { defineCollection } from "astro:content";
+      import { z } from "astro/zod";
+      const film = z.object({ type: z.literal("film"), video: z.string().meta({ description: "File stem in public/video", examples: ["galley-demo"] }), title: z.string() });
+      const pages = defineCollection({ schema: z.object({ sections: z.array(z.discriminatedUnion("type", [film])) }) });
+      export const collections = { pages };
+    `;
+    const [pages] = analyzeAstroConfig(source).collections;
+    const video = pages!.fields!.find((candidate) => candidate.key === "sections")!.blocks![0]!.fields.find((candidate) => candidate.key === "video")!;
+
+    expect(video).toMatchObject({ type: "string", required: true, description: "File stem in public/video", examples: ["galley-demo"], examplesDeclared: true });
+  });
+
+  it("carries how many items a list must have, and a number's bounds", () => {
+    const source = `
+      import { defineCollection, z } from "astro:content";
+      const pages = defineCollection({ schema: z.object({
+        words: z.array(z.string()).min(2),
+        steps: z.array(z.object({ heading: z.string() })).min(2).max(4),
+        pair: z.array(z.string()).length(2),
+        some: z.array(z.object({ a: z.string() })).nonempty(),
+        limit: z.number().int().min(1).max(12),
+        title: z.string().min(1),
+      }) });
+      export const collections = { pages };
+    `;
+    const [pages] = analyzeAstroConfig(source).collections;
+    const field = (key: string) => pages!.fields!.find((candidate) => candidate.key === key)!;
+
+    expect(field("words")).toMatchObject({ type: "tags", min: 2 });
+    expect(field("steps")).toMatchObject({ type: "list", min: 2, max: 4 });
+    expect(field("pair")).toMatchObject({ min: 2, max: 2 });
+    expect(field("some")).toMatchObject({ min: 1 });
+    expect(field("limit")).toMatchObject({ type: "number", min: 1, max: 12 });
+    // A text's length is the person's words, not a shape to start from.
+    expect(field("title").min).toBeUndefined();
   });
 
   it("returns no collections (and a note) for configs it cannot read", () => {

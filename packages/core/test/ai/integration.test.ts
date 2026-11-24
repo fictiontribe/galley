@@ -163,13 +163,65 @@ describe.skipIf(!available)("assistant on the real facade (starters/astro-starte
 
     expect(issues.filter((i) => i.severity === "error")).toEqual([]);
 
-    const restored = await runtime.undoTurn(site.id, threadId, reply.turnId);
+    const undone = await runtime.undoTurn(site.id, threadId, reply.turnId);
 
-    expect(restored.sort()).toEqual(["src/content/blog/saturday-openings.md", "src/content/pages/contact.md"]);
+    expect(undone.restored.sort()).toEqual(["src/content/blog/saturday-openings.md", "src/content/pages/contact.md"]);
+    expect(undone.left).toEqual([]);
     expect(readFileSync(join(root, "src/content/pages/contact.md"), "utf8")).toBe(contactBefore);
     expect(existsSync(join(root, "src/content/blog/saturday-openings.md"))).toBe(false);
     // (a)'s change is a different turn and stays.
     expect(numstat("src/content/pages/index.md")).toBe("1\t1\tsrc/content/pages/index.md");
+  });
+
+  it("undo leaves a page someone else saved after the reply, says which, and tells the assistant", async () => {
+    const about = "src/content/pages/about.md";
+    const contact = "src/content/pages/contact.md";
+    const aboutBefore = readFileSync(join(root, about), "utf8");
+    const reply = await turn("Retitle the about and contact pages", [
+      tools([
+        ["u1", "read_entry", { path: about }],
+        ["u2", "read_entry", { path: contact }],
+      ]),
+      tools([
+        ["u3", "update_entry", { path: about, ops: [{ op: "set", path: ["title"], value: "Who we are" }] }],
+        ["u4", "update_entry", { path: contact, ops: [{ op: "set", path: ["title"], value: "Get in touch" }] }],
+      ]),
+      say("I retitled both pages. They are in Proof."),
+    ]);
+
+    expect(reply.changedPaths?.slice().sort()).toEqual([about, contact]);
+    // Someone else, in their own request, saves the contact page after the reply.
+    await site.updateEntry(contact, [{ op: "set", path: ["description"], value: "Write, call or drop in." }], { origin: "user" });
+    const contactNow = readFileSync(join(root, contact), "utf8");
+
+    const before = bus.events.length;
+    const undone = await runtime.undoTurn(site.id, threadId, reply.turnId);
+
+    expect(undone).toEqual({ restored: [about], left: [contact] });
+    expect(readFileSync(join(root, about), "utf8")).toBe(aboutBefore);
+    // Their save, and the reply's change under it, are both still there.
+    expect(readFileSync(join(root, contact), "utf8")).toBe(contactNow);
+    expect(contactNow).toContain("Get in touch");
+    expect(contactNow).toContain("Write, call or drop in.");
+    const message = bus.events
+      .slice(before)
+      .filter((e): e is Extract<ServerEvent, { type: "chat.message" }> => e.type === "chat.message")
+      .map((e) => e.message)
+      .pop();
+
+    expect(message).toMatchObject({ undone: true, undoLeft: [contact], turnId: reply.turnId });
+
+    // The next request tells the model which file still holds its change.
+    await turn("Thanks", [say("You're welcome.")]);
+    const texts: string[] = script.requests
+      .at(-1)!
+      .body.messages.flatMap((m: { content: unknown }) => (Array.isArray(m.content) ? m.content : []))
+      .map((block: { text?: unknown }) => (typeof block.text === "string" ? block.text : ""));
+    const note = texts.find((text) => text.includes("undid your turn that answered “Retitle the about and contact pages”"));
+
+    expect(note).toContain("These files are back to how they were before that turn: src/content/pages/about.md.");
+    expect(note).toContain("left as they are and may still hold what your turn wrote: src/content/pages/contact.md.");
+    expect(note).not.toContain("Everything that turn changed has been rolled back");
   });
 
   it("(d) refuses a source file in content mode, at the dispatcher and in the engine", async () => {

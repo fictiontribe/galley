@@ -8,7 +8,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { createApiClient } from "../ai/runtime";
 import { scrubSecrets } from "../ai/errors";
 import type { UsageLine } from "../ai/usage";
-import type { EventBus, SettingsService, SiteService } from "../types";
+import type { EventBus, SettingsService, SiteService, UndoResult } from "../types";
 import { auditEntry, auditSite } from "./audit";
 import { agentView, checkExternalLinks, type ExternalOptions } from "./external";
 import { applyFixes, undoFixes } from "./fixes";
@@ -21,7 +21,7 @@ export interface VisibilityService {
   audit(site: SiteService, options?: AuditOptions): Promise<SiteAudit>;
   entry(site: SiteService, path: string, options?: AuditOptions): Promise<EntryAudit>;
   fix(site: SiteService, ids: string[]): Promise<FixResult>;
-  undo(site: SiteService, undoId: string): Promise<string[]>;
+  undo(site: SiteService, undoId: string): Promise<UndoResult>;
   crawlers(site: SiteService): Promise<CrawlerReport>;
   setCrawlers(site: SiteService, choices: Record<string, CrawlerChoice>): Promise<CrawlerReport>;
   agentView(site: SiteService, urlPath: string): Promise<AgentView>;

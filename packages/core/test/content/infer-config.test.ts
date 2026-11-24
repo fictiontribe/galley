@@ -166,6 +166,26 @@ describe("galley.config.json", () => {
     expect(mergeConfig(detected, null)).toBe(detected);
   });
 
+  it("marks examples and section examples as the site's own when the config declares them", async () => {
+    const detected = await detectSite(PLAIN);
+    const merged = mergeConfig(detected, {
+      collections: [
+        {
+          id: "notes",
+          fields: [
+            { key: "cover", type: "image", examples: ["/images/cover.webp"] },
+            { key: "sections", type: "blocks", blocks: [{ type: "film", example: { type: "film", video: "sample" } }] },
+          ],
+        },
+      ],
+    });
+    const fields = merged.collections.find((collection) => collection.id === "notes")!.fields;
+
+    expect(fields.find((field) => field.key === "cover")).toMatchObject({ examples: ["/images/cover.webp"], examplesDeclared: true });
+    expect(fields.find((field) => field.key === "title")?.examplesDeclared).toBeUndefined();
+    expect(fields.find((field) => field.key === "sections")?.blocks?.[0]).toMatchObject({ example: { video: "sample" }, exampleDeclared: true });
+  });
+
   it("adds a collection the config points at and reads its files", async () => {
     const root = join(scratch, "added");
 

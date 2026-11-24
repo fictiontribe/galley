@@ -17,7 +17,7 @@ It needs a key: someone adds the site owner's own Anthropic key in **App setting
 
 <figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/assistant-reply@1x.webp" srcset="/docs/assistant-reply@1x.webp 1x, /docs/assistant-reply.webp 2x" alt="The assistant pane: the request to change the journal page's heading, the lines Read the Journal page and Edited the Journal page, the reply quoting the old and new heading, and the buttons Review in Proof and Undo this change." width="590" height="310" loading="lazy" decoding="async"></figure>
 
-4. **Review in Proof** opens the change; **Undo this change** (or **Undo these 3 changes**) puts back exactly what that reply changed.
+4. **Review in Proof** opens the change; **Undo this change** (or **Undo these 3 changes**) puts back exactly what that reply changed. A page that was changed again after the reply is left as it is, and the reply names it.
 
 Nothing it does is live until someone presses **Publish**. It never publishes.
 

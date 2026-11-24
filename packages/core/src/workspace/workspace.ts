@@ -229,7 +229,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
   }
 
   const checkpoints = new CheckpointManager({
-    restoreFile: async (path, bytes) => {
+    restoreFile: async (path, bytes, unchanged) => {
       // Undo bypasses the mode (the turn may have run in build mode) but never
       // containment or the hard deny-list.
       const resolved = resolve(path);
@@ -238,7 +238,12 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
       if (denied) throw new GalleyError("forbidden", denied, path);
       // Putting the settings file back is changing it, whoever's turn changed it first.
       if (touchesSettings(resolved)) requireSiteSettings();
-      await lock(() => applyWrite(resolved, bytes, {}));
+      return lock(async () => {
+        // Asked here, with the write: a save that was waiting its turn ahead of this undo has landed by now.
+        if (!unchanged(await readIfExists(join(realRoot, ...resolved.realPath.split("/"))))) return false;
+        await applyWrite(resolved, bytes, {});
+        return true;
+      });
     },
     emitUndo: async (paths) => {
       await refreshStatus(paths).catch(() => undefined);
@@ -271,7 +276,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
 
     if (bytes !== null && current && bytesEqual(current, bytes)) return false;
     if (bytes === null && !current) return false;
-    await checkpoints.record(resolved.path, current);
+    await checkpoints.record(resolved.path, current, bytes);
     if (bytes === null) {
       await unlink(resolved.absolute);
     } else {

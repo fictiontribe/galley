@@ -3,13 +3,12 @@ import type { BlockType, Field, FieldPath, JsonValue } from "@galley/core/types"
 import { count } from "@/lib/format";
 import { Button, ProofMark } from "@/ui";
 import { useEditCount, useForm, useFormValue } from "../form/context";
-import { blockScaffold } from "../form/scaffold";
+import { addSection } from "../form/addSection";
 import { blockLabel, blockTypeOf, itemSummary } from "../form/summary";
 import { type FieldProps } from "./common";
 import { FieldList } from "./FieldList";
 import { RequiredMark } from "./FieldShell";
 import { ItemCards } from "./items/ItemCards";
-import { listActions } from "./items/listActions";
 import { SectionPalette } from "./SectionPalette";
 
 const NO_FIELDS: Field[] = [];
@@ -17,7 +16,7 @@ const NO_BLOCKS: BlockType[] = [];
 
 /** `blocks`: the page's sections — fold, reorder, duplicate, remove, and add from the site's own section types. */
 export function BlocksField({ field, path, showKey }: FieldProps) {
-  const { store } = useForm();
+  const { store, entryPath } = useForm();
   const value = useFormValue(path);
   const items = Array.isArray(value) ? value : [];
   const edits = useEditCount(path);
@@ -60,7 +59,7 @@ export function BlocksField({ field, path, showKey }: FieldProps) {
   const add = (block: BlockType) => {
     const index = palette ?? items.length;
     // The same insert the Arrange panel makes on the page.
-    listActions({ store, path: pathRef.current, noun: "section", label: (item) => blockLabel(item, field) }).insert(index, blockScaffold(block, discriminator));
+    addSection({ store, field, path: pathRef.current, block, index, entryPath });
     setPalette(null);
     setAdded({ index, token: Date.now() });
   };

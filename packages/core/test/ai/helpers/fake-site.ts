@@ -355,6 +355,8 @@ export function createFakeSite(options: { id?: string; files?: Record<string, st
       return {
         id: `cp-${label}`,
         paths: () => [...record.records.keys()].sort(),
+        run: (work) => work(),
+        left: () => [],
         close: () => {
           record.open = false;
         },
