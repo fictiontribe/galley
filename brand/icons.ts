@@ -52,7 +52,7 @@ export const ICONS = {
   // Brand: a colour bar, the printer's strip of inks.
   brand: `<path d="M1.5 13.5 5.25 2.5h1L10 13.5M3.25 9.75h5"/><rect class="i-af" x="10.5" y="9" width="4" height="4.5" rx=".5"/>`,
   // Sites: a stack of proofs.
-  sites: `<path d="M5.25 2.25h5.5M3.75 4.25h8.5"/><rect class="i-t" x="2.25" y="6.25" width="11.5" height="7.5" rx="1"/><rect class="i-a" x="2.25" y="6.25" width="11.5" height="7.5" rx="1"/>`,
+  sites: `<path d="M4.5 2.25h7M3 4.25h10"/><rect class="i-t" x="2.25" y="6.25" width="11.5" height="7.5" rx="1"/><rect class="i-a" x="2.25" y="6.25" width="11.5" height="7.5" rx="1"/>`,
   plugin: `<path class="i-a" d="M6 1.5v3.25M9.5 1.5v3.25"/><path d="M3.5 4.75h8.5v2.5a4.25 4.25 0 0 1-8.5 0z"/><path d="M7.75 11.5v3"/>`,
   folder: `<path d="M2.25 3.25h4.25l1.5 1.75h5.75v8H2.25z"/>`,
   "folder-site": `<path class="i-t" d="M2.25 3.25h4.25l1.5 1.75h5.75v8H2.25z"/><path d="M2.25 3.25h4.25l1.5 1.75h5.75v8H2.25z"/><path class="i-a" d="m5.5 11.25 2.25-3.5 2.25 3.5"/>`,
