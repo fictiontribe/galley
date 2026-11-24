@@ -20,6 +20,10 @@ what is built; when something here ships, it moves to the
   the image), with first run from a setup link, backups and an Install page;
   “Host the editor online” for your own Fly.io, Cloudflare or server, still
   in progress.
+- **0.3.0**: accounts on a hosted editor (owners, editors and contributors,
+  each publishing under their own name); Google Cloud as a place to host the
+  editor; the desktop app signed and notarised for Mac, and starting on
+  Windows and Linux; a one-click switch between light and dark.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [twelve how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.

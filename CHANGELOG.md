@@ -5,7 +5,7 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
-## Unreleased
+## 0.3.0 — 2026-11-24
 
 A hosted install has accounts instead of one shared password. If you run a
 hosted install today, read **Changed** before upgrading. The desktop app and
@@ -141,6 +141,12 @@ local mode have no accounts and are unchanged.
 
 ### Fixed
 
+- A sign-in cookie whose signature was the right length but held a character
+  outside plain English letters and digits made that one request fail with an
+  error instead of "not signed in". It is now refused like any other.
+- When a hosted editor can't save its own state (a full disk, too many open
+  files), it says so in plain words instead of "unexpected problem", and
+  nothing is changed.
 - **On Windows, a site's preview could not start**: the command lookup found
   the plain `npm` file that ships beside `npm.cmd`, which Windows can't run.
   Names are now tried with Windows' own endings first.

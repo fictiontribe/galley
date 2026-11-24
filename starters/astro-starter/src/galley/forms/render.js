@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.2.0 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.3.0 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // A form definition → its complete HTML, on the server. Everything a visitor
 // needs is in the page before any JavaScript runs: labels, inputs with native
