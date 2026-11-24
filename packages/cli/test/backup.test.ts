@@ -313,6 +313,47 @@ describe("galley serve, stopped by the container", () => {
     180_000
   );
 
+  it(
+    "a server that finds another server's hold on its data folder stops by itself, says why, and exits 1 without touching that hold",
+    async () => {
+      const home = join(tmp, "displaced-home");
+      const port = await freePort();
+      const env = {
+        ...siteEnv(siteRepository()),
+        GALLEY_HOME: home,
+        GALLEY_HOST: "127.0.0.1",
+        GALLEY_PORT: String(port),
+        GALLEY_PUBLIC_URL: "https://cms.localhost",
+        GALLEY_WEB_DIR: join(tmp, "no-ui"),
+      };
+      const child = spawn(process.execPath, [bin, "serve"], { env, stdio: ["ignore", "pipe", "pipe"] });
+      let stdout = "";
+      let stderr = "";
+
+      children.push(child);
+      child.stdout!.on("data", (chunk: Buffer) => (stdout += chunk.toString()));
+      child.stderr!.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
+      const exited = new Promise<number | null>((resolve) => child.once("exit", (code) => resolve(code)));
+
+      for (let waited = 0; !stdout.includes("Press Ctrl+C to stop."); waited += 100) {
+        if (waited > 90_000 || child.exitCode !== null) throw new Error(`serve didn't start:\n${stdout}\n${stderr}`);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      // Another server's hold is in the folder now. The server looks at its own every 10 seconds.
+      const theirs = `${JSON.stringify({ pid: 1, hostname: "another-machine", port: 4400, startedAt: new Date().toISOString(), id: "theirs", beat: 1 })}\n`;
+
+      writeFileSync(join(home, "server.lock"), theirs);
+      const code = await Promise.race([exited, new Promise<"late">((resolve) => setTimeout(() => resolve("late"), 40_000))]);
+
+      expect(code, `${stdout}\n${stderr}`).toBe(1);
+      expect(stdout + stderr).toContain("Another server has taken this data folder (process 1 on another-machine, port 4400) while this one was running.");
+      expect(stdout + stderr).toMatch(/This server has stopped: the data folder .+ is another server's now/);
+      expect(stdout).toMatch(/Stopped: another server is running on this data folder\.\n$/);
+      expect(readFileSync(join(home, "server.lock"), "utf8")).toBe(theirs);
+    },
+    180_000
+  );
+
 
   it(
     "SIGTERM with a preview running: exits 0 within the grace, the dev server's processes are gone, the folder is let go",

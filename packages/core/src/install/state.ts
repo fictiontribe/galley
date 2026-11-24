@@ -20,6 +20,7 @@ import { z } from "zod";
 import { GalleyError } from "../errors";
 import type { AccountRole } from "./accounts";
 import { migrate, type MigrationContext } from "./migrate";
+import { tidyName } from "./names";
 import { INSTALL_SCHEMA_VERSION, type SiteAccess } from "./types";
 
 export const STATE_FILE = "install.json";
@@ -352,6 +353,16 @@ function parseState(raw: unknown, file: string): InstallStateFile {
     throw new GalleyError("conflict", `The install's state file (${file}) is damaged, so this install won't start. Put back a copy from a backup, then start again.`, parsed.error.message);
   }
   const state = parsed.data as InstallStateFile;
+
+  // Names kept before names were tidied (names.ts) may hold characters nobody sees: gone from here on, and from the file at its next save.
+  for (const account of state.accounts) {
+    const name = tidyName(account.name);
+
+    // Nothing left to see: the person is asked for a name, like anyone who has none yet.
+    if (account.name !== "" && name === "") account.incomplete = true;
+    account.name = name;
+  }
+  for (const link of state.links) link.createdByName = tidyName(link.createdByName);
 
   // A live address an older version kept waiting for the site is this version's live address.
   if (state.pendingLiveUrl !== null) {

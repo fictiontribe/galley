@@ -761,7 +761,7 @@ export function createHandlers(mock: MockBackend): Handlers {
       const site = mock.site(params.siteId);
       const thread = mock.threads.get(params.siteId)?.find((t) => t.id === params.threadId);
       if (!thread) throw new MockError("not-found", "That conversation was deleted.");
-      return { restored: undoTurn(mock, site, thread, body.turnId), left: [] };
+      return undoTurn(mock, site, thread, body.turnId);
     },
   };
 }

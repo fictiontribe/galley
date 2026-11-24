@@ -81,18 +81,31 @@ entry says how.
   started without a word. After a server that didn't stop cleanly, the next
   start takes the folder over: at once when that server's process is gone
   on the same machine, otherwise after watching its hold for about 20
-  seconds. Local mode and the desktop app take no hold.
+  seconds. A running server that finds another server's hold on its folder
+  stops by itself: it answers nobody, writes nothing more to the folder,
+  says why, and `galley serve` exits 1. Local mode and the desktop app take
+  no hold.
 - **Names say who someone is.** A person's name is kept without characters
   a reader can't see (the controls that reorder text, characters with no
   width, blank fillers), and a name that reads as someone else's on the same
   editor — in another case or width, or with unseen characters in it — is
-  refused wherever a name is set. Names that were alike before stay until
-  one of them changes. Look-alike letters from different alphabets are not
-  caught.
+  refused wherever someone signed in sets a name. Someone accepting an
+  invitation with such a name is let in without it and asked to choose
+  one, so an invitation link says nothing about who is here. Names saved
+  before are cleaned when they are read, and a publishing name (the
+  install's, App settings › You, a site's own author) is kept the same way.
+  Names that were alike before stay until one of them changes. Look-alike
+  letters from different alphabets are not caught.
 - **The event stream keeps to its readers.** On a hosted editor one account
   may hold 16 streams open (16 windows of the editor; the operator's token
-  counts as one identity) and the next is answered 429. A stream whose
-  reader has stopped reading is ended once 1 MB is waiting for it; the app
+  counts as one identity). One more is told so in a new event,
+  `stream.limit`, on a stream that then ends; the app shows it ("Live
+  updates paused — too many windows open") and asks again until a place is
+  free. At most once in 10 minutes the newcomer is let in instead and the
+  account's other streams are ended, so windows that went without a word (a
+  closed laptop) give up their place while the ones still there connect
+  again. A stream whose reader has stopped reading is ended once 1 MB is
+  waiting for it, not counting one event larger than that by itself; the app
   connects again and reads everything afresh, as after any drop.
 - **Version history tells the truth about the repository.** It looks when
   it opens, says "Checking the repository…" until it knows, and then says
@@ -258,6 +271,16 @@ entry says how.
   repository behind it, instead of "not connected yet". A temporary copy of
   the install's state file, left behind when the server was stopped in the
   middle of a write, is removed at the next start.
+- **Undo, in the cases that were left.** A change a reply made after it had
+  ended is no longer passed over in silence: it is left and named. A page
+  the reply moved goes back as a pair or stays as a pair, never the page
+  twice. An undo that can't put a file back puts back the rest, names that
+  file and says what it put back, instead of stopping half-way. What is
+  made during a reply to serve everyone after (a site reopened, its
+  preview) is no part of the reply. Undoing a reply made in build mode
+  needs the level build mode needs: a contributor is told *Your account
+  can't undo this reply: it changed the site's code and templates (build
+  mode). Ask an owner or an editor of this editor.*
 
 ## 0.3.1 — 2026-11-24
 

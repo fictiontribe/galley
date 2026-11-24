@@ -212,7 +212,15 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
   );
   io.out(`Data:      ${home} (the site, its settings and stored keys, sessions — everything this install keeps)`);
   io.out("Press Ctrl+C to stop.");
-  await io.waitForStop();
+  const lostFolder = await Promise.race([io.waitForStop().then(() => false), server.displaced?.then(() => true) ?? new Promise<boolean>(() => undefined)]);
+
+  if (lostFolder) {
+    // The server has said why and has stopped already, writing nothing more to the folder.
+    await server.close();
+    io.out("Stopped: another server is running on this data folder.");
+    await io.exit?.(1);
+    return 1;
+  }
   // Requests stop, event streams end, a publish or a connect in progress gets its grace, the preview stops, the state is written.
   io.out("Stopping… (again to stop at once)");
   await server.close();

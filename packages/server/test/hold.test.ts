@@ -122,6 +122,31 @@ describe("a hosted server and its data folder", () => {
     await stopHosted(box, started);
   });
 
+  it("stops serving when another server takes the folder, says why, and writes nothing more to it", async () => {
+    const home = box.folder("home");
+    const started = await startHosted(box, home, {}, { holdBeatMs: BEAT });
+    const stateFile = join(home, "install.json");
+    const state = existsSync(stateFile) ? readFileSync(stateFile) : null;
+
+    expect((await call(started.port, "GET", "/api/meta")).status).toBe(200);
+    // Another server's hold is in the folder now, and it is running.
+    const stop = beating(home);
+
+    await started.server.displaced;
+    stop();
+    box.running.splice(box.running.indexOf(started.server), 1);
+    // It no longer answers anyone.
+    await expect(fetch(`http://127.0.0.1:${started.port}/healthz`)).rejects.toThrow();
+    // It said what happened, and what to do.
+    const said = started.notices.join("\n");
+
+    expect(said).toContain("Another server has taken this data folder (process 1 on another-machine, port 4400) while this one was running.");
+    expect(said).toMatch(/This server has stopped: the data folder .+ is another server's now \(process 1 on another-machine, port 4400\), and two servers on one data folder write over each other\. Stop the other one, or give this one a data folder of its own \(GALLEY_HOME\), then start it again\./);
+    // The other server's hold is untouched, and so is the state it now keeps.
+    expect(read(home).id).toBe("theirs");
+    expect(existsSync(stateFile) ? readFileSync(stateFile) : null).toEqual(state);
+  });
+
   it("takes no hold in local mode", async () => {
     const home = box.folder("local-home");
     const options = { mode: "local" as const, host: "127.0.0.1", port: 0, home, webDir: join(box.root, "no-ui"), env: { PATH: process.env.PATH, HOME: box.root, GALLEY_MCP: "off" }, notice: () => undefined, log: () => undefined };

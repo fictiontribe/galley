@@ -16,6 +16,11 @@ const APP = { name: "App Author", email: "app@example.com" };
 const MACHINE = { name: "Machine Author", email: "machine@example.com" };
 
 describe("the order, on its own", () => {
+  it("keeps a publishing name without what nobody sees, wherever it came from, and passes over one with nothing to see", () => {
+    expect(chooseAuthor({ repository: { name: "\u202eRepo\u200b Team", email: "team@example.com" } })).toEqual({ name: "Repo Team", email: "team@example.com", from: "repository" });
+    expect(chooseAuthor({ site: { name: "\u200b\u2066", email: "nobody@example.com" }, app: { name: "App Editor", email: "app@example.com" } })).toEqual({ name: "App Editor", email: "app@example.com", from: "app" });
+  });
+
   it("takes the most specific author that is complete", () => {
     expect(chooseAuthor({ site: SITE, repository: REPO, app: APP, machine: MACHINE })).toEqual({ ...SITE, from: "site" });
     expect(chooseAuthor({ repository: REPO, app: APP, machine: MACHINE })).toEqual({ ...REPO, from: "repository" });

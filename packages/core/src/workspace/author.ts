@@ -15,6 +15,7 @@
  * setting still beats whatever the computer happens to be configured with.
  */
 import { AsyncLocalStorage } from "node:async_hooks";
+import { tidyName } from "../install/names";
 
 export type AuthorSource = "account" | "site" | "repository" | "app" | "machine" | "default";
 
@@ -35,8 +36,9 @@ export interface AuthorLayers {
 
 export const DEFAULT_AUTHOR: Identity = { name: "Site editor", email: "site-editor@localhost" };
 
-const complete = (identity: Partial<Identity> | null | undefined): identity is Identity => Boolean(identity?.name?.trim() && identity.email?.trim());
-const clean = (identity: Identity): Identity => ({ name: identity.name.trim(), email: identity.email.trim() });
+// A publishing name is shown beside every version it made: kept, like a person's name, without what nobody sees (install/names.ts).
+const complete = (identity: Partial<Identity> | null | undefined): identity is Identity => Boolean(tidyName(identity?.name ?? "") && identity?.email?.trim());
+const clean = (identity: Identity): Identity => ({ name: tidyName(identity.name), email: identity.email.trim() });
 
 export function chooseAuthor(layers: { site?: Partial<Identity> | null; repository?: Partial<Identity> | null; app?: Partial<Identity> | null; machine?: Partial<Identity> | null }): ChosenAuthor {
   for (const from of ["site", "repository", "app", "machine"] as const) {

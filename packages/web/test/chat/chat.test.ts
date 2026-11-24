@@ -160,17 +160,17 @@ describe("picking up the last conversation", () => {
 
 describe("what the chat says under an undone reply", () => {
   it("says everything is back when nothing was left", () => {
-    expect(undoneNote(2, [])).toBe("Undone. Everything this reply changed is back to how it was.");
+    expect(undoneNote([], true)).toBe("Undone. Everything this reply changed is back to how it was.");
   });
 
   it("names the pages an undo left, and why", () => {
-    expect(undoneNote(3, ["Home"])).toBe("Undone, except Home. It was changed again after this reply, so it was left as it is.");
-    expect(undoneNote(3, ["Home", "Pricing"])).toBe("Undone, except Home and Pricing. They were changed again after this reply, so they were left as they are.");
-    expect(undoneNote(6, ["Home", "Pricing", "About", "Contact", "Team"])).toBe("Undone, except Home, Pricing and 3 more. They were changed again after this reply, so they were left as they are.");
+    expect(undoneNote(["Home"], true)).toBe("Undone, except Home. It was changed again after this reply, so it was left as it is.");
+    expect(undoneNote(["Home", "Pricing"], true)).toBe("Undone, except Home and Pricing. They were changed again after this reply, so they were left as they are.");
+    expect(undoneNote(["Home", "Pricing", "About", "Contact", "Team"], true)).toBe("Undone, except Home, Pricing and 3 more. They were changed again after this reply, so they were left as they are.");
   });
 
   it("never says undone when no page was put back", () => {
-    expect(undoneNote(1, ["Home"])).toBe("Nothing was put back: Home. It was changed again after this reply, so it was left as it is.");
-    expect(undoneNote(2, ["Home", "Pricing"])).toBe("Nothing was put back: Home and Pricing. They were changed again after this reply, so they were left as they are.");
+    expect(undoneNote(["Home"], false)).toBe("Nothing was put back: Home. It was changed again after this reply, so it was left as it is.");
+    expect(undoneNote(["Home", "Pricing"], false)).toBe("Nothing was put back: Home and Pricing. They were changed again after this reply, so they were left as they are.");
   });
 });

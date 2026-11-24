@@ -113,6 +113,12 @@ describe("a site's own keys", () => {
     expect((await settings.get({ siteId: OTHER })).author.name).toBe("Test Editor");
     expect((await settings.siteConnections!(SITE)).author).toEqual({ name: "Client Writer", email: "writer@client.example", inUse: "site", site: { name: "Client Writer", email: "writer@client.example" } });
     await expect(settings.setSiteAuthor!(SITE, { name: "X", email: "nope" })).rejects.toThrow(/email address/);
+    // A publishing name is kept like a person's: without what nobody sees.
+    await settings.setSiteAuthor!(SITE, { name: "\u202eClient\u200b Writer", email: "writer@client.example" });
+    expect((await settings.get({ siteId: SITE })).author.name).toBe("Client Writer");
+    await expect(settings.setSiteAuthor!(SITE, { name: "\u200b\u202e", email: "writer@client.example" })).rejects.toThrow(/Give the author a name/);
+    await settings.update({ author: { name: "Agency\u2066 Editor\u200f", email: "editor@agency.example" } });
+    expect((await settings.get({ siteId: OTHER })).author.name).toBe("Agency Editor");
     await settings.setSiteAuthor!(SITE, null);
     expect((await settings.siteConnections!(SITE)).author.inUse).toBe("shared");
 

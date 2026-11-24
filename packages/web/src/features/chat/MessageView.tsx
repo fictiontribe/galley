@@ -53,7 +53,13 @@ function TurnActions({ siteId, threadId, message }: { siteId: string; threadId: 
     const note = (
       <p className="chat-turn__note">
         <ProofMark kind={left.length ? "bang" : "stet"} />
-        <span>{undoneNote(changed.length, left.map((path) => nameOf({ path })))}</span>
+        <span>
+          {undoneNote(
+            left.map((path) => nameOf({ path })),
+            // A page it left may be one the reply wrote too late to be counted among its changes.
+            changed.some((path) => !left.includes(path)),
+          )}
+        </span>
       </p>
     );
     if (left.length === 0) return note;

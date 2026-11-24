@@ -22,8 +22,8 @@ const held: DataFolderHold[] = [];
 const children: ChildProcess[] = [];
 
 /** Takes `home` with short beats, remembering the hold so the test lets go of it. */
-async function hold(home: string, log: string[] = [], port: number | null = null): Promise<DataFolderHold> {
-  const taken = await holdDataFolder(home, port, { beatMs: BEAT, log: (line) => log.push(line) });
+async function hold(home: string, log: string[] = [], port: number | null = null, onLost?: (by: string) => void): Promise<DataFolderHold> {
+  const taken = await holdDataFolder(home, port, { beatMs: BEAT, log: (line) => log.push(line), ...(onLost ? { onLost } : {}) });
 
   held.push(taken);
   return taken;
@@ -225,14 +225,16 @@ describe("a server's hold on its data folder", () => {
     await hold(home);
   });
 
-  it("says once that another server has taken the folder, and stops beating", async () => {
+  it("says once that another server has taken the folder, tells its server once, and stops beating", async () => {
     const home = tempDir("hold-");
     const log: string[] = [];
-    const taken = await hold(home, log);
+    const lost: string[] = [];
+    const taken = await hold(home, log, null, (by) => lost.push(by));
 
     write(home, { pid: 1, hostname: "another-machine", id: "theirs", beat: 0 });
     await pause(BEAT * 5);
-    expect(log).toEqual(["Another server has taken this data folder (process 1 on another-machine, port 4400) while this one is still running. Stop one of them: two servers on one data folder write over each other."]);
+    expect(log).toEqual(["Another server has taken this data folder (process 1 on another-machine, port 4400) while this one was running."]);
+    expect(lost).toEqual([" (process 1 on another-machine, port 4400)"]);
     expect(read(home)).toMatchObject({ id: "theirs", beat: 0 });
     // Letting go leaves the other server's hold where it is.
     await taken.release();

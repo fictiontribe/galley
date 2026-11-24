@@ -30,6 +30,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { PRODUCT } from "../brand";
 import { GalleyError } from "../errors";
 import { withoutAccountAuthor } from "../workspace/author";
+import { outsideAnyCheckpoint } from "../workspace/checkpoint";
 import { roleMay, type AccessLevel, type AccountRole } from "./accounts";
 import { BUILD_MODE_LEVEL, ROLE_REFUSAL, SITE_SETTINGS_LEVEL } from "./route-access";
 
@@ -100,11 +101,12 @@ export function currentCaller(): Caller | null {
 
 /**
  * Runs `run` as nobody: neither this person's access nor their publishing
- * name. For what is made once during someone's request and serves everyone
- * after (an open site, its watcher, the preview).
+ * name, and no part of an assistant turn that happens to be under way
+ * (workspace/checkpoint.ts). For what is made once during someone's request
+ * and serves everyone after (an open site, its watcher, the preview).
  */
 export function outsideAnyPerson<T>(run: () => T): T {
-  return storage.run(null, () => withoutAccountAuthor(run));
+  return storage.run(null, () => withoutAccountAuthor(() => outsideAnyCheckpoint(run)));
 }
 
 /** Whether the work in progress may do what needs `level`: the role it began with and the role now must both allow it. */

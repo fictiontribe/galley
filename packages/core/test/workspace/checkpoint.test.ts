@@ -1,8 +1,8 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { withCaller } from "../../src/install/caller";
+import { outsideAnyPerson, withCaller } from "../../src/install/caller";
 import { createWorkspace, SPILL_BYTES, type Workspace } from "../../src/workspace/index";
 import { cleanupAll, makeRepo, WRITABLE } from "./helpers";
 
@@ -44,8 +44,8 @@ describe("checkpoints", () => {
       await ws.deleteFile("src/content/b.md", content);
     });
     checkpoint.close();
-    // Writes after close are not recorded, even from inside its own work.
-    await checkpoint.run(() => ws.writeFile("src/content/user.md", "later edit\n", typed));
+    // A write after close, by someone else: not this checkpoint's, in any way.
+    await ws.writeFile("src/content/user.md", "later edit\n", typed);
     expect(checkpoint.paths().sort()).toEqual(["src/content/a.md", "src/content/b.md", "src/content/new/c.md"]);
 
     const events: Array<[string[], string]> = [];
@@ -305,3 +305,156 @@ describe("a checkpoint beside other people's work", () => {
     expect(read(root, "src/content/a.md")).toBe("a\n");
   });
 });
+
+describe("what a checkpoint's own work does after it is closed", () => {
+  it("is not put back, and is named: a write that was still on its way when the reply ended", async () => {
+    const root = makeRepo({ "src/content/a.md": "a\n", "src/content/b.md": "b\n" });
+    const ws = await workspaceFor(root);
+    const turn = ws.checkpoint("turn");
+    let late: Promise<void> = Promise.resolve();
+
+    await turn.run(async () => {
+      await ws.writeFile("src/content/a.md", "a, by the turn\n", content);
+      // Started by the turn, landing after it has ended.
+      late = pause(15).then(() => ws.writeFile("src/content/b.md", "b, late\n", content));
+    });
+    turn.close();
+    expect(turn.paths()).toEqual(["src/content/a.md"]);
+    await late;
+
+    expect(await turn.restore()).toEqual(["src/content/a.md"]);
+    expect(turn.left()).toEqual(["src/content/b.md"]);
+    expect(read(root, "src/content/a.md")).toBe("a\n");
+    expect(read(root, "src/content/b.md")).toBe("b, late\n");
+  });
+
+  it("leaves a page it wrote again after closing", async () => {
+    const root = makeRepo({ "src/content/a.md": "a\n" });
+    const ws = await workspaceFor(root);
+    const turn = ws.checkpoint("turn");
+    let late: Promise<void> = Promise.resolve();
+
+    await turn.run(async () => {
+      await ws.writeFile("src/content/a.md", "one\n", content);
+      late = pause(15).then(() => ws.writeFile("src/content/a.md", "two\n", content));
+    });
+    turn.close();
+    await late;
+
+    expect(await turn.restore()).toEqual([]);
+    expect(turn.left()).toEqual(["src/content/a.md"]);
+    expect(read(root, "src/content/a.md")).toBe("two\n");
+  });
+});
+
+describe("what is made during a turn to serve everyone after", () => {
+  it("is nobody's work: its writes are not the turn's, then or later", async () => {
+    const root = makeRepo({ "src/content/a.md": "a\n", "src/content/watched.md": "w\n" });
+    const ws = await workspaceFor(root);
+    const turn = ws.checkpoint("turn");
+    let later: Promise<void> = Promise.resolve();
+
+    await turn.run(async () => {
+      await ws.writeFile("src/content/a.md", "a, by the turn\n", content);
+      // A site opened during the turn: its watcher and timers start here and go on for everyone.
+      await outsideAnyPerson(async () => {
+        await ws.writeFile("src/content/watched.md", "w, at once\n", typed);
+        later = pause(10).then(() => ws.writeFile("src/content/watched.md", "w, later\n", typed));
+      });
+      await later;
+    });
+    turn.close();
+    expect(turn.paths()).toEqual(["src/content/a.md"]);
+    expect(await turn.restore()).toEqual(["src/content/a.md"]);
+    expect(turn.left()).toEqual([]);
+    expect(read(root, "src/content/watched.md")).toBe("w, later\n");
+  });
+});
+
+describe("an undo that can't finish", () => {
+  it("puts back what it can, names the rest, and says what it put back", async () => {
+    const big = Buffer.alloc(SPILL_BYTES + 1024, 7);
+    const root = makeRepo({ "src/content/a.md": "a\n", "public/images/big.bin.png": big, "src/content/z.md": "z\n" });
+    const ws = await workspaceFor(root);
+    const before = readdirSync(tmpdir()).filter((n) => n.startsWith("galley-checkpoint-"));
+    const turn = ws.checkpoint("turn");
+
+    await turn.run(async () => {
+      await ws.writeFile("src/content/a.md", "a, by the turn\n", content);
+      await ws.writeFile("public/images/big.bin.png", Buffer.from("small"), content);
+      await ws.writeFile("src/content/z.md", "z, by the turn\n", content);
+    });
+    turn.close();
+    // What the large file was is kept beside the system's temporary files, and those can be cleared away.
+    for (const dir of readdirSync(tmpdir()).filter((n) => n.startsWith("galley-checkpoint-") && !before.includes(n))) rmSync(join(tmpdir(), dir), { recursive: true, force: true });
+
+    const events: Array<[string[], string]> = [];
+
+    ws.onChange((paths, origin) => events.push([paths, origin]));
+    expect((await turn.restore()).sort()).toEqual(["src/content/a.md", "src/content/z.md"]);
+    expect(turn.left()).toEqual(["public/images/big.bin.png"]);
+    expect(read(root, "src/content/a.md")).toBe("a\n");
+    expect(read(root, "src/content/z.md")).toBe("z\n");
+    expect(read(root, "public/images/big.bin.png")).toBe("small");
+    expect(events).toEqual([[["src/content/a.md", "src/content/z.md"], "undo"]]);
+  });
+});
+
+describe("a page the turn moved", () => {
+  const OLD = "src/content/pages/about.md";
+  const NEW = "src/content/pages/about-us.md";
+  const page = (title: string) => `---\ntitle: ${title}\n---\nWe are four people.\nWe draw houses.\nCome and see us.\n`;
+
+  async function moved() {
+    const root = makeRepo({ [OLD]: page("About"), "src/content/pages/other.md": "other\n" });
+    const ws = await workspaceFor(root);
+    const turn = ws.checkpoint("turn");
+
+    await turn.run(async () => {
+      await ws.writeFile(NEW, page("About us"), content);
+      await ws.deleteFile(OLD, content);
+      await ws.writeFile("src/content/pages/other.md", "other, by the turn\n", content);
+    });
+    turn.close();
+    return { root, ws, turn };
+  }
+
+  it("goes back as a pair", async () => {
+    const { root, turn } = await moved();
+
+    expect((await turn.restore()).sort()).toEqual([NEW, OLD, "src/content/pages/other.md"].sort());
+    expect(turn.left()).toEqual([]);
+    expect(read(root, OLD)).toBe(page("About"));
+    expect(existsSync(join(root, NEW))).toBe(false);
+  });
+
+  it("stays as a pair when someone changed it under its new name: never the page twice", async () => {
+    const { root, ws, turn } = await moved();
+
+    await as("bob", () => ws.writeFile(NEW, `${page("About us")}And Bob's line.\n`, typed));
+    expect(await turn.restore()).toEqual(["src/content/pages/other.md"]);
+    expect(turn.left().sort()).toEqual([NEW, OLD].sort());
+    expect(existsSync(join(root, OLD))).toBe(false);
+    expect(read(root, NEW)).toContain("And Bob's line.");
+    expect(read(root, "src/content/pages/other.md")).toBe("other\n");
+  });
+
+  it("is not assumed of a page removed and an unrelated page made", async () => {
+    const root = makeRepo({ [OLD]: page("About") });
+    const ws = await workspaceFor(root);
+    const turn = ws.checkpoint("turn");
+
+    await turn.run(async () => {
+      await ws.deleteFile(OLD, content);
+      await ws.writeFile("src/content/pages/prices.md", "---\ntitle: Prices\n---\nA first visit is free.\n", content);
+    });
+    turn.close();
+    await as("bob", () => ws.writeFile("src/content/pages/prices.md", "---\ntitle: Prices\n---\nBob's prices.\n", typed));
+
+    // Two changes, not one page: the removed page comes back though the new one was changed.
+    expect(await turn.restore()).toEqual([OLD]);
+    expect(turn.left()).toEqual(["src/content/pages/prices.md"]);
+    expect(read(root, OLD)).toBe(page("About"));
+  });
+});
+

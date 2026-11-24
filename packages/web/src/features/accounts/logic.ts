@@ -101,3 +101,14 @@ export function takeLinkCode(address?: AddressBar, past?: PageHistory): string |
   }
   return taken && taken.path === location.pathname ? taken.code : null;
 }
+
+/**
+ * What an account that isn't complete is asked for: both details (the owner
+ * of an install from before accounts, who has neither), or only a name
+ * (someone who has an e-mail: they accepted an invitation with a name
+ * someone here already has, or their name held nothing a reader can see).
+ */
+export function completeKind(account: { name: string; email: string }): "details" | "name" {
+  return account.email && !account.name ? "name" : "details";
+}
+

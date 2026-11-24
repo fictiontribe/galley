@@ -61,6 +61,12 @@ export interface HoldOptions {
   watchMs?: number;
   /** One plain line for whoever runs the server. */
   log?: (line: string) => void;
+  /**
+   * Called once, when a refresh finds the hold is another server's (`by`: as
+   * that server wrote it, in words). The folder is no longer this server's
+   * to write to: whoever holds it stops, so the two never write over each other.
+   */
+  onLost?: (by: string) => void;
 }
 
 export interface DataFolderHold {
@@ -268,7 +274,10 @@ export async function holdDataFolder(home: string, port: number | null, options:
       }
       lost = true;
       clearInterval(timer);
-      log(`Another server has taken this data folder${describe((await look(home)).lock)} while this one is still running. Stop one of them: two servers on one data folder write over each other.`);
+      const by = describe((await look(home).catch(() => null))?.lock ?? null);
+
+      log(`Another server has taken this data folder${by} while this one was running.`);
+      options.onLost?.(by);
     } catch (error) {
       // Said once, tried again at the next beat: a hold that stops changing looks abandoned to another server.
       if (!saidUnwritable) log(`This server couldn't refresh its hold on the data folder: ${error instanceof Error ? error.message : String(error)}`);

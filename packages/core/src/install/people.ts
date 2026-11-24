@@ -527,8 +527,10 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         const link = linkFor(draft, code, now());
 
         if (!link) throw new GalleyError("not-found", LINK_REFUSED);
-        // Refused before the link is spent, so the same link works with another name.
-        if (link.kind === "invitation" && sharesName(draft, name!, null)) throw nameTaken(name!);
+        // A name someone here already has is not refused at the door: whoever holds a link would learn from it who is here.
+        // They are let in without a name and choose one as a member, where a name that is taken is said to be.
+        const nameless = link.kind === "invitation" && sharesName(draft, name!, null);
+
         draft.links = draft.links.filter((candidate) => candidate !== link);
         const at = iso(now());
 
@@ -536,7 +538,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
           if (draft.accounts.some((account) => account.email === link.email)) throw new GalleyError("conflict", "Someone with that e-mail already has an account here. Sign in instead.");
           const created: StoredAccount = {
             id: newId(),
-            name: name!,
+            name: nameless ? "" : name!,
             email: link.email,
             role: link.role ?? "contributor",
             passwordHash: hash,
@@ -544,7 +546,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
             createdAt: at,
             lastSeenAt: null,
             disabled: false,
-            incomplete: false,
+            incomplete: nameless,
             sessionsValidAfter: 0,
           };
 

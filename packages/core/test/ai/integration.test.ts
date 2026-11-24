@@ -224,6 +224,56 @@ describe.skipIf(!available)("assistant on the real facade (starters/astro-starte
     expect(note).not.toContain("Everything that turn changed has been rolled back");
   });
 
+  it("stopping a reply waits for a change that is on its way, so the change is the reply's to undo", async () => {
+    const path = "src/content/pages/about.md";
+    const before = readFileSync(join(root, path), "utf8");
+    let open: () => void = () => undefined;
+    let arrived: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => (open = resolve));
+    const waiting = new Promise<void>((resolve) => (arrived = resolve));
+    const real = site.updateEntry;
+
+    // The edit is held just before it is made, the way a busy page holds one back.
+    site.updateEntry = async (...args) => {
+      arrived();
+      await gate;
+      return real.apply(site, args);
+    };
+    try {
+      script.push(stream(tool("s1", "read_entry", { path })), stream(tool("s2", "update_entry", { path, ops: [{ op: "set", path: ["title"], value: "Stopped half-way" }] })));
+      const start = bus.events.length;
+      const { turnId } = await runtime.send(site.id, threadId, { text: "Retitle the about page" });
+
+      await waiting;
+      let stopped = false;
+      const stop = runtime.cancel(site.id, threadId).then(() => {
+        stopped = true;
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      // Stop has not come back, and nothing is written yet.
+      expect(stopped).toBe(false);
+      expect(readFileSync(join(root, path), "utf8")).toBe(before);
+      open();
+      await stop;
+      // By the time Stop comes back the edit has landed, inside the reply.
+      expect(readFileSync(join(root, path), "utf8")).toContain("Stopped half-way");
+      const reply = bus.events
+        .slice(start)
+        .filter((e): e is Extract<ServerEvent, { type: "chat.message" }> => e.type === "chat.message")
+        .map((e) => e.message)
+        .filter((m) => m.role === "assistant" && !m.pending)
+        .pop();
+
+      expect(reply).toMatchObject({ turnId, changedPaths: [path] });
+      expect(script.remaining()).toBe(0);
+      expect(await runtime.undoTurn(site.id, threadId, turnId)).toEqual({ restored: [path], left: [] });
+      expect(readFileSync(join(root, path), "utf8")).toBe(before);
+    } finally {
+      site.updateEntry = real;
+    }
+  });
+
   it("(d) refuses a source file in content mode, at the dispatcher and in the engine", async () => {
     const header = "src/components/Header.astro";
     const before = readFileSync(join(root, header), "utf8");

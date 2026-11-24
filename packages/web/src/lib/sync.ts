@@ -122,6 +122,11 @@ export function startSync(): void {
     void useMeta.getState().load();
   });
 
+  // This account has as many windows of the editor open as it may: said once, in the server's words. The window keeps asking.
+  subscribe("stream.limit", (event) => {
+    notify({ tone: "warning", title: "Live updates are paused in this window", body: event.message });
+  });
+
   onReconnect(() => {
     void useSites.getState().load();
     void useSite.getState().refresh();
