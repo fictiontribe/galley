@@ -24,12 +24,17 @@ export class GalleyError extends Error {
   readonly detail?: string;
   readonly status: number;
 
-  constructor(code: GalleyErrorShape["code"], message: string, detail?: string) {
+  /**
+   * `status`: only where the code's own status would say the wrong thing —
+   * a code host that couldn't be asked is somebody else's server not
+   * answering (502), not a failure of this one (the 500 of "git").
+   */
+  constructor(code: GalleyErrorShape["code"], message: string, detail?: string, status?: number) {
     super(message);
     this.name = "GalleyError";
     this.code = code;
     this.detail = detail;
-    this.status = STATUS[code];
+    this.status = status ?? STATUS[code];
   }
 
   toJSON(): GalleyErrorShape {

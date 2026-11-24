@@ -442,6 +442,27 @@ describe("galley serve", () => {
     expect(await output(0)).toContain("Repository: not checked by itself (GALLEY_SYNC_MINUTES=0)");
   });
 
+  it("says which site it has: one with no repository behind it is still the install's site, not one waiting for first run", async () => {
+    const line = async (site: Record<string, unknown> | null) => {
+      const io = testIo({
+        env: { HOME: tmp, GALLEY_HOME: "/data" },
+        startServer: async () => ({ url: "http://127.0.0.1:4400", port: 4400, install: { site: async () => site, store: { hasOwner: () => true } }, close: async () => {} }) as unknown as RunningServer,
+      });
+
+      expect(await main(["serve"], io)).toBe(0);
+      return io.stdout.find((text) => text.startsWith("Site:"));
+    };
+    const connected = { state: "connected", id: "harbour-notes", name: "Harbour notes", repository: null, branch: "main", folder: null };
+
+    // Taken over from the folder an earlier version kept its sites in: there, and with nowhere to send versions.
+    expect(await line(connected)).toBe("Site:      Harbour notes, kept in the data folder with no repository behind it (its versions are kept here and sent nowhere)");
+    expect(await line({ ...connected, name: null })).toBe("Site:      kept in the data folder with no repository behind it (its versions are kept here and sent nowhere)");
+    expect(await line({ ...connected, repository: "git@code.example:acme/site.git", folder: "apps/site" })).toBe("Site:      git@code.example:acme/site.git, folder apps/site");
+    // Nothing yet: first run connects it.
+    expect(await line(null)).toBe("Site:      not connected yet (first run connects it)");
+    expect(await line({ state: "none", id: null, name: null, repository: null, branch: null })).toBe("Site:      not connected yet (first run connects it)");
+  });
+
   it("says links are e-mailed only with both outgoing e-mail and the public address", async () => {
     const lines = async (env: Record<string, string>) => {
       const io = testIo({

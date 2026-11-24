@@ -126,6 +126,39 @@ describe("publish, history and undo", GIT_HEAVY, () => {
   });
 });
 
+describe("an edit whose file was changed from outside the app before it could be written", GIT_HEAVY, () => {
+  it.skipIf(process.platform === "win32")("is worked out again from the file as it is now, never written over it", async () => {
+    const root = makeSite();
+    const gate = tempDir("site-edit-gate-");
+    const { site } = await openSite(root);
+
+    // The site's own check before a version is recorded waits to be let through: the publish holds the workspace meanwhile.
+    writeFileSync(join(root, ".git", "hooks", "pre-commit"), `#!/bin/sh\n: > '${gate}/reached'\nwhile [ ! -e '${gate}/go' ]; do sleep 0.05; done\n`, { mode: 0o755 });
+    await site.updateEntry(PRICING, [{ op: "set", path: ["description"], value: "Plain fees." }]);
+    const publishing = site.publish({ paths: [PRICING], message: "Fees" });
+
+    while (!existsSync(join(gate, "reached"))) await new Promise((resolve) => setTimeout(resolve, 20));
+    // Worked out from the page as it is now, and waiting to be written…
+    const opened = (await site.readEntry(HOME)).hash;
+    const edit = site.updateEntry(HOME, [{ op: "set", path: ["title"], value: "Mine" }]);
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    // …when someone saves the page in their own editor.
+    const theirs = read(root, HOME).replace(/^title: .*$/m, "title: Theirs").replace(/^description: .*$/m, "description: Theirs too");
+
+    expect(theirs).toContain("title: Theirs");
+    writeFileSync(join(root, HOME), theirs);
+    writeFileSync(join(gate, "go"), "");
+    expect(await publishing).toMatchObject({ ok: true });
+    // The edit is in, and so is everything of theirs it didn't touch.
+    expect((await edit).applied).toBe(1);
+    expect(read(root, HOME)).toBe(theirs.replace("title: Theirs", "title: Mine"));
+    // An edit that says what it opened, when that is no longer what is there, is refused as before.
+    await expect(site.updateEntry(HOME, [{ op: "set", path: ["title"], value: "Stale" }], { baseHash: opened })).rejects.toMatchObject({ code: "conflict", status: 409 });
+    expect(read(root, HOME)).toBe(theirs.replace("title: Theirs", "title: Mine"));
+  });
+});
+
 describe("a site inside a larger repository", GIT_HEAVY, () => {
   it("scopes every change, publish and discard to the site's own folder", async () => {
     const repo = tempDir("site-mono-");

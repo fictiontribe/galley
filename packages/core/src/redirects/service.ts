@@ -25,6 +25,7 @@ import { GalleyError } from "../errors";
 import { recordSettings } from "../site/settings-records";
 import { createJobTracker } from "../site/jobs";
 import type { EventBus, GalleyConfig, Job, SettingsService, SiteModel, SiteRegistry, SiteService } from "../types";
+import { hashContent } from "../workspace/files";
 import { writeRefusal } from "../workspace/policy";
 import { checkRedirects, hostUsage } from "./check";
 import { applyCloudflare, checkCloudflare, CLOUDFLARE_API, hostnameProblem, itemsHash, missingPermissionError, planCloudflare, probeCloudflare, removeCloudflare, desiredItems, type CloudflareApi, type CloudflareTarget } from "./cloudflare";
@@ -193,9 +194,12 @@ export function createRedirectsService(options: RedirectsServiceOptions): Redire
     });
   }
 
+  const LIST_CHANGED = "The redirects changed while you were working (in another window, or by the assistant). Look at the list again, then repeat your change. Nothing was changed.";
+
   async function writeDerived(site: SiteService, plan: DerivedPlan, origin: "user" | "agent"): Promise<void> {
     if (plan.next === null || plan.next === plan.current) return;
-    await site.writeFile(plan.path, plan.next, { origin, mode: "content" });
+    // Rebuilt from what was read of it: written only over that, so a file that changed in between isn't replaced from the older text.
+    await site.writeFile(plan.path, plan.next, { origin, mode: "content", ...(plan.current !== null ? { baseHash: hashContent(plan.current) } : {}) });
     if (plan.host === "vercel" && plan.writtenHash) {
       const hash = plan.writtenHash;
 
@@ -225,17 +229,33 @@ export function createRedirectsService(options: RedirectsServiceOptions): Redire
 
     if (!loaded.read.ok) throw new GalleyError("invalid", `${loaded.read.problem} The file itself needs fixing first — a developer can do that — then try again. Nothing was changed.`);
     if (baseHash !== undefined && (loaded.text?.hash ?? null) !== baseHash) {
-      throw new GalleyError("conflict", "The redirects changed while you were working (in another window, or by the assistant). Look at the list again, then repeat your change. Nothing was changed.");
+      throw new GalleyError("conflict", LIST_CHANGED);
     }
     validateList(list);
     model = await ensureWritable(site, model);
     const text = serializeList(list);
 
-    if (text !== loaded.text?.content) await site.writeFile(listFileOf(model), text, { origin, mode: "content" });
+    if (text !== loaded.text?.content) {
+      // Over the list as it was just checked, and nothing newer.
+      await site.writeFile(listFileOf(model), text, { origin, mode: "content", ...(loaded.text ? { baseHash: loaded.text.hash } : {}) }).catch((error: unknown) => {
+        if (error instanceof GalleyError && error.code === "conflict") throw new GalleyError("conflict", LIST_CHANGED);
+        throw error;
+      });
+    }
     const routes = await siteRoutes(site, model);
-    const plan = await planFor(site, model, canonicalOrder(list), routes);
 
-    if (plan && safeToWrite(plan)) await writeDerived(site, plan, origin);
+    // The list is saved by now. The host's file is rebuilt from what is read of it: read again, once, if it changed just then.
+    for (let attempt = 1; ; attempt += 1) {
+      const plan = await planFor(site, model, canonicalOrder(list), routes);
+
+      if (!plan || !safeToWrite(plan)) break;
+      try {
+        await writeDerived(site, plan, origin);
+        break;
+      } catch (error) {
+        if (!(error instanceof GalleyError && error.code === "conflict") || attempt >= 2) throw error;
+      }
+    }
   }
 
   async function cloudflareSummary(site: SiteService, model: SiteModel, list: Redirect[], usageOver: boolean): Promise<CloudflareSummary> {

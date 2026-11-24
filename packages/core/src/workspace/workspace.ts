@@ -89,21 +89,30 @@ export interface Workspace {
   /** Push versions published here that the remote doesn't have yet. */
   send(config: PublishConfig): Promise<PublishResult>;
   gitStatus(): Promise<GitStatus>;
-  /** Ask the code host what is new, changing no file (publishing.look). Waits its turn behind other git work. */
+  /**
+   * Ask the code host what is new, changing no file (publishing.look). Saves
+   * never wait for it: it runs outside the save lock, and everyone who asks
+   * while a look is going shares that one.
+   */
   check(): Promise<GitStatus>;
   pull(): Promise<GitStatus>;
   /** Get latest, saying what came in. `around` runs on either side of files changing, and only when something is to come in. */
   getLatest(around?: publishing.AroundBringIn): Promise<CatchUpResult>;
   /**
    * Look, and bring newer versions in when nothing is in the way
-   * (publishing.catchUp). null, at once, when a write or other git work is
-   * in progress or waiting: it never queues behind it.
+   * (publishing.catchUp). null when a write, a publish or Get latest is in
+   * progress or waiting, before the look or after it: it never queues
+   * behind them, and it holds the save lock only while files change.
    */
   catchUp(around?: publishing.AroundBringIn): Promise<CatchUpResult | null>;
   checkpoint(label: string): WorkspaceCheckpoint;
   onChange(listener: (paths: string[], origin: ChangeOrigin) => void): () => void;
   dispose(): Promise<void>;
 }
+
+/** Said when a write carries the hash of the text it was made from and the file is no longer that text. */
+export const CHANGED_SINCE_OPENED =
+  "This file changed since you opened it, so your edit wasn't saved. Reopen it to get the latest version, then make your change again.";
 
 /** Used when neither the app settings nor git config name the author. */
 export const NEUTRAL_AUTHOR = { name: "Site editor", email: "site-editor@localhost" } as const;
@@ -145,6 +154,23 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
   const listeners = new Set<(paths: string[], origin: ChangeOrigin) => void>();
   const selfWrites = new Map<string, { hash: string | null; at: number }>();
   const lock = createLock();
+  /**
+   * Everything that talks to the code host or moves this copy between
+   * versions, one at a time: a look, a publish, an undo, a send, Get latest,
+   * a round. They share git's record of what the code host has, so two at
+   * once could leave it older than it is. Taken before the save lock, never
+   * after it. A look takes this one only, so a look never holds up a save,
+   * however slow the code host is to answer. Publishing, undoing a publish
+   * and sending are another matter: they hold the save lock from start to
+   * finish, sending to the code host included (GIT_NETWORK_TIMEOUT_MS at
+   * most), because what is published and what is still pending have to
+   * change together.
+   */
+  const turn = createLock();
+  /** Publishing, undoing, sending and Get latest that are in progress or waiting for their turn: a round never runs beside them. */
+  let wanted = 0;
+  /** The look in progress, shared by everyone who asks while it is going. */
+  let looking: Promise<publishing.Look | null> | null = null;
   let gitBusy = 0;
   let gitQuietUntil = 0;
   /** When the code host last answered a look, and why the newest look failed (null: it didn't). Kept for this run of the app only. */
@@ -190,6 +216,27 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
       gitBusy -= 1;
       gitQuietUntil = Date.now() + GIT_QUIET_MS;
     }
+  }
+
+  /** A person's git action: its turn among the others, then the save lock for as long as it runs. */
+  function gitAction<T>(task: () => Promise<T>): Promise<T> {
+    wanted += 1;
+    return turn(task).finally(() => {
+      wanted -= 1;
+    });
+  }
+
+  /** One look at the code host, with no save lock held. Whoever asks while it is going gets the same look. */
+  function sharedLook(): Promise<publishing.Look | null> {
+    looking ??= turn(() => quietGit(() => publishing.look(host)))
+      .then((look) => {
+        if (look) heard(look);
+        return look;
+      })
+      .finally(() => {
+        looking = null;
+      });
+    return looking;
   }
 
   async function refreshStatus(paths?: string[]): Promise<Map<string, PendingStatus>> {
@@ -348,13 +395,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     if (!current) {
       throw new GalleyError("conflict", "This file was removed since you opened it. Reopen it to see the latest version.", resolved.path);
     }
-    if (hashContent(current) !== baseHash) {
-      throw new GalleyError(
-        "conflict",
-        "This file changed since you opened it, so your edit wasn't saved. Reopen it to get the latest version, then make your change again.",
-        resolved.path
-      );
-    }
+    if (hashContent(current) !== baseHash) throw new GalleyError("conflict", CHANGED_SINCE_OPENED, resolved.path);
   }
 
   async function gitIdentity(scope: "--local" | "--global"): Promise<publishing.Identity> {
@@ -649,7 +690,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     },
 
     publish(request, config, describe) {
-      return lock(() => quietGit(() => publishing.publish(host, request, config, describe)));
+      return gitAction(() => lock(() => quietGit(() => publishing.publish(host, request, config, describe))));
     },
 
     history(limit) {
@@ -657,26 +698,21 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     },
 
     revert(commit, config) {
-      return lock(() => quietGit(() => publishing.revert(host, commit, config)));
+      return gitAction(() => lock(() => quietGit(() => publishing.revert(host, commit, config))));
     },
 
     send(config) {
-      return lock(() => quietGit(() => publishing.send(host, config)));
+      return gitAction(() => lock(() => quietGit(() => publishing.send(host, config))));
     },
 
     async gitStatus() {
       return withLooks(await publishing.gitStatus(host));
     },
 
-    check() {
-      return lock(() =>
-        quietGit(async () => {
-          const look = await publishing.look(host);
-
-          if (look) heard(look);
-          return withLooks(await publishing.gitStatus(host));
-        })
-      );
+    async check() {
+      await sharedLook();
+      // What the look found is read under the save lock, as it always was: reading the files' state is quick, and no save is then half-counted.
+      return withLooks(await lock(() => publishing.gitStatus(host)));
     },
 
     async pull() {
@@ -684,24 +720,47 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     },
 
     getLatest(around) {
-      return lock(() =>
-        quietGit(async () => {
-          const result = await publishing.pull(host, { onLook: heard, ...(around ? { around } : {}) });
+      return gitAction(async () => {
+        // What can be refused without the code host is refused before it is asked.
+        await publishing.bringInSource(host);
+        // A look of its own, begun after the person asked: one already going may have asked the code host before the newest version was there.
+        const looked = await quietGit(() => publishing.look(host));
 
-          return { ...result, status: withLooks(result.status) };
-        })
-      );
+        if (looked) heard(looked);
+        return lock(() =>
+          quietGit(async () => {
+            const result = await publishing.pull(host, looked, around ? { around } : {});
+
+            return { ...result, status: withLooks(result.status) };
+          })
+        );
+      });
     },
 
     async catchUp(around) {
-      if (lock.busy()) return null;
-      return lock(() =>
-        quietGit(async () => {
-          const result = await publishing.catchUp(host, { onLook: heard, ...(around ? { around } : {}) });
+      const inTheWay = () => lock.busy() || wanted > 0;
+      /** The files' state, read under the save lock like a look's — or null when a save or a publish has begun by then. */
+      const statusNow = async (): Promise<GitStatus | null> => (inTheWay() ? null : lock(() => publishing.gitStatus(host)));
+      const nothing = (status: GitStatus | null): CatchUpResult | null => (status ? { brought: 0, paths: [], status: withLooks(status) } : null);
 
-          return { ...result, status: withLooks(result.status) };
-        })
-      );
+      if (inTheWay()) return null;
+      if (!(await publishing.canKeepUp(host))) return nothing(await statusNow());
+      const looked = await sharedLook();
+      const status = await statusNow();
+
+      // Nothing to bring in, or it can't come in: said from here, with no turn taken and nothing held.
+      if (!status || !looked?.ok || status.behind === 0 || status.inTheWay) return nothing(status);
+      return turn(async () => {
+        // Its turn may have come after another look; a save or a publish that began meanwhile goes first, and the next round tries again.
+        if (inTheWay()) return null;
+        return lock(() =>
+          quietGit(async () => {
+            const result = await publishing.catchUp(host, around ? { around } : {});
+
+            return { ...result, status: withLooks(result.status) };
+          })
+        );
+      });
     },
 
     checkpoint(label) {

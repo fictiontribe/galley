@@ -84,6 +84,10 @@ function describeHost(host: string): string {
 }
 
 function describeSite(site: InstallSite | null): string {
+  // A site this data folder already held (taken over from an earlier version's list) is connected with no repository behind it.
+  if (site?.state === "connected" && !site.repository) {
+    return `${site.name ? `${site.name}, ` : ""}kept in the data folder with no repository behind it (its versions are kept here and sent nowhere)`;
+  }
   if (!site || site.state === "none" || !site.repository) return "not connected yet (first run connects it)";
   const where = `${site.repository}${site.folder ? `, folder ${site.folder}` : ""}`;
 

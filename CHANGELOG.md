@@ -109,6 +109,11 @@ entry says how.
   that store too when the copy has moved to another version since the
   preview started. Newer versions that change `package.json` or a lockfile
   make the next start install the site's packages first.
+- **Bringing newer versions in runs none of the repository's own hooks**
+  (Get latest and a hosted editor's round alike), and starts none of git's
+  background tidying. A hook that ran after a merge, to install packages
+  say, no longer runs here: the preview installs what newer versions need.
+  Publishing still runs the site's own checks.
 - **Get latest** no longer starts when it can already tell git would refuse:
   it says which files with unpublished changes the newer versions change.
 - **A quieter, more finished look, in the app and on the site.** Sheets rest
@@ -193,6 +198,66 @@ entry says how.
   for **Undo** after Search and AI fixes. `POST …/threads/:threadId/undo`
   and `POST …/visibility/undo` answer `{ restored, left }`, and a chat
   message gains `undoLeft`.
+- **Looking at the code host no longer holds up saves.** A hosted editor's
+  round, Version history's look and Get latest asked the code host while
+  holding the lock every save takes, so a code host that was slow to answer
+  stalled saving for up to two minutes at a time. The look now runs outside
+  that lock, which is taken only for the moment newer versions change the
+  files. People who open Version history together share one look, and a
+  round uses a look that is already going. Publishing, undoing a publish
+  and sending still hold saves for as long as sending to the code host
+  takes.
+- **An edit never lands on top of text that was replaced under it.** An
+  edit to an entry is written only over the text it was worked out from.
+  When a discard, newer versions coming in, an undone publish, an undone
+  reply or an edit from outside the app rewrote the file first, the edit is
+  worked out again from what is there now; an edit that said which version
+  it had open is refused, as before, so the person reopens it. The same now
+  holds for the redirects list and the host's redirects file, the site
+  kit's settings and the site's own settings file
+  (`SiteService.saveConfig` takes a `baseHash`).
+- **The assistant changes only what it has read, as it read it.** It
+  changes an entry, replaces a file or saves the site's configuration only
+  if it has read it in the conversation and it is still that version;
+  otherwise nothing is changed and it reads again. Its edits are never
+  worked out again on newer text. What a conversation has read is
+  remembered from one reply to the next, so versions that come in between
+  two replies are not written over from the first one's reading. A hosted
+  editor's round waits while the assistant is working on the site
+  (`AgentRuntime` gains `working(siteId)`).
+- **A skipped round still looks, and long skipping is said.** While it is
+  the assistant or the preview's install that keeps newer versions out, the
+  editor's round still asks the code host what is new, so "Newer versions
+  are waiting" stays true. Rounds skipped for 30 minutes running are logged
+  once, with the reason, and once more when they run again. A restore
+  waits for a round in progress before it closes the site.
+- **A preview that is installing is left to finish.** A round waits for the
+  install, and Get latest says to try again once it has finished; bringing
+  versions in used to wait for the whole install with every save held up
+  behind it. When the preview was stopped during an install, or the install
+  failed, the next start installs again even though the packages folder is
+  already there.
+- **The preview can't be started in the middle of newer versions coming
+  in.** A Start pressed then waits until the files are in, and the preview
+  says so. When stopping the preview fails, it is still started again.
+- **Get latest and a failed look speak for themselves.** A refused Get
+  latest (unpublished changes in the way, or the two having gone separate
+  ways) answers 409 `conflict` rather than 500, and one that couldn't reach
+  the code host answers 502. A look that couldn't reach
+  the code host no longer borrows the words of a failed publish, bringing
+  versions in that took too long no longer blames the connection, and the
+  words for a site with no repository or code host no longer speak of
+  fetching.
+- **Technical details never carry what signs in to an address.** The part
+  of an address that signs in is removed wherever the address appears in a
+  message, not only at its start, and from every failed git command's
+  details: a password in any kind of address (one containing an `@` too),
+  a query value named as a token, key, secret or signature, and GitHub's
+  and GitLab's own key formats wherever they appear.
+- **`galley serve`** says which site it has when that site has no
+  repository behind it, instead of "not connected yet". A temporary copy of
+  the install's state file, left behind when the server was stopped in the
+  middle of a write, is removed at the next start.
 
 ## 0.3.1 — 2026-11-24
 

@@ -53,6 +53,21 @@ const HOOK_TIMEOUT_MS = 5 * 60_000;
  * The limit is only there so that a stuck disk cannot hold the lock for ever.
  */
 const BRING_IN_TIMEOUT_MS = 60 * 60_000;
+/**
+ * For every git command here that talks to the code host or brings its
+ * versions in: git's own tidying-up, which it starts in the background
+ * after a fetch or a merge and which can go on after the command (and the
+ * workspace's turn) is over, beside whatever git work comes next.
+ */
+const NO_BACKGROUND_WORK = ["maintenance.auto=false", "gc.auto=0"];
+/**
+ * For bringing versions in, on top of that: the repository's own hooks are
+ * not run. A hook after a merge (installing packages, say) would run with
+ * the save lock held, for as long as it liked; and what a hosted editor's
+ * own round brings in, nobody asked for, so nothing of the site's runs for
+ * it. The preview installs what newer versions need (site/service.ts).
+ */
+const BRING_IN_CONFIG = [...NO_BACKGROUND_WORK, "core.hooksPath=/dev/null"];
 const CHUNK = 200;
 
 export const NOT_A_REPO =
@@ -224,6 +239,7 @@ async function push(repo: Git, remote: string, source: string, target: string): 
  */
 async function behindRemote(repo: Git, remote: string, branch: string): Promise<number> {
   const fetched = await repo.run(["fetch", "--quiet", "--no-tags", remote, `+refs/heads/${branch}:refs/remotes/${remote}/${branch}`], {
+    config: NO_BACKGROUND_WORK,
     allowFailure: true,
     timeoutMs: GIT_NETWORK_TIMEOUT_MS,
   });
@@ -723,25 +739,51 @@ async function authorOf(host: RepoHost): Promise<NonNullable<GitStatus["author"]
   return { name: identity.name, email: identity.email, from: identity.from ?? "default" };
 }
 
-function classifyPullError(stderr: string, timedOut: boolean): string {
-  if (/would be overwritten|untracked working tree files would be/i.test(stderr)) {
-    return "Some files you've changed here were also changed in the latest version. Publish or discard your changes to those files, then try again.";
+/** git refused to move the copy forward rather than overwrite something or rewrite anything: a state of the files, not a failure. */
+const REFUSED_FOR_FILES = /would be overwritten|untracked working tree files would be/i;
+const REFUSED_FOR_HISTORY = /Not possible to fast-forward|diverg|refusing to merge unrelated/i;
+
+/** Why the code host couldn't be asked, said about looking and bringing in: nothing here is being sent anywhere. */
+function classifyReachError(stderr: string, timedOut: boolean): string {
+  if (timedOut) return "Couldn't reach the code host in time. Check your connection and try again.";
+  if (
+    /Authentication failed|could not read Username|could not read Password|terminal prompts disabled|Permission denied|access denied|denied to|returned error: 40[13]|HTTP 40[13]|Invalid username or password|publickey/i.test(
+      stderr
+    )
+  ) {
+    return "The code host didn't accept this copy's sign-in, so it couldn't be asked for newer versions. Check the site's connection settings.";
   }
-  if (/Not possible to fast-forward|diverg|refusing to merge unrelated/i.test(stderr)) {
-    return "This copy has versions that aren't on the code host yet, and the code host has newer ones, so they can't be combined automatically. Ask a developer to combine them.";
+  if (
+    /Could not resolve host|unable to access|Connection refused|Connection timed out|Operation timed out|Network is unreachable|Could not read from remote repository|Connection reset|SSL|TLS/i.test(
+      stderr
+    )
+  ) {
+    return "Couldn't reach the code host. Check your connection and try again.";
   }
-  if (/couldn't find remote ref|no such ref/i.test(stderr)) {
-    return "The code host doesn't have this branch yet, so there's nothing to fetch.";
+  if (/does not appear to be a git repository|repository not found|not found/i.test(stderr)) {
+    return "The site's code host address doesn't point at a repository this copy can read. Check the site's connection settings.";
   }
-  return classifyPushError(stderr, timedOut)
-    .replace("Your change is saved on this computer — check your connection and publish again.", "Check your connection and try again.")
-    .replace("then publish again.", "then try again.");
+  return "The code host couldn't be asked for newer versions. Try again in a moment.";
 }
 
-/** Why a look at the code host didn't work, in the words Get latest uses (minus its own vocabulary). */
-function classifyLookError(stderr: string, timedOut: boolean): string {
+/** Why fetched versions couldn't be brought into the files. That step is local: the code host has no part in it. Exported for its tests. */
+export function classifyPullError(stderr: string, timedOut: boolean): string {
+  if (timedOut) {
+    return "Bringing the newer versions in took too long and was stopped before it finished, so some files may be newer than others. Someone who knows the repository needs to look before anything is published.";
+  }
+  if (REFUSED_FOR_FILES.test(stderr)) {
+    return "Some files you've changed here were also changed in the latest version. Publish or discard your changes to those files, then try again.";
+  }
+  if (REFUSED_FOR_HISTORY.test(stderr)) {
+    return "This copy has versions that aren't on the code host yet, and the code host has newer ones, so they can't be combined automatically. Ask a developer to combine them.";
+  }
+  return "The newer versions couldn't be brought in. The technical details say why.";
+}
+
+/** Why a look at the code host didn't work. Exported for its tests. */
+export function classifyLookError(stderr: string, timedOut: boolean): string {
   if (/couldn't find remote ref|no such ref/i.test(stderr)) return "The repository doesn't have the versions this copy follows yet, so there's nothing newer to look for.";
-  return classifyPullError(stderr, timedOut);
+  return classifyReachError(stderr, timedOut);
 }
 
 /** One look at the code host: null when there is nothing to look at (no repository, no remote, no branch). */
@@ -749,8 +791,9 @@ export type Look = { ok: true } | { ok: false; problem: string; detail: string }
 
 /**
  * Asks the code host what is new: fetches the followed branch into the ref
- * that remembers it. Changes no file, the index or HEAD. Never throws for
- * the code host's reasons: a failed look says why.
+ * that remembers it. Changes no file, the index or HEAD, so it needs no turn
+ * among the saves (the workspace runs it outside its save lock). Never throws
+ * for the code host's reasons: a failed look says why.
  */
 export async function look(host: RepoHost): Promise<Look | null> {
   const { repo } = host;
@@ -760,6 +803,7 @@ export async function look(host: RepoHost): Promise<Look | null> {
 
   if (!source) return null;
   const fetched = await repo.run(["fetch", "--quiet", "--no-tags", source.remote, `+refs/heads/${source.branch}:${source.ref}`], {
+    config: NO_BACKGROUND_WORK,
     allowFailure: true,
     timeoutMs: GIT_NETWORK_TIMEOUT_MS,
   });
@@ -794,9 +838,10 @@ async function fastForward(host: RepoHost, info: RepoInfo, target: string, aroun
   const before = await repo.head();
   let outcome: Forward = { ok: false, stderr: "", timedOut: false };
 
-  await around?.before();
   try {
-    const merged = await repo.run(["merge", "--ff-only", "--no-edit", "--no-autostash", "--quiet", target], { allowFailure: true, timeoutMs: BRING_IN_TIMEOUT_MS });
+    // Inside the try: when stopping the preview throws, `after` still runs and starts it again.
+    await around?.before();
+    const merged = await repo.run(["merge", "--ff-only", "--no-edit", "--no-autostash", "--quiet", target], { config: BRING_IN_CONFIG, allowFailure: true, timeoutMs: BRING_IN_TIMEOUT_MS });
 
     if (merged.code !== 0) {
       outcome = { ok: false, stderr: merged.stderr, timedOut: merged.timedOut };
@@ -824,33 +869,42 @@ async function fastForward(host: RepoHost, info: RepoInfo, target: string, aroun
   }
 }
 
-/** What there is to bring in from, or why there is nothing (Get latest says these). */
-async function bringInSource(host: RepoHost): Promise<{ info: RepoInfo; branch: string }> {
+/**
+ * What there is to bring in from, or why there is nothing, in the words Get
+ * latest says. Asks the code host nothing, so it is checked before the look.
+ */
+export async function bringInSource(host: RepoHost): Promise<{ info: RepoInfo; branch: string }> {
   const { repo } = host;
   const info = await host.info();
 
-  if (!info) throw new GalleyError("invalid", "This folder isn't under version control, so there's nothing to fetch.");
+  if (!info) throw new GalleyError("invalid", "This folder isn't set up to keep versions, so there are no newer ones to get.");
   const branch = await repo.currentBranch();
 
-  if (!branch) throw new GalleyError("invalid", DETACHED.replace("to publish", "to fetch into"));
+  if (!branch) throw new GalleyError("invalid", DETACHED.replace("so there's nowhere to publish", "so newer versions have nowhere to go"));
   if (operationInProgress(info)) throw new GalleyError("busy", IN_PROGRESS);
-  if ((await repo.remotes()).length === 0) throw new GalleyError("invalid", "This site isn't connected to a code host, so there's nothing to fetch.");
+  if ((await repo.remotes()).length === 0) throw new GalleyError("invalid", "This site isn't connected to a code host, so there are no newer versions to get.");
   return { info, branch };
 }
 
+/** Whether a hosted editor's own round has anything to do here at all: a repository, on a branch, with nothing left half-done. */
+export async function canKeepUp(host: RepoHost): Promise<boolean> {
+  const info = await host.info();
+
+  return info !== null && (await host.repo.currentBranch()) !== null && !operationInProgress(info);
+}
+
 /**
- * Get latest: look, then move forward to what the code host has. Throws, in
- * plain words, when it can't (offline, files in the way, separate ways).
- * `onLook` hears how the look went; `around` runs only when there is
- * something to bring in.
+ * Get latest, after the look (`looked`, made by the caller outside the save
+ * lock): move forward to what the code host has. Throws, in plain words,
+ * when it can't (offline, files in the way, separate ways). `around` runs
+ * only when there is something to bring in.
  */
-export async function pull(host: RepoHost, options: { around?: AroundBringIn; onLook?: (look: Look) => void } = {}): Promise<BringIn & { status: GitStatus }> {
+export async function pull(host: RepoHost, looked: Look | null, options: { around?: AroundBringIn } = {}): Promise<BringIn & { status: GitStatus }> {
   const { repo } = host;
   const { info, branch } = await bringInSource(host);
-  const looked = await look(host);
 
-  if (looked) options.onLook?.(looked);
-  if (looked && !looked.ok) throw new GalleyError("git", looked.problem, looked.detail);
+  // The code host couldn't be asked: somebody else's server, not a failure of this one.
+  if (looked && !looked.ok) throw new GalleyError("git", looked.problem, looked.detail, 502);
   const target = await compareRef(repo, branch, await upstreamOf(repo));
   const behind = target && (await repo.head())
     ? Number((await repo.run(["rev-list", "--count", `HEAD..${target}`], { allowFailure: true, readOnly: true })).text.trim()) || 0
@@ -860,40 +914,41 @@ export async function pull(host: RepoHost, options: { around?: AroundBringIn; on
   const ahead = await gitStatus(host);
 
   // Refused before anything (the preview included) is touched, when it's already clear git would refuse.
-  if (ahead.inTheWay?.kind === "separate-ways") throw new GalleyError("git", classifyPullError("Not possible to fast-forward", false));
-  if (ahead.inTheWay) throw new GalleyError("git", ahead.inTheWay.message, ahead.inTheWay.paths.join("\n"));
+  // A refusal is the state of the files, not a failure of the app: it answers as a conflict.
+  if (ahead.inTheWay?.kind === "separate-ways") throw new GalleyError("conflict", classifyPullError("Not possible to fast-forward", false));
+  if (ahead.inTheWay) throw new GalleyError("conflict", ahead.inTheWay.message, ahead.inTheWay.paths.join("\n"));
   const moved = await fastForward(host, info, target, options.around);
 
-  if (!moved.ok) throw new GalleyError("git", classifyPullError(moved.stderr, moved.timedOut), redactRemoteUrl(moved.stderr.trim()));
+  if (!moved.ok) {
+    const refused = !moved.timedOut && (REFUSED_FOR_FILES.test(moved.stderr) || REFUSED_FOR_HISTORY.test(moved.stderr));
+
+    throw new GalleyError(refused ? "conflict" : "git", classifyPullError(moved.stderr, moved.timedOut), redactRemoteUrl(moved.stderr.trim()));
+  }
   return { brought: moved.brought, paths: moved.paths, status: await gitStatus(host) };
 }
 
 /**
- * A hosted editor's own round: look, and bring newer versions in only when
- * nothing is in the way. Never throws for git's reasons — what stopped it is
- * in the status (`checkProblem`, `inTheWay`), and the next round tries again.
+ * A hosted editor's own round, after a look that worked (made by the caller
+ * outside the save lock): bring newer versions in only when nothing is in
+ * the way. Never throws for git's reasons — what stopped it is in the status
+ * (`inTheWay`), and the next round tries again.
  */
-export async function catchUp(host: RepoHost, options: { around?: AroundBringIn; onLook?: (look: Look) => void } = {}): Promise<BringIn & { status: GitStatus }> {
+export async function catchUp(host: RepoHost, options: { around?: AroundBringIn } = {}): Promise<BringIn & { status: GitStatus }> {
   const { repo } = host;
-  const quiet = async () => ({ brought: 0, paths: [], status: await gitStatus(host) });
   const info = await host.info();
   const branch = info ? await repo.currentBranch() : null;
-
-  if (!info || !branch || operationInProgress(info)) return quiet();
-  const looked = await look(host);
-
-  if (!looked) return quiet();
-  options.onLook?.(looked);
   const status = await gitStatus(host);
+
+  if (!info || !branch || operationInProgress(info)) return { brought: 0, paths: [], status };
   const target = await compareRef(repo, branch, await upstreamOf(repo));
 
-  if (!looked.ok || !target || status.behind === 0 || status.inTheWay) return { brought: 0, paths: [], status };
+  if (!target || status.behind === 0 || status.inTheWay) return { brought: 0, paths: [], status };
   const moved = await fastForward(host, info, target, options.around);
 
   if (moved.ok) return { brought: moved.brought, paths: moved.paths, status: await gitStatus(host) };
   // Refused all the same (a file that changed in between): said like the ones seen ahead, and left for the next round.
   const after = await gitStatus(host);
-  const separate = /Not possible to fast-forward|diverg|refusing to merge unrelated/i.test(moved.stderr);
+  const separate = REFUSED_FOR_HISTORY.test(moved.stderr);
 
   return {
     brought: 0,

@@ -5,6 +5,7 @@ import { createImageService, createSettingsService } from "../../src/ai/index";
 import { ALL_TOOLS, runTool, runningActivity, toolsForMode } from "../../src/ai/tools/index";
 import { toFieldPath } from "../../src/ai/tools/content";
 import { entryName, fileName } from "../../src/ai/tools/labels";
+import { READS_KEPT, rememberVersion } from "../../src/ai/tools/reads";
 import type { ToolContext } from "../../src/ai/tools/types";
 import type { AgentMode } from "../../src/types";
 import { cleanEnv, tempDir } from "./helpers/env";
@@ -114,6 +115,13 @@ describe("content tools", () => {
     expect(added.result.is_error).toBeUndefined();
     expect(added.json().applied).toBe(1);
     expect(site.files.get("src/content/pages/index.md")).toContain("heading: Visit us");
+    // An entry this conversation hasn't read is not changed at all, whatever the edit.
+    const unread = await call(ctx, "update_entry", { path: "src/content/pages/about.md", ops: [{ op: "set", path: "title", value: "About us" }] });
+
+    expect(unread.result.is_error).toBe(true);
+    expect(unread.text).toBe("You haven't read this entry in this conversation, so nothing was changed. Read it with read_entry first, then make your change.");
+    expect(site.files.get("src/content/pages/about.md")).toContain("title: About\n");
+    await call(ctx, "read_entry", { path: "src/content/pages/about.md" });
     const refused = await call(ctx, "update_entry", { path: "src/content/pages/about.md", ops: [{ op: "body-replace", find: "before dawn", replace: "at night" }] });
 
     expect(refused.result.is_error).toBe(true);
@@ -122,7 +130,29 @@ describe("content tools", () => {
     const stale = await call(ctx, "update_entry", { path: "src/content/pages/index.md", baseHash: hash, ops: [{ op: "set", path: "title", value: "X" }] });
 
     expect(stale.result.is_error).toBe(true);
-    expect(stale.text).toContain("changed since it was read");
+    expect(stale.text).toBe("The entry changed after you read it, so nothing was changed. Read it again with read_entry, then make your change to what is there now.");
+    expect(stale.activity.label).toBe("Couldn't edit the home page");
+    // With no version named, the one it last read or wrote goes with the edit: its own edits follow each other…
+    const followed = await call(ctx, "update_entry", { path: "src/content/pages/index.md", ops: [{ op: "set", path: "title", value: "Home again" }] });
+
+    expect(followed.result.is_error).toBeUndefined();
+    expect(followed.json().applied).toBe(1);
+    expect((await call(ctx, "update_entry", { path: "src/content/pages/index.md", ops: [{ op: "set", path: "title", value: "And again" }] })).json().applied).toBe(1);
+    // …and an edit made from text that has since been replaced (a person discarded, newer versions came in) changes nothing.
+    const replaced = String(site.files.get("src/content/pages/index.md")).replace("And again", "Theirs");
+
+    site.files.set("src/content/pages/index.md", replaced);
+    const blind = await call(ctx, "update_entry", { path: "src/content/pages/index.md", ops: [{ op: "body", value: "A whole new text, written from the old one.\n" }] });
+
+    expect(blind.result.is_error).toBe(true);
+    expect(blind.text).toContain("changed after you read it, so nothing was changed");
+    expect(site.files.get("src/content/pages/index.md")).toBe(replaced);
+    // Told to read again, it can't go round for ever: the same edit is refused the same way until it has.
+    expect((await call(ctx, "update_entry", { path: "src/content/pages/index.md", ops: [{ op: "body", value: "Again.\n" }] })).result.is_error).toBe(true);
+    expect(site.files.get("src/content/pages/index.md")).toBe(replaced);
+    await call(ctx, "read_entry", { path: "src/content/pages/index.md" });
+    expect((await call(ctx, "update_entry", { path: "src/content/pages/index.md", ops: [{ op: "set", path: "title", value: "Ours" }] })).json().applied).toBe(1);
+    expect(site.files.get("src/content/pages/index.md")).toBe(replaced.replace("Theirs", "Ours"));
   });
 
   it("creates and deletes entries through the site", async () => {
@@ -197,6 +227,61 @@ describe("build tools and the mode guard", () => {
     // Call the tool's own run(), skipping the dispatcher's mode check.
     await expect(write.run({ path: "src/components/Header.astro", content: "<header>x</header>" }, ctx)).rejects.toMatchObject({ code: "forbidden" });
     expect(site.files.get("src/components/Header.astro")).toContain("Home");
+  });
+
+  it("doesn't replace a file that changed after it was read, until it has been read again", async () => {
+    const site = createFakeSite();
+    const ctx = context(site, "build", { read: new Map() });
+    const path = "src/styles/tokens.css";
+
+    await call(ctx, "read_file", { path });
+    // Newer versions came in, or someone else saved the file, before the write.
+    site.files.set(path, ":root { --accent: #000; }\n");
+    const refused = await call(ctx, "write_file", { path, content: "mine\n" });
+
+    expect(refused.result.is_error).toBe(true);
+    expect(refused.text).toBe("The file changed after you read it, so it wasn't replaced. Read it again, then make your change to what is there now.");
+    expect(refused.activity.label).toBe("Couldn't write the “tokens” stylesheet");
+    expect(site.files.get(path)).toBe(":root { --accent: #000; }\n");
+    // Trying again without reading is refused the same way.
+    expect((await call(ctx, "write_file", { path, content: "mine\n" })).result.is_error).toBe(true);
+    expect(site.files.get(path)).toBe(":root { --accent: #000; }\n");
+    expect((await call(ctx, "read_file", { path })).json().text).toContain("--accent: #000");
+    expect((await call(ctx, "write_file", { path, content: "mine\n" })).result.is_error).toBeUndefined();
+    expect(site.files.get(path)).toBe("mine\n");
+    // Its own edits and writes are not somebody else's changes.
+    expect((await call(ctx, "edit_file", { path, old_string: "mine", new_string: "ours" })).result.is_error).toBeUndefined();
+    expect((await call(ctx, "write_file", { path, content: "again\n" })).result.is_error).toBeUndefined();
+    expect((await call(ctx, "write_file", { path, content: "and again\n" })).result.is_error).toBeUndefined();
+    expect(site.files.get(path)).toBe("and again\n");
+    // A file that isn't there yet is made: there was nothing to read.
+    expect((await call(ctx, "write_file", { path: "src/styles/new.css", content: "a {}\n" })).result.is_error).toBeUndefined();
+    expect(site.files.get("src/styles/new.css")).toBe("a {}\n");
+    // A file that is there and was never read in this conversation is not replaced.
+    const header = site.files.get("src/components/Header.astro");
+    const unread = await call(ctx, "write_file", { path: "src/components/Header.astro", content: "<header>new</header>\n" });
+
+    expect(unread.result.is_error).toBe(true);
+    expect(unread.text).toBe("That file is already there and you haven't read it in this conversation, so it wasn't replaced. Read it with read_file first, then write it.");
+    expect(site.files.get("src/components/Header.astro")).toBe(header);
+    await call(ctx, "read_file", { path: "src/components/Header.astro" });
+    expect((await call(ctx, "write_file", { path: "src/components/Header.astro", content: "<header>new</header>\n" })).result.is_error).toBeUndefined();
+    // What was read on one site says nothing about the file of that name on another (a session can work on several).
+    const other = createFakeSite();
+    const elsewhere = context(other, "build", { read: ctx.read!, siteId: "another-site" });
+    const theirs = other.files.get(path);
+
+    expect((await call(elsewhere, "write_file", { path, content: "mine\n" })).text).toContain("haven't read it in this conversation");
+    expect(other.files.get(path)).toBe(theirs);
+    await call(elsewhere, "read_file", { path });
+    expect((await call(elsewhere, "write_file", { path, content: "theirs now\n" })).result.is_error).toBeUndefined();
+    // Reading it there didn't touch what is remembered of the first site's file.
+    expect((await call(ctx, "write_file", { path, content: "mine once more\n" })).result.is_error).toBeUndefined();
+    expect(site.files.get(path)).toBe("mine once more\n");
+    // Only so many files are remembered; one read long ago is read again before it is replaced.
+    for (let n = 0; n < READS_KEPT; n += 1) rememberVersion(ctx, `src/filler/${n}.css`, "0000000000000000");
+    expect((await call(ctx, "write_file", { path, content: "forgotten\n" })).text).toContain("haven't read it in this conversation");
+    expect(ctx.read!.size).toBe(READS_KEPT);
   });
 
   it("edits exactly one match, or refuses with the reason", async () => {
