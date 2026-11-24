@@ -10,7 +10,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import type { MockServer } from "../../mock/server.ts";
 import { SUGGESTED_REQUEST } from "../assistant";
 import { useFacts } from "./facts";
-import { TOTAL_STEPS, copyOf, isThere, next, placeFor, settle, skipEmpty, start, type StepId } from "./steps";
+import { NOTHING_TO_PUBLISH, TOTAL_STEPS, copyOf, isThere, next, nothingToPublish, placeFor, settle, skipEmpty, start, type StepId } from "./steps";
 import { useTour } from "./store";
 import { openDialog, targetFor } from "./targets";
 import { placeCard, type Rect } from "./place";
@@ -77,6 +77,8 @@ export function Tour({ server, siteId, sampleVersions }: { server: MockServer; s
   const [target, setTarget] = useState<Rect | null>(null);
   const [hint, setHint] = useState<string | undefined>(undefined);
   const [dialogUp, setDialogUp] = useState(false);
+  /** What the card keeps clear of beyond the control: an open dialog, or the change a button belongs to. */
+  const [around, setAround] = useState<Rect | null>(null);
   const spot = useRef<HTMLDivElement>(null);
   const [announcement, setAnnouncement] = useState("");
   const [askFailed, setAskFailed] = useState(false);
@@ -95,11 +97,14 @@ export function Tour({ server, siteId, sampleVersions }: { server: MockServer; s
 
   const step: StepId = state?.step ?? "welcome";
   const copy = copyOf(step);
+  // Publish with nothing left to publish: the card says so instead of pointing at a button that can't be pressed.
+  const empty = state ? nothingToPublish(state, facts) : false;
+  const body = empty ? NOTHING_TO_PUBLISH : copy.body;
 
   // Say each new step out loud; take focus only when the card first appears.
   useEffect(() => {
-    if (open) setAnnouncement(`Tour, step ${copy.number} of ${TOTAL_STEPS}: ${copy.title} ${copy.body}`);
-  }, [open, copy.number, copy.title, copy.body]);
+    if (open) setAnnouncement(`${copy.number === null ? "Tour" : `Tour, step ${copy.number} of ${TOTAL_STEPS}`}: ${copy.title} ${body}`);
+  }, [open, copy.number, copy.title, body]);
   const wasOpen = useRef(false);
   useEffect(() => {
     if (open && !wasOpen.current) requestAnimationFrame(() => heading.current?.focus({ preventScroll: true }));
@@ -115,7 +120,11 @@ export function Tour({ server, siteId, sampleVersions }: { server: MockServer; s
       const next = rectOf(found.element);
       setTarget((current) => (sameRect(current, next) ? current : next));
       setHint(found.hint);
-      setDialogUp(openDialog() !== null);
+      const dialog = openDialog();
+      setDialogUp(dialog !== null);
+      // An open dialog is kept clear whole: beside the button alone, the card would sit over the dialog's other buttons.
+      const clear = rectOf(dialog ?? found.around ?? null);
+      setAround((current) => (sameRect(current, clear) ? current : clear));
     };
     measure();
     const timer = setInterval(measure, 250);
@@ -147,13 +156,14 @@ export function Tour({ server, siteId, sampleVersions }: { server: MockServer; s
 
   if (!open || !state) return <div className="g-sr" role="status" aria-live="polite" />;
 
-  const there = isThere(step, facts);
-  const place = placeFor(step, siteId);
+  const there = !empty && isThere(step, facts);
+  // With nothing to publish, "there" is the page, where a change can be made; no button when the visitor is on it already.
+  const place = empty ? (isThere("form", facts) ? null : placeFor("form", siteId)) : placeFor(step, siteId);
   const go = () => {
     if (place) window.location.hash = `#${place}`;
   };
   const advance = () => setState(skipEmpty(next(state, facts), facts));
-  const position = placeCard(target, { width: window.innerWidth, height: window.innerHeight }, CARD_WIDTH, card.current?.offsetHeight ?? 220);
+  const position = placeCard(empty ? null : target, { width: window.innerWidth, height: window.innerHeight }, CARD_WIDTH, card.current?.offsetHeight ?? 220, empty ? null : around);
   const spotlight: CSSProperties | null = target && there ? { left: target.x - 6, top: target.y - 6, width: target.width + 12, height: target.height + 12 } : null;
 
   return (
@@ -176,9 +186,7 @@ export function Tour({ server, siteId, sampleVersions }: { server: MockServer; s
         }}
       >
         <div className="demo-tour__head">
-          <p className="demo-tour__count">
-            {copy.number} of {TOTAL_STEPS}
-          </p>
+          <p className="demo-tour__count">{copy.number === null ? (step === "welcome" ? `${TOTAL_STEPS} steps` : "Done") : `${copy.number} of ${TOTAL_STEPS}`}</p>
           <button type="button" className="g-btn g-btn--quiet g-btn--sm demo-tour__close" onClick={close} aria-label="Leave the tour">
             ×
           </button>
@@ -187,7 +195,7 @@ export function Tour({ server, siteId, sampleVersions }: { server: MockServer; s
           {copy.title}
         </h2>
         <p id="demo-tour-body" className="demo-tour__body">
-          {copy.body}
+          {body}
         </p>
 
         {step === "assistant" ? (

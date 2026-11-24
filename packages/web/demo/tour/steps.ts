@@ -35,8 +35,8 @@ export interface TourState {
 
 export interface StepCopy {
   id: StepId;
-  /** Shown as "2 of 7". The two halves of Proof and of Publish share a number. */
-  number: number;
+  /** Shown as "2 of 7": one number to a step. The welcome and the closing card are not steps and have none. */
+  number: number | null;
   title: string;
   body: string;
   /** What finishes the step without the card: shown as a hint line. */
@@ -49,34 +49,34 @@ export const TOTAL_STEPS = 7;
 export const STEPS: StepCopy[] = [
   {
     id: "welcome",
-    number: 1,
+    number: null,
     title: "This is the real editor.",
     body: "It’s running in your browser on a sample site, a small clothing label called Caddow. Change anything you like: nothing is saved, and nothing leaves this page. The tour takes about two minutes.",
   },
   {
     id: "form",
-    number: 2,
+    number: 1,
     title: "Change the heading in the form.",
     body: "This is the home page. The form on the left holds its words; the page beside it is the site itself. Edit the campaign heading and watch the page follow.",
     doing: "Type in the Heading field",
   },
   {
     id: "page",
-    number: 3,
+    number: 2,
     title: "Or click the page and type.",
     body: "Click any text on the page, retype it in place, then click outside it or press Enter. It becomes a change like the one you made in the form.",
     doing: "Click a piece of text on the page",
   },
   {
     id: "assistant",
-    number: 4,
+    number: 3,
     title: "Ask the assistant.",
     body: "On your own site the assistant uses your own AI key. The demo has none, so it replays one answer recorded in advance for the request below.",
     doing: "Send the request",
   },
   {
     id: "proof",
-    number: 5,
+    number: 4,
     title: "Open Proof.",
     body: "Every change waits here before anything goes live: the old words struck out, the new ones written in, and the page beside the live site.",
     doing: "Open Proof",
@@ -97,14 +97,14 @@ export const STEPS: StepCopy[] = [
   },
   {
     id: "history",
-    number: 6,
+    number: 7,
     title: "It’s a version now.",
     body: "Nothing went live, because this is the demo. On your own site this is when your host updates the pages. Every publish is kept in Version history with who and when, and you can undo it.",
     doing: "Open Version history",
   },
   {
     id: "done",
-    number: 7,
+    number: null,
     title: "That’s the idea.",
     body: "Prompt it, proof it, publish it. Everything else is here too, on sample data: forms and the inbox, scripts, brand, Search & AI, redirects and Online. Where a screen would need a real account, it says what the demo stands in for. The moon at the foot of the sidebar turns the app dark.",
   },
@@ -170,6 +170,20 @@ export function skipEmpty(state: TourState, facts: Facts): TourState {
   }
   return state;
 }
+
+/**
+ * At Publish with nothing waiting and nothing published since the step
+ * began: the visitor discarded every change (the bar's Discard, where the
+ * step before asked for one change to be put back), so there is nothing to
+ * publish and the step can't be done as it stands. The card then says so
+ * and points back at the page; the step carries on once there is a change.
+ */
+export function nothingToPublish(state: TourState, facts: Pick<Facts, "pending" | "published">): boolean {
+  return state.step === "publish" && facts.pending === 0 && facts.published <= state.publishedAtStart;
+}
+
+export const NOTHING_TO_PUBLISH =
+  "Nothing is waiting to be published now: no changes are left. Change a word on the home page, and this step carries on from there.";
 
 /** Where a step happens, for its "Take me there" button: an app route, or null when it happens where the visitor already is. */
 export function placeFor(step: StepId, siteId: string): string | null {
