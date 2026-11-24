@@ -208,12 +208,17 @@ export function sanitizeMediaName(filename: string): { base: string; ext: string
   return { base, ext };
 }
 
-export async function saveMedia(
-  workspace: Workspace,
-  media: MediaConfig,
-  input: { filename: string; directory?: string; data: Uint8Array },
-  options: { origin?: ChangeOrigin } = {}
-): Promise<MediaItem> {
+/** What an upload is, once it passed the library's checks: its clean name, type and (for pictures) pixel size. */
+export interface CheckedUpload {
+  base: string;
+  ext: string;
+  type: string;
+  width?: number;
+  height?: number;
+}
+
+/** The library's checks for any upload, wherever it is kept: a known type, at most 25 MB, not empty, a real image. */
+export function checkUpload(input: { filename: string; data: Uint8Array }): CheckedUpload {
   const { base, ext } = sanitizeMediaName(input.filename);
 
   if (!(ext in MIME)) {
@@ -237,6 +242,43 @@ export async function saveMedia(
     }
     if (!ok) throw new GalleyError("invalid", "That file doesn't look like a valid image.", input.filename);
   }
+  let dims: { width?: number; height?: number } = {};
+
+  if (MEASURED.has(ext)) {
+    try {
+      const result = imageSize(input.data);
+
+      dims = result.width && result.height ? { width: result.width, height: result.height } : {};
+    } catch {
+      dims = {};
+    }
+  }
+  return { base, ext, type: MIME[ext] ?? "application/octet-stream", ...dims };
+}
+
+/** The folder under the media root a file is asked for ("team/"), or "" for the root itself. Refuses folders outside the media roots. */
+export function mediaSubfolder(media: MediaConfig, directory: string | undefined): { root: { dir: string; publicPath: string }; subfolder: string; directory: string } {
+  const dir = normalizeRepoPath(directory ?? media.dir);
+  const root = rootsOf(media).find((r) => {
+    const rootDir = normalizeRepoPath(r.dir);
+
+    return dir === rootDir || rootDir === "" || dir.startsWith(`${rootDir}/`);
+  });
+
+  if (!root) throw new GalleyError("forbidden", "Media can only be saved inside the site's media folders.", dir);
+  const rootDir = normalizeRepoPath(root.dir);
+  const rest = rootDir ? dir.slice(rootDir.length).replace(/^\/+/, "") : dir;
+
+  return { root, subfolder: rest ? `${rest}/` : "", directory: dir };
+}
+
+export async function saveMedia(
+  workspace: Workspace,
+  media: MediaConfig,
+  input: { filename: string; directory?: string; data: Uint8Array },
+  options: { origin?: ChangeOrigin } = {}
+): Promise<MediaItem> {
+  const { base, ext, ...dims } = checkUpload(input);
   const directory = normalizeRepoPath(input.directory ?? media.dir);
   const root = rootsOf(media).find((r) => {
     const dir = normalizeRepoPath(r.dir);
@@ -263,24 +305,15 @@ export async function saveMedia(
     }
     const stat = await workspace.stat(path);
     const within = rootDir ? path.slice(rootDir.length + 1) : path;
-    let dims: { width?: number; height?: number } = {};
+    const { type: _type, ...size } = dims;
 
-    if (MEASURED.has(ext)) {
-      try {
-        const result = imageSize(input.data);
-
-        dims = result.width && result.height ? { width: result.width, height: result.height } : {};
-      } catch {
-        dims = {};
-      }
-    }
     return {
       path,
       url: joinUrl(root.publicPath, within),
       name,
       size: input.data.length,
       type: MIME[ext] ?? "application/octet-stream",
-      ...dims,
+      ...size,
       modifiedAt: stat?.mtimeMs ?? Date.now(),
       status: workspace.statusOf(path),
     };

@@ -68,6 +68,13 @@ export interface Workspace {
   readBytes(path: string): Promise<Uint8Array>;
   stat(path: string): Promise<{ size: number; mtimeMs: number } | null>;
   listFiles(options?: { glob?: string; limit?: number }): Promise<string[]>;
+  /**
+   * Every match of an extended regular expression in the site's text files,
+   * in the working copy or in the published version (the base commit): the
+   * file and the matched text, one per match. Ignored files are never looked
+   * at. Read-only.
+   */
+  grepText(pattern: string, options: { rev: "working" | "base" }): Promise<Array<{ path: string; match: string }>>;
   writeFile(path: string, content: string | Uint8Array, options: WorkspaceWriteOptions): Promise<void>;
   deleteFile(path: string, options: WriteOptions): Promise<void>;
   canWrite(path: string, mode: AgentMode): { ok: true } | { ok: false; reason: string };
@@ -491,6 +498,41 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
       const result = await stat(resolved.absolute).catch(() => null);
 
       return result ? { size: result.size, mtimeMs: result.mtimeMs } : null;
+    },
+
+    async grepText(pattern, grepOptions) {
+      const repoInfo = await info();
+
+      if (!repoInfo) {
+        if (grepOptions.rev === "base") return [];
+        const expression = new RegExp(pattern, "g");
+        const out: Array<{ path: string; match: string }> = [];
+
+        for (const path of (await listWithoutGit(root)).filter((p) => !p.split("/").includes("node_modules"))) {
+          const bytes = await readFile(join(root, path)).catch(() => null);
+
+          if (!bytes || bytes.byteLength > 4 * 1024 * 1024 || bytes.includes(0)) continue;
+          for (const match of bytes.toString("utf8").matchAll(expression)) out.push({ path, match: match[0] });
+        }
+        return out;
+      }
+      if (grepOptions.rev === "base" && !(await repo.head())) return [];
+      const args = ["grep", "-I", "-o", "-z", "--no-color", "-E", "-e", pattern, ...(grepOptions.rev === "base" ? ["HEAD"] : ["--untracked"]), "--", "."];
+      const result = await repo.run(args, { readOnly: true, allowFailure: true });
+      const out: Array<{ path: string; match: string }> = [];
+
+      // Exit 1 is "no match"; anything else is a real failure.
+      if (result.code !== 0 && result.code !== 1) throw new GalleyError("internal", "Couldn't search the site's files.", result.stderr?.slice(0, 300));
+      for (const line of result.text.split("\n")) {
+        const at = line.indexOf("\0");
+
+        if (at === -1) continue;
+        const file = line.slice(0, at).replace(/^HEAD:/, "");
+        const match = line.slice(at + 1);
+
+        if (match && !file.split("/").includes("node_modules")) out.push({ path: file, match });
+      }
+      return out;
     },
 
     async listFiles(listOptions = {}) {

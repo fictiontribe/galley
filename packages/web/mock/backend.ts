@@ -21,6 +21,7 @@ import type {
   UsageSummary,
   UsageTotals,
 } from "@galley/core/types";
+import type { ChangeSet as MockChangeSet } from "@galley/core/types";
 import { DEFAULT_BRAND, VERSION } from "@galley/core/brand";
 import { runTurn, seedThread, undoTurn } from "./chat.ts";
 import { HOME, SITES_DIR, createSites, newSiteFrom, starterDescription } from "./fixtures.ts";
@@ -334,6 +335,12 @@ export function createHandlers(mock: MockBackend): Handlers {
   const author = () => mock.settings.author;
   const deploy = createMockDeploy(mock);
   const mediaStorage = createMockMediaStorage(mock);
+  /** Uploads to the pretend bucket since the last publish, as the engine adds them to the changes. */
+  const withUploads = (siteId: string, changes: MockChangeSet): MockChangeSet => {
+    const storeUploads = mediaStorage.pending(siteId);
+
+    return storeUploads.length ? { ...changes, storeUploads } : changes;
+  };
   const redirects = createMockRedirects((event) => mock.emit(event), (job) => mock.jobs.set(job.id, job));
   const multiSite = createMultiSite(mock);
   const visibility = createMockVisibility(mock);
@@ -556,12 +563,12 @@ export function createHandlers(mock: MockBackend): Handlers {
       return ok;
     },
 
-    "GET /api/sites/:siteId/media": ({ params }) => ({ items: mock.site(params.siteId).media() }),
+    "GET /api/sites/:siteId/media": ({ params }) => ({ items: [...mock.site(params.siteId).media(), ...mediaStorage.list(params.siteId)] }),
     "POST /api/sites/:siteId/media": ({ params, body }) => {
       const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(body.data);
       if (!match) throw new MockError("invalid", "That file couldn’t be read. Try uploading it again.");
       const bytes = match[2] ? Buffer.from(match[3] ?? "", "base64") : Buffer.from(decodeURIComponent(match[3] ?? ""));
-      const item = mock.site(params.siteId).saveMedia(body.filename, body.directory, bytes);
+      const item = mediaStorage.connected(params.siteId) ? mediaStorage.save(params.siteId, body.filename, bytes) : mock.site(params.siteId).saveMedia(body.filename, body.directory, bytes);
       mock.changed(params.siteId, [item.path], "user");
       return item;
     },
@@ -572,6 +579,12 @@ export function createHandlers(mock: MockBackend): Handlers {
     },
     "GET /api/sites/:siteId/raw": ({ params, query }) => {
       const path = query.path ?? "";
+      // The pretend bucket keeps no bytes: a picture of a picture.
+      if (/^(bucket|images):/.test(path)) {
+        const name = path.split("/").pop() ?? path;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1067" viewBox="0 0 1600 1067"><rect width="1600" height="1067" fill="#d9d4c7"/><text x="800" y="560" font-family="sans-serif" font-size="56" text-anchor="middle" fill="#5b5648">${name.replace(/[<&>]/g, "")}</text></svg>`;
+        return { kind: "bytes", type: "image/svg+xml", body: Buffer.from(svg) };
+      }
       const bytes = mock.site(params.siteId).read(path, query.rev === "base" ? "base" : undefined);
       if (!bytes) throw new MockError("not-found", `There’s no file at ${path}.`);
       const type = path.endsWith(".svg") ? "image/svg+xml" : path.endsWith(".png") ? "image/png" : /\.jpe?g$/.test(path) ? "image/jpeg" : path.endsWith(".webp") ? "image/webp" : path.endsWith(".mp4") ? "video/mp4" : "text/plain; charset=utf-8";
@@ -609,7 +622,7 @@ export function createHandlers(mock: MockBackend): Handlers {
       return ok;
     },
 
-    "GET /api/sites/:siteId/changes": ({ params }) => mock.site(params.siteId).changes(),
+    "GET /api/sites/:siteId/changes": ({ params }) => withUploads(params.siteId, mock.site(params.siteId).changes()),
     "GET /api/sites/:siteId/diff": ({ params, query }) => {
       const path = query.path ?? "";
       return mock.site(params.siteId).diff(path, (rev) => `/api/sites/${encodeURIComponent(params.siteId)}/raw?path=${encodeURIComponent(path)}${rev ? `&rev=${rev}` : ""}`);
@@ -619,13 +632,14 @@ export function createHandlers(mock: MockBackend): Handlers {
       const paths = body.paths ?? site.changes().files.map((f) => f.path);
       site.discard(body.paths);
       mock.changed(site.id, paths, "discard");
-      return site.changes();
+      return withUploads(site.id, site.changes());
     },
     "POST /api/sites/:siteId/publish": async ({ params, body }) => {
       const site = mock.site(params.siteId);
       await sleep(900);
       const result = site.publish(body, author());
       if (result.ok) {
+        mediaStorage.afterPublish(site.id);
         mock.changed(site.id, result.files, "publish");
         mock.emit({ type: "site.updated", siteId: site.id });
         deploy.afterPublish(site.id);

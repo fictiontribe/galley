@@ -11,14 +11,16 @@
  * replaces one that does. Nothing here returns, throws or logs a key.
  */
 import { GalleyError } from "../errors";
-import type { GalleyConfig, MediaStorageConfig, SettingsService, SiteService } from "../types";
+import type { ChangeOrigin, GalleyConfig, MediaItem, MediaStorageConfig, SettingsService, SiteService } from "../types";
+import { checkUpload, mediaSubfolder } from "../workspace/media";
 import { createBucketStore } from "./bucket-store";
 import { runCheck, settingsFailure, testNameFor } from "./check";
-import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaStorageStatus, MediaStoreInfo } from "./contract";
+import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaStoreLocation, MediaUsage } from "./contract";
+import { createMediaLibrary, type LibraryItem, type MediaLibrary } from "./library";
 import { BUCKET_CONNECTORS, isTrialAddress, normalizePrefix, normalizeStorageConfig, settingsProblems } from "./info";
 import { createMediaKeys, normalizeMediaKey, scrub, type MediaKeys } from "./keys";
 import type { Credentials } from "./sigv4";
-import type { MediaStore } from "./store";
+import { parseStorePath, placeFile, StoreError, StoreNameTaken, storePath, trimFound, type MediaStore } from "./store";
 
 /** A kind of bucket the site can connect: what the person is told, and how its store is made. */
 export interface BucketConnector {
@@ -51,8 +53,13 @@ export interface MediaStorageServiceOptions {
   publicFetch?: typeof fetch;
   now?: () => number;
   keys?: MediaKeys;
+  library?: MediaLibrary;
   connectors?: BucketConnector[];
+  /** How long a store's listing is trusted before it is listed again (ms). Default one minute. */
+  listTtlMs?: number;
 }
+
+export type MediaUpload = { filename: string; directory?: string; data: Uint8Array };
 
 export interface MediaStorageService {
   connectors(): MediaStoreInfo[];
@@ -69,10 +76,37 @@ export interface MediaStorageService {
   bucket(site: SiteService): Promise<MediaStore | null>;
   /** Removes the site's media keys (it left the list). */
   forgetSite(siteId: string): Promise<void>;
+
+  // ── the library, for the site service (SiteDeps.media)
+
+  /**
+   * Saves an upload where the site keeps new media: the first store that
+   * takes it, else the repository (`toRepository`). A store never overwrites:
+   * a taken name becomes "-2", "-3"… as in the repository.
+   */
+  save(site: SiteService, upload: MediaUpload, toRepository: () => Promise<MediaItem>): Promise<MediaItem>;
+  /** The library: the repository's items and every store's. A store that can't be listed shows what was known. */
+  list(site: SiteService, repository: MediaItem[]): Promise<MediaItem[]>;
+  /** Why a store couldn't be listed just now, by store. */
+  problems(siteId: string): Partial<Record<MediaStoreLocation, string>>;
+  /** Files put in a store since the last publish, each saying whether the working copy uses it. */
+  pending(site: SiteService): Promise<MediaItem[]>;
+  /** After a publish: the uploads the published version now uses are published. */
+  afterPublish(site: SiteService): Promise<void>;
+  /** Where an address is used: pages and data files of the working copy, files of the published version. */
+  usage(site: SiteService, url: string): Promise<MediaUsage>;
+  /** Deletes from a store for good — anything used by the working copy or the published version is refused. */
+  deleteStored(site: SiteService, paths: string[]): Promise<MediaStoreDeleteResult>;
+  /** The bytes of a stored file ("bucket:lowfield/coat.webp"), for the app's own previews; null when it isn't there. */
+  readStored(site: SiteService, path: string): Promise<Uint8Array | null>;
 }
 
 export function createMediaStorageService(options: MediaStorageServiceOptions): MediaStorageService {
   const keys = options.keys ?? createMediaKeys({ home: options.home, ...(options.env ? { env: options.env } : {}) });
+  const library = options.library ?? createMediaLibrary(options.home);
+  const listTtl = options.listTtlMs ?? 60_000;
+  const clock = options.now ?? Date.now;
+  const listProblems = new Map<string, Partial<Record<MediaStoreLocation, string>>>();
   const all = () => options.connectors ?? [...builtInConnectors(), ...extra];
   const connectorFor = (id: string) => all().find((connector) => connector.info.id === id) ?? null;
 
@@ -206,6 +240,259 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     },
 
     forgetSite: (siteId) => keys.forget(siteId),
+
+    async save(site, upload, toRepository) {
+      const stores = await service.stores(site);
+
+      if (!stores.length) return toRepository();
+      const checked = checkUpload(upload);
+      const placement = placeFile(stores, { type: checked.type, size: upload.data.byteLength, ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}) });
+      const why = placement.passedOver.map((passed) => passed.reason).join(" ");
+
+      if (!placement.store) {
+        const item = await toRepository();
+
+        return why ? { ...item, placement: `Kept in the repository: ${why}` } : item;
+      }
+      const store = placement.store;
+      const { subfolder } = mediaSubfolder((await site.model()).media, upload.directory);
+      const known = new Set((await library.all(site.id)).filter((item) => item.location === store.location).map((item) => item.key));
+
+      for (let attempt = 1; attempt < 1000; attempt += 1) {
+        const name = `${checked.base}${attempt === 1 ? "" : `-${attempt}`}.${checked.ext}`;
+        const wanted = store.keyFor(`${subfolder}${name}`);
+
+        if (known.has(wanted)) continue;
+        let stored;
+
+        try {
+          stored = await store.put({ name: wanted, data: upload.data, type: checked.type, ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}) });
+        } catch (error) {
+          if (error instanceof StoreNameTaken) continue;
+          if (error instanceof StoreError) throw new GalleyError(error.transient ? "busy" : "unconfigured", `The file wasn't saved: ${scrub(error.message)}`, error.detail ? scrub(error.detail) : undefined);
+          throw error;
+        }
+        const entry: LibraryItem = {
+          location: store.location,
+          key: stored.key,
+          url: stored.url,
+          name: stored.key.split("/").pop() ?? stored.key,
+          size: upload.data.byteLength,
+          type: checked.type,
+          ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}),
+          uploadedAt: stored.uploadedAt,
+          published: false,
+          uploaded: true,
+        };
+
+        await library.update(site.id, (items) => [...items.filter((item) => !(item.location === entry.location && item.key === entry.key)), entry]);
+        return { ...itemOf(entry), ...(why ? { placement: `Kept in ${placeName(store)}: ${why}` } : {}) };
+      }
+      throw new GalleyError("conflict", "Too many files already use that name. Pick a different name.", checked.base);
+    },
+
+    async list(site, repository) {
+      const stores = await service.stores(site);
+      const problems: Partial<Record<MediaStoreLocation, string>> = {};
+
+      for (const store of stores) {
+        if (!store.abilities.canList || !store.list) continue;
+        const listedAt = await library.listedAt(site.id, store.location);
+
+        if (listedAt !== null && clock() - listedAt < listTtl) continue;
+        try {
+          await relist(site, store);
+        } catch (error) {
+          problems[store.location] = `${store.name} couldn't be listed just now, so this shows what was there last time. ${error instanceof Error ? scrub(error.message) : ""}`.trim();
+        }
+      }
+      listProblems.set(site.id, problems);
+      const locations = new Set(stores.map((store) => store.location));
+      const kept = (await library.all(site.id)).filter((item) => locations.has(item.location));
+
+      return [...repository, ...kept.sort((a, b) => b.uploadedAt - a.uploadedAt).map(itemOf)];
+    },
+
+    problems: (siteId) => listProblems.get(siteId) ?? {},
+
+    async pending(site) {
+      const stores = await service.stores(site);
+
+      if (!stores.length) return [];
+      const unpublished = (await library.all(site.id)).filter((item) => !item.published && stores.some((store) => store.location === item.location));
+
+      if (!unpublished.length) return [];
+      const used = await usedKeys(site, stores, "working");
+
+      return unpublished.map((item) => ({ ...itemOf(item), used: used.has(storePath(item.location, item.key)) }));
+    },
+
+    async afterPublish(site) {
+      const stores = await service.stores(site);
+
+      if (!stores.length) return;
+      const items = await library.all(site.id);
+
+      if (!items.some((item) => !item.published)) return;
+      const used = await usedKeys(site, stores, "base");
+
+      await library.update(site.id, (current) => current.map((item) => (!item.published && used.has(storePath(item.location, item.key)) ? { ...item, published: true } : item)));
+    },
+
+    async usage(site, url) {
+      const stores = await service.stores(site);
+      const store = stores.find((candidate) => candidate.keyOf(url) !== null);
+
+      if (!store) return { url, working: [], published: [] };
+      const key = store.keyOf(url)!;
+      const [working, published] = await Promise.all([filesUsing(site, store, key, "working"), filesUsing(site, store, key, "base")]);
+      const titled = await Promise.all(working.map(async (path) => ({ path, title: await titleOf(site, path) })));
+
+      return { url, working: titled, published };
+    },
+
+    async readStored(site, path) {
+      const parsed = parseStorePath(path);
+      const store = parsed ? (await service.stores(site)).find((candidate) => candidate.location === parsed.location) : null;
+
+      if (!parsed || !store) return null;
+      try {
+        return await store.get(parsed.key);
+      } catch (error) {
+        if (error instanceof StoreError) throw new GalleyError(error.transient ? "busy" : "unconfigured", scrub(error.message));
+        throw error;
+      }
+    },
+
+    async deleteStored(site, paths) {
+      const stores = await service.stores(site);
+      const result: MediaStoreDeleteResult = { deleted: [], refused: [] };
+
+      for (const path of paths) {
+        const parsed = parseStorePath(path);
+        const store = parsed ? stores.find((candidate) => candidate.location === parsed.location) : null;
+
+        if (!parsed || !store) throw new GalleyError("invalid", "That file isn't in one of the site's media stores.", path);
+        const [working, published] = await Promise.all([filesUsing(site, store, parsed.key, "working"), filesUsing(site, store, parsed.key, "base")]);
+        const name = parsed.key.split("/").pop() ?? parsed.key;
+
+        if (working.length || published.length) {
+          result.refused.push({ path, name, working, published });
+          continue;
+        }
+        try {
+          await store.delete(parsed.key);
+        } catch (error) {
+          if (error instanceof StoreError) throw new GalleyError(error.transient ? "busy" : "unconfigured", `“${name}” wasn't deleted: ${scrub(error.message)}`);
+          throw error;
+        }
+        await library.update(site.id, (items) => items.filter((item) => !(item.location === parsed.location && item.key === parsed.key)));
+        result.deleted.push(path);
+      }
+      return result;
+    },
   };
+
+  /** Lists a store in full and brings the record up to date: new names are added (measured when the store keeps sizes), gone ones dropped. */
+  async function relist(site: SiteService, store: MediaStore): Promise<void> {
+    const found: Array<{ key: string; url: string; size: number | null; type: string | null; uploadedAt: number; width?: number; height?: number }> = [];
+    let cursor: string | undefined;
+
+    do {
+      const page = await store.list!(cursor);
+
+      found.push(...page.items);
+      cursor = page.next ?? undefined;
+    } while (cursor && found.length < 20_000);
+    const before = new Map((await library.all(site.id)).filter((item) => item.location === store.location).map((item) => [item.key, item]));
+    const unmeasured = found.filter((item) => !before.has(item.key) && !item.width && item.type?.startsWith("image/") && item.type !== "image/svg+xml").slice(0, 25);
+    const measured = new Map<string, { width: number; height: number }>();
+
+    // A few at a time, from what the store keeps about each (never the bytes).
+    for (const item of unmeasured) {
+      const head = await store.head(item.key).catch(() => null);
+
+      if (head?.width && head.height) measured.set(item.key, { width: head.width, height: head.height });
+    }
+    await library.update(site.id, (items, listedAt) => {
+      const others = items.filter((item) => item.location !== store.location);
+      const listed: LibraryItem[] = found.map((item) => {
+        const known = before.get(item.key);
+        const size = measured.get(item.key);
+
+        return known
+          ? { ...known, size: item.size ?? known.size, url: item.url }
+          : {
+              location: store.location,
+              key: item.key,
+              url: item.url,
+              name: item.key.split("/").pop() ?? item.key,
+              size: item.size,
+              type: item.type,
+              ...(item.width && item.height ? { width: item.width, height: item.height } : size ? size : {}),
+              uploadedAt: item.uploadedAt,
+              // Found there rather than uploaded from here: it isn't a pending change.
+              published: true,
+            };
+      });
+
+      listedAt[store.location] = clock();
+      return [...others, ...listed];
+    });
+  }
+
+  /** Store paths ("bucket:key") that the working copy or the published version uses. */
+  async function usedKeys(site: SiteService, stores: MediaStore[], rev: "working" | "base"): Promise<Set<string>> {
+    const used = new Set<string>();
+
+    if (!site.grepText) return used;
+    for (const store of stores) {
+      for (const { match } of await site.grepText(store.addressPattern(), { rev })) {
+        const key = store.keyOf(trimFound(match));
+
+        if (key !== null) used.add(storePath(store.location, key));
+      }
+    }
+    return used;
+  }
+
+  async function filesUsing(site: SiteService, store: MediaStore, key: string, rev: "working" | "base"): Promise<string[]> {
+    if (!site.grepText) return [];
+    const files = new Set<string>();
+
+    for (const { path, match } of await site.grepText(store.addressPattern(), { rev })) {
+      if (store.keyOf(trimFound(match)) === key) files.add(path);
+    }
+    return [...files].sort();
+  }
+
+  async function titleOf(site: SiteService, path: string): Promise<string> {
+    try {
+      return (await site.readEntry(path)).title || path;
+    } catch {
+      return path.split("/").pop() ?? path;
+    }
+  }
+
   return service;
+}
+
+function placeName(store: MediaStore): string {
+  return store.location === "bucket" ? "the bucket" : store.name;
+}
+
+/** A store's file as the library shows it. */
+function itemOf(item: LibraryItem): MediaItem {
+  return {
+    path: storePath(item.location, item.key),
+    url: item.url,
+    name: item.name,
+    size: item.size ?? 0,
+    type: item.type ?? "application/octet-stream",
+    ...(item.width && item.height ? { width: item.width, height: item.height } : {}),
+    modifiedAt: item.uploadedAt,
+    status: item.published ? "clean" : "added",
+    location: item.location,
+    key: item.key,
+  };
 }

@@ -950,6 +950,12 @@ export interface MediaItem {
   key?: string;
   /** In a media store, in Proof: whether the working copy still uses it. */
   used?: boolean;
+  /**
+   * Just uploaded, when it went somewhere other than the site's first choice:
+   * one sentence saying where and why ("Kept in the repository: Cloudflare
+   * Images takes only pictures.").
+   */
+  placement?: string;
 }
 
 export type ImageAspect = "1:1" | "16:9" | "4:3" | "3:2" | "9:16" | "3:4" | "2:3";
@@ -1855,6 +1861,12 @@ export interface SiteService {
 
   // files (source view, build mode)
   listFiles(options?: { glob?: string; limit?: number }): Promise<string[]>;
+  /**
+   * Every match of an extended regular expression in the site's text files —
+   * the working copy, or the published version — with the file it is in.
+   * Read-only. Optional so test fakes needn't provide it.
+   */
+  grepText?(pattern: string, options: { rev: "working" | "base" }): Promise<Array<{ path: string; match: string }>>;
   readFile(path: string): Promise<{ path: string; content: string; hash: string; binary: boolean }>;
   writeFile(path: string, content: string | Uint8Array, options: WriteOptions): Promise<void>;
   deleteFile(path: string, options: WriteOptions): Promise<void>;

@@ -77,6 +77,31 @@ describe("media storage routes", () => {
     await app.done();
   });
 
+  it("hand usage and store deletes to the engine, and refuse store paths on the repository's delete", async () => {
+    const app = await withStorage();
+    const calls: unknown[] = [];
+
+    app.services.mediaStorage = {
+      ...app.services.mediaStorage!,
+      usage: async (_site, url) => {
+        calls.push(["usage", url]);
+        return { url, working: [], published: [] };
+      },
+      deleteStored: async (_site, paths) => {
+        calls.push(["delete", paths]);
+        return { deleted: paths, refused: [] };
+      },
+    };
+    expect((await json(await app.call("GET", `/api/sites/${SITE_ID}/media/usage?url=${encodeURIComponent("https://media.example.com/a.png")}`))).working).toEqual([]);
+    expect((await json(await app.call("POST", `/api/sites/${SITE_ID}/media/storage/delete`, { paths: ["bucket:a.png"] }))).deleted).toEqual(["bucket:a.png"]);
+    expect(calls).toEqual([["usage", "https://media.example.com/a.png"], ["delete", ["bucket:a.png"]]]);
+    const refused = await app.call("DELETE", `/api/sites/${SITE_ID}/media?path=${encodeURIComponent("bucket:a.png")}`);
+
+    expect(refused.status).toBe(400);
+    expect((await json(refused)).error.message).toMatch(/kept outside the repository/);
+    await app.done();
+  });
+
   it("refuse a badly shaped key with a sentence, not the value", async () => {
     const app = await withStorage();
     const response = await app.call("POST", `/api/sites/${SITE_ID}/media/storage/check`, { config: config(), accessKeyId: KEY.accessKeyId, secretAccessKey: "has spaces in it, oops" });

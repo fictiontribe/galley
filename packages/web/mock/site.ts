@@ -206,6 +206,11 @@ export class MockSite {
 
   // ── files ──────────────────────────────────────────────────────────────
 
+  /** Every path the site has a record of (current or base). */
+  allPaths(): string[] {
+    return [...this.files.keys()];
+  }
+
   read(path: string, rev?: "base"): Buffer | null {
     const record = this.files.get(path);
     if (!record) return null;

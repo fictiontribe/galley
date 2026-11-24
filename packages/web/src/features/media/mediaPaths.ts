@@ -6,7 +6,10 @@ import type { MediaConfig, MediaItem } from "@galley/core/types";
 
 /** The repo path behind a site URL, or null for addresses outside the media folders (or other sites). */
 export function mediaPathForUrl(url: string, media: MediaConfig | null | undefined): string | null {
-  if (!media || !url || /^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith("//")) return null;
+  if (!media || !url) return null;
+  const stored = storePathForUrl(url, media);
+  if (stored) return stored;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith("//")) return null;
   const clean = decodeURI(url.split(/[?#]/)[0] ?? "");
   const roots = [...media.roots].sort((a, b) => b.publicPath.length - a.publicPath.length);
   for (const root of roots) {
@@ -20,8 +23,32 @@ export function mediaPathForUrl(url: string, media: MediaConfig | null | undefin
   return null;
 }
 
-/** Where a thumbnail comes from: the working copy through the API, or the address itself when it's on the web. */
+/**
+ * The library path ("bucket:lowfield/coat.webp") behind a full address of a
+ * file in the site's bucket (inside its folder), or null. The app shows such
+ * files through the server, which reads them from the bucket.
+ */
+export function storePathForUrl(url: string, media: MediaConfig | null | undefined): string | null {
+  const storage = media?.storage;
+  if (!storage?.publicUrl) return null;
+  const base = storage.publicUrl.replace(/\/+$/, "");
+  const bare = url.split(/[?#]/)[0] ?? "";
+  if (!bare.startsWith(`${base}/`)) return null;
+  let key: string;
+  try {
+    key = bare.slice(base.length + 1).split("/").map(decodeURIComponent).join("/");
+  } catch {
+    return null;
+  }
+  const prefix = (storage.prefix ?? "").replace(/^\/+|\/+$/g, "");
+  if (!key || key.split("/").includes("..") || (prefix && !key.startsWith(`${prefix}/`))) return null;
+  return `bucket:${key}`;
+}
+
+/** Where a thumbnail comes from: the working copy (or the site's bucket) through the API, or the address itself when it's on the web. */
 export function thumbnailSource(url: string, media: MediaConfig | null | undefined, raw: (path: string) => string): string | null {
+  const stored = storePathForUrl(url, media);
+  if (stored) return raw(stored);
   if (/^https?:\/\//i.test(url)) return url;
   const path = mediaPathForUrl(url, media);
   return path ? raw(path) : null;

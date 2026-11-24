@@ -103,7 +103,12 @@ export async function createServices(options: ServicesOptions): Promise<Services
     ...(options.previewPorts ? { previewPorts: createPortPool(options.previewPorts) } : {}),
     ...(options.publicProtocol ? { publicProtocol: options.publicProtocol } : {}),
     ...(options.previewGateway ? { previewGateway: options.previewGateway } : {}),
-    onPublished: (site, result) => deploy.afterPublish(site, result),
+    onPublished: (site, result) => {
+      deploy.afterPublish(site, result);
+      // Uploads to the bucket the published version now uses stop showing as pending.
+      void mediaStorage.afterPublish(site).catch(() => undefined);
+    },
+    media: mediaStorage,
     // The address the capture service gives out (forms/capture.ts), handed to previewed pages so their forms reach the inbox.
     captureAddress: (siteId) => {
       const app = options.appUrl?.() ?? null;

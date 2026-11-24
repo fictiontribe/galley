@@ -18,7 +18,9 @@ type MediaStorageRouteKey =
   | "GET /api/sites/:siteId/media/storage"
   | "POST /api/sites/:siteId/media/storage/check"
   | "PUT /api/sites/:siteId/media/storage"
-  | "DELETE /api/sites/:siteId/media/storage";
+  | "DELETE /api/sites/:siteId/media/storage"
+  | "GET /api/sites/:siteId/media/usage"
+  | "POST /api/sites/:siteId/media/storage/delete";
 
 const shortText = (max: number) => z.string().trim().max(max);
 
@@ -44,6 +46,8 @@ export const checkBody = z
   .optional()
   .transform((value) => value ?? {});
 export const disconnectQuery = z.object({ forgetKeys: z.enum(["true", "false"]).optional() });
+export const usageQuery = z.object({ url: z.string().trim().min(1, "it can't be empty").max(2048) });
+export const deleteStoredBody = z.object({ paths: z.array(z.string().min(1).max(1100)).min(1, "name at least one file").max(200) }).strict();
 
 export function mediaStorageOf(ctx: RouteContext): MediaStorageService {
   const storage = ctx.services.mediaStorage;
@@ -98,5 +102,18 @@ export const mediaStorageRoutes: Pick<RouteTable, MediaStorageRouteKey> = {
     const { forgetKeys } = v.query(c, disconnectQuery);
 
     return storage.disconnect(await siteOf(c, ctx), { forgetKeys: forgetKeys === "true" });
+  },
+  "GET /api/sites/:siteId/media/usage": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const { url } = v.query(c, usageQuery);
+
+    return storage.usage(await siteOf(c, ctx), url);
+  },
+  "POST /api/sites/:siteId/media/storage/delete": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const { paths } = await v.body(c, deleteStoredBody);
+    const site = await siteOf(c, ctx);
+
+    return engine(() => storage.deleteStored(site, paths));
   },
 };

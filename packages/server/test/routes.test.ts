@@ -309,6 +309,8 @@ const coveredElsewhere: ApiRouteKey[] = [
   "POST /api/sites/:siteId/media/storage/check",
   "PUT /api/sites/:siteId/media/storage",
   "DELETE /api/sites/:siteId/media/storage",
+  "GET /api/sites/:siteId/media/usage",
+  "POST /api/sites/:siteId/media/storage/delete",
   // deploy.test.ts (needs a deploy service)
   "GET /api/deploy/targets",
   "POST /api/deploy/targets/:targetId/connect",

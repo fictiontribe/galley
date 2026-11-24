@@ -116,6 +116,14 @@ export interface MediaStore {
   list?(cursor?: string): Promise<{ items: StoredItem[]; next: string | null }>;
   /** The public address of a name. */
   urlOf(key: string): string;
+  /** The name a file asked for at `relative` ("team/ana.webp") is stored under: the bucket adds the site's folder. */
+  keyFor(relative: string): string;
+  /**
+   * An extended regular expression (POSIX ERE and JavaScript alike) matching
+   * this store's addresses in any form it serves them, for finding where
+   * pages use them. Matches may carry trailing punctuation; `keyOf` decides.
+   */
+  addressPattern(): string;
   /**
    * The name behind an address found in a page, in any form the service
    * serves it (another variant, a resizing option, a custom domain); null
@@ -208,4 +216,17 @@ export function parseStorePath(path: string): { location: MediaStoreLocation; ke
 
 export function storePath(location: MediaStoreLocation, key: string): string {
   return `${location}:${key}`;
+}
+
+/** Characters an address found in a page can't contain: quotes, brackets, spaces and the like. Valid in ERE and JS alike. */
+export const ADDRESS_TAIL = "[^\"'()<>{}|` ]+";
+
+/** `text` with every regular expression character escaped (ERE and JS alike). */
+export function escapePattern(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** An address as found in a page, without the punctuation that may follow it in prose or markup. */
+export function trimFound(match: string): string {
+  return match.replace(/[.,;:!\]]+$/, "");
 }

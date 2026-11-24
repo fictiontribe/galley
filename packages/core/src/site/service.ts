@@ -82,6 +82,7 @@ import { createEnricher, describeChanges, sortChanges } from "./enrich";
 import { shapesModel } from "./model-files";
 import { resolvePublishConfig, type PublishFacts } from "./publish-config";
 import { createKeyedLock, folderName, prettifyName } from "./util";
+import { isStoreAddress, type SiteMediaRouter } from "../media-storage/router";
 
 type Author = { name: string; email: string } | null;
 
@@ -118,6 +119,12 @@ export interface SiteDeps {
   onPublished?: (result: PublishResult) => void;
   /** A request reached this site's preview proxy (the multi-site preview policy counts use with it). */
   onPreviewActivity?: () => void;
+  /**
+   * Where new media goes when the site keeps it outside the repository (a
+   * bucket, Cloudflare Images): the media storage service. Absent: media
+   * lives in the repository, as it always has.
+   */
+  media?: SiteMediaRouter;
   /**
    * This app's capture address for the site's forms, handed to the previewed
    * pages at run time (`<html data-galley-endpoint>`) so a form in the
@@ -433,6 +440,8 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
           // Keep the raw path when it is not valid percent-encoding.
         }
         if (path.split("/").includes("..")) return false;
+        // A file kept in the site's bucket: its full public address.
+        if (isStoreAddress(model.media, siteUrl)) return true;
         for (const mediaRoot of model.media.roots) {
           const prefix = mediaRoot.publicPath.replace(/\/+$/, "");
 
@@ -858,12 +867,20 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
 
     // ── media
 
-    listMedia() {
-      return listMedia(workspace, model.media);
+    async listMedia() {
+      const repository = await listMedia(workspace, model.media);
+
+      return deps.media ? deps.media.list(service, repository) : repository;
     },
 
     saveMedia(input, options) {
-      return saveMedia(workspace, model.media, input, options);
+      const toRepository = () => saveMedia(workspace, model.media, input, options);
+
+      return deps.media ? deps.media.save(service, input, toRepository) : toRepository();
+    },
+
+    grepText(pattern, options) {
+      return workspace.grepText(pattern, options);
     },
 
     resolvePath(path) {
@@ -873,7 +890,11 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     // ── proof & publish
 
     async changes(): Promise<ChangeSet> {
-      return sortChanges(await workspace.changes(createEnricher(() => model)));
+      const changes = sortChanges(await workspace.changes(createEnricher(() => model)));
+      // Uploads to a media store since the last publish: never in a commit, but part of what is pending.
+      const storeUploads = deps.media ? await deps.media.pending(service).catch(() => []) : [];
+
+      return storeUploads.length ? { ...changes, storeUploads } : changes;
     },
 
     pendingPaths() {

@@ -136,12 +136,12 @@ export interface MediaUsage {
   published: string[];
 }
 
+/** Deleting from a store is for good and can't be discarded, so anything a page uses is refused. */
 export interface MediaStoreDeleteResult {
-  location: MediaStoreLocation;
-  /** The store's names (object keys or image ids) that were deleted. */
+  /** Library paths ("bucket:lowfield/coat.webp") that were deleted. */
   deleted: string[];
-  /** Not deleted, because something uses them; where. */
-  refused: Array<{ key: string; name: string; working: string[]; published: string[] }>;
+  /** Not deleted, because a page uses them (the working copy or the published version), and where. */
+  refused: Array<{ path: string; name: string; working: string[]; published: string[] }>;
 }
 
 /**

@@ -123,6 +123,9 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "POST /api/sites/:siteId/media/storage/check": "manage",
   "PUT /api/sites/:siteId/media/storage": "manage",
   "DELETE /api/sites/:siteId/media/storage": "manage",
+  "GET /api/sites/:siteId/media/usage": "edit",
+  // Gone for good and possibly live: the level that changes the live site.
+  "POST /api/sites/:siteId/media/storage/delete": "publish",
   "GET /api/sites/:siteId/raw": "edit",
   "GET /api/images/providers": "edit",
   "POST /api/sites/:siteId/images/generate": "edit",
