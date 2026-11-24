@@ -1,11 +1,10 @@
 /* The form inbox and its capture settings. Tokens and brand classes only. */
-.app-inbox-wrap { max-inline-size: 1360px; }
 .app-inbox {
   display: grid; grid-template-columns: minmax(180px, 220px) minmax(300px, 400px) minmax(0, 1fr);
   min-block-size: 560px; border: var(--border-hair) solid var(--border-default); border-radius: var(--radius-md);
   background: var(--surface-paper); overflow: hidden;
 }
-@media (max-width: 1100px) { .app-inbox { grid-template-columns: minmax(0, 1fr); } .app-inbox__forms { border-inline-end: 0; border-block-end: var(--border-hair) solid var(--border-default); } }
+@container page (max-width: 899px) { .app-inbox { grid-template-columns: minmax(0, 1fr); } .app-inbox__forms { border-inline-end: 0; border-block-end: var(--border-hair) solid var(--border-default); } }
 
 /* forms column */
 .app-inbox__forms { border-inline-end: var(--border-hair) solid var(--border-default); padding-block: var(--space-4); background: var(--surface-sunken); }

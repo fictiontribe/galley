@@ -229,6 +229,57 @@
 }
 
 /* --------------------------------------------------------------------------
+   1b. App surfaces (light) — the editing app only.
+   The app sets data-surfaces="app" on <html> (packages/web/index.html; the
+   desktop start-up window copies the same values). Its canvas is a lighter,
+   less yellow bond paper, and cards, panes and inputs are near-white sheets
+   lying on it. The marketing site, the film, the social card and the
+   specimen keep the newsprint above.
+   Same token names: only these seven values differ. Dark and system-dark
+   (section 3) come later in the file and replace them as before.
+   To carry it brand-wide: copy these values into section 1, delete this block.
+
+   Contrast on these surfaces (measured):
+                                     paper  raised sunken overlay
+     --ink-primary   #1A1712         16.27  17.43  14.88  17.73  AAA
+     --ink-secondary #514A3F          7.96   8.53   7.28   8.68  AAA
+     --ink-tertiary  #6B6356          5.39   5.78   4.93   5.88  AA
+     --ink-disabled  #A0978A          2.62   2.81   2.40   2.86  (exempt)
+     --border-strong #817A6F          3.86   4.14   3.54   4.21  ≥3:1 (1.4.11)
+     --proof-insert  #0B6E55          5.66   6.07   5.18   6.17
+     --proof-delete  #B8361A          5.34   5.72   4.88   5.82
+     --proof-change  #8E3A7A          6.30   6.75   5.76   6.86
+     --success       #2D6A2E          5.95   6.38   5.44   6.49
+     --warning       #8A5800          5.50   5.89   5.03   5.99
+     --danger        #A8233A          6.44   6.90   5.90   7.02
+     --info          #2E5A8C          6.46   6.93   5.91   7.05
+     --accent-text   #2910F1          7.84   8.40   7.17   8.54
+     --accent-subtle → #E2E0F2: ink-primary 13.77, accent-text 6.63
+   Tints and their -ink colours don't depend on the surfaces; unchanged.
+   -------------------------------------------------------------------------- */
+[data-surfaces="app"],
+[data-surfaces="app"] [data-theme="light"] {
+  --surface-paper:   #F6F4F0;        /* app canvas — bond paper */
+  --surface-raised:  #FDFCFA;        /* cards, panes, inputs — the sheet */
+  --surface-sunken:  #EDEAE4;        /* wells, code, preview gutter */
+  --surface-overlay: #FFFEFC;        /* menus, popovers, dialogs, toasts */
+  --border-subtle:   #E7E3DC;        /* dividers inside a surface (decorative) */
+  --border-default:  #D7D1C7;        /* pane edges, cards (decorative) */
+  --border-strong:   #817A6F;        /* input + control boundaries (see table) */
+}
+/* The alternative, "white sheets on bond" (cards separate more). To swap,
+   paste these over the seven values above, then re-measure the table
+   (lowest then: ink-tertiary on sunken 4.89, border-strong on sunken 3.60):
+  --surface-paper:   #F4F2ED;
+  --surface-raised:  #FFFEFB;
+  --surface-sunken:  #ECE9E2;
+  --surface-overlay: #FFFFFF;
+  --border-subtle:   #E7E3DB;
+  --border-default:  #D8D2C7;
+  --border-strong:   #7F786C;
+*/
+
+/* --------------------------------------------------------------------------
    2. Accent derivations — re-computed wherever --accent or the theme changes.
    Declared on every scope that may set --accent or [data-theme], because a
    custom property that references another is resolved where it is declared.

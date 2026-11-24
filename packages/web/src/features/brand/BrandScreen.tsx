@@ -294,7 +294,6 @@ function DriftDialog({ report, onClose }: { report: DriftReport | null; onClose:
 export function BrandScreen() {
   const { siteId = "" } = useParams();
   const navigate = useNavigate();
-  const siteName = useSite((s) => s.detail?.name);
   const query = useBrandState(siteId);
   const { measure, stop, progress, starting } = useMeasure(siteId);
   const [applyOpen, setApplyOpen] = useState(false);
@@ -343,12 +342,11 @@ export function BrandScreen() {
     // The heading straight away, so the screen is plainly the Brand screen while the brand is read.
     return (
       <div className="app-screen brand-screen" aria-busy="true">
-        <div className="app-screen__inner app-screen__inner--wide">
-          <header className="brand-head">
-            <div className="brand-head__text">
-              <span className="g-eyebrow">Brand</span>
-              <h1 className="brand-head__title">{siteName ?? "This site"}</h1>
-              <p className="brand-head__lede brand-loading" role="status">
+        <div className="app-screen__inner">
+          <header className="app-page-header">
+            <div className="app-page-header__text">
+              <h1 className="app-page-header__title">Brand</h1>
+              <p className="app-page-header__description brand-loading" role="status">
                 <Spinner label="Loading" /> Opening the brand…
               </p>
             </div>
@@ -374,11 +372,10 @@ export function BrandScreen() {
     saver.save(next);
   };
   const header = (
-    <header className="brand-head">
-      <div className="brand-head__text">
-        <span className="g-eyebrow">Brand</span>
-        <h1 className="brand-head__title">{siteName ?? "This site"}</h1>
-        <p className="brand-head__lede">
+    <header className="app-page-header">
+      <div className="app-page-header__text">
+        <h1 className="app-page-header__title">Brand</h1>
+        <p className="app-page-header__description">
           {proposal
             ? `A proposal ${proposal.from === "site" ? "read from the site" : proposal.from === "both" ? "from the site and your material" : "from your material"}. Check it, answer any questions, then save it.`
             : state.brand
@@ -387,7 +384,7 @@ export function BrandScreen() {
         </p>
       </div>
       {brand && !running ? (
-        <div className="brand-head__actions">
+        <div className="app-page-header__actions">
           <Button
             variant="secondary"
             busy={checking}
@@ -456,7 +453,7 @@ export function BrandScreen() {
 
   return (
     <div className="app-screen brand-screen">
-      <div className="app-screen__inner app-screen__inner--wide">
+      <div className="app-screen__inner">
         {header}
         {running ? (
           <Progress

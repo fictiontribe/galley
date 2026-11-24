@@ -261,9 +261,8 @@ export function SitesScreen() {
     body = (
       <>
         <PageHeader
-          eyebrow={`${counted(list.length, "site")}${groupList.length ? ` · ${counted(groupList.length, "group")}` : ""}`}
           title="Your sites"
-          description={attention > 0 ? `${counted(attention, "site")} ${attention === 1 ? "has" : "have"} something waiting.` : "Nothing is waiting on any site."}
+          description={`${counted(list.length, "site")}${groupList.length ? `, ${counted(groupList.length, "group")}` : ""}. ${attention > 0 ? `${counted(attention, "site")} ${attention === 1 ? "has" : "have"} something waiting.` : "Nothing is waiting on any site."}`}
           actions={
             <>
               <Button variant="quiet" icon="plus" onClick={() => setEditingGroup("new")}>
@@ -361,7 +360,7 @@ export function SitesScreen() {
 
   return (
     <div className="app-screen sites-screen">
-      <div className="app-screen__inner app-screen__inner--wide">{body}</div>
+      <div className="app-screen__inner">{body}</div>
       <FolderBrowserDialog
         open={browsing !== null}
         purpose={browsing ?? "site"}

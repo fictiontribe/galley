@@ -252,9 +252,8 @@ export function VisibilityScreen() {
   }
   return (
     <div className="app-screen seo-screen">
-      <div className="app-screen__inner app-screen__inner--wide">
+      <div className="app-screen__inner">
         <PageHeader
-          eyebrow="Site"
           title="Search & AI"
           description="How search engines and AI assistants find, read and quote this site — what needs fixing, and ideas worth a look. Fixes wait in Proof like any other change."
           actions={

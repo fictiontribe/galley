@@ -6,7 +6,7 @@
  * downloads. When the host isn't known yet, the one question: where is this
  * site hosted?
  */
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 import type { RedirectHostId, RedirectsOverview } from "@galley/core/redirects-info";
 import { HOST_INFO } from "@galley/core/redirects-info";
@@ -53,10 +53,15 @@ async function choose(siteId: string, host: RedirectHostId | null) {
 export function HostChooser({ siteId, overview, onDone }: { siteId: string; overview: RedirectsOverview; onDone?: () => void }) {
   const suggested = overview.host.suggestion?.id ?? null;
   const [busy, setBusy] = useState<RedirectHostId | null>(null);
+  // A named group with a heading, not a fieldset and legend: some browsers size a legend
+  // to its longest word inside a narrow panel, which broke the question one word per line.
+  const titleId = useId();
 
   return (
-    <fieldset className="redir-hosts">
-      <legend className="redir-panel__title">Where is this site hosted?</legend>
+    <div className="redir-hosts" role="group" aria-labelledby={titleId}>
+      <h2 id={titleId} className="redir-panel__title">
+        Where is this site hosted?
+      </h2>
       {overview.host.suggestion ? <p className="g-hint">{overview.host.suggestion.reason}</p> : <p className="g-hint">Redirects take effect through the host’s own file. Choose once; it’s saved with the site.</p>}
       <div className="redir-hosts__options">
         {HOSTS.map((host) => (
@@ -86,7 +91,7 @@ export function HostChooser({ siteId, overview, onDone }: { siteId: string; over
           </button>
         ))}
       </div>
-    </fieldset>
+    </div>
   );
 }
 

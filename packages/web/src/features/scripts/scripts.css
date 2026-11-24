@@ -5,9 +5,9 @@
 .kit-scripts-screen .kit-ask { margin-block-end: var(--space-4); }
 .kit-scripts-screen .app-screen__inner > .kit-note { margin-block-end: var(--space-3); }
 .kit-scripts-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: var(--space-6); align-items: start; margin-block-start: var(--space-4); }
-.kit-scripts-layout__main { display: grid; gap: var(--space-3); min-inline-size: 0; }
+.kit-scripts-layout__main { display: grid; gap: var(--space-3); min-inline-size: 0; container: list / inline-size; }
 .kit-scripts-layout__side { display: grid; gap: var(--space-4); position: sticky; inset-block-start: 0; }
-@media (max-width: 1240px) {
+@container page (max-width: 899px) {
   .kit-scripts-layout { grid-template-columns: minmax(0, 1fr); }
   .kit-scripts-layout__side { position: static; }
 }
@@ -24,12 +24,12 @@
 .kit-script__facts > span:first-child { max-inline-size: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kit-script__switch { flex: none; display: inline-flex; }
 .kit-script__note { margin: 0; padding: 0 var(--space-3) var(--space-2) calc(var(--space-3) + 52px); font-size: var(--text-xs); color: var(--ink-secondary); font-style: italic; }
-@media (max-width: 1360px) { .kit-script__facts > span:nth-child(2) { display: none; } }
-@media (max-width: 1180px) { .kit-script__facts > span:first-child { display: none; } }
+@container list (max-width: 639px) { .kit-script__facts > span:nth-child(2) { display: none; } }
+@container list (max-width: 479px) { .kit-script__facts > span:first-child { display: none; } }
 
 .kit-script-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-6); }
 .kit-script-detail__col { display: grid; gap: var(--space-4); align-content: start; min-inline-size: 0; }
-@media (max-width: 1100px) { .kit-script-detail { grid-template-columns: minmax(0, 1fr); } }
+@container list (max-width: 599px) { .kit-script-detail { grid-template-columns: minmax(0, 1fr); } }
 .kit-script-detail .kit-settings { grid-template-columns: minmax(0, 1fr); }
 
 .kit-patterns { list-style: none; margin: 0 0 var(--space-2); padding: 0; display: grid; gap: var(--space-1); }

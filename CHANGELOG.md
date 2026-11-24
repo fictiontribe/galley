@@ -50,6 +50,25 @@ entry says how.
   make the next start install the site's packages first.
 - **Get latest** no longer starts when it can already tell git would refuse:
   it says which files with unpublished changes the newer versions change.
+- **A lighter, less yellow paper in the app.** The canvas, cards, wells and
+  borders are a cooler bond paper, and every card on the canvas has the same
+  edge and the lightest shadow, so panels lift off the page. The dark theme
+  and the marketing site are as they were.
+- **One page frame.** Every list and settings screen sits in the same column
+  with its title at the same left edge and height; the page's main action
+  sits level with the title. Side panels switch between beside and below by
+  the room the column really has, so opening the sidebar or the assistant no
+  longer squeezes them.
+- **Scripts:** asking is one field with its examples under it, and "Add a
+  script" appears once while there are none.
+- **Redirects:** "Where is this site hosted?" lists the hosts one to a row
+  instead of four small cards, and its question can no longer break a word
+  at a time; the toolbar keeps to one line and the WordPress import's panel
+  fits its column.
+- **Empty lists** sit in a card where the list goes, with one way to start.
+  Pages and other collections no longer offer "New" twice.
+- **Site settings** put each section's title and note beside its fields when
+  there is room. **Online** has a heading for each of its three sections.
 
 ## 0.3.1 — 2026-11-24
 

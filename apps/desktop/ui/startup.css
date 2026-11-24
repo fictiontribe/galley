@@ -1,16 +1,17 @@
 /* The start-up window. Values copied from brand/tokens.css (this page is
-   bundled into the app on its own, before the UI is reachable). */
+   bundled into the app on its own, before the UI is reachable). Surfaces and
+   borders are the app's own (tokens.css §1b), so it matches the app it opens. */
 :root {
   color-scheme: light dark;
   --accent: #2e2bff;
-  --surface-paper: #f6f1e7;
-  --surface-raised: #fdfaf4;
-  --surface-sunken: #ede6d8;
+  --surface-paper: #f6f4f0;
+  --surface-raised: #fdfcfa;
+  --surface-sunken: #edeae4;
   --ink-primary: #1a1712;
   --ink-secondary: #514a3f;
   --ink-tertiary: #6b6356;
-  --border-default: #d2c7b4;
-  --border-strong: #857b69;
+  --border-default: #d7d1c7;
+  --border-strong: #817a6f;
   --danger: #a8233a;
   --on-accent: #ffffff;
   --accent-text: #2910f1;

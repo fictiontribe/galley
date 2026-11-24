@@ -118,12 +118,30 @@ html, body { overflow: hidden; }
    -------------------------------------------------------------------------- */
 .app-screen { overflow-y: auto; padding: var(--space-10) clamp(var(--space-6), 4vw, var(--space-12)) var(--space-16); scrollbar-gutter: stable; }
 .app-screen--center { display: grid; place-items: center; }
-.app-screen__inner { max-inline-size: 880px; margin-inline: auto; }
-.app-screen__inner--wide { max-inline-size: 1120px; }
+/* The page frame. Every list and settings screen sits in this one column, so its width and its left edge are the same
+   on every screen at any window size. The work surfaces keep frames of their own: the editor and Proof run edge to
+   edge, and the two step-by-step flows (a new site, bringing a WordPress site) are a single centred column.
+   The column is a container ("page"): a screen's main and side columns switch on the column's own width, never the
+   window's, so the sidebar being open or collapsed can't leave a side column squeezed or a wide one stacked.
+   Below 900px every screen is one column (side columns go under the main one); below 560px the header's action
+   wraps under the lead. A list with columns of its own (Redirects, Scripts) is a "list" container inside that. */
+.app-content { --page-width: 1120px; }
+.app-screen__inner { max-inline-size: var(--page-width); margin-inline: auto; container: page / inline-size; }
+/* Screens whose list scrolls inside them (a collection, media) fill the height and keep the same column. */
+.app-screen__inner--fill { inline-size: 100%; flex: 1; min-block-size: 0; display: flex; flex-direction: column; }
 
-.app-page-header { display: flex; align-items: flex-end; gap: var(--space-6); flex-wrap: wrap; margin-block-end: var(--space-8); }
-.app-page-header__text { flex: 1 1 420px; display: grid; gap: var(--space-2); }
-.app-page-header__text > * { margin: 0; }
+/* The header: the title with the screen's main action level with it at the column's end (where the content below it
+   ends too), and the lead under the title. On a narrow column the action wraps under the lead. */
+.app-page-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-6); align-items: center; margin-block-end: var(--space-8); }
+.app-page-header__text { display: contents; }
+.app-page-header__text > * { margin: 0; grid-column: 1; }
+.app-page-header .g-eyebrow { grid-row: 1; margin-block-end: var(--space-2); }
+.app-page-header__title { grid-row: 2; }
+.app-page-header__description { grid-row: 3; margin-block-start: var(--space-2); }
+.app-page-header__actions { grid-column: 2; grid-row: 2; justify-content: flex-end; }
+@container page (max-width: 559px) {
+  .app-page-header__actions { grid-column: 1; grid-row: 4; justify-content: flex-start; margin-block-start: var(--space-4); }
+}
 .app-page-header__title {
   font: var(--weight-regular) var(--text-3xl) / var(--leading-3xl) var(--font-display);
   letter-spacing: var(--tracking-heading); font-optical-sizing: auto; text-wrap: balance;
@@ -135,6 +153,12 @@ html, body { overflow: hidden; }
 .app-card--pad { padding: var(--space-4); }
 .app-card--quiet { background: transparent; border-style: dashed; }
 .app-card > .g-file:last-child { border-block-end: 0; }
+/* Cards. One treatment for every sheet lying on the canvas, whatever screen it's on: the raised surface, a hairline
+   edge and the lightest shadow. The app's canvas and its cards are close in tone (tokens.css 1b), so the edge and
+   the shadow are what lift a card; a card inside a card stays flat. */
+:is(.app-card:not(.app-card--quiet), .app-site-card, .app-sync, .app-secret, .app-error:not(.app-error--compact), .app-media-details,
+  .app-inbox, .redir-table, .kit-rows, .sites-rows, .sites-card:not(.sites-card--missing), .plg-card, .brand-way, .app-screen__inner .g-block) { box-shadow: var(--shadow-1); }
+:is(.app-card, .g-block, .app-inbox) :is(.app-card, .g-block, .app-secret, .plg-card, .app-error) { box-shadow: none; }
 
 .app-section { display: grid; gap: var(--space-3); }
 .app-section__head { display: flex; align-items: center; gap: var(--space-3); min-block-size: 28px; }
@@ -352,7 +376,7 @@ html, body { overflow: hidden; }
   background: var(--surface-raised); border: var(--border-hair) solid var(--border-default); border-radius: var(--radius-sm);
   transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
-.app-site-card:hover, .app-site-card:focus-within { border-color: var(--border-strong); box-shadow: var(--shadow-1); }
+.app-site-card:hover, .app-site-card:focus-within { border-color: var(--border-strong); box-shadow: var(--shadow-2); }
 .app-site-card__top { display: flex; align-items: center; gap: var(--space-2); margin-block-end: var(--space-2); }
 .app-site-card__menu { position: relative; z-index: var(--z-raised); margin-inline-end: calc(var(--space-2) * -1); }
 .app-site-card__name { margin: 0; font: var(--weight-regular) var(--text-2xl) / var(--leading-2xl) var(--font-display); letter-spacing: var(--tracking-heading); overflow-wrap: anywhere; }
@@ -384,7 +408,7 @@ html, body { overflow: hidden; }
 .app-way__icon { inline-size: 22px; block-size: 22px; color: var(--accent-text); margin-block: var(--space-2) 0; }
 .app-way__title { margin: 0; font: var(--weight-medium) var(--text-xl) / var(--leading-xl) var(--font-display); }
 .app-way__body { margin: 0 0 var(--space-3); color: var(--ink-secondary); max-inline-size: 30ch; }
-@media (max-width: 1100px) {
+@container page (max-width: 899px) {
   .app-firstrun__sheet { grid-template-columns: 1fr; gap: var(--space-6); }
   .app-firstrun__margin { border-inline-start: 0; border-block-start: var(--border-hair) solid var(--border-strong); padding: var(--space-4) 0 0; grid-template-columns: repeat(3, 1fr); }
 }
@@ -414,7 +438,7 @@ html, body { overflow: hidden; }
 .app-home__lede { color: var(--ink-secondary); font-size: var(--text-md); }
 .app-home__grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); gap: var(--space-10); align-items: start; }
 .app-home__main, .app-home__side { display: grid; gap: var(--space-10); min-inline-size: 0; }
-@media (max-width: 1180px) { .app-home__grid { grid-template-columns: 1fr; } }
+@container page (max-width: 899px) { .app-home__grid { grid-template-columns: 1fr; } }
 
 .app-ask { display: grid; gap: var(--space-2); }
 .app-ask__label { font: var(--weight-regular) var(--text-xl) / var(--leading-xl) var(--font-display); }
@@ -473,10 +497,9 @@ html, body { overflow: hidden; }
 /* --------------------------------------------------------------------------
    Settings
    -------------------------------------------------------------------------- */
-.app-settings { max-inline-size: 1040px; }
 .app-settings__layout { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: var(--space-10); align-items: start; }
 .app-settings__nav { position: sticky; inset-block-start: 0; display: grid; gap: 1px; }
-.app-settings__sections { display: grid; gap: 0; min-inline-size: 0; }
+.app-settings__sections { display: grid; gap: 0; min-inline-size: 0; container: sections / inline-size; }
 .app-screen__inner > .app-settings__sections { margin-block-start: 0; }
 .app-settings__section { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); padding-block: var(--space-8); border-block-start: var(--border-hair) solid var(--border-default); scroll-margin-block-start: var(--space-6); }
 .app-settings__section:first-child { border-block-start: 0; padding-block-start: 0; }
@@ -486,7 +509,13 @@ html, body { overflow: hidden; }
 .app-settings__section-title { margin: 0; font: var(--weight-medium) var(--text-xl) / var(--leading-xl) var(--font-display); letter-spacing: var(--tracking-heading); }
 .app-settings__section-text { margin: 0; color: var(--ink-secondary); max-inline-size: 62ch; }
 .app-settings__section-body { display: grid; gap: var(--space-5); }
-@media (max-width: 1100px) { .app-settings__layout { grid-template-columns: 1fr; } .app-settings__nav { display: none; } }
+/* A wide column sets each section as a settings page does: its title and what it's for in a narrow column at the
+   start, the fields beside them at a comfortable length — not stretched across the whole column. */
+@container sections (min-width: 760px) {
+  .app-settings__section { grid-template-columns: 232px minmax(0, 1fr); column-gap: var(--space-10); }
+  .app-settings__section-head { align-content: start; }
+}
+@container page (max-width: 899px) { .app-settings__layout { grid-template-columns: 1fr; } .app-settings__nav { display: none; } }
 
 .app-secret { display: grid; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--surface-raised); border: var(--border-hair) solid var(--border-default); }
 .app-secret__row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
@@ -518,7 +547,7 @@ html, body { overflow: hidden; }
 .app-usage__total + .app-usage__total { padding-inline-start: var(--space-4); border-inline-start: var(--border-hair) solid var(--border-subtle); }
 .app-usage__cost { font: var(--weight-regular) var(--text-2xl) / var(--leading-2xl) var(--font-display); font-variant-numeric: tabular-nums; }
 .app-usage__sub { font-size: var(--text-xs); color: var(--ink-tertiary); }
-@media (max-width: 1100px) { .app-usage__totals { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container page (max-width: 899px) { .app-usage__totals { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .app-bars { margin: 0; display: grid; gap: var(--space-2); }
 .app-bars__plot { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 6px; align-items: end; block-size: 140px; padding-block-start: var(--space-4); border-block-end: var(--border-hair) solid var(--border-strong); background-image: linear-gradient(to top, var(--accent-guide) 1px, transparent 1px); background-size: 100% 35px; }
@@ -547,7 +576,7 @@ html, body { overflow: hidden; }
 .app-screen-frame__foot { flex: none; }
 /* Its own gutter matches the scroller's, so the buttons line up with the column above. */
 .app-savebar { padding: var(--space-3) clamp(var(--space-6), 4vw, var(--space-12)); border-block-start: var(--border-hair) solid var(--border-default); background: var(--surface-paper); overflow: hidden; scrollbar-gutter: stable; }
-.app-savebar__inner { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); max-inline-size: 880px; margin-inline: auto; }
+.app-savebar__inner { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); max-inline-size: var(--page-width); margin-inline: auto; }
 .app-savebar .g-hint { margin-inline-end: auto; }
 
 /* --------------------------------------------------------------------------
