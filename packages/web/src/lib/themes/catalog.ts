@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /**
  * Every theme this app can show, and where each comes from:
  *   builtin    Quiet, Plate and Desk (with a white-label brand's accent as their pencil)

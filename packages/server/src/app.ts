@@ -408,7 +408,9 @@ export function createApp(services: Services, options: AppOptions): Hono {
     if (url.pathname === "/theme.js" && options.webDir) {
       const script = await themeScript(options.webDir, ctx);
 
-      if (script !== null) return c.body(c.req.method === "HEAD" ? null : script, 200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" });
+      const headers = { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" };
+
+      if (script !== null) return c.req.method === "HEAD" ? c.body(null, 200, headers) : c.body(script, 200, headers);
     }
     const file = await resolveStatic(options.webDir, url.pathname);
     const headers = { "content-security-policy": csp };
