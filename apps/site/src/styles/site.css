@@ -1108,3 +1108,5 @@ a.desk__frame { text-decoration: none; }
 [data-look="bold"] .close .btn--primary { background: #fff; color: #2910F1; box-shadow: 0 1px 2px rgb(10 8 60 / .35); }
 [data-look="bold"] .close .btn--quiet { border-color: rgb(255 255 255 / .55); color: #fff; box-shadow: none; }
 [data-look="bold"] .close :focus-visible { outline-color: #fff; }
+/* The hero's crop marks are drawn in the pencil: the proof on the table is marked up. */
+[data-look="bold"] .hero--showcase figure::before { --c: var(--accent); }
