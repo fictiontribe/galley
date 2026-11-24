@@ -89,7 +89,11 @@
     "howtoGuide": "The full guide",
     "howtoGuideLine": "Every detail, and what to do if something’s different:",
     "howtoPager": "Previous and next how-to",
-    "howtoAll": "All how-to guides"
+    "howtoAll": "All how-to guides",
+    "howtoFilter": "Show guides for",
+    "howtoFilterAll": "All",
+    "howtoShown": "Showing {n} guides",
+    "howtoShownOne": "Showing 1 guide"
   },
   "install": {
     "about": "The one place the site's install commands come from. published is false until the first npm release; while it is false the site shows only the commands that work today (fromClone, and starterToday for the starters), and the build fails if a page would show create/createStarter/run.",

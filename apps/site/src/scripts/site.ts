@@ -257,3 +257,151 @@ if (tourIndex) {
   );
   for (const p of parts) io.observe(p);
 }
+
+// The how-to index's filter: a pill leaves only its group's guides. The marker
+// slides to the chosen pill; guides that go fade out, the ones that stay glide
+// to their new places and the ones that come back rise in. With less motion
+// asked for, the list simply changes. The choice is kept in the address
+// (/how-to/?show=go-live), so a filtered list can be linked to.
+const howtoFilter = document.querySelector<HTMLElement>("[data-howto-filter]");
+const howtoCards = document.querySelector<HTMLElement>("[data-howto-cards]");
+if (howtoFilter && howtoCards) {
+  const pills = $$<HTMLButtonElement>("button[data-group]", howtoFilter);
+  const row = pills[0]?.parentElement;
+  const thumb = howtoFilter.querySelector<HTMLElement>(".howto-filter__thumb");
+  const status = howtoFilter.querySelector<HTMLElement>("[data-howto-status]");
+  const cards = $$<HTMLElement>(":scope > li", howtoCards);
+  // What sits under the list moves with it when the list gets shorter or longer.
+  const after = [...$$("[data-howto-after]"), ...$$("body > footer")];
+  const OUT = "cubic-bezier(.16, 1, .3, 1)";
+  const IN = "cubic-bezier(.7, 0, .84, 0)";
+  let running: Animation[] = [];
+  let turn = 0;
+
+  const pressed = () => pills.find((b) => b.getAttribute("aria-pressed") === "true");
+  const placeThumb = () => {
+    const on = pressed();
+    if (!on || !thumb) return;
+    thumb.style.setProperty("--x", `${on.offsetLeft}px`);
+    thumb.style.setProperty("--w", `${on.offsetWidth}px`);
+  };
+  const press = (group: string, smooth: boolean) => {
+    for (const b of pills) b.setAttribute("aria-pressed", String(b.dataset.group === group));
+    placeThumb();
+    // Keep the chosen pill in view when the bar scrolls sideways (narrow screens).
+    const on = pressed();
+    if (on && row && row.scrollWidth > row.clientWidth) {
+      const left = on.offsetLeft - (row.clientWidth - on.offsetWidth) / 2;
+      row.scrollTo({ left, behavior: smooth && !still ? "smooth" : "auto" });
+    }
+  };
+  // Which way the bar has more pills than fit, for its soft edges.
+  const markMore = () => {
+    if (!row) return;
+    // Past the first pill's edge, or short of the last one's: the bar's own padding doesn't count.
+    const first = pills[0];
+    const last = pills[pills.length - 1];
+    const start = row.scrollLeft > first.offsetLeft + 2;
+    const end = row.scrollLeft + row.clientWidth < last.offsetLeft + last.offsetWidth - 2;
+    row.dataset.more = start && end ? "both" : start ? "start" : end ? "end" : "";
+  };
+  row?.addEventListener("scroll", markMore, { passive: true });
+  const fits = (card: HTMLElement, group: string) => !group || card.dataset.group === group;
+  const say = (n: number) => {
+    if (status) status.textContent = (n === 1 ? howtoFilter.dataset.shownOne : howtoFilter.dataset.shown?.replace("{n}", String(n))) ?? "";
+  };
+  const play = (el: HTMLElement, frames: Keyframe[], options: KeyframeAnimationOptions) => {
+    const a = el.animate(frames, options);
+    running.push(a);
+    return a;
+  };
+
+  const show = async (group: string, animate: boolean) => {
+    const mine = ++turn;
+    for (const a of running) a.cancel();
+    running = [];
+    press(group, animate);
+    const apply = () => {
+      for (const c of cards) c.hidden = !fits(c, group);
+    };
+    const shown = cards.filter((c) => fits(c, group)).length;
+    // No motion when less is asked for, or when nobody is looking: a hidden page doesn't run animations.
+    if (!animate || still || document.visibilityState !== "visible") {
+      apply();
+      if (animate) say(shown);
+      return;
+    }
+
+    // 1. The guides that go, fade.
+    const leaving = cards.filter((c) => !c.hidden && !fits(c, group));
+    if (leaving.length) {
+      const fades = leaving.map((c) => play(c, [{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: IN, fill: "forwards" }));
+      // The list never waits on a frame that doesn't come (a stalled or hidden page): the fade has 120ms, then the list changes anyway.
+      const late = new Promise((done) => setTimeout(done, 280));
+      try {
+        await Promise.race([Promise.all(fades.map((a) => a.finished)), late]);
+      } catch {
+        return; // another pill was pressed meanwhile
+      }
+      if (mine !== turn) return;
+    }
+
+    // 2. The list changes; everything still there starts from where it was.
+    const staying = cards.filter((c) => !c.hidden && fits(c, group));
+    const moved = [...staying, ...after];
+    const before = new Map(moved.map((el) => [el, el.getBoundingClientRect()]));
+    const bar = howtoFilter.getBoundingClientRect();
+    // Scrolled into the list, with the bar holding under the header: the new list starts just under the bar.
+    const under = howtoCards.getBoundingClientRect().top < bar.bottom;
+    apply();
+    for (const a of running) a.cancel();
+    running = [];
+    say(shown);
+    if (under) {
+      const gap = parseFloat(getComputedStyle(howtoFilter).marginBottom) || 0;
+      scrollTo({ top: scrollY + howtoCards.getBoundingClientRect().top - bar.bottom - gap, behavior: "auto" });
+    }
+    let entering = 0;
+    for (const c of cards) {
+      if (c.hidden) continue;
+      const from = under ? undefined : before.get(c);
+      if (!from) {
+        play(c, [{ opacity: 0, translate: "0 12px" }, { opacity: 1, translate: "0 0" }], { duration: 320, easing: OUT, delay: Math.min(entering++, 8) * 30, fill: "backwards" });
+        continue;
+      }
+      const to = c.getBoundingClientRect();
+      const dx = from.left - to.left;
+      const dy = from.top - to.top;
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) play(c, [{ translate: `${dx}px ${dy}px` }, { translate: "0 0" }], { duration: 320, easing: OUT });
+    }
+    if (!under) {
+      for (const el of after) {
+        const dy = (before.get(el)?.top ?? 0) - el.getBoundingClientRect().top;
+        if (Math.abs(dy) > 0.5) play(el, [{ translate: `0 ${dy}px` }, { translate: "0 0" }], { duration: 320, easing: OUT });
+      }
+    }
+  };
+
+  for (const b of pills) {
+    b.addEventListener("click", () => {
+      const group = b.dataset.group ?? "";
+      if (b.getAttribute("aria-pressed") === "true") return;
+      const url = new URL(location.href);
+      if (group) url.searchParams.set("show", group);
+      else url.searchParams.delete("show");
+      history.replaceState(history.state, "", url);
+      void show(group, true);
+    });
+  }
+
+  // A linked-to group opens already filtered.
+  const asked = new URLSearchParams(location.search).get("show") ?? "";
+  void show(pills.some((b) => b.dataset.group === asked) ? asked : "", false);
+  if (row)
+    new ResizeObserver(() => {
+      placeThumb();
+      markMore();
+    }).observe(row);
+  document.fonts?.ready.then(placeThumb);
+  requestAnimationFrame(() => requestAnimationFrame(() => howtoFilter.classList.add("is-ready")));
+}
