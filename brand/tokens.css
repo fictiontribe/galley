@@ -595,3 +595,74 @@
   --radius-tray:    8px;   /* segmented track, cards, panes, menus, toasts */
   --radius-sheet:   12px;  /* dialogs, framed captures */
 }
+
+/* --------------------------------------------------------------------------
+   6. Bold — the second direction, switchable: data-look="bold" on <html>.
+   Same tokens and components as Quiet; this block only adds the plate, the
+   pencil at work, the proof inks given room, and visible depth. Delete this
+   block and packages/web/src/styles/look-bold.css (and the site's bold block)
+   to drop it; delete the attribute's readers to keep it as the only look.
+
+   Contrast (measured, WCAG 2):
+     on the plate #1C1915 (light theme sidebar, status line)
+       on-plate #EEE8DD 14.36 · on-plate-2 #B9AF9F 8.08 · on-plate-3 #948A7B 5.15
+       pencil-on-plate #B7B5FC 9.20 (focus, current icon) · #A4A1FF 7.61
+       status/proof inks (dark values) 7.45 – 9.43
+     on the current place (accent 38 % into the plate → #23206E): #FFFFFF 13.97,
+       on-plate-2 6.45, pencil-on-plate 7.34
+     on the plate's hover #2A2620: on-plate 12.33, on-plate-3 4.43 (large/quiet
+       meta only; nav words use on-plate-2 6.94)
+     dark theme plate #0E0C09: on-plate 16.02, on-plate-3 5.75
+     toned desk #E6E0D6 (the sub-choice): ink 13.61, ink-2 6.66, ink-3 4.51,
+       border-strong 3.23
+     pencil tints with text: pencil-800 #23207D on pencil-100 10.96, on
+       pencil-50 12.00; ink-primary on pencil-200 12.71
+   -------------------------------------------------------------------------- */
+[data-look="bold"] {
+  --plate:           #1C1915;
+  --plate-raised:    #2A2620;
+  --plate-sunken:    #141210;
+  --plate-edge:      #332E27;
+  --on-plate:        #EEE8DD;
+  --on-plate-2:      #B9AF9F;
+  --on-plate-3:      #948A7B;
+  --pencil-on-plate: #B7B5FC;
+  --plate-tint:      color-mix(in srgb, #A4A1FF 22%, var(--plate));
+  --plate-current:   color-mix(in srgb, var(--accent-fill) 38%, var(--plate));
+  --desk-toned:      #E6E0D6;
+
+  /* Depth you can see: a crisp edge and a layered soft fall under sheets; a
+     lit top and a cut lower edge on controls; wells pressed in. */
+  --shadow-1:       0 0 0 1px rgb(var(--shadow-color) / 0.05), 0 1px 1px rgb(var(--shadow-color) / 0.04), 0 2px 6px -1px rgb(var(--shadow-color) / 0.07), 0 12px 28px -14px rgb(var(--shadow-color) / 0.16);
+  --shadow-sheet:   var(--shadow-1);
+  --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 0 0 1px var(--border-seam), 0 1px 2px rgb(var(--shadow-color) / 0.12), 0 2px 5px -2px rgb(var(--shadow-color) / 0.12);
+  --shadow-field:   inset 0 1px 2px rgb(var(--shadow-color) / 0.09), inset 0 0 0 1px rgb(var(--shadow-color) / 0.02);
+  --shadow-press:   inset 0 1px 0 rgb(255 255 255 / 0.26), inset 0 -1px 0 rgb(0 0 0 / 0.22), 0 1px 2px rgb(var(--shadow-color) / 0.30), 0 3px 8px -4px rgb(var(--shadow-color) / 0.35);
+  --shadow-band:    0 1px 0 var(--border-default), 0 4px 10px -8px rgb(var(--shadow-color) / 0.25);
+
+  /* Icons draw their tint at rest: ink line, pencil wash. */
+  --icon-tint-rest: var(--pencil-200);
+}
+[data-look="bold"][data-theme="dark"] {
+  --plate:        #0E0C09;
+  --plate-raised: #1E1B16;
+  --plate-sunken: #080706;
+  --plate-edge:   #2A261F;
+  --shadow-1:       inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.5), 0 2px 6px -1px rgb(0 0 0 / 0.5), 0 12px 28px -14px rgb(0 0 0 / 0.7);
+  --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px var(--border-seam), 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-field:   inset 0 1px 3px rgb(0 0 0 / 0.45);
+  --shadow-band:    0 1px 0 var(--border-default), 0 4px 10px -8px rgb(0 0 0 / 0.8);
+  --icon-tint-rest: var(--pencil-200);
+}
+@media (prefers-color-scheme: dark) {
+  [data-look="bold"][data-theme="system"] {
+    --plate:        #0E0C09;
+    --plate-raised: #1E1B16;
+    --plate-sunken: #080706;
+    --plate-edge:   #2A261F;
+    --shadow-1:       inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.5), 0 2px 6px -1px rgb(0 0 0 / 0.5), 0 12px 28px -14px rgb(0 0 0 / 0.7);
+    --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px var(--border-seam), 0 1px 2px rgb(0 0 0 / 0.5);
+    --shadow-field:   inset 0 1px 3px rgb(0 0 0 / 0.45);
+    --shadow-band:    0 1px 0 var(--border-default), 0 4px 10px -8px rgb(0 0 0 / 0.8);
+  }
+}

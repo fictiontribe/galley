@@ -1,0 +1,132 @@
+/* ==========================================================================
+   Bold — the second look, on when <html data-look="bold">. Built on the same
+   tokens and components as Quiet (look.css), and only paint: no sizes,
+   spacing or frames. Tokens in brand/tokens.css §6. To drop Bold, delete
+   this file, its import in index.css and §6; to keep only Bold, keep them
+   and set the attribute in index.html.
+   Every selector starts [data-look="bold"] .g-root so it outranks Quiet and
+   the feature sheets without !important.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   The plate. The sidebar is a different material from the page: an inked
+   plate (warm near-black), light type, the current place in Blue Pencil.
+   Its tokens are re-pointed inside it, so every component in it — nav,
+   counts, the switcher, the kbd hints, focus — follows without its own rule.
+   -------------------------------------------------------------------------- */
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar {
+  --ink-primary: var(--on-plate);
+  --ink-secondary: var(--on-plate-2);
+  --ink-tertiary: var(--on-plate-3);
+  --surface-paper: var(--plate);
+  --surface-raised: var(--plate-raised);
+  --surface-sunken: var(--plate-sunken);
+  --border-subtle: var(--plate-edge);
+  --border-default: var(--plate-edge);
+  --focus-ring: var(--pencil-on-plate);
+  --accent-text: var(--pencil-on-plate);
+  --icon-tint: var(--plate-tint);
+  background: var(--plate);
+  color: var(--on-plate);
+  border-inline-end-color: var(--plate-edge);
+}
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar .g-nav__item { color: var(--on-plate-2); }
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar .g-nav__item > .g-icon { color: var(--on-plate-2); }
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar .g-nav__item:hover { background: rgb(255 255 255 / 0.06); color: var(--on-plate); }
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar .g-nav__item:hover > .g-icon { color: var(--on-plate); }
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar .g-nav__item[aria-current="page"] {
+  background: var(--plate-current); color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), inset 2px 0 0 var(--accent-fill);
+  --icon-accent: var(--pencil-on-plate); --icon-tint: color-mix(in srgb, #A4A1FF 34%, var(--plate-current));
+}
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar .g-nav__item[aria-current="page"] > .g-icon { color: #FFFFFF; }
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar .g-nav__item[aria-current="page"] .g-nav__meta { color: var(--on-plate-2); }
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar .g-kbd { background: var(--plate-raised); border-color: var(--plate-edge); color: var(--on-plate-2); }
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar .g-btn--quiet { color: var(--on-plate-2); }
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar .g-btn--quiet:hover { color: var(--on-plate); background: rgb(255 255 255 / 0.07); }
+[data-look="bold"]:not([data-desk="toned"]) .g-root .app-sidebar .app-brand--switcher:hover { background: rgb(255 255 255 / 0.06); }
+
+/* The sub-choice: a toned desk instead of the plate (html[data-desk="toned"]). */
+[data-look="bold"][data-desk="toned"] .g-root .app-sidebar {
+  --icon-tint: var(--icon-tint-rest);
+  background: var(--desk-toned); color: var(--ink-primary); border-inline-end-color: var(--border-default);
+}
+[data-look="bold"][data-desk="toned"] .g-root .app-sidebar .g-nav__item,
+[data-look="bold"][data-desk="toned"] .g-root .app-sidebar .g-nav__item > .g-icon { color: var(--ink-secondary); }
+[data-look="bold"][data-desk="toned"] .g-root .app-sidebar .g-nav__item:hover { background: rgb(var(--shadow-color) / 0.06); color: var(--ink-primary); }
+[data-look="bold"][data-desk="toned"] .g-root .app-sidebar .g-nav__item[aria-current="page"] {
+  background: var(--surface-raised); color: var(--ink-primary);
+  box-shadow: var(--shadow-1), inset 2px 0 0 var(--accent-fill);
+  --icon-accent: var(--accent-text); --icon-tint: var(--pencil-200);
+}
+[data-look="bold"][data-desk="toned"] .g-root .app-sidebar .g-nav__item[aria-current="page"] > .g-icon { color: var(--ink-primary); }
+[data-look="bold"][data-desk="toned"] .g-root .app-sidebar .g-kbd { background: var(--surface-raised); border-color: var(--border-default); color: var(--ink-secondary); }
+[data-look="bold"][data-desk="toned"] .g-root .app-statusbar { background: var(--desk-toned); }
+
+/* --------------------------------------------------------------------------
+   Bands. The top bar is the sheet's own header (paper, an edge and a soft
+   fall); the status line is a strip of the plate, so plate and line frame
+   the page. The status inks switch to their plate values (7.45 – 9.43:1).
+   -------------------------------------------------------------------------- */
+[data-look="bold"] .g-root .app-toolbar { position: relative; z-index: var(--z-raised); background: var(--surface-raised); border-block-end-color: transparent; box-shadow: var(--shadow-band); }
+[data-look="bold"] .g-root .app-statusbar {
+  --ink-tertiary: var(--on-plate-3); --ink-secondary: var(--on-plate-2); --ink-primary: var(--on-plate);
+  --surface-raised: var(--plate-raised); --border-default: var(--plate-edge);
+  --success: #8BCF7A; --warning: #E7B44C; --danger: #FF7D8F;
+  --proof-insert: #5FD0AE; --proof-change: #E58BD0; --proof-delete: #FF8A6B;
+  --accent-text: var(--pencil-on-plate); --accent-line: color-mix(in srgb, var(--pencil-on-plate) 50%, var(--plate)); --focus-ring: var(--pencil-on-plate);
+  background: var(--plate); color: var(--on-plate-3); border-block-start-color: var(--plate-edge);
+}
+[data-look="bold"] .g-root .app-statusbar .g-kbd { background: var(--plate-raised); border-color: var(--plate-edge); color: var(--on-plate-2); }
+[data-look="bold"] .g-root .app-strip__cell { inline-size: 8px; block-size: 8px; }
+
+/* --------------------------------------------------------------------------
+   Blue Pencil at work. Where the assistant works the surface is pencil-
+   washed, not just ruled: the ask fields, the assistant's pane, its
+   suggestions. Proof is the pencil's home in the top bar.
+   -------------------------------------------------------------------------- */
+[data-look="bold"] .g-root .kit-ask--line .kit-ask__field,
+[data-look="bold"] .g-root .g-composer { background: var(--pencil-50); border-color: var(--pencil-300); box-shadow: var(--shadow-field); }
+[data-look="bold"] .g-root .kit-ask--line .kit-ask__field:has(.kit-ask__input:focus-visible),
+[data-look="bold"] .g-root .g-composer:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring), 0 0 0 4px var(--pencil-100); }
+[data-look="bold"] .g-root .kit-ask--line .kit-ask__label { color: var(--pencil-800); border-inline-end-color: var(--pencil-200); }
+[data-look="bold"] .g-root .g-pane:has(.chat) { background: color-mix(in srgb, var(--pencil-50) 70%, var(--surface-raised)); }
+[data-look="bold"] .g-root .g-msg--user { background: var(--pencil-100); color: var(--ink-primary); }
+[data-look="bold"] .g-root .g-chip { background: var(--pencil-50); border-color: var(--pencil-200); color: var(--pencil-800); box-shadow: none; }
+[data-look="bold"] .g-root .g-chip:hover { background: var(--pencil-100); border-color: var(--pencil-300); color: var(--pencil-900); }
+[data-look="bold"] .g-root .app-toolbar .g-btn--secondary:has(.g-count) { background: var(--pencil-100); color: var(--pencil-800); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 0 0 1px var(--pencil-300); }
+[data-look="bold"] .g-root .app-toolbar .g-btn--secondary:has(.g-count):hover { background: var(--pencil-200); }
+[data-look="bold"] .g-root .app-toolbar .g-btn--secondary .g-count { background: var(--accent-fill); color: var(--accent-on); }
+[data-look="bold"] .g-root .g-count--quiet { background: var(--pencil-100); color: var(--pencil-800); }
+[data-look="bold"] .g-root .g-segmented > button[aria-pressed="true"],
+[data-look="bold"] .g-root .g-segmented > button[aria-checked="true"] { color: var(--pencil-800); }
+[data-look="bold"] .g-root .g-tab[aria-selected="true"]::after { background: var(--accent-fill); }
+[data-look="bold"] .g-root .g-file[aria-current="true"], [data-look="bold"] .g-root .app-folder__row[aria-selected="true"] { background: var(--pencil-100); box-shadow: inset 2px 0 0 var(--accent-fill); }
+
+/* Duotone icons at rest in the lists that name places: the palette and the
+   site's collections. (The sidebar draws its own on the plate.) */
+[data-look="bold"] .g-root .app-palette__option, [data-look="bold"] .g-root .app-collection-row { --icon-tint: var(--icon-tint-rest); }
+
+/* --------------------------------------------------------------------------
+   The proof inks, given room where they mean a change: stamps carry a
+   stronger edge of their own ink.
+   -------------------------------------------------------------------------- */
+[data-look="bold"] .g-root .g-badge { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--_c) 45%, transparent); }
+[data-look="bold"] .g-root .g-tally { font-weight: var(--weight-semibold); }
+
+/* --------------------------------------------------------------------------
+   Depth you can see. Buttons take a lit top and a cut lower edge; pressed,
+   they sink. Fields and segmented tracks are wells.
+   -------------------------------------------------------------------------- */
+[data-look="bold"] .g-root .g-btn--primary { box-shadow: var(--shadow-press); }
+[data-look="bold"] .g-root .g-btn--primary:active { box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.32); }
+[data-look="bold"] .g-root .g-btn--secondary { border-color: transparent; background: var(--surface-raised); box-shadow: var(--shadow-control); }
+[data-look="bold"] .g-root .g-btn--secondary:hover { box-shadow: var(--shadow-control), 0 0 0 1px var(--border-worn); }
+[data-look="bold"] .g-root .g-btn--secondary:active { background: var(--surface-sunken); box-shadow: var(--shadow-field), 0 0 0 1px var(--border-seam); }
+[data-look="bold"] .g-root .g-segmented { background: color-mix(in srgb, var(--surface-sunken) 95%, var(--ink-primary)); }
+[data-look="bold"] .g-root .g-block { box-shadow: var(--shadow-1); }
+[data-look="bold"] .g-root .g-preview__frame { box-shadow: 0 0 0 1px rgb(var(--shadow-color) / 0.08), var(--shadow-3); }
+
+@media (forced-colors: active) {
+  [data-look="bold"] .g-root .app-sidebar .g-nav__item[aria-current="page"] { outline: 2px solid Highlight; }
+}
