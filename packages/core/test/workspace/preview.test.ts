@@ -278,6 +278,14 @@ function listen(handler: http.RequestListener): Promise<number> {
   return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve((server.address() as net.AddressInfo).port)));
 }
 
+/** Whether this computer can listen on the IPv6 loopback (some CI containers can't). */
+const ipv6Loopback = await new Promise<boolean>((resolve) => {
+  const probe = net.createServer();
+
+  probe.once("error", () => resolve(false));
+  probe.listen(0, "::1", () => probe.close(() => resolve(true)));
+});
+
 function refused(port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = net.connect(port, "127.0.0.1");
@@ -588,6 +596,42 @@ server.listen(0, "127.0.0.1", () => console.log("  Local: http://localhost:" + s
 `,
     });
     const { controller } = controllerFor(root, { dev: { command: `node announce-conflict.mjs ${port}`, port } });
+    const status = await controller.start();
+
+    expect(status.state).toBe("ready");
+    const page = await (await fetch((status.url as string) + "/")).text();
+
+    expect(page).toContain("<h1>mine</h1>");
+    expect(page).not.toContain("someone else");
+  });
+
+  // The case seen with `next dev` on macOS: another project's server holds the
+  // port on IPv4, and a dev server that falls back to the same port number binds
+  // it again on IPv6, so 127.0.0.1 reaches the other project.
+  it.skipIf(!ipv6Loopback)("steers a dev server off a port another program holds on IPv4 when it would bind the same number on IPv6", async () => {
+    const foreign = http.createServer((_req, res) => {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end("<html><head></head><body>someone else's site</body></html>");
+    });
+
+    servers.push(foreign);
+    const port = await new Promise<number>((resolve) => foreign.listen(0, "0.0.0.0", () => resolve((foreign.address() as net.AddressInfo).port)));
+    const root = site("mine");
+
+    writeTree(root, {
+      "dual-stack-server.mjs": `
+import http from "node:http";
+import { readFileSync } from "node:fs";
+const port = Number(process.env.PORT || process.argv[2]);
+const label = readFileSync("label.txt", "utf8").trim();
+const server = http.createServer((_req, res) => {
+  res.writeHead(200, { "content-type": "text/html" });
+  res.end("<html><head></head><body><h1>" + label + "</h1></body></html>");
+});
+server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: http://localhost:" + port + "/"));
+`,
+    });
+    const { controller } = controllerFor(root, { dev: { command: `node dual-stack-server.mjs ${port}`, port } });
     const status = await controller.start();
 
     expect(status.state).toBe("ready");

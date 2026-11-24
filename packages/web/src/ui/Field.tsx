@@ -3,7 +3,8 @@ import { ProofMark } from "./ProofMark";
 import { cx } from "./cx";
 
 interface FieldControl {
-  id: string;
+  /** Absent in a group: its legend names it, and the several controls inside need ids of their own. */
+  id: string | undefined;
   describedBy: string | undefined;
   invalid: boolean;
 }
@@ -65,7 +66,7 @@ export function Field({ label, fieldKey, hint, error, edited, hideLabel, group, 
   );
 
   const body = (
-    <FieldContext.Provider value={{ id: controlId, describedBy, invalid: Boolean(error) }}>
+    <FieldContext.Provider value={{ id: group ? undefined : controlId, describedBy, invalid: Boolean(error) }}>
       {head}
       {children}
       {error ? (
