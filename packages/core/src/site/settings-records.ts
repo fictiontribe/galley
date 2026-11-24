@@ -11,6 +11,7 @@
  * it is what the deploy and redirects services call, not something a route,
  * the assistant or a plugin's tool is offered.
  */
+import { PRODUCT } from "../brand";
 import { GalleyError } from "../errors";
 import { defaultListFile } from "../redirects/locate";
 import type { GalleyConfig, RedirectsConfig, SiteModel, SiteService } from "../types";
@@ -59,5 +60,41 @@ export async function recordSettings(site: SiteService, record: SettingsRecord):
   const recorder = (site as unknown as Record<symbol, Recorder | undefined>)[RECORD_SETTINGS];
 
   if (recorder) return recorder(record);
-  return site.saveConfig(applyRecord((await site.readConfig()) ?? {}, record, await site.model()));
+  const model = await site.model();
+
+  return (await changeSettings(site, (current) => applyRecord(current, record, model))) ?? model;
+}
+
+/**
+ * The site's settings with the version of the file they were read from
+ * (null: there is no file). The version is read first, so it is never newer
+ * than the settings: a save made with the two can be refused when it needn't
+ * have been (the file changed between the two reads), never let through when
+ * it shouldn't be.
+ */
+export async function readSettings(site: SiteService): Promise<{ config: GalleyConfig | null; hash: string | null }> {
+  const hash = (await site.readFile(PRODUCT.configFile).catch(() => null))?.hash ?? null;
+
+  return { config: await site.readConfig(), hash };
+}
+
+/**
+ * Changes some of the site's settings on top of the file as it is: reads it
+ * with its version, lets `change` make the new settings from that (null:
+ * nothing to change), and saves only over that version. When the file
+ * changed in between it is read and changed again, so a key somebody else
+ * set meanwhile is never set back from an older read.
+ */
+export async function changeSettings(site: SiteService, change: (current: GalleyConfig) => GalleyConfig | null): Promise<SiteModel | null> {
+  for (let attempt = 1; ; attempt += 1) {
+    const { config, hash } = await readSettings(site);
+    const next = change(config ?? {});
+
+    if (!next) return null;
+    try {
+      return await site.saveConfig(next, hash ? { baseHash: hash } : {});
+    } catch (error) {
+      if (!(error instanceof GalleyError && error.code === "conflict") || attempt >= 3) throw error;
+    }
+  }
 }

@@ -1934,7 +1934,8 @@ export interface SiteService {
    * It matters for what only build mode may write — a form's custom code.
    */
   createEntry(input: CreateEntryInput, options?: { origin?: ChangeOrigin; mode?: AgentMode }): Promise<Entry>;
-  deleteEntry(path: string, options?: { origin?: ChangeOrigin }): Promise<void>;
+  /** `baseHash`: the entry's hash as the caller read it; when the entry is no longer that version it is not deleted (conflict). */
+  deleteEntry(path: string, options?: { origin?: ChangeOrigin; baseHash?: string }): Promise<void>;
   search(query: string, options?: { collection?: string; limit?: number }): Promise<SearchHit[]>;
   /** `mode` defaults to "content", where matches in source files are not editable. */
   resolveText(request: ResolveRequest, options?: { mode?: AgentMode }): Promise<ResolveResult>;

@@ -12,7 +12,7 @@ import { deleteCookie, setCookie } from "hono/cookie";
 import type { ApiRouteKey, RouteResponse } from "@galley/core/api";
 import { GalleyError } from "@galley/core";
 import { validateConfig } from "@galley/core/content";
-import { siteNameAt } from "@galley/core/site";
+import { readSettings, siteNameAt } from "@galley/core/site";
 import { checkPublish } from "@galley/core/plugins";
 import type { ChangeSet, FileDiff, MetaInfo, SecretStatus, Settings, SiteService } from "@galley/core/types";
 import { isAuthenticated, safeEqual, sessionNonce, signSession, clientAddress, SESSION_MAX_AGE_S, requestProtocol, type LoginLimiter, type SessionCheck } from "./auth";
@@ -358,9 +358,9 @@ export const routes: RouteTable = {
   "POST /api/sites/:siteId/refresh": async (c, ctx) => (await siteOf(c, ctx)).refresh(),
   "GET /api/sites/:siteId/config": async (c, ctx) => {
     const site = await siteOf(c, ctx);
-    const [config, detected] = await Promise.all([site.readConfig(), site.detected()]);
+    const [{ config, hash }, detected] = await Promise.all([readSettings(site), site.detected()]);
 
-    return { config, detected };
+    return { config, detected, hash };
   },
   "PUT /api/sites/:siteId/config": async (c, ctx) => {
     const site = await siteOf(c, ctx);
@@ -370,7 +370,11 @@ export const routes: RouteTable = {
     const result = validateConfig((raw as { config: unknown }).config);
 
     if (!result.ok) throw invalid(`The site settings have ${result.errors.length === 1 ? "a problem" : `${result.errors.length} problems`}: ${result.errors.join(" ")}`);
-    return site.saveConfig(result.config);
+    const baseHash = (raw as { baseHash?: unknown }).baseHash;
+
+    if (baseHash !== undefined && baseHash !== null && typeof baseHash !== "string") throw invalid("“baseHash” isn't text.");
+    // With the version the settings were opened with, when the caller says which: a file changed since is not replaced from the older read.
+    return baseHash ? site.saveConfig(result.config, { baseHash }) : site.saveConfig(result.config);
   },
 
   // ── content ────────────────────────────────────────────────────────────

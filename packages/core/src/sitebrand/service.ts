@@ -908,7 +908,7 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
 
   // ── apply
 
-  async function applyInputs(siteId: string): Promise<{ site: SiteService; brand: SiteBrandFile; file: string; content: string; installed: Set<string> }> {
+  async function applyInputs(siteId: string): Promise<{ site: SiteService; brand: SiteBrandFile; file: string; content: string; hash: string; installed: Set<string> }> {
     const site = await siteFor(siteId);
     const location = await where(site);
     const saved = await readSavedBrand(site, location);
@@ -924,7 +924,7 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
     if (!text || text.binary) throw new GalleyError("not-found", `The site's colours file (${file}) can't be read.`);
     const installed = new Set(scan.fontFaces.map((face) => face.family));
 
-    return { site, brand, file, content: text.content, installed };
+    return { site, brand, file, content: text.content, hash: text.hash, installed };
   }
 
   async function applyPlan(siteId: string): Promise<ApplyPlan> {
@@ -934,13 +934,19 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
   }
 
   async function apply(siteId: string): Promise<{ plan: ApplyPlan; paths: string[] }> {
-    const input = await applyInputs(siteId);
-    const result = planApply(input.brand, input.file, input.content, input.installed);
+    // The stylesheet's new text is the file as it was read with the brand's edits made in it: written only over that
+    // reading. When the file changed in between, it is read and the edits are planned again.
+    for (let attempt = 1; ; attempt += 1) {
+      const input = await applyInputs(siteId);
+      const result = planApply(input.brand, input.file, input.content, input.installed);
 
-    if (!result.plan.edits.length) return { plan: result.plan, paths: [] };
-    const paths = await writeBrandFiles(input.site, [{ path: input.file, content: result.content }]);
-
-    return { plan: result.plan, paths };
+      if (!result.plan.edits.length) return { plan: result.plan, paths: [] };
+      try {
+        return { plan: result.plan, paths: await writeBrandFiles(input.site, [{ path: input.file, content: result.content, baseHash: input.hash }]) };
+      } catch (error) {
+        if (!(error instanceof GalleyError && error.code === "conflict") || attempt >= 3) throw error;
+      }
+    }
   }
 
   // ── check and drift

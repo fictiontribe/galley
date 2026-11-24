@@ -17,7 +17,7 @@
  * record is scrubbed of it.
  */
 import { GalleyError } from "../errors";
-import { recordSettings } from "../site/settings-records";
+import { changeSettings, recordSettings } from "../site/settings-records";
 import type {
   DeployAccount,
   DeployConfig,
@@ -214,10 +214,12 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
   }
 
   async function writeDeployConfig(site: SiteService, next: DeployConfig | null, extra: (config: GalleyConfig) => GalleyConfig = (config) => config): Promise<void> {
-    const current = (await site.readConfig()) ?? {};
-    const { deploy: _old, ...rest } = current;
+    // On top of the settings as they are, and only over the version that was read.
+    await changeSettings(site, (current) => {
+      const { deploy: _old, ...rest } = current;
 
-    await site.saveConfig(extra(next ? { ...rest, deploy: next } : rest));
+      return extra(next ? { ...rest, deploy: next } : rest);
+    });
   }
 
   async function who(): Promise<string | undefined> {

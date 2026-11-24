@@ -72,8 +72,8 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `GET /api/sites/:siteId` | The site, with its full model (detection merged with the config file). | — | `SiteDetail` | Any signed-in person |
 | `DELETE /api/sites/:siteId` | Forget the site, its own keys and author. Its files stay on disk. Refused on a hosted install. | — | `Ok` | Owners |
 | `POST /api/sites/:siteId/refresh` | Run detection again. | — | `SiteModel` | Any signed-in person |
-| `GET /api/sites/:siteId/config` | The site's `galley.config.json` (or `null`) and the model detection found before it. | — | `{ config, detected }` | Any signed-in person |
-| `PUT /api/sites/:siteId/config` | Replace `galley.config.json`. Validated; refused when invalid. | `{ config }` | `SiteModel` | Owners |
+| `GET /api/sites/:siteId/config` | The site's `galley.config.json` (or `null`) and the model detection found before it. | — | `{ config, detected, hash }` | Any signed-in person |
+| `PUT /api/sites/:siteId/config` | Replace `galley.config.json`. Validated; refused when invalid. | `{ config, baseHash? }` | `SiteModel` | Owners |
 
 ## Content
 

@@ -109,8 +109,13 @@ export function brandWriteMode(model: SiteModel, path: string): AgentMode {
   );
 }
 
-/** Writes each file as a pending change (shown in Proof, published like content). */
-export async function writeBrandFiles(site: SiteService, files: Array<{ path: string; content: string | Uint8Array }>): Promise<string[]> {
+/**
+ * Writes each file as a pending change (shown in Proof, published like
+ * content). `baseHash`: for a file whose new text was worked out from a
+ * reading of it (the site's stylesheet with the brand applied), the version
+ * that was read; a file that changed since is not replaced (conflict).
+ */
+export async function writeBrandFiles(site: SiteService, files: Array<{ path: string; content: string | Uint8Array; baseHash?: string }>): Promise<string[]> {
   const model = await site.model();
   const written: string[] = [];
   const modes = files.map((file) => brandWriteMode(model, file.path));
@@ -124,7 +129,7 @@ export async function writeBrandFiles(site: SiteService, files: Array<{ path: st
 
     if (typeof file.content === "string") current = await readText(site, file.path);
     if (current === file.content) continue;
-    await site.writeFile(file.path, file.content, { origin: "user", mode });
+    await site.writeFile(file.path, file.content, { origin: "user", mode, ...(file.baseHash ? { baseHash: file.baseHash } : {}) });
     written.push(file.path);
   }
   return written;

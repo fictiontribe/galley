@@ -12,5 +12,6 @@ export { probeSite, scanForSites, SCAN_LIMITS, type ProbedSite, type ScanLimits,
 export { countPorcelain, findShareImage, readSiteFacts, type FactsResult } from "./facts";
 export { createSiteStore, GROUP_COLORS, type SiteRecord, type SiteStore } from "./store";
 export { siteIdFor } from "./util";
+export { changeSettings, readSettings } from "./settings-records";
 export { checkLook, lookFor, nameSite, scaffoldSite, SITE_NAME_FILES, type ScaffoldSiteInput } from "./scaffold-site";
 export { listStarters, readStarterManifest, starterPreviewFile, STARTER_MANIFEST } from "./starters";

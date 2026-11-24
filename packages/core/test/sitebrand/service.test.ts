@@ -5,7 +5,7 @@
  * normal proposal back, no request ever carries a tool, and nothing is
  * written until "Save the brand".
  */
-import { readFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateSync } from "node:zlib";
 import { afterAll, describe, expect, it } from "vitest";
@@ -53,10 +53,28 @@ async function setup(steps: Step[]) {
   const settings = createSettingsService({ home, env: cleanEnv({ ANTHROPIC_API_KEY: TEST_KEY }) });
   const script = scriptedFetch(steps);
   const bus = recordingBus();
-  const service = createSiteBrandService({ home, registry: registryOf(site), settings, events: bus, client: testClient(script.fetch), now: () => new Date("2026-11-23T10:00:00Z"), logger: () => undefined });
+  // The site as the service holds it, with a way for a test to change a file just before the service writes one.
+  const meddle = { beforeWrite: null as null | ((path: string) => void) };
+  const held = new Proxy(site, {
+    get(target, key) {
+      if (key === "writeFile") {
+        return async (...args: Parameters<typeof target.writeFile>) => {
+          const hook = meddle.beforeWrite;
+
+          meddle.beforeWrite = null;
+          hook?.(args[0]);
+          return target.writeFile(...args);
+        };
+      }
+      const value = Reflect.get(target, key) as unknown;
+
+      return typeof value === "function" ? (value as (...rest: unknown[]) => unknown).bind(target) : value;
+    },
+  });
+  const service = createSiteBrandService({ home, registry: registryOf(held), settings, events: bus, client: testClient(script.fetch), now: () => new Date("2026-11-23T10:00:00Z"), logger: () => undefined });
   const finished = (job: Job) => bus.waitFor((event: ServerEvent) => event.type === "job" && event.job.id === job.id && event.job.state !== "running") as Promise<Extract<ServerEvent, { type: "job" }>>;
 
-  return { root, site, home, settings, script, bus, service, finished };
+  return { root, site, home, settings, script, bus, service, finished, meddle };
 }
 
 async function addFile(service: ReturnType<typeof createSiteBrandService>, siteId: string, name: string, bytes: Buffer, note?: string) {
@@ -151,7 +169,7 @@ describe("setting a brand up from material", () => {
 describe("reading the brand from the site", () => {
   it("measures, proposes, saves only galley/brand/**, applies as a tokens diff, and checks changes", async () => {
     const quote = "Every change is checked before it goes live";
-    const { root, site, script, service, finished } = await setup([
+    const { root, site, script, service, finished, meddle } = await setup([
       ...together(
         synthesis({
           colors: [],
@@ -195,8 +213,13 @@ describe("reading the brand from the site", () => {
 
     await service.updateProposal(site.id, { brand: edited });
     await service.save(site.id);
+    // Someone else changes the stylesheet between the brand reading it and writing it: the brand's edit is
+    // made again in the file as it then is, and what they added is still there.
+    meddle.beforeWrite = (path) => appendFileSync(join(root, path), "/* added by someone else meanwhile */\n");
     const applied = await service.apply(site.id);
 
+    expect(meddle.beforeWrite).toBeNull();
+    expect(readFileSync(join(root, "src/styles/tokens.css"), "utf8")).toContain("/* added by someone else meanwhile */");
     expect(applied.paths).toEqual(["src/styles/tokens.css"]);
     expect(applied.plan.edits.map((e) => e.token)).toEqual(["--color-background"]);
     const diff = sh(root, "diff", "--", "src/styles/tokens.css").split("\n").filter((line) => /^[+-]\s/.test(line));
