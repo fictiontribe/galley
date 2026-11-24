@@ -151,6 +151,12 @@ html, body { overflow: hidden; }
 .app-card--pad { padding: var(--space-4); }
 .app-card--quiet { background: transparent; border-style: dashed; }
 .app-card > .g-file:last-child { border-block-end: 0; }
+/* Cards. One treatment for every sheet lying on the canvas, whatever screen it's on: the raised surface, a hairline
+   edge and the lightest shadow. The app's canvas and its cards are close in tone (tokens.css 1b), so the edge and
+   the shadow are what lift a card; a card inside a card stays flat. */
+:is(.app-card:not(.app-card--quiet), .app-site-card, .app-sync, .app-secret, .app-error:not(.app-error--compact), .app-media-details,
+  .app-inbox, .redir-table, .kit-rows, .sites-rows, .sites-card:not(.sites-card--missing), .plg-card, .brand-way, .app-screen__inner .g-block) { box-shadow: var(--shadow-1); }
+:is(.app-card, .g-block, .app-inbox) :is(.app-card, .g-block, .app-secret, .plg-card, .app-error) { box-shadow: none; }
 
 .app-section { display: grid; gap: var(--space-3); }
 .app-section__head { display: flex; align-items: center; gap: var(--space-3); min-block-size: 28px; }
@@ -368,7 +374,7 @@ html, body { overflow: hidden; }
   background: var(--surface-raised); border: var(--border-hair) solid var(--border-default); border-radius: var(--radius-sm);
   transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
-.app-site-card:hover, .app-site-card:focus-within { border-color: var(--border-strong); box-shadow: var(--shadow-1); }
+.app-site-card:hover, .app-site-card:focus-within { border-color: var(--border-strong); box-shadow: var(--shadow-2); }
 .app-site-card__top { display: flex; align-items: center; gap: var(--space-2); margin-block-end: var(--space-2); }
 .app-site-card__menu { position: relative; z-index: var(--z-raised); margin-inline-end: calc(var(--space-2) * -1); }
 .app-site-card__name { margin: 0; font: var(--weight-regular) var(--text-2xl) / var(--leading-2xl) var(--font-display); letter-spacing: var(--tracking-heading); overflow-wrap: anywhere; }
