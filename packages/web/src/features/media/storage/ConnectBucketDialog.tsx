@@ -252,10 +252,10 @@ function MakeBucket({ siteId, onMade }: { siteId: string; onMade: (config: Media
         </p>
       ) : (
         <div className="media-storage__make-row">
-          <Field label="Account ID" error={error ?? undefined}>
+          <Field label="Account for the new bucket" hint="Its account ID" error={error ?? undefined}>
             <Input mono size="sm" value={account} placeholder="4f0c…" onChange={(event) => setAccount(event.target.value)} />
           </Field>
-          <Field label="Bucket name">
+          <Field label="Name for the new bucket">
             <Input mono size="sm" value={name} placeholder="lowfield-media" onChange={(event) => setName(event.target.value)} />
           </Field>
           <Button
