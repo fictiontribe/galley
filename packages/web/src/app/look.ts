@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo } from "react";
 import type { ThemesInfo } from "@galley/core/api";
-import type { AppliedTheme, ThemeFile } from "@galley/core/themes";
+import { isAppliedTheme, type AppliedTheme, type ThemeFile } from "@galley/core/themes";
 import { api, errorShape } from "@/lib/api";
 import { invalidate, setQueryData, useQuery } from "@/lib/query";
 import { useMeta } from "@/lib/stores/meta";
@@ -20,6 +20,11 @@ import { listThemes, type ListedTheme } from "@/lib/themes/catalog";
 import { lookFromServer, lookSavesToServer, shownLook } from "@/lib/themes/choice";
 import { putLookOnPage, rememberLook } from "@/lib/themes/apply";
 import { useSystemDark } from "./theme";
+
+/** What the server sent as the default, only if it is an applied theme and nothing more (checked again here before anything reaches the page). */
+function serverLook(value: unknown): AppliedTheme | null {
+  return isAppliedTheme(value) ? value : null;
+}
 
 const EMPTY: ThemesInfo = { saved: [], plugins: [], defaultId: "quiet" };
 
@@ -41,7 +46,7 @@ export function useThemeList(): ListedTheme[] {
   const server = useServerThemes().data;
   const mine = useMyThemes((s) => s.mine);
   const hosted = useMeta((s) => themeKeeper(s.meta) === "browser");
-  const fallback = useMeta((s) => s.meta?.look ?? null);
+  const fallback = useMeta((s) => serverLook(s.meta?.look));
   return useMemo(() => {
     const listed = listThemes({ brandAccent: accent, saved: server.saved, plugins: server.plugins, mine: hosted ? mine : [] });
     if (!fallback || listed.some((entry) => entry.theme.id === fallback.id)) return listed;
@@ -53,7 +58,7 @@ export function useThemeList(): ListedTheme[] {
 /** The theme on screen now (an edit in progress included). */
 export function useShownLook(): AppliedTheme | null {
   const keeper = useMeta((s) => themeKeeper(s.meta));
-  const fallback = useMeta((s) => s.meta?.look ?? null);
+  const fallback = useMeta((s) => serverLook(s.meta?.look));
   const preview = useThemeEdit((s) => s.preview);
   const look = useUi((s) => s.look);
   const chosen = useUi((s) => s.lookChosen);
@@ -64,7 +69,7 @@ export function useShownLook(): AppliedTheme | null {
 /** The id of the theme the person has (not an edit in progress): what the picker marks as current. */
 export function useCurrentLookId(): string {
   const keeper = useMeta((s) => themeKeeper(s.meta));
-  const fallback = useMeta((s) => s.meta?.look?.id ?? "quiet");
+  const fallback = useMeta((s) => serverLook(s.meta?.look)?.id ?? "quiet");
   const look = useUi((s) => s.look);
   const chosen = useUi((s) => s.lookChosen);
   const themes = useThemeList();
@@ -83,7 +88,7 @@ export function useLookOnPage(): void {
   const systemDark = useSystemDark();
   const editing = useThemeEdit((s) => s.preview !== null);
   const keeper = useMeta((s) => themeKeeper(s.meta));
-  const serverId = useMeta((s) => s.meta?.look?.id ?? null);
+  const serverId = useMeta((s) => serverLook(s.meta?.look)?.id ?? null);
   const chosen = useUi((s) => s.lookChosen);
   const shown = shownTheme(appearance, systemDark);
 

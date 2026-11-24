@@ -213,6 +213,8 @@ describe("every theme file in the repository passes the check", () => {
         // The file holds the colours as they will be shown: a contributor commits the adjusted values.
         expect(check.adjusted.filter((a) => a.kind !== "tuned" && !(a.mode === "dark" && check.derivedDark))).toEqual([]);
         expect(`${check.theme!.id}.json`).toBe(name);
+        // A community theme can't take a built-in's id: it would be hidden in the app and clash on the site's /themes/ page.
+        if (folder.endsWith("/themes/") && !folder.includes("brand")) expect(isBuiltinTheme(check.theme!.id), `${name} has a built-in theme's id`).toBe(false);
       });
     }
   }
