@@ -83,6 +83,10 @@ describe("moving media", { timeout: 240_000 }, () => {
       "Elsewhere on the site: /blog/images/team/tomas-reyes.svg and /about/favicon.svg",
       "In a word: logo/favicon.svg",
       "A real one: ![Icon](/favicon.svg) and src=\"/images/team/tomas-reyes.svg?v=2\".",
+      "Angle brackets: [x](</favicon.svg>)",
+      "Escaped quotes: <img src=&quot;/images/team/tomas-reyes.svg&quot;>",
+      'JSON slashes: {"image":"\\/images\\/team\\/tomas-reyes.svg"}',
+      "A table: |/favicon.svg|x|",
     ].join("\n");
     const original = `${readFileSync(page, "utf8")}\n${lookalikes}\n`;
 
@@ -97,9 +101,30 @@ describe("moving media", { timeout: 240_000 }, () => {
     expect(moved).toContain(`![Icon](${publicUrl}/lowfield/favicon.svg)`);
     expect(moved).toContain(`src="${publicUrl}/lowfield/team/tomas-reyes.svg?v=2"`);
     expect(moved).toContain(`photo: ${publicUrl}/lowfield/team/tomas-reyes.svg`);
+    expect(moved).toContain(`[x](<${publicUrl}/lowfield/favicon.svg>)`);
+    expect(moved).toContain(`src=&quot;${publicUrl}/lowfield/team/tomas-reyes.svg&quot;`);
+    expect(moved).toContain(`{"image":"${`${publicUrl}/lowfield/team/tomas-reyes.svg`.replace(/\//g, "\\/")}"}`);
+    expect(moved).toContain(`|${publicUrl}/lowfield/favicon.svg|x|`);
 
     await storage.move(site, { kind: "move", from: "bucket", to: "repository" });
     expect(readFileSync(page, "utf8")).toBe(original);
+    await done();
+  });
+
+  it("never removes a repository file a page still mentions in a form Galley doesn't change", async () => {
+    const { storage, site, root, done } = await setUp();
+    const page = join(root, AUTHOR);
+
+    writeFileSync(page, `${readFileSync(page, "utf8")}\nIts own words:/images/team/tomas-reyes.svg\n`);
+    const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+
+    expect(plan.stillMentioned).toContainEqual({ path: PHOTO, pages: [AUTHOR] });
+    const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
+
+    expect(outcome.stillMentioned).toContainEqual({ path: PHOTO, pages: [AUTHOR] });
+    expect(outcome.summary).toMatch(/left in the repository: still mentioned in src\/content\/authors\/tomas-reyes\.md/);
+    expect(read(root, PHOTO)).toContain("<svg");
+    expect((await site.changes()).files.find((file) => file.path === PHOTO)).toBeUndefined();
     await done();
   });
 

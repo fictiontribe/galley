@@ -199,6 +199,11 @@ export interface MediaMovePlan {
   done: number;
   /** Files that can't be moved and why. */
   problems: Array<{ path: string; reason: string }>;
+  /**
+   * Repository files that stay even though the copies aren't kept: their
+   * address still appears in a page in a form Galley doesn't change.
+   */
+  stillMentioned?: Array<{ path: string; pages: string[] }>;
   /** Of the files to copy, how many aren't published yet: copied to a store, they are public at their addresses at once. */
   unpublished?: number;
   /** Files the destination doesn't take (Cloudflare Images: anything but pictures within its limits), left where they are. */

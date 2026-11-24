@@ -80,42 +80,126 @@ function storeOf(context: MoveContext, location: MediaStoreLocation): MediaStore
   return store;
 }
 
-/** What may come right before a reference: the start of the text, white space, a quote, a bracket, "=", ">" or a comma. */
-const BEFORE_REFERENCE = /[\s"'`([{=>,]/;
+/** What may come right before a reference: the start of a line, white space, a quote, a bracket, "=", ">", "|" or a comma. */
+const BEFORE_REFERENCE = /[\s"'`([{=>,|]/;
+/** An HTML-escaped quote right before a reference (src=&quot;/images/a.png&quot;). */
+const ESCAPED_QUOTE_BEFORE = /&(?:quot|#34|#39|apos);$/;
+
+interface Found {
+  /** The address as a page means it (JSON's "\/" read as "/"). */
+  match: string;
+  /** Where it starts in the text, and how long it is there. */
+  index: number;
+  length: number;
+  /** Written with JSON's escaped slashes ("\/images\/a.png"): a replacement is escaped the same way. */
+  escapedSlashes: boolean;
+}
+
+/** The same pattern with every "/" written as JSON writes it, "\/" (valid as ERE and as JS). */
+function escapedSlashPattern(pattern: string): string {
+  return pattern.replace(/\//g, "[\\\\]/");
+}
 
 /**
- * The references in a text, left to right as one scan finds them, each with
- * where it starts. A match that isn't preceded by one of BEFORE_REFERENCE is
- * part of something longer ("https://partner.com/images/a.png", "/blog/a.png")
- * and is not a reference.
+ * The references in a text, left to right, each with where it is. A match
+ * must start a word — after the start of a line, white space, a quote (or an
+ * HTML-escaped one), a bracket, "=", ">", "|" or a comma — otherwise it is part
+ * of something longer ("https://partner.com/images/a.png", "/blog/a.png").
+ * Also read: a Markdown destination in angle brackets (which may hold spaces)
+ * and JSON's escaped slashes.
  */
-function referencesIn(text: string, pattern: string): Array<{ match: string; index: number }> {
-  const out: Array<{ match: string; index: number }> = [];
-  const expression = new RegExp(pattern, "g");
+function referencesIn(text: string, pattern: string): Found[] {
+  const out: Found[] = [];
+  const plain = new RegExp(pattern, "g");
+  const escaped = new RegExp(escapedSlashPattern(pattern), "g");
+  const angled = pattern.endsWith(ADDRESS_TAIL) ? new RegExp(`<(${pattern.slice(0, -ADDRESS_TAIL.length)}[^<>]+)>`, "g") : null;
+  const starts = (line: string, at: number) => at === 0 || BEFORE_REFERENCE.test(line[at - 1]!) || ESCAPED_QUOTE_BEFORE.test(line.slice(Math.max(0, at - 6), at));
+  const clean = (raw: string) => raw.replace(/[\r\t].*$/, "").replace(/&(?:quot|#34|#39|apos);.*$/, "");
   let start = 0;
 
   // Line by line, as git grep reads: a reference never runs on past the end of its line.
   for (const line of text.split("\n")) {
-    for (const found of line.matchAll(expression)) {
-      const at = found.index ?? 0;
-      const match = found[0].replace(/[\r\t].*$/, "");
+    const found: Found[] = [];
 
-      if (at > 0 && !BEFORE_REFERENCE.test(line[at - 1]!)) continue;
-      if (match) out.push({ match, index: start + at });
+    for (const hit of line.matchAll(plain)) {
+      const at = hit.index ?? 0;
+      const match = clean(hit[0]);
+
+      if (match && starts(line, at)) found.push({ match, index: start + at, length: match.length, escapedSlashes: false });
+    }
+    for (const hit of line.matchAll(escaped)) {
+      const at = hit.index ?? 0;
+      const raw = clean(hit[0]);
+
+      if (raw && starts(line, at)) found.push({ match: raw.replace(/\\\//g, "/"), index: start + at, length: raw.length, escapedSlashes: true });
+    }
+    if (angled) {
+      for (const hit of line.matchAll(angled)) {
+        const at = (hit.index ?? 0) + 1;
+
+        found.push({ match: hit[1]!, index: start + at, length: hit[1]!.length, escapedSlashes: false });
+      }
+    }
+    // Overlaps can't both be references: the earliest, then the longest, wins.
+    found.sort((a, b) => a.index - b.index || b.length - a.length);
+    let end = -1;
+
+    for (const item of found) {
+      if (item.index < end) continue;
+      out.push(item);
+      end = item.index + item.length;
     }
     start += line.length + 1;
   }
   return out;
 }
 
+/** Files that might hold references: the plain pattern and its JSON-escaped form, searched by git grep. */
+async function candidateFiles(site: SiteService, pattern: string): Promise<string[]> {
+  if (!site.grepText) throw new GalleyError("internal", "This site's files can't be searched, so nothing was moved.");
+  const hits = [...(await site.grepText(pattern, { rev: "working" })), ...(await site.grepText(escapedSlashPattern(pattern), { rev: "working" }))];
+
+  return [...new Set(hits.map((hit) => hit.path))].sort();
+}
+
+/**
+ * Where an address still appears as plain text, wherever it is (a form the
+ * scan doesn't read, a template): file → how many times. A repository copy
+ * with any left is never deleted.
+ */
+/**
+ * The files whose address appears in some page more times than the scan
+ * reads (and would rewrite) there: after the move those pages would still
+ * point at the repository, so the file stays.
+ */
+async function mentionedBeyond(site: SiteService, moves: Move[], references: Map<string, Reference[]>): Promise<Array<{ path: string; pages: string[] }>> {
+  const out: Array<{ path: string; pages: string[] }> = [];
+
+  for (const move of moves) {
+    const read = new Map<string, number>();
+
+    for (const reference of references.get(move.oldUrl) ?? []) read.set(reference.path, (read.get(reference.path) ?? 0) + 1);
+    const pages = [...(await plainMentions(site, move.oldUrl))].filter(([path, count]) => count > (read.get(path) ?? 0)).map(([path]) => path);
+
+    if (pages.length) out.push({ path: move.from, pages });
+  }
+  return out;
+}
+
+async function plainMentions(site: SiteService, url: string): Promise<Map<string, number>> {
+  if (!site.grepText) throw new GalleyError("internal", "This site's files can't be searched, so nothing was moved.");
+  const forms = [...new Set([url, decodeSafe(url), url.replace(/\//g, "\\/"), decodeSafe(url).replace(/\//g, "\\/")])];
+  const counts = new Map<string, number>();
+
+  for (const hit of await site.grepText(forms.map((form) => escapePattern(form)).join("|"), { rev: "working" })) counts.set(hit.path, (counts.get(hit.path) ?? 0) + 1);
+  return counts;
+}
+
 /** Every reference `accept` names a file for, by that name: git grep narrows the files, the scan above decides. */
 async function scanReferences(site: SiteService, pattern: string, accept: (match: string) => string | null): Promise<Map<string, Reference[]>> {
   const found = new Map<string, Reference[]>();
 
-  if (!site.grepText) throw new GalleyError("internal", "This site's files can't be searched, so nothing was moved.");
-  const paths = new Set((await site.grepText(pattern, { rev: "working" })).map((hit) => hit.path));
-
-  for (const path of [...paths].sort()) {
+  for (const path of await candidateFiles(site, pattern)) {
     let text: string;
 
     try {
@@ -169,12 +253,15 @@ async function rewrite(site: SiteService, paths: Iterable<string>, pattern: stri
       let text = "";
       let at = 0;
 
-      for (const { match, index } of referencesIn(file.content, pattern)) {
-        const next = replace(match);
+      for (const { match, index, length, escapedSlashes } of referencesIn(file.content, pattern)) {
+        const replaced = replace(match);
 
-        if (next === null || next === match) continue;
+        if (replaced === null || replaced === match) continue;
+        // Written back the way it was written: JSON's escaped slashes stay escaped.
+        const next = escapedSlashes ? replaced.replace(/\//g, "\\/") : replaced;
+
         text += file.content.slice(at, index) + next;
-        at = index + match.length;
+        at = index + length;
       }
       text += file.content.slice(at);
       if (text !== file.content) await site.writeFile(path, text, { origin: "user", mode: "content", baseHash: file.hash });
@@ -302,6 +389,7 @@ export async function planMove(context: MoveContext, request: MediaMoveRequest):
       count += 1;
     }
   }
+  const stillMentioned = request.from === "repository" && !request.keepCopies ? await mentionedBeyond(context.site, moves, references) : [];
   return {
     kind: "move",
     from: request.from,
@@ -309,6 +397,7 @@ export async function planMove(context: MoveContext, request: MediaMoveRequest):
     files: moves.length,
     bytes: moves.reduce((sum, move) => sum + move.size, 0),
     ...(request.from === "repository" && moves.some((move) => move.draft) ? { unpublished: moves.filter((move) => move.draft).length } : {}),
+    ...(stillMentioned.length ? { stillMentioned } : {}),
     references: count,
     pages: pages.size,
     done,
@@ -345,6 +434,8 @@ export interface MoveOutcome {
   removed: number;
   problems: MediaMovePlan["problems"];
   summary: string;
+  /** Repository files kept although copies weren't: a page still mentions them. */
+  stillMentioned?: Array<{ path: string; pages: string[] }>;
 }
 
 export async function runMove(context: MoveContext, request: MediaMoveRequest): Promise<MoveOutcome> {
@@ -462,12 +553,20 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
 
   // 3. Remove the repository's copies nothing can still reach (moving to a store, unless copies are kept).
   let removed = 0;
+  const stillMentioned: Array<{ path: string; pages: string[] }> = [];
 
   if (request.from === "repository" && !request.keepCopies) {
     for (const move of copiedMoves) {
       const from = referencedFrom.get(move.from) ?? new Set<string>();
 
       if ([...from].some((path) => !rewritten.has(path))) continue;
+      // After the rewrite, the old address must appear nowhere: a page still mentioning it keeps its file.
+      const left = [...(await plainMentions(context.site, move.oldUrl)).keys()];
+
+      if (left.length) {
+        stillMentioned.push({ path: move.from, pages: left });
+        continue;
+      }
       try {
         await context.site.deleteFile(move.from, { origin: "user", mode: "content" });
         removed += 1;
@@ -481,12 +580,13 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
   const summary =
     `${copied} ${copied === 1 ? "file" : "files"} copied to ${where}${skipped ? ` (${skipped} already there)` : ""}, ${rewritten.size} ${rewritten.size === 1 ? "page" : "pages"} updated` +
     (removed ? `, ${removed} removed from the repository` : "") +
+    (stillMentioned.length ? `. ${stillMentioned.length} left in the repository: still mentioned in ${[...new Set(stillMentioned.flatMap((item) => item.pages))].slice(0, 5).join(", ")}` : "") +
     (request.from !== "repository" ? `. The files are still in ${storeOf(context, request.from).name}; remove them there once the pages are published` : "") +
     (plan.staying ? `. ${plan.staying.files} ${plan.staying.files === 1 ? "stayed where it was" : "stayed where they were"}: ${plan.staying.reason.replace(/\.$/, "")}` : "") +
     (problems.length ? `. ${problems.length} ${problems.length === 1 ? "problem" : "problems"} — see the list` : "") +
     ". Publish to make it live.";
 
-  return { plan, copied, skipped, rewrittenPages: rewritten.size, removed, problems, summary };
+  return { plan, copied, skipped, rewrittenPages: rewritten.size, removed, problems, summary, ...(stillMentioned.length ? { stillMentioned } : {}) };
 }
 
 async function readRepoBytes(site: SiteService, path: string): Promise<Uint8Array> {
