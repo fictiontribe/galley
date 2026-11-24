@@ -5,6 +5,8 @@
 import { inline } from "../../lib/markdown";
 import { fill } from "../../lib/site";
 import { resolveVisual } from "../../lib/visual";
+import Glyph from "../Glyph.astro";
+import type { IconName } from "../../../../../brand/icons";
 
 const { s, block, first } = Astro.props;
 const H = first ? "h1" : "h2";
@@ -35,7 +37,7 @@ const SCALE = 0.56;
                 </span>
               </span>
             </span>
-            <span class="filmstrip__label">{item.label}</span>
+            <span class="filmstrip__label">{item.icon && <Glyph name={item.icon as IconName} size={20} />}<span class="filmstrip__name">{item.label}</span></span>
           </a>
         </li>
       ))

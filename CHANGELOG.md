@@ -50,6 +50,22 @@ entry says how.
   make the next start install the site's packages first.
 - **Get latest** no longer starts when it can already tell git would refuse:
   it says which files with unpublished changes the newer versions change.
+- **A quieter, more finished look, in the app and on the site.** Sheets rest
+  on the desk, controls are pressed into the paper, and only menus and
+  dialogs float. Pills are for buttons; chips, tags and counts are small
+  rectangles and stamps. Blue Pencil marks the action, the current place and
+  the fields where the assistant writes. Labels are words in sentence case
+  instead of small capitals. The page preview sits on the same tan table as
+  the captures on the site. Nothing moved: layout, wording and behaviour are
+  as they were.
+- **One drawn icon family**, shared by the app and the site
+  (`brand/icons.ts`). Site details, Navigation, Scripts, Forms, Brand,
+  Search & AI and Install each have a glyph of their own; three of them used
+  to share a pair of braces.
+- **The look is described as a theme**: five colours for light and for dark
+  and four switches (`brand/themes/`), with everything else derived from
+  them. Quiet is the look above; two more, Plate and Desk, are in the same
+  folder.
 - **A lighter, less yellow paper in the app.** The canvas, cards, wells and
   borders are a cooler bond paper, and every card on the canvas has the same
   edge and the lightest shadow, so panels lift off the page. The dark theme

@@ -4,6 +4,9 @@
 import { statusGroups, statusItems, statusLabels, type StatusId } from "../../lib/status";
 import { inline } from "../../lib/markdown";
 import { fill } from "../../lib/site";
+import Glyph from "../Glyph.astro";
+// Each group is stamped with the proof mark for its state: in register (built), inserted (new), let stand (still being made).
+const MARK = { built: "registration", new: "caret", progress: "stet", later: "stet", preview: "transpose" } as const;
 
 const { s, block, first } = Astro.props;
 const H = first ? "h1" : "h2";
@@ -23,7 +26,7 @@ const inGroup = (g: StatusId) => chosen.filter((i) => (i.status === "preview" ? 
     <dl class="spec-rows">
       {groups.filter((g) => inGroup(g).length > 0).map((g) => (
         <div class="spec-row">
-          <dt><span class:list={["badge", `badge--${g}`]}>{statusLabels[g]}</span></dt>
+          <dt><span class:list={["badge", `badge--${g}`]}>{MARK[g] && <Glyph name={MARK[g]} size={12} />}{statusLabels[g]}</span></dt>
           <dd>
             {inGroup(g).map((i, n) => (
               <>
@@ -41,7 +44,7 @@ const inGroup = (g: StatusId) => chosen.filter((i) => (i.status === "preview" ? 
       // A group with nothing in it (everything it listed has since been built) isn't shown.
       groups.filter((g) => inGroup(g).length > 0).map((g) => (
         <div class="spec__group">
-          <h3 class="h3"><span class:list={["badge", `badge--${g}`]}>{statusLabels[g]}</span></h3>
+          <h3 class="h3"><span class:list={["badge", `badge--${g}`]}>{MARK[g] && <Glyph name={MARK[g]} size={12} />}{statusLabels[g]}</span></h3>
           <ul>
             {inGroup(g).map((i) => (
               <li>

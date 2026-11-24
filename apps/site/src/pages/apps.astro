@@ -11,6 +11,7 @@ import Command from "../components/Command.astro";
 import Downloads from "../components/Downloads.astro";
 import Lightbox from "../components/Lightbox.astro";
 import Zoom from "../components/Zoom.astro";
+import Glyph from "../components/Glyph.astro";
 import { getPage } from "../lib/pages";
 import { inline } from "../lib/markdown";
 import { runCommands } from "../lib/install";
@@ -147,14 +148,14 @@ const others = [w.browser, w.server, ...(demo.on ? [w.demo] : [])];
     <div class:list={["appways__grid", `appways__grid--${others.length}`]}>
       <article class="way-card" id={w.browser.id} aria-labelledby="way-browser-h">
         <p class="label">{w.browser.label}</p>
-        <h3 class="way-card__t" id="way-browser-h">{w.browser.title}</h3>
+        <h3 class="way-card__t" id="way-browser-h"><Glyph name="window" size={24} />{w.browser.title}</h3>
         <p class="body">{w.browser.text}</p>
         <Command lines={runCommands()} />
         <a class="link" href={w.browser.link.href}>{w.browser.link.label}</a>
       </article>
       <article class="way-card" id={w.server.id} aria-labelledby="way-server-h">
         <p class="label">{w.server.label}</p>
-        <h3 class="way-card__t" id="way-server-h">{w.server.title} {serverBadge && <span class:list={["badge", `badge--${serverBadge.status}`]}>{serverBadge.label}</span>}</h3>
+        <h3 class="way-card__t" id="way-server-h"><Glyph name="install" size={24} />{w.server.title} {serverBadge && <span class:list={["badge", `badge--${serverBadge.status}`]}>{serverBadge.label}</span>}</h3>
         <p class="body">{w.server.text}</p>
         <p class="way-card__links">{w.server.links.map((l: { label: string; href: string }) => <a class="link" href={l.href}>{l.label}</a>)}</p>
       </article>
@@ -162,7 +163,7 @@ const others = [w.browser, w.server, ...(demo.on ? [w.demo] : [])];
         demo.on && (
           <article class="way-card way-card--demo" id={w.demo.id} aria-labelledby="way-demo-h">
             <p class="label">{w.demo.label}</p>
-            <h3 class="way-card__t" id="way-demo-h">{w.demo.title}</h3>
+            <h3 class="way-card__t" id="way-demo-h"><Glyph name="play" size={24} />{w.demo.title}</h3>
             <p class="body">{w.demo.text}</p>
             <a class="btn btn--quiet" href={demo.href}>{site.ui.demoOpen}</a>
           </article>
