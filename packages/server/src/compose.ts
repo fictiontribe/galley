@@ -9,7 +9,7 @@ import { builtInTargets } from "@galley/core/deploy";
 import { ensureSitePlugins, setActivePlugins, withPluginHooks, withSiteHooks, type PluginRegistry } from "@galley/core/plugins";
 import { createEventBus, createSiteRegistry, createSiteService, siteIdFor } from "@galley/core/site";
 import { createDeployService } from "@galley/core/deploy";
-import { createMediaStorageService } from "@galley/core/media-storage";
+import { createMediaStorageService, type MediaStorageService } from "@galley/core/media-storage";
 import { builtInEditorHosts, createHostingService } from "@galley/core/hosting";
 import { createFormCapture } from "@galley/core/forms";
 import { createRedirectsService } from "@galley/core/redirects";
@@ -215,6 +215,8 @@ export interface SingleSiteEngine {
   images: GalleyImageService;
   /** The same plugins the server would load, plus the ones this site names. */
   plugins?: PluginRegistry;
+  /** Where the site keeps media outside its repository (`galley media`). Uploads through `site` go there too. */
+  mediaStorage?: MediaStorageService;
   /** Stops the preview it started and the watcher. */
   dispose(): Promise<void>;
 }
@@ -237,6 +239,7 @@ export async function openSingleSite(options: SingleSiteOptions): Promise<Single
   const releaseActive = setActivePlugins({ adapters: (root) => pluginRegistry.adapters(root), tools: (root) => pluginRegistry.tools(root) });
   const images = createImageService({ home: options.home, settings, providers: () => pluginRegistry.imageProviders() });
   const root = realpathSync(options.root);
+  const mediaStorage = createMediaStorageService({ home: options.home, settings, env });
   const raw = await createSiteService(root, {
     id: siteIdFor(root),
     events,
@@ -245,6 +248,7 @@ export async function openSingleSite(options: SingleSiteOptions): Promise<Single
     // The author saved on purpose (App settings › You); the repository's own git settings come before it.
     authorLayers: async () => (await settings.authorLayers?.({ siteId: siteIdFor(root) })) ?? { site: null, app: null },
     watch: options.watch ?? true,
+    media: mediaStorage,
   });
 
   // The site's own plugins are loaded before the first tool list is built, so their tools are offered from the start.
@@ -257,6 +261,7 @@ export async function openSingleSite(options: SingleSiteOptions): Promise<Single
     settings,
     images,
     plugins: pluginRegistry,
+    mediaStorage,
     dispose: async () => {
       await raw.dispose();
       await pluginRegistry.dispose();

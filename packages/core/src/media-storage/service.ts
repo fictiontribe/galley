@@ -11,11 +11,13 @@
  * replaces one that does. Nothing here returns, throws or logs a key.
  */
 import { GalleyError } from "../errors";
-import type { ChangeOrigin, GalleyConfig, MediaItem, MediaStorageConfig, SettingsService, SiteService } from "../types";
+import type { EventBus, GalleyConfig, Job, MediaItem, MediaStorageConfig, SettingsService, SiteService } from "../types";
+import { createJobTracker } from "../site/jobs";
+import { planMove, runMove, type MoveContext, type MoveOutcome } from "./move";
 import { checkUpload, mediaSubfolder } from "../workspace/media";
 import { createBucketStore } from "./bucket-store";
 import { runCheck, settingsFailure, testNameFor } from "./check";
-import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaStoreLocation, MediaUsage } from "./contract";
+import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaStoreLocation, MediaUsage } from "./contract";
 import { createMediaLibrary, type LibraryItem, type MediaLibrary } from "./library";
 import { BUCKET_CONNECTORS, isTrialAddress, normalizePrefix, normalizeStorageConfig, settingsProblems } from "./info";
 import { createMediaKeys, normalizeMediaKey, scrub, type MediaKeys } from "./keys";
@@ -57,6 +59,8 @@ export interface MediaStorageServiceOptions {
   connectors?: BucketConnector[];
   /** How long a store's listing is trusted before it is listed again (ms). Default one minute. */
   listTtlMs?: number;
+  /** For the "media" jobs moving files. Absent: moves run without job events (the CLI waits on them). */
+  events?: EventBus;
 }
 
 export type MediaUpload = { filename: string; directory?: string; data: Uint8Array };
@@ -99,6 +103,16 @@ export interface MediaStorageService {
   deleteStored(site: SiteService, paths: string[]): Promise<MediaStoreDeleteResult>;
   /** The bytes of a stored file ("bucket:lowfield/coat.webp"), for the app's own previews; null when it isn't there. */
   readStored(site: SiteService, path: string): Promise<Uint8Array | null>;
+
+  // ── moving files, and changing a store's address
+
+  /** What a move (or an address change) would do. Changes nothing. */
+  planMove(site: SiteService, request: MediaMoveRequest): Promise<MediaMovePlan>;
+  /** Starts it as a "media" job; progress arrives as job events. One per site at a time. */
+  startMove(site: SiteService, request: MediaMoveRequest): Promise<Job>;
+  /** Runs it and waits (the CLI). */
+  move(site: SiteService, request: MediaMoveRequest, onProgress?: (detail: string, progress: number) => void): Promise<MoveOutcome>;
+  job(id: string): Job | null;
 }
 
 export function createMediaStorageService(options: MediaStorageServiceOptions): MediaStorageService {
@@ -107,6 +121,8 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   const listTtl = options.listTtlMs ?? 60_000;
   const clock = options.now ?? Date.now;
   const listProblems = new Map<string, Partial<Record<MediaStoreLocation, string>>>();
+  const jobs = createJobTracker(options.events ?? { emit: () => undefined, subscribe: () => () => undefined });
+  const moving = new Map<string, string>();
   const all = () => options.connectors ?? [...builtInConnectors(), ...extra];
   const connectorFor = (id: string) => all().find((connector) => connector.info.id === id) ?? null;
 
@@ -375,6 +391,34 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       }
     },
 
+    async planMove(site, request) {
+      return planMove(await moveContext(site), request);
+    },
+
+    async move(site, request, onProgress) {
+      if (moving.has(site.id) && jobs.get(moving.get(site.id)!)?.state === "running") throw new GalleyError("busy", "Files are already being moved for this site. Wait for that to finish.");
+      return runMove(await moveContext(site, onProgress), request);
+    },
+
+    async startMove(site, request) {
+      const running = moving.get(site.id);
+
+      if (running && jobs.get(running)?.state === "running") throw new GalleyError("busy", "Files are already being moved for this site. Wait for that to finish.");
+      // Read-only first, so a wrong request is refused before a job starts.
+      await service.planMove(site, request);
+      const job = jobs.start("media", request.kind === "address" ? "Changing the files' address" : request.to === "repository" ? "Moving media to the repository" : "Moving media to the bucket");
+
+      job.update({ siteId: site.id, detail: "Getting ready…", progress: 0 });
+      moving.set(site.id, job.id);
+      void runMove(await moveContext(site, (detail, progress) => job.update({ detail, progress })), request).then(
+        (outcome) => job.finish(outcome.problems.length ? "error" : "done", { progress: 1, detail: outcome.summary, ...(outcome.problems.length ? { output: outcome.problems.map((p) => `${p.path}: ${p.reason}`).join("\n") } : {}) }),
+        (error: unknown) => job.finish("error", { detail: error instanceof Error ? scrub(error.message) : String(error) })
+      );
+      return job.snapshot();
+    },
+
+    job: (id) => jobs.get(id),
+
     async deleteStored(site, paths) {
       const stores = await service.stores(site);
       const result: MediaStoreDeleteResult = { deleted: [], refused: [] };
@@ -403,6 +447,46 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       return result;
     },
   };
+
+  async function moveContext(site: SiteService, onProgress?: (detail: string, progress: number) => void): Promise<MoveContext> {
+    const stores = await service.stores(site);
+
+    return {
+      site,
+      stores,
+      fetch: options.publicFetch ?? fetch,
+      ...(onProgress ? { onProgress } : {}),
+      async recordStored(item) {
+        await library.update(site.id, (items) => [
+          ...items.filter((known) => !(known.location === item.location && known.key === item.key)),
+          // Moved, not newly uploaded: the pages that use it show in Proof; the file itself isn't a pending upload.
+          { ...item, uploadedAt: clock(), published: true },
+        ]);
+      },
+      async storedItems(location) {
+        const store = stores.find((candidate) => candidate.location === location);
+
+        if (store?.list) await relist(site, store);
+        return (await library.all(site.id)).filter((item) => item.location === location);
+      },
+      async saveAddress(location, publicUrl) {
+        if (location !== "bucket") throw new GalleyError("invalid", "Only a bucket's address can be changed here.");
+        const config = await savedConfig(site);
+
+        if (!config) throw new GalleyError("unconfigured", "The site isn't connected to a bucket.");
+        await writeStorage(site, { ...config, publicUrl: publicUrl.replace(/\/+$/, "") });
+        await library.update(site.id, (items) =>
+          items.map((item) => {
+            if (item.location !== "bucket") return item;
+            const store = stores.find((candidate) => candidate.location === "bucket");
+            const next = store?.rebase?.(item.url, publicUrl);
+
+            return next ? { ...item, url: next } : item;
+          })
+        );
+      },
+    };
+  }
 
   /** Lists a store in full and brings the record up to date: new names are added (measured when the store keeps sizes), gone ones dropped. */
   async function relist(site: SiteService, store: MediaStore): Promise<void> {
