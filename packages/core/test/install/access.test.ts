@@ -186,6 +186,9 @@ describe("the site's own commands", () => {
       GALLEY_SETUP_TOKEN: "fake-setup-code-for-the-test-0123",
       GALLEY_SITE_TOKEN: TOKEN,
       ANTHROPIC_API_KEY: "sk-ant-fake-key-for-the-test-0000",
+      GALLEY_MEDIA_ACCESS_KEY_ID: "fake-bucket-key-id-for-the-test",
+      GALLEY_MEDIA_SECRET_ACCESS_KEY: "fake-bucket-secret-for-the-test-0000",
+      GALLEY_MEDIA_IMAGES_TOKEN: "fake-images-token-for-the-test-00000",
       SITE_OWN_SETTING: "kept",
     };
 
@@ -198,7 +201,7 @@ describe("the site's own commands", () => {
       hideFromSiteCommands(APP_SECRET_ENV_NAMES);
       const env = resolveCommand(root, "node --version", { CI: "1" }).env;
 
-      for (const name of ["GALLEY_PASSWORD", "GALLEY_SETUP_TOKEN", "GALLEY_SITE_TOKEN", "ANTHROPIC_API_KEY"]) expect(env[name]).toBeUndefined();
+      for (const name of ["GALLEY_PASSWORD", "GALLEY_SETUP_TOKEN", "GALLEY_SITE_TOKEN", "ANTHROPIC_API_KEY", "GALLEY_MEDIA_ACCESS_KEY_ID", "GALLEY_MEDIA_SECRET_ACCESS_KEY", "GALLEY_MEDIA_IMAGES_TOKEN"]) expect(env[name]).toBeUndefined();
       expect(env.SITE_OWN_SETTING).toBe("kept");
       expect(env.CI).toBe("1");
       // The repository's hooks are the site's code too.

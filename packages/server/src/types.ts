@@ -1,6 +1,7 @@
 import type { AgentRuntime, BrandConfig, EventBus, ImageCandidate, ImageGenRequest, ImageService, SettingsService, SiteRegistry, SiteService, VideoService } from "@galley/core/types";
 import type { FormCaptureService, MailTransport } from "@galley/core/forms";
 import type { DeployService } from "@galley/core/deploy";
+import type { MediaStorageService } from "@galley/core/media-storage";
 import type { RedirectsService } from "@galley/core/redirects";
 import type { PluginRegistry } from "@galley/core/plugins";
 import type { VisibilityService } from "@galley/core/seo";
@@ -27,6 +28,8 @@ export interface Services {
   forms?: FormCaptureService;
   /** Putting sites online. Absent: the deploy routes say it isn't available. */
   deploy?: DeployService;
+  /** Keeping media in a bucket or Cloudflare Images. Absent: the media storage routes say it isn't available, and media stays in the repository. */
+  mediaStorage?: MediaStorageService;
   /** The redirects list, the host's redirect file kept in step, the Cloudflare sync. Absent: the redirects routes say it isn't available. */
   redirects?: RedirectsService;
   /** Every plugin and what it contributes. Absent: the plugin routes say they aren't available and the catalogues list only the built-ins. */

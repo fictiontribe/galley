@@ -18,6 +18,7 @@ import { mkdir, realpath, rm, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { GalleyError } from "../errors";
+import type { SiteMediaRouter } from "../media-storage/router";
 import type {
   AddSitesResult,
   CloneSiteRequest,
@@ -72,6 +73,8 @@ export interface SiteRegistryOptions {
   onPublished?: (site: SiteService, result: PublishResult) => void;
   /** A site's capture address, handed to its previewed pages (see SiteDeps.captureAddress). */
   captureAddress?: (siteId: string) => string | null;
+  /** Where new media goes when a site keeps it in a bucket or Cloudflare Images (see SiteDeps.media). */
+  media?: SiteMediaRouter;
   /** A site's live address kept outside its files, used when its settings file names none (see SiteDeps.liveUrl). */
   liveUrl?: (siteId: string) => string | null;
   /** False: a site whose checkout has no lockfile isn't given one by the preview's package install (see SiteDeps.addLockfile). Default true. */
@@ -316,6 +319,7 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
         ...(options.publicProtocol ? { publicProtocol: options.publicProtocol } : {}),
         ...(options.onPublished ? { onPublished: (result: PublishResult) => options.onPublished?.(service, result) } : {}),
         ...(options.captureAddress ? { captureAddress: () => options.captureAddress?.(id) ?? null } : {}),
+        ...(options.media ? { media: options.media } : {}),
         ...(options.liveUrl ? { liveUrl: () => options.liveUrl?.(id) ?? null } : {}),
         ...(options.addLockfile === false ? { addLockfile: false } : {}),
       }));

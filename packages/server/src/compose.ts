@@ -9,6 +9,7 @@ import { builtInTargets } from "@galley/core/deploy";
 import { ensureSitePlugins, setActivePlugins, withPluginHooks, withSiteHooks, type PluginRegistry } from "@galley/core/plugins";
 import { createEventBus, createSiteRegistry, createSiteService, siteIdFor } from "@galley/core/site";
 import { createDeployService } from "@galley/core/deploy";
+import { createMediaStorageService, type MediaStorageService } from "@galley/core/media-storage";
 import { builtInEditorHosts, createHostingService } from "@galley/core/hosting";
 import { createFormCapture } from "@galley/core/forms";
 import { createRedirectsService } from "@galley/core/redirects";
@@ -89,6 +90,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
     // The built-in hosts, then any a plugin adds (a plugin can't replace a built-in host).
     targets: [...builtInTargets(), ...pluginRegistry.deployTargetObjects().filter((target) => !builtInIds.has(target.id))],
   });
+  const mediaStorage = createMediaStorageService({ home: options.home, settings, events, env: options.env ?? process.env, hosted: (options.mode ?? "local") === "hosted" });
   const sites = await createSiteRegistry({
     home: options.home,
     sitesDir: options.sitesDir,
@@ -102,7 +104,12 @@ export async function createServices(options: ServicesOptions): Promise<Services
     ...(options.previewPorts ? { previewPorts: createPortPool(options.previewPorts) } : {}),
     ...(options.publicProtocol ? { publicProtocol: options.publicProtocol } : {}),
     ...(options.previewGateway ? { previewGateway: options.previewGateway } : {}),
-    onPublished: (site, result) => deploy.afterPublish(site, result),
+    onPublished: (site, result) => {
+      deploy.afterPublish(site, result);
+      // Uploads to the bucket the published version now uses stop showing as pending.
+      void mediaStorage.afterPublish(site).catch(() => undefined);
+    },
+    media: mediaStorage,
     // The address the capture service gives out (forms/capture.ts), handed to previewed pages so their forms reach the inbox.
     captureAddress: (siteId) => {
       const app = options.appUrl?.() ?? null;
@@ -180,7 +187,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
   // Themes saved for everyone here: in the data folder, never in a site.
   const themes = createThemeStore({ home: options.home });
 
-  return { registry, agent, images, settings, events, forms, deploy, plugins: pluginRegistry, videos, visibility, redirects, siteBrand, imports, themes, ...(hosting ? { hosting } : {}) };
+  return { registry, agent, images, settings, events, forms, deploy, mediaStorage, plugins: pluginRegistry, videos, visibility, redirects, siteBrand, imports, themes, ...(hosting ? { hosting } : {}) };
 }
 
 /** The commit author from Settings, as the registry uses it: both name and email, or the machine's git config. */
@@ -212,6 +219,8 @@ export interface SingleSiteEngine {
   images: GalleyImageService;
   /** The same plugins the server would load, plus the ones this site names. */
   plugins?: PluginRegistry;
+  /** Where the site keeps media outside its repository (`galley media`). Uploads through `site` go there too. */
+  mediaStorage?: MediaStorageService;
   /** Stops the preview it started and the watcher. */
   dispose(): Promise<void>;
 }
@@ -234,6 +243,7 @@ export async function openSingleSite(options: SingleSiteOptions): Promise<Single
   const releaseActive = setActivePlugins({ adapters: (root) => pluginRegistry.adapters(root), tools: (root) => pluginRegistry.tools(root) });
   const images = createImageService({ home: options.home, settings, providers: () => pluginRegistry.imageProviders() });
   const root = realpathSync(options.root);
+  const mediaStorage = createMediaStorageService({ home: options.home, settings, env });
   const raw = await createSiteService(root, {
     id: siteIdFor(root),
     events,
@@ -242,6 +252,7 @@ export async function openSingleSite(options: SingleSiteOptions): Promise<Single
     // The author saved on purpose (App settings › You); the repository's own git settings come before it.
     authorLayers: async () => (await settings.authorLayers?.({ siteId: siteIdFor(root) })) ?? { site: null, app: null },
     watch: options.watch ?? true,
+    media: mediaStorage,
   });
 
   // The site's own plugins are loaded before the first tool list is built, so their tools are offered from the start.
@@ -254,6 +265,7 @@ export async function openSingleSite(options: SingleSiteOptions): Promise<Single
     settings,
     images,
     plugins: pluginRegistry,
+    mediaStorage,
     dispose: async () => {
       await raw.dispose();
       await pluginRegistry.dispose();

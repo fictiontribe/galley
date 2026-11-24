@@ -229,6 +229,65 @@ export interface MediaConfig {
   publicPath: string;
   /** Every directory scanned for the library (always includes `dir`). */
   roots: Array<{ dir: string; publicPath: string }>;
+  /**
+   * New media goes to this bucket instead of `dir` (galley.config.json
+   * `media.storage`). Absent: media lives in the repository, as it always has.
+   */
+  storage?: MediaStorageConfig;
+  /**
+   * Pictures go to Cloudflare Images instead (galley.config.json
+   * `media.images`); files it doesn't take go to `storage`, else the repository.
+   */
+  images?: MediaImagesConfig;
+}
+
+/**
+ * Cloudflare Images for the site's pictures: resized and converted to modern
+ * formats by Cloudflare. Ids only; the API token is kept in the site's key
+ * store (or the site's Cloudflare key for putting it online is used).
+ */
+export interface MediaImagesConfig {
+  connector: "cloudflare-images";
+  /** The Cloudflare account ID. */
+  account: string;
+  /** The Images account hash, from Hosted Images › Developer Resources: part of every delivery address. */
+  accountHash: string;
+  /** The variant pages ask for. Default "public". */
+  variant?: string;
+  /**
+   * This site's mark on its pictures (Cloudflare's "creator" field): the
+   * account may hold other sites' pictures, and Galley lists, shows, moves
+   * and deletes only the ones with this mark. Made on connect.
+   */
+  scope?: string;
+  /**
+   * Deliver from a domain of the same Cloudflare account
+   * ("https://www.example.com" → https://www.example.com/cdn-cgi/imagedelivery/…).
+   * Absent: https://imagedelivery.net.
+   */
+  deliveryUrl?: string;
+}
+
+/**
+ * A bucket the site's media is kept in, behind a public address. No secrets:
+ * the access key and secret are kept in the site's key store, never here.
+ */
+export interface MediaStorageConfig {
+  /** The connector: "r2" (Cloudflare R2), "s3" (Amazon S3) or "s3-compatible". */
+  connector: string;
+  bucket: string;
+  /** Cloudflare R2: the account ID the bucket is in. */
+  account?: string;
+  /** Amazon S3: the bucket's region ("eu-west-1"). R2: "auto". S3-compatible: the store's region name. */
+  region?: string;
+  /** S3-compatible: the store's address ("https://s3.eu-central-003.backblazeb2.com"). Only https:// (loopback http:// for tests). */
+  endpoint?: string;
+  /** Bucket name in the path (endpoint/bucket/key) rather than the host. Default: true except for Amazon S3. */
+  pathStyle?: boolean;
+  /** Folder inside the bucket every file of this site is kept under ("lowfield/"). Empty: the bucket's top. */
+  prefix?: string;
+  /** Where visitors load the files from: "https://media.example.com". The content stores full addresses under it. */
+  publicUrl: string;
 }
 
 export type PublishMode = "commit" | "pull-request";
@@ -346,7 +405,7 @@ export interface GalleyConfig {
   dev?: { command?: string; port?: number };
   build?: { command?: string; outDir?: string };
   urls?: { production?: string; staging?: string };
-  media?: { dir?: string; publicPath?: string; roots?: Array<{ dir: string; publicPath: string }> };
+  media?: { dir?: string; publicPath?: string; roots?: Array<{ dir: string; publicPath: string }>; storage?: MediaStorageConfig; images?: MediaImagesConfig };
   publish?: Partial<PublishConfig>;
   ai?: Partial<AiConfig>;
   writable?: Partial<WritableConfig>;
@@ -627,6 +686,15 @@ export interface ChangeSet {
   baseCommit: string | null;
   files: FileChange[];
   totals: { files: number; additions: number; deletions: number };
+  /**
+   * Files put in a media store (the site's bucket or Cloudflare Images) since
+   * the last publish; each says which by its `location`. They are public at
+   * their addresses already; nothing links to them until the pages that use
+   * them are published. Absent when the site keeps media in the repository only.
+   */
+  storeUploads?: MediaItem[];
+  /** Set when the uploads in a media store couldn't be looked up just now: one sentence. */
+  storeUploadsProblem?: string;
 }
 
 export interface DiffLine {
@@ -992,10 +1060,17 @@ export type HostToOverlay =
 
 // ─────────────────────────────────────────────────────────────── media
 
+/** Where a media file is kept: the site's repository, its bucket (at most one), or Cloudflare Images (pictures only). */
+export type MediaLocation = "repository" | "bucket" | "images";
+
 export interface MediaItem {
-  /** Repo-relative path. */
+  /**
+   * Repo-relative path. Kept elsewhere, never a repository path: in the bucket
+   * "bucket:" and its key ("bucket:images/coat.webp"); in Cloudflare Images
+   * "images:" and its image id ("images:lowfield/coat.webp").
+   */
   path: string;
-  /** Site URL, e.g. "/images/team/ana.webp". */
+  /** Site URL, e.g. "/images/team/ana.webp". In a media store: its full public address (Cloudflare Images: with the default variant). */
   url: string;
   name: string;
   size: number;
@@ -1004,7 +1079,20 @@ export interface MediaItem {
   width?: number;
   height?: number;
   modifiedAt: number;
+  /** In a media store: "added" while no published version uses it yet (it is public at its address all the same), else "clean". */
   status: ChangeStatus;
+  /** Where it is kept. Absent: the repository. */
+  location?: MediaLocation;
+  /** In a media store: the store's own name for it (the bucket's object key, or the Cloudflare Images image id). */
+  key?: string;
+  /** In a media store, in Proof: whether the working copy still uses it. */
+  used?: boolean;
+  /**
+   * Just uploaded, when it went somewhere other than the site's first choice:
+   * one sentence saying where and why ("Kept in the repository: Cloudflare
+   * Images takes only pictures.").
+   */
+  placement?: string;
 }
 
 export type ImageAspect = "1:1" | "16:9" | "4:3" | "3:2" | "9:16" | "3:4" | "2:3";
@@ -1281,7 +1369,7 @@ export type ServerEvent =
 /** A long-running operation: cloning a repo, creating a site, installing dependencies. */
 export interface Job {
   id: string;
-  kind: "clone" | "create" | "install" | "build" | "publish" | "deploy" | "video" | "visibility" | "redirects" | "brand" | "kit-setup" | "import" | "domain" | "setup" | "restore" | "editor-host";
+  kind: "clone" | "create" | "install" | "build" | "publish" | "deploy" | "video" | "visibility" | "redirects" | "brand" | "kit-setup" | "import" | "domain" | "setup" | "restore" | "editor-host" | "media";
   label: string;
   state: "running" | "done" | "error";
   /** 0–1 when measurable. */
@@ -1973,6 +2061,12 @@ export interface SiteService {
 
   // files (source view, build mode)
   listFiles(options?: { glob?: string; limit?: number }): Promise<string[]>;
+  /**
+   * Every match of an extended regular expression in the site's text files —
+   * the working copy, or the published version — with the file it is in.
+   * Read-only. Optional so test fakes needn't provide it.
+   */
+  grepText?(pattern: string, options: { rev: "working" | "base" }): Promise<Array<{ path: string; match: string }>>;
   readFile(path: string): Promise<{ path: string; content: string; hash: string; binary: boolean }>;
   writeFile(path: string, content: string | Uint8Array, options: WriteOptions): Promise<void>;
   deleteFile(path: string, options: WriteOptions): Promise<void>;

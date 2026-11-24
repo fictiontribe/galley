@@ -136,9 +136,28 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 
 | Route | Does | Takes | Returns | Who |
 | --- | --- | --- | --- | --- |
-| `GET /api/sites/:siteId/media` | The media library. | — | `{ items }` | Any signed-in person |
+| `GET /api/sites/:siteId/media` | The media library. | — | `MediaLibraryAnswer` | Any signed-in person |
 | `POST /api/sites/:siteId/media` | Upload a file as a `data:` URL, 25 MB at most. | `{ filename, directory?, data }` | `MediaItem` | Any signed-in person |
 | `DELETE /api/sites/:siteId/media` | Delete a media file. | `?path` | `Ok` | Any signed-in person |
+
+## Media storage: a bucket, and pictures in Cloudflare Images
+
+| Route | Does | Takes | Returns | Who |
+| --- | --- | --- | --- | --- |
+| `GET /api/media-storage/connectors` | The kinds of bucket a site can keep its media in, with the steps on the provider's side. | — | `{ connectors }` | Any signed-in person |
+| `GET /api/sites/:siteId/media/storage` | Where the site keeps new media, whether its keys are set (never the keys), and how many files are where. | — | `MediaStorageStatus` | Any signed-in person |
+| `POST /api/sites/:siteId/media/storage/check` | Run the check — on the body's settings (nothing is saved), or on the saved ones. | `Partial<MediaConnectRequest>` | `MediaCheckResult` | Owners |
+| `PUT /api/sites/:siteId/media/storage` | Check, and only when that passes save the settings (galley.config.json `media.storage`) and any pasted keys. | `MediaConnectRequest` | `MediaConnectResult` | Owners |
+| `DELETE /api/sites/:siteId/media/storage` | Stop putting new media in the bucket. | `?forgetKeys?` | `MediaStorageStatus` | Owners |
+| `POST /api/sites/:siteId/media/images/check` | Run the Cloudflare Images check — on the body's settings (nothing is saved), or on the saved ones. | `Partial<MediaImagesConnectRequest>` | `MediaCheckResult` | Owners |
+| `PUT /api/sites/:siteId/media/images` | Check, and only when that passes keep pictures in Cloudflare Images (galley.config.json `media.images`). | `MediaImagesConnectRequest` | `MediaImagesConnectResult` | Owners |
+| `DELETE /api/sites/:siteId/media/images` | Pictures go where other files go again. | `?forgetKeys?` | `MediaStorageStatus` | Owners |
+| `POST /api/sites/:siteId/media/storage/make-bucket` | "Make the bucket for me": an R2 bucket and its r2.dev address, with the site's Cloudflare key (it needs Workers R2 Storage › Edit). | `{ account, name }` | `{ created, config }` | Owners |
+| `DELETE /api/sites/:siteId/media/storage/made-bucket` | Remove the bucket Galley made — only that one, once the site no longer uses it and it is empty. | — | `MediaStorageStatus` | Owners |
+| `GET /api/sites/:siteId/media/usage` | Where an address is used: pages of the working copy (with titles) and files of the published version. | `?url` | `MediaUsage` | Any signed-in person |
+| `POST /api/sites/:siteId/media/storage/delete` | Delete files from the bucket or Cloudflare Images, for good (it can't be discarded). | `{ paths }` | `MediaStoreDeleteResult` | Editors and owners |
+| `POST /api/sites/:siteId/media/storage/move/plan` | What moving files (to the bucket and back) or changing the bucket's address would do. | `MediaMoveRequest` | `MediaMovePlan` | Owners |
+| `POST /api/sites/:siteId/media/storage/move` | Do it, as a `Job` (kind "media"): copy, rewrite the pages, remove what nothing reaches. | `MediaMoveRequest` | `Job` | Owners |
 | `GET /api/sites/:siteId/raw` | A file's bytes from the working tree, or from the last version with `rev=base`, for thumbnails and before/after pictures. | `?path&rev?` | a file | Any signed-in person |
 
 ## Image generation

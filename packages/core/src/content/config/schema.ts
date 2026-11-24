@@ -99,6 +99,37 @@ const templateConfig = z
 
 const mediaRoot = z.object({ dir: z.string().min(1), publicPath: z.string().min(1) }).strict();
 
+/** An https:// address (http:// only for this computer, which the engine allows only when not hosted). */
+const webAddress = z.string().url().refine((value) => /^https:\/\//i.test(value) || /^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(\/|$)/i.test(value), { message: "must start with https://." });
+
+/** Ids only: the access key and its secret are kept in the site's key store, never in this file. */
+const mediaStorage = z
+  .object({
+    connector: z.string().regex(ADAPTER_ID, { message: "must be a connector id, like “r2”, “s3” or “s3-compatible”." }).describe("Which kind of bucket: “r2” (Cloudflare R2), “s3” (Amazon S3), or “s3-compatible” (another S3-compatible store)."),
+    bucket: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/, { message: "must be a bucket name: 3 to 63 lowercase letters, digits, dots and dashes." }).describe("The bucket's name."),
+    account: z.string().max(64).optional().describe("Cloudflare R2: the account ID the bucket is in."),
+    region: z.string().max(40).optional().describe("Amazon S3: the bucket's Region code (“eu-west-1”). S3-compatible: the store's region name."),
+    endpoint: webAddress.optional().describe("The store's S3 address. S3-compatible stores, and R2 buckets in a jurisdiction. https:// only."),
+    pathStyle: z.boolean().optional().describe("The bucket name in the path (address/bucket/key) rather than the host name. Default: true except for Amazon S3."),
+    prefix: z.string().max(200).optional().describe("The folder inside the bucket this site's files are kept under (“lowfield/”). Absent: the bucket's top."),
+    publicUrl: webAddress.describe("Where visitors load the files from (“https://media.example.com”). Pages store full addresses under it."),
+  })
+  .strict()
+  .describe("New media goes to this bucket instead of the repository. Set by Media › Storage (or `galley media connect`).");
+
+/** Ids only: the API token is kept in the site's key store, never in this file. */
+const mediaImages = z
+  .object({
+    connector: z.literal("cloudflare-images").describe("Cloudflare Images."),
+    account: z.string().regex(/^[0-9a-f]{32}$/, { message: "must be the 32-character Cloudflare account ID." }).describe("The Cloudflare account ID."),
+    accountHash: z.string().min(8).max(64).describe("The Images account hash, from Hosted Images › Developer Resources."),
+    scope: z.string().regex(/^[a-z0-9-]{8,64}$/, { message: "must be the mark Galley made: lowercase letters, digits and dashes." }).optional().describe("This site's mark on its pictures in the account (Cloudflare's creator field); made by Galley when connecting. Only pictures with it are listed, shown, moved or deleted."),
+    variant: z.string().regex(/^[A-Za-z0-9_-]{1,99}$/, { message: "must be a variant's name, like “public”." }).optional().describe("The variant pages ask for. Default: public."),
+    deliveryUrl: webAddress.optional().describe("Deliver from a domain of the same Cloudflare account (its /cdn-cgi/imagedelivery/ path). Default: https://imagedelivery.net."),
+  })
+  .strict()
+  .describe("Pictures go to Cloudflare Images instead; files it doesn't take go to `media.storage`, else the repository.");
+
 /** Project names both built-in hosts accept, short enough for a preview address label (`<8 chars>-<name>`). */
 const DEPLOY_PROJECT = /^[a-z0-9](?:[a-z0-9-]{0,52}[a-z0-9])?$/;
 
@@ -171,7 +202,7 @@ export const galleyConfigSchema = z
     dev: z.object({ command: z.string().optional(), port: z.number().int().positive().optional() }).strict().optional(),
     build: z.object({ command: z.string().optional(), outDir: z.string().optional() }).strict().optional(),
     urls: z.object({ production: z.string().url().optional(), staging: z.string().url().optional() }).strict().optional(),
-    media: z.object({ dir: z.string().optional(), publicPath: z.string().optional(), roots: z.array(mediaRoot).optional() }).strict().optional(),
+    media: z.object({ dir: z.string().optional(), publicPath: z.string().optional(), roots: z.array(mediaRoot).optional(), storage: mediaStorage.optional(), images: mediaImages.optional() }).strict().optional(),
     publish: z
       .object({ branch: z.string().optional(), mode: z.enum(["commit", "pull-request"]).optional(), remote: z.string().nullable().optional(), push: z.boolean().optional() })
       .strict()

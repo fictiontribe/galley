@@ -45,6 +45,7 @@ import type {
   Job,
   JsonValue,
   MediaItem,
+  MediaStorageConfig,
   MetaInfo,
   OpenSiteRequest,
   PreviewStatus,
@@ -73,6 +74,7 @@ import type { CloudflareCheck, CloudflarePlan, ImportMode, ImportResolutions, Im
 import type { AddSitesRequest, AddSitesResult, ScanSitesRequest, ScanSitesResult, SiteConnections, SiteGroup, SiteGroupInput, SitePatch, SiteUsageTotals, UndoResult } from "./types";
 import type { DeployKeyInfo, InstallInfo, RestoreUpload, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./install/types";
 import type { Account, AccountRole, AccountSession, Invitation, LinkPreview, OneTimeLink, People } from "./install/accounts";
+import type { MediaCreatedRecord, MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaLibraryAnswer, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaUsage } from "./media-storage/contract";
 import type { EditorHostAbsent, EditorHostAccount, EditorHostInfo, HostedEditorBackup, HostedEditorPlan, HostedEditorRemoval, HostedEditorRequest, HostedEditorStatus } from "./hosting/types";
 
 /**
@@ -519,13 +521,48 @@ export interface ApiRoutes {
   };
 
   // ── media ──────────────────────────────────────────────────────────────
-  "GET /api/sites/:siteId/media": { response: { items: MediaItem[] } };
+  /** The library: the repository's files, then any kept in the site's bucket or Cloudflare Images (`location`). */
+  "GET /api/sites/:siteId/media": { response: MediaLibraryAnswer };
   /** `data` is a data: URL. */
   "POST /api/sites/:siteId/media": {
     body: { filename: string; directory?: string; data: string };
     response: MediaItem;
   };
   "DELETE /api/sites/:siteId/media": { query: { path: string }; response: Ok };
+
+  // ── media storage: a bucket, and pictures in Cloudflare Images ─────────
+  /** The kinds of bucket a site can keep its media in, with the steps on the provider's side. */
+  "GET /api/media-storage/connectors": { response: { connectors: MediaStoreInfo[] } };
+  /** Where the site keeps new media, whether its keys are set (never the keys), and how many files are where. */
+  "GET /api/sites/:siteId/media/storage": { response: MediaStorageStatus };
+  /** Run the check — on the body's settings (nothing is saved), or on the saved ones. Stores and removes a tiny test picture. */
+  "POST /api/sites/:siteId/media/storage/check": { body: Partial<MediaConnectRequest>; response: MediaCheckResult };
+  /** Check, and only when that passes save the settings (galley.config.json `media.storage`) and any pasted keys. */
+  "PUT /api/sites/:siteId/media/storage": { body: MediaConnectRequest; response: MediaConnectResult };
+  /** Stop putting new media in the bucket. Files there stay, and pages using them keep working. `forgetKeys`: remove its keys too. */
+  "DELETE /api/sites/:siteId/media/storage": { query: { forgetKeys?: boolean }; response: MediaStorageStatus };
+  /** Run the Cloudflare Images check — on the body's settings (nothing is saved), or on the saved ones. Uploads and removes a tiny test picture. */
+  "POST /api/sites/:siteId/media/images/check": { body: Partial<MediaImagesConnectRequest>; response: MediaCheckResult };
+  /** Check, and only when that passes keep pictures in Cloudflare Images (galley.config.json `media.images`). */
+  "PUT /api/sites/:siteId/media/images": { body: MediaImagesConnectRequest; response: MediaImagesConnectResult };
+  /** Pictures go where other files go again. Pictures already in Images stay. `forgetKeys`: remove its token too. */
+  "DELETE /api/sites/:siteId/media/images": { query: { forgetKeys?: boolean }; response: MediaStorageStatus };
+  /** "Make the bucket for me": an R2 bucket and its r2.dev address, with the site's Cloudflare key (it needs Workers R2 Storage › Edit). Saves nothing else. */
+  "POST /api/sites/:siteId/media/storage/make-bucket": { body: { account: string; name: string }; response: { created: MediaCreatedRecord; config: MediaStorageConfig } };
+  /** Remove the bucket Galley made — only that one, once the site no longer uses it and it is empty. */
+  "DELETE /api/sites/:siteId/media/storage/made-bucket": { response: MediaStorageStatus };
+  /** Where an address is used: pages of the working copy (with titles) and files of the published version. */
+  "GET /api/sites/:siteId/media/usage": { query: { url: string }; response: MediaUsage };
+  /**
+   * Delete files from the bucket or Cloudflare Images, for good (it can't be
+   * discarded). Anything a page uses — in the working copy or the published
+   * version — is refused, with where.
+   */
+  "POST /api/sites/:siteId/media/storage/delete": { body: { paths: string[] }; response: MediaStoreDeleteResult };
+  /** What moving files (to the bucket and back) or changing the bucket's address would do. Changes nothing. */
+  "POST /api/sites/:siteId/media/storage/move/plan": { body: MediaMoveRequest; response: MediaMovePlan };
+  /** Do it, as a `Job` (kind "media"): copy, rewrite the pages, remove what nothing reaches. Safe to run again. */
+  "POST /api/sites/:siteId/media/storage/move": { body: MediaMoveRequest; response: Job };
   /**
    * Raw bytes of a repo file from the working tree (`rev` absent) or the base
    * commit (`rev=base`). Used for thumbnails and before/after image diffs.
