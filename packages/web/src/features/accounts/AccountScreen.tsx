@@ -23,6 +23,7 @@ import { Badge, Button, ConfirmDialog, Field, Input, PageHeader, SegmentedContro
 import { passwordProblem } from "@/features/install/logic";
 import { Problem } from "@/features/install/parts";
 import { NotYours } from "./NotYours";
+import { ThemeField } from "@/features/themes/ThemeField";
 import { emailProblem, nameProblem } from "./logic";
 import { Section } from "./parts";
 import "./accounts.css";
@@ -205,13 +206,14 @@ function SignOutEverywhere() {
   );
 }
 
-/** The theme for someone who doesn't look after the editor's settings: theirs, in this browser only. */
+/** The theme and the appearance for someone who doesn't look after the editor's settings: theirs, in this browser only. */
 function Appearance() {
   const theme = useUi((s) => s.theme);
   return (
-    <Section id="appearance" title="Appearance">
-      <Field label="Theme" group hint="Kept in this browser. Match my system follows your computer’s light or dark setting">
-        <SegmentedControl<ThemeSetting> label="Theme" value={theme} options={[...THEME_OPTIONS]} onChange={chooseTheme} />
+    <Section id="appearance" title="Theme and appearance">
+      <ThemeField hint="Yours, kept in this browser" />
+      <Field label="Appearance" group hint="Kept in this browser. Match my system follows your computer’s light or dark setting">
+        <SegmentedControl<ThemeSetting> label="Appearance" value={theme} options={[...THEME_OPTIONS]} onChange={chooseTheme} />
       </Field>
     </Section>
   );

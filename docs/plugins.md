@@ -107,6 +107,13 @@ export interface GalleyPlugin {
   tools?: SiteToolContribution[];
   /** Where a field's values can be picked from (a product, a collection). */
   dataSources?: DataSourceContribution[];
+  /**
+   * Themes for the editing app (docs/themes.md): theme files as data, checked
+   * like any other. One that would be refused is a problem; one the check
+   * adjusts is a warning (ship the adjusted values). Only plugins installed
+   * for the app add themes; a site's own plugin can't change the app.
+   */
+  themes?: ThemeContribution[];
   hooks?: PluginHooks;
   /** Settings the plugin needs (shown in the app; secrets are never returned). */
   settings?: PluginSettingField[];
@@ -510,6 +517,38 @@ item is picked on its own row. A value the source no longer has is said so
 plainly on the field ("No longer in the shop") rather than shown as if it
 were fine. When the plugin that offers the source is off, the field is an
 ordinary text box showing the value, with a note saying why.
+
+### Themes
+
+`themes` adds themes to the editing app: theme files as objects, exactly the
+contract in [`brand/themes/README.md`](../brand/themes/README.md) (an id, a
+name, five colours per mode, four switches; nothing else). The app's own
+legibility check runs on each when the plugin loads: a theme it would refuse
+is a problem and the plugin doesn't load; a theme it would adjust is a
+warning — ship the adjusted values (`galley theme check` prints them). The
+themes appear in everyone's theme picker while the plugin is on.
+
+<!-- include: packages/plugin-kit/test/samples/theme-plugin.mjs#theme -->
+```js
+export default {
+  name: "galley-plugin-harbour",
+  apiVersion: 1,
+  themes: [
+    {
+      contract: 1,
+      id: "harbour",
+      name: "Harbour",
+      light: { paper: "#F3F5F5", ink: "#101A24", pencil: "#00857A", plate: "#121A20", table: "#D7DDD9" },
+      switches: { sidebar: "sheet" },
+    },
+  ],
+};
+```
+
+Only plugins installed for the app add themes: a site's own plugin can't
+change how the app looks. A theme saved in the app with the same id comes
+before a plugin's, and a built-in's id can't be used. More in
+[`docs/themes.md`](themes.md).
 
 ## Settings and secrets
 

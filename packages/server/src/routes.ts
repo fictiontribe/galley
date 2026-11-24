@@ -34,6 +34,7 @@ import { installRoutes } from "./install-routes";
 import { accountsMeta, accountsRoutes, eventAccess, signInWithAccount, signOutThisBrowser, streamLimits } from "./accounts-routes";
 import { previewEntry } from "./preview-entry";
 import { hostingRoutes } from "./hosting-routes";
+import { checkLookPatch, defaultLook, publicLook, themeRoutes } from "./themes-routes";
 import { assertInside, listFolders, looksLikeSite, realDirectory } from "./fs-list";
 import { extensionOf, isImagePath, rawContentTypeFor, UPLOAD_TYPES } from "./mime";
 import type { AppOptions, Services, StreamRegistry } from "./types";
@@ -199,6 +200,9 @@ export const routes: RouteTable = {
   // ── "Host the editor online" (hosting-routes.ts) ──────────────────────
   ...hostingRoutes,
 
+  // ── themes for the app (themes-routes.ts) ─────────────────────────────
+  ...themeRoutes,
+
   // ── meta & auth ────────────────────────────────────────────────────────
   "GET /api/meta": async (c, ctx) => {
     const { brand, mode, version, desktop } = ctx.options;
@@ -222,6 +226,10 @@ export const routes: RouteTable = {
       meta.install.passwordEmail = passwordEmail;
       if (account) meta.account = account;
     }
+    // The default theme, so the sign-in screen and anyone who hasn't chosen show it: colours and switches only.
+    const look = await (authenticated ? defaultLook(ctx) : publicLook(ctx)).catch(() => null);
+
+    if (look) meta.look = look;
     return meta;
   },
   "POST /api/auth/login": async (c, ctx) => {
@@ -256,7 +264,17 @@ export const routes: RouteTable = {
 
   // ── settings ───────────────────────────────────────────────────────────
   "GET /api/settings": async (_c, ctx) => publicSettings(await ctx.services.settings.get()),
-  "PATCH /api/settings": async (c, ctx) => publicSettings(await ctx.services.settings.update(await v.body(c, v.settingsPatchBody))),
+  "PATCH /api/settings": async (c, ctx) => {
+    const patch = await v.body(c, v.settingsPatchBody);
+
+    await checkLookPatch(ctx, patch);
+    const before = patch.appearance?.look !== undefined ? (await ctx.services.settings.get()).appearance.look : undefined;
+    const settings = publicSettings(await ctx.services.settings.update(patch));
+
+    // Open browsers that follow the default theme show the new one.
+    if (patch.appearance?.look !== undefined && patch.appearance.look !== before) ctx.services.events.emit({ type: "themes.updated" });
+    return settings;
+  },
   "PUT /api/secrets/:name": async (c, ctx) => {
     const name = c.req.param("name") ?? "";
     const parsed = v.secretName.safeParse(name);

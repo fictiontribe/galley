@@ -2,6 +2,7 @@
  * Server events → store updates and cache invalidations. Started once at
  * boot. This is the only place that decides which data an event makes stale.
  */
+import { useMeta } from "./stores/meta";
 import { coalesceBy } from "./coalesce";
 import { count } from "./format";
 import { connectEvents, onReconnect, subscribe } from "./events";
@@ -39,6 +40,8 @@ export const keys = {
   // "Host the editor online" (local mode only): under the site's key, so `site.updated` refreshes it.
   editor: (siteId: string) => ["site", siteId, "editor"] as const,
   editorHosts: () => ["editor-hosts"] as const,
+  // Themes saved for everyone here and the plugins' (app/look.ts).
+  themes: () => ["themes"] as const,
 };
 
 let started = false;
@@ -110,6 +113,13 @@ export function startSync(): void {
   // A plugin was turned on or off, saved or failed: what it adds (providers, catalogues, keys) may have changed.
   subscribe("plugins.updated", () => {
     for (const prefix of [["plugins"], ["catalog"], ["videos"], ["images"], keys.settings()] as const) invalidate(prefix);
+  });
+
+  // A theme was saved or deleted for everyone, or the default changed: the lists and the default theme (on /api/meta).
+  subscribe("themes.updated", () => {
+    invalidate(keys.themes());
+    invalidate(keys.settings());
+    void useMeta.getState().load();
   });
 
   onReconnect(() => {

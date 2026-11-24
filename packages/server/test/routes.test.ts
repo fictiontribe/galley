@@ -260,6 +260,10 @@ const coveredElsewhere: ApiRouteKey[] = [
   "GET /api/open", // fs-list.test.ts (needs real folders)
   "POST /api/sites/:siteId/publish/message", // below
   "GET /api/sites/:siteId/data-sources/:sourceId", // data-sources.test.ts (a real plugin registry)
+  // themes.test.ts (a real theme store in a folder)
+  "GET /api/themes",
+  "PUT /api/themes/:themeId",
+  "DELETE /api/themes/:themeId",
   // redirects.test.ts (fakes for each route, and one pass with the real service on a copy of the starter)
   "GET /api/sites/:siteId/redirects",
   "PUT /api/sites/:siteId/redirects",

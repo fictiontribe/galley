@@ -37,6 +37,7 @@
  *   GALLEY_MOCK_PUSH=fail     sending to the host always fails ("flaky": only
  *                             the send that publishing does fails; Send now works)
  */
+import { readFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import type { ServerEvent } from "@galley/core/types";
@@ -44,6 +45,7 @@ import type { InstallFixed } from "@galley/core/install/types";
 import { ACCOUNT_ROLES, type AccountRole } from "@galley/core/install/accounts";
 import { MOCK_SETUP_CODE, type MockSetupStep } from "./install.ts";
 import { createMockServer, type MockAccessTable } from "./server.ts";
+import type { ThemesEngine } from "./themes.ts";
 
 const SETUP_STEPS: readonly MockSetupStep[] = ["password", "site", "details", "done"];
 const FIXED: readonly InstallFixed[] = ["address", "password", "site", "author", "liveUrl", "assistantKey"];
@@ -86,6 +88,7 @@ export function galleyMock(): Plugin {
         legacy: process.env.GALLEY_MOCK_ACCOUNTS === "legacy",
         // Through Vite, which follows core's extension-less imports; Node's own loader (this file's) can't.
         access: mode === "hosted" ? (server.ssrLoadModule("@galley/core/install/route-access") as Promise<MockAccessTable>) : undefined,
+        themes: server.ssrLoadModule("@galley/core/themes") as Promise<ThemesEngine>,
       });
       mock.onEvent((event: ServerEvent) => {
         const line = `data: ${JSON.stringify(event)}\n\n`;
@@ -108,6 +111,21 @@ export function galleyMock(): Plugin {
           if (mail) server.config.logger.info(`  galley mock: e-mailed ${mail.to} ${mail.kind === "invitation" ? "an invitation" : "a new-password link"}: ${new URL(mail.url).pathname}${new URL(mail.url).hash}`);
         }
       };
+
+      // The start-up script with the install's default theme in front of it, as the real server serves it (themes-routes.ts).
+      server.middlewares.use(async (req, res, next) => {
+        if ((req.url ?? "").split("?")[0] !== "/theme.js") return next();
+        try {
+          const script = await readFile(new URL("../public/theme.js", import.meta.url), "utf8");
+          const found = await mock.backend.defaultLook().catch(() => null);
+          const look = found ? { ...found, id: "default" } : null;
+          const start = JSON.stringify({ keeper: mode === "hosted" ? "browser" : "server", look }).replace(/</g, "\\u003c");
+          res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" });
+          res.end(`self.galleyStart=${start};\n${script}`);
+        } catch {
+          next();
+        }
+      });
 
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ?? "/";

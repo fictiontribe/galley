@@ -44,6 +44,8 @@ export interface Services {
   siteBrand?: import("@galley/core/sitebrand").SiteBrandService;
   /** "Host the editor online" (local mode only). Absent: its routes say it isn't available. */
   hosting?: import("@galley/core/hosting").HostingService;
+  /** Themes saved for everyone here (the data folder's themes/). Absent: none are saved, and saving says it isn't available. */
+  themes?: import("@galley/core/themes/store").ThemeStore;
 }
 
 export type ServerMode = "local" | "hosted";

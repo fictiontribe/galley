@@ -22,6 +22,7 @@ import { pluginCommand } from "./commands/plugin";
 import { schemaCommand } from "./commands/schema";
 import { serveCommand } from "./commands/serve";
 import { startersCommand } from "./commands/starters";
+import { themeCommand } from "./commands/theme";
 import { processIo, type Io } from "./io";
 
 export const HELP = `${PRODUCT.name} — ${PRODUCT.descriptor}. ${PRODUCT.tagline}
@@ -41,6 +42,7 @@ Usage
   ${PRODUCT.slug} starters        List the starters and their looks
   ${PRODUCT.slug} mcp [path]      Let an AI tool (Claude, Cursor, VS Code…) edit the site over MCP
   ${PRODUCT.slug} plugin …        Add plugins, list them, turn them on or off
+  ${PRODUCT.slug} theme …         List, check, add, choose and export the editing app's themes
   ${PRODUCT.slug} schema          Print the JSON Schema of ${PRODUCT.configFile} (--out <folder>: write every schema)
   ${PRODUCT.slug} version         Print the version
 
@@ -73,6 +75,7 @@ export const COMMANDS: Record<string, Command> = {
   starters: startersCommand,
   mcp: mcpCommand,
   plugin: pluginCommand,
+  theme: themeCommand,
   import: importCommand,
   deploy: deployCommand,
   domain: domainCommand,

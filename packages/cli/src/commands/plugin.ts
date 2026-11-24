@@ -41,6 +41,7 @@ function summary(info: PluginInfo): string {
     c.importers.length && `import: ${c.importers.join(", ")}`,
     c.deployTargets.length && `deploy: ${c.deployTargets.join(", ")}`,
     c.tools.length && `tools: ${c.tools.map((tool) => tool.name).join(", ")}`,
+    c.themes?.length && `themes: ${c.themes.join(", ")}`,
     c.hooks.length && `hooks: ${c.hooks.join(", ")}`,
   ].filter(Boolean);
 

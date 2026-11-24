@@ -103,6 +103,7 @@ const CONFLICT_WORDS: Record<PluginConflict["kind"], string> = {
   editorHost: "place to host the editor",
   tool: "assistant tool",
   dataSource: "data source for fields",
+  theme: "theme",
 };
 
 /** "Both Harbour tools and Example plugin add the script “fathom”. Harbour tools’s is used." — said on the plugin that lost. */

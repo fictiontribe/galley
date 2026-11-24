@@ -1,3 +1,5 @@
+import { forgetPersonalThemes } from "./stores/themes";
+import { useUi } from "./stores/ui";
 import { api } from "./api";
 import { disconnectEvents } from "./events";
 import { clearQueries } from "./query";
@@ -34,6 +36,9 @@ export function takeTokenFromUrl(): string | null {
 /** Hosted mode: end the session, drop every cached answer and stop live updates. */
 export async function signOut(): Promise<void> {
   await api("POST /api/auth/logout");
+  // A shared browser: nothing of this person's themes stays for the next one.
+  forgetPersonalThemes();
+  useUi.getState().setLook(null);
   disconnectEvents();
   clearQueries();
   await useMeta.getState().load();

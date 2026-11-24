@@ -37,6 +37,47 @@ entry says how.
   the bucket and its r2.dev address; the key for its files is still made by
   hand. Another S3-compatible store (Backblaze B2, Spaces, Wasabi, MinIO) is
   a fourth choice.
+- **Themes for the editing app.** Quiet stays the default; **Plate** and
+  **Desk** ship beside it, and anyone can make their own. A theme is a small
+  file (five colours per mode and four switches; `brand/themes/README.md`)
+  and changes the app only, never a site. The light/dark control is now
+  called the *appearance*, and the theme picker sits beside it wherever it
+  appears (the sidebar's foot, the sign-in and first-run screens), each
+  theme drawn as a swatch. **Settings › Themes** makes a theme from any
+  other: five colours with a colour picker and a text field, dark colours
+  made from them or set by hand, the four switches drawn small, the whole app
+  re-themed live in that browser until it is saved, undo, and a readability
+  report in plain words. Every theme passes one check (`checkTheme`) before it
+  is shown, saved or shared: colours kept in range, every pair people read
+  measured as the CSS draws it (proved in a browser), small lightness repairs
+  said in words, and a warning when the pencil sits near a colour that means
+  something or is light. A theme the check adjusted is saved adjusted.
+  Themes are saved for everyone here (in the data folder, by people who can
+  manage) or, on a hosted editor, for me in this browser; each person chooses
+  their own there, and the install has a default (App settings, else a
+  white-label brand's `theme`, else Quiet), shown before the first paint on
+  the sign-in screen too. Export, import, and **Share with the community**,
+  which opens GitHub's new-file page for the repository's `themes/` folder
+  with the theme filled in; the app sends nothing itself. Community themes
+  are bundled when the app is built. `docs/themes.md`.
+- **Routes for themes**: `GET /api/themes` (edit), `PUT` and
+  `DELETE /api/themes/:themeId` (manage), and `appearance.look` in
+  `PATCH /api/settings` for the default. `GET /api/meta` gains `look` (the
+  default theme's colours and switches, for the sign-in screen); a new
+  event, `themes.updated`. `/theme.js` is served with the default in front
+  of it.
+- **A `themes` contribution for plugins**, checked like any other theme; only
+  plugins installed for the app add themes, never a site's own.
+- **`galley theme`** `list`, `check <file>` (exit 1 when it would be
+  refused), `add <file>`, `use <id>`, `export <id>`, `remove <id>`.
+- **The brand file's `theme`**: the theme a white-labelled install starts
+  with. Its `accent` is now the built-in themes' pencil, so the brand and a
+  theme never set the same colours twice. Like any pencil it may be adjusted
+  for legibility; an accent too close to grey can't be a pencil, and then the
+  built-ins keep their own and the server says so when it starts.
+- **`themes/`**, the community folder, with its README; a test checks every
+  theme in it and in `brand/themes/`.
+
 - **A hosted editor keeps up with its repository.** Every 5 minutes
   (`GALLEY_SYNC_MINUTES`; `0` turns it off) it asks the code host what is
   new and, when nothing here is in the way, brings newer versions in

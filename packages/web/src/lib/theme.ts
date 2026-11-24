@@ -34,11 +34,16 @@ export function oneClickTheme(setting: ThemeSetting, systemDark: boolean): Shown
   return shownTheme(setting, systemDark) === "dark" ? "light" : "dark";
 }
 
-/** The words for choosing a setting: the switch's accessible name, its tooltip, the palette's rows. */
+/**
+ * The words for choosing a setting: the switch's accessible name, its
+ * tooltip, the palette's rows. Light, dark or the system's is the
+ * *appearance*; Quiet, Plate, Desk and the ones people make are *themes*
+ * (lib/themes). The two words are never swapped.
+ */
 export const THEME_ACTION: Record<ThemeSetting, string> = {
-  dark: "Switch to dark theme",
-  light: "Switch to light theme",
-  system: "Match my system’s theme",
+  dark: "Switch to dark appearance",
+  light: "Switch to light appearance",
+  system: "Match my system’s appearance",
 };
 
 /** The three choices, in the order every control lists them. */
