@@ -183,7 +183,8 @@ export function createBucketStore(options: BucketStoreOptions): MediaStore & { c
         metadata.height = String(input.height);
       }
       try {
-        await client.putObject(key, input.data, { contentType: input.type, cacheControl: IMMUTABLE, metadata, ifAbsent: true });
+        // An SVG can carry script: opened on its own at the bucket's address it is saved, not run. In an <img> it shows as usual.
+        await client.putObject(key, input.data, { contentType: input.type, cacheControl: IMMUTABLE, metadata, ifAbsent: true, ...(input.type === "image/svg+xml" ? { contentDisposition: "attachment" } : {}) });
       } catch (error) {
         if (error instanceof S3Error && (error.code === "PreconditionFailed" || error.status === 412)) throw new StoreNameTaken(key);
         throw explain(error, "write");

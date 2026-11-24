@@ -56,6 +56,8 @@ export interface S3Head {
 export interface PutOptions {
   contentType?: string;
   cacheControl?: string;
+  /** "attachment": opened directly, the browser saves it instead of showing it (an <img> still shows it). */
+  contentDisposition?: string;
   metadata?: Record<string, string>;
   /** Only if nothing is stored under the key yet (`If-None-Match: *`): a name is never overwritten. */
   ifAbsent?: boolean;
@@ -262,6 +264,7 @@ export function createS3Client(options: S3ClientOptions): S3Client {
 
       if (put.contentType) headers["content-type"] = put.contentType;
       if (put.cacheControl) headers["cache-control"] = put.cacheControl;
+      if (put.contentDisposition) headers["content-disposition"] = put.contentDisposition;
       if (put.ifAbsent) headers["if-none-match"] = "*";
       for (const [name, value] of Object.entries(put.metadata ?? {})) headers[`x-amz-meta-${name.toLowerCase()}`] = value;
       const response = await send("PUT", urlFor(key), body, headers);

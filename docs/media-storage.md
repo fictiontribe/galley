@@ -99,6 +99,12 @@ tools and plugins all put files in the same place.
   other origins (its CSP stays `img-src 'self'`).
 - Validation accepts an address inside the bucket's folder as a real file.
 
+SVG objects are stored with `Content-Disposition: attachment`: an `<img>`
+shows them as usual, but opened on their own at the bucket's address they are
+saved rather than rendered, so a script inside one can't run on the media
+origin (often a subdomain that shares cookies). Cloudflare Images sanitises
+SVG itself.
+
 ## Used on, and deletes
 
 `usage(site, url)` runs `git grep -E` for the store's address pattern on the

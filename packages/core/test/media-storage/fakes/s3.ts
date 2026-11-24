@@ -31,6 +31,7 @@ export interface FakeObject {
   body: Buffer;
   contentType: string;
   cacheControl: string | null;
+  contentDisposition?: string | null;
   metadata: Record<string, string>;
   etag: string;
   lastModified: Date;
@@ -236,6 +237,7 @@ export async function startFakeS3(options: { port?: number; publicPort?: number;
     };
 
     if (object.cacheControl) headers["cache-control"] = object.cacheControl;
+    if (object.contentDisposition) headers["content-disposition"] = object.contentDisposition;
     for (const [name, value] of Object.entries(object.metadata)) headers[`x-amz-meta-${name}`] = value;
     return headers;
   }
@@ -299,6 +301,7 @@ export async function startFakeS3(options: { port?: number; publicPort?: number;
           body: request.body,
           contentType: request.headers["content-type"] ?? "binary/octet-stream",
           cacheControl: request.headers["cache-control"] ?? null,
+          contentDisposition: request.headers["content-disposition"] ?? null,
           metadata,
           etag: createHash("md5").update(request.body).digest("hex"),
           lastModified: new Date(),

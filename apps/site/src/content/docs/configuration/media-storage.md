@@ -14,6 +14,7 @@ Not yet run against the live services by the people who built it: everything her
 - **New uploads go to the bucket** — pictures, PDFs and videos alike, under names that never replace a file already there. Files already in the repository stay where they are until you move them.
 - **They are public at once.** A file in the bucket can be loaded by anyone with its address from the moment it is uploaded, before you publish. Keep private documents out of it.
 - **Proof lists them** under *In the bucket* until a published page uses them. Discarding a page doesn't remove its uploads; Galley offers to remove the ones nothing uses any more.
+- **SVG pictures are stored as downloads.** In a page they show as usual; opened on their own at the bucket's address, the browser saves them instead of showing them. An SVG can carry script, and this keeps it from running on the media address.
 - **Deleting is for good.** Galley deletes a file from the bucket only when no page uses it — not the pages waiting in Proof, not the published version — and on a hosted editor only people who can publish may.
 
 ## Choose where

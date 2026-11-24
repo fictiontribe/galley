@@ -56,6 +56,13 @@ describe("a site that keeps its media in a bucket", { timeout: 240_000 }, () => 
     const pdf = await site.saveMedia({ filename: "Menu.pdf", directory: `${(await site.model()).media.dir}/menus`, data: Buffer.from("%PDF-1.4\n%%EOF") });
 
     expect(pdf.key).toBe("lowfield/menus/menu.pdf");
+    // An SVG is saved, not run, when its address is opened on its own.
+    const svg = await site.saveMedia({ filename: "logo.svg", data: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"/>') });
+    const served = await fetch(svg.url);
+
+    expect(served.headers.get("content-disposition")).toBe("attachment");
+    expect(served.headers.get("content-type")).toBe("image/svg+xml");
+    expect(bucket.objects.get("lowfield/menus/menu.pdf")!.contentDisposition ?? null).toBeNull();
     // Nothing was written to the repository.
     expect((await site.changes()).files.filter((file) => /my-coat|menu/.test(file.path))).toEqual([]);
     await done();
