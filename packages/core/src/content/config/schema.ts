@@ -99,6 +99,21 @@ const templateConfig = z
 
 const mediaRoot = z.object({ dir: z.string().min(1), publicPath: z.string().min(1) }).strict();
 
+/** Ids only: the access key and its secret are kept in the site's key store, never in this file. */
+const mediaStorage = z
+  .object({
+    connector: z.string().regex(ADAPTER_ID, { message: "must be a connector id, like “r2”, “s3” or “s3-compatible”." }).describe("Which kind of bucket: “r2” (Cloudflare R2), “s3” (Amazon S3), “s3-compatible”, or a plugin's connector."),
+    bucket: z.string().min(3).max(63).describe("The bucket's name."),
+    account: z.string().max(64).optional().describe("Cloudflare R2: the account ID the bucket is in."),
+    region: z.string().max(40).optional().describe("Amazon S3: the bucket's Region code (“eu-west-1”). S3-compatible: the store's region name."),
+    endpoint: z.string().url().optional().describe("The store's S3 address. S3-compatible stores, and R2 buckets in a jurisdiction. https:// only."),
+    pathStyle: z.boolean().optional().describe("The bucket name in the path (address/bucket/key) rather than the host name. Default: true except for Amazon S3."),
+    prefix: z.string().max(200).optional().describe("The folder inside the bucket this site's files are kept under (“lowfield/”). Absent: the bucket's top."),
+    publicUrl: z.string().url().describe("Where visitors load the files from (“https://media.example.com”). Pages store full addresses under it."),
+  })
+  .strict()
+  .describe("New media goes to this bucket instead of the repository. Set by Media › Storage (or `galley media connect`).");
+
 /** Project names both built-in hosts accept, short enough for a preview address label (`<8 chars>-<name>`). */
 const DEPLOY_PROJECT = /^[a-z0-9](?:[a-z0-9-]{0,52}[a-z0-9])?$/;
 
@@ -171,7 +186,7 @@ export const galleyConfigSchema = z
     dev: z.object({ command: z.string().optional(), port: z.number().int().positive().optional() }).strict().optional(),
     build: z.object({ command: z.string().optional(), outDir: z.string().optional() }).strict().optional(),
     urls: z.object({ production: z.string().url().optional(), staging: z.string().url().optional() }).strict().optional(),
-    media: z.object({ dir: z.string().optional(), publicPath: z.string().optional(), roots: z.array(mediaRoot).optional() }).strict().optional(),
+    media: z.object({ dir: z.string().optional(), publicPath: z.string().optional(), roots: z.array(mediaRoot).optional(), storage: mediaStorage.optional() }).strict().optional(),
     publish: z
       .object({ branch: z.string().optional(), mode: z.enum(["commit", "pull-request"]).optional(), remote: z.string().nullable().optional(), push: z.boolean().optional() })
       .strict()

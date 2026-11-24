@@ -12,7 +12,8 @@
  *  - a missing bucket → NoSuchBucket; a missing object → NoSuchKey;
  *  - the wrong region → AuthorizationHeaderMalformed naming the right one
  *    (301 with x-amz-bucket-region for HEAD, as S3 answers HeadBucket);
- *  - each key has permissions per bucket (read, write, list, delete) →
+ *  - each key has permissions per bucket (read, write, list, delete), and
+ *    optionally only within a folder (an s3:prefix condition) →
  *    AccessDenied for anything else;
  *  - PUT with If-None-Match: * on an existing key → PreconditionFailed;
  *  - ListObjectsV2 pages (small pages on purpose, so paging is exercised).
@@ -47,6 +48,12 @@ export interface FakeKey {
   id: string;
   secret: string;
   buckets: Record<string, Permission[]>;
+  /**
+   * The IAM policy Galley gives for S3: object actions only under this
+   * folder, and s3:ListBucket only with an s3:prefix under it — so
+   * HeadBucket (which needs ListBucket with no condition) is refused.
+   */
+  prefix?: string;
 }
 
 export interface FakeS3Log {
@@ -248,11 +255,12 @@ export async function startFakeS3(options: { port?: number; publicPort?: number;
 
     if (!objectKey) {
       if (request.method === "HEAD") {
-        return Object.keys(key.buckets).includes(bucket.name) && (key.buckets[bucket.name] ?? []).length > 0 ? { status: 200, key: key.id, headers: { "x-amz-bucket-region": bucket.region } } : denied("HEAD", key.id);
+        return !key.prefix && Object.keys(key.buckets).includes(bucket.name) && (key.buckets[bucket.name] ?? []).length > 0 ? { status: 200, key: key.id, headers: { "x-amz-bucket-region": bucket.region } } : denied("HEAD", key.id);
       }
       if (request.method === "GET" && query.get("list-type") === "2") {
-        if (!may(key, bucket.name, "list")) return denied("GET", key.id);
         const prefix = query.get("prefix") ?? "";
+
+        if (!may(key, bucket.name, "list") || (key.prefix && !prefix.startsWith(key.prefix))) return denied("GET", key.id);
         const after = query.get("continuation-token") ? Buffer.from(query.get("continuation-token")!, "base64url").toString("utf8") : null;
         const max = Math.min(state.pageSize, Number(query.get("max-keys") ?? 1000) || 1000);
         const all = [...bucket.objects.keys()].filter((name) => name.startsWith(prefix)).sort();
@@ -279,6 +287,7 @@ export async function startFakeS3(options: { port?: number; publicPort?: number;
     }
     const existing = bucket.objects.get(objectKey);
 
+    if (key.prefix && !objectKey.startsWith(key.prefix)) return denied(request.method, key.id);
     switch (request.method) {
       case "PUT": {
         if (!may(key, bucket.name, "write")) return denied("PUT", key.id);
