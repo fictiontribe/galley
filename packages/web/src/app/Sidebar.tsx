@@ -247,12 +247,12 @@ export function SiteSidebar({ siteId }: { siteId: string }) {
             ))}
         <NavItem to={`${base}/media`} icon="image" label="Media" />
         <NavLabel>Site</NavLabel>
-        <NavItem to={`${base}/forms`} icon="posts" label="Forms" />
+        <NavItem to={`${base}/forms`} icon="form" label="Forms" />
         {/* The inbox is what visitors sent: not loaded at all for someone who may not read it. */}
         {may("GET /api/sites/:siteId/inbox") ? <NavItem to={`${base}/inbox`} icon="inbox" label="Inbox" trailing={<InboxNavBadge siteId={siteId} />} /> : null}
-        <NavItem to={`${base}/scripts`} icon="data" label="Scripts" />
-        <NavItem to={`${base}/brand`} icon="registration" label="Brand" />
-        <NavItem to={`${base}/visibility`} icon="globe" label="Search & AI" />
+        <NavItem to={`${base}/scripts`} icon="scripts" label="Scripts" />
+        <NavItem to={`${base}/brand`} icon="brand" label="Brand" />
+        <NavItem to={`${base}/visibility`} icon="visibility" label="Search & AI" />
         <NavItem to={`${base}/history`} icon="history" label="Version history" />
         <NavItem to={`${base}/online`} icon="globe" label="Online" />
         <NavItem to={`${base}/redirects`} icon="link" label="Redirects" />
