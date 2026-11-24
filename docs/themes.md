@@ -130,7 +130,13 @@ twelve people colours, within 2/255 a channel. It needs a Chromium through
 THEME_PARITY_PLAYWRIGHT=/path/to/a/project/with/playwright-core pnpm --filter @galley/web exec vitest run test/themes/parity.browser.test.ts
 ```
 
-Without `THEME_PARITY_PLAYWRIGHT` it is skipped, and says so.
+Without `THEME_PARITY_PLAYWRIGHT` it is skipped, and says so. So that a change
+can't slip past where it is skipped (CI among them),
+`packages/web/test/themes/parity-guard.test.ts` runs everywhere: it records a
+hash of exactly the CSS the engine mirrors (`tokens.css` §2, §3, §5–8, every
+proof and status ink, `styles/themes.css`, and `look.css`'s accent tints), and
+fails on any edit to it until the browser test has been run again and the new
+hash recorded.
 
 Where the README's reference numbers and the CSS differ, the CSS is what
 ships and the engine follows it:
