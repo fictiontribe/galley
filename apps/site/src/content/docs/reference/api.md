@@ -144,6 +144,8 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `POST /api/sites/:siteId/media/images/check` | Run the Cloudflare Images check — on the body's settings (nothing is saved), or on the saved ones. | `Partial<MediaImagesConnectRequest>` | `MediaCheckResult` | Owners |
 | `PUT /api/sites/:siteId/media/images` | Check, and only when that passes keep pictures in Cloudflare Images (galley.config.json `media.images`). | `MediaImagesConnectRequest` | `MediaImagesConnectResult` | Owners |
 | `DELETE /api/sites/:siteId/media/images` | Pictures go where other files go again. | `?forgetKeys?` | `MediaStorageStatus` | Owners |
+| `POST /api/sites/:siteId/media/storage/make-bucket` | "Make the bucket for me": an R2 bucket and its r2.dev address, with the site's Cloudflare key (it needs Workers R2 Storage › Edit). | `{ account, name }` | `{ created, config }` | Owners |
+| `DELETE /api/sites/:siteId/media/storage/made-bucket` | Remove the bucket Galley made — only that one, once the site no longer uses it and it is empty. | — | `MediaStorageStatus` | Owners |
 | `GET /api/sites/:siteId/media/usage` | Where an address is used: pages of the working copy (with titles) and files of the published version. | `?url` | `MediaUsage` | Any signed-in person |
 | `POST /api/sites/:siteId/media/storage/delete` | Delete files from the bucket or Cloudflare Images, for good (it can't be discarded). | `{ paths }` | `MediaStoreDeleteResult` | Editors and owners |
 | `POST /api/sites/:siteId/media/storage/move/plan` | What moving files (to the bucket and back) or changing the bucket's address would do. | `MediaMoveRequest` | `MediaMovePlan` | Owners |

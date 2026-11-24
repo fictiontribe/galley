@@ -457,6 +457,8 @@ Options for connect
       --variant <name>   Images: the variant pages ask for (default public)
       --delivery-url <u> Images: deliver from a domain of the same Cloudflare account
       --use-deploy-key   Images: use the site's Cloudflare key for putting it online
+      --make-bucket      R2: make the bucket and its r2.dev address with the site's
+                         Cloudflare key (it needs Workers R2 Storage › Edit)
   The key is read from GALLEY_MEDIA_ACCESS_KEY_ID and GALLEY_MEDIA_SECRET_ACCESS_KEY
   (Images: GALLEY_MEDIA_IMAGES_TOKEN), or asked for (nothing is shown as you
   paste). It is never a flag.
@@ -467,6 +469,7 @@ Options for move
       --keep-copies      Moving to the bucket: keep the repository's copies too
 Options
       --images           disconnect: stop using Cloudflare Images instead of the bucket
+      --remove-made-bucket  disconnect: also remove the bucket Galley made (it must be empty)
       --forget-keys      disconnect: remove its key from this computer too
   -y, --yes              Don't ask before moving or disconnecting
       --json             Print the result as JSON

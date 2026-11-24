@@ -32,6 +32,11 @@ entry says how.
   site's Cloudflare key for putting it online when that key has Cloudflare
   Images › Edit. New configuration key `media.images`; new routes under
   `/api/sites/:siteId/media/images`. Not yet run against the live service.
+- **Make the bucket for me** (Cloudflare R2): with the site's Cloudflare key
+  for putting it online (it needs Workers R2 Storage › Edit), Galley makes
+  the bucket and its r2.dev address; the key for its files is still made by
+  hand. Another S3-compatible store (Backblaze B2, Spaces, Wasabi, MinIO) is
+  a fourth choice.
 
 ### Changed
 

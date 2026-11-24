@@ -13,7 +13,7 @@
 import { BUCKET_CONNECTORS, connectorInfo, isTrialAddress, normalizeStorageConfig, settingsProblems } from "@galley/core/media-storage/info";
 import { IMAGES_INFO, imagesSettingsProblems, normalizeImagesConfig } from "@galley/core/media-storage/images-info";
 import { randomUUID } from "node:crypto";
-import type { MediaCheckResult, MediaCheckStep, MediaCheckStepId, MediaConnectRequest, MediaImagesConnectRequest, MediaKeyStatus, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaUsage } from "@galley/core/media-storage/contract";
+import type { MediaCreatedRecord, MediaCheckResult, MediaCheckStep, MediaCheckStepId, MediaConnectRequest, MediaImagesConnectRequest, MediaKeyStatus, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaUsage } from "@galley/core/media-storage/contract";
 import type { Job, MediaImagesConfig, MediaItem, MediaStorageConfig } from "@galley/core/types";
 import type { Handlers, MockBackend } from "./backend.ts";
 import { MockError } from "./site.ts";
@@ -29,6 +29,8 @@ type MediaStorageKey =
   | "DELETE /api/sites/:siteId/media/images"
   | "GET /api/sites/:siteId/media/usage"
   | "POST /api/sites/:siteId/media/storage/delete"
+  | "POST /api/sites/:siteId/media/storage/make-bucket"
+  | "DELETE /api/sites/:siteId/media/storage/made-bucket"
   | "POST /api/sites/:siteId/media/storage/move/plan"
   | "POST /api/sites/:siteId/media/storage/move";
 
@@ -51,6 +53,7 @@ export interface MockSiteStorage {
   /** The pretend bucket's files, newest first. */
   bucket: Array<MediaItem & { published: boolean }>;
   images: MediaImagesConfig | null;
+  created: MediaCreatedRecord | null;
   imagesToken: string | null;
   imagesUseDeployKey: boolean;
 }
@@ -64,7 +67,7 @@ export function createMockMediaStorage(mock: MockBackend) {
     let state = sites.get(siteId);
 
     if (!state) {
-      state = { config: null, keys: { accessKeyId: null, secretAccessKey: null }, bucket: [], images: null, imagesToken: null, imagesUseDeployKey: false };
+      state = { config: null, keys: { accessKeyId: null, secretAccessKey: null }, bucket: [], images: null, created: null, imagesToken: null, imagesUseDeployKey: false };
       sites.set(siteId, state);
     }
     return state;
@@ -83,7 +86,7 @@ export function createMockMediaStorage(mock: MockBackend) {
         config: state.config,
         store: info ? { id: info.id, name: info.name } : null,
         keys: { accessKeyId: keyStatus(state.keys.accessKeyId), secretAccessKey: keyStatus(state.keys.secretAccessKey) },
-        created: null,
+        created: state.created,
         ...(state.config && isTrialAddress(state.config.publicUrl) ? { trialAddress: true } : {}),
       },
       images: {
@@ -298,6 +301,22 @@ export function createMockMediaStorage(mock: MockBackend) {
   }
 
   const handlers: Pick<Handlers, MediaStorageKey> = {
+    "POST /api/sites/:siteId/media/storage/make-bucket": async ({ params, body }) => {
+      await sleep(900);
+      const problems = settingsProblems({ connector: "r2", account: body.account.trim().toLowerCase(), bucket: body.name.trim(), publicUrl: "https://example.com" });
+      if (problems.length) throw new MockError("invalid", problems.map((p) => p.message).join(" "));
+      if (body.name.startsWith("taken")) throw new MockError("invalid", `A bucket called “${body.name}” already exists. Choose another name.`);
+      const created: MediaCreatedRecord = { provider: "cloudflare", account: body.account.trim().toLowerCase(), bucket: body.name.trim(), publicUrl: `https://pub-${randomUUID().replace(/-/g, "").slice(0, 32)}.r2.dev`, createdAt: new Date().toISOString() };
+      of(params.siteId).created = created;
+      return { created, config: { connector: "r2", account: created.account, bucket: created.bucket, publicUrl: created.publicUrl } };
+    },
+    "DELETE /api/sites/:siteId/media/storage/made-bucket": ({ params }) => {
+      const state = of(params.siteId);
+      if (!state.created) throw new MockError("not-found", "Galley hasn't made a bucket for this site.");
+      if (state.config?.bucket === state.created.bucket) throw new MockError("conflict", `The site still keeps new files in “${state.created.bucket}”. Stop using the bucket first.`);
+      state.created = null;
+      return status(params.siteId);
+    },
     "POST /api/sites/:siteId/media/images/check": ({ params, body }) => checkImages(params.siteId, body ?? {}),
     "PUT /api/sites/:siteId/media/images": async ({ params, body }) => {
       const verdict = await checkImages(params.siteId, body);

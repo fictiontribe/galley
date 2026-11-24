@@ -38,6 +38,8 @@ One bucket at most, and Cloudflare Images at most, together or alone. With both,
 
 A bucket made in a jurisdiction (such as the EU) is reached at its own S3 address: paste it under *S3 address of a jurisdiction bucket*.
 
+**Make the bucket for me.** When the site already has a Cloudflare key for putting it online, Galley can do steps 1 and 2 with it: choose **Cloudflare R2**, then **Make the bucket for me**, with the account ID and a name. It makes the bucket and turns on its r2.dev address, and fills in the fields; you still make the key for its files (step 3), because a key for putting a site online shouldn't be able to make other keys. The site's key needs **Account › Workers R2 Storage › Edit** for this; Galley says so if it hasn't. From a terminal: `galley media connect --connector r2 --make-bucket`. Galley can later remove that bucket — only that one, and only once nothing uses it and it is empty.
+
 Another store that speaks the S3 API — Backblaze B2, DigitalOcean Spaces, Wasabi, MinIO — works the same way: choose **Another S3-compatible store** and give its S3 address and region name as the store shows them. Galley addresses the bucket in the path (`address/bucket/file`), which these stores accept.
 
 ## Amazon S3, step by step

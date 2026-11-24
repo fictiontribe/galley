@@ -13,6 +13,7 @@
 import { GalleyError } from "../errors";
 import type { EventBus, GalleyConfig, Job, MediaImagesConfig, MediaItem, MediaStorageConfig, SettingsService, SiteService } from "../types";
 import { createImagesStore, deliveryBase } from "./cloudflare-images";
+import { makeR2Bucket, removeR2Bucket } from "./cloudflare-r2";
 import { IMAGES_INFO, imagesSettingsProblems, normalizeImagesConfig } from "./images-info";
 import { createJobTracker } from "../site/jobs";
 import { requireLevel } from "../install/caller";
@@ -22,7 +23,7 @@ import { planMove, runMove, type MoveContext, type MoveOutcome } from "./move";
 import { checkUpload, mediaSubfolder } from "../workspace/media";
 import { createBucketStore } from "./bucket-store";
 import { runCheck, settingsFailure, testNameFor } from "./check";
-import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaImagesStatus, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaStoreLocation, MediaUsage } from "./contract";
+import type { MediaCreatedRecord, MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaImagesStatus, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaStoreLocation, MediaUsage } from "./contract";
 import { createMediaLibrary, type LibraryItem, type MediaLibrary } from "./library";
 import { BUCKET_CONNECTORS, isTrialAddress, normalizePrefix, normalizeStorageConfig, settingsProblems } from "./info";
 import { createMediaKeys, normalizeMediaKey, scrub, type MediaKeys } from "./keys";
@@ -96,6 +97,13 @@ export interface MediaStorageService {
   connectImages(site: SiteService, request: MediaImagesConnectRequest): Promise<MediaImagesConnectResult>;
   /** Pictures go where other files go again. Pictures already in Images stay, and pages using them keep working. */
   disconnectImages(site: SiteService, options?: { forgetKeys?: boolean }): Promise<MediaStorageStatus>;
+
+  // ── "Make the bucket for me" on Cloudflare, with the site's Cloudflare key
+
+  /** Makes an R2 bucket and its r2.dev address. Saves nothing else: the key for its files is still made by hand. */
+  makeBucket(site: SiteService, request: { account: string; name: string }): Promise<{ created: MediaCreatedRecord; config: MediaStorageConfig }>;
+  /** Removes the bucket Galley made (only that one, and only when nothing uses it and it is empty). */
+  removeMadeBucket(site: SiteService): Promise<MediaStorageStatus>;
 
   // ── the library, for the site service (SiteDeps.media)
 
@@ -234,7 +242,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
           config,
           store: connector ? { id: connector.info.id, name: connector.info.name } : null,
           keys: { accessKeyId, secretAccessKey },
-          created: null,
+          created: await madeRecord(site.id),
           ...(config && isTrialAddress(config.publicUrl) ? { trialAddress: true } : {}),
         },
         images: await imagesStatus(site),
@@ -307,6 +315,49 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       await useDeployKey.set(site.id, request.useDeployKey ? !request.token : false);
       await writeImages(site, config);
       return { check, status: await service.status(site) };
+    },
+
+    async makeBucket(site, request) {
+      guard("POST /api/sites/:siteId/media/storage/make-bucket");
+      const token = (await options.settings?.readSecret("cloudflare", { siteId: site.id }).catch(() => null)) ?? null;
+
+      if (!token) throw new GalleyError("unconfigured", "The site has no Cloudflare key for putting it online yet. Make the bucket by hand, or set up Online first.");
+      const account = request.account.trim().toLowerCase();
+      const name = request.name.trim();
+      const probe = settingsProblems({ connector: "r2", account, bucket: name, publicUrl: "https://example.com" });
+
+      if (probe.length) throw new GalleyError("invalid", probe.map((problem) => problem.message).join(" "));
+      let publicUrl: string;
+
+      try {
+        ({ publicUrl } = await makeR2Bucket({ account, token, ...r2Api() }, name));
+      } catch (error) {
+        if (error instanceof StoreError) throw new GalleyError(error.transient ? "busy" : "invalid", scrub(error.message), error.detail ? scrub(error.detail) : undefined);
+        throw error;
+      }
+      const created: MediaCreatedRecord = { provider: "cloudflare", account, bucket: name, publicUrl, createdAt: new Date(clock()).toISOString() };
+
+      await keys.setRaw(site.id, "media:created", JSON.stringify(created));
+      return { created, config: { connector: "r2", account, bucket: name, publicUrl } };
+    },
+
+    async removeMadeBucket(site) {
+      guard("DELETE /api/sites/:siteId/media/storage/made-bucket");
+      const created = await madeRecord(site.id);
+
+      if (!created) throw new GalleyError("not-found", "Galley hasn't made a bucket for this site.");
+      if ((await savedConfig(site))?.bucket === created.bucket) throw new GalleyError("conflict", `The site still keeps new files in “${created.bucket}”. Stop using the bucket first.`);
+      const token = (await options.settings?.readSecret("cloudflare", { siteId: site.id }).catch(() => null)) ?? null;
+
+      if (!token) throw new GalleyError("unconfigured", "The site's Cloudflare key is gone, so the bucket can't be removed from here. Remove it in R2 on Cloudflare.");
+      try {
+        await removeR2Bucket({ account: created.account, token, ...r2Api() }, created.bucket);
+      } catch (error) {
+        if (error instanceof StoreError) throw new GalleyError(error.transient ? "busy" : "conflict", scrub(error.message), error.detail ? scrub(error.detail) : undefined);
+        throw error;
+      }
+      await keys.setRaw(site.id, "media:created", null);
+      return service.status(site);
     },
 
     async disconnectImages(site, disconnect = {}) {
@@ -515,6 +566,22 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       return result;
     },
   };
+
+  async function madeRecord(siteId: string): Promise<MediaCreatedRecord | null> {
+    try {
+      const raw = await keys.raw(siteId, "media:created");
+
+      return raw ? (JSON.parse(raw) as MediaCreatedRecord) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function r2Api(): { apiBase?: string; fetch?: typeof fetch } {
+    const apiBase = options.imagesApi ?? options.env?.GALLEY_MEDIA_IMAGES_API;
+
+    return { ...(apiBase ? { apiBase } : {}), ...(options.fetch ? { fetch: options.fetch } : {}) };
+  }
 
   /** Whether the site uses its Cloudflare key for putting it online as the Images token (a flag in its media key file). */
   const useDeployKey = {

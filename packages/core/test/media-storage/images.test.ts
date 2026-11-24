@@ -206,3 +206,32 @@ describe("a site with pictures in Images and other files in a bucket", { timeout
     await done();
   });
 });
+
+describe("make the bucket for me", () => {
+  it("makes an R2 bucket and its r2.dev address with the site's Cloudflare key, and removes only that one", async () => {
+    images.addAccount("b".repeat(32), { hash: "MakeHash001" });
+    images.addAccount("d".repeat(32), { hash: "NoR2Hash001", r2: false });
+    images.addToken({ value: "deploy-with-r2-0123456789abcdefghijklm", accounts: {}, r2: ["b".repeat(32), "d".repeat(32)] });
+    const without = await service({ deployKey: DEPLOY });
+    const site = fakeSite();
+
+    await expect(without.storage.makeBucket(site.site, { account: "b".repeat(32), name: "lowfield-media" })).rejects.toThrow(/add Account › Workers R2 Storage › Edit/);
+    await without.done();
+    const { storage, done } = await service({ deployKey: "deploy-with-r2-0123456789abcdefghijklm" });
+
+    await expect(storage.makeBucket(site.site, { account: "d".repeat(32), name: "lowfield-media" })).rejects.toThrow(/R2 isn't turned on/);
+    const made = await storage.makeBucket(site.site, { account: "b".repeat(32), name: "lowfield-media" });
+
+    expect(made.config).toMatchObject({ connector: "r2", bucket: "lowfield-media", publicUrl: expect.stringMatching(/^https:\/\/pub-.*\.r2\.dev$/) });
+    expect(images.accounts.get("b".repeat(32))!.buckets.get("lowfield-media")?.devUrl).toBe(true);
+    expect((await storage.status(site.site)).bucket.created?.bucket).toBe("lowfield-media");
+    await expect(storage.makeBucket(site.site, { account: "b".repeat(32), name: "lowfield-media" })).rejects.toThrow(/already exists/);
+    images.accounts.get("b".repeat(32))!.buckets.set("someone-elses", { devUrl: false, files: 3 });
+    images.accounts.get("b".repeat(32))!.buckets.get("lowfield-media")!.files = 2;
+    await expect(storage.removeMadeBucket(site.site)).rejects.toThrow(/still has files/);
+    images.accounts.get("b".repeat(32))!.buckets.get("lowfield-media")!.files = 0;
+    expect((await storage.removeMadeBucket(site.site)).bucket.created).toBeNull();
+    expect([...images.accounts.get("b".repeat(32))!.buckets.keys()]).toEqual(["someone-elses"]);
+    await done();
+  });
+});

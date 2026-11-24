@@ -44,6 +44,7 @@ import type {
   Job,
   JsonValue,
   MediaItem,
+  MediaStorageConfig,
   MetaInfo,
   OpenSiteRequest,
   PreviewStatus,
@@ -72,7 +73,7 @@ import type { CloudflareCheck, CloudflarePlan, ImportMode, ImportResolutions, Im
 import type { AddSitesRequest, AddSitesResult, ScanSitesRequest, ScanSitesResult, SiteConnections, SiteGroup, SiteGroupInput, SitePatch, SiteUsageTotals } from "./types";
 import type { DeployKeyInfo, InstallInfo, RestoreUpload, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./install/types";
 import type { Account, AccountRole, AccountSession, Invitation, LinkPreview, OneTimeLink, People } from "./install/accounts";
-import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaLibraryAnswer, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaUsage } from "./media-storage/contract";
+import type { MediaCreatedRecord, MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaLibraryAnswer, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaUsage } from "./media-storage/contract";
 import type { EditorHostAbsent, EditorHostAccount, EditorHostInfo, HostedEditorBackup, HostedEditorPlan, HostedEditorRemoval, HostedEditorRequest, HostedEditorStatus } from "./hosting/types";
 
 /**
@@ -516,6 +517,10 @@ export interface ApiRoutes {
   "PUT /api/sites/:siteId/media/images": { body: MediaImagesConnectRequest; response: MediaImagesConnectResult };
   /** Pictures go where other files go again. Pictures already in Images stay. `forgetKeys`: remove its token too. */
   "DELETE /api/sites/:siteId/media/images": { query: { forgetKeys?: boolean }; response: MediaStorageStatus };
+  /** "Make the bucket for me": an R2 bucket and its r2.dev address, with the site's Cloudflare key (it needs Workers R2 Storage › Edit). Saves nothing else. */
+  "POST /api/sites/:siteId/media/storage/make-bucket": { body: { account: string; name: string }; response: { created: MediaCreatedRecord; config: MediaStorageConfig } };
+  /** Remove the bucket Galley made — only that one, once the site no longer uses it and it is empty. */
+  "DELETE /api/sites/:siteId/media/storage/made-bucket": { response: MediaStorageStatus };
   /** Where an address is used: pages of the working copy (with titles) and files of the published version. */
   "GET /api/sites/:siteId/media/usage": { query: { url: string }; response: MediaUsage };
   /**

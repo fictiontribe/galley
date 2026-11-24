@@ -235,6 +235,56 @@ function Summary({ siteId, status, onEdit, onStop, onChecked }: { siteId: string
   );
 }
 
+/** "Make the bucket for me": with the site's Cloudflare key, an R2 bucket and its r2.dev address; the key for its files is still made by hand. */
+function MakeBucket({ siteId, onMade }: { siteId: string; onMade: (config: MediaStorageConfig) => void }) {
+  const [account, setAccount] = useState("");
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [made, setMade] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="media-storage__make app-card app-card--pad">
+      <h3 className="media-storage__step-title">Make the bucket for me</h3>
+      <p className="g-hint">With the site’s Cloudflare key for putting it online, Galley makes the bucket and turns on its r2.dev address for trying out. The key needs Account › Workers R2 Storage › Edit. You still make the key for its files (step 3).</p>
+      {made ? (
+        <p className="deploy-key__stored" role="status">
+          <Icon name="check" /> <span>{made}</span>
+        </p>
+      ) : (
+        <div className="media-storage__make-row">
+          <Field label="Account ID" error={error ?? undefined}>
+            <Input mono size="sm" value={account} placeholder="4f0c…" onChange={(event) => setAccount(event.target.value)} />
+          </Field>
+          <Field label="Bucket name">
+            <Input mono size="sm" value={name} placeholder="lowfield-media" onChange={(event) => setName(event.target.value)} />
+          </Field>
+          <Button
+            size="sm"
+            variant="secondary"
+            busy={busy}
+            disabled={!account.trim() || !name.trim()}
+            onClick={() => {
+            setBusy(true);
+            setError(null);
+            void api("POST /api/sites/:siteId/media/storage/make-bucket", { params: { siteId }, body: { account, name } })
+              .then(
+                (answer) => {
+                  setMade(`Made “${answer.created.bucket}” at ${answer.created.publicUrl}. Its fields below are filled in; make its key (step 3) and paste it.`);
+                  onMade(answer.config);
+                },
+                (failure: unknown) => setError(errorShape(failure).message)
+              )
+              .finally(() => setBusy(false));
+            }}
+          >
+            Make it
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CheckAgain({ siteId, what, onChecked }: { siteId: string; what: "bucket" | "images"; onChecked: (result: MediaCheckResult) => void }) {
   const [busy, setBusy] = useState(false);
   return (
@@ -413,6 +463,15 @@ export function ConnectBucketDialog({ siteId, open, onClose }: { siteId: string;
             {info ? (
               <>
                 {info.why ? <p className="media-storage__why">{info.why}</p> : null}
+                {connector === "r2" && status.data.cloudflare.keyStored && !(bucketConfig && bucketConfig.connector === "r2") ? (
+                  <MakeBucket
+                    siteId={siteId}
+                    onMade={(config) => {
+                      setValues((current) => ({ ...current, account: config.account ?? "", bucket: config.bucket, publicUrl: config.publicUrl }));
+                      setResult(null);
+                    }}
+                  />
+                ) : null}
                 <ProviderSteps info={info} values={values} />
                 <p className="deploy-key__grants">
                   <Icon name="key" />

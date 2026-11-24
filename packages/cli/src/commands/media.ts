@@ -38,6 +38,8 @@ Options for connect
       --variant <name>   Images: the variant pages ask for (default public)
       --delivery-url <u> Images: deliver from a domain of the same Cloudflare account
       --use-deploy-key   Images: use the site's Cloudflare key for putting it online
+      --make-bucket      R2: make the bucket and its r2.dev address with the site's
+                         Cloudflare key (it needs Workers R2 Storage › Edit)
   The key is read from ${MEDIA_KEY_ENV.accessKeyId} and ${MEDIA_KEY_ENV.secretAccessKey}
   (Images: ${MEDIA_KEY_ENV.imagesToken}), or asked for (nothing is shown as you
   paste). It is never a flag.
@@ -50,6 +52,7 @@ Options for move
 
 Options
       --images           disconnect: stop using Cloudflare Images instead of the bucket
+      --remove-made-bucket  disconnect: also remove the bucket ${PRODUCT.name} made (it must be empty)
       --forget-keys      disconnect: remove its key from this computer too
   -y, --yes              Don't ask before moving or disconnecting
       --json             Print the result as JSON
@@ -91,6 +94,8 @@ export async function mediaCommand(argv: string[], io: DeployIo): Promise<number
       variant: { type: "string" },
       "delivery-url": { type: "string" },
       "use-deploy-key": { type: "boolean" },
+      "make-bucket": { type: "boolean" },
+      "remove-made-bucket": { type: "boolean" },
       from: { type: "string" },
       images: { type: "boolean" },
       to: { type: "string" },
@@ -161,8 +166,9 @@ export async function mediaCommand(argv: string[], io: DeployIo): Promise<number
           if (!/^y(es)?$/i.test(await withPrompt.prompt(`New files go to the repository again; the bucket's files stay. Go ahead? [y/N] `))) return 1;
         }
         await storage.disconnect(engine.site, { forgetKeys: Boolean(values["forget-keys"]) });
-        if (json) io.out(JSON.stringify({ ok: true }));
-        else io.out(`✓ New files go to the repository again. The files in ${current.bucket.config.bucket} stay there, and pages that use them keep working.`);
+        const removed = values["remove-made-bucket"] ? (await storage.removeMadeBucket(engine.site), true) : false;
+        if (json) io.out(JSON.stringify({ ok: true, removed }));
+        else io.out(removed ? `✓ New files don't go to the bucket any more, and ${current.bucket.config.bucket} was removed.` : `✓ New files don't go to the bucket any more. The files in ${current.bucket.config.bucket} stay there, and pages that use them keep working.`);
         return 0;
       }
     }
@@ -226,6 +232,15 @@ async function connect(io: DeployIo, storage: MediaStorageService, site: Paramet
     const value = option(flag, saved?.[field]);
 
     if (value) config[field] = value;
+  }
+  if (values["make-bucket"]) {
+    if (connector !== "r2") throw new UsageError("--make-bucket makes an R2 bucket: use it with --connector r2.");
+    if (!config.account) config.account = await ask(io, "Account ID: ");
+    if (!config.bucket) config.bucket = await ask(io, "Name for the new bucket: ");
+    const made = await storage.makeBucket(site, { account: config.account, name: config.bucket });
+
+    config.publicUrl = made.created.publicUrl;
+    if (!json) io.err(`Made ${made.created.bucket} at ${made.created.publicUrl} (an r2.dev address, for trying out). Now make its key on Cloudflare: R2 › Overview › API Tokens › Create Account API token, Object Read & Write on this bucket.`);
   }
   // Ask only for what this kind of bucket needs and wasn't given.
   for (const field of info.fields) {

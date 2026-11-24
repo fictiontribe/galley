@@ -21,6 +21,12 @@
  *  - storage not on the Paid plan: 403 with a sentence naming the plan;
  *  - a missing image: 404 with code 5404 "Image not found";
  *  - too large: 413.
+ *
+ * It also answers the R2 bucket calls "Make the bucket for me" uses (same API
+ * origin): POST /accounts/:account/r2/buckets { name }, PUT …/:name/domains/managed
+ * { enabled } → { bucketId, domain, enabled }, DELETE …/:name — from the API
+ * reference; the refusals (a taken name 409/10004, R2 not turned on 403/10042,
+ * not empty 409/10008) are assumed.
  */
 import { randomUUID } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -43,12 +49,17 @@ export interface FakeImagesAccount {
   flexibleVariants: boolean;
   variants: Set<string>;
   images: Map<string, FakeImage>;
+  /** R2 is turned on for the account. */
+  r2: boolean;
+  buckets: Map<string, { devUrl: boolean; files: number }>;
 }
 
 export interface FakeImagesToken {
   value: string;
-  /** account id → "read" | "write". */
+  /** account id → "read" | "write" (Cloudflare Images). */
   accounts: Record<string, "read" | "write">;
+  /** account ids where it has Workers R2 Storage Write. */
+  r2?: string[];
 }
 
 export interface FakeImagesLog {
@@ -66,7 +77,7 @@ export interface FakeImages {
   accounts: Map<string, FakeImagesAccount>;
   tokens: Map<string, FakeImagesToken>;
   log: FakeImagesLog[];
-  addAccount(id: string, options?: Partial<Pick<FakeImagesAccount, "hash" | "paid" | "flexibleVariants">>): FakeImagesAccount;
+  addAccount(id: string, options?: Partial<Pick<FakeImagesAccount, "hash" | "paid" | "flexibleVariants" | "r2">>): FakeImagesAccount;
   addToken(token: FakeImagesToken): void;
   /** Rewrites a real delivery address onto the stand-in's origin (for `fetch` in tests). */
   local(url: string): string;
@@ -142,8 +153,44 @@ export async function startFakeImages(): Promise<FakeImages> {
 
   let deliveryOrigin = "";
 
+  async function handleR2(req: IncomingMessage, res: ServerResponse, accountId: string, rest: string): Promise<{ status: number; code?: number }> {
+    const account = accounts.get(accountId);
+    const token = tokens.get(/^Bearer (.+)$/.exec(req.headers.authorization ?? "")?.[1] ?? "");
+
+    if (!account) return envelope(res, 404, null, { code: 7003, message: `Could not route to /accounts/${accountId}/r2/buckets, perhaps your object identifier is invalid?` });
+    if (!token?.r2?.includes(account.id)) return envelope(res, 403, null, { code: 10000, message: "Authentication error" });
+    if (!account.r2) return envelope(res, 403, null, { code: 10042, message: "Please enable R2 through the Cloudflare Dashboard." });
+    const body = req.method === "POST" || req.method === "PUT" ? (JSON.parse((await read(req)).toString("utf8") || "{}") as { name?: string; enabled?: boolean }) : {};
+
+    if (req.method === "POST" && !rest) {
+      const name = body.name ?? "";
+
+      if (!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(name)) return envelope(res, 400, null, { code: 10005, message: "The specified bucket name is not valid." });
+      if (account.buckets.has(name)) return envelope(res, 409, null, { code: 10004, message: "The bucket you tried to create already exists, and you own it." });
+      account.buckets.set(name, { devUrl: false, files: 0 });
+      return envelope(res, 200, { name, creation_date: new Date().toISOString(), location: "ENAM" });
+    }
+    const [name = "", sub = ""] = rest.split("/").map(decodeURIComponent).filter(Boolean).length ? [decodeURIComponent(rest.split("/")[0] ?? ""), rest.split("/").slice(1).join("/")] : ["", ""];
+    const bucket = account.buckets.get(name);
+
+    if (!bucket) return envelope(res, 404, null, { code: 10006, message: "The specified bucket does not exist." });
+    if (req.method === "PUT" && sub === "domains/managed") {
+      bucket.devUrl = Boolean(body.enabled);
+      return envelope(res, 200, { bucketId: `id${name}`, domain: `pub-${account.hash.toLowerCase()}${name.length}.r2.dev`, enabled: bucket.devUrl });
+    }
+    if (req.method === "DELETE" && !sub) {
+      if (bucket.files > 0) return envelope(res, 409, null, { code: 10008, message: "The bucket you tried to delete is not empty." });
+      account.buckets.delete(name);
+      return envelope(res, 200, {});
+    }
+    return envelope(res, 405, null, { code: 10405, message: "Method not allowed" });
+  }
+
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<{ status: number; code?: number }> {
     const url = new URL(req.url ?? "/", "http://fake");
+    const r2 = /^\/client\/v4\/accounts\/([^/]+)\/r2\/buckets(?:\/(.*))?$/.exec(url.pathname);
+
+    if (r2) return handleR2(req, res, r2[1]!, r2[2] ?? "");
     const match = /^\/client\/v4\/accounts\/([^/]+)\/images\/(v1|v2)(?:\/(.*))?$/.exec(url.pathname);
 
     if (!match) return envelope(res, 404, null, { code: 7000, message: "No route for that URI" });
@@ -275,7 +322,7 @@ export async function startFakeImages(): Promise<FakeImages> {
     tokens,
     log,
     addAccount(id, options = {}) {
-      const account: FakeImagesAccount = { id, hash: options.hash ?? `hash${id.slice(0, 8)}`, paid: options.paid ?? true, flexibleVariants: options.flexibleVariants ?? false, variants: new Set(["public"]), images: new Map() };
+      const account: FakeImagesAccount = { id, hash: options.hash ?? `hash${id.slice(0, 8)}`, paid: options.paid ?? true, flexibleVariants: options.flexibleVariants ?? false, variants: new Set(["public"]), images: new Map(), r2: options.r2 ?? true, buckets: new Map() };
 
       accounts.set(id, account);
       return account;

@@ -310,6 +310,8 @@ const coveredElsewhere: ApiRouteKey[] = [
   "PUT /api/sites/:siteId/media/storage",
   "DELETE /api/sites/:siteId/media/storage",
   "GET /api/sites/:siteId/media/usage",
+  "POST /api/sites/:siteId/media/storage/make-bucket",
+  "DELETE /api/sites/:siteId/media/storage/made-bucket",
   "POST /api/sites/:siteId/media/images/check",
   "PUT /api/sites/:siteId/media/images",
   "DELETE /api/sites/:siteId/media/images",

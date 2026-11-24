@@ -115,3 +115,6 @@
 .media-storage__address { display: grid; gap: var(--space-2); justify-items: start; }
 .media-storage__address .g-field { inline-size: 100%; }
 .media-storage__connection { display: grid; gap: var(--space-3); padding: var(--space-4); border: var(--border-hair) solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-raised); }
+.media-storage__make { display: grid; gap: var(--space-2); }
+.media-storage__make-row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-end; }
+.media-storage__make-row .g-field { flex: 1 1 200px; }

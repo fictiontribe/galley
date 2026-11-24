@@ -22,6 +22,8 @@ type MediaStorageRouteKey =
   | "POST /api/sites/:siteId/media/images/check"
   | "PUT /api/sites/:siteId/media/images"
   | "DELETE /api/sites/:siteId/media/images"
+  | "POST /api/sites/:siteId/media/storage/make-bucket"
+  | "DELETE /api/sites/:siteId/media/storage/made-bucket"
   | "GET /api/sites/:siteId/media/usage"
   | "POST /api/sites/:siteId/media/storage/delete"
   | "POST /api/sites/:siteId/media/storage/move/plan"
@@ -67,6 +69,7 @@ export const checkBody = z
   .optional()
   .transform((value) => value ?? {});
 export const disconnectQuery = z.object({ forgetKeys: z.enum(["true", "false"]).optional() });
+export const makeBucketBody = z.object({ account: shortText(64), name: shortText(63) }).strict();
 export const usageQuery = z.object({ url: z.string().trim().min(1, "it can't be empty").max(2048) });
 const location = z.enum(["repository", "bucket", "images"]);
 export const moveBody = z.discriminatedUnion("kind", [
@@ -148,6 +151,19 @@ export const mediaStorageRoutes: Pick<RouteTable, MediaStorageRouteKey> = {
     const { forgetKeys } = v.query(c, disconnectQuery);
 
     return storage.disconnectImages(await siteOf(c, ctx), { forgetKeys: forgetKeys === "true" });
+  },
+  "POST /api/sites/:siteId/media/storage/make-bucket": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const request = await v.body(c, makeBucketBody);
+    const site = await siteOf(c, ctx);
+
+    return engine(() => storage.makeBucket(site, request));
+  },
+  "DELETE /api/sites/:siteId/media/storage/made-bucket": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const site = await siteOf(c, ctx);
+
+    return engine(() => storage.removeMadeBucket(site));
   },
   "GET /api/sites/:siteId/media/usage": async (c, ctx) => {
     const storage = mediaStorageOf(ctx);
