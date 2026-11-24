@@ -74,53 +74,103 @@ function storeOf(context: MoveContext, location: MediaStoreLocation): MediaStore
   return store;
 }
 
-/** Repository addresses ("/images/team/ana.webp") of the site's media, found in pages. */
-async function repositoryReferences(site: SiteService, items: MediaItem[]): Promise<Map<string, Reference[]>> {
-  const media = (await site.model()).media;
-  const byUrl = new Map(items.map((item) => [decodeSafe(item.url), item.url]));
+/** What may come right before a reference: the start of the text, white space, a quote, a bracket, "=", ">" or a comma. */
+const BEFORE_REFERENCE = /[\s"'`([{=>,]/;
+
+/**
+ * The references in a text, left to right as one scan finds them, each with
+ * where it starts. A match that isn't preceded by one of BEFORE_REFERENCE is
+ * part of something longer ("https://partner.com/images/a.png", "/blog/a.png")
+ * and is not a reference.
+ */
+function referencesIn(text: string, pattern: string): Array<{ match: string; index: number }> {
+  const out: Array<{ match: string; index: number }> = [];
+  const expression = new RegExp(pattern, "g");
+  let start = 0;
+
+  // Line by line, as git grep reads: a reference never runs on past the end of its line.
+  for (const line of text.split("\n")) {
+    for (const found of line.matchAll(expression)) {
+      const at = found.index ?? 0;
+      const match = found[0].replace(/[\r\t].*$/, "");
+
+      if (at > 0 && !BEFORE_REFERENCE.test(line[at - 1]!)) continue;
+      if (match) out.push({ match, index: start + at });
+    }
+    start += line.length + 1;
+  }
+  return out;
+}
+
+/** Every reference `accept` names a file for, by that name: git grep narrows the files, the scan above decides. */
+async function scanReferences(site: SiteService, pattern: string, accept: (match: string) => string | null): Promise<Map<string, Reference[]>> {
   const found = new Map<string, Reference[]>();
 
-  if (!site.grepText) return found;
-  const prefixes = [...new Set(media.roots.map((root) => root.publicPath.replace(/\/+$/, "")))];
-  // One search for all the roots, so an address under two of them ("/" and "/images") is found once.
-  // A root at the top ("/") already covers every other: ERE has no empty alternative.
-  const pattern = prefixes.includes("") ? `/${ADDRESS_TAIL}` : `(${prefixes.map((prefix) => escapePattern(prefix)).join("|")})/${ADDRESS_TAIL}`;
+  if (!site.grepText) throw new GalleyError("internal", "This site's files can't be searched, so nothing was moved.");
+  const paths = new Set((await site.grepText(pattern, { rev: "working" })).map((hit) => hit.path));
 
-  for (const hit of await site.grepText(pattern, { rev: "working" })) {
-    const url = byUrl.get(decodeSafe(trimFound(hit.match).split(/[?#]/)[0] ?? ""));
+  for (const path of [...paths].sort()) {
+    let text: string;
 
-    if (!url) continue;
-    found.set(url, [...(found.get(url) ?? []), hit]);
+    try {
+      text = (await site.readFile(path)).content;
+    } catch {
+      continue;
+    }
+    for (const { match } of referencesIn(text, pattern)) {
+      const name = accept(match);
+
+      if (name !== null) found.set(name, [...(found.get(name) ?? []), { path, match }]);
+    }
   }
   return found;
+}
+
+/** The pattern for the site's own media addresses ("/images/team/ana.webp"), over all its media roots at once. */
+async function repositoryPattern(site: SiteService): Promise<string> {
+  const media = (await site.model()).media;
+  const prefixes = [...new Set(media.roots.map((root) => root.publicPath.replace(/\/+$/, "")))];
+
+  // A root at the top ("/") already covers every other: ERE has no empty alternative.
+  return prefixes.includes("") ? `/${ADDRESS_TAIL}` : `(${prefixes.map((prefix) => escapePattern(prefix)).join("|")})/${ADDRESS_TAIL}`;
+}
+
+/** Repository addresses of the site's media, found in pages, by the address. */
+async function repositoryReferences(site: SiteService, items: MediaItem[]): Promise<Map<string, Reference[]>> {
+  const byUrl = new Map(items.map((item) => [decodeSafe(item.url), item.url]));
+
+  return scanReferences(site, await repositoryPattern(site), (match) => byUrl.get(decodeSafe(trimFound(match).split(/[?#]/)[0] ?? "")) ?? null);
 }
 
 /** A store's addresses found in pages, by key. */
 async function storeReferences(site: SiteService, store: MediaStore): Promise<Map<string, Reference[]>> {
-  const found = new Map<string, Reference[]>();
-
-  if (!site.grepText) return found;
-  for (const hit of await site.grepText(store.addressPattern(), { rev: "working" })) {
-    const key = store.keyOf(trimFound(hit.match));
-
-    if (key !== null) found.set(key, [...(found.get(key) ?? []), hit]);
-  }
-  return found;
+  return scanReferences(site, store.addressPattern(), (match) => store.keyOf(trimFound(match)));
 }
 
-/** The rewrite of every reference, file by file: old address → new, keeping whatever followed it (?query, #hash, punctuation). */
-async function rewrite(site: SiteService, replacements: Map<string, Array<{ match: string; next: string }>>, onFile?: (done: number) => void): Promise<{ rewritten: Set<string>; refused: Map<string, string> }> {
+/**
+ * Rewrites references file by file: each reference the scan finds is passed to
+ * `replace`, and only those it returns a new text for change. Nothing else in
+ * the file is touched.
+ */
+async function rewrite(site: SiteService, paths: Iterable<string>, pattern: string, replace: (match: string) => string | null, onFile?: (done: number) => void): Promise<{ rewritten: Set<string>; refused: Map<string, string> }> {
   const rewritten = new Set<string>();
   const refused = new Map<string, string>();
   let done = 0;
 
-  for (const [path, swaps] of replacements) {
+  for (const path of paths) {
     try {
       const file = await site.readFile(path);
-      let text = file.content;
+      let text = "";
+      let at = 0;
 
-      // Longest first, so a shorter address never cuts into a longer one.
-      for (const swap of [...swaps].sort((a, b) => b.match.length - a.match.length)) text = text.split(swap.match).join(swap.next);
+      for (const { match, index } of referencesIn(file.content, pattern)) {
+        const next = replace(match);
+
+        if (next === null || next === match) continue;
+        text += file.content.slice(at, index) + next;
+        at = index + match.length;
+      }
+      text += file.content.slice(at);
       if (text !== file.content) await site.writeFile(path, text, { origin: "user", mode: "content", baseHash: file.hash });
       rewritten.add(path);
     } catch (error) {
@@ -372,22 +422,33 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
     }
   }
 
-  // 2. Rewrite the references of what was copied.
-  const swaps = new Map<string, Array<{ match: string; next: string }>>();
+  // 2. Rewrite the references of what was copied — only those, where they are.
   const referencedFrom = new Map<string, Set<string>>();
+  const files = new Set<string>();
+  const byOld = new Map<string, Move>();
 
   for (const move of copiedMoves) {
     const list = references.get(request.from === "repository" ? move.oldUrl : move.from) ?? [];
 
     referencedFrom.set(move.from, new Set(list.map((reference) => reference.path)));
-    for (const reference of list) {
-      const next = request.from === "repository" ? swapped(reference.match, move.oldUrl, move.newUrl, true) : fromStore(storeOf(context, request.from), reference.match, move.newUrl);
-
-      swaps.set(reference.path, [...(swaps.get(reference.path) ?? []), { match: reference.match, next }]);
-    }
+    for (const reference of list) files.add(reference.path);
+    byOld.set(request.from === "repository" ? decodeSafe(move.oldUrl) : move.from, move);
   }
-  const pages = swaps.size;
-  const { rewritten, refused } = await rewrite(context.site, swaps, (count) => progress(`Updating pages: ${count} of ${pages}`, 0.65 + 0.25 * (count / Math.max(1, pages))));
+  const source = request.from === "repository" ? null : storeOf(context, request.from);
+  const pattern = source ? source.addressPattern() : await repositoryPattern(context.site);
+  const replace = (match: string): string | null => {
+    if (!source) {
+      const move = byOld.get(decodeSafe(trimFound(match).split(/[?#]/)[0] ?? ""));
+
+      return move ? swapped(match, move.oldUrl, move.newUrl, true) : null;
+    }
+    const key = source.keyOf(trimFound(match));
+    const move = key === null ? undefined : byOld.get(key);
+
+    return move ? fromStore(source, match, move.newUrl) : null;
+  };
+  const pages = files.size;
+  const { rewritten, refused } = await rewrite(context.site, files, pattern, replace, (count) => progress(`Updating pages: ${count} of ${pages}`, 0.65 + 0.25 * (count / Math.max(1, pages))));
 
   for (const [path, reason] of refused) problems.push({ path, reason: `Couldn't update it, so the files it uses stay where they are: ${reason}` });
 
@@ -450,17 +511,14 @@ async function runAddress(context: MoveContext, request: Extract<MediaMoveReques
     if (!ok) throw new GalleyError("invalid", `${new URL(publicUrl).host} doesn't serve this ${store.location === "bucket" ? "bucket's" : "store's"} files yet (tried ${sample.name}). Nothing was changed.`);
   }
   const references = await storeReferences(context.site, store);
-  const swaps = new Map<string, Array<{ match: string; next: string }>>();
+  const files = new Set([...references.values()].flat().map((reference) => reference.path));
+  const replace = (match: string): string | null => {
+    const trimmed = trimFound(match);
+    const next = store.rebase!(trimmed, publicUrl);
 
-  for (const list of references.values()) {
-    for (const reference of list) {
-      const trimmed = trimFound(reference.match);
-      const next = store.rebase!(trimmed, publicUrl);
-
-      if (next) swaps.set(reference.path, [...(swaps.get(reference.path) ?? []), { match: reference.match, next: `${next}${reference.match.slice(trimmed.length)}` }]);
-    }
-  }
-  const { rewritten, refused } = await rewrite(context.site, swaps, (count) => progress(`Updating pages: ${count} of ${swaps.size}`, 0.2 + 0.7 * (count / Math.max(1, swaps.size))));
+    return next ? `${next}${match.slice(trimmed.length)}` : null;
+  };
+  const { rewritten, refused } = await rewrite(context.site, files, store.addressPattern(), replace, (count) => progress(`Updating pages: ${count} of ${files.size}`, 0.2 + 0.7 * (count / Math.max(1, files.size))));
   const problems = [...refused].map(([path, reason]) => ({ path, reason: `Couldn't update it: ${reason}` }));
 
   if (!problems.length) await context.saveAddress(store.location, publicUrl);

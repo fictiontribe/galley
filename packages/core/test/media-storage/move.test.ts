@@ -4,7 +4,7 @@
  * safe to repeat, never overwrites, and every page change is an ordinary
  * pending change.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createMediaStorageService } from "../../src/media-storage/service";
@@ -71,6 +71,35 @@ describe("moving media", { timeout: 240_000 }, () => {
     const second = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
 
     expect(second.copied).toBe(0);
+    await done();
+  });
+
+  it("changes only real references, and a round trip leaves the page byte for byte as it was", async () => {
+    const { storage, site, root, publicUrl, done } = await setUp();
+    const page = join(root, AUTHOR);
+    const lookalikes = [
+      "Partner logo: https://partner.example/images/team/tomas-reyes.svg",
+      "Their copy: //cdn.example/images/team/tomas-reyes.svg",
+      "Elsewhere on the site: /blog/images/team/tomas-reyes.svg and /about/favicon.svg",
+      "In a word: logo/favicon.svg",
+      "A real one: ![Icon](/favicon.svg) and src=\"/images/team/tomas-reyes.svg?v=2\".",
+    ].join("\n");
+    const original = `${readFileSync(page, "utf8")}\n${lookalikes}\n`;
+
+    writeFileSync(page, original);
+    await storage.move(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true });
+    const moved = readFileSync(page, "utf8");
+
+    expect(moved).toContain("https://partner.example/images/team/tomas-reyes.svg");
+    expect(moved).toContain("//cdn.example/images/team/tomas-reyes.svg");
+    expect(moved).toContain("/blog/images/team/tomas-reyes.svg and /about/favicon.svg");
+    expect(moved).toContain("In a word: logo/favicon.svg");
+    expect(moved).toContain(`![Icon](${publicUrl}/lowfield/favicon.svg)`);
+    expect(moved).toContain(`src="${publicUrl}/lowfield/team/tomas-reyes.svg?v=2"`);
+    expect(moved).toContain(`photo: ${publicUrl}/lowfield/team/tomas-reyes.svg`);
+
+    await storage.move(site, { kind: "move", from: "bucket", to: "repository" });
+    expect(readFileSync(page, "utf8")).toBe(original);
     await done();
   });
 
