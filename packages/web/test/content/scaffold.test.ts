@@ -95,6 +95,17 @@ describe("what a new section starts with", () => {
     expect(newSection({ ...film, samples: [], exampleDeclared: true }, "type").value.video).toBe("galley-demo");
   });
 
+  it("leaves out an optional group that would hold nothing but blanks, and keeps one with a setting in it", () => {
+    const split: BlockType = {
+      type: "split",
+      label: "Text and picture",
+      count: 1,
+      fields: [f("heading", "string"), f("cta", "object", false, { fields: [f("label", "string"), f("href", "url")] }), f("media", "object", false, { fields: [f("side", "select", true, { options: ["left", "right"] }), f("caption", "string", false)] })],
+      example: { type: "split", heading: "H", cta: { label: "Go", href: "/go/" }, media: { side: "left", caption: "c" } },
+    };
+    expect(newSection(split, "type").value).toEqual({ type: "split", heading: "", media: { side: "left" } });
+  });
+
   it("stays blank when there is nothing to borrow", () => {
     const { value, borrowed } = newSection({ ...film, samples: [], example: { type: "film" } }, "type");
     expect(value).toMatchObject({ video: "", poster: "", author: "", published: "" });

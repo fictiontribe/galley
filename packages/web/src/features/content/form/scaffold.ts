@@ -82,7 +82,19 @@ function blankValue(value: JsonValue, field: Field | undefined): JsonValue | und
     if (isObject(first)) return [blankObject(first, field?.of?.fields ?? [])];
     return required ? [""] : undefined;
   }
-  return blankObject(value, field?.fields ?? []);
+  const out = blankObject(value, field?.fields ?? []);
+  // An optional group (a second button, a link) left with nothing of its own is left out, as optional words are.
+  if (field && !required && !holdsSomething(out)) return undefined;
+  return out;
+}
+
+/** Whether a blanked value still says anything: some text, a number, a switch that's on. */
+function holdsSomething(value: JsonValue): boolean {
+  if (typeof value === "string") return value !== "";
+  if (typeof value === "number") return true;
+  if (typeof value === "boolean") return value;
+  if (Array.isArray(value)) return value.some(holdsSomething);
+  return value !== null && Object.values(value).some(holdsSomething);
 }
 
 function blankObject(source: JsonObject, fields: readonly Field[], keep: readonly string[] = []): JsonObject {

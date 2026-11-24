@@ -91,15 +91,18 @@ export function NoLiveSite({ siteId }: { siteId: string }) {
  * Over a proposed page that couldn't be drawn: what happened in plain words,
  * the framework's own line under Technical details, the way back when the
  * failure began with a change made here, and the site's error page itself
- * one click away (`onReveal`) for whoever wants the whole of it.
+ * one click away (`onReveal`) for whoever wants the whole of it. Set calmly,
+ * like the preview's other states: the person's work is safe. In Arrange
+ * (`actions` false) the panel beside the page carries the words and the way
+ * back, so this only names what happened.
  */
 export function PageFailedState({ failure, onReveal, actions = true }: { failure: PageFailure; onReveal: () => void; actions?: boolean }) {
   return (
-    <ErrorState
+    <EmptyState
       compact
+      mark="bang"
       title={failure.words.title}
-      message={failure.words.body}
-      detail={failure.detail ?? undefined}
+      body={actions ? failure.words.body : undefined}
       actions={
         <>
           {actions && (failure.undo || failure.undoing) ? (
@@ -117,6 +120,13 @@ export function PageFailedState({ failure, onReveal, actions = true }: { failure
           </Button>
         </>
       }
-    />
+    >
+      {failure.detail ? (
+        <details className="app-details preview-log">
+          <summary>Technical details</summary>
+          <pre className="app-error__detail">{failure.detail}</pre>
+        </details>
+      ) : null}
+    </EmptyState>
   );
 }
