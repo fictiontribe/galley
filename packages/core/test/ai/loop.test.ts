@@ -9,9 +9,13 @@ import { REFUSAL_MESSAGE, STEP_LIMIT_MESSAGE, TOO_LONG_MESSAGE } from "../../src
 import { BUILD_TOOL_NAMES } from "../../src/ai/tools/index";
 import { GalleyError } from "../../src/errors";
 import type { ChatMessage, ServerEvent } from "../../src/types";
+import { hashContent } from "../../src/workspace/files";
 import { createFakeSite } from "./helpers/fake-site";
 import { harness } from "./helpers/env";
 import { TEST_KEY, apiError, scriptedFetch, stream, testClient, type MessageSpec, type RecordedRequest } from "./helpers/scripted-fetch";
+
+/** The About page as every fake site starts with it: the version an edit says it was made from, as if an earlier reply had read it. */
+const ABOUT_AS_READ = hashContent(createFakeSite().files.get("src/content/pages/about.md") as string);
 
 const PNG_1X1 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
@@ -447,7 +451,7 @@ describe("modes", () => {
 describe("undo", () => {
   it("restores a turn's files, marks the reply undone, and tells the model with a system note", async () => {
     const { script, site, h, thread } = await setup([
-      stream(toolStep([{ id: "toolu_u", name: "update_entry", input: { path: "src/content/pages/about.md", ops: [{ op: "body-replace", find: "before dawn.", replace: "at midnight.", all: true }] } }])),
+      stream(toolStep([{ id: "toolu_u", name: "update_entry", input: { path: "src/content/pages/about.md", baseHash: ABOUT_AS_READ, ops: [{ op: "body-replace", find: "before dawn.", replace: "at midnight.", all: true }] } }])),
       stream(text("Done in Proof.")),
       stream(text("Understood.")),
     ]);

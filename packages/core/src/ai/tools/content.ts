@@ -10,6 +10,7 @@ import type { EditOp, Entry, FieldPath, JsonValue } from "../../types";
 import { describeFields } from "../site-card";
 import { entryName, plural, quoted } from "./labels";
 import { checkPageDraws, drawWarning } from "./draws";
+import { CHANGED_AFTER_READ, rememberVersion, versionRead } from "./reads";
 import { defineTool, ok, READ_ONLY, refuse, type AssistantTool, type ToolContext } from "./types";
 import { siteImageryBrief } from "../../sitebrand/tools";
 
@@ -184,6 +185,7 @@ const readEntry = defineTool({
     const entry = await ctx.site.readEntry(input.path);
 
     remember(ctx, entry.path, entry.title);
+    rememberVersion(ctx, entry.path, entry.hash);
     const done = `Read ${entryName(entry.path, ctx.model, ctx.titles)}`;
     const base = { path: entry.path, collection: entry.collection, title: entry.title, url: entry.url, format: entry.format, hash: entry.hash };
 
@@ -339,21 +341,35 @@ const updateEntry = defineTool({
   name: "update_entry",
   title: "Change an entry",
   description:
-    "Change an existing entry with a list of edits, applied in order: set a field, add/move/remove a list item or page section, replace text in the main text, or replace the main text. Only the bytes you change are touched; formatting and comments elsewhere are kept. Pass the hash from read_entry as baseHash so a change made by someone else in the meantime isn't overwritten. The result says which edits were applied and which were refused (with the reason), and lists any errors the entry now has — fix errors your edits caused before finishing.",
+    "Change an existing entry with a list of edits, applied in order: set a field, add/move/remove a list item or page section, replace text in the main text, or replace the main text. Only the bytes you change are touched; formatting and comments elsewhere are kept. The entry must have been read with read_entry in this conversation, and is changed only if it is still what you read (or the version you pass as baseHash): when it has changed since, nothing is changed and you read it again. The result says which edits were applied and which were refused (with the reason), and lists any errors the entry now has — fix errors your edits caused before finishing.",
   input: z.object({
     path: z.string(),
     ops: z.array(editOp).min(1).max(50),
-    baseHash: z.string().optional().describe("The hash read_entry returned."),
+    baseHash: z.string().optional().describe("The hash read_entry returned. Left out: the version you last read or wrote in this conversation."),
   }),
   mode: "any",
   effect: { readOnly: false, destructive: true, idempotent: false, openWorld: false },
   label: (input, ctx) => `Updating ${entryName(input.path, ctx.model, ctx.titles)}`,
   async run(input, ctx) {
     const name = entryName(input.path, ctx.model, ctx.titles);
-    const ops = await toEditOps(input.ops, ctx, input.path);
-    const result = await ctx.site.updateEntry(input.path, ops, { origin: "agent", mode: ctx.mode, ...(input.baseHash ? { baseHash: input.baseHash } : {}) });
+    // Always with the version the edit was made from. An edit that names none and has read none is made from nothing
+    // this conversation has seen (or from an earlier reply's reading that is no longer remembered): it changes nothing.
+    const baseHash = input.baseHash || versionRead(ctx, input.path);
 
+    if (!baseHash) return refuse("You haven't read this entry in this conversation, so nothing was changed. Read it with read_entry first, then make your change.", `Couldn't edit ${name}`);
+    const ops = await toEditOps(input.ops, ctx, input.path);
+    let result: Awaited<ReturnType<typeof ctx.site.updateEntry>>;
+
+    try {
+      result = await ctx.site.updateEntry(input.path, ops, { origin: "agent", mode: ctx.mode, baseHash });
+    } catch (error) {
+      if (!(error instanceof GalleyError && error.code === "conflict")) throw error;
+      // Never worked out again for the assistant: what it sent was made from text that is no longer there.
+      return refuse(`The entry ${CHANGED_AFTER_READ}, so nothing was changed. Read it again with read_entry, then make your change to what is there now.`, `Couldn't edit ${name}`);
+    }
     remember(ctx, result.entry.path, result.entry.title);
+    // What it wrote is what it knows: the next edit can follow without another read.
+    if (result.applied > 0) rememberVersion(ctx, result.entry.path, result.entry.hash);
     const summary = {
       applied: result.applied,
       refused: result.refused.map((r) => ({ edit: r.index, reason: r.reason })),
@@ -397,6 +413,8 @@ const createEntry = defineTool({
     );
 
     remember(ctx, entry.path, entry.title);
+    // It wrote the entry, so it knows it: it can go on to change it without reading it back.
+    rememberVersion(ctx, entry.path, entry.hash);
     return ok(
       { path: entry.path, url: entry.url, title: entry.title, hash: entry.hash, issues: issuesOf(entry) },
       `Created ${entryName(entry.path, ctx.model, ctx.titles)}`

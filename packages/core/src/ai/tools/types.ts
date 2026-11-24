@@ -14,10 +14,10 @@ export interface ToolContext {
   /** Titles seen this turn, so activity labels can name things the person recognises. */
   titles: Map<string, string>;
   /**
-   * Source files as they were when this turn (or this session of another
-   * harness) last read or wrote them, by path: the hash goes with write_file,
-   * so a file that changed in between (newer versions coming in, someone
-   * else's edit) is read again instead of being replaced.
+   * The versions of the files and entries this conversation (or this session
+   * of another harness) has read or written, kept from one reply to the next
+   * (tools/reads.ts). Left out, it is made on first use and lasts as long as
+   * this context does.
    */
   read?: Map<string, string>;
   /** Set when ask_user ran: the turn ends after this step. */

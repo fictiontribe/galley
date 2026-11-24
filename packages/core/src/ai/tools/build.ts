@@ -5,33 +5,28 @@
  * only in build mode is a convenience for the model, not the guardrail.
  */
 import { z } from "zod";
+import { PRODUCT } from "../../brand";
 import { GalleyError } from "../../errors";
 import { SITE_SETTINGS_LEVEL } from "../../install/route-access";
 import type { GalleyConfig } from "../../types";
 import { hashContent } from "../../workspace/files";
-import { normalizeRepoPath } from "../../workspace/paths";
 import { fileName, plural } from "./labels";
+import { CHANGED_AFTER_READ, NEVER_READ, rememberVersion, versionRead } from "./reads";
 import { defineTool, ok, READ_ONLY, refuse, type AssistantTool, type ToolContext } from "./types";
+
+/** Whether a file is there, for a write that was told it replaces nothing it has read. */
+async function isThere(ctx: ToolContext, path: string): Promise<boolean> {
+  try {
+    await ctx.site.readFile(path);
+    return true;
+  } catch (error) {
+    // Anything but "it isn't there" (a picture, say, which can't be read as text) is a file that is there.
+    return !(error instanceof GalleyError && error.code === "not-found");
+  }
+}
 
 const READ_LINES = 400;
 const BUILD_TAIL = 4_000;
-
-/**
- * What a file is remembered under in `ctx.read`: its site and the path as the
- * site names it (another harness's session can work on several sites). A
- * path the site would refuse is remembered under itself and refused by the
- * write.
- */
-function readKey(ctx: ToolContext, path: string): string {
-  let normalized = path;
-
-  try {
-    normalized = normalizeRepoPath(path);
-  } catch {
-    // Left as it was given.
-  }
-  return `${ctx.siteId}\0${normalized}`;
-}
 
 function count(haystack: string, needle: string): number {
   let n = 0;
@@ -77,7 +72,7 @@ const readFile = defineTool({
     const done = `Read ${fileName(input.path)}`;
 
     if (file.binary) return refuse("That's a binary file (an image or similar), so it can't be read as text.", done);
-    ctx.read?.set(readKey(ctx, file.path), file.hash);
+    rememberVersion(ctx, file.path, file.hash);
     const lines = file.content.split("\n");
     const start = Math.max(1, input.startLine ?? 1);
     const end = Math.min(lines.length, input.endLine ?? start + READ_LINES - 1);
@@ -106,25 +101,28 @@ const writeFile = defineTool({
   name: "write_file",
   title: "Write a source file",
   description:
-    "Create a source file, or replace one completely. For changes to an existing file prefer edit_file, which changes only the part you name. Content files (pages, posts) are changed with update_entry, not here.",
+    "Create a source file, or replace one completely. A file that is already there must have been read with read_file in this conversation, and is replaced only if it is still what you read: when it has changed since, read it again first. For changes to an existing file prefer edit_file, which changes only the part you name. Content files (pages, posts) are changed with update_entry, not here.",
   input: z.object({ path: z.string(), content: z.string() }),
   mode: "build",
   effect: { readOnly: false, destructive: true, idempotent: true, openWorld: false },
   label: (input) => `Writing ${fileName(input.path)}`,
   async run(input, ctx) {
-    const key = readKey(ctx, input.path);
-    const read = ctx.read?.get(key);
+    const read = versionRead(ctx, input.path);
+    const couldnt = `Couldn't write ${fileName(input.path)}`;
 
     try {
-      // With the hash of the file as it was last read here: one that changed since is not replaced.
-      await ctx.site.writeFile(input.path, input.content, { origin: "agent", mode: ctx.mode, ...(read ? { baseHash: read } : {}) });
+      // With the version it was written from; a file never read is sent a version nothing has, so it replaces nothing.
+      await ctx.site.writeFile(input.path, input.content, { origin: "agent", mode: ctx.mode, baseHash: read ?? NEVER_READ });
     } catch (error) {
-      if (read && error instanceof GalleyError && error.code === "conflict") {
-        return refuse("The file changed after you read it, so it wasn't replaced. Read it again, then make your change to what is there now.", `Couldn't write ${fileName(input.path)}`);
+      if (!(error instanceof GalleyError && error.code === "conflict")) throw error;
+      if (read) return refuse(`The file ${CHANGED_AFTER_READ}, so it wasn't replaced. Read it again, then make your change to what is there now.`, couldnt);
+      if (await isThere(ctx, input.path)) {
+        return refuse("That file is already there and you haven't read it in this conversation, so it wasn't replaced. Read it with read_file first, then write it.", couldnt);
       }
-      throw error;
+      // A new file: there was nothing to read.
+      await ctx.site.writeFile(input.path, input.content, { origin: "agent", mode: ctx.mode });
     }
-    ctx.read?.set(key, hashContent(input.content));
+    rememberVersion(ctx, input.path, hashContent(input.content));
     return ok({ written: input.path, lines: input.content.split("\n").length }, `Wrote ${fileName(input.path)}`);
   },
 });
@@ -158,7 +156,7 @@ const editFile = defineTool({
     const next = input.replace_all ? file.content.split(input.old_string).join(input.new_string) : file.content.replace(input.old_string, () => input.new_string);
 
     await ctx.site.writeFile(input.path, next, { origin: "agent", mode: ctx.mode, baseHash: file.hash });
-    ctx.read?.set(readKey(ctx, file.path), hashContent(next));
+    rememberVersion(ctx, file.path, hashContent(next));
     return ok({ replaced: input.replace_all ? found : 1 }, `Edited ${name}`);
   },
 });
@@ -195,8 +193,24 @@ const saveSiteConfig = defineTool({
   effect: { readOnly: false, destructive: true, idempotent: true, openWorld: false },
   label: () => "Updating the site configuration",
   async run(input, ctx) {
-    const model = await ctx.site.saveConfig(input.config as GalleyConfig, { mode: ctx.mode });
+    // The whole file, written from a reading of it: only over that reading. One never read is sent a version nothing has
+    // (as write_file does), after the engine's own checks of who may change the settings at all.
+    const read = versionRead(ctx, PRODUCT.configFile);
+    const couldnt = "Couldn't update the site configuration";
+    const save = (baseHash?: string) => ctx.site.saveConfig(input.config as GalleyConfig, { mode: ctx.mode, ...(baseHash ? { baseHash } : {}) });
+    let model: Awaited<ReturnType<typeof save>>;
 
+    try {
+      model = await save(read ?? NEVER_READ);
+    } catch (error) {
+      if (!(error instanceof GalleyError && error.code === "conflict")) throw error;
+      if (read) return refuse(`The configuration file ${CHANGED_AFTER_READ}, so it wasn't replaced. Read it again with read_file, then send the whole new configuration.`, couldnt);
+      if (await isThere(ctx, PRODUCT.configFile)) {
+        return refuse(`You haven't read the configuration file (${PRODUCT.configFile}) in this conversation, so it wasn't replaced. Read it with read_file first, then send the whole new configuration.`, couldnt);
+      }
+      // The site has no configuration file yet: there was nothing to read.
+      model = await save();
+    }
     return ok(
       { saved: true, collections: model.collections.map((c) => ({ id: c.id, label: c.label, items: c.count })), notes: model.notes.slice(0, 10) },
       "Updated the site configuration"

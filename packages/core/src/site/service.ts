@@ -601,6 +601,29 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     }
   }
 
+  const SETTINGS_CHANGED = "The site's settings changed since they were opened, so nothing was saved. Open them again, then make the change again.";
+
+  /** The settings file as it is, or null when the site has none yet. */
+  async function readSettingsFile(): Promise<Uint8Array | null> {
+    return (await workspace.exists(PRODUCT.configFile)) ? workspace.readBytes(PRODUCT.configFile) : null;
+  }
+
+  /**
+   * Writes the settings file only over the text its new text was worked out
+   * from (`previous`; null: there was none, and none may have appeared). The
+   * file belongs to the site owner and sits outside every content glob, so
+   * it goes through the workspace's system write: containment and atomic
+   * replace, without the mode's glob check. Inside `editing`.
+   */
+  async function writeSettingsFile(previous: Uint8Array | null, text: string, origin: ChangeOrigin): Promise<void> {
+    try {
+      await workspace.writeFile(PRODUCT.configFile, text, { origin, mode: "content", system: true, ...(previous ? { baseHash: hashContent(previous) } : { createOnly: true }) });
+    } catch (error) {
+      if (error instanceof GalleyError && error.code === "conflict") throw new ChangedSinceRead(error);
+      throw error;
+    }
+  }
+
   let preview: PreviewControllerHandle | null = null;
 
   function afterPublish(result: PublishResult): PublishResult {
@@ -815,17 +838,12 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
           result.errors.join("\n")
         );
       }
-      // The config file belongs to the site owner and sits outside every content
-      // glob, so it goes through the workspace's system write: containment and
-      // atomic replace, without the mode's glob check.
-      await pathLock(PRODUCT.configFile, async () => {
-        const previous = (await workspace.exists(PRODUCT.configFile)) ? await workspace.readText(PRODUCT.configFile) : null;
+      await editing(PRODUCT.configFile, async () => {
+        const previous = await readSettingsFile();
 
-        await workspace.writeFile(PRODUCT.configFile, updateConfigText(previous, result.config), {
-          origin: options.mode ? "agent" : "user",
-          mode: "content",
-          system: true,
-        });
+        // Said which version the new settings were made from, and that is no longer the file: nothing is saved.
+        if (options.baseHash && (previous ? hashContent(previous) : null) !== options.baseHash) throw new GalleyError("conflict", SETTINGS_CHANGED, PRODUCT.configFile);
+        await writeSettingsFile(previous, updateConfigText(previous ? Buffer.from(previous).toString("utf8") : null, result.config), options.mode ? "agent" : "user");
       });
       // The pipeline re-detects (the config shapes the model) and emits site.updated.
       await settled();
@@ -1135,8 +1153,12 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     },
 
     async catchUp(): Promise<CatchUpResult | null> {
-      // Busy, like a save in progress: the next round tries again.
-      if (previewInstalling()) return null;
+      // Busy, like a save in progress: the next round tries again. An install can take minutes, though, and
+      // looking changes no file: the round still looks, so what the app says is waiting stays true meanwhile.
+      if (previewInstalling()) {
+        announce(await workspace.check(), 0);
+        return null;
+      }
       const result = await workspace.catchUp(aroundBringIn()).catch((error: unknown) => {
         if (error instanceof GalleyError && error.code === "busy" && error.message === INSTALLING) return null;
         throw error;
@@ -1232,13 +1254,14 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
 
     if (!route) throw new GalleyError("invalid", "That isn't something the engine records in the site's settings.");
     requireLevel(levelFor(route) ?? "edit");
-    await pathLock(PRODUCT.configFile, async () => {
-      const previous = (await workspace.exists(PRODUCT.configFile)) ? await workspace.readText(PRODUCT.configFile) : null;
+    // The record's keys, applied to the file as it is; when the file changed between reading it and writing it, applied again.
+    await editing(PRODUCT.configFile, async () => {
+      const previous = await readSettingsFile();
       const current = previous === null ? {} : ((await readConfig(root)) ?? {});
       const result = validateConfig(applyRecord(current, entry, model));
 
       if (!result.ok) throw new GalleyError("invalid", `The site settings have ${result.errors.length === 1 ? "a problem" : `${result.errors.length} problems`}: ${result.errors.join(" ")}`, result.errors.join("\n"));
-      await workspace.writeFile(PRODUCT.configFile, updateConfigText(previous, result.config), { origin: "user", mode: "content", system: true });
+      await writeSettingsFile(previous, updateConfigText(previous ? Buffer.from(previous).toString("utf8") : null, result.config), "user");
     });
     await settled();
     return model;
