@@ -14,7 +14,7 @@
  * with the address could race for.
  */
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { GalleyError } from "../errors";
@@ -361,6 +361,27 @@ function parseState(raw: unknown, file: string): InstallStateFile {
   return state;
 }
 
+/** A state write's temporary file, as writeState names it. */
+const STATE_TEMP = new RegExp(`^\\.${STATE_FILE.replace(/\./g, "\\.")}\\.[0-9a-f]{12}\\.tmp$`);
+/** A write takes milliseconds: a temporary file this old belongs to a process that was stopped before it could finish. */
+const STATE_TEMP_STALE_MS = 60_000;
+
+/**
+ * Takes away what a state write left behind when its process was stopped
+ * between writing the temporary file and putting it in place (the state file
+ * itself is whole either way: it is only ever replaced in one step). Anything
+ * newer may be another process's write in progress and is left alone.
+ */
+async function sweepStateTemps(home: string, now: number): Promise<void> {
+  for (const name of await readdir(home).catch(() => [])) {
+    if (!STATE_TEMP.test(name)) continue;
+    const path = join(home, name);
+    const info = await stat(path).catch(() => null);
+
+    if (info?.isFile() && now - info.mtimeMs > STATE_TEMP_STALE_MS) await rm(path, { force: true }).catch(() => undefined);
+  }
+}
+
 async function writeState(home: string, file: string, state: InstallStateFile, stand: Partial<StateFiles> = {}): Promise<void> {
   const files: StateFiles = { writeFile, chmod, rename, rm, ...stand };
   const temp = join(home, `.${STATE_FILE}.${randomBytes(6).toString("hex")}.tmp`);
@@ -421,6 +442,8 @@ async function loadState(home: string, options: OpenInstallStateOptions): Promis
 export async function openInstallState(home: string, options: OpenInstallStateOptions = {}): Promise<InstallStore> {
   await mkdir(home, { recursive: true, mode: 0o700 });
   await chmod(home, 0o700);
+  // By the real clock, whatever `now` a caller passes for the state itself: the files' own times are real.
+  await sweepStateTemps(home, Date.now());
   const file = join(home, STATE_FILE);
   let state = await loadState(home, options);
   let queue: Promise<unknown> = Promise.resolve();

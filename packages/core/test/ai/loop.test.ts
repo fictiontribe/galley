@@ -4,14 +4,18 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { REFUSAL_MESSAGE, STEP_LIMIT_MESSAGE, TOO_LONG_MESSAGE } from "../../src/ai/loop";
 import { BUILD_TOOL_NAMES } from "../../src/ai/tools/index";
 import { GalleyError } from "../../src/errors";
 import type { ChatMessage, ServerEvent } from "../../src/types";
+import { hashContent } from "../../src/workspace/files";
 import { createFakeSite } from "./helpers/fake-site";
 import { harness } from "./helpers/env";
 import { TEST_KEY, apiError, scriptedFetch, stream, testClient, type MessageSpec, type RecordedRequest } from "./helpers/scripted-fetch";
+
+/** The About page as every fake site starts with it: the version an edit says it was made from, as if an earlier reply had read it. */
+const ABOUT_AS_READ = hashContent(createFakeSite().files.get("src/content/pages/about.md") as string);
 
 const PNG_1X1 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
@@ -289,6 +293,20 @@ describe("a turn", () => {
     expect(usage.cost).toBeCloseTo((100 * 4 + 5 * 20 + 100 * 5 + 15 * 25) / 1e6, 10);
   });
 
+  it("counts as work in progress on its site from the moment the message is accepted until it is done", async () => {
+    const { site, h, thread } = await setup([stream(text("Done."))]);
+    const done = new Promise<void>((resolve) => h.bus.subscribe((event) => event.type === "chat.done" && resolve()));
+
+    expect(h.runtime.working(site.id)).toBe(false);
+    await h.runtime.send(site.id, thread.id, { text: "Hello" });
+    expect(h.runtime.working(site.id)).toBe(true);
+    expect(h.runtime.working("another-site")).toBe(false);
+    // A site whose name begins the same is another site.
+    expect(h.runtime.working(site.id.slice(0, -1))).toBe(false);
+    await done;
+    await vi.waitFor(() => expect(h.runtime.working(site.id)).toBe(false));
+  });
+
   it("maps an overloaded response to one plain sentence", async () => {
     const { h, thread } = await setup([apiError(529, "overloaded_error", "Overloaded")]);
 
@@ -433,7 +451,7 @@ describe("modes", () => {
 describe("undo", () => {
   it("restores a turn's files, marks the reply undone, and tells the model with a system note", async () => {
     const { script, site, h, thread } = await setup([
-      stream(toolStep([{ id: "toolu_u", name: "update_entry", input: { path: "src/content/pages/about.md", ops: [{ op: "body-replace", find: "before dawn.", replace: "at midnight.", all: true }] } }])),
+      stream(toolStep([{ id: "toolu_u", name: "update_entry", input: { path: "src/content/pages/about.md", baseHash: ABOUT_AS_READ, ops: [{ op: "body-replace", find: "before dawn.", replace: "at midnight.", all: true }] } }])),
       stream(text("Done in Proof.")),
       stream(text("Understood.")),
     ]);

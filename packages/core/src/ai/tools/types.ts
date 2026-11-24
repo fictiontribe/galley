@@ -13,6 +13,13 @@ export interface ToolContext {
   signal: AbortSignal;
   /** Titles seen this turn, so activity labels can name things the person recognises. */
   titles: Map<string, string>;
+  /**
+   * The versions of the files and entries this conversation (or this session
+   * of another harness) has read or written, kept from one reply to the next
+   * (tools/reads.ts). Left out, it is made on first use and lasts as long as
+   * this context does.
+   */
+  read?: Map<string, string>;
   /** Set when ask_user ran: the turn ends after this step. */
   question: { text: string; options: ChatOption[] } | null;
   /** The previous turn ended with a question — a second one in a row is refused. */

@@ -40,6 +40,8 @@ import type { UsageLine } from "./usage";
 
 /** How many turns per thread keep their undo information. */
 export const UNDO_DEPTH = 20;
+/** How many conversations' reads are remembered at once (each at most READS_KEPT files). */
+export const CONVERSATIONS_REMEMBERED = 200;
 const MAX_TEXT = 20_000;
 const MAX_ATTACHMENTS = 6;
 /** Conversation names, as the rename route accepts them. */
@@ -74,6 +76,7 @@ export interface AgentRuntimeOptions {
 
 /** The runtime plus a diagnostic: which request profile a turn finished on. */
 export interface GalleyAgentRuntime extends AgentRuntime {
+  working(siteId: string): boolean;
   turnProfile(turnId: string): RequestProfile | undefined;
 }
 
@@ -131,9 +134,30 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
   const turnProfiles = new Map<string, RequestProfile>();
   const active = new Map<string, ActiveTurn>();
   const held = new Map<string, HeldCheckpoint[]>();
+  /**
+   * What each conversation has read, from one reply to the next (tools/reads.ts):
+   * newer versions may come in between two replies, and the second must not
+   * write from what the first one saw. Kept for the conversations used most
+   * recently; one that is forgotten reads again before it changes anything.
+   */
+  const reads = new Map<string, Map<string, string>>();
   const now = options.now ?? Date.now;
   const log = (line: string) => (options.logger ?? ((text: string) => process.stderr.write(`[assistant] ${text}\n`)))(scrubSecrets(line));
   const key = (siteId: string, threadId: string) => `${siteId}/${threadId}`;
+
+  function readsOf(threadKey: string): Map<string, string> {
+    const kept = reads.get(threadKey) ?? new Map<string, string>();
+
+    // Set afresh, so the conversation used last is the last to be forgotten.
+    reads.delete(threadKey);
+    reads.set(threadKey, kept);
+    for (const oldest of reads.keys()) {
+      if (reads.size <= CONVERSATIONS_REMEMBERED) break;
+      // Never one whose reply is being written now: its tools hold this very map.
+      if (!active.has(oldest)) reads.delete(oldest);
+    }
+    return kept;
+  }
 
   async function siteFor(siteId: string): Promise<SiteService> {
     const site = await options.registry.get(siteId);
@@ -305,6 +329,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
       }
       for (const entry of held.get(threadKey) ?? []) release(entry.checkpoint);
       held.delete(threadKey);
+      reads.delete(threadKey);
       await store.remove(siteId, threadId);
     },
 
@@ -438,6 +463,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
           images: options.images,
           signal: controller.signal,
           titles: new Map(),
+          read: readsOf(threadKey),
           question: null,
           askedLastTurn,
         };
@@ -524,6 +550,13 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
         resolveDone();
         throw error;
       }
+    },
+
+    working(siteId) {
+      const prefix = key(siteId, "");
+
+      for (const threadKey of active.keys()) if (threadKey.startsWith(prefix)) return true;
+      return false;
     },
 
     async cancel(siteId, threadId) {

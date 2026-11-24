@@ -336,6 +336,50 @@ describe("backups", () => {
     300_000
   );
 
+  it.skipIf(process.platform === "win32")(
+    "a restore waits for the editor's own round in progress, and no round runs while the backup is put back",
+    async () => {
+      const home = box.folder("home");
+      const first = await fullInstall(home);
+      const { port, server } = first.started;
+      const bytes = await backup(port, first.cookie);
+      const checkout = server.install!.store.checkoutFolder();
+      // The code host is slow to answer: a round's look waits until it is let through.
+      const gate = box.folder("slow-host");
+
+      writeFileSync(join(gate, "serve.sh"), `#!/bin/sh\n: > '${gate}/asked'\nwhile [ ! -e '${gate}/go' ]; do sleep 0.05; done\nexec git upload-pack "$@"\n`, { mode: 0o755 });
+      git(checkout, "config", "remote.origin.uploadpack", join(gate, "serve.sh"));
+      writeFileSync(join(server.install!.siteFolder(), "after-the-backup.md"), "gone after the restore\n");
+      const round = server.keepUp!.round();
+
+      await until(() => existsSync(join(gate, "asked")));
+      const upload = await call<RestoreUpload>(port, "POST", "/api/install/restore/upload", { cookie: first.cookie, raw: bytes });
+      const job = await call<Job>(port, "POST", "/api/install/restore", { cookie: first.cookie, body: { upload: upload.body.id, passphrase: PASSPHRASE } });
+
+      expect(job.body).toMatchObject({ kind: "restore", state: "running" });
+      // From the moment a restore begins no new round runs, whatever it is doing.
+      expect(await server.keepUp!.round()).toBe("overlap");
+      // The backup is opened and checked, and then the restore waits: the round still has the site.
+      await until(async () => (await call(port, "GET", "/readyz")).body.state === "restoring");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(existsSync(join(server.install!.siteFolder(), "after-the-backup.md"))).toBe(true);
+      expect((await call<Job>(port, "GET", `/api/jobs/${job.body.id}`, { cookie: first.cookie })).body).toMatchObject({ state: "running", detail: "Stopping the preview and closing the site" });
+
+      // The code host answers; the round ends; only then is the backup put in place.
+      writeFileSync(join(gate, "go"), "");
+      expect(["quiet", "failed", "busy"]).toContain(await round);
+      expect(await server.keepUp!.round()).toBe("busy");
+      const done = await waitForJob(port, job.body, { cookie: first.cookie });
+
+      expect(done.state, done.detail).toBe("done");
+      expect(existsSync(join(server.install!.siteFolder(), "after-the-backup.md"))).toBe(false);
+      expect((await call(port, "GET", "/readyz")).body).toEqual({ ready: true, state: "ready" });
+      // Afterwards rounds run again, on the restored site.
+      expect(["quiet", "failed"]).toContain(await server.keepUp!.round());
+    },
+    300_000
+  );
+
   it(
     "restored over a running install that has read its inbox: the inbox is the backup's, not what it had cached",
     async () => {

@@ -1,7 +1,9 @@
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { git, type GitCommandError } from "../../src/workspace/git";
 import { compareUrl, createWorkspace, parseRemoteUrl, redactRemoteUrl, type Workspace } from "../../src/workspace/index";
+import { classifyLookError, classifyPullError } from "../../src/workspace/publish";
 import { addBareRemote, cleanupAll, makeRepo, PUBLISH, sh, tempDir, WRITABLE, writeTree } from "./helpers";
 
 /**
@@ -155,7 +157,7 @@ describe("publish", GIT_HEAVY, () => {
     expect(sh(root, "log", "-1", "--format=%s")).toBe("Mine");
 
     // Pull refuses to combine diverged histories, in plain words.
-    await expect(ws.pull()).rejects.toMatchObject({ code: "git", message: expect.stringContaining("can't be combined automatically") });
+    await expect(ws.pull()).rejects.toMatchObject({ code: "conflict", message: expect.stringContaining("can't be combined automatically") });
   });
 
   it("refuses on a detached HEAD, in a non-repo, with nothing pending, and on a branch mismatch", async () => {
@@ -430,5 +432,103 @@ describe("remote URLs", GIT_HEAVY, () => {
     expect(compareUrl("https://bitbucket.org/t/s.git", "main", "b")).toBe("https://bitbucket.org/t/s/pull-requests/new?source=b&dest=main");
     expect(compareUrl("/tmp/bare", "main", "b")).toBeUndefined();
     expect(redactRemoteUrl("https://x-access-token:abc@github.com/a/b.git")).toBe("https://github.com/a/b.git");
+  });
+
+  it("takes what signs in out of every address in a message, wherever the address is", () => {
+    // As git reports it: the address in the middle of the line, in quotes.
+    expect(redactRemoteUrl("fatal: unable to access 'https://x-access-token:not-a-real-key@code.example/acme/site.git/': Could not resolve host: code.example")).toBe(
+      "fatal: unable to access 'https://code.example/acme/site.git/': Could not resolve host: code.example"
+    );
+    expect(redactRemoteUrl("remote: Not Found\nfatal: repository 'http://sam:secret@code.example/a/b.git/' not found\nsee https://other:key@mirror.example/a/b.git")).toBe(
+      "remote: Not Found\nfatal: repository 'http://code.example/a/b.git/' not found\nsee https://mirror.example/a/b.git"
+    );
+    // A password with an @ of its own goes whole; other ways of reaching a code host lose the password and keep the user.
+    expect(redactRemoteUrl("https://sam:p@ss@word@code.example/a/b.git")).toBe("https://code.example/a/b.git");
+    expect(redactRemoteUrl("fatal: could not read from 'ssh://deploy:not-a-real-key@code.example:2222/a/b.git'")).toBe("fatal: could not read from 'ssh://deploy@code.example:2222/a/b.git'");
+    expect(redactRemoteUrl("git+ssh://deploy:p@ss@code.example/a/b.git")).toBe("git+ssh://deploy@code.example/a/b.git");
+    // A value in the address that signs in, by its name; its neighbours stay.
+    expect(redactRemoteUrl("https://code.example/a/b.git?access_token=not-a-real-key&ref=main")).toBe("https://code.example/a/b.git?access_token=&ref=main");
+    expect(redactRemoteUrl("error: https://files.example/pack?X-Amz-Signature=abc123&X-Amz-Date=2026&private_token=xyz&design=plain&monkey=1")).toBe(
+      "error: https://files.example/pack?X-Amz-Signature=&X-Amz-Date=2026&private_token=&design=plain&monkey=1"
+    );
+    // Keys of a shape that can be nothing else, wherever they sit. (Put together here so no such shape is written in this file.)
+    const shaped = [`gh${"p"}_${"a1B2".repeat(9)}`, `github${"_pat"}_${"a1B2_".repeat(8)}`, `gl${"pat"}-${"a1B2-".repeat(4)}`];
+
+    for (const key of shaped) {
+      expect(redactRemoteUrl(`fatal: repository 'https://code.example/${key}/acme/site.git/' not found`)).toBe("fatal: repository 'https://code.example//acme/site.git/' not found");
+      expect(redactRemoteUrl(`remote: bad credentials (${key})`)).toBe("remote: bad credentials ()");
+    }
+    // Nothing to take out: left exactly as it was.
+    for (const plain of ["ssh://git@code.example/acme/site.git", "https://code.example/a/b.git?ref=main&page=2", "a ghost_story and a glpattern", "https://code.example/a/b.git", "git@code.example:acme/site.git", "fatal: unable to access 'https://code.example/a/b.git/': The requested URL returned error: 403", "write to sam@example.com about https://code.example/a"]) {
+      expect(redactRemoteUrl(plain)).toBe(plain);
+    }
+  });
+
+  it("a git command that fails never carries what signs in to an address in its technical details", async () => {
+    const root = makeRepo({ "src/content/a.md": "a\n" });
+    const ws = await workspaceFor(root);
+
+    const address = "https://x-access-token:not-a-real-key@127.0.0.1:9/acme/site.git";
+
+    sh(root, "remote", "add", "origin", address);
+    // A command that is given the address itself and fails: the details quote the command as it was run.
+    const failed = await git(root)
+      .run(["ls-remote", "--exit-code", "--", address], { timeoutMs: 20_000 })
+      .catch((error: unknown) => error);
+
+    expect(failed).toMatchObject({ code: "git" });
+    expect((failed as GitCommandError).detail).toContain("git ls-remote --exit-code -- https://127.0.0.1:9/acme/site.git");
+    expect((failed as GitCommandError).detail).not.toContain("not-a-real-key");
+    expect((failed as GitCommandError).detail).not.toContain("x-access-token");
+    // A look that fails says so in plain words, and its details are as clean.
+    const looked = await ws.check();
+
+    expect(looked.checkProblem).toMatch(/^Couldn't reach the code host\./);
+    await expect(ws.pull()).rejects.toSatisfy((error: unknown) => {
+      const { message, detail } = error as { message: string; detail?: string };
+
+      return message === looked.checkProblem && Boolean(detail?.includes("127.0.0.1:9/acme/site.git")) && !detail?.includes("not-a-real-key");
+    });
+    expect((await ws.gitStatus()).remoteUrl).toBe("https://127.0.0.1:9/acme/site.git");
+  });
+});
+
+describe("the words for a look and a bring-in that didn't work", () => {
+  const publishingWords = /publish|sending it|saved on this computer|signed in to it on this computer|Send for review/i;
+  const gitWords = /\b(fetch|branch|commit|merge|rebase|HEAD|origin|remote)\b/i;
+
+  it("a failed look speaks of looking, never of publishing, whatever the code host said", () => {
+    const cases: Array<[string, boolean, RegExp]> = [
+      ["", true, /^Couldn't reach the code host in time\. Check your connection and try again\.$/],
+      ["fatal: Authentication failed for 'https://code.example/a/b.git/'", false, /didn't accept this copy's sign-in/],
+      ["git@code.example: Permission denied (publickey).", false, /didn't accept this copy's sign-in/],
+      ["fatal: unable to access 'https://code.example/a/b.git/': Could not resolve host: code.example", false, /^Couldn't reach the code host\. Check your connection and try again\.$/],
+      ["fatal: '/nowhere/site.git' does not appear to be a git repository", false, /doesn't point at a repository this copy can read/],
+      ["fatal: couldn't find remote ref main", false, /nothing newer to look for/],
+      ["error: something git has never said before", false, /^The code host couldn't be asked for newer versions\. Try again in a moment\.$/],
+    ];
+
+    for (const [stderr, timedOut, expected] of cases) {
+      const said = classifyLookError(stderr, timedOut);
+
+      expect(said, stderr).toMatch(expected);
+      expect(said, stderr).not.toMatch(publishingWords);
+      expect(said, stderr).not.toMatch(gitWords);
+      expect(said, stderr).toMatch(/\.$/);
+    }
+  });
+
+  it("a bring-in that took too long doesn't blame the code host, and says the files may be part-way", () => {
+    const tooLong = classifyPullError("", true);
+
+    expect(tooLong).toMatch(/took too long and was stopped before it finished/);
+    expect(tooLong).toMatch(/some files may be newer than others/);
+    expect(tooLong).not.toMatch(/reach the code host|connection/i);
+    for (const said of [tooLong, classifyPullError("error: Your local changes to the following files would be overwritten by merge:", false), classifyPullError("fatal: Not possible to fast-forward, aborting.", false), classifyPullError("error: unable to write file", false)]) {
+      // "Publish or discard your changes" is the way out of one of these; the words for a failed publish are not.
+      expect(said).not.toMatch(/sending it|saved on this computer|signed in to it on this computer|Send for review/i);
+      expect(said).not.toMatch(gitWords);
+      expect(said).toMatch(/\.$/);
+    }
   });
 });

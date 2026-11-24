@@ -2003,7 +2003,8 @@ export interface SiteService {
    * asks: that needs build mode, and build mode allowed by the site. The
    * settings screen passes no mode.
    */
-  saveConfig(config: GalleyConfig, options?: { mode?: AgentMode }): Promise<SiteModel>;
+  /** `baseHash`: the hash of the settings file the new settings were made from (`readFile`'s); when the file is no longer that, nothing is saved (conflict). */
+  saveConfig(config: GalleyConfig, options?: { mode?: AgentMode; baseHash?: string }): Promise<SiteModel>;
 
   // content
   listEntries(collectionId: string, query?: EntryQuery): Promise<EntryList>;
@@ -2163,6 +2164,13 @@ export interface AgentRuntime {
    * accepted; the reply streams as chat.* events and ends with chat.done.
    */
   send(siteId: string, threadId: string, request: SendMessageRequest): Promise<{ turnId: string }>;
+  /**
+   * Whether a turn is in progress in any of the site's conversations, from
+   * the moment its message is accepted. A hosted editor's own rounds wait
+   * for it: a turn works from what it read, and newer versions coming in
+   * under it would be written over. Optional so a stand-in may leave it out.
+   */
+  working?(siteId: string): boolean;
   cancel(siteId: string, threadId: string): Promise<void>;
   /** Roll back the files one turn changed. Returns the restored paths. */
   undoTurn(siteId: string, threadId: string, turnId: string): Promise<UndoResult>;

@@ -414,13 +414,13 @@ Given a piece of text the person saw on the website (and, ideally, the address o
 
 *destructive* · shared with the built-in assistant
 
-Change an existing entry with a list of edits, applied in order: set a field, add/move/remove a list item or page section, replace text in the main text, or replace the main text. Only the bytes you change are touched; formatting and comments elsewhere are kept. Pass the hash from read_entry as baseHash so a change made by someone else in the meantime isn't overwritten. The result says which edits were applied and which were refused (with the reason), and lists any errors the entry now has — fix errors your edits caused before finishing.
+Change an existing entry with a list of edits, applied in order: set a field, add/move/remove a list item or page section, replace text in the main text, or replace the main text. Only the bytes you change are touched; formatting and comments elsewhere are kept. The entry must have been read with read_entry in this conversation, and is changed only if it is still what you read (or the version you pass as baseHash): when it has changed since, nothing is changed and you read it again. The result says which edits were applied and which were refused (with the reason), and lists any errors the entry now has — fix errors your edits caused before finishing.
 
 | Argument | Type | Required | Meaning |
 | --- | --- | --- | --- |
 | `path` | string | yes |  |
 | `ops` | list of edit (set \| unset \| insert \| move \| remove \| body-replace \| body) | yes |  |
-| `baseHash` | string | no | The hash read_entry returned. |
+| `baseHash` | string | no | The hash read_entry returned. Left out: the version you last read or wrote in this conversation. |
 
 #### `create_entry` — Create an entry
 
@@ -686,7 +686,7 @@ Replace the site's configuration file (galley.config.json) with a new version �
 
 *destructive, idempotent* · shared with the built-in assistant
 
-Create a source file, or replace one completely. For changes to an existing file prefer edit_file, which changes only the part you name. Content files (pages, posts) are changed with update_entry, not here.
+Create a source file, or replace one completely. A file that is already there must have been read with read_file in this conversation, and is replaced only if it is still what you read: when it has changed since, read it again first. For changes to an existing file prefer edit_file, which changes only the part you name. Content files (pages, posts) are changed with update_entry, not here.
 
 | Argument | Type | Required | Meaning |
 | --- | --- | --- | --- |

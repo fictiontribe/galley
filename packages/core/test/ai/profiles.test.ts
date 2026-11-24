@@ -10,9 +10,13 @@ import { renderPlainMessages, thinkingBoundary, type HistoryEntry } from "../../
 import { BUILD_TOOL_NAMES, toolsForMode } from "../../src/ai/tools/index";
 import { summarizeUsage } from "../../src/ai/usage";
 import type { ChatMessage, ServerEvent } from "../../src/types";
+import { hashContent } from "../../src/workspace/files";
 import { createFakeSite } from "./helpers/fake-site";
 import { harness } from "./helpers/env";
 import { TEST_KEY, apiError, scriptedFetch, stream, testClient, type MessageSpec, type RecordedRequest } from "./helpers/scripted-fetch";
+
+/** The About page as every fake site starts with it: the version an edit says it was made from, as if an earlier reply had read it. */
+const ABOUT_AS_READ = hashContent(createFakeSite().files.get("src/content/pages/about.md") as string);
 
 const thinking = (signature: string) => ({ type: "thinking" as const, thinking: "", signature });
 const say = (text: string, sig = `sig-${text.length}`) => stream({ content: [thinking(sig), { type: "text", text }], stop_reason: "end_turn" } satisfies MessageSpec);
@@ -155,7 +159,7 @@ describe("plain conversations", () => {
   it("round-trips a tool call and replays this turn's thinking unchanged", async () => {
     const { script, site, h, thread } = await setup(
       [
-        call("toolu_p1", "update_entry", { path: "src/content/pages/about.md", ops: [{ op: "body-replace", find: "We bake before dawn. We", replace: "We bake at four. We" }] }),
+        call("toolu_p1", "update_entry", { path: "src/content/pages/about.md", baseHash: ABOUT_AS_READ, ops: [{ op: "body-replace", find: "We bake before dawn. We", replace: "We bake at four. We" }] }),
         say("Done — it's in Proof."),
         say("Second turn."),
       ],

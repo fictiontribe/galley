@@ -89,7 +89,7 @@
 [data-look-assist="washed"] .g-root .kit-ask--line .kit-ask__field,
 [data-look-assist="washed"] .g-root .g-composer { background: var(--pencil-50); border-color: var(--pencil-300); box-shadow: var(--shadow-field); }
 [data-look-assist="washed"] .g-root .kit-ask--line .kit-ask__field:has(.kit-ask__input:focus-visible),
-[data-look-assist="washed"] .g-root .g-composer:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring), 0 0 0 4px var(--pencil-100); }
+[data-look-assist="washed"] .g-root .g-composer:has(textarea:focus-visible) { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring), 0 0 0 4px var(--pencil-100); }
 [data-look-assist="washed"] .g-root .kit-ask--line .kit-ask__label { color: var(--pencil-800); border-inline-end-color: var(--pencil-200); }
 [data-look-assist="washed"] .g-root .g-pane:has(.chat) { background: color-mix(in srgb, var(--pencil-50) 70%, var(--surface-raised)); }
 [data-look-assist="washed"] .g-root .g-msg--user { background: var(--pencil-100); color: var(--ink-primary); }

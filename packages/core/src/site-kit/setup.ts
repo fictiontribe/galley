@@ -104,17 +104,26 @@ export async function setInboxEndpoint(site: SiteService, address: string): Prom
   if (!isPublicAddress(address)) {
     throw new GalleyError("invalid", "Visitors' browsers can't reach this app's inbox at that address, so it isn't written into the site. Run the app on a server with a public address, or send the form to another destination.");
   }
-  let text: string;
+  // One key set in the file as it is: when the file changed between reading it and writing it, it is read again.
+  for (let attempt = 1; ; attempt += 1) {
+    let file: { content: string; hash: string };
 
-  try {
-    text = (await site.readFile(KIT_SETTINGS)).content;
-  } catch {
-    throw new GalleyError("not-found", "The site kit's settings file (src/galley/settings.json) isn't there. Set up forms first.");
+    try {
+      file = await site.readFile(KIT_SETTINGS);
+    } catch {
+      throw new GalleyError("not-found", "The site kit's settings file (src/galley/settings.json) isn't there. Set up forms first.");
+    }
+    const edited = applyEdits(file.content, "json", [{ op: "set", path: ["forms", "endpoint"], value: address }]);
+
+    if (edited.refused.length > 0) throw new GalleyError("invalid", `The site kit's settings couldn't be changed: ${edited.refused[0]!.reason}`);
+    if (edited.content === file.content) return;
+    try {
+      await site.writeFile(KIT_SETTINGS, edited.content, { origin: "user", mode: "build", baseHash: file.hash });
+      return;
+    } catch (error) {
+      if (!(error instanceof GalleyError && error.code === "conflict") || attempt >= 3) throw error;
+    }
   }
-  const edited = applyEdits(text, "json", [{ op: "set", path: ["forms", "endpoint"], value: address }]);
-
-  if (edited.refused.length > 0) throw new GalleyError("invalid", `The site kit's settings couldn't be changed: ${edited.refused[0]!.reason}`);
-  if (edited.content !== text) await site.writeFile(KIT_SETTINGS, edited.content, { origin: "user", mode: "build" });
 }
 
 export interface PlanOptions {
