@@ -6,7 +6,7 @@
  * per-mode hook for them; see docs/themes.md), so the caller passes it.
  */
 import { isHex } from "./colour";
-import { PROOF_INKS, PROOF_INK_PROPERTY, SEED_NAMES, SWITCHES, SWITCH_NAMES, THEME_ID_PATTERN, type AppliedTheme, type ThemeMode, type ThemeSwitches } from "./contract";
+import { PEOPLE_COLOURS, PROOF_INKS, PROOF_INK_PROPERTY, SEED_NAMES, personProperty, SWITCHES, SWITCH_NAMES, THEME_ID_PATTERN, type AppliedTheme, type ThemeMode, type ThemeSwitches } from "./contract";
 import { QUIET } from "./builtin";
 
 export const THEME_ATTRIBUTES = ["data-look", ...SWITCH_NAMES.map((name) => `data-look-${name}`)] as const;
@@ -14,6 +14,7 @@ export const THEME_PROPERTIES = [
   ...SEED_NAMES.map((seed) => `--theme-${seed}`),
   ...SEED_NAMES.map((seed) => `--theme-dark-${seed}`),
   ...PROOF_INKS.map((ink) => PROOF_INK_PROPERTY[ink]),
+  ...PEOPLE_COLOURS.map((_, index) => personProperty(index)),
 ] as const;
 
 export interface ThemeOnPage {
@@ -30,7 +31,8 @@ export function isPlainQuiet(applied: AppliedTheme): boolean {
     SEED_NAMES.every((seed) => applied.light[seed] === QUIET.light[seed] && applied.dark[seed] === dark[seed]) &&
     SWITCH_NAMES.every((name) => applied.switches[name] === SWITCHES[name][0]) &&
     !Object.keys(applied.tuned.light).length &&
-    !Object.keys(applied.tuned.dark).length
+    !Object.keys(applied.tuned.dark).length &&
+    !Object.keys(applied.people ?? {}).length
   );
 }
 
@@ -49,6 +51,7 @@ export function themeOnPage(applied: AppliedTheme | null, shown: ThemeMode): The
 
     if (value) properties[PROOF_INK_PROPERTY[ink]] = value;
   }
+  for (const [number, value] of Object.entries(applied.people ?? {})) properties[`--person-${number}`] = value;
   return { attributes, properties };
 }
 
@@ -79,6 +82,12 @@ export function isAppliedTheme(value: unknown): value is AppliedTheme {
 
     if (!isObject(inks)) return false;
     for (const [ink, hex] of Object.entries(inks)) if (!(PROOF_INKS as readonly string[]).includes(ink) || !isHex(hex)) return false;
+  }
+  const people = value.people;
+
+  if (people !== undefined) {
+    if (!isObject(people)) return false;
+    for (const [number, hex] of Object.entries(people)) if (!/^(?:[1-9]|1[0-2])$/.test(number) || !isHex(hex)) return false;
   }
   return true;
 }

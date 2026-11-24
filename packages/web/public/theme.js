@@ -59,5 +59,7 @@
     }
     var tuned = (look.tuned && look.tuned[shown]) || {};
     for (var ink in INKS) if (HEX.test(tuned[ink])) root.style.setProperty(INKS[ink], tuned[ink]);
+    var people = look.people || {};
+    for (var n = 1; n <= 12; n++) if (HEX.test(people[n])) root.style.setProperty("--person-" + n, people[n]);
   } catch (e) {}
 })();

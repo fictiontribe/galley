@@ -10,6 +10,7 @@
 import { BLACK, contrast, fromHex, fromOklch, hueDistance, mixOklab, toHex, toOklch, type Rgb } from "./colour";
 import {
   DEFAULT_SWITCHES,
+  PEOPLE_COLOURS,
   PROOF_INKS,
   PROOF_INK_VALUES,
   SEED_NAMES,
@@ -27,8 +28,8 @@ import { deriveColours, type DerivedColours } from "./derive";
 
 export interface ThemeAdjustment {
   mode: ThemeMode;
-  /** The colour that moved: a seed, or a proof or status ink the check tuned. */
-  colour: SeedName | ProofInk;
+  /** The colour that moved: a seed, a proof or status ink, or a people colour ("person-3") the check tuned. */
+  colour: SeedName | ProofInk | `person-${number}`;
   from: string;
   to: string;
   /** "range": outside what that colour may be; "legibility": moved until what is read on it passes; "tuned": a proof or status ink, lightness only. */
@@ -38,7 +39,7 @@ export interface ThemeAdjustment {
 }
 
 export interface ThemeWarning {
-  code: "near-proof" | "pale-pencil";
+  code: "near-proof" | "light-pencil";
   ink?: ProofInk;
   message: string;
 }
@@ -86,6 +87,10 @@ const RANGES: Record<ThemeMode, Record<Exclude<SeedName, "pencil">, Range>> = {
 /** In dark mode the plate also sits at least this far below the paper. */
 const DARK_PLATE_BELOW_PAPER = 0.03;
 export const PENCIL_MIN_CHROMA = 0.06;
+/** README 7: warn when the pencil's text colour is this much lighter or darker (OKLCH L) than the pencil. */
+const LIGHT_PENCIL_GAP = 0.15;
+/** A people colour as a 2 px outline on a sheet (WCAG 1.4.11). */
+const PERSON_OUTLINE = 3;
 /** A hex colour can't land exactly on a boundary; this much either side is inside. */
 const SLACK = 0.0005;
 const STEP = 0.01;
@@ -469,18 +474,55 @@ export function checkTheme(input: unknown): ThemeCheck {
       }
     }
   }
-  // A pale pencil draws its text, lines and tints in a darker shade of itself: say so before anyone is surprised.
-  const pencilLight = toOklch(fromHex(light.seeds.pencil));
-
-  if (pencilLight.L > 0.62) {
-    warnings.push({
-      code: "pale-pencil",
-      message: `Your pencil color is pale, so text, lines and tints drawn in it use a darker shade (${toHex(light.colours.accentText)}) to stay readable. Buttons keep the color itself.`,
-    });
+  // README 7: a light pencil draws its text and lines in a darker shade of itself (the clamped pencil text). Say so; change nothing.
+  if (Math.abs(toOklch(fromHex(light.seeds.pencil)).L - toOklch(light.colours.accentText).L) > LIGHT_PENCIL_GAP) {
+    warnings.push({ code: "light-pencil", message: "This pencil color is light, so lines and text drawn in it will look darker than the button." });
   }
 
-  const adjusted = [...light.adjusted, ...dark.adjusted];
-  const measures = [...light.measures, ...dark.measures];
+  // The people colours (tokens.css §8): each as an outline on the light and the dark sheet, ≥ 3:1; tuned in lightness only, one value for both modes.
+  const people: Record<string, string> = {};
+  const peopleAdjusted: ThemeAdjustment[] = [];
+  const peopleMeasures: PairMeasure[] = [];
+  const sheets = { light: light.colours.sheet, dark: dark.colours.sheet };
+
+  PEOPLE_COLOURS.forEach(({ name, value: from }, index) => {
+    let value = from;
+    const ratios = (hex: string) => ({ light: contrast(fromHex(hex), sheets.light), dark: contrast(fromHex(hex), sheets.dark) });
+
+    for (let i = 0; i < 40; i++) {
+      const now = ratios(value);
+
+      if (now.light >= PERSON_OUTLINE && now.dark >= PERSON_OUTLINE) break;
+      // Failing on both sheets at once can't be helped by lightness; it stays and is reported below.
+      if (now.light < PERSON_OUTLINE && now.dark < PERSON_OUTLINE) break;
+      const next = shift(value, now.light < PERSON_OUTLINE ? -STEP : STEP);
+
+      if (!next) break;
+      value = next;
+    }
+    const final = ratios(value);
+
+    for (const mode of THEME_MODES) peopleMeasures.push({ mode, label: `the ${name} people color as an outline on a sheet`, fg: value, bg: toHex(sheets[mode]), ratio: final[mode], min: PERSON_OUTLINE });
+    if (value !== from) {
+      people[String(index + 1)] = value;
+      const darker = toOklch(fromHex(value)).L < toOklch(fromHex(from)).L;
+
+      peopleAdjusted.push({
+        mode: darker ? "light" : "dark",
+        colour: `person-${index + 1}`,
+        from,
+        to: value,
+        kind: "tuned",
+        reason: `The ${name} color that marks a person was ${darker ? "darkened" : "lightened"} slightly, from ${from} to ${value}, so its outline shows on a sheet in this theme. Its hue is kept, so that person looks the same to everyone.`,
+      });
+    }
+  });
+  const peopleFailing = peopleMeasures.filter((m) => m.ratio < m.min);
+
+  if (peopleFailing.length) refused.push(`Some of the colors that mark people would not show on this theme’s sheets (${join(dedupe(peopleFailing.map((m) => m.label.replace(/^the | people color as an outline on a sheet$/g, ""))), "and")}). Try a sheet further from the middle grey.`);
+
+  const adjusted = [...light.adjusted, ...dark.adjusted, ...peopleAdjusted];
+  const measures = [...light.measures, ...dark.measures, ...peopleMeasures];
   const colours = { light: hexColours(light.colours), dark: hexColours(dark.colours) };
 
   if (refused.length) return { ok: false, theme: null, applied: null, derivedDark, adjusted, warnings, refused, measures, colours };
@@ -491,7 +533,7 @@ export function checkTheme(input: unknown): ThemeCheck {
   return {
     ok: true,
     theme: out,
-    applied: { id: theme.id, light: light.seeds, dark: dark.seeds, switches: fullSwitches(theme.switches), tuned: { light: light.tuned, dark: dark.tuned } },
+    applied: { id: theme.id, light: light.seeds, dark: dark.seeds, switches: fullSwitches(theme.switches), tuned: { light: light.tuned, dark: dark.tuned }, ...(Object.keys(people).length ? { people } : {}) },
     derivedDark,
     adjusted,
     warnings,
@@ -501,6 +543,6 @@ export function checkTheme(input: unknown): ThemeCheck {
   };
 }
 
-/** How many pairs are measured in each mode. */
-export const PAIR_COUNT = PAIRS.length + PROOF_INKS.length * PROOF_SURFACES.length;
+/** How many pairs are measured: each mode's, and the people colours on both sheets. */
+export const PAIR_COUNT = 2 * (PAIRS.length + PROOF_INKS.length * PROOF_SURFACES.length) + 2 * PEOPLE_COLOURS.length;
 export { SEED_NAMES, THEME_MODES, DEFAULT_SWITCHES };

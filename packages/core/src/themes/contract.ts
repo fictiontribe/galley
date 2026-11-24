@@ -69,6 +69,28 @@ export const PROOF_INK_VALUES: Record<ThemeMode, Record<ProofInk, string>> = {
 };
 
 /**
+ * The twelve people colours (tokens.css §8): who is here. Fixed in every
+ * theme and the same in light and dark; the check may tune a lightness so
+ * each still shows as an outline on the theme's sheets.
+ */
+export const PEOPLE_COLOURS: ReadonlyArray<{ name: string; value: string }> = [
+  { name: "rose", value: "#C7446F" },
+  { name: "coral", value: "#E05B4D" },
+  { name: "rust", value: "#B35E00" },
+  { name: "mustard", value: "#B08500" },
+  { name: "olive", value: "#748C00" },
+  { name: "jade", value: "#00A45D" },
+  { name: "teal", value: "#00927E" },
+  { name: "lagoon", value: "#009DB7" },
+  { name: "harbour", value: "#007EB2" },
+  { name: "cornflower", value: "#5886F2" },
+  { name: "violet", value: "#9758C6" },
+  { name: "orchid", value: "#C360BD" },
+];
+/** `--person-1` … `--person-12`. */
+export const personProperty = (index: number) => `--person-${index + 1}`;
+
+/**
  * A theme as it is put on the page: both modes' colours after the check,
  * every switch, and any ink the check had to tune. Carries no words (no
  * name, description or author), so it can be shown before anyone signs in.
@@ -79,6 +101,8 @@ export interface AppliedTheme {
   dark: ThemeSeeds;
   switches: ThemeSwitches;
   tuned: Record<ThemeMode, Partial<Record<ProofInk, string>>>;
+  /** People colours the check tuned, by number ("1" … "12"); the same in light and dark. */
+  people?: Record<string, string>;
 }
 
 export const DEFAULT_SWITCHES: ThemeSwitches = { sidebar: "sheet", assist: "ruled", icons: "one-tone", depth: "soft" };

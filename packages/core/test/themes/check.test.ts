@@ -64,9 +64,9 @@ describe("checkTheme: the README's test themes", () => {
     expect(lowest(check, "light", "text and focus in the pencil color on a sheet")).toBeCloseTo(7.06, 1);
     expect(lowest(check, "light", "pencil text on a selected row on a selected row")).toBeGreaterThan(4.5);
     expect(lowest(check, "light", "a selected row against a sheet")).toBeCloseTo(1.16, 1);
-    expect(check.warnings.find((w) => w.code === "pale-pencil")?.message).toBe(
-      "Your pencil color is pale, so text, lines and tints drawn in it use a darker shade (#665600) to stay readable. Buttons keep the color itself."
-    );
+    expect(check.warnings.find((w) => w.code === "light-pencil")?.message).toBe("This pencil color is light, so lines and text drawn in it will look darker than the button.");
+    // Quiet's pencil is not light: no such warning.
+    expect(checkTheme(QUIET).warnings).toEqual([]);
   });
 
   it("Harbour: the ink is nudged, and the teal is said to be close to the insert green", () => {
@@ -84,6 +84,28 @@ describe("checkTheme: the README's test themes", () => {
     expect(check.adjusted.filter((a) => a.mode === "dark")).toEqual([]);
     expect(check.theme?.dark).toBeUndefined();
     expect(check.applied?.dark).toEqual(darkFromLight(check.theme!.light));
+  });
+});
+
+describe("checkTheme: the people colours", () => {
+  it("measures all twelve on the light and dark sheet, and leaves them alone where they show", () => {
+    const check = checkTheme(QUIET);
+    const people = check.measures.filter((m) => m.label.endsWith("people color as an outline on a sheet"));
+    expect(people).toHaveLength(24);
+    expect(people.every((m) => m.ratio >= 3)).toBe(true);
+    expect(check.applied?.people).toBeUndefined();
+  });
+
+  it("tunes one in lightness when its outline would not show, and says so", () => {
+    // The palest paper and the lightest dark paper the ranges allow, with a cool tint.
+    const check = checkTheme({ ...QUIET, id: "pale", name: "Pale", light: { ...QUIET.light, paper: "#FDFDFF" }, dark: { ...QUIET.dark!, paper: "#3A3A44" } });
+    expect(check.ok).toBe(true);
+    const tuned = check.adjusted.filter((a) => a.colour.startsWith("person-"));
+    for (const adjustment of tuned) {
+      expect(adjustment.reason).toMatch(/^The [a-z]+ color that marks a person was (darkened|lightened) slightly, from #[0-9A-F]{6} to #[0-9A-F]{6}, so its outline shows on a sheet in this theme\. Its hue is kept, so that person looks the same to everyone\.$/);
+      expect(check.applied?.people?.[adjustment.colour.slice(7)]).toBe(adjustment.to);
+    }
+    expect(check.measures.filter((m) => m.label.endsWith("as an outline on a sheet")).every((m) => m.ratio >= 3)).toBe(true);
   });
 });
 
