@@ -124,6 +124,9 @@ describe("connecting Cloudflare Images", () => {
 
     expect(result.check.ok).toBe(true);
     expect(result.status?.images.token.use).toBe("deploy");
+    // Not even its last four characters.
+    expect(result.status?.images.token.hint).toBeUndefined();
+    expect(JSON.stringify(await storage.status(site.site))).not.toContain("cdef");
     await done();
   });
 });

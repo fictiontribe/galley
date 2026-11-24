@@ -678,7 +678,8 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     const config = (await site.model()).media.images ?? null;
     const { token, use, source } = await imagesToken(site);
 
-    return { connected: Boolean(config && token), config, token: token ? { configured: true, source, hint: token.slice(-4), use } : { configured: false, source: null, use: null } };
+    // The site's Cloudflare key for putting it online is the install's business: none of it is shown here.
+    return { connected: Boolean(config && token), config, token: token ? { configured: true, source, ...(use === "deploy" ? {} : { hint: token.slice(-4) }), use } : { configured: false, source: null, use: null } };
   }
 
   function makeImagesStore(config: MediaImagesConfig, token: string, use: "own" | "deploy" | null): MediaStore {
