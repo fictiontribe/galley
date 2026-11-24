@@ -20,7 +20,9 @@ type MediaStorageRouteKey =
   | "PUT /api/sites/:siteId/media/storage"
   | "DELETE /api/sites/:siteId/media/storage"
   | "GET /api/sites/:siteId/media/usage"
-  | "POST /api/sites/:siteId/media/storage/delete";
+  | "POST /api/sites/:siteId/media/storage/delete"
+  | "POST /api/sites/:siteId/media/storage/move/plan"
+  | "POST /api/sites/:siteId/media/storage/move";
 
 const shortText = (max: number) => z.string().trim().max(max);
 
@@ -47,6 +49,11 @@ export const checkBody = z
   .transform((value) => value ?? {});
 export const disconnectQuery = z.object({ forgetKeys: z.enum(["true", "false"]).optional() });
 export const usageQuery = z.object({ url: z.string().trim().min(1, "it can't be empty").max(2048) });
+const location = z.enum(["repository", "bucket", "images"]);
+export const moveBody = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("move"), from: location, to: location, keepCopies: z.boolean().optional() }).strict(),
+  z.object({ kind: z.literal("address"), store: z.enum(["bucket", "images"]), publicUrl: z.string().trim().min(1, "it can't be empty").max(500) }).strict(),
+]);
 export const deleteStoredBody = z.object({ paths: z.array(z.string().min(1).max(1100)).min(1, "name at least one file").max(200) }).strict();
 
 export function mediaStorageOf(ctx: RouteContext): MediaStorageService {
@@ -115,5 +122,19 @@ export const mediaStorageRoutes: Pick<RouteTable, MediaStorageRouteKey> = {
     const site = await siteOf(c, ctx);
 
     return engine(() => storage.deleteStored(site, paths));
+  },
+  "POST /api/sites/:siteId/media/storage/move/plan": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const request = await v.body(c, moveBody);
+    const site = await siteOf(c, ctx);
+
+    return engine(() => storage.planMove(site, request));
+  },
+  "POST /api/sites/:siteId/media/storage/move": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const request = await v.body(c, moveBody);
+    const site = await siteOf(c, ctx);
+
+    return engine(() => storage.startMove(site, request));
   },
 };

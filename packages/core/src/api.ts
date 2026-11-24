@@ -72,7 +72,7 @@ import type { CloudflareCheck, CloudflarePlan, ImportMode, ImportResolutions, Im
 import type { AddSitesRequest, AddSitesResult, ScanSitesRequest, ScanSitesResult, SiteConnections, SiteGroup, SiteGroupInput, SitePatch, SiteUsageTotals } from "./types";
 import type { DeployKeyInfo, InstallInfo, RestoreUpload, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./install/types";
 import type { Account, AccountRole, AccountSession, Invitation, LinkPreview, OneTimeLink, People } from "./install/accounts";
-import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaLibraryAnswer, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaUsage } from "./media-storage/contract";
+import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaLibraryAnswer, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaUsage } from "./media-storage/contract";
 import type { EditorHostAbsent, EditorHostAccount, EditorHostInfo, HostedEditorBackup, HostedEditorPlan, HostedEditorRemoval, HostedEditorRequest, HostedEditorStatus } from "./hosting/types";
 
 /**
@@ -518,6 +518,10 @@ export interface ApiRoutes {
    * version — is refused, with where.
    */
   "POST /api/sites/:siteId/media/storage/delete": { body: { paths: string[] }; response: MediaStoreDeleteResult };
+  /** What moving files (to the bucket and back) or changing the bucket's address would do. Changes nothing. */
+  "POST /api/sites/:siteId/media/storage/move/plan": { body: MediaMoveRequest; response: MediaMovePlan };
+  /** Do it, as a `Job` (kind "media"): copy, rewrite the pages, remove what nothing reaches. Safe to run again. */
+  "POST /api/sites/:siteId/media/storage/move": { body: MediaMoveRequest; response: Job };
   /**
    * Raw bytes of a repo file from the working tree (`rev` absent) or the base
    * commit (`rev=base`). Used for thumbnails and before/after image diffs.

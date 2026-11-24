@@ -91,7 +91,19 @@ describe("media storage routes", () => {
         calls.push(["delete", paths]);
         return { deleted: paths, refused: [] };
       },
+      planMove: async (_site, request) => {
+        calls.push(["plan", request]);
+        return { kind: "move", from: "repository", to: "bucket", files: 3, bytes: 10, references: 2, pages: 1, done: 0, problems: [], keepCopies: false };
+      },
+      startMove: async (_site, request) => {
+        calls.push(["move", request]);
+        return { id: "job-media", kind: "media", label: "Moving media to the bucket", state: "running", startedAt: 1 };
+      },
     };
+    expect((await json(await app.call("POST", `/api/sites/${SITE_ID}/media/storage/move/plan`, { kind: "move", from: "repository", to: "bucket" }))).files).toBe(3);
+    expect((await json(await app.call("POST", `/api/sites/${SITE_ID}/media/storage/move`, { kind: "address", store: "bucket", publicUrl: "https://cdn.example.com" }))).kind).toBe("media");
+    expect((await app.call("POST", `/api/sites/${SITE_ID}/media/storage/move`, { kind: "move", from: "attic", to: "bucket" })).status).toBe(400);
+    calls.splice(0, 2);
     expect((await json(await app.call("GET", `/api/sites/${SITE_ID}/media/usage?url=${encodeURIComponent("https://media.example.com/a.png")}`))).working).toEqual([]);
     expect((await json(await app.call("POST", `/api/sites/${SITE_ID}/media/storage/delete`, { paths: ["bucket:a.png"] }))).deleted).toEqual(["bucket:a.png"]);
     expect(calls).toEqual([["usage", "https://media.example.com/a.png"], ["delete", ["bucket:a.png"]]]);

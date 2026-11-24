@@ -307,7 +307,7 @@ export const routes: RouteTable = {
   },
   "GET /api/jobs/:jobId": async (c, ctx) => {
     // Deploy jobs are kept by the deploy service, so a page reload mid-deploy can still ask.
-    const job = ctx.services.registry.job(c.req.param("jobId") ?? "") ?? ctx.services.deploy?.job(c.req.param("jobId") ?? "") ?? ctx.services.hosting?.job(c.req.param("jobId") ?? "") ?? ctx.services.redirects?.job(c.req.param("jobId") ?? "") ?? siteKitJob(ctx.services, c.req.param("jobId") ?? "") ?? ctx.services.siteBrand?.job(c.req.param("jobId") ?? "") ?? importsOf(ctx.services).job(c.req.param("jobId") ?? "") ?? null;
+    const job = ctx.services.registry.job(c.req.param("jobId") ?? "") ?? ctx.services.deploy?.job(c.req.param("jobId") ?? "") ?? ctx.services.mediaStorage?.job(c.req.param("jobId") ?? "") ?? ctx.services.hosting?.job(c.req.param("jobId") ?? "") ?? ctx.services.redirects?.job(c.req.param("jobId") ?? "") ?? siteKitJob(ctx.services, c.req.param("jobId") ?? "") ?? ctx.services.siteBrand?.job(c.req.param("jobId") ?? "") ?? importsOf(ctx.services).job(c.req.param("jobId") ?? "") ?? null;
 
     if (!job) throw notFound("That task isn't known here. It may have finished before the app restarted.");
     return job;

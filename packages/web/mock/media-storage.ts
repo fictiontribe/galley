@@ -11,9 +11,11 @@
  */
 // Only the dependency-free setup data (and types): this file is loaded by Node directly, not bundled.
 import { BUCKET_CONNECTORS, connectorInfo, isTrialAddress, normalizeStorageConfig, settingsProblems } from "@galley/core/media-storage/info";
-import type { MediaCheckResult, MediaCheckStep, MediaCheckStepId, MediaConnectRequest, MediaKeyStatus, MediaStorageStatus, MediaStoreDeleteResult, MediaUsage } from "@galley/core/media-storage/contract";
-import type { MediaItem, MediaStorageConfig } from "@galley/core/types";
+import { randomUUID } from "node:crypto";
+import type { MediaCheckResult, MediaCheckStep, MediaCheckStepId, MediaConnectRequest, MediaKeyStatus, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaUsage } from "@galley/core/media-storage/contract";
+import type { Job, MediaItem, MediaStorageConfig } from "@galley/core/types";
 import type { Handlers, MockBackend } from "./backend.ts";
+import { MockError } from "./site.ts";
 
 type MediaStorageKey =
   | "GET /api/media-storage/connectors"
@@ -22,7 +24,9 @@ type MediaStorageKey =
   | "PUT /api/sites/:siteId/media/storage"
   | "DELETE /api/sites/:siteId/media/storage"
   | "GET /api/sites/:siteId/media/usage"
-  | "POST /api/sites/:siteId/media/storage/delete";
+  | "POST /api/sites/:siteId/media/storage/delete"
+  | "POST /api/sites/:siteId/media/storage/move/plan"
+  | "POST /api/sites/:siteId/media/storage/move";
 
 const LABELS: Record<MediaCheckStepId, string> = {
   settings: "The settings make sense",
@@ -196,7 +200,42 @@ export function createMockMediaStorage(mock: MockBackend) {
     return result;
   }
 
+  /** A pretend plan: the repository's files to the bucket (all of them; a bucket takes any kind), or the bucket's back. */
+  function plan(siteId: string, request: MediaMoveRequest): MediaMovePlan {
+    const state = of(siteId);
+
+    if (!state.config) throw new MockError("unconfigured", "The site isn't connected to a bucket.");
+    if (request.kind === "address") return { kind: "address", store: request.store, files: 0, bytes: 0, references: 6, pages: 4, done: 0, problems: [], keepCopies: true, publicUrl: request.publicUrl.replace(/\/+$/, "") };
+    const files = request.from === "repository" ? mock.site(siteId).media() : state.bucket;
+
+    return { kind: "move", from: request.from, to: request.to, files: files.length, bytes: files.reduce((sum, item) => sum + item.size, 0), references: files.length * 2, pages: Math.max(1, Math.round(files.length / 2)), done: 0, problems: [], keepCopies: request.kind === "move" && request.from === "repository" ? Boolean(request.keepCopies) : true };
+  }
+
+  function start(siteId: string, request: MediaMoveRequest): Job {
+    const steps = plan(siteId, request);
+    const job: Job = { id: randomUUID(), kind: "media", label: request.kind === "address" ? "Changing the files' address" : request.to === "repository" ? "Moving media to the repository" : "Moving media to the bucket", state: "running", progress: 0, detail: "Getting ready…", siteId, startedAt: Date.now() };
+
+    mock.jobs.set(job.id, job);
+    mock.emit({ type: "job", job: { ...job } });
+    void (async () => {
+      for (let n = 1; n <= Math.max(1, steps.files); n += Math.max(1, Math.ceil(steps.files / 4))) {
+        await sleep(450);
+        Object.assign(job, { detail: request.kind === "address" ? `Updating pages: ${Math.min(n, steps.pages)} of ${steps.pages}` : `Copying ${n} of ${steps.files}`, progress: n / Math.max(1, steps.files) });
+        mock.emit({ type: "job", job: { ...job } });
+      }
+      if (request.kind === "address") {
+        const state = of(siteId);
+        if (state.config) state.config = { ...state.config, publicUrl: request.publicUrl.replace(/\/+$/, "") };
+      }
+      Object.assign(job, { state: "done", progress: 1, finishedAt: Date.now(), detail: request.kind === "address" ? `${steps.pages} pages updated; new files are loaded from ${steps.publicUrl}. Publish to make it live.` : `${steps.files} files copied, ${steps.pages} pages updated. Publish to make it live.` });
+      mock.emit({ type: "job", job: { ...job } });
+    })();
+    return { ...job };
+  }
+
   const handlers: Pick<Handlers, MediaStorageKey> = {
+    "POST /api/sites/:siteId/media/storage/move/plan": ({ params, body }) => plan(params.siteId, body),
+    "POST /api/sites/:siteId/media/storage/move": ({ params, body }) => start(params.siteId, body),
     "GET /api/sites/:siteId/media/usage": ({ params, query }) => usage(params.siteId, query.url ?? ""),
     "POST /api/sites/:siteId/media/storage/delete": ({ params, body }) => {
       const result = deleteStored(params.siteId, body.paths);

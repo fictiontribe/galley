@@ -110,3 +110,7 @@
 .media-check__message { margin: 0; font-size: var(--text-sm); line-height: var(--leading-body); color: var(--ink-primary); }
 /* Taller details (a bucket file's "Used on") scroll; rows keep their size instead of squeezing the preview. */
 .app-media-details { grid-auto-rows: max-content; }
+.media-storage__move { display: grid; gap: var(--space-3); margin-block-start: var(--space-5); padding-block-start: var(--space-4); border-block-start: var(--border-hair) solid var(--border-subtle); }
+.media-storage__move .g-eyebrow { margin: 0; }
+.media-storage__address { display: grid; gap: var(--space-2); justify-items: start; }
+.media-storage__address .g-field { inline-size: 100%; }

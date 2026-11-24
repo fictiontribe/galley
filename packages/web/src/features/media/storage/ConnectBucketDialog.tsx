@@ -22,6 +22,7 @@ import { Badge, Button, Checkbox, ConfirmDialog, Dialog, ErrorState, Field, Icon
 import { copyText } from "@/features/deploy/parts";
 import "@/features/deploy/deploy.css";
 import { useConnectors, useMediaStorage } from "./useMediaStorage";
+import { MoveFiles } from "./MoveFiles";
 
 type Values = Record<MediaStoreFieldId, string>;
 const EMPTY: Values = { account: "", bucket: "", region: "", endpoint: "", prefix: "", publicUrl: "", accessKeyId: "", secretAccessKey: "" };
@@ -294,6 +295,7 @@ export function ConnectBucketDialog({ siteId, open, onClose }: { siteId: string;
           <>
             <Summary siteId={siteId} status={status.data} onEdit={() => setEditing(true)} onChecked={setResult} />
             <CheckSteps result={result} running={false} />
+            <MoveFiles siteId={siteId} onStarted={onClose} />
           </>
         ) : (
           <form id="media-storage-form" className="media-storage" onSubmit={(event) => void submit(event)}>
