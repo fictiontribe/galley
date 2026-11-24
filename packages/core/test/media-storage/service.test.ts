@@ -154,6 +154,20 @@ describe("connecting a bucket", () => {
   });
 });
 
+describe("an S3-compatible store", () => {
+  it("connects with its own address and region, path-style, and says plainly what to change", async () => {
+    const lowfield = fakeSite();
+    const config = { connector: "s3-compatible", endpoint: fake.endpoint, region: "eu-west-1", bucket: "aws-media", prefix: "lowfield", publicUrl: fake.publicUrl("aws-media") };
+
+    expect((await service.connect(lowfield.site, { config: { ...config, endpoint: "" }, ...S3_KEY })).check.steps[0]?.field).toBe("endpoint");
+    expect((await service.connect(lowfield.site, { config: { ...config, region: "" }, ...S3_KEY })).check.steps[0]?.field).toBe("region");
+    const result = await service.connect(lowfield.site, { config, ...S3_KEY });
+
+    expect(result.check.ok, result.check.message).toBe(true);
+    expect(result.status?.bucket.store?.name).toBe("Another S3-compatible store");
+  });
+});
+
 describe("who may", () => {
   it("checks the level in the engine, whoever calls: manage to connect or move, publish to delete for good", async () => {
     const lowfield = fakeSite();

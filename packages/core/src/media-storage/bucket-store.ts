@@ -16,7 +16,7 @@ import { ADDRESS_TAIL, escapePattern, StoreError, StoreNameTaken, type MediaStor
 export const BUCKET_CONNECTOR_NAMES: Record<string, string> = {
   r2: "Cloudflare R2",
   s3: "Amazon S3",
-  "s3-compatible": "the storage service",
+  "s3-compatible": "S3-compatible storage",
 };
 
 /** What the library takes; a bucket takes all of it. */

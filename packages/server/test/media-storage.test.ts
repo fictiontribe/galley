@@ -47,7 +47,7 @@ describe("media storage routes", () => {
     const app = await withStorage();
     const body = await json(await app.call("GET", "/api/media-storage/connectors"));
 
-    expect(body.connectors.map((c: { id: string }) => c.id)).toEqual(["r2", "s3", "cloudflare-images"]);
+    expect(body.connectors.map((c: { id: string }) => c.id)).toEqual(["r2", "s3", "s3-compatible", "cloudflare-images"]);
     await app.done();
   });
 

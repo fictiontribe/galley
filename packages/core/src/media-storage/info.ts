@@ -181,7 +181,45 @@ export const S3_INFO: MediaStoreInfo = {
   docsUrl: "https://docs.aws.amazon.com/AmazonS3/latest/userguide/",
 };
 
-export const BUCKET_CONNECTORS: MediaStoreInfo[] = [R2_INFO, S3_INFO];
+export const S3_COMPATIBLE_INFO: MediaStoreInfo = {
+  id: "s3-compatible",
+  name: "Another S3-compatible store",
+  blurb: "Backblaze B2, DigitalOcean Spaces, Wasabi, MinIO or any store that speaks the S3 API.",
+  recommended: false,
+  steps: [
+    {
+      title: "Make the bucket",
+      text: [
+        "In the store's console, make a bucket for the site. Note its exact name, the store's S3 address (its “endpoint”, starting with https://) and its region name, as the store shows them.",
+      ],
+    },
+    {
+      title: "Let visitors read the files",
+      text: [
+        "Make the bucket (or the site's folder in it) readable by anyone, or put a CDN in front of it. The address visitors load files from is the public address below.",
+      ],
+    },
+    {
+      title: "Make a key for this site only",
+      text: [
+        "Make an access key that can list, add, read and delete files in this one bucket, and nothing else. Copy its key ID and its secret: stores show the secret only once.",
+      ],
+    },
+  ],
+  fields: [
+    { id: "endpoint", label: "S3 address", help: "The store's S3 API address for this bucket's region, starting with https:// (“https://s3.eu-central-003.backblazeb2.com”).", placeholder: "https://s3.eu-central-003.backblazeb2.com", required: true },
+    { id: "region", label: "Region", help: "The region name the store gives with the address (“eu-central-003”, “nyc3”). If it gives none, “us-east-1” usually works.", placeholder: "us-east-1", required: true },
+    { id: "bucket", label: "Bucket name", help: "The bucket's exact name.", placeholder: "lowfield-media", required: true },
+    { id: "publicUrl", label: "Public address", help: "Where visitors load the files from: the bucket's public address, or the CDN in front of it.", placeholder: "https://media.example.com", required: true },
+    FIELD.prefix,
+    FIELD.accessKeyId,
+    FIELD.secretAccessKey,
+  ],
+  keyGrants: "Give the key only this bucket, and only listing, adding, reading and deleting files. Galley only ever writes new names and only deletes files nobody uses.",
+  publicNote: "Visitors load the files from this address, so it goes into your pages as it is. Anyone with an address can open that file: keep private documents out of the bucket.",
+};
+
+export const BUCKET_CONNECTORS: MediaStoreInfo[] = [R2_INFO, S3_INFO, S3_COMPATIBLE_INFO];
 
 export function connectorInfo(id: string): MediaStoreInfo | null {
   return BUCKET_CONNECTORS.find((info) => info.id === id) ?? null;
@@ -327,8 +365,10 @@ export function settingsProblems(config: MediaStorageConfig): SettingsProblem[] 
     } else if (bucket.includes(".") && !config.endpoint) {
       problems.push({ field: "bucket", message: "A bucket name with dots can't be reached over https at its own address. Make a bucket without dots." });
     }
-  } else if (!config.endpoint) {
-    problems.push({ field: "endpoint", message: "Give the store's S3 address." });
+  } else {
+    if (!config.endpoint) problems.push({ field: "endpoint", message: "Give the store's S3 address." });
+    if (!config.region?.trim()) problems.push({ field: "region", message: "Give the store's region name (“us-east-1” if it gives none)." });
+    if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(bucket)) problems.push({ field: "bucket", message: "Bucket names are 3 to 63 lowercase letters, digits, dots and dashes." });
   }
   if (config.endpoint) {
     const problem = addressProblem(config.endpoint, "S3 address");

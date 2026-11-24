@@ -446,11 +446,11 @@ Commands
   move          Move files: --to bucket, --to images, --to repository (with --from), or --address <url>
   disconnect    Stop using the bucket (or Cloudflare Images, with --images); the files stay
 Options for connect
-      --connector <id>   r2 (Cloudflare R2), s3 (Amazon S3) or cloudflare-images
+      --connector <id>   r2 (Cloudflare R2), s3 (Amazon S3), s3-compatible, or cloudflare-images
       --bucket <name>
       --account <id>     R2: the account ID
       --region <code>    S3: the bucket's Region ("eu-west-1")
-      --endpoint <url>   R2 in a jurisdiction: the bucket's S3 address
+      --endpoint <url>   The store's S3 address (s3-compatible; R2 in a jurisdiction)
       --prefix <folder>  Keep this site's files in a folder of the bucket
       --public-url <url> Where visitors load the files from
       --account-hash <h> Images: the account hash (Hosted Images › Developer Resources)

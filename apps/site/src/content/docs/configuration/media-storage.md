@@ -38,6 +38,8 @@ One bucket at most, and Cloudflare Images at most, together or alone. With both,
 
 A bucket made in a jurisdiction (such as the EU) is reached at its own S3 address: paste it under *S3 address of a jurisdiction bucket*.
 
+Another store that speaks the S3 API — Backblaze B2, DigitalOcean Spaces, Wasabi, MinIO — works the same way: choose **Another S3-compatible store** and give its S3 address and region name as the store shows them. Galley addresses the bucket in the path (`address/bucket/file`), which these stores accept.
+
 ## Amazon S3, step by step
 
 1. In the S3 console, **Create bucket**: pick its Region and a name without dots (a name with dots can't be reached over https at the bucket's own address). Leave **Object Ownership** at *Bucket owner enforced*.
