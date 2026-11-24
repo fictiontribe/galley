@@ -81,5 +81,6 @@ export function conventionAdapter(spec: ConventionAdapterSpec): GalleyAdapter {
   if (spec.collections) adapter.collections = (ctx) => spec.collections!(ctx);
   if (spec.routes) adapter.routes = (ctx, collections) => spec.routes!(ctx, collections);
   if (spec.environment) adapter.environment = (ctx) => spec.environment!(ctx);
+  if (spec.forgetPreviewSaves) adapter.forgetPreviewSaves = (ctx) => spec.forgetPreviewSaves!(ctx);
   return adapter;
 }

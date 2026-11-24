@@ -317,6 +317,12 @@ export interface SiteModel {
    * site's own commands (dev server, build) run. Absent when it asks for none.
    */
   environment?: Record<string, string>;
+  /**
+   * Files the framework's dev server saves between runs and trusts on its
+   * next start (the adapter's `forgetPreviewSaves`), site-relative. They are
+   * removed before the preview starts on newer versions. Absent when it saves none.
+   */
+  previewSaves?: string[];
   /** Where the site is put online (galley.config.json `deploy`). Absent until it has been set up. */
   deploy?: DeployConfig;
   /** The redirects list and where it takes effect (galley.config.json `redirects`). Absent until set. */
@@ -752,6 +758,35 @@ export interface GitStatus {
    * it is the signed-in person ("account"), ahead of all of those.
    */
   author?: { name: string; email: string; from: "site" | "repository" | "app" | "machine" | "default" | "account" };
+  /**
+   * When this copy last heard from the code host (ISO 8601): a look
+   * (POST …/git/check), Get latest, or a hosted editor's own round. `ahead`
+   * and `behind` are as of then. null: not since this editor started.
+   * Absent from answers that don't say.
+   */
+  checkedAt?: string | null;
+  /**
+   * The newest look couldn't reach the code host: one plain sentence why
+   * (offline, the key was refused…). `checkedAt` is then the last look that
+   * worked. Absent when the newest look worked.
+   */
+  checkProblem?: string;
+  /**
+   * Newer versions are waiting (`behind` > 0) but can't be brought in as
+   * they are: files with unpublished changes here that they change too
+   * (`paths`, site-relative), or published versions here the code host
+   * doesn't have ("separate-ways"). `message` says what to do, in plain words.
+   */
+  inTheWay?: { kind: "changes" | "separate-ways"; message: string; paths: string[] };
+}
+
+/** What one look at the code host that may bring newer versions in did (SiteService.catchUp). */
+export interface CatchUpResult {
+  /** Versions brought in: 0 when there were none, or something was in the way, or the look failed. */
+  brought: number;
+  /** Files those versions changed, site-relative. */
+  paths: string[];
+  status: GitStatus;
 }
 
 // ─────────────────────────────────────────────────────────────── preview
@@ -1210,6 +1245,12 @@ export type ServerEvent =
   | { type: "changes.updated"; siteId: string; paths: string[]; origin: ChangeOrigin }
   | { type: "preview.status"; siteId: string; status: PreviewStatus }
   | { type: "site.updated"; siteId: string }
+  /**
+   * A look at the code host found something different from the last one, or
+   * a hosted editor's own round brought `brought` newer versions in: read
+   * GET …/git again. The files that changed also go out as `changes.updated`.
+   */
+  | { type: "repository.checked"; siteId: string; brought: number }
   | { type: "sites.updated" }
   | { type: "job"; job: Job }
   /** A plugin was enabled, disabled, saved or failed: read GET /api/plugins again. */
@@ -1931,8 +1972,21 @@ export interface SiteService {
   /** Undo a published commit with a new revert commit (never rewrites history). */
   revert(commit: string): Promise<PublishResult>;
   gitStatus(): Promise<GitStatus>;
+  /**
+   * Ask the code host what is new without changing any file: fetch the
+   * site's branch, then the status as of now. A look that can't reach the
+   * code host doesn't throw: the status says so (`checkProblem`).
+   */
+  checkGit(): Promise<GitStatus>;
   /** Fetch and fast-forward from the remote. Refuses when it cannot fast-forward. */
   pull(): Promise<GitStatus>;
+  /**
+   * A hosted editor's own round: look, and when the code host has newer
+   * versions and nothing here is in the way, bring them in forward only, as
+   * pull does. Never throws for git's reasons (the status says them). null
+   * when other git work is in progress: it never waits behind it.
+   */
+  catchUp(): Promise<CatchUpResult | null>;
 
   // undo
   checkpoint(label: string): Checkpoint;

@@ -57,6 +57,7 @@ Read by `galley serve`. The ones marked *starting value* are used once, only whi
 | `GALLEY_PREVIEW_MEMORY_MB` | no limit | Node's memory ceiling (its max-old-space-size option) for the site's own preview, build and install commands, added after any `NODE_OPTIONS` of yours. Never applied to the server's own process. The generated files set `1024`. |
 | `GALLEY_LOG_REQUESTS` | on | `0` leaves out the one log line per request (method, path without the query, status, time). |
 | `GALLEY_SHUTDOWN_GRACE_MS` | `20000` | How long stopping waits for a publish or a connect in progress. |
+| `GALLEY_SYNC_MINUTES` | `5` | How often the editor looks for newer versions in the site's repository and, when nothing here is in the way, brings them in (forward only, as **Get latest** does). `0` turns the rounds off; Version history still looks when it opens. Whole minutes, up to 1440. Ignored on your own computer, which never looks by itself ([Keeping up with the repository](/docs/running/hosted/#keeping-up-with-the-repository)). |
 | `GALLEY_RESTORE_MAX_MB` | `2048` | The largest backup the Install page's restore takes. Restore larger ones with `galley backup restore`. |
 | `GALLEY_BACKUP_PASSPHRASE` | asked on a terminal | The passphrase for `galley backup create` and `galley backup restore`, 12 characters or more. Pass it into a one-off container with `-e GALLEY_BACKUP_PASSPHRASE` ([Back it up](/docs/running/hosted/#back-it-up)). |
 

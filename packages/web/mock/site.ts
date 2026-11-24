@@ -187,6 +187,8 @@ export class MockSite {
   behind: number;
   /** Versions published here that haven't reached the host yet. */
   unsent = 0;
+  /** When the code host last answered a look (POST …/git/check, Get latest); null until one did. */
+  checkedAt: string | null = null;
   lastOpenedAt = Date.now();
   /** Paths written by each assistant turn, with their pre-images, for "Undo". */
   readonly checkpoints = new Map<string, Map<string, Buffer | null>>();
@@ -640,7 +642,14 @@ export class MockSite {
       lastCommit: last ? { commit: last.commit, message: last.message, date: last.date, author: last.author } : undefined,
       // The fixture sites publish as their last author would, chosen in App settings › You.
       author: { name: last?.author ?? "You", email: last?.email ?? "you@example.com", from: "app" },
+      ...(this.seed.remoteUrl ? { checkedAt: this.checkedAt } : {}),
     };
+  }
+
+  /** A look at the code host: the mock's always answers, and changes nothing here. */
+  check(): GitStatus {
+    if (this.seed.remoteUrl) this.checkedAt = new Date().toISOString();
+    return this.git();
   }
 
   pull(): GitStatus {
@@ -649,6 +658,7 @@ export class MockSite {
       this.history.unshift({ ...next, message: i === 0 ? "Update the footer links" : "Tidy image sizes", author: "A developer", email: "dev@example.com", date: new Date(Date.now() - (i + 1) * 3_600_000).toISOString(), files: ["src/data/navigation.json"], viaGalley: false });
     }
     this.behind = 0;
+    if (this.seed.remoteUrl) this.checkedAt = new Date().toISOString();
     return this.git();
   }
 

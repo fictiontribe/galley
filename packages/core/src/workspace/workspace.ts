@@ -9,6 +9,7 @@ import picomatch from "picomatch";
 import { GalleyError } from "../errors";
 import type {
   AgentMode,
+  CatchUpResult,
   ChangeOrigin,
   ChangeSet,
   ChangeStatus,
@@ -95,7 +96,17 @@ export interface Workspace {
   /** Push versions published here that the remote doesn't have yet. */
   send(config: PublishConfig): Promise<PublishResult>;
   gitStatus(): Promise<GitStatus>;
+  /** Ask the code host what is new, changing no file (publishing.look). Waits its turn behind other git work. */
+  check(): Promise<GitStatus>;
   pull(): Promise<GitStatus>;
+  /** Get latest, saying what came in. `around` runs on either side of files changing, and only when something is to come in. */
+  getLatest(around?: publishing.AroundBringIn): Promise<CatchUpResult>;
+  /**
+   * Look, and bring newer versions in when nothing is in the way
+   * (publishing.catchUp). null, at once, when a write or other git work is
+   * in progress or waiting: it never queues behind it.
+   */
+  catchUp(around?: publishing.AroundBringIn): Promise<CatchUpResult | null>;
   checkpoint(label: string): WorkspaceCheckpoint;
   onChange(listener: (paths: string[], origin: ChangeOrigin) => void): () => void;
   dispose(): Promise<void>;
@@ -109,16 +120,21 @@ const SELF_WRITE_WINDOW_MS = 5_000;
 /** Git metadata events this soon after our own git command are ours. */
 const GIT_QUIET_MS = 750;
 
-/** A promise-chain mutex: one write or git mutation at a time. */
+/** A promise-chain mutex: one write or git mutation at a time. `busy()`: something holds it or waits for it. */
 function createLock() {
   let tail: Promise<unknown> = Promise.resolve();
-
-  return <T>(task: () => Promise<T>): Promise<T> => {
-    const run = tail.then(task, task);
+  let held = 0;
+  const lock = <T>(task: () => Promise<T>): Promise<T> => {
+    held += 1;
+    const run = tail.then(task, task).finally(() => {
+      held -= 1;
+    });
 
     tail = run.catch(() => undefined);
     return run;
   };
+
+  return Object.assign(lock, { busy: () => held > 0 });
 }
 
 export async function createWorkspace(rootInput: string, options: WorkspaceOptions): Promise<Workspace> {
@@ -138,6 +154,8 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
   const lock = createLock();
   let gitBusy = 0;
   let gitQuietUntil = 0;
+  /** When the code host last answered a look, and why the newest look failed (null: it didn't). Kept for this run of the app only. */
+  const looks: { at: string | null; problem: string | null } = { at: null, problem: null };
   let watcher: TreeWatcher | null = null;
   let disposed = false;
 
@@ -158,6 +176,17 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
   };
 
   const info = (): Promise<RepoInfo | null> => repo.info();
+
+  const heard = (look: publishing.Look) => {
+    if (look.ok) {
+      looks.at = new Date().toISOString();
+      looks.problem = null;
+    } else looks.problem = look.problem;
+  };
+
+  /** The status with what is known about the last look: when it worked, and why the newest one didn't. Nothing to say without a remote. */
+  const withLooks = (status: GitStatus): GitStatus =>
+    status.hasRemote ? { ...status, checkedAt: looks.at, ...(looks.problem ? { checkProblem: looks.problem } : {}) } : status;
 
   /** Mutating git work: the watcher ignores git metadata churn while it runs. */
   async function quietGit<T>(task: () => Promise<T>): Promise<T> {
@@ -672,12 +701,44 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
       return lock(() => quietGit(() => publishing.send(host, config)));
     },
 
-    gitStatus() {
-      return publishing.gitStatus(host);
+    async gitStatus() {
+      return withLooks(await publishing.gitStatus(host));
     },
 
-    pull() {
-      return lock(() => quietGit(() => publishing.pull(host)));
+    check() {
+      return lock(() =>
+        quietGit(async () => {
+          const look = await publishing.look(host);
+
+          if (look) heard(look);
+          return withLooks(await publishing.gitStatus(host));
+        })
+      );
+    },
+
+    async pull() {
+      return (await workspace.getLatest()).status;
+    },
+
+    getLatest(around) {
+      return lock(() =>
+        quietGit(async () => {
+          const result = await publishing.pull(host, { onLook: heard, ...(around ? { around } : {}) });
+
+          return { ...result, status: withLooks(result.status) };
+        })
+      );
+    },
+
+    async catchUp(around) {
+      if (lock.busy()) return null;
+      return lock(() =>
+        quietGit(async () => {
+          const result = await publishing.catchUp(host, { onLook: heard, ...(around ? { around } : {}) });
+
+          return { ...result, status: withLooks(result.status) };
+        })
+      );
     },
 
     checkpoint(label) {

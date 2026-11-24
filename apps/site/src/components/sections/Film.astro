@@ -7,6 +7,8 @@ import { join } from "node:path";
 import { noteMissing, webpSize } from "../../lib/media";
 import { inline } from "../../lib/markdown";
 import { fill } from "../../lib/site";
+import Glyph from "../Glyph.astro";
+import type { IconName } from "../../../../../brand/icons";
 
 const { s, block, first } = Astro.props;
 const H = first ? "h1" : "h2";
@@ -44,11 +46,11 @@ const empty = !poster && import.meta.env.DEV;
         )}
         {poster && s.chapters.length > 0 && (
           <ol class="film__steps" aria-label={s.chaptersLabel}>
-            {s.chapters.map((c: { label: string; time: number; text?: string }, i: number) => (
+            {s.chapters.map((c: { label: string; icon?: string; time: number; text?: string }, i: number) => (
               <li>
                 <button type="button" class="film__step" data-film-seek={c.time}>
                   <span class="film__n" aria-hidden="true">{i + 1}</span>
-                  <span class="film__t">{c.label}</span>
+                  <span class="film__t">{c.icon && <Glyph name={c.icon as IconName} size={20} />}{c.label}</span>
                   {c.text && <span class="film__d">{c.text}</span>}
                   <span class="film__at">{`0:${String(c.time).padStart(2, "0")}`}</span>
                 </button>

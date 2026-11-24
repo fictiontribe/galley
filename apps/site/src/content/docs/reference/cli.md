@@ -105,6 +105,9 @@ Operations
                             (default 20000)
   GALLEY_RESTORE_MAX_MB     The largest backup a restore in the app takes (default 2048);
                             larger ones: `galley backup restore` with the server stopped
+  GALLEY_SYNC_MINUTES       How often the editor looks for newer versions in the site's
+                            repository and brings them in when nothing here is in the way
+                            (default 5; 0: only when someone opens Version history)
 E-mail (optional; without it, invitation and new-password links are shown to the owner
 who makes them, to send however they like)
   GALLEY_SMTP_URL           smtp://user:pass@host:587 (or smtps://) for invitations,

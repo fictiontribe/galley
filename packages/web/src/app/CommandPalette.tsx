@@ -153,15 +153,15 @@ export function CommandPalette() {
       }
       list.push(
         { id: "media", group: "Go to", label: "Media", icon: "image", run: go(`${base}/media`) },
-        { id: "forms", group: "Go to", label: "Forms", icon: "posts", run: go(`${base}/forms`) },
-        { id: "scripts", group: "Go to", label: "Scripts", hint: "Analytics, tags and consent", icon: "data", run: go(`${base}/scripts`) },
-        { id: "brand", group: "Go to", label: "Brand", hint: "Colours, fonts and voice", icon: "registration", run: go(`${base}/brand`) },
+        { id: "forms", group: "Go to", label: "Forms", icon: "form", run: go(`${base}/forms`) },
+        { id: "scripts", group: "Go to", label: "Scripts", hint: "Analytics, tags and consent", icon: "scripts", run: go(`${base}/scripts`) },
+        { id: "brand", group: "Go to", label: "Brand", hint: "Colours, fonts and voice", icon: "brand", run: go(`${base}/brand`) },
         { id: "history", group: "Go to", label: "Version history", icon: "history", run: go(`${base}/history`) },
         { id: "site-settings", group: "Go to", label: "Site settings", icon: "settings", run: go(`${base}/settings`), route: "PUT /api/sites/:siteId/config" },
         { id: "site-plugins", group: "Go to", label: "Plugins for this site", hint: "What’s active here", icon: "plugin", run: go(`${base}/plugins`), route: "POST /api/plugins/enabled" },
         { id: "proof", group: "Actions", label: "Open the proof", hint: count(pending, "change"), icon: "proof", run: go(`${base}/proof`) },
       );
-      if (pending > 0) list.push({ id: "publish", group: "Actions", label: "Publish changes", hint: count(pending, "change"), icon: "arrow-up", run: () => setPublishOpen(true), route: "POST /api/sites/:siteId/publish" });
+      if (pending > 0) list.push({ id: "publish", group: "Actions", label: "Publish changes", hint: count(pending, "change"), icon: "publish", run: () => setPublishOpen(true), route: "POST /api/sites/:siteId/publish" });
       list.push(
         previewState === "ready"
           ? { id: "restart", group: "Actions", label: "Restart preview", icon: "refresh", run: () => void runPreview(siteId, "restart") }
@@ -180,7 +180,7 @@ export function CommandPalette() {
     }
     if (hosted) {
       list.push(
-        { id: "install", group: "Go to", label: "Install", hint: account ? "Address, people and backups" : "Address, password and backups", icon: "folder", run: go("/install"), route: "GET /api/install" },
+        { id: "install", group: "Go to", label: "Install", hint: account ? "Address, people and backups" : "Address, password and backups", icon: "install", run: go("/install"), route: "GET /api/install" },
         { id: "settings", group: "Go to", label: "App settings", icon: "settings", run: go("/settings"), route: "PATCH /api/settings" },
         { id: "plugins", group: "Go to", label: "Plugins", hint: "Generators, destinations, tools", icon: "plugin", run: go("/plugins"), route: "POST /api/plugins/enabled" },
       );

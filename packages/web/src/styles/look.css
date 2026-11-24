@@ -1,0 +1,110 @@
+/* ==========================================================================
+   The look — colour, depth, shape and detail on top of the app's layout.
+   Only paint lives here: colours, shadows, radii, borders, marks. No sizes,
+   spacing, grids or page frames (app.css and the features own those), so
+   this file and a layout change never touch the same line.
+   Built on brand/tokens.css §5 (ramps, depth, shape roles). Selectors start
+   with .g-root so they outrank the feature sheets that load after this one.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Chrome and work. The sidebar is the desk's edge: a step deeper than the
+   ground, so the page you're on reads as a sheet pulled forward onto it.
+   -------------------------------------------------------------------------- */
+.g-root .app-sidebar { background: color-mix(in srgb, var(--surface-paper) 55%, var(--surface-sunken)); }
+.g-root .app-sidebar .g-nav__meta { color: var(--ink-tertiary); }
+.g-root .app-nav__search { color: var(--ink-secondary); }
+.g-root .app-nav__search .g-kbd { background: var(--surface-paper); }
+.g-root .app-brand--switcher:hover { background: color-mix(in srgb, var(--ink-primary) 5%, transparent); }
+
+/* Labels over a pane are words, not code: capital first letter, the rest as written. */
+
+.g-root .g-eyebrow::first-letter { text-transform: uppercase; }
+
+/* --------------------------------------------------------------------------
+   The status line: the press's control strip. Each unpublished file is one
+   cell, coloured by what happened to it AND drawn by it — a solid cell for
+   new, a hollow one for edited, a struck one for removed — beside the words
+   that already count them. Once per screen, nowhere else in the app.
+   -------------------------------------------------------------------------- */
+.g-root .app-statusbar { background: color-mix(in srgb, var(--surface-paper) 55%, var(--surface-sunken)); color: var(--ink-tertiary); }
+.g-root .app-status--ready .app-status__mark { color: var(--success); }
+.g-root .app-strip { display: inline-flex; gap: 2px; align-items: center; margin-inline-end: 2px; }
+.g-root .app-strip__cell { inline-size: 7px; block-size: 7px; border-radius: 1px; background: var(--_c); box-shadow: inset 0 0 0 1.5px var(--_c); }
+.g-root .app-strip__cell--added { --_c: var(--proof-insert); }
+.g-root .app-strip__cell--modified { --_c: var(--proof-change); background: transparent; }
+.g-root .app-strip__cell--deleted { --_c: var(--proof-delete); background: linear-gradient(to bottom right, transparent 42%, var(--_c) 42% 58%, transparent 58%); }
+.g-root .app-strip__more { font: inherit; color: var(--ink-tertiary); margin-inline-start: 2px; }
+
+/* --------------------------------------------------------------------------
+   Sheets on the ground. Which cards lift, and that a card inside a card stays
+   flat, is app.css's one card treatment (it uses --shadow-1, the same resting
+   depth as --shadow-sheet); the look only rounds them to the tray radius.
+   Placeholders are blank paper, not grey boxes.
+   -------------------------------------------------------------------------- */
+.g-root .app-card, .g-root .app-error { border-radius: var(--radius-tray); }
+.g-root .app-row__thumb, .g-root .app-pick__thumb { background: var(--surface-raised); box-shadow: inset 0 0 0 1px var(--border-subtle); color: var(--border-worn); }
+.g-root .app-row__thumb img { border-radius: inherit; }
+.g-root .app-pane-head .g-eyebrow { text-transform: capitalize; }
+.g-root .app-preview-state { background: var(--surface-table); }
+.g-root .app-sync, .g-root .app-secret, .g-root .app-model, .g-root .app-config-file { border-radius: var(--radius-tray); }
+.g-root .app-model--checked { background: var(--pencil-50); border-color: var(--pencil-300); }
+
+/* The empty page: a sheet whose crop marks are drawn in pencil — a page set and waiting. */
+.g-root .app-empty__sheet { --crop-color: var(--pencil-300); box-shadow: var(--shadow-sheet); }
+
+/* Menus and the palette: the row you're on takes a pencil tint and its icon's accent. */
+.g-root .app-palette__option[aria-selected="true"] { background: var(--pencil-100); --icon-accent: var(--icon-accent-current); }
+.g-root .app-palette__option[aria-selected="true"] .g-icon { color: inherit; }
+.g-root .app-folder__row[aria-selected="true"] { background: var(--pencil-100); }
+.g-root .app-tooltip { border-radius: var(--radius-control); box-shadow: var(--shadow-2); }
+.g-root .app-popover .g-menu { box-shadow: var(--edge-highlight), var(--shadow-2); }
+
+/* Dialog: the sheet floats; its foot is the well it sits in. */
+.g-root .app-dialog .g-dialog__actions { background: var(--surface-sunken); border-block-start-color: var(--border-subtle); }
+
+/* Progress runs in pencil on a ruled track. */
+.g-root .app-progress { background: var(--pencil-100); }
+
+
+/* --------------------------------------------------------------------------
+   The assistant's hand. Wherever you can ask for a change, the field is ruled
+   in Blue Pencil (pencil-400: 4.56:1 on the sheet, 3.48 dark), so the one
+   place the editor's pencil writes for you is the one place it is drawn.
+   -------------------------------------------------------------------------- */
+.g-root .kit-ask--line .kit-ask__field,
+.g-root .g-composer { border-color: var(--pencil-400); box-shadow: 0 0 0 3px var(--pencil-50), var(--shadow-sheet); }
+.g-root .kit-ask--line .kit-ask__field:has(.kit-ask__input:focus-visible),
+.g-root .g-composer:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring), 0 0 0 4px var(--pencil-100); }
+.g-root .kit-ask--line .kit-ask__label { color: var(--ink-primary); border-inline-end-color: var(--pencil-200); }
+
+/* Icons in the sidebar rest a step quieter than their words. */
+.g-root .app-sidebar .g-nav__item > .g-icon { color: var(--ink-secondary); }
+.g-root .app-sidebar .g-nav__item[aria-current="page"] > .g-icon,
+.g-root .app-sidebar .g-nav__item:hover > .g-icon { color: var(--ink-primary); }
+
+/* --------------------------------------------------------------------------
+   Selection and hover tints come from the pencil ramp, so every feature that
+   still names the older accent tints draws the same pencil tints (and, under
+   any theme, the tints the legibility check measured).
+   -------------------------------------------------------------------------- */
+.g-root {
+  --accent-subtle: var(--pencil-100);
+  --accent-subtle-hover: var(--pencil-200);
+  --accent-line: var(--pencil-300);
+}
+
+/* --------------------------------------------------------------------------
+   Labels over columns, groups and facts are words: sentence case in the
+   interface face at 12/600, tertiary ink — never mono capitals, which stay
+   for what is literally code (paths, keys, file names). Brand's previews of
+   the customer's own type are left alone.
+   -------------------------------------------------------------------------- */
+.g-root :is(.app-rows__head, .app-table thead th, .deploy-records th, .redir-table__head, .kit-row--head, .kit-dest__section,
+  .kit-required, .brand-subhead, .brand-swatch__role, .brand-words th, .brand-format dt,
+  .seo-evidence__label, .seo-result__label, .seo-crawlers__vendor, .seo-batch__facts dt) {
+  font-family: var(--font-text); font-size: var(--text-xs); line-height: var(--leading-xs);
+  font-weight: var(--weight-semibold); letter-spacing: 0.01em; text-transform: none;
+}
+/* Brand's confidence marks ("measured", "declared") are stamps. */
+.g-root .brand-confidence { font-family: var(--font-text); font-size: var(--text-xs); font-weight: var(--weight-semibold); letter-spacing: 0.01em; text-transform: none; padding: 0 6px; border-radius: var(--radius-stamp); }

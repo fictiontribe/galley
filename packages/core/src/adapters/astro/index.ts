@@ -280,6 +280,18 @@ export const astroAdapter = defineAdapter({
     return version ? { confidence, version } : { confidence };
   },
 
+  /**
+   * `astro dev` keeps the content it has already checked against the
+   * collections' schemas in a data store, keyed by each file's digest, and
+   * trusts it on its next start. Written while files and schema changed under
+   * it, it holds entries checked against the old schema with the new file's
+   * digest — served from then on. Only the store files go, never `.astro` or
+   * `node_modules` themselves.
+   */
+  forgetPreviewSaves() {
+    return [".astro/data-store.json", "node_modules/.astro/data-store.json"];
+  },
+
   conventions(ctx): AdapterConventions {
     const state = stateOf(ctx);
     const { values } = state;

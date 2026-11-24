@@ -75,6 +75,8 @@ export interface MockServerOptions {
   legacy?: boolean;
   /** false: a server from before accounts (one shared password). */
   accounts?: boolean;
+  /** Replace or wrap some answers (mock/server.ts `handlers`): the handlers are the mock's own, typed loosely here. */
+  handlers?: (handlers: Record<string, (request: any) => unknown>, backend: { emit(event: ServerEvent): void }) => Record<string, (request: any) => unknown>;
 }
 
 /** Every request the mock refused because the signed-in person's role may not make it. */

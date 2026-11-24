@@ -1,11 +1,12 @@
 import type { PreviewState } from "@galley/core/types";
 import { useConnection } from "@/lib/events";
 import { count, relativeTime } from "@/lib/format";
-import { usePendingCount } from "@/lib/stores/changes";
+import { useChanges, usePendingCount } from "@/lib/stores/changes";
 import { useHostedInstall } from "@/lib/stores/meta";
 import { usePreviewStatus } from "@/lib/stores/preview";
 import { useSite } from "@/lib/stores/site";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { sendNowWithToast } from "@/features/proof/sendNow";
 import { useMay } from "@/lib/may";
 import { Kbd, ProofMark, Spinner } from "@/ui";
@@ -77,6 +78,48 @@ function UnsentItem({ siteId }: { siteId: string }) {
   );
 }
 
+const STRIP_ORDER = { added: 0, modified: 1, deleted: 2 } as const;
+const STRIP_WORD = { added: "new", modified: "edited", deleted: "removed" } as const;
+const STRIP_MAX = 12;
+
+/** The control strip: one cell per unpublished file, drawn by what happened to it. The words beside it carry the count. */
+function ProofStrip() {
+  const files = useChanges((s) => s.changes?.files);
+  if (!files || files.length === 0) return null;
+  const sorted = [...files].sort((a, b) => STRIP_ORDER[a.status] - STRIP_ORDER[b.status]);
+  const tally = (["added", "modified", "deleted"] as const)
+    .map((status) => [status, files.filter((file) => file.status === status).length] as const)
+    .filter(([, n]) => n > 0)
+    .map(([status, n]) => `${n} ${STRIP_WORD[status]}`)
+    .join(" · ");
+  return (
+    <span className="app-strip" aria-hidden="true" title={tally}>
+      {sorted.slice(0, STRIP_MAX).map((file) => (
+        <i key={file.path} className={`app-strip__cell app-strip__cell--${file.status}`} />
+      ))}
+      {files.length > STRIP_MAX ? <span className="app-strip__more">+{files.length - STRIP_MAX}</span> : null}
+    </span>
+  );
+}
+
+/**
+ * "Newer versions are waiting", to Version history — only when something
+ * needs a person: a hosted editor brings newer versions in by itself, so
+ * this shows only while they can't come in (or haven't yet). Not on a
+ * person's own computer, where nothing looks by itself.
+ */
+function WaitingItem({ siteId }: { siteId: string }) {
+  const hosted = useHostedInstall();
+  const behind = useSite((s) => (s.detail?.git.hasRemote ? s.detail.git.behind : 0));
+  if (!hosted || behind <= 0) return null;
+  return (
+    <Link className="g-statusbar__item app-status--waiting" to={`/sites/${encodeURIComponent(siteId)}/history`}>
+      <ProofMark kind="bang" />
+      Newer versions are waiting
+    </Link>
+  );
+}
+
 /** Bottom status line: preview, unpublished changes, last publish, connection. */
 export function SiteStatusBar({ siteId }: { siteId: string }) {
   const pending = usePendingCount();
@@ -84,9 +127,10 @@ export function SiteStatusBar({ siteId }: { siteId: string }) {
   return (
     <footer className="g-statusbar app-statusbar">
       <PreviewItem siteId={siteId} />
-      <span className="g-statusbar__item app-hide-narrow">{pending > 0 ? count(pending, "unpublished change") : "Everything is published"}</span>
+      <span className="g-statusbar__item app-hide-narrow">{pending > 0 ? <ProofStrip /> : null}{pending > 0 ? count(pending, "unpublished change") : "Everything is published"}</span>
       {lastCommit ? <span className="g-statusbar__item app-hide-narrow">Last published {relativeTime(lastCommit.date)}</span> : null}
       <UnsentItem siteId={siteId} />
+      <WaitingItem siteId={siteId} />
       <DeployStatusItem siteId={siteId} />
       <span className="g-toolbar__spacer" />
       <OtherSitesItem />

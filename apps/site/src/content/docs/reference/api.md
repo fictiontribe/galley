@@ -196,8 +196,9 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `GET /api/sites/:siteId/history` | Published versions, newest first. | `?limit?` | `{ items }` | Any signed-in person |
 | `POST /api/sites/:siteId/revert` | Undo a publish with a new version that reverses it. | `{ commit }` | `PublishResult` | Editors and owners |
 | `POST /api/sites/:siteId/send` | Send versions published on this computer that have not reached the remote yet. | — | `PublishResult` | Editors and owners |
-| `GET /api/sites/:siteId/git` | Branch, remote, ahead and behind. | — | `GitStatus` | Any signed-in person |
-| `POST /api/sites/:siteId/pull` | Bring the site up to date (`git pull --ff-only`). | — | `GitStatus` | Editors and owners |
+| `GET /api/sites/:siteId/git` | Branch, remote, ahead and behind, as of the last look at the code host (`checkedAt`). | — | `GitStatus` | Any signed-in person |
+| `POST /api/sites/:siteId/git/check` | Ask the code host what is new (a fetch), changing no file: the status as of now, or why it couldn't look (`checkProblem`). | — | `GitStatus` | Any signed-in person |
+| `POST /api/sites/:siteId/pull` | Bring the site up to date: fetch, then `git merge --ff-only`. A running preview is stopped first and started again on the new files. | — | `GitStatus` | Editors and owners |
 | `POST /api/sites/:siteId/publish/message` | Suggest a one-line note for Version history. Uses the assistant (one request) when a key is set. | `{ paths? }` | `{ message }` | Editors and owners |
 | `POST /api/sites/:siteId/publish/check` | What the plugins' publish checks say about publishing these changes (all pending when `paths` is absent): warnings to show first, and whether one would stop the publish. | `{ paths? }` | `PublishCheck` | Any signed-in person |
 
@@ -396,7 +397,7 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 
 ## Events
 
-`GET /api/events` is a Server-Sent Events stream: a `hello` event first, then every event as `data: <json>`, and a `: heartbeat` comment every 20 seconds. Event `type`s: `hello`, `chat.delta`, `chat.tool`, `chat.message`, `chat.done`, `chat.error`, `changes.updated`, `preview.status`, `site.updated`, `sites.updated`, `job`, `plugins.updated`, `forms.submission`. Their shapes are `ServerEvent` in [`packages/core/src/types.ts`]({repository}/blob/main/packages/core/src/types.ts). `changes.updated` carries its origin: `user`, `agent`, `external`, `publish`, `discard` or `undo`.
+`GET /api/events` is a Server-Sent Events stream: a `hello` event first, then every event as `data: <json>`, and a `: heartbeat` comment every 20 seconds. Event `type`s: `hello`, `chat.delta`, `chat.tool`, `chat.message`, `chat.done`, `chat.error`, `changes.updated`, `preview.status`, `site.updated`, `repository.checked`, `sites.updated`, `job`, `plugins.updated`, `forms.submission`. Their shapes are `ServerEvent` in [`packages/core/src/types.ts`]({repository}/blob/main/packages/core/src/types.ts). `changes.updated` carries its origin: `user`, `agent`, `external`, `publish`, `discard` or `undo`.
 
 ```sh
 curl -sN -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/events

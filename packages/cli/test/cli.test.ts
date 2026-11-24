@@ -426,6 +426,22 @@ describe("galley serve", () => {
     expect(output).toContain("Requests:  only for cms.example.com and loopback names; changes must come from that address");
   });
 
+  it("says how often the editor looks at its repository, or that it doesn't by itself", async () => {
+    const output = async (syncMinutes: number) => {
+      const io = testIo({
+        env: { HOME: tmp, GALLEY_HOME: "/data" },
+        startServer: async () => ({ url: "http://127.0.0.1:4400", port: 4400, syncMinutes, close: async () => {} }) as unknown as RunningServer,
+      });
+
+      expect(await main(["serve"], io)).toBe(0);
+      return io.stdout.join("\n");
+    };
+
+    expect(await output(5)).toContain("Repository: checked every 5 minutes; newer versions are brought in when nothing here is in the way");
+    expect(await output(1)).toContain("Repository: checked every minute;");
+    expect(await output(0)).toContain("Repository: not checked by itself (GALLEY_SYNC_MINUTES=0)");
+  });
+
   it("says links are e-mailed only with both outgoing e-mail and the public address", async () => {
     const lines = async (env: Record<string, string>) => {
       const io = testIo({

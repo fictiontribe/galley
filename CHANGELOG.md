@@ -11,7 +11,7 @@ entry says how.
 
 - **Media in a bucket.** A site can keep new pictures, PDFs and videos in a
   Cloudflare R2 or Amazon S3 bucket instead of its repository (Media › Keep
-  media in a bucket, or `galley media connect`). Galley does the provider's
+  media outside the repository, or `galley media connect`). Galley does the provider's
   steps with you, then checks for real before saving — it stores a tiny test
   picture, reads it back, lists, loads it from the public address and removes
   it — and says what to change when a step fails. Pages store each file's full
@@ -37,9 +37,63 @@ entry says how.
   the bucket and its r2.dev address; the key for its files is still made by
   hand. Another S3-compatible store (Backblaze B2, Spaces, Wasabi, MinIO) is
   a fourth choice.
+- **A hosted editor keeps up with its repository.** Every 5 minutes
+  (`GALLEY_SYNC_MINUTES`; `0` turns it off) it asks the code host what is
+  new and, when nothing here is in the way, brings newer versions in
+  forward only, as **Get latest** does. It skips a round while a publish, an
+  undo, a restore, a connect or other git work is under way, and logs one
+  line when versions come in or a look fails in a new way. `galley serve`
+  prints how often it looks. The desktop app and local mode never look by
+  themselves.
+- **`POST /api/sites/:siteId/git/check`**, for anyone signed in: asks the
+  code host what is new without changing a file and answers the status as
+  of now. `GitStatus` gains `checkedAt` (when the code host last answered),
+  `checkProblem` (why the newest look couldn't reach it) and `inTheWay`
+  (what stops newer versions coming in: unpublished changes to files they
+  change, or the two having gone separate ways). A new event,
+  `repository.checked`, tells open browsers a look found something new or
+  versions came in. `SiteService` gains `checkGit()` and `catchUp()`.
+- **An adapter hook, `forgetPreviewSaves`**: the files the framework's dev
+  server keeps between runs and trusts on its next start. The Astro adapter
+  names its content store (`.astro/data-store.json` and
+  `node_modules/.astro/data-store.json`); the model carries them as
+  `previewSaves`.
 
 ### Changed
 
+- **Version history tells the truth about the repository.** It looks when
+  it opens, says "Checking the repository…" until it knows, and then says
+  when it last checked; it no longer says "In step" on the strength of what
+  was last fetched, however long ago. It says plainly when it couldn't look,
+  when newer versions are waiting and who can bring them in, and when the
+  two have gone separate ways. A hosted editor's status bar says "Newer
+  versions are waiting" while they can't come in by themselves.
+- **Getting the latest restarts the preview properly.** A running preview
+  is stopped before newer versions change the files, the dev server's saved
+  content store is removed, and the preview starts again — a dev server that
+  saw a page and its schema change together under it went on showing the
+  old entry, through any number of restarts. **Restart preview** removes
+  that store too when the copy has moved to another version since the
+  preview started. Newer versions that change `package.json` or a lockfile
+  make the next start install the site's packages first.
+- **Get latest** no longer starts when it can already tell git would refuse:
+  it says which files with unpublished changes the newer versions change.
+- **A quieter, more finished look, in the app and on the site.** Sheets rest
+  on the desk, controls are pressed into the paper, and only menus and
+  dialogs float. Pills are for buttons; chips, tags and counts are small
+  rectangles and stamps. Blue Pencil marks the action, the current place and
+  the fields where the assistant writes. Labels are words in sentence case
+  instead of small capitals. The page preview sits on the same tan table as
+  the captures on the site. Nothing moved: layout, wording and behaviour are
+  as they were.
+- **One drawn icon family**, shared by the app and the site
+  (`brand/icons.ts`). Site details, Navigation, Scripts, Forms, Brand,
+  Search & AI and Install each have a glyph of their own; three of them used
+  to share a pair of braces.
+- **The look is described as a theme**: five colours for light and for dark
+  and four switches (`brand/themes/`), with everything else derived from
+  them. Quiet is the look above; two more, Plate and Desk, are in the same
+  folder.
 - **A lighter, less yellow paper in the app.** The canvas, cards, wells and
   borders are a cooler bond paper, and every card on the canvas has the same
   edge and the lightest shadow, so panels lift off the page. The dark theme

@@ -181,6 +181,8 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "POST /api/sites/:siteId/discard": "edit",
   "GET /api/sites/:siteId/history": "edit",
   "GET /api/sites/:siteId/git": "edit",
+  // Looking changes no file and nothing live: anyone signed in may ask what is new. Bringing it in is "pull", below.
+  "POST /api/sites/:siteId/git/check": "edit",
   "POST /api/sites/:siteId/publish/check": "edit",
   "POST /api/sites/:siteId/publish/message": "publish",
   "POST /api/sites/:siteId/publish": "publish",
@@ -342,6 +344,8 @@ export const SITE_METHOD_ACCESS = {
   revert: "POST /api/sites/:siteId/revert",
   send: "POST /api/sites/:siteId/send",
   pull: "POST /api/sites/:siteId/pull",
+  // A hosted editor's own round brings versions in as Get latest does, so it needs what Get latest needs: the engine's mark (install/caller.ts asEngine).
+  catchUp: "POST /api/sites/:siteId/pull",
 } as const satisfies Partial<Record<keyof SiteService, ApiRouteKey>>;
 
 export type GuardedSiteMethod = keyof typeof SITE_METHOD_ACCESS;
