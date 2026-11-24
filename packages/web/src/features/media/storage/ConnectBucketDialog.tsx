@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { MediaCheckResult, MediaStoreField, MediaStoreFieldId, MediaStoreInfo, MediaStorageStatus } from "@galley/core/media-storage/contract";
 import { keyPolicy, publicPolicy } from "@galley/core/media-storage/info";
-import type { MediaStorageConfig } from "@galley/core/types";
+import type { MediaImagesConfig, MediaStorageConfig } from "@galley/core/types";
 import { api, errorShape } from "@/lib/api";
 import { invalidate } from "@/lib/query";
 import { keys } from "@/lib/sync";
@@ -25,11 +25,27 @@ import { useConnectors, useMediaStorage } from "./useMediaStorage";
 import { MoveFiles } from "./MoveFiles";
 
 type Values = Record<MediaStoreFieldId, string>;
-const EMPTY: Values = { account: "", bucket: "", region: "", endpoint: "", prefix: "", publicUrl: "", accessKeyId: "", secretAccessKey: "" };
+const EMPTY: Values = { account: "", bucket: "", region: "", endpoint: "", prefix: "", publicUrl: "", accessKeyId: "", secretAccessKey: "", accountHash: "", variant: "", deliveryUrl: "", token: "" };
+const IMAGES = "cloudflare-images";
+
+function imagesValuesOf(config: MediaImagesConfig): Values {
+  return { ...EMPTY, account: config.account, accountHash: config.accountHash, variant: config.variant ?? "", deliveryUrl: config.deliveryUrl ?? "" };
+}
+
+function imagesConfigOf(values: Values): MediaImagesConfig {
+  return {
+    connector: IMAGES,
+    account: values.account.trim(),
+    accountHash: values.accountHash.trim(),
+    ...(values.variant.trim() ? { variant: values.variant.trim() } : {}),
+    ...(values.deliveryUrl.trim() ? { deliveryUrl: values.deliveryUrl.trim() } : {}),
+  };
+}
 
 function valuesOf(config: MediaStorageConfig | null): Values {
   if (!config) return { ...EMPTY };
   return {
+    ...EMPTY,
     account: config.account ?? "",
     bucket: config.bucket,
     region: config.region ?? "",
@@ -138,42 +154,88 @@ function KeyField({ field, value, onChange, error, stored, inputRef }: { field: 
   );
 }
 
-function Summary({ siteId, status, onEdit, onChecked }: { siteId: string; status: MediaStorageStatus; onEdit: () => void; onChecked: (result: MediaCheckResult) => void }) {
-  const config = status.bucket.config!;
+function Summary({ siteId, status, onEdit, onStop, onChecked }: { siteId: string; status: MediaStorageStatus; onEdit: (connector: string) => void; onStop: (what: "bucket" | "images") => void; onChecked: (result: MediaCheckResult) => void }) {
+  const config = status.bucket.config;
+  const images = status.images.config;
   return (
     <div className="media-storage__summary">
-      <dl className="app-media-details__facts">
-        <dt>Kept in</dt>
-        <dd>{status.bucket.store?.name ?? config.connector}</dd>
-        <dt>Bucket</dt>
-        <dd className="g-mono">{config.bucket}</dd>
-        {config.prefix ? (
-          <>
-            <dt>Folder</dt>
-            <dd className="g-mono">{config.prefix}</dd>
-          </>
-        ) : null}
-        <dt>Public address</dt>
-        <dd className="g-mono">{config.publicUrl}</dd>
-        <dt>Key</dt>
-        <dd>{status.bucket.keys.accessKeyId.configured ? `Saved, ending in ${status.bucket.keys.accessKeyId.hint ?? "····"}` : "Missing — paste it again"}</dd>
-      </dl>
-      {status.bucket.trialAddress ? (
-        <p className="media-storage__note">
-          <ProofMark kind="bang" /> This is an r2.dev address: rate-limited and meant for trying out. Connect a custom domain to the bucket on Cloudflare before the site goes live, then change the address here.
-        </p>
+      <p className="deploy-setup__lede">
+        {images ? `Pictures go to Cloudflare Images; other files go to ${config ? "the bucket" : "the site’s repository"}.` : config ? "New files go to the bucket." : "New files are kept in the site’s repository."}
+      </p>
+      {config ? (
+        <section className="media-storage__connection" aria-label="The bucket">
+          <h3 className="media-storage__step-title">{status.bucket.store?.name ?? config.connector}</h3>
+          <dl className="app-media-details__facts">
+            <dt>Bucket</dt>
+            <dd className="g-mono">{config.bucket}</dd>
+            {config.prefix ? (
+              <>
+                <dt>Folder</dt>
+                <dd className="g-mono">{config.prefix}</dd>
+              </>
+            ) : null}
+            <dt>Public address</dt>
+            <dd className="g-mono">{config.publicUrl}</dd>
+            <dt>Key</dt>
+            <dd>{status.bucket.keys.accessKeyId.configured ? `Saved, ending in ${status.bucket.keys.accessKeyId.hint ?? "····"}` : "Missing — paste it again"}</dd>
+          </dl>
+          {status.bucket.trialAddress ? (
+            <p className="media-storage__note">
+              <ProofMark kind="bang" /> This is an r2.dev address: rate-limited and meant for trying out. Connect a custom domain to the bucket on Cloudflare before the site goes live, then change the address below.
+            </p>
+          ) : null}
+          <div className="app-media-details__actions">
+            <CheckAgain siteId={siteId} what="bucket" onChecked={onChecked} />
+            <Button size="sm" variant="secondary" onClick={() => onEdit(config.connector)}>
+              Change settings
+            </Button>
+            <Button size="sm" variant="quiet" onClick={() => onStop("bucket")}>
+              Stop using the bucket
+            </Button>
+          </div>
+        </section>
+      ) : null}
+      {images ? (
+        <section className="media-storage__connection" aria-label="Cloudflare Images">
+          <h3 className="media-storage__step-title">Cloudflare Images</h3>
+          <dl className="app-media-details__facts">
+            <dt>Account hash</dt>
+            <dd className="g-mono">{images.accountHash}</dd>
+            <dt>Variant</dt>
+            <dd className="g-mono">{images.variant ?? "public"}</dd>
+            <dt>Delivered from</dt>
+            <dd className="g-mono">{images.deliveryUrl ?? "https://imagedelivery.net"}</dd>
+            <dt>Token</dt>
+            <dd>{status.images.token.use === "deploy" ? "The site’s Cloudflare key for putting it online" : status.images.token.configured ? `Saved, ending in ${status.images.token.hint ?? "····"}` : "Missing — paste it again"}</dd>
+          </dl>
+          <div className="app-media-details__actions">
+            <CheckAgain siteId={siteId} what="images" onChecked={onChecked} />
+            <Button size="sm" variant="secondary" onClick={() => onEdit("cloudflare-images")}>
+              Change settings
+            </Button>
+            <Button size="sm" variant="quiet" onClick={() => onStop("images")}>
+              Stop using Images
+            </Button>
+          </div>
+        </section>
       ) : null}
       <div className="app-media-details__actions">
-        <CheckAgain siteId={siteId} onChecked={onChecked} />
-        <Button variant="secondary" onClick={onEdit}>
-          Change settings
-        </Button>
+        {!config ? (
+          <Button size="sm" variant="secondary" onClick={() => onEdit("r2")}>
+            Keep files in a bucket…
+          </Button>
+        ) : null}
+        {!images ? (
+          <Button size="sm" variant="secondary" onClick={() => onEdit("cloudflare-images")}>
+            Keep pictures in Cloudflare Images…
+          </Button>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function CheckAgain({ siteId, onChecked }: { siteId: string; onChecked: (result: MediaCheckResult) => void }) {
+function CheckAgain({ siteId, what, onChecked }: { siteId: string; what: "bucket" | "images"; onChecked: (result: MediaCheckResult) => void }) {
   const [busy, setBusy] = useState(false);
   return (
     <Button
@@ -182,8 +244,8 @@ function CheckAgain({ siteId, onChecked }: { siteId: string; onChecked: (result:
       busy={busy}
       onClick={() => {
         setBusy(true);
-        void api("POST /api/sites/:siteId/media/storage/check", { params: { siteId }, body: {} })
-          .then(onChecked, (error: unknown) => notify({ tone: "danger", title: "Couldn’t check the bucket", body: errorShape(error).message }))
+        void (what === "images" ? api("POST /api/sites/:siteId/media/images/check", { params: { siteId }, body: {} }) : api("POST /api/sites/:siteId/media/storage/check", { params: { siteId }, body: {} }))
+          .then(onChecked, (error: unknown) => notify({ tone: "danger", title: "Couldn’t check it", body: errorShape(error).message }))
           .finally(() => setBusy(false));
       }}
     >
@@ -195,13 +257,16 @@ function CheckAgain({ siteId, onChecked }: { siteId: string; onChecked: (result:
 export function ConnectBucketDialog({ siteId, open, onClose }: { siteId: string; open: boolean; onClose: () => void }) {
   const status = useMediaStorage(siteId);
   const connectors = useConnectors();
-  const connected = status.data?.bucket.config ?? null;
+  const bucketConfig = status.data?.bucket.config ?? null;
+  const imagesConfig = status.data?.images.config ?? null;
+  const connected = bucketConfig ?? imagesConfig;
   const [editing, setEditing] = useState(false);
+  const [useDeployKey, setUseDeployKey] = useState(false);
   const [connector, setConnector] = useState<string | null>(null);
   const [values, setValues] = useState<Values>({ ...EMPTY });
   const [result, setResult] = useState<MediaCheckResult | null>(null);
   const [busy, setBusy] = useState(false);
-  const [stopping, setStopping] = useState(false);
+  const [stopping, setStopping] = useState<"bucket" | "images" | null>(null);
   const [forgetKeys, setForgetKeys] = useState(false);
   const inputs = useRef(new Map<MediaStoreFieldId, HTMLInputElement>());
 
@@ -210,9 +275,18 @@ export function ConnectBucketDialog({ siteId, open, onClose }: { siteId: string;
     if (!open) return;
     setEditing(false);
     setResult(null);
-    setConnector(connected?.connector ?? null);
-    setValues(valuesOf(connected));
-  }, [open, connected]);
+    setConnector(bucketConfig?.connector ?? (imagesConfig ? IMAGES : null));
+    setValues(bucketConfig ? valuesOf(bucketConfig) : imagesConfig ? imagesValuesOf(imagesConfig) : { ...EMPTY });
+    setUseDeployKey(status.data?.images.token.use === "deploy");
+  }, [open, bucketConfig, imagesConfig]);
+
+  /** Opens the form for one connection, from what is saved for it. */
+  const edit = (id: string) => {
+    setConnector(id);
+    setValues(id === IMAGES ? (imagesConfig ? imagesValuesOf(imagesConfig) : { ...EMPTY }) : bucketConfig && bucketConfig.connector === id ? valuesOf(bucketConfig) : { ...EMPTY });
+    setResult(null);
+    setEditing(true);
+  };
 
   const info = useMemo(() => connectors.data?.connectors.find((candidate) => candidate.id === connector) ?? null, [connectors.data, connector]);
   const failed = result && !result.ok ? result.steps.find((step) => step.state === "failed") : undefined;
@@ -228,16 +302,26 @@ export function ConnectBucketDialog({ siteId, open, onClose }: { siteId: string;
     setBusy(true);
     setResult(null);
     try {
-      const answer = await api("PUT /api/sites/:siteId/media/storage", {
-        params: { siteId },
-        body: { config: configOf(connector, values), ...(values.accessKeyId.trim() ? { accessKeyId: values.accessKeyId } : {}), ...(values.secretAccessKey.trim() ? { secretAccessKey: values.secretAccessKey } : {}) },
-      });
+      const answer =
+        connector === IMAGES
+          ? await api("PUT /api/sites/:siteId/media/images", {
+              params: { siteId },
+              body: { config: imagesConfigOf(values), ...(values.token.trim() && !useDeployKey ? { token: values.token } : {}), ...(useDeployKey ? { useDeployKey: true } : {}) },
+            })
+          : await api("PUT /api/sites/:siteId/media/storage", {
+              params: { siteId },
+              body: { config: configOf(connector, values), ...(values.accessKeyId.trim() ? { accessKeyId: values.accessKeyId } : {}), ...(values.secretAccessKey.trim() ? { secretAccessKey: values.secretAccessKey } : {}) },
+            });
       setResult(answer.check);
       if (answer.status) {
         invalidate(keys.media(siteId));
-        setValues((current) => ({ ...current, accessKeyId: "", secretAccessKey: "" }));
+        setValues((current) => ({ ...current, accessKeyId: "", secretAccessKey: "", token: "" }));
         setEditing(false);
-        notify({ tone: "success", title: "Bucket connected", body: `New files go to ${info?.name ?? "the bucket"}. Files already in the repository stay where they are.` });
+        notify(
+          connector === IMAGES
+            ? { tone: "success", title: "Cloudflare Images connected", body: "New pictures go to Cloudflare Images; other files go where they went before. Pictures already in the repository stay where they are." }
+            : { tone: "success", title: "Bucket connected", body: `New files go to ${info?.name ?? "the bucket"}. Files already in the repository stay where they are.` }
+        );
       }
     } catch (error) {
       notify({ tone: "danger", title: "Couldn’t connect the bucket", body: errorShape(error).message, detail: errorShape(error).detail });
@@ -247,22 +331,29 @@ export function ConnectBucketDialog({ siteId, open, onClose }: { siteId: string;
   };
 
   const stop = async () => {
-    await api("DELETE /api/sites/:siteId/media/storage", { params: { siteId }, query: { forgetKeys } });
+    if (stopping === "images") await api("DELETE /api/sites/:siteId/media/images", { params: { siteId }, query: { forgetKeys } });
+    else await api("DELETE /api/sites/:siteId/media/storage", { params: { siteId }, query: { forgetKeys } });
     invalidate(keys.media(siteId));
-    setStopping(false);
-    onClose();
-    notify({ tone: "neutral", title: "New files go to the repository again", body: "The files already in the bucket stay there, and pages that use them keep working." });
+    const what = stopping;
+    setStopping(null);
+    notify(
+      what === "images"
+        ? { tone: "neutral", title: "New pictures go where other files go again", body: "The pictures already in Cloudflare Images stay there, and pages that use them keep working." }
+        : { tone: "neutral", title: "New files don’t go to the bucket any more", body: "The files already in the bucket stay there, and pages that use them keep working." }
+    );
   };
 
   const stored = status.data?.bucket.keys ?? null;
-  const sameStore = connected && connected.connector === connector;
+  const sameStore = connector === IMAGES ? Boolean(imagesConfig) : Boolean(bucketConfig && bucketConfig.connector === connector);
+  const storedFor = (id: MediaStoreFieldId) =>
+    !sameStore ? null : id === "token" ? (status.data?.images.token.use === "own" ? status.data.images.token : null) : id === "accessKeyId" || id === "secretAccessKey" ? (stored?.[id] ?? null) : null;
 
   return (
     <>
       <Dialog
         open={open}
         onClose={onClose}
-        title={connected && !editing ? "Where new media goes" : "Keep media in a bucket"}
+        title={connected && !editing ? "Where new media goes" : connector === IMAGES ? "Keep pictures in Cloudflare Images" : "Keep media in a bucket"}
         size="lg"
         footer={
           showForm ? (
@@ -277,14 +368,9 @@ export function ConnectBucketDialog({ siteId, open, onClose }: { siteId: string;
               </Button>
             </>
           ) : (
-            <>
-              <Button variant="quiet" onClick={() => setStopping(true)}>
-                Stop using the bucket
-              </Button>
-              <Button variant="primary" onClick={onClose}>
-                Done
-              </Button>
-            </>
+            <Button variant="primary" onClick={onClose}>
+              Done
+            </Button>
           )
         }
       >
@@ -293,13 +379,17 @@ export function ConnectBucketDialog({ siteId, open, onClose }: { siteId: string;
           <Skeleton lines={4} />
         ) : !showForm ? (
           <>
-            <Summary siteId={siteId} status={status.data} onEdit={() => setEditing(true)} onChecked={setResult} />
+            <Summary siteId={siteId} status={status.data} onEdit={edit} onStop={setStopping} onChecked={setResult} />
             <CheckSteps result={result} running={false} />
-            <MoveFiles siteId={siteId} onStarted={onClose} />
+            <MoveFiles siteId={siteId} bucket={Boolean(bucketConfig)} images={Boolean(imagesConfig)} onStarted={onClose} />
           </>
         ) : (
           <form id="media-storage-form" className="media-storage" onSubmit={(event) => void submit(event)}>
-            <p className="deploy-setup__lede">Pictures, PDFs and videos uploaded from now on go to the bucket instead of the site’s repository, and pages use their full public address. Files already in the repository stay there.</p>
+            <p className="deploy-setup__lede">
+              {connector === IMAGES
+                ? "Pictures uploaded from now on go to Cloudflare Images, which sends each visitor a resized WebP or AVIF; PDFs, videos and anything over its limits go to the bucket, or the repository. Pages use each picture’s full address. Pictures already in the repository stay there."
+                : "Pictures, PDFs and videos uploaded from now on go to the bucket instead of the site’s repository, and pages use their full public address. Files already in the repository stay there."}
+            </p>
             <fieldset className="deploy-choices">
               <legend className="g-sr">Which kind of bucket</legend>
               {connectors.data.connectors.map((candidate) => (
@@ -328,16 +418,19 @@ export function ConnectBucketDialog({ siteId, open, onClose }: { siteId: string;
                   <Icon name="key" />
                   <span>{info.keyGrants}</span>
                 </p>
+                {connector === IMAGES && status.data.cloudflare.keyStored ? (
+                  <Checkbox label="Use the site’s Cloudflare key (the one for putting it online)" description="It needs Account › Cloudflare Images › Edit too; the check says if it hasn’t." checked={useDeployKey} onChange={setUseDeployKey} />
+                ) : null}
                 <div className="media-storage__fields">
-                  {info.fields.map((field) =>
-                    field.id === "accessKeyId" || field.id === "secretAccessKey" ? (
+                  {info.fields.filter((field) => !(field.id === "token" && useDeployKey && connector === IMAGES)).map((field) =>
+                    field.id === "accessKeyId" || field.id === "secretAccessKey" || field.id === "token" ? (
                       <KeyField
                         key={field.id}
                         field={field}
                         value={values[field.id]}
                         onChange={(value) => setValues((current) => ({ ...current, [field.id]: value }))}
                         error={failed?.field === field.id ? failed.message : undefined}
-                        stored={sameStore && stored ? stored[field.id] : null}
+                        stored={storedFor(field.id)}
                         inputRef={(node) => {
                           if (node) inputs.current.set(field.id, node);
                           else inputs.current.delete(field.id);
@@ -368,16 +461,20 @@ export function ConnectBucketDialog({ siteId, open, onClose }: { siteId: string;
         )}
       </Dialog>
       <ConfirmDialog
-        open={stopping}
-        onClose={() => setStopping(false)}
-        title="Stop putting new files in the bucket?"
+        open={stopping !== null}
+        onClose={() => setStopping(null)}
+        title={stopping === "images" ? "Stop putting new pictures in Cloudflare Images?" : "Stop putting new files in the bucket?"}
         body={
           <>
-            <p>New files go to the site’s repository again. Everything already in the bucket stays there, and pages that use it keep working.</p>
-            <Checkbox label="Also remove the bucket’s key from this app" checked={forgetKeys} onChange={setForgetKeys} />
+            <p>
+              {stopping === "images"
+                ? "New pictures go where other files go. Everything already in Cloudflare Images stays there, and pages that use it keep working."
+                : "New files go elsewhere (Cloudflare Images for pictures, if it is connected; else the repository). Everything already in the bucket stays there, and pages that use it keep working."}
+            </p>
+            <Checkbox label={stopping === "images" ? "Also remove the Images token from this app" : "Also remove the bucket’s key from this app"} checked={forgetKeys} onChange={setForgetKeys} />
           </>
         }
-        confirmLabel="Stop using the bucket"
+        confirmLabel={stopping === "images" ? "Stop using Images" : "Stop using the bucket"}
         busyLabel="Stopping"
         cancelLabel="Keep using it"
         errorTitle="Couldn’t change where files go"

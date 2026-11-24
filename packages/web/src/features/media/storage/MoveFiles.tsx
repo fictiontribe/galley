@@ -16,19 +16,19 @@ function describe(plan: MediaMovePlan): string {
   if (plan.kind === "address") {
     return `${plan.references} ${plan.references === 1 ? "place" : "places"} in ${plan.pages} ${plan.pages === 1 ? "page" : "pages"} will use ${plan.publicUrl} instead. Galley first checks the new address serves the bucket’s files; nothing changes if it doesn’t.`;
   }
-  const where = plan.to === "repository" ? "the repository" : "the bucket";
+  const where = plan.to === "repository" ? "the repository" : plan.to === "images" ? "Cloudflare Images" : "the bucket";
   const parts = [
     `${plan.files} ${plan.files === 1 ? "file" : "files"} (${bytes(plan.bytes)}) will be copied to ${where}${plan.done ? `, ${plan.done} of them already there from an earlier run` : ""}.`,
     `${plan.references} ${plan.references === 1 ? "place" : "places"} in ${plan.pages} ${plan.pages === 1 ? "page" : "pages"} will point at ${plan.to === "repository" ? "the site’s own addresses" : "their full addresses"}.`,
   ];
   if (plan.to !== "repository") parts.push(plan.keepCopies ? "The repository keeps its copies." : "Then the repository’s copies are removed; they leave the site when you publish. A file a page Galley can’t update still uses stays where it is.");
-  else parts.push("The bucket keeps its files; remove them once the pages are published.");
+  else parts.push(`${plan.from === "images" ? "Cloudflare Images keeps its pictures" : "The bucket keeps its files"}; remove them once the pages are published.`);
   if (plan.staying) parts.push(`${plan.staying.files} stay where they are: ${plan.staying.reason}`);
   if (plan.problems.length) parts.push(`${plan.problems.length} can’t be moved: ${plan.problems.map((problem) => `${problem.path} (${problem.reason})`).join("; ")}.`);
   return parts.join(" ");
 }
 
-export function MoveFiles({ siteId, onStarted }: { siteId: string; onStarted: () => void }) {
+export function MoveFiles({ siteId, bucket, images, onStarted }: { siteId: string; bucket: boolean; images: boolean; onStarted: () => void }) {
   const [request, setRequest] = useState<MediaMoveRequest | null>(null);
   const [plan, setPlan] = useState<MediaMovePlan | null>(null);
   const [keepCopies, setKeepCopies] = useState(false);
@@ -61,14 +61,28 @@ export function MoveFiles({ siteId, onStarted }: { siteId: string; onStarted: ()
     <section className="media-storage__move" aria-label="Move files">
       <h3 className="g-eyebrow">Move files</h3>
       <div className="app-media-details__actions">
-        <Button size="sm" variant="secondary" busy={planning === "to"} onClick={() => void ask({ kind: "move", from: "repository", to: "bucket" }, "to")}>
-          Move the repository’s files to the bucket…
-        </Button>
-        <Button size="sm" variant="secondary" busy={planning === "back"} onClick={() => void ask({ kind: "move", from: "bucket", to: "repository" }, "back")}>
-          Bring the bucket’s files back…
-        </Button>
+        {images ? (
+          <Button size="sm" variant="secondary" busy={planning === "to-images"} onClick={() => void ask({ kind: "move", from: "repository", to: "images" }, "to-images")}>
+            Move the repository’s pictures to Cloudflare Images…
+          </Button>
+        ) : null}
+        {bucket ? (
+          <Button size="sm" variant="secondary" busy={planning === "to"} onClick={() => void ask({ kind: "move", from: "repository", to: "bucket" }, "to")}>
+            Move the repository’s files to the bucket…
+          </Button>
+        ) : null}
+        {images ? (
+          <Button size="sm" variant="secondary" busy={planning === "back-images"} onClick={() => void ask({ kind: "move", from: "images", to: "repository" }, "back-images")}>
+            Bring the pictures in Images back…
+          </Button>
+        ) : null}
+        {bucket ? (
+          <Button size="sm" variant="secondary" busy={planning === "back"} onClick={() => void ask({ kind: "move", from: "bucket", to: "repository" }, "back")}>
+            Bring the bucket’s files back…
+          </Button>
+        ) : null}
       </div>
-      <form
+      {bucket ? <form
         className="media-storage__address"
         onSubmit={(event) => {
           event.preventDefault();
@@ -81,11 +95,11 @@ export function MoveFiles({ siteId, onStarted }: { siteId: string; onStarted: ()
         <Button size="sm" variant="secondary" type="submit" busy={planning === "address"} disabled={!address.trim()}>
           Check what changes…
         </Button>
-      </form>
+      </form> : null}
       <ConfirmDialog
         open={request !== null && plan !== null}
         onClose={() => setRequest(null)}
-        title={plan?.kind === "address" ? "Use the new address?" : plan?.to === "repository" ? "Bring the files back to the repository?" : "Move the files to the bucket?"}
+        title={plan?.kind === "address" ? "Use the new address?" : plan?.to === "repository" ? "Bring the files back to the repository?" : plan?.to === "images" ? "Move the pictures to Cloudflare Images?" : "Move the files to the bucket?"}
         body={
           plan ? (
             <>

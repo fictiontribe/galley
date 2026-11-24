@@ -44,6 +44,7 @@ export function MediaScreen() {
   const [storageOpen, setStorageOpen] = useState(false);
   const [unusedOnly, setUnusedOnly] = useState(false);
   const bucket = storage.data?.bucket.connected ? storage.data.bucket : null;
+  const images = storage.data?.images.connected ? storage.data.images : null;
 
   /** Deleting from the bucket is for good, so it always asks; a file a page uses is refused, with where. */
   const removeStored = async (item: MediaItem) => {
@@ -117,14 +118,16 @@ export function MediaScreen() {
         <div className="app-card app-card--pad media-storage-strip">
           <Icon name="globe" />
           <p>
-            {bucket?.config
-              ? `New files go to ${bucket.store?.name ?? "the bucket"} (${bucket.config.bucket}) and are loaded from ${bucket.config.publicUrl.replace(/^https?:\/\//, "")}.`
-              : "New files are kept in the site’s repository, with its pages."}
+            {images
+              ? `New pictures go to Cloudflare Images, resized and sent as WebP or AVIF; other files go to ${bucket?.config ? `${bucket.store?.name ?? "the bucket"} (${bucket.config.bucket})` : "the site’s repository"}.`
+              : bucket?.config
+                ? `New files go to ${bucket.store?.name ?? "the bucket"} (${bucket.config.bucket}) and are loaded from ${bucket.config.publicUrl.replace(/^https?:\/\//, "")}.`
+                : "New files are kept in the site’s repository, with its pages."}
             {bucket?.trialAddress ? " The r2.dev address is for trying out: connect a custom domain before the site goes live." : ""}
           </p>
           {may("PUT /api/sites/:siteId/media/storage") ? (
             <Button size="sm" variant="secondary" onClick={() => setStorageOpen(true)}>
-              {bucket ? "Storage settings" : "Keep media in a bucket"}
+              {bucket || images ? "Storage settings" : "Keep media outside the repository"}
             </Button>
           ) : null}
         </div>
@@ -146,7 +149,7 @@ export function MediaScreen() {
             toolbar={
               <>
                 <SegmentedControl label="Show" options={KINDS} value={kind} onChange={setKind} />
-                {bucket ? <Checkbox label="Not used on any page" checked={unusedOnly} onChange={setUnusedOnly} /> : null}
+                {bucket || images ? <Checkbox label="Not used on any page" checked={unusedOnly} onChange={setUnusedOnly} /> : null}
               </>
             }
           />

@@ -7,7 +7,22 @@
  */
 import type { MediaImagesConfig } from "../types";
 import type { MediaStoreInfo } from "./contract";
-import { addressProblem, type SettingsProblem } from "./info";
+import type { SettingsProblem } from "./info";
+
+/** https:// only (http:// for this computer); the same rule as info.ts, kept here so this file has type-only imports (the web app's mock loads it in Node). */
+function addressProblem(value: string, what: string): string | null {
+  let url: URL;
+
+  try {
+    url = new URL(value);
+  } catch {
+    return `The ${what} should be a full address starting with https://.`;
+  }
+  if (url.protocol === "http:" && !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) return `The ${what} has to start with https://, so visitors' browsers load it.`;
+  if (url.protocol !== "https:" && url.protocol !== "http:") return `The ${what} has to start with https://.`;
+  if (url.username || url.password || url.search || url.hash) return `The ${what} can't carry a name, a password, or a ? or # part.`;
+  return null;
+}
 
 export const IMAGES_INFO: MediaStoreInfo = {
   id: "cloudflare-images",

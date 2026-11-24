@@ -11,9 +11,10 @@
  */
 // Only the dependency-free setup data (and types): this file is loaded by Node directly, not bundled.
 import { BUCKET_CONNECTORS, connectorInfo, isTrialAddress, normalizeStorageConfig, settingsProblems } from "@galley/core/media-storage/info";
+import { IMAGES_INFO, imagesSettingsProblems, normalizeImagesConfig } from "@galley/core/media-storage/images-info";
 import { randomUUID } from "node:crypto";
-import type { MediaCheckResult, MediaCheckStep, MediaCheckStepId, MediaConnectRequest, MediaKeyStatus, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaUsage } from "@galley/core/media-storage/contract";
-import type { Job, MediaItem, MediaStorageConfig } from "@galley/core/types";
+import type { MediaCheckResult, MediaCheckStep, MediaCheckStepId, MediaConnectRequest, MediaImagesConnectRequest, MediaKeyStatus, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaUsage } from "@galley/core/media-storage/contract";
+import type { Job, MediaImagesConfig, MediaItem, MediaStorageConfig } from "@galley/core/types";
 import type { Handlers, MockBackend } from "./backend.ts";
 import { MockError } from "./site.ts";
 
@@ -23,6 +24,9 @@ type MediaStorageKey =
   | "POST /api/sites/:siteId/media/storage/check"
   | "PUT /api/sites/:siteId/media/storage"
   | "DELETE /api/sites/:siteId/media/storage"
+  | "POST /api/sites/:siteId/media/images/check"
+  | "PUT /api/sites/:siteId/media/images"
+  | "DELETE /api/sites/:siteId/media/images"
   | "GET /api/sites/:siteId/media/usage"
   | "POST /api/sites/:siteId/media/storage/delete"
   | "POST /api/sites/:siteId/media/storage/move/plan"
@@ -46,6 +50,9 @@ export interface MockSiteStorage {
   keys: { accessKeyId: string | null; secretAccessKey: string | null };
   /** The pretend bucket's files, newest first. */
   bucket: Array<MediaItem & { published: boolean }>;
+  images: MediaImagesConfig | null;
+  imagesToken: string | null;
+  imagesUseDeployKey: boolean;
 }
 
 const TYPES: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", avif: "image/avif", gif: "image/gif", svg: "image/svg+xml", pdf: "application/pdf", mp4: "video/mp4" };
@@ -57,7 +64,7 @@ export function createMockMediaStorage(mock: MockBackend) {
     let state = sites.get(siteId);
 
     if (!state) {
-      state = { config: null, keys: { accessKeyId: null, secretAccessKey: null }, bucket: [] };
+      state = { config: null, keys: { accessKeyId: null, secretAccessKey: null }, bucket: [], images: null, imagesToken: null, imagesUseDeployKey: false };
       sites.set(siteId, state);
     }
     return state;
@@ -79,8 +86,40 @@ export function createMockMediaStorage(mock: MockBackend) {
         created: null,
         ...(state.config && isTrialAddress(state.config.publicUrl) ? { trialAddress: true } : {}),
       },
+      images: {
+        connected: Boolean(state.images && (state.imagesToken || state.imagesUseDeployKey)),
+        config: state.images,
+        token: state.imagesUseDeployKey ? { configured: true, source: "site", hint: "k3y9", use: "deploy" } : state.imagesToken ? { configured: true, source: "site", hint: state.imagesToken.slice(-4), use: "own" } : { configured: false, source: null, use: null },
+      },
       cloudflare: { keyStored: true },
     };
+  }
+
+  /**
+   * The Images check, with the engine's sentences for the usual mistakes:
+   * a token ending in "0000" isn't accepted; the site's Cloudflare key lacks
+   * Images: Edit unless it was "fixed" (the account ID starts with "c");
+   * a hash "free…" is an account without the Paid plan.
+   */
+  async function checkImages(siteId: string, request: Partial<MediaImagesConnectRequest>): Promise<MediaCheckResult> {
+    const state = of(siteId);
+    const config = request.config ? normalizeImagesConfig(request.config) : state.images;
+
+    await sleep(700);
+    if (!config) return result("settings", "The site isn't connected to Cloudflare Images yet.", "account");
+    const problems = imagesSettingsProblems(config);
+
+    if (problems.length) return result("settings", problems.map((p) => p.message).join(" "), problems[0]!.field);
+    const deploy = request.config ? Boolean(request.useDeployKey) : state.imagesUseDeployKey;
+    const token = request.token?.trim() || (deploy ? "deploy" : state.imagesToken);
+
+    if (!token) return result("settings", "Paste an API token with Account › Cloudflare Images › Edit.", "token");
+    if (deploy && !config.account.startsWith("c")) {
+      return result("reach", "The site's Cloudflare key (the one for putting it online) doesn't have Cloudflare Images: Edit. On Cloudflare, edit that token (My Profile › API Tokens), add Account › Cloudflare Images › Edit, and check again — or paste a token of its own.", "token");
+    }
+    if (token.endsWith("0000")) return result("reach", "Cloudflare doesn't accept that API token for Cloudflare Images in this account. Check it has Account › Cloudflare Images › Edit for this account, and that it was copied whole.", "token");
+    if (config.accountHash.toLowerCase().startsWith("free")) return result("reach", "Cloudflare Images storage isn't turned on for this account. Keeping pictures in Images needs the Images Paid plan: turn it on under Images in the Cloudflare dashboard, then check again.");
+    return result(null);
   }
 
   function result(failAt: MediaCheckStepId | null, message?: string, field?: MediaCheckStep["field"]): MediaCheckResult {
@@ -122,7 +161,7 @@ export function createMockMediaStorage(mock: MockBackend) {
     return result(null);
   }
 
-  const connected = (siteId: string) => Boolean(of(siteId).config && of(siteId).keys.accessKeyId);
+  const connected = (siteId: string) => Boolean((of(siteId).config && of(siteId).keys.accessKeyId) || of(siteId).images);
 
   /** Files of the site's working copy (or published version) whose text has `url` in it. */
   function filesUsing(siteId: string, url: string, rev?: "base"): string[] {
@@ -135,10 +174,35 @@ export function createMockMediaStorage(mock: MockBackend) {
   }
 
   /** An upload, when the site keeps media in its bucket: every kind of file goes there. */
-  function save(siteId: string, filename: string, bytes: Buffer): MediaItem {
+  function save(siteId: string, filename: string, bytes: Buffer): MediaItem | null {
     const state = of(siteId);
-    const config = state.config!;
     const ext = (filename.split(".").pop() ?? "").toLowerCase();
+    const picture = ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext) && bytes.byteLength <= 10 * 1024 * 1024;
+
+    if (state.images && picture) {
+      const id = randomUUID();
+      const item: MediaItem & { published: boolean } = {
+        path: `images:${id}`,
+        url: `${state.images.deliveryUrl ? `${state.images.deliveryUrl}/cdn-cgi/imagedelivery` : "https://imagedelivery.net"}/${state.images.accountHash}/${id}/${state.images.variant ?? "public"}`,
+        name: filename.toLowerCase().replace(/[^a-z0-9.]+/g, "-"),
+        size: bytes.byteLength,
+        type: TYPES[ext] ?? "image/png",
+        width: 1600,
+        height: 1067,
+        modifiedAt: Date.now(),
+        status: "added",
+        location: "images",
+        key: id,
+        published: false,
+      };
+
+      state.bucket.unshift(item);
+      const { published: _published, ...out } = item;
+      return out;
+    }
+    const why = state.images ? (picture ? "" : "Cloudflare Images takes only pictures (PNG, JPG, GIF, WebP or SVG).") : "";
+    if (!state.config || !state.keys.accessKeyId) return null;
+    const config = state.config;
     const stem = filename.slice(0, -(ext.length + 1)).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "image";
     let key = `${config.prefix ?? ""}${stem}.${ext}`;
 
@@ -160,7 +224,7 @@ export function createMockMediaStorage(mock: MockBackend) {
     state.bucket.unshift(item);
     const { published: _published, ...out } = item;
 
-    return out;
+    return why ? { ...out, placement: `Kept in the bucket: ${why}` } : out;
   }
 
   const list = (siteId: string): MediaItem[] => (connected(siteId) ? of(siteId).bucket.map(({ published, ...item }) => ({ ...item, status: published ? "clean" : "added" })) : []);
@@ -234,6 +298,28 @@ export function createMockMediaStorage(mock: MockBackend) {
   }
 
   const handlers: Pick<Handlers, MediaStorageKey> = {
+    "POST /api/sites/:siteId/media/images/check": ({ params, body }) => checkImages(params.siteId, body ?? {}),
+    "PUT /api/sites/:siteId/media/images": async ({ params, body }) => {
+      const verdict = await checkImages(params.siteId, body);
+
+      if (!verdict.ok) return { check: verdict };
+      const state = of(params.siteId);
+
+      state.images = normalizeImagesConfig(body.config);
+      if (body.token) state.imagesToken = body.token.trim();
+      state.imagesUseDeployKey = Boolean(body.useDeployKey && !body.token);
+      return { check: verdict, status: status(params.siteId) };
+    },
+    "DELETE /api/sites/:siteId/media/images": ({ params, query }) => {
+      const state = of(params.siteId);
+
+      state.images = null;
+      if (String(query.forgetKeys) === "true") {
+        state.imagesToken = null;
+        state.imagesUseDeployKey = false;
+      }
+      return status(params.siteId);
+    },
     "POST /api/sites/:siteId/media/storage/move/plan": ({ params, body }) => plan(params.siteId, body),
     "POST /api/sites/:siteId/media/storage/move": ({ params, body }) => start(params.siteId, body),
     "GET /api/sites/:siteId/media/usage": ({ params, query }) => usage(params.siteId, query.url ?? ""),
@@ -243,7 +329,7 @@ export function createMockMediaStorage(mock: MockBackend) {
       if (result.deleted.length) mock.changed(params.siteId, result.deleted, "user");
       return result;
     },
-    "GET /api/media-storage/connectors": () => ({ connectors: BUCKET_CONNECTORS }),
+    "GET /api/media-storage/connectors": () => ({ connectors: [...BUCKET_CONNECTORS, IMAGES_INFO] }),
     "GET /api/sites/:siteId/media/storage": ({ params }) => status(params.siteId),
     "POST /api/sites/:siteId/media/storage/check": ({ params, body }) => check(params.siteId, body ?? {}),
     "PUT /api/sites/:siteId/media/storage": async ({ params, body }) => {

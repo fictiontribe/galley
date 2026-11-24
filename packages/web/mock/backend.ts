@@ -568,7 +568,8 @@ export function createHandlers(mock: MockBackend): Handlers {
       const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(body.data);
       if (!match) throw new MockError("invalid", "That file couldn’t be read. Try uploading it again.");
       const bytes = match[2] ? Buffer.from(match[3] ?? "", "base64") : Buffer.from(decodeURIComponent(match[3] ?? ""));
-      const item = mediaStorage.connected(params.siteId) ? mediaStorage.save(params.siteId, body.filename, bytes) : mock.site(params.siteId).saveMedia(body.filename, body.directory, bytes);
+      const stored = mediaStorage.connected(params.siteId) ? mediaStorage.save(params.siteId, body.filename, bytes) : null;
+      const item = stored ?? (mediaStorage.of(params.siteId).images ? { ...mock.site(params.siteId).saveMedia(body.filename, body.directory, bytes), placement: "Kept in the repository: Cloudflare Images takes only pictures (PNG, JPG, GIF, WebP or SVG)." } : mock.site(params.siteId).saveMedia(body.filename, body.directory, bytes));
       mock.changed(params.siteId, [item.path], "user");
       return item;
     },
