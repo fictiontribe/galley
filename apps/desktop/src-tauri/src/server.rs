@@ -83,6 +83,24 @@ fn strip_verbatim(text: &str) -> String {
     text.to_string()
 }
 
+/// Where the app's resources are, worked out from where its own program is.
+/// The framework normally says, but on macOS it refuses to name any of the
+/// app's folders when the program was started through a path with a symbolic
+/// link in it — `/tmp/…` is one (it points at `/private/tmp`) — which is what
+/// starting the inner program from a terminal can do. The app then said it
+/// was incomplete, with everything in place. A bundle's layout is fixed, so
+/// the program's real folder is enough: `Contents/MacOS` → `Contents/Resources`
+/// on macOS, the same folder elsewhere.
+pub fn resources_beside(exe_dir: &Path) -> Option<PathBuf> {
+    let candidate = if cfg!(target_os = "macos") {
+        exe_dir.parent()?.join("Resources")
+    } else {
+        exe_dir.to_path_buf()
+    };
+
+    candidate.is_dir().then_some(candidate)
+}
+
 /// Finds the server: the bundled one when this is a packaged app, the
 /// monorepo's CLI when it is a debug build run from the repository.
 pub fn locate(
@@ -90,6 +108,8 @@ pub fn locate(
     resource_dir: Option<&Path>,
     path: &OsString,
 ) -> Result<Launch, String> {
+    let mut looked_for = None;
+
     if let (Some(exe_dir), Some(resource_dir)) = (exe_dir, resource_dir) {
         let runtime = exe_dir.join(sidecar_name());
         let script = resource_dir.join("server").join(bundle_script_name());
@@ -100,6 +120,7 @@ pub fn locate(
                 script: plain_path(&script),
             });
         }
+        looked_for = Some((runtime, script));
     }
     if cfg!(debug_assertions) {
         let cli = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -116,7 +137,20 @@ pub fn locate(
             cli: plain_path(&cli),
         });
     }
-    Err("This copy of the app is missing its server. Reinstall it.".into())
+    Err(missing_detail(looked_for.as_ref()))
+}
+
+/// The window says this copy is incomplete; this, under its details, says
+/// what wasn't there, so "reinstall" isn't the only thing a person is told.
+fn missing_detail(looked_for: Option<&(PathBuf, PathBuf)>) -> String {
+    match looked_for {
+        Some((runtime, script)) => format!(
+            "The server that comes with the app wasn't found. Looked for {} and {}.",
+            runtime.display(),
+            script.display()
+        ),
+        None => "The app couldn't work out which folder it is running from, so it couldn't look for its server.".to_string(),
+    }
 }
 
 /// The environment the server gets: ours, with PATH resolved and the
@@ -454,6 +488,35 @@ mod tests {
             plain_path(Path::new("/opt/app/server/app.mjs")),
             PathBuf::from("/opt/app/server/app.mjs")
         );
+    }
+
+    #[test]
+    fn resources_are_found_from_the_programs_own_folder() {
+        let base = std::env::temp_dir().join(format!("desktop-beside-test-{}", std::process::id()));
+        let exe = base.join("Contents").join("MacOS");
+        let resources = base.join("Contents").join("Resources");
+
+        std::fs::create_dir_all(&exe).unwrap();
+        // Nothing where the resources would be: no answer, on any system.
+        if cfg!(target_os = "macos") {
+            assert_eq!(resources_beside(&exe), None);
+        }
+        std::fs::create_dir_all(&resources).unwrap();
+        let expected = if cfg!(target_os = "macos") { resources } else { exe.clone() };
+
+        assert_eq!(resources_beside(&exe), Some(expected));
+        assert_eq!(resources_beside(&base.join("not-there")), None);
+        std::fs::remove_dir_all(base).unwrap();
+    }
+
+    #[test]
+    fn a_missing_server_says_where_it_looked() {
+        let looked = (PathBuf::from("/opt/app/app-node"), PathBuf::from("/opt/app/server/app.mjs"));
+        let detail = missing_detail(Some(&looked));
+
+        assert!(detail.contains("/opt/app/app-node"), "{detail}");
+        assert!(detail.contains("/opt/app/server/app.mjs"), "{detail}");
+        assert!(missing_detail(None).contains("which folder"));
     }
 
     #[test]

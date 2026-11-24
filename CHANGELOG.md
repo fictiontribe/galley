@@ -23,6 +23,10 @@ entry says how.
 - **On Windows, a site's preview could not start**: the command lookup found
   the plain `npm` file that ships beside `npm.cmd`, which Windows can't run.
   Names are now tried with Windows' own endings first.
+- **The Mac app, started from a terminal through a path with a symbolic link
+  in it** (a copy under `/tmp`, say), said "This copy is incomplete. Reinstall
+  it." with nothing missing. It now finds its server from its own folder,
+  and when something really is missing the details say what was looked for.
 - **On Windows, the desktop app could not start**: it handed its server's
   path to Node.js in the long `\\?\C:\…` form Windows returns, which Node
   can't open, so the window said "Couldn't start" on every launch. It now

@@ -193,6 +193,30 @@ jobs:
           bundle="$(find src-tauri/resources/server -maxdepth 1 -name "*.mjs" | head -1)"
           node scripts/sidecar-e2e.mjs -- "$runtime" "$bundle"
 
+      # Started from a terminal, the app's own program can be reached through a
+      # path with a symbolic link in it (/tmp is one). The framework then
+      # refuses to say where the app is, and the app used to answer that it
+      # was incomplete. It must start its server all the same.
+      - name: Start the Mac app through a path with a link in it
+        if: runner.os == 'macOS'
+        env:
+          GALLEY_HOME: ${{ runner.temp }}/home-through-a-link
+        run: |
+          app="$(find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos" -maxdepth 1 -name "*.app" | head -1)"
+          link="$RUNNER_TEMP/through-a-link"
+          ln -s "$(cd "$(dirname "$app")" && pwd)" "$link"
+          program="$(find "$link/$(basename "$app")/Contents/MacOS" -type f ! -name "*-node" | head -1)"
+          "$program" > "$RUNNER_TEMP/app-through-a-link.log" 2>&1 &
+          started=""
+          for _ in $(seq 1 40); do
+            if pgrep -f "desktop --exit-with-parent" > /dev/null; then started="yes"; break; fi
+            sleep 1
+          done
+          kill %1 2> /dev/null || true
+          sleep 2
+          pkill -f "desktop --exit-with-parent" 2> /dev/null || true
+          if [ -z "$started" ]; then cat "$RUNNER_TEMP/app-through-a-link.log"; echo "The app didn't start its server when opened through a link."; exit 1; fi
+
       - name: Check the macOS signature
         if: runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE == 'true'
         run: |
