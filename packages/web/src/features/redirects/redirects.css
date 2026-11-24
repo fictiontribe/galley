@@ -7,7 +7,7 @@
 @container page (max-width: 899px) { .redir-layout { grid-template-columns: minmax(0, 1fr); } }
 .redir-main { display: grid; gap: var(--space-3); min-inline-size: 0; container: list / inline-size; }
 .redir-aside { display: grid; gap: var(--space-4); min-inline-size: 0; position: sticky; inset-block-start: 0; }
-@container page (max-width: 899px) { .redir-aside { position: static; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); } }
+@container page (max-width: 899px) { .redir-aside { position: static; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; } }
 
 /* Toolbar */
 .redir-toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
@@ -19,7 +19,7 @@
 .redir-table__head, .redir-row, .redir-edit {
   display: grid; align-items: center; column-gap: var(--space-3);
   /* The addresses take the room; the kind and "came from" stay narrow (the full address shows on hover and focus). */
-  grid-template-columns: 20px minmax(0, 1.25fr) 16px minmax(0, 1fr) 96px minmax(0, 88px) 64px;
+  grid-template-columns: 20px minmax(0, 1.25fr) 16px minmax(0, 1fr) 96px minmax(0, 120px) 64px;
   padding-inline: var(--space-3);
 }
 .redir-edit { grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr) 176px minmax(0, 0.8fr) auto; padding-block: var(--space-2); }
@@ -56,6 +56,8 @@
 .redir-address__path { color: var(--ink-primary); }
 .redir-arrow { color: var(--ink-tertiary); text-align: center; }
 .redir-kind { white-space: nowrap; color: var(--ink-primary); }
+/* Small enough that "WordPress import" and the other sources fit their column whole. */
+.redir-row > .redir-col--source { font-size: var(--text-sm); }
 .redir-kind__code { color: var(--ink-tertiary); font-size: var(--text-xs); }
 .redir-table__foot { margin: 0; padding: var(--space-2) var(--space-3); border-block-start: var(--border-hair) solid var(--border-subtle); }
 /* The table's columns follow the list's own width. */
