@@ -291,7 +291,7 @@ function rangeReason(seed: Exclude<SeedName, "pencil">, mode: ThemeMode, before:
 
   if (seed === "paper") why = low ? (light ? "too dark for a light theme" : "too close to black") : high ? (light ? "too bright to rest the eyes on" : "too light for a dark theme") : "";
   if (seed === "ink") why = high ? "too light to read as text" : low ? "too dark to read on a dark theme" : "";
-  if (seed === "plate") why = high ? (light ? "too light for words to read on it" : "not darker than the paper, as a dark theme’s plate must be") : "";
+  if (seed === "plate") why = high ? (light ? "too light for words to read on it" : "too close to the paper (in a dark theme the plate sits a step darker)") : "";
   if (seed === "table") why = low ? (light ? "too dark to proof a page on" : "too dark to stand apart from the page") : high ? (light ? "too close to white to stand apart from the page" : "too light for a dark theme") : "";
   const colour = strong ? (seed === "ink" ? "too strongly colored for text" : seed === "paper" ? "too strongly colored to read on" : "too strongly colored") : "";
   const how = [low ? "lightened" : high ? "darkened" : "", strong ? (low || high ? "its color softened" : "softened") : ""].filter(Boolean).join(" and ");
