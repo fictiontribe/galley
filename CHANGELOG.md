@@ -17,6 +17,9 @@ entry says how.
   when the site keeps its images in a folder of another name
   (`public/imagery`): new images are saved there. A site with no images
   folder still gets `public/images`.
+- **A list of short values** (a list of strings, links or numbers) no longer
+  gives every row the same `id`: the controls inside a group of fields take
+  no id from the group, whose legend names it.
 
 ## 0.2.0 — 2026-11-24
 
