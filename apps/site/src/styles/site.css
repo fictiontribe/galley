@@ -1039,3 +1039,72 @@ a.desk__frame { text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ================= Bold (html[data-look="bold"]) =================
+   The second direction, on the same tokens: the page scrolls through shade
+   and colour — the film on the ink plate, the release on the proofing table,
+   the close on Blue Pencil — with one blue-pencil mark in the hero, glyph
+   tiles in the rest of the app, and the app's visible depth on buttons and
+   the command. Delete this block (and Bold's tokens) to drop it.
+   Contrast (measured): on-plate #F2ECE1 on #1A1712 15.65, #BDB3A3 8.89,
+     #9C9283 6.15, #B7B5FC 9.45; ink on table #D9CCB7 11.29, ink-2 5.53;
+     white on Blue Pencil #2E2BFF 7.23, rgb(255 255 255/.88) ≈ 5.9;
+     pencil-800 #23207D on pencil-100 10.96. */
+[data-look="bold"] {
+  --sh-sheet: 0 0 0 1px rgb(26 23 18 / .05), 0 1px 1px rgb(26 23 18 / .04), 0 2px 6px -1px rgb(26 23 18 / .07), 0 12px 28px -14px rgb(26 23 18 / .16);
+  --sh-control: inset 0 1px 0 rgb(255 255 255 / .9), 0 0 0 1px var(--line-seam), 0 1px 2px rgb(26 23 18 / .12), 0 2px 5px -2px rgb(26 23 18 / .12);
+  --sh-field: inset 0 1px 2px rgb(26 23 18 / .09);
+  --sh-press: inset 0 1px 0 rgb(255 255 255 / .26), inset 0 -1px 0 rgb(0 0 0 / .22), 0 1px 2px rgb(26 23 18 / .3), 0 3px 8px -4px rgb(26 23 18 / .35);
+  --pencil-200: #D8D6FB; --pencil-800: #23207D;
+}
+[data-look="bold"] .btn--quiet { border-color: transparent; box-shadow: var(--sh-control); }
+[data-look="bold"] .btn--primary:active { box-shadow: inset 0 2px 3px rgb(0 0 0 / .3); }
+[data-look="bold"] .cmd { border-color: var(--line-2); }
+
+/* Tried and taken out: a hand-drawn blue-pencil caret after the hero's
+   headline. On the page it read as a stray character, not an editor's mark. */
+
+/* Bands. A section paints edge to edge without leaving its column: a wide
+   box-shadow of its own colour, clipped to the band. */
+[data-look="bold"] #film, [data-look="bold"] #whats-in { position: relative; padding-bottom: var(--section); clip-path: inset(0 -100vmax); }
+[data-look="bold"] #film { background: var(--plate); box-shadow: 0 0 0 100vmax var(--plate); color: var(--on-plate); margin-top: var(--section); }
+[data-look="bold"] #film .h2 { color: var(--on-plate); }
+[data-look="bold"] #film .lead, [data-look="bold"] #film .film__d { color: var(--on-plate-2); }
+[data-look="bold"] #film .film__step { border-top-color: rgb(242 236 225 / .5); color: var(--on-plate); }
+[data-look="bold"] #film .film__step:hover { background: rgb(242 236 225 / .06); }
+[data-look="bold"] #film .film__n { color: #B7B5FC; }
+[data-look="bold"] #film .film__at { color: var(--on-plate-3); }
+[data-look="bold"] #film .link { color: var(--on-plate); }
+[data-look="bold"] #film .link--accent { color: #B7B5FC; }
+[data-look="bold"] #film :focus-visible { outline-color: #B7B5FC; }
+[data-look="bold"] #film + .section { padding-top: var(--section); }
+[data-look="bold"] #whats-in { background: var(--tan); box-shadow: 0 0 0 100vmax var(--tan); margin-top: var(--section); }
+[data-look="bold"] #whats-in .spec-rows { border-top-color: var(--ink); }
+[data-look="bold"] #whats-in .spec-row { border-bottom-color: rgb(26 23 18 / .18); }
+[data-look="bold"] #whats-in .spec-row dd, [data-look="bold"] #whats-in .link { color: var(--ink); }
+[data-look="bold"] #whats-in .spec-row__sep { color: rgb(26 23 18 / .45); }
+[data-look="bold"] #whats-in + .section { padding-top: var(--section); }
+
+/* Stamps with colour: the state's ink fills the stamp, the mark in white. */
+[data-look="bold"] .badge--built { background: var(--ok); color: #fff; box-shadow: none; }
+[data-look="bold"] .badge--new { background: var(--ins); color: #fff; box-shadow: none; }
+[data-look="bold"] .badge--progress { background: var(--warn); color: #fff; box-shadow: none; }
+[data-look="bold"] .badge--built .glyph, [data-look="bold"] .badge--new .glyph, [data-look="bold"] .badge--progress .glyph { color: #fff; }
+[data-look="bold"] .spec-row .badge { height: 26px; padding: 0 10px 0 8px; font-size: 13px; }
+
+/* The rest of the app: each way in carries its glyph on a pencil tile, drawn
+   at 28 px where the duotone shows. */
+[data-look="bold"] .filmstrip__label { gap: 12px; }
+[data-look="bold"] .filmstrip__label .glyph { width: 40px; height: 40px; padding: 6px; border-radius: var(--r-md); background: var(--pencil-100); color: var(--pencil-800); --icon-stroke: 1.125; --icon-tint: var(--pencil-200); --icon-accent: var(--accent-text); box-shadow: inset 0 0 0 1px rgb(46 43 255 / .12); }
+[data-look="bold"] .filmstrip__item:hover .filmstrip__label .glyph { background: var(--pencil-200); }
+
+/* The close on Blue Pencil: the page's one colour plate. */
+[data-look="bold"] .close { background: var(--accent); color: #fff; }
+[data-look="bold"] .close .body, [data-look="bold"] .close .points li { color: rgb(255 255 255 / .88); }
+[data-look="bold"] .close .cmd { background: rgb(10 8 60 / .28); border-color: rgb(255 255 255 / .26); box-shadow: none; color: #fff; }
+[data-look="bold"] .close .cmd button { border-color: rgb(255 255 255 / .4); color: #fff; background: transparent; box-shadow: none; }
+[data-look="bold"] .close .out { background: rgb(10 8 60 / .22); color: rgb(255 255 255 / .88); }
+[data-look="bold"] .close .out__label { color: rgb(255 255 255 / .8); }
+[data-look="bold"] .close .btn--primary { background: #fff; color: #2910F1; box-shadow: 0 1px 2px rgb(10 8 60 / .35); }
+[data-look="bold"] .close .btn--quiet { border-color: rgb(255 255 255 / .55); color: #fff; box-shadow: none; }
+[data-look="bold"] .close :focus-visible { outline-color: #fff; }
