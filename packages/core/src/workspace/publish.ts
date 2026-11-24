@@ -53,6 +53,21 @@ const HOOK_TIMEOUT_MS = 5 * 60_000;
  * The limit is only there so that a stuck disk cannot hold the lock for ever.
  */
 const BRING_IN_TIMEOUT_MS = 60 * 60_000;
+/**
+ * For every git command here that talks to the code host or brings its
+ * versions in: git's own tidying-up, which it starts in the background
+ * after a fetch or a merge and which can go on after the command (and the
+ * workspace's turn) is over, beside whatever git work comes next.
+ */
+const NO_BACKGROUND_WORK = ["maintenance.auto=false", "gc.auto=0"];
+/**
+ * For bringing versions in, on top of that: the repository's own hooks are
+ * not run. A hook after a merge (installing packages, say) would run with
+ * the save lock held, for as long as it liked; and what a hosted editor's
+ * own round brings in, nobody asked for, so nothing of the site's runs for
+ * it. The preview installs what newer versions need (site/service.ts).
+ */
+const BRING_IN_CONFIG = [...NO_BACKGROUND_WORK, "core.hooksPath=/dev/null"];
 const CHUNK = 200;
 
 export const NOT_A_REPO =
@@ -224,6 +239,7 @@ async function push(repo: Git, remote: string, source: string, target: string): 
  */
 async function behindRemote(repo: Git, remote: string, branch: string): Promise<number> {
   const fetched = await repo.run(["fetch", "--quiet", "--no-tags", remote, `+refs/heads/${branch}:refs/remotes/${remote}/${branch}`], {
+    config: NO_BACKGROUND_WORK,
     allowFailure: true,
     timeoutMs: GIT_NETWORK_TIMEOUT_MS,
   });
@@ -787,6 +803,7 @@ export async function look(host: RepoHost): Promise<Look | null> {
 
   if (!source) return null;
   const fetched = await repo.run(["fetch", "--quiet", "--no-tags", source.remote, `+refs/heads/${source.branch}:${source.ref}`], {
+    config: NO_BACKGROUND_WORK,
     allowFailure: true,
     timeoutMs: GIT_NETWORK_TIMEOUT_MS,
   });
@@ -824,7 +841,7 @@ async function fastForward(host: RepoHost, info: RepoInfo, target: string, aroun
   try {
     // Inside the try: when stopping the preview throws, `after` still runs and starts it again.
     await around?.before();
-    const merged = await repo.run(["merge", "--ff-only", "--no-edit", "--no-autostash", "--quiet", target], { allowFailure: true, timeoutMs: BRING_IN_TIMEOUT_MS });
+    const merged = await repo.run(["merge", "--ff-only", "--no-edit", "--no-autostash", "--quiet", target], { config: BRING_IN_CONFIG, allowFailure: true, timeoutMs: BRING_IN_TIMEOUT_MS });
 
     if (merged.code !== 0) {
       outcome = { ok: false, stderr: merged.stderr, timedOut: merged.timedOut };
@@ -886,7 +903,8 @@ export async function pull(host: RepoHost, looked: Look | null, options: { aroun
   const { repo } = host;
   const { info, branch } = await bringInSource(host);
 
-  if (looked && !looked.ok) throw new GalleyError("git", looked.problem, looked.detail);
+  // The code host couldn't be asked: somebody else's server, not a failure of this one.
+  if (looked && !looked.ok) throw new GalleyError("git", looked.problem, looked.detail, 502);
   const target = await compareRef(repo, branch, await upstreamOf(repo));
   const behind = target && (await repo.head())
     ? Number((await repo.run(["rev-list", "--count", `HEAD..${target}`], { allowFailure: true, readOnly: true })).text.trim()) || 0

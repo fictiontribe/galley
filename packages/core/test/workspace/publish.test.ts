@@ -442,8 +442,24 @@ describe("remote URLs", GIT_HEAVY, () => {
     expect(redactRemoteUrl("remote: Not Found\nfatal: repository 'http://sam:secret@code.example/a/b.git/' not found\nsee https://other:key@mirror.example/a/b.git")).toBe(
       "remote: Not Found\nfatal: repository 'http://code.example/a/b.git/' not found\nsee https://mirror.example/a/b.git"
     );
+    // A password with an @ of its own goes whole; other ways of reaching a code host lose the password and keep the user.
+    expect(redactRemoteUrl("https://sam:p@ss@word@code.example/a/b.git")).toBe("https://code.example/a/b.git");
+    expect(redactRemoteUrl("fatal: could not read from 'ssh://deploy:not-a-real-key@code.example:2222/a/b.git'")).toBe("fatal: could not read from 'ssh://deploy@code.example:2222/a/b.git'");
+    expect(redactRemoteUrl("git+ssh://deploy:p@ss@code.example/a/b.git")).toBe("git+ssh://deploy@code.example/a/b.git");
+    // A value in the address that signs in, by its name; its neighbours stay.
+    expect(redactRemoteUrl("https://code.example/a/b.git?access_token=not-a-real-key&ref=main")).toBe("https://code.example/a/b.git?access_token=&ref=main");
+    expect(redactRemoteUrl("error: https://files.example/pack?X-Amz-Signature=abc123&X-Amz-Date=2026&private_token=xyz&design=plain&monkey=1")).toBe(
+      "error: https://files.example/pack?X-Amz-Signature=&X-Amz-Date=2026&private_token=&design=plain&monkey=1"
+    );
+    // Keys of a shape that can be nothing else, wherever they sit. (Put together here so no such shape is written in this file.)
+    const shaped = [`gh${"p"}_${"a1B2".repeat(9)}`, `github${"_pat"}_${"a1B2_".repeat(8)}`, `gl${"pat"}-${"a1B2-".repeat(4)}`];
+
+    for (const key of shaped) {
+      expect(redactRemoteUrl(`fatal: repository 'https://code.example/${key}/acme/site.git/' not found`)).toBe("fatal: repository 'https://code.example//acme/site.git/' not found");
+      expect(redactRemoteUrl(`remote: bad credentials (${key})`)).toBe("remote: bad credentials ()");
+    }
     // Nothing to take out: left exactly as it was.
-    for (const plain of ["https://code.example/a/b.git", "git@code.example:acme/site.git", "fatal: unable to access 'https://code.example/a/b.git/': The requested URL returned error: 403", "write to sam@example.com about https://code.example/a"]) {
+    for (const plain of ["ssh://git@code.example/acme/site.git", "https://code.example/a/b.git?ref=main&page=2", "a ghost_story and a glpattern", "https://code.example/a/b.git", "git@code.example:acme/site.git", "fatal: unable to access 'https://code.example/a/b.git/': The requested URL returned error: 403", "write to sam@example.com about https://code.example/a"]) {
       expect(redactRemoteUrl(plain)).toBe(plain);
     }
   });

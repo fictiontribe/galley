@@ -159,8 +159,12 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
    * versions, one at a time: a look, a publish, an undo, a send, Get latest,
    * a round. They share git's record of what the code host has, so two at
    * once could leave it older than it is. Taken before the save lock, never
-   * after it, and a look takes this one only: a code host that is slow to
-   * answer holds up other looks and publishes, never a save.
+   * after it. A look takes this one only, so a look never holds up a save,
+   * however slow the code host is to answer. Publishing, undoing a publish
+   * and sending are another matter: they hold the save lock from start to
+   * finish, sending to the code host included (GIT_NETWORK_TIMEOUT_MS at
+   * most), because what is published and what is still pending have to
+   * change together.
    */
   const turn = createLock();
   /** Publishing, undoing, sending and Get latest that are in progress or waiting for their turn: a round never runs beside them. */

@@ -147,11 +147,21 @@ while (!existsSync(${JSON.stringify(join(gate, "go"))})) await new Promise((reso
   };
 }
 
-/** Holds a bring-in open once its files have changed: git runs the site's own after-merge hook, and this one waits to be let through. */
+/**
+ * Holds a bring-in open part-way through its files: git waits, when it comes
+ * to write GATE into the site, until it is let through (a filter the
+ * repository names for that one file). The newer version has to change GATE.
+ */
+const GATE = "aaa-gate.txt";
+
 function holdBringIn(root: string) {
   const gate = tempDir("site-bring-in-gate-");
+  const program = join(gate, "wait.sh");
 
-  writeFileSync(join(root, ".git", "hooks", "post-merge"), `#!/bin/sh\n: > '${gate}/reached'\nwhile [ ! -e '${gate}/go' ]; do sleep 0.05; done\n`, { mode: 0o755 });
+  writeFileSync(program, `#!/bin/sh\n: > '${gate}/reached'\nwhile [ ! -e '${gate}/go' ]; do sleep 0.05; done\ncat\n`, { mode: 0o755 });
+  sh(root, "config", "filter.gate.smudge", program);
+  sh(root, "config", "filter.gate.clean", "cat");
+  writeFileSync(join(root, ".git", "info", "attributes"), `${GATE} filter=gate\n`);
   return { reached: () => existsSync(join(gate, "reached")), letThrough: () => writeFileSync(join(gate, "go"), "") };
 }
 
@@ -275,7 +285,10 @@ describe("the preview while newer versions come in", SLOW, () => {
     const head = sh(site.root, "rev-parse", "HEAD");
 
     // The editor's own round: skipped like a save in progress, with nothing touched.
+    expect((await open.gitStatus()).behind).toBe(0);
     expect(await open.catchUp()).toBeNull();
+    // It looked all the same, so what the app says is waiting is true while the install goes on.
+    expect(await open.gitStatus()).toMatchObject({ behind: 1, checkedAt: expect.any(String) });
     // A person: told why, and what to do.
     const refused = await open.pull().catch((error: unknown) => error);
 
@@ -325,10 +338,10 @@ describe("the preview while newer versions come in", SLOW, () => {
     expect(site.starts()).toBe(1);
     const hold = holdBringIn(site.root);
 
-    site.elsewhere({ [PAGE]: "---\ntitle: Home\nalign: center\n---\nHello\n", [SCHEMA]: JSON.stringify({ fields: ["title", "align"] }) }, "Centre the home page");
+    site.elsewhere({ [GATE]: "held here\n", [PAGE]: "---\ntitle: Home\nalign: center\n---\nHello\n", [SCHEMA]: JSON.stringify({ fields: ["title", "align"] }) }, "Centre the home page");
     const pulling = open.pull();
 
-    // The files have changed and the bring-in isn't over: the preview reads "stopped", and a person presses Start.
+    // The files are part-way changed and the bring-in isn't over: the preview reads "stopped", and a person presses Start.
     await until(() => hold.reached(), 60_000);
     expect(preview.status().state).toBe("stopped");
     const asked = preview.start();

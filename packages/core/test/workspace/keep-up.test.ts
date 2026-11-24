@@ -102,6 +102,9 @@ describe("looking at the code host", GIT_HEAVY, () => {
     expect(failed).toMatchObject({ behind: 1, checkedAt: looked.checkedAt });
     expect(sh(site.root, "rev-parse", "HEAD")).toBe(head);
     expect(read(site.root, "src/content/a.md")).toBe("a\n");
+    // Get latest says the same, as somebody else's server not answering rather than a failure of this one.
+    await expect(ws.getLatest()).rejects.toMatchObject({ code: "git", status: 502, message: failed.checkProblem });
+    expect(read(site.root, "src/content/a.md")).toBe("a\n");
     // The plain status says the same until the next look works.
     expect((await ws.gitStatus()).checkProblem).toBe(failed.checkProblem);
   });
@@ -336,6 +339,27 @@ describe("bringing newer versions in", GIT_HEAVY, () => {
     expect(read(site.root, "src/content/a.md")).toBe("a\n");
     // The workspace is left free: the next one goes through.
     expect(await ws.catchUp()).toMatchObject({ brought: 1 });
+  });
+
+  it.skipIf(!posix)("runs none of the repository's own hooks while versions come in", async () => {
+    const site = setUp({ "src/content/a.md": "a\n" });
+    const ws = await workspaceFor(site.root);
+    const ran = join(tempDir("ws-hooks-"), "ran");
+
+    for (const hook of ["post-merge", "post-checkout", "pre-merge-commit", "post-rewrite", "reference-transaction"]) {
+      writeFileSync(join(site.root, ".git", "hooks", hook), `#!/bin/sh\necho ${hook} >> '${ran}'\n`, { mode: 0o755 });
+    }
+    site.elsewhere({ "src/content/a.md": "theirs\n" }, "One");
+    expect(await ws.catchUp()).toMatchObject({ brought: 1 });
+    site.elsewhere({ "src/content/a.md": "theirs again\n" }, "Two");
+    expect(await ws.getLatest()).toMatchObject({ brought: 1 });
+    expect(read(site.root, "src/content/a.md")).toBe("theirs again\n");
+    // Nothing of the site's ran for either. (Looking does run the one hook git has for it: it changes no file.)
+    expect(existsSync(ran) ? readFileSync(ran, "utf8").split("\n").filter((line) => line && line !== "reference-transaction") : []).toEqual([]);
+    // The hooks themselves are sound: the same step by hand, in a terminal, runs them.
+    site.elsewhere({ "src/content/a.md": "by hand\n" }, "Three");
+    sh(site.root, "pull", "-q", "--ff-only");
+    expect(readFileSync(ran, "utf8")).toContain("post-merge");
   });
 
   it("holds back for an unpublished deletion of a file the newer version changes, and for a new file where the newer version adds one", async () => {
