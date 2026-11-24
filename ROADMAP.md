@@ -52,8 +52,9 @@ Built and waiting to be proven, or being built.
   yet on the real services.
 - **The desktop app on Windows and Linux, tried by people and signed.** The
   macOS app is signed and notarised. Windows and Linux installers are built
-  and their server is exercised on every release; they are unsigned, and
-  nobody has used the window there yet.
+  and their server is exercised on every release, and on Windows the
+  installed app is opened in the build; they are unsigned, and no person has
+  used the app there yet.
 - **The kits on npm as packages**: the site kit (`@galley/astro`), the adapter
   kit and the plugin kit. Sites carry the site kit vendored today.
 - **The starters listed in Astro's catalogue** of themes.

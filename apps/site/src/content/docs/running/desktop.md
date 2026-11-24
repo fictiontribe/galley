@@ -7,7 +7,7 @@ order: 1
 
 This page is for developers building or evaluating the desktop app. It is a thin native shell — Tauri 2, Rust, the system webview (WebKit on macOS), no bundled Chromium — around the same server and web UI the CLI runs. It starts the server privately on `127.0.0.1`, shows the UI in a native window, and stops everything when you quit. The source and its full account are in [`apps/desktop/`]({repository}/tree/main/apps/desktop) and its [README]({repository}/blob/main/apps/desktop/README.md).
 
-> **Status.** Built and tested on macOS, where the app is **signed and notarised by Apple**: it opens like any other downloaded app. The Windows and Linux installers are built on every release and their packaged server is started and walked through a site (open, edit, proof, publish, preview) on each system, but they are **unsigned**, and nobody has yet used the app's window on a real Windows or Linux computer. There are no published downloads yet: the installers are attached to a release from the next version on. There is no auto-update. The OS keychain is **not** used for keys yet — they are kept in the Galley home like the CLI's.
+> **Status.** Built and tested on macOS, where the app is **signed and notarised by Apple**: it opens like any other downloaded app. The Windows and Linux installers are built on every release and their packaged server is started and walked through a site (open, edit, proof, publish, preview) on each system, but they are **unsigned**. On Windows each build is also installed from its installer and opened, and a picture of the window is kept with the build; no person has used the app there yet. On Linux the window hasn't been opened at all. There are no published downloads yet: the installers are attached to a release from the next version on. There is no auto-update. The OS keychain is **not** used for keys yet — they are kept in the Galley home like the CLI's.
 
 ## Opening it the first time
 
@@ -78,7 +78,7 @@ None of these is part of `pnpm test`.
 
 - Auto-update.
 - Signing on Windows and Linux. (macOS is signed and notarised.)
-- Windows and Linux: built and their server exercised on every release, but the window, the menu and the folder picker have only been used by a person on macOS.
+- Windows and Linux in a person's hands: both are built and their server exercised on every release, and on Windows the installed app is opened and photographed, but the menu and the folder picker have only been used by a person on macOS.
 - The OS keychain for secrets.
 
 ## Next

@@ -14,8 +14,9 @@ entry says how.
 - **Desktop installers for Windows and Linux are built on every release**,
   unsigned, alongside the two for macOS, and gathered with their SHA-256
   sums into a draft release. On each system the packaged server is started
-  and walked through a site before the installer is kept. Nobody has used
-  the app's window on Windows or Linux yet.
+  and walked through a site before the installer is kept, and on Windows
+  the app is installed and opened. No person has used it on Windows or Linux
+  yet.
 
 ### Fixed
 

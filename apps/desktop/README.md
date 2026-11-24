@@ -349,9 +349,12 @@ are committed.
   (the workflow's header lists them); until a run has, that step is unproven.
 - **Windows and Linux in a person's hands.** Both are built in CI, their Rust
   tests pass, and the packaged server opens, edits, proofs, publishes and
-  previews a site there. The shell itself — the window, the menu, the folder
-  picker, process-tree kill with `taskkill /T`, the `ps`-based orphan sweep on
-  Linux — has only been used by a person on macOS.
+  previews a site there. On Windows CI also installs the app from its
+  installer, opens it and keeps a picture of the window (it shows the Sites
+  screen). Beyond that the shell — the menu, the folder picker, process-tree
+  kill with `taskkill /T`, the `ps`-based orphan sweep on Linux — has only
+  been used by a person on macOS, and on Linux the window has never been
+  opened.
 - **The OS keychain for secrets** (ARCHITECTURE.md §6) isn't wired yet; keys
   are still kept by the engine in the Galley home.
 - **The "closing the last window quits" path** is implemented by Tauri's

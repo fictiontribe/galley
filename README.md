@@ -257,8 +257,9 @@ change between minor versions ([what the numbers mean](RELEASING.md#what-the-ver
   service); hosting the editor online on your own Fly.io, Cloudflare or
   server (run against stand-ins for Fly.io and Cloudflare, not the real
   services); the Shopify storefront starter.
-- **Not verified yet**: the desktop app on Windows and Linux beyond its
-  automated checks (the macOS app is signed and notarised); the OpenAI
+- **Not verified yet**: the desktop app on Windows and Linux in a person's
+  hands (both are built and checked automatically, and on Windows the
+  installed app is opened; the macOS app is signed and notarised); the OpenAI
   and Google image providers; the assistant's fallback request profile;
   setting redirects on Cloudflare itself (Bulk Redirects); attaching a fresh
   own domain on the real services; a hosted editor's own key accepted by a
