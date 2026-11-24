@@ -104,7 +104,7 @@ describe("first run", () => {
     await type(field(document, "Repository address"), "git@github.com:example/site.git");
     expect(byText<HTMLAnchorElement>(document, "a", "Open GitHub’s key settings")?.href).toBe("https://github.com/example/site/settings/keys/new");
     await click(byText(document, "button", "Connect"));
-    expect(calls(server, "POST", "/api/setup/site")[0]?.body).toEqual({ repository: "git@github.com:example/site.git", access: "deploy-key" });
+    expect(calls(server, "POST", "/api/setup/site")[0]?.body).toEqual({ repository: "git@github.com:example/site.git", folder: "", access: "deploy-key" });
 
     // The key wasn't added yet: a state to wait in, with Check again — not an error.
     await until(() => expect(page?.text()).toContain("Waiting for the key."));
@@ -125,7 +125,7 @@ describe("first run", () => {
     await type(field(document, "Access token"), "fake-access-token-for-tests");
     await click(byText(document, "button", "Check"));
     await until(() => expect(page?.text()).toContain("can’t send changes to it"));
-    expect(calls(server, "POST", "/api/setup/site/check")[0]?.body).toEqual({ repository: "https://github.com/example/readonly-site", access: "token", token: "fake-access-token-for-tests" });
+    expect(calls(server, "POST", "/api/setup/site/check")[0]?.body).toEqual({ repository: "https://github.com/example/readonly-site", folder: "", access: "token", token: "fake-access-token-for-tests" });
     expect((byText<HTMLButtonElement>(document, "button", "Connect") as HTMLButtonElement).disabled).toBe(true);
 
     // A starter needs an empty repository.
@@ -153,12 +153,12 @@ describe("first run", () => {
     await click(byText(document, "button", "Check"));
     await until(() => expect(page?.text()).toContain(refusal));
     expect(page.text()).not.toContain("doesn’t look like a repository address");
-    expect(calls(server, "POST", "/api/setup/site/check").map((entry) => [entry.status, entry.body])).toEqual([[400, { repository: "/repos/site.git", access: "deploy-key" }]]);
+    expect(calls(server, "POST", "/api/setup/site/check").map((entry) => [entry.status, entry.body])).toEqual([[400, { repository: "/repos/site.git", folder: "", access: "deploy-key" }]]);
 
     await type(field(document, "Repository address"), "file:///repos/site.git");
     await click(byText(document, "button", "Connect"));
     await until(() => expect(page?.text()).toContain(refusal));
-    expect(calls(server, "POST", "/api/setup/site").map((entry) => [entry.status, entry.body])).toEqual([[400, { repository: "file:///repos/site.git", access: "deploy-key" }]]);
+    expect(calls(server, "POST", "/api/setup/site").map((entry) => [entry.status, entry.body])).toEqual([[400, { repository: "file:///repos/site.git", folder: "", access: "deploy-key" }]]);
     expect(server.install?.site.state).toBe("none");
   });
 
@@ -170,12 +170,12 @@ describe("first run", () => {
     await type(field(document, "Repository address"), "file:///repos/site.git");
     await click(byText(document, "button", "Check"));
     await until(() => expect(page?.text()).toContain("The repository answered."));
-    expect(calls(server, "POST", "/api/setup/site/check").map((entry) => [entry.status, entry.body])).toEqual([[200, { repository: "file:///repos/site.git", access: "deploy-key" }]]);
+    expect(calls(server, "POST", "/api/setup/site/check").map((entry) => [entry.status, entry.body])).toEqual([[200, { repository: "file:///repos/site.git", folder: "", access: "deploy-key" }]]);
 
     await type(field(document, "Repository address"), "/repos/site.git");
     await click(byText(document, "button", "Connect"));
     await until(() => expect(page?.text()).toContain("A few details."));
-    expect(calls(server, "POST", "/api/setup/site").map((entry) => [entry.status, entry.body])).toEqual([[200, { repository: "/repos/site.git", access: "deploy-key" }]]);
+    expect(calls(server, "POST", "/api/setup/site").map((entry) => [entry.status, entry.body])).toEqual([[200, { repository: "/repos/site.git", folder: "", access: "deploy-key" }]]);
     expect(server.install?.site).toMatchObject({ state: "connected", repository: "/repos/site.git" });
   });
 

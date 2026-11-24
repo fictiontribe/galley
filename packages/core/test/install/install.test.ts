@@ -239,6 +239,31 @@ describe("a site in a folder inside its repository", () => {
     expect((await site.history(5)).length).toBeGreaterThanOrEqual(2);
   });
 
+  it("a site known in a folder and still waiting is connected in that folder when the same repository is connected without the folder being said again", async () => {
+    const { home, store, install } = await makeInstall();
+    const bare = bareRepository(tempDir("install-remote-"), "monorepo", REPOSITORY);
+
+    await install.people.createOwner({ password: PASSWORD });
+    expect((await connected(install, { repository: bare, folder: "apps/site", branch: "main", access: "token", token: "x" })).state).toBe("done");
+    // As it is while the repository hasn't let the editor in yet: known, with its folder and branch, and not copied.
+    await store.update((draft) => void (draft.site!.connectedAt = null));
+    // What a first-run screen that asks only for the repository sends.
+    expect((await connected(install, { repository: bare, access: "token", token: "x" })).state).toBe("done");
+    expect(store.read().site).toMatchObject({ folder: "apps/site", branch: "main" });
+    expect(store.siteFolder()).toBe(join(home, "site", "apps", "site"));
+    expect(await install.site()).toMatchObject({ state: "connected", folder: "apps/site" });
+
+    // Said on purpose, the top of the repository is the top; and another repository starts from nothing.
+    await store.update((draft) => void (draft.site!.connectedAt = null));
+    expect((await connected(install, { repository: bare, folder: "", access: "token", token: "x" })).state).toBe("done");
+    expect(store.read().site).toMatchObject({ folder: null });
+    await store.update((draft) => void ((draft.site!.connectedAt = null), (draft.site!.folder = "apps/site")));
+    const other = bareRepository(tempDir("install-remote-"), "another", { "package.json": "{\"name\":\"other\",\"private\":true}\n", "src/content/pages/index.md": "---\ntitle: Home\n---\nHello\n" });
+
+    expect((await connected(install, { repository: other, access: "token", token: "x" })).state).toBe("done");
+    expect(store.read().site).toMatchObject({ folder: null });
+  });
+
   it("refuses a folder that isn't there, leads outside, or comes with a starter — naming the folder", async () => {
     const { install, store, home } = await makeInstall();
     const bare = bareRepository(tempDir("install-remote-"), "monorepo", { ...REPOSITORY, "apps/notes.md": "just a file\n" });

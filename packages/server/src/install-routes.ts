@@ -65,7 +65,8 @@ const connectBody = z
   .object({
     repository: text(2048),
     branch: text(255).optional(),
-    folder: text(1024).optional(),
+    // Empty is allowed and means the top of the repository, said on purpose; leaving it out means "as already known".
+    folder: z.string().trim().max(1024).optional(),
     access: z.enum(["deploy-key", "token"]),
     token: text(4096).optional(),
     starter: starter.optional(),
