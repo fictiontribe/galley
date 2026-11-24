@@ -114,6 +114,30 @@ describe("media storage routes", () => {
     await app.done();
   });
 
+  it("show and delete only the site's own stored files: no . or .., nothing outside its folder, site-a isn't site-ab", async () => {
+    const app = await withStorage();
+    const connected = await json(await app.call("PUT", `/api/sites/${SITE_ID}/media/storage`, { config: { ...config(), prefix: "site-a" }, ...KEY }));
+
+    expect(connected.check.ok).toBe(true);
+    const objects = fake.buckets.get("lowfield-media")!.objects;
+    const other = { body: Buffer.from("site-ab's"), contentType: "image/png", cacheControl: null, metadata: {}, etag: "o", lastModified: new Date() };
+
+    objects.set("site-ab/x.png", other);
+    objects.set("site-a/own.png", { ...other, body: Buffer.from("own") });
+    for (const path of ["bucket:site-ab/x.png", "bucket:site-a/../site-ab/x.png", "bucket:site-a/./own.png", "bucket:other/x.png"]) {
+      const raw = await app.call("GET", `/api/sites/${SITE_ID}/raw?path=${encodeURIComponent(path)}`);
+
+      expect(raw.status, path).toBe(403);
+      expect((await app.call("POST", `/api/sites/${SITE_ID}/media/storage/delete`, { paths: [path] })).status, path).toBe(403);
+    }
+    expect(objects.has("site-ab/x.png")).toBe(true);
+    const own = await app.call("GET", `/api/sites/${SITE_ID}/raw?path=${encodeURIComponent("bucket:site-a/own.png")}`);
+
+    expect(own.status).toBe(200);
+    expect(await own.text()).toBe("own");
+    await app.done();
+  });
+
   it("refuse a badly shaped key with a sentence, not the value", async () => {
     const app = await withStorage();
     const response = await app.call("POST", `/api/sites/${SITE_ID}/media/storage/check`, { config: config(), accessKeyId: KEY.accessKeyId, secretAccessKey: "has spaces in it, oops" });
