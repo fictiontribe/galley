@@ -45,6 +45,20 @@ export function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(left, right);
 }
 
+/**
+ * Whether a presented signature is the expected one, in constant time. They
+ * are compared as bytes, and the byte counts first: two strings with the
+ * same number of characters need not be the same number of bytes (a cookie
+ * can carry any character), and the comparison refuses buffers of unequal
+ * length outright.
+ */
+export function sameSignature(presented: string, expected: string): boolean {
+  const left = Buffer.from(presented, "utf8");
+  const right = Buffer.from(expected, "utf8");
+
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
 function mac(key: Uint8Array, payload: string): string {
   return createHmac("sha256", key).update(payload).digest("base64url");
 }
@@ -81,7 +95,7 @@ export function readSession(key: Uint8Array, value: string | undefined, now = Da
   if (accountId !== undefined && !ACCOUNT_ID.test(accountId)) return null;
   const expected = mac(key, accountId !== undefined ? `${ACCOUNT_PURPOSE}\n${payload}` : payload);
 
-  if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+  if (!sameSignature(signature, expected)) return null;
   const issuedAt = Number(parts[0]);
 
   if (!Number.isFinite(issuedAt) || issuedAt > now + 60_000 || now - issuedAt > SESSION_MAX_AGE_S * 1000) return null;
@@ -123,7 +137,7 @@ export function readKnownBrowser(key: Uint8Array, value: string | undefined, now
   if (!ACCOUNT_ID.test(accountId) || !id) return null;
   const expected = mac(key, `${KNOWN_BROWSER_PURPOSE}\n${parts.slice(0, 4).join(".")}`);
 
-  if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+  if (!sameSignature(signature, expected)) return null;
   const issuedAt = Number(issued);
 
   if (!Number.isFinite(issuedAt) || issuedAt > now + 60_000 || now - issuedAt > KNOWN_BROWSER_MAX_AGE_S * 1000) return null;

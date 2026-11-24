@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { createPeople, openInstallState, type Install, type InstallStore, type SignInResult } from "@galley/core/install";
 import { EMAIL_BUSY, SIGN_IN_REFUSED, SIGN_INS_BUSY, TOO_MANY_ATTEMPTS, TOO_MANY_FOR_EMAIL, TOO_MANY_SIGN_INS } from "../src/accounts-routes";
-import { clientKey, KNOWN_BROWSER_MAX_AGE_S, LoginLimiter, signKnownBrowser } from "../src/auth";
+import { clientKey, KNOWN_BROWSER_MAX_AGE_S, LoginLimiter, readKnownBrowser, readSession, sameSignature, signKnownBrowser } from "../src/auth";
 import {
   CLIENT_ATTEMPTS,
   CLIENT_IN_FLIGHT,
@@ -424,6 +424,39 @@ describe("a browser someone has signed in on before", () => {
     expect(await skipsTheLine("ed@example.com", again, WRONG)).toBe(true);
     await b.people.remove(b.ids.sam, b.ids.ed);
     expect(await skipsTheLine("ed@example.com", again, WRONG)).toBe(false);
+  });
+});
+
+describe("a cookie whose signature isn't plain characters", () => {
+  // The right number of characters, one of them two bytes long.
+  const mangled = (cookie: string) => `${cookie.slice(0, -1)}\u00e9`;
+
+  it("is simply not that cookie: nothing throws, whatever the characters", () => {
+    expect(sameSignature("abc\u00e9", "abcd")).toBe(false);
+    expect(sameSignature("abcd", "abc\u00e9")).toBe(false);
+    expect(sameSignature("abcd", "abcd")).toBe(true);
+    const key = randomBytes(32);
+    const known = signKnownBrowser(key, "acc_1234567890abcdef");
+
+    expect(readKnownBrowser(key, known)).not.toBeNull();
+    expect(readKnownBrowser(key, mangled(known))).toBeNull();
+    expect(readSession(key, mangled("1795500000000.nonce.acc_1234567890abcdef.0123456789abcdef0123456789abcdef0123456789a"))).toBeNull();
+  });
+
+  it("a session cookie like that is signed out, a known-browser cookie like that is an unknown browser, and neither is an error in the log", async () => {
+    const b = await bench();
+    const signedIn = await b.login("sam@example.com", PASSWORD, "198.51.100.1");
+    const session = pairOf(signedIn.headers.getSetCookie()[0]!);
+    const known = pairOf(knownCookieOf(signedIn)!);
+
+    expect((await b.app.raw("GET", `${HOST}/api/account`, { headers: { cookie: session } })).status).toBe(200);
+    const refused = await answer(b.app.raw("GET", `${HOST}/api/account`, { headers: { cookie: mangled(session) } }));
+
+    expect(refused.status).toBe(401);
+    const again = await b.login("sam@example.com", PASSWORD, "198.51.100.2", mangled(known));
+
+    expect(again.status).toBe(200);
+    expect(b.app.logs.filter((line) => line.includes(" failed"))).toEqual([]);
   });
 });
 

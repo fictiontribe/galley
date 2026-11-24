@@ -276,12 +276,49 @@ export interface InstallStore {
   markSeeded(names: string[]): Promise<void>;
 }
 
+/** The file-system calls the state is saved with. A test hands in ones that fail on purpose. */
+export interface StateFiles {
+  writeFile: typeof writeFile;
+  chmod: typeof chmod;
+  rename: typeof rename;
+  rm: typeof rm;
+}
+
 export interface OpenInstallStateOptions {
   /** GALLEY_SITE_DIR, for the first upgrade of a folder with several sites. */
   keepSite?: string | null;
   now?: () => Date;
   /** Where a trim made while loading is told (one line). */
   log?: (line: string) => void;
+  /** Tests only: stand-ins for the calls the state is saved with. */
+  files?: Partial<StateFiles>;
+}
+
+/**
+ * Why the state couldn't be saved, and what to do, for the failures a
+ * server really meets. Anything else stays the unexpected error it is.
+ */
+const SAVE_FAILURES: Record<string, [reason: string, next: string]> = {
+  ENOSPC: ["the disk is full", "Whoever runs this editor needs to free some space on it; then try again."],
+  EMFILE: ["too many files are open on the server", "Try again in a moment."],
+  ENFILE: ["too many files are open on the server", "Try again in a moment."],
+  EIO: ["the disk reported an error", "Try again. If it keeps happening, whoever runs this editor should check the disk."],
+  EPERM: ["the server isn't allowed to write to its data folder", "Whoever runs this editor needs to check who owns that folder."],
+  EBUSY: ["its data file is in use by something else", "Try again in a moment."],
+};
+/** A rename refused because something held the file for a moment (a scanner, a backup tool) is tried once more. */
+const RENAME_AGAIN = new Set(["EPERM", "EBUSY"]);
+
+const errorCode = (error: unknown): string => (typeof (error as NodeJS.ErrnoException | null)?.code === "string" ? (error as NodeJS.ErrnoException).code! : "");
+
+/** A failed save as something to tell the person; `detail` is the system's code, for the log. */
+export function saveFailure(error: unknown): unknown {
+  const code = errorCode(error);
+  const known = SAVE_FAILURES[code];
+
+  if (!known) return error;
+  // The state in memory is replaced only after a save, so nothing changed.
+  return new GalleyError("internal", `The editor couldn't save its own state: ${known[0]}. Nothing was changed. ${known[1]}`, code);
 }
 
 async function readState(file: string): Promise<{ raw: unknown; schema: number } | null> {
@@ -324,16 +361,22 @@ function parseState(raw: unknown, file: string): InstallStateFile {
   return state;
 }
 
-async function writeState(home: string, file: string, state: InstallStateFile): Promise<void> {
+async function writeState(home: string, file: string, state: InstallStateFile, stand: Partial<StateFiles> = {}): Promise<void> {
+  const files: StateFiles = { writeFile, chmod, rename, rm, ...stand };
   const temp = join(home, `.${STATE_FILE}.${randomBytes(6).toString("hex")}.tmp`);
 
-  await writeFile(temp, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
-  await chmod(temp, 0o600);
   try {
-    await rename(temp, file);
+    await files.writeFile(temp, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
+    await files.chmod(temp, 0o600);
+    try {
+      await files.rename(temp, file);
+    } catch (error) {
+      if (!RENAME_AGAIN.has(errorCode(error))) throw error;
+      await files.rename(temp, file);
+    }
   } catch (error) {
-    await rm(temp, { force: true });
-    throw error;
+    await files.rm(temp, { force: true }).catch(() => undefined);
+    throw saveFailure(error);
   }
 }
 
@@ -401,7 +444,7 @@ export async function openInstallState(home: string, options: OpenInstallStateOp
       const now = Date.now();
 
       draft.sessions.revoked = draft.sessions.revoked.filter((entry) => entry.until > now);
-      await writeState(home, file, draft);
+      await writeState(home, file, draft, options.files);
       state = draft;
       return copy();
     };

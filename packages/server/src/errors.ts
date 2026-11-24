@@ -51,6 +51,12 @@ function safeDetail(error: GalleyError): string | undefined {
 
 export function errorResponse(c: Context, error: unknown, log: (line: string) => void): Response {
   if (isGalleyError(error)) {
+    // A failure of the server's own, not something the person did: one line, with its technical cause, for whoever runs it.
+    if (error.code === "internal") {
+      const cause = error.detail ? (error.detail.includes("\n") ? `\n${error.detail}` : ` (${error.detail})`) : "";
+
+      log(`${c.req.method} ${new URL(c.req.url).pathname} failed: ${error.message}${cause}`);
+    }
     return c.json(errorBody(error.code, error.message, safeDetail(error)), error.status as ContentfulStatusCode);
   }
   if (error instanceof AuthError) return c.json(errorBody("unauthorized", error.message), 401);
@@ -62,6 +68,9 @@ export function errorResponse(c: Context, error: unknown, log: (line: string) =>
   const stack = error instanceof Error ? (error.stack ?? `${error.name}: ${error.message}`) : String(error);
 
   // The time is added where the line is written (log.ts), like every other line's.
-  log(`${c.req.method} ${new URL(c.req.url).pathname} failed:\n${stack}`);
+  // The system's own code for it (ENOSPC, EMFILE, …), when it has one, says more than the stack does.
+  const code = typeof (error as NodeJS.ErrnoException | null)?.code === "string" ? ` (${(error as NodeJS.ErrnoException).code})` : "";
+
+  log(`${c.req.method} ${new URL(c.req.url).pathname} failed${code}:\n${stack}`);
   return c.json(errorBody("internal", INTERNAL_MESSAGE), 500);
 }

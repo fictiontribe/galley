@@ -17,8 +17,14 @@
 // Everything it made (servers, the sink, the folders) is removed at the end,
 // unless --keep is given. It reads no key or setting from your environment:
 // the servers get only what is listed in `baseEnv` below.
+//
+// It first says what it is running — the server from source or from a bundle
+// left in packages/cli/dist, whether the working copy has uncommitted
+// changes, how much disk is free — because a failure seen once is only worth
+// chasing with that known. When a step fails, everything every server of the
+// run wrote is kept in a folder beside the scratch one, whose path is printed.
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statfsSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import { tmpdir } from "node:os";
@@ -46,7 +52,40 @@ const OPERATOR_TOKEN = "rehearsal-operator-token-not-real-0000";
 /** Everything secret this run makes or types: none of it may reach a server's log. */
 const secrets = new Set([PASSWORD, NEW_PASSWORD, PEOPLE_PASSWORD, KEY, HOST_KEY, OPERATOR_TOKEN]);
 const running = [];
+/** Every server this run started, stopped or not: what each wrote is kept when a step fails. */
+const everyServer = [];
 let sink = null;
+
+/** What this run is running on: said first, and kept beside a failure. */
+function runRecord() {
+  // packages/cli/bin prefers a bundle left in dist over the source: the two can differ.
+  const bundled = existsSync(join(ROOT, "packages/cli/dist/galley.mjs"));
+  let changes;
+  let commit = "unknown";
+
+  try {
+    commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    changes = execFileSync("git", ["status", "--porcelain"], { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\n").filter(Boolean);
+  } catch {
+    changes = null;
+  }
+  let free = "unknown";
+
+  try {
+    const disk = statfsSync(scratch);
+
+    free = `${((disk.bavail * disk.bsize) / 1024 ** 3).toFixed(1)} GB`;
+  } catch {
+    // Not every system answers; the run goes on without it.
+  }
+  const summary = `Run: the server ${bundled ? "from the bundle in packages/cli/dist" : "from source (tsx)"}, at ${commit}; ${changes === null ? "not a git working copy" : changes.length === 0 ? "nothing uncommitted" : `${changes.length} uncommitted change${changes.length === 1 ? "" : "s"}`}; ${free} of disk free; Node ${process.version}.`;
+
+  return { summary, changes: changes ?? [] };
+}
+
+const record = runRecord();
+
+process.stdout.write(`${record.summary}\n`);
 
 // ─────────────────────────────────────────────────────────────── the outgoing mail server
 
@@ -179,6 +218,7 @@ async function serve(home, { args = [], mail = false, publicUrl = false, env: ex
   const server = { port, child, out: "", log: "" };
 
   running.push(server);
+  everyServer.push(server);
   child.stdout.setEncoding("utf8").on("data", (text) => (server.out += text));
   child.stderr.setEncoding("utf8").on("data", (text) => (server.log += text));
   await new Promise((ready, fail) => {
@@ -618,14 +658,15 @@ async function main() {
       expectStatus(await browser(server, `a guesser ${i}`).call("POST", "/api/auth/login", { email: "sam@example.com", password: "a guess at Sam's password" }), 401, "a guess");
       guesses += 1;
     }
-    let started = Date.now();
+    let began = Date.now();
     expectStatus(await own.call("POST", "/api/auth/login", { email: "sam@example.com", password: PASSWORD }), 200, "the browser Sam used before");
-    const knownMs = Date.now() - started;
-    check(knownMs < 900, `the browser Sam used before waited ${knownMs} ms`);
-    started = Date.now();
+    const knownMs = Date.now() - began;
+    began = Date.now();
     expectStatus(await browser(server, "a new browser of Sam's").call("POST", "/api/auth/login", { email: "sam@example.com", password: PASSWORD }), 200, "a browser Sam never used");
-    const unknownMs = Date.now() - started;
+    const unknownMs = Date.now() - began;
+    // The two are compared with each other, not with the clock: a busy computer slows both, and only the gap between them is the gate's doing (a new browser's turn begins with a wait of a second).
     check(unknownMs >= 900, `a new browser didn't wait its turn (${unknownMs} ms)`);
+    check(unknownMs - knownMs >= 500, `the browser Sam used before (${knownMs} ms) wasn't let in ahead of a new one (${unknownMs} ms)`);
     return `${guesses} guesses; the known browser in ${knownMs} ms, a new one after ${unknownMs} ms`;
   });
 
@@ -781,8 +822,24 @@ try {
   process.stdout.write(`All ${stepCount} steps passed.\n`);
 } catch (error) {
   failed = true;
-  process.stdout.write(`FAIL ${String(stepCount).padStart(2)}. ${error instanceof Failed ? error.message : (error?.stack ?? String(error))}\n`);
+  const told = `FAIL ${String(stepCount).padStart(2)}. ${error instanceof Failed ? error.message : (error?.stack ?? String(error))}`;
+
+  process.stdout.write(`${told}\n`);
   for (const server of running) process.stdout.write(`--- the server on port ${server.port} said:\n${server.out}\n${server.log.split("\n").slice(-40).join("\n")}\n`);
+  // The whole of what every server wrote, kept: the last lines above are often not the ones that explain it.
+  try {
+    const kept = `${scratch}-failed`;
+
+    mkdirSync(kept, { recursive: true });
+    writeFileSync(join(kept, "run.txt"), `${record.summary}\n${told}\n\nUncommitted changes (git status --porcelain):\n${record.changes.join("\n") || "(none)"}\n`);
+    everyServer.forEach((server, index) => {
+      writeFileSync(join(kept, `server-${String(index + 1).padStart(2, "0")}-port-${server.port}.stdout.txt`), server.out);
+      writeFileSync(join(kept, `server-${String(index + 1).padStart(2, "0")}-port-${server.port}.stderr.txt`), server.log);
+    });
+    process.stdout.write(`Everything the servers wrote is kept in: ${kept}\n`);
+  } catch (keeping) {
+    process.stdout.write(`(What the servers wrote couldn't be kept: ${keeping?.message ?? keeping})\n`);
+  }
 } finally {
   await Promise.all([...running].map((server) => stop(server).catch(() => undefined)));
   await sink?.close();
