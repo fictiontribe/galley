@@ -511,9 +511,14 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
         }
       }
       if (!adopted) {
-        // When the adapter can say which port to use, choose a free one; the
-        // framework's own choice (read from its output) still wins if it differs.
-        const explicitPort = settings.dev.portArgs ? await reservePort(configuredPort, configuredTaken && configuredPort ? [configuredPort] : []) : null;
+        // Choose a free port when the adapter can pass one, or when the
+        // configured port is already taken (so PORT steers servers without
+        // portArgs away from the foreign listener); the server's own announced
+        // port still wins if it differs.
+        const explicitPort =
+          settings.dev.portArgs || (configuredTaken && configuredPort)
+            ? await reservePort(configuredPort, configuredTaken && configuredPort ? [configuredPort] : [])
+            : null;
 
         if (explicitPort !== null) {
           // Recorded before the stale check, so a stop() that landed meanwhile still releases it.
@@ -542,6 +547,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
           env,
           explicitPort && settings.dev.portArgs ? portArguments(settings.dev.portArgs, explicitPort) : [],
           (port) => {
+            if (configuredTaken && port === configuredPort) return;
             announced ??= port;
           },
           (pid) => {
@@ -578,7 +584,9 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
         // Only ports this server is known to use: the one it announced, the one
         // it was told to use, or the configured one when nothing else held it.
         const candidates = () =>
-          [announced, explicitPort, configuredTaken || explicitPort ? null : configuredPort].filter((port): port is number => port !== null);
+          [announced, explicitPort, configuredTaken || explicitPort ? null : configuredPort].filter(
+            (port): port is number => port !== null && !(configuredTaken && port === configuredPort)
+          );
 
         upstream = await waitUntilSettled(candidates, stale, failed, Date.now() + (options.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS));
         if (stale() || !upstream) return snapshot();
