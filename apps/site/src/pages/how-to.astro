@@ -8,6 +8,7 @@ import { getPage } from "../lib/pages";
 import { inline } from "../lib/markdown";
 import { site } from "../lib/site";
 import HowtoFilter from "../components/HowtoFilter.astro";
+import { demo } from "../lib/demo";
 import { firstPicture, howtoHref, howtoGroups, howtos } from "../lib/howto";
 
 const { data: p } = await getPage("how-to");
@@ -23,6 +24,7 @@ const filtered = groups.length > 1;
       <div class="page-head">
         <h1 class="h1" id="howto-h" set:html={inline(p.heading)} />
         <p class="lead">{p.lead}</p>
+        {demo.on && <p class="howto-index__demo">{site.ui.demoLine} <a class="link link--accent" href={demo.href}>{site.ui.demoOpen}</a></p>}
       </div>
     </div>
     {filtered && <HowtoFilter groups={groups} total={cards.length} />}

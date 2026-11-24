@@ -8,6 +8,10 @@
       ]
     },
     {
+      "label": "Apps",
+      "href": "/apps/"
+    },
+    {
       "label": "Starters",
       "href": "/starters/"
     },
@@ -38,6 +42,10 @@
       "href": "/tour/"
     },
     {
+      "label": "Apps",
+      "href": "/apps/"
+    },
+    {
       "label": "Starters",
       "href": "/starters/"
     },
@@ -60,11 +68,6 @@
     {
       "label": "How-to guides",
       "href": "/how-to/"
-    },
-    {
-      "label": "Download",
-      "href": "/download/",
-      "when": "downloads"
     },
     {
       "label": "Changelog",

@@ -3,10 +3,7 @@
 import mark from "../../../../brand/logo/mark.svg?raw";
 import navigation from "../data/navigation.json";
 import { fill, site } from "../lib/site";
-import { on as downloadsOn } from "../lib/downloads";
-
-// A link marked `when: "downloads"` shows only while src/data/downloads.json offers a download.
-const links = navigation.footer.filter((l) => (l as { when?: string }).when !== "downloads" || downloadsOn);
+const links = navigation.footer;
 
 const icon = mark.replace(/<svg /, '<svg aria-hidden="true" ').replace(/ width="[^"]+" height="[^"]+"/, "").replace(/<title[^>]*>.*?<\/title>/, "").replace(/ role="img"[^>]*?(?=>)/, "");
 ---

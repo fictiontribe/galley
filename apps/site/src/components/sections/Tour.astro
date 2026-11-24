@@ -22,9 +22,15 @@ const items = (s.items as any[]).map((item) => {
   const main = resolveVisual(item.visual);
   const inset = item.visual.kind === "recording" ? null : resolveVisual(item.inset);
   const howto = howtoOf(item.howto);
-  const href = howto ? howtoHref(howto.slug) : item.guide;
-  return { ...item, main, inset, href, badge: badgeOf(item.status) };
-});
+  const href = item.link ? item.link.href : howto ? howtoHref(howto.slug) : item.guide;
+  const linkLabel = item.link ? item.link.label : site.ui.howTo;
+  return { ...item, main, inset, href, linkLabel, badge: badgeOf(item.status) };
+}).filter((item) => {
+  if (!item.whenPictured) return true;
+  // A screen still to come: the item waits for its picture and for words that say what it shows.
+  if (item.main && !item.main.alt) console.warn(`[site] tour.md: "${item.id}" has its picture but no alt text yet; left out until someone writes what it shows.`);
+  return Boolean(item.main && item.main.alt);
+}).map((item) => (item.inset && !item.inset.alt ? { ...item, inset: null } : item));
 
 // Rows: a run of `half` items pairs up two by two; everything else is a row of its own.
 const rows: (typeof items)[] = [];
@@ -52,7 +58,7 @@ for (const item of items) {
                   {item.badge && <span class:list={["badge", `badge--${item.badge.status}`]}>{item.badge.label}</span>}
                 </h3>
                 <p class="body">{fill(item.text)}</p>
-                {item.href && <a class="link link--accent" href={item.href}>{site.ui.howTo}<span class="sr">: {item.heading}</span></a>}
+                {item.href && <a class="link link--accent" href={item.href}>{item.linkLabel}{!item.link && <span class="sr">: {item.heading}</span>}</a>}
                 {item.note && <p class="tour-item__note">{fill(item.note)}</p>}
               </div>
               {item.main && (

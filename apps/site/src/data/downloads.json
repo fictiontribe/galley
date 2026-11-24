@@ -1,76 +1,96 @@
 {
-  "about": "The desktop app's downloads. The one switch is `available`: while it is false nothing on the site offers a download — /download/ exists but is linked from nowhere, carries noindex and shows the one-command start; the home section and the footer's Download link stay off. Set it to true once at least one platform below has `available: true` and a real `url`; a platform that isn't available is listed as coming, never as a button. `url` is the file's direct address (a release asset); `size` is as people read it (\"92 MB\"); `requires` is the oldest system it runs on, in words; `signed` false makes the page say plainly that the app isn't signed yet and show `open`, the steps past the system's warning (markdown: **bold** for what to click, `code` for commands). `also` lists other files for the same platform. `screens` are captures of the app window in public/screens (<src>.webp + <src>@1x.webp, 2×): one without its file, or without alt text written after looking at it, is left out — never a stand-in. The first screen with `home: true` is the one on the home page. Statuses stay in status.json; CLAIMS.md says what supports each line.",
-  "available": false,
-  "version": "",
-  "released": "",
-  "releasePage": "{repository}/releases",
+  "about": "The desktop app's downloads, shown on /apps/ (and the home page's desktop section). The one switch is `available`: while it is false the Apps page still shows, with the desktop section saying the installers are being published and listing what is coming for each system, and the other ways to run Galley fully usable; no download button appears anywhere. Set it to true once at least one platform below has `available: true` and a real `url`; a platform that isn't available is listed as coming, never as a button. `url` is the file's direct address (a release asset); `size` is as people read it (\"92 MB\"); `requires` is the oldest system it runs on, in words. `system` is the system's name as its warning names it (\"macOS\", \"Windows\"; empty when there is no warning to get past, as with an AppImage). `signed` is per platform: true shows `signature` (e.g. \"Signed and notarised by Apple\") and the platform's `open` steps without any warning; false says plainly that this system warns the first time and shows `open` as the steps past the warning (markdown: **bold** for what to click, `code` for commands). `also` lists other files for the same platform (`label`, `file`, `url`, `size`). `screens` are captures of the app window in public/screens (<src>.webp + <src>@1x.webp, 2×): one without its file, or without alt text written after looking at it, is left out — never a stand-in. The first screen with `home: true` is the one on the home page. Statuses stay in status.json; CLAIMS.md says what supports each line.",
+  "available": true,
+  "version": "0.2.0",
+  "released": "2026-11-24",
+  "releasePage": "{repository}/releases/latest",
   "platforms": [
     {
       "id": "mac-arm",
       "label": "Mac with Apple silicon",
+      "system": "macOS",
       "button": "Download for Mac",
-      "file": "",
-      "url": "",
-      "size": "",
+      "file": "Galley-mac-apple-silicon.dmg",
+      "url": "https://github.com/fictiontribe/galley/releases/latest/download/Galley-mac-apple-silicon.dmg",
+      "size": "52 MB",
       "requires": "macOS 11 or later",
-      "signed": false,
-      "available": false,
+      "signed": true,
+      "signature": "Signed and notarised by Apple",
+      "available": true,
       "open": [
         "Open the downloaded `.dmg` and drag **Galley** into **Applications**.",
-        "In **Applications**, right-click **Galley**, choose **Open**, then **Open** again in the window that asks.",
-        "If macOS still won’t open it, go to **System Settings › Privacy & Security**, find the line about Galley and choose **Open Anyway**."
+        "Open **Galley** from **Applications**. macOS asks once whether to open an app downloaded from the internet: choose **Open**."
       ],
       "also": []
     },
     {
       "id": "mac-intel",
       "label": "Mac with an Intel processor",
+      "system": "macOS",
       "button": "Download for Intel Mac",
-      "file": "",
-      "url": "",
-      "size": "",
+      "file": "Galley-mac-intel.dmg",
+      "url": "https://github.com/fictiontribe/galley/releases/latest/download/Galley-mac-intel.dmg",
+      "size": "53 MB",
       "requires": "macOS 11 or later",
-      "signed": false,
-      "available": false,
+      "signed": true,
+      "signature": "Signed and notarised by Apple",
+      "available": true,
       "open": [
         "Open the downloaded `.dmg` and drag **Galley** into **Applications**.",
-        "In **Applications**, right-click **Galley**, choose **Open**, then **Open** again in the window that asks.",
-        "If macOS still won’t open it, go to **System Settings › Privacy & Security**, find the line about Galley and choose **Open Anyway**."
+        "Open **Galley** from **Applications**. macOS asks once whether to open an app downloaded from the internet: choose **Open**."
       ],
       "also": []
     },
     {
       "id": "windows",
       "label": "Windows",
+      "system": "Windows",
       "button": "Download for Windows",
-      "file": "",
-      "url": "",
-      "size": "",
-      "requires": "",
+      "file": "Galley-windows-setup.exe",
+      "url": "https://github.com/fictiontribe/galley/releases/latest/download/Galley-windows-setup.exe",
+      "size": "32 MB",
+      "requires": "Windows 10 or later",
       "signed": false,
-      "available": false,
+      "signature": "",
+      "available": true,
       "open": [
         "Open the downloaded installer.",
         "If Windows says it protected your PC, choose **More info**, then **Run anyway**.",
         "Follow the installer, then open **Galley** from the Start menu."
       ],
-      "also": []
+      "also": [
+        {
+          "label": "MSI package, for managed roll-outs",
+          "file": "Galley-windows.msi",
+          "url": "https://github.com/fictiontribe/galley/releases/latest/download/Galley-windows.msi",
+          "size": "45 MB"
+        }
+      ]
     },
     {
       "id": "linux",
       "label": "Linux",
+      "system": "",
       "button": "Download for Linux",
-      "file": "",
-      "url": "",
-      "size": "",
-      "requires": "",
+      "file": "Galley-linux.AppImage",
+      "url": "https://github.com/fictiontribe/galley/releases/latest/download/Galley-linux.AppImage",
+      "size": "126 MB",
+      "requires": "Ubuntu 22.04 or later, or any system with WebKitGTK 4.1",
       "signed": false,
-      "available": false,
+      "signature": "",
+      "available": true,
       "open": [
         "Let the downloaded `.AppImage` run as a program: in its **Properties**, allow executing it — or run `chmod +x` on it in a terminal.",
         "Open it."
       ],
-      "also": []
+      "also": [
+        {
+          "label": "Debian or Ubuntu package",
+          "file": "Galley-linux.deb",
+          "url": "https://github.com/fictiontribe/galley/releases/latest/download/Galley-linux.deb",
+          "size": "60 MB"
+        }
+      ]
     }
   ],
   "screens": [

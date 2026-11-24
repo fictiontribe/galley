@@ -16,7 +16,9 @@ import { ROLE_LINES, roleName, useAccount, useMay } from "@/lib/may";
 import { clearQueries } from "@/lib/query";
 import { useMeta } from "@/lib/stores/meta";
 import { notify } from "@/lib/stores/toasts";
-import { useUi, type ThemeSetting } from "@/lib/stores/ui";
+import { useUi } from "@/lib/stores/ui";
+import { THEME_OPTIONS, type ThemeSetting } from "@/lib/theme";
+import { chooseTheme } from "@/app/theme";
 import { Badge, Button, ConfirmDialog, Field, Input, PageHeader, SegmentedControl } from "@/ui";
 import { passwordProblem } from "@/features/install/logic";
 import { Problem } from "@/features/install/parts";
@@ -206,20 +208,10 @@ function SignOutEverywhere() {
 /** The theme for someone who doesn't look after the editor's settings: theirs, in this browser only. */
 function Appearance() {
   const theme = useUi((s) => s.theme);
-  const setTheme = useUi((s) => s.setTheme);
   return (
     <Section id="appearance" title="Appearance">
-      <Field label="Theme" group hint="Kept in this browser. System follows your computer’s light or dark setting">
-        <SegmentedControl<ThemeSetting>
-          label="Theme"
-          value={theme}
-          options={[
-            { value: "system", label: "System" },
-            { value: "light", label: "Light" },
-            { value: "dark", label: "Dark" },
-          ]}
-          onChange={setTheme}
-        />
+      <Field label="Theme" group hint="Kept in this browser. Match my system follows your computer’s light or dark setting">
+        <SegmentedControl<ThemeSetting> label="Theme" value={theme} options={[...THEME_OPTIONS]} onChange={chooseTheme} />
       </Field>
     </Section>
   );

@@ -6,6 +6,7 @@
  */
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { rename as renameFile, writeFile as writeFileNow } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { GalleyError } from "../../src/errors";
 import { hashPassword, verifyPassword, passwordProblem } from "../../src/install/password";
@@ -250,5 +251,94 @@ describe("sessions", () => {
     expect(restarted.sessionValid(one)).toBe(false);
     expect(restarted.isRevoked("one")).toBe(true);
     expect(restarted.read().sessions.revoked.map((entry) => entry.id)).toEqual(["one"]);
+  });
+});
+
+describe("saving the state when the disk won't take it", () => {
+  const failure = (code: string) => Object.assign(new Error(`${code}: from the test`), { code });
+  const leftovers = (home: string) => readdirSync(home).filter((name) => name.endsWith(".tmp"));
+
+  it("a write that fails is told in plain words with the system's code, changes nothing, and the next save works", async () => {
+    const home = tempDir("state-save-");
+    let failing = 1;
+    const store = await openInstallState(home, {
+      files: {
+        writeFile: (async (...args: Parameters<typeof writeFileNow>) => {
+          if (failing > 0) {
+            failing -= 1;
+            throw failure("EIO");
+          }
+          return writeFileNow(...args);
+        }) as typeof writeFileNow,
+      },
+    });
+    const refusal = await store.update((draft) => void (draft.liveUrl = "https://example.com")).catch((error: unknown) => error);
+
+    expect(refusal).toBeInstanceOf(GalleyError);
+    expect((refusal as GalleyError).code).toBe("internal");
+    expect((refusal as GalleyError).message).toBe(
+      "The editor couldn't save its own state: the disk reported an error. Nothing was changed. Try again. If it keeps happening, whoever runs this editor should check the disk."
+    );
+    expect((refusal as GalleyError).detail).toBe("EIO");
+    expect(store.read().liveUrl).toBeNull();
+    expect(leftovers(home)).toEqual([]);
+    await store.update((draft) => void (draft.liveUrl = "https://example.com"));
+    expect(store.read().liveUrl).toBe("https://example.com");
+    expect(JSON.parse(readFileSync(join(home, STATE_FILE), "utf8")).liveUrl).toBe("https://example.com");
+  });
+
+  it.each([
+    ["ENOSPC", "the disk is full"],
+    ["EMFILE", "too many files are open on the server"],
+    ["EPERM", "the server isn't allowed to write to its data folder"],
+    ["EBUSY", "its data file is in use by something else"],
+  ])("%s is said as: %s", async (code, reason) => {
+    const home = tempDir("state-save-");
+    const store = await openInstallState(home, { files: { writeFile: (async () => Promise.reject(failure(code))) as typeof writeFileNow } });
+    const refusal = (await store.update((draft) => void (draft.liveUrl = "https://example.com")).catch((error: unknown) => error)) as GalleyError;
+
+    expect(refusal).toBeInstanceOf(GalleyError);
+    expect(refusal.message).toContain(`The editor couldn't save its own state: ${reason}. Nothing was changed.`);
+    expect(refusal.detail).toBe(code);
+  });
+
+  it("a rename refused once because the file was held is tried once more, and the save goes through", async () => {
+    const home = tempDir("state-save-");
+    let refusing = 1;
+    let renames = 0;
+    const store = await openInstallState(home, {
+      files: {
+        rename: (async (from, to) => {
+          renames += 1;
+          if (refusing > 0) {
+            refusing -= 1;
+            throw failure("EBUSY");
+          }
+          return renameFile(from, to);
+        }) as typeof renameFile,
+      },
+    });
+
+    await store.update((draft) => void (draft.liveUrl = "https://example.com"));
+    expect(renames).toBe(2);
+    expect(JSON.parse(readFileSync(join(home, STATE_FILE), "utf8")).liveUrl).toBe("https://example.com");
+    expect(leftovers(home)).toEqual([]);
+  });
+
+  it("a rename refused twice gives up in plain words; a failure nobody planned for stays what it is", async () => {
+    const home = tempDir("state-save-");
+    let code = "EPERM";
+    const store = await openInstallState(home, { files: { rename: (async () => Promise.reject(failure(code))) as typeof renameFile } });
+    const held = (await store.update((draft) => void (draft.liveUrl = "https://example.com")).catch((error: unknown) => error)) as GalleyError;
+
+    expect(held).toBeInstanceOf(GalleyError);
+    expect(held.detail).toBe("EPERM");
+    code = "EXDEV";
+    const odd = await store.update((draft) => void (draft.liveUrl = "https://example.com")).catch((error: unknown) => error);
+
+    expect(odd).not.toBeInstanceOf(GalleyError);
+    expect((odd as NodeJS.ErrnoException).code).toBe("EXDEV");
+    expect(store.read().liveUrl).toBeNull();
+    expect(leftovers(home)).toEqual([]);
   });
 });

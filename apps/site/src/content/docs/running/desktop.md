@@ -9,6 +9,8 @@ This page is for developers building or evaluating the desktop app. It is a thin
 
 > **Status.** Built and tested on macOS, where the app is **signed and notarised by Apple**: it opens like any other downloaded app. The Windows and Linux installers are built on every release and their packaged server is started and walked through a site (open, edit, proof, publish, preview) on each system, but they are **unsigned**. On Windows each build is also installed from its installer and opened, and a picture of the window is kept with the build; no person has used the app there yet. On Linux the window hasn't been opened at all. There are no published downloads yet: the installers are attached to a release from the next version on. There is no auto-update. The OS keychain is **not** used for keys yet — they are kept in the Galley home like the CLI's.
 
+The downloads, and the other ways to run Galley, are on [Apps](/apps/).
+
 ## Opening it the first time
 
 - **macOS** (11 or later; one download for Apple silicon, one for Intel): open the `.dmg` and drag the app to Applications. macOS asks once whether to open an app downloaded from the internet.

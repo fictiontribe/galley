@@ -57,6 +57,26 @@ describe("error mapping", () => {
     expect(app.logs.join("\n")).toMatch(/\n\s+at /);
   });
 
+  it("a failure of the server's own is logged once, with its cause, and the cause never reaches the browser", async () => {
+    const app = testApp({ site: failing(new GalleyError("internal", "The editor couldn't save its own state: the disk reported an error. Nothing was changed. Try again.", "EIO")) });
+    const response = await app.call("GET", `/api/sites/${SITE_ID}/changes`);
+    const text = await response.text();
+
+    expect(response.status).toBe(500);
+    expect(JSON.parse(text)).toEqual({ error: { code: "internal", message: "The editor couldn't save its own state: the disk reported an error. Nothing was changed. Try again." } });
+    expect(text).not.toContain("EIO");
+    expect(app.logs).toEqual([`GET /api/sites/${SITE_ID}/changes failed: The editor couldn't save its own state: the disk reported an error. Nothing was changed. Try again. (EIO)`]);
+  });
+
+  it("an unexpected error that carries the system's code has it in its log line", async () => {
+    const app = testApp({ site: failing(Object.assign(new Error("EMFILE: too many open files, open '/data/x'"), { code: "EMFILE" })) });
+    const response = await app.call("GET", `/api/sites/${SITE_ID}/changes`);
+
+    expect(response.status).toBe(500);
+    expect(app.logs).toHaveLength(1);
+    expect(app.logs[0]).toMatch(new RegExp(`^GET /api/sites/${SITE_ID}/changes failed \\(EMFILE\\):\\n`));
+  });
+
   it("an internal GalleyError hides its detail", async () => {
     const body = await json(await testApp({ site: failing(new GalleyError("internal", "Couldn't read the site.", "stack here")) }).call("GET", `/api/sites/${SITE_ID}/changes`));
 

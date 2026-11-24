@@ -126,8 +126,10 @@ sections:
   - type: close
     id: honest
     heading: Galley is new.
-    text: Today the app runs on your computer or a server you manage.
+    text: Today the app runs on your computer or on a server you manage.
     actions:
       - label: Read the moving guide
         href: /docs/getting-started/wordpress/
+      - label: Ways to run it
+        href: /apps/
 ---

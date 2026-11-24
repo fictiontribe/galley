@@ -1,0 +1,174 @@
+---
+// /apps/ — how to run Galley: the desktop app first (src/data/downloads.json
+// through lib/downloads.ts, the one switch for every download on the site),
+// then in the browser with one command, on your own server, and the demo
+// (src/data/site.json → demo). Words: src/content/pages/apps.md. While
+// downloads are off the page still shows: the desktop part says the
+// installers are being published and lists what is coming.
+import Site from "../layouts/Site.astro";
+import AppIcon from "../components/AppIcon.astro";
+import Command from "../components/Command.astro";
+import Downloads from "../components/Downloads.astro";
+import Lightbox from "../components/Lightbox.astro";
+import Zoom from "../components/Zoom.astro";
+import { getPage } from "../lib/pages";
+import { inline } from "../lib/markdown";
+import { runCommands } from "../lib/install";
+import { badgeOf } from "../lib/status";
+import { demo } from "../lib/demo";
+import { site } from "../lib/site";
+import { on, ready, releasePage, screens, systems, version } from "../lib/downloads";
+
+const { data: p } = await getPage("apps");
+
+// "How to open it": platforms with the same steps and the same signature share one list (both Macs, usually).
+const groups: { labels: string[]; steps: string[]; line: string }[] = [];
+for (const platform of ready) {
+  if (platform.open.length === 0) continue;
+  const line = platform.signed
+    ? platform.signature ? p.open.signed.replace("{signature}", platform.signature) : ""
+    : platform.system ? p.open.unsigned.replace("{system}", platform.system) : "";
+  const key = platform.open.join("\n") + line;
+  const same = groups.find((g) => g.steps.join("\n") + g.line === key);
+  if (same) same.labels.push(platform.label);
+  else groups.push({ labels: [platform.label], steps: platform.open, line });
+}
+const words = { download: p.download, coming: p.coming, otherSystems: p.otherSystems, macHint: p.macHint, systems: p.systems, unsigned: p.unsignedWord };
+const w = p.ways;
+const serverBadge = badgeOf(w.server.status);
+// The zoom control's name: what the window shows (after the alt's colon), not the shared "The Galley app on a Mac".
+const zoomName = (alt: string) => (alt.includes(":") ? alt.split(":")[1] : alt).split(/[—.,]/)[0].trim();
+const others = [w.browser, w.server, ...(demo.on ? [w.demo] : [])];
+---
+
+<Site title={p.title} description={p.description} class="page-apps">
+  <section class="wrap dlpage" aria-labelledby="dl-h">
+    <header class="dlpage__head">
+      <AppIcon size={168} class="dlpage__icon" id="dl-icon" />
+      <h1 class="h1" id="dl-h" set:html={inline(p.heading)} />
+      <p class="lead">{p.lead}</p>
+    </header>
+
+    {
+      on ? (
+        <div class="dlpage__get">
+          <Downloads words={words} />
+          {(version || releasePage) && (
+            <p class="dlpage__release small">
+              {version && p.versionLine.replace("{version}", version)}
+              {version && releasePage && " · "}
+              {releasePage && <a href={releasePage}>{p.release}</a>}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div class="dlpage__pending">
+          <p class="body">{p.pending}</p>
+          <ul class="dl__list dlpage__coming">
+            {systems.map((s) => (
+              <li class="dl__row is-coming">
+                <span class="dl__name">
+                  <b>{s.label}</b>
+                  {s.requires && <span>{s.requires}</span>}
+                </span>
+                <span class="badge dl__coming">{p.coming}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
+
+    <nav class="dlpage__ways" aria-label={p.otherWaysLine.replace(/:$/, "")}>
+      <span>{p.otherWaysLine}</span>
+      {others.map((o, i) => (
+        <>
+          {i > 0 && <span aria-hidden="true">·</span>}
+          <a href={`#${o.id}`}>{o.label}</a>
+        </>
+      ))}
+    </nav>
+
+    <section class="dlpage__points" aria-labelledby="dl-points-h">
+      <h2 class="sr" id="dl-points-h">{p.pointsLabel}</h2>
+      <ul>
+        {p.points.map((pt: { title: string; text: string }) => (
+          <li>
+            <h3 class="dlpage__pt">{pt.title}</h3>
+            <p class="body">{pt.text}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </section>
+
+  {
+    screens.length > 0 && (
+      <section class="wrap dlpage__screens" aria-label={p.screensLabel}>
+        <div class:list={["dlshots", screens.length === 1 && "dlshots--one", screens.length % 2 === 0 && "dlshots--pairs"]}>
+          {screens.map((s, i) => (
+            <figure class:list={["frame", "dlshot", i === 0 && "dlshot--lead"]} data-zoom-panel>
+              <div class="dlshot__win" data-zoom-at="0" style={`max-width:${s.pic.width}px`}>
+                <img src={s.pic.src} srcset={s.pic.srcset} sizes={i === 0 && screens.length % 2 === 1 ? "(max-width: 1023px) 100vw, 1100px" : "(max-width: 1023px) 100vw, 560px"} width={s.pic.width} height={s.pic.height} alt={s.alt} loading="lazy" decoding="async" />
+              </div>
+              <Zoom items={[{ src: s.pic.src, w: s.pic.width, h: s.pic.height, alt: s.alt }]} label={zoomName(s.alt)} />
+            </figure>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  {
+    on && groups.length > 0 && (
+      <section class="wrap dlpage__open" aria-labelledby="dl-open-h">
+        <h2 class="h2" id="dl-open-h">{p.open.heading}</h2>
+        <div class="dlopen">
+          {groups.map((g) => (
+            <div class="dlopen__group">
+              <h3 class="dlopen__h">{g.labels.join(" · ")}</h3>
+              {g.line && <p class="dlopen__line">{g.line}</p>}
+              <ol class="dlopen__steps">
+                {g.steps.map((step) => <li set:html={inline(step)} />)}
+              </ol>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <section class="wrap dlpage__guide">
+    <p><a class="link link--accent" href={p.guide.href}>{p.guide.label}</a></p>
+  </section>
+
+  <section class="wrap appways" aria-labelledby="ways-h">
+    <h2 class="h2" id="ways-h">{w.heading}</h2>
+    <div class:list={["appways__grid", `appways__grid--${others.length}`]}>
+      <article class="way-card" id={w.browser.id} aria-labelledby="way-browser-h">
+        <p class="label">{w.browser.label}</p>
+        <h3 class="way-card__t" id="way-browser-h">{w.browser.title}</h3>
+        <p class="body">{w.browser.text}</p>
+        <Command lines={runCommands()} />
+        <a class="link" href={w.browser.link.href}>{w.browser.link.label}</a>
+      </article>
+      <article class="way-card" id={w.server.id} aria-labelledby="way-server-h">
+        <p class="label">{w.server.label}</p>
+        <h3 class="way-card__t" id="way-server-h">{w.server.title} {serverBadge && <span class:list={["badge", `badge--${serverBadge.status}`]}>{serverBadge.label}</span>}</h3>
+        <p class="body">{w.server.text}</p>
+        <p class="way-card__links">{w.server.links.map((l: { label: string; href: string }) => <a class="link" href={l.href}>{l.label}</a>)}</p>
+      </article>
+      {
+        demo.on && (
+          <article class="way-card way-card--demo" id={w.demo.id} aria-labelledby="way-demo-h">
+            <p class="label">{w.demo.label}</p>
+            <h3 class="way-card__t" id="way-demo-h">{w.demo.title}</h3>
+            <p class="body">{w.demo.text}</p>
+            <a class="btn btn--quiet" href={demo.href}>{site.ui.demoOpen}</a>
+          </article>
+        )
+      }
+    </div>
+  </section>
+  <Lightbox />
+</Site>
