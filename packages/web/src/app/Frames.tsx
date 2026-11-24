@@ -7,6 +7,7 @@ import { useHostedInstall, useMeta } from "@/lib/stores/meta";
 import { useSite } from "@/lib/stores/site";
 import { useUi } from "@/lib/stores/ui";
 import { EmptyState, ErrorState, Skeleton, buttonClass, cx } from "@/ui";
+import { SettingsLink } from "@/features/accounts/SettingsLink";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { HomeSidebar, SiteSidebar } from "./Sidebar";
 import { HomeStatusBar, SiteStatusBar } from "./StatusBar";
@@ -98,9 +99,9 @@ export function HostedHome() {
         body="Its site isn’t connected. The Install page shows what this editor is connected to."
         mark="pilcrow"
         actions={
-          <Link className={buttonClass("primary")} to="/install">
+          <SettingsLink route="GET /api/install" className={buttonClass("primary")} to="/install" fallback="An owner of this editor can see why there.">
             Open the Install page
-          </Link>
+          </SettingsLink>
         }
       />
     </div>
@@ -153,9 +154,9 @@ function MissingFolder({ name, root }: { name: string; root: string }) {
           body="The copy of the site this editor keeps on the server isn’t where it should be. The Install page shows what is stored where."
           mark="bang"
           actions={
-            <Link className={buttonClass("primary")} to="/install">
+            <SettingsLink route="GET /api/install" className={buttonClass("primary")} to="/install" fallback="An owner of this editor can see why there.">
               Open the Install page
-            </Link>
+            </SettingsLink>
           }
         />
       </div>

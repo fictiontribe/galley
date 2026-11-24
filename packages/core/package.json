@@ -27,6 +27,8 @@
     "./deploy-info": "./src/deploy/info.ts",
     "./install": "./src/install/index.ts",
     "./install/types": "./src/install/types.ts",
+    "./install/accounts": "./src/install/accounts.ts",
+    "./install/route-access": "./src/install/route-access.ts",
     "./hosting": "./src/hosting/index.ts",
     "./hosting/types": "./src/hosting/types.ts",
     "./hosting/addresses": "./src/hosting/addresses.ts",

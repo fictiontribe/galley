@@ -143,6 +143,8 @@ describe("after sending", () => {
   });
   it("offers custom code only where build mode is allowed", () => {
     expect(canAdd([], "script", false)).toEqual({ ok: false, reason: expect.stringMatching(/build mode/) });
+    // For someone whose role doesn't include the site's code: who can, instead.
+    expect(canAdd([], "script", false, "An editor or owner can add or change custom code.")).toEqual({ ok: false, reason: "An editor or owner can add or change custom code." });
     expect(canAdd([], "script", true).ok).toBe(true);
   });
   it("puts a thank-you first and waits before changing page when both are there", () => {

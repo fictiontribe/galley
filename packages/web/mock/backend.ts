@@ -36,6 +36,7 @@ import { createMockBrand } from "./brand.ts";
 import { createMockImport } from "./import.ts";
 import { createMockPlugins } from "./plugins.ts";
 import { installHandlers } from "./install.ts";
+import { accountsHandlers } from "./accounts.ts";
 import { hostingHandlers } from "./hosting.ts";
 
 // ── handler types ─────────────────────────────────────────────────────────
@@ -348,6 +349,7 @@ export function createHandlers(mock: MockBackend): Handlers {
     ...siteBrand.handlers,
     ...wordpress.handlers,
     ...installHandlers(),
+    ...accountsHandlers(),
     ...hostingHandlers(mock),
     "GET /api/meta": ({ search }) => {
       if (search.get("token")) mock.authenticated = true;

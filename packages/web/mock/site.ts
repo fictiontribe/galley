@@ -82,6 +82,13 @@ export class MockError extends Error {
   }
 }
 
+/** Too many tries: the real server's 429, code "busy" (server/src/errors.ts RateLimitError). */
+export class MockTooManyError extends MockError {
+  constructor(message: string) {
+    super("busy", message);
+  }
+}
+
 // MP4 too: generated videos are saved into media like images.
 const IMAGE_EXT = /\.(svg|png|jpe?g|webp|gif|avif|mp4)$/i;
 const MIME: Record<string, string> = { svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif", avif: "image/avif", mp4: "video/mp4" };

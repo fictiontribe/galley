@@ -4,23 +4,23 @@
  * mode every route here answers 404, because a local app has no install.
  *
  * Who may call the setup routes is decided before they run (app.ts): the
- * one-time setup code until a password exists, a signed-in session after.
+ * one-time setup code until an owner exists, a signed-in owner after.
  * Nothing secret ever comes back: a key is only ever its public half, the
  * access key and the assistant's key go in and stay in.
  */
-import type { Context } from "hono";
-import { deleteCookie, setCookie } from "hono/cookie";
 import { z } from "zod";
 import { GalleyError } from "@galley/core";
 import { SECRET_NAMES, type ApiRouteKey } from "@galley/core/api";
 import { MAX_INSTALL_PASSWORD_LENGTH, type Install } from "@galley/core/install";
 import type { SecretName } from "@galley/core/types";
-import { bearerToken, clientAddress, requestProtocol, requestSession, SESSION_MAX_AGE_S, signSession } from "./auth";
+import { bearerToken, clientAddress, requestSession } from "./auth";
+import { changeOwnPassword, signInAs, signOutEverywhere } from "./accounts-routes";
 import { restoreCredentials } from "./app";
-import { errorBody, notFound, RateLimitError } from "./errors";
+import { errorBody, notFound } from "./errors";
 import { TooLargeError, type InstallOps } from "./ops";
 import type { RouteContext, RouteTable } from "./routes";
 import * as v from "./validate";
+import { audit, callerOf, named } from "./who";
 
 type InstallRouteKey = Extract<
   ApiRouteKey,
@@ -39,8 +39,6 @@ type InstallRouteKey = Extract<
   | "POST /api/install/restore/upload"
   | "POST /api/install/restore"
 >;
-
-const ok = { ok: true } as const;
 
 function notHere(): never {
   throw notFound("This app isn't a hosted install, so there's nothing to set up here.");
@@ -86,8 +84,7 @@ const handoverBody = z
   })
   .strict();
 const detailsBody = z.object({ author: author.optional(), liveUrl: z.string().trim().max(2048).nullable().optional() }).strict();
-const setPasswordBody = z.object({ password }).strict();
-const changePasswordBody = z.object({ current: password, next: password }).strict();
+const setPasswordBody = z.object({ password, name: z.string().max(400).optional(), email: z.string().max(320).optional() }).strict();
 const deployKeyBody = z.object({ rotate: z.boolean().optional() }).strict().optional().transform((value) => value ?? {});
 const backupBody = z.object({ passphrase: z.string().max(MAX_INSTALL_PASSWORD_LENGTH) }).strict();
 const restoreBody = z.object({ upload: z.string().max(100), passphrase: z.string().min(1, "it can't be empty").max(MAX_INSTALL_PASSWORD_LENGTH) }).strict();
@@ -106,21 +103,6 @@ function scrubbed(error: unknown, secrets: Array<string | undefined>): unknown {
   return clean;
 }
 
-/** A fresh session cookie for this browser, issued after any "sign out everywhere" so it isn't caught by it. */
-function signIn(c: Context, ctx: RouteContext): void {
-  setCookie(c, ctx.session.cookieName, ctx.session.issue?.() ?? signSession(ctx.session.key), {
-    httpOnly: true,
-    sameSite: "Strict",
-    path: "/",
-    secure: ctx.session.secure === true || requestProtocol(c, Boolean(ctx.options.trustProxy)) === "https",
-    maxAge: SESSION_MAX_AGE_S,
-  });
-}
-
-function signOut(c: Context, ctx: RouteContext): void {
-  deleteCookie(c, ctx.session.cookieName, { path: "/", ...(ctx.session.secure ? { secure: true } : {}) });
-}
-
 export const installRoutes: Pick<RouteTable, InstallRouteKey> = {
   // ── first run ──────────────────────────────────────────────────────────
   "GET /api/setup": async (_c, ctx) => installOf(ctx).status(),
@@ -129,9 +111,13 @@ export const installRoutes: Pick<RouteTable, InstallRouteKey> = {
     const install = installOf(ctx);
     const body = await v.body(c, setPasswordBody);
 
-    if (install.store.hasPassword()) throw new GalleyError("conflict", "The password has been chosen already. Sign in with it.");
-    await install.store.setPassword(body.password);
-    signIn(c, ctx);
+    if (install.store.hasOwner()) throw new GalleyError("conflict", "The password has been chosen already. Sign in with it.");
+    // Without a name or an e-mail (an older setup page) the owner is incomplete: the app asks for them after signing in.
+    const owner = await install.people.createOwner({ password: body.password, ...(body.name !== undefined ? { name: body.name } : {}), ...(body.email !== undefined ? { email: body.email } : {}) });
+
+    signInAs(c, ctx, owner.id);
+    await install.people.noteSignIn(owner.id).catch(() => undefined);
+    audit(ctx, `The owner's account was made through the setup link: ${named(owner)}, from ${clientAddress(c, Boolean(ctx.options.trustProxy))}.`);
     return install.status();
   },
 
@@ -184,34 +170,23 @@ export const installRoutes: Pick<RouteTable, InstallRouteKey> = {
   "POST /api/setup/finish": async (_c, ctx) => installOf(ctx).finish(),
 
   // ── the Install page ───────────────────────────────────────────────────
+  /** The older name for POST /api/account/password: your own password. */
   "POST /api/install/password": async (c, ctx) => {
-    const install = installOf(ctx);
-    const client = clientAddress(c, Boolean(ctx.options.trustProxy));
-
-    if (ctx.limiter.blocked(client)) throw new RateLimitError("Too many attempts. Wait a minute, then try again.");
-    const body = await v.body(c, changePasswordBody);
-
-    if (!(await install.store.checkPassword(body.current))) {
-      ctx.limiter.fail(client);
-      // 400, not 401: the session is fine, only the typed password is wrong.
-      throw new GalleyError("invalid", "That isn't the current password.");
-    }
-    ctx.limiter.succeed(client);
-    // Every other browser is signed out; this one gets a fresh cookie.
-    await install.store.setPassword(body.next, { signOutEveryone: true });
-    signIn(c, ctx);
-    return ok;
+    installOf(ctx);
+    return changeOwnPassword(c, ctx);
   },
 
   "POST /api/auth/logout-all": async (c, ctx) => {
-    const install = installOf(ctx);
-
-    await install.store.signOutEverywhere();
-    signOut(c, ctx);
-    return ok;
+    installOf(ctx);
+    return signOutEverywhere(c, ctx);
   },
 
-  "GET /api/install": async (_c, ctx) => opsOf(ctx).info(),
+  "GET /api/install": async (c, ctx) => {
+    const ops = opsOf(ctx);
+    const caller = callerOf(c, ctx);
+
+    return ops.info(caller?.kind === "person" ? caller.account.id : undefined);
+  },
 
   /**
    * The ONLY route whose answer carries the install's secrets — the password's

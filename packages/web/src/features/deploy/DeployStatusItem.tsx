@@ -10,6 +10,7 @@ import { errorShape } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
 import { notify } from "@/lib/stores/toasts";
 import { useChrome } from "@/app/chrome";
+import { useMay } from "@/lib/may";
 import { ProofMark, Spinner } from "@/ui";
 import { DeploySetupDialog } from "./DeploySetupDialog";
 import { DomainDialog } from "./Domain";
@@ -57,9 +58,13 @@ function useFinishToasts(siteId: string) {
 
 export function DeployStatusItem({ siteId }: { siteId: string }) {
   const status = useDeployStatus(siteId);
-  const line = statusLine(status.data, status.job);
+  const statusNow = statusLine(status.data, status.job);
   const [starting, setStarting] = useState(false);
+  const may = useMay();
   useFinishToasts(siteId);
+  // Setting up where the site is hosted is an owner's; putting it live is a publish. Someone who can't sees the line without the button.
+  const allowed = !statusNow.action || statusNow.action.kind === "details" || may(statusNow.action.kind === "setup" ? "PUT /api/sites/:siteId/deploy" : "POST /api/sites/:siteId/deploy");
+  const line = allowed ? statusNow : { ...statusNow, action: null };
 
   const act = () => {
     if (!line.action) return;

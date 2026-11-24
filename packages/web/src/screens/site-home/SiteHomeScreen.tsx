@@ -17,9 +17,11 @@ import { OnlineCard } from "@/features/deploy/Online";
 import { PreviewTabLink, siteHomePreviewTarget } from "@/features/hosting/previewLinks";
 import { useMeta } from "@/lib/stores/meta";
 import { usePlaceWords } from "@/lib/where";
+import { useWhoPublishes } from "@/lib/may";
 
 function AskBox({ siteId }: { siteId: string }) {
   const navigate = useNavigate();
+  const publishes = useWhoPublishes();
   const [text, setText] = useState("");
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
@@ -40,7 +42,7 @@ function AskBox({ siteId }: { siteId: string }) {
           <span className="g-mark g-mark--send" aria-hidden="true" />
         </button>
         <div className="g-composer__foot">
-          <Kbd keys={["enter"]} /> opens the editor with your request · nothing changes until you publish
+          <Kbd keys={["enter"]} /> opens the editor with your request · nothing changes until {publishes}
         </div>
       </div>
     </form>
@@ -64,6 +66,7 @@ function Section({ title, action, children, id }: { title: string; action?: Reac
 function PendingSection({ siteId }: { siteId: string }) {
   const { changes, status, error, refresh } = useChanges();
   const navigate = useNavigate();
+  const publishes = useWhoPublishes();
   const files = changes?.files ?? [];
   return (
     <Section
@@ -92,7 +95,7 @@ function PendingSection({ siteId }: { siteId: string }) {
         </div>
       ) : files.length === 0 ? (
         <div className="app-card app-card--quiet">
-          <EmptyState compact mark="reg" title="Nothing to publish." body="Everything here already matches the live site. Changes you make wait here until you publish." />
+          <EmptyState compact mark="reg" title="Nothing to publish." body={`Everything here already matches the live site. Changes you make wait here until ${publishes}.`} />
         </div>
       ) : (
         <>

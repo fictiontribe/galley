@@ -32,7 +32,7 @@ Start here when you build a site and hand it to someone else to edit. Galley wor
 
 6. **Move copy out of components.** Words written inside an `.astro` component can't be edited as content — on the page they show as part of the site's design. Put them in a file under `src/data/` ([Making a site easy to edit](/docs/astro/editable-sites/)).
 
-7. **Choose how they'll run it:** the [desktop app](/docs/running/desktop/) on their own computer, a [shared Galley](/docs/running/hosted/) behind a password, or the [command line](/docs/reference/cli/). On each computer, set the publishing name in **App settings** › **You**.
+7. **Choose how they'll run it:** the [desktop app](/docs/running/desktop/) on their own computer, a [shared Galley](/docs/running/hosted/) online, where each person has their own account, or the [command line](/docs/reference/cli/). On each computer, set the publishing name in **App settings** › **You**.
 
 8. **Do one round trip together.** Change a heading, check it in Proof, publish, find it in Version history, and undo it. That proves the sign-in, the branch and the live address before you leave.
 

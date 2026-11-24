@@ -45,6 +45,7 @@ import type {
 } from "./types";
 import { PACKAGE_NAME, validatePlugin } from "./validate";
 import { GalleyError } from "../errors";
+import { outsideAnyPerson } from "../install/caller";
 import type { FormSubmission } from "../kit";
 import type { FormForwarder } from "../forms/forward";
 
@@ -499,8 +500,10 @@ export function createPluginRegistry(options: PluginRegistryOptions = {}): Plugi
       const plugin = entry.plugin!.displayName ?? entry.name;
 
       try {
+        const hookContext = siteContext(await context(entry), site, entry.name);
+        // A hook runs as nobody, whoever's publish it reacts to: what it starts carries no one's access (install/caller.ts).
         const outcome = await withTimeout(
-          Promise.resolve(entry.plugin!.hooks!.beforePublish!(siteContext(await context(entry), site, entry.name), changes)),
+          Promise.resolve(outsideAnyPerson(() => entry.plugin!.hooks!.beforePublish!(hookContext, changes))),
           timeouts.before,
           `${entry.name}'s beforePublish`
         );
@@ -531,18 +534,20 @@ export function createPluginRegistry(options: PluginRegistryOptions = {}): Plugi
   }
 
   function runAfter<T>(hook: "afterPublish" | "afterDeploy" | "onSubmission", site: SiteService, payload: T): Promise<void> {
-    const run = async () => {
-      for (const entry of await hookEntries(site, hook)) {
-        const fn = entry.plugin!.hooks![hook] as (ctx: SitePluginContext, value: T) => unknown;
+    // Run as nobody, whoever's request fired them: a hook, and anything it leaves behind, can do no guarded work on a hosted install (install/caller.ts).
+    const run = () =>
+      outsideAnyPerson(async () => {
+        for (const entry of await hookEntries(site, hook)) {
+          const fn = entry.plugin!.hooks![hook] as (ctx: SitePluginContext, value: T) => unknown;
 
-        try {
-          await withTimeout(Promise.resolve(fn(siteContext(await context(entry), site, entry.name), payload)), timeouts.after, `${entry.name}'s ${hook}`);
-        } catch (error) {
-          // Reported, never breaking what already happened.
-          logger(entry).error(`${hook} failed: ${describeError(error)}`);
+          try {
+            await withTimeout(Promise.resolve(fn(siteContext(await context(entry), site, entry.name), payload)), timeouts.after, `${entry.name}'s ${hook}`);
+          } catch (error) {
+            // Reported, never breaking what already happened.
+            logger(entry).error(`${hook} failed: ${describeError(error)}`);
+          }
         }
-      }
-    };
+      });
     const result = pending.then(run, run);
 
     pending = result.catch(() => undefined);

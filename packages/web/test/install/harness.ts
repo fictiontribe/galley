@@ -23,12 +23,37 @@ export interface MockLogEntry {
   authorization: string | null;
   contentType: string | null;
   body: unknown;
+  /** Refused because the signed-in person's role may not call the route. */
+  refused?: boolean;
+}
+
+/** One person in the mock (mock/accounts.ts), password included. */
+export interface MockPerson {
+  id: string;
+  name: string;
+  email: string;
+  role: "owner" | "editor" | "contributor";
+  disabled: boolean;
+  incomplete?: boolean;
+  password: string;
+}
+
+export interface MockAccountsState {
+  accounts: MockPerson[];
+  invitations: Array<{ id: string; email: string; role: string; emailed: boolean }>;
+  outbox: Array<{ to: string; kind: "invitation" | "password"; url: string }>;
+  signedIn: string | null;
+  emailAvailable: boolean;
+  /** The sign-in limits' clock: move it on to let a wait run out. */
+  now: () => number;
+  current(): MockPerson | null;
 }
 
 export interface MockServer {
   log: MockLogEntry[];
   backend: { authenticated: boolean; sites: Map<string, { id: string; name: string }> };
   install: { site: InstallSite; code: string | null; password: string | null; keyAccepted: boolean; lastBackupAt: string | null } | null;
+  accounts: MockAccountsState | null;
   handle(request: { method: string; url: string; headers: Record<string, string | undefined>; body?: Buffer }): Promise<{ status: number; headers: Record<string, string>; body: string | Buffer | null; sse?: boolean }>;
   onEvent(listener: (event: ServerEvent) => void): () => void;
 }
@@ -40,6 +65,21 @@ export interface MockServerOptions {
   stepMs?: number;
   allowLocalRepositories?: boolean;
   address?: string;
+  /** Start signed in as the first person with this role. */
+  role?: "owner" | "editor" | "contributor";
+  /** The server has outgoing e-mail. */
+  email?: boolean;
+  /** false: the server has no public address of its own, so it e-mails no link. */
+  publicAddress?: boolean;
+  /** An install from before accounts. */
+  legacy?: boolean;
+  /** false: a server from before accounts (one shared password). */
+  accounts?: boolean;
+}
+
+/** Every request the mock refused because the signed-in person's role may not make it. */
+export function refusals(server: MockServer): string[] {
+  return server.log.filter((entry) => entry.refused).map((entry) => `${entry.method} ${entry.path}`);
 }
 
 const MOCK_SERVER = "../../mock/server.ts";

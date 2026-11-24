@@ -220,6 +220,9 @@ describe("first run left half-way: the password is chosen, the site isn't connec
   }
 
   async function signIn(): Promise<void> {
+    // The owner signs in with their e-mail now (the mock's owner is sam@example.com).
+    const email = document.querySelector('input[type="email"]');
+    if (email) await type(email, "sam@example.com");
     await type(document.querySelector('input[type="password"]'), "proof");
     await click(byText(document, "button", "Sign in"));
   }
@@ -273,7 +276,7 @@ describe("first run left half-way: the password is chosen, the site isn't connec
     await until(() => expect(page?.text()).toContain("Connect the site."));
   });
 
-  it("no password yet: / and /setup explain the setup link, /login says it isn't set up, the link opens the password step", async () => {
+  it("no password yet: / and /setup explain the setup link, /login says it isn't set up, the link opens the account step", async () => {
     const server = await startServer({ mode: "hosted", setup: "password" });
     for (const path of ["/", "/setup"]) {
       page = await renderApp(server, path);
@@ -286,7 +289,7 @@ describe("first run left half-way: the password is chosen, the site isn't connec
     expect(page.text()).not.toContain(LINE);
     await page.unmount();
     page = await renderApp(server, `/setup?token=${CODE}`);
-    await until(() => expect(page?.text()).toContain("Choose the password."));
+    await until(() => expect(page?.text()).toContain("Create your account."));
   });
 
   it("no password yet, signed in all the same (an operator's session): first run at its first step", async () => {
@@ -294,7 +297,7 @@ describe("first run left half-way: the password is chosen, the site isn't connec
     server.backend.authenticated = true;
     for (const path of ["/", "/setup"]) {
       page = await renderApp(server, path);
-      await until(() => expect(page?.text()).toContain("Choose the password."));
+      await until(() => expect(page?.text()).toContain("Create your account."));
       expect(window.location.pathname).toBe("/setup");
       await page.unmount();
     }

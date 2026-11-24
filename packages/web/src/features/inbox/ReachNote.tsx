@@ -9,6 +9,7 @@ import { Icon, Skeleton, cx } from "@/ui";
 import { useCaptureSettings } from "./data";
 import { editorAddress, inboxReach } from "./reach";
 import "./inbox.css";
+import { useMay } from "@/lib/may";
 
 export function ReachText({ settings, compact }: { settings: CaptureSettings; compact?: boolean }) {
   const reach = inboxReach(settings.captureReachable, useHostedInstall(), settings.captureReach);
@@ -57,7 +58,10 @@ export function ReachText({ settings, compact }: { settings: CaptureSettings; co
 
 /** Loads the site's capture settings and says whether visitors can reach the inbox. */
 export function CaptureReachNote({ siteId, compact }: { siteId: string; compact?: boolean }) {
-  const settings = useCaptureSettings(siteId);
+  // The capture settings are read by people who may read the inbox; for anyone else there is no note to show.
+  const mayRead = useMay()("GET /api/sites/:siteId/capture");
+  const settings = useCaptureSettings(mayRead ? siteId : "");
+  if (!mayRead) return null;
   if (settings.loading) return <Skeleton height={44} />;
   if (!settings.data) return null;
   return <ReachText settings={settings.data} compact={compact} />;

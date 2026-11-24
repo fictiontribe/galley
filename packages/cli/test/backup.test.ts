@@ -144,7 +144,7 @@ describe("galley backup", () => {
       expect(restored.stdout.join("\n")).toMatch(/Everyone is signed out/);
       const after = JSON.parse(readFileSync(join(home, "install.json"), "utf8"));
 
-      expect(after.password.hash).toBe(state.password.hash);
+      expect(after.accounts.map((account: { passwordHash: string }) => account.passwordHash)).toEqual(state.accounts.map((account: { passwordHash: string }) => account.passwordHash));
       expect(after.sessions.validAfter).toBeGreaterThan(state.sessions.validAfter);
       expect(git(join(home, "site"), "rev-parse", "HEAD")).toBe(head);
       expect(readFileSync(join(home, "site", "unpublished.md"), "utf8")).toBe("an unpublished change\n");
@@ -155,7 +155,7 @@ describe("galley backup", () => {
       const server = await startServer({ port: 0, host: "127.0.0.1", mode: "hosted", home, webDir: join(tmp, "no-ui"), env: { PATH: process.env.PATH, HOME: tmp, GALLEY_MCP: "off" }, notice: () => undefined, log: () => undefined });
 
       try {
-        expect(await server.install!.store.checkPassword(PASSWORD)).toBe(true);
+        expect(await server.install!.people.ownerPasswordIs(PASSWORD)).toBe(true);
         expect((await server.install!.site()).state).toBe("connected");
       } finally {
         await server.close({ graceMs: 0 });
@@ -413,7 +413,8 @@ describe("maintenance on a container's data folder, with the server stopped", ()
       // The backup it was restored from, and the folder it is in, are still there.
       expect(readdirSync(join(home, "backups"))).toEqual(["site.bak"]);
 
-      // --reset-password: the password is forgotten, a new setup link is printed, and the server then serves until stopped.
+      // --reset-password: was "the password is forgotten, a new setup link is printed". With accounts the owner gets a one-time
+      // new-password link instead, nobody's password changes until it is used, and the server then serves until stopped.
       const port = await freePort();
       const serveEnv = { ...env, GALLEY_HOST: "127.0.0.1", GALLEY_PORT: String(port), GALLEY_PUBLIC_URL: "https://cms.localhost", GALLEY_WEB_DIR: join(tmp, "no-ui") };
       const child = spawn(process.execPath, [bin, "serve", "--reset-password"], { cwd, env: serveEnv, stdio: ["ignore", "pipe", "pipe"] });
@@ -427,14 +428,15 @@ describe("maintenance on a container's data folder, with the server stopped", ()
         if (waited > 90_000 || child.exitCode !== null) throw new Error(`serve --reset-password didn't start:\n${stdout}`);
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
-      const link = /Setup: {5}(https:\/\/cms\.localhost\/setup\?token=[A-Za-z0-9_-]{43})\n/.exec(stdout);
+      const link = /Password: {2}(https:\/\/cms\.localhost\/new-password#([A-Za-z0-9_-]{43}))\n/.exec(stdout);
 
       expect(link, stdout).not.toBeNull();
-      expect((await request(port, "POST", "/api/auth/login", { body: { password: PASSWORD } })).status).toBe(401);
+      expect(stdout).not.toContain("Setup:");
+      expect((await request(port, "POST", "/api/auth/login", { body: { password: PASSWORD } })).status).toBe(200);
       child.kill("SIGTERM");
       expect(await exited).toBe(0);
-      // Stopped before anyone used it, the next start prints a fresh link of its own.
-      const next = spawn(process.execPath, [bin, "serve"], { cwd, env: serveEnv, stdio: ["ignore", "pipe", "pipe"] });
+      // Run again: a fresh link of its own, and the first one stops working.
+      const next = spawn(process.execPath, [bin, "serve", "--reset-password"], { cwd, env: serveEnv, stdio: ["ignore", "pipe", "pipe"] });
       let again = "";
 
       children.push(next);
@@ -445,8 +447,14 @@ describe("maintenance on a container's data folder, with the server stopped", ()
         if (waited > 90_000 || next.exitCode !== null) throw new Error(`serve didn't start:\n${again}`);
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
-      expect(again).toMatch(/Setup: {5}https:\/\/cms\.localhost\/setup\?token=[A-Za-z0-9_-]{43}\n/);
-      expect(again).not.toContain(link![1]!);
+      const second = /Password: {2}https:\/\/cms\.localhost\/new-password#([A-Za-z0-9_-]{43})\n/.exec(again);
+
+      expect(second, again).not.toBeNull();
+      expect(second![1]).not.toBe(link![2]);
+      expect((await request(port, "POST", "/api/auth/link/check", { body: { code: link![2] } })).status).toBe(404);
+      expect((await request(port, "POST", "/api/auth/link", { body: { code: second![1], password: "the owner's new password" } })).status).toBe(200);
+      expect((await request(port, "POST", "/api/auth/login", { body: { password: PASSWORD } })).status).toBe(401);
+      expect((await request(port, "POST", "/api/auth/login", { body: { password: "the owner's new password" } })).status).toBe(200);
       next.kill("SIGTERM");
       expect(await nextExited).toBe(0);
       chmodSync(cwd, 0o755);

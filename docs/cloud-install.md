@@ -14,7 +14,11 @@ short, task-first version for the documentation site is
 > VM behind Caddy on a real domain. Never run on Fly.io or with a Cloudflare
 > tunnel; "Host the editor online" has never created anything on Google
 > Cloud itself (only against a stand-in); and the image is not published to
-> a registry. Exactly what has been
+> a registry. **Accounts** (people, roles, invitations, one-time links) are
+> newer than that run: they are covered by automated tests, a rehearsal
+> over HTTP against the real server and a pass in a real browser, and have
+> not yet been tried on the real image or against a real mail server.
+> Exactly what has been
 > run is in [What has been run](#what-has-been-run); what hasn't is in
 > [Not verified yet](#not-verified-yet).
 
@@ -38,8 +42,9 @@ short, task-first version for the documentation site is
 ## What a hosted install is
 
 The same server and web app the desktop app runs, started with
-`galley serve` on a server, for **one site**, behind a password, with its whole
-state in one folder.
+`galley serve` on a server, for **one site**, for the people its owner lets
+in — each with their own e-mail and password — with its whole state in one
+folder.
 
 The owner's decision, in the owner's words:
 
@@ -52,7 +57,7 @@ The owner's decision, in the owner's words:
 > an online/hosted version without hosting it (e.g. hosting on vercel, etc)
 
 So: one hosted install is one website and one private state. Ten sites are
-ten installs that share nothing — no folder, no password, no key, no
+ten installs that share nothing — no folder, no account, no key, no
 session. The desktop app and the local command line stay multi-site, exactly
 as before. "Galley Cloud", a managed service run by Fiction Tribe, is a
 different thing: it doesn't exist and stays "coming soon" on the marketing
@@ -85,7 +90,8 @@ in the image and the one volume a compose file mounts.
 
 | Path | What |
 | --- | --- |
-| `install.json` | The install's state, versioned (mode 0600): the password's hash, the setup code's hash while there is one (and that a used one is dead), the site's repository, folder and how it is reached, the site's live address, which starting values were used, sign-outs. |
+| `install.json` | The install's state, versioned (mode 0600): the accounts (each person's name, e-mail, role, password hash, when they last signed in, whether they are switched off, when they were last signed out), the open invitations and new-password links (only the SHA-256 of each link's code), the setup code's hash while there is one (and that a used one is dead), the site's repository, folder and how it is reached, the site's live address, which starting values were used, sign-outs. |
+| `install.json.schema-<n>.bak` | The state file as it was before the last upgrade of its layout, kept in case the new version has to be rolled back (0600). After the upgrade to accounts it is `install.json.schema-1.bak`, and it holds the old shared password's hash. |
 | `session.key` | The key session cookies are signed with (0600). |
 | `settings.json`, `secrets.json` | Settings, and the stored service keys (the assistant's key and others), owner-only. |
 | `keys/` | The install's own deploy key pair, an access token when one is used, and `known_hosts`. |
@@ -111,6 +117,9 @@ before single-site installs — a hosted server that kept any number of sites:
 - with several, it refuses to start and says which variable chooses the one
   to keep: `GALLEY_SITE_DIR` (the others stay on disk, untouched);
 - a folder written by a newer version is refused rather than misread.
+
+Layout 1 had one shared password; layout 2 has accounts. What the upgrade
+from 1 to 2 does is in [Upgrading to accounts](#upgrading-to-accounts).
 
 ---
 
@@ -236,7 +245,7 @@ are exactly the files below for the `caddy` variant at `cms.example.com`
    GALLEY_PREVIEW_MEMORY_MB=1024
    # No setup code was given, and none is needed: on its first start the editor makes a one-time setup link by itself
    # and prints it in its log (docker compose logs editor). Optional, before the first start: GALLEY_SETUP_TOKEN_SHA256
-   # (the SHA-256 of a code of your own) to use your code instead, or GALLEY_PASSWORD to set the password up front.
+   # (the SHA-256 of a code of your own) to use your code instead, or GALLEY_PASSWORD to set the first owner's password up front.
    ```
 
 2. **Point the three names at the server.** At whoever holds the domain, an
@@ -250,7 +259,7 @@ are exactly the files below for the `caddy` variant at `cms.example.com`
 4. **Open the setup link.** Nothing is needed before the first start: the
    editor makes a one-time code and prints the link in its log
    (`docker compose logs editor`). Open it straight away: whoever opens it
-   first chooses the password. To keep the code out of the log, put
+   first becomes the owner. To keep the code out of the log, put
    `GALLEY_SETUP_TOKEN_SHA256` in `.env` before the first start (the SHA-256
    of a code of 24+ characters you keep; `--setup-token-sha256` writes it
    for you) and open `https://cms.example.com/setup?token=<your code>`. A code
@@ -333,8 +342,9 @@ are passed through to `host recipe`. Only the dry run has been run so far.
 1. **Open the setup link** (`<address>/setup?token=…`). Without it, `/setup`
    says where to find it. A used or foreign link says so, and whoever runs
    the server can make a new one.
-2. **Choose the password**: 12 characters or more. This uses up the link and
-   signs this browser in.
+2. **Create your account** — the owner's: a name, an e-mail and a password
+   (12 to 1,024 characters), typed twice. Whoever does this is the install's
+   first owner. It uses up the link and signs this browser in.
 3. **Connect the site.** Either an existing repository, or a starter sent to
    an **empty** repository as its first version. Two ways to reach it:
    - **The install's own deploy key** (the default): an ed25519 pair made by
@@ -348,19 +358,29 @@ are passed through to `host recipe`. Only the dry run has been run so far.
    A site in a folder of a larger repository: give the folder (`apps/site`).
    The whole repository is copied; only the folder is the site — changes
    outside it are neither shown in Proof nor published.
-4. **A few details**: the publishing name and e-mail (every version published
-   from this editor carries them), the live address (Proof compares
-   against it; kept in the install's state, so nothing is left to publish),
-   and the assistant's key. Only the name and e-mail are needed now.
+4. **A few details**: the install's publishing name and e-mail (filled in
+   from your account), the live address (Proof compares against it; kept in
+   the install's state, so nothing is left to publish), and the assistant's
+   key. Only the name and e-mail are needed now. The screen says: "What
+   people publish here carries their own name. This one is for versions
+   published with nobody signed in, by a script or an AI tool using this
+   server's access key." A person who is signed in publishes under their
+   own name (see [Who published](#who-published)) — a starter sent at first
+   run included: its first version carries the owner who sent it, even
+   though the install's name may not be saved yet. The install's name is
+   for what nobody signed in starts — a script with the operator's token,
+   an AI tool over MCP, a starter sent from the starting values.
 5. **Done.** The setup link is dead from here on — for good: a used code is
-   never accepted again, even after `--reset-password`.
+   never accepted again, even after `--reset-password`. The last screen
+   says to sign in with your e-mail and password from now on, and to invite
+   the people who work on the site from the Install page.
 
-A first run left half-way (the password chosen, the site not connected yet)
-carries on after the ordinary sign-in.
+A first run left half-way (the owner made, the site not connected yet)
+carries on after the owner signs in.
 
 Or, on the first screen, **Restore from a backup**: the site, its
-unpublished changes, its settings, its stored keys and that editor's password
-all come back.
+unpublished changes, its settings, its stored keys and that editor's people
+and passwords all come back.
 
 ### The unattended start
 
@@ -370,8 +390,9 @@ ready. From the environment, or from one JSON file named by
 
 | Variable | File key | |
 | --- | --- | --- |
-| `GALLEY_PUBLIC_URL` | `address` | The address people use. |
-| `GALLEY_PASSWORD` | `password` | The first password, 12+ characters. |
+| `GALLEY_PUBLIC_URL` | `address` | The address people use. Every invitation and new-password link is built from it ([One-time links](#one-time-links)). |
+| `GALLEY_PASSWORD` | `password` | The first owner's password, 12+ characters. |
+| `GALLEY_OWNER_NAME`, `GALLEY_OWNER_EMAIL` | `owner.name`, `owner.email` | The first owner's name and the e-mail they sign in with. |
 | `GALLEY_SETUP_TOKEN` | `setupToken` | A setup code of yours, 24+ characters. |
 | `GALLEY_SETUP_TOKEN_SHA256` | `setupTokenSha256` | Or only its SHA-256, so the code never reaches the server. |
 | `GALLEY_SITE_REPOSITORY` | `site.repository` | `git@host:owner/name.git` or `https://…`. |
@@ -391,6 +412,7 @@ refused by name, without quoting a value):
 {
   "address": "https://cms.example.com",
   "password": "…",
+  "owner": { "name": "Sam", "email": "sam@example.com" },
   "setupToken": "…",
   "site": {
     "repository": "git@github.com:example/acme-site.git",
@@ -411,7 +433,18 @@ hold the password and keys (`chmod 600`). Secrets are read from the
 environment or the file only, so they never show in a process list, and the
 site's own commands never receive them.
 
-With a password, a site and the publishing name given, first run finishes by
+**The owner, unattended.** `GALLEY_PASSWORD` makes the first owner at
+start-up, with `GALLEY_OWNER_NAME` and `GALLEY_OWNER_EMAIL` (or the file's
+`owner`) as their name and e-mail. Without those two the owner has no name
+or e-mail yet: they sign in with the password alone, and the app asks them
+once for the rest ("Add your name and e-mail"). On an install with no owner
+yet, the two are used only together with `GALLEY_PASSWORD`; without it they
+are ignored, with a notice, and the owner types them in first run. On an
+install whose owner has no name or e-mail yet (one upgraded from before
+accounts), they fill in what is missing, once — an e-mail another account
+already uses is left out.
+
+With the owner's password, a site and the publishing name given, first run finishes by
 itself. With the deploy key, the install starts and waits — without crashing —
 until the key is added: the start-up line says "waiting", and first run and
 the Install page show the public key to add. Each start tries again.
@@ -422,17 +455,64 @@ These are **starting values**, not settings. Each is applied once, and only
 while the install lacks that thing. A restart with the same environment
 changes nothing; a password, name or live address someone changes in the app
 stays changed. A repository different from the one the install already has is
-ignored, with a notice naming the one it keeps.
+ignored, with a notice naming the one it keeps. Once the owner has changed
+their password in the app, a `GALLEY_PASSWORD` still in the environment is
+ignored, with a notice saying so.
 
 ### A forgotten password
 
-`galley serve --reset-password` forgets the password, signs everyone out,
-prints a fresh one-time setup link and keeps serving until it is stopped.
-Whoever opens the link first chooses the new password; stopped before that,
-the next start prints a fresh link. `GALLEY_PASSWORD` is not put back by
-this, and a setup code that was used stays dead: an old code or hash still in
-the environment is ignored, a new link is made, and a notice says so.
-Everything else — the site, its unpublished changes, settings, keys — stays.
+Three ways back in, from the gentlest:
+
+- **The server e-mails links** (outgoing e-mail and the editor's public
+  address are both set; [Outgoing e-mail](#outgoing-e-mail)): the person
+  chooses **Forgot your password?** under Sign in, types their e-mail, and
+  gets a new-password link by e-mail. The page always ends on the same
+  sentence, whether or not the address has an account here.
+- **An owner makes one:** in People on the Install page, in that person's
+  **…** menu, **New-password link**. When the server e-mails it to the
+  person, the owner is told so and the link isn't shown: a link that signs
+  in as someone stays with them. When it can't be e-mailed, it is shown
+  once, for the owner to copy and send however they like. If an e-mailed
+  link doesn't arrive, check the person's e-mail (an owner can change it:
+  **Change e-mail…** in the same menu) and make a new one. When the server
+  doesn't e-mail links, **Forgot your password?** tells the person to ask
+  an owner for one.
+- **An owner who can't get in** — the only owner, or every owner — is let
+  back in by whoever runs the server, with
+  `galley serve --reset-password`. See below.
+
+Each of these links works once, for 60 minutes
+([One-time links](#one-time-links)). The person's old password keeps
+working until they use it; using it signs their other browsers out.
+
+#### The way back in for a locked-out owner
+
+`galley serve --reset-password` makes a one-time new-password link for the
+owner, prints it, and keeps serving as usual until it is stopped:
+
+```
+Password:  https://cms.example.com/new-password#<one-time code>
+           Open it now: it lets Sam choose a new password, once, until 14:05 UTC. Nobody else's account changed.
+```
+
+- It works once, for 60 minutes. Nobody else's account changes, nobody is
+  signed out, and the owner's old password works until the link is used.
+- With several owners, say whose with `--email <their e-mail>` (`--email`
+  is accepted only with `--reset-password`). Without it, the server refuses
+  to start and says how many owners there are.
+- An owner who was switched off is switched back on by it.
+- With no owner yet, it prints a fresh one-time **setup** link instead, as
+  first run does. A setup code that was used stays dead: an old code or hash
+  still in the environment is ignored, a new link is made, and a notice says
+  so.
+- `GALLEY_PASSWORD` is never put back by it.
+- It writes one line to the log ("A new-password link was made for … by
+  whoever runs the server"). The link itself is printed once, in the
+  start-up lines on the terminal that ran the command; the server's log
+  lines never contain it.
+
+Everything else — the site, its unpublished changes, settings, keys, the
+other people — stays as it was.
 
 With compose, in the install's folder. Stop the editor first: nothing stops a
 second server starting on the same data folder.
@@ -442,9 +522,15 @@ docker compose stop editor
 docker compose run --rm --use-aliases editor serve --reset-password
 ```
 
+For an install with several owners:
+
+```sh
+docker compose run --rm --use-aliases editor serve --reset-password --email sam@example.com
+```
+
 Open the link it prints (`--use-aliases` lets Caddy reach this one-off
-container by the editor's name), choose the password, stop it with Ctrl+C,
-then:
+container by the editor's name), choose the new password, stop it with
+Ctrl+C, then:
 
 ```sh
 docker compose start editor
@@ -470,8 +556,10 @@ gives `cms-preview.example.com` and `cms-live.example.com`; a two-part name
 Requests for those two names never reach the app: they go to the preview
 gateway (`packages/server/src/gateway.ts`), which hands them to whichever
 preview proxy is mounted (`packages/core/src/workspace/preview/proxy.ts`).
-Without `GALLEY_PUBLIC_URL` the server answers any hostname and there is no
-preview. A hosted install never opens preview ports.
+Without `GALLEY_PUBLIC_URL` the server answers any hostname, there is no
+preview, and no invitation or new-password link is e-mailed
+([One-time links](#one-time-links)). A hosted install never opens preview
+ports.
 
 ### Why hostnames
 
@@ -499,10 +587,13 @@ didn't let in:
 2. The frame loads `/__galley/enter?ticket=…&to=<path>` on the preview's
    name; the gateway trades the ticket for a **viewer cookie** and goes to the
    page.
-3. The viewer cookie is derived from that sign-in (its id and time, an HMAC
-   under a label of its own), so it can never be read as a session cookie, and
-   it stops working when the sign-in does: signing out, **Sign out
-   everywhere**, a changed password, the session's age, a restore.
+3. The viewer cookie is derived from that sign-in (its id, its time and the
+   person's account, an HMAC under a label of its own), so it can never be
+   read as a session cookie, and it stops working when the sign-in does:
+   signing out, **Sign out everywhere**, a changed password, the session's
+   age, a restore, or the person being switched off or removed (checked the
+   next time the cookie is used). Viewer cookies issued before the upgrade to
+   accounts are refused.
 
 A stranger gets a plain 401 page; a WebSocket upgrade without the cookie is
 closed. Neither the session cookie nor the viewer cookie is ever forwarded to
@@ -526,51 +617,502 @@ the site's dev server.
 
 ## Access
 
-### One password
+A hosted install has **people**, not one shared password. Each person signs
+in with their own e-mail and password, has one of three roles, and their
+publishes carry their own name. An owner decides who is let in, and as
+what. The desktop app and local mode have no accounts and are unchanged:
+one person, one computer, everything allowed.
 
-There are no accounts; the owner parked them. What was done to make one
-password solid:
+### People and roles
 
-- Stored as an **scrypt hash** with its parameters, checked in constant time,
-  never kept in plain.
-- **Changeable in the app** (Install page): every other browser is signed out;
-  the one that changed it stays signed in.
-- **Sign out everywhere**: every cookie issued until then stops working, this
-  browser's included.
-- **Sign-outs survive a restart**; so do the two above.
-- Wrong passwords and wrong setup codes share **one limit: 5 a minute per
-  address**, then a minute's wait.
-- The session cookie on an `https://` address is
+Every route the server answers needs one of three levels, and the levels
+nest: whoever may publish may edit, whoever may manage may publish.
+
+- **Edit** — reading the site, and anything that only changes the draft
+  (the working copy on the server) in content mode: pages, media, the
+  site's content files, forms in the site, the redirects list, the brand
+  where it is kept with the content, the assistant in content mode, the
+  preview and Proof. Nothing at this level reaches the live site by itself.
+- **Publish** — what changes the live site or the repository — Publish,
+  undo a publish, send, get the latest, put the site live, set redirects on
+  Cloudflare — reading what visitors sent through the site's forms (the
+  inbox), and **build mode**: changing the site's code and templates
+  ([Build mode and the site's settings](#build-mode-and-the-sites-settings)).
+- **Manage** — the install itself: people, stored keys, the repository's
+  access, backups and restore, **the site's settings file**, plugins, where
+  the site is hosted and its domain, app-wide settings, the Install page.
+
+| Role | Edit | Publish | Manage |
+| --- | --- | --- | --- |
+| **Owner** | yes | yes | yes |
+| **Editor** | yes | yes | — |
+| **Contributor** | yes | — | — |
+
+So an **editor** changes the site, its code and templates included, and
+publishes it, and reads the inbox, but has no Install page, App settings,
+Plugins or site Settings, can't change the site's settings file, and can't
+set up where the site is hosted. A **contributor** changes the site's
+content and sees Proof, and an editor or owner publishes: no Publish, no
+undo of a publish, no Get latest or Send now, no putting the site live or
+sharing a preview link, no inbox, no redirects on Cloudflare, and no build
+mode — no assistant in build mode, no set-up helpers that change the site's
+code, no custom code in forms or scripts.
+
+The one table that decides is `ROUTE_ACCESS` in
+`packages/core/src/install/route-access.ts`, one level for every route (a
+route without one doesn't compile). The server enforces it; the web app
+reads the same table only to hide what a person can't use. Someone signed in
+who calls a route above their level gets 403: *Your account can't do that.
+Ask an owner of this editor.* A role is read on every request, so a change
+applies to that person's very next request.
+
+### Build mode and the site's settings
+
+Two rules depend on what a request asks for, not on which route it is, so
+the engine holds them itself, at the write, whichever way in a request
+comes: a route, the assistant, an AI tool over MCP, a plugin's tool
+(`packages/core/src/install/caller.ts`). Both levels are in
+`route-access.ts` (`BUILD_MODE_LEVEL`, `SITE_SETTINGS_LEVEL`), and the app
+reads them to decide what to offer.
+
+- **Build mode needs an editor or owner** (the publish level): writing
+  outside the site's content — its code, templates and the files it is
+  built from — and the assistant's build-mode tools. That includes adding
+  or changing custom code in a form (it runs in every visitor's browser),
+  and saving the brand when its folder isn't part of the site's content. A
+  contributor
+  works in content mode. A request for build mode from a contributor is
+  refused in plain words — never quietly carried out in content mode
+  instead: *Your account can change the site's content, but not its code
+  and templates (build mode). Ask an owner or an editor of this editor.* In
+  a conversation that is already in build mode, the assistant adds: *This
+  conversation is in build mode: switch it to content mode to carry on.*
+  A site's own `"ai": { "allowBuild": false }` still turns the assistant's
+  build mode off for everyone, owners included.
+- **The site's settings file (`galley.config.json`) is an owner's**, by
+  every way in: the site's Settings screen, a file write in any mode (by its
+  own name in any letter case, or through a link to it), the assistant's
+  `save_site_config`, an AI tool. So are discarding a pending change to it,
+  undoing an assistant reply that changed it, and undoing a publish that
+  changed it. Anyone else is told: *Your account can't change the site's
+  settings. Ask an owner of this editor.* The Settings screen's own route
+  answers with the table's sentence above.
+- **What the editor records for itself.** A few values go into the
+  settings file as part of an action someone below the owner may take, and
+  the engine writes just those values, without opening the rest of the
+  file to that person: the site's addresses after an editor puts it live
+  (`deploy.defaultUrl`, `deploy.productionUrl`), and where the redirects
+  list lives the first time anyone saves it (`redirects.file`). Each changes
+  only its own keys; every other line of the file stays as it was
+  (`packages/core/src/site/settings-records.ts`). Where the redirects take
+  effect — the host that applies them, and the Cloudflare account and
+  domains (`redirects.host`, `redirects.cloudflare`) — is part of the
+  site's settings and an owner's to choose.
+- **The assistant offers each person only the tools their role includes**,
+  and checks again on every call: a contributor's assistant has no
+  build-mode tools, and `save_site_config` is an owner's. The MCP endpoint
+  is reached with a token, not a person's account, so it keeps that token's
+  reach ([The operator's token](#the-operators-token)).
+- **The role is read again whenever it is checked**, so work a request
+  started — an assistant reply that is still running — can do only what the
+  person's role allows at that moment.
+- **Work that isn't done for someone does none of it.** On a hosted install,
+  publishing and the site's other guarded actions (undoing a publish,
+  getting the latest, sending), changing the site's settings file and
+  writing outside the content are done only for a signed-in person (as
+  their role allows), for the operator (the operator's token on the API
+  and on `/mcp`) or by the engine itself as part of its own unattended
+  steps. Anything else is refused: *Only someone signed in to this editor,
+  or whoever runs it, can do that. Work that runs on its own, such as a
+  plugin reacting to an event, can't publish, change the site's settings
+  or change anything outside the content.* That is what a plugin's hooks
+  run as — reacting to a publish, a deploy or a form a visitor sent — and
+  so does what they leave running, and what runs in the open site after
+  the request that opened it: its watcher and the preview. In code, the
+  two exceptions are two named functions, `asOperator` and `asEngine`
+  (`packages/core/src/install/caller.ts`), set by the server at the few
+  places that are the operator's or the engine's. Local mode and the
+  desktop app, with no accounts, are as before.
+
+### What roles are, and what they aren't
+
+Roles keep people out of each other's way and out of trouble: a contributor
+can't publish by accident or change the site's code, an editor can't take a
+key or a backup away or change the site's settings. The server enforces
+them at every way in. **They are not a wall against someone who means
+harm.** The preview runs the site's own code on the server ([The container
+is the boundary](#the-container-is-the-boundary)), for every role: editors
+and owners can change that code in build mode, and the content a
+contributor changes is what that code reads and renders, and in some sites
+runs. That code can reach what the container holds. An account is for a
+person the owner would trust with the site's repository.
+
+Three more things to know:
+
+- **The assistant reads what contributors wrote.** It works from the site's
+  content, and that includes what any contributor put there, so words
+  placed in a page can try to steer the assistant of an owner or an editor
+  who later asks it something. The assistant has no way to publish: every
+  change it makes waits in Proof until a person publishes it. It changes
+  the site's code and templates, and runs the site's build, only in a
+  conversation a person has switched to build mode, and there it does not
+  ask before each change. So the controls are a person's: choosing build
+  mode, reading Proof, and pressing Publish.
+- **The draft is one shared working copy.** Everyone edits the same draft,
+  and **Discard** is at the edit level: a contributor can throw away pending
+  changes — everyone's, not only their own (except a change to the site's
+  settings file, which only an owner discards). Publish often, and say who
+  is working on what.
+- **Everyone signed in can see which keys are set**, and where each comes
+  from, because the app uses that to say what is available (the assistant,
+  image services, hosts, plugins). The last characters of a key, which help
+  tell one key from another, are left out of those answers for anyone who
+  isn't an owner (`packages/server/src/key-hints.ts`). Nobody ever sees a
+  key itself.
+
+Single sign-on isn't there yet ([Not there yet](#not-there-yet)).
+
+### First run makes the owner
+
+Whoever opens the setup link first creates the first account, as **Owner**
+([First run](#first-run)). From then on the setup link is dead and
+everyone else comes in by invitation. An unattended install makes its owner
+from `GALLEY_PASSWORD` with `GALLEY_OWNER_NAME` and `GALLEY_OWNER_EMAIL`
+([The unattended start](#the-unattended-start)). First run is an owner's: an
+editor or contributor who opens `/setup` (an old link, say) goes straight
+into the app once first run is over, and while it isn't, sees "This isn't
+part of your account." rather than anything about setup links.
+
+### Inviting someone
+
+**Before inviting anyone, set the editor's public address**
+(`GALLEY_PUBLIC_URL`, then start the server again): every link is built
+from it, and without it a link can be made only on a trial on one computer
+([One-time links](#one-time-links)).
+
+An owner opens **People** on the Install page and chooses **Invite
+someone**: an e-mail and a role. The invitation link is shown **once**, in a
+dialog with **Copy link**; when the server e-mails links it is also
+e-mailed, and the dialog says so. The person opens it, sees who invited them
+and as what, types their name and a password, and is signed in.
+
+- An invitation lasts **7 days** and works once.
+- An e-mail that already has an account, or an open invitation, can't be
+  invited again. To send a new link, take the open invitation back
+  (**Take back**) and invite again.
+- An owner with no name or e-mail yet (one carried over from before
+  accounts) can't invite until they add them: an invitation says who sent
+  it.
+
+### One-time links
+
+Invitations and new-password links are both one-time links:
+
+| | Lasts | Address |
+| --- | --- | --- |
+| Invitation | 7 days | `<address>/join#<code>` |
+| New-password link | 60 minutes | `<address>/new-password#<code>` |
+
+- **`<address>` is the editor's public address, `GALLEY_PUBLIC_URL`**,
+  whatever address, `Host` or `Origin` a request came with.
+- **Without `GALLEY_PUBLIC_URL`**, no link is e-mailed, and a link is shown
+  to the owner only on a trial on one computer: the editor opened at a
+  loopback address (`localhost`, `127.0.0.1`, `::1`), with the request's
+  `Host` naming that same address; the link is built from it. Anywhere else
+  making a link is refused, before any invitation or link is made: *Links
+  can't be made yet: this editor doesn't know its public address. Set the
+  editor's public address (GALLEY_PUBLIC_URL), start it again, then make
+  the link.*
+- Each works **once**. Taking an invitation back, or making a newer
+  new-password link for the same person, kills the older link. Switching a
+  person off or removing them ends their open new-password link, and so do
+  changing their password and an owner changing their e-mail.
+- **Why the code is after a `#`:** the part of an address after `#` never
+  leaves the browser, so the code reaches no server log and no proxy on the
+  way. The page takes it out of the address bar at once and sends it in a
+  request body.
+- The code is 32 random bytes; the server keeps only its SHA-256, so the
+  state file — or a backup of it — can't be used to sign anyone in. An
+  invitation is shown once, to the owner who made it, and e-mailed to the
+  person when the server e-mails links. A new-password link an owner makes
+  for someone goes to that person only, by e-mail, when the server e-mails
+  it; only when it can't be e-mailed is it shown, once, to the owner to
+  pass on. Neither is ever shown again.
+- A used, taken-back, expired or unknown link gets one and the same refusal,
+  and counts against the per-address limit below.
+- Using a new-password link sets the password and signs that person's other
+  browsers out. Until it is used, their old password keeps working.
+
+### Outgoing e-mail
+
+Accounts use the same two settings as the inbox's e-mail alerts:
+
+| Variable | |
+| --- | --- |
+| `GALLEY_SMTP_URL` | The mail server: `smtp://user:pass@host:587`, or `smtps://` for TLS from the start. |
+| `GALLEY_MAIL_FROM` | The sender address. |
+
+**Links are e-mailed only when both outgoing e-mail and the editor's
+public address (`GALLEY_PUBLIC_URL`) are set**, because a link is only ever
+built from that address. Then invitations are also e-mailed (the owner
+still sees the invitation link once); a new-password link an owner makes is
+e-mailed to the person and not shown to the owner; and **Forgot your
+password?** on the sign-in page e-mails a new-password link. The server
+waits at most 15 seconds for the mail server, then answers without it. A
+send that fails, or doesn't finish in time, never fails the request: the
+owner is shown the link to pass on, and the log gets one line with the
+mail server's error code — never the address, the link or the mail
+server's own words.
+
+**When the server doesn't e-mail links** — no outgoing e-mail, or no public
+address — everything else still works: each link is shown to the owner who
+made it, to send however they like (without the public address, only on a
+trial on one computer; [One-time links](#one-time-links)); People says the
+server doesn't e-mail links and that whoever runs it can have it do so;
+**Forgot your password?** tells the person to ask an owner for a
+new-password link. With only one of the two mail settings set, nothing is
+e-mailed and a notice at start-up says which one is missing.
+
+`galley serve` says which case it is in its `E-mail:` start-up line:
+
+```
+E-mail:    not set up (GALLEY_SMTP_URL, GALLEY_MAIL_FROM): owners send invitation and new-password links themselves
+E-mail:    invitations and new-password links are e-mailed too
+E-mail:    set up, but no link is e-mailed until the editor's public address is set (GALLEY_PUBLIC_URL): a link is only ever built from it
+```
+
+Sending has been tried only against a stand-in mail transport in the tests,
+**not yet against a real mail server**.
+
+### Signing in
+
+The sign-in page asks for an e-mail and a password. An unknown e-mail, a
+wrong password and a switched-off account all get the same sentence, and
+take about as long (the server checks a stand-in password hash when there is
+no such account), so the page can't be used to find out who has an account.
+The password alone is asked for only while every account that can sign in
+has no e-mail yet — an install upgraded from one shared password, until its
+owner adds theirs (`install.signInWith` in `GET /api/meta`).
+
+**The limits** (`packages/server/src/sign-in-gate.ts`; kept in memory: a
+restart resets them, and two server processes don't share them). Every
+password check goes through them — signing in, and the current password
+typed to change your password or your e-mail, which takes its turn in the
+account's own line exactly as a sign-in for that e-mail does. A **client** is an IPv4
+address, or a whole IPv6 `/64` (the addresses one subscriber is normally
+given); an IPv4 address written as IPv6 (`::ffff:203.0.113.7`) is the IPv4
+address.
+
+**Which address counts as the client depends on what is in front of the
+server, and the setting has to match it:**
+
+| In front of the server | `GALLEY_TRUST_PROXY` | The client is |
+| --- | --- | --- |
+| One reverse proxy you run, receiving visitors directly (the compose recipe's Caddy) | `1` | the address that proxy saw: each visitor their own |
+| Nothing: the server's port is reached directly | unset | the connecting address |
+| A reverse proxy, with the setting left unset | — | **the proxy, for everyone**: all people share one client's limits, so one person's wrong guesses hold everyone up. Set it. |
+| The setting on, with no proxy in front | — | **whatever the request claims**: the limits per client mean nothing. Unset it. |
+| A CDN or a second proxy in front of your proxy | `1` | the hop nearest the server — the CDN's edge, shared by everyone coming through it (20 attempts a minute between them). Not supported well yet. |
+
+The server believes the last address in `X-Forwarded-For`, the one its own
+proxy appended. There is no setting yet for more than one trusted hop or
+for a list of proxy addresses, and no warning at start when forwarded
+headers arrive without the setting.
+
+- **Per client.** Its limits are checked, and its attempt counted, in one
+  step before its password is checked, so attempts sent together are held
+  to them too:
+  - **2 password checks at once**;
+  - **20 attempts a minute**, successful or not;
+  - **5 failures a minute** — wrong passwords, wrong setup codes, bad link
+    codes, a wrong current password; an attempt still being checked counts
+    as one until it ends.
+
+  Past any of them: 429, *Too many sign-in attempts. Wait a minute, then
+  try again.* (for a password change or an e-mail change, *Too many
+  attempts. Wait a minute, then try again.*).
+- **Per e-mail, from one client: 10 failed sign-ins in 15 minutes**, then
+  that e-mail waits 15 minutes from that client (429, *Too many sign-in
+  attempts for that e-mail. Wait 15 minutes, then try again.*).
+- **Per e-mail, from every client together**, whether or not the e-mail has
+  an account — the same line, the same delays and the same answers, so
+  nothing says whether it does:
+  - sign-ins for one e-mail are checked **strictly one at a time**. Up to
+    **3 more wait their turn**; past that, the answer is at once and without
+    checking the password: 429, *That e-mail has more sign-in attempts
+    waiting than can be checked right now. Wait a minute, then try again. A
+    browser you have signed in on before isn't held up, and a one-time link
+    always works.*
+  - after **10 failures** for the e-mail, each turn begins with a delay:
+    1 second, then 2, 4, 8, 16, then **30 seconds** for every one after
+    that. The count is forgotten after 15 minutes without a failure.
+  - so one e-mail can receive **at most about 2,900 guesses a day**, from
+    any number of addresses: 10 at full speed, 5 more over 31 seconds, then
+    one every 30 seconds for the rest of the day.
+- **A browser someone has signed in on before.** Every successful sign-in
+  (and a one-time link, the first-run account, a password change) also sets
+  a **known-browser cookie** for that account: `__Host-galley_session_known`
+  on an `https://` address (`galley_session_<port>_known` otherwise),
+  `HttpOnly`, `Secure` there, `SameSite=Strict`, one year, signed with
+  `session.key` under a label of its own. It is never accepted as a
+  session. A sign-in to that same account from that browser skips the
+  e-mail's line and its delay — though its password is still never checked
+  beside another attempt for the same e-mail — and is served first when
+  password checks are waiting. It counts only while the account is there,
+  switched on and not signed out everywhere since it was set; after **3
+  wrong passwords in 15 minutes** that browser is treated like any other.
+  The per-client limits still apply to it.
+- **The password checks themselves: 2 at a time**, at most one of them for
+  any one client. Whoever waits is served in turn, client by client, not
+  first come first served; known browsers first, with **64 places** of
+  their own; everyone else has **256**. Only past those is the answer 429,
+  *This editor is checking a lot of sign-ins right now. Wait a moment, then
+  try again.* The places are shared fairly between clients, so one client
+  can't take more than its turn; someone with a large block of addresses
+  to send from can still keep them full.
+- **Forgot your password?**: 5 requests per client in 15 minutes (then
+  429), and at most 3 e-mails an hour to any one address (more requests are
+  quietly skipped).
+
+**The trade-off.** While an e-mail is being guessed at, someone typing the
+right password for it in a browser they have **not** signed in on before
+waits their turn and its delay — up to a couple of minutes — or, when the
+line is full, is told to wait. That can last for as long as the guessing
+does: the line can be kept full. Three things get the real person in
+regardless: a **browser they have signed in on before**, which isn't held
+up; a **one-time link** from an owner (or *Forgot your password?* where
+links are e-mailed), which doesn't go through the e-mail's line at all;
+and, for an owner with nobody to ask, the **reset by whoever runs the
+server** (`galley serve --reset-password`). "Sign out everywhere" also
+ends that person's known browsers, so the next sign-in from each is an
+unknown browser's.
+
+The owner carried over from before accounts, who signs in with the
+password alone, is held to the same limits and has a known browser too.
+
+**The rules for an account:** the e-mail is kept lower-case, is unique
+whatever the letter case, and is at most 254 characters; a name is 1 to 100
+characters, without `<` or `>`; a password is 12 to 1,024 characters, kept
+as an **scrypt hash** with its parameters and checked in constant time.
+Signing in records when that person last signed in.
+
+### Sessions
+
+- A session cookie belongs to one person. On an `https://` address it is
   `__Host-galley_session`: `HttpOnly`, always `Secure`, `SameSite=Strict`,
   `Path=/`, no `Domain`, signed with `session.key`, 30 days. A cookie one
   install issued is refused by another.
-- The setup code is kept as its SHA-256 only and works until a password
-  exists, then never again.
-- Nothing secret is printed, logged or returned by a route. The setup link is
-  the one deliberate exception, and it works once.
+- Every request checks that the person still exists, isn't switched off and
+  hasn't been signed out since the cookie was issued.
+- **Changing your password** (Your account) signs your other browsers out;
+  this one stays signed in.
+- **Sign out everywhere** (Your account) signs only you out of every
+  browser; other people stay signed in.
+- **Sign everyone out** (People) signs out everyone, the owner's own browser
+  included.
+- Sign-outs survive a restart. Signing one browser out is written down in
+  the install's state only for a session that still counts, and only until
+  that cookie would have run out anyway.
+- **The list of signed-out browsers is capped at 10,000.** Past the cap, a
+  sign-out signs that person out of every browser instead of adding to the
+  list. A longer list in a state file from an older version is shortened
+  at start-up by signing everyone out once, with one line in the log (*The
+  list of signed-out browsers was longer than 10000, so everyone was signed
+  out once to shorten it. People sign in again as usual.*); the install
+  starts as usual.
+- An open live-update stream ends when its person is signed out, switched
+  off or removed. For anyone who can't read the inbox, a new form
+  submission arrives only as "the inbox changed", never its content.
 
-Every publish from the install carries the one publishing name and e-mail
-set at first run (Install page to change it).
+### Looking after people
 
-### A design note: accounts, roles and single sign-on
+People, on the Install page, is for owners. It lists everyone — name and
+e-mail, role, when they last signed in — and the open invitations (role, who
+invited, when, whether it was e-mailed, when it stops working). For each
+other person:
 
-**This is a note, not a feature. None of it is built.** It records where
-accounts would attach to the code as it is, so whoever builds them starts
-from the seams that exist:
+- **Role**: Owner, Editor or Contributor.
+- **Change e-mail…**: the e-mail they sign in with, and where their
+  new-password links go. It must not be another account's; their open
+  new-password link stops working.
+- **New-password link**: when the server e-mails links, it is e-mailed to
+  the person and the owner reads "The link was e-mailed to …, and isn't
+  shown here."; otherwise it is shown once, with Copy link, to send
+  yourself. Not for a switched-off account: switch it on first.
+- **Sign out**: that person, out of every browser.
+- **Switch off** / **Switch on**: a switched-off person can't sign in;
+  their sessions, open new-password link and preview access end at once.
+- **Remove…**: the account goes, with the same immediate effect. What they
+  published keeps their name.
 
-- **Accounts.** A session already carries an id and an issue time, and
-  whether it is still good is asked of one place (`install.store.sessionValid`).
-  A session could carry an account id the same way.
-- **Passwords per person.** The password check is one hook (`verifyPassword`);
-  a per-account check replaces it there.
-- **Who published.** The publishing author is read per request, so it could
-  come from the signed-in account instead of the install's one name.
-- **Roles.** Would gate groups of routes, where `hosted-refusals.ts` already
-  sits in front of every route.
-- **Single sign-on.** Would replace the password exchange in
-  `POST /api/auth/login`. The simplest form trusts an identity header from a
-  proxy the operator controls — Cloudflare Access, for example, which the
-  owner already has in front of their sites.
+Two rules hold whatever the order of the clicks (every change is checked
+against the state as it is at that moment):
+
+- **The last owner who can still sign in** can't be made an editor or
+  contributor, switched off or removed. Make someone else an owner first.
+- **Nobody changes their own account through People** — not their role,
+  not switching themselves off, not removing themselves: *Ask another owner
+  to change your own account.* Your own name and password are on **Your
+  account** (`/account`).
+
+**E-mail addresses are an owner's to change.** An owner changes their own
+on Your account, with their current password (the e-mail is where a
+new-password link goes), and everyone else's with **Change e-mail…** in
+People. Editors and contributors see their e-mail on Your account but don't
+change it; asked anyway, the server answers *Only an owner can change the
+e-mail you sign in with. Ask an owner of this editor to change it for
+you.* An account with no e-mail yet (an owner carried over from before
+accounts) adds its own, with the current password.
+
+### The operator's token
+
+`GALLEY_TOKEN`, when it is set, lets a script call the API with
+`Authorization: Bearer <token>`. It keeps the reach it always had, with
+these exceptions, which need a person signed in in a browser (403 *That
+needs someone signed in to this editor in a browser; a script's access
+token can't do it.*, or the existing refusals): your own account
+(`/api/account*`, `POST /api/install/password`), People (`/api/people*`),
+downloading a backup, restoring one, and opening the preview. With the
+token, `POST /api/auth/logout-all` signs **everyone** out.
+
+### Who published
+
+A signed-in person's Publish, undo of a publish, and the work they start are
+recorded as that person — their name and e-mail — and the Publish dialog
+says so ("Recorded as …, from your account"). This is the first link of the
+author chain (`from: "account"` in `packages/core/src/workspace/author.ts`).
+A person with no name or e-mail yet, a script with the operator's token, and
+an AI tool over MCP fall through to the rest of the chain, as before: the
+site's own author, the repository's own, the install's publishing name, the
+server's own git identity, then the default. The install's publishing name
+is the one first run asks for (or `GALLEY_AUTHOR_NAME` and
+`GALLEY_AUTHOR_EMAIL`); once there are accounts, the Install page and App
+settings › You show each person their own name instead, so the app no longer
+offers a way to change the install's.
+
+### Not there yet
+
+- **Single sign-on.** Signing in is an e-mail and a password only. The seam
+  for it is `POST /api/auth/login`; the simplest form would trust an
+  identity header from a proxy the operator controls, such as Cloudflare
+  Access.
+- **A draft per person.** Everyone shares one working copy (above).
+- **An audit log as such.** The server's log records who did what to the
+  people ([Logs](#logs)); there is no separate record, screen or export of
+  it.
+- **A place kept for someone who hasn't been failing.** When an e-mail's
+  line is full, whoever comes next is told to wait, whether or not they
+  have failed for that e-mail before. So while an account is being guessed
+  at, its owner in a browser they haven't used before can be kept waiting
+  ([the trade-off](#signing-in) says what gets them in).
+- **Limits by network.** A client is one address, or one IPv6 `/64`.
+  Larger blocks of addresses aren't counted together, so someone with one
+  can keep the waiting places for password checks full.
+- **More than one proxy in front.** Only the hop nearest the server is
+  believed (the table under [Signing in](#signing-in)).
+- **Limits that outlast a restart.** They are kept in memory.
+- **Telling the old address** when an owner changes someone's e-mail.
+  Owners are trusted with that; it is logged.
 
 ---
 
@@ -583,19 +1125,47 @@ from the seams that exist:
 
 Both answer without a sign-in and without the Host check, and say nothing
 that identifies the install. `GET /api/meta` tells a stranger only that this is
-a single-site install, whether first run is finished and whether a password
-exists (`install.passwordSet`) — so the sign-in page knows whether to send
-someone to the setup link or to the ordinary password form. The image's `HEALTHCHECK` and the compose files
-call `/healthz`.
+a single-site install, whether first run is finished, whether an owner
+exists (`install.passwordSet`), whether sign-in asks for an e-mail
+(`install.signInWith`) and whether a forgotten password can be e-mailed
+(`install.passwordEmail`) — so the sign-in page knows what to offer. Signed
+in, it also says who you are and what your role may do (`account`). The
+image's `HEALTHCHECK` and the compose files call `/healthz`.
 
 ### Logs
 
 Every line passes one scrubber: known secrets, and token, ticket, key,
 passphrase and password values in addresses, are cut out. On a hosted install
 there is one line per request — method, path without the query, status,
-time — which `GALLEY_LOG_REQUESTS=0` turns off; and one line each for a
-sign-in, a password change, sign-out everywhere, first run finished, the site
-connected, a backup and a restore. With compose: `docker compose logs editor`.
+time — which `GALLEY_LOG_REQUESTS=0` turns off — and one line each for first
+run finished, the site connected, a backup and a restore. With compose:
+`docker compose logs editor`.
+
+What people do is logged by **name and role only** ("Robin (Editor)"),
+with the client address for a sign-in — never an e-mail address, a link or
+a code:
+
+- signed in; a sign-in that failed (wrong password, no account with that
+  e-mail); one refused (the account is switched off, too many attempts
+  from that client or for that e-mail from there, too many attempts
+  waiting for that e-mail, too many sign-ins being checked at once);
+- the owner made through the setup link;
+- someone invited (as which role, and whether it was e-mailed); an
+  invitation accepted; one taken back;
+- a role changed; someone switched off or back on; someone removed;
+- a password changed, or a password or e-mail change refused because the
+  current password was wrong; a name changed; an e-mail changed, by the
+  person or by an owner for someone else (who changed it, never the
+  address);
+- a new-password link made by an owner — who made it for whom, and whether
+  it was e-mailed and not shown, or shown to pass on — asked for with
+  **Forgot your password?**, or used; one made by whoever runs the server
+  (`--reset-password`);
+- signed out everywhere — one person, themselves, or everyone;
+- a one-time link refused;
+- an e-mail that couldn't be sent, or wasn't sent in time;
+- at start-up, the list of signed-out browsers shortened by signing
+  everyone out once ([Sessions](#sessions)).
 
 ### Stopping
 
@@ -626,12 +1196,16 @@ the editor.
 
 ### The Install page
 
-`/install`, for whoever is signed in: the address, the preview's and live
+`/install`, for owners: the address, the preview's and live
 comparison's addresses, the version, when it was set up; the repository and
 how it is reached (the public key, **Make a new key** — the old one stops
-working at once); the publishing name; **Change the password**; **Sign out
-everywhere**; **Download a backup** and **Restore**; and what is stored where,
-with sizes and whether a backup carries it. The sizes are measured in the
+working at once); **People** ([Looking after people](#looking-after-people));
+the publishing name, which now says each person publishes under their own
+name and points to Your account; **Download a backup** and **Restore**; and
+what is stored where, with sizes and whether a backup carries it. Editors and
+contributors don't have the Install page: a link to it shows "This isn't
+part of your account." Everyone's own password and **Sign out everywhere**
+are on **Your account** (`/account`). The sizes are measured in the
 background within a time budget and never walk installed packages, so a size
 can be empty for a while; measuring stops when the server stops. Anything the
 operator fixed with a starting value is marked "Set by whoever runs the
@@ -643,7 +1217,9 @@ editor" and "the server", never "this computer".
 ## Back it up and restore it
 
 **What a backup holds**: everything a fresh install couldn't rebuild — the
-state, settings, stored keys, `keys/`, the session key, the per-site state
+state (with the accounts: everyone's name, e-mail, role and password hash,
+and the open invitations and links as hashes), settings, stored keys,
+`keys/`, the session key, the per-site state
 (inbox, history of going online, brand material, conversations, plugin
 state), and the site's checkout **with its unpublished changes and its
 history**. **Not**: installed packages (`node_modules` anywhere — so plugins
@@ -667,10 +1243,14 @@ Three ways:
   uploads a file (up to `GALLEY_RESTORE_MAX_MB`, default 2048), checks all of
   it into a staging folder before changing anything, stops the preview,
   swaps the state in, keeps the old one aside until the swap is done, and
-  signs everyone out. Sign in with the password of the editor the backup came
-  from.
+  signs everyone out. From then on the backup's own people and passwords
+  apply: everyone signs in again with the account they had when the backup
+  was made, and anyone added since is gone. A backup made before accounts
+  is read through the same upgrade as a data folder
+  ([Upgrading to accounts](#upgrading-to-accounts)); that path hasn't been
+  tried with a real backup yet. Only an owner can restore.
 - **At first run**, on a fresh install: **Restore from a backup** instead of
-  choosing a password.
+  creating the owner (the setup code is the proof there).
 - **From the command line**, on the data folder, **with the server stopped**
   (it refuses while a `server.lock` says a server holds the folder;
   `--force` only when you know that server is stopped). With compose, in the
@@ -715,6 +1295,35 @@ newer version wrote rather than misread it; to go back, restore the backup
 made before the upgrade into a fresh volume. So: download a backup before
 every upgrade.
 
+### Upgrading to accounts
+
+An install from before accounts (data layout 1, one shared password) is
+upgraded to layout 2 at its first start on the new image:
+
+- **The shared password becomes one owner** with the same password, and no
+  name or e-mail yet. Whoever knew the password signs in with it alone, as
+  before; the sign-in page asks for the password only.
+- **Everyone is signed out once**: cookies from before the upgrade, and the
+  preview's viewer cookies, are refused.
+- Right after signing in, the owner is asked once for their **name and
+  e-mail** ("Add your name and e-mail", with their current password). **Not
+  now** closes it until the app is next opened. Until they add them they
+  can't invite anyone, and their publishes carry the install's publishing
+  name. Once they have an e-mail, sign-in asks for it. An operator can fill
+  both in instead with `GALLEY_OWNER_NAME` and `GALLEY_OWNER_EMAIL`, once.
+- **The old state file is kept** beside the new one, as
+  `install.json.schema-1.bak` (0600), until the next upgrade of the layout.
+  It holds the old password's hash.
+- An install that had no password yet gets no account: first run makes the
+  owner, as on a fresh install.
+
+The site, its unpublished changes, settings, keys and history are not
+touched. The behaviours that changed for an operator:
+`--reset-password` now makes a new-password link and no longer signs
+everyone out or forgets the password; `POST /api/install/password` with the
+operator's token is refused (403); a publish over MCP or with the token
+carries the install's publishing name, not a person's.
+
 ## Remove it
 
 Stopping the project and deleting its volume removes the install and
@@ -755,8 +1364,22 @@ the main ones; its test titles are the claims.
 | A restore can't write outside the data folder; a hostile backup changes nothing. | `server/test/hosted-security.test.ts`, `core/test/install/backup.test.ts` |
 | A site's folder can't point outside the repository's copy. | `server/test/hosted-security.test.ts`, `core/test/install/install.test.ts` |
 | A cookie one install issued is refused by another. | `server/test/hosted-security.test.ts`, `server/test/install.test.ts` |
-| Sessions end on sign-out everywhere, across a restart; a changed password signs everyone else out. | `server/test/hosted-security.test.ts`, `server/test/install.test.ts`, `core/test/install/state.test.ts` |
-| The password is an scrypt hash; the setup code a SHA-256; wrong codes count against the sign-in limit. | `core/test/install/state.test.ts`, `server/test/install.test.ts` |
+| Sessions end on sign-out everywhere, across a restart; a changed password signs that person's other browsers out. | `server/test/hosted-security.test.ts`, `server/test/install.test.ts`, `core/test/install/state.test.ts` |
+| Passwords are scrypt hashes; the setup code and every one-time link's code are kept as a SHA-256 only; wrong codes count against the sign-in limit. | `core/test/install/state.test.ts`, `core/test/install/people.test.ts`, `server/test/install.test.ts` |
+| Every route answers each role exactly as the one table says: the right level gets through, anyone below it gets 403, nobody signed in gets 401. | `server/test/accounts-access.test.ts` |
+| An unknown e-mail, a wrong password and a switched-off account get the same answer, the same number of password checks and the same line; a client (an IPv4 address or an IPv6 `/64`) is held to its limits before its password is checked, successes included; one e-mail's sign-ins are checked one at a time from any number of clients, a few wait, the rest are told to wait without a check, and past 10 failures each waits a delay that grows to 30 s, so a day holds at most about 2,900 guesses for it; a browser that signed in before skips the line and is never a session; password checks are shared out client by client, and one client can't fill them. | `server/test/sign-in-gate.test.ts`, `server/test/accounts.test.ts`, `server/test/accounts-hardening.test.ts`, `core/test/install/people.test.ts` |
+| On a hosted install, publishing, the site's settings file and writes outside the content are refused for work done for nobody — a plugin's hooks included — and work for the operator's token, the engine's own steps or a person goes ahead as before; local mode is unchanged. | `core/test/install/caller-required.test.ts` |
+| Every link is built from the editor's public address; without it nothing is e-mailed and a link is shown only on a loopback address; a new-password link the server e-mailed isn't shown to the owner. | `server/test/accounts-links.test.ts` |
+| The site's settings file — saved, written as a file in any mode or letter case, discarded, or put back by undoing a reply or a publish — is an owner's by every route; build mode, custom code in a form and the brand outside the content files are an editor's or owner's, and a request for build mode below that is refused, not narrowed; the values the editor records for itself change nothing else in the file. | `core/test/install/caller-access.test.ts`, `server/test/accounts-hardening.test.ts`, `core/test/install/settings-records.test.ts` |
+| The assistant offers each role only its tools and checks again on every call; every MCP tool, run as each role, does only what that role allows. | `core/test/ai/tools-access.test.ts`, `server/test/mcp-access.test.ts` |
+| Only an owner changes an e-mail address: their own, with their password, or anyone else's in People; it ends that person's open link. | `server/test/accounts-hardening.test.ts` |
+| The list of signed-out browsers stays within its cap; past it, a sign-out signs that person out everywhere; a longer list never stops the install from starting. | `server/test/accounts-hardening.test.ts` |
+| Switching someone off or removing them ends their access on their next request, their open event streams and their preview access; a role change applies to the next request. | `server/test/accounts.test.ts`, `server/test/gateway-auth.test.ts`, `core/test/install/people.test.ts` |
+| A one-time link works once and only while it lasts; every bad code gets the same refusal; a newer new-password link cancels the older. | `server/test/accounts.test.ts`, `core/test/install/people.test.ts` |
+| "Forgot my password" answers the same whether or not the address has an account, and can't flood a mailbox. | `server/test/accounts.test.ts` |
+| The last owner who can sign in stays an owner and stays switched on; nobody changes their own account through People. | `core/test/install/people.test.ts` |
+| A contributor never receives what a visitor sent through a form. | `server/test/accounts.test.ts` |
+| The upgrade turns one shared password into one owner with the same hash, and old cookies stop counting. | `core/test/install/people.test.ts` |
 | The site's own commands don't inherit the password, setup code, access token or provider keys. | `server/test/install.test.ts`, `core/test/install/access.test.ts` |
 | No secret in any answer or log line, through the whole first run. | `server/test/install.test.ts`, `server/test/install-ops.test.ts` |
 | One site: every multi-site route and engine call is refused. | `server/test/hosted-refusals.test.ts`, `core/test/install/install.test.ts` |
@@ -773,9 +1396,11 @@ the other's cookie (401), password and form-capture key (403).
 
 The preview runs the site's own dev server, installs its dependencies (their
 install scripts included), and build mode runs its build. **That is code
-from the repository, running on the server, by design.** Anyone with the
-password can change that code and run it. The protection is around the
-process, not inside it:
+from the repository, running on the server, by design.** It runs for anyone
+who can sign in, whatever their role: editors and owners can change that
+code in build mode, and a contributor's content is what it reads and
+renders, and in some sites runs. The protection is around the process, not
+inside it:
 
 - the server runs as the unprivileged user `node`. With `user: node` in
   compose, root is never involved. Started as root (some hosts mount a
@@ -790,7 +1415,9 @@ process, not inside it:
 What the site's code *can* reach is what the `node` user can inside that
 container: the data folder — so the stored keys, the deploy key and the
 session key — and the network. One install per site keeps that reach to the
-one site. Treat the password as the ability to run code in that container.
+one site. Give an account, whatever its role, only to someone you would
+trust with the repository and with what runs in that container ([What
+roles are, and what they aren't](#what-roles-are-and-what-they-arent)).
 
 ### What leaves the machine
 
@@ -803,7 +1430,9 @@ No telemetry, and nothing to Fiction Tribe. An install connects to:
 - **the AI providers**, only when a key is set and someone uses the assistant
   or image generation;
 - **Cloudflare or Vercel**, if someone puts the site online from the install;
-- **a mail server or webhook**, if the inbox's alerts or forwarding are set.
+- **a mail server or webhook**, if the inbox's alerts or forwarding are set;
+  and the mail server for invitations and new-password links, when
+  `GALLEY_SMTP_URL` is set.
 
 The full list, with what is sent, is the documentation site's
 [Security model](../apps/site/src/content/docs/running/security.md).
@@ -1046,8 +1675,9 @@ built the same way (`packages/core/src/hosting/`).
    (never a credential for it — the install makes its own deploy key), the
    publishing name and e-mail, the live address. Keys are **copied only on
    purpose**, ticked one by one; the default is none. "Nothing else leaves
-   this computer. The editor gets its own password and its own key for the
-   repository — this computer's aren't copied."
+   this computer. Whoever opens the editor's setup link creates its owner's
+   account, and the editor gets its own key for the repository — this
+   computer's aren't copied."
 5. **The yes.** Nothing is created without it (`confirm: true` on the route,
    `--yes` or the prompt on the command line). Each thing is named, tagged and
    recorded the moment it exists (`<home>/state/<siteId>/editor.json`), so a
@@ -1058,8 +1688,8 @@ built the same way (`packages/core/src/hosting/`).
    the handover with the setup code, writes `editor` (`{ "url", "host" }`) into
    the site's `galley.config.json` — a pending change, shown in Proof, to
    publish like any other — and offers **Finish setting it up**: the install's
-   first run, to choose its own password and add its own key to the
-   repository. For the self-run hosts, the person starts the files and
+   first run, where the person creates the install's owner account and adds
+   its own key to the repository. For the self-run hosts, the person starts the files and
    chooses **Check**.
 7. **Later**: **Upgrade to …** (a new image, the disk kept), **Back up**
    (on Fly.io, a snapshot of the disk that Fly.io keeps for 7 days; on
@@ -1144,6 +1774,38 @@ git repositories and started servers:
   (`core/test/install/access.test.ts`);
 - sessions and sign-out everywhere across a restart
   (`server/test/install.test.ts`, `core/test/install/state.test.ts`);
+- accounts, on a started hosted server: every route asked as an owner, an
+  editor, a contributor, nobody and the operator's token, against the one
+  table (`server/test/accounts-access.test.ts`); sign-in, the limits,
+  invitations, new-password links, "forgot my password", signing out,
+  switching off and removing, and the event stream
+  (`server/test/accounts.test.ts`, with a stand-in mail transport); the
+  preview's viewer cookie ending with the account
+  (`server/test/gateway-auth.test.ts`); the rules, the links running out
+  and the upgrade from one password (`core/test/install/people.test.ts`);
+  links built only from the public address, with and without it and with
+  and without a mail transport, and the e-mailed new-password link kept
+  from the owner (`server/test/accounts-links.test.ts`); the sign-in
+  limits with a clock that never really waits and a password check the
+  test holds: one e-mail from many clients, a simulated day of guesses
+  against the bound, an IPv6 `/64` as one client, the known browser, one
+  client firing many at once, floods within and past the waiting rooms
+  (`server/test/sign-in-gate.test.ts`); the known browser on a started
+  server, changing e-mails, the cap on signed-out browsers, and the
+  settings file and build mode by every route
+  (`server/test/accounts-hardening.test.ts`); the settings file and build
+  mode by every way into the engine, a role changed part-way, and work that
+  outlives its request (`core/test/install/caller-access.test.ts`,
+  `core/test/install/settings-records.test.ts`); guarded work for nobody
+  refused on a hosted install, a plugin's hooks included, and allowed for
+  the operator, the engine and a person (`core/test/install/caller-required.test.ts`); every assistant tool and
+  every MCP tool as an owner, an editor, a contributor and nobody
+  (`core/test/ai/tools-access.test.ts`, `server/test/mcp-access.test.ts`);
+  the screens for each role against the app's local stand-in server
+  (`web/test/install/accounts-*.test.ts`, with every screen walked as each
+  role in `accounts-build.test.ts`), which refuses the way the real server
+  does — the same 403 for a role, the same error bodies, and its sign-in
+  limits answering 429;
 - the preview through the one address on a started hosted server, including
   a WebSocket and cookie isolation (`server/test/hosted-gateway.test.ts`,
   `server/test/gateway.test.ts`);
@@ -1160,6 +1822,82 @@ git repositories and started servers:
   compose example matching the recipe
   (`core/test/hosting/compose-example.test.ts`); the hosted screens' words
   (`web/test/install/hosted-words.test.ts`).
+
+**In a real browser**, on 2026-11-24 on a Mac: two separate headless Chrome
+browsers against the real `galley serve` from the repository (hosted mode,
+a loopback port, a local bare repository as the site, no outgoing e-mail).
+The first opened the setup link, created the owner, was signed out and in
+again by e-mail and password, finished first run, and on the Install page
+invited a contributor: the link was shown once, with when it stops working.
+The second opened that link — the code left the address bar at once —
+chose a name and a password and landed in the site as a contributor: no
+Publish (the line about who publishes instead), no Inbox, Settings, Install
+or App settings; opening the Install page or the inbox by address showed
+"This isn't part of your account."; Your account showed its sections. None
+of those screens made a call the server refused. The owner then switched
+the contributor off: their browser was sent to sign-in on its next step and
+signing in again was refused. Not driven in a browser: the editor's role,
+the new-password page, "Forgot your password?", and the question an owner
+from before accounts is asked.
+
+**By `scripts/rehearse-accounts.mjs`** (`npx tsx scripts/rehearse-accounts.mjs`),
+on 2026-11-24 on a Mac: the real `galley serve`, from the repository, in
+hosted mode on a loopback port, with temporary data folders, a local bare
+repository as the site, a small SMTP sink as the mail server, and each
+"browser" its own cookies and client address. The main server has the
+editor's public address set (its own loopback port), and an operator's
+access token. All 19 steps passed:
+
+1. first run with the setup code: the owner's account, the site connected,
+   finished; the setup code refused a second time;
+2. `GET /api/meta` as the owner: the account, what it may do, sign-in by
+   e-mail;
+3. an editor and a contributor invited, each link used once from a fresh
+   browser; used and unknown codes refused with one sentence;
+4. the contributor edits an entry; Publish, the inbox, People, the Install
+   page and saving a key refused with 403; no key's last characters anywhere
+   they read;
+5. the site's settings file by every route: the contributor's five ways in
+   (the settings screen, a file write in build mode by its own name and in
+   other letter case, a file write in content mode, a delete as media) and
+   the editor's file write in build mode refused — the build-mode writes
+   with the build-mode sentence, the editor's with the settings sentence —
+   and the file unchanged; the owner's save works, the contributor's discard of the
+   owner's change is refused, and the owner's own discard puts the file
+   back;
+6. the editor and the owner each publish: two authors in the repository;
+7. the editor made a contributor: their very next Publish refused, without
+   signing in again;
+8. the contributor switched off: their next request 401, and their sign-in
+   gets the wrong-password sentence;
+9. outgoing e-mail: an invitation and "forgot my password" each send one
+   message whose link works; an unknown address gets the same answer and no
+   message;
+10. "Sign everyone out", then the owner back in with e-mail and password;
+11. the rest of People and Your account, with the bodies the web app sends;
+    a new-password link the owner makes arrives only in the person's inbox,
+    built from the public address, and isn't handed to the owner;
+12. the operator's access token publishes: work done for the operator,
+    not for nobody;
+13. the sign-in limits: after 10 guesses at the owner's e-mail from 10
+    addresses, the browser the owner signed in on before gets in at once,
+    and a browser never used here waits its turn and its delay, then gets
+    in;
+14. the log: no password, key, link code or e-mail address in it;
+15. the built web app: `/join`, `/new-password` and `/account` are the app's
+    own page, signed out and signed in;
+16. without the editor's public address, outgoing e-mail set up: the
+    `E-mail:` start-up line says no link is e-mailed until it is set;
+    "forgot my password" answers that nothing can be e-mailed; an invitation
+    asked for through another hostname is refused with the sentence that
+    names `GALLEY_PUBLIC_URL`; one made on the loopback address is shown,
+    built from it; no message reaches the mail server;
+17. an install from before accounts (data layout 1): the password alone,
+    the account completed, then sign-in by e-mail;
+18. `serve --reset-password` for a locked-out owner, twice: the first link
+    dies when the second is made; the second works once;
+19. a starter sent from first run: its first version carries the owner's
+    name, with no publishing name saved yet.
 
 **On the real image, on a Mac with Docker (linux/arm64), by hand and with a
 real browser:**
@@ -1223,6 +1961,18 @@ BuildKit, 4 GB):
 
 ### Not verified yet
 
+- **Accounts beyond the rehearsal and the browser pass above.** Not yet on
+  the real image. In a real browser, not yet: the editor's role, the
+  new-password page, "Forgot your password?", the question an owner from
+  before accounts is asked, **Change e-mail…**, a new-password link that is
+  e-mailed rather than shown, and what a contributor is offered where build
+  mode, custom code or the site's settings would be (the app's stand-in
+  server and the rehearsal cover these). Sending e-mail has not been tried against a
+  real mail server (only the rehearsal's local sink and a stand-in
+  transport). A link running out was tested with a moved clock in the
+  engine, not over HTTP. The sign-in limits have not been run end to end
+  against a real server (the tests and the app's stand-in server check
+  them); they live in memory, so a restart resets them.
 - **Any real run of "Host the editor online" on Google Cloud.** In
   particular: whether an address takes its labels on insert (the code sets
   them with setLabels when it didn't), the status code of a stale metadata

@@ -5,6 +5,7 @@ import { useServerEvent } from "@/lib/events";
 import { useQuery } from "@/lib/query";
 import { notify } from "@/lib/stores/toasts";
 import { count } from "./logic";
+import { useWhoPublishes } from "@/lib/may";
 
 export const visibilityKeys = {
   site: (siteId: string) => ["site", siteId, "visibility"] as const,
@@ -36,6 +37,7 @@ export function useSiteAudit(siteId: string) {
 /** Applies findings' fixes as ordinary edits, with an Undo in the toast. */
 export function useFixes(siteId: string, after: () => unknown) {
   const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
+  const publishes = useWhoPublishes();
 
   const fix = useCallback(
     async (findings: Finding[]) => {
@@ -50,7 +52,7 @@ export function useFixes(siteId: string, after: () => unknown) {
           notify({
             tone: "success",
             title: applied === 1 ? "Fixed" : `${count(applied, "fix", "fixes")} made`,
-            body: `${applied === 1 ? "The change is" : "The changes are"} waiting in Proof. Nothing is live until you publish.`,
+            body: `${applied === 1 ? "The change is" : "The changes are"} waiting in Proof. Nothing is live until ${publishes}.`,
             // Like the app's other Undo notices: it leaves by itself (held while pointed at), rather than staying over the panels until closed.
             duration: 10000,
             ...(result.undoId
@@ -73,7 +75,7 @@ export function useFixes(siteId: string, after: () => unknown) {
         setBusy(new Set());
       }
     },
-    [siteId, after],
+    [siteId, after, publishes],
   );
   return { fix, busy };
 }

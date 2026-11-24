@@ -71,6 +71,7 @@ import type { FormProviderInfo, ScriptIntegrationInfo } from "./kit";
 import type { CloudflareCheck, CloudflarePlan, ImportMode, ImportResolutions, ImportReview, Redirect, RedirectExportFormat, RedirectHealth, RedirectHostId, RedirectsOverview, RedirectTrace } from "./redirects/types";
 import type { AddSitesRequest, AddSitesResult, ScanSitesRequest, ScanSitesResult, SiteConnections, SiteGroup, SiteGroupInput, SitePatch, SiteUsageTotals } from "./types";
 import type { DeployKeyInfo, InstallInfo, RestoreUpload, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./install/types";
+import type { Account, AccountRole, AccountSession, Invitation, LinkPreview, OneTimeLink, People } from "./install/accounts";
 import type { EditorHostAbsent, EditorHostAccount, EditorHostInfo, HostedEditorBackup, HostedEditorPlan, HostedEditorRemoval, HostedEditorRequest, HostedEditorStatus } from "./hosting/types";
 
 /**
@@ -306,7 +307,13 @@ export interface RedirectImportBody {
 export interface ApiRoutes {
   // ── meta & auth ────────────────────────────────────────────────────────
   "GET /api/meta": { response: MetaInfo };
-  "POST /api/auth/login": { body: { password: string }; response: Ok };
+  /**
+   * Hosted mode: `email` says who is signing in. Without it the password is
+   * tried against the one account that has no e-mail yet (an install set up
+   * before accounts existed). A wrong e-mail and a wrong password get the
+   * same answer.
+   */
+  "POST /api/auth/login": { body: { password: string; email?: string }; response: Ok };
   "POST /api/auth/logout": { response: Ok };
   /** text/event-stream of ServerEvent. Not called through the JSON client. */
   "GET /api/events": { response: never };
@@ -833,11 +840,16 @@ export interface ApiRoutes {
 
   // ── the hosted install: first run (install/types.ts) ───────────────────
   // Hosted mode only; in local mode every one of these answers 404.
-  // Until a password exists they accept the one-time setup code as
-  // `Authorization: Bearer`; afterwards only a signed-in session.
+  // Until an owner exists they accept the one-time setup code as
+  // `Authorization: Bearer`; afterwards only an owner's session.
   "GET /api/setup": { response: SetupStatus };
-  /** Choose the sign-in password. Uses up the setup link and signs this browser in. */
-  "POST /api/setup/password": { body: { password: string }; response: SetupStatus };
+  /**
+   * Create the owner: their name, e-mail and password. Uses up the setup link
+   * and signs this browser in. (`name` and `email` are optional only so an
+   * older setup page keeps working: without them the owner is `incomplete`
+   * and the app asks for them after signing in.)
+   */
+  "POST /api/setup/password": { body: { password: string; name?: string; email?: string }; response: SetupStatus };
   /** The install's own deploy key: made on first use, replaced with `rotate`. Only ever the public half. */
   "POST /api/setup/deploy-key": { body: { rotate?: boolean }; response: DeployKeyInfo };
   /** Whether the repository can be reached and written to. Changes nothing. */
@@ -851,9 +863,9 @@ export interface ApiRoutes {
 
   // ── the hosted install: the Install page ───────────────────────────────
   "GET /api/install": { response: InstallInfo };
-  /** Change the sign-in password. Every other browser is signed out. */
+  /** The older name for `POST /api/account/password`: change your own password. */
   "POST /api/install/password": { body: { current: string; next: string }; response: Ok };
-  /** Sign out everywhere, this browser included. */
+  /** Sign yourself out everywhere, this browser included. Other people stay signed in. */
   "POST /api/auth/logout-all": { response: Ok };
   /**
    * Download a backup of the install's state, sealed with the passphrase
@@ -864,6 +876,65 @@ export interface ApiRoutes {
   "POST /api/install/restore/upload": { response: RestoreUpload };
   /** Put an uploaded backup back in place of the install's current state. */
   "POST /api/install/restore": { body: { upload: string; passphrase: string }; response: Job };
+
+  // ── the hosted install: people (install/accounts.ts) ───────────────────
+  // Hosted mode only; in local mode every one of these answers 404.
+  // Who may call what is install/route-access.ts.
+  /** The signed-in person. */
+  "GET /api/account": { response: AccountSession };
+  /**
+   * Change your own name or e-mail. Publishes from now on carry them.
+   * Changing the e-mail needs `password` (your current one): the e-mail is
+   * what a new-password link is sent to.
+   */
+  "PATCH /api/account": { body: { name?: string; email?: string; password?: string }; response: AccountSession };
+  // `email` above: an owner may change their own (with `password`), and so may an
+  // account that has none yet. Everyone else's e-mail is changed by an owner, in People.
+  /** Change your own password. Your other browsers are signed out; this one stays. */
+  "POST /api/account/password": { body: { current: string; next: string }; response: Ok };
+  "GET /api/people": { response: People };
+  /**
+   * Invite someone. The link is told once, here; it is also e-mailed when the
+   * server e-mails links (outgoing e-mail and its public address both set).
+   * A link is only ever built from that public address. Inviting an e-mail that already has an
+   * account, or an open invitation, is refused.
+   */
+  "POST /api/people/invitations": { body: { email: string; role: AccountRole }; response: { invitation: Invitation; link: OneTimeLink } };
+  /** Take an invitation back: its link stops working. */
+  "DELETE /api/people/invitations/:invitationId": { response: Ok };
+  /**
+   * Change someone's role or e-mail, or switch their account off or on.
+   * Switching off signs them out at once. The last owner can't be demoted
+   * or switched off.
+   */
+  "PATCH /api/people/:accountId": { body: { role?: AccountRole; disabled?: boolean; email?: string }; response: Account };
+  /** Remove an account. What they published keeps their name. The last owner can't be removed, and nobody removes themselves. */
+  "DELETE /api/people/:accountId": { response: Ok };
+  /** A link for someone to choose a new password (they forgot it). When the server e-mails links it goes to that person and `url` is null here; otherwise it is told once, here. Their old password works until they use it. */
+  "POST /api/people/:accountId/password-link": { response: OneTimeLink };
+  /** Sign one person out of every browser. */
+  "POST /api/people/:accountId/sign-out": { response: Ok };
+  /** Sign everyone out, this browser included. */
+  "POST /api/people/sign-out": { response: Ok };
+  // The three below need no sign-in: the link's code is the proof. The code
+  // travels in the request body, never in an address (addresses are logged).
+  /** What a one-time link is for. A used, expired or unknown code gets one and the same refusal. */
+  "POST /api/auth/link/check": { body: { code: string }; response: LinkPreview };
+  /**
+   * Use a one-time link: an invitation creates the account (`name` required),
+   * a new-password link sets the password and signs that person's other
+   * browsers out. Either way this browser is signed in and the link is spent.
+   */
+  "POST /api/auth/link": { body: { code: string; password: string; name?: string }; response: Ok };
+  /**
+   * "I forgot my password." When the server e-mails links (outgoing e-mail
+   * and its public address both set) and the address has an account, a
+   * new-password link is e-mailed. The answer is the same whether or not
+   * anything was sent, so it can't be used to find out who has an account.
+   * When the server doesn't e-mail links: `emailAvailable: false`, and the
+   * page tells the person to ask an owner for a link.
+   */
+  "POST /api/auth/forgot": { body: { email: string }; response: { ok: true; emailAvailable: boolean } };
 
   // ── "Host the editor online" (hosting/types.ts) ────────────────────────
   // Local mode only: a hosted install never creates other installs.

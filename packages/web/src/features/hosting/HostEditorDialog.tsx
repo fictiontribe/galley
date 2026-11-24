@@ -67,7 +67,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function WhereStep({ hosts, absent, value, onPick }: { hosts: EditorHostInfo[]; absent: Array<{ name: string; reason: string }>; value: string | null; onPick: (id: string) => void }) {
   return (
     <>
-      <p className="deploy-setup__lede">Choose where the editor runs. It’s yours: on your own account or computer, with its own password.</p>
+      <p className="deploy-setup__lede">Choose where the editor runs. It’s yours: on your own account or computer, with its own sign-in.</p>
       <fieldset className="deploy-choices deploy-choices--list">
         <legend className="g-sr">Where the editor runs</legend>
         {hosts.map((host, index) => (
@@ -365,7 +365,7 @@ function HandoverStep({ siteId, draft, update }: { siteId: string; draft: FlowDr
       </fieldset>
       <p className="deploy-setup__note">
         <Icon name="key" />
-        <span>Nothing else leaves this computer. The editor gets its own password and its own key for the repository — this computer’s aren’t copied.</span>
+        <span>Nothing else leaves this computer. Whoever opens the editor’s setup link creates its owner’s account, and the editor gets its own key for the repository — this computer’s aren’t copied.</span>
       </p>
     </>
   );
@@ -731,7 +731,7 @@ export function HostEditorDialog({ siteId, status, onStatus }: { siteId: string;
             </a>
           </div>
         ) : null}
-        <p className="host-text">Open first run to choose its password and connect the repository with the editor’s own key. The link works once.</p>
+        <p className="host-text">Open first run to create the owner’s account and connect the repository with the editor’s own key. The link works once.</p>
         <p className="deploy-setup__note">
           <Icon name="check" />
           <span>The site’s settings now note the editor’s address. That change shows in Proof, to publish like any other.</span>

@@ -14,7 +14,7 @@ import type { Job, SecretName } from "../types";
  * The version of the data folder's layout. Bumped with every change a new
  * image has to migrate; `install.json` records the one the folder is at.
  */
-export const INSTALL_SCHEMA_VERSION = 1;
+export const INSTALL_SCHEMA_VERSION = 2;
 
 /** Fewest characters a sign-in password may have. */
 export const MIN_INSTALL_PASSWORD_LENGTH = 12;
@@ -65,8 +65,8 @@ export type InstallFixed = "address" | "password" | "site" | "author" | "liveUrl
 export interface SetupStatus {
   /**
    * The screen first run is at:
-   *  password — nobody has chosen the password yet (the setup link is still good);
-   *  site     — the password is chosen, the site isn't connected;
+   *  password — there is no owner yet (the setup link is still good);
+   *  site     — the owner's account exists, the site isn't connected;
    *  details  — the site is connected; name, e-mail, live address and the assistant's key are offered;
    *  done     — first run is over. The setup link is dead.
    */
@@ -176,16 +176,24 @@ export interface RestoreUpload {
 export interface InstallMeta {
   /** A hosted server manages exactly one site. */
   singleSite: true;
-  /** First run isn't finished: /setup is where to go (with the setup link until a password exists). */
+  /** First run isn't finished: /setup is where to go (with the setup link until an owner exists). */
   setupNeeded: boolean;
   /**
-   * A sign-in password exists. With `setupNeeded` still true, first run was
-   * left half-way: the person signs in with the password and carries on,
-   * and the setup link is no longer what they need.
+   * The owner's account exists. With `setupNeeded` still true, first run was
+   * left half-way: the owner signs in and carries on, and the setup link is
+   * no longer what they need.
    */
   passwordSet?: boolean;
   /** The site's id, told only to someone signed in. */
   siteId: string | null;
+  /**
+   * What the sign-in page asks for: an e-mail and a password, or — on an
+   * install set up before accounts existed, until its owner adds an e-mail —
+   * the password alone. Absent from servers without accounts.
+   */
+  signInWith?: "email" | "password";
+  /** This server can e-mail a new-password link, so "Forgot your password?" works without an owner. */
+  passwordEmail?: boolean;
 }
 
 /** GET /readyz. Nothing here identifies the install. */

@@ -2,7 +2,9 @@
  * install — the hosted install: one server, one site, one data folder.
  * See docs/cloud-install.md.
  *
- *   openInstallState   the versioned state file (migrations, password, sessions, setup code)
+ *   accounts.ts / route-access.ts   the people who may sign in, and which role may call which route
+ *   openInstallState   the versioned state file (migrations, accounts, sessions, setup code)
+ *   createPeople       the people on it: sign-in, invitations, roles, one-time links (people.ts)
  *   createInstall      first run and the one site, as one engine object
  *   createInstallRegistry / createSingleSiteRegistry   the registry narrowed to one site
  *   readStartingValues the unattended starting values (environment, GALLEY_INSTALL_CONFIG)
@@ -10,7 +12,12 @@
  *   createStorageMeter "what is stored where", measured in the background
  */
 export * from "./types";
-export { openInstallState, mintSetupCode, sha256Hex, SITE_FOLDER, STATE_FILE, SESSION_LIFETIME_MS, type InstallSiteRecord, type InstallStateFile, type InstallStore, type OpenInstallStateOptions, type SessionStamp } from "./state";
+export * from "./accounts";
+export { BUILD_MODE_LEVEL, SITE_SETTINGS_LEVEL, SITE_METHOD_ACCESS, SITE_SETTINGS_RECORDS, ROUTE_ACCESS, ROLE_REFUSAL, levelFor, roleMayCall, siteMethodLevel, type GuardedSiteMethod, type RouteAccess } from "./route-access";
+export { BUILD_MODE_REFUSAL, NO_CALLER_REFUSAL, SITE_SETTINGS_REFUSAL, asEngine, asOperator, callerMay, callerRefusal, currentCaller, isSiteSettingsPath, outsideAnyPerson, requireBuildMode, requireCallerForGuardedWork, requireLevel, requireSiteSettings, withCaller, type Caller } from "./caller";
+export { openInstallState, mintSetupCode, sha256Hex, hasOwner, spendSetupCode, SITE_FOLDER, STATE_FILE, SESSION_LIFETIME_MS, REVOKED_SESSIONS_KEPT, type InstallSiteRecord, type InstallStateFile, type InstallStore, type OpenInstallStateOptions, type SessionStamp, type StoredAccount, type StoredLink } from "./state";
+export { createPeople, publicAccount, normalizeEmail, cleanName, ASK_ANOTHER_OWNER, LAST_OWNER, LINK_REFUSED, EMAIL_LIMIT, NAME_LIMIT, OWN_EMAIL_REFUSAL, WRONG_CURRENT_PASSWORD, type MadeLink, type PeopleService, type PeopleOptions, type SignInResult } from "./people";
+export { invitationEmail, passwordLinkEmail } from "./account-mail";
 export { MIGRATIONS, migrate, type Migration, type MigrationContext } from "./migrate";
 export { hashPassword, verifyPassword, passwordProblem, SCRYPT_PARAMS, MAX_INSTALL_PASSWORD_LENGTH } from "./password";
 export { normalizeRepository, redactAddress, deployKeyPage, tokenUserName, type RepositoryAddress } from "./address";

@@ -7,6 +7,11 @@ import { useEdits } from "../file/hooks";
 import { FilePicker } from "./FilePicker";
 import { MessageEditor } from "./MessageEditor";
 import { PageAddress } from "./PageAddress";
+import { BUILD_MODE_LEVEL } from "@galley/core/install/route-access";
+import { whoMayFirst } from "@/lib/may";
+
+/** Why custom code isn't offered to someone whose role doesn't include changing the site's code. */
+export const CODE_BY_OTHERS = `${whoMayFirst(BUILD_MODE_LEVEL)} can add or change custom code.`;
 
 export interface ActionBodyProps {
   siteId: string;
@@ -14,6 +19,8 @@ export interface ActionBodyProps {
   action: FormAction;
   fields: readonly FormField[];
   allowBuild: boolean;
+  /** The site allows custom code, but this person's role doesn't include it. */
+  buildByOthers?: boolean;
   hasMessage: boolean;
 }
 
@@ -58,7 +65,7 @@ function Params({ index, params }: { index: number; params: { [key: string]: str
 }
 
 /** The settings of one after-sending step, by its type. */
-export function ActionBody({ siteId, index, action, fields, allowBuild, hasMessage }: ActionBodyProps) {
+export function ActionBody({ siteId, index, action, fields, allowBuild, buildByOthers = false, hasMessage }: ActionBodyProps) {
   const edits = useEdits();
   const [picking, setPicking] = useState(false);
   const p = (...rest: Array<string | number>) => ["afterSubmit", index, ...rest];
@@ -152,7 +159,7 @@ export function ActionBody({ siteId, index, action, fields, allowBuild, hasMessa
               <Textarea mono rows={6} maxRows={20} value={action.code} spellCheck={false} onChange={(event) => edits.type(p("code"), event.target.value, true)} onBlur={() => edits.commit(p("code"))} />
             </Field>
           ) : (
-            <p className="g-hint">Custom code can only be changed on sites where build mode is allowed. It stays as it is.</p>
+            <p className="g-hint">{buildByOthers ? `${CODE_BY_OTHERS} It stays as it is.` : "Custom code can only be changed on sites where build mode is allowed. It stays as it is."}</p>
           )}
         </>
       );

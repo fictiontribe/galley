@@ -39,6 +39,7 @@ import type { PreviewGateway } from "../workspace/preview/proxy";
 import { createJobTracker } from "./jobs";
 import { checkLook, scaffoldSite } from "./scaffold-site";
 import { openSiteService, type OpenSite } from "./service";
+import { outsideAnyPerson } from "../install/caller";
 import { listStarters, starterPreviewFile } from "./starters";
 import { readSiteFacts, THUMBNAIL_MAX_BYTES, THUMBNAIL_TYPES, type FactsResult } from "./facts";
 import { createPreviewPolicy, DEFAULT_PREVIEW_POLICY, type PreviewPolicy, type PreviewPolicyOptions } from "./preview-policy";
@@ -301,7 +302,8 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
 
     if (pending) return pending;
     const promise = (async () => {
-      const service = await openSiteService(root, {
+      // The open site serves everyone after whoever asked first: its watcher, timers and queues are made as nobody.
+      const service = await outsideAnyPerson(() => openSiteService(root, {
         id,
         events: options.events,
         overlayScript: options.overlayScript,
@@ -316,7 +318,7 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
         ...(options.captureAddress ? { captureAddress: () => options.captureAddress?.(id) ?? null } : {}),
         ...(options.liveUrl ? { liveUrl: () => options.liveUrl?.(id) ?? null } : {}),
         ...(options.addLockfile === false ? { addLockfile: false } : {}),
-      });
+      }));
 
       services.set(id, service);
       lastUsed.set(id, Date.now());

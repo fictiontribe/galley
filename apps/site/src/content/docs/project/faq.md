@@ -62,7 +62,7 @@ Not verified yet. Everything has been built and run on macOS; Windows and Linux 
 
 ## When isn't Galley the right fit?
 
-When you need per-user roles and approval chains beyond pull requests, scheduled publishing, multi-locale editorial workflows, content delivered to apps through an API, or a site that isn't in a git repository and won't be. Also, today: one shared password per hosted install, with no accounts or single sign-on ([Security model](/docs/running/security/#not-covered-yet)).
+When you need per-user roles and approval chains beyond pull requests, scheduled publishing, multi-locale editorial workflows, content delivered to apps through an API, or a site that isn't in a git repository and won't be. Also, today: a hosted install has accounts with three roles (owner, editor, contributor), but no single sign-on, one shared draft, and roles that keep people out of each other's way rather than out of the server ([Security model](/docs/running/security/#not-covered-yet)).
 
 ## Is it ready?
 

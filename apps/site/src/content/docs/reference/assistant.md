@@ -44,7 +44,7 @@ The assistant works through tools, and every tool goes through the same engine f
 | `validate` | Check required fields, types, missing images, broken internal links. |
 | `ask_user` | Ask one short question with two to four answers, and stop — never twice in a row. |
 
-**Build mode** adds `list_files`, `read_file`, `write_file`, `edit_file` (exact-string replace), `run_build` (the site's own build command) and `save_site_config` (rewrite `galley.config.json`). A site can turn build mode off with `"ai": { "allowBuild": false }` — see [Modes and the write surface](/docs/concepts/modes/).
+**Build mode** adds `list_files`, `read_file`, `write_file`, `edit_file` (exact-string replace), `run_build` (the site's own build command) and `save_site_config` (rewrite `galley.config.json`). A site can turn build mode off with `"ai": { "allowBuild": false }` — see [Modes and the write surface](/docs/concepts/modes/). On a hosted install the assistant offers each person only the tools their role includes, and checks again on every call: the build-mode tools need an editor or owner, and `save_site_config` an owner ([Security model](/docs/running/security/#a-hosted-install)).
 
 Source: [`packages/core/src/ai/tools/`]({repository}/tree/main/packages/core/src/ai/tools).
 

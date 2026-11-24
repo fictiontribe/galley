@@ -89,6 +89,18 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
   unauthorizedHandler = handler;
 }
 
+let forbiddenHandler: (() => void) | null = null;
+
+/**
+ * The app installs this once: a refusal (403) on a hosted install with
+ * accounts may mean the person's role changed while the page was open, so
+ * the app asks again who they are and what they may do. The refusal itself
+ * is still shown where it happened, in the server's words.
+ */
+export function setForbiddenHandler(handler: (() => void) | null): void {
+  forbiddenHandler = handler;
+}
+
 /** Something other than a JSON call (the event stream) found the session gone. */
 export function reportUnauthorized(): void {
   unauthorizedHandler?.();
@@ -131,7 +143,7 @@ export function buildUrl<K extends ApiRouteKey>(
 }
 
 /** Routes whose 401 is handled where they're called (sign-in, the session hand-off, /open's own explanation, a wrong current password). */
-const AUTH_ROUTES: ReadonlySet<string> = new Set<JsonRoute>(["POST /api/auth/login", "GET /api/meta", "GET /api/open", "POST /api/install/password"]);
+const AUTH_ROUTES: ReadonlySet<string> = new Set<JsonRoute>(["POST /api/auth/login", "GET /api/meta", "GET /api/open", "POST /api/install/password", "POST /api/account/password", "PATCH /api/account", "POST /api/auth/link/check", "POST /api/auth/link", "POST /api/auth/forgot"]);
 
 /**
  * A hosted install's one-time setup code, from the setup link. Held in memory
@@ -187,6 +199,7 @@ async function readError(route: string, response: Response): Promise<ApiFailure>
 export async function failureFrom(route: ApiRouteKey, response: Response): Promise<ApiFailure> {
   const failure = await readError(route, response);
   if (!handledInPlace(route) && isUnauthorized(response.status, failure.shape)) unauthorizedHandler?.();
+  else if (response.status === 403) forbiddenHandler?.();
   return failure;
 }
 

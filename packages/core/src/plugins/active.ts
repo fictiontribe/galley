@@ -33,7 +33,7 @@ export function activePlugins(): ActivePlugins | null {
 let hosted = false;
 
 /**
- * Hosted mode (a shared server behind a password): a site's own plugins and
+ * Hosted mode (a shared server people sign in to): a site's own plugins and
  * adapters are not loaded unless the operator sets GALLEY_ALLOW_SITE_PLUGINS=1,
  * because anyone who can open a site there would otherwise run code on it.
  */

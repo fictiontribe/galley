@@ -7,8 +7,82 @@ entry says how.
 
 ## Unreleased
 
+A hosted install has accounts instead of one shared password. If you run a
+hosted install today, read **Changed** before upgrading. The desktop app and
+local mode have no accounts and are unchanged.
+
 ### Added
 
+- **Accounts and roles on a hosted install.** Each person signs in with their
+  own e-mail and password, as an **Owner** (everything), an **Editor**
+  (changes the site and publishes it, reads the inbox) or a **Contributor**
+  (changes the site and sees Proof; an editor or owner publishes). One table
+  decides which role may call which route
+  (`packages/core/src/install/route-access.ts`), and the app hides what a role
+  can't use. First run now creates the owner's account; `GALLEY_OWNER_NAME`
+  and `GALLEY_OWNER_EMAIL` give it a name and e-mail on an unattended start.
+- **Build mode and the site's settings, by role, at every way in.** The
+  engine checks both where the write happens, whichever way a request comes
+  — a screen, a file write, the assistant, an AI tool. Build mode (the
+  site's code and templates, custom code in a form, saving the brand
+  outside the content files) needs an editor or owner; a contributor works
+  in content mode, and a request for build mode is refused in plain words.
+  The site's settings file — and discarding or undoing a change to it, and
+  undoing a publish that changed it — is an owner's. The few values the
+  editor records for itself inside an allowed action (the live address
+  after putting the site online, where the redirects list lives) are
+  written without opening the rest of the file. The assistant
+  offers each person only the tools their role includes.
+- **People**, on the Install page, for owners: invite someone (a link shown
+  once, good for 7 days), change a role, change someone's e-mail, make a
+  new-password link (good for 60 minutes; e-mailed to the person and not
+  shown to the owner when the server can e-mail it, shown to copy when it
+  can't), sign one person or everyone out, switch an account off or on,
+  remove it. The last owner who can sign in always stays.
+- **Your account**: your name, your password, and **Sign out everywhere**
+  for yourself. An owner changes their own e-mail here, with their
+  password; editors and contributors ask an owner. An account with no
+  e-mail yet adds one.
+- **E-mail for invitations and new-password links**, and **Forgot your
+  password?** on the sign-in page, when `GALLEY_SMTP_URL`,
+  `GALLEY_MAIL_FROM` and the editor's public address, `GALLEY_PUBLIC_URL`,
+  are set: a link is only ever built from that address. Without the public
+  address, a link is shown only on a trial on one computer (a loopback
+  address), and making one anywhere else is refused until it is set.
+  Without e-mail, owners send each link themselves. The `E-mail:` line
+  `galley serve` prints says which case it is. Not yet tried against a real
+  mail server.
+- **Each publish carries its author**: a signed-in person's publishes and
+  undos are recorded with their own name and e-mail.
+- **Sign-in limits.** A client is an IPv4 address or a whole IPv6 `/64`,
+  held, before its password is checked, to 2 checks at once, 20 attempts a
+  minute (successful ones too) and 5 failures a minute; 10 failed sign-ins
+  for one e-mail from one client in 15 minutes. One e-mail's sign-ins are
+  checked one at a time from everywhere, 3 more waiting, and after 10
+  failures each waits a delay that grows from 1 to 30 seconds: at most
+  about 2,900 guesses a day at one account. A browser that has signed in
+  before keeps a cookie of its own (never a session) and isn't held up; an
+  unknown browser may have to wait while an account is being guessed at,
+  and a one-time link always works. Password checks run 2 at a time, shared
+  out client by client with known browsers first, and "wait" comes only
+  past 256 waiting. Changing your password, and the password typed to
+  change an e-mail, go through the same limits. Plus limits on "forgot my
+  password".
+- **Guarded work needs someone.** On a hosted install, publishing, the
+  site's settings file and writing outside the content happen only for a
+  signed-in person, the operator's token or the engine's own steps; work
+  done for nobody — a plugin reacting to events, or anything it leaves
+  running — is refused.
+- **Sign-outs are kept within a cap** (10,000 signed-out browsers). Past it,
+  a sign-out signs that person out everywhere; a longer list is trimmed at
+  start-up by signing everyone out once, with a line in the log.
+- The HTTP API gains `/api/account`, `/api/people/*`, `/api/auth/link`,
+  `/api/auth/link/check` and `/api/auth/forgot` (`PATCH /api/people/:accountId`
+  takes a `role`, `disabled` or `email`; a `OneTimeLink`'s `url` is `null`
+  when the link was e-mailed to someone else); `POST /api/auth/login` takes
+  an `email`; `POST /api/setup/password` takes the owner's `name` and
+  `email`; `GET /api/meta` gains `account`, `install.signInWith` and
+  `install.passwordEmail`.
 - **Host the editor online on Google Cloud.** A fourth place for the
   editor: a virtual machine of its own in your Google Cloud project, with a
   20 GB disk, a network of its own, one firewall rule for the web ports (no
@@ -24,6 +98,30 @@ entry says how.
 
 ### Changed
 
+- **Upgrading an install** (its data layout goes from 1 to 2): the shared
+  password becomes one owner with the same password and no name or e-mail
+  yet, who signs in with the password alone and is asked once for the rest.
+  **Everyone is signed out once**; old cookies and the preview's old viewer
+  cookies are refused. The old state file is kept as
+  `install.json.schema-1.bak`.
+- **`galley serve --reset-password`** now prints a one-time new-password link
+  for the owner (`--email <owner>` when there are several) and no longer
+  signs everyone out or forgets the password; the owner's old password works
+  until the link is used. With no owner yet it still prints a setup link.
+- **`POST /api/install/password`** changes the signed-in person's own
+  password; with the operator's token (`GALLEY_TOKEN`) it is refused (403).
+  `POST /api/auth/logout-all` signs out only the person calling it (with the
+  token: everyone).
+- A publish made over MCP or with the operator's token carries the install's
+  publishing name, not a person's.
+- The Install page is for owners. Editors and contributors don't see it;
+  their password and **Sign out everywhere** are on **Your account**.
+- A restore signs everyone out, and the backup's own people and passwords
+  apply from then on.
+- For anyone who can't read the inbox, the live event stream carries that a
+  form was submitted, never what was sent.
+- The last characters of a stored key are shown only to owners; everyone
+  else still sees whether a key is set.
 - **The macOS desktop app is signed and notarised by Apple.** It opens like
   any other downloaded app, on Apple silicon and Intel.
 - **Desktop installers for Windows and Linux are built on every release**,
@@ -32,6 +130,7 @@ entry says how.
   and walked through a site before the installer is kept, and on Windows
   the app is installed and opened. No person has used it on Windows or Linux
   yet.
+
 
 ### Fixed
 

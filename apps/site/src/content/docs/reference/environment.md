@@ -22,9 +22,9 @@ This page is for developers and whoever runs Galley. Command-line options beat v
 | --- | --- | --- |
 | `GALLEY_HOST` | `127.0.0.1` | The interface to listen on. Anything but a loopback address means a hosted install. `galley serve` defaults to `0.0.0.0`. |
 | `GALLEY_PORT` | `4400` | The port. On your own computer a busy port moves to the next free one (and says so); on a hosted install and for the desktop app it is an error. |
-| `GALLEY_PUBLIC_URL` | — | Hosted: the address people use, e.g. `https://cms.example.com`. Used for the Host and Origin checks, the preview's and live comparison's addresses, the forms' capture address and the MCP endpoint. Without it the server answers any hostname and there is no preview. |
-| `GALLEY_TRUST_PROXY` | off | `1`: honour `X-Forwarded-Proto` and `X-Forwarded-For` from a reverse proxy you control. |
-| `GALLEY_TOKEN` | random | On your own computer: the session token in the printed link (32 random bytes when unset). Hosted: optional; set it to allow `Authorization: Bearer` for scripts. 16 characters or more. On a hosted install the site's own commands never see it. |
+| `GALLEY_PUBLIC_URL` | — | Hosted: the address people use, e.g. `https://cms.example.com`. Used for the Host and Origin checks, the preview's and live comparison's addresses, the forms' capture address and the MCP endpoint, and every invitation and new-password link is built from it. Without it the server answers any hostname, there is no preview, no link is e-mailed, and a link can be made only from a loopback address. Set it before inviting anyone. |
+| `GALLEY_TRUST_PROXY` | off | `1`: honour `X-Forwarded-Proto` and `X-Forwarded-For` from a reverse proxy you control. Every limit counts a client by the address this gives: an IPv4 address, or a whole IPv6 `/64`. Without it, behind a proxy, everyone is one client; with it and no proxy in front, a request can claim any address, so set it only behind a proxy of your own. |
+| `GALLEY_TOKEN` | random | On your own computer: the session token in the printed link (32 random bytes when unset). Hosted: optional; set it to allow `Authorization: Bearer` for scripts, which then reach every route except a person's own account, People, backups, restore and opening the preview, and on `/mcp`; what it does is the operator's, so it may publish and change the site's settings. 16 characters or more. On a hosted install the site's own commands never see it. |
 | `GALLEY_PREVIEW_PORTS` | any free port | On your own computer: a port range for the previews and their proxies, e.g. `4410-4429`. Ignored on a hosted install, which serves the preview through its one port by hostname (it says so at start-up). |
 | `GALLEY_DESKTOP` | off | `1`: the desktop app is the host (`/api/meta` says `desktop: true`). Set by the app. |
 | `GALLEY_SITE` | the current folder | `pnpm dev` inside the repository: the site to open. |
@@ -37,8 +37,10 @@ Read by `galley serve`. The ones marked *starting value* are used once, only whi
 | --- | --- | --- |
 | `GALLEY_PREVIEW_URL` | worked out from `GALLEY_PUBLIC_URL` | Where the preview is served, on the same port, by hostname: `cms.example.com` gives `https://cms-preview.example.com`; a two-part name or `*.localhost` gives `preview.<name>`. |
 | `GALLEY_LIVE_VIEW_URL` | worked out the same way | Where the live site is shown beside the preview: `https://cms-live.example.com`. |
-| `GALLEY_PASSWORD` | — | *Starting value.* The first sign-in password, 12 characters or more, used only while none exists. Without it the server prints a one-time setup link. Read from the environment only. |
-| `GALLEY_SETUP_TOKEN` | a code is made and printed | The one-time setup code to use instead, 24 characters or more. Not printed again at start-up. Once used, it stays dead: after `--reset-password` a fresh link is made instead. |
+| `GALLEY_PASSWORD` | — | *Starting value.* The first owner's password, 12 characters or more, used only while there is no owner. Without it the server prints a one-time setup link. Never put back by `--reset-password`, and ignored with a notice once the owner has changed their password. |
+| `GALLEY_OWNER_NAME` | — | *Starting value.* The first owner's name, with `GALLEY_PASSWORD` (without it, ignored with a notice). Also fills in the name of an owner carried over from before accounts, once. |
+| `GALLEY_OWNER_EMAIL` | — | *Starting value.* The e-mail the first owner signs in with, with `GALLEY_PASSWORD`. Without these two the owner has no name or e-mail yet, and the app asks for them after sign-in. |
+| `GALLEY_SETUP_TOKEN` | a code is made and printed | The one-time setup code to use instead, 24 characters or more. Not printed again at start-up. Once used, it stays dead: whenever a setup link is needed again, a fresh one is made instead. |
 | `GALLEY_SETUP_TOKEN_SHA256` | — | Only the setup code's SHA-256 (64 hexadecimal characters), so the code itself never reaches the server. |
 | `GALLEY_INSTALL_CONFIG` | — | One JSON file with any of the starting values ([its shape](/docs/running/hosted/#start-it-unattended)). The environment wins over it. Make it readable by the server's user only. |
 | `GALLEY_SITE_REPOSITORY` | — | *Starting value.* The site's repository: `git@github.com:example/site.git` or `https://…`. |
@@ -48,8 +50,8 @@ Read by `galley serve`. The ones marked *starting value* are used once, only whi
 | `GALLEY_SITE_FOLDER` | the top of the repository | *Starting value.* The folder inside the repository that holds the site, e.g. `apps/site`. |
 | `GALLEY_SITE_STARTER` | — | *Starting value.* Send this starter to an empty repository as its first version, instead of copying what it holds. |
 | `GALLEY_SITE_LIVE_URL` | — | *Starting value.* The site's live address, which Proof compares against. Kept in the install's own state, never written into the site; the site's own `urls.production` wins when it has one. |
-| `GALLEY_AUTHOR_NAME` | — | *Starting value.* The name every publish is recorded with. Needs `GALLEY_AUTHOR_EMAIL`. |
-| `GALLEY_AUTHOR_EMAIL` | — | *Starting value.* The e-mail every publish is recorded with. Needs `GALLEY_AUTHOR_NAME`. |
+| `GALLEY_AUTHOR_NAME` | — | *Starting value.* The install's publishing name: what a publish nobody signed in started (a script, an AI tool over MCP) is recorded with. A signed-in person publishes under their own name. Needs `GALLEY_AUTHOR_EMAIL`. |
+| `GALLEY_AUTHOR_EMAIL` | — | *Starting value.* The install's publishing e-mail, with `GALLEY_AUTHOR_NAME`. |
 | `GALLEY_SITE_DIR` | — | Upgrading a data folder from before single-site installs that holds several sites: which site's folder to keep. Without it such a folder is refused at start-up, in one sentence. |
 | `GALLEY_ALLOW_LOCAL_REPOSITORIES` | off | `1`: the repository may be a folder on the server itself (trials). Off because it would let the editor read any repository on the server's disk. |
 | `GALLEY_PREVIEW_MEMORY_MB` | no limit | Node's memory ceiling (its max-old-space-size option) for the site's own preview, build and install commands, added after any `NODE_OPTIONS` of yours. Never applied to the server's own process. The generated files set `1024`. |
@@ -100,8 +102,8 @@ Keys are looked for in this order: the site's own key (Site settings › Connect
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `GALLEY_SMTP_URL` | — | The mail server for the inbox's e-mail alerts: `smtp://user:pass@host:587`, or `smtps://` for TLS from the start. Needs `GALLEY_MAIL_FROM`. |
-| `GALLEY_MAIL_FROM` | — | The sender address for those alerts. Needs `GALLEY_SMTP_URL`. |
+| `GALLEY_SMTP_URL` | — | The mail server for the inbox's e-mail alerts and, on a hosted install, for invitations, new-password links and **Forgot your password?** ([Outgoing e-mail](/docs/running/hosted/#outgoing-e-mail)): `smtp://user:pass@host:587`, or `smtps://` for TLS from the start. Needs `GALLEY_MAIL_FROM`; links are e-mailed only when `GALLEY_PUBLIC_URL` is set too. |
+| `GALLEY_MAIL_FROM` | — | The sender address for those e-mails. Needs `GALLEY_SMTP_URL`. |
 | `WORDPRESS_APP_PASSWORD` | — | `galley import wordpress --user`: the WordPress application password, to read drafts and private pages (another variable with `--app-password-env`). |
 
 ## Plugins and adapters

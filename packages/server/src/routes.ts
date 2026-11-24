@@ -30,6 +30,7 @@ import { visibilityRoutes } from "./visibility";
 import { importRoutes, importsOf } from "./import";
 import { siteBrandRoutes } from "./sitebrand";
 import { installRoutes } from "./install-routes";
+import { accountsMeta, accountsRoutes, eventAccess, signInWithAccount, signOutThisBrowser } from "./accounts-routes";
 import { previewEntry } from "./preview-entry";
 import { hostingRoutes } from "./hosting-routes";
 import { assertInside, listFolders, looksLikeSite, realDirectory } from "./fs-list";
@@ -188,6 +189,9 @@ export const routes: RouteTable = {
   // ── the hosted install: first run and the Install page (install-routes.ts)
   ...installRoutes,
 
+  // ── the hosted install: people and their accounts (accounts-routes.ts) ─
+  ...accountsRoutes,
+
   // ── "Host the editor online" (hosting-routes.ts) ──────────────────────
   ...hostingRoutes,
 
@@ -207,9 +211,18 @@ export const routes: RouteTable = {
 
     // A hosted install: one site, and whether first run is over (its id only to someone signed in).
     if (mode === "hosted" && ctx.options.install) meta.install = ctx.options.install.meta(authenticated);
+    // A hosted install: who is signed in, and whether "Forgot your password?" can e-mail a link (accounts-routes.ts).
+    if (mode === "hosted" && ctx.options.install && meta.install) {
+      const { account, passwordEmail } = accountsMeta(c, ctx);
+
+      meta.install.passwordEmail = passwordEmail;
+      if (account) meta.account = account;
+    }
     return meta;
   },
   "POST /api/auth/login": async (c, ctx) => {
+    // A hosted install: each person's own e-mail and password (accounts-routes.ts).
+    if (ctx.options.mode === "hosted" && ctx.options.install) return signInWithAccount(c, ctx);
     if (ctx.options.mode !== "hosted" || (!ctx.options.password && !ctx.session.verifyPassword)) {
       throw invalid("This app doesn't use a password here. Open the link printed when it started.");
     }
@@ -227,13 +240,15 @@ export const routes: RouteTable = {
     return ok;
   },
   "POST /api/auth/logout": async (c, ctx) => {
+    // A hosted install writes a sign-out down only for a session that still counts (accounts-routes.ts).
+    if (ctx.options.mode === "hosted" && ctx.options.install) return signOutThisBrowser(c, ctx);
     const nonce = sessionNonce(c, ctx.session);
 
     if (nonce) ctx.session.revoked.add(nonce);
     deleteCookie(c, ctx.session.cookieName, { path: "/", ...(ctx.session.secure ? { secure: true } : {}) });
     return ok;
   },
-  "GET /api/events": async (c, ctx) => eventStream(c, ctx.services.events, ctx.streams, ctx.options.heartbeatMs),
+  "GET /api/events": async (c, ctx) => eventStream(c, ctx.services.events, ctx.streams, ctx.options.heartbeatMs, eventAccess(c, ctx)),
 
   // ── settings ───────────────────────────────────────────────────────────
   "GET /api/settings": async (_c, ctx) => publicSettings(await ctx.services.settings.get()),

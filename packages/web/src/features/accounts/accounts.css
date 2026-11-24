@@ -1,0 +1,46 @@
+/* People on a hosted install: the account button, Your account, People, one-time links. Tokens only (brand/tokens.css). */
+
+/* Who is signed in, at the end of the top bar. */
+.accounts-menu {
+  display: inline-flex; align-items: center; gap: var(--space-2); min-block-size: 28px; padding: 2px var(--space-2) 2px 2px;
+  border: var(--border-hair) solid transparent; border-radius: var(--radius-pill); background: none; color: var(--ink-primary); font: inherit; font-size: var(--text-sm); cursor: pointer;
+}
+.accounts-menu:hover, .accounts-menu[aria-expanded="true"] { border-color: var(--border-default); background: var(--surface-sunken); }
+.accounts-menu:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.accounts-menu__initials {
+  display: inline-grid; place-items: center; inline-size: 24px; block-size: 24px; border-radius: 50%;
+  background: var(--accent-subtle); color: var(--accent-text); font-size: var(--text-2xs); font-weight: var(--weight-semibold); letter-spacing: 0.02em;
+}
+.accounts-menu__name { max-inline-size: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Where the Publish button would be, for someone who doesn't publish. */
+/* One line beside Proof at any width the bar has: the short words only (the full sentence is its title and screen-reader text). */
+.accounts-no-publish { color: var(--ink-secondary); font-size: var(--text-sm); line-height: var(--leading-body); white-space: nowrap; }
+
+/* Your account. */
+.accounts-role { display: flex; align-items: baseline; gap: var(--space-3); margin: 0; color: var(--ink-secondary); line-height: var(--leading-body); }
+
+/* People. */
+.accounts-subtitle { margin: var(--space-4) 0 0; font-weight: var(--weight-semibold); font-size: var(--text-md); }
+.accounts-table td, .accounts-table th { vertical-align: middle; }
+.accounts-person { display: grid; gap: 2px; min-inline-size: 0; }
+.accounts-person__name { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; font-weight: var(--weight-medium); }
+.accounts-person__email { color: var(--ink-tertiary); font-size: var(--text-xs); overflow-wrap: anywhere; font-weight: var(--weight-regular); }
+.accounts-row--off .accounts-person__name { color: var(--ink-secondary); }
+.accounts-when { white-space: nowrap; color: var(--ink-secondary); }
+.accounts-actions { text-align: end; inline-size: 1%; }
+.accounts-roles { display: grid; gap: var(--space-2); }
+.accounts-invitations { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.accounts-invitation { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--space-4); border: var(--border-hair) solid var(--border-subtle); border-radius: var(--radius-md); }
+
+/* A one-time link, shown once. */
+.accounts-link { display: grid; gap: var(--space-3); }
+.accounts-link__lede { margin: 0; line-height: var(--leading-body); }
+.accounts-link__row { display: flex; gap: var(--space-2); align-items: center; }
+.accounts-link__url {
+  flex: 1; min-inline-size: 0; padding: var(--space-2) var(--space-3); border: var(--border-hair) solid var(--border-default); border-radius: var(--radius-sm);
+  background: var(--surface-sunken); color: var(--ink-primary); font-size: var(--text-xs);
+}
+.accounts-link__url:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.accounts-link__note { display: flex; gap: var(--space-2); align-items: flex-start; margin: 0; color: var(--warning-ink); font-size: var(--text-sm); line-height: var(--leading-body); }
+.accounts-link__note > .g-mark { flex: none; margin-block-start: 2px; }

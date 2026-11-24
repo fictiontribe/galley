@@ -21,6 +21,7 @@ import { TestRun } from "../test/TestRun";
 import { UseThisForm } from "../embed/UseThisForm";
 import { BuilderContext, createBuilderStore, useBuilder, type BuilderTab } from "./builderState";
 import { Palette } from "./Palette";
+import { SettingsLink } from "@/features/accounts/SettingsLink";
 
 const EXAMPLES = ["Add a company size dropdown with five ranges and make phone optional", "Send it to HubSpot as well, mapped to the usual names", "Split it into two steps: about you, then your project"];
 
@@ -123,9 +124,9 @@ function BuilderBody({ siteId, entry }: { siteId: string; entry: Entry }) {
         <SaveStatus />
         <span className="g-toolbar__spacer" />
         {capturing ? (
-          <Link className="g-btn g-btn--quiet g-btn--sm" to={`/sites/${siteId}/inbox?form=${encodeURIComponent(formId)}`}>
+          <SettingsLink route="GET /api/sites/:siteId/inbox" className="g-btn g-btn--quiet g-btn--sm" to={`/sites/${siteId}/inbox?form=${encodeURIComponent(formId)}`} fallback={null}>
             See submissions
-          </Link>
+          </SettingsLink>
         ) : null}
         <UseThisForm siteId={siteId} formId={formId} />
       </header>

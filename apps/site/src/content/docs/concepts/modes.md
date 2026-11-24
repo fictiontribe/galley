@@ -39,6 +39,7 @@ In content mode, a write anywhere else is refused:
 - **The assistant**: each conversation starts in content mode; the person can switch it to build mode. When they do, the model is told, and the build-only tools (`list_files`, `read_file`, `write_file`, `edit_file`, `run_build`, `save_site_config`) become available. The tools being offered is a convenience for the model — the engine checks the mode again on every write, so a tool call in the wrong mode fails whatever the prompt said.
 - **`"ai": { "allowBuild": false }`** turns the assistant's build mode off for the site: switching is refused with *Build mode is turned off for this site, so the assistant can change content only.*
 - **The HTTP API**: `PUT /api/sites/<id>/file` takes `mode`, default `content`. A signed-in client may ask for `build`; `allowBuild` doesn't restrict it. Modes protect a site from the assistant and from mistakes, not from someone who can already sign in — that is the job of [authentication](/docs/running/security/).
+- **The person's role, on a hosted install**: build mode needs an editor or owner, whichever way it is asked for — the assistant, the HTTP API, custom code in a form — and a contributor's request for it is refused, never written in content mode instead. The site's settings file, `galley.config.json`, is an owner's in either mode. See [Security model](/docs/running/security/#a-hosted-install).
 
 ## The deny-list
 

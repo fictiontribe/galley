@@ -711,7 +711,7 @@ export function hostingHandlers(mock: MockBackend): Pick<Handlers, HostingRouteK
         await update("It answered.", 0.88);
         await update("Handing the site over…", 0.92);
         handOver(params.siteId, record);
-        return { detail: "The editor is online. Open its first-run link to choose its password.", url: `https://${plan.addresses.editor}` };
+        return { detail: "The editor is online. Open its first-run link to create the owner's account.", url: `https://${plan.addresses.editor}` };
       });
     },
 
@@ -719,7 +719,7 @@ export function hostingHandlers(mock: MockBackend): Pick<Handlers, HostingRouteK
       local();
       const record = needRecord(params.siteId);
       await sleep(STEP_MS);
-      if (record.setup === "done") throw new MockError("invalid", "First run on the editor is finished, so its setup link no longer works. Open it and sign in with its password.");
+      if (record.setup === "done") throw new MockError("invalid", "First run on the editor is finished, so its setup link no longer works. Open it and sign in.");
       return { url: `https://${record.addresses.editor}/setup?token=${randomBytes(24).toString("base64url")}` };
     },
 

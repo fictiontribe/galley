@@ -98,7 +98,7 @@ describe("the Online screen's editor card", () => {
     const server = await startServer({ mode: "local" });
     page = await openOnline(server, sites(server)[0]!);
     await until(() => expect(page?.text()).toContain("Edit this site from any browser, not just this computer."));
-    expect(page.text()).toContain("with its own password");
+    expect(page.text()).toContain("with its own sign-in: you create its first account");
     expect(byText(document, "button", "Host the editor online")).not.toBeNull();
     // Nothing is asked of the hosts until the person starts.
     expect(editorCalls(server)).toEqual([`GET /api/sites/${sites(server)[0]}/editor`]);

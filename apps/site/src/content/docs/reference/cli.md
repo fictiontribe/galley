@@ -19,7 +19,7 @@ Every command, from `galley --help`:
 Galley — The AI CMS for static sites. Prompt it. Proof it. Publish it.
 Usage
   galley [path]          Open the site in [path] (default: this folder) in the browser
-  galley serve           Run for other computers, behind a password
+  galley serve           Run for other computers, for the people you invite
   galley backup …        Back up a hosted install's data folder, or put a backup back
   galley init [path]     Write galley.config.json from what detection finds
   galley doctor [path]   Check that a site and this computer are ready
@@ -64,25 +64,30 @@ Options
 
 ## `galley serve`
 
-A hosted install: Galley for one site, on a server, behind a password. Everything it keeps is in its data folder (`GALLEY_HOME`). With no password yet it prints a one-time setup link; `--reset-password` makes a new one for a forgotten password and keeps serving. Not in a release yet: it is in the repository. What it prints, the image, the three addresses and the proxy in front: [Run a hosted install](/docs/running/hosted/).
+A hosted install: Galley for one site, on a server, for the people its owner invites, each signing in with their own e-mail and password. Everything it keeps is in its data folder (`GALLEY_HOME`). With no owner yet it prints a one-time setup link, and whoever opens it creates the owner's account; `--reset-password` prints a one-time link for a locked-out owner to choose a new password (`--email` says which owner, when there are several) and keeps serving. Not in a release yet: it is in the repository. What it prints, the image, the three addresses and the proxy in front: [Run a hosted install](/docs/running/hosted/).
 
 Its help (`--help`):
 
 ```text
 Usage: galley serve [options]
-Run Galley for other computers (hosted mode): one site, behind a password.
-Everything it keeps — the site, settings, keys, sessions — is in its data folder (GALLEY_HOME).
+Run Galley for other computers (hosted mode): one site, for the people an owner
+invites, each with their own e-mail and password.
+Everything it keeps — the site, settings, keys, accounts, sessions — is in its data
+folder (GALLEY_HOME).
 Options
       --host <address>      Interface to listen on (default GALLEY_HOST, then 0.0.0.0)
   -p, --port <port>         Port to listen on (default GALLEY_PORT, then 4400)
-      --reset-password      Forget the password, sign everyone out and print a new
-                            one-time setup link, then serve as usual until stopped.
-                            Whoever opens the link first chooses the new password.
-                            Stopped before that, the next start prints a fresh link
+      --reset-password      Get an owner back in: print a one-time link for the owner to
+                            choose a new password (it works once, for 60 minutes), then
+                            serve as usual until stopped. Nobody else's account changes,
+                            and the owner's old password works until the link is used.
+                            With no owner yet: a new one-time setup link instead
+      --email <address>     With --reset-password, when there are several owners: which one
   -h, --help                Show this help
 First run
-  With no password yet, the server prints a one-time setup link. Whoever opens it first
-  chooses the password and connects the site, so open it straight away.
+  With no owner yet, the server prints a one-time setup link. Whoever opens it first
+  becomes the owner (their name, e-mail and password) and connects the site, so open it
+  straight away. The owner invites everyone else from the app.
 Recommended
   GALLEY_PUBLIC_URL         The address people use, e.g. https://cms.example.com
   GALLEY_TRUST_PROXY=1      When a reverse proxy terminates HTTPS in front of this server
@@ -99,9 +104,16 @@ Operations
                             (default 20000)
   GALLEY_RESTORE_MAX_MB     The largest backup a restore in the app takes (default 2048);
                             larger ones: `galley backup restore` with the server stopped
+E-mail (optional; without it, invitation and new-password links are shown to the owner
+who makes them, to send however they like)
+  GALLEY_SMTP_URL           smtp://user:pass@host:587 (or smtps://) for invitations,
+                            new-password links and "Forgot your password?"
+  GALLEY_MAIL_FROM          The sender address
 Unattended start (starting values: each is used once, while the install doesn't have
 that thing yet, so what someone later changes in the app sticks)
-  GALLEY_PASSWORD           The sign-in password, 12 characters or more
+  GALLEY_PASSWORD           The first owner's password, 12 characters or more
+  GALLEY_OWNER_NAME         The first owner's name and the e-mail they sign in with
+  GALLEY_OWNER_EMAIL        (with GALLEY_PASSWORD; without them the app asks after sign-in)
   GALLEY_SETUP_TOKEN        The one-time setup code to use (24 characters or more), or
   GALLEY_SETUP_TOKEN_SHA256 only its SHA-256, so the code never reaches the server
   GALLEY_SITE_REPOSITORY    The site's repository: git@host:owner/name.git or https://…
@@ -145,8 +157,8 @@ Options
 The passphrase is read from GALLEY_BACKUP_PASSPHRASE, or asked for (not shown as
 you type it). It needs at least 12 characters. Without it the backup can't be
 opened: keep it somewhere safe.
-After a restore everyone is signed out; sign in with the password the backup was
-made with.
+After a restore everyone is signed out. The backup's people come back with it:
+each signs in with the password they had when the backup was made.
 ```
 
 ## `galley init [path]`

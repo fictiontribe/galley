@@ -1,7 +1,8 @@
 // The HTTP API reference (src/content/docs/reference/api.md), rendered from
 // the route map itself: every key of `ApiRoutes` in packages/core/src/api.ts
 // becomes a row, with its section, what it takes and what it returns read
-// from the type, and who may call it read from the server's PUBLIC_ROUTES.
+// from the type, and who may call it read from ROUTE_ACCESS in
+// packages/core/src/install/route-access.ts (the table the server enforces).
 // The one-line description is the line below when there is one, else the
 // first sentence of the route's own doc comment; a route with neither stops
 // sync-docs and check-docs, so a new route can't go undocumented.
@@ -15,7 +16,7 @@ import ts from "typescript";
 /** One line per route, where the doc comment in api.ts is missing or too long for a table. */
 const LINES = {
   "GET /api/meta": "Version, brand, mode (`local` or `hosted`), whether the caller is signed in, whether the desktop app is the host. Answers without a session, with less detail.",
-  "POST /api/auth/login": "Hosted install: sign in with the password; sets the session cookie. Rate-limited.",
+  "POST /api/auth/login": "Hosted install: sign in with an e-mail and password (the password alone for an owner from before accounts, who has no e-mail yet); sets the session cookie. Rate-limited.",
   "POST /api/auth/logout": "Clear and revoke the session.",
   "GET /api/events": "The live event stream ([below](#events)).",
   "GET /api/settings": "Model and effort, image and video choices, author, theme, previews, and each key's status (never its value).",
@@ -106,9 +107,10 @@ const LINES = {
   "DELETE /api/sites/:siteId/brand/sources/:sourceId": "Remove a piece of material.",
   "DELETE /api/sites/:siteId/brand/proposal": "Throw the proposal away.",
   "POST /api/sites/:siteId/brand/apply": "Write the brand's values into the site's tokens file, as pending changes.",
-  "GET /api/setup": "Where first run is: password, site, details or done, with the site's state and what the operator fixed. Takes the setup code until a password exists.",
+  "GET /api/setup": "Where first run is: the owner's account, site, details or done, with the site's state and what the operator fixed. Takes the setup code until an owner exists.",
   "PUT /api/setup/details": "Save the publishing name and e-mail and the live address during first run.",
-  "POST /api/setup/finish": "End first run once the password is chosen and the site connected. The setup link stops working.",
+  "POST /api/setup/finish": "End first run once the owner's account exists and the site is connected. The setup link stops working.",
+  "GET /api/people": "Everyone with an account (role, switched off or not, when they last signed in), the open invitations, and whether this server e-mails links (it needs outgoing e-mail and its public address both set).",
   "GET /api/install": "The Install page: address, version, the site's repository and how it is reached, the publishing name, what is stored where.",
   "GET /api/editor-hosts": "The places the editor can be hosted, each key's status (never its value), and the hosts that can't run it with the reason.",
   "GET /api/sites/:siteId/editor": "The site's editor online: what its settings say, what this computer created, whether it answers, its version.",
@@ -128,6 +130,7 @@ const SECTION_TITLES = {
   "files (source view)": "Files (the source view)",
   "the hosted install: first run (install/types.ts)": "The hosted install: first run",
   "the hosted install: the Install page": "The hosted install: the Install page",
+  "the hosted install: people (install/accounts.ts)": "The hosted install: people",
   "\"Host the editor online\" (hosting/types.ts)": "Host the editor online",
 };
 
@@ -136,7 +139,8 @@ const INTRO = `This page is for developers integrating with Galley — scripts, 
 ## Conventions
 
 - **JSON in, JSON out.** File and entry paths travel in the query string or the body, never as an address segment, relative to the site's folder with \`/\` separators: \`?path=src/content/journal/why-we-make-forty.md\`.
-- **Who may call.** Three routes answer anyone: \`GET /api/meta\`, sign-in and sign-out (*Anyone* below). Every other route needs a session (*Signed in*): the browser's session cookie, or \`Authorization: Bearer <token>\`. On your own computer the token is the one in the link Galley prints (set your own with \`GALLEY_TOKEN\`, 16 characters or more); in hosted mode set \`GALLEY_TOKEN\` on the server to allow Bearer access at all. On a hosted install the first-run routes also take the one-time setup code as the Bearer token until a password exists. There are no roles: a session can call every route.
+- **Who may call.** A few routes answer anyone (*No sign-in* below): \`GET /api/meta\`, sign-in, sign-out, and on a hosted install the three one-time-link routes, where the link's code is the proof. Every other route needs a session: the browser's session cookie, or \`Authorization: Bearer <token>\`. On your own computer the token is the one in the link Galley prints (set your own with \`GALLEY_TOKEN\`, 16 characters or more); in hosted mode set \`GALLEY_TOKEN\` on the server to allow Bearer access at all.
+- **Roles, on a hosted install.** Each person who signs in is an owner, an editor or a contributor, and the *Who* column is the level each route needs there, read from the one table the server enforces ([\`packages/core/src/install/route-access.ts\`]({repository}/blob/main/packages/core/src/install/route-access.ts)): *Any signed-in person*, *Editors and owners*, or *Owners*. Someone signed in below a route's level gets \`403\`. *First run* routes take the one-time setup code as the Bearer token until the first owner exists, and need an owner after that. The operator's \`GALLEY_TOKEN\` reaches every route except those that need a person: your own account, people, backups, restores and opening the preview. **The levels apply only on a hosted install:** the app on your own computer has one person, who may call every route.
 - **State-changing requests** (\`POST\`, \`PUT\`, \`PATCH\`, \`DELETE\`) also need the Bearer token, or a same-origin \`Origin\` header. Request bodies are limited to 40 MB.
 - **Site routes** (\`/api/sites/:siteId/…\`) run with that site's own keys and author when it has them ([Look after many sites](/docs/editing/many-sites/)).
 - **Errors** are \`{ "error": { "code", "message", "detail"? } }\` with a matching status. \`message\` is written for a person; \`detail\` carries the technical cause when it is safe to show.
@@ -146,10 +150,10 @@ const INTRO = `This page is for developers integrating with Galley — scripts, 
 | \`invalid\` | 400 | Bad input, named: *“url” isn't right: it must be an https or ssh address.* |
 | \`unconfigured\` | 400 | Something needs setting up first — a key, an image provider. A host refusing a key is also \`unconfigured\`, never 401. |
 | \`unauthorized\` | 401 | No session, or a Bearer token that isn't valid. |
-| \`forbidden\` | 403 | Not writable in this mode, outside the site, or a failed Host or Origin check. |
+| \`forbidden\` | 403 | Not writable in this mode, outside the site, a failed Host or Origin check, or (on a hosted install) a role below the route's level. |
 | \`not-found\` | 404 | No such site, entry, file, job, conversation or route. |
 | \`conflict\` | 409 | The file changed since it was read (\`baseHash\`), or a name is taken. |
-| \`busy\` | 409 (429 for sign-in) | Something is already running — a reply, a publish, too many sign-in attempts. |
+| \`busy\` | 409, or 429 for too many tries | Something is already running — a reply, a publish — or too many tries at signing in, a setup code or a one-time link. |
 | \`git\`, \`preview\`, \`internal\` | 500 | A git command, the preview, or something unexpected failed. |
 | \`ai\` | 502 | The model or image provider failed. |
 
@@ -173,6 +177,37 @@ curl -sN -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/even
 
 - [Security](/docs/running/security/) — what a session can do, and what a hosted install adds.
 - [Environment variables](/docs/reference/environment/) — \`GALLEY_TOKEN\` and the rest.`;
+
+/**
+ * Each level in ROUTE_ACCESS, in plain words. "restore" reads as first run:
+ * the setup code until an owner exists, an owner after that.
+ */
+const WHO = {
+  public: "No sign-in",
+  setup: "First run",
+  restore: "First run",
+  edit: "Any signed-in person",
+  publish: "Editors and owners",
+  manage: "Owners",
+};
+
+/** ROUTE_ACCESS read from route-access.ts as written: route key to level. */
+function readAccess(repoRoot) {
+  const path = join(repoRoot, "packages/core/src/install/route-access.ts");
+  const sourceFile = ts.createSourceFile(path, readFileSync(path, "utf8"), ts.ScriptTarget.Latest, true);
+  const declaration = sourceFile.statements
+    .filter((s) => ts.isVariableStatement(s))
+    .flatMap((s) => s.declarationList.declarations)
+    .find((d) => d.name.getText(sourceFile) === "ROUTE_ACCESS");
+
+  if (!declaration?.initializer || !ts.isObjectLiteralExpression(declaration.initializer)) throw new Error("ROUTE_ACCESS was not found in packages/core/src/install/route-access.ts.");
+  const access = new Map();
+
+  for (const p of declaration.initializer.properties) {
+    if (ts.isPropertyAssignment(p) && ts.isStringLiteral(p.initializer)) access.set(p.name.getText(sourceFile).replace(/^"|"$/g, ""), p.initializer.text);
+  }
+  return access;
+}
 
 const cell = (text) => text.replace(/\|/g, "\\|").replace(/\s+/g, " ").trim();
 
@@ -212,9 +247,7 @@ export function readRoutes(repoRoot) {
   const iface = sourceFile.statements.find((s) => ts.isInterfaceDeclaration(s) && s.name.text === "ApiRoutes");
 
   if (!iface) throw new Error("ApiRoutes was not found in packages/core/src/api.ts.");
-  const appText = readFileSync(join(repoRoot, "packages/server/src/app.ts"), "utf8");
-  const publicMatch = /PUBLIC_ROUTES = new Set\(\[([^\]]*)\]\)/.exec(appText);
-  const publicRoutes = new Set(publicMatch ? [...publicMatch[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]) : []);
+  const access = readAccess(repoRoot);
   const routes = [];
   let section = "Other";
 
@@ -238,7 +271,7 @@ export function readRoutes(repoRoot) {
       body: body ? typeText(body.type, sourceFile) : "",
       response: response ? typeText(response.type, sourceFile) : "",
       stream: /text\/event-stream/.test(doc),
-      who: publicRoutes.has(key) ? "Anyone" : "Signed in",
+      who: WHO[access.get(key)] ?? null,
     });
   }
   return routes;
@@ -257,6 +290,9 @@ export function renderApiReference(repoRoot) {
   const missing = routes.filter((r) => !r.line).map((r) => r.key);
 
   if (missing.length) throw new Error(`these routes have no description (add a doc comment in api.ts or a line in apps/site/scripts/reference-api.mjs): ${missing.join(", ")}`);
+  const unlevelled = routes.filter((r) => !r.who).map((r) => r.key);
+
+  if (unlevelled.length) throw new Error(`these routes have no known level in packages/core/src/install/route-access.ts: ${unlevelled.join(", ")}`);
   const stale = Object.keys(LINES).filter((key) => !routes.some((r) => r.key === key));
 
   if (stale.length) throw new Error(`apps/site/scripts/reference-api.mjs describes routes that are not in ApiRoutes: ${stale.join(", ")}`);

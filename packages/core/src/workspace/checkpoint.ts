@@ -21,6 +21,8 @@ export interface CheckpointHost {
   restoreFile(path: string, bytes: Uint8Array | null): Promise<void>;
   /** Tell listeners once, after a restore. */
   emitUndo(paths: string[]): Promise<void> | void;
+  /** Refuses (throws) a restore of these paths before any of them is put back, so an undo is never left half done. */
+  allowRestore?(paths: string[]): void;
 }
 
 /** A Checkpoint plus `release()`, which frees its pre-images once undo is no longer offered. */
@@ -77,6 +79,7 @@ class CheckpointImpl implements WorkspaceCheckpoint {
     this.close();
     const restored: string[] = [];
 
+    this.manager.host.allowRestore?.([...this.records.keys()]);
     for (const [path, image] of this.records) {
       const bytes =
         image.kind === "absent" ? null : image.kind === "memory" ? image.bytes : new Uint8Array(await readFile(image.file));

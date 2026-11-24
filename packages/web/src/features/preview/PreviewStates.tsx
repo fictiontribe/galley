@@ -1,10 +1,10 @@
-import { Link } from "react-router-dom";
 import type { PreviewStatus } from "@galley/core/types";
 import { PreviewActions } from "@/components/PreviewControls";
 import { errorShape } from "@/lib/api";
 import { usePreview } from "@/lib/stores/preview";
 import { notify } from "@/lib/stores/toasts";
 import { EmptyState, ErrorState, Spinner, buttonClass } from "@/ui";
+import { SettingsLink } from "@/features/accounts/SettingsLink";
 
 function LogTail({ log, open }: { log: string[]; open?: boolean }) {
   if (log.length === 0) return null;
@@ -36,9 +36,9 @@ export function PreviewStates({ siteId, status }: { siteId: string; status: Prev
             void run(siteId, "restart").catch((error: unknown) => notify({ tone: "danger", title: "Couldn’t restart the preview", body: errorShape(error).message, detail: errorShape(error).detail }))
           }
           actions={
-            <Link className={buttonClass("quiet", "sm")} to={`/sites/${siteId}/settings`}>
+            <SettingsLink route="PUT /api/sites/:siteId/config" className={buttonClass("quiet", "sm")} to={`/sites/${siteId}/settings`} fallback={null}>
               Open site settings
-            </Link>
+            </SettingsLink>
           }
         />
       </div>
@@ -77,9 +77,9 @@ export function NoLiveSite({ siteId }: { siteId: string }) {
         title="No live site to compare with."
         body="Add the site’s staging or production address in its settings to see what visitors see now beside your changes."
         actions={
-          <Link className={buttonClass("secondary", "sm")} to={`/sites/${siteId}/settings`}>
+          <SettingsLink route="PUT /api/sites/:siteId/config" className={buttonClass("secondary", "sm")} to={`/sites/${siteId}/settings`}>
             Open site settings
-          </Link>
+          </SettingsLink>
         }
       />
     </div>

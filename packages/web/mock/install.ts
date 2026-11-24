@@ -10,9 +10,12 @@
  *
  * Start it in any first-run state with GALLEY_MOCK_SETUP (see plugin.ts):
  *   password  nothing set; open /setup?token=<MOCK_SETUP_CODE>
- *   site      password "proof" chosen, no site yet
+ *   site      the owner made (password "proof"), no site yet
  *   details   site connected, name and email still to give
  *   done      first run over (the default): sign in with "proof"
+ * Who signs in, and as what, is accounts.ts (`withAccounts`, laid over this
+ * table); without it (`accounts: false`) sign-in is the one password, as on a
+ * server from before accounts.
  * Repository addresses steer the pretend code host: "missing" doesn't
  * answer, "readonly" refuses changes, "empty" holds nothing, "fail" breaks
  * part-way through copying; an access token "bad" is refused; the editor's
@@ -475,6 +478,7 @@ export class MockInstall {
       // The backup's state replaces this one, sign-ins included; the job's ending stays readable for whoever started it.
       this.restoredJobs.add(job.id);
       this.mock.authenticated = false;
+      this.onRestored?.();
       Object.assign(job, { state: "done", progress: 1, detail: "The backup is back in place.", finishedAt: Date.now() });
       this.mock.emit({ type: "job", job: { ...job } });
     })();
@@ -489,6 +493,9 @@ export class MockInstall {
 
   /** Restore jobs, readable without a session: the restore signed everyone out as it finished. */
   readonly restoredJobs = new Set<string>();
+
+  /** Told when a restore has put the backup's state in place (accounts.ts brings the backup's people back). */
+  onRestored: (() => void) | null = null;
 }
 
 type Request<K extends ApiRouteKey> = MockRequest<K> & MockTransport;
@@ -509,7 +516,7 @@ export function withInstall(mock: MockBackend, base: Handlers, install: MockInst
 
   wrap(handlers, "GET /api/meta", async (req, original) => ({ ...((await original(req)) as MetaInfo), install: install.meta() }));
   wrap(handlers, "POST /api/auth/login", (req) => {
-    if (!install.password) throw new MockError("unauthorized", "This editor isn’t set up yet. Open the setup link to choose its password.");
+    if (!install.password) throw new MockError("unauthorized", "This editor isn’t set up yet. Open the setup link to create the owner’s account.");
     if (req.body.password !== install.password) throw new MockError("unauthorized", "That password isn’t right.");
     mock.authenticated = true;
     return ok;

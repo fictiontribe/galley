@@ -4,7 +4,9 @@ import type { FileChange } from "@galley/core/types";
 import { count, friendlyLabel, joinWords } from "@/lib/format";
 import { useChanges, usePendingCount } from "@/lib/stores/changes";
 import { notify } from "@/lib/stores/toasts";
+import { useMay } from "@/lib/may";
 import { Badge, Breadcrumbs, Button, ConfirmDialog, Count, IconButton, keyName } from "@/ui";
+import { AccountMenu } from "@/features/accounts/AccountMenu";
 import { useChrome } from "./chrome";
 
 // The publish dialog (and Proof's helpers it brings) loads the first time it's wanted.
@@ -33,6 +35,7 @@ export function HomeTopBar() {
       <Crumbs />
       <span className="g-toolbar__spacer" />
       <IconButton icon="search" label={`Search and jump (${keyName("mod")} K)`} onClick={() => openPalette(true)} />
+      <AccountMenu />
     </header>
   );
 }
@@ -45,6 +48,15 @@ function describeFiles(names: string[]): string {
   return joinWords([...names.slice(0, 2), `${names.length - 2} more`]);
 }
 
+/**
+ * Said where the Publish button would be, to someone whose role doesn't
+ * publish. The bar has room for a few words beside Proof, so it shows the
+ * short line; the whole sentence is its tooltip and what a screen reader
+ * reads, and Proof's own page says it in full too.
+ */
+export const NO_PUBLISH_LINE = "You can change the site and see Proof. An editor or owner publishes.";
+export const NO_PUBLISH_SHORT = "An editor or owner publishes.";
+
 /** Top bar inside a site: breadcrumbs, status tag, then Discard · Proof n · Publish. */
 export function SiteTopBar({ siteId }: { siteId: string }) {
   const navigate = useNavigate();
@@ -52,6 +64,7 @@ export function SiteTopBar({ siteId }: { siteId: string }) {
   const files = useChanges((s) => s.changes?.files) ?? NO_FILES;
   const discard = useChanges((s) => s.discard);
   const { publishOpen, setPublishOpen, discardOpen, setDiscardOpen } = useChrome();
+  const mayPublish = useMay()("POST /api/sites/:siteId/publish");
 
   const [publishMounted, setPublishMounted] = useState(false);
   useEffect(() => {
@@ -70,19 +83,27 @@ export function SiteTopBar({ siteId }: { siteId: string }) {
       <Button variant="secondary" size="sm" onClick={() => navigate(`/sites/${siteId}/proof`)}>
         Proof <Count value={pending} quiet label={`${changesWord} to proof`} />
       </Button>
-      <Button
-        variant="primary"
-        size="sm"
-        disabled={pending === 0}
-        title={pending === 0 ? "Nothing to publish" : undefined}
-        onPointerEnter={() => void loadPublishDialog()}
-        onFocus={() => void loadPublishDialog()}
-        onClick={() => setPublishOpen(true)}
-      >
-        Publish
-      </Button>
+      {mayPublish ? (
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={pending === 0}
+          title={pending === 0 ? "Nothing to publish" : undefined}
+          onPointerEnter={() => void loadPublishDialog()}
+          onFocus={() => void loadPublishDialog()}
+          onClick={() => setPublishOpen(true)}
+        >
+          Publish
+        </Button>
+      ) : (
+        <span className="accounts-no-publish" title={NO_PUBLISH_LINE}>
+          <span aria-hidden="true">{NO_PUBLISH_SHORT}</span>
+          <span className="g-sr">{NO_PUBLISH_LINE}</span>
+        </span>
+      )}
+      <AccountMenu />
 
-      {publishMounted || publishOpen ? (
+      {mayPublish && (publishMounted || publishOpen) ? (
         <Suspense fallback={null}>
           <PublishDialog siteId={siteId} open={publishOpen} onClose={() => setPublishOpen(false)} />
         </Suspense>

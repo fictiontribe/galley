@@ -6,6 +6,7 @@
  *   { "address": "https://cms.example.com", "password": "…", "setupToken": "…",
  *     "site": { "repository": "git@github.com:you/site.git", "branch": "main", "folder": "apps/site",
  *               "access": "deploy-key", "token": "…", "starter": "astro-starter" },
+ *     "owner": { "name": "Sam", "email": "sam@example.com" },
  *     "author": { "name": "Sam", "email": "sam@example.com" },
  *     "liveUrl": "https://www.example.com",
  *     "keys": { "anthropic": "sk-ant-…" } }
@@ -39,6 +40,8 @@ export interface StartingValues {
   /** Or only its SHA-256, so the code itself never reaches the server. */
   setupTokenSha256?: string;
   site?: StartingSite;
+  /** The first owner's name and e-mail (with `password`), so an unattended install's owner is complete. */
+  owner?: { name?: string; email?: string };
   author?: { name: string; email: string };
   liveUrl?: string;
   /** Keys to store, from the file. Keys in the environment (ANTHROPIC_API_KEY…) are used from there directly. */
@@ -87,6 +90,7 @@ const FileSchema = z
         starter: StarterSchema.optional(),
       })
       .optional(),
+    owner: z.object({ name: text.optional(), email: text.optional() }).strict().optional(),
     author: z.object({ name: text, email: text }).optional(),
     liveUrl: text.optional(),
     keys: z.record(z.string(), text).optional(),
@@ -183,6 +187,11 @@ export function readStartingValues(env: NodeJS.ProcessEnv, cwd = process.cwd()):
       ...(starter ? { starter } : {}),
     };
   }
+
+  const ownerName = value(env, "GALLEY_OWNER_NAME") ?? fromFile.owner?.name;
+  const ownerEmail = value(env, "GALLEY_OWNER_EMAIL") ?? fromFile.owner?.email;
+
+  if (ownerName || ownerEmail) values.owner = { ...(ownerName ? { name: ownerName } : {}), ...(ownerEmail ? { email: ownerEmail } : {}) };
 
   const authorName = value(env, "GALLEY_AUTHOR_NAME") ?? fromFile.author?.name;
   const authorEmail = value(env, "GALLEY_AUTHOR_EMAIL") ?? fromFile.author?.email;

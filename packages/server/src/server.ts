@@ -14,12 +14,15 @@ import { GalleyError, isGalleyError } from "@galley/core";
 import { PRODUCT, VERSION } from "@galley/core/brand";
 import { hideFromSiteCommands, limitSiteCommandMemory, parsePortRange, type PortRange, type PreviewGateway } from "@galley/core/workspace";
 import { setHostedMode } from "@galley/core/plugins";
+import { createSmtpTransport, mailConfigFromEnv, type MailTransport } from "@galley/core/forms";
 import {
   APP_SECRET_ENV_NAMES,
   createInstall,
+  requireCallerForGuardedWork,
   createInstallRegistry,
   holdDataFolder,
   isSingleSiteRegistry,
+  LINK_PATHS,
   openInstallState,
   readStartingValues,
   SITE_FOLDER,
@@ -418,9 +421,9 @@ async function bind(server: Server, config: ResolvedConfig, notice: (line: strin
 }
 
 /** Opens (and, for an older data folder, upgrades) the install's state. A folder it can't use stops the start in one plain sentence. */
-async function openState(config: ResolvedConfig): Promise<InstallStore> {
+async function openState(config: ResolvedConfig, notice: (line: string) => void): Promise<InstallStore> {
   try {
-    return await openInstallState(config.home, { keepSite: config.keepSite });
+    return await openInstallState(config.home, { keepSite: config.keepSite, log: notice });
   } catch (error) {
     if (isGalleyError(error)) throw new StartupError(error.message);
     throw error;
@@ -486,7 +489,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   for (const warning of config.warnings) notice(warning);
   await mkdir(config.home, { recursive: true, mode: 0o700 });
   // Hosted: the install's state, migrated before anything else reads the data folder.
-  const store = hosted ? await openState(config) : null;
+  const store = hosted ? await openState(config, notice) : null;
 
   if (!hosted) await mkdir(config.sitesDir, { recursive: true });
 
@@ -495,6 +498,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
 
   // A shared server only runs a site's own plugins when the operator allows it (GALLEY_ALLOW_SITE_PLUGINS=1).
   setHostedMode(hosted);
+  // Hosted: guarded work (publishing, the site's settings, build mode) needs a person, the operator or the engine (core install/caller.ts).
+  if (hosted) requireCallerForGuardedWork(true);
   // The site's own commands never inherit this app's password, setup code, access key, provider keys or plugin secrets.
   if (hosted) hideSecrets();
   if (hosted) limitSiteCommandMemory(config.previewMemoryMb);
@@ -544,6 +549,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     if (hosted) {
       hideFromSiteCommands([]);
       limitSiteCommandMemory(null);
+      requireCallerForGuardedWork(false);
     }
   };
 
@@ -559,6 +565,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   let services: Services;
   let install: Install | null = null;
   let setupCode: string | null = null;
+  let passwordLink: RunningServer["passwordLink"] = null;
   const notices: string[] = [];
   // The install's own jobs (connecting the site, a restore), found through the registry like every other job.
   const installJobs = () => (install ? (id: string) => install!.job(id) ?? ops?.job(id) ?? null : null);
@@ -619,10 +626,19 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         ...(options.siteInstall ? { installDependencies: options.siteInstall } : {}),
       });
       try {
-        const started = await install.start(config.starting ?? {}, { resetPassword: options.resetPassword === true });
+        const started = await install.start(config.starting ?? {}, {
+          resetPassword: options.resetPassword === true,
+          ...(options.resetPasswordEmail !== undefined ? { resetPasswordEmail: options.resetPasswordEmail } : {}),
+        });
 
         setupCode = started.setupCode;
         out.remember(setupCode);
+        if (started.passwordLink) {
+          // A link this server made, printed once to whoever runs it — and never written to the log.
+          out.remember(started.passwordLink.code);
+          passwordLink = { url: `${url}${LINK_PATHS.password}#${started.passwordLink.code}`, expiresAt: started.passwordLink.expiresAt, name: started.passwordLink.name };
+          out.event(`A new-password link was made for ${started.passwordLink.name || "the owner with no name yet"} (Owner) by whoever runs the server (--reset-password).`);
+        }
         notices.push(...started.notices);
       } catch (error) {
         if (isGalleyError(error)) throw new StartupError(error.message);
@@ -660,6 +676,18 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     }
   });
 
+  // Hosted: invitations and new-password links are also e-mailed when the server has outgoing mail.
+  let mailer: MailTransport | null = null;
+
+  if (hosted) {
+    if (options.mailer !== undefined) mailer = options.mailer;
+    else {
+      const { config: mail, problem } = mailConfigFromEnv(env);
+
+      if (problem) notice(`${problem} Invitations and new-password links are shown to the owner who makes them, but not e-mailed.`);
+      mailer = mail ? createSmtpTransport(mail) : null;
+    }
+  }
   if (install) {
     ops = createInstallOps({
       install,
@@ -709,6 +737,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     ...(hosted ? { previewEntry: gateway && tickets ? { origins: gateway.origins, issue: (session) => tickets!.issue(session) } : null, previewUnavailable: gateway ? null : NO_PREVIEW_ADDRESS } : {}),
     ...(revocations ? { revocations } : {}),
     ops,
+    mailer,
     heartbeatMs: options.heartbeatMs,
     log: out.log,
     streams,
@@ -739,6 +768,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     home: config.home,
     install,
     setupUrl: setupCode ? `${url}/setup?token=${encodeURIComponent(setupCode)}` : null,
+    passwordLink,
     notices,
     previews: gateway ? gateway.origins : null,
     readiness,
@@ -787,6 +817,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         if (hosted) {
           hideFromSiteCommands([]);
           limitSiteCommandMemory(null);
+          requireCallerForGuardedWork(false);
         }
       })();
       return closing;

@@ -10,9 +10,15 @@
  *      Bearer token is presented. On a hosted install the one-time setup
  *      code counts as one for /api/setup/* only: the app that created the
  *      install hands it over from a server, with no Origin.
- *   4. Session check on the API (except meta, sign-in and sign-out). First
- *      run (/api/setup/*) takes the setup code until a password exists, and
- *      a session after that.
+ *   4. Who may call the route, from the one table (core
+ *      install/route-access.ts): "public" routes need nobody; first run
+ *      (/api/setup/*) takes the setup code until an owner exists, then an
+ *      owner; putting a backup back takes an owner's browser (or the setup
+ *      code while there is no owner); every other route a signed-in person
+ *      whose role has the route's level. Someone without it gets 403 and
+ *      one plain sentence. Local mode has no accounts: any session will do.
+ *      The operator's Bearer token (GALLEY_TOKEN) keeps the reach it always
+ *      had: every route but the few that need a person's browser.
  * The MCP endpoint (/mcp, when mounted) sits after 1 and 2 and applies its
  * own Origin and Bearer checks (see mcp.ts): it never accepts a cookie.
  * The form capture endpoint (/f/:siteId) sits after 1, with its own 64 KB
@@ -27,10 +33,12 @@ import type { ApiRouteKey } from "@galley/core/api";
 import { withSiteScope } from "@galley/core/site";
 import { createHash } from "node:crypto";
 import { getCookie } from "hono/cookie";
-import type { InstallStore } from "@galley/core/install";
+import { asOperator, ROLE_REFUSAL as CORE_ROLE_REFUSAL, ROUTE_ACCESS, roleMay, withCaller, type AccessLevel, type AccountRole, type InstallStore } from "@galley/core/install";
 import type { PreviewStatus } from "@galley/core/types";
-import { bearerToken, clientAddress, isAuthenticated, loopbackHostnames, normalizeHostname, requestProtocol, requestSession, safeEqual, signSession, LoginLimiter, type RevocationList, type SessionCheck } from "./auth";
+import { withAccountAuthor } from "@galley/core/workspace";
+import { bearerToken, clientAddress, clientKeyOf, isAuthenticated, loopbackHostnames, normalizeHostname, requestProtocol, requestSession, safeEqual, signSession, LoginLimiter, type RevocationList, type SessionCheck } from "./auth";
 import { hostedRefusals } from "./hosted-refusals";
+import { withoutKeyHints } from "./key-hints";
 import { errorBody, errorResponse } from "./errors";
 import { createStreamRegistry } from "./events";
 import { captureHandlers, CAPTURE_BODY_LIMIT_BYTES, CAPTURE_PATH } from "./forms";
@@ -38,6 +46,7 @@ import { mcpRoute } from "./mcp";
 import { handOffToken, routes, type RouteContext } from "./routes";
 import { fileResponse, notBuiltPage, resolveStatic } from "./static";
 import type { AppOptions, Services } from "./types";
+import { callerOf, personFromCookie, settleCaller } from "./who";
 
 export const BODY_LIMIT_BYTES = 40 * 1024 * 1024;
 /** The one route that takes a body larger than BODY_LIMIT_BYTES: a backup, streamed to a file (ops.ts), capped by GALLEY_RESTORE_MAX_MB. */
@@ -46,18 +55,18 @@ export const RESTORE_UPLOAD_PATH = "/api/install/restore/upload";
 const RESTORE_PATH = /^\/api\/install\/restore(?:\/upload)?$/;
 /** While a backup is being put back, only these answer; everything else waits. */
 const DURING_RESTORE = /^\/api\/(?:jobs\/[^/]+|events|meta)$/;
-/** Install events worth one log line each (hosted mode): the route, and what its outcome means. */
+/**
+ * Install events worth one log line each (hosted mode) that the route itself
+ * doesn't write: the route, and what its outcome means. Sign-ins, password
+ * changes and everything about people are written by their handlers, which
+ * know whose account it was (accounts-routes.ts).
+ */
 const AUDITED: Record<string, (status: number, client: string) => string | null> = {
-  "POST /api/auth/login": (status, client) =>
-    status === 200 ? `Signed in from ${client}.` : status === 401 ? `A sign-in from ${client} failed: wrong password.` : status === 429 ? `A sign-in from ${client} was refused: too many attempts.` : null,
-  "POST /api/install/password": (status, client) => (status === 200 ? `The password was changed (from ${client}); every other browser was signed out.` : status === 400 || status === 429 ? `A password change from ${client} was refused.` : null),
-  "POST /api/auth/logout-all": (status, client) => (status === 200 ? `Signed out everywhere (from ${client}).` : null),
-  "POST /api/setup/password": (status, client) => (status === 200 ? `The password was chosen through the setup link (from ${client}).` : null),
   "POST /api/setup/finish": (status) => (status === 200 ? "First run finished." : null),
 };
 
-/** Routes reachable without a session. */
-const PUBLIC_ROUTES = new Set(["GET /api/meta", "POST /api/auth/login", "POST /api/auth/logout"]);
+/** What someone signed in, but without the level a route needs, is told (the same sentence the web app's mock sends). */
+export const ROLE_REFUSAL = CORE_ROLE_REFUSAL;
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 /** First run: the routes that take the one-time setup code. */
 export const SETUP_PATH = /^\/api\/setup(?:\/|$)/;
@@ -71,7 +80,7 @@ export const SETUP_PATH = /^\/api\/setup(?:\/|$)/;
 type SetupBearer = "token" | "code" | "wrong" | "blocked" | "session";
 
 const NEEDS_SETUP_LINK = "Open the setup link to continue. It was printed when this editor started, or given to whoever set it up.";
-const SETUP_LINK_USED = "The setup link has been used already. Sign in with the password instead.";
+const SETUP_LINK_USED = "The setup link has been used already. Sign in instead.";
 
 export function uiContentSecurityPolicy(frameSources: string[]): string {
   return [
@@ -103,12 +112,14 @@ export function createApp(services: Services, options: AppOptions): Hono {
     key: options.cookieKey,
     token: options.token,
     cookieName: options.cookieName ?? `${PRODUCT.slug}_session`,
+    // Its own name: a browser someone has signed in on before (sign-in-gate.ts), never a session.
+    ...(install ? { knownCookieName: `${options.cookieName ?? `${PRODUCT.slug}_session`}_known` } : {}),
     revoked: options.revocations ?? (install ? installRevocations(install.store, log) : new Set()),
     ...(install
       ? {
-          valid: (current: { id: string; issuedAt: number }) => install.store.sessionValid(current),
-          issue: () => signSession(options.cookieKey, install.store.nextIssuedAt()),
-          verifyPassword: (password: string) => install.store.checkPassword(password),
+          // Only a person's cookie counts on a hosted install: one from before accounts (or from a local app) names nobody.
+          valid: (current: { id: string; issuedAt: number; accountId?: string }) => current.accountId !== undefined && install.store.sessionValid(current),
+          issue: (accountId?: string) => signSession(options.cookieKey, install.store.nextIssuedAt(Date.now(), accountId), undefined, accountId),
         }
       : {}),
     ...(options.secureCookie ? { secure: true } : {}),
@@ -200,10 +211,10 @@ export function createApp(services: Services, options: AppOptions): Hono {
     let verdict: SetupBearer | null = null;
 
     if (bearer !== null && install) {
-      const client = clientAddress(c, trustProxy);
+      const client = clientKeyOf(c, trustProxy);
 
       if (session.token !== null && safeEqual(bearer, session.token)) verdict = "token";
-      else if (install.store.hasPassword() && requestSession(c, session) !== null) verdict = "session";
+      else if (install.store.hasOwner() && requestSession(c, session) !== null) verdict = "session";
       else if (ctx.limiter.blocked(client)) verdict = "blocked";
       else if (install.store.setupCodeMatches(bearer)) verdict = "code";
       else {
@@ -217,7 +228,7 @@ export function createApp(services: Services, options: AppOptions): Hono {
   const setupRefusal = (c: Context, verdict: SetupBearer | null) =>
     verdict === "blocked"
       ? c.json(errorBody("busy", "Too many attempts. Wait a minute, then try again."), 429)
-      : c.json(errorBody("unauthorized", install?.store.hasPassword() ? (verdict === "wrong" ? SETUP_LINK_USED : "Sign in to continue.") : NEEDS_SETUP_LINK), 401);
+      : c.json(errorBody("unauthorized", install?.store.hasOwner() ? (verdict === "wrong" ? SETUP_LINK_USED : "Sign in to continue.") : NEEDS_SETUP_LINK), 401);
 
   // 3. Origin (CSRF) — every state-changing request
   app.use("*", async (c, next) => {
@@ -251,32 +262,54 @@ export function createApp(services: Services, options: AppOptions): Hono {
     return list;
   }
 
-  // 4. Session
-  const requireSession: MiddlewareHandler = async (c, next) => {
-    if (isAuthenticated(c, session)) return next();
-    const message = options.mode === "local" ? "Open the link printed when the app started to continue." : "Sign in to continue.";
+  // 4. Who may call the route (core install/route-access.ts).
+  const unauthorized = (c: Context) => c.json(errorBody("unauthorized", options.mode === "local" ? "Open the link printed when the app started to continue." : "Sign in to continue."), 401);
 
-    return c.json(errorBody("unauthorized", message), 401);
+  /** A route's level: any session where there are no accounts; on a hosted install a person whose role has it, or the operator's token. */
+  const requireLevel =
+    (level: AccessLevel): MiddlewareHandler =>
+    async (c, next) => {
+      if (!install) return isAuthenticated(c, session) ? next() : unauthorized(c);
+      const caller = callerOf(c, ctx);
+
+      if (!caller) return unauthorized(c);
+      if (caller.kind === "token" || roleMay(caller.account.role, level)) return next();
+      return c.json(errorBody("forbidden", ROLE_REFUSAL), 403);
+    };
+  const requireOwner = requireLevel("manage");
+  /** A person's role as the install has it now: null once they are switched off or removed. */
+  const liveRole = (accountId: string): AccountRole | null => {
+    const account = install?.store.account(accountId);
+
+    return account && !account.disabled ? account.role : null;
   };
 
-  // 4b. First run: the setup code until a password exists, then a session like everything else.
+  // 4b. First run: the setup code until an owner exists, then an owner like everything else of the install's.
   const requireSetupAccess: MiddlewareHandler = async (c, next) => {
-    if (!install) return requireSession(c, next);
+    if (!install) return requireOwner(c, next);
     const verdict = setupBearer(c);
 
-    if (verdict === "token" || verdict === "session") return next();
+    if (verdict === "token") return next();
+    if (verdict === "session") {
+      settleCaller(c, personFromCookie(c, ctx));
+      return requireOwner(c, next);
+    }
     if (verdict === "blocked") return setupRefusal(c, verdict);
-    if (!install.store.hasPassword()) return verdict === "code" ? next() : setupRefusal(c, verdict);
-    if (verdict === null && isAuthenticated(c, session)) return next();
+    if (!install.store.hasOwner()) return verdict === "code" ? next() : setupRefusal(c, verdict);
+    if (verdict === null && callerOf(c, ctx)?.kind === "person") return requireOwner(c, next);
     return setupRefusal(c, verdict);
   };
 
-  // 4c. Putting a backup back: a signed-in browser, or the setup code while there is no password yet. Never a script's token.
+  // 4c. Putting a backup back: an owner's signed-in browser, or the setup code while there is no owner yet. Never a script's token.
   const requireRestoreAccess: MiddlewareHandler = async (c, next) => {
     const verdict = setupBearer(c);
 
-    if (verdict === "code" || verdict === "session") return next();
-    if (verdict === null && install && requestSession(c, session) !== null) return next();
+    if (verdict === "code") return next();
+    if (verdict === "session") {
+      settleCaller(c, personFromCookie(c, ctx));
+      return requireOwner(c, next);
+    }
+    if (verdict === null && install && callerOf(c, ctx)?.kind === "person") return requireOwner(c, next);
     if (verdict === "token") return c.json(errorBody("forbidden", "A backup can only be put back from a signed-in browser."), 403);
     return setupRefusal(c, verdict);
   };
@@ -302,9 +335,27 @@ export function createApp(services: Services, options: AppOptions): Hono {
     const siteScoped = path.includes(":siteId");
     const respond: MiddlewareHandler = async (c) => {
       const run = () => handler(c, ctx);
-      const result = await (siteScoped ? withSiteScope(c.req.param("siteId") ?? "", run) : run());
+      const scoped = () => (siteScoped ? withSiteScope(c.req.param("siteId") ?? "", run) : run());
+      // On a hosted install everything a person's request records in the repository carries their name (core workspace/author.ts),
+      // and everything it does is held to their role at the point of use, the work it starts included (core install/caller.ts).
+      const caller = install ? callerOf(c, ctx) : null;
+      const person = caller?.kind === "person" ? caller.account : null;
+      // The operator's mark (core install/caller.ts) for the operator's token on a hosted install, and for every request in local mode,
+      // where whoever holds the start-up token is the one person who runs the app. Only a hosted server makes guarded work need
+      // someone; the mark keeps a local app in the same process (tests, an embedding) as it always was.
+      const operator = options.mode === "local" || caller?.kind === "token";
+      const result = person
+        ? await withCaller({ accountId: person.id, role: person.role, current: () => liveRole(person.id) }, () => withAccountAuthor(person, scoped))
+        : operator
+          ? await asOperator(() => withAccountAuthor(null, scoped))
+          : await withAccountAuthor(null, scoped);
 
-      return result instanceof Response ? result : c.json(result as object);
+      if (result instanceof Response) return result;
+      // A key's last characters are for whoever may manage the keys (key-hints.ts): the role as the request began and as it is now must both allow it.
+      const now = caller?.kind === "person" ? install!.people.get(caller.account.id) : null;
+      const hide = caller?.kind === "person" && (!roleMay(caller.account.role, "manage") || !now || !roleMay(now.role, "manage"));
+
+      return c.json((hide ? withoutKeyHints(key, result) : result) as object);
     };
 
     const audit = AUDITED[key];
@@ -320,7 +371,7 @@ export function createApp(services: Services, options: AppOptions): Hono {
     if (options.mode === "hosted" && options.previewUnavailable && /\/preview\/(start|restart)$/.test(path)) {
       const detail = options.previewUnavailable;
 
-      app.on(method, path, requireSession, async (c) => {
+      app.on(method, path, requireLevel(ROUTE_ACCESS[key] as AccessLevel), async (c) => {
         if (!(await services.registry.get(c.req.param("siteId") ?? ""))) return c.json(errorBody("not-found", "That site isn't open here. Open it again from the Sites screen."), 404);
         return c.json({ state: "error", url: null, baselineUrl: null, baselineSource: null, log: [], detail } satisfies PreviewStatus);
       });
@@ -328,10 +379,12 @@ export function createApp(services: Services, options: AppOptions): Hono {
     }
     const register = (...chain: MiddlewareHandler[]) => (app.on as unknown as (method: string, path: string, ...handlers: MiddlewareHandler[]) => void)(method, path, ...chain);
 
-    if (PUBLIC_ROUTES.has(key)) register(...handlers, respond);
-    else if (SETUP_PATH.test(path)) register(...handlers, requireSetupAccess, respond);
-    else if (RESTORE_PATH.test(path) && install) register(requireRestoreAccess, respond);
-    else register(...handlers, requireSession, respond);
+    const access = ROUTE_ACCESS[key];
+
+    if (access === "public") register(...handlers, respond);
+    else if (access === "setup") register(...handlers, requireSetupAccess, respond);
+    else if (access === "restore") register(install ? requireRestoreAccess : requireOwner, respond);
+    else register(...handlers, requireLevel(access), respond);
   }
   app.all("/api/*", (c) => c.json(errorBody("not-found", "There's nothing at this address."), 404));
 

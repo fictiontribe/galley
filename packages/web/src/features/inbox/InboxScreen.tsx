@@ -18,6 +18,7 @@ import { inboxKeys, sendTestSubmission, useCaptureSettings, useFreshIds, useInbo
 import { ReachText } from "./ReachNote";
 import { arrival, labelledAnswers, rowSummary } from "./summary";
 import "./inbox.css";
+import { useMay } from "@/lib/may";
 
 const PAGE = 50;
 
@@ -341,6 +342,8 @@ export function InboxScreen() {
   const [pages, setPages] = useState(1);
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Who is told about submissions, and the keys behind that, are the install's settings: an owner's.
+  const mayChangeCapture = useMay()("PATCH /api/sites/:siteId/capture");
 
   const list = forms.data?.forms ?? [];
   const formId = params.get("form") ?? list[0]?.id ?? null;
@@ -448,9 +451,11 @@ export function InboxScreen() {
               Export
             </a>
           ) : null}
-          <Button variant="secondary" icon="settings" disabled={!capture.data} onClick={() => setSettingsOpen(true)}>
-            Capture settings…
-          </Button>
+          {mayChangeCapture ? (
+            <Button variant="secondary" icon="settings" disabled={!capture.data} onClick={() => setSettingsOpen(true)}>
+              Capture settings…
+            </Button>
+          ) : null}
         </>
       }
     />
@@ -590,7 +595,7 @@ export function InboxScreen() {
           </section>
         </div>
       </div>
-      {capture.data ? <CaptureSettingsDialog siteId={siteId} open={settingsOpen} onClose={() => setSettingsOpen(false)} settings={capture.data} forms={list} /> : null}
+      {capture.data && mayChangeCapture ? <CaptureSettingsDialog siteId={siteId} open={settingsOpen} onClose={() => setSettingsOpen(false)} settings={capture.data} forms={list} /> : null}
     </div>
   );
 }

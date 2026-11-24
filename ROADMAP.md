@@ -33,7 +33,9 @@ In final checks.
 - **The editor hosted on your own server**, as an install that serves one
   site. Released in 0.2.0 and run for real, on its image and on a server
   behind HTTPS; its image isn't on a registry yet
-  ([`docs/cloud-install.md`](docs/cloud-install.md)).
+  ([`docs/cloud-install.md`](docs/cloud-install.md)). Its accounts and roles
+  (owner, editor, contributor) are built, tested and tried in a real
+  browser, not yet with real e-mail.
 
 ## Next
 
@@ -67,8 +69,8 @@ Built and waiting to be proven, or being built.
 
 ## Later
 
-- **Accounts and roles for hosted installs.** Today a hosted Galley has one
-  shared password, and every publish from it carries the same author.
+- **Single sign-on for hosted installs.** Today each person signs in to a
+  hosted Galley with their own e-mail and password.
 - **Galley Cloud**: the editor, hosted for you. No date or price yet.
 
 ## Have a say

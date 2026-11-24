@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { useQuery } from "@/lib/query";
 import { useSite } from "@/lib/stores/site";
 import { keys } from "@/lib/sync";
+import { useMayBuild } from "@/lib/may";
 
 export interface AssistantRequest {
   /** Sent as soon as the panel opens… */
@@ -41,6 +42,14 @@ export function useAssistantReady(): boolean | null {
   return settings.data.secrets.some((secret) => secret.name === "anthropic" && secret.configured);
 }
 
+/** Whether build-mode work (the site's code) is offered here: the site allows it and the signed-in person's role includes it. */
 export function useAllowBuild(): boolean {
-  return useSite((s) => s.detail?.model.ai.allowBuild ?? false);
+  const mayBuild = useMayBuild();
+  return useSite((s) => s.detail?.model.ai.allowBuild ?? false) && mayBuild;
+}
+
+/** The site allows build-mode work, but this person's role doesn't include it: say who can do it instead of offering it. */
+export function useBuildByOthers(): boolean {
+  const mayBuild = useMayBuild();
+  return useSite((s) => s.detail?.model.ai.allowBuild ?? false) && !mayBuild;
 }

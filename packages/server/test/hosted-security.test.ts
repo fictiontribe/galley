@@ -105,9 +105,9 @@ describe("the hosted install's security claims", () => {
     const answer = await call(world.port, "GET", "/api/setup", { bearer: SECRETS.setupCode });
 
     expect(answer.status).toBe(401);
-    expect(answer.body.error.message).toBe("The setup link has been used already. Sign in with the password instead.");
+    expect(answer.body.error.message).toBe("The setup link has been used already. Sign in instead.");
     expect((await call(world.port, "POST", "/api/setup/password", { bearer: SECRETS.setupCode, origin: null, body: { password: "someone else's password" } })).status).toBe(401);
-    expect(await world.started.server.install!.store.checkPassword(SECRETS.password)).toBe(true);
+    expect(await world.started.server.install!.people.ownerPasswordIs(SECRETS.password)).toBe(true);
   });
 
   it("a wrong Host is refused", async () => {

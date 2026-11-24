@@ -202,7 +202,7 @@ export function withoutAgentMarkers(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 
 /**
  * Variables of this app's own process that a site's commands must not
- * inherit. A hosted install is started with its sign-in password, setup
+ * inherit. A hosted install is started with its first owner's password, setup
  * code, repository access key and provider keys in its environment; the
  * site's dev server, build and install run the site's code (and its
  * dependencies'), which has no business with any of them. Empty — nothing

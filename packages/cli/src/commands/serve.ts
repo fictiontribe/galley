@@ -1,27 +1,34 @@
 import { resolve } from "node:path";
 import { PRODUCT } from "@galley/core/brand";
+import { mailConfigFromEnv } from "@galley/core/forms";
+import { PASSWORD_LINK_MINUTES } from "@galley/core/install/accounts";
 import type { InstallSite } from "@galley/core/install/types";
 import { MIN_PASSWORD_LENGTH, stamped, StartupError } from "@galley/server";
-import { parse, portOption } from "../args";
+import { parse, portOption, UsageError } from "../args";
 import type { Io } from "../io";
 
 export const SERVE_HELP = `Usage: ${PRODUCT.slug} serve [options]
 
-Run ${PRODUCT.name} for other computers (hosted mode): one site, behind a password.
-Everything it keeps — the site, settings, keys, sessions — is in its data folder (GALLEY_HOME).
+Run ${PRODUCT.name} for other computers (hosted mode): one site, for the people an owner
+invites, each with their own e-mail and password.
+Everything it keeps — the site, settings, keys, accounts, sessions — is in its data
+folder (GALLEY_HOME).
 
 Options
       --host <address>      Interface to listen on (default GALLEY_HOST, then 0.0.0.0)
   -p, --port <port>         Port to listen on (default GALLEY_PORT, then 4400)
-      --reset-password      Forget the password, sign everyone out and print a new
-                            one-time setup link, then serve as usual until stopped.
-                            Whoever opens the link first chooses the new password.
-                            Stopped before that, the next start prints a fresh link
+      --reset-password      Get an owner back in: print a one-time link for the owner to
+                            choose a new password (it works once, for ${PASSWORD_LINK_MINUTES} minutes), then
+                            serve as usual until stopped. Nobody else's account changes,
+                            and the owner's old password works until the link is used.
+                            With no owner yet: a new one-time setup link instead
+      --email <address>     With --reset-password, when there are several owners: which one
   -h, --help                Show this help
 
 First run
-  With no password yet, the server prints a one-time setup link. Whoever opens it first
-  chooses the password and connects the site, so open it straight away.
+  With no owner yet, the server prints a one-time setup link. Whoever opens it first
+  becomes the owner (their name, e-mail and password) and connects the site, so open it
+  straight away. The owner invites everyone else from the app.
 
 Recommended
   GALLEY_PUBLIC_URL         The address people use, e.g. https://cms.example.com
@@ -42,9 +49,17 @@ Operations
   GALLEY_RESTORE_MAX_MB     The largest backup a restore in the app takes (default 2048);
                             larger ones: \`${PRODUCT.slug} backup restore\` with the server stopped
 
+E-mail (optional; without it, invitation and new-password links are shown to the owner
+who makes them, to send however they like)
+  GALLEY_SMTP_URL           smtp://user:pass@host:587 (or smtps://) for invitations,
+                            new-password links and "Forgot your password?"
+  GALLEY_MAIL_FROM          The sender address
+
 Unattended start (starting values: each is used once, while the install doesn't have
 that thing yet, so what someone later changes in the app sticks)
-  GALLEY_PASSWORD           The sign-in password, ${MIN_PASSWORD_LENGTH} characters or more
+  GALLEY_PASSWORD           The first owner's password, ${MIN_PASSWORD_LENGTH} characters or more
+  GALLEY_OWNER_NAME         The first owner's name and the e-mail they sign in with
+  GALLEY_OWNER_EMAIL        (with GALLEY_PASSWORD; without them the app asks after sign-in)
   GALLEY_SETUP_TOKEN        The one-time setup code to use (24 characters or more), or
   GALLEY_SETUP_TOKEN_SHA256 only its SHA-256, so the code never reaches the server
   GALLEY_SITE_REPOSITORY    The site's repository: git@host:owner/name.git or https://…
@@ -85,7 +100,7 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
   const { values } = parse(
     "serve",
     argv,
-    { host: { type: "string" }, port: { type: "string", short: "p" }, "sites-dir": { type: "string" }, "reset-password": { type: "boolean" } },
+    { host: { type: "string" }, port: { type: "string", short: "p" }, "sites-dir": { type: "string" }, "reset-password": { type: "boolean" }, email: { type: "string" } },
     0
   );
 
@@ -93,6 +108,7 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
     io.out(SERVE_HELP);
     return 0;
   }
+  if (values.email !== undefined && !values["reset-password"]) throw new UsageError("--email is only used with --reset-password, to say which owner's password to reset.");
   const host = values.host ?? io.env.GALLEY_HOST ?? "0.0.0.0";
   // Still accepted so old scripts start; the server says it is ignored now.
   const sitesDir = values["sites-dir"] ? resolve(io.cwd, values["sites-dir"]) : undefined;
@@ -109,6 +125,7 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
       notice: (line) => io.err(stamped(`! ${line}`)),
       log: (line) => io.err(stamped(line)),
       ...(values["reset-password"] ? { resetPassword: true } : {}),
+      ...(values.email !== undefined ? { resetPasswordEmail: values.email } : {}),
     });
   } catch (error) {
     if (error instanceof StartupError) {
@@ -122,7 +139,7 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
   const trustProxy = /^(1|true|yes|on)$/i.test(env.GALLEY_TRUST_PROXY ?? "");
   const home = server.home ?? (env.GALLEY_HOME?.trim() || `~/${PRODUCT.homeDir}`);
   const site = (await server.install?.site().catch(() => null)) ?? null;
-  const passwordSet = server.install ? server.install.store.hasPassword() : true;
+  const passwordSet = server.install ? server.install.store.hasOwner() : true;
 
   io.out(`${PRODUCT.name} is serving on ${describeHost(host)}, port ${server.port}.`);
   io.out(`Address:   ${publicUrl ?? `${server.url} (set GALLEY_PUBLIC_URL to the address people use)`}`);
@@ -130,17 +147,35 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
     io.out(
       // A code the operator supplied is theirs already: printing it again would only put it in the server's log.
       server.setupUrl && new URL(server.setupUrl).searchParams.get("token") !== io.env.GALLEY_SETUP_TOKEN?.trim()
-        ? `Setup:     ${server.setupUrl}\n           Open it now: it works once, and whoever opens it first chooses the password.`
+        ? `Setup:     ${server.setupUrl}\n           Open it now: it works once, and whoever opens it first creates the owner's account.`
         : server.setupUrl
-          ? `Setup:     ${new URL("/setup", server.setupUrl).href}?token=<the setup code you supplied>\n           It works once, and whoever opens it first chooses the password.`
+          ? `Setup:     ${new URL("/setup", server.setupUrl).href}?token=<the setup code you supplied>\n           It works once, and whoever opens it first creates the owner's account.`
           : "Setup:     waiting for first run, with the setup code you supplied (only its hash is kept here)"
     );
   } else {
-    // Which password is in use, without saying anything about it: GALLEY_PASSWORD only sets it while there is none, and the app can change it since.
-    const fromEnv = Boolean(server.install && env.GALLEY_PASSWORD && (await server.install.store.checkPassword(env.GALLEY_PASSWORD).catch(() => false)));
+    // Whether GALLEY_PASSWORD still signs the first owner in, without saying anything about it: it only sets it while there is no owner, and the app can change it since.
+    const fromEnv = Boolean(server.install && env.GALLEY_PASSWORD && (await server.install.people.ownerPasswordIs(env.GALLEY_PASSWORD).catch(() => false)));
 
-    io.out(`Sign-in:   ${fromEnv ? "the password GALLEY_PASSWORD set" : "this editor's password (it is changed on the Install page)"}; after 5 wrong attempts in a minute, that address waits a minute`);
+    io.out(
+      `Sign-in:   each person's own e-mail and password${fromEnv ? " (an owner's is still the one GALLEY_PASSWORD set)" : "; an owner invites people in the app"}; after 5 wrong attempts in a minute, that address waits a minute`
+    );
   }
+  if (server.passwordLink) {
+    const until = new Date(server.passwordLink.expiresAt).toISOString().slice(11, 16);
+
+    io.out(
+      `Password:  ${server.passwordLink.url}\n           Open it now: it lets ${server.passwordLink.name || "the owner"} choose a new password, once, until ${until} UTC. Nobody else's account changed.`
+    );
+  }
+  io.out(
+    `E-mail:    ${
+      !mailConfigFromEnv(env).config
+        ? "not set up (GALLEY_SMTP_URL, GALLEY_MAIL_FROM): owners send invitation and new-password links themselves"
+        : publicUrl
+          ? "invitations and new-password links are e-mailed too"
+          : "set up, but no link is e-mailed until the editor's public address is set (GALLEY_PUBLIC_URL): a link is only ever built from it"
+    }`
+  );
   io.out(
     `Sessions:  signed HttpOnly SameSite=Strict cookie, 30 days; ${publicUrl?.startsWith("https://") ? "Secure, and a __Host- cookie on this https:// address" : `Secure over HTTPS${trustProxy ? " (X-Forwarded-Proto is trusted)" : " (X-Forwarded-Proto is ignored; set GALLEY_TRUST_PROXY=1 behind a proxy)"}`}`
   );

@@ -103,6 +103,8 @@ export function RestoreFlow({ onDone, onBusy }: { onDone: () => void; onBusy?: (
   const [lost, setLost] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const job = useFollowJob(stage.at === "working" ? stage.job : null, () => setLost(true));
+  // A server with accounts brings the backup's people back: each signs in as themselves.
+  const accounts = useMeta((s) => s.meta?.install?.signInWith !== undefined);
 
   useEffect(() => {
     onBusy?.(uploading || starting || stage.at === "working");
@@ -170,7 +172,7 @@ export function RestoreFlow({ onDone, onBusy }: { onDone: () => void; onBusy?: (
           <ProofMark kind="reg" />
           <span>The backup is back in place.</span>
         </p>
-        <p className="install-done__text">Sign in with the password of the editor the backup came from.</p>
+        <p className="install-done__text">{accounts ? "Sign in with your e-mail and password on the editor the backup came from." : "Sign in with the password of the editor the backup came from."}</p>
         <div>
           <Button variant="primary" onClick={onDone} data-autofocus>
             Sign in

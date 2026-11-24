@@ -2,6 +2,7 @@
 import type { z } from "zod";
 import type { AgentMode, ChatOption, SiteModel, SiteService } from "../../types";
 import type { GalleyImageService } from "../images/service";
+import type { AccessLevel } from "../../install/accounts";
 
 export interface ToolContext {
   site: SiteService;
@@ -50,6 +51,12 @@ export interface AssistantTool<S extends z.ZodType = z.ZodType> {
   input: S;
   /** "build": offered only in build mode. */
   mode: "any" | "build";
+  /**
+   * What the person whose turn it is needs, on a hosted install, beyond what
+   * the mode implies (a build-mode tool needs BUILD_MODE_LEVEL): the site's
+   * settings need SITE_SETTINGS_LEVEL. Absent: the mode decides (toolLevel).
+   */
+  level?: AccessLevel;
   effect: ToolEffect;
   /**
    * "everywhere" (default): the built-in assistant and every harness over MCP.

@@ -194,12 +194,13 @@ describe("logs without secrets", () => {
       // What was written: request lines without their query, and one line for each event worth keeping.
       expect(all).toMatch(/^GET \/setup \d{3} \d+ms$/m);
       expect(all).toMatch(/^POST \/api\/setup\/password 200 \d+ms$/m);
-      expect(all).toContain("The password was chosen through the setup link (from 127.0.0.1).");
-      expect(all).toContain("A sign-in from 127.0.0.1 failed: wrong password.");
-      expect(all).toContain("Signed in from 127.0.0.1.");
+      // Was "The password was chosen…", "A sign-in from … failed", "Signed in from …": each line now names whose account it was (never an e-mail).
+      expect(all).toContain("The owner's account was made through the setup link: Owner with no name yet, from 127.0.0.1.");
+      expect(all).toContain("A sign-in to Owner with no name yet from 127.0.0.1 failed: wrong password.");
+      expect(all).toContain("Signed in: Owner with no name yet, from 127.0.0.1.");
       expect(all).toContain("The site was connected.");
       expect(all).toContain("First run finished.");
-      expect(all).toContain("Signed out everywhere (from 127.0.0.1).");
+      expect(all).toContain("Owner with no name yet signed out everywhere.");
       expect(all).toContain("GET /api/jobs/[redacted] ");
       expect(all).not.toMatch(/healthz|readyz/);
       for (const line of written) expect(line).not.toMatch(/cookie|authorization/i);
@@ -211,7 +212,7 @@ describe("logs without secrets", () => {
     const started = await startHosted(box, box.folder("home"), { GALLEY_PUBLIC_URL: EDITOR, GALLEY_PASSWORD: PASSWORD, GALLEY_LOG_REQUESTS: "0" });
 
     await signIn(started.port);
-    expect(started.logs).toEqual(["Signed in from 127.0.0.1."]);
+    expect(started.logs).toEqual(["Signed in: Owner with no name yet, from 127.0.0.1."]);
   });
 });
 

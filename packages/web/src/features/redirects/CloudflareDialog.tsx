@@ -15,6 +15,11 @@ import { notify } from "@/lib/stores/toasts";
 import { Button, ConfirmDialog, Dialog, ErrorState, Field, Icon, Input, ProofMark, Spinner } from "@/ui";
 import { redirectKeys, setOverview } from "./data";
 import { invalidate } from "@/lib/query";
+import { SITE_SETTINGS_LEVEL } from "@galley/core/install/route-access";
+import { useMaySiteSettings, whoMayFirst } from "@/lib/may";
+
+/** Under the account and domains, for someone whose role doesn't include the site's settings, where they are kept. */
+export const CLOUDFLARE_SETTINGS_BY_OTHERS = `They’re kept in the site’s settings: ${whoMayFirst(SITE_SETTINGS_LEVEL).toLowerCase()} of this editor can change them.`;
 
 type Step = "setup" | "plan" | "applying" | "done";
 
@@ -95,6 +100,8 @@ function KeySteps() {
 
 export function CloudflareDialog({ siteId, open, onClose, overview }: { siteId: string; open: boolean; onClose: () => void; overview: RedirectsOverview }) {
   const summary = overview.cloudflare!;
+  // The account and domains are kept in the site's settings file: shown, not changed, by someone whose role doesn't include it.
+  const maySettings = useMaySiteSettings();
   const [step, setStep] = useState<Step>("setup");
   const [account, setAccount] = useState(summary.account ?? "");
   const [hostnames, setHostnames] = useState(summary.hostnames.join(", "));
@@ -221,12 +228,13 @@ export function CloudflareDialog({ siteId, open, onClose, overview }: { siteId: 
             <p className="g-hint">Account: the one this site is put online with.</p>
           ) : (
             <Field label="Cloudflare account ID" hint="On the account’s home page in the Cloudflare dashboard, under Account ID.">
-              <Input mono value={account} onChange={(event) => setAccount(event.target.value)} placeholder="0123456789abcdef0123456789abcdef" />
+              <Input mono value={account} readOnly={!maySettings} onChange={(event) => setAccount(event.target.value)} placeholder="0123456789abcdef0123456789abcdef" />
             </Field>
           )}
           <Field label="The site’s domains" hint="Separate several with commas, like example.com, www.example.com.">
-            <Input mono value={hostnames} onChange={(event) => setHostnames(event.target.value)} placeholder="www.example.com" />
+            <Input mono value={hostnames} readOnly={!maySettings} onChange={(event) => setHostnames(event.target.value)} placeholder="www.example.com" />
           </Field>
+          {maySettings ? null : <p className="g-hint">{CLOUDFLARE_SETTINGS_BY_OTHERS}</p>}
           {!summary.keyConfigured ? (
             <p className="redir-cfd__key">
               <ProofMark kind="bang" /> Add a Cloudflare access key first, in the site’s <Link to={`/sites/${siteId}/online`}>Online settings</Link>. Then give it these permissions:

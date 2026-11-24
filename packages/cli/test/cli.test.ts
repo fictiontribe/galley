@@ -354,7 +354,7 @@ describe("galley serve", () => {
     const link = /Setup: {5}(http:\/\/127\.0\.0\.1:\d+\/setup\?token=([A-Za-z0-9_-]{43}))\n/.exec(output);
 
     expect(link).not.toBeNull();
-    expect(output).toContain("it works once, and whoever opens it first chooses the password");
+    expect(output).toContain("it works once, and whoever opens it first creates the owner's account");
     expect(output).toContain("Site:      not connected yet");
     expect(output).toContain(`Data:      ${home}`);
     expect(output).not.toContain("Sign-in:");
@@ -417,28 +417,86 @@ describe("galley serve", () => {
 
     expect(output).toContain("0.0.0.0 (every network interface), port 4400");
     expect(output).toContain("Address:   https://cms.example.com");
-    // Was "the password chosen in the app", which isn't true when GALLEY_PASSWORD set it.
-    expect(output).toContain("Sign-in:   this editor's password (it is changed on the Install page)");
+    // Was "this editor's password (it is changed on the Install page)": a hosted install has accounts now.
+    expect(output).toContain("Sign-in:   each person's own e-mail and password; an owner invites people in the app; after 5 wrong attempts in a minute, that address waits a minute");
+    expect(output).toContain("E-mail:    not set up (GALLEY_SMTP_URL, GALLEY_MAIL_FROM): owners send invitation and new-password links themselves");
     expect(output).toContain("Site:      not connected yet");
     expect(output).toContain("Data:      /data");
     expect(output).not.toContain("a long enough password");
     expect(output).toContain("Requests:  only for cms.example.com and loopback names; changes must come from that address");
   });
 
-  it("says which password signs in: the one GALLEY_PASSWORD set, while it still is the one", async () => {
+  it("says links are e-mailed only with both outgoing e-mail and the public address", async () => {
+    const lines = async (env: Record<string, string>) => {
+      const io = testIo({
+        env: { HOME: tmp, GALLEY_PASSWORD: "a long enough password", GALLEY_HOME: "/data", GALLEY_SMTP_URL: "smtp://127.0.0.1:2525", GALLEY_MAIL_FROM: "editor@example.com", ...env },
+        startServer: async () => ({ url: "https://cms.example.com", port: 4400, close: async () => {} }) as unknown as RunningServer,
+      });
+
+      expect(await main(["serve"], io)).toBe(0);
+      return io.stdout.join("\n");
+    };
+
+    expect(await lines({ GALLEY_PUBLIC_URL: "https://cms.example.com" })).toContain("E-mail:    invitations and new-password links are e-mailed too");
+    expect(await lines({})).toContain("E-mail:    set up, but no link is e-mailed until the editor's public address is set (GALLEY_PUBLIC_URL)");
+  });
+
+  it("says how people sign in, and whether GALLEY_PASSWORD is still an owner's password", async () => {
     const { startServer } = await import("@galley/server");
     const home = join(tmp, "serve-home-password");
     const env = { PATH: process.env.PATH, HOME: tmp, GALLEY_HOME: home, GALLEY_HOST: "127.0.0.1", GALLEY_PORT: "0", GALLEY_MCP: "off", GALLEY_PASSWORD: "a long enough password" };
     const first = testIo({ startServer, env });
 
     expect(await main(["serve"], first)).toBe(0);
-    expect(first.stdout.join("\n")).toContain("Sign-in:   the password GALLEY_PASSWORD set; after 5 wrong attempts in a minute, that address waits a minute");
+    // Was "the password GALLEY_PASSWORD set": a hosted install has accounts now, and GALLEY_PASSWORD made the first owner's.
+    expect(first.stdout.join("\n")).toContain("Sign-in:   each person's own e-mail and password (an owner's is still the one GALLEY_PASSWORD set); after 5 wrong attempts in a minute, that address waits a minute");
     expect(first.stdout.join("\n")).not.toContain("a long enough password");
     // Changed in the app since: GALLEY_PASSWORD no longer signs in, and the line doesn't say it does.
     const changed = testIo({ startServer, env: { ...env, GALLEY_PASSWORD: "another long enough password" } });
 
     expect(await main(["serve"], changed)).toBe(0);
-    expect(changed.stdout.join("\n")).toContain("Sign-in:   this editor's password (it is changed on the Install page)");
+    expect(changed.stdout.join("\n")).toContain("Sign-in:   each person's own e-mail and password; an owner invites people in the app;");
+  });
+
+  it("--reset-password with an owner prints a one-time new-password link for them, and changes nobody's password", async () => {
+    const { startServer } = await import("@galley/server");
+    const home = join(tmp, "serve-home-reset");
+    const env = { PATH: process.env.PATH, HOME: tmp, GALLEY_HOME: home, GALLEY_HOST: "127.0.0.1", GALLEY_PORT: "0", GALLEY_MCP: "off", GALLEY_PASSWORD: "a long enough password", GALLEY_SMTP_URL: "smtp://127.0.0.1:9", GALLEY_MAIL_FROM: "editor@example.com" };
+    const first = testIo({ startServer, env });
+
+    expect(await main(["serve"], first)).toBe(0);
+    // Was "invitations and new-password links are e-mailed too": without the public address no link is e-mailed at all.
+    expect(first.stdout.join("\n")).toContain("E-mail:    set up, but no link is e-mailed until the editor's public address is set (GALLEY_PUBLIC_URL): a link is only ever built from it");
+    const reset = testIo({ startServer, env });
+
+    expect(await main(["serve", "--reset-password"], reset)).toBe(0);
+    const output = reset.stdout.join("\n");
+    const link = /Password: {2}(http:\/\/127\.0\.0\.1:\d+\/new-password#([A-Za-z0-9_-]{43}))\n {11}Open it now: it lets the owner choose a new password, once, until \d\d:\d\d UTC\. Nobody else's account changed\./.exec(output);
+
+    expect(link).not.toBeNull();
+    expect(output).not.toContain("Setup:");
+    // The code is printed once: never in the state file (only its hash) nor in the log.
+    expect(readFileSync(join(home, "install.json"), "utf8")).not.toContain(link![2]);
+    expect(reset.stderr.join("\n")).not.toContain(link![2]);
+    // The owner's password still signs in until the link is used.
+    expect(output).toContain("(an owner's is still the one GALLEY_PASSWORD set)");
+  });
+
+  it("--email says which owner --reset-password is for, and only with it", async () => {
+    let received: Record<string, unknown> = {};
+    const io = testIo({
+      startServer: async (options) => {
+        received = { ...options };
+        return { url: "http://127.0.0.1:4400", port: 4400, close: async () => {} } as unknown as RunningServer;
+      },
+    });
+
+    expect(await main(["serve", "--reset-password", "--email", "sam@example.com"], io)).toBe(0);
+    expect(received).toMatchObject({ mode: "hosted", resetPassword: true, resetPasswordEmail: "sam@example.com" });
+    const alone = testIo({ startServer: async () => ({}) as RunningServer });
+
+    expect(await main(["serve", "--email", "sam@example.com"], alone)).toBe(2);
+    expect(alone.stderr.join("\n")).toMatch(/--email is only used with --reset-password/);
   });
 
   it("says plainly what it answers to without a public address", async () => {

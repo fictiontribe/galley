@@ -33,7 +33,7 @@ The preview is your site running on this computer.
 
 - **"Can't reach the app's server."** The part of the app that does the work stopped. Start it again (or ask whoever runs it), then **Try again**.
 - **Live updates paused — reconnecting.** The connection dropped for a moment and comes back by itself.
-- **"Sign in to continue."** On a shared Galley, sign in with its password again. On your own computer: **"Open the link printed when the app started to continue."**
+- **"Sign in to continue."** On a hosted editor, sign in again with your e-mail and password ([Sign in to a hosted editor](/docs/editing/signing-in/)). On your own computer: **"Open the link printed when the app started to continue."**
 
 ## Still stuck
 

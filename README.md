@@ -198,7 +198,7 @@ Intent, not a promise. The longer version is [ROADMAP.md](ROADMAP.md).
 
 **Later**
 
-- Accounts and roles for hosted installs
+- Single sign-on for hosted installs
 - Galley Cloud: the editor, hosted for you
 
 ## Documentation

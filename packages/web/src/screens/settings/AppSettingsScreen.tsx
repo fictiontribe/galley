@@ -5,6 +5,7 @@ import { useTopBar } from "@/app/chrome";
 import { useScrollToHash } from "@/lib/hashScroll";
 import { signOut } from "@/lib/auth";
 import { useHostedInstall, useMeta } from "@/lib/stores/meta";
+import { useAccount } from "@/lib/may";
 import { placeWords } from "@/lib/where";
 import { api, errorShape } from "@/lib/api";
 import { compactNumber, count, money } from "@/lib/format";
@@ -306,8 +307,27 @@ function useAuthorFixed(): boolean {
   return hosted && Boolean(install.data?.fixed.includes("author"));
 }
 
+/** With accounts, each person publishes under their own name: it lives in Your account, not here. */
+function AccountAuthor() {
+  const account = useAccount();
+  if (!account) return null;
+  return (
+    <SettingsSection id="you" title="You" description="Each version is recorded with the name and e-mail of the person who published it, shown in Version history.">
+      <p>
+        Yours is {account.name || "not set yet"}
+        {account.email ? <span className="g-mono"> &lt;{account.email}&gt;</span> : null}. Change it in{" "}
+        <Link className="g-link" to="/account">
+          Your account
+        </Link>
+        .
+      </p>
+    </SettingsSection>
+  );
+}
+
 function YouSection({ settings }: { settings: Settings }) {
   const hosted = useHostedInstall();
+  const account = useAccount();
   const fixed = useAuthorFixed();
   // Nothing saved here yet: the fields start empty, with the computer's own identity as the example — it isn't a choice made here.
   const saved = settings.authorSaved === false ? { name: "", email: "" } : settings.author;
@@ -321,6 +341,7 @@ function YouSection({ settings }: { settings: Settings }) {
     setEmail(saved.email);
   }, [saved.name, saved.email]);
   const dirty = name !== saved.name || email !== saved.email;
+  if (account) return <AccountAuthor />;
 
   const save = async (event: FormEvent) => {
     event.preventDefault();

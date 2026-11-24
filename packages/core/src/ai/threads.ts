@@ -54,6 +54,11 @@ export interface ApiState {
   mode: AgentMode | null;
   /** Whether the build-only tools are currently surfaced (tool_addition sent, no removal since). */
   buildTools: boolean;
+  /**
+   * Which build-only tools are surfaced, by name. Absent in threads from
+   * before it was kept: then `buildTools` means every one of them.
+   */
+  surfacedTools?: string[];
   /** Notes for the model that haven't been delivered yet (an undo, say). */
   pendingNotes: string[];
   /** Under the plain profile, thinking in messages before this index is never replayed again. */

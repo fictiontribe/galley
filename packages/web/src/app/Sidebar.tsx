@@ -13,6 +13,7 @@ import { InboxNavBadge } from "@/features/inbox/InboxNavBadge";
 import { SiteSwitcherButton } from "@/features/sites/SiteSwitcherButton";
 import { useSiteSession } from "@/features/sites/session";
 import { useTwinLine } from "@/features/sites/store";
+import { useAccount, useMay } from "@/lib/may";
 import { useChrome } from "./chrome";
 
 interface NavItemProps {
@@ -90,6 +91,8 @@ function HostedHomeSidebar() {
   const brand = useMeta((s) => s.meta?.brand);
   const siteId = useInstallSiteId();
   const site = useSites((s) => s.sites?.find((candidate) => candidate.id === siteId) ?? s.sites?.[0] ?? null);
+  const may = useMay();
+  const account = useAccount();
   return (
     <nav className="g-sidebar app-sidebar" aria-label="App">
       <Link to="/" className="g-brand app-brand" aria-label={`${brand?.productName ?? ""} — the site`}>
@@ -98,9 +101,10 @@ function HostedHomeSidebar() {
       </Link>
       <div className="g-nav">
         {site ? <NavItem to={`/sites/${site.id}`} icon="folder-site" label={site.name} /> : null}
-        <NavItem to="/install" icon="folder" label="Install" />
-        <NavItem to="/settings" icon="settings" label="App settings" />
-        <NavItem to="/plugins" icon="plugin" label="Plugins" />
+        {may("GET /api/install") ? <NavItem to="/install" icon="folder" label="Install" /> : null}
+        {may("PATCH /api/settings") ? <NavItem to="/settings" icon="settings" label="App settings" /> : null}
+        {may("POST /api/plugins/enabled") ? <NavItem to="/plugins" icon="plugin" label="Plugins" /> : null}
+        {account ? <NavItem to="/account" icon="person" label="Your account" /> : null}
       </div>
       <div className="app-sidebar__foot">
         {brand?.byline ? <span className="app-sidebar__byline app-nav__text">{brand.byline}</span> : null}
@@ -179,6 +183,8 @@ export function SiteSidebar({ siteId }: { siteId: string }) {
   const editingCollection = editingPath ? collectionForPath(detail?.model, editingPath) : null;
   const base = `/sites/${siteId}`;
   const hosted = useHostedInstall();
+  const may = useMay();
+  const account = useAccount();
 
   return (
     <nav className="g-sidebar app-sidebar" aria-label="Site">
@@ -227,19 +233,21 @@ export function SiteSidebar({ siteId }: { siteId: string }) {
         <NavItem to={`${base}/media`} icon="image" label="Media" />
         <NavLabel>Site</NavLabel>
         <NavItem to={`${base}/forms`} icon="posts" label="Forms" />
-        <NavItem to={`${base}/inbox`} icon="inbox" label="Inbox" trailing={<InboxNavBadge siteId={siteId} />} />
+        {/* The inbox is what visitors sent: not loaded at all for someone who may not read it. */}
+        {may("GET /api/sites/:siteId/inbox") ? <NavItem to={`${base}/inbox`} icon="inbox" label="Inbox" trailing={<InboxNavBadge siteId={siteId} />} /> : null}
         <NavItem to={`${base}/scripts`} icon="data" label="Scripts" />
         <NavItem to={`${base}/brand`} icon="registration" label="Brand" />
         <NavItem to={`${base}/visibility`} icon="globe" label="Search & AI" />
         <NavItem to={`${base}/history`} icon="history" label="Version history" />
         <NavItem to={`${base}/online`} icon="globe" label="Online" />
         <NavItem to={`${base}/redirects`} icon="link" label="Redirects" />
-        <NavItem to={`${base}/settings`} icon="settings" label="Settings" />
+        {may("PUT /api/sites/:siteId/config") ? <NavItem to={`${base}/settings`} icon="settings" label="Settings" /> : null}
         {hosted ? (
           <>
             <NavLabel>Editor</NavLabel>
-            <NavItem to="/install" icon="folder" label="Install" />
-            <NavItem to="/settings" icon="settings" label="App settings" />
+            {may("GET /api/install") ? <NavItem to="/install" icon="folder" label="Install" /> : null}
+            {may("PATCH /api/settings") ? <NavItem to="/settings" icon="settings" label="App settings" /> : null}
+            {account ? <NavItem to="/account" icon="person" label="Your account" /> : null}
           </>
         ) : null}
       </div>

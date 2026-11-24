@@ -6,8 +6,10 @@
  *
  * MIGRATIONS[n] takes a folder at layout n to layout n + 1. Layout 0 is a
  * data folder from before installs had a state file: a hosted server that
- * kept any number of sites in `<home>/sites.json`.
+ * kept any number of sites in `<home>/sites.json`. Layout 1 had one shared
+ * password; layout 2 has accounts.
  */
+import { randomBytes } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -16,7 +18,7 @@ import { GalleyError } from "../errors";
 import { runGit } from "../workspace/git";
 import { redactAddress } from "./address";
 import { INSTALL_SCHEMA_VERSION } from "./types";
-import type { InstallStateFile } from "./state";
+import type { InstallStateFile, StoredAccount } from "./state";
 
 export interface MigrationContext {
   home: string;
@@ -137,7 +139,7 @@ const toVersion1: Migration = async (_state, { home, keepSite, now }) => {
       starter: null,
     };
   }
-  const state: InstallStateFile = {
+  const state = {
     schema: 1,
     createdAt: now.toISOString(),
     password: null,
@@ -153,7 +155,44 @@ const toVersion1: Migration = async (_state, { home, keepSite, now }) => {
   return state;
 };
 
-export const MIGRATIONS: Migration[] = [toVersion1];
+/**
+ * 1 → 2: the one shared password becomes the install's one owner, holding the
+ * same password hash, so whoever signed in before still signs in with the
+ * same password. Their name and e-mail are left empty on purpose — the
+ * publishing name and e-mail are not necessarily the person's own — and the
+ * app asks for them after the next sign-in (`incomplete`). An install that
+ * had no password yet gets no account: first run makes the owner. Cookies
+ * from before don't carry a person, so they stop counting.
+ */
+const toVersion2: Migration = async (state, { now }) => {
+  const { password, ...rest } = state as Record<string, unknown> & { password?: { hash?: unknown; changedAt?: unknown } | null; sessions?: { validAfter?: unknown } };
+  const at = now.toISOString();
+  const accounts: StoredAccount[] =
+    password && typeof password.hash === "string" && password.hash.length > 0
+      ? [
+          {
+            id: randomBytes(9).toString("base64url"),
+            name: "",
+            email: "",
+            role: "owner",
+            passwordHash: password.hash,
+            passwordChangedAt: typeof password.changedAt === "string" ? password.changedAt : at,
+            createdAt: at,
+            lastSeenAt: null,
+            disabled: false,
+            incomplete: true,
+            sessionsValidAfter: 0,
+          },
+        ]
+      : [];
+  const validAfter = typeof rest.sessions?.validAfter === "number" ? rest.sessions.validAfter : 0;
+  // Only an install with a password had sessions to end.
+  const sessions = accounts.length > 0 ? { validAfter: Math.max(validAfter, now.getTime()), revoked: [] } : rest.sessions;
+
+  return { ...rest, schema: 2, accounts, links: [], sessions };
+};
+
+export const MIGRATIONS: Migration[] = [toVersion1, toVersion2];
 
 /** Runs every migration from `from` up to this version's layout. */
 export async function migrate(state: unknown, from: number, context: MigrationContext): Promise<unknown> {

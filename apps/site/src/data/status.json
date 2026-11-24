@@ -137,8 +137,22 @@
     {
       "id": "hosted-install",
       "label": "A hosted editor, one per site",
-      "line": "One site, one password, its own state; run it with Docker on your own server.",
+      "line": "One site, its own state, its own people; run it with Docker on your own server.",
       "status": "new"
+    },
+    {
+      "id": "hosted-accounts",
+      "label": "Accounts and roles on a hosted editor",
+      "line": "Owner, editor and contributor; invitations and one-time links; each publish carries its author. Tested, and tried in a real browser; not yet with real e-mail.",
+      "status": "new",
+      "home": false
+    },
+    {
+      "id": "hosted-sso",
+      "label": "Single sign-on for a hosted editor",
+      "line": "Signing in through your own identity provider. Today: an e-mail and a password.",
+      "status": "later",
+      "home": false
     },
     {
       "id": "editor-online",

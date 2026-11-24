@@ -30,7 +30,9 @@ import { pinnedProfile, type RequestProfile } from "./profiles";
 import { contextText, modeChangeNote, siteChangedNote, SYSTEM_PROMPT, undoNote } from "./prompt";
 import { buildSiteCard, loadInstructionFiles } from "./site-card";
 import { hashText, summaryOf, ThreadStore, titleFrom, type StoredImageRef, type StoredMessage, type ThreadRecord } from "./threads";
-import { buildToolNames } from "./tools/index";
+import { buildToolNames, offeredBuildToolNames } from "./tools/index";
+import { BUILD_MODE_REFUSAL, callerMay, requireBuildMode } from "../install/caller";
+import { BUILD_MODE_LEVEL } from "../install/route-access";
 import { siteBrandInstructions } from "../sitebrand/tools";
 import { plural } from "./tools/labels";
 import type { ToolContext } from "./tools/types";
@@ -270,6 +272,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
       const site = await siteFor(siteId);
       const mode: AgentMode = input.mode ?? "content";
 
+      if (mode === "build") requireBuildMode();
       if (mode === "build" && !(await site.model()).ai.allowBuild) {
         throw new GalleyError("invalid", "Build mode is turned off for this site, so the assistant can change content only.");
       }
@@ -328,6 +331,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
         const model = await site.model();
         const mode: AgentMode = request.mode ?? record.thread.mode;
 
+        // Asked for, or carried on from someone else's build-mode conversation: either way refused, never quietly switched.
+        if (mode === "build" && !callerMay(BUILD_MODE_LEVEL)) {
+          throw new GalleyError("forbidden", request.mode === "build" ? BUILD_MODE_REFUSAL : `${BUILD_MODE_REFUSAL} This conversation is in build mode: switch it to content mode to carry on.`);
+        }
         if (mode === "build" && !model.ai.allowBuild) {
           throw new GalleyError("invalid", "Build mode is turned off for this site, so the assistant can change content only.");
         }
@@ -370,13 +377,12 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
         if (record.api.mode !== null && record.api.mode !== mode) notes.push(modeChangeNote(mode));
         if (record.api.systemCard !== null && record.api.cardHash !== cardHash) notes.push(siteChangedNote(card));
         const toolChanges: Array<Anthropic.Beta.BetaRequestToolAdditionBlock | Anthropic.Beta.BetaRequestToolRemovalBlock> = [];
+        // Only the build-mode tools this person may use are surfaced; any surfaced for someone before them that this person may not use are withdrawn.
+        const offered = mode === "build" ? offeredBuildToolNames(site.root) : [];
+        const surfaced = record.api.surfacedTools ?? (record.api.buildTools ? buildToolNames(site.root) : []);
 
-        if (mode === "build" && !record.api.buildTools) {
-          for (const name of buildToolNames(site.root)) toolChanges.push({ type: "tool_addition", tool: { type: "tool_reference", name } });
-        }
-        if (mode === "content" && record.api.buildTools) {
-          for (const name of buildToolNames(site.root)) toolChanges.push({ type: "tool_removal", tool: { type: "tool_reference", name } });
-        }
+        for (const name of offered.filter((name) => !surfaced.includes(name))) toolChanges.push({ type: "tool_addition", tool: { type: "tool_reference", name } });
+        for (const name of surfaced.filter((name) => !offered.includes(name))) toolChanges.push({ type: "tool_removal", tool: { type: "tool_reference", name } });
         const userParam: Anthropic.Beta.BetaMessageParam = { role: "user", content: hydratedContent };
         const opening: Array<{ stored: StoredMessage; param: Anthropic.Beta.BetaMessageParam }> = [
           { stored: { message: { role: "user", content }, ...(refs.length ? { images: refs } : {}) }, param: userParam },
@@ -487,7 +493,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
                   if (messages[0] === opening[0]?.stored) {
                     stored.api.pendingNotes = [];
                     stored.api.mode = mode;
-                    stored.api.buildTools = mode === "build";
+                    stored.api.buildTools = offered.length > 0;
+                    stored.api.surfacedTools = offered;
                     stored.api.systemCard ??= systemCard;
                     stored.api.cardHash = cardHash;
                   }

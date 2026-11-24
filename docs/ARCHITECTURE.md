@@ -111,7 +111,7 @@ galley/
 │   │       ├── workspace/      the checkout: files, git, changes, preview, media
 │   │       ├── site/           SiteService + SiteRegistry (content ∘ workspace)
 │   │       ├── ai/             assistant, image generation, settings, usage
-│   │       ├── install/        the hosted install: one site, first run, sign-in, backups
+│   │       ├── install/        the hosted install: one site, first run, accounts, backups
 │   │       └── hosting/        "Host the editor online": editor hosts, recipe, plans
 │   ├── server/                 @galley/server — HTTP API, SSE, static UI hosting
 │   ├── cli/                    galley-cms — the `galley` binary
@@ -237,10 +237,13 @@ Everything with side effects on the machine.
   each file (content / media / code / config), counts line changes, and for
   content entries computes `FieldChange[]` by parsing both versions.
   `diff(path)` returns before/after text plus hunks.
-- **Publish** — stage the chosen paths, commit as the configured author (this
-  site's own author → the repository's own `git config --local` → App
-  settings › You → the computer's global git identity; `workspace/author.ts`,
-  shown in the Publish dialog with where to change it) with a
+- **Publish** — stage the chosen paths, commit as the configured author (on
+  a hosted install, the signed-in person's own account first, carried
+  through the request in an async scope like the site's → this site's own
+  author → the repository's own `git config --local` → App settings › You
+  (a hosted install's publishing name) → the computer's global git identity;
+  `workspace/author.ts`, shown in the Publish dialog with where to change it)
+  with a
   `Galley-Publish: 1` trailer, push when a remote exists. A failed push leaves
   the commit in place and reports `pushError` in plain words. Pull-request
   mode commits on a new `galley/<slug>` branch, pushes it and returns a
@@ -303,13 +306,25 @@ only way a site gets in.
 
 One site and its state in one data folder (`GALLEY_HOME`): the versioned
 state file and its migrations (`migrate.ts`; a folder a newer version wrote
-is refused), the password (scrypt), the one-time setup code (its SHA-256),
-sessions and sign-out everywhere, the install's own deploy key or an access
+is refused), the accounts — people, roles, invitations and one-time links,
+kept in the state file since its layout 2 (`state.ts`, `people.ts`; the
+contract is `accounts.ts`) — with passwords as scrypt hashes and the setup
+code and link codes as SHA-256 only, sessions that each belong to a person
+and sign-out everywhere, the install's own deploy key or an access
 token for the repository (`access.ts`), connecting the one site (an existing
 repository, or a starter sent to an empty one), starting values from the
 environment or one file — applied once, only while missing (`starting.ts`)
-— and backups: one file sealed with a passphrase (`backup.ts`). Contract:
-`install/types.ts`. Only a hosted server uses it.
+— and backups: one file sealed with a passphrase (`backup.ts`). Contracts:
+`install/types.ts`, `install/accounts.ts` (roles and the levels each has)
+and `install/route-access.ts` (the level every API route needs — the one
+table the server enforces and the web app reads — and the two levels a
+route can't express: build mode, `BUILD_MODE_LEVEL`, and the site's
+settings file, `SITE_SETTINGS_LEVEL`). `install/caller.ts` carries the
+person whose request it is through the work it starts, so the engine
+checks those two where the write happens, whichever way it came; the few
+values the engine records in the settings file inside actions below that
+level go through `site/settings-records.ts`, each changing only its own
+keys. Only a hosted server uses it.
 
 ### 3.6 `hosting/` — host the editor online
 
@@ -369,12 +384,22 @@ Hono on Node. Implements `ApiRoutes` from `api.ts` exactly, plus:
 - Static hosting of the built web UI, with SPA fallback.
 - **Auth.** Local mode (default, binds `127.0.0.1`): a random session token
   minted at start-up, delivered in the URL the CLI opens, exchanged for an
-  HttpOnly cookie. Hosted mode (`galley serve`, `GALLEY_HOST=0.0.0.0`): one
-  password, stored as an scrypt hash in the install's state; with none yet,
-  the server prints a one-time setup link where first run chooses it.
-  `POST /api/auth/login` sets a signed cookie (`__Host-` on an `https://`
-  address); changing the password or "sign out everywhere" ends older
-  sessions, across restarts too. No accounts.
+  HttpOnly cookie. Hosted mode (`galley serve`, `GALLEY_HOST=0.0.0.0`):
+  accounts — each person's e-mail and password, kept in the install's state;
+  with no owner yet, the server prints a one-time setup link where first run
+  creates the owner. `POST /api/auth/login` sets a signed cookie (`__Host-`
+  on an `https://` address) that names the person; every request checks the
+  person still exists, isn't switched off and hasn't been signed out since,
+  across restarts too (`who.ts` works out the caller once per request).
+  **Who may call what** is one table, `ROUTE_ACCESS` in
+  `core/src/install/route-access.ts`: every route has one level (edit,
+  publish, manage — a route without one doesn't compile), each role has a
+  set of levels, and the server's guards (`app.ts`) enforce it; the web app
+  reads the same table only to hide what a role can't use. Each person's
+  request runs inside `withCaller` (`core/src/install/caller.ts`), so build
+  mode and the site's settings file are held to their levels in the engine
+  too. One-time links are built only from `GALLEY_PUBLIC_URL`. Local mode
+  has no accounts and ignores the table.
   `Origin` is checked on every state-changing request. In both modes the
   cookie is signed with a key kept in the Galley home (`session.key`,
   owner-only), so restarting the app — which adding a plugin needs — doesn't
@@ -383,8 +408,10 @@ Hono on Node. Implements `ApiRoutes` from `api.ts` exactly, plus:
   anything else is logged and returned as a generic `internal`.
 - **Hosted only:** the multi-site routes answer 403 and the "Host the editor
   online" routes 404 (`hosted-refusals.ts`); first run and the Install page
-  (`install-routes.ts`, `ops.ts`); `GET /healthz` and `GET /readyz`; the
-  preview gateway on the preview's and live comparison's hostnames
+  (`install-routes.ts`, `ops.ts`); people, your own account and one-time
+  links (`accounts-routes.ts`), e-mailed when `GALLEY_SMTP_URL` is set;
+  `GET /healthz` and `GET /readyz`; the preview gateway on the preview's and
+  live comparison's hostnames
   (`gateway.ts`, `gateway-auth.ts`, `preview-entry.ts`); one scrubbed log line
   per request (`log.ts`); a graceful stop on SIGTERM.
 

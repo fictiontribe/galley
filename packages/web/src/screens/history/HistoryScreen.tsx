@@ -14,6 +14,7 @@ import { useHostedInstall } from "@/lib/stores/meta";
 import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, PageHeader, ProofMark, Skeleton } from "@/ui";
 import { sendNowWithToast } from "@/features/proof/sendNow";
 import { PutLiveButton } from "@/features/deploy/Online";
+import { useMay } from "@/lib/may";
 
 const PAGE = 50;
 
@@ -22,6 +23,7 @@ function SyncStatus({ siteId }: { siteId: string }) {
   const [pulling, setPulling] = useState(false);
   const [sending, setSending] = useState(false);
   const where = usePlaceWords();
+  const may = useMay();
 
   const pull = async () => {
     setPulling(true);
@@ -61,7 +63,7 @@ function SyncStatus({ siteId }: { siteId: string }) {
     <div className="app-sync" role="status">
       <ProofMark kind={tone === "success" ? "reg" : tone === "warning" ? "bang" : "stet"} className={`app-sync__mark app-sync__mark--${tone}`} />
       <span>{text}</span>
-      {status.hasRemote && status.ahead > 0 ? (
+      {status.hasRemote && status.ahead > 0 && may("POST /api/sites/:siteId/send") ? (
         <Button
           size="sm"
           variant="primary"
@@ -75,7 +77,7 @@ function SyncStatus({ siteId }: { siteId: string }) {
           Send now
         </Button>
       ) : null}
-      {status.hasRemote ? (
+      {status.hasRemote && may("POST /api/sites/:siteId/pull") ? (
         <Button size="sm" variant="secondary" icon="download" busy={pulling} busyLabel="Getting latest" onClick={() => void pull()}>
           Get latest
         </Button>
@@ -87,6 +89,7 @@ function SyncStatus({ siteId }: { siteId: string }) {
 function VersionRow({ item, onUndo, latest, first }: { item: HistoryEntry; onUndo: (item: HistoryEntry) => void; latest: boolean; first: boolean }) {
   const [open, setOpen] = useState(false);
   const note = versionNote(item.message);
+  const may = useMay();
   return (
     <li className="app-version">
       <span className="app-version__rail" aria-hidden="true">
@@ -135,11 +138,11 @@ function VersionRow({ item, onUndo, latest, first }: { item: HistoryEntry; onUnd
         {/* The very first version is the site itself; undoing it would empty the site. */}
         {first ? (
           <Badge mark={null}>First version</Badge>
-        ) : (
+        ) : may("POST /api/sites/:siteId/revert") ? (
           <Button size="sm" variant="quiet" icon="undo" onClick={() => onUndo(item)}>
             Undo this publish
           </Button>
-        )}
+        ) : null}
       </div>
     </li>
   );
@@ -171,6 +174,7 @@ export function HistoryScreen() {
   const history = useQuery(keys.history(siteId, PAGE), () => api("GET /api/sites/:siteId/history", { params: { siteId }, query: { limit: PAGE } }));
   const [undoing, setUndoing] = useState<HistoryEntry | null>(null);
   const hosted = useHostedInstall();
+  const mayUndo = useMay()("POST /api/sites/:siteId/revert");
   const items = history.data?.items ?? [];
 
   let body;
@@ -191,7 +195,7 @@ export function HistoryScreen() {
   } else if (history.status === "error" && !history.data) {
     body = <ErrorState title="Couldn’t load the version history" error={history.error} onRetry={() => void history.refetch()} />;
   } else if (items.length === 0) {
-    body = <EmptyState title="Nothing published yet." body="Each time you publish, a version appears here — and you can undo it." mark="reg" />;
+    body = <EmptyState title="Nothing published yet." body={mayUndo ? "Each time you publish, a version appears here — and you can undo it." : "Each time an editor or owner publishes, a version appears here."} mark="reg" />;
   } else {
     body = (
       <ol className="app-versions">

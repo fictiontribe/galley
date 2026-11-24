@@ -24,7 +24,7 @@ export { buildSiteCard } from "./site-card";
 export { SYSTEM_PROMPT } from "./prompt";
 export { summarizeUsage } from "./usage";
 export { deterministicSummary } from "./describe";
-export { siteTools, toolByName, executeTool, everywhereTools, toolsFor } from "./tools/index";
+export { siteTools, toolByName, executeTool, everywhereTools, toolsFor, toolLevel, callerMayUse } from "./tools/index";
 export { toFieldPath } from "./tools/content";
 export { READ_ONLY } from "./tools/types";
 export type { AssistantTool as SiteTool, ToolContext, ToolEffect, ToolOutcome } from "./tools/types";

@@ -10,7 +10,7 @@ import { MIN_INSTALL_PASSWORD_LENGTH, type InstallFixed, type SetupStatus, type 
 
 /** The numbered steps of first run, as the step list shows them. */
 export const SETUP_STEPS = [
-  { id: "password", label: "Password" },
+  { id: "password", label: "Your account" },
   { id: "site", label: "Site" },
   { id: "details", label: "Details" },
 ] as const;

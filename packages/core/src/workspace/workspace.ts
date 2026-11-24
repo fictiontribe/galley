@@ -28,7 +28,8 @@ import { git as createGit, splitNul, type Git, type RepoInfo } from "./git";
 import { resolveContained, type ResolvedPath, normalizeRepoPath } from "./paths";
 import { deniedReason, writeRefusal } from "./policy";
 import * as publishing from "./publish";
-import { chooseAuthor, type AuthorLayers, type ChosenAuthor } from "./author";
+import { chooseAuthor, currentAccountAuthor, type AuthorLayers, type ChosenAuthor } from "./author";
+import { isSiteSettingsPath, requireBuildMode, requireSiteSettings } from "../install/caller";
 import { watchTree, type TreeWatcher, type WatchBatch } from "./watch";
 import { realpathSync, statSync } from "node:fs";
 
@@ -206,11 +207,25 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
       const denied = deniedReason(resolved.path, "build") ?? deniedReason(resolved.realPath, "build");
 
       if (denied) throw new GalleyError("forbidden", denied, path);
+      // Putting the settings file back is changing it, whoever's turn changed it first.
+      if (touchesSettings(resolved)) requireSiteSettings();
       await lock(() => applyWrite(resolved, bytes, {}));
     },
     emitUndo: async (paths) => {
       await refreshStatus(paths).catch(() => undefined);
       emit(paths, "undo");
+    },
+    allowRestore: (paths) => {
+      const settings = (path: string) => {
+        try {
+          return touchesSettings(resolve(path));
+        } catch {
+          // A path that no longer resolves is refused by restoreFile itself; here only its name counts.
+          return isSiteSettingsPath(path);
+        }
+      };
+
+      if (paths.some(settings)) requireSiteSettings();
     },
   });
 
@@ -260,13 +275,26 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     return { resolved, reason };
   }
 
+  /** The site's settings file, by its own name or through a link to it. */
+  function touchesSettings(resolved: ResolvedPath): boolean {
+    return isSiteSettingsPath(resolved.path) || isSiteSettingsPath(resolved.realPath);
+  }
+
+  /**
+   * Every write and delete by path. Who may is decided here, where the bytes
+   * go, whatever asked: build mode needs its level, and the settings file
+   * needs the settings level in any mode (only saveConfig's own checked
+   * write goes round this, as a system write).
+   */
   function guard(path: string, mode: AgentMode): ResolvedPath {
+    if (mode === "build") requireBuildMode();
     const { resolved, reason } = refusal(path, mode);
 
     if (!resolved || reason) {
       if (!resolved) resolve(path); // rethrows the containment error with its detail
       throw new GalleyError("forbidden", reason ?? "That file can't be changed.", path);
     }
+    if (touchesSettings(resolved)) requireSiteSettings();
     return resolved;
   }
 
@@ -306,6 +334,9 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
   }
 
   async function identity(): Promise<ChosenAuthor> {
+    const person = currentAccountAuthor();
+
+    if (person) return { ...person, from: "account" };
     const layers = options.authorLayers?.();
 
     if (layers) {
@@ -575,6 +606,8 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
         const targets = wanted.filter((p) => statuses.has(p) && deniedReason(p, "build") === null).sort();
 
         if (targets.length === 0) return [];
+        // Discarding a pending change to the settings file changes the file back: the same level as changing it.
+        if (targets.some(isSiteSettingsPath)) requireSiteSettings();
         await restoreToHead(targets);
         await changed(targets, "discard");
         return targets;

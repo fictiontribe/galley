@@ -4,6 +4,7 @@ import { ActivityTray } from "./ActivityTray";
 import { Boot } from "./Boot";
 import { BrandEffects } from "./BrandEffects";
 import { CommandPalette } from "./CommandPalette";
+import { CompleteAccountPrompt } from "@/features/accounts/CompleteAccount";
 import { AppRoutes } from "./routes";
 
 export function App() {
@@ -13,6 +14,7 @@ export function App() {
       <Boot>
         <AppRoutes />
         <CommandPalette />
+        <CompleteAccountPrompt />
       </Boot>
       <ToastViewport>
         <ActivityTray />

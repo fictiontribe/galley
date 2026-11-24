@@ -6,6 +6,7 @@ import { useMeta } from "@/lib/stores/meta";
 import { keys } from "@/lib/sync";
 import { useUi } from "@/lib/stores/ui";
 import { useDocumentTitle } from "./title";
+import { mayCall } from "@/lib/may";
 
 /**
  * Applies the white-label brand and the theme to the document: --accent on
@@ -23,7 +24,8 @@ export function BrandEffects() {
   }, [theme]);
 
   // The theme lives in the server's settings; the local copy only avoids a
-  // flash at start-up. Coming back to the window picks up a change made in
+  // flash at start-up (and, on a hosted install, is the theme itself for
+  // people who don't look after the settings). Coming back to the window picks up a change made in
   // another one.
   const authenticated = useMeta((s) => Boolean(s.meta?.authenticated));
   useEffect(() => {
@@ -35,7 +37,8 @@ export function BrandEffects() {
       api("GET /api/settings")
         .then((settings) => {
           setQueryData(keys.settings(), settings);
-          useUi.getState().setTheme(settings.appearance.theme);
+          // Someone who can't change the editor's settings keeps their own theme, in this browser (Your account).
+          if (mayCall(useMeta.getState().meta, "PATCH /api/settings")) useUi.getState().setTheme(settings.appearance.theme);
         })
         .catch(() => undefined)
         .finally(() => (inflight = false));

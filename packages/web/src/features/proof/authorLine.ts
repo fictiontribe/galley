@@ -20,6 +20,8 @@ export function authorLine(author: NonNullable<GitStatus["author"]>, siteId: str
   const app = { label: "App settings › You", to: "/settings#you" };
   const site = hosted ? app : { label: "Site settings › Connections", to: `/sites/${siteId}/settings#connections` };
   if (hosted && (author.from === "site" || author.from === "app")) return { text: `${who}, this editor’s publishing name.`, change: app };
+  // A hosted install with accounts: whoever publishes, under their own name.
+  if (author.from === "account") return { text: `${who}, from your account.`, change: { label: "Your account", to: "/account" } };
   switch (author.from) {
     case "site":
       return { text: `${who}, this site’s own author.`, change: site };

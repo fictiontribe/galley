@@ -6,9 +6,12 @@
 import type { ApiRouteKey } from "@galley/core/api";
 import type { GalleyErrorShape, ServerEvent } from "@galley/core/types";
 import type { InstallFixed } from "@galley/core/install/types";
+import type { AccountRole } from "@galley/core/install/accounts";
+import type { BUILD_MODE_LEVEL as BuildModeLevel, ROLE_REFUSAL as RoleRefusal, ROUTE_ACCESS as RouteAccessTable, SITE_SETTINGS_LEVEL as SiteSettingsLevel, roleMayCall as RoleMayCall } from "@galley/core/install/route-access";
 import { MockBackend, createHandlers, type Handlers, type MockRequest, type RawReply } from "./backend.ts";
 import { MockInstall, SETUP_OPEN_ROUTES, withInstall, type MockSetupStep } from "./install.ts";
-import { MockError } from "./site.ts";
+import { MockAccounts, MockRoleError, withAccounts } from "./accounts.ts";
+import { MockError, MockTooManyError } from "./site.ts";
 
 const STATUS: Record<GalleyErrorShape["code"], number> = {
   "not-found": 404,
@@ -56,6 +59,37 @@ export interface MockServerOptions {
   allowLocalRepositories?: boolean;
   /** Hosted only: the editor's own address (see MockInstallOptions). */
   address?: string;
+  /** Hosted only: start signed in as the first person with this role (see accounts.ts). */
+  role?: AccountRole;
+  /** Hosted only: the server has outgoing e-mail. */
+  email?: boolean;
+  /** Hosted only: false — the server has no public address of its own, so it e-mails no link (see MockAccountsOptions). */
+  publicAddress?: boolean;
+  /** Hosted only: an install from before accounts (one owner, no e-mail, the password alone). */
+  legacy?: boolean;
+  /** Hosted only: false answers as a server from before accounts did — one shared password, no `meta.account`, no people routes. */
+  accounts?: boolean;
+  /** The role-access table, when the caller loads it (the dev server: see `loadAccess`). */
+  access?: Promise<MockAccessTable>;
+}
+
+/** The one role-access table (core's install/route-access.ts), as the mock uses it. */
+export interface MockAccessTable {
+  ROUTE_ACCESS: typeof RouteAccessTable;
+  roleMayCall: typeof RoleMayCall;
+  ROLE_REFUSAL: typeof RoleRefusal;
+  BUILD_MODE_LEVEL: typeof BuildModeLevel;
+  SITE_SETTINGS_LEVEL: typeof SiteSettingsLevel;
+}
+
+/**
+ * The table, loaded on first use rather than imported up front: the dev
+ * server loads this file with Node's own loader, which can't follow core's
+ * extension-less imports — plugin.ts hands over a copy loaded through Vite
+ * instead (`access`). Tests (vitest) load it here.
+ */
+function loadAccess(): Promise<MockAccessTable> {
+  return import("@galley/core/install/route-access");
 }
 
 /** One request as it arrived. */
@@ -70,6 +104,8 @@ export interface MockLogEntry {
   contentType: string | null;
   /** The JSON body as parsed, or the size of a raw one. */
   body: unknown;
+  /** Refused because the signed-in person's role may not call this route (ROUTE_ACCESS), or may not do what the request asks (build mode, the site's settings file). */
+  refused?: boolean;
 }
 
 export interface MockAnswer {
@@ -83,6 +119,8 @@ export interface MockAnswer {
 export interface MockServer {
   backend: MockBackend;
   install: MockInstall | null;
+  /** Hosted only: the people, invitations and links, and what would have been e-mailed. */
+  accounts: MockAccounts | null;
   log: MockLogEntry[];
   handle(request: { method: string; url: string; headers: Record<string, string | undefined>; body?: Buffer }): Promise<MockAnswer>;
   /** Server events, as the event stream sends them. */
@@ -90,6 +128,11 @@ export interface MockServer {
 }
 
 const isRaw = (value: unknown): value is RawReply => typeof value === "object" && value !== null && "kind" in value && ((value as RawReply).kind === "bytes" || (value as RawReply).kind === "sse");
+
+/** The real server's error body (server/src/errors.ts `errorBody`): the code and the sentence, and `detail` only when there is one. */
+function errorBody(code: GalleyErrorShape["code"], message: string, detail?: string): { error: GalleyErrorShape } {
+  return { error: detail ? { code, message, detail } : { code, message } };
+}
 
 function json(status: number, body: unknown): MockAnswer {
   return { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }, body: JSON.stringify(body) };
@@ -99,10 +142,20 @@ export function createMockServer(options: MockServerOptions): MockServer {
   const listeners = new Set<(event: ServerEvent) => void>();
   const backend = new MockBackend({ mode: options.mode, emit: (event) => listeners.forEach((listener) => listener(event)) });
   const install = options.mode === "hosted" ? new MockInstall(backend, { setup: options.setup ?? "done", fixed: options.fixed, stepMs: options.stepMs, allowLocalRepositories: options.allowLocalRepositories, address: options.address }) : null;
+  const accounts = install && options.accounts !== false ? new MockAccounts(backend, install, { email: options.email, publicAddress: options.publicAddress, legacy: options.legacy, role: options.role }) : null;
   const local = createHandlers(backend);
-  const handlers: Handlers = install ? withInstall(backend, local, install) : local;
+  const hosted = install ? withInstall(backend, local, install) : null;
+  const handlers: Handlers = hosted && accounts ? withAccounts(backend, hosted, accounts) : (hosted ?? local);
   const routes = compile(Object.keys(handlers) as ApiRouteKey[]);
   const open = new Set<ApiRouteKey>(["GET /api/meta", "POST /api/auth/login", "GET /api/events", ...(install ? SETUP_OPEN_ROUTES : [])]);
+  // Only a hosted install has people to check; local mode never loads the table.
+  let access: Promise<MockAccessTable> | null = null;
+  const table = () => (access ??= (options.access ?? loadAccess()).then((loaded) => {
+    // The routes that need no sign-in come from the same table.
+    for (const key of Object.keys(loaded.ROUTE_ACCESS) as ApiRouteKey[]) if (loaded.ROUTE_ACCESS[key] === "public") open.add(key);
+    if (accounts) accounts.levels = { build: loaded.BUILD_MODE_LEVEL, settings: loaded.SITE_SETTINGS_LEVEL };
+    return loaded;
+  }));
   const latency = options.latency ?? 0;
   const log: MockLogEntry[] = [];
 
@@ -117,9 +170,17 @@ export function createMockServer(options: MockServerOptions): MockServer {
         break;
       }
     }
-    if (!route || !match) return json(404, { error: { code: "not-found", message: `The mock doesn’t know ${method} ${url.pathname}.`, status: 404 } });
+    if (!route || !match) return json(404, errorBody("not-found", `The mock doesn’t know ${method} ${url.pathname}.`));
     entry.route = route.key;
-    if (!backend.authenticated && !open.has(route.key)) return json(401, { error: { code: "unauthorized", message: "Sign in to continue.", status: 401 } });
+    const rules = install ? await table() : null;
+    if (!backend.authenticated && !open.has(route.key)) return json(401, errorBody("unauthorized", "Sign in to continue."));
+    // The server decides from the one table; the app hides what it can't use, so a refusal here is a screen calling what it shouldn't.
+    const person = accounts?.current() ?? null;
+    if (person && rules && !rules.roleMayCall(person.role, route.key)) {
+      entry.refused = true;
+      // Exactly the real server's refusal (app.ts): the status, the shape, the code and the sentence.
+      return json(403, errorBody("forbidden", rules.ROLE_REFUSAL));
+    }
 
     const params: Record<string, string> = {};
     route.names.forEach((name, index) => (params[name] = decodeURIComponent(match?.[index + 1] ?? "")));
@@ -142,17 +203,16 @@ export function createMockServer(options: MockServerOptions): MockServer {
       }
       return json(200, result);
     } catch (error) {
-      if (error instanceof MockError) {
-        const status = STATUS[error.code];
-        return json(status, { error: { code: error.code, message: error.message, detail: error.detail, status } });
-      }
-      return json(500, { error: { code: "internal", message: "The mock server ran into a problem.", detail: error instanceof Error ? error.message : String(error), status: 500 } });
+      if (error instanceof MockRoleError) entry.refused = true;
+      if (error instanceof MockError) return json(error instanceof MockTooManyError ? 429 : STATUS[error.code], errorBody(error.code, error.message, error.detail));
+      return json(500, errorBody("internal", "The mock server ran into a problem.", error instanceof Error ? error.message : String(error)));
     }
   }
 
   return {
     backend,
     install,
+    accounts,
     log,
     async handle({ method, url, headers, body }) {
       const parsed = new URL(url, "http://localhost");

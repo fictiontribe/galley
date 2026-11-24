@@ -14,7 +14,7 @@ import { useSite } from "@/lib/stores/site";
 import { Button, EmptyState, ErrorState, PageHeader, ProofMark, Skeleton } from "@/ui";
 import { AskBox } from "@/features/forms/file/AskBox";
 import { AssistantPanel } from "@/features/forms/file/AssistantPanel";
-import { useAllowBuild } from "@/features/forms/file/assistant";
+import { useAllowBuild, useBuildByOthers } from "@/features/forms/file/assistant";
 import { useEdits, useScriptsDoc } from "@/features/forms/file/hooks";
 import { KitFile, useKitEntry } from "@/features/forms/file/KitFile";
 import { SetupLeftNotice, SetupState } from "@/features/forms/file/SetupState";
@@ -28,12 +28,14 @@ import { scriptWarnings } from "./logic/duplicates";
 import { scriptName } from "./logic/entries";
 import { ScriptRow } from "./ScriptRow";
 import { WhatLoadsWhere } from "./WhatLoadsWhere";
+import { useWhoPublishes } from "@/lib/may";
 
 const PATH = ["scripts"];
 const EXAMPLES = ["Add GA4 with ID G-ABC123 and only load it after consent", "Turn on the built-in consent banner with Consent Mode", "Load the chat widget only on /support/**"];
 
 function Installed({ open, setOpen, onAdd, warned }: { open: ReadonlySet<number>; setOpen: (next: ReadonlySet<number>) => void; onAdd: () => void; warned: ReadonlySet<number> }) {
   const edits = useEdits();
+  const publishes = useWhoPublishes();
   const raw = useFormValue(PATH);
   const list = Array.isArray(raw) ? raw : [];
   const config = useScriptsDoc();
@@ -55,7 +57,7 @@ function Installed({ open, setOpen, onAdd, warned }: { open: ReadonlySet<number>
     notify({
       tone: "neutral",
       title: `${scriptName(entry)} removed`,
-      body: "It stops loading on the site when you publish. Undo puts it back where it was.",
+      body: `It stops loading on the site when ${publishes}. Undo puts it back where it was.`,
       action: { label: "Undo", onClick: () => edits.apply(...plan.undo) },
       duration: 10000,
     });
@@ -71,7 +73,7 @@ function Installed({ open, setOpen, onAdd, warned }: { open: ReadonlySet<number>
       <EmptyState
         compact
         title="No scripts yet."
-        body="Add analytics, a tag manager, ad tracking or a chat widget. Nothing loads until you publish."
+        body={`Add analytics, a tag manager, ad tracking or a chat widget. Nothing loads until ${publishes}.`}
         actions={
           <Button variant="primary" icon="plus" onClick={onAdd}>
             Add a script
@@ -92,6 +94,7 @@ function Installed({ open, setOpen, onAdd, warned }: { open: ReadonlySet<number>
 function ScriptsBody({ siteId, entry }: { siteId: string; entry: Entry }) {
   const siteName = useSite((s) => s.detail?.name ?? "Site");
   const pages = useSite((s) => s.detail?.model.collections.find((collection) => collection.id === "pages")?.url ?? null);
+  const publishes = useWhoPublishes();
   useTopBar({
     crumbs: [{ label: siteName, to: `/sites/${siteId}` }, { label: "Scripts" }],
     ...(entry.status === "modified" ? { tag: { label: "Edited", tone: "change" as const } } : entry.status === "added" ? { tag: { label: "New", tone: "insert" as const } } : {}),
@@ -99,6 +102,7 @@ function ScriptsBody({ siteId, entry }: { siteId: string; entry: Entry }) {
   const config = useScriptsDoc();
   const edits = useEdits();
   const allowBuild = useAllowBuild();
+  const buildByOthers = useBuildByOthers();
   const model = useSite((s) => s.detail?.model);
   const outside = useFormState((state) => state.outside);
   const [adding, setAdding] = useState(false);
@@ -122,7 +126,7 @@ function ScriptsBody({ siteId, entry }: { siteId: string; entry: Entry }) {
         <PageHeader
           eyebrow="Site"
           title="Scripts"
-          description="Analytics, tags and widgets the site loads. Adding or changing one is powerful, so every change waits in Proof like any other until you publish."
+          description={`Analytics, tags and widgets the site loads. Adding or changing one is powerful, so every change waits in Proof like any other until ${publishes}.`}
           actions={
             <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>
               Add a script
@@ -160,7 +164,7 @@ function ScriptsBody({ siteId, entry }: { siteId: string; entry: Entry }) {
           </div>
         </div>
       </div>
-      <AddScriptDialog open={adding} onClose={() => setAdding(false)} taken={config.scripts.map((script) => script.id)} allowBuild={allowBuild} onAdd={add} />
+      <AddScriptDialog open={adding} onClose={() => setAdding(false)} taken={config.scripts.map((script) => script.id)} allowBuild={allowBuild} buildByOthers={buildByOthers} onAdd={add} />
     </div>
   );
 }

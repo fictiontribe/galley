@@ -55,6 +55,12 @@ describe("the WordPress move's words and checks", () => {
     expect(full.map((step) => step.id)).toEqual(["proof", "rebuild", "redirects", "online", "domain"]);
     expect(full[0]!.body).toBe("50 entries and 120 images are waiting there. Nothing is live until you publish.");
     expect(full[2]!.body).toBe("So 412 old addresses keep working, and search engines follow them.");
+    // Someone whose role doesn't publish reads who does.
+    expect(nextSteps(report(), "an editor or owner publishes")[0]!.body).toBe("50 entries and 120 images are waiting there. Nothing is live until an editor or owner publishes.");
+    // Rebuilding runs the assistant in build mode: someone whose role doesn't include it reads who does.
+    const rebuilds = report({ rebuilds: [{ title: "Home", path: "p.md", url: "/", originalUrl: "", builder: "Elementor", sections: 5, matched: 4 }] });
+    expect(nextSteps(rebuilds, "an editor or owner publishes", false).find((step) => step.id === "rebuild")?.body).toBe("1 page came across as plain text. An editor or owner can rebuild it with the assistant.");
+    expect(reportHead(report(), "an editor or owner publishes").lede).toBe("Everything is a pending change: nothing is live until an editor or owner publishes.");
   });
 
   it("says so once what it brought isn't waiting any more, and offers to start again when it was all discarded", () => {

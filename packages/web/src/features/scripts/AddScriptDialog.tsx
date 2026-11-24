@@ -6,6 +6,8 @@ import { BUILTIN_PLUGIN, hasSnippet, pluginScriptEntry, useSiteCatalog, type Cat
 import { Button, Dialog, Field, Icon, Input, SegmentedControl, Textarea, cx } from "@/ui";
 import { Mark } from "@/features/forms/file/Mark";
 import { settingProblem } from "@/features/forms/logic/settings";
+import { BUILD_MODE_LEVEL } from "@galley/core/install/route-access";
+import { whoMayFirst } from "@/lib/may";
 import { CATEGORY_WORDS, CONSENT_WORDS, LOAD_WORDS, PLACEMENT_WORDS, defaultLoad, markOf, newScript } from "./logic/entries";
 
 export interface AddScriptDialogProps {
@@ -13,6 +15,8 @@ export interface AddScriptDialogProps {
   onClose: () => void;
   taken: readonly string[];
   allowBuild: boolean;
+  /** The site allows code in the page, but this person's role doesn't include it. */
+  buildByOthers?: boolean;
   onAdd: (entry: ScriptEntry) => void;
 }
 
@@ -26,7 +30,7 @@ function matches(integration: ScriptIntegrationInfo, query: string): boolean {
 }
 
 /** "Add a script": the catalogue by category, then only the settings the chosen one needs. */
-export function AddScriptDialog({ open, onClose, taken, allowBuild, onAdd }: AddScriptDialogProps) {
+export function AddScriptDialog({ open, onClose, taken, allowBuild, buildByOthers = false, onAdd }: AddScriptDialogProps) {
   const [query, setQuery] = useState("");
   // The catalogue of everything active for the site: the built-in kinds and those plugins add.
   const { siteId = "" } = useParams();
@@ -128,7 +132,7 @@ export function AddScriptDialog({ open, onClose, taken, allowBuild, onAdd }: Add
       ) : (
         <div className="kit-add">
           {custom ? (
-            <Field label="How it’s added" group hint={allowBuild ? undefined : "Writing code into the page is only offered on sites where build mode is allowed, because it runs with full access to every page."}>
+            <Field label="How it’s added" group hint={allowBuild ? undefined : buildByOthers ? `${whoMayFirst(BUILD_MODE_LEVEL)} can write code into the page: it runs with full access to every page` : "Writing code into the page is only offered on sites where build mode is allowed, because it runs with full access to every page."}>
               <SegmentedControl
                 label="How it’s added"
                 options={[

@@ -197,17 +197,18 @@ to date first. Groups, pins, notes and per-site keys live on each person's
 computer; share keys the way you share any key.
 
 A **hosted install** (`galley serve`, one container) serves several people
-from one place — for **one site**: its checkout on the server, everyone
-signing in with the same password. Ten sites are ten installs that share
+from one place — for **one site**: its checkout on the server, each person
+signing in with their own account and role (owner, editor or contributor). Ten sites are ten installs that share
 nothing; the list of many sites is the desktop app's
 ([`docs/cloud-install.md`](cloud-install.md)).
 
 ## Not there yet
 
-- **Accounts.** There are no user accounts: a hosted install has one password
-  for everyone; a local one belongs to whoever uses the computer.
-- **Roles and permissions per site.** Anyone who can open Galley can open,
-  edit and publish every site in its list. Restrict who can publish with your
+- **Accounts in the desktop app.** It has no user accounts: it belongs to
+  whoever uses the computer. (A hosted install has accounts and roles, for
+  its one site: [`docs/cloud-install.md`](cloud-install.md#access).)
+- **Roles and permissions per site.** Anyone who can open the desktop app
+  can open, edit and publish every site in its list. Restrict who can publish with your
   git host's branch protection (Galley's pull-request mode sends changes for
   review instead of publishing).
 - **A shared list across computers.** Groups, pins, notes and the list

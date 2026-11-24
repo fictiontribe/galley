@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PRODUCT } from "../brand";
 import { GalleyError } from "../errors";
+import { isSiteSettingsPath, requireSiteSettings } from "../install/caller";
 import type { ChangeOrigin, GitStatus, HistoryEntry, PublishConfig, PublishRequest, PublishResult } from "../types";
 import type { PendingStatus } from "./changes";
 import { GIT_NETWORK_TIMEOUT_MS, splitNul, type Git, type RepoInfo } from "./git";
@@ -510,6 +511,9 @@ export async function revert(host: RepoHost, commit: string, config: PublishConf
   )
     .map((p) => sitePath(info, p))
     .filter((p): p is string => p !== null);
+
+  // Undoing a version that changed the settings file changes it again.
+  if (touched.some(isSiteSettingsPath)) requireSiteSettings();
   const statuses = await host.statuses();
   const overlapping = touched.filter((p) => statuses.has(p));
 

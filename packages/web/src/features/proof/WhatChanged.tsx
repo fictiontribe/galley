@@ -11,6 +11,7 @@ import { ProofText, foldUnchanged, hasChanges, hasInlineMarkdown, similarity, wo
 import { bodyOf, changeHeading, isText, movedText, valueWords, withPublishedBody } from "./changes";
 import { useFileDiff } from "./useFileDiff";
 import { useSectionLabels } from "./useNames";
+import { useWhoPublishes } from "@/lib/may";
 
 /** Long values fold to this many words either side of each change. */
 const CONTEXT_WORDS = 10;
@@ -371,14 +372,15 @@ function ImageCompare({ siteId, change, diff }: { siteId: string; change: FileCh
 export function WhatChanged({ siteId, change }: { siteId: string; change: FileChange }) {
   const needsDiff = Boolean(change.bodyChanged) || change.binary;
   const diff = useFileDiff(siteId, change, needsDiff);
+  const publishes = useWhoPublishes();
 
   if (change.binary) return <ImageCompare siteId={siteId} change={change} diff={diff.data} />;
 
   const fields = change.fieldChanges ?? [];
   return (
     <div className="proof-what">
-      {change.status === "deleted" ? <p className="proof-note">This {change.collection ? "page" : "file"} will be removed from the site when you publish.</p> : null}
-      {change.status === "added" && fields.length === 0 && !change.bodyChanged ? <p className="proof-note">New — everything in it will go live when you publish.</p> : null}
+      {change.status === "deleted" ? <p className="proof-note">This {change.collection ? "page" : "file"} will be removed from the site when {publishes}.</p> : null}
+      {change.status === "added" && fields.length === 0 && !change.bodyChanged ? <p className="proof-note">New — everything in it will go live when {publishes}.</p> : null}
       {fields.length > 0 ? (
         <div className="app-card proof-fields">
           {fields.map((field) => (

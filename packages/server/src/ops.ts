@@ -57,7 +57,8 @@ export class TooLargeError extends Error {
 export interface InstallOps {
   readiness(): ReadyStatus;
   restoring(): boolean;
-  info(): Promise<InstallInfo>;
+  /** The Install page, for this person (`passwordChangedAt` is theirs). */
+  info(accountId?: string): Promise<InstallInfo>;
   /** A sealed backup, streamed: the one answer that carries the install's secrets, and it carries them sealed. */
   backup(passphrase: string): Promise<{ body: ReadableStream<Uint8Array>; filename: string }>;
   upload(body: ReadableStream<Uint8Array> | null, declaredBytes: number | null): Promise<RestoreUpload>;
@@ -156,7 +157,7 @@ export function createInstallOps(options: InstallOpsOptions): InstallOps {
       }
       await rm(file, { force: true });
       log.event(`A backup was restored (it was made ${staged.manifest.createdAt}, by version ${staged.manifest.version}). Everyone was signed out.`);
-      job.finish("done", { progress: 1, detail: "The backup is back in place. Sign in with the password the backup was made with." });
+      job.finish("done", { progress: 1, detail: "The backup is back in place. Everyone signs in again, with the accounts and passwords the backup was made with." });
     } catch (error) {
       const message =
         error instanceof BackupError || (error instanceof GalleyError && error.code !== "internal")
@@ -187,8 +188,9 @@ export function createInstallOps(options: InstallOpsOptions): InstallOps {
 
     restoring: () => restoring,
 
-    async info() {
+    async info(accountId) {
       const state = store.read();
+      const account = accountId === undefined ? undefined : state.accounts.find((candidate) => candidate.id === accountId);
       const status = await install.status();
 
       return {
@@ -202,7 +204,7 @@ export function createInstallOps(options: InstallOpsOptions): InstallOps {
         author: status.author,
         dataFolder: home,
         storage: meter.lines(siteRoot(), install.siteId()),
-        passwordChangedAt: state.password?.changedAt ?? null,
+        passwordChangedAt: account?.passwordChangedAt ?? null,
         lastBackupAt: state.lastBackupAt,
         fixed: status.fixed,
       };

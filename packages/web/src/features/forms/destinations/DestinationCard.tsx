@@ -1,5 +1,4 @@
 import { useRef, type KeyboardEvent } from "react";
-import { Link } from "react-router-dom";
 import type { FormDestination, FormField } from "@galley/core/kit";
 import { FormIcon } from "@/ui/form/FormIcon";
 import { ToolButton } from "@/ui/form/ToolButton";
@@ -18,6 +17,7 @@ import { ConstantsList } from "./ConstantsList";
 import { ImportFields } from "./ImportFields";
 import { MappingTable } from "./MappingTable";
 import { ProviderSettings } from "./ProviderSettings";
+import { SettingsLink } from "@/features/accounts/SettingsLink";
 
 export interface DestinationCardProps {
   siteId: string;
@@ -46,9 +46,9 @@ function InboxNote({ siteId, formId, destination }: { siteId: string; formId: st
         <ProofMark kind="reg" />
         <span>
           {custom ? "Submissions go to the capture address above, and appear in this app’s inbox for the site." : "Submissions appear in this app’s inbox for the site."}{" "}
-          <Link className="g-link" to={`/sites/${siteId}/inbox?form=${encodeURIComponent(formId)}`}>
+          <SettingsLink route="GET /api/sites/:siteId/inbox" className="g-link" to={`/sites/${siteId}/inbox?form=${encodeURIComponent(formId)}`} fallback={null}>
             See submissions
-          </Link>
+          </SettingsLink>
         </span>
       </p>
       {custom ? null : <CaptureReachNote siteId={siteId} />}

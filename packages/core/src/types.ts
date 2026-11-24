@@ -688,9 +688,10 @@ export interface GitStatus {
   /**
    * Who the next publish is recorded as, and which setting chose it: this
    * site's own author, the repository's own git settings, App settings › You,
-   * the computer's git identity, or a neutral default.
+   * the computer's git identity, or a neutral default. On a hosted install
+   * it is the signed-in person ("account"), ahead of all of those.
    */
-  author?: { name: string; email: string; from: "site" | "repository" | "app" | "machine" | "default" };
+  author?: { name: string; email: string; from: "site" | "repository" | "app" | "machine" | "default" | "account" };
 }
 
 // ─────────────────────────────────────────────────────────────── preview
@@ -1505,7 +1506,7 @@ export interface BrandConfig {
 export interface MetaInfo {
   version: string;
   brand: BrandConfig;
-  /** "local": single user on loopback, any number of sites. "hosted": behind a password, exactly one site (see `install`). */
+  /** "local": single user on loopback, any number of sites. "hosted": people sign in with their own accounts, exactly one site (see `install`). */
   mode: "local" | "hosted";
   /** Whether the caller is authenticated (hosted mode). */
   authenticated: boolean;
@@ -1514,6 +1515,8 @@ export interface MetaInfo {
   platform: string;
   /** Hosted mode: the install this server is — one site, and whether first run is finished. Absent in local mode. */
   install?: import("./install/types").InstallMeta;
+  /** Hosted mode, signed in: who this is and what they may do. Absent in local mode and when signed out. */
+  account?: import("./install/accounts").AccountSession;
 }
 
 // ─────────────────────────────────────────────────────────────── deploy

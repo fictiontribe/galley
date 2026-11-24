@@ -16,6 +16,13 @@ import { notify } from "@/lib/stores/toasts";
 import { Badge, Button, ConfirmDialog, Dialog, Icon, ProofMark, buttonClass, cx } from "@/ui";
 import { exportUrl, setOverview } from "./data";
 import { redirectsCount, share } from "./words";
+import { BUILD_MODE_LEVEL, SITE_SETTINGS_LEVEL } from "@galley/core/install/route-access";
+import { useMay, useMayBuild, useMaySiteSettings, whoMayFirst } from "@/lib/may";
+
+/** Where the host is chosen, for someone whose role doesn't include the site's settings (the choice is saved there). */
+export const HOST_BY_OTHERS = `${whoMayFirst(SITE_SETTINGS_LEVEL)} of this editor chooses where the site is hosted.`;
+/** In place of "Remove it" for a leftover host file, for someone whose role doesn't include the site's code. */
+export const LEFTOVER_BY_OTHERS = `${whoMayFirst(BUILD_MODE_LEVEL)} can remove it.`;
 
 const HOSTS: Array<{ id: RedirectHostId; blurb: string }> = [
   { id: "cloudflare", blurb: "A _redirects file travels with the site." },
@@ -191,9 +198,21 @@ function DerivedState({ siteId, overview, onImport }: { siteId: string; overview
 export function WhereCard({ siteId, overview, onImport, onCloudflare }: { siteId: string; overview: RedirectsOverview; onImport: (path: string) => void; onCloudflare: () => void }) {
   const [changing, setChanging] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+  const mayPublish = useMay()("POST /api/sites/:siteId/redirects/cloudflare/apply");
+  // The host is saved in the site's settings file; removing a leftover file changes the site's code.
+  const maySettings = useMaySiteSettings();
+  const mayBuild = useMayBuild();
   const host = overview.host.id;
   const info = overview.hostInfo;
 
+  if (!host && !maySettings) {
+    return (
+      <section className="app-card app-card--pad redir-panel">
+        <h2 className="redir-panel__title">Where is this site hosted?</h2>
+        <p className="g-hint">{`Redirects take effect through the host’s own file. ${HOST_BY_OTHERS}`}</p>
+      </section>
+    );
+  }
   if (!host || changing) {
     return (
       <section className="app-card app-card--pad redir-panel">
@@ -221,11 +240,11 @@ export function WhereCard({ siteId, overview, onImport, onCloudflare }: { siteId
             {" · from the "}
             <Link to={`/sites/${siteId}/online`}>Online settings</Link>
           </span>
-        ) : (
+        ) : maySettings ? (
           <button type="button" className="app-link-button" onClick={() => setChanging(true)}>
             Change
           </button>
-        )}
+        ) : null}
       </p>
       <p className="redir-where__how">{info!.howItWorks}</p>
       {overview.derived ? <DerivedState siteId={siteId} overview={overview} onImport={onImport} /> : null}
@@ -247,9 +266,13 @@ export function WhereCard({ siteId, overview, onImport, onCloudflare }: { siteId
           <span>
             The redirect file for {HOST_INFO[leftover.host].name}, <span className="g-mono">{leftover.path}</span>, is still in the site.
           </span>
-          <Button size="sm" variant="quiet" onClick={() => setRemoving(leftover.path)}>
-            Remove it
-          </Button>
+          {mayBuild ? (
+            <Button size="sm" variant="quiet" onClick={() => setRemoving(leftover.path)}>
+              Remove it
+            </Button>
+          ) : (
+            <span className="g-hint">{LEFTOVER_BY_OTHERS}</span>
+          )}
         </p>
       ))}
       {host === "other" ? (
@@ -292,9 +315,12 @@ export function WhereCard({ siteId, overview, onImport, onCloudflare }: { siteId
               {cloudflare.outOfDate ? ". The list has changed since." : "."}
             </p>
           ) : null}
-          <Button size="sm" variant={cloudflare.recommended || cloudflare.outOfDate ? "primary" : "secondary"} icon="globe" onClick={onCloudflare}>
-            {cloudflare.last ? "Update on Cloudflare…" : "Set them on Cloudflare…"}
-          </Button>
+          {/* Setting them on Cloudflare changes the live site: a publish. */}
+          {mayPublish ? (
+            <Button size="sm" variant={cloudflare.recommended || cloudflare.outOfDate ? "primary" : "secondary"} icon="globe" onClick={onCloudflare}>
+              {cloudflare.last ? "Update on Cloudflare…" : "Set them on Cloudflare…"}
+            </Button>
+          ) : null}
         </div>
       ) : null}
       <ConfirmDialog

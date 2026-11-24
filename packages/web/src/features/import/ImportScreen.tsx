@@ -27,6 +27,7 @@ import { ReportStep } from "./ReportStep";
 import { RunStep } from "./RunStep";
 import { SourceStep } from "./SourceStep";
 import "./import.css";
+import { useWhoPublishes } from "@/lib/may";
 
 function Stepper({ step }: { step: FlowStep }) {
   const at = FLOW.indexOf(step);
@@ -47,6 +48,7 @@ export function ImportScreen() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const detail = useSite((s) => s.detail);
+  const publishes = useWhoPublishes();
   useTopBar({ crumbs: [{ label: detail?.name ?? "Site", to: `/sites/${siteId}` }, { label: "Bring your WordPress site" }] });
   const fresh = params.get("from") === "new";
   const stored = useQuery(importKeys.report(siteId), () => api("GET /api/sites/:siteId/import/report", { params: { siteId } }));
@@ -164,7 +166,7 @@ export function ImportScreen() {
       title: run?.state === "done" ? "It’s all here" : run?.state === "stopped" ? "Stopped part-way" : run?.state === "error" ? "The import couldn’t finish" : "Bringing it over…",
       lede: run?.state === "running" ? `From ${sourceTitle} into ${detail?.name ?? "this site"}.` : "",
     },
-    report: report ? reportHead(report) : { title: "Your WordPress site is here", lede: "" },
+    report: report ? reportHead(report, publishes) : { title: "Your WordPress site is here", lede: "" },
   };
 
   if (step === null) {

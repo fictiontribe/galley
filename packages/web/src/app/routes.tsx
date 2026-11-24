@@ -1,6 +1,8 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
+import { LINK_PATHS } from "@galley/core/install/accounts";
 import { useHostedInstall } from "@/lib/stores/meta";
+import { Allowed } from "@/features/accounts/NotYours";
 import { LoginScreen } from "@/screens/login/LoginScreen";
 import { NotFoundScreen } from "@/screens/NotFoundScreen";
 import { SitesScreen } from "@/screens/sites/SitesScreen";
@@ -30,11 +32,16 @@ const PluginsScreen = lazy(() => import("@/features/plugins/PluginsScreen").then
 const SitePluginsScreen = lazy(() => import("@/features/plugins/PluginsScreen").then((m) => ({ default: m.SitePluginsScreen })));
 const SetupScreen = lazy(() => import("@/features/install/setup/SetupScreen").then((m) => ({ default: m.SetupScreen })));
 const InstallScreen = lazy(() => import("@/features/install/InstallScreen").then((m) => ({ default: m.InstallScreen })));
+const AccountScreen = lazy(() => import("@/features/accounts/AccountScreen").then((m) => ({ default: m.AccountScreen })));
+const LinkScreen = lazy(() => import("@/features/accounts/LinkScreen").then((m) => ({ default: m.LinkScreen })));
 
 /**
  * A hosted install has one site: no Sites screen, no /new or /open (their
- * addresses fall through to "not found"), and two screens of its own —
- * first run at /setup and the Install page.
+ * addresses fall through to "not found"), and screens of its own — first
+ * run at /setup, the Install page, Your account, and the pages a one-time
+ * link opens. With accounts, a screen whose reason to exist is a route the
+ * signed-in person may not call shows "this isn't part of your account"
+ * (`Allowed`); everywhere else every screen is there, as before.
  */
 export function AppRoutes() {
   const hosted = useHostedInstall();
@@ -42,16 +49,21 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginScreen />} />
       {hosted ? (
-        <Route path="/setup" element={<Suspense fallback={null}><SetupScreen /></Suspense>} />
+        <>
+          <Route path="/setup" element={<Suspense fallback={null}><SetupScreen /></Suspense>} />
+          <Route path={LINK_PATHS.invitation} element={<Suspense fallback={null}><LinkScreen /></Suspense>} />
+          <Route path={LINK_PATHS.password} element={<Suspense fallback={null}><LinkScreen /></Suspense>} />
+        </>
       ) : (
         <Route path="/open" element={<Suspense fallback={null}><OpenScreen /></Suspense>} />
       )}
       <Route element={<HomeFrame />}>
         <Route index element={hosted ? <HostedHome /> : <SitesScreen />} />
         {hosted ? null : <Route path="new" element={<NewSiteScreen />} />}
-        <Route path="settings" element={<AppSettingsScreen />} />
-        <Route path="plugins" element={<PluginsScreen />} />
-        {hosted ? <Route path="install" element={<InstallScreen />} /> : null}
+        <Route path="settings" element={<Allowed route="PATCH /api/settings"><AppSettingsScreen /></Allowed>} />
+        <Route path="plugins" element={<Allowed route="POST /api/plugins/enabled"><PluginsScreen /></Allowed>} />
+        {hosted ? <Route path="install" element={<Allowed route="GET /api/install"><InstallScreen /></Allowed>} /> : null}
+        {hosted ? <Route path="account" element={<AccountScreen />} /> : null}
         <Route path="*" element={<NotFoundScreen />} />
       </Route>
       <Route path="/sites/:siteId" element={<SiteFrame />}>
@@ -65,13 +77,13 @@ export function AppRoutes() {
         <Route path="scripts" element={<ScriptsScreen />} />
         <Route path="brand" element={<BrandScreen />} />
         <Route path="visibility" element={<VisibilityScreen />} />
-        <Route path="inbox" element={<InboxScreen />} />
+        <Route path="inbox" element={<Allowed route="GET /api/sites/:siteId/inbox"><InboxScreen /></Allowed>} />
         <Route path="history" element={<HistoryScreen />} />
         <Route path="online" element={<OnlineScreen />} />
         <Route path="redirects" element={<RedirectsScreen />} />
         <Route path="import" element={<ImportScreen />} />
-        <Route path="settings" element={<SiteSettingsScreen />} />
-        <Route path="plugins" element={<SitePluginsScreen />} />
+        <Route path="settings" element={<Allowed route="PUT /api/sites/:siteId/config"><SiteSettingsScreen /></Allowed>} />
+        <Route path="plugins" element={<Allowed route="POST /api/plugins/enabled"><SitePluginsScreen /></Allowed>} />
         <Route path="*" element={<NotFoundScreen />} />
       </Route>
     </Routes>

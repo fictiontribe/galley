@@ -81,7 +81,7 @@ export function TrustNote() {
         Plugins a site names in its settings file load only for that site, and can’t change the image or video generator, which is chosen for the whole app.{" "}
         {hosted
           ? "On this shared server they stay off unless whoever runs it allows them, because anyone who can open a site here would otherwise run that site’s code on the server."
-          : "On a shared server, behind a password, they stay off unless whoever runs it allows them."}
+          : "On a shared server that people sign in to, they stay off unless whoever runs it allows them."}
       </p>
     </aside>
   );
