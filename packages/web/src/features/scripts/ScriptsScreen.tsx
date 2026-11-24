@@ -122,9 +122,8 @@ function ScriptsBody({ siteId, entry }: { siteId: string; entry: Entry }) {
 
   return (
     <div className="app-screen kit-scripts-screen">
-      <div className="app-screen__inner app-screen__inner--wide">
+      <div className="app-screen__inner">
         <PageHeader
-          eyebrow="Site"
           title="Scripts"
           description={`Analytics, tags and widgets the site loads. Adding or changing one is powerful, so every change waits in Proof like any other until ${publishes}.`}
           actions={
@@ -197,7 +196,7 @@ export function ScriptsScreen() {
     body = (
       <div className="app-screen">
         <div className="app-screen__inner">
-          <PageHeader eyebrow="Site" title="Scripts" />
+          <PageHeader title="Scripts" />
           <SetupState feature="scripts" />
         </div>
       </div>

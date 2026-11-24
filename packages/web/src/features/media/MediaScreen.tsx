@@ -77,37 +77,39 @@ export function MediaScreen() {
 
   return (
     <div className="app-screen app-media">
-      <PageHeader
-        title="Media"
-        description="Images and files the site uses. Drop files anywhere here, or paste an image."
-        actions={
-          <>
-            <Button variant="secondary" icon="play" onClick={() => setMakingVideo(true)}>
-              Generate a video
-            </Button>
-            <Button variant="primary" icon="plus" onClick={() => setGenerating(true)}>
-              Generate an image
-            </Button>
-          </>
-        }
-      />
-      <VideoJobs
-        siteId={siteId}
-        onSaved={(item) => {
-          setSelectedPath(item.path);
-          notify({ tone: "success", title: "Video saved", body: `“${item.name}” is in media, ready to use.` });
-        }}
-      />
-      <div className="app-media__layout">
-        <MediaLibraryPane
-          siteId={siteId}
-          kind={kind}
-          selected={selectedPath}
-          onSelect={(item) => setSelectedPath(item?.path ?? null)}
-          onGenerate={() => setGenerating(true)}
-          toolbar={<SegmentedControl label="Show" options={KINDS} value={kind} onChange={setKind} />}
+      <div className="app-screen__inner app-screen__inner--fill">
+        <PageHeader
+          title="Media"
+          description="Images and files the site uses. Drop files anywhere here, or paste an image."
+          actions={
+            <>
+              <Button variant="secondary" icon="play" onClick={() => setMakingVideo(true)}>
+                Generate a video
+              </Button>
+              <Button variant="primary" icon="plus" onClick={() => setGenerating(true)}>
+                Generate an image
+              </Button>
+            </>
+          }
         />
-        <MediaDetails siteId={siteId} item={selected} onDelete={requestDelete} />
+        <VideoJobs
+          siteId={siteId}
+          onSaved={(item) => {
+            setSelectedPath(item.path);
+            notify({ tone: "success", title: "Video saved", body: `“${item.name}” is in media, ready to use.` });
+          }}
+        />
+        <div className="app-media__layout">
+          <MediaLibraryPane
+            siteId={siteId}
+            kind={kind}
+            selected={selectedPath}
+            onSelect={(item) => setSelectedPath(item?.path ?? null)}
+            onGenerate={() => setGenerating(true)}
+            toolbar={<SegmentedControl label="Show" options={KINDS} value={kind} onChange={setKind} />}
+          />
+          <MediaDetails siteId={siteId} item={selected} onDelete={requestDelete} />
+        </div>
       </div>
       <Dialog open={generating} onClose={() => setGenerating(false)} title="Generate an image" size="xl">
         {generating ? (

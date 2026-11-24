@@ -181,29 +181,31 @@ function CollectionList({ siteId, collection }: { siteId: string; collection: Co
 
   return (
     <div className="app-screen app-collection">
-      <PageHeader
-        title={collection.label}
-        description={collection.description ?? (everything.data ? count(everything.data.total, collection.singular, collectionNouns(collection).many) : undefined)}
-        actions={
-          collection.create ? (
-            <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-              New {collection.singular}
-            </Button>
-          ) : null
-        }
-      />
-      <div className="app-collection__tools">
-        <span className="app-collection__search">
-          <Icon name="search" />
-          <Input type="search" value={typed} placeholder={`Search ${noun}…`} aria-label={`Search ${noun}`} onChange={(event) => setTyped(event.target.value)} />
-        </span>
-        <Select aria-label="Sort" value={sort} options={sortOptions(collection)} onChange={(value) => setSort(value as Sort)} />
-        <SegmentedControl label="Show" options={STATUS} value={status} onChange={setStatus} />
-        <span className="app-collection__count" aria-live="polite">
-          {first.data && filtered ? `${count(total, "match", "matches")}` : ""}
-        </span>
+      <div className="app-screen__inner app-screen__inner--fill">
+        <PageHeader
+          title={collection.label}
+          description={collection.description ?? (everything.data ? count(everything.data.total, collection.singular, collectionNouns(collection).many) : undefined)}
+          actions={
+            collection.create ? (
+              <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
+                New {collection.singular}
+              </Button>
+            ) : null
+          }
+        />
+        <div className="app-collection__tools">
+          <span className="app-collection__search">
+            <Icon name="search" />
+            <Input type="search" value={typed} placeholder={`Search ${noun}…`} aria-label={`Search ${noun}`} onChange={(event) => setTyped(event.target.value)} />
+          </span>
+          <Select aria-label="Sort" value={sort} options={sortOptions(collection)} onChange={(value) => setSort(value as Sort)} />
+          <SegmentedControl label="Show" options={STATUS} value={status} onChange={setStatus} />
+          <span className="app-collection__count" aria-live="polite">
+            {first.data && filtered ? `${count(total, "match", "matches")}` : ""}
+          </span>
+        </div>
+        {body}
       </div>
-      {body}
       <NewEntryDialog
         siteId={siteId}
         collection={collection}

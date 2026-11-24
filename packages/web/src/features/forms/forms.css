@@ -62,7 +62,7 @@
 .kit-row__marks { display: inline-flex; gap: 2px; }
 .kit-row__count { color: var(--ink-secondary); font-variant-numeric: tabular-nums; }
 .kit-row__used { color: var(--ink-secondary); min-inline-size: 0; }
-@media (max-width: 1180px) {
+@container page (max-width: 899px) {
   .kit-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 28px; }
   .kit-row--head { display: none; }
   .kit-row__count, .kit-row__used { grid-column: 1 / -2; }

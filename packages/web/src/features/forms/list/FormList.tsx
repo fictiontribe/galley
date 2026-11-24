@@ -117,9 +117,8 @@ export function FormList({ siteId, collection }: { siteId: string; collection: C
 
   return (
     <div className="app-screen">
-      <div className="app-screen__inner app-screen__inner--wide">
+      <div className="app-screen__inner">
         <PageHeader
-          eyebrow="Site"
           title="Forms"
           description={`Each form is a file in the site, so every change shows in Proof and goes live when ${publishes}.`}
           actions={

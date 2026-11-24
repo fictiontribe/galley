@@ -217,7 +217,7 @@ export function SiteHomeScreen() {
   if (!detail) {
     return (
       <div className="app-screen" aria-busy="true">
-        <div className="app-screen__inner app-screen__inner--wide">
+        <div className="app-screen__inner">
           <Skeleton width={90} height={12} />
           <Skeleton width={260} height={30} style={{ marginBlock: "var(--space-3) var(--space-8)" }} />
           <Skeleton height={96} />
@@ -233,12 +233,11 @@ export function SiteHomeScreen() {
 
   return (
     <div className="app-screen">
-      <div className="app-screen__inner app-screen__inner--wide app-home">
+      <div className="app-screen__inner app-home">
         <header className="app-home__head">
-          <p className="g-eyebrow">{framework} site</p>
           <h1 className="app-home__title">{detail.name}</h1>
           <p className="app-home__lede">
-            {count(collections.length, "collection")} and {count(pages, "page")} ready to edit.
+            {/^[aeiou]/i.test(framework) ? "An" : "A"} {framework} site: {count(collections.length, "collection")} and {count(pages, "page")} ready to edit.
             {detail.git.hasRemote ? null : ` Its versions are kept ${where.recorded} only — not backed up or shared anywhere yet.`}
           </p>
         </header>
