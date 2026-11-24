@@ -60,7 +60,18 @@ export function useFixes(siteId: string, after: () => unknown) {
                   action: {
                     label: "Undo",
                     onClick: () => {
-                      void api("POST /api/sites/:siteId/visibility/undo", { params: { siteId }, body: { undoId: result.undoId! } }).then(() => after());
+                      void api("POST /api/sites/:siteId/visibility/undo", { params: { siteId }, body: { undoId: result.undoId! } }).then((undone) => {
+                        // A page changed again since the fix isn't put back whole: say so, rather than let "Undo" read as done.
+                        if (undone.left.length) {
+                          const one = undone.left.length === 1;
+                          notify({
+                            tone: "warning",
+                            title: one ? "1 page was left as it is" : `${count(undone.left.length, "page")} were left as they are`,
+                            body: `${one ? "It was" : "They were"} changed again after the fix, so the fix is still there. Check ${one ? "it" : "them"} in Proof.`,
+                          });
+                        }
+                        return after();
+                      });
                     },
                   },
                 }

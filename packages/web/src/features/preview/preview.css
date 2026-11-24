@@ -41,6 +41,10 @@
 .preview-stage--split { grid-template-columns: 1fr auto 1fr; }
 .preview-side { display: flex; flex-direction: column; min-inline-size: 0; min-block-size: 0; background: var(--surface-sunken); }
 .preview-side > .app-preview-state { flex: 1; }
+/* A page that couldn't be drawn: the plain note over it, the site's own error one click away underneath. */
+.preview-table { position: relative; }
+.preview-cover { position: absolute; inset: 0; z-index: 1; }
+.preview-cover .app-error { max-inline-size: 34rem; }
 .preview-side__caption { margin: 0; padding: var(--space-2) var(--space-4) 0; flex: none; }
 .preview-table { flex: 1; display: flex; justify-content: center; padding: var(--space-4); overflow: hidden; }
 .preview-stage--split .preview-table { padding: var(--space-2) var(--space-3) var(--space-3); }

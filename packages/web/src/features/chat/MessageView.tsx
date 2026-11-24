@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import type { ChatAttachment, ChatMessage, ChatOption, ToolActivity } from "@galley/core/types";
 import { api, errorShape, rawFileUrl } from "@/lib/api";
 import { count } from "@/lib/format";
+import { useNameOf } from "@/lib/names";
 import { Button, ProofMark } from "@/ui";
 import { Markdown } from "./Markdown";
 import { activityKind } from "./threadState";
+import { undoneNote } from "./undone";
 
 function Activity({ tool }: { tool: ToolActivity }) {
   const kind = activityKind(tool);
@@ -41,16 +43,29 @@ function Thumbnails({ siteId, attachments }: { siteId: string; attachments: Chat
 
 function TurnActions({ siteId, threadId, message }: { siteId: string; threadId: string; message: ChatMessage }) {
   const navigate = useNavigate();
+  const nameOf = useNameOf();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const changed = message.changedPaths ?? [];
   if (changed.length === 0 || message.pending) return null;
   if (message.undone) {
-    return (
+    const left = message.undoLeft ?? [];
+    const note = (
       <p className="chat-turn__note">
-        <ProofMark kind="stet" />
-        <span>Undone. Everything this reply changed is back to how it was.</span>
+        <ProofMark kind={left.length ? "bang" : "stet"} />
+        <span>{undoneNote(changed.length, left.map((path) => nameOf({ path })))}</span>
       </p>
+    );
+    if (left.length === 0) return note;
+    return (
+      <div className="chat-turn">
+        {note}
+        <div className="chat-turn__actions">
+          <Button size="sm" variant="secondary" icon="proof" onClick={() => navigate(`/sites/${siteId}/proof?path=${encodeURIComponent(left[0] ?? "")}`)}>
+            Review in Proof
+          </Button>
+        </div>
+      </div>
     );
   }
   const undo = async () => {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EditOp, EditResult, Entry, JsonValue } from "@galley/core/types";
-import { listActions, onListChange, undoLastListAction } from "@/features/content/fields/items/listActions";
+import { lastListAction, listActions, onLastListAction, onListChange, undoLastListAction } from "@/features/content/fields/items/listActions";
 import { followIndex, planDuplicate, planInsert, planMove, planRemove, planStep } from "@/features/content/fields/items/listPlan";
 import { applyOpsLocal, type DataOp } from "@/features/content/form/ops";
 import type { JsonObject } from "@/features/content/form/paths";
@@ -102,6 +102,38 @@ describe("list actions on the entry's queue", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(fake.sent.at(-1)?.[0]?.op).toBe("raw");
     expect(fake.raw).toBe(before);
+  });
+
+  it("an added section is the last change in words, and its Undo (the failed page's) gives the file back byte for byte, then says so", async () => {
+    const fake = engine(START);
+    const before = fake.raw;
+    const store = createFormStore(fake.entry(), fake.deps);
+    let heard = 0;
+    onLastListAction(store, () => (heard += 1));
+    expect(lastListAction(store)).toBeNull();
+    const result = listActions({ store, path: ["sections"], noun: "section", label }).insert(2, { type: "film", heading: "" }, { kind: "Film" });
+    expect(lastListAction(store)).toMatchObject({ what: "adding a Film section", path: ["sections"], index: 2 });
+    expect(await result?.done).toBe(true);
+    expect(fake.raw).not.toBe(before);
+    const back = new Promise<void>((resolve) => expect(undoLastListAction(store, resolve)).toBe(true));
+    expect(lastListAction(store)).toBeNull();
+    await back;
+    expect(fake.sent.at(-1)?.[0]?.op).toBe("raw");
+    expect(fake.raw).toBe(before);
+    expect(heard).toBe(2);
+    expect(undoLastListAction(store)).toBe(false);
+  });
+
+  it("a move, a duplicate and a removal are named too", async () => {
+    const fake = engine(START);
+    const store = createFormStore(fake.entry(), fake.deps);
+    const actions = listActions({ store, path: ["sections"], noun: "section", label });
+    await actions.move(0, 1)?.done;
+    expect(lastListAction(store)).toMatchObject({ what: "moving “hero”", index: null });
+    await actions.duplicate(0)?.done;
+    expect(lastListAction(store)?.what).toBe("duplicating “features”");
+    await actions.remove(0)?.done;
+    expect(lastListAction(store)?.what).toBe("removing “features”");
   });
 
   it("Undo falls back to the inverse op when something else changed since", async () => {

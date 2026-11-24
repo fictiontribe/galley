@@ -94,9 +94,23 @@ export interface Field {
   blocks?: BlockType[];
   /** reference: the collection id it points into. */
   collection?: string;
+  /**
+   * list, tags, blocks: the fewest and most items the site's schema allows
+   * (zod's `.min()`, `.max()`, `.length()`, `.nonempty()`); number: the
+   * smallest and largest value. A new section starts within them, since a
+   * list one item short fails the schema and the page with it.
+   */
+  min?: number;
+  max?: number;
   default?: JsonValue;
   /** Up to three real values from the corpus — shown as placeholders, given to the AI. */
   examples?: JsonValue[];
+  /**
+   * The site itself declared `examples` (galley.config.json, or zod's
+   * `.meta({ examples })`), rather than Galley reading them from the files:
+   * a new section may start with the first one where a blank wouldn't draw.
+   */
+  examplesDeclared?: boolean;
   /** Where this definition came from. Config beats schema beats inference. */
   source: "config" | "schema" | "inferred";
   /** Hidden from the form (still preserved in the file). */
@@ -107,6 +121,15 @@ export interface Field {
    * picker that searches the source. Set in galley.config.json.
    */
   dataSource?: string;
+}
+
+/** One real instance of a block type (BlockType.samples). */
+export interface BlockSample {
+  /** Repo-relative path of the entry it is on. */
+  path: string;
+  /** That entry's title, for "from the “Home” page". */
+  title: string;
+  value: { [key: string]: JsonValue };
 }
 
 /** One kind of block in a blocks field — a hero, a feature grid, a CTA. */
@@ -120,6 +143,15 @@ export interface BlockType {
   count: number;
   /** The most complete real instance — the scaffold for "add section". */
   example?: { [key: string]: JsonValue };
+  /** `example` was declared in galley.config.json, not read from the files. */
+  exampleDeclared?: boolean;
+  /**
+   * Real instances of this block in the collection's files, at most one per
+   * entry (its most complete) and a few entries, each with the entry it is
+   * on: values a new section can start with where a blank wouldn't draw
+   * (a picture, a video), and where to say they came from.
+   */
+  samples?: BlockSample[];
   /**
    * Repo-relative path of a picture of this block (declared in
    * galley.config.json), shown in the section palette. Absent → the palette
@@ -862,6 +894,34 @@ export interface OverlaySectionList {
   sections: OverlaySection[];
 }
 
+/**
+ * Why Arrange was declined (`arrange-status`), so the host can say the true
+ * reason: `unmarked` — the page drew, carries no section markers, and its
+ * sections can't be told apart by their words; `mismatch` — the page marks
+ * sections but they don't match the content (or only some are marked);
+ * `page-failed` — the preview answered this page with an error, so there are
+ * no sections to find; `page-missing` — the preview has no page at this
+ * address; `preview-unavailable` — the preview itself didn't answer (it is
+ * starting or restarting). Absent from older overlays.
+ */
+export type ArrangeDeclineCause = "unmarked" | "mismatch" | "page-failed" | "page-missing" | "preview-unavailable";
+
+/**
+ * Whether a page in the preview was drawn (`page-state`). `failed`: the dev
+ * server answered with an error (`status` 500 or more) or the framework's
+ * error overlay is showing; `message` is the framework's own first line about
+ * why, for Technical details. `missing`: the dev server has no page here
+ * (`status` 404). `unavailable`: the preview proxy answered because the dev
+ * server didn't. `drawn`: none of these.
+ */
+export interface PageDrawState {
+  state: "drawn" | "failed" | "missing" | "unavailable";
+  /** The HTTP status the page came with, when the proxy passed it on. */
+  status: number | null;
+  /** One line, at most 300 characters. */
+  message: string | null;
+}
+
 /** What the person asked to do to a section on the page, in Arrange mode. */
 export type ArrangeRequest =
   /** Dragged on the page: `to` is the section's final position. */
@@ -900,7 +960,15 @@ export type OverlayToHost =
    * `declined` — they can't be told apart, so arranging on the page isn't
    * offered. `revision` echoes the `arrange` message it answers.
    */
-  | { galley: 1; type: "arrange-status"; status: "mapped" | "waiting" | "declined"; how: "markers" | "evidence" | null; reason: string | null; revision: number }
+  | { galley: 1; type: "arrange-status"; status: "mapped" | "waiting" | "declined"; how: "markers" | "evidence" | null; reason: string | null; revision: number; cause?: ArrangeDeclineCause }
+  /**
+   * Whether the page in the frame could be drawn (PageDrawState). Sent after
+   * `ready` whenever the page isn't simply drawn, and again when the
+   * framework's own message about it arrives or its error clears. Hosts that
+   * don't know it ignore it; a host that never hears it can take the page as
+   * drawn.
+   */
+  | ({ galley: 1; type: "page-state" } & PageDrawState)
   /** Arrange mode: the person selected a section on the page (`<field>.<index>`), or none. */
   | { galley: 1; type: "arrange-select"; key: string | null }
   | ({ galley: 1; type: "arrange-action" } & ArrangeRequest)
@@ -1197,6 +1265,12 @@ export interface ChatMessage {
   changedPaths?: string[];
   /** True once the turn's file changes were rolled back. */
   undone?: boolean;
+  /**
+   * Files the undo left as they are, because someone else changed them after
+   * this turn did: they still hold this turn's changes. Absent when
+   * everything was put back.
+   */
+  undoLeft?: string[];
   /** Still streaming. */
   pending?: boolean;
   error?: string;
@@ -1854,14 +1928,35 @@ export interface WriteOptions {
  * Records the pre-image of every file written while it is open, so one AI turn
  * can be undone as a unit without touching the user's other pending changes.
  */
+/**
+ * What an undo did: the files put back, and the files left as they are
+ * because someone else changed them after the work being undone did.
+ */
+export interface UndoResult {
+  restored: string[];
+  left: string[];
+}
+
 export interface Checkpoint {
   readonly id: string;
-  /** Paths written since the checkpoint opened. */
+  /** Paths its own work has written. */
   paths(): string[];
+  /**
+   * Does `work` as this checkpoint's own: what it writes, and what anything
+   * it starts writes, is recorded. A write made outside it is not, whoever
+   * makes it and whichever file it is.
+   */
+  run<T>(work: () => T): T;
   /** Stop recording. Idempotent. */
   close(): void;
-  /** Put every recorded file back the way it was. Returns the restored paths. */
+  /**
+   * Put back every recorded file that is still as this checkpoint's own work
+   * left it. A file someone else has changed since stays as it is. Returns
+   * the restored paths.
+   */
   restore(): Promise<string[]>;
+  /** After `restore()`: the paths it left as they are, because someone else changed them after this checkpoint's own work did. */
+  left(): string[];
 }
 
 export interface PreviewController {
@@ -2064,7 +2159,7 @@ export interface AgentRuntime {
   send(siteId: string, threadId: string, request: SendMessageRequest): Promise<{ turnId: string }>;
   cancel(siteId: string, threadId: string): Promise<void>;
   /** Roll back the files one turn changed. Returns the restored paths. */
-  undoTurn(siteId: string, threadId: string, turnId: string): Promise<string[]>;
+  undoTurn(siteId: string, threadId: string, turnId: string): Promise<UndoResult>;
   /**
    * One plain sentence describing a set of pending changes, for the publish
    * message. Falls back to a deterministic summary when no model is available;

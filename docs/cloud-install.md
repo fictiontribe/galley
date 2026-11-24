@@ -100,7 +100,7 @@ in the image and the one volume a compose file mounts.
 | `plugins/` | Plugins added to this install. |
 | `home/` | `HOME` in the image: package caches. Rebuilt when needed; not in a backup. |
 | `backups/` | Where the operator keeps backups on the volume (`galley backup create --out /data/backups/…`). Never part of a backup, never replaced by a restore. |
-| `server.lock` | Written while a server holds the folder, so `galley backup` refuses to copy or replace it underneath a running server. It does not stop a second server starting on the folder: stop the editor first. |
+| `server.lock` | The server's hold on the folder: taken before it reads or changes anything here, rewritten every 10 seconds while it runs, removed when it stops. One folder, one server: a second server started on the folder is refused ([One server to a data folder](#one-server-to-a-data-folder)), and `galley backup` refuses to copy or replace the folder underneath a running server. |
 
 The site's live address lives in `install.json`, not in the site's
 `galley.config.json`: first run, a handover and `GALLEY_SITE_LIVE_URL` never
@@ -796,6 +796,16 @@ dialog with **Copy link**; when the server e-mails links it is also
 e-mailed, and the dialog says so. The person opens it, sees who invited them
 and as what, types their name and a password, and is signed in.
 
+A name is kept without characters a reader can't see (the controls that
+reorder text, characters with no width, blank fillers), and nobody can take
+a name that reads as someone else's here: the same letters in another case
+or width, or with unseen characters between them, are the same name. They
+are told *Someone here is already called “…”. Add something that tells the
+two apart, such as a middle initial.* The same holds when a name is changed
+later, by the person or by an owner. Look-alike letters from different
+alphabets are not caught. Accounts whose names were alike before this rule
+stay as they are until one of them changes.
+
 - An invitation lasts **7 days** and works once.
 - An e-mail that already has an account, or an open invitation, can't be
   invited again. To send a new link, take the open invitation back
@@ -998,6 +1008,13 @@ Signing in records when that person last signed in.
 
 ### Sessions
 
+- An account may have **16 windows of the editor** open at once (each holds
+  one event stream; the operator's token counts as one identity). The next
+  one is answered 429, *Too many windows of the editor are open on this
+  account*, and keeps trying: it connects when another closes. A window
+  that stops reading its stream (a laptop asleep, a stalled connection) is
+  let go once 1 MB is waiting for it, and reads everything again when it
+  comes back.
 - A session cookie belongs to one person. On an `https://` address it is
   `__Host-galley_session`: `HttpOnly`, always `Secure`, `SameSite=Strict`,
   `Path=/`, no `Domain`, signed with `session.key`, 30 days. A cookie one
@@ -1166,6 +1183,33 @@ a code:
 - an e-mail that couldn't be sent, or wasn't sent in time;
 - at start-up, the list of signed-out browsers shortened by signing
   everyone out once ([Sessions](#sessions)).
+
+### One server to a data folder
+
+A hosted server takes the data folder before it reads or changes anything in
+it, and keeps its hold (`server.lock`) fresh while it runs. Two servers on
+one folder would each keep the install's state and the site's working copy
+in memory and write over each other, so a start that finds the folder held
+by a server that is still running stops with: *Another editor is running on
+this data folder (process 1 on …, port 4400). Stop it first, or give this
+one a data folder of its own (GALLEY_HOME).*
+
+- **After a clean stop** the hold is gone and the next start takes the
+  folder at once.
+- **After a server that didn't stop cleanly** (the machine lost power, the
+  container was killed) its hold is still there. A hold whose process is
+  gone on this machine is taken over at once. Any other is watched for about
+  20 seconds: a hold that keeps changing belongs to a running server and the
+  start is refused; one that doesn't is taken over, and the log says so.
+  Clocks are never compared, so two machines sharing a volume needn't agree
+  on the time.
+- **A folder the server can't write its hold to** stops the start with the
+  reason.
+- If another server takes the folder while this one runs (its hold was
+  removed by hand, say), this one logs it once: *Another server has taken
+  this data folder … Stop one of them.* It does not stop by itself.
+
+Local mode and the desktop app take no hold.
 
 ### Stopping
 

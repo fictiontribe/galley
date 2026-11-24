@@ -118,7 +118,7 @@ function services(calls: Calls): ServiceFakes {
       deleteThread: record("agent.deleteThread", undefined) as never,
       send: record("agent.send", { turnId: "turn-1" }) as never,
       cancel: record("agent.cancel", undefined) as never,
-      undoTurn: record("agent.undoTurn", ["a.md"]) as never,
+      undoTurn: record("agent.undoTurn", { restored: ["a.md"], left: [] }) as never,
       describeChanges: record("agent.describeChanges", "Update the blog") as never,
     },
   };

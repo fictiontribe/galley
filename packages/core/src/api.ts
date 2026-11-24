@@ -70,7 +70,7 @@ import type { DeployAccount, DeployConfig, DeployKind, DeployProjectCheck, Deplo
 import type { PluginConflict, PluginInfo, VideoGenRequest, VideoJobStatus, VideoProviderInfo, VideoSaveRequest } from "./types";
 import type { FormProviderInfo, ScriptIntegrationInfo } from "./kit";
 import type { CloudflareCheck, CloudflarePlan, ImportMode, ImportResolutions, ImportReview, Redirect, RedirectExportFormat, RedirectHealth, RedirectHostId, RedirectsOverview, RedirectTrace } from "./redirects/types";
-import type { AddSitesRequest, AddSitesResult, ScanSitesRequest, ScanSitesResult, SiteConnections, SiteGroup, SiteGroupInput, SitePatch, SiteUsageTotals } from "./types";
+import type { AddSitesRequest, AddSitesResult, ScanSitesRequest, ScanSitesResult, SiteConnections, SiteGroup, SiteGroupInput, SitePatch, SiteUsageTotals, UndoResult } from "./types";
 import type { DeployKeyInfo, InstallInfo, RestoreUpload, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./install/types";
 import type { Account, AccountRole, AccountSession, Invitation, LinkPreview, OneTimeLink, People } from "./install/accounts";
 import type { MediaCreatedRecord, MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaLibraryAnswer, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaUsage } from "./media-storage/contract";
@@ -709,7 +709,7 @@ export interface ApiRoutes {
   "POST /api/sites/:siteId/threads/:threadId/cancel": { response: Ok };
   "POST /api/sites/:siteId/threads/:threadId/undo": {
     body: { turnId: string };
-    response: { restored: string[] };
+    response: UndoResult;
   };
 
   // ── multi-site ─────────────────────────────────────────────────────────
@@ -761,10 +761,10 @@ export interface ApiRoutes {
     body: { ids: string[] };
     response: import("./seo/types").FixResult;
   };
-  /** Put back every file one batch of fixes changed. */
+  /** Put back every file one batch of fixes changed, except those changed again since, which are left as they are and listed in `left`. */
   "POST /api/sites/:siteId/visibility/undo": {
     body: { undoId: string };
-    response: { restored: string[] };
+    response: UndoResult;
   };
   "GET /api/sites/:siteId/visibility/crawlers": { response: import("./seo/types").CrawlerReport };
   /** Allow or block documented AI crawlers by robots.txt token; only a marked block of robots.txt changes. */

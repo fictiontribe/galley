@@ -441,12 +441,12 @@ describe("undo", () => {
     const { turnId } = await h.turn(thread.id, "Say we bake at midnight");
 
     expect(site.files.get("src/content/pages/about.md")).not.toBe(before);
-    const restored = await h.runtime.undoTurn(site.id, thread.id, turnId);
+    const undone = await h.runtime.undoTurn(site.id, thread.id, turnId);
 
-    expect(restored).toEqual(["src/content/pages/about.md"]);
+    expect(undone).toEqual({ restored: ["src/content/pages/about.md"], left: [] });
     expect(site.files.get("src/content/pages/about.md")).toBe(before);
     expect(h.bus.events.filter((e) => e.type === "chat.message").at(-1)).toMatchObject({ message: { undone: true, turnId } });
-    expect(await h.runtime.undoTurn(site.id, thread.id, turnId)).toEqual([]);
+    expect(await h.runtime.undoTurn(site.id, thread.id, turnId)).toEqual({ restored: [], left: [] });
 
     await h.turn(thread.id, "What does the page say now?");
     const messages = script.requests[2]!.body.messages;

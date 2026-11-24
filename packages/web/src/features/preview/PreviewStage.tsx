@@ -17,10 +17,12 @@ export interface SheetProps {
    * every frame the app shows a site in carries one.
    */
   name: string;
+  /** Shown over the page (a page that couldn't be drawn); the frame stays loaded underneath. */
+  cover?: ReactNode;
 }
 
 /** One page on the proofing table: the site's own page in a frame, set like a sheet. */
-export function Sheet({ frameRef, src, title, width, caption, onLoad, name }: SheetProps) {
+export function Sheet({ frameRef, src, title, width, caption, onLoad, name, cover }: SheetProps) {
   const [initial] = useState(src);
   return (
     <div className="preview-side">
@@ -29,6 +31,7 @@ export function Sheet({ frameRef, src, title, width, caption, onLoad, name }: Sh
         <div className={cx("g-preview__frame g-crop preview-sheet", width !== null && "preview-sheet--fixed")} style={width !== null ? { inlineSize: width } : undefined}>
           <iframe ref={frameRef} name={name} className="preview-sheet__iframe" src={initial} title={title} onLoad={onLoad} />
         </div>
+        {cover ? <div className="app-preview-state preview-cover">{cover}</div> : null}
       </div>
     </div>
   );

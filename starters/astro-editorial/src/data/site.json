@@ -77,7 +77,8 @@
       "visit": "Plan a visit"
     },
     "dev": {
-      "unknownSection": "This section type has no component yet"
+      "unknownSection": "This section type has no component yet",
+      "chooseForm": "Choose a form for this section in the form."
     },
     "marquee": {
       "pause": "Pause"

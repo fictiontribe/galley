@@ -96,7 +96,8 @@ describe("talking to the host", () => {
     fromHost({ galley: 1, type: "mode", edit: true }, { origin: "https://evil.example" });
     const event = click($("#link"));
     expect(event.defaultPrevented).toBe(false);
-    expect(sent().map((message) => message.type)).toEqual(["ready"]);
+    // Only what it says on its own when it starts: where it is, and that the page was drawn.
+    expect(sent().map((message) => message.type)).toEqual(["ready", "page-state"]);
   });
 
   it("reports in-site navigation, including router transitions and hash changes", async () => {

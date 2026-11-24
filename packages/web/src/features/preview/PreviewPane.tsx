@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { OverlayToHost, PreviewStatus } from "@galley/core/types";
 import { ArrangePanel } from "@/features/builder/ArrangePanel";
+import type { PageReport } from "@/features/builder/declined";
 import { useArrange, type BuilderSource } from "@/features/builder/useArrange";
+import { usePageFailure } from "@/features/builder/usePageFailure";
 import type { EditorSelection } from "@/features/editor/EditorContext";
 import { errorShape } from "@/lib/api";
 import { useMeta } from "@/lib/stores/meta";
@@ -12,7 +14,7 @@ import { EditAssist } from "./EditAssist";
 import { useAppAppearance } from "./appearance";
 import { entryAddress, isSignInNeeded, needsEntry, openEntry, type EntrySession } from "./entry";
 import { addressToPath, basePathOf, canGo, frameUrl, go, localizeMessage, pagePath, parseOverlayMessage, startHistory, toOverlay, visit } from "./frames";
-import { NoLiveSite, PreviewStates } from "./PreviewStates";
+import { NoLiveSite, PageFailedState, PreviewStates } from "./PreviewStates";
 import { frameName } from "./frameNames";
 import { Divider, Sheet } from "./PreviewStage";
 import { PreviewToolbar, WIDTHS, type FrameWidth, type PageTool } from "./PreviewToolbar";
@@ -52,6 +54,8 @@ function firstTool(): PageTool {
 }
 
 type Role = "proposed" | "live";
+/** How long after Undo puts a file back the proposed page is reloaded: the dev server needs a moment to see the file. */
+const RELOAD_AFTER_UNDO_MS = 700;
 const ROLES: Role[] = ["proposed", "live"];
 const other = (role: Role): Role => (role === "proposed" ? "live" : "proposed");
 const originOf = (url: string | null): string | null => {
@@ -165,8 +169,22 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
     for (const role of ROLES) if (ready.current[role]) sendAppearance(role);
   }, [appearance?.accent, appearance?.theme, sendAppearance]);
 
+  // Whether the proposed page was drawn, as its overlay says (page-state), and when it last was.
+  const [page, setPage] = useState<PageReport | null>(null);
+  const [drawnAt, setDrawnAt] = useState<number | null>(null);
+  const [revealed, setRevealed] = useState<number | null>(null);
+  const failure = usePageFailure({
+    page,
+    drawnAt,
+    store: editable ? (builder?.store ?? null) : null,
+    // Undo put the file back: load the page again once the dev server has had a moment with it (its own reload may come too).
+    reload: () => setTimeout(() => post("proposed", toOverlay({ type: "reload" })), RELOAD_AFTER_UNDO_MS),
+    onEditSection: editable ? builder?.onEditSection : undefined,
+    onShowForm,
+  });
+
   // Arrange: the page's sections, handled on the page (only where the editor hands over the entry's queue).
-  const arrange = useArrange({ source: editable ? builder : undefined, on: editable && tool === "arrange" && mode !== "live", post: (message) => post("proposed", message), frame: frames.proposed });
+  const arrange = useArrange({ source: editable ? builder : undefined, on: editable && tool === "arrange" && mode !== "live", post: (message) => post("proposed", message), frame: frames.proposed, page });
   const current: PageTool = tool === "arrange" && !arrange.available ? "edit" : tool;
   const editing = editable && current === "edit" && mode !== "live";
   const arranging = arrange.active;
@@ -200,6 +218,8 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
     switch (message.type) {
       case "ready":
         ready.current[role] = true;
+        // A new page: whether it was drawn is its overlay's next word.
+        if (role === "proposed") setPage(null);
         post(role, toOverlay({ type: "mode", edit: role === "proposed" && editing }));
         sendAppearance(role);
         arrived(role, message.path);
@@ -224,6 +244,11 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
         return;
       case "edit-cancelled":
         if (role === "proposed") handlers.current.onEditCancelled(message);
+        return;
+      case "page-state":
+        if (role !== "proposed") return;
+        setPage({ state: message.state, status: message.status, message: message.message, at: Date.now() });
+        if (message.state === "drawn") setDrawnAt(Date.now());
         return;
       case "arrange-status":
       case "arrange-select":
@@ -319,7 +344,7 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
         onOpen={openInTab}
       />
       <div className="preview-body">
-      {arranging ? <ArrangePanel siteId={siteId} arrange={arrange} onShowForm={onShowForm} /> : null}
+      {arranging ? <ArrangePanel siteId={siteId} arrange={arrange} onShowForm={onShowForm} failure={failure} /> : null}
       <div ref={stage} className={`preview-stage preview-stage--${mode}`} style={mode === "split" ? { gridTemplateColumns: `${ratio}fr auto ${1 - ratio}fr` } : undefined}>
         {mode !== "proposed" ? (
           origins.live ? (
@@ -332,7 +357,7 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
         ) : null}
         {mode === "split" ? <Divider key="divider" ratio={ratio} onRatio={setRatio} stage={stage} /> : null}
         {mode !== "live" && origins.proposed ? (
-          <Sheet key="proposed" frameRef={frames.proposed} name={frameName("proposed", editable)} src={firstAddress(entry, "proposed") ? entryAddress(firstAddress(entry, "proposed") as string, startAt) : frameUrl(bases.proposed ?? origins.proposed, startAt)} title="Proposed page" width={pixel} caption={mode === "split" ? "Proposed · your changes" : undefined} onLoad={() => greet("proposed")} />
+          <Sheet key="proposed" frameRef={frames.proposed} name={frameName("proposed", editable)} src={firstAddress(entry, "proposed") ? entryAddress(firstAddress(entry, "proposed") as string, startAt) : frameUrl(bases.proposed ?? origins.proposed, startAt)} title="Proposed page" width={pixel} caption={mode === "split" ? "Proposed · your changes" : undefined} onLoad={() => greet("proposed")} cover={failure && revealed !== page?.at ? <PageFailedState failure={failure} actions={!arranging} onReveal={() => setRevealed(page?.at ?? null)} /> : undefined} />
         ) : null}
       </div>
       </div>
