@@ -12,6 +12,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { GalleyError } from "../errors";
 import { withoutHiddenVariables } from "./command";
 import { runCommand, type RunResult } from "./exec";
+import { redactRemoteUrl } from "./remote";
 
 export const GIT_TIMEOUT_MS = 30_000;
 export const GIT_NETWORK_TIMEOUT_MS = 120_000;
@@ -72,7 +73,8 @@ export class GitCommandError extends GalleyError {
   readonly timedOut: boolean;
 
   constructor(message: string, result: Pick<GitResult, "code" | "stderr" | "timedOut">, args: string[]) {
-    super("git", message, `git ${args.join(" ")} → exit ${result.code}${result.timedOut ? " (timed out)" : ""}\n${result.stderr.trim()}`);
+    // The detail is shown behind "Technical details": an address in it never carries what signs in to it.
+    super("git", message, redactRemoteUrl(`git ${args.join(" ")} → exit ${result.code}${result.timedOut ? " (timed out)" : ""}\n${result.stderr.trim()}`));
     this.name = "GitCommandError";
     this.exitCode = result.code;
     this.stderr = result.stderr;

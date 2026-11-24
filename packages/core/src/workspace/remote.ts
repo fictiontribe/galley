@@ -14,11 +14,13 @@ export interface RemoteLocation {
 }
 
 /**
- * Removes any user:password@ from an https remote URL before it is shown or
- * returned anywhere. Tokens embedded in remote URLs are common.
+ * Removes any user:password@ from the http(s) addresses in a text before it
+ * is shown or returned anywhere: an address on its own, or every address
+ * inside a longer message (git quotes the address it was using in the middle
+ * of what it reports). Tokens embedded in remote URLs are common.
  */
-export function redactRemoteUrl(url: string): string {
-  return url.replace(/^(https?:\/\/)[^@/]+@/i, "$1");
+export function redactRemoteUrl(text: string): string {
+  return text.replace(/(https?:\/\/)[^@/\s'"]+@/gi, "$1");
 }
 
 export function parseRemoteUrl(url: string): RemoteLocation | null {

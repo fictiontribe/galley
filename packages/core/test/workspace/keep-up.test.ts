@@ -3,11 +3,11 @@
  * bringing newer versions in forward only — against a real bare repository
  * as the code host and a second clone as "someone publishing elsewhere".
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createWorkspace, type Workspace } from "../../src/workspace/index";
-import { addBareRemote, cleanupAll, makeRepo, PUBLISH, sh, tempDir, WRITABLE, writeTree } from "./helpers";
+import { createWorkspace, hashContent, type Workspace } from "../../src/workspace/index";
+import { addBareRemote, cleanupAll, makeRepo, PUBLISH, sh, tempDir, until, WRITABLE, writeTree } from "./helpers";
 
 // Many real git processes per test (see publish.test.ts); nothing here waits on a timer.
 const GIT_HEAVY = { timeout: 120_000 };
@@ -46,6 +46,29 @@ function setUp(files: Record<string, string>) {
 
 const read = (root: string, path: string) => readFileSync(join(root, path), "utf8");
 
+/**
+ * A code host that is slow to answer: whenever this copy asks it for
+ * versions, the answer waits for `release()`. `asked()` counts the times it
+ * was asked. (git runs the program a remote names for serving its versions;
+ * this one waits, then hands over to the real one.)
+ */
+function slowCodeHost(root: string) {
+  const dir = tempDir("ws-slow-host-");
+  const program = join(dir, "serve.sh");
+
+  writeFileSync(program, `#!/bin/sh\necho asked >> '${dir}/asked'\nwhile [ ! -e '${dir}/go' ]; do sleep 0.05; done\nexec git upload-pack "$@"\n`, { mode: 0o755 });
+  sh(root, "config", "remote.origin.uploadpack", program);
+  return {
+    asked: () => (existsSync(join(dir, "asked")) ? readFileSync(join(dir, "asked"), "utf8").trim().split("\n").length : 0),
+    release: () => writeFileSync(join(dir, "go"), ""),
+    hold: () => rmSync(join(dir, "go"), { force: true }),
+  };
+}
+
+const SAVE = { origin: "user", mode: "content" } as const;
+// The stand-in for a slow code host is a shell script.
+const posix = process.platform !== "win32";
+
 describe("looking at the code host", GIT_HEAVY, () => {
   it("finds newer versions without touching a file, and a look that fails says why and changes nothing", async () => {
     const site = setUp({ "src/content/a.md": "a\n" });
@@ -81,6 +104,65 @@ describe("looking at the code host", GIT_HEAVY, () => {
     expect(read(site.root, "src/content/a.md")).toBe("a\n");
     // The plain status says the same until the next look works.
     expect((await ws.gitStatus()).checkProblem).toBe(failed.checkProblem);
+  });
+
+  it.skipIf(!posix)("never holds up a save while the code host is slow to answer, and looks asked for together are one look", async () => {
+    const site = setUp({ "src/content/a.md": "a\n", "src/content/b.md": "b\n" });
+    const ws = await workspaceFor(site.root);
+    const host = slowCodeHost(site.root);
+
+    site.elsewhere({ "src/content/a.md": "theirs\n" });
+    let answered = false;
+    const first = ws.check().finally(() => void (answered = true));
+    const second = ws.check();
+    const third = ws.check();
+
+    await until(() => host.asked() === 1);
+    // Saving, deleting and discarding all go through while the look is still waiting for its answer.
+    await ws.writeFile("src/content/b.md", "saved\n", SAVE);
+    await ws.writeFile("src/content/c.md", "new\n", SAVE);
+    await ws.deleteFile("src/content/c.md", SAVE);
+    expect(await ws.discard(["src/content/b.md"])).toEqual(["src/content/b.md"]);
+    await ws.writeFile("src/content/b.md", "saved again\n", SAVE);
+    expect(answered).toBe(false);
+    expect(read(site.root, "src/content/b.md")).toBe("saved again\n");
+    // The plain status doesn't wait either, and can't know yet.
+    expect((await ws.gitStatus()).behind).toBe(0);
+    expect(answered).toBe(false);
+
+    host.release();
+    const [a, b, c] = await Promise.all([first, second, third]);
+
+    expect(a).toMatchObject({ behind: 1, ahead: 0, clean: false });
+    expect(b.checkedAt).toBe(a.checkedAt);
+    expect(c.checkedAt).toBe(a.checkedAt);
+    expect(host.asked()).toBe(1);
+    // A look asked for once that one has finished is a new look.
+    await ws.check();
+    expect(host.asked()).toBe(2);
+  });
+
+  it.skipIf(!posix)("a publish waits its turn behind a look rather than run beside it, and saves still don't wait", async () => {
+    const site = setUp({ "src/content/a.md": "a\n", "src/content/b.md": "b\n" });
+    const ws = await workspaceFor(site.root);
+    const host = slowCodeHost(site.root);
+
+    await ws.writeFile("src/content/b.md", "mine\n", SAVE);
+    const looking = ws.check();
+
+    await until(() => host.asked() === 1);
+    let published = false;
+    const publishing = ws.publish({ message: "Mine" }, { ...PUBLISH, push: false }).finally(() => void (published = true));
+
+    await ws.writeFile("src/content/a.md", "saved meanwhile\n", SAVE);
+    expect(published).toBe(false);
+    expect(sh(site.root, "log", "--format=%s", "-1")).toBe("Initial");
+    host.release();
+    await looking;
+    expect(await publishing).toMatchObject({ ok: true, pushed: false });
+    // The save that went through first was pending by the time the publish ran, so it was published with it.
+    expect(sh(site.root, "log", "--format=%s", "-1")).toBe("Mine");
+    expect(sh(site.root, "show", "HEAD:src/content/a.md")).toBe("saved meanwhile");
   });
 });
 
@@ -128,7 +210,7 @@ describe("bringing newer versions in", GIT_HEAVY, () => {
     expect(read(site.root, "src/content/a.md")).toBe("mine\n");
     expect(sh(site.root, "rev-parse", "HEAD")).toBe(head);
     // Get latest says the same, before anything is touched.
-    await expect(ws.pull()).rejects.toMatchObject({ code: "git", message: result?.status.inTheWay?.message });
+    await expect(ws.pull()).rejects.toMatchObject({ code: "conflict", status: 409, message: result?.status.inTheWay?.message });
     expect(read(site.root, "src/content/a.md")).toBe("mine\n");
   });
 
@@ -151,5 +233,180 @@ describe("bringing newer versions in", GIT_HEAVY, () => {
     expect(result?.status.inTheWay?.message).toMatch(/Someone who knows the repository/);
     expect(sh(site.root, "rev-parse", "HEAD")).toBe(head);
     expect(read(site.root, "src/content/a.md")).toBe("a\n");
+  });
+  it.skipIf(!posix)("a round lets a save through while it looks, and holds back when that save is to a file the newer version changes", async () => {
+    const site = setUp({ "src/content/a.md": "a\n", "src/content/b.md": "b\n" });
+    const ws = await workspaceFor(site.root);
+    const host = slowCodeHost(site.root);
+    const head = sh(site.root, "rev-parse", "HEAD");
+    const around: string[] = [];
+    const hooks = { before: async () => void around.push("before"), after: async () => void around.push("after") };
+
+    site.elsewhere({ "src/content/a.md": "theirs\n" });
+    let finished = false;
+    const round = ws.catchUp(hooks).finally(() => void (finished = true));
+
+    await until(() => host.asked() === 1);
+    await ws.writeFile("src/content/a.md", "mine\n", SAVE);
+    expect(finished).toBe(false);
+    host.release();
+    const result = await round;
+
+    expect(result).toMatchObject({ brought: 0, paths: [], status: { behind: 1, inTheWay: { kind: "changes", paths: ["src/content/a.md"] } } });
+    expect(read(site.root, "src/content/a.md")).toBe("mine\n");
+    expect(sh(site.root, "rev-parse", "HEAD")).toBe(head);
+    expect(around).toEqual([]);
+    // Once the change is out of the way the next round brings the version in.
+    await ws.discard(["src/content/a.md"]);
+    expect(await ws.catchUp(hooks)).toMatchObject({ brought: 1, paths: ["src/content/a.md"] });
+    expect(read(site.root, "src/content/a.md")).toBe("theirs\n");
+    expect(around).toEqual(["before", "after"]);
+  });
+
+  it.skipIf(!posix)("a round gives way to a publish that was asked for while it looked, and joins a look already going", async () => {
+    const site = setUp({ "src/content/a.md": "a\n", "src/content/b.md": "b\n" });
+    const ws = await workspaceFor(site.root);
+    const host = slowCodeHost(site.root);
+
+    site.elsewhere({ "src/content/a.md": "theirs\n" });
+    await ws.writeFile("src/content/b.md", "mine\n", SAVE);
+    // A person's look is going: the round asks nothing of its own.
+    const looking = ws.check();
+
+    await until(() => host.asked() === 1);
+    const round = ws.catchUp();
+    const publishing = ws.publish({ message: "Mine" }, { ...PUBLISH, push: false });
+
+    host.release();
+    expect(await round).toBeNull();
+    expect(await publishing).toMatchObject({ ok: true, pushed: false });
+    expect((await looking).behind).toBe(1);
+    expect(host.asked()).toBe(1);
+    expect(read(site.root, "src/content/a.md")).toBe("a\n");
+  });
+
+  it("a save that arrives while versions are coming in waits for them, and is refused if it was made from the older text", async () => {
+    const site = setUp({ "src/content/a.md": "a\n", "src/content/b.md": "b\n" });
+    const ws = await workspaceFor(site.root);
+    const opened = hashContent(readFileSync(join(site.root, "src/content/a.md")));
+    let stale: Promise<unknown> = Promise.resolve();
+    let other: Promise<unknown> = Promise.resolve();
+
+    site.elsewhere({ "src/content/a.md": "theirs\n" });
+    const result = await ws.catchUp({
+      // The round holds the save lock from here until the files have changed.
+      before: async () => {
+        stale = ws.writeFile("src/content/a.md", "mine, from the older text\n", { ...SAVE, baseHash: opened }).then(
+          () => "saved",
+          (error: unknown) => error
+        );
+        other = ws.writeFile("src/content/b.md", "mine\n", SAVE).then(() => "saved");
+        // Neither has been written by the time the files change.
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        expect(read(site.root, "src/content/a.md")).toBe("a\n");
+        expect(read(site.root, "src/content/b.md")).toBe("b\n");
+      },
+      after: async () => undefined,
+    });
+
+    expect(result).toMatchObject({ brought: 1, paths: ["src/content/a.md"] });
+    expect(await stale).toMatchObject({ code: "conflict", message: expect.stringMatching(/changed since you opened it/) });
+    expect(await other).toBe("saved");
+    expect(read(site.root, "src/content/a.md")).toBe("theirs\n");
+    expect(read(site.root, "src/content/b.md")).toBe("mine\n");
+  });
+
+  it("starts the preview again even when stopping it failed, and changes nothing", async () => {
+    const site = setUp({ "src/content/a.md": "a\n" });
+    const ws = await workspaceFor(site.root);
+    const head = sh(site.root, "rev-parse", "HEAD");
+    const after: string[][] = [];
+    const hooks = {
+      before: async () => {
+        throw new Error("the preview wouldn't stop");
+      },
+      after: async (paths: string[]) => void after.push(paths),
+    };
+
+    site.elsewhere({ "src/content/a.md": "theirs\n" });
+    await expect(ws.catchUp(hooks)).rejects.toThrow("the preview wouldn't stop");
+    await expect(ws.getLatest(hooks)).rejects.toThrow("the preview wouldn't stop");
+    expect(after).toEqual([[], []]);
+    expect(sh(site.root, "rev-parse", "HEAD")).toBe(head);
+    expect(read(site.root, "src/content/a.md")).toBe("a\n");
+    // The workspace is left free: the next one goes through.
+    expect(await ws.catchUp()).toMatchObject({ brought: 1 });
+  });
+
+  it("holds back for an unpublished deletion of a file the newer version changes, and for a new file where the newer version adds one", async () => {
+    const site = setUp({ "src/content/a.md": "a\n", "src/content/b.md": "b\n" });
+    const ws = await workspaceFor(site.root);
+    const head = sh(site.root, "rev-parse", "HEAD");
+    let touched = false;
+    const hooks = { before: async () => void (touched = true), after: async () => undefined };
+
+    // Deleted here, changed there.
+    await ws.deleteFile("src/content/a.md", SAVE);
+    site.elsewhere({ "src/content/a.md": "theirs\n" });
+    const deleted = await ws.catchUp(hooks);
+
+    expect(deleted).toMatchObject({ brought: 0, status: { behind: 1, inTheWay: { kind: "changes", paths: ["src/content/a.md"] } } });
+    await expect(ws.getLatest(hooks)).rejects.toMatchObject({ code: "conflict", message: deleted?.status.inTheWay?.message });
+    expect(existsSync(join(site.root, "src/content/a.md"))).toBe(false);
+    expect(ws.statusOf("src/content/a.md")).toBe("deleted");
+    expect(sh(site.root, "rev-parse", "HEAD")).toBe(head);
+    await ws.discard(["src/content/a.md"]);
+    expect(await ws.catchUp(hooks)).toMatchObject({ brought: 1 });
+    expect(read(site.root, "src/content/a.md")).toBe("theirs\n");
+
+    // Made here and never published, and made there too.
+    touched = false;
+    await ws.writeFile("src/content/new.md", "mine\n", SAVE);
+    site.elsewhere({ "src/content/new.md": "theirs\n", "src/content/b.md": "theirs\n" });
+    const added = await ws.catchUp(hooks);
+
+    expect(added).toMatchObject({ brought: 0, status: { behind: 1, inTheWay: { kind: "changes", paths: ["src/content/new.md"] } } });
+    expect(added?.status.inTheWay?.message).toMatch(/Publish or discard/);
+    await expect(ws.getLatest(hooks)).rejects.toMatchObject({ code: "conflict" });
+    expect(touched).toBe(false);
+    expect(read(site.root, "src/content/new.md")).toBe("mine\n");
+    // Nothing came in part-way: the other file of that version is as it was.
+    expect(read(site.root, "src/content/b.md")).toBe("b\n");
+  });
+
+  it("does nothing while the copy shows an older version or an operation from outside the app is half-done, and Get latest says so", async () => {
+    const site = setUp({ "src/content/a.md": "a\n" });
+    const ws = await workspaceFor(site.root);
+    let touched = false;
+    const hooks = { before: async () => void (touched = true), after: async () => undefined };
+
+    site.elsewhere({ "src/content/a.md": "theirs\n" }, "One");
+    site.elsewhere({ "src/content/a.md": "theirs again\n" }, "Two");
+    // An older version checked out by hand: there is no line of versions to move forward.
+    sh(site.root, "checkout", "-q", "--detach", "HEAD");
+    const head = sh(site.root, "rev-parse", "HEAD");
+
+    expect(await ws.catchUp(hooks)).toMatchObject({ brought: 0, paths: [], status: { detached: true } });
+    const detached = await ws.getLatest(hooks).catch((error: unknown) => error);
+
+    expect(detached).toMatchObject({ code: "invalid", message: expect.stringMatching(/older version/) });
+    expect((detached as Error).message).not.toMatch(/fetch|branch|HEAD|commit/i);
+    expect(sh(site.root, "rev-parse", "HEAD")).toBe(head);
+    sh(site.root, "checkout", "-q", "main");
+    expect(await ws.catchUp(hooks)).toMatchObject({ brought: 2 });
+    touched = false;
+
+    // Someone began undoing a version in a terminal and left it there.
+    sh(site.root, "revert", "--no-commit", "HEAD");
+    expect(existsSync(join(site.root, ".git", "REVERT_HEAD"))).toBe(true);
+    site.elsewhere({ "src/content/a.md": "theirs once more\n" }, "Three");
+    expect(await ws.catchUp(hooks)).toMatchObject({ brought: 0, paths: [] });
+    await expect(ws.getLatest(hooks)).rejects.toMatchObject({ code: "busy", message: expect.stringMatching(/another operation/) });
+    expect(touched).toBe(false);
+    expect(read(site.root, "src/content/a.md")).not.toContain("once more");
+    // Cancelled there: the next round brings the version in.
+    sh(site.root, "revert", "--abort");
+    expect(await ws.catchUp(hooks)).toMatchObject({ brought: 1 });
+    expect(read(site.root, "src/content/a.md")).toBe("theirs once more\n");
   });
 });
