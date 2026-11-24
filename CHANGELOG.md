@@ -5,6 +5,14 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## Unreleased
+
+### Fixed
+
+- **A list of short values** (a list of strings, links or numbers) no longer
+  gives every row the same `id`: the controls inside a group of fields take
+  no id from the group, whose legend names it.
+
 ## 0.2.0 — 2026-11-24
 
 A hosted install now looks after one site. If you run `galley serve` for
