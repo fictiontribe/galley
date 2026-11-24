@@ -91,9 +91,17 @@ export function themeFrom(source: ThemeFile, taken: { ids: Iterable<string>; nam
   return copy;
 }
 
-/** One colour changed. */
+/**
+ * One colour changed. A theme's dark pencil is "the same pencil" unless
+ * someone set it apart, so changing the pencil changes a dark pencil that
+ * was the same as it.
+ */
 export function withSeed(theme: ThemeFile, mode: ThemeMode, seed: SeedName, value: string): ThemeFile {
-  if (mode === "light") return { ...theme, light: { ...theme.light, [seed]: value } };
+  if (mode === "light") {
+    const next: ThemeFile = { ...theme, light: { ...theme.light, [seed]: value } };
+    if (seed === "pencil" && theme.dark && theme.dark.pencil === theme.light.pencil) next.dark = { ...theme.dark, pencil: value };
+    return next;
+  }
   const dark: ThemeSeeds = { ...(theme.dark ?? darkFromLight(theme.light)), [seed]: value };
   return { ...theme, dark };
 }

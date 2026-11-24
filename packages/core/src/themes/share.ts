@@ -13,9 +13,6 @@ export const COMMUNITY_FOLDER = "themes";
 export const COMMUNITY_BRANCH = "main";
 
 export function communityShareUrl(theme: ThemeFile, repository: string = REPOSITORY_URL): string {
-  const url = new URL(`${repository.replace(/\/+$/, "")}/new/${COMMUNITY_BRANCH}/${COMMUNITY_FOLDER}`);
-
-  url.searchParams.set("filename", `${theme.id}.json`);
-  url.searchParams.set("value", themeFileText(theme));
-  return url.toString();
+  // encodeURIComponent, not URLSearchParams: a space is %20 rather than "+", which every reader of the address takes the same way.
+  return `${repository.replace(/\/+$/, "")}/new/${COMMUNITY_BRANCH}/${COMMUNITY_FOLDER}?filename=${encodeURIComponent(`${theme.id}.json`)}&value=${encodeURIComponent(themeFileText(theme))}`;
 }

@@ -415,16 +415,21 @@ export function ThemesScreen() {
   // Start from ?from= (make a theme from this one) or ?edit= (change a saved one).
   const fromId = params.get("from");
   const editId = params.get("edit");
+  // The address names what to open once: after "Done" (or a save) it isn't opened again from the same address.
+  const opened = useRef<string | null>(null);
+  const paramsKey = `${fromId ?? ""}|${editId ?? ""}`;
   useEffect(() => {
-    if (session || (!fromId && !editId)) return;
+    if (paramsKey === "|") opened.current = null;
+    if (session || (!fromId && !editId) || opened.current === paramsKey) return;
     const entry = themes.find((candidate) => candidate.theme.id === (editId ?? fromId));
     if (!entry) {
       if (!server.loading) setParams({}, { replace: true });
       return;
     }
+    opened.current = paramsKey;
     if (editId && (entry.origin === "saved" || entry.origin === "mine")) setSession({ draft: entry.theme, saved: entry.theme, origin: entry.origin, history: [] });
     else setSession({ draft: themeFrom(entry.theme, taken), saved: null, origin: "new", history: [], note: `Made from ${entry.theme.name}.` });
-  }, [fromId, editId, themes, session, taken, server.loading, setParams]);
+  }, [fromId, editId, paramsKey, themes, session, taken, server.loading, setParams]);
 
   // Leaving with unsaved edits asks first: closing the tab, and every link in the app.
   useEffect(() => {
@@ -469,6 +474,7 @@ export function ThemesScreen() {
   };
 
   const stopEditing = () => {
+    opened.current = paramsKey;
     setSession(null);
     setParams({}, { replace: true });
   };
@@ -477,6 +483,7 @@ export function ThemesScreen() {
   const start = (entry: ListedTheme, edit: boolean) =>
     leave(() => {
       setSession(edit ? { draft: entry.theme, saved: entry.theme, origin: entry.origin as Origin, history: [] } : { draft: themeFrom(entry.theme, taken), saved: null, origin: "new", history: [], note: `Made from ${entry.theme.name}.` });
+      opened.current = edit ? `|${entry.theme.id}` : `${entry.theme.id}|`;
       setParams(edit ? { edit: entry.theme.id } : { from: entry.theme.id }, { replace: true });
     });
 
@@ -493,16 +500,17 @@ export function ThemesScreen() {
     const theme = check.theme;
     setBusy(where);
     try {
-      let adjustedCount = check.adjusted.filter((a) => a.kind !== "tuned").length;
+      // What the person made, against what is saved: the check's adjustments of their draft (the server's own check of the adjusted theme changes nothing more).
+      const adjustedCount = check.adjusted.filter((a) => a.kind !== "tuned" && !(a.mode === "dark" && check.derivedDark)).length;
       if (where === "everyone") {
-        const result = await api("PUT /api/themes/:themeId", { params: { themeId: theme.id }, body: { theme } });
-        adjustedCount = result.adjusted.filter((a) => a.kind !== "tuned").length;
+        await api("PUT /api/themes/:themeId", { params: { themeId: theme.id }, body: { theme } });
         refreshThemes();
         await server.refetch();
         if (session.origin === "mine") removeMine(theme.id);
       } else saveMine(theme);
       chooseLook(theme.id);
       setSession({ ...session, draft: theme, saved: theme, origin: where === "everyone" ? "saved" : "mine", history: [], note: undefined });
+      opened.current = `|${theme.id}`;
       setParams({ edit: theme.id }, { replace: true });
       notify({
         tone: "success",
@@ -552,12 +560,12 @@ export function ThemesScreen() {
       {check.ok ? null : <p className="g-hint">Fix what the report says before saving.</p>}
       <div className="theme-editor__bar">
         {hosted ? (
-          <Button variant={canManage ? "secondary" : "primary"} disabled={!check.ok || busy !== null} busy={busy === "me"} busyLabel="Saving" onClick={() => void save("me")}>
+          <Button variant={canManage ? "secondary" : "primary"} disabled={!check.ok || busy !== null || (!dirty && session.origin === "mine")} busy={busy === "me"} busyLabel="Saving" onClick={() => void save("me")}>
             Save for me
           </Button>
         ) : null}
         {canManage ? (
-          <Button variant="primary" disabled={!check.ok || busy !== null} busy={busy === "everyone"} busyLabel="Saving" onClick={() => void save("everyone")}>
+          <Button variant="primary" disabled={!check.ok || busy !== null || (!dirty && session.origin === "saved")} busy={busy === "everyone"} busyLabel="Saving" onClick={() => void save("everyone")}>
             {hosted ? "Save for everyone here" : "Save"}
           </Button>
         ) : null}
