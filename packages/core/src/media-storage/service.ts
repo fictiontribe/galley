@@ -179,6 +179,14 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   const listProblems = new Map<string, Partial<Record<MediaStoreLocation, string>>>();
   const jobs = createJobTracker(options.events ?? { emit: () => undefined, subscribe: () => () => undefined });
   const moving = new Map<string, string>();
+  /** Sites whose move has been asked for and hasn't become a job yet (or runs without one). */
+  const starting = new Set<string>();
+  const claimMove = (siteId: string) => {
+    const running = moving.get(siteId);
+
+    if (starting.has(siteId) || (running && jobs.get(running)?.state === "running")) throw new GalleyError("busy", "Files are already being moved for this site. Wait for that to finish.");
+    starting.add(siteId);
+  };
   const all = () => options.connectors ?? [...builtInConnectors(), ...extra];
   const connectorFor = (id: string) => all().find((connector) => connector.info.id === id) ?? null;
 
@@ -380,6 +388,10 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       const token = (await options.settings?.readSecret("cloudflare", { siteId: site.id }).catch(() => null)) ?? null;
 
       if (!token) throw new GalleyError("unconfigured", "The site has no Cloudflare key for putting it online yet. Make the bucket by hand, or set up Online first.");
+      const earlier = await madeRecord(site.id);
+
+      // One bucket made per site at a time, so none is ever forgotten while still public.
+      if (earlier) throw new GalleyError("conflict", `Galley already made “${earlier.bucket}” for this site. Use it, or remove it first (it must be empty).`);
       const account = request.account.trim().toLowerCase();
       const name = request.name.trim();
       const probe = settingsProblems({ connector: "r2", account, bucket: name, publicUrl: "https://example.com" });
@@ -582,21 +594,30 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
 
     async move(site, request, onProgress) {
       guard("POST /api/sites/:siteId/media/storage/move");
-      if (moving.has(site.id) && jobs.get(moving.get(site.id)!)?.state === "running") throw new GalleyError("busy", "Files are already being moved for this site. Wait for that to finish.");
-      return runMove(await moveContext(site, onProgress), request);
+      claimMove(site.id);
+      try {
+        return await runMove(await moveContext(site, onProgress), request);
+      } finally {
+        starting.delete(site.id);
+      }
     },
 
     async startMove(site, request) {
       guard("POST /api/sites/:siteId/media/storage/move");
-      const running = moving.get(site.id);
-
-      if (running && jobs.get(running)?.state === "running") throw new GalleyError("busy", "Files are already being moved for this site. Wait for that to finish.");
-      // Read-only first, so a wrong request is refused before a job starts.
-      await service.planMove(site, request);
+      // Claimed before anything is awaited, so two starts at once can't both run.
+      claimMove(site.id);
+      try {
+        // Read-only first, so a wrong request is refused before a job starts.
+        await service.planMove(site, request);
+      } catch (error) {
+        starting.delete(site.id);
+        throw error;
+      }
       const job = jobs.start("media", request.kind === "address" ? "Changing the files' address" : request.to === "repository" ? "Moving media to the repository" : "Moving media to the bucket");
 
       job.update({ siteId: site.id, detail: "Getting ready…", progress: 0 });
       moving.set(site.id, job.id);
+      starting.delete(site.id);
       void runMove(await moveContext(site, (detail, progress) => job.update({ detail, progress })), request).then(
         (outcome) => job.finish(outcome.problems.length ? "error" : "done", { progress: 1, detail: outcome.summary, ...(outcome.problems.length ? { output: outcome.problems.map((p) => `${p.path}: ${p.reason}`).join("\n") } : {}) }),
         (error: unknown) => job.finish("error", { detail: error instanceof Error ? scrub(error.message) : String(error) })
@@ -811,6 +832,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
 
   /** Lists a store in full and brings the record up to date: new names are added (measured when the store keeps sizes), gone ones dropped. */
   async function relist(site: SiteService, store: MediaStore): Promise<void> {
+    const startedAt = clock();
     const found: StoredItem[] = [];
     let cursor: string | undefined;
 
@@ -832,8 +854,12 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     }
     await library.update(site.id, (items, listedAt) => {
       const others = items.filter((item) => item.location !== store.location);
+      // Merged into the record as it is now: an upload that landed while the store was being listed is kept as it is.
+      const current = new Map(items.filter((item) => item.location === store.location).map((item) => [item.key, item]));
+      const listedKeys = new Set(found.map((item) => item.key));
+      const landed = [...current.values()].filter((item) => !listedKeys.has(item.key) && item.uploaded && item.uploadedAt >= startedAt);
       const listed: LibraryItem[] = found.map((item) => {
-        const known = before.get(item.key);
+        const known = current.get(item.key) ?? before.get(item.key);
         const size = measured.get(item.key);
 
         return known
@@ -853,7 +879,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       });
 
       listedAt[store.location] = clock();
-      return [...others, ...listed];
+      return [...others, ...listed, ...landed];
     });
   }
 

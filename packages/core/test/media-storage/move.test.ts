@@ -107,10 +107,16 @@ describe("moving media", { timeout: 240_000 }, () => {
     const { storage, site, root, done } = await setUp();
 
     fake.buckets.get("moves")!.objects.set("lowfield/team/tomas-reyes.svg", { body: Buffer.from("<svg>someone else's</svg>"), contentType: "image/svg+xml", cacheControl: null, metadata: {}, etag: "z", lastModified: new Date() });
+    const size = readFileSync(join(root, "public/images/team/nell-okafor.svg")).byteLength;
+
+    fake.buckets.get("moves")!.objects.set("lowfield/team/nell-okafor.svg", { body: Buffer.alloc(size, 32), contentType: "image/svg+xml", cacheControl: null, metadata: {}, etag: "0123456789abcdef0123456789abcdef", lastModified: new Date() });
     const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true });
 
     expect(outcome.removed).toBe(0);
     expect(outcome.problems.find((problem) => problem.path === PHOTO)?.reason).toMatch(/different file is already/);
+    // The same size isn't enough: different bytes are a different file.
+    expect(outcome.problems.find((problem) => problem.path === "public/images/team/nell-okafor.svg")?.reason).toMatch(/different file is already/);
+    expect(read(root, "src/content/authors/nell-okafor.md")).toContain("photo: /images/team/nell-okafor.svg");
     // Its page still uses the repository's file.
     expect(read(root, AUTHOR)).toContain("photo: /images/team/tomas-reyes.svg");
     expect(fake.buckets.get("moves")!.objects.get("lowfield/team/tomas-reyes.svg")!.body.toString()).toBe("<svg>someone else's</svg>");
@@ -130,6 +136,18 @@ describe("moving media", { timeout: 240_000 }, () => {
     expect(fake.buckets.get("moves")!.objects.has("lowfield/team/tomas-reyes.svg")).toBe(true);
     // The photo is as it was: nothing waits to be published for it.
     expect((await site.changes()).files.find((file) => file.path === PHOTO)).toBeUndefined();
+    await done();
+  });
+
+  it("runs one move at a time for a site", async () => {
+    const { storage, site, done } = await setUp();
+    const both = await Promise.allSettled([storage.startMove(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true }), storage.startMove(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true })]);
+
+    expect(both.map((result) => result.status).sort()).toEqual(["fulfilled", "rejected"]);
+    expect(String((both.find((result) => result.status === "rejected") as PromiseRejectedResult).reason)).toMatch(/already being moved/);
+    const job = (both.find((result) => result.status === "fulfilled") as PromiseFulfilledResult<{ id: string }>).value;
+
+    for (let i = 0; i < 600 && storage.job(job.id)?.state === "running"; i += 1) await new Promise((resolve) => setTimeout(resolve, 200));
     await done();
   });
 

@@ -56,6 +56,8 @@ export interface StoredItem {
   uploadedAt: number;
   /** The file's own name, when the store's name for it is an id ("coat.webp"). */
   name?: string;
+  /** A bucket's ETag: for a single upload, the MD5 of the bytes. */
+  etag?: string;
 }
 
 export interface StorePutInput {

@@ -24,6 +24,7 @@ import type { MediaItem, SiteService } from "../types";
 import { checkUpload, mediaExtension } from "../workspace/media";
 import type { MediaMovePlan, MediaMoveRequest, MediaStoreLocation } from "./contract";
 import { addressProblem, normalizePrefix, publicUrlOf } from "./info";
+import { md5Hex } from "./s3";
 import { getFollowing } from "./net";
 import { ADDRESS_TAIL, escapePattern, refusal, StoreNameTaken, trimFound, type MediaStore } from "./store";
 
@@ -383,7 +384,8 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
         const existing = await store.head(move.to);
 
         if (existing) {
-          if (existing.size !== bytes.byteLength) {
+          // The same name is only "already moved" when it holds the same bytes (the ETag of a single upload is their MD5).
+          if (existing.size !== bytes.byteLength || (existing.etag && /^[0-9a-f]{32}$/.test(existing.etag) && existing.etag !== md5Hex(bytes))) {
             problems.push({ path: move.from, reason: `A different file is already in ${store.name} as “${move.to}”, so this one stays in the repository.` });
             continue;
           }

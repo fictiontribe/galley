@@ -213,6 +213,7 @@ export function createBucketStore(options: BucketStoreOptions): MediaStore & { c
         type: head.contentType ?? typeOfKey(key),
         ...(width > 0 && height > 0 ? { width, height } : {}),
         uploadedAt: head.lastModified,
+        ...(head.etag ? { etag: head.etag } : {}),
       };
     },
 

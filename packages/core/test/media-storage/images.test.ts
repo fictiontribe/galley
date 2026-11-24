@@ -262,7 +262,9 @@ describe("make the bucket for me", () => {
     expect(made.config).toMatchObject({ connector: "r2", bucket: "lowfield-media", publicUrl: expect.stringMatching(/^https:\/\/pub-.*\.r2\.dev$/) });
     expect(images.accounts.get("b".repeat(32))!.buckets.get("lowfield-media")?.devUrl).toBe(true);
     expect((await storage.status(site.site)).bucket.created?.bucket).toBe("lowfield-media");
-    await expect(storage.makeBucket(site.site, { account: "b".repeat(32), name: "lowfield-media" })).rejects.toThrow(/already exists/);
+    // One at a time: a second one would leave the first public and forgotten.
+    await expect(storage.makeBucket(site.site, { account: "b".repeat(32), name: "lowfield-media-2" })).rejects.toThrow(/already made “lowfield-media”/);
+    expect(images.accounts.get("b".repeat(32))!.buckets.has("lowfield-media-2")).toBe(false);
     images.accounts.get("b".repeat(32))!.buckets.set("someone-elses", { devUrl: false, files: 3 });
     images.accounts.get("b".repeat(32))!.buckets.get("lowfield-media")!.files = 2;
     await expect(storage.removeMadeBucket(site.site)).rejects.toThrow(/still has files/);
