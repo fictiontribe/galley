@@ -405,3 +405,48 @@ if (howtoFilter && howtoCards) {
   document.fonts?.ready.then(placeThumb);
   requestAnimationFrame(() => requestAnimationFrame(() => howtoFilter.classList.add("is-ready")));
 }
+
+// Downloads: the visitor's own system becomes the one primary button, the
+// others a quiet list (without this, every system is listed equally). A Mac
+// whose processor the browser won't say is offered Apple silicon, with a
+// pointer to the Intel download.
+const dlBlocks = $$("[data-dl]");
+if (dlBlocks.length) {
+  const detect = async (): Promise<{ id: string | null; guessed: boolean }> => {
+    const ua = navigator.userAgent;
+    const uad = (navigator as Navigator & { userAgentData?: { platform?: string; getHighEntropyValues?: (h: string[]) => Promise<{ architecture?: string }> } }).userAgentData;
+    const plat = uad?.platform ?? navigator.platform ?? "";
+    if (/Android|iPhone|iPad|iPod/i.test(ua)) return { id: null, guessed: false };
+    if (/Win/i.test(plat) || /Windows/i.test(ua)) return { id: "windows", guessed: false };
+    if (/Mac/i.test(plat) || /Macintosh/i.test(ua)) {
+      if (navigator.maxTouchPoints > 1) return { id: null, guessed: false }; // an iPad asking for the desktop site
+      try {
+        const arch = (await uad?.getHighEntropyValues?.(["architecture"]))?.architecture;
+        if (arch === "arm") return { id: "mac-arm", guessed: false };
+        if (arch === "x86") return { id: "mac-intel", guessed: false };
+      } catch {
+        /* the browser won't say */
+      }
+      return { id: "mac-arm", guessed: true };
+    }
+    if (/Linux|X11/i.test(plat) || /Linux|X11/i.test(ua)) return { id: "linux", guessed: false };
+    return { id: null, guessed: false };
+  };
+  detect().then(({ id, guessed }) => {
+    for (const block of dlBlocks) {
+      const primary = id ? block.querySelector<HTMLElement>(`[data-dl-for="${id}"]`) : null;
+      if (!primary) continue; // not a desktop, or its system isn't available yet: leave the list as it is
+      primary.hidden = false;
+      block.classList.add("is-picked");
+      const hint = primary.querySelector<HTMLElement>("[data-dl-machint]");
+      if (hint) hint.hidden = !guessed;
+      block.querySelector<HTMLElement>(`[data-dl-row="${id}"]`)?.setAttribute("hidden", "");
+      const label = block.querySelector<HTMLElement>("[data-dl-label]");
+      if (label?.dataset.picked) label.textContent = label.dataset.picked;
+      const fallback = block.querySelector<HTMLElement>("[data-dl-fallback]");
+      if (fallback) fallback.hidden = true;
+      const other = block.querySelector<HTMLElement>("[data-dl-other]");
+      if (other) other.hidden = false;
+    }
+  });
+}

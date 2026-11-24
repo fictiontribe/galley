@@ -319,6 +319,17 @@ const filmstripSection = z.object({
   items: z.array(z.object({ label: z.string(), href: z.string(), visual })),
 });
 
+/** The desktop app: icon, one sentence and the download. Shown only while src/data/downloads.json offers one. */
+const desktopSection = z.object({
+  type: z.literal("desktop"),
+  ...common,
+  heading: z.string(),
+  text: z.string(),
+  /** The button without JavaScript (it goes to /download/), and the link to the other systems. */
+  fallback: z.string(),
+  other: z.string(),
+});
+
 const section = z.discriminatedUnion("type", [
   heroSection,
   filmSection,
@@ -337,6 +348,7 @@ const section = z.discriminatedUnion("type", [
   teamSection,
   tourSection,
   filmstripSection,
+  desktopSection,
 ]);
 
 /** Anything else is kept and skipped, so a half-written section never breaks the build. */

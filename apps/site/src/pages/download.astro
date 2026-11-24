@@ -1,0 +1,119 @@
+---
+// /download/ — the desktop app. Everything it offers comes from
+// src/data/downloads.json through lib/downloads.ts; its words are
+// src/content/pages/download.md. While downloads are off (`available` false,
+// or no platform ready) the page is linked from nowhere, carries noindex and
+// shows the one-command start instead of any download.
+import Site from "../layouts/Site.astro";
+import AppIcon from "../components/AppIcon.astro";
+import Command from "../components/Command.astro";
+import Downloads from "../components/Downloads.astro";
+import Lightbox from "../components/Lightbox.astro";
+import Zoom from "../components/Zoom.astro";
+import { getPage } from "../lib/pages";
+import { inline } from "../lib/markdown";
+import { runCommands } from "../lib/install";
+import { on, ready, releasePage, screens, unsigned, version } from "../lib/downloads";
+
+const { data: p } = await getPage("download");
+
+// "How to open it": platforms with the same steps share one list (both Macs, usually).
+const groups: { labels: string[]; steps: string[] }[] = [];
+for (const platform of ready) {
+  if (platform.open.length === 0) continue;
+  const same = groups.find((g) => g.steps.join("\n") === platform.open.join("\n"));
+  if (same) same.labels.push(platform.label);
+  else groups.push({ labels: [platform.label], steps: platform.open });
+}
+const [lead, ...rest] = screens;
+const words = { download: p.download, coming: p.coming, otherSystems: p.otherSystems, macHint: p.macHint, systems: p.systems };
+---
+
+<Site title={p.title} description={p.description} noindex={!on} class="page-download">
+  <section class="wrap dlpage" aria-labelledby="dl-h">
+    <header class="dlpage__head">
+      <AppIcon size={168} class="dlpage__icon" id="dl-icon" />
+      <h1 class="h1" id="dl-h" set:html={inline(p.heading)} />
+      <p class="lead">{p.lead}</p>
+    </header>
+
+    {
+      on ? (
+        <div class="dlpage__get">
+          <Downloads words={words} />
+          {(version || releasePage) && (
+            <p class="dlpage__release small">
+              {version && p.versionLine.replace("{version}", version)}
+              {version && releasePage && " · "}
+              {releasePage && <a href={releasePage}>{p.release}</a>}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div class="dlpage__pending">
+          <p class="body">{p.pending}</p>
+          <Command lines={runCommands()} />
+        </div>
+      )
+    }
+
+    <section class="dlpage__points" aria-labelledby="dl-points-h">
+      <h2 class="sr" id="dl-points-h">{p.pointsLabel}</h2>
+      <ul>
+        {p.points.map((pt: { title: string; text: string }) => (
+          <li>
+            <h3 class="dlpage__pt">{pt.title}</h3>
+            <p class="body">{pt.text}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </section>
+
+  {
+    on && lead && (
+      <section class="wrap dlpage__screens" aria-label={p.screensLabel}>
+        <div class:list={["dlshots", rest.length === 0 && "dlshots--one", rest.length % 2 === 1 && "dlshots--pairs"]}>
+          {[lead, ...rest].map((s, i) => (
+            <figure class:list={["frame", "dlshot", i === 0 && "dlshot--lead"]} data-zoom-panel>
+              <div class="dlshot__win" data-zoom-at="0" style={`max-width:${s.pic.width}px`}>
+                <img src={s.pic.src} srcset={s.pic.srcset} sizes={i === 0 ? "(max-width: 1023px) 100vw, 1100px" : "(max-width: 1023px) 100vw, 560px"} width={s.pic.width} height={s.pic.height} alt={s.alt} loading="lazy" decoding="async" />
+              </div>
+              <Zoom items={[{ src: s.pic.src, w: s.pic.width, h: s.pic.height, alt: s.alt }]} label={s.alt.split(/[—.,]/)[0].trim()} />
+            </figure>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  {
+    on && groups.length > 0 && (
+      <section class="wrap dlpage__open" aria-labelledby="dl-open-h">
+        <h2 class="h2" id="dl-open-h">{p.open.heading}</h2>
+        {unsigned && <p class="lead dlpage__unsigned">{p.open.unsigned}</p>}
+        <div class="dlopen">
+          {groups.map((g) => (
+            <div class="dlopen__group">
+              <h3 class="dlopen__h">{g.labels.join(" · ")}</h3>
+              <ol class="dlopen__steps">
+                {g.steps.map((step) => <li set:html={inline(step)} />)}
+              </ol>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <section class="wrap dlpage__foot"><div class="dlpage__footin">
+    {on && (
+      <div class="dlpage__npx">
+        <p class="body">{p.npx}</p>
+        <Command lines={runCommands()} />
+      </div>
+    )}
+    <p><a class="link link--accent" href={p.guide.href}>{p.guide.label}</a></p>
+  </div></section>
+  <Lightbox />
+</Site>

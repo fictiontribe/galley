@@ -3,6 +3,10 @@
 import mark from "../../../../brand/logo/mark.svg?raw";
 import navigation from "../data/navigation.json";
 import { fill, site } from "../lib/site";
+import { on as downloadsOn } from "../lib/downloads";
+
+// A link marked `when: "downloads"` shows only while src/data/downloads.json offers a download.
+const links = navigation.footer.filter((l) => (l as { when?: string }).when !== "downloads" || downloadsOn);
 
 const icon = mark.replace(/<svg /, '<svg aria-hidden="true" ').replace(/ width="[^"]+" height="[^"]+"/, "").replace(/<title[^>]*>.*?<\/title>/, "").replace(/ role="img"[^>]*?(?=>)/, "");
 ---
@@ -12,7 +16,7 @@ const icon = mark.replace(/<svg /, '<svg aria-hidden="true" ').replace(/ width="
     <div class="footer__top">
       <a class="footer__mark" href="/" aria-label={site.ui.home} set:html={icon} />
       <nav class="footer__links" aria-label={site.ui.footer}>
-        {navigation.footer.map((l) => <a href={fill(l.href)}>{l.label}</a>)}
+        {links.map((l) => <a href={fill(l.href)}>{l.label}</a>)}
       </nav>
     </div>
     <div class="footer__base">
