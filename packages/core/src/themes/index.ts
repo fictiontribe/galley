@@ -12,3 +12,4 @@ export { BUILTIN_THEMES, DEFAULT_THEME_ID, QUIET, PLATE, DESK, builtinThemes, is
 export { contrast, fromHex, toHex, toOklch, fromOklch, isHex } from "./colour";
 export * from "./apply";
 export * from "./catalog";
+export * from "./share";
