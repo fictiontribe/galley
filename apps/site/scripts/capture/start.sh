@@ -11,6 +11,8 @@
 #                                (pointed at the hosting stand-ins too, if "hosting" ran first)
 #   start.sh hosted              a hosted install (galley serve) on http://cms.localhost:4797 with no
 #                                site, for its sign-in and first run; needs HOSTED_PASSWORD (12+ characters)
+#   start.sh people              a hosted install with Caddow and nobody signed up, on http://cms.localhost:4801
+#                                (README.md, "Accounts"); prints a one-time Setup: link
 #   start.sh stop                stop everything this script started (by PID)
 #
 # CAPTURE_DIR (default /tmp/galley-capture) holds home/, galley-home/, hosted-home/, logs/ and pids/.
@@ -73,6 +75,12 @@ case "$1" in
     bg hosted GALLEY_HOME="$C/hosted-home" GALLEY_PUBLIC_URL="http://cms.localhost:4797" GALLEY_PASSWORD="$HOSTED_PASSWORD" \
       npx --yes "galley-cms@$V" serve --host 127.0.0.1 --port 4797
     echo "Hosted install starting at http://cms.localhost:4797 (log: $C/logs/hosted.log)" ;;
+  people)
+    [ -f "$C/people/sites.json" ] || { echo "Make $C/people/sites.json first (README.md, Accounts)."; exit 1; }
+    cd "$C/people"
+    bg people GALLEY_HOME="$C/people" GALLEY_PUBLIC_URL="http://cms.localhost:4801" \
+      npx --yes "galley-cms@$V" serve --host 127.0.0.1 --port 4801
+    sleep 15; grep -c "^Setup:" "$C/logs/people.log" >/dev/null && echo "People install up (its Setup: link is in $C/logs/people.log)" ;;
   stop)
     for f in "$C"/pids/*.pid; do
       [ -f "$f" ] || continue

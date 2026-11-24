@@ -70,6 +70,37 @@ With no step names it runs the whole session in order (about an hour; the assist
 about $0.50 together). Name steps to re-make only those; the header of `capture-screens.mjs` lists
 them. Each step changes the throwaway sites as a person would, so the full run expects fresh ones.
 
+## Accounts (the `people` step)
+
+The People pictures need a hosted install that already has a site, with nobody signed up yet. It
+needs no code host: give a fresh data folder a site folder and list it in `sites.json`, and the
+install adopts it when it starts. From the repository root, with `CAPTURE_DIR` set as above:
+
+```sh
+mkdir -p "$CAPTURE_DIR/people/sites"
+git clone -q "$CAPTURE_DIR/home/sites/caddow" "$CAPTURE_DIR/people/sites/caddow"
+printf '{"sites":[{"root":"%s","name":"Caddow","branch":"main"}]}\n' "$CAPTURE_DIR/people/sites/caddow" > "$CAPTURE_DIR/people/sites.json"
+sh apps/site/scripts/capture/start.sh people
+```
+
+`start.sh people` starts `galley serve` on `http://cms.localhost:4801` with that data folder; its log
+(`$CAPTURE_DIR/logs/people.log`) prints a one-time `Setup:` link. Give the link to the capture as
+`PEOPLE_SETUP` (the step needs nothing else):
+
+```sh
+PEOPLE_SETUP=$(sed -n 's/^Setup: *//p' "$CAPTURE_DIR/logs/people.log" | head -1) PLAYWRIGHT_MODULES=<node_modules with playwright-core> node scripts/capture-screens.mjs people
+```
+
+The step creates the owner (Tobiah Rusk), invites an editor (Ines Marrow) and a contributor (Corin
+Vale) and signs each in with a browser of their own, with passwords it makes and keeps nowhere; then
+it captures `contributor-home`, `people` and `invite`. The link in `invite` is real for that install:
+stop it (`start.sh stop`) and delete `$CAPTURE_DIR/people` afterwards. Run it on a fresh data folder
+each time: the Setup: link works once.
+
+The `dark` step (`dark-editor`, `dark-proof`) uses the ordinary local app, with changes waiting in
+Proof (the `ask` step leaves some); it switches to dark with the switch at the foot of the sidebar
+and back to light when it's done.
+
 ## 4. Stop
 
 ```sh

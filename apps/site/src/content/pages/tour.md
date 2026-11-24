@@ -58,7 +58,8 @@ sections:
         text: The whole app comes in light and dark. One click at the foot of the sidebar switches it.
         visual:
           src: dark-editor
-          alt: ""
+          y: -380
+          alt: The editor in the dark theme on Caddow’s home page — the page’s form on the left with Campaign hero showing 2 edits, the page in the middle with the new heading Coats for low sun., and on the right the assistant’s reply saying what it changed, with Review in Proof and Undo this change; the theme switch sits at the foot of the sidebar.
   - type: tour
     id: check
     label: Check and publish
@@ -271,7 +272,7 @@ sections:
           y: -150
           alt: A hosted install’s first run, step 2 of 3, Connect the site — a repository that already holds the site, or a starter sent to an empty one; the repository’s address; and how the editor reaches it, with its own key (recommended), shown to be added to the repository with write access, or an access token from the code host.
       - id: people
-        layout: flip
+        layout: full
         whenPictured: true
         heading: People and roles
         text: Owners invite everyone else with a one-time link, as an owner, an editor or a contributor. Contributors change the content and see Proof; editors and owners publish; and each publish carries the name of the person who made it.
@@ -279,10 +280,16 @@ sections:
         guide: /docs/running/hosted/#people-and-roles
         visual:
           src: people
-          alt: ""
+          x: -272
+          y: -20
+          alt: The Install page of a hosted editor, open at People, signed in as Tobiah Rusk — three people listed with their role and when they last signed in, Tobiah Rusk (Owner, marked You), Ines Marrow (Editor) and Corin Vale (Contributor), and below them Invite someone, with an e-mail box, the roles Owner, Editor and Contributor with what each can do, and the Invite button.
         inset:
           src: invite
-          alt: ""
+          x: -450
+          y: -306
+          w: 540
+          h: 290
+          alt: A window over the People list titled An invitation for hesper@caddow.example — send this link yourself, the one-time join link with a Copy link button, and a note that it works once, stops working in 7 days and isn’t shown again.
       - id: sites
         layout: flip
         heading: Many sites, one app

@@ -34,6 +34,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir, tmpdir } from "node:os";
+import { randomBytes } from "node:crypto";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = join(here, "../public/screens");
@@ -70,9 +71,13 @@ const ALL = [
   "publish", "online",
   // The hosted editor: "Host the editor online" against the stand-in Fly.io, and a hosted install's first screens.
   "editor-online", "hosted",
+  // Dark theme (the local app).
+  "dark",
+  // Accounts: a second hosted install, with Caddow, and its people (see scripts/capture/README.md).
+  "people",
 ];
 const steps = process.argv.slice(2).length ? process.argv.slice(2) : ALL;
-const appSteps = steps.some((s) => s !== "own");
+const appSteps = steps.some((s) => s !== "own" && s !== "people");
 if (appSteps && (!TOKEN || !SITE)) throw new Error("Set GALLEY_TOKEN and GALLEY_SITE (see the header of this file).");
 
 const HOME_PAGE = "src/content/pages/index.md";
@@ -1228,6 +1233,80 @@ async function run(step) {
     await shoot(page, "editor-online-plan", FULL);
     await page.keyboard.press("Escape");
     await page.waitForTimeout(800);
+  }
+
+  if (step === "dark") {
+    // The editor on the home page and Proof › What changed in the dark theme, switched with the switch at
+    // the foot of the sidebar (a context of its own: the others are kept light). Needs changes waiting.
+    const dark = await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE, colorScheme: "light" });
+    const view = await dark.newPage();
+    await view.goto(`${ORIGIN}/?token=${TOKEN}`, { waitUntil: "networkidle" });
+    await view.goto(`${ORIGIN}/sites/${SITE}/edit?path=${encodeURIComponent(HOME_PAGE)}`, { waitUntil: "networkidle" });
+    await waitForPreview(view);
+    for (const [name, want] of [["form", true], ["assistant", true]]) {
+      const show = view.getByRole("button", { name: new RegExp(`^Show ${name}`, "i") }).first();
+      if (want && (await show.count())) await show.click();
+    }
+    // The assistant pane with the conversation from the "ask" step, if there is one.
+    const resume = view.getByRole("button", { name: /Continue your last conversation/i }).first();
+    if (await resume.count()) { await resume.click(); await view.waitForTimeout(2000); }
+    await view.getByRole("button", { name: "Switch to dark theme" }).first().click();
+    await view.waitForTimeout(3000);
+    await hideDevToolbar(view);
+    await shoot(view, "dark-editor", FULL);
+    await view.goto(`${ORIGIN}/sites/${SITE}/proof`, { waitUntil: "networkidle" });
+    await view.waitForTimeout(3000);
+    await shoot(view, "dark-proof", { x: 232, y: 0, width: 1208, height: 620 });
+    // Back to light for whoever opens this app next (the choice is kept by the app).
+    await view.getByRole("button", { name: "Switch to light theme" }).first().click().catch(() => {});
+    await dark.close();
+  }
+
+  if (step === "people") {
+    // A hosted install with a site and three people: the owner (Tobiah Rusk), an editor (Ines Marrow) and a
+    // contributor (Corin Vale), each a browser of their own. Needs PEOPLE_SETUP: the one-time Setup: link a
+    // fresh install prints (scripts/capture/README.md, "Accounts"). Passwords are made here and kept nowhere.
+    const setup = process.env.PEOPLE_SETUP;
+    if (!setup) { console.log("  (skipped: set PEOPLE_SETUP to a fresh hosted install's Setup: link)"); return; }
+    const base = new URL(setup).origin;
+    const person = async () => (await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE, colorScheme: "light" })).newPage();
+    const choose = async (view, name, email) => {
+      const password = `caddow-${randomBytes(9).toString("hex")}`;
+      await view.getByLabel("Your name").fill(name);
+      if (email) await view.getByLabel("E-mail").fill(email);
+      await view.getByLabel("Password", { exact: true }).fill(password);
+      await view.getByLabel("The same password again").fill(password);
+    };
+    const owner = await person();
+    await owner.goto(setup, { waitUntil: "networkidle" });
+    await choose(owner, "Tobiah Rusk", "tobiah@caddow.example");
+    await owner.getByRole("button", { name: "Create account" }).click();
+    await owner.getByRole("heading", { name: "The editor is ready." }).waitFor({ timeout: 60_000 });
+    const invite = (email, role) => owner.evaluate(async ({ email, role }) => (await (await fetch("/api/people/invitations", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, role }) })).json()).link.url, { email, role });
+    const join = async (url, name) => {
+      const view = await person();
+      await view.goto(url, { waitUntil: "networkidle" });
+      await choose(view, name);
+      await view.getByRole("button", { name: "Join" }).click();
+      await view.waitForURL(/\/sites\//, { timeout: 60_000 });
+      await view.waitForTimeout(2500);
+      return view;
+    };
+    await join(await invite("ines@caddow.example", "editor"), "Ines Marrow");
+    const contributor = await join(await invite("corin@caddow.example", "contributor"), "Corin Vale");
+    await shoot(contributor, "contributor-home", FULL);
+    await owner.goto(`${base}/install`, { waitUntil: "networkidle" });
+    await owner.waitForTimeout(2000);
+    await owner.locator("h2", { hasText: /^People/ }).first().evaluate((e) => e.scrollIntoView({ block: "start" }));
+    await owner.waitForTimeout(800);
+    await shoot(owner, "people", FULL);
+    await owner.getByLabel("E-mail of the person to invite").fill("hesper@caddow.example");
+    await owner.getByText("Contributor", { exact: true }).last().click();
+    await owner.getByRole("button", { name: "Invite", exact: true }).click();
+    await owner.getByRole("button", { name: "Copy link" }).waitFor({ timeout: 30_000 });
+    await owner.waitForTimeout(1200);
+    await shoot(owner, "invite", FULL);
+    for (const c of browser.contexts()) if (c !== ctx) await c.close();
   }
 
   if (step === "hosted") {
