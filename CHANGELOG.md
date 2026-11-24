@@ -44,7 +44,9 @@ entry says how.
   refused), `add <file>`, `use <id>`, `export <id>`, `remove <id>`.
 - **The brand file's `theme`**: the theme a white-labelled install starts
   with. Its `accent` is now the built-in themes' pencil, so the brand and a
-  theme never set the same colours twice.
+  theme never set the same colours twice. Like any pencil it may be adjusted
+  for legibility; an accent too close to grey can't be a pencil, and then the
+  built-ins keep their own and the server says so when it starts.
 - **`themes/`**, the community folder, with its README; a test checks every
   theme in it and in `brand/themes/`.
 

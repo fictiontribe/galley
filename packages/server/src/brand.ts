@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { z } from "zod";
 import { GalleyError } from "@galley/core";
 import { DEFAULT_BRAND } from "@galley/core/brand";
+import { brandPencil } from "@galley/core/themes";
 import type { BrandConfig } from "@galley/core/types";
 import { describeIssues } from "./validate";
 
@@ -24,6 +25,17 @@ export const brandFileSchema = z
     docsUrl: link.optional(),
   })
   .strict();
+
+/**
+ * What a loaded brand can't do, in words for the start-up log: an accent
+ * that can't be the editing app's pencil (core themes `brandPencil`) is
+ * kept for everything else but the built-in themes keep their own pencil.
+ */
+export function brandWarnings(brand: BrandConfig): string[] {
+  const { problem } = brandPencil(brand.accent);
+
+  return problem ? [problem] : [];
+}
 
 /**
  * The brand served at /api/meta: the built-in default, overridden by a JSON

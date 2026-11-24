@@ -8,7 +8,7 @@
 export * from "./contract";
 export * from "./check";
 export { deriveColours, accentRoles, DERIVED_PROPERTY, type DerivedColours } from "./derive";
-export { BUILTIN_THEMES, DEFAULT_THEME_ID, QUIET, PLATE, DESK, builtinThemes, isBuiltinTheme } from "./builtin";
+export { BUILTIN_THEMES, DEFAULT_THEME_ID, QUIET, PLATE, DESK, builtinThemes, brandPencil, isBuiltinTheme } from "./builtin";
 export { contrast, fromHex, toHex, toOklch, fromOklch, isHex } from "./colour";
 export * from "./apply";
 export * from "./catalog";

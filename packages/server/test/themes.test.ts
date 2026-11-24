@@ -14,6 +14,8 @@ import { QUIET } from "@galley/core/themes";
 import { createThemeStore } from "@galley/core/themes/store";
 import type { ServerEvent } from "@galley/core/types";
 import { createApp } from "../src/app";
+import { brandWarnings } from "../src/brand";
+import { resolveConfig } from "../src/server";
 import { appOptions, buildServices, json, TOKEN } from "./helpers";
 
 const homes: string[] = [];
@@ -111,5 +113,22 @@ describe("the install's default theme", () => {
     expect(meta.look.light.pencil).toBe("#0F766E");
     expect(meta.look.dark.pencil).toBe("#0F766E");
     expect(meta.look.switches.sidebar).toBe("desk");
+  });
+});
+
+describe("a white-label accent that can't be a pencil", () => {
+  for (const accent of ["#1F2937", "#333333", "#000000", "#000"]) {
+    it(`${accent}: the built-ins keep their own pencil, still apply, and start-up says why`, async () => {
+      const { app } = setup({ brand: { productName: "Acme Editor", byline: "", accent } });
+      const meta = await json(await app.request("/api/meta"));
+      expect(meta.look).toBeTruthy();
+      expect(meta.look.light.pencil).toBe("#2E2BFF");
+      expect(brandWarnings({ productName: "Acme", byline: "", accent })[0]).toMatch(/can't be the editing app's pencil: it is too close to grey/);
+      expect(resolveConfig({ env: { GALLEY_BRAND_ACCENT: accent } }).warnings.join(" ")).toMatch(/too close to grey/);
+    });
+  }
+
+  it("an accent with color is still the pencil, and says nothing", () => {
+    expect(brandWarnings({ productName: "Acme", byline: "", accent: "#0F766E" })).toEqual([]);
   });
 });

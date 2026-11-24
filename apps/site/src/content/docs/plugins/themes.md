@@ -178,7 +178,12 @@ starts with) and an `accent`. The accent is the built-in themes' pencil, in
 light and dark, so whichever built-in someone chooses carries the brand.
 Themes people make keep their own pencil. The app no longer sets the accent
 property on its own: the accent arrives as the theme's pencil, so themes and
-the brand never fight over the same properties.
+the brand never fight over the same properties. Like any pencil, the accent
+goes through the check: its lightness may be adjusted for legibility, and an
+accent too close to grey to mark the action, where you are and focus (most
+near-black and grey brand colours) can't be a pencil at all. Then the
+built-ins keep their own pencil, the brand keeps the accent for everything
+else, and the server says so when it starts.
 
 ### Before the first paint
 
