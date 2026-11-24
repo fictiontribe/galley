@@ -117,6 +117,15 @@ export interface GalleyAdapter {
   routes?(ctx: AdapterContext, collections: Collection[]): MaybePromise<Record<string, string | null>>;
   /** Extra environment variables for the site's own commands (dev server, build). */
   environment?(ctx: AdapterContext): Record<string, string | undefined>;
+  /**
+   * Forget what the preview saved: the files (site-relative, files only, never
+   * folders) the framework's dev server keeps between runs and trusts on its
+   * next start, such as a store of already-checked content. The engine
+   * removes exactly these before the preview starts on newer versions, so it
+   * can't serve what it saved under the older ones. Leave it out when the
+   * framework keeps nothing of the kind.
+   */
+  forgetPreviewSaves?(ctx: AdapterContext): MaybePromise<string[]>;
 }
 ```
 
@@ -297,6 +306,25 @@ export default conventionAdapter({
   // Gatsby asks whether it may collect usage data on first run; a preview should not stop to ask.
   environment: () => ({ GATSBY_TELEMETRY_DISABLED: "1" }),
 });
+```
+
+### `forgetPreviewSaves(ctx)` — what the dev server saved between runs
+
+Return the files (site-relative, files only) the framework's dev server keeps
+between runs and trusts on its next start — a store of content it has already
+read and checked, say. When newer versions come into the site (**Get latest**,
+or a hosted editor bringing them in by itself), Galley stops a running
+preview, brings the versions in, removes exactly these files and starts the
+preview again; the app's own **Restart preview** removes them too when the
+site has moved to another version since the preview started. Without it, a dev
+server that saw a page and its schema change together could go on serving
+what it saved under the old schema. Galley removes only regular files inside
+the site folder, never a folder and never through a link that leads out of
+it. Leave the hook out when the framework keeps nothing of the kind. The Astro
+adapter returns its content store:
+
+```js
+forgetPreviewSaves: () => [".astro/data-store.json", "node_modules/.astro/data-store.json"],
 ```
 
 `conventionAdapter(spec)` is the fastest way to write a simple adapter: give

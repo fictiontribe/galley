@@ -596,6 +596,18 @@ export async function runDetection(root: string, options: DetectOptions = {}): P
       if (entries.length > 0) environment = Object.fromEntries(entries);
     }
   }
+  let previewSaves: string[] | undefined;
+
+  if (adapter.forgetPreviewSaves) {
+    const result = await hook("forgetPreviewSaves", "the preview keeps what it saved between runs", () => adapter.forgetPreviewSaves!(ctx));
+
+    if (result.ok && Array.isArray(result.value)) {
+      // Site-relative paths only: never a way out of the folder, never the folder itself.
+      const paths = result.value.filter((path): path is string => typeof path === "string" && path !== "" && !path.startsWith("/") && !/^[A-Za-z]:/.test(path) && !path.split(/[\\/]/).some((part) => part === ".." || part === ""));
+
+      if (paths.length > 0) previewSaves = [...new Set(paths)];
+    }
+  }
 
   const git = gitInfo(root);
   const production = detectProductionUrl(root, publicDir, pkg, conventions.urls?.production);
@@ -628,6 +640,7 @@ export async function runDetection(root: string, options: DetectOptions = {}): P
   };
 
   if (environment) result.environment = environment;
+  if (previewSaves) result.previewSaves = previewSaves;
   if (siteKit.kit) result.kit = siteKit.kit;
   if (conventions.routesDir && isDir(root, conventions.routesDir)) result.routesDir = conventions.routesDir;
   return { model: result, adapter, match, drafts: declared, candidates, problems };

@@ -290,6 +290,16 @@ An install from before accounts is upgraded at its first start on the new image.
 - `GALLEY_PREVIEW_MEMORY_MB` caps the memory of the site's own preview and build; the generated files set 1024.
 - The first preview installs the site's packages inside the container — in the real run about 80 seconds with the install. In a site without a lockfile, that install never leaves one behind.
 
+## Keeping up with the repository
+
+The install keeps its own copy of the site's repository. When someone pushes to that repository from elsewhere, the editor finds out by itself:
+
+- Every 5 minutes (`GALLEY_SYNC_MINUTES`; `0` turns it off) it asks the code host what is new and, when the copy has nothing in the way, brings the newer versions in — forward only, the way **Get latest** does, so nothing here is overwritten. It skips a round while a publish, an undo, a restore or a connect is under way. The start-up lines say how often it looks.
+- **Version history** looks whenever it opens, says "Checking the repository…" until it knows, and then says when it last checked. If it couldn't reach the code host, it says why and when it last knew, never "in step".
+- **In the way** means one of two things: a file with unpublished changes that the newer versions change too (publish or discard that change; the next round brings them in), or versions published here that the repository doesn't have while it has newer ones — the two have gone separate ways, and someone who knows the repository has to bring them together. The status bar then says "Newer versions are waiting".
+- When versions come in, open browsers say so once and refresh. A running preview stops first, forgets what the site's dev server saved between runs, and starts again on the new files; when `package.json` or a lockfile changed, it installs the site's packages first.
+- The log gets one line when versions come in, and one when a look fails in a new way (and when it works again) — not one every five minutes.
+
 ## Forms on a hosted install
 
 A hosted install at a public `https://` address is what lets the live site's forms send to the inbox: the capture address is `https://cms.example.com/f/<siteId>` ([Forms](/docs/forms/#where-visitors-can-reach-it)). The inbox says whether visitors can reach it, and why not when they can't. Keep `/f/` reachable by everyone if you put another sign-in, such as Cloudflare Access, in front. For e-mail alerts set `GALLEY_SMTP_URL` and `GALLEY_MAIL_FROM` (the same two, with `GALLEY_PUBLIC_URL`, send invitations and new-password links). Only editors and owners can read the inbox.

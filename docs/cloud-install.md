@@ -1194,6 +1194,63 @@ install commands — never the server's own process. The generated files set
 1024 inside the container's 2 GB, so a runaway build ends itself instead of
 the editor.
 
+### Keeping up with the repository
+
+A hosted install holds its own clone of the site's repository. Someone who
+pushes to that repository from elsewhere — a developer, a CI job — changes
+the code host, not the clone, so the editor looks for itself:
+
+- **Every few minutes** (`GALLEY_SYNC_MINUTES`, default 5; `0` turns it off)
+  it fetches the site's branch and, when the code host has commits the clone
+  lacks, fast-forwards to them (`git merge --ff-only`) — exactly what
+  **Get latest** on Version history does. Nothing here is ever overwritten,
+  merged or rewritten. The rounds start once the site is connected; a site
+  waiting for its deploy key is left to first run's own retry. A round is
+  skipped, not queued, while a publish, an undo of a publish, a connect, a
+  restore or another look (or any other git work on the clone) is in
+  progress, and never overlaps itself. The start-up lines say which: `Repository: checked every
+  5 minutes; newer versions are brought in when nothing here is in the way`,
+  or `Repository: not checked by itself (GALLEY_SYNC_MINUTES=0)`.
+- **Version history looks when it opens** (`POST /api/sites/:siteId/git/check`,
+  open to every role: it changes no file) and says "Checking the repository…"
+  until the code host answers. It then says when it last heard from it
+  ("checked 4 min ago"), and never says the copy is in step on the strength
+  of a look more than ten minutes old that a newer one couldn't repeat.
+  The look runs even with `GALLEY_SYNC_MINUTES=0`.
+- **"In the way"** means git would refuse the fast-forward, so the round
+  doesn't try: a file with unpublished changes here that the new commits
+  change too (publish or discard that change, and the next round brings them
+  in), or commits published here that the code host doesn't have while it
+  has newer ones — the two have diverged, and someone who knows the
+  repository has to merge or rebase them by hand. Version history and the
+  status bar ("Newer versions are waiting") say so; unpublished changes to
+  other files never stop it.
+- **When commits come in**, the open browsers refresh what they show and say
+  once "3 newer versions from the repository were brought in." A running
+  preview is stopped before the files change, the dev server's saved content
+  store is removed (for Astro, exactly `.astro/data-store.json` and
+  `node_modules/.astro/data-store.json`; see the adapter's
+  `forgetPreviewSaves`), and the preview is started again — the same for
+  **Get latest**. A stopped preview stays stopped. When the new commits
+  change `package.json` or a lockfile at the site's top, the next start
+  installs the site's packages first, as a first start does. The app's own
+  **Restart preview** also removes that store when the copy is on another
+  commit than the one the preview last started on; on a large site that
+  restart then costs the framework's first-start content sync again.
+- **The log** gets one line per round that changed something or failed in a
+  new way, never one per quiet round, and the same failure once (and once
+  more when it clears): `Repository: brought in 2 newer versions (3 files
+  changed).`, `Repository: couldn't check for newer versions: …`,
+  `Repository: the code host answers again.`, `Repository: 1 newer version
+  waiting, not brought in: …`, `Repository: nothing is in the way of newer
+  versions any more.`
+
+A look takes the clone's own lock, like a publish, so a code host that hangs
+holds saves back for up to the network timeout (120 seconds). The round runs
+as the engine (core `install/caller.ts` `asEngine`), around the one call that
+brings commits in; the events it causes go out as nobody, so a plugin
+reacting to one can't bring commits in or publish.
+
 ### The Install page
 
 `/install`, for owners: the address, the preview's and live
@@ -1767,6 +1824,17 @@ git repositories and started servers:
 
 - the single-site refusals, in the engine and over HTTP
   (`server/test/hosted-refusals.test.ts`, `core/test/install/install.test.ts`);
+- keeping up with the repository: a look that finds new commits without
+  touching a file and one that fails without throwing, fast-forwards that
+  keep unrelated unpublished changes, the refusals for a changed file and for
+  diverged histories, no round during a publish
+  (`core/test/workspace/keep-up.test.ts`); the preview stopped, its saved
+  store removed and started once around commits that change a page and its
+  schema together, a stopped preview left stopped, a refused one left running
+  (`core/test/site/keep-up-preview.test.ts`); the rounds with a timer the test
+  turns — brought in, skipped when busy, a failure said once, the engine's
+  mark, stopped at shutdown, off at 0 and in local mode
+  (`server/test/keep-up.test.ts`);
 - first run through HTTP against real local repositories, including a
   starter sent to an empty repository and a site in a folder of its
   repository (`server/test/install.test.ts`, `core/test/install/install.test.ts`);
@@ -1960,6 +2028,13 @@ BuildKit, 4 GB):
   GitHub's runners).
 
 ### Not verified yet
+
+- **Keeping up with the repository on a real code host or a real install.**
+  Only local bare repositories have played the code host, and only a
+  stand-in dev server the preview (`core/test/workspace/keep-up.test.ts`,
+  `core/test/site/keep-up-preview.test.ts`, `server/test/keep-up.test.ts`):
+  not GitHub over SSH, not a real Astro dev server, not the image, not a
+  reinstall after newer commits changed the site's packages.
 
 - **Accounts beyond the rehearsal and the browser pass above.** Not yet on
   the real image. In a real browser, not yet: the editor's role, the

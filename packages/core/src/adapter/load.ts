@@ -15,7 +15,7 @@ import { ADAPTER_API_VERSION } from "./define";
 import type { GalleyAdapter } from "./types";
 
 export const ADAPTER_ID = /^[a-z][a-z0-9-]*$/;
-const OPTIONAL_HOOKS = ["conventions", "collections", "routes", "environment"] as const;
+const OPTIONAL_HOOKS = ["conventions", "collections", "routes", "environment", "forgetPreviewSaves"] as const;
 const PACKAGE_NAME = /^(@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
 
 export type AdapterCheck = { ok: true; adapter: GalleyAdapter; warnings: string[] } | { ok: false; problem: string };

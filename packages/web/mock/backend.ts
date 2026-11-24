@@ -643,6 +643,10 @@ export function createHandlers(mock: MockBackend): Handlers {
       return result;
     },
     "GET /api/sites/:siteId/git": ({ params }) => mock.site(params.siteId).git(),
+    "POST /api/sites/:siteId/git/check": async ({ params }) => {
+      await sleep(250);
+      return mock.site(params.siteId).check();
+    },
     "POST /api/sites/:siteId/pull": async ({ params }) => {
       await sleep(700);
       const status = mock.site(params.siteId).pull();

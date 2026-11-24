@@ -313,6 +313,15 @@ export interface GalleyAdapter {
   routes?(ctx: AdapterContext, collections: Collection[]): MaybePromise<Record<string, string | null>>;
   /** Extra environment variables for the site's own commands (dev server, build). */
   environment?(ctx: AdapterContext): Record<string, string | undefined>;
+  /**
+   * Forget what the preview saved: the files (site-relative, files only, never
+   * folders) the framework's dev server keeps between runs and trusts on its
+   * next start, such as a store of already-checked content. The engine
+   * removes exactly these before the preview starts on newer versions, so it
+   * can't serve what it saved under the older ones. Leave it out when the
+   * framework keeps nothing of the kind.
+   */
+  forgetPreviewSaves?(ctx: AdapterContext): MaybePromise<string[]>;
 }
 // #endregion adapter-interface
 
@@ -338,4 +347,5 @@ export interface ConventionAdapterSpec extends AdapterConventions {
   collections?(ctx: AdapterContext): MaybePromise<CollectionDraft[] | null>;
   routes?(ctx: AdapterContext, collections: Collection[]): MaybePromise<Record<string, string | null>>;
   environment?(ctx: AdapterContext): Record<string, string | undefined>;
+  forgetPreviewSaves?(ctx: AdapterContext): MaybePromise<string[]>;
 }

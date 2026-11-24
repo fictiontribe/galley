@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import type { GitStatus, HistoryEntry, PublishResult } from "@galley/core/types";
+import type { HistoryEntry, PublishResult } from "@galley/core/types";
 import { useTopBar } from "@/app/chrome";
 import { versionNote } from "./note";
+import { syncLine } from "./sync";
 import { api, errorShape } from "@/lib/api";
 import { absoluteTime, count, fileName, relativeTime } from "@/lib/format";
 import { invalidate, setQueryData, useQuery } from "@/lib/query";
@@ -11,7 +12,7 @@ import { notify } from "@/lib/stores/toasts";
 import { keys } from "@/lib/sync";
 import { placeWords, usePlaceWords } from "@/lib/where";
 import { useHostedInstall } from "@/lib/stores/meta";
-import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, PageHeader, ProofMark, Skeleton } from "@/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, PageHeader, ProofMark, Skeleton, Spinner } from "@/ui";
 import { sendNowWithToast } from "@/features/proof/sendNow";
 import { PutLiveButton } from "@/features/deploy/Online";
 import { useMay } from "@/lib/may";
@@ -20,10 +21,27 @@ const PAGE = 50;
 
 function SyncStatus({ siteId }: { siteId: string }) {
   const git = useQuery(keys.git(siteId), () => api("GET /api/sites/:siteId/git", { params: { siteId } }));
+  // Opening the page is asking: the line waits for a fresh look rather than trusting the last one.
+  const [look, setLook] = useState<{ checking: boolean; failed: string | null }>({ checking: true, failed: null });
   const [pulling, setPulling] = useState(false);
   const [sending, setSending] = useState(false);
   const where = usePlaceWords();
+  const hosted = useHostedInstall();
   const may = useMay();
+
+  const check = useCallback(async () => {
+    setLook({ checking: true, failed: null });
+    try {
+      setQueryData(keys.git(siteId), await api("POST /api/sites/:siteId/git/check", { params: { siteId } }));
+      setLook({ checking: false, failed: null });
+    } catch (error) {
+      setLook({ checking: false, failed: errorShape(error).message });
+    }
+  }, [siteId]);
+
+  useEffect(() => {
+    void check();
+  }, [check]);
 
   const pull = async () => {
     setPulling(true);
@@ -41,29 +59,25 @@ function SyncStatus({ siteId }: { siteId: string }) {
     }
   };
 
-  if (git.loading) return <Skeleton width={320} height={36} />;
-  if (!git.data) return git.status === "error" ? <ErrorState compact title="Couldn’t check for newer versions" error={git.error} onRetry={() => void git.refetch()} /> : null;
-  const status: GitStatus = git.data;
-
-  let text: string;
-  let tone: "success" | "warning" | "neutral" = "neutral";
-  if (!status.hasRemote) text = `Versions are kept ${where.recorded} only — they aren’t backed up or shared anywhere.`;
-  else if (status.behind > 0) {
-    text = `${count(status.behind, "newer version")} published elsewhere ${status.behind === 1 ? "isn’t" : "aren’t"} in this copy yet.`;
-    tone = "warning";
-  } else if (status.ahead > 0) {
-    text = `${count(status.ahead, "version")} published here ${status.ahead === 1 ? "hasn’t" : "haven’t"} been sent to the shared copy yet.`;
-    tone = "warning";
-  } else {
-    text = "In step with the shared copy. Everything published is here.";
-    tone = "success";
+  if (git.loading && !look.checking) return <Skeleton width={320} height={36} />;
+  if (!git.data && !look.checking && !look.failed && git.status === "error") {
+    return <ErrorState compact title="Couldn’t check for newer versions" error={git.error} onRetry={() => void git.refetch()} />;
   }
+  const line = syncLine(git.data ?? null, {
+    checking: look.checking,
+    lookFailed: look.failed,
+    mayGetLatest: may("POST /api/sites/:siteId/pull"),
+    maySend: may("POST /api/sites/:siteId/send"),
+    recorded: where.recorded,
+    hosted,
+  });
+  const ahead = git.data?.ahead ?? 0;
 
   return (
-    <div className="app-sync" role="status">
-      <ProofMark kind={tone === "success" ? "reg" : tone === "warning" ? "bang" : "stet"} className={`app-sync__mark app-sync__mark--${tone}`} />
-      <span>{text}</span>
-      {status.hasRemote && status.ahead > 0 && may("POST /api/sites/:siteId/send") ? (
+    <div className="app-sync" role="status" aria-busy={line.checking ? "true" : undefined}>
+      {line.checking ? <Spinner label="Checking the repository" /> : <ProofMark kind={line.tone === "success" ? "reg" : line.tone === "warning" ? "bang" : "stet"} className={`app-sync__mark app-sync__mark--${line.tone}`} />}
+      <span>{line.text}</span>
+      {line.action === "send" ? (
         <Button
           size="sm"
           variant="primary"
@@ -71,15 +85,20 @@ function SyncStatus({ siteId }: { siteId: string }) {
           busyLabel="Sending…"
           onClick={() => {
             setSending(true);
-            void sendNowWithToast(siteId, status.ahead).finally(() => setSending(false));
+            void sendNowWithToast(siteId, ahead).finally(() => setSending(false));
           }}
         >
           Send now
         </Button>
       ) : null}
-      {status.hasRemote && may("POST /api/sites/:siteId/pull") ? (
+      {line.action === "get-latest" ? (
         <Button size="sm" variant="secondary" icon="download" busy={pulling} busyLabel="Getting latest" onClick={() => void pull()}>
           Get latest
+        </Button>
+      ) : null}
+      {line.action === "retry" ? (
+        <Button size="sm" variant="quiet" onClick={() => void check()}>
+          Try again
         </Button>
       ) : null}
     </div>

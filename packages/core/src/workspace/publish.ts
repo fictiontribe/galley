@@ -566,7 +566,7 @@ export async function revert(host: RepoHost, commit: string, config: PublishConf
   return { ok: true, commit: sha, branch, files: touched, ...(await push(repo, remote, "HEAD", branch)) };
 }
 
-// ─────────────────────────────────────────────────────────────── status & pull
+// ─────────────────────────────────────────────────────────────── status, looking & bringing in
 
 async function upstreamOf(repo: Git): Promise<{ remote: string; ref: string } | null> {
   const result = await repo.run(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"], {
@@ -584,6 +584,77 @@ async function upstreamOf(repo: Git): Promise<{ remote: string; ref: string } | 
   return ref ? { remote: remote || ref.split("/")[0] || "", ref } : null;
 }
 
+/**
+ * Where this copy's versions come from: the code host's branch it follows
+ * (its upstream, else the same name on the remote pull would use) and the
+ * ref here that remembers what was last seen of it. Null when there is no
+ * branch or nothing to follow.
+ */
+interface Source {
+  remote: string;
+  branch: string;
+  ref: string;
+}
+
+async function sourceOf(repo: Git, branch: string | null): Promise<Source | null> {
+  if (!branch) return null;
+  const read = async (key: string) => (await repo.run(["config", "--get", key], { allowFailure: true, readOnly: true })).text.trim();
+  const [remote, merge] = await Promise.all([read(`branch.${branch}.remote`), read(`branch.${branch}.merge`)]);
+
+  if (remote && remote !== "." && merge.startsWith("refs/heads/")) {
+    const name = merge.slice("refs/heads/".length);
+
+    return { remote, branch: name, ref: `refs/remotes/${remote}/${name}` };
+  }
+  const remotes = await repo.remotes();
+  const fallback = remotes.includes("origin") ? "origin" : remotes[0];
+
+  return fallback ? { remote: fallback, branch, ref: `refs/remotes/${fallback}/${branch}` } : null;
+}
+
+/** What `ahead` and `behind` count against: the upstream, else what was last seen of the source, when anything was. */
+async function compareRef(repo: Git, branch: string | null, upstream: { ref: string } | null): Promise<string | null> {
+  if (upstream) return "@{upstream}";
+  const source = await sourceOf(repo, branch);
+
+  if (!source) return null;
+  const known = await repo.run(["rev-parse", "-q", "--verify", `${source.ref}^{commit}`], { allowFailure: true, readOnly: true });
+
+  return known.code === 0 ? source.ref : null;
+}
+
+const SEPARATE_WAYS =
+  "This copy and the repository have gone separate ways: each has published versions the other doesn't, so newer versions can't come in by themselves. Your edits are safe. Someone who knows the repository needs to bring the two together.";
+
+function fileList(paths: string[]): string {
+  const names = paths.slice(0, 3).map((p) => p.slice(p.lastIndexOf("/") + 1));
+
+  return `${names.join(", ")}${paths.length > 3 ? ", …" : ""}`;
+}
+
+/** Plain words for unpublished changes to files the newer versions change too. */
+function changesInTheWay(paths: string[]): string {
+  return paths.length === 1
+    ? `The newer versions change ${fileList(paths)}, which has unpublished changes here. Publish or discard the change to that file, then the newer versions can come in.`
+    : `The newer versions change ${paths.length} files that have unpublished changes here (${fileList(paths)}). Publish or discard the changes to those files, then the newer versions can come in.`;
+}
+
+/**
+ * Why newer versions can't simply move this copy forward, or undefined when
+ * they can: published versions here the code host lacks, or unpublished
+ * changes to files they change too (git would refuse to overwrite them).
+ */
+async function inTheWayOf(repo: Git, info: RepoInfo, compare: string, ahead: number, pending: Map<string, PendingStatus>): Promise<GitStatus["inTheWay"]> {
+  if (ahead > 0) return { kind: "separate-ways", message: SEPARATE_WAYS, paths: [] };
+  const changed = await repo.run(["diff", "--name-only", "-z", "--no-renames", "HEAD", compare], { allowFailure: true, readOnly: true });
+  const blocked = splitNul(changed.text)
+    .map((p) => sitePath(info, p))
+    .filter((p): p is string => p !== null && pending.has(p))
+    .sort();
+
+  return blocked.length > 0 ? { kind: "changes", message: changesInTheWay(blocked), paths: blocked } : undefined;
+}
+
 export async function gitStatus(host: RepoHost): Promise<GitStatus> {
   const { repo } = host;
   const info = await host.info();
@@ -598,11 +669,13 @@ export async function gitStatus(host: RepoHost): Promise<GitStatus> {
   ]);
   const remote = upstream?.remote || (remotes.includes("origin") ? "origin" : remotes[0]);
   const remoteUrl = remote ? await repo.remoteUrl(remote) : null;
+  const compare = head ? await compareRef(repo, branch, upstream) : null;
   let ahead = 0;
   let behind = 0;
+  let inTheWay: GitStatus["inTheWay"];
 
-  if (upstream && head) {
-    const counts = await repo.run(["rev-list", "--left-right", "--count", "HEAD...@{upstream}"], {
+  if (compare && head) {
+    const counts = await repo.run(["rev-list", "--left-right", "--count", `HEAD...${compare}`], {
       allowFailure: true,
       readOnly: true,
     });
@@ -610,6 +683,7 @@ export async function gitStatus(host: RepoHost): Promise<GitStatus> {
 
     ahead = Number(a) || 0;
     behind = Number(b) || 0;
+    if (behind > 0) inTheWay = await inTheWayOf(repo, info, compare, ahead, statuses);
   }
   let lastCommit: GitStatus["lastCommit"];
 
@@ -630,6 +704,7 @@ export async function gitStatus(host: RepoHost): Promise<GitStatus> {
     clean: statuses.size === 0,
     ...(lastCommit ? { lastCommit } : {}),
     author: await authorOf(host),
+    ...(inTheWay ? { inTheWay } : {}),
   };
 }
 
@@ -655,7 +730,94 @@ function classifyPullError(stderr: string, timedOut: boolean): string {
     .replace("then publish again.", "then try again.");
 }
 
-export async function pull(host: RepoHost): Promise<GitStatus> {
+/** Why a look at the code host didn't work, in the words Get latest uses (minus its own vocabulary). */
+function classifyLookError(stderr: string, timedOut: boolean): string {
+  if (/couldn't find remote ref|no such ref/i.test(stderr)) return "The repository doesn't have the versions this copy follows yet, so there's nothing newer to look for.";
+  return classifyPullError(stderr, timedOut);
+}
+
+/** One look at the code host: null when there is nothing to look at (no repository, no remote, no branch). */
+export type Look = { ok: true } | { ok: false; problem: string; detail: string };
+
+/**
+ * Asks the code host what is new: fetches the followed branch into the ref
+ * that remembers it. Changes no file, the index or HEAD. Never throws for
+ * the code host's reasons: a failed look says why.
+ */
+export async function look(host: RepoHost): Promise<Look | null> {
+  const { repo } = host;
+
+  if (!(await host.info())) return null;
+  const source = await sourceOf(repo, await repo.currentBranch());
+
+  if (!source) return null;
+  const fetched = await repo.run(["fetch", "--quiet", "--no-tags", source.remote, `+refs/heads/${source.branch}:${source.ref}`], {
+    allowFailure: true,
+    timeoutMs: GIT_NETWORK_TIMEOUT_MS,
+  });
+
+  if (fetched.code === 0) return { ok: true };
+  return { ok: false, problem: classifyLookError(fetched.stderr, fetched.timedOut), detail: redactRemoteUrl(fetched.stderr.trim()) };
+}
+
+/** What the workspace does around files changing: before the copy moves forward, and after (with the files that changed, none when it didn't). */
+export interface AroundBringIn {
+  before(): Promise<void>;
+  after(paths: string[]): Promise<void>;
+}
+
+/** What bringing versions in did. */
+export interface BringIn {
+  brought: number;
+  paths: string[];
+}
+
+type Forward = ({ ok: true } & BringIn) | { ok: false; stderr: string; timedOut: boolean };
+
+/**
+ * Moves this copy forward to `target`, never sideways: `merge --ff-only`
+ * refuses rather than overwrite an unpublished change or rewrite anything.
+ * Tells the workspace's listeners which files changed. `around` runs on
+ * either side of the only moment files can change, and its `after` runs
+ * whatever happens.
+ */
+async function fastForward(host: RepoHost, info: RepoInfo, target: string, around?: AroundBringIn): Promise<Forward> {
+  const { repo } = host;
+  const before = await repo.head();
+  let outcome: Forward = { ok: false, stderr: "", timedOut: false };
+
+  await around?.before();
+  try {
+    const merged = await repo.run(["merge", "--ff-only", "--no-edit", "--quiet", target], { allowFailure: true, timeoutMs: GIT_NETWORK_TIMEOUT_MS });
+
+    if (merged.code !== 0) {
+      outcome = { ok: false, stderr: merged.stderr, timedOut: merged.timedOut };
+      return outcome;
+    }
+    const after = await repo.head();
+
+    if (!after || after === before) {
+      outcome = { ok: true, brought: 0, paths: [] };
+      return outcome;
+    }
+    const names = before
+      ? (await repo.run(["diff", "--name-only", "-z", "--no-renames", before, after], { readOnly: true })).text
+      : (await repo.run(["ls-tree", "--full-tree", "-r", "-z", "--name-only", after], { readOnly: true })).text;
+    const counted = await repo.run(["rev-list", "--count", before ? `${before}..${after}` : after], { allowFailure: true, readOnly: true });
+    const paths = splitNul(names)
+      .map((p) => sitePath(info, p))
+      .filter((p): p is string => p !== null);
+
+    outcome = { ok: true, brought: Number(counted.text.trim()) || 1, paths };
+    await host.changed(paths, "external");
+    return outcome;
+  } finally {
+    await around?.after(outcome.ok ? outcome.paths : []);
+  }
+}
+
+/** What there is to bring in from, or why there is nothing (Get latest says these). */
+async function bringInSource(host: RepoHost): Promise<{ info: RepoInfo; branch: string }> {
   const { repo } = host;
   const info = await host.info();
 
@@ -664,34 +826,70 @@ export async function pull(host: RepoHost): Promise<GitStatus> {
 
   if (!branch) throw new GalleyError("invalid", DETACHED.replace("to publish", "to fetch into"));
   if (operationInProgress(info)) throw new GalleyError("busy", IN_PROGRESS);
-  const upstream = await upstreamOf(repo);
-  const remotes = await repo.remotes();
-  let args: string[];
+  if ((await repo.remotes()).length === 0) throw new GalleyError("invalid", "This site isn't connected to a code host, so there's nothing to fetch.");
+  return { info, branch };
+}
 
-  if (upstream) args = ["pull", "--no-rebase", "--ff-only", "--no-edit"];
-  else if (remotes.includes("origin") || remotes.length > 0) {
-    args = ["pull", "--no-rebase", "--ff-only", "--no-edit", remotes.includes("origin") ? "origin" : (remotes[0] ?? ""), branch];
-  } else {
-    throw new GalleyError("invalid", "This site isn't connected to a code host, so there's nothing to fetch.");
-  }
-  const before = await repo.head();
-  const result = await repo.run(args, { allowFailure: true, timeoutMs: GIT_NETWORK_TIMEOUT_MS });
+/**
+ * Get latest: look, then move forward to what the code host has. Throws, in
+ * plain words, when it can't (offline, files in the way, separate ways).
+ * `onLook` hears how the look went; `around` runs only when there is
+ * something to bring in.
+ */
+export async function pull(host: RepoHost, options: { around?: AroundBringIn; onLook?: (look: Look) => void } = {}): Promise<BringIn & { status: GitStatus }> {
+  const { repo } = host;
+  const { info, branch } = await bringInSource(host);
+  const looked = await look(host);
 
-  if (result.code !== 0) {
-    throw new GalleyError("git", classifyPullError(result.stderr, result.timedOut), redactRemoteUrl(result.stderr.trim()));
-  }
-  const after = await repo.head();
+  if (looked) options.onLook?.(looked);
+  if (looked && !looked.ok) throw new GalleyError("git", looked.problem, looked.detail);
+  const target = await compareRef(repo, branch, await upstreamOf(repo));
+  const behind = target && (await repo.head())
+    ? Number((await repo.run(["rev-list", "--count", `HEAD..${target}`], { allowFailure: true, readOnly: true })).text.trim()) || 0
+    : target ? 1 : 0;
 
-  if (after && after !== before) {
-    const range = before ? [before, after] : [after];
-    const names = before
-      ? (await repo.run(["diff", "--name-only", "-z", "--no-renames", ...range], { readOnly: true })).text
-      : (await repo.run(["ls-tree", "--full-tree", "-r", "-z", "--name-only", after], { readOnly: true })).text;
-    const paths = splitNul(names)
-      .map((p) => sitePath(info, p))
-      .filter((p): p is string => p !== null);
+  if (!target || behind === 0) return { brought: 0, paths: [], status: await gitStatus(host) };
+  const ahead = await gitStatus(host);
 
-    await host.changed(paths, "external");
-  }
-  return gitStatus(host);
+  // Refused before anything (the preview included) is touched, when it's already clear git would refuse.
+  if (ahead.inTheWay?.kind === "separate-ways") throw new GalleyError("git", classifyPullError("Not possible to fast-forward", false));
+  if (ahead.inTheWay) throw new GalleyError("git", ahead.inTheWay.message, ahead.inTheWay.paths.join("\n"));
+  const moved = await fastForward(host, info, target, options.around);
+
+  if (!moved.ok) throw new GalleyError("git", classifyPullError(moved.stderr, moved.timedOut), redactRemoteUrl(moved.stderr.trim()));
+  return { brought: moved.brought, paths: moved.paths, status: await gitStatus(host) };
+}
+
+/**
+ * A hosted editor's own round: look, and bring newer versions in only when
+ * nothing is in the way. Never throws for git's reasons — what stopped it is
+ * in the status (`checkProblem`, `inTheWay`), and the next round tries again.
+ */
+export async function catchUp(host: RepoHost, options: { around?: AroundBringIn; onLook?: (look: Look) => void } = {}): Promise<BringIn & { status: GitStatus }> {
+  const { repo } = host;
+  const quiet = async () => ({ brought: 0, paths: [], status: await gitStatus(host) });
+  const info = await host.info();
+  const branch = info ? await repo.currentBranch() : null;
+
+  if (!info || !branch || operationInProgress(info)) return quiet();
+  const looked = await look(host);
+
+  if (!looked) return quiet();
+  options.onLook?.(looked);
+  const status = await gitStatus(host);
+  const target = await compareRef(repo, branch, await upstreamOf(repo));
+
+  if (!looked.ok || !target || status.behind === 0 || status.inTheWay) return { brought: 0, paths: [], status };
+  const moved = await fastForward(host, info, target, options.around);
+
+  if (moved.ok) return { brought: moved.brought, paths: moved.paths, status: await gitStatus(host) };
+  // Refused all the same (a file that changed in between): said like the ones seen ahead, and left for the next round.
+  const after = await gitStatus(host);
+  const separate = /Not possible to fast-forward|diverg|refusing to merge unrelated/i.test(moved.stderr);
+
+  return {
+    brought: 0,
+    paths: [],
+    status: { ...after, inTheWay: after.inTheWay ?? { kind: separate ? "separate-ways" : "changes", message: separate ? SEPARATE_WAYS : classifyPullError(moved.stderr, moved.timedOut), paths: [] } },
+  };
 }

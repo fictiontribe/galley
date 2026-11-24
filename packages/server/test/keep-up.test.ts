@@ -1,0 +1,217 @@
+/**
+ * A hosted editor keeping up with its repository by itself (keep-up.ts):
+ * rounds run by a test's hand instead of a real interval, against real
+ * temporary repositories — a bare one as the code host, a clone as someone
+ * publishing elsewhere.
+ */
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { afterAll, describe, expect, it } from "vitest";
+import { NO_CALLER_REFUSAL, requireCallerForGuardedWork } from "@galley/core/install";
+import { createEventBus, createSiteService } from "@galley/core/site";
+import type { ServerEvent, SiteService } from "@galley/core/types";
+import { createKeepUp, type KeepUpTimer } from "../src/keep-up";
+import { StartupError, startServer } from "../src/server";
+import { call, git, sandbox, siteRepository, startHosted, until } from "./hosted-helpers";
+
+const box = sandbox("keep-up");
+const OPERATOR = "an-operator-token-for-scripts-0000";
+const PAGE = "src/content/pages/index.md";
+
+afterAll(() => box.cleanup(), 120_000);
+
+/** A timer the test turns by hand: `tick()` runs the round it was given, `cancelled` once it was stopped. */
+function handTimer() {
+  const state = { every: [] as number[], run: null as null | (() => Promise<unknown>), cancelled: false };
+  const timer: KeepUpTimer = {
+    every(ms, run) {
+      state.every.push(ms);
+      state.run = run;
+      return () => {
+        state.cancelled = true;
+      };
+    },
+  };
+
+  return { timer, state, tick: () => state.run!() };
+}
+
+/** Someone publishing to the code host from elsewhere. */
+function publisher(bare: string) {
+  const other = box.folder("elsewhere");
+
+  git(other, "clone", "-q", bare, ".");
+  return (text: string, message: string) => {
+    git(other, "pull", "-q");
+    writeFileSync(join(other, PAGE), `---\ntitle: Home\n---\n${text}\n`);
+    git(other, "commit", "-q", "-am", message);
+    git(other, "push", "-q", "origin", "main");
+  };
+}
+
+/** The site as a hosted install holds it: its own copy of the repository, opened through the real engine. */
+async function copyOf(bare: string): Promise<{ root: string; site: SiteService; events: ServerEvent[]; bus: ReturnType<typeof createEventBus> }> {
+  const root = box.folder("copy");
+
+  git(root, "clone", "-q", bare, ".");
+  const bus = createEventBus();
+  const events: ServerEvent[] = [];
+
+  bus.subscribe((event) => events.push(event));
+  const site = await createSiteService(root, { id: "site-1", events: bus, overlayScript: () => "", author: () => ({ name: "Sam", email: "sam@example.com" }), watch: false });
+
+  return { root, site, events, bus };
+}
+
+describe("the editor's own rounds", () => {
+  it("bring newer versions in, say each new thing once, skip when busy or overlapping, and stop", async () => {
+    const bare = siteRepository(box);
+    const elsewhere = publisher(bare);
+    const { root, site, events } = await copyOf(bare);
+    const hand = handTimer();
+    const lines: string[] = [];
+    let busy = false;
+    const keepUp = createKeepUp({ minutes: 5, site: async () => site, busy: () => busy, log: (line) => lines.push(line), timer: hand.timer });
+
+    try {
+      expect(hand.state.every).toEqual([5 * 60_000]);
+      // Nothing new: nothing said.
+      expect(await hand.tick()).toBe("quiet");
+      expect(lines).toEqual([]);
+      elsewhere("One", "First change");
+      elsewhere("Two", "Second change");
+      expect(await hand.tick()).toBe("brought");
+      expect(readFileSync(join(root, PAGE), "utf8")).toContain("Two");
+      expect(lines).toEqual(["Repository: brought in 2 newer versions (1 file changed)."]);
+      expect(events.filter((event) => event.type === "repository.checked").at(-1)).toEqual({ type: "repository.checked", siteId: "site-1", brought: 2 });
+      expect(events.some((event) => event.type === "changes.updated" && event.origin === "external" && event.paths.includes(PAGE))).toBe(true);
+
+      // Install-level work under way: skipped, not queued.
+      busy = true;
+      elsewhere("Three", "Third change");
+      expect(await hand.tick()).toBe("busy");
+      expect(readFileSync(join(root, PAGE), "utf8")).toContain("Two");
+      busy = false;
+
+      // Never two at once.
+      const [first, second] = await Promise.all([keepUp.round(), keepUp.round()]);
+
+      expect([first, second]).toEqual(["brought", "overlap"]);
+
+      // The code host can't be reached: said once, not every round, and once more when it clears.
+      git(root, "remote", "set-url", "origin", join(box.root, "gone.git"));
+      expect(await hand.tick()).toBe("failed");
+      expect(await hand.tick()).toBe("failed");
+      git(root, "remote", "set-url", "origin", bare);
+      expect(await hand.tick()).toBe("quiet");
+      expect(lines.slice(2)).toEqual([expect.stringMatching(/^Repository: couldn't check for newer versions: .+\.$/), "Repository: the code host answers again."]);
+
+      // An unpublished change to the file the newer version changes: held, said once, nothing overwritten.
+      writeFileSync(join(root, PAGE), "---\ntitle: Home\n---\nMine\n");
+      elsewhere("Four", "Fourth change");
+      expect(await hand.tick()).toBe("held");
+      expect(await hand.tick()).toBe("held");
+      expect(readFileSync(join(root, PAGE), "utf8")).toContain("Mine");
+      expect(lines.slice(4)).toEqual([expect.stringMatching(/^Repository: 1 newer version waiting, not brought in: .*index\.md.*Publish or discard/)]);
+
+      await keepUp.stop();
+      expect(hand.state.cancelled).toBe(true);
+      expect(await keepUp.round()).toBe("stopped");
+    } finally {
+      await keepUp.stop();
+      await site.dispose();
+    }
+  }, 180_000);
+
+  it("on a hosted install, run as the engine — and what listens to the site's events still can't bring versions in", async () => {
+    const bare = siteRepository(box);
+    const elsewhere = publisher(bare);
+    const { root, site, bus } = await copyOf(bare);
+    const keepUp = createKeepUp({ minutes: 0, site: async () => site, busy: () => false, log: () => undefined });
+    const attempts: Array<Promise<string>> = [];
+    const refusal = (work: () => Promise<unknown>) =>
+      work().then(
+        () => "went ahead",
+        (error: unknown) => (error instanceof Error ? error.message : String(error))
+      );
+
+    requireCallerForGuardedWork(true);
+    try {
+      // Work done for nobody, outside the round: refused.
+      expect(await refusal(() => site.catchUp())).toBe(NO_CALLER_REFUSAL);
+      // A listener reacting to what the round announces, as a plugin's callback would.
+      bus.subscribe((event) => {
+        if (event.type === "repository.checked" || event.type === "changes.updated") {
+          attempts.push(refusal(() => site.pull()), refusal(() => site.catchUp()));
+        }
+      });
+      elsewhere("By the round", "A change for the round");
+      expect(await keepUp.round()).toBe("brought");
+      expect(readFileSync(join(root, PAGE), "utf8")).toContain("By the round");
+      expect(attempts.length).toBeGreaterThan(0);
+      expect(new Set(await Promise.all(attempts))).toEqual(new Set([NO_CALLER_REFUSAL]));
+    } finally {
+      requireCallerForGuardedWork(false);
+      await site.dispose();
+    }
+  }, 180_000);
+});
+
+describe("a started server", () => {
+  it("hosted: rounds every GALLEY_SYNC_MINUTES (5 by default) once the site is connected, the look route answers, and shutdown stops them", async () => {
+    const bare = siteRepository(box);
+    const elsewhere = publisher(bare);
+    const hand = handTimer();
+    const { server, port, logs } = await startHosted(
+      box,
+      box.folder("home"),
+      {
+        GALLEY_PASSWORD: "correct horse battery staple",
+        GALLEY_OWNER_NAME: "Sam Owner",
+        GALLEY_OWNER_EMAIL: "sam@example.com",
+        GALLEY_TOKEN: OPERATOR,
+        GALLEY_SITE_REPOSITORY: bare,
+        GALLEY_SITE_ACCESS: "token",
+        GALLEY_SITE_TOKEN: "fake-access-key-for-the-repository-0000",
+      },
+      { syncTimer: hand.timer }
+    );
+
+    await server.install!.idle();
+    expect(server.syncMinutes).toBe(5);
+    expect(hand.state.every).toEqual([5 * 60_000]);
+    const folder = server.install!.siteFolder();
+    const siteId = server.install!.siteId()!;
+
+    elsewhere("Brought by the server", "From elsewhere");
+    // The look: what is new, nothing changed.
+    const looked = await call(port, "POST", `/api/sites/${siteId}/git/check`, { bearer: OPERATOR });
+
+    expect(looked.status, looked.text).toBe(200);
+    expect(looked.body).toMatchObject({ behind: 1, ahead: 0, checkedAt: expect.any(String) });
+    expect(readFileSync(join(folder, PAGE), "utf8")).not.toContain("Brought by the server");
+    expect(await hand.tick()).toBe("brought");
+    expect(readFileSync(join(folder, PAGE), "utf8")).toContain("Brought by the server");
+    await until(() => logs.some((line) => line.includes("Repository: brought in 1 newer version (1 file changed).")));
+    await server.close({ graceMs: 0 });
+    box.running.splice(box.running.indexOf(server), 1);
+    expect(hand.state.cancelled).toBe(true);
+    expect(await hand.tick()).toBe("stopped");
+  }, 180_000);
+
+  it("hosted with GALLEY_SYNC_MINUTES=0 runs no rounds; local mode never does; a value that isn't a whole number stops the start", async () => {
+    const hosted = handTimer();
+    const { server } = await startHosted(box, box.folder("home"), { GALLEY_SYNC_MINUTES: "0" }, { syncTimer: hosted.timer });
+
+    expect(server.syncMinutes).toBe(0);
+    expect(hosted.state.every).toEqual([]);
+    const local = handTimer();
+    const started = await startServer({ port: 0, mode: "local", home: box.folder("local-home"), webDir: join(box.root, "no-ui"), env: { PATH: process.env.PATH, HOME: box.root, GALLEY_SYNC_MINUTES: "1" }, notice: () => undefined, log: () => undefined, syncTimer: local.timer });
+
+    box.running.push(started);
+    expect(started.syncMinutes).toBeNull();
+    expect(started.keepUp).toBeUndefined();
+    expect(local.state.every).toEqual([]);
+    await expect(startServer({ mode: "hosted", host: "127.0.0.1", port: 0, home: box.folder("bad-home"), env: { GALLEY_SYNC_MINUTES: "often" } })).rejects.toThrow(StartupError);
+  }, 120_000);
+});

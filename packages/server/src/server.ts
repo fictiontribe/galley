@@ -43,6 +43,7 @@ import { createServerLog, type ServerLog } from "./log";
 import { createMcpMount } from "./mcp";
 import { createStreamRegistry } from "./events";
 import { createInstallOps, type InstallOps, type ServerPhase } from "./ops";
+import { createKeepUp, DEFAULT_SYNC_MINUTES, type KeepUp } from "./keep-up";
 import { defaultHome, defaultStartersDir, defaultWebDir } from "./paths";
 import type { RunningServer, ServerMode, ServerOptions, Services } from "./types";
 
@@ -110,6 +111,8 @@ export interface ResolvedConfig {
   logRequests: boolean;
   /** Hosted: the memory ceiling for the site's own commands (MB), or null. */
   previewMemoryMb: number | null;
+  /** Hosted: minutes between the editor's own looks at the repository (0: none). Null in local mode, which never looks by itself. */
+  syncMinutes: number | null;
 }
 
 function wholeNumber(raw: string | number | undefined, name: string, min: number, max: number): number | null {
@@ -296,6 +299,7 @@ export function resolveConfig(options: ServerOptions = {}): ResolvedConfig {
   const shutdownGraceMs = wholeNumber(options.shutdownGraceMs ?? env.GALLEY_SHUTDOWN_GRACE_MS, "GALLEY_SHUTDOWN_GRACE_MS", 0, 600_000) ?? DEFAULT_SHUTDOWN_GRACE_MS;
   const restoreMaxMb = mode === "hosted" ? (wholeNumber(env.GALLEY_RESTORE_MAX_MB, "GALLEY_RESTORE_MAX_MB", 1, 1_048_576) ?? DEFAULT_RESTORE_MAX_MB) : DEFAULT_RESTORE_MAX_MB;
   const previewMemoryMb = mode === "hosted" ? wholeNumber(env.GALLEY_PREVIEW_MEMORY_MB, "GALLEY_PREVIEW_MEMORY_MB", 64, 1_048_576) : null;
+  const syncMinutes = mode === "hosted" ? (wholeNumber(env.GALLEY_SYNC_MINUTES, "GALLEY_SYNC_MINUTES", 0, 1440) ?? DEFAULT_SYNC_MINUTES) : null;
   const fixed: InstallFixed[] = [];
 
   if (mode === "hosted" && publicUrl) fixed.push("address");
@@ -333,6 +337,7 @@ export function resolveConfig(options: ServerOptions = {}): ResolvedConfig {
     restoreMaxBytes: restoreMaxMb * 1024 * 1024,
     logRequests: options.logRequests ?? (mode === "hosted" && !off(env.GALLEY_LOG_REQUESTS)),
     previewMemoryMb,
+    syncMinutes,
   };
 }
 
@@ -746,6 +751,21 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
 
   handler = (request, env) => app.fetch(request, env as never);
   phase = "running";
+  // Hosted: the editor keeps up with its repository by itself (keep-up.ts). A round needs the connected site and an install with nothing else under way.
+  const keepUp: KeepUp | null =
+    install && config.syncMinutes !== null
+      ? createKeepUp({
+          minutes: config.syncMinutes,
+          site: async () => {
+            const id = install!.store.connectedSiteFolder() ? install!.siteId() : null;
+
+            return id ? services.registry.get(id) : null;
+          },
+          busy: () => phase !== "running" || draining || (ops?.restoring() ?? false) || busyJobs.size > 0,
+          log: (line) => out.event(line),
+          ...(options.syncTimer ? { timer: options.syncTimer } : {}),
+        })
+      : null;
 
   let closing: Promise<void> | null = null;
 
@@ -771,6 +791,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     passwordLink,
     notices,
     previews: gateway ? gateway.origins : null,
+    syncMinutes: config.syncMinutes,
+    ...(keepUp ? { keepUp } : {}),
     readiness,
     openUrl(path = "/") {
       const target = `${url}${path.startsWith("/") ? path : `/${path}`}`;
@@ -787,11 +809,14 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         draining = true;
         // A measurement of the data folder for the Install page is let go of at once: nothing waits for it.
         void ops?.stopMeasuring();
+        // No new round; one in progress gets the grace like a request does.
+        const keptUp = keepUp?.stop() ?? Promise.resolve();
         const stopped = new Promise<void>((done) => server.close(() => done()));
 
         streams.closeAll();
         await mcp?.close();
         await settle(grace);
+        await Promise.race([keptUp, delay(Math.max(0, deadline - Date.now()))]);
         // A connect in progress (copying the site) gets what is left of the grace, then is left behind.
         await Promise.race([install?.idle() ?? Promise.resolve(), delay(Math.max(0, deadline - Date.now()))]);
         // Ended streams leave keep-alive sockets idle a moment later; sweep until they are gone.

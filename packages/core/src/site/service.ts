@@ -37,6 +37,7 @@ import { listCollectionFiles } from "../content/entries/files";
 import type { ContentIndex, ValidationContext } from "../content/index";
 import { GalleyError } from "../errors";
 import type {
+  CatchUpResult,
   ChangeOrigin,
   ChangeSet,
   Checkpoint,
@@ -49,6 +50,7 @@ import type {
   EntrySummary,
   EventBus,
   GalleyConfig,
+  GitStatus,
   PreviewController,
   PreviewStatus,
   PublishResult,
@@ -61,12 +63,14 @@ import type {
 import {
   createPreviewController,
   createWorkspace,
+  forgetPreviewSaves,
   isBinary,
   isMediaFile,
   listMedia,
   normalizeRepoPath,
   redactRemoteUrl,
   runBuild,
+  runGit,
   saveMedia,
   type PreviewControllerHandle,
   type Workspace,
@@ -74,6 +78,7 @@ import {
 import type { PortPool } from "../workspace/preview/ports";
 import type { PreviewGateway } from "../workspace/preview/proxy";
 import type { AuthorLayers } from "../workspace/author";
+import type { AroundBringIn } from "../workspace/publish";
 import { formCodeRefusal } from "../site-kit/guard";
 import { outsideAnyPerson, requireBuildMode, requireLevel, requireSiteSettings } from "../install/caller";
 import { levelFor, SITE_METHOD_ACCESS, SITE_SETTINGS_RECORDS, siteMethodLevel, type GuardedSiteMethod } from "../install/route-access";
@@ -163,6 +168,8 @@ export interface OpenSite extends SiteService {
 const EXTERNAL_COALESCE_MS = 120;
 /** …but never held back longer than this while events keep arriving. */
 const EXTERNAL_MAX_WAIT_MS = 1_000;
+/** Files at the site's top that, when newer versions change them, mean its dependencies must be installed again before the preview runs. */
+const DEPENDENCY_FILES = new Set(["package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"]);
 /** Text files above this size are not indexed (matches the index's own source limit). */
 const MAX_INDEX_BYTES = 6 * 1024 * 1024;
 
@@ -414,7 +421,8 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     if (externalTimer) clearTimeout(externalTimer);
     const wait = Math.max(0, Math.min(EXTERNAL_COALESCE_MS, externalSince + EXTERNAL_MAX_WAIT_MS - Date.now()));
 
-    externalTimer = setTimeout(flushExternal, wait);
+    // As nobody: what follows an outside change (a pull, the hosted editor's own round under the engine's mark) must not carry whoever's work it came from to the event listeners.
+    externalTimer = outsideAnyPerson(() => setTimeout(flushExternal, wait));
     externalTimer.unref?.();
   });
 
@@ -535,6 +543,89 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       }
     }
     return result;
+  }
+
+  /** Newer versions changed the site's dependencies: the next start installs them, as a first start does. Cleared once an install got through. */
+  let reinstall = false;
+  let installing = false;
+  /** The version the preview last started on (undefined: it hasn't started since the site was opened). */
+  let startedOn: string | null | undefined;
+
+  const headNow = async (): Promise<string | null> => {
+    const result = await runGit(root, ["rev-parse", "-q", "--verify", "HEAD"], { allowFailure: true, readOnly: true }).catch(() => null);
+
+    return result?.code === 0 ? result.text.trim() || null : null;
+  };
+
+  const forgetSaves = () => forgetPreviewSaves(root, model.previewSaves ?? []).catch(() => []);
+
+  /**
+   * Every start, the app's own "Restart preview" included: when the copy is
+   * on another version than the preview last started on (versions came in by
+   * any route), what the dev server saved under the old one is forgotten
+   * first. On a large site that costs the framework's first-start work again
+   * (Astro re-checks every entry), only when the version moved.
+   */
+  async function beforePreviewStart(): Promise<void> {
+    const head = await headNow();
+
+    if (startedOn !== undefined && head !== startedOn) await forgetSaves();
+    startedOn = head;
+  }
+
+  const previewRunning = () => {
+    const state = preview?.status().state;
+
+    return state === "ready" || state === "starting" || state === "installing";
+  };
+
+  /**
+   * Around bringing newer versions in — Get latest and a hosted editor's own
+   * round alike. The order is the fix, not a detail: a running dev server
+   * that sees a page and its collection's schema change together re-checks
+   * the page with the schema it still has loaded and saves the result under
+   * the new file's digest, and every later start trusts that saved copy, so a
+   * plain restart keeps showing the old entry (found with Astro's content
+   * store). So the preview stops before any file changes, what it saved is
+   * forgotten once something changed, and only then does it start again; if
+   * bringing in fails or changes nothing, it starts again as it was.
+   */
+  function aroundBringIn(): AroundBringIn {
+    let wasRunning = false;
+
+    return {
+      async before() {
+        wasRunning = previewRunning();
+        // As nobody, like the start below: the preview's status events must not carry the caller's access (or the engine's).
+        if (wasRunning && preview) await outsideAnyPerson(() => preview!.stop());
+      },
+      async after(paths) {
+        if (paths.length > 0) {
+          await forgetSaves();
+          if (paths.some((path) => DEPENDENCY_FILES.has(path))) reinstall = true;
+        }
+        // Started as nobody, and not waited for: the dev server can take a while, and its status reaches the app as events.
+        if (wasRunning && preview) void outsideAnyPerson(() => preview!.start()).catch(() => undefined);
+      },
+    };
+  }
+
+  /** The last look's outcome as the app shows it: a different one is announced, the same one isn't. */
+  let lastLook = "";
+
+  /** Tells open browsers a look found something new, or `brought` versions came in — as nobody, so no listener carries this request's access (or the engine's). */
+  function announce(status: GitStatus, brought: number): void {
+    const mark = JSON.stringify([status.ahead, status.behind, status.inTheWay?.message ?? null, status.checkProblem ?? null, status.lastCommit?.commit ?? null]);
+
+    if (brought === 0 && mark === lastLook) return;
+    lastLook = mark;
+    if (!disposed) outsideAnyPerson(() => deps.events.emit({ type: "repository.checked", siteId: deps.id, brought }));
+  }
+
+  /** Files a bring-in reported go through the pipeline now, as nobody, instead of after the coalescing window. */
+  async function settleBroughtIn(): Promise<void> {
+    outsideAnyPerson(() => flushExternal());
+    await settled();
   }
 
   const service: OpenSite = {
@@ -935,13 +1026,30 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       return workspace.gitStatus();
     },
 
+    async checkGit() {
+      await refreshAuthor();
+      const status = await workspace.check();
+
+      announce(status, 0);
+      return status;
+    },
+
     async pull() {
-      const status = await workspace.pull();
+      const result = await workspace.getLatest(aroundBringIn());
 
       // A pull reports its files as external; don't make the caller wait out the coalescing window.
-      flushExternal();
-      await settled();
-      return status;
+      await settleBroughtIn();
+      announce(result.status, 0);
+      return result.status;
+    },
+
+    async catchUp(): Promise<CatchUpResult | null> {
+      const result = await workspace.catchUp(aroundBringIn());
+
+      if (!result) return null;
+      if (result.brought > 0) await settleBroughtIn();
+      announce(result.status, result.brought);
+      return result;
     },
 
     checkpoint(label): Checkpoint {
@@ -958,7 +1066,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         settings: () => ({
           dev: model.dev,
           packageManager: model.packageManager,
-          installed: existsSync(join(root, "node_modules")),
+          installed: existsSync(join(root, "node_modules")) && !reinstall,
           urls: model.urls,
           ...(model.environment ? { environment: model.environment } : {}),
         }),
@@ -977,7 +1085,12 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         ...(deps.publicProtocol ? { publicProtocol: deps.publicProtocol } : {}),
         ...(deps.onPreviewActivity ? { onActivity: deps.onPreviewActivity } : {}),
         ...(deps.addLockfile === false ? { addLockfile: false } : {}),
+        beforeStart: beforePreviewStart,
         onStatus: (status: PreviewStatus) => {
+          // An install that got as far as starting the dev server has done what newer dependencies needed.
+          if (status.state === "installing") installing = true;
+          else if (installing && status.state === "starting") reinstall = installing = false;
+          else if (status.state !== "starting") installing = false;
           if (!disposed) deps.events.emit({ type: "preview.status", siteId: deps.id, status });
         },
       }));
