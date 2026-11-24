@@ -8,9 +8,19 @@
  *    Authorization Header: Transferring Payload in a Single Chunk" examples
  *    (GET Object, PUT Object, GET Bucket Lifecycle, GET Bucket list),
  *    credentials AKIAIOSFODNN7EXAMPLE, 2013-05-24;
- *  - the IAM guide's derived signing key example.
+ *  - a derived signing key (service "iam", 2015-08-30).
  *
- * Every expected signature is AWS's, copied from those documents.
+ * Checked on 24 November 2026:
+ *  - the five suite signatures against the suite's `.authz` files as
+ *    mirrored in botocore (github.com/boto/botocore, develop branch,
+ *    tests/unit/auth/aws4_testsuite/<name>/<name>.authz): all five match;
+ *  - the four S3 signatures against the page itself,
+ *    docs.aws.amazon.com/AmazonS3/latest/developerguide/sig-v4-header-based-auth.html
+ *    ("Examples: Signature Calculations"): all four match.
+ * The derived signing key could not be found on a current AWS page (the
+ * General Reference page it came from is gone); it is reproduced from memory
+ * and recomputed independently here. The suite cases exercise the same
+ * derivation with the same secret and date, so they cover it either way.
  */
 import { describe, expect, it } from "vitest";
 import { EMPTY_SHA256, encodeKey, sha256Hex, signRequest, signingKey } from "../../src/media-storage/sigv4";
@@ -105,7 +115,7 @@ describe("Amazon S3 API Reference examples", () => {
 });
 
 describe("signing key", () => {
-  it("matches the IAM guide's derived key", () => {
+  it("derives the key for service iam, 2015-08-30 (reproduced from memory; see the header)", () => {
     expect(signingKey("wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY", "20150830", "us-east-1", "iam").toString("hex")).toBe(
       "c4afb1cc5771d871763a393e44b703571b55cc28424d1a5e86da6ed3c154a4b9"
     );

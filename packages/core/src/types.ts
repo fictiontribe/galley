@@ -617,11 +617,12 @@ export interface ChangeSet {
   files: FileChange[];
   totals: { files: number; additions: number; deletions: number };
   /**
-   * Files put in the site's bucket since the last publish. They are public at
+   * Files put in a media store (the site's bucket or Cloudflare Images) since
+   * the last publish; each says which by its `location`. They are public at
    * their addresses already; nothing links to them until the pages that use
-   * them are published. Absent when the site keeps no media in a bucket.
+   * them are published. Absent when the site keeps media in the repository only.
    */
-  bucketUploads?: MediaItem[];
+  storeUploads?: MediaItem[];
 }
 
 export interface DiffLine {
@@ -922,10 +923,17 @@ export type HostToOverlay =
 
 // ─────────────────────────────────────────────────────────────── media
 
+/** Where a media file is kept: the site's repository, its bucket (at most one), or Cloudflare Images (pictures only). */
+export type MediaLocation = "repository" | "bucket" | "images";
+
 export interface MediaItem {
-  /** Repo-relative path. For a file in the bucket: "bucket:" and its key ("bucket:images/coat.webp"), never a repository path. */
+  /**
+   * Repo-relative path. Kept elsewhere, never a repository path: in the bucket
+   * "bucket:" and its key ("bucket:images/coat.webp"); in Cloudflare Images
+   * "images:" and its image id ("images:lowfield/coat.webp").
+   */
   path: string;
-  /** Site URL, e.g. "/images/team/ana.webp". In the bucket: its full public address. */
+  /** Site URL, e.g. "/images/team/ana.webp". In a media store: its full public address (Cloudflare Images: with the default variant). */
   url: string;
   name: string;
   size: number;
@@ -934,13 +942,13 @@ export interface MediaItem {
   width?: number;
   height?: number;
   modifiedAt: number;
-  /** In the bucket: "added" while no published version uses it yet (it is public at its address all the same), else "clean". */
+  /** In a media store: "added" while no published version uses it yet (it is public at its address all the same), else "clean". */
   status: ChangeStatus;
   /** Where it is kept. Absent: the repository. */
-  location?: "repository" | "bucket";
-  /** In the bucket: the object's key. */
+  location?: MediaLocation;
+  /** In a media store: the store's own name for it (the bucket's object key, or the Cloudflare Images image id). */
   key?: string;
-  /** In the bucket, in Proof: whether the working copy still uses it. */
+  /** In a media store, in Proof: whether the working copy still uses it. */
   used?: boolean;
 }
 

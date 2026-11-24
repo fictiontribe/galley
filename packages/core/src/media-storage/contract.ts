@@ -1,10 +1,14 @@
 /**
- * The HTTP contract for keeping a site's media in a bucket: what the app is
- * told about each connector, the site's bucket status, the check, moving
- * media and deleting from the bucket. Types only, so the web app and its
+ * The HTTP contract for keeping a site's media outside the repository — in a
+ * bucket, and pictures optionally in Cloudflare Images: what the app is told
+ * about each connector, the site's media storage status, the check, moving
+ * media and deleting from a store. Types only, so the web app and its
  * fixture backend import it freely.
  */
-import type { MediaItem, MediaStorageConfig } from "../types";
+import type { MediaItem, MediaLocation, MediaStorageConfig } from "../types";
+
+/** A place media can be kept other than the repository. */
+export type MediaStoreLocation = Exclude<MediaLocation, "repository">;
 
 /** A value the person types in the "Connect a bucket" form. */
 export type MediaStoreFieldId = "account" | "bucket" | "region" | "endpoint" | "prefix" | "publicUrl" | "accessKeyId" | "secretAccessKey";
@@ -71,16 +75,21 @@ export interface MediaCreatedRecord {
   createdAt: string;
 }
 
-export interface MediaStorageStatus {
+/** The site's bucket connection (at most one). */
+export interface MediaBucketStatus {
   connected: boolean;
   config: MediaStorageConfig | null;
   store: { id: string; name: string } | null;
   keys: { accessKeyId: MediaKeyStatus; secretAccessKey: MediaKeyStatus };
   created: MediaCreatedRecord | null;
-  /** How many files are kept where, when known. */
-  counts?: { bucket: number; repository: number };
   /** The public address is an r2.dev one: rate-limited, for trying out only. */
   trialAddress?: boolean;
+}
+
+export interface MediaStorageStatus {
+  bucket: MediaBucketStatus;
+  /** How many files are kept where, when known. */
+  counts?: Partial<Record<MediaLocation, number>>;
   /** "Make the bucket for me" on Cloudflare: possible with the site's Cloudflare key, or why not. */
   cloudflare: { keyStored: boolean };
 }
@@ -127,24 +136,40 @@ export interface MediaUsage {
   published: string[];
 }
 
-export interface MediaBucketDeleteResult {
+export interface MediaStoreDeleteResult {
+  location: MediaStoreLocation;
+  /** The store's names (object keys or image ids) that were deleted. */
   deleted: string[];
   /** Not deleted, because something uses them; where. */
   refused: Array<{ key: string; name: string; working: string[]; published: string[] }>;
 }
 
-export type MediaMoveDirection = "to-bucket" | "to-repository" | "address";
-
-export interface MediaMoveRequest {
-  direction: MediaMoveDirection;
-  /** to-bucket: keep the files in the repository too (they are not removed). */
-  keepCopies?: boolean;
-  /** address: the new public address. */
-  publicUrl?: string;
-}
+/**
+ * Moving files between where they can be kept, or changing a store's public
+ * address. `from`/`to` name places; Cloudflare Images takes pictures only, so
+ * a move to it leaves everything else where it is (the plan says what).
+ */
+export type MediaMoveRequest =
+  | {
+      kind: "move";
+      from: MediaLocation;
+      to: MediaLocation;
+      /** From the repository: keep the files there too (they are not removed). */
+      keepCopies?: boolean;
+    }
+  | {
+      kind: "address";
+      store: MediaStoreLocation;
+      /** The new public address. */
+      publicUrl: string;
+    };
 
 export interface MediaMovePlan {
-  direction: MediaMoveDirection;
+  kind: "move" | "address";
+  from?: MediaLocation;
+  to?: MediaLocation;
+  /** address: whose address changes. */
+  store?: MediaStoreLocation;
   /** Files to copy. */
   files: number;
   bytes: number;
@@ -155,6 +180,8 @@ export interface MediaMovePlan {
   done: number;
   /** Files that can't be moved and why. */
   problems: Array<{ path: string; reason: string }>;
+  /** Files the destination doesn't take (Cloudflare Images: anything but pictures within its limits), left where they are. */
+  staying?: { files: number; reason: string };
   keepCopies: boolean;
   /** address: the address it changes to. */
   publicUrl?: string;
@@ -162,6 +189,6 @@ export interface MediaMovePlan {
 
 export interface MediaLibraryAnswer {
   items: MediaItem[];
-  /** Set when the bucket couldn't be listed just now: one sentence. The items are the last ones known. */
-  bucketProblem?: string;
+  /** A store that couldn't be listed just now: one sentence each. Its items are the last ones known. */
+  storeProblems?: Partial<Record<MediaStoreLocation, string>>;
 }
