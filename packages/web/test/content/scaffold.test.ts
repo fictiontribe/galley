@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BlockType, Field } from "@galley/core/types";
+import type { BlockType, Field, JsonValue } from "@galley/core/types";
 import { blockScaffold, borrowedNote, needsValue, newSection } from "@/features/content/form/scaffold";
 
 const f = (key: string, type: Field["type"], required = true, extra: Partial<Field> = {}): Field => ({ key, label: key[0]!.toUpperCase() + key.slice(1), type, required, source: "schema", ...extra });
@@ -51,7 +51,7 @@ describe("what a new section starts with", () => {
   });
 
   it("asks this page first, nearest section first, and never its own stale sample", () => {
-    const siblings = [
+    const siblings: JsonValue[] = [
       { type: "hero", heading: "Hi" },
       { type: "film", heading: "Far", video: "far-film", poster: "/far.webp" },
       { type: "cards" },
