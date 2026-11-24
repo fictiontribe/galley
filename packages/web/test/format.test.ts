@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bytes, collectionNouns, compactNumber, count, dirName, fileName, friendlyLabel, joinWords, money, plural, relativeTime, mediaFacts } from "../src/lib/format";
+import { bytes, collectionNouns, compactNumber, count, dirName, entryName, fileName, friendlyLabel, joinWords, money, nameOf, plural, relativeTime, mediaFacts } from "../src/lib/format";
 
 const NOW = new Date(2026, 10, 23, 15, 0, 0).getTime();
 
@@ -98,5 +98,27 @@ describe("plurals", () => {
 
   it("writes sizes with proper unit symbols", () => {
     expect(bytes(10 * 1024 * 1024)).toBe("10 MB");
+  });
+});
+
+describe("nameOf: one name for a page or data file everywhere", () => {
+  const collections = [{ kind: "data" as const, path: "src/data/stockists.json", label: "Stockists" }];
+
+  it("calls the front page Home page, whatever its title", () => {
+    expect(nameOf({ path: "src/content/pages/index.md", title: "Caddow — coats and knitwear, made in runs of forty", url: "/" })).toBe("Home page");
+    expect(nameOf({ title: "Caddow — coats and knitwear", url: "/" })).toBe("Home page");
+    expect(entryName("src/content/pages/index.md", "Caddow — coats and knitwear")).toBe("Home page");
+  });
+
+  it("calls a data file by its own name, never its path", () => {
+    expect(nameOf({ path: "src/data/stockists.json", title: "src/data/stockists.json" }, collections)).toBe("Stockists");
+    expect(nameOf({ path: "src/data/stockists.json", title: "src/data/stockists.json" })).toBe("Stockists");
+    expect(nameOf({ path: "galley.config.json" })).toBe("Site settings");
+  });
+
+  it("shortens a page's title at its strapline, as Proof and the editor do", () => {
+    expect(nameOf({ path: "src/content/pages/atelier.md", title: "The atelier — where the coats are cut", url: "/atelier/" })).toBe("The atelier");
+    expect(nameOf({ path: "src/content/pages/contact.md", title: "Contact" })).toBe("Contact");
+    expect(nameOf({ url: "/journal/" })).toBe("/journal/");
   });
 });

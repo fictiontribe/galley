@@ -39,9 +39,9 @@ export function MarkdownField({ field, path, showKey }: FieldProps) {
   };
 
   return (
-    <FieldShell field={field} path={path} showKey={showKey}>
+    // The switch sits in the label row as a part of it, not pulled up over it, where "Saved" and "Put back" would land under it.
+    <FieldShell field={field} path={path} showKey={showKey} tools={<SegmentedControl label={`${field.label}: write or preview`} options={MODES} value={mode} onChange={setMode} />}>
       <div className="app-md-field">
-        <SegmentedControl label={`${field.label}: write or preview`} options={MODES} value={mode} onChange={setMode} />
         {mode === "write" ? (
           <Textarea
             ref={area}

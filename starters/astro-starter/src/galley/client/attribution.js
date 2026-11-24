@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.3.0 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.3.1 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // UTM memory for `autofill: { from: "utm", touch }`: the campaign parameters
 // of the visitor's first landing and of their latest landing, kept in this

@@ -51,6 +51,40 @@ entry says how.
 - **Get latest** no longer starts when it can already tell git would refuse:
   it says which files with unpublished changes the newer versions change.
 
+## 0.3.1 — 2026-11-24
+
+### Fixed
+
+- **First run on a hosted editor keeps the folder a site was given.** When a
+  site lives in a folder inside its repository (`apps/site`), finishing first
+  run in the browser dropped the folder and connected the whole repository.
+  The folder is kept, and the "Connect the site" step shows it and has a
+  field for it.
+- **Site settings:** the Save bar sits below the settings instead of over
+  them, so it no longer cuts through a heading such as "Publishing" at the
+  foot of the screen, at any window size.
+- **Notifications** take a space of their own at the foot of the screen,
+  above the status bar, instead of covering what is there: the "Fixed"
+  message no longer sits over the AI crawlers panel, its switches or its
+  confirm bar, nor over the status bar's links.
+- **Forms › Use this form** no longer suggests a page that already shows the
+  form (the contact form for the home page while Contact has it): it says
+  where the form is, offers the pages that don't have it yet, and offers
+  nothing to add when every page already has it.
+- **Brand:** "Open the proof" and the exports no longer reload the whole
+  app; the proof opens in place and an export downloads.
+- **The demo** suggests "Update Home page" as the publish note, as the app
+  does, and counts a moved section as one change instead of an edit to
+  every field it passed.
+- **A markdown field's** Write/Preview switch no longer lands on "Saved" or
+  "Put back": on a narrow form it moves to its own line.
+- **Pages and data files are named the same way everywhere:** the forms
+  list, Use this form, Search & AI, redirects, page suggestions in link
+  fields and search say "Home page" and "Stockists", not the home page's
+  whole title or a file path.
+- **Brand sources** give an SVG's size in plain words ("Drawn at 120 × 40")
+  instead of its viewBox.
+
 ## 0.3.0 — 2026-11-24
 
 A hosted install has accounts instead of one shared password. If you run a

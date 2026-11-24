@@ -7,10 +7,12 @@ import { Link } from "react-router-dom";
 import type { RedirectHealth, RedirectsOverview } from "@galley/core/redirects-info";
 import { Button, ProofMark, Skeleton } from "@/ui";
 import { saveList, useRedirectHealth } from "./data";
+import { useNameOf } from "@/lib/names";
 
 export function HealthCard({ siteId, overview }: { siteId: string; overview: RedirectsOverview }) {
   const health = useRedirectHealth(siteId, overview.redirects.length > 0);
   const data: RedirectHealth | undefined = health.data;
+  const name = useNameOf();
 
   if (overview.redirects.length === 0) return null;
   const fix = (index: number, to: string) => {
@@ -61,7 +63,7 @@ export function HealthCard({ siteId, overview }: { siteId: string; overview: Red
                     {item.pages.slice(0, 3).map((page, index) => (
                       <span key={page.path}>
                         {index ? ", " : ""}
-                        <Link to={`/sites/${siteId}/edit?path=${encodeURIComponent(page.path)}`}>{page.title}</Link>
+                        <Link to={`/sites/${siteId}/edit?path=${encodeURIComponent(page.path)}`}>{name(page)}</Link>
                       </span>
                     ))}
                   </li>

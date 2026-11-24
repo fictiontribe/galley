@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { Field, Input } from "@/ui";
 import { settingText } from "../logic/json";
 import { useEdits } from "../file/hooks";
+import { useNameOf } from "@/lib/names";
 
 function usePageSearch(siteId: string, text: string): SearchHit[] {
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -33,6 +34,7 @@ export function PageAddress({ siteId, path, label, hint }: { siteId: string; pat
   const edits = useEdits();
   const value = settingText(useFormValue(path));
   const hits = usePageSearch(siteId, value);
+  const name = useNameOf();
   const listId = useId();
   const pages = hits.filter((hit, index) => hits.findIndex((other) => other.url === hit.url) === index);
   const looksWrong = value && !value.startsWith("/") && !/^https?:\/\//i.test(value) && pages.length === 0;
@@ -42,7 +44,7 @@ export function PageAddress({ siteId, path, label, hint }: { siteId: string; pat
       <datalist id={listId}>
         {pages.map((hit) => (
           <option key={hit.url} value={hit.url ?? ""}>
-            {hit.title}
+            {name(hit)}
           </option>
         ))}
       </datalist>

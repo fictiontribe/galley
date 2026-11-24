@@ -93,3 +93,38 @@ export { namesThisForm, pagesUsing } from "@galley/core/forms/shared";
 export function embedSnippet(formId: string): string {
   return `---\nimport { Form } from "@galley/astro/components";\n---\n<Form id="${formId}" />`;
 }
+
+/** A page "Add to page" could put the form on. */
+export interface PageOption {
+  path: string;
+  url?: string | null;
+}
+
+/** The site's "page not found" page: a form there is never what was meant. */
+function isNotFound(page: PageOption): boolean {
+  return page.url === "/404/" || page.url === "/404" || /(^|\/)404\.[a-z0-9]+$/i.test(page.path);
+}
+
+/**
+ * The pages to offer a form to, best first: never one that already shows it
+ * (the forms list's "Used on"), nor the "page not found" page. The home page
+ * goes last: it is the site's front door, not where a form usually belongs,
+ * and its title (the site's name) would otherwise often sort it first.
+ * Otherwise the list's own order. Empty when every page already has it.
+ */
+export function pagesToOffer<T extends PageOption>(pages: readonly T[], usedOn: readonly { path: string }[]): T[] {
+  const used = new Set(usedOn.map((page) => page.path));
+  const offered = pages.filter((page) => !used.has(page.path) && !isNotFound(page));
+  const home = (page: T) => (page.url === "/" ? 1 : 0);
+
+  return offered.map((page, index) => ({ page, index })).sort((a, b) => home(a.page) - home(b.page) || a.index - b.index).map(({ page }) => page);
+}
+
+/** "It’s on Contact." — where a form already shows, named as the rest of the app names pages. */
+export function usedOnWords(names: readonly string[]): string {
+  if (names.length === 0) return "";
+  const shown = names.length > 3 ? [...names.slice(0, 2), `${names.length - 2} more pages`] : [...names];
+  const list = shown.length === 1 ? shown[0]! : `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
+
+  return `It’s on ${list}.`;
+}

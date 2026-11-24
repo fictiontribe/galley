@@ -13,6 +13,9 @@
 .app-field-control { min-inline-size: 0; display: grid; }
 .app-required { margin-inline-start: 2px; color: var(--ink-tertiary); font-weight: var(--weight-regular); }
 .app-field-aside { display: inline-flex; align-items: center; gap: var(--space-1); }
+/* A label row with a control in it (markdown's Write/Preview) wraps rather than overlaps: on a narrow pane the switch takes the next line, at the right. */
+.g-field__head.app-field-head--tools { flex-wrap: wrap; align-items: center; row-gap: var(--space-1); }
+.app-field-tools { display: inline-flex; margin-inline-start: auto; }
 .app-save-note { font-size: var(--text-2xs); color: var(--ink-tertiary); white-space: nowrap; }
 .app-save-note--saved { animation: app-fade-out 2.4s var(--ease-standard) both; }
 @keyframes app-fade-out { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
@@ -73,7 +76,6 @@
 
 /* Markdown field */
 .app-md-field { display: grid; gap: var(--space-1-5); }
-.app-md-field > .g-segmented { justify-self: end; margin-block-start: -30px; }
 .app-md-field__input { font-family: var(--font-mono); font-size: var(--text-sm); }
 .app-md-preview { font: var(--weight-regular) var(--text-lg) / var(--leading-body) var(--font-display); color: var(--ink-primary); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-sunken); overflow-wrap: anywhere; }
 .app-md-preview > :first-child { margin-block-start: 0; }

@@ -8,10 +8,11 @@
     "sh scripts/capture/start.sh hosting — the stand-in Fly.io and Cloudflare for \"Host the editor online\" (scripts/rehearse-hosting.mjs on 4793/4794, a fake install on 4796); writes the variables the app needs to hosting.env.",
     "ANTHROPIC_API_KEY=… sh scripts/capture/start.sh galley — the released Galley on 4790, open on Caddow, pointed at the stand-ins; the key comes from the shell of whoever runs it and goes to that process only.",
     "HOSTED_PASSWORD=… sh scripts/capture/start.sh hosted — a hosted install (galley serve, no site) at http://cms.localhost:4797, for its sign-in and first run.",
+    "Accounts (the people step): a second hosted install with Caddow and nobody signed up — scripts/capture/README.md, “Accounts”: sh scripts/capture/start.sh people, then PEOPLE_SETUP=<its one-time Setup: link>.",
     "Open Lowfield too (POST /api/sites/open), read both ids (GET /api/sites); the token is in the Open: line of the Galley log."
   ],
   "command": "GALLEY_ORIGIN=http://127.0.0.1:4790 GALLEY_TOKEN=<token> GALLEY_SITE=<Caddow id> SITE_DIR=<capture dir>/home/sites/caddow WP_SITE=<Lowfield id> WP_URL=http://127.0.0.1:4792 CF_KEY=<stand-in key> HOSTED_URL=http://cms.localhost:4797 HOSTED_PASSWORD=<the throwaway password> PLAYWRIGHT_MODULES=<node_modules with playwright-core> node scripts/capture-screens.mjs   (no step names = the whole session in order, about an hour)",
-  "captured": "2026-11-24, Galley 0.2.0 (the published package), the whole set in one session following scripts/capture/README.md. Assistant spend: $0.48 as the app reports it (the brand read, two edits, the Publish window's note).",
+  "captured": "2026-11-24, Galley 0.2.0 (the published package), the whole set in one session following scripts/capture/README.md. Assistant spend: $0.48 as the app reports it (the brand read, two edits, the Publish window's note). people, invite, contributor-home, dark-editor and dark-proof: 2026-11-24 from galley-cms 0.3.0 (the dark step's assistant request cost $0.15).",
   "screens": [
     {
       "file": "public/screens/site-home.webp",
@@ -181,6 +182,31 @@
       "file": "public/screens/hosted-first-run.webp",
       "step": "hosted",
       "shows": "A hosted install's first run, step 2 Site: Connect the site — a repository that already holds the site or a starter, the repository address, and the editor's own key (a public key made by that throwaway install) or an access token. No site is connected."
+    },
+    {
+      "file": "public/screens/people.webp",
+      "step": "people",
+      "shows": "Galley 0.3.0, a hosted editor's Install page at People, signed in as the owner (Tobiah Rusk): Tobiah Rusk (Owner, You), Ines Marrow (Editor) and Corin Vale (Contributor) with when each last signed in, and the Invite someone form (e-mail, Owner / Editor / Contributor, Invite)."
+    },
+    {
+      "file": "public/screens/invite.webp",
+      "step": "people",
+      "shows": "Galley 0.3.0: the window for a new invitation (hesper@caddow.example, contributor) with its one-time /join link, Copy link, and that it works once and stops working in 7 days. The install it belongs to was deleted after the capture."
+    },
+    {
+      "file": "public/screens/contributor-home.webp",
+      "step": "people",
+      "shows": "Galley 0.3.0: Site home as the contributor (Corin Vale) sees it: no Publish button, “An editor or owner publishes.” in the top bar, and “nothing changes until an editor or owner publishes”."
+    },
+    {
+      "file": "public/screens/dark-editor.webp",
+      "step": "dark",
+      "shows": "Galley 0.3.0 in the dark theme: the editor on Caddow's home page — the form, the page and the assistant's reply — with the theme switch at the foot of the sidebar."
+    },
+    {
+      "file": "public/screens/dark-proof.webp",
+      "step": "dark",
+      "shows": "Galley 0.3.0 in the dark theme: Proof › What changed for the home page, the old words struck through and the new ones marked."
     },
     {
       "file": "public/screens/wordpress-where.webp, wordpress-plan.webp, wordpress-progress.webp, wordpress-report.webp",

@@ -7,10 +7,11 @@
  * (the same sheet; any edit becomes a proposal again).
  */
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import type { ApplyPlan, BrandFinding, BrandProposal, BrandQuestion, DriftReport, SiteBrandFile, SiteBrandState } from "@galley/core/sitebrand/types";
 import { useTopBar } from "@/app/chrome";
-import { api, isApiFailure } from "@/lib/api";
+import { api, buildUrl, isApiFailure } from "@/lib/api";
+import { download } from "@/lib/download";
 import { notify } from "@/lib/stores/toasts";
 import { useSite } from "@/lib/stores/site";
 import { Badge, Button, Dialog, EmptyState, ErrorState, Icon, Input, Menu, Skeleton, Spinner, buttonClass } from "@/ui";
@@ -167,6 +168,7 @@ function Ask({ siteId, onDone }: { siteId: string; onDone: (proposal: BrandPropo
 }
 
 function ApplyDialog({ siteId, open, onClose }: { siteId: string; open: boolean; onClose: () => void }) {
+  const navigate = useNavigate();
   const [plan, setPlan] = useState<ApplyPlan | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -205,7 +207,7 @@ function ApplyDialog({ siteId, open, onClose }: { siteId: string; open: boolean;
               try {
                 const result = await api("POST /api/sites/:siteId/brand/apply", { params: { siteId } });
 
-                notify({ tone: "success", title: "Applied", body: `${count(result.plan.edits.length, "change")} to ${result.plan.file} ${result.plan.edits.length === 1 ? "is" : "are"} waiting in Proof.`, action: { label: "Open the proof", onClick: () => window.location.assign(`/sites/${siteId}/proof`) } });
+                notify({ tone: "success", title: "Applied", body: `${count(result.plan.edits.length, "change")} to ${result.plan.file} ${result.plan.edits.length === 1 ? "is" : "are"} waiting in Proof.`, action: { label: "Open the proof", onClick: () => navigate(`/sites/${siteId}/proof`) } });
                 close();
               } catch (caught) {
                 setError(caught);
@@ -291,6 +293,7 @@ function DriftDialog({ report, onClose }: { report: DriftReport | null; onClose:
 
 export function BrandScreen() {
   const { siteId = "" } = useParams();
+  const navigate = useNavigate();
   const siteName = useSite((s) => s.detail?.name);
   const query = useBrandState(siteId);
   const { measure, stop, progress, starting } = useMeasure(siteId);
@@ -416,8 +419,8 @@ export function BrandScreen() {
           <Menu
             label="Export"
             items={[
-              { id: "bundle", label: "Brand file (for another site)", icon: "download", onSelect: () => window.location.assign(`/api/sites/${encodeURIComponent(siteId)}/brand/export?format=brand`) },
-              { id: "tokens", label: "Design tokens (W3C format)", icon: "download", onSelect: () => window.location.assign(`/api/sites/${encodeURIComponent(siteId)}/brand/export?format=tokens`) },
+              { id: "bundle", label: "Brand file (for another site)", icon: "download", onSelect: () => download(buildUrl("GET /api/sites/:siteId/brand/export", { siteId }, { format: "brand" })) },
+              { id: "tokens", label: "Design tokens (W3C format)", icon: "download", onSelect: () => download(buildUrl("GET /api/sites/:siteId/brand/export", { siteId }, { format: "tokens" })) },
               { kind: "separator", id: "s" },
               { id: "import", label: "Import a brand…", icon: "upload", onSelect: () => importer.current?.click() },
             ]}
@@ -496,7 +499,7 @@ export function BrandScreen() {
                       const result = await api("POST /api/sites/:siteId/brand/save", { params: { siteId } });
 
                       setLocal(null);
-                      notify({ tone: "success", title: "Brand saved", body: `${count(result.paths.length, "file")} ${result.paths.length === 1 ? "is" : "are"} waiting in Proof. Publish to keep ${result.paths.length === 1 ? "it" : "them"}.`, action: { label: "Open the proof", onClick: () => window.location.assign(`/sites/${siteId}/proof`) } });
+                      notify({ tone: "success", title: "Brand saved", body: `${count(result.paths.length, "file")} ${result.paths.length === 1 ? "is" : "are"} waiting in Proof. Publish to keep ${result.paths.length === 1 ? "it" : "them"}.`, action: { label: "Open the proof", onClick: () => navigate(`/sites/${siteId}/proof`) } });
                       refresh();
                     } catch (caught) {
                       notify({ tone: "danger", title: "Couldn't save the brand", body: isApiFailure(caught) ? caught.shape.message : "Try again." });

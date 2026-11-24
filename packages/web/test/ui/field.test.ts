@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -30,5 +31,25 @@ describe("Field ids", () => {
     expect(html).toContain("<legend");
     expect(new Set(found).size).toBe(found.length);
     expect((html.match(/<input/g) ?? []).length).toBe(2);
+  });
+});
+
+describe("Field label row with a control in it", () => {
+  const CSS = readFileSync(new URL("../../src/styles/content.css", import.meta.url), "utf8");
+
+  it("puts the control in the label row after the save state, as its own item, never laid over it", () => {
+    const html = renderToStaticMarkup(
+      h(Field, { label: "Heading", edited: "Edited", aside: h("span", { className: "app-save-note" }, "Saved"), tools: h("span", { className: "g-segmented" }, "Write Preview"), children: h(Input, { value: "", onChange: noop }) }),
+    );
+    const head = /<div class="g-field__head([^"]*)">([\s\S]*?)<\/div>/.exec(html);
+
+    expect(head?.[1]).toContain("app-field-head--tools");
+    expect(head?.[2]).toMatch(/Saved<\/span><\/span><span class="app-field-tools"><span class="g-segmented">/);
+  });
+
+  it("wraps that row on a narrow pane instead of pulling the switch up over it", () => {
+    expect(CSS).toMatch(/\.g-field__head\.app-field-head--tools \{ flex-wrap: wrap;/);
+    expect(CSS).not.toMatch(/\.app-md-field > \.g-segmented/);
+    expect(CSS).not.toMatch(/margin-block-start: -30px/);
   });
 });

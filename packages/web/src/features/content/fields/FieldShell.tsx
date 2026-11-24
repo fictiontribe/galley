@@ -17,6 +17,8 @@ export interface FieldShellProps {
   /** Extra note under the control (e.g. "This isn’t a number yet."). */
   note?: ReactNode;
   className?: string;
+  /** A control for the label row, beside the save state rather than over it (see Field's `tools`). */
+  tools?: ReactNode;
 }
 
 /** A required marker people can see and screen readers say. */
@@ -45,7 +47,7 @@ function SaveNote({ path }: { path: FieldPath }) {
  * Label, edited mark, save state, errors and hints around one control. The
  * engine's refusal wins over validation errors; warnings sit with the hint.
  */
-export function FieldShell({ field, path, children, showKey, group, id, note, className }: FieldShellProps) {
+export function FieldShell({ field, path, children, showKey, group, id, note, className, tools }: FieldShellProps) {
   const refusal = useRefusal(path);
   const issues = useIssues(path);
   const edits = useEditCount(path);
@@ -88,6 +90,7 @@ export function FieldShell({ field, path, children, showKey, group, id, note, cl
           {edits > 0 ? <PutBack path={path} label={field.label} /> : null}
         </>
       }
+      tools={tools}
     >
       <div className="app-field-control" data-path={pathKey(path)}>
         {children}

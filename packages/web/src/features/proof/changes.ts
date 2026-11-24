@@ -3,10 +3,10 @@
  * them, values described in words, and the questions a discard asks.
  */
 import type { Collection, Field, FieldChange, FileChange, JsonValue } from "@galley/core/types";
-import { entryName, plainFieldLabel } from "@/features/preview/clickToEdit";
+import { plainFieldLabel } from "@/features/preview/clickToEdit";
 import { PRODUCT } from "@galley/core/brand";
 import { scriptName } from "@/features/scripts/logic/entries";
-import { SITE_SETTINGS_LABEL, count, fileName, friendlyLabel } from "@/lib/format";
+import { SITE_SETTINGS_LABEL, count, entryName, fileName, friendlyLabel } from "@/lib/format";
 
 export type ChangeGroupId = "content" | "media" | "code";
 

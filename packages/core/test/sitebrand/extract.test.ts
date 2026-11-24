@@ -2,7 +2,7 @@ import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { decodePng, downscale, encodePng, paletteOf, type RasterImage } from "../../src/sitebrand/png";
 import { readPdf } from "../../src/sitebrand/pdf";
-import { factsOf, preparePicture, sniff } from "../../src/sitebrand/sources";
+import { factsOf, preparePicture, sniff, svgSizeWords } from "../../src/sitebrand/sources";
 import { inertSvg, readSvg } from "../../src/sitebrand/svg";
 
 /** A picture of flat colour bands: [hex, share] — 70 % paper, 20 % ink, 10 % accent. */
@@ -134,6 +134,21 @@ describe("PDFs without reading their words", () => {
 
     expect(facts.pages).toBe(1);
     expect(facts.learned.join(" ")).toMatch(/1 page\. Fonts inside it: Figtree, IBM Plex Mono, Newsreader\. Colours that fill most of its pages: #F6F1E7/);
+  });
+});
+
+describe("an SVG source in plain words", () => {
+  it("says its size as 120 × 40, never its viewBox", () => {
+    const facts = factsOf("svg", Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40"><rect width="120" height="40" fill="#241C14"/></svg>'));
+
+    expect(facts.learned[0]).toBe("Drawn at 120 × 40 in #241C14.");
+    expect(facts.learned.join(" ")).not.toMatch(/0 0 120 40|canvas/);
+  });
+
+  it("goes by the drawing's own width and height, and says nothing of a size it doesn't give", () => {
+    expect(svgSizeWords({ width: 240, height: 80.25 })).toBe("240 × 80.3");
+    expect(svgSizeWords({})).toBeNull();
+    expect(factsOf("svg", Buffer.from("<svg><path d='M0 0' fill='#C53500'/></svg>")).learned[0]).toBe("A drawing in #C53500.");
   });
 });
 

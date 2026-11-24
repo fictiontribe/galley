@@ -4,7 +4,7 @@
  * goes to the file and place the resolver named.
  */
 import type { EditOp, Field, FieldPath, JsonValue, ResolveResult, SourceMatch } from "@galley/core/types";
-import { fileName, friendlyLabel } from "@/lib/format";
+import { entryName, fileName, friendlyLabel } from "@/lib/format";
 
 export type EditAction =
   /** Retype it on the page: the stored value is exactly the visible text. */
@@ -64,14 +64,6 @@ export function placedFieldLabel(label: string): string {
   // The outermost list is the page's sections; anything deeper is an item within one ("Item 2").
   let depth = 0;
   return label.replace(/(^|› )[^›]*? › (\d+) \(([^)]+)\)/g, (_all, lead: string, at: string, type: string) => (depth++ === 0 ? `${lead}${type} (section ${at})` : `${lead}${type} ${at}`));
-}
-
-/** What a person calls the entry: "Home page" for a site's front page, else its title, shortened at a dash. */
-export function entryName(path: string, title: string | undefined): string {
-  if (/(^|\/)index\.[a-z0-9]+$/i.test(path) && /\/pages\/index\.|^src\/content\/index\.|^content\/_?index\./i.test(path)) return "Home page";
-  if (!title) return friendlyLabel(path);
-  const short = title.split(/ [—–|·] /)[0] ?? title;
-  return short.length >= 3 ? short : title;
 }
 
 /** "Home page › Hero › Heading", "Site settings › Tagline", "About › Body text". */

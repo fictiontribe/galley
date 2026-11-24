@@ -40,7 +40,8 @@ import type {
   SiteSummary,
   SourceMatch,
 } from "@galley/core/types";
-import { hunks, tally } from "./diff.ts";
+import { commitName } from "./describe.ts";
+import { hunks, planList, tally } from "./diff.ts";
 import { humanize, inferFields } from "./infer.ts";
 
 export type CollectionDef = Omit<Collection, "fields" | "count" | "source"> & { source?: Collection["source"] };
@@ -610,7 +611,8 @@ export class MockSite {
   }
 
   private changesFor(paths: string[], pending: string[]): string[] {
-    return paths.filter((p) => pending.includes(p)).map((p) => this.collectionOf(p) ? (this.summary(p).title) : p.split("/").pop() ?? p);
+    // As the engine names a page in a commit: "Home page", not the home page's title.
+    return paths.filter((p) => pending.includes(p)).map((p) => (this.collectionOf(p) ? commitName(this.summary(p)) : (p.split("/").pop() ?? p)));
   }
 
   revert(commit: string, author: { name: string; email: string }): PublishResult {
@@ -818,8 +820,26 @@ function fieldChanges(before: { [key: string]: JsonValue }, after: { [key: strin
       for (const key of keys) walk((a as Record<string, JsonValue>)[key], (b as Record<string, JsonValue>)[key], [...path, key]);
       return;
     }
-    if (Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.some((item) => typeof item === "object")) {
-      a.forEach((item, index) => walk(item, b[index], [...path, index]));
+    if (Array.isArray(a) && Array.isArray(b) && [...a, ...b].some((item) => isObj(item))) {
+      // Item by item, as the engine does: a moved section is one "moved" row, not an edit to every field it passed.
+      const plan = planList(a, b);
+      const rows: Array<{ at: number; rows: FieldChange[] }> = [];
+      for (const pair of plan.pairs) {
+        if (pair.exact && !pair.moved) continue;
+        const itemPath = [...path, pair.to];
+        const sub: FieldChange[] = [];
+        if (pair.moved) sub.push({ field: itemPath, label: labelFor(itemPath, after, collection), kind: "moved", from: pair.from, to: pair.to });
+        if (!pair.exact) {
+          // Its own field changes, at its place now.
+          const mark = out.length;
+          walk(a[pair.from], b[pair.to], itemPath);
+          sub.push(...out.splice(mark));
+        }
+        rows.push({ at: pair.to, rows: sub });
+      }
+      for (const to of plan.added) rows.push({ at: to, rows: [{ field: [...path, to], label: labelFor([...path, to], after, collection), kind: "added", after: b[to] }] });
+      for (const from of plan.removed) rows.push({ at: from - 0.5, rows: [{ field: [...path, from], label: labelFor([...path, from], before, collection), kind: "removed", before: a[from] }] });
+      for (const group of rows.sort((x, y) => x.at - y.at)) out.push(...group.rows);
       return;
     }
     const label = labelFor(path, b === undefined ? before : after, collection);
@@ -833,6 +853,21 @@ function summarize(change: FileChange, collection: Collection | null): string {
   if (change.status === "added") return change.kind === "media" ? "New image" : collection ? `New ${collection.singular}` : "New file";
   if (change.status === "deleted") return change.kind === "media" ? "Image removed" : collection ? `${humanize(collection.singular)} deleted` : "File deleted";
   const fields = change.fieldChanges ?? [];
+  // Whole sections moved, added or removed are named; the rest are counted (as the engine's summary does).
+  const items = fields.filter((field) => field.kind !== "changed" && typeof field.field[field.field.length - 1] === "number");
+  if (items.length) {
+    const phrases: string[] = [];
+    for (const [kind, verb] of [["moved", "moved"], ["added", "added"], ["removed", "removed"]] as const) {
+      const rows = items.filter((item) => item.kind === kind);
+      if (rows.length === 1) phrases.push(`${verb} ${kind === "added" ? "a" : "the"} ${rows[0]!.label.split(" › ").pop()!.toLowerCase()}`);
+      else if (rows.length > 1) phrases.push(`${verb} ${rows.length} sections`);
+    }
+    const others = fields.length - items.length;
+    if (others > 0) phrases.push(`changed ${others} other ${others === 1 ? "field" : "fields"}`);
+    if (change.bodyChanged) phrases.push("edited the text");
+    const sentence = phrases.length > 1 ? `${phrases.slice(0, -1).join(", ")} and ${phrases[phrases.length - 1]}` : phrases[0]!;
+    return sentence.charAt(0).toUpperCase() + sentence.slice(1);
+  }
   const first = fields[0]?.label.split(" › ").pop()?.toLowerCase();
   if (first) {
     const rest = fields.length - 1 + (change.bodyChanged ? 1 : 0);

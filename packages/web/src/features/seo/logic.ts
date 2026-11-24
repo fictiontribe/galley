@@ -5,7 +5,8 @@
  * results", "AI assistants", "description shown in results".
  */
 import type { Finding, FindingKind, FindingSeverity, WriteKind } from "@galley/core/seo/types";
-import { plural } from "@/lib/format";
+import type { Collection } from "@galley/core/types";
+import { nameOf, plural } from "@/lib/format";
 
 /** A Badge tone (kept local so this file stays free of UI imports, for tests run without JSX). */
 type SeverityTone = "danger" | "warning" | "info";
@@ -64,10 +65,10 @@ export function count(n: number, one: string, many = plural(one)): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** The page a finding is about, as a person names it. */
-export function pageName(finding: Finding): string | null {
+/** The page a finding is about, as the rest of the app names it ("Home page", "Stockists"): never a file path. */
+export function pageName(finding: Finding, collections: readonly Pick<Collection, "kind" | "path" | "label">[] = []): string | null {
   if (finding.scope === "site" && !finding.url) return null;
-  return finding.pageTitle ?? finding.url ?? finding.path ?? null;
+  return nameOf({ path: finding.path ?? null, title: finding.pageTitle ?? null, url: finding.url ?? null }, collections) || null;
 }
 
 export function editorLink(siteId: string, path: string): string {

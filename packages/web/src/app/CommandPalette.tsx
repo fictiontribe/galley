@@ -22,6 +22,7 @@ import { goToSite, inDesktop, openInNewWindow } from "@/features/sites/actions";
 import { attentionChips, rankSites } from "@/features/sites/logic";
 import { useSiteShortcuts } from "@/features/sites/session";
 import { useGroups } from "@/features/sites/store";
+import { useNameOf } from "@/lib/names";
 
 interface Command {
   id: string;
@@ -90,6 +91,7 @@ export function CommandPalette() {
   const setPublishOpen = useChrome((s) => s.setPublishOpen);
   const navigate = useNavigate();
   const siteId = useSite((s) => s.siteId);
+  const name = useNameOf();
   const detail = useSite((s) => s.detail);
   const sites = useSites((s) => s.sites) ?? [];
   const groups = useGroups((s) => s.groups);
@@ -217,13 +219,13 @@ export function CommandPalette() {
     const content: Command[] = firstPerPage.map((hit, index) => ({
       id: `h-${index}-${hit.path}`,
       group: "Content",
-      label: hit.title,
+      label: name(hit),
       hint: hit.location.kind === "field" ? hit.location.label : hit.excerpt,
       icon: "page",
       run: () => navigate(`/sites/${siteId}/edit?path=${encodeURIComponent(hit.path)}`),
     }));
     return [...filtered, ...content];
-  }, [commands, hits, query, navigate, siteId, sites, groups, hosted]);
+  }, [commands, hits, query, navigate, siteId, sites, groups, hosted, name]);
 
   useEffect(() => {
     setActive((index) => Math.min(index, Math.max(0, visible.length - 1)));

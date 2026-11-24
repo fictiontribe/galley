@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import type { Finding } from "@galley/core/seo/types";
+import { useNameOf } from "@/lib/names";
+import { useSite } from "@/lib/stores/site";
 import { Badge, Button, buttonClass, Icon } from "@/ui";
 import { editorLink, kindLabel, pageName, SEVERITY, WRITE_LABEL } from "./logic";
 import { ResultPreview } from "./ResultPreview";
@@ -24,6 +26,7 @@ const TITLE_CODES = new Set(["title-long", "title-brand-repeated", "title-short"
 function Evidence({ finding, address, description }: { finding: Finding; address?: string; description?: string }) {
   const { evidence } = finding;
   const measure = evidence.measure;
+  const name = useNameOf();
 
   return (
     <div className="seo-evidence">
@@ -56,7 +59,7 @@ function Evidence({ finding, address, description }: { finding: Finding; address
           {evidence.pages.map((page, index) => (
             <span key={`${page.path ?? page.url}-${index}`}>
               {index > 0 ? ", " : ""}
-              {page.title ?? page.url ?? page.path}
+              {name(page)}
             </span>
           ))}
         </p>
@@ -68,7 +71,8 @@ function Evidence({ finding, address, description }: { finding: Finding; address
 /** One finding: what, where, why it matters and how sure that is, the evidence, and what can be done. */
 export function FindingRow({ finding, siteId, connected, fixing, onFix, onWrite, onPage, address, description }: FindingRowProps) {
   const severity = SEVERITY[finding.severity];
-  const page = onPage ? null : pageName(finding);
+  const collections = useSite((s) => s.detail?.model.collections);
+  const page = onPage ? null : pageName(finding, collections);
 
   return (
     <li className="seo-finding" data-severity={finding.severity}>

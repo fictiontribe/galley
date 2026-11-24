@@ -24,6 +24,9 @@ what is built; when something here ships, it moves to the
   each publishing under their own name); Google Cloud as a place to host the
   editor; the desktop app signed and notarised for Mac, and starting on
   Windows and Linux; a one-click switch between light and dark.
+- **0.3.1**: fixes. First run on a hosted editor keeps a site's folder; the
+  Save bar, notifications and "Use this form" behave; pages are named the
+  same way everywhere.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [twelve how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.
