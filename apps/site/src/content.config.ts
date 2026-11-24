@@ -45,6 +45,8 @@ const heroSection = z.object({
   type: z.literal("hero"),
   ...common,
   layout: z.enum(["showcase", "split", "text"]).default("split"),
+  /** showcase: centre the words over the picture. */
+  align: z.enum(["start", "center"]).optional(),
   notice: link.optional(),
   eyebrow: z.string().optional(),
   heading: z.string(),
@@ -79,8 +81,11 @@ const filmSection = z.object({
   title: z.string(),
   captions: z.string(),
   transcript: link.optional(),
-  /** Points in the film to jump to, in seconds. */
-  chapters: z.array(z.object({ label: z.string(), time: z.number() })).default([]),
+  /** wide: the film across the page, its chapters as numbered steps under it · side: the words beside it. */
+  layout: z.enum(["side", "wide"]).default("side"),
+  /** Points in the film to jump to, in seconds; `text` is one line under the chapter (wide). */
+  chapters: z.array(z.object({ label: z.string(), time: z.number(), text: z.string().optional() })).default([]),
+  link: link.optional(),
   chaptersLabel: z.string().optional(),
 });
 
@@ -133,7 +138,7 @@ const bandSection = z.object({
 const startersSection = z.object({
   type: z.literal("starters"),
   ...common,
-  layout: z.enum(["feature", "gallery"]).default("feature"),
+  layout: z.enum(["feature", "gallery", "row"]).default("feature"),
   heading: z.string(),
   text: z.string(),
   link: link.optional(),
@@ -195,6 +200,8 @@ const statusSection = z.object({
   lines: z.boolean().default(true),
   /** With lines off: the items whose line is shown anyway. */
   linesFor: z.array(z.string()).default([]),
+  /** One row per status: its badge, then its items' labels in a line (the home page). */
+  compact: z.boolean().optional(),
   link: link.optional(),
 });
 

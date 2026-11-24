@@ -55,7 +55,7 @@ sections:
         layout: wide
         whenPictured: true
         heading: Light or dark
-        text: The whole app comes in light and dark, and follows your computer’s setting.
+        text: The whole app comes in light and dark. One click at the foot of the sidebar switches it.
         visual:
           src: dark-editor
           alt: ""

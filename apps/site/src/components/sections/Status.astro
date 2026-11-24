@@ -19,6 +19,23 @@ const inGroup = (g: StatusId) => chosen.filter((i) => (i.status === "preview" ? 
     <H class:list={[first ? "h1" : "h2"]} id={hid} set:html={inline(s.heading)} />
     {s.text && <p class="lead">{fill(s.text)}</p>}
   </div>
+  {s.compact ? (
+    <dl class="spec-rows">
+      {groups.filter((g) => inGroup(g).length > 0).map((g) => (
+        <div class="spec-row">
+          <dt><span class:list={["badge", `badge--${g}`]}>{statusLabels[g]}</span></dt>
+          <dd>
+            {inGroup(g).map((i, n) => (
+              <>
+                {n > 0 && <span class="spec-row__sep" aria-hidden="true"> · </span>}
+                <span class="spec-row__item">{i.label}{i.status === "preview" && <span class="badge badge--preview">{statusLabels.preview}</span>}</span>
+              </>
+            ))}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  ) : (
   <div class:list={["spec", !s.lines && "spec--labels", s.only && "spec--even"]}>
     {
       // A group with nothing in it (everything it listed has since been built) isn't shown.
@@ -38,5 +55,6 @@ const inGroup = (g: StatusId) => chosen.filter((i) => (i.status === "preview" ? 
       ))
     }
   </div>
+  )}
   {s.link && <p class="spec__more"><a class="link" href={fill(s.link.href)}>{s.link.label}</a></p>}
 </section>

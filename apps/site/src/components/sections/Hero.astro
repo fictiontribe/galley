@@ -18,12 +18,13 @@ const hid = `${s.id ?? "hero"}-h`;
 const note = published && s.notePublished !== undefined ? s.notePublished : s.note;
 const isRec = s.visual?.kind === "recording";
 // `demo`: the label of a second action to the in-browser demo, shown only while site.json → demo is available.
-const secondary = s.secondary ?? (s.demo && demo.on ? { label: s.demo, href: demo.href, note: site.ui.demoSmall } : undefined);
+// It takes the place of the quieter link (`secondary`) when both are set.
+const secondary = s.demo && demo.on ? { label: s.demo, href: demo.href, note: site.ui.demoSmall } : s.secondary;
 // Short sentences in a heading ("Prompt it. Proof it. Publish it.") wrap whole, never mid-sentence.
 const heading = inline(s.heading).split(/(?<=[.?])\s+(?=[A-Z])/).map((part) => `<span class="nowrap-s">${part}</span>`).join(" ");
 ---
 
-<section class:list={["hero wrap", `hero--${s.layout}`]} id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+<section class:list={["hero wrap", `hero--${s.layout}`, s.align === "center" && "hero--centered"]} id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
   {s.notice && <a class="notice" href={fill(s.notice.href)}><span>{fill(s.notice.label)}</span></a>}
   {
     s.layout === "showcase" ? (

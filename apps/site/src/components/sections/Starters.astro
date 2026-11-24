@@ -6,6 +6,7 @@
 // inside crop marks).
 //   feature — the first starter tall beside the others, then the page builder line
 //   gallery — two columns, the starters' own page
+//   row     — three across, picture and looks, name and one line; no commands (the home page)
 //
 // Pictures, in order: the item's `tall` captures (public/sites/<tall>-<look>.webp),
 // else the site's capture of the starter (public/sites/<short>-<look>.webp, the top
@@ -45,7 +46,7 @@ const items = s.items.map((item: { starter?: string; tall?: string; status?: str
 const shown = items.filter((item: any) => item.looks.length);
 const others = items.filter((item: any) => !item.looks.length);
 const sizes = (tall: boolean) =>
-  s.layout === "gallery" ? "(max-width: 639px) calc(100vw - 80px), (max-width: 1440px) 42vw, 548px" : tall ? "(max-width: 639px) calc(100vw - 80px), (max-width: 1023px) 86vw, 440px" : "(max-width: 639px) calc(100vw - 80px), (max-width: 1023px) 40vw, 650px";
+  s.layout === "row" ? "(max-width: 639px) calc(100vw - 80px), (max-width: 1023px) 44vw, 400px" : s.layout === "gallery" ? "(max-width: 639px) calc(100vw - 80px), (max-width: 1440px) 42vw, 548px" : tall ? "(max-width: 639px) calc(100vw - 80px), (max-width: 1023px) 86vw, 440px" : "(max-width: 639px) calc(100vw - 80px), (max-width: 1023px) 40vw, 650px";
 ---
 
 <section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
@@ -84,7 +85,7 @@ const sizes = (tall: boolean) =>
               {item.badge && <span class:list={["badge", `badge--${item.badge.status}`]}>{item.badge.label}</span>}
             </p>
             <p class="starter__meta">{fill(item.text)}</p>
-            {item.run && (
+            {item.run && s.layout !== "row" && (
               <div class="starter__run">
                 <Command lines={[item.run.command]} label={`${item.run.note}: ${item.name}`} />
                 <p class="starter__foot">
@@ -98,7 +99,7 @@ const sizes = (tall: boolean) =>
       ))
     }
     {
-      others.length > 0 && s.layout !== "gallery" && (
+      others.length > 0 && s.layout === "feature" && (
         <div class="starters__aside">
           {others.map((item: any) => (
             <article class="starter starter--soon">

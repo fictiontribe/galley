@@ -97,7 +97,7 @@ caption was written against the matching guide in `docs/editing/`.
 | One editor per site, on your own server: the same app on a server, for one site, with an account for each person who edits it, everything in one folder; runs with Docker; Fiction Tribe hosts nothing (badge: New, in final checks) | /tour/ “One editor per site, on your own server” (changed 2026-11-24: “behind its own password” became “with an account for each person”; the old sign-in picture, which showed the shared password, is no longer used) | `status.json` → `hosted-install` (new), `hosted-accounts` (new); `CHANGELOG.md` › Unreleased; `docs/running/hosted.md` “People and roles”; captures `hosted-first-run` |
 | People and roles: owners invite with a one-time link, as owner, editor or contributor; contributors change content and see Proof; editors and owners publish; each publish carries its author’s name (badge from `hosted-accounts`) | /tour/ “People and roles” — **renders only once `public/screens/people.webp` exists and its alt is written in tour.md** (inset `invite.webp` likewise) | `CHANGELOG.md` › Unreleased › Added; `docs/running/hosted.md` “People and roles”, “Invitations and one-time links” |
 | Host the editor online includes Google Cloud | /tour/ “The editor, online” caption (status stays `editor-online`, In progress) | `CHANGELOG.md` › Unreleased (“Run only against a stand-in for Google’s APIs so far”); `docs/editing/editor-online.md` |
-| “The whole app comes in light and dark, and follows your computer’s setting.” | /tour/ “Light or dark” — **renders only once `public/screens/dark-editor.webp` exists and its alt is written** | `packages/web/index.html` (`data-theme="system"`) and the dark theme in `brand/tokens.css`. The one-click switch being built is not claimed; add it to the caption when it ships |
+| “The whole app comes in light and dark. One click at the foot of the sidebar switches it.” | /tour/ “Light or dark” — **renders only once `public/screens/dark-editor.webp` exists and its alt is written** | `CHANGELOG.md` › Unreleased (“A light and dark switch on every screen. One click at the foot of the sidebar … goes light ↔ dark”); commit b305592 |
 | “Until Cloud opens, you can run the editor online yourself … one install per site, with an account for each person who edits it.” | /cloud/ close | as the hosted rows above; Galley Cloud stays `later` |
 | WordPress: posts, pages, images and search details in four steps, as changes checked before anything goes live (badge: New, in final checks) | /tour/ “Move from WordPress” | `docs/editing/wordpress.md`; captures `wordpress-where`, `wordpress-report` (tour), `wordpress-plan` (/wordpress/). **Pictured with a stand-in WordPress site on the same computer** (`http://127.0.0.1:4792`); the tour item and /how-to/move-from-wordpress/ say so in one line |
 | “Run this in your site’s folder and Galley opens in your browser.” | /tour/ close | docs index “The quickest way in”; the install row above |
@@ -165,6 +165,18 @@ through `src/data/redirects.json`. `status.json` → `apps` is unchanged.
 | On your own server: one editor per site, an account for each person — owners, editors and contributors — each publish under its author’s name; runs with Docker; Fiction Tribe hosts nothing (badge from `hosted-install`) | /apps/ “Other ways to run it”, tour “One editor per site” | `CHANGELOG.md` › Unreleased › Added (accounts and roles; “Each publish carries its author”); `status.json` → `hosted-install`, `hosted-accounts`; `docs/running/hosted.md` “People and roles”; `docs/cloud-install.md` |
 | Try it first: the real app on a sample site, in your browser, nothing installed or saved, needs a computer-sized screen | /apps/, home hero (“Try the demo”), tour hero, /how-to/ — **only while `site.json` → `demo.available` is true** (false today) | the demo being built for `/demo/` (another engineer); check these words against it before switching it on |
 
+## The home page, made shorter (proposal, 2026-11-24)
+
+Twelve sections became seven; nothing new is claimed. Wording that changed:
+
+| Statement | Where | Support |
+| --- | --- | --- |
+| “Ask for a change in plain words, check it beside your live site, then publish it to your own repository.” | home hero | `docs/editing/assistant.md`, `proof-and-publish.md`; the publish row in the status table |
+| Film chapters: Ask — “In plain words — or type in a form, or on the page itself.” Check — “Each change marked up beside the live site. Put back any one.” Publish — “To your own repository, or for review first. Undo adds a new version.” | home film | `docs/editing/form.md`, `on-the-page.md`, `assistant.md`; `proof-and-publish.md` (Send for review); `history.md` (undo is a new version) |
+| “Nothing is live until you press Publish.” | home film | `docs/editing/proof-and-publish.md` |
+| “Three starters, three looks each.” | home starters | the starters row in the status table (`starters/*/starter.json`) |
+| “Apache-2.0, free to use. Astro fits deepest; it also recognises Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll. The assistant runs on your own AI key.” | home close | the “Astro fits deepest” row above (moved here from the cut “It’s just your repo” section); the docs index “What it costs” |
+
 ## Install commands
 
 Every command a page shows comes from `src/data/site.json → install`.
@@ -191,7 +203,7 @@ site showed the from-a-clone steps and, on each card,
 | **Galley Cloud sign-up address** `cloud@galley.example` | `src/data/site.json → cloud.email` — not used by any page for now | **PLACEHOLDER** — the owner has not supplied the address yet. Until then /cloud/ says "Tell us you’re interested" and links to Fiction Tribe’s contact page (`maker.contact`). When an address exists, switch the hero action back to the email link. |
 | Repository `https://github.com/fictiontribe/galley`, site `https://galley.fictiontribe.com`, the discussion link `{repository}/discussions` | `src/data/site.json` (every link is built from it) | **Planned**, not public yet |
 | Security and conduct contacts | `site.json` (`securityContact`, `conductContact`) | **PLACEHOLDER**; /open-source/ says reports go through the repository's security advisories (enable private reporting) |
-| The film | home, section `film` with `hidden: true` | Switched off until it is re-cut on the Caddow example; the files in `public/video/` are the old cut |
+| The film | home, section `film` (wide, its chapters as the three steps) | `public/video/galley-explainer.*` is the Caddow cut (its poster shows Caddow’s proof). **Its transcript (`galley-explainer.txt`) still says “for Astro” and “Built for Astro”**, which the site no longer says — the transcript is in `public/` (not this pass’s to edit) |
 
 ## Removed in this rebuild
 
