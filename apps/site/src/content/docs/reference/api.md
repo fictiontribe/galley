@@ -240,7 +240,7 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `DELETE /api/sites/:siteId/threads/:threadId` | Delete a conversation. | — | `Ok` | Any signed-in person |
 | `POST /api/sites/:siteId/threads/:threadId/messages` | Send a message (text, pictures, mode, page context). The reply streams over `/api/events`. | `SendMessageRequest` | `{ turnId }` | Any signed-in person |
 | `POST /api/sites/:siteId/threads/:threadId/cancel` | Stop the reply in progress. | — | `Ok` | Any signed-in person |
-| `POST /api/sites/:siteId/threads/:threadId/undo` | Undo one assistant turn: the files it changed are put back. | `{ turnId }` | `{ restored }` | Any signed-in person |
+| `POST /api/sites/:siteId/threads/:threadId/undo` | Undo one assistant turn: the files it changed are put back, except those changed again since, which are left as they are and listed in `left`. | `{ turnId }` | `UndoResult` | Any signed-in person |
 
 ## Multi-site
 
@@ -270,7 +270,7 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `GET /api/sites/:siteId/visibility` | Run the Search and AI checks. `render=off` checks the content files only; by default a running preview or an existing build is used, never started. | `?render?` | `SiteAudit` | Any signed-in person |
 | `GET /api/sites/:siteId/visibility/entry` | One entry: its result preview (an approximation) and findings, judged against the whole site. | `?path&render?` | `EntryAudit` | Any signed-in person |
 | `POST /api/sites/:siteId/visibility/fix` | Apply the deterministic fixes of these findings (ids from the last audit) as ordinary edits. | `{ ids }` | `FixResult` | Any signed-in person |
-| `POST /api/sites/:siteId/visibility/undo` | Put back every file one batch of fixes changed. | `{ undoId }` | `{ restored }` | Any signed-in person |
+| `POST /api/sites/:siteId/visibility/undo` | Put back every file one batch of fixes changed, except those changed again since, which are left as they are and listed in `left`. | `{ undoId }` | `UndoResult` | Any signed-in person |
 | `GET /api/sites/:siteId/visibility/crawlers` | Each documented AI crawler and whether the site allows it. | — | `CrawlerReport` | Any signed-in person |
 | `PUT /api/sites/:siteId/visibility/crawlers` | Allow or block documented AI crawlers by robots.txt token; only a marked block of robots.txt changes. | `{ choices }` | `CrawlerReport` | Any signed-in person |
 | `GET /api/sites/:siteId/visibility/agent-view` | What an AI agent receives for one page: its markdown version, else its text with scripts off. | `?url` | `AgentView` | Any signed-in person |

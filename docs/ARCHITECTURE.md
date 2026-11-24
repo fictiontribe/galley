@@ -250,10 +250,14 @@ Everything with side effects on the machine.
   compare/PR URL (uses `gh` when present, otherwise the host's compare URL).
 - **History / revert** — `git log` shaped into `HistoryEntry`; undoing a
   publish is `git revert --no-edit` (a new commit).
-- **Checkpoints** — record the pre-image of each file the first time it is
-  written while a checkpoint is open; `restore()` puts them back (or deletes
-  files that did not exist). This is how one assistant turn is undone without
-  touching the user's other pending edits.
+- **Checkpoints** — record the pre-image of each file the first time the
+  checkpoint's own work writes it: what runs inside `run()`, and whatever
+  that starts. A write by anything else (another person's save, another
+  turn) is never recorded. `restore()` puts back the files still as that
+  work left them (or deletes files that did not exist); a file someone else
+  has changed since is left as it is and named by `left()`, because putting
+  the whole file back would take their change with it. This is how one
+  assistant turn is undone without touching anyone's other pending edits.
 - **Preview** — start the site's dev command (argument array, the site's own
   `node_modules/.bin` on PATH), detect the port it actually bound from its
   output, wait for it to answer, and front it with the **preview proxy** on a

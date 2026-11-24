@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import { GalleyError } from "../errors";
 import { isRedirectsFile } from "../redirects/locate";
-import type { Checkpoint, SiteModel, SiteService } from "../types";
+import type { Checkpoint, SiteModel, SiteService, UndoResult } from "../types";
 import { auditSite, lastFinding } from "./audit";
 import type { FixProposal, FixResult } from "./types";
 
@@ -60,7 +60,7 @@ export async function applyFixes(site: SiteService, ids: string[]): Promise<FixR
         const baseHash = hashes.get(edit.path) ?? (edit.path === known.finding.path ? known.hash : undefined);
 
         try {
-          const outcome = await site.updateEntry(edit.path, edit.ops, { origin: "user", ...(baseHash ? { baseHash } : {}) });
+          const outcome = await checkpoint.run(() => site.updateEntry(edit.path, edit.ops, { origin: "user", ...(baseHash ? { baseHash } : {}) }));
 
           if (outcome.refused.length) {
             ok = false;
@@ -89,11 +89,13 @@ export async function applyFixes(site: SiteService, ids: string[]): Promise<FixR
   return result;
 }
 
-/** Puts back every file one batch of fixes changed. */
-export async function undoFixes(site: SiteService, undoId: string): Promise<string[]> {
+/** Puts back every file one batch of fixes changed, except those someone else has changed since. */
+export async function undoFixes(site: SiteService, undoId: string): Promise<UndoResult> {
   const held = undo.get(undoId);
 
   if (!held || held.root !== site.root) throw new GalleyError("not-found", "Those fixes can't be undone from here any more. You can still discard them in Proof.");
   undo.delete(undoId);
-  return held.checkpoint.restore();
+  const restored = await held.checkpoint.restore();
+
+  return { restored, left: held.checkpoint.left() };
 }

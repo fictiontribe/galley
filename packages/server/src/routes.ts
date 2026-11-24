@@ -619,7 +619,7 @@ export const routes: RouteTable = {
     const site = await siteOf(c, ctx);
     const { turnId } = await v.body(c, v.undoBody);
 
-    return { restored: await ctx.services.agent.undoTurn(site.id, c.req.param("threadId") ?? "", turnId) };
+    return ctx.services.agent.undoTurn(site.id, c.req.param("threadId") ?? "", turnId);
   },
 };
 

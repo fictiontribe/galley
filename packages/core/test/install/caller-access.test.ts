@@ -122,7 +122,7 @@ describe("the site's settings file, whichever way it is written", () => {
     const config = (await site.readConfig()) as GalleyConfig;
     const checkpoint = site.checkpoint("A turn that changed the settings");
 
-    await as("owner", () => site.saveConfig({ ...config, name: "Owner's name" }));
+    await as("owner", () => checkpoint.run(() => site.saveConfig({ ...config, name: "Owner's name" })));
     checkpoint.close();
     await as("owner", () => site.writeFile("src/content/pages/about.md", "---\ntitle: About us\n---\nHello\n", { origin: "user", mode: "content" }));
     const changed = configText(site);
