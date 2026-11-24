@@ -64,6 +64,8 @@ export const ICONS = {
   chat: `<path class="i-t" d="M3.25 2.25h9.5a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7l-3.25 2.5v-2.5h-.5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z"/><path d="M3.25 2.25h9.5a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7l-3.25 2.5v-2.5h-.5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z"/><path class="i-a" d="m5.5 8.75 2.25-3.5L10 8.75"/>`,
   window: `<path class="i-t" d="M2.75 2.75h10.5a1 1 0 0 1 1 1v2h-12.5v-2a1 1 0 0 1 1-1z"/><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1"/><path d="M1.75 5.75h12.5"/><circle class="i-af" cx="4" cy="4.25" r=".75"/><circle class="i-f" cx="6.25" cy="4.25" r=".75"/>`,
   terminal: `<rect class="i-t" x="1.75" y="2.75" width="12.5" height="10.5" rx="1"/><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1"/><path d="m4.5 6 2 1.75-2 1.75"/><path class="i-a" d="M8 10.25h3.5"/>`,
+  // Install: the editor's own installation — two bays of a rack, each with its lamp.
+  install: `<rect class="i-t" x="2.25" y="2.25" width="11.5" height="4.5" rx="1"/><rect x="2.25" y="2.25" width="11.5" height="4.5" rx="1"/><rect class="i-t" x="2.25" y="9.25" width="11.5" height="4.5" rx="1"/><rect x="2.25" y="9.25" width="11.5" height="4.5" rx="1"/><circle class="i-af" cx="5" cy="4.5" r="1"/><circle class="i-af" cx="5" cy="11.5" r="1"/><path d="M8.5 4.5H11M8.5 11.5H11"/>`,
   publish: `<path class="i-a" d="M7.75 11V2.5M4.25 6l3.5-3.5 3.5 3.5"/><path d="M2 13.75h11.5"/>`,
 
   // ── actions ────────────────────────────────────────────────────────────

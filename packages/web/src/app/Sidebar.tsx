@@ -116,7 +116,7 @@ function HostedHomeSidebar() {
       </Link>
       <div className="g-nav">
         {site ? <NavItem to={`/sites/${site.id}`} icon="folder-site" label={site.name} /> : null}
-        {may("GET /api/install") ? <NavItem to="/install" icon="folder" label="Install" /> : null}
+        {may("GET /api/install") ? <NavItem to="/install" icon="install" label="Install" /> : null}
         {may("PATCH /api/settings") ? <NavItem to="/settings" icon="settings" label="App settings" /> : null}
         {may("POST /api/plugins/enabled") ? <NavItem to="/plugins" icon="plugin" label="Plugins" /> : null}
         {account ? <NavItem to="/account" icon="person" label="Your account" /> : null}
@@ -260,7 +260,7 @@ export function SiteSidebar({ siteId }: { siteId: string }) {
         {hosted ? (
           <>
             <NavLabel>Editor</NavLabel>
-            {may("GET /api/install") ? <NavItem to="/install" icon="folder" label="Install" /> : null}
+            {may("GET /api/install") ? <NavItem to="/install" icon="install" label="Install" /> : null}
             {may("PATCH /api/settings") ? <NavItem to="/settings" icon="settings" label="App settings" /> : null}
             {account ? <NavItem to="/account" icon="person" label="Your account" /> : null}
           </>

@@ -180,7 +180,7 @@ export function CommandPalette() {
     }
     if (hosted) {
       list.push(
-        { id: "install", group: "Go to", label: "Install", hint: account ? "Address, people and backups" : "Address, password and backups", icon: "folder", run: go("/install"), route: "GET /api/install" },
+        { id: "install", group: "Go to", label: "Install", hint: account ? "Address, people and backups" : "Address, password and backups", icon: "install", run: go("/install"), route: "GET /api/install" },
         { id: "settings", group: "Go to", label: "App settings", icon: "settings", run: go("/settings"), route: "PATCH /api/settings" },
         { id: "plugins", group: "Go to", label: "Plugins", hint: "Generators, destinations, tools", icon: "plugin", run: go("/plugins"), route: "POST /api/plugins/enabled" },
       );
