@@ -173,6 +173,8 @@ export interface ServerOptions {
   resetPasswordEmail?: string;
   /** Hosted mode, test seam: the outgoing e-mail to use instead of the one GALLEY_SMTP_URL and GALLEY_MAIL_FROM describe (null: none). */
   mailer?: MailTransport | null;
+  /** Hosted mode, test seam: what runs the editor's own rounds with the repository instead of a real interval (keep-up.ts). */
+  syncTimer?: import("./keep-up").KeepUpTimer;
   /** Hosted mode, test seam: replaces installing a starter's dependencies when first run sends one to the repository. */
   siteInstall?: (root: string, onLog: (line: string) => void) => Promise<void>;
   log?: (line: string) => void;
@@ -222,6 +224,10 @@ export interface RunningServer {
   notices: string[];
   /** Hosted mode: the preview's and the live comparison's addresses, or null when none could be worked out. */
   previews: { preview: string; live: string } | null;
+  /** Hosted mode: minutes between the editor's own looks at the repository (GALLEY_SYNC_MINUTES; 0: none). Null in local mode. */
+  syncMinutes: number | null;
+  /** Hosted mode: the editor's own rounds with the repository (keep-up.ts), for a test to run one by hand. */
+  keepUp?: import("./keep-up").KeepUp;
   /** What GET /readyz answers now. */
   readiness(): import("@galley/core/install").ReadyStatus;
   /** URL that signs the browser in (local mode) and lands on `path`. */

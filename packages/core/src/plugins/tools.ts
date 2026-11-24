@@ -68,7 +68,7 @@ export function objectSchema(input: ToolInputSchema): z.ZodObject {
   return z.object(shape);
 }
 
-const WRITES = new Set(["updateEntry", "createEntry", "deleteEntry", "writeFile", "deleteFile", "saveMedia", "saveConfig", "discard", "publish", "send", "revert", "pull", "build", "checkpoint"]);
+const WRITES = new Set(["updateEntry", "createEntry", "deleteEntry", "writeFile", "deleteFile", "saveMedia", "saveConfig", "discard", "publish", "send", "revert", "pull", "catchUp", "build", "checkpoint"]);
 
 /**
  * The site a tool is handed: a read-only tool gets one that refuses every

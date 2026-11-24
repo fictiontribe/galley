@@ -544,6 +544,7 @@ export const routes: RouteTable = {
   },
   "POST /api/sites/:siteId/send": async (c, ctx) => (await siteOf(c, ctx)).send(),
   "GET /api/sites/:siteId/git": async (c, ctx) => (await siteOf(c, ctx)).gitStatus(),
+  "POST /api/sites/:siteId/git/check": async (c, ctx) => (await siteOf(c, ctx)).checkGit(),
   "POST /api/sites/:siteId/pull": async (c, ctx) => (await siteOf(c, ctx)).pull(),
   "POST /api/sites/:siteId/publish/message": async (c, ctx) => {
     const site = await siteOf(c, ctx);

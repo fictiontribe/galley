@@ -105,6 +105,8 @@ html, body { overflow: hidden; }
 .app-status--error { color: var(--danger); }
 .app-status--offline { color: var(--warning); }
 .app-status--unsent { color: var(--warning); }
+.app-status--waiting { color: var(--warning); text-decoration: none; }
+.app-status--waiting:hover { text-decoration: underline; text-underline-offset: 0.2em; }
 .app-status__action { font: inherit; color: inherit; }
 .app-status__action:disabled { cursor: progress; text-decoration: none; }
 @media (max-width: 1100px) { .app-hide-narrow { display: none !important; } }

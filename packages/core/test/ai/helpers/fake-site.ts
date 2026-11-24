@@ -339,7 +339,13 @@ export function createFakeSite(options: { id?: string; files?: Record<string, st
     async gitStatus() {
       throw new Error("not in the fake");
     },
+    async checkGit() {
+      throw new Error("not in the fake");
+    },
     async pull() {
+      throw new Error("not in the fake");
+    },
+    async catchUp() {
       throw new Error("not in the fake");
     },
     checkpoint(label): Checkpoint {

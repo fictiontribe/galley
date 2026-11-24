@@ -647,6 +647,7 @@ export function withAccounts(mock: MockBackend, base: Handlers, accounts: MockAc
   wrap(handlers, "POST /api/sites/:siteId/publish", (req, original) => asAuthor(() => original(req)));
   wrap(handlers, "POST /api/sites/:siteId/revert", (req, original) => asAuthor(() => original(req)));
   wrap(handlers, "GET /api/sites/:siteId/git", async (req, original) => withAuthor((await original(req)) as GitStatus));
+  wrap(handlers, "POST /api/sites/:siteId/git/check", async (req, original) => withAuthor((await original(req)) as GitStatus));
   wrap(handlers, "GET /api/sites/:siteId", async (req, original) => {
     const detail = (await original(req)) as SiteDetail;
     return { ...detail, git: withAuthor(detail.git) };

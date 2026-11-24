@@ -29,6 +29,17 @@ Not published yet? You don't need Version history: put changes back in [Proof](/
 - **Latest** — the newest version.
 - **Published here** — published from this computer.
 - **Versions are kept on this computer only** — the site isn't connected to a host or a shared copy yet, so nothing is backed up elsewhere. Ask the site's developer, or [put the site online](/docs/editing/online/).
+
+## Newer versions from the repository
+
+When the site lives in a repository that other people publish to too, Version history checks it every time you open the page. While it does, it says **Checking the repository…**; then one of:
+
+- **In step with the repository, checked just now** — everything published anywhere is here. It says when it last checked.
+- **3 newer versions are waiting in the repository** — someone published elsewhere. Press **Get latest** to bring them in; nothing you're working on is overwritten. If your account can't, it says an editor or owner can bring them in.
+- **Couldn't check the repository** — it says why (no connection, the key was refused) and when it last knew. Press **Try again**.
+- **This copy and the repository have gone separate ways** — versions were published both here and there. Someone who knows the repository needs to bring them together; your edits are safe.
+
+On an editor that runs online, newer versions are brought in by themselves every few minutes, and the app says so once: "3 newer versions from the repository were brought in." The pages you have open refresh, and the preview restarts on the new versions. If a page you have unpublished changes to was changed there too, they wait: the bar at the bottom says **Newer versions are waiting**, and Version history says which page. Publish or discard your change to it, and they come in.
 - **Put this site online** / **Put live** — for sites put online from Galley: the published version isn't live yet.
 
 ## If something's different

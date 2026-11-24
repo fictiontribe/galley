@@ -556,6 +556,12 @@ export interface ApiRoutes {
   /** Send versions published on this computer that have not reached the remote yet. */
   "POST /api/sites/:siteId/send": { response: PublishResult };
   "GET /api/sites/:siteId/git": { response: GitStatus };
+  /**
+   * Ask the code host what is new, changing no file: the status as of now,
+   * with when it last answered (`checkedAt`) and, when this look couldn't
+   * reach it, why (`checkProblem`). Never fails for the code host's reasons.
+   */
+  "POST /api/sites/:siteId/git/check": { response: GitStatus };
   "POST /api/sites/:siteId/pull": { response: GitStatus };
   /** Asks the assistant for a one-line commit message describing the pending changes. */
   "POST /api/sites/:siteId/publish/message": {

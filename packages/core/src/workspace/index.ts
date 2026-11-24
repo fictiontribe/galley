@@ -28,6 +28,7 @@ export type { PreviewGateway, ProxyHandlers } from "./preview/proxy";
 export { createPortPool, parsePortRange, freePort, portIsFree } from "./preview/ports";
 export type { PortPool, PortRange } from "./preview/ports";
 export { portOwnership, type Ownership } from "./preview/owner";
+export { forgetPreviewSaves } from "./preview/saves";
 
 export { runBuild, installDependencies, detectPackageManager } from "./build";
 export { AGENT_ENV_NAMES, AGENT_ENV_PREFIXES, hideFromSiteCommands, limitSiteCommandMemory, isAgentMarker, parseCommand, resolveCommand, withoutAgentMarkers, withoutHiddenVariables } from "./command";

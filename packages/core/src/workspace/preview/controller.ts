@@ -73,6 +73,12 @@ export interface PreviewOptions {
   onActivity?: () => void;
   /** False: installing the site's dependencies never adds a lockfile the site doesn't have (see InstallDependenciesOptions). Default true. */
   addLockfile?: boolean;
+  /**
+   * Runs in every start (a restart's too), once the status says "starting"
+   * and before the dev server is spawned: the site uses it to forget what the dev server
+   * saved under older versions (site/service.ts). What it throws is ignored.
+   */
+  beforeStart?: () => Promise<void> | void;
 }
 
 /** What the status says after a pause, and while the preview wakes again. */
@@ -481,6 +487,13 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
         if (stale()) return snapshot();
       }
       set("starting", { detail: waking ? WAKING_DETAIL : "Starting the preview.", startedAt });
+      // After the status says it is starting (the preview policy counts it from then), before the dev server runs.
+      if (options.beforeStart) {
+        await Promise.resolve()
+          .then(options.beforeStart)
+          .catch(() => undefined);
+        if (stale()) return snapshot();
+      }
       const configuredPort = settings.dev.port;
       let upstream: { host: string; port: number } | null = null;
       let adopted = false;

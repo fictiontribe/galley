@@ -14,5 +14,6 @@ export { createMcpMount, type McpMount, type McpMountOptions } from "./mcp";
 export { looksLikeSite, SITE_MARKERS } from "./fs-list";
 export { createStreamRegistry } from "./events";
 export { stamped } from "./log";
+export { createKeepUp, DEFAULT_SYNC_MINUTES, type KeepUp, type KeepUpOptions, type KeepUpTimer, type RoundOutcome } from "./keep-up";
 export { defaultHome, defaultStartersDir, defaultWebDir, BUNDLED } from "./paths";
 export type { AppOptions, RunningServer, ServerMode, ServerOptions, Services, StreamRegistry } from "./types";
