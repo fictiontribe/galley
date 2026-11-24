@@ -10,6 +10,9 @@
 //   PLAYWRIGHT_MODULES=<a node_modules folder with playwright-core> \
 //   node scripts/capture-screens.mjs [step …]
 //
+// CAPTURE_OUT=<folder> writes everything under that folder instead of into
+// the site (same layout), for a trial that leaves the committed pictures alone.
+//
 // scripts/capture/README.md says how to start everything it talks to: the
 // released Galley on throwaway copies of two starters (Caddow, Lowfield), with
 // a throwaway home, the stand-in Cloudflare and the stand-in WordPress site.
@@ -23,24 +26,28 @@
 // the state an earlier step left: brand-saved, click-doc, which-one,
 // assistant-reply, chat, media-generate, publish-doc, undo-doc.
 //
-// Output (2× device scale, light theme, WebP with a 1× copy <name>@1x.webp):
+// Output (2× device scale, light appearance, the Quiet theme, no scroll bars, WebP with a 1× copy <name>@1x.webp):
 //   public/screens/<name>.webp   showcase captures (and the arrange-drag recording, WebM)
 //   public/docs/<name>.webp      the docs pages' pictures, at the exact size each page declares
 //   public/howto/<slug>-<n>.webp the how-to steps; their words go to src/data/howto.json
 // Captures of the example site itself ("site", "looks") go to public/sites/.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir, tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const OUT = join(here, "../public/screens");
-const DOCS = join(here, "../public/docs");
-const HOWTO = join(here, "../public/howto");
-const HOWTO_JSON = join(here, "../src/data/howto.json");
+// Where the pictures go: the site's own folders, or the same layout under CAPTURE_OUT (a trial run that
+// must not touch the committed pictures). The how-to words start from the committed ones either way.
+const SITE_OUT = process.env.CAPTURE_OUT ? resolve(process.env.CAPTURE_OUT) : join(here, "..");
+const OUT = join(SITE_OUT, "public/screens");
+const DOCS = join(SITE_OUT, "public/docs");
+const HOWTO = join(SITE_OUT, "public/howto");
+const HOWTO_JSON = join(SITE_OUT, "src/data/howto.json");
+const HOWTO_JSON_COMMITTED = join(here, "../src/data/howto.json");
 const ORIGIN = process.env.GALLEY_ORIGIN ?? "http://127.0.0.1:4790";
 const TOKEN = process.env.GALLEY_TOKEN;
 const SITE = process.env.GALLEY_SITE;
@@ -50,8 +57,9 @@ const { chromium } = require("playwright-core");
 
 const VIEW = { width: 1440, height: 900 };
 const SCALE = 2;
-const WORK = join(tmpdir(), "galley-capture");
-mkdirSync(WORK, { recursive: true });
+// A folder of this run's own, removed when it ends: never one a person might have chosen as CAPTURE_DIR.
+const WORK = mkdtempSync(join(tmpdir(), "galley-capture-work-"));
+for (const dir of [OUT, DOCS, HOWTO]) mkdirSync(dir, { recursive: true });
 mkdirSync(OUT, { recursive: true });
 
 // The whole session, in the order it has to happen (see the header).
@@ -83,7 +91,8 @@ if (appSteps && (!TOKEN || !SITE)) throw new Error("Set GALLEY_TOKEN and GALLEY_
 const HOME_PAGE = "src/content/pages/index.md";
 const ATELIER = "src/content/pages/atelier.md";
 const JOURNAL = "src/content/pages/journal.md";
-const SITES = join(here, "../public/sites");
+const SITES = join(SITE_OUT, "public/sites");
+mkdirSync(SITES, { recursive: true });
 const SITE_DIR = process.env.SITE_DIR;
 const AUTHOR = { name: "Tobiah Rusk", email: "tobiah@caddow.example" };
 // What the captures do on the starter's pages (defaults suit Caddow, the fashion starter).
@@ -267,7 +276,7 @@ function writeHowto() {
   if (!touched.size) return;
   // Keep the guides this run didn't make (a partial run updates only its own).
   let previous = [];
-  try { previous = JSON.parse(readFileSync(HOWTO_JSON, "utf8")).guides ?? []; } catch {}
+  try { previous = JSON.parse(readFileSync(existsSync(HOWTO_JSON) ? HOWTO_JSON : HOWTO_JSON_COMMITTED, "utf8")).guides ?? []; } catch {}
   const list = GUIDES.map(([slug]) => {
     const old = previous.find((g) => g.slug === slug);
     if (!touched.has(slug)) return old;
@@ -530,8 +539,28 @@ async function makeMaterial() {
 }
 
 const browser = await chromium.launch();
+console.log(`Chromium ${browser.version()}`);
+// No scroll bars in the pictures, and no room kept for them: on a Mac that shows scroll bars always (one
+// with a mouse plugged in) every scrolling pane would otherwise keep a 15 px strip down its right side
+// (the app asks for a stable gutter), and every fixed crop would sit that much to the left. Done with a
+// style put into every page and frame of this browser, not with the computer's own setting; Chromium's
+// --hide-scrollbars hides the bars but keeps the room.
+const NO_SCROLL_BARS = "*, *::before, *::after { scrollbar-width: none !important; }";
+const plainContext = browser.newContext.bind(browser);
+browser.newContext = async (options) => {
+  const context = await plainContext(options);
+  await context.addInitScript((css) => {
+    const add = () => {
+      const style = document.createElement("style");
+      style.textContent = css;
+      (document.head ?? document.documentElement).appendChild(style);
+    };
+    if (document.head) add();
+    else addEventListener("DOMContentLoaded", add, { once: true });
+  }, NO_SCROLL_BARS);
+  return context;
+};
 const ctx = await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE, colorScheme: "light", reducedMotion: "no-preference" });
-await ctx.addInitScript(() => { try { localStorage.setItem("galley-theme", "light"); } catch {} });
 const page = await ctx.newPage();
 if (appSteps) await page.goto(`${ORIGIN}/?token=${TOKEN}`, { waitUntil: "networkidle" });
 // The release the pictures show, as the running app says (for howto.json's "captured").
@@ -565,7 +594,8 @@ async function run(step) {
 
   if (step === "setup") {
     // The name every version is published under (an invented person from the starter), and the light theme.
-    await api("/api/settings", { method: "PATCH", body: JSON.stringify({ author: AUTHOR, appearance: { theme: "light" } }) });
+    // …and the Quiet theme, whatever this install's default is: the pictures must not depend on it.
+    await api("/api/settings", { method: "PATCH", body: JSON.stringify({ author: AUTHOR, appearance: { theme: "light", look: "quiet" } }) });
     await discard();
   }
 
@@ -1250,7 +1280,7 @@ async function run(step) {
     // The assistant pane with the conversation from the "ask" step, if there is one.
     const resume = view.getByRole("button", { name: /Continue your last conversation/i }).first();
     if (await resume.count()) { await resume.click(); await view.waitForTimeout(2000); }
-    await view.getByRole("button", { name: "Switch to dark theme" }).first().click();
+    await view.getByRole("button", { name: "Switch to dark appearance" }).first().click();
     await view.waitForTimeout(3000);
     await hideDevToolbar(view);
     await shoot(view, "dark-editor", FULL);
@@ -1258,7 +1288,7 @@ async function run(step) {
     await view.waitForTimeout(3000);
     await shoot(view, "dark-proof", { x: 232, y: 0, width: 1208, height: 620 });
     // Back to light for whoever opens this app next (the choice is kept by the app).
-    await view.getByRole("button", { name: "Switch to light theme" }).first().click().catch(() => {});
+    await view.getByRole("button", { name: "Switch to light appearance" }).first().click().catch(() => {});
     await dark.close();
   }
 
