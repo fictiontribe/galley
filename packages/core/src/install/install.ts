@@ -22,6 +22,7 @@ import { GIT_NETWORK_TIMEOUT_MS, registerGitAccess, runGit } from "../workspace/
 import { parseRemoteUrl, redactRemoteUrl } from "../workspace/remote";
 import { loadSiteModel } from "../content/index";
 import { normalizeRepository, redactAddress, type RepositoryAddress } from "./address";
+import { tidyName } from "./names";
 import { accessEnv, ensureDeployKey, forgetAccessToken, hasAccessToken, readDeployKey, storeAccessToken, trialAccess, type RepositoryAccess } from "./access";
 import { createPeople, type PeopleService } from "./people";
 import { createSingleSiteRegistry, type SingleSiteRegistry } from "./single-site";
@@ -167,7 +168,7 @@ function validLiveUrl(value: string): string {
 }
 
 function validAuthor(author: { name: string; email: string }): { name: string; email: string } {
-  const name = typeof author?.name === "string" ? author.name.trim() : "";
+  const name = typeof author?.name === "string" ? tidyName(author.name) : "";
   const email = typeof author?.email === "string" ? author.email.trim() : "";
 
   if (!name || name.length > 200) throw new GalleyError("invalid", "Give the publishing name, up to 200 characters.");

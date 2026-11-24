@@ -132,6 +132,8 @@ export interface StreamRegistry {
   add(close: () => void, owner?: string): () => void;
   /** How many streams `owner` has open. */
   count(owner: string): number;
+  /** Ends every stream `owner` has open, unless that was done less than `everyMs` ago. Says whether it did. */
+  sweep(owner: string, everyMs: number, now?: number): boolean;
   closeAll(): void;
   readonly size: number;
 }
@@ -245,4 +247,11 @@ export interface RunningServer {
    * shutdown grace), stops the preview and closes everything.
    */
   close(options?: { graceMs?: number }): Promise<void>;
+  /**
+   * Hosted mode: settles when this server has stopped serving because
+   * another server took its data folder (two on one folder write over each
+   * other, so the one that lost its hold stops). Whoever started the server
+   * ends the process then. Never settles otherwise; absent in a stand-in.
+   */
+  displaced?: Promise<void>;
 }

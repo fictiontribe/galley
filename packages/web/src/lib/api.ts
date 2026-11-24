@@ -101,6 +101,19 @@ export function setForbiddenHandler(handler: (() => void) | null): void {
   forbiddenHandler = handler;
 }
 
+/** The `detail` of the refusal that asks for a name first (core install/caller.ts `NAME_NEEDED`). */
+export const NAME_NEEDED = "name-needed";
+let nameNeededHandler: (() => void) | null = null;
+
+/**
+ * Called when a request was refused because the person's account has no
+ * name yet (publishing waits for one): the app asks for the name there and
+ * then. The refusal itself is still shown where it happened.
+ */
+export function setNameNeededHandler(handler: (() => void) | null): void {
+  nameNeededHandler = handler;
+}
+
 /** Something other than a JSON call (the event stream) found the session gone. */
 export function reportUnauthorized(): void {
   unauthorizedHandler?.();
@@ -199,7 +212,10 @@ async function readError(route: string, response: Response): Promise<ApiFailure>
 export async function failureFrom(route: ApiRouteKey, response: Response): Promise<ApiFailure> {
   const failure = await readError(route, response);
   if (!handledInPlace(route) && isUnauthorized(response.status, failure.shape)) unauthorizedHandler?.();
-  else if (response.status === 403) forbiddenHandler?.();
+  else if (response.status === 403) {
+    if (failure.shape.detail === NAME_NEEDED) nameNeededHandler?.();
+    forbiddenHandler?.();
+  }
   return failure;
 }
 

@@ -202,23 +202,51 @@ describe("names", () => {
     expect((await refusal(people.updateProfile(owner.id, { name: "x".repeat(5000) }))).message).toMatch(/under 100 characters/);
   });
 
-  it("can't be taken by someone accepting an invitation, and the invitation still works with another name", async () => {
+  it("someone accepting an invitation with a name already here is let in without it, and chooses one as a member", async () => {
     const { people, owner } = await withOwner();
 
-    for (const name of ALIKE) {
-      const { link } = await people.invite(owner.id, { email: "ed@example.com", role: "contributor" });
-      const error = await refusal(people.useLink(link.code, { password: PASSWORD, name }));
+    for (const [index, name] of ALIKE.entries()) {
+      const { link } = await people.invite(owner.id, { email: `new${index}@example.com`, role: "contributor" });
+      // Nothing at the door says whether the name is someone's here.
+      const { account } = await people.useLink(link.code, { password: PASSWORD, name });
 
-      expect(error.code, name).toBe("conflict");
-      expect(error.message.startsWith("Someone here is already called “"), name).toBe(true);
-      // Not spent by the refusal.
-      expect(people.checkLink(link.code).kind).toBe("invitation");
-      await people.cancelInvitation(owner.id, people.list().invitations[0]!.id);
+      expect(account, name).toMatchObject({ name: "", incomplete: true, email: `new${index}@example.com`, role: "contributor" });
+      // The invitation is used, like any other.
+      expect((await refusal(people.useLink(link.code, { password: PASSWORD, name: "Someone Else" }))).code).toBe("not-found");
+      // Signed in, a name that is taken is said to be, and a name of their own is kept.
+      expect((await refusal(people.updateProfile(account.id, { name }))).message.startsWith("Someone here is already called “"), name).toBe(true);
+      expect((await people.updateProfile(account.id, { name: `Sam O. (${index})` })).name).toBe(`Sam O. (${index})`);
+      expect(people.get(account.id)?.name).toBe(`Sam O. (${index})`);
+      expect(people.get(account.id)?.incomplete).toBeUndefined();
     }
+    // A name nobody here has is kept as typed.
     const { link } = await people.invite(owner.id, { email: "ed@example.com", role: "contributor" });
 
-    expect((await refusal(people.useLink(link.code, { password: PASSWORD, name: "Sam Owner" }))).message).toBe(taken("Sam Owner"));
-    expect((await people.useLink(link.code, { password: PASSWORD, name: "Sam O. (design)" })).account.name).toBe("Sam O. (design)");
+    const ed = (await people.useLink(link.code, { password: PASSWORD, name: "Ed Editor" })).account;
+
+    expect(ed.name).toBe("Ed Editor");
+    expect(ed.incomplete).toBeUndefined();
+  });
+
+  it("kept by an older version are cleaned as the install's state is read, and a name with nothing to see in it is asked for again", async () => {
+    const { home, owner, join } = await withOwner();
+    const ed = await join("ed@example.com", "editor", "Ed Editor");
+    const cy = await join("cy@example.com", "contributor", "Cy Contributor");
+    const file = joinPath(home, STATE_FILE);
+    const state = JSON.parse(readFileSync(file, "utf8")) as { accounts: Array<{ id: string; name: string; incomplete: boolean }>; links: Array<{ createdByName: string }> };
+
+    // As a version from before names were tidied could have saved them.
+    state.accounts.find((account) => account.id === ed.id)!.name = "\u202eEd\u200b Editor\u2066";
+    state.accounts.find((account) => account.id === cy.id)!.name = "\u200b\u202e\u3164";
+    writeFileSync(file, `${JSON.stringify(state, null, 2)}\n`);
+
+    const again = createPeople(await openInstallState(home));
+
+    expect(again.get(ed.id)?.name).toBe("Ed Editor");
+    expect(again.get(cy.id)).toMatchObject({ name: "", incomplete: true });
+    expect(again.get(owner.id)?.name).toBe("Sam Owner");
+    // Once cleaned, the name counts as theirs: nobody else can take it.
+    expect((await refusal(again.updateProfile(cy.id, { name: "ed editor" }))).code).toBe("conflict");
   });
 
   it("can't be changed to someone else's, in any case or width", async () => {

@@ -256,8 +256,15 @@ Everything with side effects on the machine.
   turn) is never recorded. `restore()` puts back the files still as that
   work left them (or deletes files that did not exist); a file someone else
   has changed since is left as it is and named by `left()`, because putting
-  the whole file back would take their change with it. This is how one
-  assistant turn is undone without touching anyone's other pending edits.
+  the whole file back would take their change with it. So is a file that
+  work wrote after the checkpoint was closed, and one that can't be put
+  back; a page the work moved (one file gone, another made that is the
+  same, or much the same where it is long enough to tell) goes back as a
+  pair or stays as a pair. What is made during a turn to
+  serve everyone after (`outsideAnyPerson`: an open site, its watcher, the
+  preview) is no checkpoint's work. This is how one assistant turn is
+  undone without touching anyone's other pending edits. Undoing a reply
+  made in build mode needs the level build mode needs.
 - **Preview** — start the site's dev command (argument array, the site's own
   `node_modules/.bin` on PATH), detect the port it actually bound from its
   output, wait for it to answer, and front it with the **preview proxy** on a

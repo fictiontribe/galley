@@ -7,7 +7,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { chooseAuthor, createWorkspace, type AuthorLayers, type Workspace } from "../../src/workspace/index";
+import { chooseAuthor, createWorkspace, withAccountAuthor, type AuthorLayers, type Workspace } from "../../src/workspace/index";
 import { cleanupAll, makeRepo, PUBLISH, sh, tempDir, WRITABLE } from "./helpers";
 
 const SITE = { name: "Site Author", email: "site@example.com" };
@@ -16,6 +16,11 @@ const APP = { name: "App Author", email: "app@example.com" };
 const MACHINE = { name: "Machine Author", email: "machine@example.com" };
 
 describe("the order, on its own", () => {
+  it("keeps a publishing name without what nobody sees, wherever it came from, and passes over one with nothing to see", () => {
+    expect(chooseAuthor({ repository: { name: "\u202eRepo\u200b Team", email: "team@example.com" } })).toEqual({ name: "Repo Team", email: "team@example.com", from: "repository" });
+    expect(chooseAuthor({ site: { name: "\u200b\u2066", email: "nobody@example.com" }, app: { name: "App Editor", email: "app@example.com" } })).toEqual({ name: "App Editor", email: "app@example.com", from: "app" });
+  });
+
   it("takes the most specific author that is complete", () => {
     expect(chooseAuthor({ site: SITE, repository: REPO, app: APP, machine: MACHINE })).toEqual({ ...SITE, from: "site" });
     expect(chooseAuthor({ repository: REPO, app: APP, machine: MACHINE })).toEqual({ ...REPO, from: "repository" });
@@ -57,6 +62,23 @@ describe("through a real repository", () => {
     open.push(ws);
     return { root, ws, status: (await ws.gitStatus()).author };
   }
+
+  it("someone signed in with an e-mail and no name yet is recorded under that e-mail: never the site's author, the repository's or the app's", async () => {
+    const { root, ws } = await author({ site: SITE, app: APP }, true);
+
+    for (const name of ["", "   ", "\u200b\u202e"]) {
+      writeFileSync(join(root, "src/content/a.md"), `changed by someone with the name ${JSON.stringify(name)}\n`);
+      await withAccountAuthor({ name, email: "ed@example.com" }, async () => {
+        expect((await ws.gitStatus()).author).toEqual({ name: "ed@example.com", email: "ed@example.com", from: "account" });
+        await ws.publish({ message: "Edit" }, PUBLISH);
+      });
+      expect(sh(root, "log", "-1", "--format=%an <%ae>|%cn <%ce>")).toBe("ed@example.com <ed@example.com>|ed@example.com <ed@example.com>");
+    }
+    // Someone with neither (the owner of an install from before accounts) is recorded as before: the site's own author.
+    writeFileSync(join(root, "src/content/a.md"), "changed by the owner from before accounts\n");
+    await withAccountAuthor({ name: "", email: "" }, () => ws.publish({ message: "Edit" }, PUBLISH));
+    expect(sh(root, "log", "-1", "--format=%an <%ae>")).toBe(`${SITE.name} <${SITE.email}>`);
+  });
 
   it("records the repository's own git identity over App settings › You", async () => {
     const { root, ws, status } = await author({ site: null, app: APP }, true);

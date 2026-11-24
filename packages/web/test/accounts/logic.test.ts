@@ -5,7 +5,7 @@ import { ROUTE_ACCESS, roleMayCall } from "@galley/core/install/route-access";
 import type { ApiRouteKey } from "@galley/core/api";
 import { BUILD_MODE_LEVEL, SITE_SETTINGS_LEVEL } from "@galley/core/install/route-access";
 import { BUILD_BY_OTHERS, SETTINGS_BY_OTHERS, accountOf, mayCall, mayLevel, ROLE_LINES, whoMay, whoMayFirst, whoPublishes } from "../../src/lib/may";
-import { codeFromHash, emailProblem, initials, linkKindAt, loginBody, loginProblem, nameProblem, personLabel, takeLinkCode, timeLeft } from "../../src/features/accounts/logic";
+import { codeFromHash, completeKind, emailProblem, initials, linkKindAt, loginBody, loginProblem, nameProblem, personLabel, takeLinkCode, timeLeft } from "../../src/features/accounts/logic";
 
 function meta(role: AccountRole | null, mode: "local" | "hosted" = "hosted"): MetaInfo {
   const account: AccountSession | undefined = role
@@ -143,3 +143,12 @@ describe("who someone is, in a line", () => {
     expect(initials({ name: "", email: "kim@example.com" })).toBe("K");
   });
 });
+
+describe("an account that isn't complete", () => {
+  it("is asked for a name alone when it has an e-mail, and for both details when it has neither", () => {
+    expect(completeKind({ name: "", email: "ed@example.com" })).toBe("name");
+    expect(completeKind({ name: "", email: "" })).toBe("details");
+    expect(completeKind({ name: "Sam Owner", email: "" })).toBe("details");
+  });
+});
+

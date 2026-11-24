@@ -1183,6 +1183,12 @@ export interface ChatMessage {
   tools?: ToolActivity[];
   /** Files this turn changed — drives "Review changes" and "Undo". */
   changedPaths?: string[];
+  /**
+   * An assistant's reply: the mode its turn ran in. Undoing a reply needs
+   * the level its mode needs, so the app offers Undo only to someone who
+   * has it. Absent on a reply from before this was recorded.
+   */
+  mode?: AgentMode;
   /** True once the turn's file changes were rolled back. */
   undone?: boolean;
   /**
@@ -1251,6 +1257,13 @@ export type ServerEvent =
   | { type: "plugins.updated" }
   /** A theme was saved for everyone or deleted, or the install's default theme changed: read GET /api/themes and /api/meta again. */
   | { type: "themes.updated" }
+  /**
+   * Sent alone, in place of `hello`, when the account (or the operator's
+   * token) already has every event stream it may have open: `message` says
+   * so in words to show, and the stream ends. Ask again later; a place is
+   * free once another window closes.
+   */
+  | { type: "stream.limit"; message: string }
   /**
    * The form inbox changed: a submission arrived ("added", with the
    * submission), was marked read/spam or got a forwarding result ("updated"),

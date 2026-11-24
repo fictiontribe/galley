@@ -31,8 +31,8 @@ import { contextText, modeChangeNote, siteChangedNote, SYSTEM_PROMPT, undoNote }
 import { buildSiteCard, loadInstructionFiles } from "./site-card";
 import { hashText, summaryOf, ThreadStore, titleFrom, type StoredImageRef, type StoredMessage, type ThreadRecord } from "./threads";
 import { buildToolNames, offeredBuildToolNames } from "./tools/index";
-import { BUILD_MODE_REFUSAL, callerMay, requireBuildMode } from "../install/caller";
-import { BUILD_MODE_LEVEL } from "../install/route-access";
+import { BUILD_MODE_REFUSAL, callerMay, requireBuildMode, requireLevel } from "../install/caller";
+import { BUILD_MODE_LEVEL, UNDO_BUILD_REFUSAL } from "../install/route-access";
 import { siteBrandInstructions } from "../sitebrand/tools";
 import { plural } from "./tools/labels";
 import type { ToolContext } from "./tools/types";
@@ -89,7 +89,11 @@ interface ActiveTurn {
 interface HeldCheckpoint {
   turnId: string;
   checkpoint: Checkpoint;
+  /** The mode the turn ran in: undoing it changes the same files back, so it needs the level that mode needs. */
+  mode: AgentMode;
 }
+
+export { UNDO_BUILD_REFUSAL };
 
 function release(checkpoint: Checkpoint): void {
   // The workspace's checkpoints keep their pre-images until released; the
@@ -177,10 +181,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
     options.events.emit({ type: "chat.message", siteId, threadId, message });
   }
 
-  function hold(threadKey: string, turnId: string, checkpoint: Checkpoint): void {
+  function hold(threadKey: string, turnId: string, checkpoint: Checkpoint, mode: AgentMode): void {
     const list = held.get(threadKey) ?? [];
 
-    list.push({ turnId, checkpoint });
+    list.push({ turnId, checkpoint, mode });
     while (list.length > UNDO_DEPTH) {
       const old = list.shift();
 
@@ -238,8 +242,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
     assistantId: string;
     checkpoint: Checkpoint;
     outcome: LoopResult;
+    mode: AgentMode;
   }): Promise<void> {
-    const { siteId, threadId, turnId, assistantId, checkpoint, outcome } = params;
+    const { siteId, threadId, turnId, assistantId, checkpoint, outcome, mode } = params;
 
     checkpoint.close();
     const changedPaths = checkpoint.paths();
@@ -255,6 +260,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
       text,
       at: now(),
       turnId,
+      mode,
       tools: outcome.tools,
       changedPaths,
       usage: outcome.usage,
@@ -431,7 +437,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
           ...(staged.length ? { attachments: staged.map((s) => s.shown) } : {}),
         };
         const assistantId = randomUUID();
-        const pending: ChatMessage = { id: assistantId, role: "assistant", text: "", at: now(), turnId, pending: true };
+        const pending: ChatMessage = { id: assistantId, role: "assistant", text: "", at: now(), turnId, pending: true, mode };
         const lastAssistant = [...record.thread.messages].reverse().find((m) => m.role === "assistant");
         const askedLastTurn = Boolean(lastAssistant?.options?.length) && !lastAssistant?.undone;
 
@@ -535,8 +541,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
           turnProfiles.set(turnId, outcome.profile);
           if (turnProfiles.size > 500) turnProfiles.delete(turnProfiles.keys().next().value as string);
           try {
-            await finishTurn({ siteId, threadId, turnId, assistantId, checkpoint, outcome });
-            hold(threadKey, turnId, checkpoint);
+            await finishTurn({ siteId, threadId, turnId, assistantId, checkpoint, outcome, mode });
+            hold(threadKey, turnId, checkpoint, mode);
           } catch (error) {
             log(`couldn't finish the turn: ${safeDetail(error)}`);
           } finally {
@@ -587,6 +593,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
           turnId
         );
       }
+      // Putting a build-mode reply's files back is changing the site's code: the same level as making the change.
+      if (entry.mode === "build") requireLevel(BUILD_MODE_LEVEL, UNDO_BUILD_REFUSAL);
       const restored = await entry.checkpoint.restore();
       const left = entry.checkpoint.left();
 

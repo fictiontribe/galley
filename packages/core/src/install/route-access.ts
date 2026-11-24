@@ -321,6 +321,13 @@ export const BUILD_MODE_LEVEL: AccessLevel = "publish";
 export const SITE_SETTINGS_LEVEL: AccessLevel = "manage";
 
 /**
+ * Said when someone below BUILD_MODE_LEVEL would undo a reply made in build
+ * mode: by the engine on refusing it, and by the app in the Undo button's
+ * place, so nobody is offered an undo that would be refused.
+ */
+export const UNDO_BUILD_REFUSAL = "Your account can't undo this reply: it changed the site's code and templates (build mode). Ask an owner or an editor of this editor.";
+
+/**
  * The site's own methods (SiteService) that need more than "edit", each by
  * the route that reaches it, so a method and its route can't disagree. The
  * engine checks these itself, whoever calls — a route, the assistant's

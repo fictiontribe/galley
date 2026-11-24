@@ -154,6 +154,52 @@ describe("GET /api/events", () => {
     expect(streams.size).toBe(0);
   });
 
+  it("ends all of one identity's streams to make room, but not twice in a short while, and nobody else's", () => {
+    const streams = createStreamRegistry();
+    const ended: string[] = [];
+    const add = (owner: string, name: string) => {
+      const off = streams.add(() => {
+        ended.push(name);
+        off();
+      }, owner);
+    };
+
+    add("account:a", "a1");
+    add("account:a", "a2");
+    add("account:b", "b1");
+    expect(streams.sweep("account:a", 600_000, 1_000_000)).toBe(true);
+    expect(ended).toEqual(["a1", "a2"]);
+    expect([streams.count("account:a"), streams.count("account:b")]).toEqual([0, 1]);
+    add("account:a", "a3");
+    // Asked again too soon: nothing is ended.
+    expect(streams.sweep("account:a", 600_000, 1_000_000 + 599_999)).toBe(false);
+    expect(ended).toEqual(["a1", "a2"]);
+    // Each identity has its own turn.
+    expect(streams.sweep("account:b", 600_000, 1_000_000 + 1)).toBe(true);
+    expect(streams.sweep("account:a", 600_000, 1_000_000 + 600_000)).toBe(true);
+    expect(ended).toEqual(["a1", "a2", "b1", "a3"]);
+  });
+
+  it("keeps a reader that keeps up through one event larger than the bound by itself", async () => {
+    const events = createBus();
+    const streams = createStreamRegistry();
+    const { call } = testApp({ events }, { streams });
+    const response = await call("GET", "/api/events");
+    const reader = response.body!.getReader();
+    const sink = { text: "" };
+
+    await readUntil(reader, /"type":"hello"/, sink);
+    // Twice the bound in one event, and ordinary events right behind it, before the reader has had a turn.
+    events.emit({ type: "changes.updated", siteId: "site-1", paths: ["x".repeat(2 * MAX_QUEUED_BYTES)], origin: "user" });
+    for (let sent = 0; sent < 20; sent += 1) events.emit({ type: "site.updated", siteId: `after-${sent}` });
+    events.emit({ type: "site.updated", siteId: "the-last-one" });
+    await readUntil(reader, /the-last-one/, sink);
+    expect(sink.text.length).toBeGreaterThan(2 * MAX_QUEUED_BYTES);
+    expect(sink.text.match(/after-\d+/g)).toHaveLength(20);
+    expect(streams.size).toBe(1);
+    await reader.cancel();
+  });
+
   it("counts the streams of each identity apart, and gives a place back when one ends", () => {
     const streams = createStreamRegistry();
     const first = streams.add(() => {}, "account:a");

@@ -89,7 +89,7 @@ function counts(list: Finding[]): SeverityCounts {
 
 export function createMockVisibility(mock: MockBackend) {
   const robots = new Map<string, Set<string>>();
-  const undo = new Map<string, Array<{ path: string; raw: Buffer | null }>>();
+  const undo = new Map<string, Array<{ path: string; raw: Buffer | null; wrote: Buffer | null }>>();
   const batches = new Map<string, WriteBatchStatus>();
   const last = new Map<string, Map<string, Finding>>();
 
@@ -191,7 +191,7 @@ export function createMockVisibility(mock: MockBackend) {
     "POST /api/sites/:siteId/visibility/fix": ({ params, body }) => {
       const site = mock.site(params.siteId);
       const known = last.get(params.siteId) ?? new Map(audit(params.siteId).findings.map((f) => [f.id, f]));
-      const before: Array<{ path: string; raw: Buffer | null }> = [];
+      const before: Array<{ path: string; raw: Buffer | null; wrote: Buffer | null }> = [];
       const applied: Array<{ id: string; path: string }> = [];
       const refused: Array<{ id: string; reason: string }> = [];
 
@@ -203,8 +203,9 @@ export function createMockVisibility(mock: MockBackend) {
           continue;
         }
         for (const edit of fix.edits) {
-          if (!before.some((b) => b.path === edit.path)) before.push({ path: edit.path, raw: site.read(edit.path) });
+          if (!before.some((b) => b.path === edit.path)) before.push({ path: edit.path, raw: site.read(edit.path), wrote: null });
           site.updateEntry(edit.path, edit.ops);
+          before.find((b) => b.path === edit.path)!.wrote = site.read(edit.path);
         }
         applied.push({ id, path: fix.edits[0]!.path });
       }
@@ -219,10 +220,15 @@ export function createMockVisibility(mock: MockBackend) {
       const held = undo.get(body.undoId);
 
       if (!held) throw new MockError("not-found", "Those fixes can't be undone from here any more. You can still discard them in Proof.");
-      for (const item of held) site.write(item.path, item.raw);
+      // As the engine does: a page changed again since the fix is left as it is, and named.
+      const same = (a: Buffer | null, b: Buffer | null) => (a === null || b === null ? a === b : a.equals(b));
+      const back = held.filter((item) => same(site.read(item.path), item.wrote) || same(site.read(item.path), item.raw));
+      const left = held.filter((item) => !back.includes(item)).map((item) => item.path);
+
+      for (const item of back) site.write(item.path, item.raw);
       undo.delete(body.undoId);
-      mock.changed(site.id, held.map((h) => h.path), "undo");
-      return { restored: held.map((h) => h.path), left: [] };
+      if (back.length) mock.changed(site.id, back.map((h) => h.path), "undo");
+      return { restored: back.map((h) => h.path), left };
     },
     "GET /api/sites/:siteId/visibility/crawlers": ({ params }) => crawlers(params.siteId),
     "PUT /api/sites/:siteId/visibility/crawlers": ({ params, body }) => {

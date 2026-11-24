@@ -192,6 +192,8 @@ export class MockSite {
   lastOpenedAt = Date.now();
   /** Paths written by each assistant turn, with their pre-images, for "Undo". */
   readonly checkpoints = new Map<string, Map<string, Buffer | null>>();
+  /** What each of those turns last wrote to each path: an undo puts a file back only while it still holds this (as the engine does). */
+  readonly wrote = new Map<string, Map<string, Buffer | null>>();
 
   constructor(seed: SiteSeed) {
     this.seed = seed;
@@ -220,6 +222,7 @@ export class MockSite {
       const cp = this.checkpoints.get(checkpoint) ?? new Map<string, Buffer | null>();
       if (!cp.has(path)) cp.set(path, record.current);
       this.checkpoints.set(checkpoint, cp);
+      this.wrote.set(checkpoint, (this.wrote.get(checkpoint) ?? new Map<string, Buffer | null>()).set(path, bytes));
     }
     record.current = bytes;
     record.modifiedAt = Date.now();
