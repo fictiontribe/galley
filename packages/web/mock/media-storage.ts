@@ -92,7 +92,7 @@ export function createMockMediaStorage(mock: MockBackend) {
       images: {
         connected: Boolean(state.images && (state.imagesToken || state.imagesUseDeployKey)),
         config: state.images,
-        token: state.imagesUseDeployKey ? { configured: true, source: "site", hint: "k3y9", use: "deploy" } : state.imagesToken ? { configured: true, source: "site", hint: state.imagesToken.slice(-4), use: "own" } : { configured: false, source: null, use: null },
+        token: state.imagesUseDeployKey ? { configured: true, source: "site", use: "deploy" } : state.imagesToken ? { configured: true, source: "site", hint: state.imagesToken.slice(-4), use: "own" } : { configured: false, source: null, use: null },
       },
       cloudflare: { keyStored: true },
     };
