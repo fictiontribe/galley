@@ -94,6 +94,14 @@ export interface Field {
   blocks?: BlockType[];
   /** reference: the collection id it points into. */
   collection?: string;
+  /**
+   * list, tags, blocks: the fewest and most items the site's schema allows
+   * (zod's `.min()`, `.max()`, `.length()`, `.nonempty()`); number: the
+   * smallest and largest value. A new section starts within them, since a
+   * list one item short fails the schema and the page with it.
+   */
+  min?: number;
+  max?: number;
   default?: JsonValue;
   /** Up to three real values from the corpus — shown as placeholders, given to the AI. */
   examples?: JsonValue[];

@@ -276,6 +276,31 @@ describe("analyzeAstroConfig (static, never executed)", () => {
     expect(video).toMatchObject({ type: "string", required: true, description: "File stem in public/video", examples: ["galley-demo"], examplesDeclared: true });
   });
 
+  it("carries how many items a list must have, and a number's bounds", () => {
+    const source = `
+      import { defineCollection, z } from "astro:content";
+      const pages = defineCollection({ schema: z.object({
+        words: z.array(z.string()).min(2),
+        steps: z.array(z.object({ heading: z.string() })).min(2).max(4),
+        pair: z.array(z.string()).length(2),
+        some: z.array(z.object({ a: z.string() })).nonempty(),
+        limit: z.number().int().min(1).max(12),
+        title: z.string().min(1),
+      }) });
+      export const collections = { pages };
+    `;
+    const [pages] = analyzeAstroConfig(source).collections;
+    const field = (key: string) => pages!.fields!.find((candidate) => candidate.key === key)!;
+
+    expect(field("words")).toMatchObject({ type: "tags", min: 2 });
+    expect(field("steps")).toMatchObject({ type: "list", min: 2, max: 4 });
+    expect(field("pair")).toMatchObject({ min: 2, max: 2 });
+    expect(field("some")).toMatchObject({ min: 1 });
+    expect(field("limit")).toMatchObject({ type: "number", min: 1, max: 12 });
+    // A text's length is the person's words, not a shape to start from.
+    expect(field("title").min).toBeUndefined();
+  });
+
   it("returns no collections (and a note) for configs it cannot read", () => {
     expect(analyzeAstroConfig("this is not javascript {{{ ").collections).toEqual([]);
     expect(analyzeAstroConfig("export default {}").notes[0]).toMatch(/does not export `collections`/);

@@ -106,6 +106,21 @@ describe("what a new section starts with", () => {
     expect(newSection(split, "type").value).toEqual({ type: "split", heading: "", media: { side: "left" } });
   });
 
+  it("starts a list with as many items as the schema asks for, and a number at its least", () => {
+    const marquee: BlockType = { type: "marquee", label: "Marquee", count: 0, fields: [f("items", "tags", true, { min: 2 }), f("speed", "number", true, { min: 1 })] };
+    expect(newSection(marquee, "type").value).toEqual({ type: "marquee", items: ["", ""], speed: 1 });
+    const chapters: BlockType = {
+      type: "chapters",
+      label: "Chapters",
+      count: 1,
+      fields: [f("heading", "string"), f("items", "list", true, { min: 2, max: 4, of: f("item", "object", true, { fields: [f("heading", "string"), f("image", "image")] }) })],
+      example: { type: "chapters", heading: "Making", items: [{ heading: "Cut", image: "/a.jpg" }, { heading: "Sew", image: "/b.jpg" }, { heading: "Press", image: "/c.jpg" }] },
+    };
+    // Each item borrows its own picture: the first from the first, the second from the second.
+    const { value } = newSection(chapters, "type", { siblings: [chapters.example!], index: 1 });
+    expect(value).toEqual({ type: "chapters", heading: "", items: [{ heading: "", image: "/a.jpg" }, { heading: "", image: "/b.jpg" }] });
+  });
+
   it("stays blank when there is nothing to borrow", () => {
     const { value, borrowed } = newSection({ ...film, samples: [], example: { type: "film" } }, "type");
     expect(value).toMatchObject({ video: "", poster: "", author: "", published: "" });

@@ -395,6 +395,20 @@ export function fieldFromZod(key: string, input: Expr, scope: Scope, depth = 0):
         if (text) result.description = text;
         break;
       }
+      case "min":
+      case "max":
+      case "length":
+      case "nonempty": {
+        // Bounds on a list's length or a number's value (a string's length is the person's words: not carried).
+        const bounded = result.type === "list" || result.type === "tags" || result.type === "blocks" || result.type === "number";
+        const value = method.name === "nonempty" ? 1 : literal(method.args[0]);
+
+        if (bounded && typeof value === "number" && Number.isFinite(value)) {
+          if (method.name !== "max") result.min = value;
+          if (method.name === "max" || method.name === "length") result.max = value;
+        }
+        break;
+      }
       case "meta": {
         // zod 4's metadata: `.meta({ description, examples })`, as in its JSON Schema output.
         const meta = literal(method.args[0]);

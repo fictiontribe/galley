@@ -29,13 +29,14 @@ export function emptyValue(field: Field): JsonValue {
   if (field.default !== undefined) return field.default;
   switch (field.type) {
     case "number":
-      return 0;
+      // The schema's smallest allowed value when 0 isn't allowed.
+      return field.min !== undefined && field.min > 0 ? field.min : field.max !== undefined && field.max < 0 ? field.max : 0;
     case "boolean":
       return false;
     case "tags":
-      return [];
+      return atLeast(field, [], "");
     case "list":
-      return [];
+      return atLeast(field, [], newListItem(field.of));
     case "blocks":
       return [];
     case "object":
@@ -47,6 +48,15 @@ export function emptyValue(field: Field): JsonValue {
     default:
       return "";
   }
+}
+
+/** A list grown to the fewest items its schema allows, with copies of `item` (a list one short fails the schema). */
+function atLeast(field: Field | undefined, list: JsonValue[], item: JsonValue | undefined): JsonValue[] {
+  const min = field?.min ?? 0;
+  if (item === undefined || list.length >= min) return list;
+  const out = [...list];
+  while (out.length < min) out.push(structuredClone(item));
+  return out;
 }
 
 /** Required fields at their empty values; optional ones left out. */
@@ -76,11 +86,14 @@ function blankValue(value: JsonValue, field: Field | undefined): JsonValue | und
   }
   if (typeof value === "number" || typeof value === "boolean" || value === null) return value;
   if (Array.isArray(value)) {
-    if (type === "tags") return required ? [] : undefined;
+    if (type === "tags") return required ? atLeast(field, [], "") : undefined;
     const first = value[0];
-    if (first === undefined) return required ? [] : undefined;
-    if (isObject(first)) return [blankObject(first, field?.of?.fields ?? [])];
-    return required ? [""] : undefined;
+    if (first === undefined) return required ? atLeast(field, [], field?.of ? newListItem(field.of) : undefined) : undefined;
+    if (isObject(first)) {
+      const item = blankObject(first, field?.of?.fields ?? []);
+      return atLeast(field, [item], item);
+    }
+    return required ? atLeast(field, [""], "") : undefined;
   }
   const out = blankObject(value, field?.fields ?? []);
   // An optional group (a second button, a link) left with nothing of its own is left out, as optional words are.
