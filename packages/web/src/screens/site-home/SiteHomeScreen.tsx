@@ -14,6 +14,9 @@ import { useSite } from "@/lib/stores/site";
 import { keys } from "@/lib/sync";
 import { Badge, Button, EmptyState, ErrorState, Icon, Kbd, ProofMark, Skeleton, buttonClass } from "@/ui";
 import { OnlineCard } from "@/features/deploy/Online";
+import { PreviewTabLink, siteHomePreviewTarget } from "@/features/hosting/previewLinks";
+import { useMeta } from "@/lib/stores/meta";
+import { usePlaceWords } from "@/lib/where";
 
 function AskBox({ siteId }: { siteId: string }) {
   const navigate = useNavigate();
@@ -168,6 +171,8 @@ function HistorySection({ siteId }: { siteId: string }) {
 
 function PreviewSection({ siteId }: { siteId: string }) {
   const status = usePreviewStatus(siteId);
+  // On a hosted install the preview opens through its entry (features/hosting/previewLinks.tsx).
+  const meta = useMeta((s) => s.meta);
   return (
     <Section id="home-preview" title="Preview" action={<PreviewBadge siteId={siteId} />}>
       <div className="app-card app-card--pad app-preview-card">
@@ -188,10 +193,10 @@ function PreviewSection({ siteId }: { siteId: string }) {
         <div className="app-preview-card__actions">
           <PreviewActions siteId={siteId} />
           {status?.state === "ready" && status.url ? (
-            <a className={buttonClass("quiet", "sm")} href={status.url} target="_blank" rel="noreferrer">
+            <PreviewTabLink siteId={siteId} target={siteHomePreviewTarget(meta, status.url)} className={buttonClass("quiet", "sm")}>
               <Icon name="external" />
               Open in a new tab
-            </a>
+            </PreviewTabLink>
           ) : null}
         </div>
       </div>
@@ -203,6 +208,7 @@ function PreviewSection({ siteId }: { siteId: string }) {
 export function SiteHomeScreen() {
   const { siteId = "" } = useParams();
   const detail = useSite((s) => s.detail);
+  const where = usePlaceWords();
   useTopBar({ crumbs: [{ label: detail?.name ?? "Site" }, { label: "Site home" }] });
 
   if (!detail) {
@@ -230,7 +236,7 @@ export function SiteHomeScreen() {
           <h1 className="app-home__title">{detail.name}</h1>
           <p className="app-home__lede">
             {count(collections.length, "collection")} and {count(pages, "page")} ready to edit.
-            {detail.git.hasRemote ? null : " Its versions are kept on this computer only — not backed up or shared anywhere yet."}
+            {detail.git.hasRemote ? null : ` Its versions are kept ${where.recorded} only — not backed up or shared anywhere yet.`}
           </p>
         </header>
 

@@ -122,6 +122,22 @@ const deployConfig = z
   })
   .strict();
 
+/**
+ * Where the site's editor is hosted ("Host the editor online"): its address
+ * and the host's id. Written by the app once the hosted editor has the site;
+ * no secrets, safe to publish with the site.
+ */
+const editorConfig = z
+  .object({
+    url: z
+      .string()
+      .url()
+      .regex(/^https:\/\/[^/?#]+\/?$/, { message: "must be the editor's https:// address, with nothing after the name, like “https://cms.example.com”." })
+      .describe("The editor's address, like https://cms.example.com."),
+    host: z.string().regex(ADAPTER_ID, { message: "must be a host id, like “fly”, “cloudflare” or “own-server”." }).optional().describe("Where it is hosted: fly, cloudflare, own-server, or a plugin's host."),
+  })
+  .strict();
+
 const redirectsConfig = z
   .object({
     file: z
@@ -166,6 +182,7 @@ export const galleyConfigSchema = z
     templates: z.array(templateConfig).optional().describe("Ready-made entries to start a new one from (a landing page, a pricing page)."),
     deploy: deployConfig.optional().describe("Where the site is put online. Ids only: the host's access key is kept in the app's secrets, never in this file."),
     redirects: redirectsConfig.optional().describe("Where the redirects list lives and which host applies it. See the redirects guide."),
+    editor: editorConfig.optional().describe("Where this site's editor is hosted online, when it has one. An address and the host's id: no secrets, safe to publish."),
     siteBrand: z
       .object({
         dir: z.string().regex(/^(?!\/)(?!.*\.\.)[A-Za-z0-9._/-]+$/, { message: "must be a folder inside the site, like “galley/brand”." }).optional(),

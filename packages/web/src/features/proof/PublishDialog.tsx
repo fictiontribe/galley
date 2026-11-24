@@ -5,6 +5,8 @@ import { api, errorShape } from "@/lib/api";
 import { count } from "@/lib/format";
 import { invalidate } from "@/lib/query";
 import { useChanges } from "@/lib/stores/changes";
+import { useHostedInstall } from "@/lib/stores/meta";
+import { placeWords } from "@/lib/where";
 import { useSite } from "@/lib/stores/site";
 import { notify } from "@/lib/stores/toasts";
 import { Button, Checkbox, Dialog, Field, Input, ProofMark, buttonClass } from "@/ui";
@@ -26,10 +28,10 @@ export interface PublishDialogProps {
 const NO_FILES: FileChange[] = [];
 
 /** What pressing the button will do, in plain terms. */
-function modeSentence(config: PublishConfig | undefined): { mode: PublishMode; text: string } {
+function modeSentence(config: PublishConfig | undefined, hosted: boolean): { mode: PublishMode; text: string } {
   if (config?.mode === "pull-request") return { mode: "pull-request", text: "Sends the changes for review. A developer approves them before they go live." };
   if (config && config.push && config.remote) return { mode: "commit", text: "Publishes straight away: the changes go live on the site. You can undo it from Version history." };
-  return { mode: "commit", text: "Saves the changes as a new version on this computer. This site isn’t set up to send versions to a host." };
+  return { mode: "commit", text: `Saves the changes as a new version ${placeWords(hosted).recorded}. This site isn’t set up to send versions to a host.` };
 }
 
 function Outcome({ outcome }: { outcome: PublishOutcome }) {
@@ -51,7 +53,8 @@ function Outcome({ outcome }: { outcome: PublishOutcome }) {
 
 /** Who the version will be recorded as, which setting chose that, and where to change it. */
 function AuthorSmallPrint({ siteId, author, onNavigate }: { siteId: string; author: NonNullable<GitStatus["author"]>; onNavigate: () => void }) {
-  const line = authorLine(author, siteId);
+  const hosted = useHostedInstall();
+  const line = authorLine(author, siteId, hosted);
   return (
     <p className="g-hint publish-author">
       {line.text}{" "}
@@ -96,7 +99,8 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
   const files = useChanges((s) => s.changes?.files) ?? NO_FILES;
   const config = useSite((s) => s.detail?.model.publish);
   const author = useSite((s) => s.detail?.git.author);
-  const { mode, text: modeText } = modeSentence(config);
+  const hosted = useHostedInstall();
+  const { mode, text: modeText } = modeSentence(config, hosted);
   const nameOf = useChangeName();
   const [left, setLeft] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
@@ -150,7 +154,7 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
         params: { siteId },
         body: { ...(text ? { message: text } : {}), ...(all ? {} : { paths: chosen.map((file) => file.path) }) },
       });
-      setOutcome(publishOutcome(result, { message: text || "these changes", mode }));
+      setOutcome(publishOutcome(result, { message: text || "these changes", mode, hosted }));
       invalidate(["site", siteId, "history"]);
       invalidate(["site", siteId, "git"]);
       void useChanges.getState().refresh();

@@ -1,0 +1,7 @@
+# HTTPS for the editor, its preview and its live comparison: Caddy gets and renews the certificates by itself.
+cms.example.com, cms-preview.example.com, cms-live.example.com {
+	reverse_proxy editor:4400 {
+		# Keep open connections (the editor's live updates) through a reload of this file.
+		stream_close_delay 5m
+	}
+}

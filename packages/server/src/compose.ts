@@ -9,12 +9,13 @@ import { builtInTargets } from "@galley/core/deploy";
 import { ensureSitePlugins, setActivePlugins, withPluginHooks, withSiteHooks, type PluginRegistry } from "@galley/core/plugins";
 import { createEventBus, createSiteRegistry, createSiteService, siteIdFor } from "@galley/core/site";
 import { createDeployService } from "@galley/core/deploy";
+import { builtInEditorHosts, createHostingService } from "@galley/core/hosting";
 import { createFormCapture } from "@galley/core/forms";
 import { createRedirectsService } from "@galley/core/redirects";
 import { createSiteBrandService } from "@galley/core/sitebrand";
 import { createVisibilityService } from "@galley/core/seo";
-import type { EventBus, SettingsService, SiteService } from "@galley/core/types";
-import { createPortPool, type PortRange } from "@galley/core/workspace";
+import type { EventBus, SettingsService, SiteRegistry, SiteService } from "@galley/core/types";
+import { createPortPool, type PortRange, type PreviewGateway } from "@galley/core/workspace";
 import { overlaySource } from "@galley/overlay";
 import { createImportService } from "./import";
 import { createPluginSystem } from "./plugins";
@@ -40,6 +41,27 @@ export interface ServicesOptions {
   mode?: "local" | "hosted";
   /** The app's address as people reach it (capture address, inbox links in e-mails). Read when needed. */
   appUrl?: () => string | null;
+  /** Hosted: the install's one site folder, which sits inside the home on purpose (see SiteRegistryOptions.installSite). */
+  installSite?: () => string | null;
+  /** Hosted: the live address the install keeps in its own state, used when the site's settings file names none (see SiteDeps.liveUrl). */
+  liveUrl?: () => string | null;
+  /** Hosted: false, so the preview's package install never adds a lockfile the site doesn't have (see SiteDeps.addLockfile). */
+  addLockfile?: boolean;
+  /**
+   * Hosted: narrows the registry before anything else is given it — the
+   * assistant, forms, redirects, the brand — so every part of the engine
+   * sees the install's one site and nothing else.
+   */
+  wrapRegistry?: (registry: SiteRegistry) => SiteRegistry;
+  /**
+   * Hosted: the preview gateway every site's preview and live comparison are
+   * mounted on (gateway.ts), so they are served through the server's one
+   * address by hostname. `host`, `publicHost`, `previewPorts` and
+   * `publicProtocol` are then unused: a hosted install opens no other port.
+   */
+  previewGateway?: PreviewGateway;
+  /** Told the environment variables plugins name for their secret settings (see PluginSystemOptions.onSecretEnv). */
+  onPluginSecretEnv?: (names: string[]) => void;
 }
 
 export async function createServices(options: ServicesOptions): Promise<Services> {
@@ -51,7 +73,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
   let plugins: PluginRegistry | null = null;
   const settings = createSettingsService({ home: options.home, env, secretStore: secrets, imageProviders: () => plugins?.imageProviders() ?? [], videoProviders: () => plugins?.videoProviders() ?? [] });
 
-  plugins = await createPluginSystem({ home: options.home, env, settings, secrets });
+  plugins = await createPluginSystem({ home: options.home, env, settings, secrets, ...(options.onPluginSecretEnv ? { onSecretEnv: options.onPluginSecretEnv } : {}) });
   const pluginRegistry = plugins;
   const releaseActive = setActivePlugins({ adapters: (root) => pluginRegistry.adapters(root), tools: (root) => pluginRegistry.tools(root) });
 
@@ -78,6 +100,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
     // One pool for the whole server: every site's previews share the operator's range.
     ...(options.previewPorts ? { previewPorts: createPortPool(options.previewPorts) } : {}),
     ...(options.publicProtocol ? { publicProtocol: options.publicProtocol } : {}),
+    ...(options.previewGateway ? { previewGateway: options.previewGateway } : {}),
     onPublished: (site, result) => deploy.afterPublish(site, result),
     // The address the capture service gives out (forms/capture.ts), handed to previewed pages so their forms reach the inbox.
     captureAddress: (siteId) => {
@@ -85,11 +108,14 @@ export async function createServices(options: ServicesOptions): Promise<Services
 
       return app ? `${app}/f/${encodeURIComponent(siteId)}` : null;
     },
+    ...(options.installSite ? { installSite: options.installSite } : {}),
+    ...(options.liveUrl ? { liveUrl: () => options.liveUrl?.() ?? null } : {}),
+    ...(options.addLockfile === false ? { addLockfile: false } : {}),
   });
   const images = createImageService({ home: options.home, settings, providers: () => pluginRegistry.imageProviders() });
   const videos = createVideoService({ home: options.home, settings, events, providers: () => pluginRegistry.videoProviders() });
   // Every site handed out publishes through the plugins' hooks and loads the plugins its config names.
-  const registry = withPluginHooks(sites, pluginRegistry, {
+  const hooked: SiteRegistry = withPluginHooks(sites, pluginRegistry, {
     env,
     onDispose: async () => {
       await videos.dispose();
@@ -98,6 +124,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
       releaseActive();
     },
   });
+  const registry = options.wrapRegistry ? options.wrapRegistry(hooked) : hooked;
   const agent = createAgentRuntime({ home: options.home, registry, settings, images, events });
 
   // afterDeploy and onSubmission hooks follow what the deploy and form modules already announce.
@@ -141,8 +168,15 @@ export async function createServices(options: ServicesOptions): Promise<Services
   const siteBrand = createSiteBrandService({ home: options.home, registry, settings, events, env: options.env ?? process.env });
 
   const imports = createImportService({ home: options.home });
+  // "Host the editor online": only on a computer of the person's own — a hosted install never creates other installs.
+  const builtInHosts = builtInEditorHosts();
+  const builtInHostIds = new Set(builtInHosts.map((host) => host.id));
+  const hosting =
+    (options.mode ?? "local") === "local"
+      ? createHostingService({ home: options.home, settings, events, env, hosts: [...builtInHosts, ...pluginRegistry.editorHostObjects().filter((host) => !builtInHostIds.has(host.id))] })
+      : undefined;
 
-  return { registry, agent, images, settings, events, forms, deploy, plugins: pluginRegistry, videos, visibility, redirects, siteBrand, imports };
+  return { registry, agent, images, settings, events, forms, deploy, plugins: pluginRegistry, videos, visibility, redirects, siteBrand, imports, ...(hosting ? { hosting } : {}) };
 }
 
 /** The commit author from Settings, as the registry uses it: both name and email, or the machine's git config. */

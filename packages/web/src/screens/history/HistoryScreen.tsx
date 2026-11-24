@@ -9,6 +9,8 @@ import { invalidate, setQueryData, useQuery } from "@/lib/query";
 import { useSite } from "@/lib/stores/site";
 import { notify } from "@/lib/stores/toasts";
 import { keys } from "@/lib/sync";
+import { placeWords, usePlaceWords } from "@/lib/where";
+import { useHostedInstall } from "@/lib/stores/meta";
 import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, PageHeader, ProofMark, Skeleton } from "@/ui";
 import { sendNowWithToast } from "@/features/proof/sendNow";
 import { PutLiveButton } from "@/features/deploy/Online";
@@ -19,6 +21,7 @@ function SyncStatus({ siteId }: { siteId: string }) {
   const git = useQuery(keys.git(siteId), () => api("GET /api/sites/:siteId/git", { params: { siteId } }));
   const [pulling, setPulling] = useState(false);
   const [sending, setSending] = useState(false);
+  const where = usePlaceWords();
 
   const pull = async () => {
     setPulling(true);
@@ -42,7 +45,7 @@ function SyncStatus({ siteId }: { siteId: string }) {
 
   let text: string;
   let tone: "success" | "warning" | "neutral" = "neutral";
-  if (!status.hasRemote) text = "Versions are kept on this computer only — they aren’t backed up or shared anywhere.";
+  if (!status.hasRemote) text = `Versions are kept ${where.recorded} only — they aren’t backed up or shared anywhere.`;
   else if (status.behind > 0) {
     text = `${count(status.behind, "newer version")} published elsewhere ${status.behind === 1 ? "isn’t" : "aren’t"} in this copy yet.`;
     tone = "warning";
@@ -142,7 +145,7 @@ function VersionRow({ item, onUndo, latest, first }: { item: HistoryEntry; onUnd
   );
 }
 
-function describeResult(siteId: string, result: PublishResult, item: HistoryEntry): void {
+function describeResult(siteId: string, result: PublishResult, item: HistoryEntry, hosted: boolean): void {
   const when = absoluteTime(item.date);
   if (!result.ok) {
     notify({ tone: "danger", title: "Couldn’t undo this publish", body: `${result.error ?? "The undo didn’t go through."} Nothing was changed.`, detail: result.detail });
@@ -150,7 +153,7 @@ function describeResult(siteId: string, result: PublishResult, item: HistoryEntr
     notify({
       tone: "warning",
       title: "Undone here, not live yet",
-      body: `The undo is recorded on this computer but didn’t reach the shared copy. ${result.pushError}`,
+      body: `The undo is recorded ${placeWords(hosted).recorded} but didn’t reach the shared copy. ${result.pushError}`,
       detail: result.detail,
       action: { label: "Send now", onClick: () => void sendNowWithToast(siteId) },
     });
@@ -167,6 +170,7 @@ export function HistoryScreen() {
   useTopBar({ crumbs: [{ label: "Version history" }] });
   const history = useQuery(keys.history(siteId, PAGE), () => api("GET /api/sites/:siteId/history", { params: { siteId }, query: { limit: PAGE } }));
   const [undoing, setUndoing] = useState<HistoryEntry | null>(null);
+  const hosted = useHostedInstall();
   const items = history.data?.items ?? [];
 
   let body;
@@ -222,7 +226,7 @@ export function HistoryScreen() {
         onConfirm={async () => {
           if (!undoing) return;
           const result = await api("POST /api/sites/:siteId/revert", { params: { siteId }, body: { commit: undoing.commit } });
-          describeResult(siteId, result, undoing);
+          describeResult(siteId, result, undoing, hosted);
           invalidate(["site", siteId, "history"]);
           invalidate(keys.git(siteId));
         }}

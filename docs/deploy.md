@@ -14,6 +14,13 @@ unpublished changes can be shared as a **preview link** first.
 > **Vercel** has not been run against the real service yet. Details and the
 > one command per host are in [Verifying with a real account](#verifying-with-a-real-account).
 
+> **Host the editor online** sits beside **Put this site online** on the
+> Online screen: it puts the *editor* online too — a hosted install for this
+> one site, on the person's own Fly.io account, behind a Cloudflare Tunnel, or
+> on any server with Docker — planned and priced before anything is created.
+> It is built the same way as this module (`packages/core/src/hosting/`) and
+> described in [`docs/cloud-install.md`](cloud-install.md#host-the-editor-online).
+
 ---
 
 ## For site owners

@@ -178,6 +178,43 @@ export function withoutAgentMarkers(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return out;
 }
 
+/**
+ * Variables of this app's own process that a site's commands must not
+ * inherit. A hosted install is started with its sign-in password, setup
+ * code, repository access key and provider keys in its environment; the
+ * site's dev server, build and install run the site's code (and its
+ * dependencies'), which has no business with any of them. Empty — nothing
+ * hidden — until a hosted server sets it; locally a developer's shell is
+ * passed through as it always was.
+ */
+let hiddenFromSiteCommands: ReadonlySet<string> = new Set();
+
+export function hideFromSiteCommands(names: readonly string[]): void {
+  hiddenFromSiteCommands = new Set(names.map((name) => name.toUpperCase()));
+}
+
+/**
+ * A memory ceiling for the site's own commands (a hosted install's
+ * GALLEY_PREVIEW_MEMORY_MB): `--max-old-space-size` is added to the
+ * NODE_OPTIONS they receive — after whatever the operator set — so a runaway
+ * build ends itself with an error its log shows, instead of taking the whole
+ * server down. Never applied to this process. Null: no ceiling.
+ */
+let siteCommandMemoryMb: number | null = null;
+
+export function limitSiteCommandMemory(mb: number | null): void {
+  siteCommandMemoryMb = mb !== null && Number.isInteger(mb) && mb > 0 ? mb : null;
+}
+
+/** A copy of `env` without the names hideFromSiteCommands was given. */
+export function withoutHiddenVariables(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  if (hiddenFromSiteCommands.size === 0) return env;
+  const out: NodeJS.ProcessEnv = {};
+
+  for (const [name, value] of Object.entries(env)) if (!hiddenFromSiteCommands.has(name.toUpperCase())) out[name] = value;
+  return out;
+}
+
 export interface ResolvedCommand {
   file: string;
   args: string[];
@@ -222,7 +259,7 @@ export function resolveCommand(root: string, command: string, extraEnv: NodeJS.P
   // Inherited agent and test-runner markers are dropped; variables the caller
   // or the command line set on purpose are kept.
   const env: NodeJS.ProcessEnv = {
-    ...withoutAgentMarkers(process.env),
+    ...withoutHiddenVariables(withoutAgentMarkers(process.env)),
     ...extraEnv,
     ...parsed.env,
     PATH: pathValue,
@@ -232,6 +269,7 @@ export function resolveCommand(root: string, command: string, extraEnv: NodeJS.P
   };
 
   if (IS_WINDOWS) delete env.Path;
+  if (siteCommandMemoryMb !== null) env.NODE_OPTIONS = [env.NODE_OPTIONS?.trim(), `--max-old-space-size=${siteCommandMemoryMb}`].filter(Boolean).join(" ");
   const shell = IS_WINDOWS && /\.(cmd|bat)$/i.test(file);
 
   return { file, args: shell ? args.map(quoteForCmd) : args, env, shell };

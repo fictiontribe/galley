@@ -21,6 +21,14 @@ describe("grouping changes", () => {
     expect(orderedPaths(groups)).toEqual(["src/content/pages/about.md", "src/content/pages/index.md", "public/images/hero.webp", "galley.config.json", "src/styles/tokens.css"]);
   });
 
+  it("calls the site's settings file “Site settings”, with its file name as the second line", () => {
+    const config = change({ path: "galley.config.json", kind: "config" });
+    expect(titleOf(config)).toBe("Site settings");
+    expect(groupChanges([config]).map((group) => group.id)).toEqual(["code"]);
+    // Only the file at the site's root is the site's settings.
+    expect(titleOf(change({ path: "examples/galley.config.json", kind: "config" }))).toBe("galley.config.json");
+  });
+
   it("counts site-wide settings as settings, named by their collection", () => {
     const collections = [{ id: "site", label: "Site settings", kind: "data" } as Collection];
     const settings = change({ path: "src/data/site.json", kind: "content", collection: "site", title: "Harbour Dental" });

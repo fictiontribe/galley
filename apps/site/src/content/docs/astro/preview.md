@@ -67,7 +67,7 @@ This is the one connection to the outside the preview makes: Galley's server fet
 
 ## Where it listens
 
-Locally, the proxies bind `127.0.0.1` on free ports. In hosted mode they bind the server's listening address, still on free ports chosen at start-up — so a reverse proxy or a container with a fixed port mapping can't reach them yet. That is a known gap, described in [Hosting for a team](/docs/running/hosted/#previews-a-known-gap).
+Locally, the proxies bind `127.0.0.1` on free ports. A hosted install opens no preview ports: the preview and the live comparison are served through the server's one port, on names of their own (`cms-preview.example.com`, `cms-live.example.com`), and only to a browser the editor let in ([The three names](/docs/running/hosted/#the-three-names)).
 
 ## Stopping
 

@@ -60,6 +60,7 @@ export function inboxHandlers(emit: (event: ServerEvent) => void): Pick<Handlers
       settings.set(siteId, {
         captureAddress: `http://127.0.0.1:4400/f/${siteId}`,
         captureReachable: false,
+        captureReach: { kind: "this-computer", host: "127.0.0.1" },
         reachability: "Submissions can only arrive when this app runs on a server visitors can reach. On this computer it works for testing.",
         origins: { site: ["https://example.com", "https://www.example.com"], extra: [], loopback: true },
         captureKey: { enabled: false },

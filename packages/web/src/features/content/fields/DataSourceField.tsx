@@ -14,6 +14,9 @@ import type { Field, JsonValue } from "@galley/core/types";
 import { api, errorShape, rawFileUrl } from "@/lib/api";
 import { setQueryData, useQuery } from "@/lib/query";
 import { usePreviewStatus } from "@/lib/stores/preview";
+import { useMeta } from "@/lib/stores/meta";
+import { needsEntry } from "@/features/preview/entry";
+import { thumbPreviewTarget, useEnteredPreviewAddress } from "@/features/hosting/previewLinks";
 import { keys } from "@/lib/sync";
 import { Button, Icon, IconButton, Input, ProofMark, Skeleton, Spinner, cx } from "@/ui";
 import { useForm } from "../form/context";
@@ -71,13 +74,21 @@ function useSearch(siteId: string, sourceId: string, query: string, open: boolea
 function Thumb({ image, compact }: { image: string | undefined; compact?: boolean }) {
   const { siteId, media } = useForm();
   const preview = usePreviewStatus(siteId);
+  const meta = useMeta((s) => s.meta);
+  const [failed, setFailed] = useState(0);
+  const previewUrl = preview?.state === "ready" ? preview.url : null;
+  const own = pickImageSrc(image, null, media, (path) => rawFileUrl(siteId, path));
+  // On a hosted install the preview answers only through its entry: a fresh entered address, asked for only once the media folders' copy isn't there.
+  const viaEntry = needsEntry(meta) ? thumbPreviewTarget(meta, previewUrl, image) : null;
+  const entryPath = viaEntry?.kind === "entry" ? viaEntry.path : null;
+  const entered = useEnteredPreviewAddress(siteId, entryPath && (own === null || failed >= 1) ? entryPath : null);
   // The file in the site's media folders first (same origin as the app), then the running preview, which serves
   // every path from the site's root as visitors get it — pictures outside the media folders included.
-  const sources = [pickImageSrc(image, null, media, (path) => rawFileUrl(siteId, path)), pickImageSrc(image, preview?.state === "ready" ? preview.url : null, null, (path) => rawFileUrl(siteId, path))].filter(
+  const sources = [own, entryPath ? entered : pickImageSrc(image, previewUrl, null, (path) => rawFileUrl(siteId, path))].filter(
     (src, index, all): src is string => Boolean(src) && all.indexOf(src) === index,
   );
-  const [failed, setFailed] = useState(0);
-  const key = sources.join(" ");
+  // An entered address arriving isn't a new picture: the count of failed sources carries on.
+  const key = entryPath ? `${own ?? ""} ${entryPath}` : sources.join(" ");
   useEffect(() => setFailed(0), [key]);
   const src = sources[failed];
   return (

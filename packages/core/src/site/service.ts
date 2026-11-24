@@ -72,6 +72,7 @@ import {
   type Workspace,
 } from "../workspace/index";
 import type { PortPool } from "../workspace/preview/ports";
+import type { PreviewGateway } from "../workspace/preview/proxy";
 import type { AuthorLayers } from "../workspace/author";
 import { formCodeRefusal } from "../site-kit/guard";
 import { createEnricher, describeChanges, sortChanges } from "./enrich";
@@ -100,6 +101,8 @@ export interface SiteDeps {
   publicHost?: string;
   /** The operator's port range for the preview proxies, shared by every site of the process. */
   previewPorts?: PortPool;
+  /** Mount the preview proxies on the server's one address instead of giving them ports (a hosted install). */
+  previewGateway?: PreviewGateway;
   /** Scheme browsers reach the preview proxies with ("https" behind a TLS-terminating proxy). */
   publicProtocol?: "http" | "https";
   /** Watch the tree for edits made outside the app. Default true. */
@@ -118,6 +121,21 @@ export interface SiteDeps {
    * preview reaches the inbox with no setting in the site's files.
    */
   captureAddress?: () => string | null;
+  /**
+   * A live address kept outside the site's files (a hosted install keeps the
+   * one given in first run in its own state). The model uses it when the
+   * site's own settings file names no live address (`urls.production`); the
+   * file always wins. Read whenever the model is (re)loaded: call refresh()
+   * after it changes.
+   */
+  liveUrl?: () => string | null;
+  /**
+   * False (a hosted install): the preview's package install never adds a
+   * lockfile the site doesn't have, so it can't show up as an unpublished
+   * change. Default true: on a computer of one's own it is installed as the
+   * package manager does by itself.
+   */
+  addLockfile?: boolean;
 }
 
 /** What the registry reads without awaiting anything, so listing sites stays instant. */
@@ -220,7 +238,11 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
 
     facts = await resolvePublishConfig(root, config, detected.publish);
     hasConfig = existsSync(join(root, PRODUCT.configFile));
-    return { ...detected, name: siteName(root, detected, config), publish: facts.config };
+    const given = config?.urls?.production ? null : (deps.liveUrl?.() ?? null);
+    // Every reader of the live address (Proof's side by side, the preview's baseline, the inbox's allowed origins) reads it from here.
+    const urls = given ? { ...detected.urls, production: given } : detected.urls;
+
+    return { ...detected, urls, name: siteName(root, detected, config), publish: facts.config };
   }
 
   try {
@@ -896,7 +918,9 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       return afterPublish(await workspace.revert(commit, model.publish));
     },
 
-    gitStatus() {
+    async gitStatus() {
+      // Read afresh, as publish does: the name may have been set since the site was opened (a hosted install's first run sets it after).
+      await refreshAuthor();
       return workspace.gitStatus();
     },
 
@@ -937,8 +961,10 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         ...(deps.host ? { host: deps.host } : {}),
         ...(deps.publicHost ? { publicHost: deps.publicHost } : {}),
         ...(deps.previewPorts ? { ports: deps.previewPorts } : {}),
+        ...(deps.previewGateway ? { gateway: deps.previewGateway } : {}),
         ...(deps.publicProtocol ? { publicProtocol: deps.publicProtocol } : {}),
         ...(deps.onPreviewActivity ? { onActivity: deps.onPreviewActivity } : {}),
+        ...(deps.addLockfile === false ? { addLockfile: false } : {}),
         onStatus: (status: PreviewStatus) => {
           if (!disposed) deps.events.emit({ type: "preview.status", siteId: deps.id, status });
         },

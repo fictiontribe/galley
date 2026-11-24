@@ -222,11 +222,14 @@ folder — are outside the app and must be cleaned up where they live.
 A static site's visitors can only send to a server that is **on the
 internet**. The app says so wherever the inbox is offered:
 
-- **Hosted** (`galley serve`, or the container, with `GALLEY_PUBLIC_URL` set
-  to a public `https://` address): the capture address is
-  `https://cms.example.com/f/<siteId>` and visitors reach it. Put that address
-  in the site's integration options (`forms.endpoint`) or the destination's
-  `endpoint` setting, and publish.
+- **A hosted install** (`galley serve`, the image, or an editor put online
+  with "Host the editor online"; `GALLEY_PUBLIC_URL` set to a public
+  `https://` address): the capture address is
+  `https://cms.example.com/f/<siteId>`, on the editor's own address, and
+  visitors reach it. Put that address in the site's integration options
+  (`forms.endpoint`) or the destination's `endpoint` setting, and publish. A
+  sign-in put in front of the editor (Cloudflare Access, say) must leave
+  `/f/` open to everyone ([`docs/cloud-install.md`](cloud-install.md#cloudflare)).
 - **On a computer of your own** (desktop app, `npx galley`): the capture
   address is `http://127.0.0.1:<port>/f/<siteId>`. Real visitors can't reach
   it. It works for testing — from a preview, or with **Send a test

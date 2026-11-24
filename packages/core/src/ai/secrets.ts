@@ -28,6 +28,8 @@ export const SECRET_ENV: Record<SecretName, string[]> = {
   // The names each host's own CLI reads, so a shell set up for wrangler or vercel just works.
   cloudflare: ["CLOUDFLARE_API_TOKEN"],
   vercel: ["VERCEL_TOKEN"],
+  // What flyctl reads, so a shell set up for it just works.
+  fly: ["FLY_API_TOKEN"],
 };
 
 const LABELS: Record<SecretName, string> = {
@@ -36,6 +38,7 @@ const LABELS: Record<SecretName, string> = {
   google: "a Google AI API key",
   cloudflare: "a Cloudflare access key (API token)",
   vercel: "a Vercel access key (access token)",
+  fly: "a Fly.io access key (organization token)",
 };
 
 /** Rough shapes — enough to catch a pasted sentence or the wrong service's key. */
@@ -45,6 +48,8 @@ const SHAPES: Record<SecretName, { test: RegExp; hint: string }> = {
   google: { test: /^[A-Za-z0-9_-]{20,}$/, hint: "They are a single word of letters and numbers, usually starting with “AIza”." },
   cloudflare: { test: /^[A-Za-z0-9_-]{30,}$/, hint: "Copy it from the page Cloudflare shows right after you create it: one long word of letters and numbers." },
   vercel: { test: /^[A-Za-z0-9_-]{20,}$/, hint: "Copy it from the page Vercel shows right after you create it: one long word of letters and numbers." },
+  // Fly.io shows its keys as "FlyV1 fm2_…" (one or more parts joined by commas); the whole string, prefix included, is the key.
+  fly: { test: /^(?:FlyV1 )?[A-Za-z0-9_]+_[A-Za-z0-9_+/=,.-]{20,}$/, hint: "Copy the whole key Fly.io shows, including “FlyV1” at the start." },
 };
 
 export function envSecret(env: NodeJS.ProcessEnv, name: SecretName): string | null {
@@ -61,13 +66,17 @@ export function normalizeSecret(name: SecretName, value: string): string {
   const trimmed = value.trim().replace(/^["']|["']$/g, "");
 
   if (trimmed === "") throw new GalleyError("invalid", `Paste ${LABELS[name]} to save it.`);
-  if (/\s/.test(trimmed) || trimmed.length > 512 || !SHAPES[name].test.test(trimmed)) {
+  // Fly.io's keys are the one shape with a space in them ("FlyV1 fm2_…"), and they are long.
+  const key = name === "fly" ? trimmed.replace(/^FlyV1\s+/, "FlyV1 ") : trimmed;
+  const body = name === "fly" ? key.replace(/^FlyV1 /, "") : key;
+
+  if (/\s/.test(body) || key.length > (name === "fly" ? 8192 : 512) || !SHAPES[name].test.test(key)) {
     throw new GalleyError("invalid", `That doesn't look like ${LABELS[name]}. ${SHAPES[name].hint}`);
   }
-  if (name === "openai" && trimmed.startsWith("sk-ant-")) {
+  if (name === "openai" && key.startsWith("sk-ant-")) {
     throw new GalleyError("invalid", "That's an Anthropic key. Paste it under the assistant's key instead.");
   }
-  return trimmed;
+  return key;
 }
 
 export function statusFor(name: SecretName, value: string | null, source: SecretStatus["source"]): SecretStatus {

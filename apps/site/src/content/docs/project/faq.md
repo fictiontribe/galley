@@ -22,7 +22,7 @@ In your repository, as the files it already is. Galley has no database: an unpub
 
 ## Does it run our code?
 
-Reading a site never runs it — detection is static. The preview runs the site's own dev command (and installs its dependencies first if they are missing), build mode runs its build command, and adapters and plugins a site names in its config are loaded (on a hosted Galley only when the operator allows it). That is the trust `npm install && npm run dev` already asks for. [Security model](/docs/running/security/#whose-code-it-runs).
+Reading a site never runs it — detection is static. The preview runs the site's own dev command (and installs its dependencies first if they are missing), build mode runs its build command, and adapters and plugins a site names in its config are loaded (on a hosted install only when the operator allows it). That is the trust `npm install && npm run dev` already asks for. [Security model](/docs/running/security/#whose-code-it-runs).
 
 ## Does it phone home?
 
@@ -42,7 +42,7 @@ It doesn't touch it. Publishing is `git commit` and `git push` (or a branch and 
 
 ## Can several people edit at once?
 
-Each Galley works on one checkout per site, and everyone using that Galley shares its working tree: there are no per-person drafts. Galley notices outside edits and refuses an edit made against a stale copy of a file rather than merging it. Locally, each person runs their own Galley on their own checkout and git handles the rest. In hosted mode, everyone who signs in shares the checkout, the settings and the author identity on publishes. [Hosting for a team](/docs/running/hosted/).
+Each Galley works on one checkout per site, and everyone using that Galley shares its working tree: there are no per-person drafts. Galley notices outside edits and refuses an edit made against a stale copy of a file rather than merging it. Locally, each person runs their own Galley on their own checkout and git handles the rest. On a hosted install — one site per install — everyone who signs in shares the checkout, the settings and the author identity on publishes. [Run a hosted install](/docs/running/hosted/).
 
 ## Can an editor break the site?
 
@@ -62,7 +62,7 @@ Not verified yet. Everything has been built and run on macOS; Windows and Linux 
 
 ## When isn't Galley the right fit?
 
-When you need per-user roles and approval chains beyond pull requests, scheduled publishing, multi-locale editorial workflows, content delivered to apps through an API, or a site that isn't in a git repository and won't be. Also, today: a hosted deployment that needs the live preview behind HTTPS — that is [a known gap](/docs/running/hosted/#previews-a-known-gap).
+When you need per-user roles and approval chains beyond pull requests, scheduled publishing, multi-locale editorial workflows, content delivered to apps through an API, or a site that isn't in a git repository and won't be. Also, today: one shared password per hosted install, with no accounts or single sign-on ([Security model](/docs/running/security/#not-covered-yet)).
 
 ## Is it ready?
 

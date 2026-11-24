@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTopBar } from "@/app/chrome";
 import { useChatUi } from "@/features/chat/store";
+import { useEditorHostingUi } from "@/features/hosting/useHosting";
 import { api, errorShape } from "@/lib/api";
 import { useQuery } from "@/lib/query";
 import { useJob, useJobs, useShowingJob } from "@/lib/stores/jobs";
+import { useHostedInstall } from "@/lib/stores/meta";
 import { notify } from "@/lib/stores/toasts";
 import { keys } from "@/lib/sync";
 import { Button, ErrorState, ProofMark, Spinner, buttonClass } from "@/ui";
@@ -30,6 +32,11 @@ function Progress({ jobId, draft, withBrief, onBack }: { jobId: string; draft: B
   const job = useJob(jobId);
   useShowingJob(jobId);
   const opened = useRef(false);
+  const hosted = useHostedInstall();
+  /** "Host the editor online" was chosen: the site's Online screen opens next, with the guided flow. Read when the site is ready. */
+  const [hostNext, setHostNext] = useState(false);
+  const hostNextRef = useRef(false);
+  hostNextRef.current = hostNext;
 
   useEffect(() => {
     if (!job || job.state !== "done" || !job.siteId || opened.current) return;
@@ -38,7 +45,14 @@ function Progress({ jobId, draft, withBrief, onBack }: { jobId: string; draft: B
     useJobs.getState().dismiss(job.id);
     sessionStorage.removeItem(SAVED);
     if (job.detail && job.detail !== "The site is ready.") notify({ tone: "warning", title: "Created, with one problem", body: job.detail });
-    const open = () => navigate(`/sites/${siteId}/edit`);
+    const open = () => {
+      if (!hostNextRef.current) {
+        navigate(`/sites/${siteId}/edit`);
+        return;
+      }
+      useEditorHostingUi.getState().open(siteId);
+      navigate(`/sites/${siteId}/online`);
+    };
     // Starting from WordPress: the content comes from the old site, so the next stop is the import.
     if (draft.fromWordPress) {
       navigate(`/sites/${siteId}/import?from=new`);
@@ -97,6 +111,15 @@ function Progress({ jobId, draft, withBrief, onBack }: { jobId: string; draft: B
         <span className="app-progress__bar" style={{ inlineSize: `${Math.max(4, Math.round(progress * 100))}%` }} />
       </div>
       {job?.detail ? <p className="wizard-detail g-mono">{job.detail}</p> : null}
+      {/* Local mode only: a hosted install never makes other installs. From WordPress, the import comes next instead. */}
+      {!hosted && !draft.fromWordPress ? (
+        <div className="wizard-host">
+          <Button variant="secondary" size="sm" icon="globe" aria-pressed={hostNext} onClick={() => setHostNext((value) => !value)}>
+            Host the editor online
+          </Button>
+          <p className="g-hint">{hostNext ? "Once the site is ready, its Online screen opens to host the editor. Choose again to open the editor instead." : "Edit this site from any browser, not just this computer."}</p>
+        </div>
+      ) : null}
     </div>
   );
 }

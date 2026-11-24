@@ -37,8 +37,14 @@ export function signSession(key: Uint8Array, issuedAt = Date.now(), nonce = rand
   return `${payload}.${mac(key, payload)}`;
 }
 
-/** Returns the session nonce when `value` is a valid, unexpired session, else null. */
-export function verifySession(key: Uint8Array, value: string | undefined, now = Date.now()): string | null {
+/** A session cookie that is correctly signed and not too old: its id (the nonce) and when it was issued. */
+export interface SessionInfo {
+  id: string;
+  issuedAt: number;
+}
+
+/** The session in `value` when it is validly signed and unexpired, else null. Says nothing about revocation. */
+export function readSession(key: Uint8Array, value: string | undefined, now = Date.now()): SessionInfo | null {
   if (!value) return null;
   const parts = value.split(".");
 
@@ -50,7 +56,12 @@ export function verifySession(key: Uint8Array, value: string | undefined, now = 
   const issuedAt = Number(issued);
 
   if (!Number.isFinite(issuedAt) || issuedAt > now + 60_000 || now - issuedAt > SESSION_MAX_AGE_S * 1000) return null;
-  return nonce;
+  return { id: nonce, issuedAt };
+}
+
+/** Returns the session nonce when `value` is a valid, unexpired session, else null. */
+export function verifySession(key: Uint8Array, value: string | undefined, now = Date.now()): string | null {
+  return readSession(key, value, now)?.id ?? null;
 }
 
 /** Failed sign-ins per client address: LOGIN_LIMIT in LOGIN_WINDOW_MS, then everything waits out the window. */
@@ -142,20 +153,41 @@ export function bearerToken(c: Context): string | null {
   return match?.[1] ?? null;
 }
 
+/** Ended sessions by id. A Set in memory; a hosted install keeps it in its state, so a restart doesn't bring a signed-out cookie back. */
+export interface RevocationList {
+  has(id: string): boolean;
+  add(id: string): unknown;
+}
+
 export interface SessionCheck {
   key: Uint8Array;
   token: string | null;
   cookieName: string;
-  revoked: Set<string>;
+  revoked: RevocationList;
+  /** Hosted install: whether a signed, unexpired session still counts ("sign out everywhere", a changed password). */
+  valid?: (session: SessionInfo) => boolean;
+  /** Hosted install: a new cookie value — issued after the last "sign out everywhere", so it isn't caught by it. */
+  issue?: () => string;
+  /** Hosted install: checks the sign-in password against the stored hash. */
+  verifyPassword?: (password: string) => Promise<boolean>;
+  /** Always mark the cookie Secure (a hosted install on an https:// address), whatever the forwarded protocol says. */
+  secure?: boolean;
+}
+
+/** The current request's session — its id and issue time — when its cookie is valid and still counts. */
+export function requestSession(c: Context, check: SessionCheck): SessionInfo | null {
+  const session = readSession(check.key, getCookie(c, check.cookieName));
+
+  if (!session || check.revoked.has(session.id)) return null;
+  if (check.valid && !check.valid(session)) return null;
+  return session;
 }
 
 export function isAuthenticated(c: Context, check: SessionCheck): boolean {
   const bearer = bearerToken(c);
 
   if (bearer !== null) return check.token !== null && safeEqual(bearer, check.token);
-  const nonce = verifySession(check.key, getCookie(c, check.cookieName));
-
-  return nonce !== null && !check.revoked.has(nonce);
+  return requestSession(c, check) !== null;
 }
 
 /** Cookie nonce of the current session (for logout), when valid. */

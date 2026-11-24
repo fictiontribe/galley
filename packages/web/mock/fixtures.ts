@@ -6,13 +6,15 @@
  * third is a forgotten folder, to show the "missing" state.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import type { HistoryEntry } from "@galley/core/types";
 import { MockSite, type CollectionDef, type SiteSeed } from "./site.ts";
 
-export const STARTER_DIR = fileURLToPath(new URL("../../../starters/astro-starter", import.meta.url));
+// Joined by hand rather than `new URL(…, import.meta.url)`: tests that render the app in a
+// browser-like environment rewrite that pattern into a page address.
+export const STARTER_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../../starters/astro-starter");
 /** The mock's pretend disk: everything lives under this home folder. */
 export const HOME = "/Users/you";
 export const SITES_DIR = `${HOME}/Sites`;

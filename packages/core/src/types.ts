@@ -327,6 +327,12 @@ export interface GalleyConfig {
    * picks the wrong one. See docs/brand.md.
    */
   siteBrand?: { dir?: string; largeFileMB?: number; tokensFile?: string };
+  /**
+   * Where this site's editor is hosted online, when it has one ("Host the
+   * editor online"). An address and the host's id — no secrets, safe to
+   * publish with the site. See docs/cloud-install.md.
+   */
+  editor?: import("./hosting/types").EditorConfig;
 }
 
 /**
@@ -809,6 +815,17 @@ export type OverlayToHost =
   /** The answer to `measure`: what the current page really uses (packages/overlay/src/measure.ts). `id` echoes the request. */
   | { galley: 1; type: "measure-result"; id: string; summary: import("./sitebrand/types").MeasureSummary };
 
+/**
+ * Not from the overlay: the page a hosted install's preview address shows in
+ * place of the site when the frame's browser isn't let in (no viewer cookie,
+ * or its sign-in ended). Sent to the editor's origin only; the editor answers
+ * by loading the frame through a fresh entry address.
+ */
+export interface PreviewSignInNeeded {
+  galley: 1;
+  type: "sign-in-needed";
+}
+
 export type HostToOverlay =
   | { galley: 1; type: "mode"; edit: boolean }
   /** Let the element identified by a prior `select` be retyped in place (resolution was unique and plain). */
@@ -1133,7 +1150,7 @@ export type ServerEvent =
 /** A long-running operation: cloning a repo, creating a site, installing dependencies. */
 export interface Job {
   id: string;
-  kind: "clone" | "create" | "install" | "build" | "publish" | "deploy" | "video" | "visibility" | "redirects" | "brand" | "kit-setup" | "import" | "domain";
+  kind: "clone" | "create" | "install" | "build" | "publish" | "deploy" | "video" | "visibility" | "redirects" | "brand" | "kit-setup" | "import" | "domain" | "setup" | "restore" | "editor-host";
   label: string;
   state: "running" | "done" | "error";
   /** 0–1 when measurable. */
@@ -1387,7 +1404,7 @@ export interface ModelInfo {
   outputPrice: number;
 }
 
-export type SecretName = "anthropic" | "openai" | "google" | "cloudflare" | "vercel";
+export type SecretName = "anthropic" | "openai" | "google" | "cloudflare" | "vercel" | "fly";
 
 export interface SecretStatus {
   name: SecretName;
@@ -1488,13 +1505,15 @@ export interface BrandConfig {
 export interface MetaInfo {
   version: string;
   brand: BrandConfig;
-  /** "local": single user on loopback. "hosted": behind a password, possibly many sites. */
+  /** "local": single user on loopback, any number of sites. "hosted": behind a password, exactly one site (see `install`). */
   mode: "local" | "hosted";
   /** Whether the caller is authenticated (hosted mode). */
   authenticated: boolean;
   /** Whether the host can show a native folder picker (desktop shell). */
   desktop: boolean;
   platform: string;
+  /** Hosted mode: the install this server is — one site, and whether first run is finished. Absent in local mode. */
+  install?: import("./install/types").InstallMeta;
 }
 
 // ─────────────────────────────────────────────────────────────── deploy
@@ -2016,6 +2035,8 @@ export interface PluginContributions {
   scriptIntegrations: string[];
   importers: string[];
   deployTargets: string[];
+  /** Names of the places it can host the editor itself (left out when none). */
+  editorHosts?: string[];
   tools: Array<{ name: string; title: string; mode: "content" | "build"; readOnly: boolean }>;
   /** Labels of the data sources it offers to fields (left out when none). */
   dataSources?: string[];
@@ -2049,7 +2070,7 @@ export interface PluginInfo {
 
 /** Two plugins offered the same thing; one was used. */
 export interface PluginConflict {
-  kind: "adapter" | "imageProvider" | "videoProvider" | "formProvider" | "scriptIntegration" | "importer" | "deployTarget" | "tool" | "dataSource";
+  kind: "adapter" | "imageProvider" | "videoProvider" | "formProvider" | "scriptIntegration" | "importer" | "deployTarget" | "editorHost" | "tool" | "dataSource";
   id: string;
   /** The plugin whose contribution is used. */
   used: string;

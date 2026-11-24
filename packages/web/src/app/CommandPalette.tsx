@@ -6,6 +6,8 @@ import { collectionIcon, visibleCollections } from "@/lib/collections";
 import { collectionNouns, count } from "@/lib/format";
 import { usePendingCount } from "@/lib/stores/changes";
 import { usePreview } from "@/lib/stores/preview";
+import { useHostedInstall } from "@/lib/stores/meta";
+import { useEditorHostingUi } from "@/features/hosting/useHosting";
 import { useSite } from "@/lib/stores/site";
 import { useSites } from "@/lib/stores/sites";
 import { Dialog, Icon, Kbd, Spinner, type IconName } from "@/ui";
@@ -73,11 +75,13 @@ export function CommandPalette() {
   const detail = useSite((s) => s.detail);
   const sites = useSites((s) => s.sites) ?? [];
   const groups = useGroups((s) => s.groups);
+  // A hosted install has one site: no other sites to jump or switch to, no groups to load.
+  const hosted = useHostedInstall();
   // ⌘1…⌘9: the pinned and most recent sites, from anywhere in the app.
-  useSiteShortcuts();
+  useSiteShortcuts(!hosted);
   useEffect(() => {
-    if (open && !useGroups.getState().groups) void useGroups.getState().load();
-  }, [open]);
+    if (open && !hosted && !useGroups.getState().groups) void useGroups.getState().load();
+  }, [open, hosted]);
   const pending = usePendingCount();
   const runPreview = usePreview((s) => s.run);
   const previewState = usePreview((s) => (siteId ? s.bySite[siteId]?.state : undefined));
@@ -142,6 +146,23 @@ export function CommandPalette() {
         { id: "ask", group: "Actions", label: "Ask the assistant", icon: "chat", run: go(`${base}/edit`) },
         { id: "import-wordpress", group: "Actions", label: "Bring your WordPress site", hint: "Posts, pages and images as changes to check", icon: "download", run: go(`${base}/import`) },
       );
+      // A hosted install never makes other installs.
+      if (!hosted) {
+        const hostEditor = () => {
+          useEditorHostingUi.getState().open(siteId);
+          navigate(`${base}/online`);
+        };
+        list.push({ id: "host-editor", group: "Actions", label: "Host the editor online", hint: "Edit this site from any browser", icon: "globe", run: hostEditor });
+      }
+    }
+    if (hosted) {
+      list.push(
+        { id: "install", group: "Go to", label: "Install", hint: "Address, password and backups", icon: "folder", run: go("/install") },
+        { id: "settings", group: "Go to", label: "App settings", icon: "settings", run: go("/settings") },
+        { id: "plugins", group: "Go to", label: "Plugins", hint: "Generators, destinations, tools", icon: "plugin", run: go("/plugins") },
+      );
+      if (!siteId) list.push({ id: "site", group: "Go to", label: "The site", icon: "folder-site", run: go("/") });
+      return list;
     }
     list.push(
       { id: "sites", group: "Go to", label: "All sites", icon: "sites", run: go("/") },
@@ -159,12 +180,12 @@ export function CommandPalette() {
     }
     list.push({ id: "add-sites", group: "Actions", label: "Add sites from a folder", icon: "sites", run: go("/?open=sites") });
     return list;
-  }, [siteId, detail, sites, groups, pending, previewState, navigate, runPreview, setPublishOpen]);
+  }, [siteId, detail, sites, groups, pending, previewState, navigate, runPreview, setPublishOpen, hosted]);
 
   const visible = useMemo(() => {
     const others = query.trim() ? commands.filter((command) => command.group !== "Sites" && matches(command.label, query)) : commands.filter((command) => command.group !== "Sites");
     // A query that names a site lists sites first, best match first (by name, initials, group or note).
-    const ranked = query.trim() ? rankSites(sites.filter((site) => site.id !== siteId), query, groups ?? []) : [];
+    const ranked = query.trim() && !hosted ? rankSites(sites.filter((site) => site.id !== siteId), query, groups ?? []) : [];
     const siteCommands = ranked.flatMap((site) => commands.filter((command) => command.id === `s-${site.id}` || command.id === `w-${site.id}`));
     const filtered = [...siteCommands, ...others];
     // One row per page: the first (best-ranked) place the words were found.
@@ -178,7 +199,7 @@ export function CommandPalette() {
       run: () => navigate(`/sites/${siteId}/edit?path=${encodeURIComponent(hit.path)}`),
     }));
     return [...filtered, ...content];
-  }, [commands, hits, query, navigate, siteId, sites, groups]);
+  }, [commands, hits, query, navigate, siteId, sites, groups, hosted]);
 
   useEffect(() => {
     setActive((index) => Math.min(index, Math.max(0, visible.length - 1)));

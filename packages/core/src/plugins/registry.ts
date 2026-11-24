@@ -32,6 +32,7 @@ import type {
   DataSourceContribution,
   DataSourceContext,
   DeployTargetContribution,
+  EditorHostContribution,
   DeploymentInfo,
   FormProviderContribution,
   GalleyPlugin,
@@ -136,6 +137,13 @@ export interface DeployTargetSummary {
   plugin: string;
 }
 
+export interface EditorHostSummary {
+  id: string;
+  name: string;
+  summary?: string;
+  plugin: string;
+}
+
 export interface PluginRegistry {
   register(plugin: unknown, options: RegisterOptions): PluginInfoSync;
   /** A plugin that couldn't even be loaded: listed with its problem, contributes nothing. */
@@ -166,6 +174,9 @@ export interface PluginRegistry {
   deployTargets(siteRoot?: string | null): DeployTargetSummary[];
   /** The targets themselves, for the deploy service's `targets` option (built-ins included). */
   deployTargetObjects(siteRoot?: string | null): DeployTargetContribution[];
+  editorHosts(siteRoot?: string | null): EditorHostSummary[];
+  /** The hosts themselves, for the hosting service's `hosts` option (built-ins included). */
+  editorHostObjects(siteRoot?: string | null): EditorHostContribution[];
   tools(siteRoot?: string | null): AssistantTool[];
   dataSources(siteRoot?: string | null): DataSourceInfo[];
   /** A data source by id, with the call context its search and get need (the site read-only). */
@@ -366,6 +377,7 @@ export function createPluginRegistry(options: PluginRegistryOptions = {}): Plugi
     scripts: (list: Entry[]) => resolve(list, "scriptIntegration", (entry) => entry.plugin?.scriptIntegrations, (integration: ScriptIntegrationContribution) => integration.kind),
     importers: (list: Entry[]) => resolve(list, "importer", (entry) => entry.plugin?.importers, (importer: ImporterContribution) => importer.id),
     deploy: (list: Entry[]) => resolve(list, "deployTarget", (entry) => entry.plugin?.deployTargets, (target: DeployTargetContribution) => target.id),
+    editorHosts: (list: Entry[]) => resolve(list, "editorHost", (entry) => entry.plugin?.editorHosts, (host: EditorHostContribution) => host.id),
     tools: (list: Entry[]) =>
       resolve(
         list,
@@ -398,6 +410,7 @@ export function createPluginRegistry(options: PluginRegistryOptions = {}): Plugi
       scriptIntegrations: (plugin?.scriptIntegrations ?? []).map((integration) => integration.name),
       importers: (plugin?.importers ?? []).map((importer) => importer.name),
       deployTargets: (plugin?.deployTargets ?? []).map((target) => target.name),
+      ...(plugin?.editorHosts?.length ? { editorHosts: plugin.editorHosts.map((host) => host.info?.name || host.name) } : {}),
       tools: (plugin?.tools ?? []).map((tool) => ({ name: tool.name, title: tool.title, mode: tool.mode, readOnly: tool.effect.readOnly })),
       ...(plugin?.dataSources?.length ? { dataSources: plugin.dataSources.map((source) => source.label) } : {}),
       hooks: Object.keys(plugin?.hooks ?? {}),
@@ -684,6 +697,7 @@ export function createPluginRegistry(options: PluginRegistryOptions = {}): Plugi
         ...kinds.scripts(list).conflicts,
         ...kinds.importers(list).conflicts,
         ...kinds.deploy(list).conflicts,
+        ...kinds.editorHosts(list).conflicts,
         ...kinds.tools(list).conflicts,
         ...kinds.dataSources(list).conflicts,
       ];
@@ -754,6 +768,17 @@ export function createPluginRegistry(options: PluginRegistryOptions = {}): Plugi
     },
     deployTargetObjects(siteRoot) {
       return kinds.deploy(inUse(siteRoot)).items.map(({ item }) => item);
+    },
+    editorHosts(siteRoot) {
+      return kinds.editorHosts(inUse(siteRoot)).items.map(({ item, entry }) => ({
+        id: item.id,
+        name: item.info?.name || item.name,
+        ...(typeof item.info?.summary === "string" ? { summary: item.info.summary } : {}),
+        plugin: entry.name,
+      }));
+    },
+    editorHostObjects(siteRoot) {
+      return kinds.editorHosts(inUse(siteRoot)).items.map(({ item }) => item);
     },
     tools(siteRoot) {
       // Built-in tools are the engine's own; a plugin can't shadow them (validation refuses their names).

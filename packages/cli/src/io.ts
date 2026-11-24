@@ -26,6 +26,8 @@ export interface Io {
   stdio?: { stdin?: NodeJS.ReadableStream; stdout?: Writable };
   /** `mcp config`: how this CLI was started (command + script). Default: this process's. */
   launcher?: { command: string; args: string[] };
+  /** Asks for a secret on the terminal without showing what is typed. Null when there is no terminal to ask on. */
+  askSecret?(prompt: string): Promise<string | null>;
   /** `new`: asks questions. Present only when a person can answer (both ends are a terminal). */
   ask?: Prompter;
   /** A line that replaces itself (progress), shown only on a terminal; null clears it. */
@@ -34,6 +36,12 @@ export interface Io {
   nodeVersion?: string;
   /** The platform for setup advice. Default: this process's. */
   platform?: NodeJS.Platform;
+  /**
+   * Ends the process with `code` once everything written so far has reached
+   * standard output and error. `serve` calls it after a clean stop. Absent in
+   * tests, which run commands inside their own process.
+   */
+  exit?(code: number): Promise<void>;
 }
 
 export interface ParentWatch {
@@ -119,13 +127,42 @@ function waitForSignal(): Promise<void> {
     const stop = () => {
       process.off("SIGINT", stop);
       process.off("SIGTERM", stop);
-      // A second Ctrl+C while shutting down means "now".
+      // A second signal while shutting down (Ctrl+C again, or a second stop from the container) means "now".
       process.once("SIGINT", () => process.exit(130));
+      process.once("SIGTERM", () => process.exit(143));
       resolve();
     };
 
     process.on("SIGINT", stop);
     process.on("SIGTERM", stop);
+  });
+}
+
+/** Reads one line from the terminal with nothing echoed. Ctrl+C gives up (null). */
+export function askSecretOnTerminal(prompt: string, stdin: NodeJS.ReadStream = process.stdin, stderr: NodeJS.WriteStream = process.stderr): Promise<string | null> {
+  if (!stdin.isTTY || typeof stdin.setRawMode !== "function") return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let typed = "";
+    const finish = (value: string | null) => {
+      stdin.off("data", onData);
+      stdin.setRawMode(false);
+      stdin.pause();
+      stderr.write("\n");
+      resolve(value);
+    };
+    const onData = (chunk: Buffer) => {
+      for (const char of chunk.toString("utf8")) {
+        if (char === "\r" || char === "\n") return finish(typed);
+        if (char === "\u0003" || char === "\u0004") return finish(null);
+        if (char === "\u007f" || char === "\b") typed = [...typed].slice(0, -1).join("");
+        else if (char >= " ") typed += char;
+      }
+    };
+
+    stderr.write(prompt);
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.on("data", onData);
   });
 }
 
@@ -148,6 +185,24 @@ export function isInteractive(env: NodeJS.ProcessEnv = process.env): boolean {
   return Boolean(process.stdin.isTTY && process.stdout.isTTY) && !env.CI;
 }
 
+/** Resolves once everything written to `stream` so far has been handed to the system (pipes are asynchronous on macOS). */
+function drained(stream: NodeJS.WriteStream): Promise<void> {
+  return new Promise((resolve) => {
+    if (stream.destroyed || !stream.writable) return resolve();
+    try {
+      stream.write("", () => resolve());
+    } catch {
+      resolve();
+    }
+  });
+}
+
+/** Flushes standard output and error, then ends the process with `code`. */
+export async function flushAndExit(code: number): Promise<void> {
+  await Promise.all([drained(process.stdout), drained(process.stderr)]);
+  process.exit(code);
+}
+
 export function processIo(): Io {
   const terminal = Boolean(process.stdout.isTTY);
 
@@ -160,6 +215,8 @@ export function processIo(): Io {
     openSite: openSingleSite,
     openBrowser: openInBrowser,
     waitForStop: waitForSignal,
+    exit: flushAndExit,
+    askSecret: (prompt) => askSecretOnTerminal(prompt),
     ...(isInteractive() ? { ask: terminalPrompter() } : {}),
     ...(terminal ? { status: (line: string | null) => process.stdout.write(line === null ? "\r\u001b[2K" : `\r\u001b[2K${line}`) } : {}),
     watchParent() {

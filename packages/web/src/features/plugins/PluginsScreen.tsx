@@ -4,7 +4,7 @@ import type { PluginList } from "@galley/core/api";
 import type { PluginInfo, PluginSource } from "@galley/core/types";
 import { useTopBar } from "@/app/chrome";
 import { count } from "@/lib/format";
-import { useMeta } from "@/lib/stores/meta";
+import { useHostedInstall, useMeta } from "@/lib/stores/meta";
 import { useSite } from "@/lib/stores/site";
 import { useSites } from "@/lib/stores/sites";
 import { Count, EmptyState, ErrorState, PageHeader, Skeleton, buttonClass } from "@/ui";
@@ -107,13 +107,14 @@ function Body({ siteId, linkSiteId }: { siteId?: string; linkSiteId: string | nu
 /** /plugins — what every plugin adds to the app, its switch, settings and problems; how to add one. */
 export function PluginsScreen() {
   useTopBar({ crumbs: [{ label: "Plugins" }] });
+  const hosted = useHostedInstall();
   const sites = useSites((s) => s.sites);
   // Forms, scripts and the assistant live inside a site: link to the one opened last.
   const recent = sites?.find((site) => !site.missing) ?? null;
   return (
     <div className="app-screen">
       <div className="app-screen__inner plg-screen">
-        <PageHeader title="Plugins" description="What plugins add to this app — image and video generators, form destinations, scripts, importers and tools for the assistant. They apply to every site you open here." />
+        <PageHeader title="Plugins" description={`What plugins add to this app — image and video generators, form destinations, scripts, importers and tools for the assistant. ${hosted ? "They apply to this editor." : "They apply to every site you open here."}`} />
         <TrustNote />
         <Body linkSiteId={recent?.id ?? null} />
         <AddPlugin />

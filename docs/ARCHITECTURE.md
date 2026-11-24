@@ -49,7 +49,9 @@ whichever is wrong — do not leave them disagreeing.
 7. **One engine, three shells.** The engine is a Node library. The server
    wraps it in HTTP. The same server + web UI runs from the CLI
    (`npx galley`), inside the desktop app (a Tauri shell with the server as a
-   sidecar), and hosted behind a URL. There is no second implementation.
+   sidecar), and hosted behind a URL. There is no second implementation. The
+   hosted shell manages exactly one site: one install, one site, one state
+   (`docs/cloud-install.md`); the CLI and the desktop app stay multi-site.
 8. **Unbranded by construction.** The name lives in
    `packages/core/src/brand.ts` and is served to the UI at `/api/meta`. No
    user-facing string hard-codes it; a deployment can rename and recolour the
@@ -108,7 +110,9 @@ galley/
 │   │       ├── content/        pure content logic
 │   │       ├── workspace/      the checkout: files, git, changes, preview, media
 │   │       ├── site/           SiteService + SiteRegistry (content ∘ workspace)
-│   │       └── ai/             assistant, image generation, settings, usage
+│   │       ├── ai/             assistant, image generation, settings, usage
+│   │       ├── install/        the hosted install: one site, first run, sign-in, backups
+│   │       └── hosting/        "Host the editor online": editor hosts, recipe, plans
 │   ├── server/                 @galley/server — HTTP API, SSE, static UI hosting
 │   ├── cli/                    galley-cms — the `galley` binary
 │   ├── adapter-kit/            @galley/adapter-kit — adapter types + the conformance kit
@@ -118,6 +122,8 @@ galley/
 ├── apps/
 │   ├── desktop/                Tauri 2 shell (Rust) + sidecar server
 │   └── site/                   marketing + documentation website (itself a Galley-editable Astro site)
+├── Dockerfile, docker/         the hosted install's image (one site, state in /data)
+├── scripts/create-install.sh   one hosted install per run on a Docker server
 ├── starters/
 │   └── astro-starter/          the site template `galley new` copies
 └── examples/
@@ -253,8 +259,13 @@ Everything with side effects on the machine.
   `<script src="/__galley/overlay.js">` into HTML responses. A second
   **baseline proxy** fronts the deployed staging/production URL the same way
   (no overlay) so both can sit side by side in iframes. Runs `install` first
-  when `node_modules` is missing. Everything binds 127.0.0.1 unless the
-  server is in hosted mode.
+  when `node_modules` is missing. Locally each proxy listens on a loopback
+  port of its own. A hosted install opens no preview port: the proxies are
+  mounted on a `PreviewGateway` instead, and the server's gateway
+  (`packages/server/src/gateway.ts`) reaches them by hostname on its one
+  port — `cms-preview.example.com` and `cms-live.example.com` beside the
+  editor's `cms.example.com` — letting in only a browser the editor gave a
+  one-use ticket.
 - **Build** — run the configured build command, capture the tail of its
   output.
 - **Media** — list images under the media roots with dimensions, save uploads
@@ -282,6 +293,35 @@ running and pauses unused ones (they wake when the person returns); an open
 site unused for an hour is closed again. `site/scope.ts` carries the site a
 request is for, so a site's own keys and author apply to everything that
 request starts.
+
+On a hosted install the registry is wrapped by `install/single-site.ts`:
+listing and opening see only the install's one site, and open, clone, create,
+remove, scan, add and groups refuse. The install's own connect step is the
+only way a site gets in.
+
+### 3.5 `install/` — the hosted install
+
+One site and its state in one data folder (`GALLEY_HOME`): the versioned
+state file and its migrations (`migrate.ts`; a folder a newer version wrote
+is refused), the password (scrypt), the one-time setup code (its SHA-256),
+sessions and sign-out everywhere, the install's own deploy key or an access
+token for the repository (`access.ts`), connecting the one site (an existing
+repository, or a starter sent to an empty one), starting values from the
+environment or one file — applied once, only while missing (`starting.ts`)
+— and backups: one file sealed with a passphrase (`backup.ts`). Contract:
+`install/types.ts`. Only a hosted server uses it.
+
+### 3.6 `hosting/` — host the editor online
+
+The sibling of `deploy/`: creating a hosted install for one site on the
+person's own account, from the desktop app or `galley host`. An `EditorHost`
+inspects what its key can do, plans what it would create with a monthly cost
+(creating nothing), creates exactly the plan — recording each resource the
+moment it exists — and later removes only what it recorded. Built-ins: Fly.io
+(`fly.ts`), Cloudflare in front of a computer of yours (`cloudflare.ts`) and
+any server with Docker (`own-server.ts`); plugins add more as `editorHosts`.
+`recipe.ts` writes the compose files, Caddyfile and `.env` one install runs
+from. Contract: `hosting/types.ts`. Local mode only.
 
 ### 3.4 `ai/` — the assistant
 
@@ -329,20 +369,33 @@ Hono on Node. Implements `ApiRoutes` from `api.ts` exactly, plus:
 - Static hosting of the built web UI, with SPA fallback.
 - **Auth.** Local mode (default, binds `127.0.0.1`): a random session token
   minted at start-up, delivered in the URL the CLI opens, exchanged for an
-  HttpOnly cookie. Hosted mode (`GALLEY_HOST=0.0.0.0`): refuses to start
-  without `GALLEY_PASSWORD`; `POST /api/auth/login` sets a signed cookie.
+  HttpOnly cookie. Hosted mode (`galley serve`, `GALLEY_HOST=0.0.0.0`): one
+  password, stored as an scrypt hash in the install's state; with none yet,
+  the server prints a one-time setup link where first run chooses it.
+  `POST /api/auth/login` sets a signed cookie (`__Host-` on an `https://`
+  address); changing the password or "sign out everywhere" ends older
+  sessions, across restarts too. No accounts.
   `Origin` is checked on every state-changing request. In both modes the
   cookie is signed with a key kept in the Galley home (`session.key`,
   owner-only), so restarting the app — which adding a plugin needs — doesn't
   sign the open UI out.
 - Errors: every thrown `GalleyError` becomes `{ error }` with its status;
   anything else is logged and returned as a generic `internal`.
+- **Hosted only:** the multi-site routes answer 403 and the "Host the editor
+  online" routes 404 (`hosted-refusals.ts`); first run and the Install page
+  (`install-routes.ts`, `ops.ts`); `GET /healthz` and `GET /readyz`; the
+  preview gateway on the preview's and live comparison's hostnames
+  (`gateway.ts`, `gateway-auth.ts`, `preview-entry.ts`); one scrubbed log line
+  per request (`log.ts`); a graceful stop on SIGTERM.
 
 CLI: `galley` (open the site in the current directory and launch the
 browser), `galley init` (write a starter `galley.config.json` from
 detection), `galley new <name>` (scaffold from a starter), `galley serve`
-(hosted mode), `galley doctor` (print what detection found), `galley mcp`
-(serve the tools to any MCP client), `galley version`. The desktop shell
+(a hosted install; `--reset-password`), `galley backup create|restore`
+(a hosted install's data folder, sealed), `galley host` (host the editor
+online for the site; `galley host recipe` writes one install's files),
+`galley doctor` (print what detection found), `galley mcp` (serve the tools
+to any MCP client), `galley version`. The desktop shell
 starts the server through an unlisted `galley desktop` command.
 
 ---

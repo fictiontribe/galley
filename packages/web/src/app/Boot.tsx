@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { api, setUnauthorizedHandler } from "@/lib/api";
+import { api, getSetupCode, setSetupCode, setUnauthorizedHandler } from "@/lib/api";
 import { exchangeToken, takeTokenFromUrl } from "@/lib/auth";
 import { connectEvents, disconnectEvents } from "@/lib/events";
 import { invalidate, setQueryData } from "@/lib/query";
+import { SETUP_PATH, hostedInstall, isHostedInstall, resumesAfterSignIn } from "@/lib/hosted";
 import { loginUrl, session } from "@/lib/session";
 import { useMeta } from "@/lib/stores/meta";
 import { useToasts } from "@/lib/stores/toasts";
@@ -46,6 +47,14 @@ export function Boot({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const token = takeTokenFromUrl();
+    // On /setup the code is a hosted install's one-time setup code, not a
+    // session: kept in memory for the setup screens, never exchanged.
+    if (token && window.location.pathname === SETUP_PATH) {
+      setSetupCode(token);
+      setTokenChecked(true);
+      void load();
+      return;
+    }
     void (token ? exchangeToken(token) : Promise.resolve(true)).then(() => {
       setTokenChecked(true);
       void load();
@@ -95,9 +104,15 @@ export function Boot({ children }: { children: ReactNode }) {
       </div>
     );
   }
-  // /open explains a missing session itself in local mode (open the printed link, then try again).
-  const explainsItself = location.pathname === "/open" && meta.mode === "local";
+  // First run left half-way (a password exists): signing in carries it on, unless this visit brought a setup link, which /setup explains.
+  const resumes = resumesAfterSignIn(meta);
+  // /open explains a missing session itself in local mode (open the printed link, then try again);
+  // a hosted install's first run happens before there is a password to sign in with.
+  const explainsItself = (location.pathname === "/open" && meta.mode === "local") || (location.pathname === SETUP_PATH && isHostedInstall(meta) && !(resumes && getSetupCode() === null));
   if (!meta.authenticated && location.pathname !== "/login" && !explainsItself) {
+    if (resumes) return <Navigate to={loginUrl(SETUP_PATH)} replace />;
+    // First run isn't over and no password exists yet: /setup says what to do.
+    if (hostedInstall(meta)?.setupNeeded) return <Navigate to={SETUP_PATH} replace />;
     return <Navigate to={loginUrl(location.pathname + location.search)} replace />;
   }
   return <>{children}</>;

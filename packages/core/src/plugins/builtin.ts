@@ -12,6 +12,9 @@
 import { BUILTIN_ADAPTERS } from "../adapters/index";
 import { createCloudflareTarget } from "../deploy/cloudflare";
 import { createVercelTarget } from "../deploy/vercel";
+import { createCloudflareEditorHost } from "../hosting/cloudflare";
+import { createFlyHost } from "../hosting/fly";
+import { createOwnServerHost } from "../hosting/own-server";
 import { PRODUCT, VERSION } from "../brand";
 import { FORM_PROVIDERS, SCRIPT_INTEGRATIONS } from "../kit-catalog";
 import { IMAGE_CATALOG, type ProviderCatalogEntry } from "../ai/images/catalog";
@@ -54,6 +57,7 @@ export const builtinPlugin: GalleyPlugin = {
   formProviders: FORM_PROVIDERS,
   scriptIntegrations: SCRIPT_INTEGRATIONS,
   deployTargets: [createCloudflareTarget(), createVercelTarget()],
+  editorHosts: [createFlyHost(), createCloudflareEditorHost(), createOwnServerHost()],
   // The app's own image keys keep their names and environment variables.
   settings: (["openai", "google"] as const).map((name) => ({
     key: name,

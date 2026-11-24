@@ -1,9 +1,10 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
+import { useHostedInstall } from "@/lib/stores/meta";
 import { LoginScreen } from "@/screens/login/LoginScreen";
 import { NotFoundScreen } from "@/screens/NotFoundScreen";
 import { SitesScreen } from "@/screens/sites/SitesScreen";
-import { HomeFrame, SiteFrame } from "./Frames";
+import { HomeFrame, HostedHome, SiteFrame } from "./Frames";
 
 // Route-level code splitting: everything below loads on first visit, so the
 // editor's heavy pieces (CodeMirror, markdown) never weigh on the first paint.
@@ -27,17 +28,30 @@ const ImportScreen = lazy(() => import("@/features/import/ImportScreen").then((m
 const NewSiteScreen = lazy(() => import("@/features/wizard/NewSiteScreen").then((m) => ({ default: m.NewSiteScreen })));
 const PluginsScreen = lazy(() => import("@/features/plugins/PluginsScreen").then((m) => ({ default: m.PluginsScreen })));
 const SitePluginsScreen = lazy(() => import("@/features/plugins/PluginsScreen").then((m) => ({ default: m.SitePluginsScreen })));
+const SetupScreen = lazy(() => import("@/features/install/setup/SetupScreen").then((m) => ({ default: m.SetupScreen })));
+const InstallScreen = lazy(() => import("@/features/install/InstallScreen").then((m) => ({ default: m.InstallScreen })));
 
+/**
+ * A hosted install has one site: no Sites screen, no /new or /open (their
+ * addresses fall through to "not found"), and two screens of its own —
+ * first run at /setup and the Install page.
+ */
 export function AppRoutes() {
+  const hosted = useHostedInstall();
   return (
     <Routes>
       <Route path="/login" element={<LoginScreen />} />
-      <Route path="/open" element={<Suspense fallback={null}><OpenScreen /></Suspense>} />
+      {hosted ? (
+        <Route path="/setup" element={<Suspense fallback={null}><SetupScreen /></Suspense>} />
+      ) : (
+        <Route path="/open" element={<Suspense fallback={null}><OpenScreen /></Suspense>} />
+      )}
       <Route element={<HomeFrame />}>
-        <Route index element={<SitesScreen />} />
-        <Route path="new" element={<NewSiteScreen />} />
+        <Route index element={hosted ? <HostedHome /> : <SitesScreen />} />
+        {hosted ? null : <Route path="new" element={<NewSiteScreen />} />}
         <Route path="settings" element={<AppSettingsScreen />} />
         <Route path="plugins" element={<PluginsScreen />} />
+        {hosted ? <Route path="install" element={<InstallScreen />} /> : null}
         <Route path="*" element={<NotFoundScreen />} />
       </Route>
       <Route path="/sites/:siteId" element={<SiteFrame />}>

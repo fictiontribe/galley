@@ -182,13 +182,16 @@ Intent, not a promise. The longer version is [ROADMAP.md](ROADMAP.md).
 **Now**
 
 - The guided move from WordPress, in final checks
+- The editor hosted on your own server, one site per install: in the
+  repository, not in a release yet
 
 **Next**
 
 - Vercel deploys, Cloudflare Bulk Redirects and attaching a fresh own domain,
   run on the real services
 - The Shopify storefront starter
-- The editor hosted on your own server, one site per install
+- Hosting the editor online from the app (Fly.io, Cloudflare, your own
+  server), run on the real services
 - A signed desktop app, and Windows and Linux
 - The site kit, adapter kit and plugin kit on npm
 - Full adapters beyond Astro
@@ -206,7 +209,7 @@ Intent, not a promise. The longer version is [ROADMAP.md](ROADMAP.md).
 | [Tour](https://galley.fictiontribe.com/tour/) | The whole app, in pictures |
 | [How-to guides](https://galley.fictiontribe.com/how-to/) | Twelve tasks, step by step |
 | [Editing guides](https://galley.fictiontribe.com/docs/editing/tour/) | Every screen, for the people who change the site |
-| [Running it](https://galley.fictiontribe.com/docs/running/hosted/) | Hosting for a team, the [desktop app](https://galley.fictiontribe.com/docs/running/desktop/), [deploying](https://galley.fictiontribe.com/docs/running/deploy/) |
+| [Running it](https://galley.fictiontribe.com/docs/running/hosted/) | The hosted editor, the [desktop app](https://galley.fictiontribe.com/docs/running/desktop/), [deploying](https://galley.fictiontribe.com/docs/running/deploy/) |
 | [Reference](https://galley.fictiontribe.com/docs/reference/cli/) | The command line, the [configuration file](https://galley.fictiontribe.com/docs/reference/config/), the [HTTP API](https://galley.fictiontribe.com/docs/reference/api/) |
 | [Adapters](https://galley.fictiontribe.com/docs/adapters/) | How frameworks plug in, and how to write one |
 | [Plugins](https://galley.fictiontribe.com/docs/plugins/) | What a plugin can add, and how to write one |
@@ -246,15 +249,20 @@ change between minor versions ([what the numbers mean](RELEASING.md#what-the-ver
 - **Built**: everything in [What it does](#what-it-does) that isn't marked
   otherwise, in the web app and the macOS desktop app.
 - **New, in final checks**: the guided move from WordPress, run against an
-  export file and a stand-in WordPress site, not yet a real one.
+  export file and a stand-in WordPress site, not yet a real one; a hosted
+  editor, one site per install, run for real on its image and on a server
+  behind HTTPS (in the repository, not in a release yet, and its image isn't
+  on a registry: [`docs/cloud-install.md`](docs/cloud-install.md)).
 - **Preview**: the page builder.
 - **In progress**: deploys to Vercel (built, not yet run on the real
-  service); the Shopify storefront starter.
+  service); hosting the editor online on your own Fly.io, Cloudflare or
+  server (run against stand-ins for Fly.io and Cloudflare, not the real
+  services); the Shopify storefront starter.
 - **Not verified yet**: Windows and Linux; a signed desktop app; the OpenAI
   and Google image providers; the assistant's fallback request profile;
   setting redirects on Cloudflare itself (Bulk Redirects); attaching a fresh
-  own domain on the real services; the container image, and a hosted install
-  behind a reverse proxy.
+  own domain on the real services; a hosted editor's own key accepted by a
+  code host end to end.
 - **Not on npm as packages**: the site kit (`@galley/astro`, which sites
   carry vendored), `@galley/adapter-kit` and `@galley/plugin-kit`. The plugins
   are built into `galley-cms`.

@@ -60,7 +60,9 @@ the package is one bundled file, with the web app and the starters beside it.
 | Command | Does |
 | --- | --- |
 | `galley [path]` | Open the site in `path` (default: this folder) in the browser |
-| `galley serve` | Run for other computers, behind a password |
+| `galley serve` | A hosted install: one site, behind a password, everything in its data folder. With no password yet it prints a one-time setup link; `--reset-password` makes a new one |
+| `galley backup` | `create --out <file>` / `restore <file>`: a hosted install's data folder as one file sealed with a passphrase, with the server stopped |
+| `galley host [path]` | Host the editor online for the site, on your own account (Fly.io, Cloudflare in front of a computer of yours, any server with Docker); `galley host recipe` writes one install's files |
 | `galley init [path]` | Write `galley.config.json` from what detection finds |
 | `galley doctor [path]` | Check that a site and this computer are ready |
 | `galley deploy [path]` | Put the site online with Cloudflare or Vercel |

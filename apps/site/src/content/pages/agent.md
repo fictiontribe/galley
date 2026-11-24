@@ -29,7 +29,7 @@ Astro is first-class: `src/content.config.ts` is parsed statically (never execut
 3. **No site yet:** `npm create galley@latest <name> -- --starter <id>` copies a starter (`caddow`, `ferrow`, `lowfield` — the default — or `storefront`; `npx galley-cms starters` describes them), installs it, records a first version and opens it. The starters need Node.js 22.23.4 or newer (Astro 7).
 4. **Let an AI tool edit the site over MCP:** `npx galley-cms mcp config <site folder> --client <name>` prints what to paste; use the `npx -y galley-cms mcp …` form it prints.
 5. **Write a config to correct detection:** `npx galley-cms init <site folder>` writes `galley.config.json` from what was detected. Edit only what is wrong; precedence is config > schema > inferred.
-6. **Host it for a team:** `GALLEY_PASSWORD=<at least 12 characters> npx galley-cms serve` — hosted mode refuses to start without a password.
+6. **Edit it from a browser, on a server:** `npx galley-cms serve` runs a hosted install for **one site**; with no `GALLEY_PASSWORD` it prints a one-time setup link where the password is chosen and the site connected. Each site gets its own install. `galley host` (or the app's Online › Host the editor online) creates one on the person's own Fly.io account, behind a Cloudflare Tunnel, or as files for any server with Docker: {site}/docs/running/hosted/
 7. **The assistant** needs an Anthropic API key, entered in Galley's Settings or set as `ANTHROPIC_API_KEY`. Everything except asking for changes works without one.
 
 The quickstart walks a person through the same steps: {site}/docs/getting-started/quickstart/

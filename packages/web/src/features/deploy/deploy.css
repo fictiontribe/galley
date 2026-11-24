@@ -121,7 +121,8 @@
 .deploy-note__title { margin: 0; font-weight: var(--weight-semibold); color: var(--ink-primary); }
 
 /* Deployments list. */
-.deploy-list__title { margin-block: var(--space-8) var(--space-3); }
+/* Two classes: `.app-section__title` (margin: 0) can load after this file and would otherwise sit the heading flush under the card above. */
+.app-section__title.deploy-list__title { margin-block: var(--space-8) var(--space-3); }
 .deploy-list { list-style: none; margin: 0; padding: 0; }
 .deploy-row { display: flex; gap: var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); border-block-end: var(--border-hair) solid var(--border-subtle); }
 .deploy-row:last-child { border-block-end: 0; }

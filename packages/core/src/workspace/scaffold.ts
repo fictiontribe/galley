@@ -98,7 +98,8 @@ export async function cloneRepository(
   let lastProgress = -1;
   const result = await runCommand("git", args, {
     cwd: input.directory,
-    env: gitEnv(),
+    // The target folder's registered access (a hosted install's key) applies to the download too.
+    env: gitEnv(undefined, false, input.directory),
     timeoutMs: CLONE_TIMEOUT_MS,
     onLine: (line, stream) => {
       if (stream !== "stderr") return;

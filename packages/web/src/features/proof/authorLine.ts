@@ -3,6 +3,7 @@
  * which setting chose the name, and where to change it.
  */
 import type { GitStatus } from "@galley/core/types";
+import { placeWords } from "@/lib/where";
 
 export interface AuthorLine {
   /** "Recorded as Ana Ruiz (ana@example.com), from this site’s own author." */
@@ -13,10 +14,12 @@ export interface AuthorLine {
   note?: string;
 }
 
-export function authorLine(author: NonNullable<GitStatus["author"]>, siteId: string): AuthorLine {
+/** `hosted`: a hosted install has one site, so its author is always changed in App settings › You. */
+export function authorLine(author: NonNullable<GitStatus["author"]>, siteId: string, hosted = false): AuthorLine {
   const who = `Recorded as ${author.name} (${author.email})`;
-  const site = { label: "Site settings › Connections", to: `/sites/${siteId}/settings#connections` };
   const app = { label: "App settings › You", to: "/settings#you" };
+  const site = hosted ? app : { label: "Site settings › Connections", to: `/sites/${siteId}/settings#connections` };
+  if (hosted && (author.from === "site" || author.from === "app")) return { text: `${who}, this editor’s publishing name.`, change: app };
   switch (author.from) {
     case "site":
       return { text: `${who}, this site’s own author.`, change: site };
@@ -25,7 +28,7 @@ export function authorLine(author: NonNullable<GitStatus["author"]>, siteId: str
     case "app":
       return { text: `${who}, from your app settings.`, change: app };
     case "machine":
-      return { text: `${who}, from this computer’s settings.`, change: app, note: "To use another name, set it in" };
+      return { text: `${who}, from ${placeWords(hosted).machines} settings.`, change: app, note: "To use another name, set it in" };
     default:
       return { text: `${who} — no name is set yet.`, change: app, note: "Set yours in" };
   }

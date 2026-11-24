@@ -46,7 +46,7 @@ curl -s http://127.0.0.1:4400/api/meta
 {"version":"","brand":{"productName":"Harbour editor",…,"accent":"#0B6E4F","supportUrl":"https://help.example.com"},…}
 ```
 
-(The brand file for that run had no `logoUrl` or `docsUrl`, so the default docs link shows.) In the [container](/docs/running/hosted/#run-it-in-a-container), set them as environment variables, or mount the brand file and point `GALLEY_BRAND_FILE` at it.
+(The brand file for that run had no `logoUrl` or `docsUrl`, so the default docs link shows.) On a [hosted install](/docs/running/hosted/), set them as environment variables (in the install's `.env`), or mount the brand file and point `GALLEY_BRAND_FILE` at it.
 
 ## Validation
 
@@ -74,5 +74,5 @@ The Apache-2.0 licence lets you run, modify and rebrand the software. It doesn't
 
 ## Next
 
-- [Hosting for a team](/docs/running/hosted/).
+- [Run a hosted install](/docs/running/hosted/).
 - [Settings, secrets and the Galley home](/docs/running/settings/).

@@ -2,12 +2,13 @@
 
 A plugin adds something to Galley without changing Galley: a framework
 adapter, an image or video generator, a form destination, a third-party
-script, an importer, a deploy host, a tool for the assistant (and for any
-harness over MCP), or a hook that runs when something is published. Every
-built-in is registered the same way — the framework adapters, the image
-providers, the form and script catalogue, the Cloudflare and Vercel hosts and
-the OpenRouter plugin all go through the one public API described here. If a
-built-in ever needs a door this API doesn't have, the API is what gets fixed.
+script, an importer, a deploy host, a place to host the editor itself, a
+tool for the assistant (and for any harness over MCP), or a hook that runs
+when something is published. Every built-in is registered the same way —
+the framework adapters, the image providers, the form and script catalogue,
+the Cloudflare and Vercel hosts, the editor's hosts and the OpenRouter plugin
+all go through the one public API described here. If a built-in ever needs a
+door this API doesn't have, the API is what gets fixed.
 
 - [What a plugin can and cannot do](#what-a-plugin-can-and-cannot-do)
 - [A complete plugin in one file](#a-complete-plugin-in-one-file)
@@ -101,6 +102,8 @@ export interface GalleyPlugin {
   scriptIntegrations?: ScriptIntegrationContribution[];
   importers?: ImporterContribution[];
   deployTargets?: DeployTargetContribution[];
+  /** Places the editor itself can be hosted online. */
+  editorHosts?: EditorHostContribution[];
   tools?: SiteToolContribution[];
   /** Where a field's values can be picked from (a product, a collection). */
   dataSources?: DataSourceContribution[];
@@ -150,7 +153,7 @@ over a built-in, and within one layer the one registered first. Every
 conflict is listed by `GET /api/plugins` and `galley plugin list`. Two
 exceptions keep the built-ins trustworthy: a plugin's tool can't take a
 built-in tool's name (the plugin is refused), and a plugin can't replace the
-built-in deploy hosts.
+built-in deploy hosts or editor hosts.
 
 ### Framework adapters
 
@@ -368,6 +371,18 @@ export default {
 create a project, upload a built folder. The built-in Cloudflare and Vercel
 targets are registered through this key by the built-in plugin. A plugin's
 host is offered beside them; it can't replace them.
+
+### Editor hosts
+
+`editorHosts` takes the hosting module's own `EditorHost` objects
+(`packages/core/src/hosting/types.ts`): the places "Host the editor online"
+can put a hosted install of the app. A host inspects what its key may do,
+plans everything it would create with a monthly cost (creating nothing),
+creates exactly that — naming and tagging each thing and reporting it the
+moment it exists — and later removes only what it created. Fly.io,
+Cloudflare (in front of a computer of yours) and any server with Docker are
+registered through this key by the built-in plugin; a plugin's host is
+offered beside them and can't replace them.
 
 ### Assistant and MCP tools
 

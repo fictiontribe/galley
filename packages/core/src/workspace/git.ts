@@ -7,7 +7,10 @@
  * no controlling terminal — see exec.ts), no pager, no editor, the C locale so
  * messages can be classified, and a timeout.
  */
+import { realpathSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
 import { GalleyError } from "../errors";
+import { withoutHiddenVariables } from "./command";
 import { runCommand, type RunResult } from "./exec";
 
 export const GIT_TIMEOUT_MS = 30_000;
@@ -87,9 +90,52 @@ const BASE_CONFIG = [
   "protocol.ext.allow=never",
 ];
 
-export function gitEnv(extra?: Record<string, string>, readOnly = false): NodeJS.ProcessEnv {
+/**
+ * How git reaches a repository's remote, per folder: a hosted install
+ * registers its own key or access key for its one site's folder (see
+ * install/access.ts). Kept here rather than in the process environment so
+ * that only git calls made in that folder get it — never the site's own
+ * dev, build or install commands, and never another folder's git.
+ */
+const remoteAccess = new Map<string, Record<string, string>>();
+
+function folderKey(path: string): string {
+  let real = resolve(path);
+
+  try {
+    real = realpathSync(real);
+  } catch {
+    // A folder that doesn't exist yet (a clone's target) is matched by its resolved path.
+  }
+  return real;
+}
+
+/** Every git call whose working folder is `root` or inside it gets `env` added. Returns the way to take it back. */
+export function registerGitAccess(root: string, env: Record<string, string>): () => void {
+  const keys = [...new Set([resolve(root), folderKey(root)])];
+
+  for (const key of keys) remoteAccess.set(key, env);
+  return () => {
+    for (const key of keys) if (remoteAccess.get(key) === env) remoteAccess.delete(key);
+  };
+}
+
+function accessFor(cwd: string | undefined): Record<string, string> | undefined {
+  if (!cwd || remoteAccess.size === 0) return undefined;
+  for (const candidate of new Set([resolve(cwd), folderKey(cwd)])) {
+    for (const [root, env] of remoteAccess) {
+      const rel = relative(root, candidate);
+
+      if (rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))) return env;
+    }
+  }
+  return undefined;
+}
+
+export function gitEnv(extra?: Record<string, string>, readOnly = false, cwd?: string): NodeJS.ProcessEnv {
   return {
-    ...process.env,
+    // A repository's hooks (husky's, say) are the site's code: they get what the site's commands get.
+    ...withoutHiddenVariables(process.env),
     GIT_TERMINAL_PROMPT: "0",
     GIT_LITERAL_PATHSPECS: "1",
     GIT_PAGER: "cat",
@@ -99,6 +145,7 @@ export function gitEnv(extra?: Record<string, string>, readOnly = false): NodeJS
     LC_ALL: "C",
     LANG: "C",
     ...(readOnly ? { GIT_OPTIONAL_LOCKS: "0" } : {}),
+    ...accessFor(cwd),
     ...extra,
   };
 }
@@ -120,7 +167,7 @@ export async function runGit(cwd: string, args: string[], options: GitRunOptions
   const fullArgs = [...[...BASE_CONFIG, ...(options.config ?? [])].flatMap((c) => ["-c", c]), ...args];
   const result = await runCommand("git", fullArgs, {
     cwd,
-    env: gitEnv(options.env, options.readOnly),
+    env: gitEnv(options.env, options.readOnly, cwd),
     timeoutMs: options.timeoutMs ?? GIT_TIMEOUT_MS,
     input: options.input,
     onLine: options.onLine,

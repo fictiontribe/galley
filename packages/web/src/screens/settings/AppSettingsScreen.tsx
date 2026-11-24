@@ -4,7 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTopBar } from "@/app/chrome";
 import { useScrollToHash } from "@/lib/hashScroll";
 import { signOut } from "@/lib/auth";
-import { useMeta } from "@/lib/stores/meta";
+import { useHostedInstall, useMeta } from "@/lib/stores/meta";
+import { placeWords } from "@/lib/where";
 import { api, errorShape } from "@/lib/api";
 import { compactNumber, count, money } from "@/lib/format";
 import { getQueryState, setQueryData, useQuery } from "@/lib/query";
@@ -26,6 +27,11 @@ const SECTIONS = [
   { id: "usage", label: "Usage" },
 ] as const;
 
+/** Where keys and generated work are kept: this computer, or — on a hosted install — the server it runs on. */
+function useWhere(): string {
+  return useHostedInstall() ? "on the server" : "on this computer";
+}
+
 const EFFORTS: Array<{ value: Effort; label: string; title: string }> = [
   { value: "low", label: "Quick", title: "Fastest, cheapest; fine for small text changes" },
   { value: "medium", label: "Balanced", title: "Good for most requests" },
@@ -39,6 +45,7 @@ const SECRET_LABEL: Record<SecretName, string> = {
   google: "Google API key",
   cloudflare: "Cloudflare access key",
   vercel: "Vercel access key",
+  fly: "Fly.io access key",
 };
 
 async function patchSettings(patch: SettingsPatch): Promise<Settings> {
@@ -69,6 +76,7 @@ function SettingsSection({ id, title, description, children }: { id: string; tit
 
 /** One secret: masked status, and — unless the environment provides it — set / replace / remove. */
 function SecretRow({ secret, hint }: { secret: SecretStatus; hint?: string }) {
+  const where = useWhere();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState<"save" | "remove" | null>(null);
@@ -86,7 +94,7 @@ function SecretRow({ secret, hint }: { secret: SecretStatus; hint?: string }) {
       updateSecretInCache(await api("PUT /api/secrets/:name", { params: { name: secret.name }, body: { value: value.trim() } }));
       setValue("");
       setEditing(false);
-      notify({ tone: "success", title: "Key saved", body: "It’s stored on this computer only." });
+      notify({ tone: "success", title: "Key saved", body: `It’s stored ${where} only.` });
     } catch (caught) {
       setError(errorShape(caught).message);
     } finally {
@@ -111,7 +119,7 @@ function SecretRow({ secret, hint }: { secret: SecretStatus; hint?: string }) {
       <ProofMark kind="reg" className="app-secret__ok" />
       <span>
         Connected · key ending <span className="g-mono">{secret.hint ?? "····"}</span>
-        {secret.source === "env" ? " · set when the app was started" : " · stored on this computer"}
+        {secret.source === "env" ? " · set when the app was started" : ` · stored ${where}`}
       </span>
     </span>
   ) : (
@@ -163,6 +171,7 @@ function SecretRow({ secret, hint }: { secret: SecretStatus; hint?: string }) {
 }
 
 function AssistantSection({ settings }: { settings: Settings }) {
+  const where = useWhere();
   const [saving, setSaving] = useState<string | null>(null);
   const anthropic = settings.secrets.find((secret) => secret.name === "anthropic");
   const set = async (patch: SettingsPatch, what: string) => {
@@ -176,7 +185,7 @@ function AssistantSection({ settings }: { settings: Settings }) {
     }
   };
   return (
-    <SettingsSection id="assistant" title="Assistant" description="Connect the assistant with your own API key. It’s stored on this computer and never sent to the browser.">
+    <SettingsSection id="assistant" title="Assistant" description={`Connect the assistant with your own API key. It’s stored ${where} and never sent to the browser.`}>
       {anthropic ? <SecretRow secret={anthropic} hint="Find it in your Anthropic console under API keys" /> : null}
       <fieldset className="app-fieldset app-models" aria-busy={saving === "model"} aria-describedby="model-prices">
         <legend className="g-label">Model</legend>
@@ -211,6 +220,7 @@ const PLACEHOLDER_PROVIDER = "mock";
 const IMAGE_SECRETS: ReadonlySet<SecretName> = new Set<SecretName>(["openai", "google"]);
 
 function ImagesSection({ settings }: { settings: Settings }) {
+  const where = useWhere();
   const services = settings.images.providers.filter((p) => p.id !== PLACEHOLDER_PROVIDER);
   // `null` (or the placeholder generator itself) means the built-in placeholders are used.
   const chosen = settings.images.provider && settings.images.provider !== PLACEHOLDER_PROVIDER ? settings.images.provider : "";
@@ -275,7 +285,7 @@ function ImagesSection({ settings }: { settings: Settings }) {
       ) : (
         <p className="app-images-note">
           <ProofMark kind="reg" className="app-secret__ok" />
-          <span>Images you generate are placeholders: plain artwork labelled with your description, made on this computer. Choose a service to make real images.</span>
+          <span>{`Images you generate are placeholders: plain artwork labelled with your description, made ${where}. Choose a service to make real images.`}</span>
         </p>
       )}
       {imageSecrets.map((secret) => (
@@ -285,7 +295,19 @@ function ImagesSection({ settings }: { settings: Settings }) {
   );
 }
 
+/**
+ * A hosted install's publishing name: one site, so no site-level author to
+ * defer to — and when whoever runs the server set it, it can't change here.
+ */
+function useAuthorFixed(): boolean {
+  const hosted = useHostedInstall();
+  const install = useQuery(keys.install(), () => api("GET /api/install"), { enabled: hosted });
+  return hosted && Boolean(install.data?.fixed.includes("author"));
+}
+
 function YouSection({ settings }: { settings: Settings }) {
+  const hosted = useHostedInstall();
+  const fixed = useAuthorFixed();
   // Nothing saved here yet: the fields start empty, with the computer's own identity as the example — it isn't a choice made here.
   const saved = settings.authorSaved === false ? { name: "", email: "" } : settings.author;
   const machine = settings.authorSaved === false ? settings.author : null;
@@ -318,9 +340,25 @@ function YouSection({ settings }: { settings: Settings }) {
   };
 
   return (
-    <SettingsSection id="you" title="You" description="Your name and email appear beside each version you publish, in Version history. A site’s own author (Site settings › Connections) or its own version settings come first.">
+    <SettingsSection
+      id="you"
+      title="You"
+      description={
+        hosted
+          ? "The name and email recorded with each version published from this editor, shown in Version history."
+          : "Your name and email appear beside each version you publish, in Version history. A site’s own author (Site settings › Connections) or its own version settings come first."
+      }
+    >
+      {fixed ? (
+        <div className="app-form-stack">
+          <span>
+            {saved.name || settings.author.name} <span className="g-mono">&lt;{saved.email || settings.author.email}&gt;</span>
+          </span>
+          <span className="g-hint">Set by whoever runs the server, so it can’t be changed here.</span>
+        </div>
+      ) : (
       <form className="app-form-stack" onSubmit={save}>
-        {machine ? <p className="g-hint">{`Not set here yet, so versions use this computer’s name: ${machine.name} (${machine.email}).`}</p> : null}
+        {machine ? <p className="g-hint">{`Not set here yet, so versions use ${placeWords(hosted).machines} name: ${machine.name} (${machine.email}).`}</p> : null}
         <div className="app-form-row">
           <Field label="Name">
             <Input value={name} placeholder={machine?.name} onChange={(event) => setName(event.target.value)} autoComplete="name" />
@@ -335,6 +373,7 @@ function YouSection({ settings }: { settings: Settings }) {
           </Button>
         </div>
       </form>
+      )}
     </SettingsSection>
   );
 }
@@ -415,9 +454,10 @@ function DayBars({ days }: { days: UsageSummary["days"] }) {
 }
 
 function UsageSection() {
+  const hosted = useHostedInstall();
   const usage = useQuery(keys.usage(), () => api("GET /api/usage"));
   return (
-    <SettingsSection id="usage" title="Usage" description="What the assistant has cost at list prices, with what image and video services reported for their work, on this computer.">
+    <SettingsSection id="usage" title="Usage" description={`What the assistant has cost at list prices, with what image and video services reported for their work, ${hosted ? "in this editor" : "on this computer"}.`}>
       {usage.loading ? (
         <Skeleton height={160} />
       ) : usage.status === "error" && !usage.data ? (
@@ -470,6 +510,9 @@ export function AppSettingsScreen() {
   useTopBar({ crumbs: [{ label: "App settings" }] });
   const settings = useQuery(keys.settings(), () => api("GET /api/settings"));
   const hosted = useMeta((s) => s.meta?.mode === "hosted");
+  const install = useHostedInstall();
+  // Preview limits share a computer between many sites' previews; a hosted install runs one.
+  const sections = install ? SECTIONS.filter((section) => section.id !== "previews") : SECTIONS;
   useScrollToHash(Boolean(settings.data));
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
@@ -479,7 +522,7 @@ export function AppSettingsScreen() {
       <div className="app-screen__inner app-settings">
         <PageHeader
           title="App settings"
-          description="These apply to every site you open here."
+          description={install ? "These apply to this editor." : "These apply to every site you open here."}
           actions={
             hosted ? (
               <Button
@@ -501,7 +544,7 @@ export function AppSettingsScreen() {
         />
         <div className="app-settings__layout">
           <nav className="app-settings__nav" aria-label="Settings sections">
-            {SECTIONS.map((section) => (
+            {sections.map((section) => (
               <a key={section.id} className="g-nav__item" href={`#${section.id}`}>
                 {section.label}
               </a>
@@ -519,7 +562,7 @@ export function AppSettingsScreen() {
                 <VideoSettingsSection />
                 <YouSection settings={settings.data} />
                 <AppearanceSection settings={settings.data} />
-                <PreviewsSection settings={settings.data} />
+                {install ? null : <PreviewsSection settings={settings.data} />}
                 <UsageSection />
               </>
             ) : null}

@@ -29,6 +29,9 @@ import { multiSiteRoutes } from "./multisite";
 import { visibilityRoutes } from "./visibility";
 import { importRoutes, importsOf } from "./import";
 import { siteBrandRoutes } from "./sitebrand";
+import { installRoutes } from "./install-routes";
+import { previewEntry } from "./preview-entry";
+import { hostingRoutes } from "./hosting-routes";
 import { assertInside, listFolders, looksLikeSite, realDirectory } from "./fs-list";
 import { extensionOf, isImagePath, rawContentTypeFor, UPLOAD_TYPES } from "./mime";
 import type { AppOptions, Services, StreamRegistry } from "./types";
@@ -142,11 +145,11 @@ async function confine(ctx: RouteContext, path: string | undefined): Promise<str
 }
 
 function setSessionCookie(c: Context, ctx: RouteContext, persistent: boolean): void {
-  setCookie(c, ctx.session.cookieName, signSession(ctx.session.key), {
+  setCookie(c, ctx.session.cookieName, ctx.session.issue?.() ?? signSession(ctx.session.key), {
     httpOnly: true,
     sameSite: "Strict",
     path: "/",
-    secure: requestProtocol(c, Boolean(ctx.options.trustProxy)) === "https",
+    secure: ctx.session.secure === true || requestProtocol(c, Boolean(ctx.options.trustProxy)) === "https",
     ...(persistent ? { maxAge: SESSION_MAX_AGE_S } : {}),
   });
 }
@@ -182,6 +185,12 @@ export const routes: RouteTable = {
   // ── the site's brand (sitebrand.ts) ───────────────────────────────────
   ...siteBrandRoutes,
 
+  // ── the hosted install: first run and the Install page (install-routes.ts)
+  ...installRoutes,
+
+  // ── "Host the editor online" (hosting-routes.ts) ──────────────────────
+  ...hostingRoutes,
+
   // ── meta & auth ────────────────────────────────────────────────────────
   "GET /api/meta": async (c, ctx) => {
     const { brand, mode, version, desktop } = ctx.options;
@@ -196,10 +205,12 @@ export const routes: RouteTable = {
       ? { version, brand, mode, authenticated, desktop, platform: process.platform }
       : { version: "", brand, mode, authenticated, desktop: false, platform: "" };
 
+    // A hosted install: one site, and whether first run is over (its id only to someone signed in).
+    if (mode === "hosted" && ctx.options.install) meta.install = ctx.options.install.meta(authenticated);
     return meta;
   },
   "POST /api/auth/login": async (c, ctx) => {
-    if (ctx.options.mode !== "hosted" || !ctx.options.password) {
+    if (ctx.options.mode !== "hosted" || (!ctx.options.password && !ctx.session.verifyPassword)) {
       throw invalid("This app doesn't use a password here. Open the link printed when it started.");
     }
     const client = clientAddress(c, Boolean(ctx.options.trustProxy));
@@ -207,7 +218,7 @@ export const routes: RouteTable = {
     if (ctx.limiter.blocked(client)) throw new RateLimitError("Too many sign-in attempts. Wait a minute, then try again.");
     const { password } = await v.body(c, v.loginBody);
 
-    if (!safeEqual(password, ctx.options.password)) {
+    if (!(ctx.session.verifyPassword ? await ctx.session.verifyPassword(password) : safeEqual(password, ctx.options.password ?? ""))) {
       ctx.limiter.fail(client);
       throw new AuthError("That password isn't right. Check it and try again.");
     }
@@ -219,7 +230,7 @@ export const routes: RouteTable = {
     const nonce = sessionNonce(c, ctx.session);
 
     if (nonce) ctx.session.revoked.add(nonce);
-    deleteCookie(c, ctx.session.cookieName, { path: "/" });
+    deleteCookie(c, ctx.session.cookieName, { path: "/", ...(ctx.session.secure ? { secure: true } : {}) });
     return ok;
   },
   "GET /api/events": async (c, ctx) => eventStream(c, ctx.services.events, ctx.streams, ctx.options.heartbeatMs),
@@ -277,7 +288,7 @@ export const routes: RouteTable = {
   },
   "GET /api/jobs/:jobId": async (c, ctx) => {
     // Deploy jobs are kept by the deploy service, so a page reload mid-deploy can still ask.
-    const job = ctx.services.registry.job(c.req.param("jobId") ?? "") ?? ctx.services.deploy?.job(c.req.param("jobId") ?? "") ?? ctx.services.redirects?.job(c.req.param("jobId") ?? "") ?? siteKitJob(ctx.services, c.req.param("jobId") ?? "") ?? ctx.services.siteBrand?.job(c.req.param("jobId") ?? "") ?? importsOf(ctx.services).job(c.req.param("jobId") ?? "") ?? null;
+    const job = ctx.services.registry.job(c.req.param("jobId") ?? "") ?? ctx.services.deploy?.job(c.req.param("jobId") ?? "") ?? ctx.services.hosting?.job(c.req.param("jobId") ?? "") ?? ctx.services.redirects?.job(c.req.param("jobId") ?? "") ?? siteKitJob(ctx.services, c.req.param("jobId") ?? "") ?? ctx.services.siteBrand?.job(c.req.param("jobId") ?? "") ?? importsOf(ctx.services).job(c.req.param("jobId") ?? "") ?? null;
 
     if (!job) throw notFound("That task isn't known here. It may have finished before the app restarted.");
     return job;
@@ -543,6 +554,8 @@ export const routes: RouteTable = {
     return preview.status();
   },
   "POST /api/sites/:siteId/preview/restart": async (c, ctx) => (await siteOf(c, ctx)).preview().restart(),
+  // Local: the proxies' own addresses. Hosted: one-use entry addresses on the preview gateway (preview-entry.ts).
+  "POST /api/sites/:siteId/preview/entry": async (c, ctx) => previewEntry(c, ctx, (await siteOf(c, ctx)).preview().status()),
   "POST /api/sites/:siteId/build": async (c, ctx) => (await siteOf(c, ctx)).build(),
 
   // ── assistant ──────────────────────────────────────────────────────────

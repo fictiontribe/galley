@@ -12,6 +12,7 @@
  */
 import type { GalleyAdapter, MaybePromise } from "../adapter/types";
 import type { DeployTarget } from "../deploy/types";
+import type { EditorHost } from "../hosting/types";
 import type { FormDestination, FormProviderInfo, FormSubmission, ScriptIntegrationInfo } from "../kit";
 import type { AgentMode, ChangeSet, ImageAspect, JsonValue, PublishResult, SiteService, VideoAspect } from "../types";
 
@@ -307,6 +308,13 @@ export interface ImporterContribution {
  */
 export type DeployTargetContribution = DeployTarget;
 
+/**
+ * A place the editor itself can be hosted ("Host the editor online"): the
+ * hosting module's own `EditorHost` (inspect a key, plan, create, upgrade,
+ * back up, remove exactly what it created). Public as is.
+ */
+export type EditorHostContribution = EditorHost;
+
 // ─────────────────────────────────────────────────────────────── tools
 
 /**
@@ -460,6 +468,8 @@ export interface GalleyPlugin {
   scriptIntegrations?: ScriptIntegrationContribution[];
   importers?: ImporterContribution[];
   deployTargets?: DeployTargetContribution[];
+  /** Places the editor itself can be hosted online. */
+  editorHosts?: EditorHostContribution[];
   tools?: SiteToolContribution[];
   /** Where a field's values can be picked from (a product, a collection). */
   dataSources?: DataSourceContribution[];

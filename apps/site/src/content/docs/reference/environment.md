@@ -11,8 +11,8 @@ This page is for developers and whoever runs Galley. Command-line options beat v
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `GALLEY_HOME` | `~/.galley` | The Galley home: the sites list, settings, keys, conversations, the inbox, per-site state. The CLI, the desktop app and a hosted server share it when they share this value. [Settings and secrets](/docs/running/settings/). |
-| `GALLEY_SITES_DIR` | `<GALLEY_HOME>/sites` | Where cloned and new sites go. Hosted: the only folder sites can be opened from, cloned into or created in. |
+| `GALLEY_HOME` | `~/.galley` (`/data` in the image) | The Galley home: the sites list, settings, keys, conversations, the inbox, per-site state. The CLI and the desktop app share it when they share this value. On a hosted install it is the data folder: the one site and everything the install keeps ([Run a hosted install](/docs/running/hosted/#what-is-kept-where)). [Settings and secrets](/docs/running/settings/). |
+| `GALLEY_SITES_DIR` | `<GALLEY_HOME>/sites` | Where cloned and new sites go. Ignored on a hosted install, which keeps its one site in its data folder (it says so at start-up). |
 | `GALLEY_STARTERS_DIR` | the repository's `starters/` | The starters, one folder each. |
 | `GALLEY_WEB_DIR` | `packages/web/dist` | The built app screens. Without an `index.html` there, the server shows a page saying how to build them. |
 
@@ -20,15 +20,54 @@ This page is for developers and whoever runs Galley. Command-line options beat v
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `GALLEY_HOST` | `127.0.0.1` | The interface to listen on. Anything but a loopback address means hosted mode, which needs `GALLEY_PASSWORD`. `galley serve` defaults to `0.0.0.0`. |
-| `GALLEY_PORT` | `4400` | The port. On your own computer a busy port moves to the next free one (and says so); in hosted mode and for the desktop app it is an error. |
-| `GALLEY_PASSWORD` | — | Hosted mode's one shared sign-in password, 12 characters or more. Required there. Read from the environment only. |
-| `GALLEY_PUBLIC_URL` | — | Hosted: the address people use, e.g. `https://cms.example.com`. Used for the Host and Origin checks, the previews' addresses, the forms' capture address and the MCP endpoint. |
+| `GALLEY_HOST` | `127.0.0.1` | The interface to listen on. Anything but a loopback address means a hosted install. `galley serve` defaults to `0.0.0.0`. |
+| `GALLEY_PORT` | `4400` | The port. On your own computer a busy port moves to the next free one (and says so); on a hosted install and for the desktop app it is an error. |
+| `GALLEY_PUBLIC_URL` | — | Hosted: the address people use, e.g. `https://cms.example.com`. Used for the Host and Origin checks, the preview's and live comparison's addresses, the forms' capture address and the MCP endpoint. Without it the server answers any hostname and there is no preview. |
 | `GALLEY_TRUST_PROXY` | off | `1`: honour `X-Forwarded-Proto` and `X-Forwarded-For` from a reverse proxy you control. |
-| `GALLEY_TOKEN` | random | On your own computer: the session token in the printed link (32 random bytes when unset). Hosted: optional; set it to allow `Authorization: Bearer` for scripts. 16 characters or more. |
-| `GALLEY_PREVIEW_PORTS` | any free port | A port range for the previews and their proxies, e.g. `4410-4429` — for a firewall or a container that publishes fixed ports. |
+| `GALLEY_TOKEN` | random | On your own computer: the session token in the printed link (32 random bytes when unset). Hosted: optional; set it to allow `Authorization: Bearer` for scripts. 16 characters or more. On a hosted install the site's own commands never see it. |
+| `GALLEY_PREVIEW_PORTS` | any free port | On your own computer: a port range for the previews and their proxies, e.g. `4410-4429`. Ignored on a hosted install, which serves the preview through its one port by hostname (it says so at start-up). |
 | `GALLEY_DESKTOP` | off | `1`: the desktop app is the host (`/api/meta` says `desktop: true`). Set by the app. |
 | `GALLEY_SITE` | the current folder | `pnpm dev` inside the repository: the site to open. |
+
+## A hosted install
+
+Read by `galley serve`. The ones marked *starting value* are used once, only while the install doesn't have that thing yet, so what someone later changes in the app sticks across restarts ([Run a hosted install](/docs/running/hosted/#start-it-unattended)). Secrets among them are never passed to the site's own commands.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `GALLEY_PREVIEW_URL` | worked out from `GALLEY_PUBLIC_URL` | Where the preview is served, on the same port, by hostname: `cms.example.com` gives `https://cms-preview.example.com`; a two-part name or `*.localhost` gives `preview.<name>`. |
+| `GALLEY_LIVE_VIEW_URL` | worked out the same way | Where the live site is shown beside the preview: `https://cms-live.example.com`. |
+| `GALLEY_PASSWORD` | — | *Starting value.* The first sign-in password, 12 characters or more, used only while none exists. Without it the server prints a one-time setup link. Read from the environment only. |
+| `GALLEY_SETUP_TOKEN` | a code is made and printed | The one-time setup code to use instead, 24 characters or more. Not printed again at start-up. Once used, it stays dead: after `--reset-password` a fresh link is made instead. |
+| `GALLEY_SETUP_TOKEN_SHA256` | — | Only the setup code's SHA-256 (64 hexadecimal characters), so the code itself never reaches the server. |
+| `GALLEY_INSTALL_CONFIG` | — | One JSON file with any of the starting values ([its shape](/docs/running/hosted/#start-it-unattended)). The environment wins over it. Make it readable by the server's user only. |
+| `GALLEY_SITE_REPOSITORY` | — | *Starting value.* The site's repository: `git@github.com:example/site.git` or `https://…`. |
+| `GALLEY_SITE_ACCESS` | `deploy-key` (`token` when `GALLEY_SITE_TOKEN` is set) | How the repository is reached: the install's own deploy key, or an access token over HTTPS. |
+| `GALLEY_SITE_TOKEN` | — | *Starting value.* The access token, with `GALLEY_SITE_ACCESS=token`. Kept in the data folder's key store, never in the checkout or the address. |
+| `GALLEY_SITE_BRANCH` | the repository's default branch | *Starting value.* The branch to work on. |
+| `GALLEY_SITE_FOLDER` | the top of the repository | *Starting value.* The folder inside the repository that holds the site, e.g. `apps/site`. |
+| `GALLEY_SITE_STARTER` | — | *Starting value.* Send this starter to an empty repository as its first version, instead of copying what it holds. |
+| `GALLEY_SITE_LIVE_URL` | — | *Starting value.* The site's live address, which Proof compares against. Kept in the install's own state, never written into the site; the site's own `urls.production` wins when it has one. |
+| `GALLEY_AUTHOR_NAME` | — | *Starting value.* The name every publish is recorded with. Needs `GALLEY_AUTHOR_EMAIL`. |
+| `GALLEY_AUTHOR_EMAIL` | — | *Starting value.* The e-mail every publish is recorded with. Needs `GALLEY_AUTHOR_NAME`. |
+| `GALLEY_SITE_DIR` | — | Upgrading a data folder from before single-site installs that holds several sites: which site's folder to keep. Without it such a folder is refused at start-up, in one sentence. |
+| `GALLEY_ALLOW_LOCAL_REPOSITORIES` | off | `1`: the repository may be a folder on the server itself (trials). Off because it would let the editor read any repository on the server's disk. |
+| `GALLEY_PREVIEW_MEMORY_MB` | no limit | Node's memory ceiling (its max-old-space-size option) for the site's own preview, build and install commands, added after any `NODE_OPTIONS` of yours. Never applied to the server's own process. The generated files set `1024`. |
+| `GALLEY_LOG_REQUESTS` | on | `0` leaves out the one log line per request (method, path without the query, status, time). |
+| `GALLEY_SHUTDOWN_GRACE_MS` | `20000` | How long stopping waits for a publish or a connect in progress. |
+| `GALLEY_RESTORE_MAX_MB` | `2048` | The largest backup the Install page's restore takes. Restore larger ones with `galley backup restore`. |
+| `GALLEY_BACKUP_PASSPHRASE` | asked on a terminal | The passphrase for `galley backup create` and `galley backup restore`, 12 characters or more. Pass it into a one-off container with `-e GALLEY_BACKUP_PASSPHRASE` ([Back it up](/docs/running/hosted/#back-it-up)). |
+
+## Hosting the editor online
+
+Read by the app on your own computer for **Host the editor online** and `galley host` ([Host the editor online](/docs/editing/editor-online/)).
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `FLY_API_TOKEN` | — | The Fly.io organization token. Beats the one saved in the app. |
+| `GALLEY_HOSTING_IMAGE` | `ghcr.io/fictiontribe/galley:<version>` | The image a new or upgraded install runs. That default isn't published yet, so set this to an image you built and pushed. |
+| `GALLEY_HOSTING_<NAME>_API` | the host's own API | Testing only: send a host's API calls (`FLY`, `CLOUDFLARE`) to a fake host. |
+| `GALLEY_HOSTING_INSTALL_API` | `https://<editor address>` | Testing only: where a new install is reached, for a rehearsal against fake hosts. |
 
 ## The assistant, pictures and keys
 

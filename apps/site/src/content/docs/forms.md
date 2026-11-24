@@ -71,7 +71,7 @@ A destination with `settings.serverSide: true` isn't sent by the page: the captu
 
 A static site's visitors can only send to a Galley that is **on the internet**:
 
-- **Hosted** (`galley serve`, or the container) with `GALLEY_PUBLIC_URL` set to a public `https://` address: the capture address is `https://cms.example.com/f/<siteId>`. Put it in `forms.endpoint` (or the destination's `endpoint`) and publish. [Self-hosting](/docs/running/hosted/).
+- **A hosted install** (`galley serve`, the image, or [an editor hosted online](/docs/editing/editor-online/)) at a public `https://` address (`GALLEY_PUBLIC_URL`): the capture address is `https://cms.example.com/f/<siteId>`, on the editor's own address. Put it in `forms.endpoint` (or the destination's `endpoint`) and publish. If another sign-in such as Cloudflare Access sits in front of the editor, leave `/f/` open to everyone. [Run a hosted install](/docs/running/hosted/#forms-on-a-hosted-install).
 - **On your own computer**: the address is `http://127.0.0.1:<port>/f/<siteId>`. It works from the preview and with **Send a test submission**; real visitors can't reach it. Send live forms to a CRM or webhook instead.
 
 E-mail alerts need `GALLEY_SMTP_URL` and `GALLEY_MAIL_FROM` on the server ([Environment variables](/docs/reference/environment/#forms-and-e-mail)). Submissions are kept in the Galley home, never in the site.

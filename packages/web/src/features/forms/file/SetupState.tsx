@@ -9,11 +9,12 @@ import { Link, useNavigate } from "react-router-dom";
 import type { SiteKitStatus, SiteKitStep } from "@galley/core/api";
 import type { Job } from "@galley/core/types";
 import { errorShape } from "@/lib/api";
-import { useMeta } from "@/lib/stores/meta";
+import { useHostedInstall, useMeta } from "@/lib/stores/meta";
 import { useJob, useShowingJob } from "@/lib/stores/jobs";
 import { useSite } from "@/lib/stores/site";
 import { notify } from "@/lib/stores/toasts";
 import { Button, EmptyState, ErrorState, ProofMark, Skeleton, Spinner, buttonClass } from "@/ui";
+import { editorAddress } from "@/features/inbox/reach";
 import { docsPage } from "../logic/locate";
 import { useAllowBuild, useAssistantPanel, useAssistantReady } from "./assistant";
 import { splitSteps, startKitSetup, useKitStatus } from "./kit";
@@ -82,6 +83,7 @@ export function SetupState({ feature }: SetupStateProps) {
   const navigate = useNavigate();
   const siteId = useSite((s) => s.detail?.id ?? "");
   const docsUrl = useMeta((s) => s.meta?.brand.docsUrl);
+  const hosted = useHostedInstall();
   const ready = useAssistantReady();
   const allowBuild = useAllowBuild();
   const show = useAssistantPanel((s) => s.show);
@@ -214,7 +216,9 @@ export function SetupState({ feature }: SetupStateProps) {
         <p className="g-hint kit-setup__inbox">
           {kit.inbox.reachable && kit.inbox.address
             ? `The live site’s forms will send to this app’s inbox at ${kit.inbox.address}.`
-            : "Forms in the preview send to this app’s inbox. Visitors can’t reach it from this computer, so the Forms screen then asks where the live site should send submissions."}
+            : hosted
+              ? `Forms in the preview send to this editor’s inbox. This editor’s address${kit.inbox.address ? `, ${editorAddress(kit.inbox.address)},` : ""} isn’t one visitors’ browsers can reach, so the Forms screen then asks where the live site should send submissions.`
+              : "Forms in the preview send to this app’s inbox. Visitors can’t reach it from this computer, so the Forms screen then asks where the live site should send submissions."}
         </p>
       ) : null}
     </EmptyState>

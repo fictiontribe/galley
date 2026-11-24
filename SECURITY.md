@@ -57,11 +57,13 @@ The full description is in the documentation under *Running Galley › Security
 model* (`apps/site/src/content/docs/running/security.md`).
 
 1. **Who can reach it.** Locally the server listens on `127.0.0.1` only and
-   needs the random session token from the printed link. Hosted mode refuses
-   to start without a password of 12 or more characters; sign-in is rate
+   needs the random session token from the printed link. A hosted install
+   looks after one site; its password (12 or more characters, stored as an
+   scrypt hash) is chosen through a one-time setup link; sign-in is rate
    limited; the session cookie is signed, `HttpOnly`, `SameSite=Strict`, and
-   `Secure` over HTTPS. There are no per-user roles: everyone who can sign in
-   can do everything.
+   `Secure` (`__Host-`) over HTTPS. The preview is served on a hostname of its
+   own, only to a browser the editor let in. There are no per-user roles:
+   everyone who can sign in can do everything.
 2. **Every request** must name the server in `Host` (against DNS rebinding);
    every state-changing request needs a same-origin `Origin` or a Bearer
    token (against cross-site requests).
@@ -74,8 +76,10 @@ model* (`apps/site/src/content/docs/running/security.md`).
    code, but the preview runs the site's own dev command (and installs its
    dependencies), build mode runs its build, and adapters a site names in its
    config are loaded. Opening a repository in Galley trusts it the way running
-   it locally would. On a hosted server, the password therefore grants the
-   ability to run code there: run it unprivileged and isolated.
+   it locally would. On a hosted install, the password therefore grants the
+   ability to run code there: the container is the boundary (the image runs
+   the server as an unprivileged user with no capabilities; see
+   `docs/cloud-install.md`).
 5. **Secrets stay on the server.** Keys come from the environment or a 0600
    file in the Galley home, never cross the HTTP boundary, and are scrubbed
    from errors and logs.
@@ -86,12 +90,15 @@ model* (`apps/site/src/content/docs/running/security.md`).
 ## Known limitations
 
 Stated so they aren't reported as discoveries: the desktop app's installers
-are unsigned; it does not use the OS keychain yet; hosted previews are served
-over plain HTTP on random ports; Windows and Linux have not been verified; the
-`Dockerfile` has not been built.
+are unsigned; it does not use the OS keychain yet; a hosted install has one
+password and no accounts, and the site's own code can read what its container
+holds; the hosted install has not been run on Fly.io or Cloudflare; Windows and
+Linux have not been verified.
 
 ## Cryptography
 
-Galley uses Node's `crypto` for random tokens, constant-time comparison and
-HMAC-SHA256 session signatures, and TLS through Node and git. It contains no
-encryption of its own.
+Galley uses Node's `crypto` for random tokens, constant-time comparison,
+HMAC-SHA256 session signatures, scrypt password hashes and — for a hosted
+install's backups — scrypt key derivation and AES-256-GCM in authenticated
+frames (the format is described in `packages/core/src/install/backup.ts`),
+and TLS through Node and git. It implements no cipher of its own.

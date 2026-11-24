@@ -13,17 +13,28 @@ export { SPILL_BYTES } from "./checkpoint";
 
 export { createPreviewController, detectPid, detectPort, expandOutputLine } from "./preview/controller";
 export type { PreviewOptions, PreviewSettings, PreviewControllerHandle } from "./preview/controller";
-export { injectIntoHtml, stripFrameAncestors, rewriteLocation, OVERLAY_TAG } from "./preview/proxy";
+export {
+  injectIntoHtml,
+  stripFrameAncestors,
+  rewriteLocation,
+  OVERLAY_TAG,
+  isAppCookie,
+  viewerCookieName,
+  withoutAppCookies,
+  startPreviewProxy,
+  startBaselineProxy,
+} from "./preview/proxy";
+export type { PreviewGateway, ProxyHandlers } from "./preview/proxy";
 export { createPortPool, parsePortRange, freePort, portIsFree } from "./preview/ports";
 export type { PortPool, PortRange } from "./preview/ports";
 export { portOwnership, type Ownership } from "./preview/owner";
 
 export { runBuild, installDependencies, detectPackageManager } from "./build";
-export { AGENT_ENV_NAMES, AGENT_ENV_PREFIXES, isAgentMarker, parseCommand, resolveCommand, withoutAgentMarkers } from "./command";
+export { AGENT_ENV_NAMES, AGENT_ENV_PREFIXES, hideFromSiteCommands, limitSiteCommandMemory, isAgentMarker, parseCommand, resolveCommand, withoutAgentMarkers, withoutHiddenVariables } from "./command";
 export { listMedia, saveMedia, sanitizeMediaName, isMediaFile, MAX_UPLOAD_BYTES } from "./media";
 export { cloneRepository, scaffoldFromStarter, isGitRepository, parseCloneProgress, packageName } from "./scaffold";
 
-export { git, runGit, GitCommandError } from "./git";
+export { git, runGit, registerGitAccess, GitCommandError } from "./git";
 export type { Git, GitResult, GitRunOptions, RepoInfo } from "./git";
 export { hashContent, isBinary } from "./files";
 export { normalizeRepoPath } from "./paths";

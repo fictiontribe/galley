@@ -1,5 +1,7 @@
 **/node_modules
 **/dist
+# The one built folder the image can be packed from (docker build --build-arg BUNDLE=prebuilt).
+!packages/cli/dist
 **/.astro
 **/coverage
 **/*.tsbuildinfo

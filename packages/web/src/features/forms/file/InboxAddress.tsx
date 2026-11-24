@@ -8,11 +8,12 @@
  */
 import type { SiteKitStatus } from "@galley/core/api";
 import { errorShape } from "@/lib/api";
-import { useMeta } from "@/lib/stores/meta";
+import { useHostedInstall, useMeta } from "@/lib/stores/meta";
 import { useSite } from "@/lib/stores/site";
 import { notify } from "@/lib/stores/toasts";
 import { Button, ProofMark } from "@/ui";
 import { useState } from "react";
+import { editorAddress } from "@/features/inbox/reach";
 import { docsPage } from "../logic/locate";
 import { setInboxAddress, useKitStatus } from "./kit";
 
@@ -25,6 +26,7 @@ export function InboxAddressStep() {
   const siteId = useSite((s) => s.detail?.id ?? "");
   const docsUrl = useMeta((s) => s.meta?.brand.docsUrl);
   const status = useKitStatus(siteId);
+  const hosted = useHostedInstall();
   const [busy, setBusy] = useState(false);
   const kit = status.data;
   if (!kit || !needsInboxAddress(kit)) return null;
@@ -66,7 +68,15 @@ export function InboxAddressStep() {
     body = (
       <>
         <p className="kit-callout__body">
-          This app runs on this computer, so visitors’ browsers can’t reach its inbox. In the preview, forms still send here, so you can test them. For the live site, run this app on a server with a public address, or send each form somewhere else under “Where it goes” — a webhook, HubSpot or another service.
+          {hosted ? (
+            <>
+              This editor’s address{inbox.address ? <>, <span className="g-mono">{editorAddress(inbox.address)}</span>,</> : null} isn’t one visitors’ browsers can reach, so the live site can’t send its forms here. In the preview, forms still send here, so you can test them. For the live site, give the editor a public address, or send each form somewhere else under “Where it goes” — a webhook, HubSpot or another service.
+            </>
+          ) : (
+            <>
+              This app runs on this computer, so visitors’ browsers can’t reach its inbox. In the preview, forms still send here, so you can test them. For the live site, run this app on a server with a public address, or send each form somewhere else under “Where it goes” — a webhook, HubSpot or another service.
+            </>
+          )}
         </p>
         {docs ? (
           <div className="kit-callout__actions">

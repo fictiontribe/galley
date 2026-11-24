@@ -15,7 +15,7 @@ export const SETTING_KEY = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 export const TOOL_NAME = /^[a-z][a-z0-9_]{1,63}$/;
 export const SECRET_NAME = /^[a-z][a-z0-9_.-]{1,63}$/;
 const ENV_NAME = /^[A-Z_][A-Z0-9_]*$/;
-const CONTRIBUTIONS = ["adapters", "imageProviders", "videoProviders", "formProviders", "scriptIntegrations", "importers", "deployTargets", "tools", "dataSources", "hooks", "settings", "setup"] as const;
+const CONTRIBUTIONS = ["adapters", "imageProviders", "videoProviders", "formProviders", "scriptIntegrations", "importers", "deployTargets", "editorHosts", "tools", "dataSources", "hooks", "settings", "setup"] as const;
 const KNOWN_KEYS = new Set<string>(["name", "displayName", "description", "version", "apiVersion", ...CONTRIBUTIONS]);
 const HOOKS = ["beforePublish", "afterPublish", "afterDeploy", "onSubmission"] as const;
 const SCRIPT_CATEGORIES = ["tag-manager", "analytics", "advertising", "marketing", "support", "other"];
@@ -291,6 +291,16 @@ export function validatePlugin(value: unknown, label = "The plugin", options: Va
     if (!isObject(target.info) || !Array.isArray(target.credentials)) problems.push(`${at} needs the setup screen's info and its credentials list.`);
     for (const hook of ["connect", "checkProject", "ensureProject", "deploy"]) if (typeof target[hook] !== "function") problems.push(`${at}.${hook} should be a function.`);
   });
+  checkList(plugin, "editorHosts", problems, (host, at) => {
+    if (typeof host.id !== "string" || !ADAPTER_ID.test(host.id)) problems.push(`${at}.id should be lowercase letters, digits and dashes, not ${quote(host.id)}.`);
+    if (!nonEmpty(host.name)) problems.push(`${at} needs a name.`);
+    if (!isObject(host.info) || !Array.isArray(host.info.credentials) || !Array.isArray(host.info.options) || !isObject(host.info.cost)) {
+      problems.push(`${at} needs the first screen's info: its credentials, options and cost.`);
+    } else if (host.info.kind !== "managed" && host.info.kind !== "self-run") problems.push(`${at}.info.kind should be "managed" or "self-run".`);
+    if (!isObject(host.apis)) problems.push(`${at}.apis should name the origins of the APIs it talks to (an empty object when it talks to none).`);
+    for (const hook of ["inspect", "plan", "create", "removal", "remove"]) if (typeof host[hook] !== "function") problems.push(`${at}.${hook} should be a function.`);
+    for (const hook of ["upgrade", "backup", "pending"]) if (host[hook] !== undefined && typeof host[hook] !== "function") problems.push(`${at}.${hook} should be a function, or left out.`);
+  });
   const reserved = new Set(options.reservedTools ?? []);
 
   checkList(plugin, "tools", problems, (tool, at) => {
@@ -332,6 +342,7 @@ export function validatePlugin(value: unknown, label = "The plugin", options: Va
   uniqueIds(plugin, "scriptIntegrations", "kind", problems);
   uniqueIds(plugin, "importers", "id", problems);
   uniqueIds(plugin, "deployTargets", "id", problems);
+  uniqueIds(plugin, "editorHosts", "id", problems);
   uniqueIds(plugin, "tools", "name", problems);
   uniqueIds(plugin, "adapters", "id", problems);
 

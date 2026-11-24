@@ -110,6 +110,7 @@ async function catalog(ctx: RouteContext, site: SiteService | null): Promise<Plu
     videoProviders: ctx.services.videos ? await ctx.services.videos.providers() : [],
     importers: plugins ? plugins.importers(root) : [],
     deployTargets: plugins ? plugins.deployTargets(root) : [],
+    editorHosts: plugins ? plugins.editorHosts(root) : [],
     dataSources: plugins ? plugins.dataSources(root) : [],
   };
 }
