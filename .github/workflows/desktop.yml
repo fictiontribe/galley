@@ -85,8 +85,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # LTS: this exact runtime is bundled into the app.
+          # LTS: this exact runtime is bundled into the app. check-latest,
+          # because a runner's own copy of Node 22 can lag (the Intel Mac's did,
+          # behind what the starter sites need) and every installer should
+          # carry the same, current one.
           node-version: 22
+          check-latest: true
           cache: pnpm
 
       - uses: dtolnay/rust-toolchain@stable

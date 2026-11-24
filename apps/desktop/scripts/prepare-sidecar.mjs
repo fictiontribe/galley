@@ -33,7 +33,8 @@ const fail = (message) => {
   console.error(`✗ ${message}`);
   process.exit(1);
 };
-const run = (command, args, options = {}) => execFileSync(command, args, { stdio: "inherit", cwd: repo, ...options });
+// On Windows pnpm is a .cmd file, which Node starts only through a shell. The arguments are fixed words, never input.
+const run = (command, args, options = {}) => execFileSync(command, args, { stdio: "inherit", cwd: repo, shell: process.platform === "win32", ...options });
 
 // The product slug, from the one place it is defined.
 const brand = readFileSync(join(repo, "packages", "core", "src", "brand.ts"), "utf8");
