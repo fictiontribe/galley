@@ -138,18 +138,19 @@ function CollectionList({ siteId, collection }: { siteId: string; collection: Co
     body = <ErrorState title={`Couldn’t load ${noun}`} error={first.error} onRetry={() => void first.refetch()} />;
   } else if (total === 0 && !filtered) {
     body = (
-      <EmptyState
-        className="app-rows__empty"
-        title={`No ${noun} yet.`}
-        body={`${collection.label} you add show up here${collection.url ? " and on the site" : ""}.`}
-        actions={
-          collection.create ? (
-            <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-              New {collection.singular}
-            </Button>
-          ) : null
-        }
-      />
+      <div className="app-card">
+        <EmptyState
+          title={`No ${noun} yet.`}
+          body={`${collection.label} you add show up here${collection.url ? " and on the site" : ""}.`}
+          actions={
+            collection.create ? (
+              <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
+                New {collection.singular}
+              </Button>
+            ) : null
+          }
+        />
+      </div>
     );
   } else if (total === 0) {
     body = (
@@ -186,7 +187,8 @@ function CollectionList({ siteId, collection }: { siteId: string; collection: Co
           title={collection.label}
           description={collection.description ?? (everything.data ? count(everything.data.total, collection.singular, collectionNouns(collection).many) : undefined)}
           actions={
-            collection.create ? (
+            // While the collection is empty, its own empty state offers this.
+            collection.create && !(first.data && total === 0 && !filtered) ? (
               <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
                 New {collection.singular}
               </Button>

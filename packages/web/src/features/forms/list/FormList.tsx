@@ -88,15 +88,17 @@ export function FormList({ siteId, collection }: { siteId: string; collection: C
     body = <ErrorState title="Couldn’t load the forms" error={list.error} onRetry={() => void list.refetch()} />;
   } else if (items.length === 0) {
     body = (
-      <EmptyState
-        title="No forms yet."
-        body="Forms you build here can go on any page that has a form section, and send to your inbox or your CRM."
-        actions={
-          <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-            New form
-          </Button>
-        }
-      />
+      <div className="app-card">
+        <EmptyState
+          title="No forms yet."
+          body="Forms you build here can go on any page that has a form section, and send to your inbox or your CRM."
+          actions={
+            <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
+              New form
+            </Button>
+          }
+        />
+      </div>
     );
   } else {
     body = (
