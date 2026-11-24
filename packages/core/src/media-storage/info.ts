@@ -45,7 +45,7 @@ const FIELD = {
   },
   endpointR2: {
     id: "endpoint",
-    label: "S3 address (only for a jurisdiction bucket)",
+    label: "S3 address of a jurisdiction bucket",
     help: "Leave empty unless the bucket was made in a jurisdiction such as the EU: then copy its S3 API address from the bucket's Settings.",
     placeholder: "https://<account>.eu.r2.cloudflarestorage.com",
     required: false,
@@ -53,7 +53,7 @@ const FIELD = {
   prefix: {
     id: "prefix",
     label: "Folder in the bucket",
-    help: "Optional. Keeps this site's files together when several sites share a bucket. Letters, digits, dashes; Galley adds the slash.",
+    help: "Keeps this site's files together when several sites share a bucket. Letters, digits and dashes; Galley adds the slash.",
     placeholder: "lowfield",
     required: false,
   },

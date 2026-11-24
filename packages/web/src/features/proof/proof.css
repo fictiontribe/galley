@@ -132,7 +132,7 @@
 .publish-author { margin: 0; }
 
 /* "In the bucket": uploads since the last publish, outside any commit. */
-.proof-uploads { display: grid; gap: var(--space-2); margin-block-end: var(--space-4); }
+.proof-uploads { display: grid; gap: var(--space-2); margin: var(--space-3) var(--space-6); }
 .proof-uploads__title { margin: 0; font-size: var(--text-md); font-weight: var(--weight-semibold); }
 .proof-uploads__lede { margin: 0; font-size: var(--text-sm); color: var(--ink-secondary); line-height: var(--leading-body); }
 .proof-uploads__list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-1-5); }

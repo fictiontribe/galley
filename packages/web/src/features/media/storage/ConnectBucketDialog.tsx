@@ -103,7 +103,7 @@ export function CheckSteps({ result, running }: { result: MediaCheckResult | nul
           </li>
         ))}
       </ol>
-      {result.ok ? null : <p className="media-check__message">{result.message}</p>}
+      {result.ok || result.steps.some((step) => step.state === "failed" && step.field) ? null : <p className="media-check__message">{result.message}</p>}
       {result.detail ? (
         <details className="app-details">
           <summary>Technical details</summary>

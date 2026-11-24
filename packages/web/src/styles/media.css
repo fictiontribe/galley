@@ -83,7 +83,9 @@
 .media-storage { display: grid; gap: var(--space-5); }
 .media-storage__why { margin: 0; color: var(--ink-secondary); font-size: var(--text-sm); line-height: var(--leading-body); }
 .media-storage__steps { margin: 0; padding-inline-start: var(--space-6); display: grid; gap: var(--space-4); }
-.media-storage__step { display: grid; gap: var(--space-1-5); justify-items: start; font-size: var(--text-sm); line-height: var(--leading-body); color: var(--ink-primary); }
+.media-storage__step { display: list-item; font-size: var(--text-sm); line-height: var(--leading-body); color: var(--ink-primary); }
+.media-storage__step > * + * { margin-block-start: var(--space-1-5); }
+.media-storage__step > a { display: inline-flex; }
 .media-storage__step::marker { font-weight: var(--weight-semibold); }
 .media-storage__step > p { margin: 0; }
 .media-storage__step-title { margin: 0; font-size: var(--text-sm); font-weight: var(--weight-semibold); }
@@ -106,3 +108,5 @@
 .media-check__step--skipped { color: var(--ink-tertiary); }
 .media-check__dot { inline-size: 8px; block-size: 8px; margin-inline: 4px; border-radius: 50%; border: var(--border-hair) solid var(--border-strong); }
 .media-check__message { margin: 0; font-size: var(--text-sm); line-height: var(--leading-body); color: var(--ink-primary); }
+/* Taller details (a bucket file's "Used on") scroll; rows keep their size instead of squeezing the preview. */
+.app-media-details { grid-auto-rows: max-content; }
