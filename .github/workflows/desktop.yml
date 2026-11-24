@@ -235,6 +235,18 @@ jobs:
           Get-ChildItem $folder -Recurse -Depth 2 | Select-Object -First 30 | ForEach-Object { Write-Host $_.FullName.Substring($folder.Length) }
           $exe = Get-ChildItem $folder -Filter *.exe | Where-Object { $_.Name -notmatch "node|uninstall" } | Select-Object -First 1
           if (-not $exe) { throw "The installed app wasn't found." }
+          # The server exactly as the installed app starts it, with its output kept: if the
+          # window says it couldn't start, this says why.
+          $node = Get-ChildItem $folder -Filter *-node.exe | Select-Object -First 1
+          $bundle = Get-ChildItem "$folder\server" -Filter *.mjs | Select-Object -First 1
+          $env:GALLEY_DESKTOP = "1"; $env:GALLEY_HOST = "127.0.0.1"; $env:GALLEY_PORT = "45991"; $env:GALLEY_TOKEN = "not-a-secret-ci-token"
+          $server = Start-Process $node.FullName -ArgumentList "`"$($bundle.FullName)`"", "desktop", "--port", "45991" -WorkingDirectory $env:USERPROFILE -RedirectStandardOutput "$env:RUNNER_TEMP\server-out.txt" -RedirectStandardError "$env:RUNNER_TEMP\server-err.txt" -PassThru -NoNewWindow
+          Start-Sleep -Seconds 12
+          Write-Host "--- the installed server, started by hand: running after 12 seconds: $(-not $server.HasExited)"
+          Get-Content "$env:RUNNER_TEMP\server-out.txt", "$env:RUNNER_TEMP\server-err.txt" -ErrorAction SilentlyContinue | Select-Object -First 60
+          if (-not $server.HasExited) { taskkill /pid $server.Id /T /F | Out-Null }
+          Remove-Item Env:GALLEY_DESKTOP, Env:GALLEY_HOST, Env:GALLEY_PORT, Env:GALLEY_TOKEN
+          Write-Host "--- the app itself"
           $app = Start-Process $exe.FullName -PassThru
           Start-Sleep -Seconds 45
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing, Microsoft.VisualBasic
