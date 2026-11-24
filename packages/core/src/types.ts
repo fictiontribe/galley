@@ -2158,6 +2158,12 @@ export interface ImportReportView {
   seo: { descriptions: number; descriptionsWritten: number; titlesKept: number; titlesNotKept: number; canonicals: number };
   /** Files written besides content and media (the import record, the redirect hand-off). */
   files: string[];
+  /**
+   * Where the entries it wrote stand now, worked out each time the report is
+   * read: still waiting in Proof, published since, or discarded. Absent on
+   * the report a run hands back as it ends (everything is waiting then).
+   */
+  standing?: { pending: number; published: number; discarded: number };
 }
 
 export interface ImportRunStatus {

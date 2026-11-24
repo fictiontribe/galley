@@ -120,9 +120,21 @@
 .brand-note { margin: 0; font-size: var(--text-sm); color: var(--ink-secondary); max-inline-size: 64ch; }
 
 /* swatches */
-.brand-swatches { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: var(--space-5) var(--space-4); }
+.brand-swatches { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 0 var(--space-4); }
+.brand-swatches--skeleton { row-gap: var(--space-5); }
 .brand-swatches--skeleton { margin-block-start: var(--space-8); }
-.brand-swatch { display: grid; gap: var(--space-2); min-inline-size: 0; }
+/* Each card's rows (picture, name, token, use, where it came from) sit on tracks the whole row of cards shares,
+   so names and codes line up across the row whatever each card holds. On its own grid a shorter card's rows
+   stretched to the tallest card's height and pushed its name down. Spacing is margins, not row gaps: a
+   subgrid's own gap is reconciled through the shared tracks, and an empty track (no card with a "use" line)
+   can't give the difference back. */
+.brand-swatch { display: grid; grid-row: span 5; grid-template-rows: subgrid; min-inline-size: 0; }
+.brand-swatch__chip { grid-row: 1; margin-block-end: var(--space-2); }
+.brand-swatch__text { display: contents; }
+.brand-swatch__name { grid-row: 2; align-self: start; }
+.brand-swatch__codes { grid-row: 3; align-self: start; margin-block-start: 2px; }
+.brand-swatch__usage { grid-row: 4; align-self: start; margin-block-start: 2px; }
+.brand-swatch .brand-source-line { grid-row: 5; align-self: start; margin-block: 2px var(--space-5); }
 .brand-swatch__chip { position: relative; block-size: 148px; border-radius: var(--radius-md); padding: var(--space-3); display: flex; flex-direction: column; justify-content: space-between; box-shadow: inset 0 0 0 1px rgb(var(--shadow-color) / 0.10), var(--shadow-1); transition: transform var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
 .brand-swatch:hover .brand-swatch__chip { transform: translateY(-2px); box-shadow: inset 0 0 0 1px rgb(var(--shadow-color) / 0.10), var(--shadow-2); }
 .brand-swatch__role { font-family: var(--font-mono); font-size: var(--text-2xs); letter-spacing: var(--tracking-label); text-transform: uppercase; }
@@ -134,7 +146,6 @@
 .brand-swatch__pick { position: absolute; inset-block-start: var(--space-2); inset-inline-end: var(--space-2); inline-size: 28px; block-size: 28px; display: grid; place-items: center; border-radius: var(--radius-pill); cursor: pointer; opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); background: color-mix(in srgb, currentColor 14%, transparent); }
 .brand-swatch:hover .brand-swatch__pick, .brand-swatch__pick:focus-within { opacity: 1; }
 .brand-swatch__pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.brand-swatch__text { display: grid; gap: 2px; min-inline-size: 0; }
 .brand-swatch__name { font-family: var(--font-display); font-size: var(--text-lg); }
 .brand-swatch__codes { display: flex; gap: var(--space-2); align-items: baseline; min-inline-size: 0; flex-wrap: wrap; }
 .brand-swatch__value { inline-size: 8.5ch; font-size: var(--text-xs); }

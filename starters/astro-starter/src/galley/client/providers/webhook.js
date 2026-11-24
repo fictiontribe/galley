@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.1.2 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.1.3 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // Any address that accepts a POST: an automation tool, a serverless
 // function, the site owner's own service. `format: "json"` (default) sends

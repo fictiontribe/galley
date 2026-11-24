@@ -5,7 +5,7 @@ import { api, candidateUrl, errorShape, isApiFailure } from "@/lib/api";
 import { invalidate, useQuery } from "@/lib/query";
 import { keys } from "@/lib/sync";
 import { Button, ErrorState, Field, Input, ProofMark, SegmentedControl, Select, Skeleton, Textarea, buttonClass, cx } from "@/ui";
-import { suggestSlug } from "@/features/content/collection/slug";
+import { fileNameFromPrompt } from "@/features/media/fileName";
 import { imageModelFacts, modelOptionLabel } from "./video/cost";
 import { BrandDirectionNote } from "@/features/brand/BrandDirectionNote";
 import { useImageryDirection } from "@/features/brand/useBrand";
@@ -89,7 +89,7 @@ export function GeneratePanel({ siteId, onSaved, initialPrompt = "" }: GenerateP
       });
       setCandidates(result.candidates);
       setChosen(result.candidates[0]?.id ?? null);
-      setName(suggestSlug(prompt).split("-").slice(0, 6).join("-"));
+      setName(fileNameFromPrompt(prompt));
     } catch (caught) {
       setError(caught);
     } finally {

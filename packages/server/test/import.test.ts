@@ -262,6 +262,19 @@ describe("steps 2–4: plan, bring it over, report", () => {
     expect(stopped.status).toBe(200);
     expect(stopped.body.pages.map((p) => p.state)).toEqual(["done", "done"]);
   });
+
+  it("says where what it brought stands: waiting, then published or discarded in Proof", { timeout: 60_000 }, async () => {
+    const report = async () => (await api<{ report: NonNullable<ImportRunStatus["report"]> }>("GET", `/api/sites/${site.id}/import/report`)).body.report;
+    const before = await report();
+    const written = before.entries.filter((entry) => entry.action !== "unchanged").map((entry) => entry.path);
+
+    expect(before.standing).toEqual({ pending: written.length, published: 0, discarded: 0 });
+    const published = await api<{ ok: boolean }>("POST", `/api/sites/${site.id}/publish`, { message: "One post", paths: [written[0]] });
+
+    expect(published.body.ok).toBe(true);
+    await api("POST", `/api/sites/${site.id}/discard`, {});
+    expect((await report()).standing).toEqual({ pending: 0, published: 1, discarded: written.length - 1 });
+  });
 });
 
 describe("stopping part-way", () => {

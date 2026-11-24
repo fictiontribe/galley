@@ -8,7 +8,7 @@ import { notify } from "@/lib/stores/toasts";
 import { putBackOp } from "@/features/content/form/marks";
 import { Button, ConfirmDialog, ErrorState, ProofMark, Skeleton } from "@/ui";
 import { ProofText, foldUnchanged, hasChanges, hasInlineMarkdown, similarity, wordDiff, type ProofPart } from "@/ui/diff";
-import { bodyOf, changeBadge, describeValue, isText, labelParts, movedText, withPublishedBody } from "./changes";
+import { bodyOf, changeHeading, isText, movedText, valueWords, withPublishedBody } from "./changes";
 import { useFileDiff } from "./useFileDiff";
 import { useSectionLabels } from "./useNames";
 
@@ -23,9 +23,9 @@ function Gutter({ kind }: { kind: "before" | "after" | "changed" }) {
   );
 }
 
-function Line({ side, children }: { side: "before" | "after"; children: ReactNode }) {
+function Line({ side, children, summary = false }: { side: "before" | "after"; children: ReactNode; summary?: boolean }) {
   return (
-    <div className={`g-change__line g-change__line--${side}`}>
+    <div className={`g-change__line g-change__line--${side}${summary ? " proof-summary" : ""}`}>
       <span>
         <span className="g-sr">{side === "before" ? "Before: " : "After: "}</span>
         {children}
@@ -44,7 +44,13 @@ const usesMarkdown = (change: FieldChange) => (isText(change.before) && hasInlin
 function Value({ value, rendered }: { value: JsonValue | undefined; rendered: boolean }) {
   const labels = useSectionLabels();
   if (rendered && isText(value) && value !== "" && hasInlineMarkdown(value)) return <ProofText parts={[{ kind: "same", text: value }]} markdown />;
-  return <>{describeValue(value, labels)}</>;
+  return <>{valueWords(value, labels).text}</>;
+}
+
+/** Whether a value shows as a summary ("7 details"), which is set plain rather than as inserted or deleted text. */
+function useIsSummary(value: JsonValue | undefined): boolean {
+  const labels = useSectionLabels();
+  return valueWords(value, labels).summary;
 }
 
 /** The toggle between the text as it reads and its exact stored characters. */
@@ -59,6 +65,8 @@ function StoredToggle({ stored, onChange }: { stored: boolean; onChange: (stored
 function FieldValue({ change, rendered }: { change: FieldChange; rendered: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const { before, after } = change;
+  const beforeSummary = useIsSummary(before);
+  const afterSummary = useIsSummary(after);
 
   if (change.kind === "moved") {
     // The proofreader's transpose mark; the item's own edits are rows of their own.
@@ -73,7 +81,7 @@ function FieldValue({ change, rendered }: { change: FieldChange; rendered: boole
     return (
       <>
         <Gutter kind="after" />
-        <Line side="after">
+        <Line side="after" summary={afterSummary}>
           <Value value={after} rendered={rendered} />
         </Line>
       </>
@@ -83,7 +91,7 @@ function FieldValue({ change, rendered }: { change: FieldChange; rendered: boole
     return (
       <>
         <Gutter kind="before" />
-        <Line side="before">
+        <Line side="before" summary={beforeSummary}>
           <Value value={before} rendered={rendered} />
         </Line>
       </>
@@ -112,13 +120,13 @@ function FieldValue({ change, rendered }: { change: FieldChange; rendered: boole
   return (
     <>
       <Gutter kind="before" />
-      <Line side="before">
+      <Line side="before" summary={beforeSummary}>
         <span className={long ? "proof-clamp" : undefined}>
           <Value value={before} rendered={rendered} />
         </span>
       </Line>
       <Gutter kind="after" />
-      <Line side="after">
+      <Line side="after" summary={afterSummary}>
         <span className={long ? "proof-clamp" : undefined}>
           <Value value={after} rendered={rendered} />
         </span>
@@ -169,8 +177,7 @@ async function putBack(siteId: string, path: string, change: FieldChange, rows: 
 }
 
 function FieldChangeView({ siteId, path, change, rows }: { siteId: string; path: string; change: FieldChange; rows: readonly FieldChange[] }) {
-  const { lead, rest } = labelParts(change.label);
-  const badge = changeBadge(change);
+  const { lead, rest, badge } = changeHeading(change);
   const name = lead ? `${lead} › ${rest}` : rest;
   // No button where the result would be a guess (see putBackOp).
   const canPutBack = putBackOp(change, rows) !== null;

@@ -7,10 +7,15 @@ import { useSite } from "@/lib/stores/site";
 import { notify } from "@/lib/stores/toasts";
 import { keys } from "@/lib/sync";
 import { Button, Field, Popover, Select } from "@/ui";
-import { embedSnippet, formSlots, sectionFor, type FormSlot } from "../logic/embed";
+import { embedSnippet, formSlots, sectionFor, slotAdvice, slotsFor, type FormSlot } from "../logic/embed";
 
-function AddToPage({ siteId, slot, formId, onDone }: { siteId: string; slot: FormSlot; formId: string; onDone: () => void }) {
+const slotKey = (slot: FormSlot) => `${slot.collection}/${slot.listKey}/${slot.blockType}`;
+
+function AddToPage({ siteId, slots, formId, onDone }: { siteId: string; slots: readonly FormSlot[]; formId: string; onDone: () => void }) {
   const navigate = useNavigate();
+  const [kind, setKind] = useState("");
+  // The best kind of section for this form unless the person picks another.
+  const slot = slots.find((candidate) => slotKey(candidate) === kind) ?? (slots[0] as FormSlot);
   const pages = useQuery([...keys.entries(siteId, slot.collection), "for-form"], () => api("GET /api/sites/:siteId/entries", { params: { siteId }, query: { collection: slot.collection, limit: 200, sort: "title", order: "asc" } }));
   const [path, setPath] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,7 +45,12 @@ function AddToPage({ siteId, slot, formId, onDone }: { siteId: string; slot: For
   };
   return (
     <div className="kit-embed__add">
-      <Field label={`Add it as a “${slot.blockLabel}” section to`}>
+      {slots.length > 1 ? (
+        <Field label="Add it as a section">
+          <Select value={slotKey(slot)} options={slots.map((candidate) => ({ value: slotKey(candidate), label: `${candidate.blockLabel} (${candidate.collectionLabel})` }))} onChange={(value) => { setKind(value); setPath(""); }} />
+        </Field>
+      ) : null}
+      <Field label={slots.length > 1 ? "On the page" : `Add it as a “${slot.blockLabel}” section to`}>
         <Select value={chosen} options={(pages.data?.items ?? []).map((item) => ({ value: item.path, label: item.title }))} placeholder={pages.loading ? "Loading pages…" : undefined} onChange={setPath} />
       </Field>
       <Button size="sm" variant="primary" busy={busy} busyLabel="Adding…" disabled={!chosen} onClick={() => void add()}>
@@ -53,7 +63,7 @@ function AddToPage({ siteId, slot, formId, onDone }: { siteId: string; slot: For
 /** "Use this form": which sections on this site show a form, adding it to a page, and the snippet for developers. */
 export function UseThisForm({ siteId, formId }: { siteId: string; formId: string }) {
   const model = useSite((s) => s.detail?.model);
-  const slots = useMemo(() => formSlots(model), [model]);
+  const slots = useMemo(() => slotsFor(formSlots(model), formId), [model, formId]);
   const anchor = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -74,9 +84,9 @@ export function UseThisForm({ siteId, formId }: { siteId: string; formId: string
         {slots.length > 0 ? (
           <>
             <p className="kit-pop__body">
-              {slots.length === 1 ? "One kind of section on this site shows a form:" : "These sections on this site show a form:"} {slots.map((slot) => `${slot.blockLabel} (${slot.collectionLabel})`).join(", ")}.
+              {slotAdvice(slots, formId)}
             </p>
-            <AddToPage siteId={siteId} slot={slots[0] as FormSlot} formId={formId} onDone={() => setOpen(false)} />
+            <AddToPage siteId={siteId} slots={slots} formId={formId} onDone={() => setOpen(false)} />
           </>
         ) : (
           <p className="kit-pop__body">No section on this site shows a form yet. A developer adds one once, with the snippet below; then you can add forms to pages here.</p>

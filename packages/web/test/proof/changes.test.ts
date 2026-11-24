@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Collection, FileChange, PublishResult } from "@galley/core/types";
-import { bodyOf, changeBadge, describeValue, sectionLabels, discardCopy, firstChangedText, groupChanges, labelParts, movedText, orderedPaths, pendingSummary, splitBody, titleOf, visibleOf, withPublishedBody } from "../../src/features/proof/changes";
+import { bodyOf, changeBadge, changeHeading, describeValue, valueWords, sectionLabels, discardCopy, firstChangedText, groupChanges, labelParts, movedText, orderedPaths, pendingSummary, splitBody, titleOf, visibleOf, withPublishedBody } from "../../src/features/proof/changes";
 import { publishOutcome, sendOutcome } from "../../src/features/proof/publishOutcome";
 
 const change = (patch: Partial<FileChange> & Pick<FileChange, "path" | "kind">): FileChange => ({ status: "modified", binary: false, additions: 1, deletions: 1, summary: "", ...patch });
@@ -49,6 +49,21 @@ describe("values in words", () => {
     expect(describeValue([{ a: 1 }, { a: 2 }])).toBe("2 items");
     expect(describeValue({ type: "hero", heading: "Make more of the home you already have." })).toBe("Hero · “Make more of the home you already have.”");
     expect(describeValue({ type: "rich-text" })).toBe("Rich text");
+  });
+
+  it("names an added script by its name and never shows a bare position or a count as inserted text", () => {
+    // What the Scripts screen's "Add a script" writes for Google Analytics 4.
+    const script = { id: "ga4", kind: "ga4", enabled: true, settings: { measurementId: "G-ABC123XYZ" }, placement: "head", load: "eager", consent: "analytics" };
+    const added = { field: ["scripts", 1], label: "Scripts › 2", kind: "added" as const, after: script };
+
+    expect(describeValue(script)).toBe("Google Analytics 4");
+    expect(changeHeading(added)).toEqual({ lead: "Scripts", rest: "Google Analytics 4", badge: "Added" });
+    expect(changeHeading({ field: ["scripts", 0], label: "Scripts › 1", kind: "removed", before: { ...script, label: "Shop analytics" } })).toEqual({ lead: "Scripts", rest: "Shop analytics", badge: "Removed" });
+    // A section keeps its type and place.
+    expect(changeHeading({ field: ["sections", 4], label: "Sections › 5 (FAQ)", kind: "added", after: { type: "faq" } })).toMatchObject({ badge: "Added at 5" });
+    expect(valueWords({ a: 1, b: 2 })).toEqual({ text: "2 details", summary: true });
+    expect(valueWords([{ a: 1 }])).toEqual({ text: "1 item", summary: true });
+    expect(valueWords(script).summary).toBe(false);
   });
 
   it("names a section by its type's label on the site, so a new FAQ reads “FAQ”, not “Faq”", () => {

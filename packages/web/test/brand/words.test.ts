@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bytes, contrastWords, evidenceWords, inkFor, pairWords, plan, whereFrom } from "../../src/features/brand/words";
+import { bytes, contrastWords, evidenceWords, inkFor, pairWords, plan, quotePlace, whereFrom, whereKept } from "../../src/features/brand/words";
 
 describe("the Brand screen's words", () => {
   it("names a contrast pair once, not “Text on accent on accent”", () => {
@@ -29,6 +29,29 @@ describe("the Brand screen's words", () => {
     expect(plan({ type: "svg" })).toMatch(/Never run/);
     expect(plan({ type: "pdf", limited: "Too long to read in full." })).toBe("Too long to read in full.");
     expect(bytes(60 * 1024 * 1024)).toBe("60 MB");
+  });
+
+  it("says where a piece of material is, true before and after saving", () => {
+    const settings = { dir: "galley/brand", largeFileBytes: 20 * 1024 * 1024 };
+    const logo = { type: "svg" as const, bytes: 4_000, stored: "outside" as const };
+
+    // Added, not saved: a small file waits outside and goes into the site on save.
+    expect(whereKept(logo, true, settings)).toBe("goes into the site (galley/brand/sources/) when you save");
+    // Saved: it is in the site, at its path.
+    expect(whereKept({ ...logo, stored: "site", file: "galley/brand/sources/logo.svg" }, false, settings)).toBe("in the site, galley/brand/sources/logo.svg");
+    // Too large, or a web page read for its styles: outside, before and after.
+    expect(whereKept({ type: "pdf", bytes: 60 * 1024 * 1024, stored: "outside" }, true, settings)).toBe("kept outside the site");
+    expect(whereKept({ type: "pdf", bytes: 60 * 1024 * 1024, stored: "outside" }, false, settings)).toBe("kept outside the site");
+    expect(whereKept({ type: "website", bytes: 9_000, stored: "outside" }, true, settings)).toBe("kept outside the site");
+  });
+
+  it("names the page a voice example was taken from, never a bare address", () => {
+    expect(quotePlace("/")).toBe("Home page");
+    expect(quotePlace("/", { path: "src/content/pages/index.md", title: "Caddow — coats and knitwear, made in runs of forty" })).toBe("Home page");
+    expect(quotePlace("/atelier/", { path: "src/content/pages/atelier.md", title: "Atelier" })).toBe("Atelier");
+    // An address no entry answers to, or a source's name, reads as written.
+    expect(quotePlace("/old/")).toBe("/old/");
+    expect(quotePlace("Brand guidelines, page 4")).toBe("Brand guidelines, page 4");
   });
 
   it("picks ink that reads on a swatch", () => {

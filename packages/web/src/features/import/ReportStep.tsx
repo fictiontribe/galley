@@ -11,7 +11,7 @@ import type { ImportReportView } from "@galley/core/types";
 import { count } from "@/lib/format";
 import { Button, Icon, buttonClass, cx } from "@/ui";
 import { WORDPRESS_IMPORT } from "@/features/redirects/words";
-import { nextSteps, shortAddress, type NextStep } from "./logic";
+import { nextSteps, reportStanding, shortAddress, type NextStep } from "./logic";
 
 interface ReportStepProps {
   siteId: string;
@@ -26,6 +26,7 @@ const edit = (siteId: string, path: string) => `/sites/${siteId}/edit?path=${enc
 
 function StepAction({ step, siteId, onRebuildAll, onAgain, first }: { step: NextStep; siteId: string; onRebuildAll: () => void; onAgain: () => void; first: boolean }) {
   switch (step.id) {
+    case "again":
     case "resume":
       return (
         <Button size="sm" variant="primary" onClick={onAgain}>
@@ -52,7 +53,7 @@ function StepAction({ step, siteId, onRebuildAll, onAgain, first }: { step: Next
       );
     case "online":
       return (
-        <Link className={buttonClass("quiet", "sm")} to={`/sites/${siteId}/online`}>
+        <Link className={buttonClass("secondary", "sm")} to={`/sites/${siteId}/online`}>
           Put it online
         </Link>
       );
@@ -75,6 +76,7 @@ export function ReportStep({ siteId, report, onAgain, onRebuild, onRebuildAll, r
   // A site-wide matter (comments, a shop) has advice but no single entry to point at; it still needs a look.
   const look = report.needsLook.filter((group) => group.items.length || group.advice);
   const redirects = allRedirects ? report.redirects.list : report.redirects.list.slice(0, 4);
+  const discarded = reportStanding(report) === "discarded";
 
   return (
     <div className="imp-report">
@@ -93,6 +95,9 @@ export function ReportStep({ siteId, report, onAgain, onRebuild, onRebuildAll, r
         ))}
       </ol>
 
+      {/* Once all of it was discarded, the entries these sections link to are gone: only the way to start again is left. */}
+      {discarded ? null : (
+        <>
       {arrived.length ? (
       <section className="imp-block" aria-labelledby="imp-arrived">
         <h2 className="imp-block__title" id="imp-arrived">
@@ -256,6 +261,9 @@ export function ReportStep({ siteId, report, onAgain, onRebuild, onRebuildAll, r
           </details>
         </section>
       ) : null}
+
+        </>
+      )}
 
       <p className={cx("imp-report__source")}>{`From ${report.source.kind === "file" ? "an export of " : ""}${shortAddress(report.source.siteUrl)}`}</p>
     </div>

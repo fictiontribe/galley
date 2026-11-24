@@ -105,6 +105,30 @@ export interface InboxQuery {
 
 const LOOPBACK_HOST = /^(localhost|127(?:\.\d{1,3}){3}|\[::1\])$/i;
 
+/**
+ * Where a post comes from, for the inbox's "Test" mark. A test is what only
+ * the app sends: its own pages ("app": the inbox's "Send a test", the form
+ * builder) and the pages of this site's running preview ("preview"; hosted,
+ * every preview is on the app's host name, on a port of its own). Being on
+ * the same computer isn't enough: a page served there some other way
+ * ("loopback", local mode only) makes the same request a visitor would.
+ * Anything else ("other") is judged by the site's allowed addresses.
+ * A post can still say it is a test itself (`meta.test`).
+ */
+export function originKind(origin: string, known: { app: readonly string[]; previews: readonly string[]; mode: "local" | "hosted"; appHost: string | null }): "app" | "preview" | "loopback" | "other" | "invalid" {
+  const normal = normaliseOrigin(origin);
+
+  if (!normal) return "invalid";
+  const host = new URL(normal).hostname;
+  const listed = (list: readonly string[]) => list.some((item) => normaliseOrigin(item) === normal);
+
+  if (listed(known.app)) return "app";
+  if (listed(known.previews)) return "preview";
+  if (known.mode === "hosted" && known.appHost && host === known.appHost) return "preview";
+  if (known.mode === "local" && LOOPBACK_HOST.test(host)) return "loopback";
+  return "other";
+}
+
 function json(status: number, body: CaptureResponse["body"], allowOrigin: string | null, extra: Partial<CaptureResponse> = {}): CaptureResponse {
   return { status, body, allowOrigin, ...extra };
 }
@@ -208,15 +232,13 @@ export class FormCaptureService {
   }
 
   /**
-   * Whether `origin` may post, and whether it is a preview or the app itself
-   * (checked against the version of the form being edited).
+   * Whether `origin` may post; whether it is checked against the version of
+   * the form being edited (`preview`: the app, its previews, and in local
+   * mode any page on this computer, which is most likely the working copy);
+   * and whether what it sends is a test (`test`: only the app and its
+   * previews — see originKind).
    */
-  async originVerdict(site: SiteService, origin: string, ownOrigins: string[]): Promise<{ allowed: boolean; preview: boolean }> {
-    const normal = normaliseOrigin(origin);
-
-    if (!normal) return { allowed: false, preview: false };
-    const host = new URL(normal).hostname;
-    const own = ownOrigins.map((item) => normaliseOrigin(item)).filter(Boolean) as string[];
+  async originVerdict(site: SiteService, origin: string, ownOrigins: string[]): Promise<{ allowed: boolean; preview: boolean; test: boolean }> {
     const appHost = (() => {
       const url = this.appUrl();
 
@@ -226,14 +248,17 @@ export class FormCaptureService {
         return null;
       }
     })();
+    const status = site.preview().status();
+    const kind = originKind(origin, { app: ownOrigins, previews: [status.url, status.baselineUrl].filter((url): url is string => Boolean(url)), mode: this.options.mode, appHost });
 
-    if (own.includes(normal)) return { allowed: true, preview: true };
-    if (this.options.mode === "local" && LOOPBACK_HOST.test(host)) return { allowed: true, preview: true };
-    // Hosted: the previews are served on the app's own host name, on ports of their own.
-    if (this.options.mode === "hosted" && appHost && host === appHost) return { allowed: true, preview: true };
+    if (kind === "invalid") return { allowed: false, preview: false, test: false };
+    if (kind === "app" || kind === "preview") return { allowed: true, preview: true, test: true };
+    // Another page on this computer (the site served some other way) may post and sees the edited form, but what it sends is an ordinary submission.
+    if (kind === "loopback") return { allowed: true, preview: true, test: false };
+    const normal = normaliseOrigin(origin)!;
     const allowed = await this.allowedOrigins(site);
 
-    return { allowed: allowed.site.includes(normal) || allowed.extra.includes(normal), preview: false };
+    return { allowed: allowed.site.includes(normal) || allowed.extra.includes(normal), preview: false, test: false };
   }
 
   /** The CORS preflight: allowed origins get the headers, anyone else a bare 403. */
@@ -268,6 +293,7 @@ export class FormCaptureService {
     if (!site) return json(404, { ok: false, message: "No form here is taking submissions." }, null);
     let allowOrigin: string | null = null;
     let preview = false;
+    let fromApp = false;
 
     if (request.origin !== null) {
       const verdict = await this.originVerdict(site, request.origin, request.ownOrigins);
@@ -275,6 +301,7 @@ export class FormCaptureService {
       if (!verdict.allowed) return json(403, { ok: false }, null);
       allowOrigin = request.origin;
       preview = verdict.preview;
+      fromApp = verdict.test;
     } else if (!request.captureKey || !(await this.settings.keyMatches(site.id, request.captureKey))) {
       return json(403, { ok: false }, null);
     }
@@ -350,8 +377,8 @@ export class FormCaptureService {
       submission.spam = true;
       submission.spamReason = spamReason;
     }
-    // The live site never posts from a preview or from the app itself, so what arrives from one is a test, said or not.
-    if (meta.test === true || preview) submission.test = true;
+    // The live site never posts from the app or its preview, so what arrives from one is a test, said or not.
+    if (meta.test === true || fromApp) submission.test = true;
     await this.store.append(submission);
     this.duplicates.remember(site.id, formId, outcome.values, submission.id);
     this.options.events.emit({ type: "forms.submission", siteId: site.id, form: formId, change: "added", ids: [submission.id], submission });

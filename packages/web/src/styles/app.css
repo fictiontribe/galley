@@ -216,6 +216,11 @@ html, body { overflow: hidden; }
 .app-menu { min-inline-size: 220px; max-block-size: min(70vh, 480px); overflow-y: auto; }
 .app-menu__label { flex: 1; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-menu__hint { color: var(--ink-tertiary); font: var(--text-2xs) / 1 var(--font-mono); }
+/* Choices with a sentence each: a readable column, never wider than the window. */
+.app-menu--described { inline-size: min(340px, calc(100vw - 16px)); }
+.app-menu .app-menu__item--described { block-size: auto; align-items: flex-start; padding-block: var(--space-2); }
+.app-menu__text { display: grid; gap: 2px; flex: 1; min-inline-size: 0; }
+.app-menu__description { color: var(--ink-secondary); font-size: var(--text-xs); line-height: var(--leading-xs); white-space: normal; }
 .app-menu__check { color: var(--accent-text); }
 .app-menu__heading { padding: var(--space-2) var(--space-2) var(--space-1); }
 .app-menu__separator { block-size: 1px; margin: var(--space-1) 0; background: var(--border-subtle); }
@@ -520,6 +525,12 @@ html, body { overflow: hidden; }
 /* Sticky to the scroller's real bottom edge, past the screen's bottom padding. */
 .app-savebar { position: sticky; inset-block-end: calc(var(--space-16) * -1); z-index: var(--z-sticky); display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-block: var(--space-4) calc(var(--space-16) * -1); padding: var(--space-3) 0 var(--space-4); border-block-start: var(--border-hair) solid var(--border-default); background: var(--surface-paper); }
 .app-savebar .g-hint { margin-inline-end: auto; }
+/* Where more sections follow the form (site settings), the bar's pull into the screen's bottom padding would slide the next heading under it. */
+.app-savebar--then-more { margin-block-end: var(--space-8); }
+/* What scrolls into view (a section from the nav, a field reached with Tab) stops clear of the bar, at any width: the bar is one line, 61px. */
+.app-screen:has(.app-savebar) { scroll-padding-block-end: calc(var(--space-16) + var(--space-4)); }
+/* Text passing under the bar fades out above it rather than being cut through mid-line. */
+.app-savebar::before { content: ""; position: absolute; inset-inline: 0; inset-block-end: 100%; block-size: var(--space-6); background: linear-gradient(to bottom, transparent, var(--surface-paper)); pointer-events: none; }
 
 /* --------------------------------------------------------------------------
    Login

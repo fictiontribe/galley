@@ -13,6 +13,7 @@ import { MessageView } from "./MessageView";
 import { useChatUi } from "./store";
 import { promptHistory, quickReplies } from "./threadState";
 import { useThread } from "./useThread";
+import { continueLine, lastConversation } from "./resume";
 import "./chat.css";
 
 export interface ChatPanelProps {
@@ -208,8 +209,16 @@ export function ChatPanel({ siteId, context, initialMessage }: ChatPanelProps) {
     );
   } else if (status === "error" && !thread) content = <ErrorState compact title="Couldn’t open this chat" error={error} onRetry={() => void retry()} />;
   else if (!thread || thread.messages.length === 0) {
+    const earlier = lastConversation(threads.data, threadId);
+    const line = earlier ? continueLine(earlier) : null;
     content = (
       <EmptyState compact mark="caret" title="Ask for a change." body="Say it in plain words. The assistant reads the page, makes the change, and leaves it in Proof for you to check.">
+        {earlier && line ? (
+          <button type="button" className="chat-continue" onClick={() => setThread(siteId, earlier.id)}>
+            <span className="chat-continue__label">{line.label}</span>
+            <span className="chat-continue__detail">{line.detail}</span>
+          </button>
+        ) : null}
         {keyReady ? (
           <div className="g-quick-replies chat-starters">
             {STARTERS.map((starter) => (

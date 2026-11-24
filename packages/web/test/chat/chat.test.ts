@@ -3,6 +3,7 @@ import type { ChatMessage, ChatThread } from "@galley/core/types";
 import { checkAttachments, MAX_ATTACHMENTS } from "../../src/features/chat/attachments";
 import { renderMarkdown, safeHref } from "../../src/features/chat/renderMarkdown";
 import { activityKind, applyEvent, mergeThread, promptHistory, quickReplies, type ChatEvent } from "../../src/features/chat/threadState";
+import { continueLine, lastConversation } from "../../src/features/chat/resume";
 
 const S = "site-1";
 const T = "thread-1";
@@ -131,5 +132,27 @@ describe("assistant markdown", () => {
     expect(renderMarkdown("![x](https://evil.example/t.png)")).not.toContain("<img");
     expect(safeHref("mailto:hello@example.com")).toBe("mailto:hello@example.com");
     expect(safeHref("data:text/html,x")).toBeNull();
+  });
+});
+
+describe("picking up the last conversation", () => {
+  const summary = (id: string, updatedAt: number, messageCount: number, title = "Shorten the heading") => ({ id, title, mode: "content" as const, createdAt: 1, updatedAt, messageCount, busy: false });
+
+  it("offers the most recent conversation with something in it when the pane opens empty", () => {
+    const threads = [summary("old", 100, 4), summary("recent", 300, 2), summary("blank", 400, 0)];
+
+    expect(lastConversation(threads, null)?.id).toBe("recent");
+    // A new, empty conversation is open: the earlier one is still offered.
+    expect(lastConversation(threads, "blank")?.id).toBe("recent");
+    expect(lastConversation(threads, "recent")?.id).toBe("old");
+    expect(lastConversation([summary("blank", 400, 0)], null)).toBeNull();
+    expect(lastConversation(undefined, null)).toBeNull();
+  });
+
+  it("says it in one line, with the conversation's title and when", () => {
+    const now = Date.parse("2026-11-24T12:00:00Z");
+
+    expect(continueLine(summary("recent", now - 5 * 60_000, 2), now)).toEqual({ label: "Continue your last conversation", detail: expect.stringMatching(/^“Shorten the heading” · 5 min/) });
+    expect(continueLine(summary("x", now, 1, "  "), now).detail).toMatch(/^“Untitled”/);
   });
 });

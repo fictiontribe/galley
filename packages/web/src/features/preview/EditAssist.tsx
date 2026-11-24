@@ -96,6 +96,18 @@ export function EditAssist({ siteId, assist, frame, onClose, onSaveStored, onCho
   const rect = "rect" in assist ? assist.rect : null;
   const anchor = useRef<HTMLDivElement>(null);
   const label = (match: SourceMatch, places = false) => matchLabel(match, collections?.find((collection) => collection.id === match.collection)?.label, { places });
+  // Closing by any way (Close, Escape, a click elsewhere on the page) hands focus back to the page that was clicked.
+  const close = () => {
+    onClose();
+    frame.current?.focus();
+  };
+  const closeButton = (
+    <div className="preview-assist__actions">
+      <Button variant="quiet" size="sm" onClick={close}>
+        Close
+      </Button>
+    </div>
+  );
 
   const surface = (() => {
     switch (assist.kind) {
@@ -117,6 +129,7 @@ export function EditAssist({ siteId, assist, frame, onClose, onSaveStored, onCho
                 </li>
               ))}
             </ul>
+            {closeButton}
           </div>
         );
       case "design":
@@ -200,6 +213,7 @@ export function EditAssist({ siteId, assist, frame, onClose, onSaveStored, onCho
                 </li>
               ))}
             </ul>
+            {closeButton}
           </div>
         );
       default:
@@ -210,7 +224,7 @@ export function EditAssist({ siteId, assist, frame, onClose, onSaveStored, onCho
   return (
     <>
       <div ref={anchor} className="preview-anchor" style={anchorStyle(frame.current, rect)} aria-hidden="true" />
-      <Popover open={surface !== null} onClose={onClose} anchor={anchor} placement="bottom-start" role="dialog" aria-label="Edit on the page" className="preview-assist-surface">
+      <Popover open={surface !== null} onClose={close} anchor={anchor} placement="bottom-start" role="dialog" aria-label="Edit on the page" className="preview-assist-surface">
         {surface}
       </Popover>
       {assist.kind === "image" ? <MediaPicker siteId={siteId} open={assist.chosen !== null} onClose={onClose} onPick={(url) => void onPickImage(url)} /> : null}

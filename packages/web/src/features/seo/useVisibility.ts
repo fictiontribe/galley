@@ -51,6 +51,8 @@ export function useFixes(siteId: string, after: () => unknown) {
             tone: "success",
             title: applied === 1 ? "Fixed" : `${count(applied, "fix", "fixes")} made`,
             body: `${applied === 1 ? "The change is" : "The changes are"} waiting in Proof. Nothing is live until you publish.`,
+            // Like the app's other Undo notices: it leaves by itself (held while pointed at), rather than staying over the panels until closed.
+            duration: 10000,
             ...(result.undoId
               ? {
                   action: {

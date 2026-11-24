@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AgentReadableReport, AgentView, CrawlerChoice, CrawlerReport, CrawlerStatus } from "@galley/core/seo/types";
 import { api } from "@/lib/api";
 import { useQuery } from "@/lib/query";
@@ -6,6 +6,7 @@ import { useSite } from "@/lib/stores/site";
 import { usePreviewStatus } from "@/lib/stores/preview";
 import { notify } from "@/lib/stores/toasts";
 import { Button, Icon, SegmentedControl, Select, Skeleton } from "@/ui";
+import { crawlerChangeWords, rebaseChoices } from "./logic";
 
 const PURPOSE: Record<CrawlerStatus["purpose"], string> = {
   search: "Answers with links",
@@ -54,8 +55,16 @@ export function CrawlerPanel({ siteId, report, onSaved }: { siteId: string; repo
   const [saving, setSaving] = useState(false);
   const changed = Object.keys(draft).filter((token) => draft[token] !== initial[token]);
   const vendors = [...new Set(report.crawlers.map((c) => c.vendor))];
+  const pending = crawlerChangeWords(report.crawlers.filter((c) => changed.includes(c.token)).map((c) => ({ label: c.label, to: draft[c.token] ?? "allow" })));
 
-  useEffect(() => setDraft(initial), [initial]);
+  // A fresh report (the audit reruns after every change) keeps the choices waiting to be confirmed.
+  const seen = useRef(initial);
+  useEffect(() => {
+    if (seen.current === initial) return;
+    const before = seen.current;
+    seen.current = initial;
+    setDraft((current) => rebaseChoices(current, before, initial));
+  }, [initial]);
   const save = async () => {
     setSaving(true);
     try {
@@ -75,7 +84,7 @@ export function CrawlerPanel({ siteId, report, onSaved }: { siteId: string; repo
   };
 
   return (
-    <section className="app-card seo-panel" aria-labelledby="seo-crawlers-title">
+    <section className="app-card seo-panel seo-panel--crawlers" aria-labelledby="seo-crawlers-title">
       <header className="seo-panel__head">
         <h2 id="seo-crawlers-title" className="seo-panel__title">
           AI crawlers
@@ -109,14 +118,20 @@ export function CrawlerPanel({ siteId, report, onSaved }: { siteId: string; repo
         ))
       ) : null}
       {report.editNote ? <p className="seo-panel__note">{report.editNote}</p> : null}
-      {report.editable && changed.length ? (
-        <div className="seo-panel__foot">
-          <Button variant="secondary" size="sm" onClick={() => setDraft(initial)}>
-            Keep as it is
-          </Button>
-          <Button variant="primary" size="sm" busy={saving} busyLabel="Saving…" onClick={() => void save()}>
-            Change {changed.length === 1 ? "1 rule" : `${changed.length} rules`}
-          </Button>
+      {report.editable && pending ? (
+        // Stays in view at the foot of the screen while choices are waiting, so the confirm step is next to the switch just used.
+        <div className="seo-savebar" role="region" aria-label="Unsaved crawler choices" data-keep-clear>
+          <p className="seo-savebar__text" role="status">
+            <b>{pending.title}</b> {pending.detail}
+          </p>
+          <div className="seo-savebar__actions">
+            <Button variant="secondary" size="sm" onClick={() => setDraft(initial)}>
+              Keep as it is
+            </Button>
+            <Button variant="primary" size="sm" busy={saving} busyLabel="Saving…" onClick={() => void save()}>
+              {pending.confirm}
+            </Button>
+          </div>
         </div>
       ) : null}
     </section>

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import type { FormDefinition } from "../../src/kit";
-import { createFormCapture, type CaptureRequest } from "../../src/forms/capture";
+import { createFormCapture, originKind, type CaptureRequest } from "../../src/forms/capture";
 import type { MailMessage } from "../../src/forms/mail";
 import { createGuardedFetch, type Transport } from "../../src/forms/net";
 import { contactForm, fakeSite, recordingBus, SITE_ID, tempHome } from "./helpers";
@@ -14,11 +14,11 @@ afterEach(() => {
 
 const SITE_ORIGIN = "https://example.com";
 
-function setup(options: { mode?: "local" | "hosted"; working?: Record<string, FormDefinition | string>; published?: Record<string, FormDefinition | string>; hook?: Array<number> } = {}) {
+function setup(options: { mode?: "local" | "hosted"; working?: Record<string, FormDefinition | string>; published?: Record<string, FormDefinition | string>; hook?: Array<number>; previewUrl?: string } = {}) {
   const { home, cleanup } = tempHome();
 
   cleanups.push(cleanup);
-  const site = fakeSite({ working: options.working ?? { contact: contactForm() }, published: options.published ?? { contact: contactForm() } });
+  const site = fakeSite({ working: options.working ?? { contact: contactForm() }, published: options.published ?? { contact: contactForm() }, ...(options.previewUrl ? { previewUrl: options.previewUrl } : {}) });
   const events = recordingBus();
   const mails: MailMessage[] = [];
   const hookCalls: Array<{ url: string; body?: string }> = [];
@@ -93,13 +93,36 @@ describe("who may post", () => {
     expect((await hosted.capture.capture(post(GOOD, { origin: "https://cms.example.com:4410" }))).status).toBe(200);
   });
 
-  it("a submission from a preview is kept as a test; a visitor's is not", async () => {
-    const { capture } = setup({ mode: "local" });
+  it("a submission from the site's preview or the app is kept as a test; a visitor's is not, nor one from another page on this computer", async () => {
+    const { capture } = setup({ mode: "local", previewUrl: "http://127.0.0.1:4321" });
+    const testOf = async (response: { body: unknown }) => (await capture.get(SITE_ID, "contact", (response.body as { id: string }).id))?.test;
     const fromPreview = await capture.capture(post(GOOD, { origin: "http://127.0.0.1:4321" }));
+    const fromApp = await capture.capture(post({ ...GOOD, name: "App" }, { origin: "https://cms.example.com" }));
     const fromVisitor = await capture.capture(post({ ...GOOD, name: "Visitor" }));
+    // The site served on this computer some other way (a local server of its own): allowed, and an ordinary submission.
+    const fromElsewhere = await capture.capture(post({ ...GOOD, name: "Local" }, { origin: "http://localhost:3000" }));
+    // "Send a test" says so itself.
+    const said = await capture.capture(post({ ...GOOD, name: "Said" }, { origin: "http://localhost:3000", meta: { elapsedMs: 9000, test: true } }));
 
-    expect((await capture.get(SITE_ID, "contact", (fromPreview.body as { id: string }).id))?.test).toBe(true);
-    expect((await capture.get(SITE_ID, "contact", (fromVisitor.body as { id: string }).id))?.test).toBeUndefined();
+    expect(await testOf(fromPreview)).toBe(true);
+    expect(await testOf(fromApp)).toBe(true);
+    expect(await testOf(fromVisitor)).toBeUndefined();
+    expect(fromElsewhere.status).toBe(200);
+    expect(await testOf(fromElsewhere)).toBeUndefined();
+    expect(await testOf(said)).toBe(true);
+  });
+
+  it("names where a post comes from by one rule", () => {
+    const known = { app: ["http://127.0.0.1:4860"], previews: ["http://127.0.0.1:50320"], mode: "local" as const, appHost: "127.0.0.1" };
+
+    expect(originKind("http://127.0.0.1:4860", known)).toBe("app");
+    expect(originKind("http://127.0.0.1:50320/", known)).toBe("preview");
+    expect(originKind("http://127.0.0.1:8080", known)).toBe("loopback");
+    expect(originKind("https://example.com", known)).toBe("other");
+    expect(originKind("null", known)).toBe("invalid");
+    // Hosted: every preview is on the app's host name; nothing is "this computer".
+    expect(originKind("https://cms.example.com:4410", { ...known, app: ["https://cms.example.com"], previews: [], mode: "hosted", appHost: "cms.example.com" })).toBe("preview");
+    expect(originKind("http://127.0.0.1:8080", { ...known, mode: "hosted", appHost: "cms.example.com" })).toBe("other");
   });
 
   it("no Origin: only with the site's capture key", async () => {

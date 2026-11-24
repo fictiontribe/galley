@@ -9,11 +9,12 @@
  *   `forms/free-email-domains.js` is the source; a test keeps them equal);
  * - the pattern guard: which `validation.pattern`s are safe to run on a
  *   server, and running one with a bound on the input;
- * - which search hits are pages that show a given form;
+ * - which search hits are pages that show a given form, and which forms an
+ *   entry's fields name;
  * - the "Contact" form the app starts a site with.
  */
 import type { FormDefinition } from "../kit";
-import type { SearchHit } from "../types";
+import type { Field, JsonValue, SearchHit } from "../types";
 
 /**
  * Free mailbox providers refused by "business email only": the same list the
@@ -643,7 +644,8 @@ export function namesThisForm(hit: SearchHit, formId: string, formsCollection = 
 
     return typeof last === "string" && FORM_KEYS.test(last) && new RegExp(`(^|[^a-z0-9-])${escapeRegExp(formId)}($|[^a-z0-9-])`, "i").test(hit.excerpt);
   }
-  return new RegExp(`form(_?id)?\\s*[=:]\\s*["'{]?\\s*["']?${escapeRegExp(formId)}["']?`, "i").test(hit.excerpt);
+  // `form="x"`, `formId: x`, and the site kit's own `<Form id="x" />`.
+  return new RegExp(`form(_?id|\\s+id)?\\s*[=:]\\s*["'{]?\\s*["']?${escapeRegExp(formId)}(?![a-z0-9-])`, "i").test(hit.excerpt);
 }
 
 /** The pages that use a form, one per page. */
@@ -655,6 +657,102 @@ export function pagesUsing(hits: readonly SearchHit[], formId: string, formsColl
     seen.add(hit.path);
     return true;
   });
+}
+
+type Data = { [key: string]: JsonValue };
+const isData = (value: unknown): value is Data => typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** Whether a schema field names a form: a reference into the forms collection, or a text field called `form` / `formId`. */
+export function isFormField(field: Field, formsCollection = "forms"): boolean {
+  if (field.type === "reference") return field.collection === formsCollection;
+  return FORM_KEYS.test(field.key) && (field.type === "string" || field.type === "select");
+}
+
+/**
+ * The form id a stored value names. Sections write `"stockist"`, but the
+ * starters' components also take `{ id: "stockist" }` (what an Astro
+ * reference resolves to), and hand-written files sometimes keep the file's
+ * path (`forms/stockist.json`).
+ */
+export function formIdOf(value: unknown): string | null {
+  if (typeof value === "string") {
+    const id = value.trim().split("/").pop()!.replace(/\.json$/i, "");
+
+    return id === "" ? null : id;
+  }
+  if (isData(value)) {
+    for (const key of ["id", "slug"]) if (typeof value[key] === "string") return formIdOf(value[key]);
+  }
+  return null;
+}
+
+/**
+ * Every form an entry's fields show, read from its data rather than from
+ * search hits: the search keeps three hits per file, so a page that says
+ * "stockists" three times never reached the section naming the form. With
+ * the collection's schema it also counts the sections that name no form and
+ * show their field's default (a Contact section without `form` shows
+ * "contact"); without one, any `form` / `formId` key counts.
+ */
+export function formsNamedIn(data: Data, fields: readonly Field[] = [], formsCollection = "forms"): string[] {
+  const found = new Set<string>();
+  const add = (value: unknown) => {
+    const id = formIdOf(value);
+
+    if (id) found.add(id);
+  };
+  const visitLoose = (value: JsonValue): void => {
+    if (Array.isArray(value)) value.forEach(visitLoose);
+    else if (isData(value)) visitObject(value, []);
+  };
+  const visitField = (value: JsonValue, field: Field): void => {
+    if (isFormField(field, formsCollection)) {
+      if (Array.isArray(value)) value.forEach(add);
+      else add(value);
+      return;
+    }
+    if (field.type === "blocks" && Array.isArray(value)) {
+      const discriminator = field.discriminator ?? "type";
+
+      for (const item of value) {
+        if (!isData(item)) continue;
+        visitObject(item, field.blocks?.find((block) => block.type === item[discriminator])?.fields ?? []);
+      }
+      return;
+    }
+    if (field.type === "object" && isData(value)) {
+      visitObject(value, field.fields ?? []);
+      return;
+    }
+    if (field.type === "list" && field.of && Array.isArray(value)) {
+      for (const item of value) visitField(item, field.of);
+      return;
+    }
+    visitLoose(value);
+  };
+  const visitObject = (object: Data, schema: readonly Field[]): void => {
+    const described = new Set<string>();
+
+    for (const field of schema) {
+      described.add(field.key);
+      const value = object[field.key];
+
+      if (value === undefined || value === null || value === "") {
+        // The site renders the default when the field is left out.
+        if (isFormField(field, formsCollection) && field.default !== undefined) add(field.default);
+        continue;
+      }
+      visitField(value, field);
+    }
+    for (const [key, value] of Object.entries(object)) {
+      if (described.has(key)) continue;
+      if (FORM_KEYS.test(key)) add(value);
+      else visitLoose(value);
+    }
+  };
+
+  visitObject(data, fields);
+  return [...found];
 }
 
 // ─────────────────────────────────────────────── the first form of a site

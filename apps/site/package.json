@@ -1,7 +1,7 @@
 {
   "name": "@galley/site",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "galley.fictiontribe.com: the Galley marketing site and documentation. An Astro site that Galley itself can edit.",
   "type": "module",
   "scripts": {

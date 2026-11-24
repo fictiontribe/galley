@@ -4,7 +4,7 @@
  * failure means for the next step. Copy follows brand/voice.md: "online",
  * "live", "address", "access key" — never deploy, token, build or artifact.
  */
-import type { DeployStatus, DeployTargetInfo, GalleyErrorShape, Job } from "@galley/core/types";
+import type { DeployStatus, DeployTargetInfo, FileChange, GalleyErrorShape, Job } from "@galley/core/types";
 import { count, relativeTime } from "@/lib/format";
 
 // ─────────────────────────────────────────────────────────────── addresses
@@ -12,6 +12,27 @@ import { count, relativeTime } from "@/lib/format";
 /** "https://lowfield.pages.dev/" → "lowfield.pages.dev". */
 export function hostOf(url: string): string {
   return url.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+}
+
+// ─────────────────────────────────────────────────────────────── settings left waiting
+
+/**
+ * The site's online settings (host, account, name, live address) live in its
+ * galley.config.json so that everyone who works on the site shares them;
+ * setting up writes them there as a change like any other. The end of the
+ * setup says so, and offers to publish just that file, rather than leaving a
+ * change for the person to find in Proof later. Null when it isn't waiting.
+ */
+export function onlineSettingsWaiting(files: readonly FileChange[]): { path: string; title: string; body: string; button: string; message: string } | null {
+  const change = files.find((file) => /(^|\/)galley\.config\.json$/.test(file.path));
+  if (!change) return null;
+  return {
+    path: change.path,
+    title: "The site’s online settings are a change waiting in Proof",
+    body: "Where it is online is kept with the site, so anyone else who works on it uses the same host and address. Publish the settings to keep them; nothing else goes with them.",
+    button: "Publish the settings",
+    message: "Online settings",
+  };
 }
 
 // ─────────────────────────────────────────────────────────────── status line

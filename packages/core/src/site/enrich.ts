@@ -99,13 +99,14 @@ export function sortChanges(set: ChangeSet): ChangeSet {
 /**
  * A short name for a page in a publish message. Entry titles are often long
  * SEO titles ("Lowfield Studio — architecture for…"); a commit subject wants
- * "Home" or "Pricing".
+ * "Home page" or "Pricing".
  */
 function shortName(file: FileChange): string {
   const slug = file.path.replace(/\.[^./]+$/, "").split("/");
   const last = slug[slug.length - 1] === "index" || slug[slug.length - 1] === "_index" ? slug[slug.length - 2] : slug[slug.length - 1];
 
-  if (file.url === "/") return "Home";
+  // The app's name for it everywhere (Proof, the editor, the assistant's publish note).
+  if (file.url === "/") return "Home page";
   if (file.title && file.title.length <= 40) return file.title;
   const words = (last ?? leaf(file.path)).replace(/[-_]+/g, " ").trim();
 
@@ -118,7 +119,7 @@ function names(files: FileChange[]): string {
   return files.length > 3 ? `${shown.join(", ")} and ${files.length - 3} more` : joinWords(shown);
 }
 
-/** "Update Home and Pricing; add 2 images" — the default publish message. */
+/** "Update Home page and Pricing; add 2 images" — the default publish message. */
 export function describeChanges(files: FileChange[]): string {
   const content = files.filter((file) => file.kind === "content");
   const media = files.filter((file) => file.kind === "media");

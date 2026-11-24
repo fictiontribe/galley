@@ -16,12 +16,26 @@ function listOf(names: string[]): string {
   return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
 }
 
-function nameOf(file: FileChange): string {
-  if (file.title) return file.title;
-  const base = file.path.split("/").pop() ?? file.path;
+/**
+ * A page as the rest of the app names it: the site's root is "Home page"
+ * (its title is usually the whole site's name and strapline, which made a
+ * message about "the Caddow page"); otherwise the title before any " — "
+ * strapline; otherwise the file's name.
+ */
+export function pageNameOf(file: Pick<FileChange, "path" | "title" | "url" | "kind">): string {
+  // The same rule as the app's page names (web: features/preview/clickToEdit entryName), or the address itself.
+  const home = file.url === "/" || (/(^|\/)index\.[a-z0-9]+$/i.test(file.path) && /\/pages\/index\.|^src\/content\/index\.|^content\/_?index\./i.test(file.path));
 
-  return base;
+  if (home) return "Home page";
+  if (file.title) {
+    const short = file.title.split(/ [—–|·] /)[0]?.trim() ?? file.title;
+
+    return short.length >= 3 ? short : file.title;
+  }
+  return file.path.split("/").pop() ?? file.path;
 }
+
+const nameOf = pageNameOf;
 
 /** "Update Home page and About page", "Add 2 images and update Pricing", "Update 7 pages". */
 export function deterministicSummary(changes: ChangeSet): string {
@@ -67,7 +81,8 @@ export async function describeChangeSet(changes: ChangeSet, deps: DescribeDeps):
 
   if (!deps.client || changes.files.length === 0) return fallback;
   const listing = changes.files.slice(0, 40).map((file) => ({
-    what: file.title ?? file.path.split("/").pop(),
+    // The page's name as the app shows it, never its full title: the home page's title is the site's own name.
+    what: pageNameOf(file),
     kind: file.kind,
     status: file.status,
     summary: file.summary,

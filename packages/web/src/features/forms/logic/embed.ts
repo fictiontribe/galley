@@ -4,6 +4,7 @@
  * collection), and the pages whose content names a form.
  */
 import type { Field, SiteModel } from "@galley/core/types";
+import { formIdOf, isFormField } from "@galley/core/forms/shared";
 import { FORMS_COLLECTION } from "./locate";
 
 export interface FormSlot {
@@ -19,14 +20,13 @@ export interface FormSlot {
   blockLabel: string;
   /** The field inside the section that names the form. */
   formKey: string;
+  /** The form the section shows when it names none (a Newsletter section's "newsletter"): it was made for that form. */
+  formDefault?: string;
 }
 
-const FORM_KEYS = /^form(_?id)?$/i;
-
-/** Whether a field names a form. */
+/** Whether a field names a form: the engine's rule, which the forms list's "used on" reads with. */
 export function namesForm(field: Field): boolean {
-  if (field.type === "reference") return field.collection === FORMS_COLLECTION;
-  return FORM_KEYS.test(field.key) && (field.type === "string" || field.type === "select");
+  return isFormField(field, FORMS_COLLECTION);
 }
 
 /** Every section type on the site that takes a form. */
@@ -48,11 +48,37 @@ export function formSlots(model: SiteModel | null | undefined): FormSlot[] {
           blockType: block.type,
           blockLabel: block.label,
           formKey: formField.key,
+          ...(typeof formField.default === "string" ? { formDefault: formField.default } : {}),
         });
       }
     }
   }
   return slots;
+}
+
+/**
+ * The site's form sections, best first for one form. A section made for this
+ * form (its field defaults to it) is how the site already shows it; then a
+ * section that takes any form; a section made for another form (a Newsletter
+ * section for the contact form) last. Within each group the site's own order.
+ */
+export function slotsFor(slots: readonly FormSlot[], formId: string): FormSlot[] {
+  const rank = (slot: FormSlot) => (slot.formDefault === undefined ? 1 : formIdOf(slot.formDefault) === formId ? 0 : 2);
+
+  return slots
+    .map((slot, index) => ({ slot, index }))
+    .sort((a, b) => rank(a.slot) - rank(b.slot) || a.index - b.index)
+    .map(({ slot }) => slot);
+}
+
+/** Why the first of the ranked sections is offered, in a sentence. */
+export function slotAdvice(ranked: readonly FormSlot[], formId: string): string {
+  const first = ranked[0];
+
+  if (!first) return "";
+  const why = first.formDefault !== undefined && formIdOf(first.formDefault) === formId ? "is made for this form" : first.formDefault === undefined ? "shows any form" : `is made for the “${first.formDefault}” form`;
+
+  return ranked.length === 1 ? `One kind of section on this site shows a form: “${first.blockLabel}”, which ${why}.` : `${ranked.length} kinds of section on this site show a form. “${first.blockLabel}” ${why}; you can choose another.`;
 }
 
 /** The section to insert for a form: its type, the form's id, and whatever the type's example starts with. */

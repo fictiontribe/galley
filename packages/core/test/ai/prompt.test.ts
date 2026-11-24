@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SYSTEM_PROMPT, briefToPrompt, buildSiteCard, deterministicSummary } from "../../src/ai/index";
-import { describeChangeSet } from "../../src/ai/describe";
+import { describeChangeSet, pageNameOf } from "../../src/ai/describe";
 import { INSTRUCTIONS_FILE_CHARS } from "../../src/ai/site-card";
 import { PRODUCT } from "../../src/brand";
 import { loadSiteModel } from "../../src/content/config/config";
@@ -82,6 +82,23 @@ describe("describeChanges", () => {
     expect(deterministicSummary(changes([file({ title: "Home" }), file({ title: "About" }), file({ path: "public/images/a.png", kind: "media", status: "added" })]))).toBe("Update Home and About, and add 1 image");
     expect(deterministicSummary(changes(Array.from({ length: 5 }, (_, i) => file({ title: `P${i}` }))))).toBe("Update 5 pages and posts");
     expect(deterministicSummary(changes([]))).toBe("No changes");
+  });
+
+  it("names the home page “Home page” and other pages by their short title, as the app does — to the model too", async () => {
+    const home = file({ path: "src/content/pages/index.md", url: "/", title: "Caddow — coats and knitwear, made in runs of forty" });
+
+    expect(pageNameOf(home)).toBe("Home page");
+    expect(pageNameOf({ ...home, url: null })).toBe("Home page");
+    expect(pageNameOf(file({ title: "The atelier — where the coats are cut" }))).toBe("The atelier");
+    expect(pageNameOf(file({ path: "src/content/journal/index-of-fabrics.md", title: "Index of fabrics" }))).toBe("Index of fabrics");
+    expect(deterministicSummary(changes([home, file({ title: "About" })]))).toBe("Update Home page and About");
+    const script = scriptedFetch([() => jsonResponse(200, { id: "m", type: "message", role: "assistant", model: "claude-haiku-5-5", content: [{ type: "text", text: "Update the home page" }], stop_reason: "end_turn", stop_sequence: null, usage: { input_tokens: 80, output_tokens: 9 } })]);
+
+    await describeChangeSet(changes([home]), { client: testClient(script.fetch), record: async () => undefined, log: () => undefined });
+    const sent = JSON.stringify(script.requests[0]!.body);
+
+    expect(sent).toContain('\\"what\\":\\"Home page\\"');
+    expect(sent).not.toContain("Caddow");
   });
 
   it("asks Haiku for one sentence, and falls back when there's no client or the call fails", async () => {

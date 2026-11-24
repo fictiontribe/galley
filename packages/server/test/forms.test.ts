@@ -40,6 +40,8 @@ function formsSite(): SiteService {
       return { path, content: JSON.stringify(contact), hash: "h", binary: false };
     },
     readBase: async (asked: string) => (asked === path ? new TextEncoder().encode(JSON.stringify(contact)) : null),
+    // No preview running: what marks a submission as a test is the app itself, its preview, or the post saying so.
+    preview: () => ({ status: () => ({ state: "idle", url: null, baselineUrl: null, baselineSource: null, log: [] }), start: async () => { throw new Error("not in this test"); }, stop: async () => {}, restart: async () => { throw new Error("not in this test"); } }),
   });
 }
 

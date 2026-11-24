@@ -9,7 +9,9 @@ function Outcome({ trace }: { trace: RedirectTrace }) {
   if (trace.otherDomain) {
     return (
       <p className="redir-try__line">
-        <span className="g-mono">{trace.otherDomain}</span> isn’t this site’s address, so this site’s redirects never see it.
+        <span>
+          <span className="g-mono">{trace.otherDomain}</span> isn’t this site’s address, so this site’s redirects never see it.
+        </span>
       </p>
     );
   }
@@ -18,17 +20,17 @@ function Outcome({ trace }: { trace: RedirectTrace }) {
       <div className="redir-try__result">
         <p className="redir-try__line">
           {trace.finalKind === "page" ? (
-            <>
+            <span>
               No redirect: <span className="g-mono">{trace.path}</span> is the page “{trace.finalTitle}”.
-            </>
+            </span>
           ) : trace.finalKind === "file" ? (
-            <>
+            <span>
               No redirect: <span className="g-mono">{trace.path}</span> is a file on the site.
-            </>
+            </span>
           ) : (
-            <>
+            <span>
               No redirect, and nothing is at <span className="g-mono">{trace.path}</span>: visitors see the missing-page page.
-            </>
+            </span>
           )}
         </p>
         {trace.nearMiss ? (
@@ -57,24 +59,34 @@ function Outcome({ trace }: { trace: RedirectTrace }) {
       </ol>
       {trace.loop ? (
         <p className="redir-try__line redir-try__line--danger">
-          <ProofMark kind="bang" /> This goes round in a circle: visitors never arrive anywhere.
+          <ProofMark kind="bang" /> <span>This goes round in a circle: visitors never arrive anywhere.</span>
         </p>
       ) : trace.finalKind === "external" ? (
         <p className="redir-try__line">
-          Ends on another site: <span className="g-mono">{trace.final}</span>
+          <span>
+            Ends on another site: <span className="g-mono">{trace.final}</span>.
+          </span>
         </p>
       ) : trace.finalKind === "page" ? (
         <p className="redir-try__line redir-try__line--ok">
-          <ProofMark kind="reg" /> Ends on “{trace.finalTitle}”, <span className="g-mono">{trace.final}</span>
-          {trace.hops.length > 1 ? `, after ${trace.hops.length} steps.` : "."}
+          <ProofMark kind="reg" />
+          <span>
+            Ends on “{trace.finalTitle}”, <span className="g-mono">{trace.final}</span>
+            {trace.hops.length > 1 ? `, after ${trace.hops.length} steps.` : "."}
+          </span>
         </p>
       ) : trace.finalKind === "file" ? (
         <p className="redir-try__line redir-try__line--ok">
-          Ends on the file <span className="g-mono">{trace.final}</span>.
+          <span>
+            Ends on the file <span className="g-mono">{trace.final}</span>.
+          </span>
         </p>
       ) : (
         <p className="redir-try__line redir-try__line--danger">
-          <ProofMark kind="bang" /> Ends at <span className="g-mono">{trace.final}</span>, where nothing is: visitors see the missing-page page.
+          <ProofMark kind="bang" />
+          <span>
+            Ends at <span className="g-mono">{trace.final}</span>, where nothing is: visitors see the missing-page page.
+          </span>
         </p>
       )}
     </div>

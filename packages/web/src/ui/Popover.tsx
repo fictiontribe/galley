@@ -71,12 +71,16 @@ export function Popover({ open, onClose, anchor, placement = "bottom-start", chi
     };
   }, [open, placement, anchor]);
 
+  // Focus moves in once the surface is placed: it renders hidden until then, and a hidden element can't take focus.
+  const placed = pos !== null;
+  useEffect(() => {
+    if (!open || !placed || !autoFocus) return;
+    const first = surface.current?.querySelector<HTMLElement>("[data-autofocus], [role=menuitem], button, input, a[href], [tabindex='0']");
+    (first ?? surface.current)?.focus();
+  }, [open, placed, autoFocus]);
+
   useEffect(() => {
     if (!open) return;
-    if (autoFocus) {
-      const first = surface.current?.querySelector<HTMLElement>("[data-autofocus], [role=menuitem], button, input, a[href], [tabindex='0']");
-      (first ?? surface.current)?.focus();
-    }
     const onPointer = (event: PointerEvent) => {
       const target = event.target as Node;
       if (surface.current?.contains(target) || anchor.current?.contains(target)) return;
@@ -88,13 +92,21 @@ export function Popover({ open, onClose, anchor, placement = "bottom-start", chi
       onCloseRef.current();
       anchor.current?.focus();
     };
+    // A click inside an embedded page (the preview) never reaches this document: it only takes focus from it.
+    const onBlur = () => {
+      setTimeout(() => {
+        if (document.activeElement instanceof HTMLIFrameElement && !surface.current?.contains(document.activeElement)) onCloseRef.current();
+      });
+    };
     document.addEventListener("pointerdown", onPointer, true);
     document.addEventListener("keydown", onKey, true);
+    window.addEventListener("blur", onBlur);
     return () => {
       document.removeEventListener("pointerdown", onPointer, true);
       document.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("blur", onBlur);
     };
-  }, [open, anchor, autoFocus]);
+  }, [open, anchor]);
 
   if (!open) return null;
   return createPortal(
@@ -121,6 +133,8 @@ export type MenuItem =
       icon?: IconName;
       /** Secondary text on the right (a count, a shortcut). */
       hint?: ReactNode;
+      /** A sentence under the label, for choices that need explaining; the menu then keeps to a readable width. */
+      description?: ReactNode;
       onSelect: () => void;
       tone?: "danger";
       disabled?: boolean;
@@ -155,6 +169,7 @@ export function Menu({ trigger, items, label, placement = "bottom-start", classN
   const anchor = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const id = useId();
+  const described = items.some((item) => (item.kind ?? "item") === "item" && "description" in item && item.description);
 
   const focusables = () => [...(list.current?.querySelectorAll<HTMLButtonElement>("[role=menuitem]:not([disabled])") ?? [])];
 
@@ -201,7 +216,7 @@ export function Menu({ trigger, items, label, placement = "bottom-start", classN
         "aria-expanded": open,
         "aria-controls": open ? id : undefined,
       })}
-      <Popover open={open} onClose={() => setOpen(false)} anchor={anchor} placement={placement} className={cx("g-menu app-menu", className)}>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={anchor} placement={placement} className={cx("g-menu app-menu", described && "app-menu--described", className)}>
         <div ref={list} id={id} role="menu" aria-label={label} onKeyDown={onListKey}>
           {items.map((item) => {
             if (item.kind === "separator") return <div key={item.id} role="separator" className="app-menu__separator" />;
@@ -219,11 +234,18 @@ export function Menu({ trigger, items, label, placement = "bottom-start", classN
                 tabIndex={-1}
                 disabled={item.disabled}
                 aria-current={item.current || undefined}
-                className={cx("g-menu__item", item.tone === "danger" && "app-menu__item--danger", item.current && "app-menu__item--current")}
+                className={cx("g-menu__item", item.tone === "danger" && "app-menu__item--danger", item.current && "app-menu__item--current", item.description ? "app-menu__item--described" : null)}
                 onClick={() => select(item)}
               >
                 {item.icon ? <Icon name={item.icon} /> : null}
-                <span className="app-menu__label">{item.label}</span>
+                {item.description ? (
+                  <span className="app-menu__text">
+                    <span className="app-menu__label">{item.label}</span>
+                    <span className="app-menu__description">{item.description}</span>
+                  </span>
+                ) : (
+                  <span className="app-menu__label">{item.label}</span>
+                )}
                 {item.current ? <Icon name="check" className="app-menu__check" /> : null}
                 {item.hint ? <span className="app-menu__hint">{item.hint}</span> : null}
               </button>

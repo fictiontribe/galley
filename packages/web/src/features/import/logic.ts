@@ -45,23 +45,66 @@ export function visibleSteps(status: ImportRunStatus): ImportStep[] {
 }
 
 export interface NextStep {
-  id: "resume" | "proof" | "rebuild" | "redirects" | "online" | "domain";
+  id: "again" | "resume" | "proof" | "published" | "rebuild" | "redirects" | "online" | "domain";
   title: string;
   body: string;
 }
 
-/** Review in Proof → rebuild page-builder pages → set redirects → put the site online → switch the domain. */
+/**
+ * Where what the import brought stands now: all of it still "waiting" in
+ * Proof (or the report doesn't say), "some-waiting", or none of it waiting —
+ * all "published", all "discarded", or "settled" (some of each).
+ */
+export type ReportStanding = "waiting" | "some-waiting" | "published" | "discarded" | "settled";
+
+export function reportStanding(report: ImportReportView): ReportStanding {
+  const standing = report.standing;
+  if (!standing || standing.pending + standing.published + standing.discarded === 0) return "waiting";
+  if (standing.pending > 0) return standing.published + standing.discarded > 0 ? "some-waiting" : "waiting";
+  if (standing.published === 0) return "discarded";
+  return standing.discarded === 0 ? "published" : "settled";
+}
+
+/** "3 published and 10 discarded", leaving out a zero. */
+function outcomes(standing: NonNullable<ImportReportView["standing"]>): string {
+  return [standing.published ? `${standing.published.toLocaleString()} published` : "", standing.discarded ? `${standing.discarded.toLocaleString()} discarded` : ""].filter(Boolean).join(" and ");
+}
+
+/** The report's heading and the line under it, true to where its changes stand now. */
+export function reportHead(report: ImportReportView): { title: string; lede: string } {
+  const standing = reportStanding(report);
+  const stoppedNote = report.stopped ? "The import was stopped; what had arrived is kept. Start it again to bring the rest — nothing is duplicated. " : "";
+  if (standing === "discarded") return { title: "The import was discarded", lede: "Everything it brought was discarded in Proof, so none of it is waiting. Start again to bring your WordPress site over." };
+  const title = report.stopped ? "Part of your WordPress site is here" : "Your WordPress site is here";
+  if (standing === "published") return { title, lede: `${stoppedNote}Everything it brought is published.` };
+  if (standing === "settled") return { title, lede: `${stoppedNote}None of it is waiting in Proof any more: ${count(report.standing!.published + report.standing!.discarded, "entry", "entries")}, ${outcomes(report.standing!)}.` };
+  if (standing === "some-waiting") return { title, lede: `${stoppedNote}Some of it is still a pending change: nothing more goes live until you publish.` };
+  return { title, lede: `${stoppedNote}Everything is a pending change: nothing is live until you publish.` };
+}
+
+/** Review in Proof → rebuild page-builder pages → set redirects → put the site online → switch the domain. Once it was all discarded: start again. */
 export function nextSteps(report: ImportReportView): NextStep[] {
+  const standing = reportStanding(report);
+  if (standing === "discarded") {
+    return [{ id: "again", title: "Bring it over again", body: "From its address or an export file, as before. Nothing from the discarded import is left to get in the way." }];
+  }
   const arrived = report.arrived.posts + report.arrived.pages + report.arrived.updated;
   const rebuilt = report.rebuilds.filter((rebuild) => rebuild.threadId).length;
   const waiting = [arrived ? count(arrived, "entry", "entries") : "", report.arrived.images ? count(report.arrived.images, "image") : ""].filter(Boolean);
   const steps: NextStep[] = [];
   if (report.stopped) steps.push({ id: "resume", title: "Finish bringing it over", body: "Start the import again: what arrived stays as it is and the rest follows. Nothing is duplicated." });
-  steps.push({
-    id: "proof",
-    title: "Review it in Proof",
-    body: waiting.length ? `${waiting.join(" and ")} ${arrived + report.arrived.images === 1 ? "is" : "are"} waiting there. Nothing is live until you publish.` : "Nothing new arrived this time.",
-  });
+  if (standing === "published" || standing === "settled") {
+    steps.push({ id: "published", title: "Nothing is waiting in Proof", body: standing === "published" ? `All ${count(report.standing!.published, "entry", "entries")} it brought ${report.standing!.published === 1 ? "is" : "are"} published.` : `Of what it brought, ${outcomes(report.standing!)}.` });
+  } else if (standing === "some-waiting") {
+    const pending = report.standing!.pending;
+    steps.push({ id: "proof", title: "Review it in Proof", body: `${count(pending, "entry", "entries")} ${pending === 1 ? "is" : "are"} still waiting there; ${outcomes(report.standing!)}.` });
+  } else {
+    steps.push({
+      id: "proof",
+      title: "Review it in Proof",
+      body: waiting.length ? `${waiting.join(" and ")} ${arrived + report.arrived.images === 1 ? "is" : "are"} waiting there. Nothing is live until you publish.` : "Nothing new arrived this time.",
+    });
+  }
   if (report.rebuilds.length) {
     steps.push({
       id: "rebuild",

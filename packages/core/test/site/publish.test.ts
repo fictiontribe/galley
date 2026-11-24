@@ -52,7 +52,7 @@ describe("publish, history and undo", GIT_HEAVY, () => {
     expect(result.files).toHaveLength(4);
     const [latest] = await site.history(5);
 
-    expect(latest).toMatchObject({ viaGalley: true, author: AUTHOR.name, email: AUTHOR.email, message: "Update Home and Pricing; add 2 images" });
+    expect(latest).toMatchObject({ viaGalley: true, author: AUTHOR.name, email: AUTHOR.email, message: "Update Home page and Pricing; add 2 images" });
     expect((await site.changes()).files).toEqual([]);
     expect((await site.listEntries("pages", { status: "modified" })).total).toBe(0);
     expect((await site.entryForUrl("/"))?.status).toBe("clean");
@@ -65,7 +65,7 @@ describe("publish, history and undo", GIT_HEAVY, () => {
     expect(existsSync(join(root, "public/images/one.png"))).toBe(false);
     const history = await site.history(5);
 
-    expect(history[0]!.message).toMatch(/^Undo “Update Home and Pricing; add 2 images”/);
+    expect(history[0]!.message).toMatch(/^Undo “Update Home page and Pricing; add 2 images”/);
     expect(history[0]!.viaGalley).toBe(true);
     expect((await site.changes()).files).toEqual([]);
     // The index follows the undo: the published heading is gone again.

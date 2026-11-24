@@ -29,12 +29,19 @@ export interface RenderSource {
   stale: boolean;
   /** Every page address the source knows of (the build's HTML files); null when it can't list them (the preview). */
   pages(): Promise<string[] | null>;
-  get(urlPath: string): Promise<Fetched | null>;
+  /**
+   * A page as the site serves it; null when it didn't answer. `patient`
+   * waits longer and asks again rather than reusing an earlier failure: a
+   * preview compiles each page the first time it is asked for.
+   */
+  get(urlPath: string, options?: { patient?: boolean }): Promise<Fetched | null>;
   /** Bytes of a file the site serves (images), when it can be read. */
   size(urlPath: string): Promise<number | null>;
 }
 
 const FETCH_TIMEOUT_MS = 6_000;
+/** A dev server's first request can wait on its dependency pass and first compile; well past the usual timeout. */
+const PATIENT_TIMEOUT_MS = 30_000;
 
 function ago(ms: number): string {
   const minutes = Math.round(ms / 60_000);
@@ -54,14 +61,22 @@ function stripOverlay(html: string): string {
 function previewSource(origin: string, base: string): RenderSource {
   const cache = new Map<string, Promise<Fetched | null>>();
 
-  async function get(input: string): Promise<Fetched | null> {
+  async function get(input: string, options: { patient?: boolean } = {}): Promise<Fetched | null> {
     const urlPath = stripBase(input, base);
     let hit = cache.get(urlPath);
 
+    if (hit && options.patient) {
+      const earlier = await hit;
+
+      // A page that didn't answer (or failed while compiling) is asked again; one that answered is kept.
+      if (!earlier || earlier.status >= 500) hit = undefined;
+    }
     if (!hit) {
+      const timeout = options.patient ? PATIENT_TIMEOUT_MS : FETCH_TIMEOUT_MS;
+
       hit = (async () => {
         try {
-          const response = await fetch(new URL(`${base}${urlPath}`, origin), { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), redirect: "follow", headers: { accept: "text/html,text/plain,*/*" } });
+          const response = await fetch(new URL(`${base}${urlPath}`, origin), { signal: AbortSignal.timeout(timeout), redirect: "follow", headers: { accept: "text/html,text/plain,*/*" } });
           const type = response.headers.get("content-type") ?? "";
           const body = /text|xml|json|markdown/.test(type) ? await response.text() : "";
 

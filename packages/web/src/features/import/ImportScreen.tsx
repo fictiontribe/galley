@@ -20,7 +20,7 @@ import { useSite } from "@/lib/stores/site";
 import { notify } from "@/lib/stores/toasts";
 import { Button, ErrorState, ProofMark, Skeleton, buttonClass, cx } from "@/ui";
 import { importKeys } from "./data";
-import { FLOW, FLOW_LABEL, type FlowStep } from "./logic";
+import { FLOW, FLOW_LABEL, reportHead, reportStanding, type FlowStep } from "./logic";
 import { PlanStep } from "./PlanStep";
 import { RebuildAllDialog } from "./RebuildAllDialog";
 import { ReportStep } from "./ReportStep";
@@ -68,6 +68,11 @@ export function ImportScreen() {
     setStep(stored.data?.report && params.get("again") === null && !fresh ? "report" : "source");
   }, [stored.loading, stored.data, step, params, fresh]);
   useEffect(() => heading.current?.focus({ preventScroll: true }), [step]);
+  // The report says where its changes stand (waiting, published, discarded): read it again whenever the pending changes move.
+  const pending = useChanges((s) => s.changes);
+  useEffect(() => {
+    if (pending) invalidate(importKeys.report(siteId));
+  }, [pending, siteId]);
 
   // Follow the run until it ends; the job events keep the activity tray in step too.
   useEffect(() => {
@@ -159,10 +164,7 @@ export function ImportScreen() {
       title: run?.state === "done" ? "It’s all here" : run?.state === "stopped" ? "Stopped part-way" : run?.state === "error" ? "The import couldn’t finish" : "Bringing it over…",
       lede: run?.state === "running" ? `From ${sourceTitle} into ${detail?.name ?? "this site"}.` : "",
     },
-    report: {
-      title: report?.stopped ? "Part of your WordPress site is here" : "Your WordPress site is here",
-      lede: report ? `${report.stopped ? "The import was stopped; what had arrived is kept. Start it again to bring the rest — nothing is duplicated. " : ""}Everything is a pending change: nothing is live until you publish.` : "",
-    },
+    report: report ? reportHead(report) : { title: "Your WordPress site is here", lede: "" },
   };
 
   if (step === null) {
@@ -245,6 +247,13 @@ export function ImportScreen() {
                   {run.state === "stopped" ? "See what arrived" : "See the report"}
                 </Button>
               ) : null}
+            </>
+          ) : step === "report" && report && reportStanding(report) === "discarded" ? (
+            <>
+              <span className="g-toolbar__spacer" />
+              <Button variant="primary" onClick={() => (setRun(null), setPlan(null), setStep("source"))}>
+                Start again
+              </Button>
             </>
           ) : step === "report" ? (
             <>

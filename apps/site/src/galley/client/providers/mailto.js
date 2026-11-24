@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.1.2 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.1.3 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // The last resort: opens the visitor's own mail program with the answers in a
 // new message. Nothing is stored and the page can't know whether the message

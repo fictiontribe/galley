@@ -170,6 +170,11 @@ export function createMockDeploy(mock: MockBackend) {
 
       if (!next.target || !next.account || !next.project) throw new MockError("invalid", "Choose the host, the account and a project name.");
       configs.set(params.siteId, next);
+      // As the engine does: the settings are part of the site, written into its galley.config.json as a change to publish.
+      const site = mock.site(params.siteId);
+      const config = JSON.parse(site.read("galley.config.json")?.toString("utf8") ?? "{}") as Record<string, unknown>;
+      site.write("galley.config.json", Buffer.from(`${JSON.stringify({ ...config, deploy: { target: next.target, account: next.account, project: next.project } }, null, 2)}\n`));
+      mock.changed(params.siteId, ["galley.config.json"], "user");
       mock.emit({ type: "site.updated", siteId: params.siteId });
       return status(params.siteId);
     },

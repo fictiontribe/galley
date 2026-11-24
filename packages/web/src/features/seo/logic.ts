@@ -79,3 +79,37 @@ export function sampleWords(rendering: { sampled: number; total: number }): stri
   if (rendering.sampled >= rendering.total) return "";
   return `${rendering.sampled} of ${rendering.total} ${rendering.total === 1 ? "page" : "pages"} ${rendering.sampled === 1 ? "was" : "were"} checked as sent.`;
 }
+
+/** "A, B and C", or the first three "and N more". */
+function listed(names: readonly string[]): string {
+  const shown = names.length > 3 ? [...names.slice(0, 3), `${names.length - 3} more`] : [...names];
+  return shown.length === 1 ? shown[0]! : `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
+}
+
+/**
+ * The crawler choices made but not saved, in words for the bar that stays in
+ * view until they are saved or dropped: how many rules will change and to
+ * what. Null when nothing is waiting.
+ */
+export function crawlerChangeWords(changes: ReadonlyArray<{ label: string; to: "allow" | "block" }>): { title: string; detail: string; confirm: string } | null {
+  if (changes.length === 0) return null;
+  const rules = count(changes.length, "rule");
+  const blocked = changes.filter((change) => change.to === "block").map((change) => change.label);
+  const allowed = changes.filter((change) => change.to === "allow").map((change) => change.label);
+  const parts = [blocked.length ? `Block ${listed(blocked)}` : null, allowed.length ? `${blocked.length ? "allow" : "Allow"} ${listed(allowed)}` : null].filter(Boolean);
+  return { title: `${rules} will change`, detail: `${parts.join("; ")}. Nothing changes until you confirm.`, confirm: `Change ${rules}` };
+}
+
+/**
+ * The crawler choices after the saved rules were read again (the audit
+ * refreshes whenever the site changes): a choice the person made and hasn't
+ * saved is kept; everything else follows what is saved now. A choice that
+ * now matches what is saved simply stops being a change.
+ */
+export function rebaseChoices<T extends string>(draft: Readonly<Record<string, T>>, before: Readonly<Record<string, T>>, after: Readonly<Record<string, T>>): Record<string, T> {
+  const next: Record<string, T> = { ...after };
+  for (const [token, choice] of Object.entries(draft)) {
+    if (token in after && choice !== before[token]) next[token] = choice;
+  }
+  return next;
+}

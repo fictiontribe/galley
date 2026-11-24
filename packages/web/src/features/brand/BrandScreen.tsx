@@ -529,7 +529,7 @@ export function BrandScreen() {
                 </h2>
               </header>
               <div className="brand-band__body">
-                {state.sources.length ? <SourceList siteId={siteId} sources={state.sources} onChange={refresh} /> : <p className="brand-note">Nothing added. Guidelines, logos and screenshots can be added any time; their findings come back here to review.</p>}
+                {state.sources.length ? <SourceList siteId={siteId} sources={state.sources} staged={state.staged} settings={state.settings} onChange={refresh} /> : <p className="brand-note">Nothing added. Guidelines, logos and screenshots can be added any time; their findings come back here to review.</p>}
                 <SourceDrop siteId={siteId} onAdded={refresh} compact />
                 <WebsiteField siteId={siteId} onAdded={refresh} />
               </div>

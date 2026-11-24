@@ -247,7 +247,7 @@ function SettingsForm({ siteId, model, config }: { siteId: string; model: SiteMo
       </Group>
 
       {saveError ? <ErrorState compact title="Couldn’t save the settings" error={saveError} /> : null}
-      <div className="app-savebar">
+      <div className="app-savebar app-savebar--then-more">
         <span className="g-hint">{dirty ? "You have unsaved settings." : "Everything is saved."}</span>
         <Button
           variant="quiet"

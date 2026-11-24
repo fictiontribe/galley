@@ -7,11 +7,13 @@
  * pictures; the voice with its quotes and before/after.
  */
 import { useMemo, useState } from "react";
+import type { EntrySummary } from "@galley/core/types";
 import type { BrandColor, BrandFont, SiteBrandFile, SiteBrandState, TypeStyle } from "@galley/core/sitebrand/types";
-import { rawFileUrl } from "@/lib/api";
+import { api, rawFileUrl } from "@/lib/api";
+import { useQuery } from "@/lib/query";
 import { Badge, Icon, Tag, Tooltip } from "@/ui";
 import { useFontViews } from "./fonts";
-import { COLOR_ROLE_ORDER, CONFIDENCE_HINT, CONFIDENCE_LABEL, contrastWords, inkFor, pairWords, ROLE_LABEL, whereFrom } from "./words";
+import { COLOR_ROLE_ORDER, CONFIDENCE_HINT, CONFIDENCE_LABEL, contrastWords, inkFor, pairWords, quotePlace, ROLE_LABEL, whereFrom } from "./words";
 
 interface SheetProps {
   siteId: string;
@@ -312,8 +314,22 @@ function Components({ siteId, brand }: { siteId: string; brand: SiteBrandFile })
   );
 }
 
-function Voice({ brand, onChange, editable }: { brand: SiteBrandFile; onChange: (brand: SiteBrandFile) => void; editable: boolean }) {
+/** The site's entries at the addresses voice quotes come from, to name the pages. */
+function useQuotedPages(siteId: string, brand: SiteBrandFile): ReadonlyMap<string, EntrySummary> {
+  const addresses = useMemo(() => [...new Set((brand.voice?.rules ?? []).map((rule) => rule.quote?.where.trim() ?? "").filter((where) => where.startsWith("/")))].sort(), [brand.voice]);
+  const found = useQuery(
+    ["site", siteId, "brand", "quoted-pages", addresses.join(" ")],
+    async () => new Map((await Promise.all(addresses.map(async (url) => [url, (await api("GET /api/sites/:siteId/route", { params: { siteId }, query: { url } })).entry] as const))).filter((pair): pair is readonly [string, EntrySummary] => pair[1] !== null)),
+    { enabled: addresses.length > 0 },
+  );
+  return found.data ?? NO_PAGES;
+}
+
+const NO_PAGES: ReadonlyMap<string, EntrySummary> = new Map();
+
+function Voice({ siteId, brand, onChange, editable }: { siteId: string; brand: SiteBrandFile; onChange: (brand: SiteBrandFile) => void; editable: boolean }) {
   const voice = brand.voice;
+  const pages = useQuotedPages(siteId, brand);
 
   if (!voice) return <p className="brand-note">No voice guide yet. It is written by the assistant from the site’s own words or your guidelines.</p>;
   return (
@@ -342,7 +358,7 @@ function Voice({ brand, onChange, editable }: { brand: SiteBrandFile; onChange: 
             {rule.quote ? (
               <blockquote className="brand-rule__quote">
                 <p>“{rule.quote.text}”</p>
-                <cite>{rule.quote.where}</cite>
+                <cite>{quotePlace(rule.quote.where, pages.get(rule.quote.where.trim()))}</cite>
               </blockquote>
             ) : null}
             {rule.before && rule.after ? (
@@ -534,7 +550,7 @@ export function Specimen({ siteId, state, brand, onChange, editable }: SheetProp
         </Band>
       ) : null}
       <Band number={number()} title="Voice">
-        <Voice brand={brand} onChange={onChange} editable={editable} />
+        <Voice siteId={siteId} brand={brand} onChange={onChange} editable={editable} />
       </Band>
       {brand.imagery || brand.layout.do.length || brand.layout.dont.length ? (
         <Band number={number()} title="Pictures and layout">

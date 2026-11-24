@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { FormAction, FormDefinition, FormField } from "@galley/core/kit";
 import { actionNotes, canAdd, fillAnswers, insertIndex, newAction, placeholdersIn } from "@/features/forms/logic/actions";
 import { describeRule, isShown, ruleValues, shownIds } from "@/features/forms/logic/conditions";
-import { formSlots, namesThisForm, pagesUsing, sectionFor } from "@/features/forms/logic/embed";
+import { formSlots, namesThisForm, pagesUsing, sectionFor, slotAdvice, slotsFor } from "@/features/forms/logic/embed";
 import { fieldTypeFor, planImport } from "@/features/forms/logic/introspect";
 import { inlineParts, safeLink, wrapSelection } from "@/features/forms/logic/inline";
 import { mappedName, roleOf, unmappedRequired, usualMappingChanges, usualName } from "@/features/forms/logic/mapping";
@@ -194,6 +194,37 @@ describe("embedding", () => {
     const slots = formSlots(model);
     expect(slots).toMatchObject([{ collection: "pages", listKey: "sections", blockType: "form", formKey: "form" }]);
     expect(sectionFor(slots[0]!, "contact")).toEqual({ type: "form", form: "contact" });
+  });
+  it("offers the section that shows this form, then a section for any form, and another form's section last", () => {
+    const editorial = {
+      collections: [
+        {
+          id: "pages",
+          label: "Pages",
+          kind: "entries",
+          fields: [
+            {
+              key: "sections",
+              type: "blocks",
+              discriminator: "type",
+              // The editorial starter's order: Newsletter comes first.
+              blocks: [
+                { type: "newsletter", label: "Newsletter", fields: [{ key: "form", type: "reference", collection: "forms", default: "newsletter" }] },
+                { type: "contact", label: "Contact", fields: [{ key: "form", type: "reference", collection: "forms", default: "contact" }] },
+                { type: "form", label: "Form", fields: [{ key: "form", type: "reference", collection: "forms", required: true }] },
+              ],
+            },
+          ],
+        },
+      ],
+    } as unknown as SiteModel;
+    const best = (formId: string) => slotsFor(formSlots(editorial), formId).map((slot) => slot.blockLabel);
+
+    expect(best("contact")).toEqual(["Contact", "Form", "Newsletter"]);
+    expect(best("stockist")).toEqual(["Form", "Newsletter", "Contact"]);
+    expect(best("newsletter")).toEqual(["Newsletter", "Form", "Contact"]);
+    expect(slotAdvice(slotsFor(formSlots(editorial), "contact"), "contact")).toBe("3 kinds of section on this site show a form. “Contact” is made for this form; you can choose another.");
+    expect(slotAdvice(slotsFor(formSlots(editorial), "stockist"), "stockist")).toBe("3 kinds of section on this site show a form. “Form” shows any form; you can choose another.");
   });
   it("counts a page as using a form only where a form field names it", () => {
     const hit = (path: string, field: Array<string | number>, excerpt: string, collection = "pages"): SearchHit => ({ path, collection, title: path, url: "/", excerpt, location: { kind: "field", field, label: "" } });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ImportReportView, ImportRunStatus } from "@galley/core/types";
-import { addressReady, costRange, exportFileProblem, inspectionFacts, nextSteps, shortAddress, stepLine, toBase64, visibleSteps } from "@/features/import/logic";
+import { addressReady, costRange, exportFileProblem, inspectionFacts, nextSteps, reportHead, reportStanding, shortAddress, stepLine, toBase64, visibleSteps } from "@/features/import/logic";
 
 const report = (patch: Partial<ImportReportView> = {}): ImportReportView => ({
   runId: "r",
@@ -55,6 +55,30 @@ describe("the WordPress move's words and checks", () => {
     expect(full.map((step) => step.id)).toEqual(["proof", "rebuild", "redirects", "online", "domain"]);
     expect(full[0]!.body).toBe("50 entries and 120 images are waiting there. Nothing is live until you publish.");
     expect(full[2]!.body).toBe("So 412 old addresses keep working, and search engines follow them.");
+  });
+
+  it("says so once what it brought isn't waiting any more, and offers to start again when it was all discarded", () => {
+    // As a run hands it back, and while every entry is still pending: unchanged.
+    expect(reportStanding(report())).toBe("waiting");
+    expect(reportStanding(report({ standing: { pending: 17, published: 0, discarded: 0 } }))).toBe("waiting");
+
+    const discarded = report({ standing: { pending: 0, published: 0, discarded: 17 } });
+    expect(reportStanding(discarded)).toBe("discarded");
+    expect(nextSteps(discarded).map((step) => step.id)).toEqual(["again"]);
+    expect(reportHead(discarded)).toEqual({ title: "The import was discarded", lede: "Everything it brought was discarded in Proof, so none of it is waiting. Start again to bring your WordPress site over." });
+    expect(nextSteps(discarded)[0]!.body).not.toMatch(/waiting there/);
+
+    const published = report({ standing: { pending: 0, published: 17, discarded: 0 } });
+    expect(nextSteps(published).map((step) => step.id)).toEqual(["published", "online", "domain"]);
+    expect(nextSteps(published)[0]!.body).toBe("All 17 entries it brought are published.");
+    expect(reportHead(published).lede).toBe("Everything it brought is published.");
+
+    const settled = report({ standing: { pending: 0, published: 3, discarded: 14 } });
+    expect(nextSteps(settled)[0]).toMatchObject({ id: "published", body: "Of what it brought, 3 published and 14 discarded." });
+    expect(reportHead(settled).lede).toBe("None of it is waiting in Proof any more: 17 entries, 3 published and 14 discarded.");
+
+    const some = report({ standing: { pending: 5, published: 0, discarded: 12 } });
+    expect(nextSteps(some)[0]).toMatchObject({ id: "proof", body: "5 entries are still waiting there; 12 discarded." });
   });
 
   it("turns away files that can't be exports before sending them", () => {

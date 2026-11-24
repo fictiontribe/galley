@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useToasts, type Toast } from "@/lib/stores/toasts";
 import { Button, IconButton } from "./Button";
 import { ProofMark, type MarkKind } from "./ProofMark";
@@ -64,11 +64,56 @@ export interface ToastViewportProps {
   children?: ReactNode;
 }
 
-/** Bottom-right stack for toasts. Successes leave after 6 s (paused on hover/focus); errors and toasts with an action stay. */
+/**
+ * How far the toasts rise so they never cover a bar that stays at the foot of
+ * the screen with buttons in it (marked `data-keep-clear`, like the unsaved
+ * crawler choices): the height of the tallest such bar on screen under the
+ * toasts' corner. Measured only while there are toasts.
+ */
+function useKeepClear(active: boolean, region: RefObject<HTMLDivElement | null>): number {
+  const [lift, setLift] = useState(0);
+
+  useEffect(() => {
+    if (!active) {
+      setLift(0);
+      return;
+    }
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const left = region.current?.getBoundingClientRect().left ?? window.innerWidth;
+        let next = 0;
+        for (const bar of document.querySelectorAll<HTMLElement>("[data-keep-clear]")) {
+          const box = bar.getBoundingClientRect();
+          if (box.height === 0 || box.bottom <= 0 || box.top >= window.innerHeight || box.right <= left) continue;
+          next = Math.max(next, window.innerHeight - box.top);
+        }
+        setLift(next);
+      });
+    };
+    measure();
+    const changes = new MutationObserver(measure);
+    changes.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(frame);
+      changes.disconnect();
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
+  }, [active, region]);
+  return lift;
+}
+
+/** Bottom-right stack for toasts. Successes leave after 6 s (paused on hover/focus); errors and toasts with an action stay unless given a duration. */
 export function ToastViewport({ children }: ToastViewportProps) {
   const toasts = useToasts((s) => s.toasts);
+  const region = useRef<HTMLDivElement>(null);
+  const lift = useKeepClear(toasts.length > 0, region);
   return (
-    <div className="g-toast-region app-toast-region" aria-label="Notifications">
+    <div ref={region} className="g-toast-region app-toast-region" aria-label="Notifications" style={lift ? { insetBlockEnd: `calc(${lift}px + var(--space-2))` } : undefined}>
       {children}
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} />

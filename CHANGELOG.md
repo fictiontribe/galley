@@ -5,6 +5,48 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## 0.1.3 — 2026-11-24
+
+Fixes for problems seen while capturing the tour and the how-to guides.
+
+### Fixed
+
+- **Forms**: a form used by a page section is listed as used (a page with
+  several forms, a section that names its form by id, and a section showing
+  its default form were all missed). **Add a destination** is a proper menu
+  inside its column. **Use this form** proposes the section that shows this
+  form, not the first form section it finds.
+- **Proof**: a new script is named ("Scripts › Google Analytics 4 · Added"),
+  and a count of details no longer looks like a link.
+- **Search and AI checks**: pages are read once the preview has woken, so the
+  first check no longer says pages "didn't answer"; the "Fixed" message goes
+  away by itself; and changing an AI-crawler rule keeps its confirm bar in
+  view, and no longer loses unsaved choices when the checks refresh.
+- **Moving from WordPress**: after the import's changes are discarded or
+  published, the report says so and offers to start again; "Put it online" is
+  a button like its neighbours.
+- **Brand**: material says where it will be kept before and after saving;
+  voice examples name their page ("Home page"); colour cards line up.
+- **Click to edit**: "Which one did you mean?" can be closed (a Close button,
+  Escape, or a click elsewhere), and focus returns to the page. Menus and
+  popovers across the app now take focus when they open.
+- **Online**: set-up ends by saying its settings are a change waiting in
+  Proof, with one press to publish just that; the address has a labelled
+  Copy button.
+- **Site settings**: the Save bar no longer covers the next section.
+- **The assistant**: an empty pane offers to continue the last conversation.
+- **Inbox**: "Test" means a submission from the app's own preview or "Send a
+  test", not any submission from the same computer.
+- Smaller things: the suggested publish note names the home page "Home
+  page"; generated file names end on a whole word; the answer under "Try an
+  address" has no stray space; the editor's address box shows the whole
+  address.
+
+### Changed
+
+- Agent-readable pages and the per-crawler switch are marked built, for
+  Astro sites with the site kit.
+
 ## 0.1.2 — 2026-11-24
 
 ### Fixed

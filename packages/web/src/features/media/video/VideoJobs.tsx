@@ -7,14 +7,14 @@ import { useJob, useShowingJob } from "@/lib/stores/jobs";
 import { notify } from "@/lib/stores/toasts";
 import { keys } from "@/lib/sync";
 import { Button, Field, IconButton, Input, ProofMark, Spinner } from "@/ui";
-import { suggestSlug } from "@/features/content/collection/slug";
+import { fileNameFromPrompt } from "@/features/media/fileName";
 import { CANDIDATE_HOURS, VIDEO_SIZE_LIMIT } from "./cost";
 import { discardVideo, useVideoJob, useVideoJobs, videoCandidateUrl, type TrackedVideo } from "./jobs";
 import "./video.css";
 
 /** One made video: play it, name it, save it into media — or throw it away. */
 function Candidate({ siteId, candidate, onSaved, onGone }: { siteId: string; candidate: VideoCandidate; onSaved: (item: MediaItem) => void; onGone: () => void }) {
-  const [name, setName] = useState(() => suggestSlug(candidate.prompt).split("-").slice(0, 6).join("-"));
+  const [name, setName] = useState(() => fileNameFromPrompt(candidate.prompt));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playable, setPlayable] = useState(true);

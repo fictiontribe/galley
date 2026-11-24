@@ -9,7 +9,7 @@ import { api, isApiFailure } from "@/lib/api";
 import { notify } from "@/lib/stores/toasts";
 import { Button, Icon, Input, Tag } from "@/ui";
 import { guessKind, uploadSource } from "./upload";
-import { bytes, plan, TYPE_WORDS } from "./words";
+import { bytes, plan, TYPE_WORDS, whereKept } from "./words";
 
 interface Pending {
   key: string;
@@ -145,7 +145,7 @@ export function WebsiteField({ siteId, onAdded }: { siteId: string; onAdded: (so
   );
 }
 
-export function SourceList({ siteId, sources, onChange }: { siteId: string; sources: BrandSource[]; onChange: () => void }) {
+export function SourceList({ siteId, sources, staged, settings, onChange }: { siteId: string; sources: BrandSource[]; staged: readonly string[]; settings: { dir: string; largeFileBytes: number }; onChange: () => void }) {
   if (!sources.length) return null;
   return (
     <ul className="brand-sources" aria-label="Material">
@@ -163,7 +163,7 @@ export function SourceList({ siteId, sources, onChange }: { siteId: string; sour
               <span className="brand-source__name">{source.name}</span>
               <span className="brand-source__meta">
                 {TYPE_WORDS[source.type]} · {bytes(source.bytes)}
-                {source.stored === "outside" ? " · kept outside the site" : ""}
+                {` · ${whereKept(source, staged.includes(source.id), settings)}`}
               </span>
             </div>
             {source.note ? <p className="brand-source__note">“{source.note}”</p> : null}
@@ -231,7 +231,7 @@ export function Start({ siteId, state, onReadSite, onReadMaterial, onChange }: {
       <p className="brand-way__body">Brand guidelines, logos, screenshots, photos, notes. Each is read for what it says about the look and the voice.</p>
       <SourceDrop siteId={siteId} onAdded={onChange} />
       <WebsiteField siteId={siteId} onAdded={onChange} />
-      <SourceList siteId={siteId} sources={state.sources} onChange={onChange} />
+      <SourceList siteId={siteId} sources={state.sources} staged={state.staged} settings={state.settings} onChange={onChange} />
       {state.sources.some((s) => !s.ignored) ? (
         <Button variant="primary" size="lg" onClick={onReadMaterial}>
           {state.sources.length === 1 ? "Set it up from 1 file" : `Set it up from ${state.sources.filter((s) => !s.ignored).length} files`}

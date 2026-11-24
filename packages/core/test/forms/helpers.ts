@@ -31,7 +31,8 @@ export function contactForm(overrides: Partial<FormDefinition> = {}): FormDefini
 
 /**
  * A site with a `forms` collection whose working copy and published copy are
- * plain maps — exactly the four SiteService methods the capture service uses.
+ * plain maps — exactly the SiteService methods the capture service uses
+ * (and the preview's address, which marks a submission as a test).
  */
 export function fakeSite(input: {
   id?: string;
@@ -39,6 +40,8 @@ export function fakeSite(input: {
   published?: Record<string, FormDefinition | string>;
   urls?: SiteModel["urls"];
   name?: string;
+  /** Origin of the site's running preview, when there is one. */
+  previewUrl?: string | null;
 }): SiteService & { working: Map<string, string>; published: Map<string, string> } {
   const dir = "src/content/forms";
   const text = (value: FormDefinition | string) => (typeof value === "string" ? value : JSON.stringify(value));
@@ -71,6 +74,7 @@ export function fakeSite(input: {
 
       return content === undefined ? null : new TextEncoder().encode(content);
     },
+    preview: () => ({ status: () => ({ state: input.previewUrl ? "ready" : "idle", url: input.previewUrl ?? null, baselineUrl: null, baselineSource: null, log: [] }) }),
   };
 
   return site as unknown as SiteService & { working: Map<string, string>; published: Map<string, string> };

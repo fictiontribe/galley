@@ -8,13 +8,16 @@
  * opens it with `useDeployUi.getState().openSetup()`.
  */
 import { useEffect, useReducer, useRef, useState, type FormEvent } from "react";
-import type { DeployProjectCheck, DeployTargetInfo } from "@galley/core/types";
+import type { DeployProjectCheck, DeployTargetInfo, FileChange } from "@galley/core/types";
 import { api, errorShape, isApiFailure } from "@/lib/api";
 import { invalidate, setQueryData } from "@/lib/query";
+import { useChanges } from "@/lib/stores/changes";
 import { useJob, useShowingJob } from "@/lib/stores/jobs";
+import { useSite } from "@/lib/stores/site";
+import { publishOutcome, type PublishOutcome } from "@/features/proof/publishOutcome";
 import { keys } from "@/lib/sync";
 import { Badge, Button, Dialog, ErrorState, Field, Icon, Input, ProofMark, Skeleton, Toggle, buttonClass, cx } from "@/ui";
-import { canContinue, failureFor, initialSetup, setupReducer, targetName, type Failure, type SetupState } from "./logic";
+import { canContinue, failureFor, initialSetup, onlineSettingsWaiting, setupReducer, targetName, type Failure, type SetupState } from "./logic";
 import { AddressBlock, DeployProgress, JobFailure } from "./parts";
 import { applyLiveAddress, deployKeys, setAutoDeploy, startDeploy, useDeployStatus, useDeployTargets, useDeployUi } from "./useDeploy";
 import "./deploy.css";
@@ -177,6 +180,56 @@ function NameStep({ state, check, checking, target, onChange }: { state: SetupSt
     </div>
   );
 }
+
+/** At the end of setting up: the online settings are a change in Proof, with a way to publish just them. */
+function SettingsWaiting({ siteId }: { siteId: string }) {
+  const files = useChanges((s) => s.changes?.files) ?? NO_CHANGES;
+  const mode = useSite((s) => s.detail?.model.publish?.mode) === "pull-request" ? "pull-request" : "commit";
+  const waiting = onlineSettingsWaiting(files);
+  const [busy, setBusy] = useState(false);
+  const [outcome, setOutcome] = useState<PublishOutcome | null>(null);
+
+  // Settings changed again after publishing (the live address, auto-publish): the offer comes back.
+  if (!waiting && outcome && outcome.tone !== "danger") {
+    return (
+      <p className="deploy-setup__note" role="status">
+        {outcome.tone === "success" ? <Icon name="check" /> : <ProofMark kind="bang" />}
+        <span>
+          {outcome.title}. {outcome.body}
+        </span>
+      </p>
+    );
+  }
+  if (!waiting) return null;
+  const publish = async () => {
+    setBusy(true);
+    try {
+      const result = await api("POST /api/sites/:siteId/publish", { params: { siteId }, body: { message: waiting.message, paths: [waiting.path] } });
+      setOutcome(publishOutcome(result, { message: waiting.message, mode }));
+      invalidate(["site", siteId, "history"]);
+      invalidate(["site", siteId, "git"]);
+      void useChanges.getState().refresh();
+    } catch (caught) {
+      const shape = errorShape(caught);
+      setOutcome({ kind: "failed", tone: "danger", title: "Couldn’t publish the settings", body: `${shape.message} They are still waiting in Proof.`, canRetry: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="deploy-offer" role="status">
+      <div>
+        <p className="deploy-offer__title">{waiting.title}</p>
+        <p className="deploy-offer__text">{outcome && outcome.tone !== "success" ? outcome.body : waiting.body}</p>
+      </div>
+      <Button variant="secondary" size="sm" busy={busy} busyLabel="Publishing…" onClick={() => void publish()}>
+        {waiting.button}
+      </Button>
+    </div>
+  );
+}
+
+const NO_CHANGES: FileChange[] = [];
 
 export function DeploySetupDialog({ siteId }: { siteId: string }) {
   const { open, intent } = useDeployUi((s) => s.setup);
@@ -397,6 +450,7 @@ export function DeploySetupDialog({ siteId }: { siteId: string }) {
             />
           </>
         )}
+        <SettingsWaiting siteId={siteId} />
       </div>
     );
   } else if (state.step === "failed") {

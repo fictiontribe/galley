@@ -39,7 +39,7 @@ import { parseLlmsTxt, parseRedirects, parseSitemap, pathKey, type Redirect } fr
 import { localizeFacts, parsePage, stripBase } from "./html";
 import { crawlerReport, readRobots, ROBOTS_GLOB } from "./policy";
 import { detectKit, KIT_GLOB, type KitInfo } from "./kit";
-import { findRenderSource, type RenderSource } from "./render";
+import { findRenderSource, type Fetched, type RenderSource } from "./render";
 import {
   brandOf,
   canonicalChecks,
@@ -341,6 +341,57 @@ function sample(urls: string[], priority: Set<string>, cap: number): string[] {
   return [...first.slice(0, cap), ...picked].slice(0, cap);
 }
 
+/** How long the audit keeps asking pages that didn't answer the first time, all told. */
+const RETRY_BUDGET_MS = 60_000;
+
+/**
+ * Every chosen page from the source, and the ones that didn't answer. A
+ * preview the status bar calls running still compiles each page the first
+ * time it is asked (and its first request can wait on a dependency pass), so
+ * asking for many at once on first open used to time every one of them out.
+ * The home page goes first, patiently, to wake it; the rest go in parallel;
+ * any that didn't answer are asked once more, one at a time, with time to
+ * compile. Only pages that still don't answer are reported. When even the
+ * patient first request fails the preview isn't answering at all, and
+ * nothing more is asked of it.
+ */
+export async function fetchPages(source: Pick<RenderSource, "kind" | "get">, urls: readonly string[], concurrency = RENDER_CONCURRENCY, budgetMs = RETRY_BUDGET_MS): Promise<{ got: Map<string, Fetched | null>; unanswered: string[] }> {
+  const got = new Map<string, Fetched | null>();
+  const answered = (page: Fetched | null | undefined) => Boolean(page) && page!.status < 500;
+
+  if (source.kind !== "preview") {
+    await mapLimit([...urls], concurrency, async (url) => got.set(url, await source.get(url)));
+    return { got, unanswered: [] };
+  }
+  const deadline = Date.now() + budgetMs;
+  const [first, ...rest] = urls;
+
+  if (first === undefined) return { got, unanswered: [] };
+  got.set(first, await source.get(first, { patient: true }));
+  const awake = answered(got.get(first));
+
+  await mapLimit(rest, concurrency, async (url) => got.set(url, await source.get(url)));
+  if (awake) {
+    for (const url of urls) {
+      if (answered(got.get(url))) continue;
+      if (Date.now() > deadline) break;
+      const again = await source.get(url, { patient: true });
+
+      got.set(url, again);
+      // No answer at all to a patient ask means the preview has stopped answering: don't wait on each of the rest.
+      // (A page that fails with a server error is that page's own problem; the others are still asked.)
+      if (!again) break;
+    }
+  }
+  return { got, unanswered: urls.filter((url) => !answered(got.get(url))) };
+}
+
+/** What the report says about pages the preview didn't serve, or nothing when every page answered. */
+export function unansweredNote(count: number): string {
+  if (count === 0) return "";
+  return ` ${count === 1 ? "1 page" : `${count} pages`} didn't answer the running preview, even when asked again, so ${count === 1 ? "it wasn't" : "they weren't"} checked. Check again in a moment.`;
+}
+
 async function renderedAudit(site: SiteService, source: RenderSource, model: SiteModel, pages: ContentPage[], cap: number, siteName: string, kit: KitInfo | null, only?: string): Promise<RenderedSet> {
   const byKey = new Map(pages.filter((page) => page.url).map((page) => [pathKey(page.url!), page]));
   const nav = navTargets(model, pages);
@@ -352,20 +403,19 @@ async function renderedAudit(site: SiteService, source: RenderSource, model: Sit
   const rendered: RenderedPage[] = [];
   // Pages labelled HTML that aren't (a broken dev server, an error dump): checking them would only invent findings.
   const unreadable: string[] = [];
-  // Pages that didn't answer at all (or answered with a server error): a preview still starting, usually.
-  const unanswered: string[] = [];
+  // Pages that didn't answer at all (or answered with a server error), even when asked again.
+  const { got: fetched, unanswered } = await fetchPages(source, chosen);
 
-  await mapLimit(chosen, RENDER_CONCURRENCY, async (urlPath) => {
-    const got = await source.get(urlPath);
+  for (const urlPath of chosen) {
+    const got = fetched.get(urlPath) ?? null;
 
-    if (source.kind === "preview" && (!got || got.status >= 500)) unanswered.push(urlPath);
-    if (!got || !/html/.test(got.type) || got.status >= 400) return;
+    if (!got || !/html/.test(got.type) || got.status >= 400) continue;
     if (!/<(html|head|body|!doctype|title|main|div|p)\b/i.test(got.body.slice(0, 4000))) {
       unreadable.push(urlPath);
-      return;
+      continue;
     }
     rendered.push({ urlPath, status: got.status, facts: localizeFacts(parsePage(got.body), source.base), page: byKey.get(pathKey(urlPath)) ?? null });
-  });
+  }
   rendered.sort((a, b) => a.urlPath.localeCompare(b.urlPath));
   const findings: Finding[] = [];
   const ids = new Map(rendered.map((item) => [pathKey(item.urlPath), item.facts.ids]));
@@ -451,7 +501,7 @@ async function renderedAudit(site: SiteService, source: RenderSource, model: Sit
   }
   const info: RenderInfo = {
     source: source.kind,
-    detail: `Rendered checks used ${source.detail}.${unreadable.length ? ` ${unreadable.length} ${unreadable.length === 1 ? "page" : "pages"} came back as something other than HTML (${unreadable.slice(0, 3).join(", ")}) and ${unreadable.length === 1 ? "was" : "were"} skipped.` : ""}${unanswered.length ? ` ${unanswered.length === 1 ? "1 page" : `${unanswered.length} pages`} didn't answer (the preview may still be starting), so ${unanswered.length === 1 ? "it wasn't" : "they weren't"} checked. Check again in a moment.` : ""}`,
+    detail: `Rendered checks used ${source.detail}.${unreadable.length ? ` ${unreadable.length} ${unreadable.length === 1 ? "page" : "pages"} came back as something other than HTML (${unreadable.slice(0, 3).join(", ")}) and ${unreadable.length === 1 ? "was" : "were"} skipped.` : ""}${unansweredNote(unanswered.length)}`,
     sampled: rendered.length,
     total: only ? 1 : all.length,
     cap,

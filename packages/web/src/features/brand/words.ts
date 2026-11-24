@@ -1,5 +1,6 @@
 /** Plain words for the Brand screen (brand/voice.md): roles, contrast, evidence, confidence. */
 import type { BrandSource, ColorRole, Confidence, ContrastResult, Evidence, SourceType } from "@galley/core/sitebrand/types";
+import { entryName } from "@/features/preview/clickToEdit";
 
 export const ROLE_LABEL: Record<ColorRole, string> = {
   background: "Background",
@@ -111,4 +112,30 @@ export function inkFor(hex: string): string {
 
   if (!Number.isFinite(ground)) return dark;
   return ratio(ground, luminance(dark)) >= ratio(ground, luminance(light)) ? dark : light;
+}
+
+/**
+ * Where a piece of material is, true at each moment. A file small enough is
+ * copied into the site's brand folder when the brand is saved; until then
+ * it waits in this app's own folder. Large files and web pages read for
+ * their styles always stay outside the site.
+ */
+export function whereKept(source: Pick<BrandSource, "type" | "bytes" | "stored" | "file">, staged: boolean, settings: { dir: string; largeFileBytes: number }): string {
+  if (source.stored === "site" && source.file) return `in the site, ${source.file}`;
+  if (staged && source.type !== "website" && source.bytes <= settings.largeFileBytes) return `goes into the site (${settings.dir}/sources/) when you save`;
+  return "kept outside the site";
+}
+
+/**
+ * Where a quoted line of the site's copy is, named the way the rest of the
+ * app names pages: the analysis records the page's address ("/",
+ * "/atelier/"), which says little on its own. With the entry at that address
+ * it is the page's name ("Home page", "Atelier"); without one the home page
+ * is still the home page, and anything else (a source's name, another
+ * site's address) reads as it was written.
+ */
+export function quotePlace(where: string, entry?: { path: string; title?: string } | null): string {
+  if (entry) return entryName(entry.path, entry.title);
+  if (where.trim() === "/") return "Home page";
+  return where;
 }

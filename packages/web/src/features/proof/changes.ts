@@ -4,6 +4,7 @@
  */
 import type { Collection, Field, FieldChange, FileChange, JsonValue } from "@galley/core/types";
 import { entryName, plainFieldLabel } from "@/features/preview/clickToEdit";
+import { scriptName } from "@/features/scripts/logic/entries";
 import { count, fileName, friendlyLabel } from "@/lib/format";
 
 export type ChangeGroupId = "content" | "media" | "code";
@@ -73,31 +74,55 @@ export function sectionLabels(collections: readonly Collection[]): Map<string, s
   return out;
 }
 
+const isRecord = (value: JsonValue | undefined): value is { [key: string]: JsonValue } => typeof value === "object" && value !== null && !Array.isArray(value);
+
 /**
- * One value in words: "Yes", "3 items", "Hero · “Make more of the home…”".
- * A section is named by its type's label when the site gives one ("FAQ"),
- * else by its type made readable.
+ * What a person calls a list item that has no type and no title of its own:
+ * a script (its `kind` and `settings`) by the name the Scripts screen gives
+ * it, "Google Analytics 4". Null when the item isn't one of these.
  */
-export function describeValue(value: JsonValue | undefined, typeLabels?: ReadonlyMap<string, string>): string {
-  if (value === undefined || value === null || value === "") return "Empty";
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return value.toLocaleString();
-  if (typeof value === "boolean") return value ? "Yes" : "No";
+export function itemName(value: JsonValue | undefined): string | null {
+  if (!isRecord(value) || typeof value.kind !== "string" || !isRecord(value.settings)) return null;
+  return scriptName({ kind: value.kind, ...(typeof value.label === "string" ? { label: value.label } : {}) });
+}
+
+/**
+ * One value in words, and whether the words are a summary ("3 items",
+ * "7 details") rather than the value itself — a summary isn't the text that
+ * was added, so it isn't marked as inserted text.
+ */
+export function valueWords(value: JsonValue | undefined, typeLabels?: ReadonlyMap<string, string>): { text: string; summary: boolean } {
+  const plain = (text: string) => ({ text, summary: false });
+  if (value === undefined || value === null || value === "") return plain("Empty");
+  if (typeof value === "string") return plain(value);
+  if (typeof value === "number") return plain(value.toLocaleString());
+  if (typeof value === "boolean") return plain(value ? "Yes" : "No");
   if (Array.isArray(value)) {
-    if (value.length === 0) return "None";
-    if (value.every((item) => typeof item === "string" || typeof item === "number")) return value.join(", ");
-    return value.length === 1 ? "1 item" : `${value.length} items`;
+    if (value.length === 0) return plain("None");
+    if (value.every((item) => typeof item === "string" || typeof item === "number")) return plain(value.join(", "));
+    return { text: value.length === 1 ? "1 item" : `${value.length} items`, summary: true };
   }
   const type = typeof value.type === "string" ? value.type : typeof value._type === "string" ? value._type : null;
   const nameKey = NAME_KEYS.find((key) => typeof value[key] === "string" && value[key] !== "");
   const name = nameKey ? String(value[nameKey]) : null;
   const short = name && name.length > 60 ? `${name.slice(0, 57).trimEnd()}…` : name;
   const kind = type ? (typeLabels?.get(type) ?? `${type.charAt(0).toUpperCase()}${type.slice(1).replace(/[-_]/g, " ")}`) : null;
-  if (kind && short) return `${kind} · “${short}”`;
-  if (kind) return kind;
-  if (short) return `“${short}”`;
+  if (kind && short) return plain(`${kind} · “${short}”`);
+  if (kind) return plain(kind);
+  if (short) return plain(`“${short}”`);
+  const named = itemName(value);
+  if (named) return plain(named);
   const keys = Object.keys(value).length;
-  return keys === 1 ? "1 detail" : `${keys} details`;
+  return { text: keys === 1 ? "1 detail" : `${keys} details`, summary: true };
+}
+
+/**
+ * One value in words: "Yes", "3 items", "Hero · “Make more of the home…”".
+ * A section is named by its type's label when the site gives one ("FAQ"),
+ * else by its type made readable; a script by its name.
+ */
+export function describeValue(value: JsonValue | undefined, typeLabels?: ReadonlyMap<string, string>): string {
+  return valueWords(value, typeLabels).text;
 }
 
 /** Whether a value is text the word diff can proof (as opposed to a list or section). */
@@ -226,6 +251,20 @@ export function changeBadge(change: FieldChange): string | null {
   const at = change.field[change.field.length - 1];
   if (!isItem(change) || typeof at !== "number") return change.kind === "added" ? "Added" : "Removed";
   return change.kind === "added" ? `Added at ${at + 1}` : `Removed from ${at + 1}`;
+}
+
+/**
+ * The heading of a change row: where it is ("Scripts") and what it is,
+ * with the badge beside it. A whole item that has no type to name it
+ * ("Scripts › 2", "Added at 2") is named by what it is instead
+ * ("Scripts › Google Analytics 4", "Added"): a bare position says nothing.
+ */
+export function changeHeading(change: FieldChange): { lead: string; rest: string; badge: string | null } {
+  const { lead, rest } = labelParts(change.label);
+  const badge = changeBadge(change);
+  const name = isItem(change) && /^\d+$/.test(rest) ? itemName(change.kind === "removed" ? change.before : change.after) : null;
+  if (!name) return { lead, rest, badge };
+  return { lead, rest: name, badge: change.kind === "added" ? "Added" : "Removed" };
 }
 
 /**

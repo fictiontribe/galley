@@ -9,7 +9,10 @@
   min-inline-size: 0;
 }
 .preview-address { position: relative; flex: 1; min-inline-size: 80px; margin-inline: var(--space-1); }
-.preview-address__input { inline-size: 100%; border-radius: var(--radius-pill); background: var(--surface-sunken); border-color: var(--border-default); padding-inline: var(--space-3); color: var(--ink-secondary); }
+/* Beside the other controls the box can be narrower than the address: a cut shows as "…" (a path's last
+   slash clipped mid-glyph read as a comma), the full address is in its tooltip, and the inner padding is
+   kept small so a short path fits. */
+.preview-address__input { inline-size: 100%; border-radius: var(--radius-pill); background: var(--surface-sunken); border-color: var(--border-default); padding-inline: var(--space-2); color: var(--ink-secondary); text-overflow: ellipsis; }
 .preview-address__input:focus-visible { background: var(--surface-raised); color: var(--ink-primary); }
 .preview-address__error {
   position: absolute; inset-block-start: calc(100% + 4px); inset-inline-start: 0; z-index: var(--z-dropdown);

@@ -538,6 +538,42 @@ async function saveReport(service: ImportService, siteId: string, stored: Stored
   await writeFile(join(dir, "report.json"), JSON.stringify(stored), { mode: 0o600 });
 }
 
+/**
+ * Where each entry an import wrote stands: still pending; in a version
+ * published after the import ended; otherwise discarded (a discarded new
+ * entry is gone, a discarded update is back as it was — either way it is
+ * neither pending nor published).
+ */
+export function importStanding(written: readonly string[], pending: ReadonlySet<string>, publishedSince: ReadonlySet<string>): NonNullable<ImportReportView["standing"]> {
+  const standing = { pending: 0, published: 0, discarded: 0 };
+
+  for (const path of written) {
+    if (pending.has(path)) standing.pending += 1;
+    else if (publishedSince.has(path)) standing.published += 1;
+    else standing.discarded += 1;
+  }
+  return standing;
+}
+
+/** How far back the version history is read for publishes since an import. */
+const HISTORY_LIMIT = 500;
+
+async function standingNow(site: SiteService, view: ImportReportView): Promise<NonNullable<ImportReportView["standing"]>> {
+  const written = view.entries.filter((entry) => entry.action !== "unchanged").map((entry) => entry.path);
+  const pending = new Set(site.pendingPaths?.() ?? (await site.changes()).files.map((file) => file.path));
+  const published = new Set<string>();
+
+  // Only what pending doesn't explain needs the history.
+  if (written.some((path) => !pending.has(path))) {
+    for (const version of await site.history(HISTORY_LIMIT).catch(() => [])) {
+      // Commit times are whole seconds; the import's end isn't.
+      if (Date.parse(version.date) < view.finishedAt - 1000) continue;
+      for (const file of version.files) published.add(file);
+    }
+  }
+  return importStanding(written, pending, published);
+}
+
 async function loadReport(service: ImportService, siteId: string): Promise<Stored | null> {
   try {
     return JSON.parse(await readFile(join(stateDir(service, siteId), "report.json"), "utf8")) as Stored;
@@ -913,8 +949,10 @@ export const importRoutes: Pick<RouteTable, ImportRouteKey> = {
   },
   "GET /api/sites/:siteId/import/report": async (c, ctx) => {
     const site = await siteOf(c, ctx);
+    const stored = await loadReport(importsOf(ctx.services), site.id);
 
-    return { report: (await loadReport(importsOf(ctx.services), site.id))?.view ?? null };
+    if (!stored) return { report: null };
+    return { report: { ...stored.view, standing: await standingNow(site, stored.view) } };
   },
   "POST /api/sites/:siteId/import/rebuild": async (c, ctx) => {
     const site = await siteOf(c, ctx);

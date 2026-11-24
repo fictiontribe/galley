@@ -1,6 +1,6 @@
 {
   "name": "@galley/astro",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "The Galley site kit for Astro: forms that send to HubSpot, Marketo, Salesforce, Account Engagement, a webhook or Galley's inbox; consent-aware third-party scripts (GTM, GA4 and more) managed from one file; and a Dev Toolbar app that opens the page in Galley, the open-source, git-based AI CMS.",
   "type": "module",

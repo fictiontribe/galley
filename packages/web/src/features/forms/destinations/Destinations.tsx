@@ -41,15 +41,16 @@ export function Destinations({ siteId, formId }: { siteId: string; formId: strin
   const items: MenuItem[] = catalog.formProviders.map((provider) => ({
     id: provider.id,
     label: provider.plugin === BUILTIN_PLUGIN ? providerName(provider.id) : provider.name,
-    hint: provider.plugin === BUILTIN_PLUGIN ? provider.description : `From the plugin ${catalog.nameOf(provider.plugin)} · ${provider.description}`,
+    description: provider.plugin === BUILTIN_PLUGIN ? provider.description : `From the plugin ${catalog.nameOf(provider.plugin)}. ${provider.description}`,
     onSelect: () => add(provider.id),
   }));
 
-  const addButton = (variant: "primary" | "secondary") => (
+  // In the header the button sits at the column's right edge: the menu hangs from that edge so it stays in the column.
+  const addButton = (variant: "primary" | "secondary", placement: "bottom-start" | "bottom-end") => (
     <Menu
       label="Destinations"
       items={items}
-      placement="bottom-start"
+      placement={placement}
       trigger={(props) => (
         <button {...props} type="button" className={`g-btn g-btn--${variant} g-btn--sm`}>
           Add a destination
@@ -66,7 +67,7 @@ export function Destinations({ siteId, formId }: { siteId: string; formId: strin
             <h2 className="kit-tab-head__title">Where it goes</h2>
             <p className="kit-tab-head__lede">Each submission goes to every destination below, in order. The first is the main one.</p>
           </div>
-          {form.destinations.length > 0 ? addButton("secondary") : null}
+          {form.destinations.length > 0 ? addButton("secondary", "bottom-end") : null}
         </header>
         {form.destinations.length === 0 ? (
           <EmptyState
@@ -78,7 +79,7 @@ export function Destinations({ siteId, formId }: { siteId: string; formId: strin
                 <Button variant="primary" size="sm" onClick={() => add("galley")}>
                   Use the inbox
                 </Button>
-                {addButton("secondary")}
+                {addButton("secondary", "bottom-start")}
               </>
             }
           />

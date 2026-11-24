@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeployStatus, Deployment, Job } from "@galley/core/types";
-import { onlineOutcome, canContinue, failureFor, hostOf, initialSetup, jobFailureTitle, nextStepForJob, progressSteps, setupReducer, statusLine } from "../../src/features/deploy/logic";
+import { onlineOutcome, canContinue, failureFor, hostOf, initialSetup, jobFailureTitle, nextStepForJob, onlineSettingsWaiting, progressSteps, setupReducer, statusLine } from "../../src/features/deploy/logic";
 
 const NOW = new Date(2026, 10, 23, 15, 0, 0).getTime();
 const LIVE: Deployment = { id: "d1", kind: "production", target: "cloudflare", project: "lowfield", url: "https://lowfield.studio.workers.dev", commit: "abc", createdAt: new Date(NOW - 3 * 60_000).toISOString(), files: 214, bytes: 1000 };
@@ -106,5 +106,21 @@ describe("onlineOutcome", () => {
     expect(onlineOutcome(saved, false)).toBe(saved);
     const published = { kind: "published", title: "Published", body: "x" };
     expect(onlineOutcome(published, true)).toBe(published);
+  });
+});
+
+describe("the online settings at the end of setting up", () => {
+  const change = (path: string, kind: "config" | "content" = "config") => ({ path, kind, status: "modified" as const, binary: false, additions: 1, deletions: 0, summary: "" });
+
+  it("says plainly that the settings are waiting in Proof, and offers to publish just that file", () => {
+    const waiting = onlineSettingsWaiting([change("src/content/pages/index.md", "content"), change("galley.config.json")]);
+
+    expect(waiting).toMatchObject({ path: "galley.config.json", title: "The site’s online settings are a change waiting in Proof", button: "Publish the settings", message: "Online settings" });
+    expect(waiting?.body).not.toMatch(/deploy|commit/i);
+  });
+
+  it("says nothing when the settings aren't waiting", () => {
+    expect(onlineSettingsWaiting([])).toBeNull();
+    expect(onlineSettingsWaiting([change("src/content/pages/index.md", "content")])).toBeNull();
   });
 });

@@ -44,6 +44,8 @@
 .proof-what { display: grid; gap: var(--space-5); max-inline-size: 820px; }
 .proof-fields > .g-change:last-child { border-block-end: 0; }
 .proof-change .g-change__line { font-size: var(--text-md); }
+/* "7 details", "3 items": a count of what changed, not the text itself — plain, so it never reads as a link. */
+.proof-change .proof-summary > span { background: none; color: var(--ink-secondary); padding-inline: 0; }
 .proof-change .g-change__line--words { font-family: var(--font-display); font-size: var(--text-lg); line-height: 1.7; }
 .proof-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
 .proof-more { font-size: var(--text-xs); margin-inline-start: var(--space-2); }

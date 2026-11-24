@@ -13,7 +13,7 @@ import { absoluteTime, bytes, count, relativeTime } from "@/lib/format";
 import { useQuery } from "@/lib/query";
 import { notify } from "@/lib/stores/toasts";
 import { keys } from "@/lib/sync";
-import { Badge, Button, EmptyState, ErrorState, Icon, IconButton, PageHeader, Skeleton, Toggle, buttonClass } from "@/ui";
+import { Badge, Button, EmptyState, ErrorState, Icon, PageHeader, Skeleton, Toggle, buttonClass } from "@/ui";
 import { putLive } from "./DeployStatusItem";
 import { hostOf, statusLine, targetName } from "./logic";
 export { onlineOutcome } from "./logic";
@@ -53,10 +53,16 @@ export function OnlineCard({ siteId, variant = "home", listLink = true }: { site
       ) : (
         <>
           {data.production ? (
-            <a className="deploy-card__address" href={data.production.url} target="_blank" rel="noopener noreferrer">
-              {hostOf(data.production.url)}
-              <Icon name="external" />
-            </a>
+            // The copy control sits beside the address it copies, with its name on it.
+            <div className="deploy-card__address-row">
+              <a className="deploy-card__address" href={data.production.url} target="_blank" rel="noopener noreferrer">
+                {hostOf(data.production.url)}
+                <Icon name="external" />
+              </a>
+              <Button variant="quiet" size="sm" icon="copy" aria-label="Copy the address" onClick={() => copyText(data.production!.url)}>
+                Copy
+              </Button>
+            </div>
           ) : null}
           <p className={`deploy-card__line deploy-card__line--${line.tone}`}>{line.tone === "success" && data.production ? `Live · updated ${relativeTime(data.production.createdAt)}` : line.text}</p>
           {status.job?.state === "running" ? <DeployProgress job={status.job} intent={status.job.label.startsWith("Making") ? "preview" : "production"} /> : null}
@@ -69,7 +75,6 @@ export function OnlineCard({ siteId, variant = "home", listLink = true }: { site
                 Put live
               </Button>
             ) : null}
-            {data.production ? <IconButton icon="copy" label="Copy the address" onClick={() => copyText(data.production!.url)} /> : null}
             {variant === "home" ? <SharePreviewButton siteId={siteId} /> : null}
             {listLink ? (
               <Link className={buttonClass("quiet", "sm")} to={`/sites/${siteId}/online`}>
@@ -221,7 +226,9 @@ function DeploymentRow({ item, versions }: { item: Deployment; versions: Map<str
           <Icon name="external" />
           Open
         </a>
-        <IconButton icon="copy" label="Copy the address" onClick={() => copyText(item.url)} />
+        <Button variant="quiet" size="sm" icon="copy" aria-label="Copy the address" onClick={() => copyText(item.url)}>
+          Copy
+        </Button>
       </div>
     </li>
   );

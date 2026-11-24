@@ -65,6 +65,7 @@ export function PreviewToolbar({ path, onGo, canBack, canForward, onBack, onForw
           id="preview-address"
           className="g-input g-input--sm g-input--mono preview-address__input"
           value={draft}
+          title={draft}
           spellCheck={false}
           autoComplete="off"
           aria-invalid={error ? true : undefined}

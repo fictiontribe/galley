@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MediaConfig, MediaItem } from "@galley/core/types";
 import { filterMedia, folderOf, kindOf, mediaPathForUrl, sortMedia, thumbnailSource } from "@/features/media/mediaPaths";
+import { fileNameFromPrompt, NAME_LENGTH } from "@/features/media/fileName";
 
 const media: MediaConfig = {
   dir: "public/images",
@@ -49,5 +50,28 @@ describe("library", () => {
   it("puts new and changed files first, then the newest", () => {
     expect(sortMedia(items).map((i) => i.name)).toEqual(["new-photo.png", "brochure.pdf", "tour.mp4", "hero.svg"]);
     expect(folderOf("public/images/team/a.png")).toBe("public/images/team");
+  });
+});
+
+describe("the name offered for a generated picture", () => {
+  it("cuts at a whole word and leaves no joining word dangling", () => {
+    const name = fileNameFromPrompt("A wool coat on an iron hook against a limewashed wall, low winter sun");
+
+    expect(name).toBe("wool-coat-on-an-iron-hook");
+    // Never the old six-word cut, which ended mid-phrase.
+    expect(name).not.toBe("a-wool-coat-on-an-iron");
+    for (const word of ["a", "an", "the", "on", "of", "in", "and"]) {
+      expect(name.endsWith(`-${word}`)).toBe(false);
+      expect(name.startsWith(`${word}-`)).toBe(false);
+    }
+    expect(name.length).toBeLessThanOrEqual(NAME_LENGTH);
+  });
+
+  it("keeps short prompts whole and copes with odd ones", () => {
+    expect(fileNameFromPrompt("Undyed wool on the cutting table")).toBe("undyed-wool-on-the-cutting-table");
+    expect(fileNameFromPrompt("The coat of the season")).toBe("coat-of-the-season");
+    expect(fileNameFromPrompt("A portrait in the")).toBe("portrait");
+    expect(fileNameFromPrompt("   ")).toBe("image");
+    expect(fileNameFromPrompt("Supercalifragilisticexpialidociousandthensomemoreletters")).toHaveLength(NAME_LENGTH);
   });
 });
