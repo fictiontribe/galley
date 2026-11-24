@@ -137,6 +137,7 @@ runs before any theme is shown, saved or published. It never trusts the file.
 | white on the current place on the plate | 4.5 |
 | the current-place bar (pencil-on-plate) against the plate | 3 |
 | each proof and status ink on paper, sheet, well (light and dark values) | 4.5 |
+| each people colour as an outline on the sheet (light and dark) | 3 |
 
 ### The five test themes
 
@@ -156,6 +157,11 @@ tokens.css §6.
 - **The proof and status colours.** Insert, delete and change mean the same
   thing in every theme and every client's app; they are tuned for contrast,
   never chosen.
+- **The people colours** (`--person-1` … `--person-12`, tokens.css §8):
+  the twelve colours that mark who is here. They are fixed, so a person is the
+  same colour for everyone whatever theme each of them uses. The check
+  measures each as an outline on the theme's sheets (≥ 3:1) and, like the
+  proof inks, may tune its lightness, never its hue.
 - **Shape, spacing, type and sizes.** Radii, control heights, the grid and the
   three faces are fixed, so no theme can make a layout overflow, a target too
   small, or text too small. My view: if corners ever become themable, allow

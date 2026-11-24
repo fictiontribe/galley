@@ -826,3 +826,36 @@
   }
 }
 [data-surfaces="app"][data-look-icons="duotone"] { --icon-tint-rest: var(--pencil-200); }
+
+/* --------------------------------------------------------------------------
+   8. People — twelve colours for presence ("who is here"): a circle with
+   initials, a field outlined with the person's name on a tab. Each has the
+   text colour that sits on it. Not themable; the same in light and dark.
+
+   Chosen in OKLCH round the wheel (lightness 0.56–0.64, chroma ≤ 0.17), so:
+     - text on each fill ≥ 4.54:1 (the -on colour);
+     - each as a 2 px outline ≥ 3:1 on a light sheet (#FDFCFA: 3.15–4.57;
+       the palest allowed theme sheet 3.04–4.41) and on a dark sheet
+       (#201D17: 3.59–5.21; the lightest allowed 3.05–4.42);
+     - any two at least 0.083 apart in OKLab, and each at least 0.080 from
+       the pencil and from every proof and status ink, light or dark.
+   Never colour alone: a person's colour always travels with their initials
+   or name, and is never used as text, an underline or a mark, so it cannot
+   be read as an insertion or a deletion. The theme check measures them on
+   the theme's sheets and, like the proof inks, may tune a lightness (never a
+   hue) if an outline would fall below 3:1.
+   -------------------------------------------------------------------------- */
+:root {
+  --person-1:  #C7446F;  --person-1-on:  #FFFFFF;   /* rose      4.68 */
+  --person-2:  #E05B4D;  --person-2-on:  #1A1712;   /* coral     4.91 */
+  --person-3:  #B35E00;  --person-3-on:  #FFFFFF;   /* rust      4.65 */
+  --person-4:  #B08500;  --person-4-on:  #1A1712;   /* mustard   5.28 */
+  --person-5:  #748C00;  --person-5-on:  #1A1712;   /* olive     4.67 */
+  --person-6:  #00A45D;  --person-6-on:  #1A1712;   /* jade      5.50 */
+  --person-7:  #00927E;  --person-7-on:  #1A1712;   /* teal      4.61 */
+  --person-8:  #009DB7;  --person-8-on:  #1A1712;   /* lagoon    5.54 */
+  --person-9:  #007EB2;  --person-9-on:  #FFFFFF;   /* harbour   4.54 */
+  --person-10: #5886F2;  --person-10-on: #1A1712;   /* cornflower 5.20 */
+  --person-11: #9758C6;  --person-11-on: #FFFFFF;   /* violet    4.64 */
+  --person-12: #C360BD;  --person-12-on: #1A1712;   /* orchid    4.87 */
+}
