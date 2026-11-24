@@ -9,6 +9,12 @@ entry says how.
 
 ### Fixed
 
+- **The preview no longer lets browsers keep its redirects.** A permanent
+  redirect (301, 308) from the site's dev server, and anything it sends
+  without a caching policy, now goes out as `no-store`. A browser that once
+  saw a redirect through the preview (from another server answering on the
+  site's port, or the site before a change to its trailing slashes) kept it
+  for good, and the preview then looped ("redirected you too many times").
 - **Media detection** no longer picks a `public/images` that doesn't exist
   when the site keeps its images in a folder of another name
   (`public/imagery`): new images are saved there. A site with no images

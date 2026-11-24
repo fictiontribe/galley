@@ -393,6 +393,14 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       if ((kind === "baseline" || gateway) && headers["set-cookie"]) headers["set-cookie"] = stripCookieDomain(headers["set-cookie"]);
       // A preview reachable on a public hostname must never be indexed, whatever the site says.
       if (gateway) headers["x-robots-tag"] = "noindex";
+      // The preview's origin outlives the dev server behind it (a restart, another
+      // port, another site's server answering by mistake), so nothing it passes on
+      // may be kept by the browser on a guess: a permanent redirect is cached for
+      // good unless told otherwise, and so is a response with no policy of its own.
+      if (kind === "preview" && (status === 301 || status === 308 || headers["cache-control"] === undefined)) {
+        headers["cache-control"] = "no-store";
+        delete headers.expires;
+      }
 
       const bodyless = req.method === "HEAD" || status === 204 || status === 304 || (status >= 100 && status < 200);
       const encoding = String(upstreamRes.headers["content-encoding"] ?? "").trim().toLowerCase();
