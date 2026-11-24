@@ -139,6 +139,11 @@ export interface MediaStore {
   keyOf(url: string): string | null;
   /** The address with a different public address in front (changing a bucket's address). Only for "key" stores. */
   rebase?(url: string, publicUrl: string): string | null;
+  /**
+   * Other addresses that reach the same files, which pages might use: a
+   * bucket's own S3 address. Used only to find references, never to write them.
+   */
+  otherBases?(): string[];
   /** What to tell the person when the public address doesn't serve a stored file the way it should. */
   publicProblem?(kind: PublicProblem, url: string): string;
 }

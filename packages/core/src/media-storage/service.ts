@@ -30,7 +30,8 @@ import { createMediaLibrary, type LibraryItem, type MediaLibrary } from "./libra
 import { BUCKET_CONNECTORS, isTrialAddress, normalizePrefix, normalizeStorageConfig, settingsProblems } from "./info";
 import { createMediaKeys, normalizeMediaKey, scrub, type MediaKeys } from "./keys";
 import type { Credentials } from "./sigv4";
-import { parseStorePath, placeFile, StoreError, StoreNameTaken, storePath, trimFound, type MediaStore, type StoredItem } from "./store";
+import { ADDRESS_TAIL, escapePattern, parseStorePath, placeFile, StoreError, StoreNameTaken, storePath, trimFound, type MediaStore, type StoredItem } from "./store";
+import { keyUnder } from "./bucket-store";
 
 /** A kind of bucket the site can connect: what the person is told, and how its store is made. */
 export interface BucketConnector {
@@ -285,6 +286,9 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       const check = await checkWith(site, config, request);
 
       if (!check.ok) return { check };
+      const before = await savedConfig(site);
+
+      if (before && before.publicUrl !== config.publicUrl && before.bucket === config.bucket) await library.rememberAddress(site.id, "bucket", before.publicUrl);
       if (request.accessKeyId) await keys.set(site.id, "accessKeyId", request.accessKeyId);
       if (request.secretAccessKey) await keys.set(site.id, "secretAccessKey", request.secretAccessKey);
       await writeStorage(site, config);
@@ -464,7 +468,10 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       const locations = new Set(stores.map((store) => store.location));
       const kept = (await library.all(site.id)).filter((item) => locations.has(item.location));
       // Whether any page uses each stored file, for the library's "not used yet" filter.
-      const [working, published] = kept.length ? await Promise.all([usedKeys(site, stores, "working"), usedKeys(site, stores, "base")]) : [new Set<string>(), new Set<string>()];
+      // Without a search, nothing is shown as unused (the filter would offer it for deletion).
+      const searched = kept.length ? await Promise.all([usedKeys(site, stores, "working"), usedKeys(site, stores, "base")]).catch(() => null) : [new Set<string>(), new Set<string>()];
+      const working: Set<string> = searched?.[0] ?? new Set(kept.map((item) => storePath(item.location, item.key)));
+      const published: Set<string> = searched?.[1] ?? new Set<string>();
 
       return [
         ...repository,
@@ -737,6 +744,8 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
           const origin = publicUrl.replace(/\/+$/, "");
           const { deliveryUrl: _old, ...rest } = images;
 
+          await library.rememberAddress(site.id, "images", `${images.deliveryUrl ? `${images.deliveryUrl}/cdn-cgi/imagedelivery` : "https://imagedelivery.net"}/${images.accountHash}`);
+
           await writeImages(site, origin === "https://imagedelivery.net" ? rest : { ...rest, deliveryUrl: origin });
           const store = stores.find((candidate) => candidate.location === "images");
 
@@ -746,6 +755,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
         const config = await savedConfig(site);
 
         if (!config) throw new GalleyError("unconfigured", "The site isn't connected to a bucket.");
+        await library.rememberAddress(site.id, "bucket", config.publicUrl);
         await writeStorage(site, { ...config, publicUrl: publicUrl.replace(/\/+$/, "") });
         await library.update(site.id, (items) =>
           items.map((item) => {
@@ -809,13 +819,45 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   }
 
   /** Store paths ("bucket:key") that the working copy or the published version uses. */
+  /**
+   * Every address form a page might use for a store's files: the current
+   * public address, the ones it had before, and the store's own address.
+   */
+  async function referenceForms(site: SiteService, store: MediaStore): Promise<{ pattern: string; keyOf: (match: string) => string | null }> {
+    const prefix = store.location === "bucket" ? normalizePrefix((await site.model()).media.storage?.prefix) : "";
+    const bases = [...(await library.earlierAddresses(site.id, store.location)), ...(store.otherBases?.() ?? [])];
+    const pattern = bases.length ? `(${[store.addressPattern(), ...bases.map((base) => `${escapePattern(base.replace(/\/+$/, ""))}/${ADDRESS_TAIL}`)].join("|")})` : store.addressPattern();
+    const keyOf = (match: string) => {
+      const trimmed = trimFound(match);
+      const direct = store.keyOf(trimmed);
+
+      if (direct !== null || store.location !== "bucket") return direct;
+      for (const base of bases) {
+        const key = keyUnder(base, prefix, trimmed);
+
+        if (key !== null) return key;
+      }
+      return null;
+    };
+
+    return { pattern, keyOf };
+  }
+
+  /** Searching is what keeps a used file from being deleted: without it, nothing is deleted. */
+  function requireSearch(site: SiteService): NonNullable<SiteService["grepText"]> {
+    if (!site.grepText) throw new GalleyError("internal", "This site's files can't be searched, so Galley can't tell which pages use a file. Nothing was deleted.");
+    return site.grepText.bind(site);
+  }
+
   async function usedKeys(site: SiteService, stores: MediaStore[], rev: "working" | "base"): Promise<Set<string>> {
     const used = new Set<string>();
+    const grep = requireSearch(site);
 
-    if (!site.grepText) return used;
     for (const store of stores) {
-      for (const { match } of await site.grepText(store.addressPattern(), { rev })) {
-        const key = store.keyOf(trimFound(match));
+      const forms = await referenceForms(site, store);
+
+      for (const { match } of await grep(forms.pattern, { rev })) {
+        const key = forms.keyOf(match);
 
         if (key !== null) used.add(storePath(store.location, key));
       }
@@ -824,11 +866,12 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   }
 
   async function filesUsing(site: SiteService, store: MediaStore, key: string, rev: "working" | "base"): Promise<string[]> {
-    if (!site.grepText) return [];
+    const grep = requireSearch(site);
+    const forms = await referenceForms(site, store);
     const files = new Set<string>();
 
-    for (const { path, match } of await site.grepText(store.addressPattern(), { rev })) {
-      if (store.keyOf(trimFound(match)) === key) files.add(path);
+    for (const { path, match } of await grep(forms.pattern, { rev })) {
+      if (forms.keyOf(match) === key) files.add(path);
     }
     return [...files].sort();
   }

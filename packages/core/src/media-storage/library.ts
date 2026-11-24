@@ -39,11 +39,15 @@ interface LibraryFile {
   items: LibraryItem[];
   /** When each store was last listed in full, ms. */
   listedAt?: Partial<Record<MediaStoreLocation, number>>;
+  /** Public addresses each store had before (pages may still use them). */
+  earlier?: Partial<Record<MediaStoreLocation, string[]>>;
 }
 
 export interface MediaLibrary {
   all(siteId: string): Promise<LibraryItem[]>;
   listedAt(siteId: string, location: MediaStoreLocation): Promise<number | null>;
+  earlierAddresses(siteId: string, location: MediaStoreLocation): Promise<string[]>;
+  rememberAddress(siteId: string, location: MediaStoreLocation, address: string): Promise<void>;
   /** Applies a change to the record, written atomically. */
   update(siteId: string, change: (items: LibraryItem[], listedAt: Partial<Record<MediaStoreLocation, number>>) => LibraryItem[]): Promise<LibraryItem[]>;
 }
@@ -60,9 +64,9 @@ export function createMediaLibrary(home: string): MediaLibrary {
     try {
       const parsed = JSON.parse(await readFile(fileOf(siteId), "utf8")) as Partial<LibraryFile>;
 
-      return { version: 1, items: Array.isArray(parsed.items) ? parsed.items : [], listedAt: parsed.listedAt ?? {} };
+      return { version: 1, items: Array.isArray(parsed.items) ? parsed.items : [], listedAt: parsed.listedAt ?? {}, earlier: parsed.earlier ?? {} };
     } catch {
-      return { version: 1, items: [], listedAt: {} };
+      return { version: 1, items: [], listedAt: {}, earlier: {} };
     }
   }
 
@@ -85,13 +89,31 @@ export function createMediaLibrary(home: string): MediaLibrary {
     async listedAt(siteId, location) {
       return (await load(siteId)).listedAt?.[location] ?? null;
     },
+    async earlierAddresses(siteId, location) {
+      return (await load(siteId)).earlier?.[location] ?? [];
+    },
+    rememberAddress(siteId, location, address) {
+      const task = async () => {
+        const data = await load(siteId);
+        const list = data.earlier?.[location] ?? [];
+
+        if (!list.includes(address)) await save(siteId, { ...data, earlier: { ...data.earlier, [location]: [...list, address].slice(-20) } });
+      };
+      const run = (queues.get(siteId) ?? Promise.resolve()).then(task, task);
+
+      queues.set(
+        siteId,
+        run.catch(() => undefined)
+      );
+      return run;
+    },
     update(siteId, change) {
       const task = async () => {
         const data = await load(siteId);
         const listedAt = { ...(data.listedAt ?? {}) };
         const items = change([...data.items], listedAt);
 
-        await save(siteId, { version: 1, items, listedAt });
+        await save(siteId, { version: 1, items, listedAt, earlier: data.earlier ?? {} });
         return items;
       };
       const run = (queues.get(siteId) ?? Promise.resolve()).then(task, task);

@@ -246,6 +246,11 @@ export function createBucketStore(options: BucketStoreOptions): MediaStore & { c
       return `${prefix}${relative.replace(/^\/+/, "")}`;
     },
 
+    otherBases() {
+      // The bucket's own S3 address, as the client reaches it ("https://<account>.r2.cloudflarestorage.com/<bucket>").
+      return [client.objectUrl("x").toString().replace(/\/x$/, "")];
+    },
+
     addressPattern() {
       return `${escapePattern(publicBase)}/${ADDRESS_TAIL}`;
     },

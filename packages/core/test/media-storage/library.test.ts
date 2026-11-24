@@ -146,6 +146,32 @@ describe("a site that keeps its media in a bucket", { timeout: 240_000 }, () => 
     await done();
   });
 
+  it("keeps a file a page reaches through an earlier address or the bucket's own address, and deletes nothing when it can't search", async () => {
+    const { storage, site, root, base, done } = await setUp("every-form");
+    const a = await site.saveMedia({ filename: "a.png", data: pngHeader(4, 4) });
+    const b = await site.saveMedia({ filename: "b.png", data: pngHeader(4, 4) });
+    const home = join(root, ...HOME.split("/"));
+
+    // b through the bucket's own S3 address (path-style on the stand-in).
+    writeFileSync(home, `${readFileSync(home, "utf8")}\n![B](${fake.endpoint}/every-form/${b.key})\n`);
+    expect((await storage.deleteStored(site, [b.path])).refused).toHaveLength(1);
+    // a through the address the bucket had before a change.
+    const earlier = base.replace(/\/lowfield\/$/, "");
+
+    writeFileSync(home, `${readFileSync(home, "utf8")}\n![A](${earlier}/${a.key})\n`);
+    const next = earlier.replace("127.0.0.1", "localhost");
+
+    await storage.move(site, { kind: "address", store: "bucket", publicUrl: next });
+    writeFileSync(home, readFileSync(home, "utf8").replace(`${next}/${a.key}`, `${earlier}/${a.key}`));
+    expect((await storage.deleteStored(site, [a.path])).refused).toHaveLength(1);
+    // No search: nothing is deleted.
+    const blind = new Proxy(site, { get: (target, name) => (name === "grepText" ? undefined : Reflect.get(target, name)) });
+
+    await expect(storage.deleteStored(blind, [a.path])).rejects.toThrow(/can't be searched/);
+    expect(fake.buckets.get("every-form")!.objects.has(a.key!)).toBe(true);
+    await done();
+  });
+
   it("goes back to the repository once disconnected; the bucket's files stay", async () => {
     const { storage, site, done } = await setUp("disconnect");
     const stored = await site.saveMedia({ filename: "kept.png", data: pngHeader(5, 5) });
