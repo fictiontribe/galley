@@ -10,7 +10,7 @@ import type { MediaStoreInfo } from "./contract";
 import type { SettingsProblem } from "./info";
 
 /** https:// only (http:// for this computer); the same rule as info.ts, kept here so this file has type-only imports (the web app's mock loads it in Node). */
-function addressProblem(value: string, what: string): string | null {
+function addressProblem(value: string, what: string, hosted = false): string | null {
   let url: URL;
 
   try {
@@ -18,7 +18,7 @@ function addressProblem(value: string, what: string): string | null {
   } catch {
     return `The ${what} should be a full address starting with https://.`;
   }
-  if (url.protocol === "http:" && !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) return `The ${what} has to start with https://, so visitors' browsers load it.`;
+  if (url.protocol === "http:" && (hosted || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname))) return `The ${what} has to start with https://, so visitors' browsers load it.`;
   if (url.protocol !== "https:" && url.protocol !== "http:") return `The ${what} has to start with https://.`;
   if (url.username || url.password || url.search || url.hash) return `The ${what} can't carry a name, a password, or a ? or # part.`;
   return null;
@@ -92,14 +92,14 @@ export function normalizeImagesConfig(config: MediaImagesConfig): MediaImagesCon
   return out;
 }
 
-export function imagesSettingsProblems(config: MediaImagesConfig): SettingsProblem[] {
+export function imagesSettingsProblems(config: MediaImagesConfig, options: { hosted?: boolean } = {}): SettingsProblem[] {
   const problems: SettingsProblem[] = [];
 
   if (!ACCOUNT.test(config.account ?? "")) problems.push({ field: "account", message: "The account ID is 32 letters and digits, in the dashboard's address after dash.cloudflare.com/." });
   if (!HASH.test(config.accountHash ?? "")) problems.push({ field: "accountHash", message: "The account hash is one word from Hosted Images › Developer Resources: the part after imagedelivery.net/." });
   if (config.variant && !VARIANT.test(config.variant)) problems.push({ field: "variant", message: "A variant's name is letters, digits, dashes and underscores, like “public”." });
   if (config.deliveryUrl) {
-    const problem = addressProblem(config.deliveryUrl, "domain to deliver from");
+    const problem = addressProblem(config.deliveryUrl, "domain to deliver from", Boolean(options.hosted));
 
     if (problem) problems.push({ field: "deliveryUrl", message: problem });
     else if (new URL(config.deliveryUrl).pathname.replace(/\/+$/, "") !== "") problems.push({ field: "deliveryUrl", message: "Give just the domain (https://www.example.com): Galley adds /cdn-cgi/imagedelivery/." });

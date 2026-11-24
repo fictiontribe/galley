@@ -326,7 +326,7 @@ export interface SettingsProblem {
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
 
 /** https:// only; http:// only for this computer (tests and the stand-ins). Null when fine. */
-export function addressProblem(value: string, what: string): string | null {
+export function addressProblem(value: string, what: string, hosted = false): string | null {
   let url: URL;
 
   try {
@@ -334,7 +334,7 @@ export function addressProblem(value: string, what: string): string | null {
   } catch {
     return `The ${what} should be a full address starting with https://.`;
   }
-  if (url.protocol === "http:" && !LOOPBACK.has(url.hostname)) return `The ${what} has to start with https://, so visitors' browsers load it.`;
+  if (url.protocol === "http:" && (hosted || !LOOPBACK.has(url.hostname))) return `The ${what} has to start with https://, so visitors' browsers load it.`;
   if (url.protocol !== "https:" && url.protocol !== "http:") return `The ${what} has to start with https://.`;
   if (url.username || url.password) return `The ${what} can't carry a name or password.`;
   if (url.search || url.hash) return `The ${what} can't have a ? or # part.`;
@@ -351,7 +351,8 @@ const PREFIX = /^[A-Za-z0-9!_.*'()-]+(?:\/[A-Za-z0-9!_.*'()-]+)*\/$/;
  * Everything that can be said about the settings without asking the
  * provider. Empty when they are fine.
  */
-export function settingsProblems(config: MediaStorageConfig): SettingsProblem[] {
+export function settingsProblems(config: MediaStorageConfig, options: { hosted?: boolean } = {}): SettingsProblem[] {
+  const hosted = Boolean(options.hosted);
   const problems: SettingsProblem[] = [];
   const bucket = config.bucket ?? "";
 
@@ -371,7 +372,7 @@ export function settingsProblems(config: MediaStorageConfig): SettingsProblem[] 
     if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(bucket)) problems.push({ field: "bucket", message: "Bucket names are 3 to 63 lowercase letters, digits, dots and dashes." });
   }
   if (config.endpoint) {
-    const problem = addressProblem(config.endpoint, "S3 address");
+    const problem = addressProblem(config.endpoint, "S3 address", hosted);
 
     if (problem) problems.push({ field: "endpoint", message: problem });
   }
@@ -382,7 +383,7 @@ export function settingsProblems(config: MediaStorageConfig): SettingsProblem[] 
   }
   if (!config.publicUrl) problems.push({ field: "publicUrl", message: "Give the public address visitors load the files from." });
   else {
-    const problem = addressProblem(config.publicUrl, "public address");
+    const problem = addressProblem(config.publicUrl, "public address", hosted);
 
     if (problem) problems.push({ field: "publicUrl", message: problem });
   }

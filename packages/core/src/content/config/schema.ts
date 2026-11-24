@@ -99,17 +99,20 @@ const templateConfig = z
 
 const mediaRoot = z.object({ dir: z.string().min(1), publicPath: z.string().min(1) }).strict();
 
+/** An https:// address (http:// only for this computer, which the engine allows only when not hosted). */
+const webAddress = z.string().url().refine((value) => /^https:\/\//i.test(value) || /^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(\/|$)/i.test(value), { message: "must start with https://." });
+
 /** Ids only: the access key and its secret are kept in the site's key store, never in this file. */
 const mediaStorage = z
   .object({
     connector: z.string().regex(ADAPTER_ID, { message: "must be a connector id, like “r2”, “s3” or “s3-compatible”." }).describe("Which kind of bucket: “r2” (Cloudflare R2), “s3” (Amazon S3), “s3-compatible”, or a plugin's connector."),
-    bucket: z.string().min(3).max(63).describe("The bucket's name."),
+    bucket: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/, { message: "must be a bucket name: 3 to 63 lowercase letters, digits, dots and dashes." }).describe("The bucket's name."),
     account: z.string().max(64).optional().describe("Cloudflare R2: the account ID the bucket is in."),
     region: z.string().max(40).optional().describe("Amazon S3: the bucket's Region code (“eu-west-1”). S3-compatible: the store's region name."),
-    endpoint: z.string().url().optional().describe("The store's S3 address. S3-compatible stores, and R2 buckets in a jurisdiction. https:// only."),
+    endpoint: webAddress.optional().describe("The store's S3 address. S3-compatible stores, and R2 buckets in a jurisdiction. https:// only."),
     pathStyle: z.boolean().optional().describe("The bucket name in the path (address/bucket/key) rather than the host name. Default: true except for Amazon S3."),
     prefix: z.string().max(200).optional().describe("The folder inside the bucket this site's files are kept under (“lowfield/”). Absent: the bucket's top."),
-    publicUrl: z.string().url().describe("Where visitors load the files from (“https://media.example.com”). Pages store full addresses under it."),
+    publicUrl: webAddress.describe("Where visitors load the files from (“https://media.example.com”). Pages store full addresses under it."),
   })
   .strict()
   .describe("New media goes to this bucket instead of the repository. Set by Media › Storage (or `galley media connect`).");
@@ -121,7 +124,7 @@ const mediaImages = z
     account: z.string().regex(/^[0-9a-f]{32}$/, { message: "must be the 32-character Cloudflare account ID." }).describe("The Cloudflare account ID."),
     accountHash: z.string().min(8).max(64).describe("The Images account hash, from Hosted Images › Developer Resources."),
     variant: z.string().regex(/^[A-Za-z0-9_-]{1,99}$/, { message: "must be a variant's name, like “public”." }).optional().describe("The variant pages ask for. Default: public."),
-    deliveryUrl: z.string().url().optional().describe("Deliver from a domain of the same Cloudflare account (its /cdn-cgi/imagedelivery/ path). Default: https://imagedelivery.net."),
+    deliveryUrl: webAddress.optional().describe("Deliver from a domain of the same Cloudflare account (its /cdn-cgi/imagedelivery/ path). Default: https://imagedelivery.net."),
   })
   .strict()
   .describe("Pictures go to Cloudflare Images instead; files it doesn't take go to `media.storage`, else the repository.");

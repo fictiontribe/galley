@@ -16,6 +16,7 @@
  */
 import { randomBytes } from "node:crypto";
 import type { MediaCheckResult, MediaCheckStep, MediaCheckStepId } from "./contract";
+import { getFollowing } from "./net";
 import { StoreError, type MediaStore, type PublicProblem, type StoredItem } from "./store";
 
 /** A 1×1 PNG (67 bytes). Every store takes it, Cloudflare Images included. */
@@ -138,7 +139,8 @@ async function checkPublic(store: MediaStore, item: StoredItem, doFetch: typeof 
   let response: Response;
 
   try {
-    response = await doFetch(url, { redirect: "follow", signal: AbortSignal.timeout(timeoutMs) });
+    // Each redirect is asked for again through the same guard, never followed blindly.
+    response = await getFollowing(doFetch, url, { signal: AbortSignal.timeout(timeoutMs) });
   } catch (error) {
     throw problem("unreachable", error instanceof Error ? `${error.name}: ${error.message}` : String(error));
   }

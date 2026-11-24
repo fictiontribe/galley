@@ -89,7 +89,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
     // The built-in hosts, then any a plugin adds (a plugin can't replace a built-in host).
     targets: [...builtInTargets(), ...pluginRegistry.deployTargetObjects().filter((target) => !builtInIds.has(target.id))],
   });
-  const mediaStorage = createMediaStorageService({ home: options.home, settings, events, env: options.env ?? process.env });
+  const mediaStorage = createMediaStorageService({ home: options.home, settings, events, env: options.env ?? process.env, hosted: (options.mode ?? "local") === "hosted" });
   const sites = await createSiteRegistry({
     home: options.home,
     sitesDir: options.sitesDir,

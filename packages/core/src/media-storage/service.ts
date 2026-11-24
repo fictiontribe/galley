@@ -13,6 +13,7 @@
 import { GalleyError } from "../errors";
 import type { EventBus, GalleyConfig, Job, MediaImagesConfig, MediaItem, MediaStorageConfig, SettingsService, SiteService } from "../types";
 import { createImagesStore, deliveryBase } from "./cloudflare-images";
+import { createMediaFetch, MEDIA_ANSWER_LIMIT } from "./net";
 import { makeR2Bucket, removeR2Bucket } from "./cloudflare-r2";
 import { IMAGES_INFO, imagesSettingsProblems, normalizeImagesConfig } from "./images-info";
 import { createJobTracker } from "../site/jobs";
@@ -59,6 +60,12 @@ export interface MediaStorageServiceOptions {
   fetch?: typeof fetch;
   /** fetch for public addresses (no key is ever sent there). Test seam. */
   publicFetch?: typeof fetch;
+  /**
+   * A hosted install: every request goes only to https and public addresses,
+   * checked before connecting. Locally, this computer's own addresses (a
+   * stand-in, MinIO) may be used.
+   */
+  hosted?: boolean;
   now?: () => number;
   keys?: MediaKeys;
   library?: MediaLibrary;
@@ -151,6 +158,10 @@ function guard(route: ApiRouteKey): void {
 }
 
 export function createMediaStorageService(options: MediaStorageServiceOptions): MediaStorageService {
+  // Every outbound request goes through the guard unless a test hands its own fetch in.
+  const guarded = createMediaFetch({ hosted: Boolean(options.hosted), maxBytes: MEDIA_ANSWER_LIMIT });
+  const apiFetch = options.fetch ?? guarded;
+  const publicFetch = options.publicFetch ?? guarded;
   const keys = options.keys ?? createMediaKeys({ home: options.home, ...(options.env ? { env: options.env } : {}) });
   const library = options.library ?? createMediaLibrary(options.home);
   const listTtl = options.listTtlMs ?? 60_000;
@@ -163,6 +174,13 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
 
   async function savedConfig(site: SiteService): Promise<MediaStorageConfig | null> {
     return (await site.model()).media.storage ?? null;
+  }
+
+  /** The saved settings, only when they pass the same checks as on connect (the file may have been edited by hand). */
+  async function usableConfig(site: SiteService): Promise<MediaStorageConfig | null> {
+    const config = await savedConfig(site);
+
+    return config && !settingsProblems(config, { hosted: Boolean(options.hosted) }).length ? config : null;
   }
 
   async function credentialsFor(site: SiteService, request?: MediaConnectRequest): Promise<{ credentials: Credentials | null; missing: "accessKeyId" | "secretAccessKey" | null }> {
@@ -178,14 +196,14 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     const connector = connectorFor(config.connector);
 
     if (!connector) throw new GalleyError("invalid", `Galley doesn't know a storage service called “${config.connector}”.`);
-    return connector.create({ config, credentials, ...(options.fetch ? { fetch: options.fetch } : {}), ...(options.now ? { now: options.now } : {}) });
+    return connector.create({ config, credentials, fetch: apiFetch, ...(options.now ? { now: options.now } : {}) });
   }
 
   async function checkWith(site: SiteService, config: MediaStorageConfig, request?: MediaConnectRequest): Promise<MediaCheckResult> {
     if (!connectorFor(config.connector)) {
       return settingsFailure([{ field: undefined, message: `Galley doesn't know a storage service called “${config.connector}”.` }]);
     }
-    const problems = settingsProblems(config);
+    const problems = settingsProblems(config, { hosted: Boolean(options.hosted) });
 
     if (problems.length) return settingsFailure(problems);
     let resolved: Awaited<ReturnType<typeof credentialsFor>>;
@@ -203,7 +221,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       ]);
     }
     const store = makeStore(config, resolved.credentials);
-    const result = await runCheck(store, { testName: testNameFor(normalizePrefix(config.prefix)), ...(options.publicFetch ? { fetch: options.publicFetch } : {}) });
+    const result = await runCheck(store, { testName: testNameFor(normalizePrefix(config.prefix)), fetch: publicFetch });
 
     // Whatever a service said back, no key leaves in it.
     return {
@@ -229,6 +247,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
 
     async status(site) {
       const config = await savedConfig(site);
+      const usable = await usableConfig(site);
       const [accessKeyId, secretAccessKey, cloudflareKey] = await Promise.all([
         keys.status(site.id, "accessKeyId"),
         keys.status(site.id, "secretAccessKey"),
@@ -238,7 +257,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
 
       return {
         bucket: {
-          connected: Boolean(config && accessKeyId.configured && secretAccessKey.configured),
+          connected: Boolean(usable && accessKeyId.configured && secretAccessKey.configured),
           config,
           store: connector ? { id: connector.info.id, name: connector.info.name } : null,
           keys: { accessKeyId, secretAccessKey },
@@ -282,7 +301,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     },
 
     async bucket(site) {
-      const config = await savedConfig(site);
+      const config = await usableConfig(site);
 
       if (!config || !connectorFor(config.connector)) return null;
       const { credentials } = await credentialsFor(site);
@@ -594,7 +613,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   function r2Api(): { apiBase?: string; fetch?: typeof fetch } {
     const apiBase = options.imagesApi ?? options.env?.GALLEY_MEDIA_IMAGES_API;
 
-    return { ...(apiBase ? { apiBase } : {}), ...(options.fetch ? { fetch: options.fetch } : {}) };
+    return { ...(apiBase ? { apiBase } : {}), fetch: apiFetch };
   }
 
   /** Whether the site uses its Cloudflare key for putting it online as the Images token (a flag in its media key file). */
@@ -631,20 +650,21 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   function makeImagesStore(config: MediaImagesConfig, token: string, use: "own" | "deploy" | null): MediaStore {
     const apiBase = options.imagesApi ?? options.env?.GALLEY_MEDIA_IMAGES_API;
 
-    return createImagesStore({ config, token, tokenSource: use === "deploy" ? "deploy" : "images", ...(options.fetch ? { fetch: options.fetch } : {}), ...(apiBase ? { apiBase } : {}), ...(options.now ? { now: options.now } : {}) });
+    return createImagesStore({ config, token, tokenSource: use === "deploy" ? "deploy" : "images", fetch: apiFetch, ...(apiBase ? { apiBase } : {}), ...(options.now ? { now: options.now } : {}) });
   }
 
   async function imagesStore(site: SiteService): Promise<MediaStore | null> {
     const config = (await site.model()).media.images;
 
-    if (!config) return null;
+    // Settings that don't pass the checks (edited by hand) are not used.
+    if (!config || imagesSettingsProblems(config, { hosted: Boolean(options.hosted) }).length) return null;
     const { token, use } = await imagesToken(site);
 
     return token ? makeImagesStore(config, token, use) : null;
   }
 
   async function checkImagesWith(site: SiteService, config: MediaImagesConfig, request?: MediaImagesConnectRequest): Promise<MediaCheckResult> {
-    const problems = imagesSettingsProblems(config);
+    const problems = imagesSettingsProblems(config, { hosted: Boolean(options.hosted) });
 
     if (problems.length) return settingsFailure(problems);
     let resolved: Awaited<ReturnType<typeof imagesToken>>;
@@ -663,7 +683,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       ]);
     }
     const store = makeImagesStore(config, resolved.token, resolved.use);
-    const result = await runCheck(store, { testName: "galley-check.png", ...(options.publicFetch ? { fetch: options.publicFetch } : {}) });
+    const result = await runCheck(store, { testName: "galley-check.png", fetch: publicFetch });
 
     return {
       ...result,
@@ -688,7 +708,8 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     return {
       site,
       stores,
-      fetch: options.publicFetch ?? fetch,
+      fetch: publicFetch,
+      hosted: Boolean(options.hosted),
       ...(onProgress ? { onProgress } : {}),
       async recordStored(item) {
         await library.update(site.id, (items) => [

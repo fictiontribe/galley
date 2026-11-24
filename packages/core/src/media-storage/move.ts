@@ -24,6 +24,7 @@ import type { MediaItem, SiteService } from "../types";
 import { checkUpload, mediaExtension } from "../workspace/media";
 import type { MediaMovePlan, MediaMoveRequest, MediaStoreLocation } from "./contract";
 import { addressProblem, normalizePrefix, publicUrlOf } from "./info";
+import { getFollowing } from "./net";
 import { ADDRESS_TAIL, escapePattern, refusal, StoreNameTaken, trimFound, type MediaStore } from "./store";
 
 export interface MoveContext {
@@ -36,6 +37,8 @@ export interface MoveContext {
   /** Saves a new public address for the bucket. */
   saveAddress(location: MediaStoreLocation, publicUrl: string): Promise<void>;
   fetch: typeof fetch;
+  /** A hosted install: addresses must be https. */
+  hosted?: boolean;
   onProgress?: (detail: string, progress: number) => void;
 }
 
@@ -313,7 +316,7 @@ export async function planMove(context: MoveContext, request: MediaMoveRequest):
 
 async function planAddress(context: MoveContext, request: Extract<MediaMoveRequest, { kind: "address" }>): Promise<MediaMovePlan> {
   const store = storeOf(context, request.store);
-  const problem = addressProblem(request.publicUrl, "new public address");
+  const problem = addressProblem(request.publicUrl, "new public address", Boolean(context.hosted));
 
   if (problem) throw new GalleyError("invalid", problem);
   if (!store.rebase) throw new GalleyError("invalid", `${store.name}'s addresses can't be changed here.`);
@@ -501,7 +504,7 @@ async function runAddress(context: MoveContext, request: Extract<MediaMoveReques
 
     progress("Checking the new address serves the files…", 0.1);
     try {
-      const response = await context.fetch(url ?? "", { method: "GET", redirect: "follow", signal: AbortSignal.timeout(20_000) });
+      const response = await getFollowing(context.fetch, url ?? "", { method: "GET", signal: AbortSignal.timeout(20_000) });
 
       ok = response.ok;
       await response.arrayBuffer().catch(() => undefined);

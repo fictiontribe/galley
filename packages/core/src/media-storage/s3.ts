@@ -112,6 +112,31 @@ export function unescapeXml(text: string): string {
 
 const STATUS_CODES: Record<number, string> = { 301: "PermanentRedirect", 307: "TemporaryRedirect", 400: "BadRequest", 403: "AccessDenied", 404: "NotFound", 409: "Conflict", 412: "PreconditionFailed" };
 
+/** At most `max` bytes of an answer's body, as text; the rest is never read. */
+export async function readCapped(response: Response, max: number): Promise<string> {
+  const reader = response.body?.getReader();
+
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+
+    if (done) break;
+    chunks.push(value);
+    size += value.byteLength;
+    if (size >= max) {
+      await reader.cancel().catch(() => undefined);
+      break;
+    }
+  }
+  return Buffer.concat(chunks).subarray(0, max).toString("utf8");
+}
+
+const ERROR_LIMIT = 16 * 1024;
+const LIST_LIMIT = 16 * 1024 * 1024;
+
 export function md5Hex(data: Uint8Array): string {
   return createHash("md5").update(data).digest("hex");
 }
@@ -184,7 +209,7 @@ export function createS3Client(options: S3ClientOptions): S3Client {
       throw new S3NetworkError(`${method} ${url.host}${url.pathname}: ${detail}`, timeout.aborted);
     }
     if (!retried && response.status === 403) {
-      const text = await response.clone().text().catch(() => "");
+      const text = await readCapped(response.clone(), ERROR_LIMIT).catch(() => "");
 
       // A HEAD answer has no body to say so: a server clock far from ours is the sign.
       if (tag(text, "Code") === "RequestTimeTooSkewed" || (text === "" && method === "HEAD")) {
@@ -200,7 +225,7 @@ export function createS3Client(options: S3ClientOptions): S3Client {
   }
 
   async function failure(response: Response): Promise<S3Error> {
-    const text = (await response.text().catch(() => "")).slice(0, 16 * 1024);
+    const text = await readCapped(response, ERROR_LIMIT).catch(() => "");
     const headerRegion = response.headers.get("x-amz-bucket-region");
     const requestId = response.headers.get("x-amz-request-id");
 
@@ -285,7 +310,7 @@ export function createS3Client(options: S3ClientOptions): S3Client {
       const response = await send("GET", urlFor(null, { "list-type": "2", prefix: prefix || undefined, "continuation-token": cursor, "max-keys": maxKeys ? String(maxKeys) : undefined }), null);
 
       if (!response.ok) throw await failure(response);
-      const xml = await response.text();
+      const xml = await readCapped(response, LIST_LIMIT);
       const objects: S3Object[] = [];
 
       for (const match of xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)) {
