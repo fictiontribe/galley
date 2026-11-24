@@ -32,7 +32,7 @@
   },
   "demo": {
     "about": "The in-browser demo: the real interface on a sample site, nothing saved, served from public/demo/. While available is false nothing on the site links to it. When true: a second action in the home hero, a way in at the top of the tour and on /apps/, and one line on /how-to/.",
-    "available": false,
+    "available": true,
     "href": "/demo/"
   },
   "mainAction": {
