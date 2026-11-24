@@ -102,7 +102,7 @@
 
 /* Cards on Site home, Site settings and the Online screen. */
 .deploy-card { display: grid; gap: var(--space-3); }
-.deploy-card__text { margin: 0; color: var(--ink-secondary); font-size: var(--text-sm); line-height: var(--leading-body); }
+.deploy-card__text { margin: 0; color: var(--ink-secondary); font-size: var(--text-sm); line-height: var(--leading-body); max-inline-size: 72ch; }
 .deploy-card__address { display: inline-flex; align-items: center; gap: var(--space-1-5); justify-self: start; font-family: var(--font-display); font-size: var(--text-xl); color: var(--ink-primary); text-decoration: none; overflow-wrap: anywhere; }
 .deploy-card__address:hover { color: var(--accent-text); }
 .deploy-card__address-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
@@ -123,6 +123,8 @@
 /* Deployments list. */
 /* Two classes: `.app-section__title` (margin: 0) can load after this file and would otherwise sit the heading flush under the card above. */
 .app-section__title.deploy-list__title { margin-block: var(--space-8) var(--space-3); }
+/* The first section sits straight under the header, which already leaves its room. */
+.app-section__title.deploy-list__title--first { margin-block-start: 0; }
 .deploy-list { list-style: none; margin: 0; padding: 0; }
 .deploy-row { display: flex; gap: var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); border-block-end: var(--border-hair) solid var(--border-subtle); }
 .deploy-row:last-child { border-block-end: 0; }
