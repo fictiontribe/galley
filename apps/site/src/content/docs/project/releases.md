@@ -104,6 +104,20 @@ would only add a download.
    build, the site build with its documentation checks. Run the opt-in live
    assistant check with a real key
    (`pnpm --filter @galley/core exec tsx test/ai/live-smoke.mts`).
+   Run the theme parity check too, in the newest Chromium you can get: CI
+   skips it, because it needs a browser, and a new browser version can
+   change what the page's colour recipes compute to (Chrome 159 did, and
+   every derived colour in the app turned pink). It paints each theme's
+   derived colours and compares the pixels with what the engine derives:
+   ```sh
+   THEME_PARITY_PLAYWRIGHT=/path/to/project pnpm --filter @galley/web exec vitest run test/themes/parity.browser.test.ts
+   ```
+   `/path/to/project` is any folder whose `node_modules` has
+   `playwright-core` with its Chromium installed
+   (`npx playwright-core install chromium`); a fresh install brings the
+   newest Chromium Playwright ships, which is ahead of the one most people
+   have. When it passes after the mirrored CSS changed, record the new hash
+   in `packages/web/test/themes/parity-guard.test.ts`.
 2. **Choose the version** (see *What the version numbers mean* above).
 3. **Set it everywhere** — one commit, "Release X.Y.Z":
    - `VERSION` in `packages/core/src/brand.ts` (the server, the CLI's
