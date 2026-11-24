@@ -408,7 +408,7 @@ button.link::after { content: none; }
 .close .body { color: var(--on-plate-2); }
 .close__actions { display: flex; flex-wrap: wrap; gap: var(--s3); margin-top: var(--s2); }
 .close--solo .close__actions { justify-content: flex-end; }
-.close .btn--quiet { border-color: rgb(242 236 225 / .32); color: var(--on-plate); }
+.close .btn--quiet { border-color: rgb(242 236 225 / .32); background: transparent; box-shadow: none; color: var(--on-plate); }
 .close .btn--quiet:hover { background: rgb(242 236 225 / .08); }
 .close .points li { color: var(--on-plate-2); font-size: 0.9375rem; }
 .close .points li::before { background: #A9A8FF; }

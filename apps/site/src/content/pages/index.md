@@ -37,15 +37,12 @@ sections:
     chaptersLabel: The three steps, and where each starts in the film
     chapters:
       - label: Ask
-        icon: chat
         time: 6
         text: In plain words — or type in a form, or on the page itself.
       - label: Check
-        icon: proof
         time: 12
         text: Each change marked up beside the live site. Put back any one.
       - label: Publish
-        icon: publish
         time: 19
         text: To your own repository, or for review first. Undo adds a new version.
     link:
