@@ -231,7 +231,12 @@ export function needsValue(field: Field, known: readonly JsonValue[]): boolean {
 interface Need {
   path: FieldPath;
   field: Field;
+  /** The fields of the object it sits in, for the settings that go with it. */
+  beside: readonly Field[];
 }
+
+/** Settings: what says how a value is meant (a picture's kind, a side), as opposed to words. */
+const SETTING_TYPES = new Set(["select", "boolean", "number", "color"]);
 
 /** Every required leaf in the new section that is blank, with its field. */
 function blanks(fields: readonly Field[], value: JsonValue | undefined, path: FieldPath, out: Need[]): Need[] {
@@ -242,7 +247,7 @@ function blanks(fields: readonly Field[], value: JsonValue | undefined, path: Fi
     const at = [...path, field.key];
     if (field.type === "object") blanks(field.fields ?? [], own, at, out);
     else if (field.type === "list" && field.of?.type === "object" && Array.isArray(own)) own.forEach((item, index) => blanks(field.of?.fields ?? [], item, [...at, index], out));
-    else if (field.required && isBlank(own)) out.push({ path: at, field });
+    else if (field.required && isBlank(own)) out.push({ path: at, field, beside: fields });
   }
   return out;
 }
@@ -276,7 +281,7 @@ export function newSection(block: BlockType, discriminator: string, context: Sec
   const value = blockScaffold(block, discriminator);
   const borrowed: Borrowed[] = [];
   const from = sources(block, discriminator, context);
-  for (const { path, field } of blanks(block.fields, value, [], [])) {
+  for (const { path, field, beside } of blanks(block.fields, value, [], [])) {
     // What the field holds in real sections (and the example the shape came from): the evidence for what kind of value it is.
     const known = [...(field.examples ?? []), ...[block.example ?? {}, ...from.map((source) => source.value)].map((source) => valueAt(source, path)).filter((item): item is JsonValue => item !== undefined)];
     if (!needsValue(field, known)) continue;
@@ -296,6 +301,14 @@ export function newSection(block: BlockType, discriminator: string, context: Sec
       const found = valueAt(source.value, path);
       if (isBlank(found) || found === undefined) continue;
       setAt(value, path, found);
+      // Inside a group (a picture and its kind), the settings beside it come along from the
+      // same section, so they agree. The section's own settings stay as they were.
+      const parent = path.slice(0, -1);
+      for (const setting of parent.length > 0 ? beside : []) {
+        if (setting === field || !SETTING_TYPES.has(setting.type)) continue;
+        const theirs = valueAt(source.value, [...parent, setting.key]);
+        if (theirs !== undefined && !isBlank(theirs)) setAt(value, [...parent, setting.key], theirs);
+      }
       borrowed.push({ path, label: field.label, from: source.from });
       break;
     }

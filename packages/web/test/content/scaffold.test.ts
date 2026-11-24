@@ -121,6 +121,18 @@ describe("what a new section starts with", () => {
     expect(value).toEqual({ type: "chapters", heading: "", items: [{ heading: "", image: "/a.jpg" }, { heading: "", image: "/b.jpg" }] });
   });
 
+  it("brings the settings beside a borrowed value from the same section, so they agree", () => {
+    const split: BlockType = {
+      type: "split",
+      label: "Split",
+      count: 2,
+      fields: [f("heading", "string"), f("visual", "object", true, { fields: [f("kind", "select", false, { options: ["screen", "file"] }), f("src", "image"), f("alt", "string")] })],
+      example: { type: "split", heading: "A", visual: { kind: "screen", src: "/screens/a.webp", alt: "A" } },
+    };
+    const { value } = newSection(split, "type", { siblings: [{ type: "split", heading: "B", visual: { kind: "file", src: "/llms.txt", alt: "B" } }], index: 1 });
+    expect(value.visual).toEqual({ kind: "file", src: "/llms.txt", alt: "" });
+  });
+
   it("stays blank when there is nothing to borrow", () => {
     const { value, borrowed } = newSection({ ...film, samples: [], example: { type: "film" } }, "type");
     expect(value).toMatchObject({ video: "", poster: "", author: "", published: "" });
