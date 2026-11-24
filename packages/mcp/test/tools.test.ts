@@ -214,7 +214,7 @@ describe("prompt → proof → publish, end to end", () => {
 
     expect(log).toContain(commit);
     expect(log).toContain(`${PRODUCT.commitTrailer}: 1`);
-    expect(log).toContain("Update Lowfield Studio");
+    expect(log).toContain("Update Home page");
     expect(git(root, "status", "--porcelain")).toBe("");
 
     const history = (await callTool(client, "get_history", { limit: 5 })).json() as unknown as Array<Record<string, unknown>>;
