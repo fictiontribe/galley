@@ -11,7 +11,7 @@ import { ErrorState, ProofMark, Spinner } from "@/ui";
 import { EditAssist } from "./EditAssist";
 import { useAppAppearance } from "./appearance";
 import { entryAddress, isSignInNeeded, needsEntry, openEntry, type EntrySession } from "./entry";
-import { addressToPath, canGo, frameUrl, go, pagePath, parseOverlayMessage, startHistory, toOverlay, visit } from "./frames";
+import { addressToPath, basePathOf, canGo, frameUrl, go, localizeMessage, pagePath, parseOverlayMessage, startHistory, toOverlay, visit } from "./frames";
 import { NoLiveSite, PreviewStates } from "./PreviewStates";
 import { frameName } from "./frameNames";
 import { Divider, Sheet } from "./PreviewStage";
@@ -70,6 +70,9 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
   const origins: Record<Role, string | null> = entry
     ? { proposed: originOf(entry.first.preview), live: originOf(entry.first.baseline) }
     : { proposed: originOf(status.url), live: originOf(status.baselineUrl) };
+  // Where each frame's pages are: the proxy's origin, or the preview's whole address when it has a path of its own (the in-browser demo's sample site).
+  const bases: Record<Role, string | null> = entry ? origins : { proposed: origins.proposed && status.url, live: origins.live && status.baselineUrl };
+  const basePaths: Record<Role, string> = { proposed: entry ? "" : basePathOf(status.url), live: entry ? "" : basePathOf(status.baselineUrl) };
   const frames: Record<Role, RefObject<HTMLIFrameElement | null>> = { proposed: useRef<HTMLIFrameElement>(null), live: useRef<HTMLIFrameElement>(null) };
   const stage = useRef<HTMLDivElement>(null);
   const primary: Role = mode === "live" ? "live" : "proposed";
@@ -108,10 +111,10 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
     }
   }, []);
   const navigateFrame = useCallback((role: Role, path: string) => {
-    const origin = origins[role];
-    if (!frames[role].current || !origin) return;
+    const base = bases[role];
+    if (!frames[role].current || !base) return;
     sent.current[role] = path;
-    loadFrame(role, frameUrl(origin, path));
+    loadFrame(role, frameUrl(base, path));
   }, [loadFrame]);
 
   // Hosted install: a frame turned away at the preview's address goes back in through a fresh entry address.
@@ -243,7 +246,7 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
         return;
       }
       const message = parseOverlayMessage(event.data);
-      if (message) handleRef.current(role, message);
+      if (message) handleRef.current(role, localizeMessage(message, basePaths[role]));
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -312,7 +315,7 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
         width={width}
         onWidth={setWidth}
         tool={editable && mode !== "live" ? { value: current, onChange: setTool, arrange: arrange.available } : undefined}
-        openUrl={origins[primary] ? frameUrl(origins[primary] as string, shown) : null}
+        openUrl={bases[primary] ? frameUrl(bases[primary] as string, shown) : null}
         onOpen={openInTab}
       />
       <div className="preview-body">
@@ -320,7 +323,7 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
       <div ref={stage} className={`preview-stage preview-stage--${mode}`} style={mode === "split" ? { gridTemplateColumns: `${ratio}fr auto ${1 - ratio}fr` } : undefined}>
         {mode !== "proposed" ? (
           origins.live ? (
-            <Sheet key="live" frameRef={frames.live} name={frameName("live", editable)} src={firstAddress(entry, "live") ? entryAddress(firstAddress(entry, "live") as string, startAt) : frameUrl(origins.live, startAt)} title="Live site" width={pixel} caption={mode === "split" ? liveCaption : undefined} onLoad={() => greet("live")} />
+            <Sheet key="live" frameRef={frames.live} name={frameName("live", editable)} src={firstAddress(entry, "live") ? entryAddress(firstAddress(entry, "live") as string, startAt) : frameUrl(bases.live ?? origins.live, startAt)} title="Live site" width={pixel} caption={mode === "split" ? liveCaption : undefined} onLoad={() => greet("live")} />
           ) : (
             <div key="live" className="preview-side">
               <NoLiveSite siteId={siteId} />
@@ -329,7 +332,7 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
         ) : null}
         {mode === "split" ? <Divider key="divider" ratio={ratio} onRatio={setRatio} stage={stage} /> : null}
         {mode !== "live" && origins.proposed ? (
-          <Sheet key="proposed" frameRef={frames.proposed} name={frameName("proposed", editable)} src={firstAddress(entry, "proposed") ? entryAddress(firstAddress(entry, "proposed") as string, startAt) : frameUrl(origins.proposed, startAt)} title="Proposed page" width={pixel} caption={mode === "split" ? "Proposed · your changes" : undefined} onLoad={() => greet("proposed")} />
+          <Sheet key="proposed" frameRef={frames.proposed} name={frameName("proposed", editable)} src={firstAddress(entry, "proposed") ? entryAddress(firstAddress(entry, "proposed") as string, startAt) : frameUrl(bases.proposed ?? origins.proposed, startAt)} title="Proposed page" width={pixel} caption={mode === "split" ? "Proposed · your changes" : undefined} onLoad={() => greet("proposed")} />
         ) : null}
       </div>
       </div>
