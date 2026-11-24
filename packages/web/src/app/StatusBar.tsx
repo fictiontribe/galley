@@ -7,6 +7,7 @@ import { usePreviewStatus } from "@/lib/stores/preview";
 import { useSite } from "@/lib/stores/site";
 import { useState } from "react";
 import { sendNowWithToast } from "@/features/proof/sendNow";
+import { useMay } from "@/lib/may";
 import { Kbd, ProofMark, Spinner } from "@/ui";
 import { DeployStatusItem } from "@/features/deploy/DeployStatusItem";
 import { AttentionIndicator } from "@/features/sites/AttentionIndicator";
@@ -53,8 +54,9 @@ function ConnectionItem() {
 function UnsentItem({ siteId }: { siteId: string }) {
   const git = useSite((s) => s.detail?.git);
   const [sending, setSending] = useState(false);
+  const may = useMay();
   const ahead = git?.hasRemote ? git.ahead : 0;
-  if (ahead <= 0) return null;
+  if (ahead <= 0 || !may("POST /api/sites/:siteId/send")) return null;
   return (
     <span className="g-statusbar__item app-status--unsent">
       <ProofMark kind="bang" />

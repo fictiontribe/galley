@@ -28,7 +28,7 @@ import { git as createGit, splitNul, type Git, type RepoInfo } from "./git";
 import { resolveContained, type ResolvedPath, normalizeRepoPath } from "./paths";
 import { deniedReason, writeRefusal } from "./policy";
 import * as publishing from "./publish";
-import { chooseAuthor, type AuthorLayers, type ChosenAuthor } from "./author";
+import { chooseAuthor, currentAccountAuthor, type AuthorLayers, type ChosenAuthor } from "./author";
 import { watchTree, type TreeWatcher, type WatchBatch } from "./watch";
 import { realpathSync, statSync } from "node:fs";
 
@@ -306,6 +306,9 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
   }
 
   async function identity(): Promise<ChosenAuthor> {
+    const person = currentAccountAuthor();
+
+    if (person) return { ...person, from: "account" };
     const layers = options.authorLayers?.();
 
     if (layers) {

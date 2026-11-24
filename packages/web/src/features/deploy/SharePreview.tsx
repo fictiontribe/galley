@@ -13,11 +13,16 @@ import { Button, Dialog, ErrorState, Field, Input } from "@/ui";
 import { failureFor, targetName } from "./logic";
 import { AddressBlock, DeployProgress, JobFailure } from "./parts";
 import { startDeploy, useDeployStatus, useDeployTargets, useDeployUi } from "./useDeploy";
+import { useMay } from "@/lib/may";
 
 export function SharePreviewButton({ siteId }: { siteId: string }) {
   const status = useDeployStatus(siteId);
   const config = status.data?.config;
+  const may = useMay();
+  // Making a preview link puts a copy online: a publisher's to do. Without a host yet, sharing starts by choosing one — an owner's.
+  if (!may("POST /api/sites/:siteId/deploy")) return null;
   if (status.data && config?.previewOnShare === false) return null;
+  if (status.data && !config && !may("PUT /api/sites/:siteId/deploy")) return null;
   return (
     <Button
       variant="secondary"

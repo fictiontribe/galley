@@ -9,6 +9,7 @@ import { usePreviewStatus } from "@/lib/stores/preview";
 import { notify } from "@/lib/stores/toasts";
 import { Button, Icon, SegmentedControl, Select, Skeleton } from "@/ui";
 import { crawlerChangeWords, rebaseChoices } from "./logic";
+import { useWhoPublishes } from "@/lib/may";
 
 const PURPOSE: Record<CrawlerStatus["purpose"], string> = {
   search: "Answers with links",
@@ -55,6 +56,7 @@ export function CrawlerPanel({ siteId, report, onSaved }: { siteId: string; repo
   const initial = useMemo(() => Object.fromEntries(report.crawlers.map((c) => [c.token, c.allowed ? "allow" : "block"])) as Record<string, CrawlerChoice>, [report]);
   const [draft, setDraft] = useState(initial);
   const [saving, setSaving] = useState(false);
+  const publishes = useWhoPublishes();
   const changed = Object.keys(draft).filter((token) => draft[token] !== initial[token]);
   const vendors = [...new Set(report.crawlers.map((c) => c.vendor))];
   const pending = crawlerChangeWords(report.crawlers.filter((c) => changed.includes(c.token)).map((c) => ({ label: c.label, to: draft[c.token] ?? "allow" })));
@@ -76,7 +78,7 @@ export function CrawlerPanel({ siteId, report, onSaved }: { siteId: string; repo
       notify({
         tone: "success",
         title: "Crawler rules changed",
-        body: report.where.kind === "kit" ? "The change to the crawler choices is waiting in Proof. The site writes them into robots.txt once you publish." : "The new robots.txt is waiting in Proof. Crawlers see it once you publish.",
+        body: report.where.kind === "kit" ? `The change to the crawler choices is waiting in Proof. The site writes them into robots.txt once ${publishes}.` : `The new robots.txt is waiting in Proof. Crawlers see it once ${publishes}.`,
       });
     } catch (error) {
       notify({ tone: "danger", title: "Couldn’t change the crawler rules", body: error instanceof Error ? error.message : String(error) });

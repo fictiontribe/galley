@@ -13,6 +13,7 @@ import { groupChanges, orderedPaths } from "./changes";
 import { useChangeName, useCollections } from "./useNames";
 import { ValidationSummary } from "./ValidationSummary";
 import "./proof.css";
+import { useMay } from "@/lib/may";
 
 function LoadingProof() {
   return (
@@ -77,6 +78,7 @@ export function ProofScreen() {
   const refresh = useChanges((s) => s.refresh);
   const setDiscardOpen = useChrome((s) => s.setDiscardOpen);
   const [view, setView] = useState<ProofView>("what");
+  const mayPublish = useMay()("POST /api/sites/:siteId/publish");
   const total = changes?.totals.files ?? 0;
   useTopBar({ crumbs: [{ label: "Proof" }], tag: total > 0 ? { label: count(total, "change"), tone: "change" } : undefined });
 
@@ -122,7 +124,7 @@ export function ProofScreen() {
         <div>
           <p className="g-eyebrow">Proof</p>
           <h1 className="g-title proof-head__title">{`${count(total, "change")} waiting to be published`}</h1>
-          <p className="proof-head__lede">Check each one. Nothing goes live until you publish.</p>
+          <p className="proof-head__lede">{mayPublish ? "Check each one. Nothing goes live until you publish." : "Check each one. Nothing goes live until an editor or owner publishes."}</p>
         </div>
         <div className="proof-head__actions">
           <SharePreviewButton siteId={siteId} />

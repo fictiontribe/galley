@@ -179,7 +179,7 @@ describe("first run, end to end", () => {
     // A stranger learns only that setup is waiting.
     const stranger = await call<MetaInfo>(base, "GET", "/api/meta");
 
-    expect(stranger.body.install).toEqual({ singleSite: true, setupNeeded: true, passwordSet: false, siteId: null });
+    expect(stranger.body.install).toEqual({ singleSite: true, setupNeeded: true, passwordSet: false, siteId: null, signInWith: "email", passwordEmail: false });
     expect(stranger.body.authenticated).toBe(false);
     expect((await call(base, "GET", "/api/setup")).body.error.message).toMatch(/Open the setup link to continue/);
     expect((await call(base, "GET", "/api/setup", { bearer: "a-wrong-code-of-the-right-length-0000" })).status).toBe(401);
@@ -188,17 +188,17 @@ describe("first run, end to end", () => {
     expect((await fetch(`${base}/setup?token=${code}`, { redirect: "manual" })).status).not.toBe(302);
 
     // Chosen with the code alone — no Origin, as from the app that created the install.
-    const chosen = await call<SetupStatus>(base, "POST", "/api/setup/password", { bearer: code, origin: null, body: { password: PASSWORD } });
+    const chosen = await call<SetupStatus>(base, "POST", "/api/setup/password", { bearer: code, origin: null, body: { password: PASSWORD, name: "Sam Owner", email: "sam@example.com" } });
 
     expect(chosen.status).toBe(200);
     expect(chosen.body).toMatchObject({ step: "site", passwordSet: true });
     const cookie = chosen.cookies[0]!;
 
     // First run left half-way: a stranger is told a password exists, so the way back in is signing in, not the used link.
-    expect((await call<MetaInfo>(base, "GET", "/api/meta")).body.install).toEqual({ singleSite: true, setupNeeded: true, passwordSet: true, siteId: null });
+    expect((await call<MetaInfo>(base, "GET", "/api/meta")).body.install).toEqual({ singleSite: true, setupNeeded: true, passwordSet: true, siteId: null, signInWith: "email", passwordEmail: false });
 
     // The link works once.
-    expect((await call(base, "GET", "/api/setup", { bearer: code })).body.error.message).toBe("The setup link has been used already. Sign in with the password instead.");
+    expect((await call(base, "GET", "/api/setup", { bearer: code })).body.error.message).toBe("The setup link has been used already. Sign in instead.");
     expect((await call(base, "POST", "/api/setup/password", { bearer: code, origin: null, body: { password: "another long password" } })).status).toBe(401);
     // A page that keeps sending the old code beside its new cookie is fine.
     expect((await call(base, "GET", "/api/setup", { bearer: code, cookie })).status).toBe(200);
@@ -219,8 +219,10 @@ describe("first run, end to end", () => {
 
     const signedIn = await call<MetaInfo>(base, "GET", "/api/meta", { cookie });
 
-    expect(signedIn.body.install).toEqual({ singleSite: true, setupNeeded: false, passwordSet: true, siteId: finished.siteId });
-    expect((await call<MetaInfo>(base, "GET", "/api/meta")).body.install).toEqual({ singleSite: true, setupNeeded: false, passwordSet: true, siteId: null });
+    expect(signedIn.body.install).toEqual({ singleSite: true, setupNeeded: false, passwordSet: true, siteId: finished.siteId, signInWith: "email", passwordEmail: false });
+    expect(signedIn.body.account).toMatchObject({ name: "Sam Owner", email: "sam@example.com", role: "owner", access: ["edit", "publish", "manage"] });
+    expect((await call<MetaInfo>(base, "GET", "/api/meta")).body.install).toEqual({ singleSite: true, setupNeeded: false, passwordSet: true, siteId: null, signInWith: "email", passwordEmail: false });
+    expect((await call<MetaInfo>(base, "GET", "/api/meta")).body.account).toBeUndefined();
     expect((await call(base, "GET", "/api/sites", { cookie })).body.map((site: { id: string }) => site.id)).toEqual([finished.siteId]);
     expect((await call(base, "GET", `/api/sites/${finished.siteId}`, { cookie })).status).toBe(200);
     // The live address stays in the install's state (was: written into galley.config.json, an unpublished change nobody made).
@@ -255,7 +257,7 @@ describe("first run, end to end", () => {
 });
 
 describe("the one-time setup code", () => {
-  it("wrong codes count against the sign-in limit; --reset-password mints a new link and signs everyone out", async () => {
+  it("wrong codes count against the sign-in limit; --reset-password makes the owner a one-time new-password link and touches nothing else", async () => {
     const home = folder("home");
     const first = await start(home);
     const code = codeOf(first.server);
@@ -284,13 +286,29 @@ describe("the one-time setup code", () => {
     expect((await call(restarted.base, "GET", "/api/setup", { cookie })).status).toBe(200);
     await stop(restarted);
 
+    // Was: forget the password, sign everyone out, print a new setup link. With accounts nobody's account is forgotten:
+    // the owner gets a one-time link to choose a new password, and the setup code stays dead.
     const reset = await start(home, { GALLEY_PASSWORD: PASSWORD }, { resetPassword: true, ...port });
-    const third = codeOf(reset.server);
+    const link = reset.server.passwordLink!;
 
-    expect(reset.notices.join("\n")).toMatch(/GALLEY_PASSWORD is ignored/);
+    expect(reset.server.setupUrl).toBeNull();
+    expect(link.url).toMatch(new RegExp(`^${reset.base}/new-password#[A-Za-z0-9_-]{43}$`));
+    expect((await call(reset.base, "GET", "/api/setup", { bearer: fresh })).status).toBe(401);
+    // Until the link is used, the owner's password and sessions work as before.
+    expect((await call(reset.base, "GET", "/api/setup", { cookie })).status).toBe(200);
+    expect((await call(reset.base, "POST", "/api/auth/login", { body: { password: PASSWORD } })).status).toBe(200);
+    const secret = link.url.split("#")[1]!;
+
+    expect((await call(reset.base, "POST", "/api/auth/link/check", { body: { code: secret } })).body).toMatchObject({ kind: "password", email: "" });
+    const used = await call(reset.base, "POST", "/api/auth/link", { body: { code: secret, password: "the owner's new password" } });
+
+    expect(used.status).toBe(200);
     expect((await call(reset.base, "GET", "/api/setup", { cookie })).status).toBe(401);
+    expect((await call(reset.base, "GET", "/api/setup", { cookie: used.cookies[0] })).status).toBe(200);
     expect((await call(reset.base, "POST", "/api/auth/login", { body: { password: PASSWORD } })).status).toBe(401);
-    expect((await call<SetupStatus>(reset.base, "GET", "/api/setup", { bearer: third })).body.step).toBe("password");
+    expect((await call(reset.base, "POST", "/api/auth/login", { body: { password: "the owner's new password" } })).status).toBe(200);
+    // Used once: dead.
+    expect((await call(reset.base, "POST", "/api/auth/link", { body: { code: secret, password: "yet another password" } })).status).toBe(404);
   });
 
   it("an operator's code is used as given, or only its hash is kept", async () => {

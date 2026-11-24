@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { api, getSetupCode, setSetupCode, setUnauthorizedHandler } from "@/lib/api";
+import { api, getSetupCode, setForbiddenHandler, setSetupCode, setUnauthorizedHandler } from "@/lib/api";
 import { exchangeToken, takeTokenFromUrl } from "@/lib/auth";
 import { connectEvents, disconnectEvents } from "@/lib/events";
 import { invalidate, setQueryData } from "@/lib/query";
 import { SETUP_PATH, hostedInstall, isHostedInstall, resumesAfterSignIn } from "@/lib/hosted";
 import { loginUrl, session } from "@/lib/session";
+import { accountOf, mayCall } from "@/lib/may";
+import { linkKindAt, takeLinkCode } from "@/features/accounts/logic";
 import { useMeta } from "@/lib/stores/meta";
 import { useToasts } from "@/lib/stores/toasts";
 import { useChanges } from "@/lib/stores/changes";
@@ -14,6 +16,8 @@ import { useSites } from "@/lib/stores/sites";
 import { useUi } from "@/lib/stores/ui";
 import { keys, startSync } from "@/lib/sync";
 import { ErrorState, Skeleton } from "@/ui";
+
+const FORBIDDEN_RELOAD_MS = 5_000;
 
 /** The frame's silhouette while the app finds its server. */
 function BootSkeleton() {
@@ -46,6 +50,8 @@ export function Boot({ children }: { children: ReactNode }) {
   const [tokenChecked, setTokenChecked] = useState(false);
 
   useEffect(() => {
+    // A one-time link's code leaves the address bar before anything else happens; its page picks it up.
+    if (linkKindAt(window.location.pathname)) takeLinkCode();
     const token = takeTokenFromUrl();
     // On /setup the code is a hosted install's one-time setup code, not a
     // session: kept in memory for the setup screens, never exchanged.
@@ -75,6 +81,17 @@ export function Boot({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, [navigate]);
 
+  useEffect(() => {
+    // A refusal may mean an owner changed this person's role meanwhile: ask again, at most every few seconds.
+    let last = 0;
+    setForbiddenHandler(() => {
+      if (!accountOf(useMeta.getState().meta) || Date.now() - last < FORBIDDEN_RELOAD_MS) return;
+      last = Date.now();
+      void useMeta.getState().load();
+    });
+    return () => setForbiddenHandler(null);
+  }, []);
+
   const authenticated = Boolean(meta?.authenticated);
   useEffect(() => {
     if (!authenticated) return;
@@ -91,7 +108,8 @@ export function Boot({ children }: { children: ReactNode }) {
     api("GET /api/settings")
       .then((settings) => {
         setQueryData(keys.settings(), settings);
-        useUi.getState().setTheme(settings.appearance.theme);
+        // The saved theme is the editor's, chosen by whoever may change its settings; everyone else keeps their own, in this browser.
+        if (mayCall(useMeta.getState().meta, "PATCH /api/settings")) useUi.getState().setTheme(settings.appearance.theme);
       })
       .catch(() => undefined);
   }, [authenticated]);
@@ -108,7 +126,11 @@ export function Boot({ children }: { children: ReactNode }) {
   const resumes = resumesAfterSignIn(meta);
   // /open explains a missing session itself in local mode (open the printed link, then try again);
   // a hosted install's first run happens before there is a password to sign in with.
-  const explainsItself = (location.pathname === "/open" && meta.mode === "local") || (location.pathname === SETUP_PATH && isHostedInstall(meta) && !(resumes && getSetupCode() === null));
+  // A one-time link (an invitation, a new password) is how someone without a password gets one.
+  const explainsItself =
+    (location.pathname === "/open" && meta.mode === "local") ||
+    (location.pathname === SETUP_PATH && isHostedInstall(meta) && !(resumes && getSetupCode() === null)) ||
+    (isHostedInstall(meta) && linkKindAt(location.pathname) !== null);
   if (!meta.authenticated && location.pathname !== "/login" && !explainsItself) {
     if (resumes) return <Navigate to={loginUrl(SETUP_PATH)} replace />;
     // First run isn't over and no password exists yet: /setup says what to do.

@@ -14,6 +14,7 @@ import { ONE_SITE_MESSAGE } from "../../src/install/single-site";
 import { openInstallState } from "../../src/install/state";
 import { readStartingValues } from "../../src/install/starting";
 import { createEventBus, createSiteRegistry } from "../../src/site/index";
+import { withAccountAuthor } from "../../src/workspace/author";
 import { bareRepository, refusingSsh, sh, tempDir } from "./helpers";
 
 const PASSWORD = "correct horse battery staple";
@@ -73,7 +74,7 @@ describe("connecting the one site", () => {
     const { home, store, install, registry } = await makeInstall();
     const bare = bareRepository(tempDir("install-remote-"), "site", { "src/content/pages/index.md": "---\ntitle: Home\n---\n" });
 
-    await store.setPassword(PASSWORD);
+    await install.people.createOwner({ password: PASSWORD });
     const check = await install.check({ repository: bare, access: "token", token: "unused-for-a-folder" });
 
     expect(check).toEqual({ reachable: true, writable: null, empty: false, defaultBranch: "main", message: null });
@@ -102,7 +103,7 @@ describe("connecting the one site", () => {
     const { home, store, install, settings } = await makeInstall();
     const bare = bareRepository(tempDir("install-remote-"), "empty");
 
-    await store.setPassword(PASSWORD);
+    await install.people.createOwner({ password: PASSWORD });
     await install.setDetails({ author: { name: "Sam Editor", email: "sam@example.com" } });
     expect((await install.check({ repository: bare, access: "token", token: "x", starter: { id: "tiny" } })).empty).toBe(true);
     const job = await connected(install, { repository: bare, access: "token", token: "x", starter: { id: "tiny", name: "Harbour notes" } });
@@ -115,11 +116,35 @@ describe("connecting the one site", () => {
     expect((await settings.get()).author).toEqual({ name: "Sam Editor", email: "sam@example.com" });
   });
 
+  it("sends a starter from the owner's own request under the owner's name, though no publishing name is saved yet", async () => {
+    const { install, settings } = await makeInstall();
+    const bare = bareRepository(tempDir("install-remote-"), "empty");
+
+    await install.people.createOwner({ password: PASSWORD, name: "Sam Rivera", email: "sam@example.com" });
+    expect((await settings.get()).authorSaved).toBeFalsy();
+    // As the server runs a signed-in person's request: the job outlives the call, and keeps the person.
+    const started = await withAccountAuthor({ name: "Sam Rivera", email: "sam@example.com" }, () => install.connect({ repository: bare, access: "token", token: "x", starter: { id: "tiny", name: "Harbour notes" } }));
+
+    await install.idle();
+    expect(install.job(started.id)?.state).toBe("done");
+    expect(sh(bare, "log", "--format=%an <%ae>|%s", "main")).toBe("Sam Rivera <sam@example.com>|Start Harbour notes from a starter");
+  });
+
+  it("sends a starter outside anyone's request (started unattended) without borrowing an account's name", async () => {
+    const { install } = await makeInstall();
+    const bare = bareRepository(tempDir("install-remote-"), "empty");
+
+    await install.people.createOwner({ password: PASSWORD, name: "Sam Rivera", email: "sam@example.com" });
+    await connected(install, { repository: bare, access: "token", token: "x", starter: { id: "tiny", name: "Harbour notes" } });
+    // No publishing name is saved, so the computer's git identity or the neutral one: never the owner's, who didn't ask for it.
+    expect(sh(bare, "log", "--format=%an <%ae>", "main")).not.toContain("sam@example.com");
+  });
+
   it("starts one connection at a time", async () => {
     const { install, store } = await makeInstall();
     const bare = bareRepository(tempDir("install-remote-"), "site", { "a.md": "a\n" });
 
-    await store.setPassword(PASSWORD);
+    await install.people.createOwner({ password: PASSWORD });
     const results = await Promise.allSettled([install.connect({ repository: bare, access: "token", token: "x" }), install.connect({ repository: bare, access: "token", token: "x" })]);
 
     await install.idle();
@@ -132,7 +157,7 @@ describe("connecting the one site", () => {
     const { install, store, home } = await makeInstall();
     const bare = bareRepository(tempDir("install-remote-"), "full", { "a.md": "a\n" });
 
-    await store.setPassword(PASSWORD);
+    await install.people.createOwner({ password: PASSWORD });
     expect((await install.check({ repository: bare, access: "token", token: "x", starter: { id: "tiny" } })).message).toMatch(/A starter needs an empty repository/);
     const job = await connected(install, { repository: bare, access: "token", token: "x", starter: { id: "tiny" } });
 
@@ -157,7 +182,7 @@ describe("connecting the one site", () => {
     const { install, store } = await makeInstall();
     const path = process.env.PATH;
 
-    await store.setPassword(PASSWORD);
+    await install.people.createOwner({ password: PASSWORD });
     process.env.PATH = `${refusingSsh()}:${path}`;
     try {
       const job = await connected(install, { repository: "git@code.example:sam/site.git", access: "deploy-key" });
@@ -185,7 +210,7 @@ describe("a site in a folder inside its repository", () => {
     const { home, store, install, registry } = await makeInstall();
     const bare = bareRepository(tempDir("install-remote-"), "monorepo", REPOSITORY);
 
-    await store.setPassword(PASSWORD);
+    await install.people.createOwner({ password: PASSWORD });
     await install.setDetails({ author: { name: "Sam Editor", email: "sam@example.com" } });
     const job = await connected(install, { repository: bare, folder: "apps/site/", access: "token", token: "x" });
 
@@ -218,7 +243,7 @@ describe("a site in a folder inside its repository", () => {
     const { install, store, home } = await makeInstall();
     const bare = bareRepository(tempDir("install-remote-"), "monorepo", { ...REPOSITORY, "apps/notes.md": "just a file\n" });
 
-    await store.setPassword(PASSWORD);
+    await install.people.createOwner({ password: PASSWORD });
     const missing = await connected(install, { repository: bare, folder: "apps/nope", access: "token", token: "x" });
 
     expect(missing).toMatchObject({ state: "error", detail: expect.stringMatching(/The repository has no folder “apps\/nope”/) });
@@ -240,7 +265,7 @@ describe("a site in a folder inside its repository", () => {
     sh(work, "add", "-A");
     sh(work, "commit", "-q", "-m", "First");
     sh(work, "clone", "-q", "--bare", work, bare);
-    await store.setPassword(PASSWORD);
+    await install.people.createOwner({ password: PASSWORD });
     const job = await connected(install, { repository: bare, folder: "out", access: "token", token: "x" });
 
     expect(job.detail).toMatch(/The folder “out” leads outside the repository/);
@@ -295,7 +320,7 @@ describe("the live address", () => {
     const { install, store, home, registry } = await makeInstall();
     const bare = bareRepository(tempDir("install-remote-"), "site", { "galley.config.json": "{\n  \"name\": \"Site\"\n}\n" });
 
-    await store.setPassword(PASSWORD);
+    await install.people.createOwner({ password: PASSWORD });
     await install.setDetails({ liveUrl: "https://www.example.com/" });
     expect(store.read().liveUrl).toBe("https://www.example.com");
     expect((await install.status()).liveUrl).toBe("https://www.example.com");
@@ -321,7 +346,7 @@ describe("the live address", () => {
     const { install, store, registry } = await makeInstall();
     const bare = bareRepository(tempDir("install-remote-"), "site", { "galley.config.json": JSON.stringify({ name: "Site", urls: { production: "https://www.site.example" } }) });
 
-    await store.setPassword(PASSWORD);
+    await install.people.createOwner({ password: PASSWORD });
     await connected(install, { repository: bare, access: "token", token: "x" });
     await install.setDetails({ liveUrl: "https://www.example.com" });
     expect((await (await registry.get(install.siteId()!))!.model()).urls.production).toBe("https://www.site.example");
@@ -333,7 +358,7 @@ describe("the live address", () => {
     const first = await makeInstall({ home });
     const bare = bareRepository(tempDir("install-remote-"), "site", { "a.md": "a\n" });
 
-    await first.store.setPassword(PASSWORD);
+    await first.install.people.createOwner({ password: PASSWORD });
     await first.install.dispose();
     await first.registry.dispose();
     // What an older version wrote: the address waiting for the site to be connected.
@@ -398,22 +423,61 @@ describe("starting values", () => {
     const started = await first.install.start(values);
 
     expect(started.setupCode).toBeNull();
-    expect(await first.store.checkPassword(PASSWORD)).toBe(true);
+    expect(await first.install.people.ownerPasswordIs(PASSWORD)).toBe(true);
+    // GALLEY_PASSWORD alone makes an owner who still has to say who they are.
+    expect(first.install.people.list().accounts).toEqual([expect.objectContaining({ role: "owner", name: "", email: "", incomplete: true })]);
     expect((await first.install.status()).author).toEqual(values.author);
     await first.install.setDetails({ author: { name: "Changed", email: "changed@example.com" } });
-    await first.store.setPassword("a password changed in the app", { signOutEveryone: true });
+    const owner = first.install.people.list().accounts[0]!;
+
+    expect(await first.install.people.changePassword(owner.id, PASSWORD, "a password changed in the app")).toBe(true);
     await first.install.dispose();
     await first.registry.dispose();
 
     const second = await makeInstall({ home });
     const again = await second.install.start(values);
 
-    expect(await second.store.checkPassword("a password changed in the app")).toBe(true);
+    expect(await second.install.people.ownerPasswordIs("a password changed in the app")).toBe(true);
+    expect(second.install.people.list().accounts).toHaveLength(1);
     expect((await second.install.status()).author).toEqual({ name: "Changed", email: "changed@example.com" });
     expect(again.notices.join("\n")).toMatch(/GALLEY_PASSWORD no longer matches the password chosen in the app.*--reset-password/);
   });
 
-  it("without a password, mint a setup code (or keep the operator's) — and --reset-password starts first run again", async () => {
+  it("GALLEY_OWNER_NAME and GALLEY_OWNER_EMAIL make the unattended owner complete, or complete an owner carried over without them — once", async () => {
+    const dir = tempDir("install-config-");
+
+    writeFileSync(join(dir, "install.json"), JSON.stringify({ owner: { name: "File Owner", email: "file@example.com" } }), { mode: 0o600 });
+    expect(readStartingValues({ GALLEY_INSTALL_CONFIG: "install.json", GALLEY_OWNER_EMAIL: "env@example.com" }, dir).values.owner).toEqual({ name: "File Owner", email: "env@example.com" });
+    expect(() => readStartingValues({ GALLEY_INSTALL_CONFIG: "bad.json" }, (writeFileSync(join(dir, "bad.json"), JSON.stringify({ owner: { nickname: "x" } }), { mode: 0o600 }), dir))).toThrow(/at “owner”/);
+
+    const complete = await makeInstall();
+
+    await complete.install.start({ password: PASSWORD, owner: { name: "Sam Owner", email: "Sam@Example.com" } });
+    expect(complete.install.people.list().accounts).toEqual([expect.objectContaining({ name: "Sam Owner", email: "sam@example.com", role: "owner" })]);
+    expect(complete.install.people.list().accounts[0]).not.toHaveProperty("incomplete");
+
+    const home = tempDir("install-home-");
+    const carried = await makeInstall({ home });
+
+    await carried.install.start({ password: PASSWORD });
+    expect(carried.install.people.list().accounts[0]).toMatchObject({ name: "", email: "", incomplete: true });
+    await carried.install.start({ password: PASSWORD, owner: { name: "Sam Owner", email: "sam@example.com" } });
+    expect(carried.install.people.list().accounts[0]).toMatchObject({ name: "Sam Owner", email: "sam@example.com" });
+    // Once: a name changed in the app since isn't put back.
+    const id = carried.install.people.list().accounts[0]!.id;
+
+    await carried.install.people.updateProfile(id, { name: "Sam B" });
+    await carried.install.start({ password: PASSWORD, owner: { name: "Sam Owner", email: "sam@example.com" } });
+    expect(carried.install.people.get(id)?.name).toBe("Sam B");
+
+    const alone = await makeInstall();
+    const told = await alone.install.start({ owner: { name: "Sam", email: "sam@example.com" } });
+
+    expect(alone.store.hasOwner()).toBe(false);
+    expect(told.notices.join("\n")).toMatch(/GALLEY_OWNER_NAME and GALLEY_OWNER_EMAIL are used with GALLEY_PASSWORD only/);
+  });
+
+  it("without an owner, mint a setup code (or keep the operator's) — and with one, --reset-password makes the owner a new-password link instead", async () => {
     const home = tempDir("install-home-");
     const first = await makeInstall({ home });
     const minted = await first.install.start({});
@@ -424,16 +488,19 @@ describe("starting values", () => {
 
     expect(supplied.setupCode).toBe("the-operator-chose-this-code-01234");
     expect(first.store.setupCodeMatches(minted.setupCode!)).toBe(false);
-    await first.store.setPassword(PASSWORD);
+    await first.install.people.createOwner({ password: PASSWORD });
     expect((await first.install.start({})).setupCode).toBeNull();
     const reset = await first.install.start({ password: PASSWORD }, { resetPassword: true });
 
-    expect(first.store.hasPassword()).toBe(false);
-    expect(reset.setupCode).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(first.store.setupCodeMatches(reset.setupCode!)).toBe(true);
+    // Nobody's account is forgotten: the owner keeps their password until the link is used.
+    expect(first.store.hasOwner()).toBe(true);
+    expect(reset.setupCode).toBeNull();
+    expect(reset.passwordLink).toEqual({ code: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/), expiresAt: expect.any(String), name: "" });
+    expect(first.install.people.checkLink(reset.passwordLink!.code)).toMatchObject({ kind: "password" });
+    expect(await first.install.people.ownerPasswordIs(PASSWORD)).toBe(true);
   });
 
-  it("a used setup code stays dead: after --reset-password the operator's old code (or its hash) is ignored and a fresh link is made", async () => {
+  it("a used setup code stays dead: --reset-password never arms it again, and an install left without an owner ignores the old code (or its hash) and makes a fresh link", async () => {
     const { createHash } = await import("node:crypto");
     const home = tempDir("install-home-");
     const code = "the-operator-chose-this-code-01234";
@@ -443,21 +510,27 @@ describe("starting values", () => {
     // First run with the operator's code, as a generated compose file starts it (only the hash).
     expect((await install.start({ setupTokenSha256: sha256 })).setupCode).toBeNull();
     expect(store.setupCodeMatches(code)).toBe(true);
-    await store.setPassword(PASSWORD);
+    await install.people.createOwner({ password: PASSWORD });
     expect(store.setupCodeMatches(code)).toBe(false);
     expect(store.setupCodeSpent({ plain: code })).toBe(true);
+    const rescued = await install.start({ setupTokenSha256: sha256 }, { resetPassword: true });
 
-    // The password is forgotten; the environment still carries the same hash.
+    expect(rescued.setupCode).toBeNull();
+    expect(store.setupCodeMatches(code)).toBe(false);
+
+    // An install left without an owner (a backup of a half-finished first run put back); the environment still carries the same hash.
+    await store.update((draft) => {
+      draft.accounts = [];
+    });
     const reset = await install.start({ setupTokenSha256: sha256 }, { resetPassword: true });
 
-    expect(store.hasPassword()).toBe(false);
+    expect(store.hasOwner()).toBe(false);
     expect(store.setupCodeMatches(code)).toBe(false);
     expect(reset.setupCode).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(store.setupCodeMatches(reset.setupCode!)).toBe(true);
     expect(reset.notices.join(" ")).toContain("has been used already");
 
     // The same with the code itself in the environment, and across a restart.
-    await store.setPassword(PASSWORD);
     const again = await makeInstall({ home });
     const second = await again.install.start({ setupToken: code }, { resetPassword: true });
 

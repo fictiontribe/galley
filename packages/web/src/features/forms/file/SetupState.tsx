@@ -5,7 +5,7 @@
  * guessing, exactly what is left and two ways to finish it.
  */
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import type { SiteKitStatus, SiteKitStep } from "@galley/core/api";
 import type { Job } from "@galley/core/types";
 import { errorShape } from "@/lib/api";
@@ -18,6 +18,7 @@ import { editorAddress } from "@/features/inbox/reach";
 import { docsPage } from "../logic/locate";
 import { useAllowBuild, useAssistantPanel, useAssistantReady } from "./assistant";
 import { splitSteps, startKitSetup, useKitStatus } from "./kit";
+import { SettingsLink } from "@/features/accounts/SettingsLink";
 
 export interface SetupStateProps {
   feature: "forms" | "scripts";
@@ -187,9 +188,9 @@ export function SetupState({ feature }: SetupStateProps) {
         body="Setting it up changes the site’s code, and this site’s settings turn that off. Turn on “Allow build mode” in Site settings › Assistant, or have a developer add the site kit by hand."
         actions={
           <>
-            <Link className={buttonClass("primary")} to={`/sites/${siteId}/settings#assistant`}>
+            <SettingsLink route="PUT /api/sites/:siteId/config" className={buttonClass("primary")} to={`/sites/${siteId}/settings#assistant`}>
               Open Site settings › Assistant
-            </Link>
+            </SettingsLink>
             {docsLink(false)}
           </>
         }

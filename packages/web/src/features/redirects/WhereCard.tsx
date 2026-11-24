@@ -16,6 +16,7 @@ import { notify } from "@/lib/stores/toasts";
 import { Badge, Button, ConfirmDialog, Dialog, Icon, ProofMark, buttonClass, cx } from "@/ui";
 import { exportUrl, setOverview } from "./data";
 import { redirectsCount, share } from "./words";
+import { useMay } from "@/lib/may";
 
 const HOSTS: Array<{ id: RedirectHostId; blurb: string }> = [
   { id: "cloudflare", blurb: "A _redirects file travels with the site." },
@@ -191,6 +192,7 @@ function DerivedState({ siteId, overview, onImport }: { siteId: string; overview
 export function WhereCard({ siteId, overview, onImport, onCloudflare }: { siteId: string; overview: RedirectsOverview; onImport: (path: string) => void; onCloudflare: () => void }) {
   const [changing, setChanging] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+  const mayPublish = useMay()("POST /api/sites/:siteId/redirects/cloudflare/apply");
   const host = overview.host.id;
   const info = overview.hostInfo;
 
@@ -292,9 +294,12 @@ export function WhereCard({ siteId, overview, onImport, onCloudflare }: { siteId
               {cloudflare.outOfDate ? ". The list has changed since." : "."}
             </p>
           ) : null}
-          <Button size="sm" variant={cloudflare.recommended || cloudflare.outOfDate ? "primary" : "secondary"} icon="globe" onClick={onCloudflare}>
-            {cloudflare.last ? "Update on Cloudflare…" : "Set them on Cloudflare…"}
-          </Button>
+          {/* Setting them on Cloudflare changes the live site: a publish. */}
+          {mayPublish ? (
+            <Button size="sm" variant={cloudflare.recommended || cloudflare.outOfDate ? "primary" : "secondary"} icon="globe" onClick={onCloudflare}>
+              {cloudflare.last ? "Update on Cloudflare…" : "Set them on Cloudflare…"}
+            </Button>
+          ) : null}
         </div>
       ) : null}
       <ConfirmDialog

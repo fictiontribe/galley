@@ -5,11 +5,14 @@
  * A ticket is made only for a signed-in browser session (the entry route,
  * preview-entry.ts): 32 random bytes, kept in memory with the session's id and
  * issue time, good once and for TICKET_LIFETIME_MS. The gateway trades it for
- * the viewer cookie, whose value is derived from that same session — its id
- * and issue time, and an HMAC made with the cookie key under a purpose label
- * of its own. So the value can never be read as (or turned into) a session
- * cookie, and it stops working the moment the session does: signing out,
- * "sign out everywhere", a changed password, the session's age, or a restore.
+ * the viewer cookie, whose value is derived from that same session — its id,
+ * issue time and whose it is, and an HMAC made with the cookie key under a
+ * purpose label of its own. So the value can never be read as (or turned
+ * into) a session cookie, and it stops working the moment the session does:
+ * signing out, "sign out everywhere" (the person's or everyone's), a changed
+ * password, the person switched off or removed, the session's age, or a
+ * restore. A session that names no person (from before accounts) never
+ * gets one.
  */
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { InstallStore, SessionStamp } from "@galley/core/install";
@@ -21,8 +24,9 @@ export const TICKET_LIFETIME_MS = 60_000;
 /** Tickets alive at once. The editor asks for two at a time; anything beyond this is someone hammering the route. */
 export const MAX_TICKETS = 200;
 /** The HMAC's purpose label: a viewer value's MAC is never a session cookie's MAC, whatever the payload. */
-const PURPOSE = "preview-viewer/v1";
-const VERSION = "v1";
+const PURPOSE = "preview-viewer/v2";
+const VERSION = "v2";
+const ACCOUNT_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const TICKET_BYTES = 32;
 
 export interface GatewayTickets extends GatewayAuth {
@@ -55,6 +59,7 @@ export function createGatewayTickets(options: GatewayTicketsOptions): GatewayTic
     const at = now();
 
     if (!Number.isSafeInteger(session.issuedAt) || session.issuedAt > at + 60_000 || at - session.issuedAt > SESSION_MAX_AGE_S * 1000) return false;
+    if (session.accountId === undefined || !ACCOUNT_ID.test(session.accountId)) return false;
     if (options.revoked?.has(session.id) || options.store.isRevoked(session.id, at)) return false;
     return options.store.sessionValid(session, at);
   }
@@ -70,7 +75,7 @@ export function createGatewayTickets(options: GatewayTicketsOptions): GatewayTic
   }
 
   function viewerValue(session: SessionStamp): string {
-    const payload = `${session.issuedAt}.${session.id}`;
+    const payload = `${session.issuedAt}.${session.id}.${session.accountId}`;
 
     return `${VERSION}.${payload}.${mac(options.key, payload).toString("base64url")}`;
   }
@@ -84,7 +89,7 @@ export function createGatewayTickets(options: GatewayTicketsOptions): GatewayTic
       while (tickets.length >= MAX_TICKETS) tickets.shift();
       const value = randomBytes(TICKET_BYTES);
 
-      tickets.push({ value, session: { id: session.id, issuedAt: session.issuedAt }, expires: now() + TICKET_LIFETIME_MS });
+      tickets.push({ value, session: { id: session.id, issuedAt: session.issuedAt, ...(session.accountId !== undefined ? { accountId: session.accountId } : {}) }, expires: now() + TICKET_LIFETIME_MS });
       return value.toString("base64url");
     },
 
@@ -109,15 +114,15 @@ export function createGatewayTickets(options: GatewayTicketsOptions): GatewayTic
         if (typeof value !== "string" || value.length > 300) return false;
         const parts = value.split(".");
 
-        if (parts.length !== 4 || parts[0] !== VERSION) return false;
-        const [, issued, id, signature] = parts as [string, string, string, string];
+        if (parts.length !== 5 || parts[0] !== VERSION) return false;
+        const [, issued, id, accountId, signature] = parts as [string, string, string, string, string];
 
-        if (!/^\d{1,16}$/.test(issued) || !/^[A-Za-z0-9_-]{1,200}$/.test(id) || !/^[A-Za-z0-9_-]{43}$/.test(signature)) return false;
-        const expected = mac(options.key, `${issued}.${id}`);
+        if (!/^\d{1,16}$/.test(issued) || !/^[A-Za-z0-9_-]{1,200}$/.test(id) || !ACCOUNT_ID.test(accountId) || !/^[A-Za-z0-9_-]{43}$/.test(signature)) return false;
+        const expected = mac(options.key, `${issued}.${id}.${accountId}`);
         const given = Buffer.from(signature, "base64url");
 
         if (given.length !== expected.length || !timingSafeEqual(given, expected)) return false;
-        return live({ id, issuedAt: Number(issued) });
+        return live({ id, issuedAt: Number(issued), accountId });
       } catch {
         return false;
       }

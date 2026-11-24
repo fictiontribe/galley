@@ -175,7 +175,7 @@ can't break — under your brand.
 | **Publish, Undo, Version history** | Publish commits (and pushes, or sends a branch for review as a pull request). Undo a publish with a new version. Browse what was published, when and by whom. | Safe to try things. Every published state can be returned to. |
 | **Image generation** | Describe an image; pick from candidates; save it into the site's media. Works offline with placeholder images when no provider is set. | Fill a gap without leaving the editor or hunting stock sites. |
 | **Build a site from a brief** | Copies a starter and lets the assistant build the site, with the preview filling in as it goes. | A credible first draft fast — still a normal repo you own. |
-| **Desktop, CLI, hosted** | One engine: `npx galley` in a site folder, a desktop app with a native folder picker and OS keychain, or a password-protected hosted URL. | Developers stay in the terminal, editors get an app, teams get a link. |
+| **Desktop, CLI, hosted** | One engine: `npx galley` in a site folder, a desktop app with a native folder picker and OS keychain, or a hosted URL where each person signs in with their own account. | Developers stay in the terminal, editors get an app, teams get a link. |
 | **White-label** | Product name, logo and accent colour come from a brand file; no string hard-codes the name. | Agencies hand over editing under their own brand. |
 
 ---
@@ -281,7 +281,7 @@ OS keychain in the desktop app) and are never sent to the browser.
 
 **Where does Galley run?**
 Three ways, one engine: `npx galley` in your site's folder; a desktop app; or
-hosted at a URL behind a password. Locally, everything binds to your own
+hosted at a URL, where each person signs in with their own account. Locally, everything binds to your own
 machine.
 
 **Can we put our own brand on it?**

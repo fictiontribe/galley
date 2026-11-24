@@ -3,11 +3,17 @@
  * in the app's settings (`Settings.videos`), so the choice follows the
  * person to another browser and the server uses it for requests that don't
  * name a service. Without a choice the first service set up is used.
+ *
+ * On a hosted install the settings are an owner's to change: for anyone else
+ * the choice holds in this page only, and nothing is sent (the server would
+ * refuse it).
  */
 import { useCallback, useEffect } from "react";
 import type { Settings, VideoProviderInfo } from "@galley/core/types";
 import { api } from "@/lib/api";
-import { setQueryData, useQuery } from "@/lib/query";
+import { getQueryState, setQueryData, useQuery } from "@/lib/query";
+import { mayCall } from "@/lib/may";
+import { useMeta } from "@/lib/stores/meta";
 import { notify } from "@/lib/stores/toasts";
 import { keys } from "@/lib/sync";
 
@@ -33,7 +39,12 @@ function oldChoice(): { provider: string | null; model: string | null } | null {
   }
 }
 
-async function save(provider: string | null, model: string | null): Promise<Settings> {
+async function save(provider: string | null, model: string | null): Promise<Settings | null> {
+  if (!mayCall(useMeta.getState().meta, "PATCH /api/settings")) {
+    const current = getQueryState<Settings>(keys.settings()).data;
+    if (current) setQueryData(keys.settings(), { ...current, videos: { ...current.videos, provider, model } });
+    return current ?? null;
+  }
   const settings = await api("PATCH /api/settings", { body: { videos: { provider, model } } });
   setQueryData(keys.settings(), settings);
   return settings;

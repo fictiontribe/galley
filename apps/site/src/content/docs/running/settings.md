@@ -23,7 +23,7 @@ This page is for developers and operators. Galley keeps no database. Per-compute
 | `plugins/` | plugins added with `galley plugin add` | `galley plugin` |
 | `tmp/candidates/` | generated images not saved to a site yet | image generation |
 | `session.key` | the key session cookies are signed with — 0600 | first start |
-| `install.json`, `keys/`, `site/` | a hosted install only: its state and the password's hash, its own deploy key, the site's copy | first run |
+| `install.json`, `keys/`, `site/` | a hosted install only: its state (the accounts, with their passwords' hashes), its own deploy key, the site's copy | first run |
 
 Removing a site from the list (`DELETE /api/sites/<id>`) forgets its entry, its own keys and author; its folder stays on disk.
 

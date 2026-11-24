@@ -70,20 +70,23 @@ function outcomes(standing: NonNullable<ImportReportView["standing"]>): string {
   return [standing.published ? `${standing.published.toLocaleString()} published` : "", standing.discarded ? `${standing.discarded.toLocaleString()} discarded` : ""].filter(Boolean).join(" and ");
 }
 
-/** The report's heading and the line under it, true to where its changes stand now. */
-export function reportHead(report: ImportReportView): { title: string; lede: string } {
+/**
+ * The report's heading and the line under it, true to where its changes stand
+ * now. `publishes` is who puts them live (may.ts `whoPublishes`).
+ */
+export function reportHead(report: ImportReportView, publishes = "you publish"): { title: string; lede: string } {
   const standing = reportStanding(report);
   const stoppedNote = report.stopped ? "The import was stopped; what had arrived is kept. Start it again to bring the rest — nothing is duplicated. " : "";
   if (standing === "discarded") return { title: "The import was discarded", lede: "Everything it brought was discarded in Proof, so none of it is waiting. Start again to bring your WordPress site over." };
   const title = report.stopped ? "Part of your WordPress site is here" : "Your WordPress site is here";
   if (standing === "published") return { title, lede: `${stoppedNote}Everything it brought is published.` };
   if (standing === "settled") return { title, lede: `${stoppedNote}None of it is waiting in Proof any more: ${count(report.standing!.published + report.standing!.discarded, "entry", "entries")}, ${outcomes(report.standing!)}.` };
-  if (standing === "some-waiting") return { title, lede: `${stoppedNote}Some of it is still a pending change: nothing more goes live until you publish.` };
-  return { title, lede: `${stoppedNote}Everything is a pending change: nothing is live until you publish.` };
+  if (standing === "some-waiting") return { title, lede: `${stoppedNote}Some of it is still a pending change: nothing more goes live until ${publishes}.` };
+  return { title, lede: `${stoppedNote}Everything is a pending change: nothing is live until ${publishes}.` };
 }
 
 /** Review in Proof → rebuild page-builder pages → set redirects → put the site online → switch the domain. Once it was all discarded: start again. */
-export function nextSteps(report: ImportReportView): NextStep[] {
+export function nextSteps(report: ImportReportView, publishes = "you publish"): NextStep[] {
   const standing = reportStanding(report);
   if (standing === "discarded") {
     return [{ id: "again", title: "Bring it over again", body: "From its address or an export file, as before. Nothing from the discarded import is left to get in the way." }];
@@ -102,7 +105,7 @@ export function nextSteps(report: ImportReportView): NextStep[] {
     steps.push({
       id: "proof",
       title: "Review it in Proof",
-      body: waiting.length ? `${waiting.join(" and ")} ${arrived + report.arrived.images === 1 ? "is" : "are"} waiting there. Nothing is live until you publish.` : "Nothing new arrived this time.",
+      body: waiting.length ? `${waiting.join(" and ")} ${arrived + report.arrived.images === 1 ? "is" : "are"} waiting there. Nothing is live until ${publishes}.` : "Nothing new arrived this time.",
     });
   }
   if (report.rebuilds.length) {

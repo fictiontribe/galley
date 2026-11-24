@@ -396,6 +396,21 @@ const coveredElsewhere: ApiRouteKey[] = [
   "POST /api/sites/:siteId/editor/backup",
   "GET /api/sites/:siteId/editor/removal",
   "DELETE /api/sites/:siteId/editor",
+  // People on a hosted install: test/accounts.test.ts and test/accounts-access.test.ts, over real HTTP against a real install (local mode answers 404 there too).
+  "GET /api/account",
+  "PATCH /api/account",
+  "POST /api/account/password",
+  "GET /api/people",
+  "POST /api/people/invitations",
+  "DELETE /api/people/invitations/:invitationId",
+  "PATCH /api/people/:accountId",
+  "DELETE /api/people/:accountId",
+  "POST /api/people/:accountId/password-link",
+  "POST /api/people/:accountId/sign-out",
+  "POST /api/people/sign-out",
+  "POST /api/auth/link/check",
+  "POST /api/auth/link",
+  "POST /api/auth/forgot",
 ];
 
 describe("route coverage", () => {

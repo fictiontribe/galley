@@ -16,11 +16,13 @@ import { AiReadableOffer } from "../file/AiReadable";
 import { InboxAddressStep } from "../file/InboxAddress";
 import { FormRow } from "./FormRow";
 import { NewFormDialog } from "./NewFormDialog";
+import { useWhoPublishes } from "@/lib/may";
 
 /** Every form on the site, with "New form", duplicate and delete. */
 export function FormList({ siteId, collection }: { siteId: string; collection: Collection }) {
   const navigate = useNavigate();
   const siteName = useSite((s) => s.detail?.name ?? "Site");
+  const publishes = useWhoPublishes();
   useTopBar({ crumbs: [{ label: siteName, to: `/sites/${siteId}` }, { label: "Forms" }] });
   // One request for the whole list: every row's form, status and pages (it used to be two per form).
   // Under the entries key, so any change on the site refreshes it.
@@ -58,7 +60,7 @@ export function FormList({ siteId, collection }: { siteId: string; collection: C
     notify({
       tone: "neutral",
       title: `${target.title} deleted`,
-      body: "It leaves the site when you publish. Until then, Undo brings it back.",
+      body: `It leaves the site when ${publishes}. Until then, Undo brings it back.`,
       action: {
         label: "Undo",
         onClick: () =>
@@ -119,7 +121,7 @@ export function FormList({ siteId, collection }: { siteId: string; collection: C
         <PageHeader
           eyebrow="Site"
           title="Forms"
-          description="Each form is a file in the site, so every change shows in Proof and goes live when you publish."
+          description={`Each form is a file in the site, so every change shows in Proof and goes live when ${publishes}.`}
           actions={
             items.length > 0 ? (
               <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
@@ -140,7 +142,7 @@ export function FormList({ siteId, collection }: { siteId: string; collection: C
         body={
           deleting?.status === "added"
             ? "This form hasn’t been published, so deleting it can’t be undone. Pages that show it will show nothing in its place."
-            : "It stays on the live site until you publish, and you can bring it back until then. Pages that show it will show nothing in its place."
+            : `It stays on the live site until ${publishes}, and you can bring it back until then. Pages that show it will show nothing in its place.`
         }
         confirmLabel="Delete form"
         onConfirm={remove}

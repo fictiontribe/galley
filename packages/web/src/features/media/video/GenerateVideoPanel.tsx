@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import type { Job, MediaItem, VideoAspect } from "@galley/core/types";
 import { api, errorShape, isApiFailure, rawFileUrl } from "@/lib/api";
 import { useQuery } from "@/lib/query";
@@ -13,6 +12,7 @@ import { preferredProvider, useVideoPrefs } from "./prefs";
 import { BrandDirectionNote } from "@/features/brand/BrandDirectionNote";
 import { useImageryDirection } from "@/features/brand/useBrand";
 import "./video.css";
+import { SettingsLink } from "@/features/accounts/SettingsLink";
 
 const ASPECTS: readonly VideoAspect[] = ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"];
 /** What the engine accepts as a first frame (ai/videos/service.ts). */
@@ -139,9 +139,9 @@ export function GenerateVideoPanel({ siteId, onStarted, onCancel }: GenerateVide
         <div className="vid-setup">
           <p className="vid-setup__title">No video service is set up yet.</p>
           <p className="vid-setup__body">Videos are made by a plugin. OpenRouter comes with the app: turn it on in Plugins and add its API key, then come back here.</p>
-          <Link className={buttonClass("primary", "sm")} to="/plugins">
+          <SettingsLink route="POST /api/plugins/enabled" className={buttonClass("primary", "sm")} to="/plugins">
             Open plugins
-          </Link>
+          </SettingsLink>
         </div>
       </div>
     );
@@ -185,9 +185,9 @@ export function GenerateVideoPanel({ siteId, onStarted, onCancel }: GenerateVide
         <div className="vid-setup" role="status">
           <p className="vid-setup__title">{provider.label} needs its API key before it can make videos.</p>
           <p className="vid-setup__body">Add the key on the Plugins screen. It’s kept on this {hosted ? "server" : "computer"} with the app’s other keys, and never shown again.</p>
-          <Link className={buttonClass("primary", "sm")} to="/plugins">
+          <SettingsLink route="PUT /api/plugins/settings" className={buttonClass("primary", "sm")} to="/plugins">
             Add the key
-          </Link>
+          </SettingsLink>
         </div>
       ) : null}
       <Field label="Describe the video" hint="What happens, where, and how the camera moves. A sentence or two is plenty.">
@@ -251,9 +251,9 @@ export function GenerateVideoPanel({ siteId, onStarted, onCancel }: GenerateVide
           detail={errorShape(error).detail}
           actions={
             unconfigured ? (
-              <Link className={buttonClass("secondary", "sm")} to="/plugins">
+              <SettingsLink route="POST /api/plugins/enabled" className={buttonClass("secondary", "sm")} to="/plugins">
                 Open plugins
-              </Link>
+              </SettingsLink>
             ) : undefined
           }
         />

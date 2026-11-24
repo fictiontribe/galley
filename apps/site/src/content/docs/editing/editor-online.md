@@ -5,7 +5,7 @@ group: site
 order: 7.5
 ---
 
-For people who look after a site. **Put this site online** puts the *site* at a real address; **Host the editor online** puts the *editor* there too, so the site can be edited from any browser, not just this computer. The editor runs on your own account with a host, for this one site, with its own password. Nothing is run by Fiction Tribe: Galley Cloud, a managed service, is [coming later](/cloud/).
+For people who look after a site. **Put this site online** puts the *site* at a real address; **Host the editor online** puts the *editor* there too, so the site can be edited from any browser, not just this computer. The editor runs on your own account with a host, for this one site, with its own accounts: you become its first owner and invite the others. Nothing is run by Fiction Tribe: Galley Cloud, a managed service, is [coming later](/cloud/).
 
 *Status: new in 0.2.0 and still in progress. Run on 2026-11-24 from the real app in a real browser against strict stand-ins for Fly.io and Cloudflare, with the stand-in's machine started as a real editor: the plan and its cost shown before anything, nothing created before the yes, the editor created and answering, and removal deleting exactly what was created. Not yet run against Fly.io or Cloudflare themselves. The editor's image isn't published yet, so for now this needs an image you built and pushed (`GALLEY_HOSTING_IMAGE`). What was run, exactly: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#what-has-been-run).*
 
@@ -29,10 +29,10 @@ Prices are rough, for one editor a month, from each provider's own page as read 
 2. **Where the editor runs**: choose one of the three.
 3. **Connect** the host: make an access key on its site with the permissions listed, in that order, and paste it. It is checked with the host before it is kept — on this computer only — and the app then asks the host what the key can do. If something is missing, it says exactly what and where to add it.
 4. **The editor's address**, like `cms.example.com`, on a domain that's yours. The editor uses three names: its own, one for the preview of your changes (`cms-preview.example.com`) and one to compare with the live site (`cms-live.example.com`). **Change these names** sets the other two yourself — needed for an address like `example.co.uk`, whose worked-out names would be someone else's. Choose the account, where it runs, and the host's own choices (memory, sleeping while unused).
-5. **What the new editor gets from this site**: the repository's address, the publishing name and e-mail, the live address. Keys are copied only if you tick each one; none is ticked to start with. The editor gets its own password and its own key for the repository — this computer's aren't copied.
+5. **What the new editor gets from this site**: the repository's address, the publishing name and e-mail, the live address. Keys are copied only if you tick each one; none is ticked to start with. The editor gets its own accounts and its own key for the repository — this computer's aren't copied.
 6. **Read the plan**: everything that will be created, what it costs a month, what is handed over, and what you'll do by hand (DNS names, files to start). Nothing has been created yet. Then say yes.
 
-When the editor answers at its address, the site is handed over and this site's settings note where its editor lives (`editor` in `galley.config.json`). That change shows in Proof here, to publish like any other. Then **Finish setting it up** opens the editor's first run: choose its password and add its key to the repository, with write access.
+When the editor answers at its address, the site is handed over and this site's settings note where its editor lives (`editor` in `galley.config.json`). That change shows in Proof here, to publish like any other. Then **Finish setting it up** opens the editor's first run: create your account there (you become its owner) and add its key to the repository, with write access. Invite everyone else from its Install page ([Sign in to a hosted editor](/docs/editing/signing-in/#for-owners)).
 
 ## Afterwards
 

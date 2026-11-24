@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { SearchHit } from "@galley/core/types";
+import type { ApiRouteKey } from "@galley/core/api";
+import { useAccount, useMay } from "@/lib/may";
 import { api } from "@/lib/api";
 import { collectionIcon, visibleCollections } from "@/lib/collections";
 import { collectionNouns, count } from "@/lib/format";
@@ -25,6 +27,8 @@ interface Command {
   hint?: string;
   icon: IconName;
   run: () => void;
+  /** The route this command exists to reach: left out for someone who may not call it. */
+  route?: ApiRouteKey;
 }
 
 /** Every word of the query appears in the label (case-insensitive). */
@@ -90,6 +94,8 @@ export function CommandPalette() {
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
   const { hits, searching } = useSearch(open ? siteId : null, query);
+  const may = useMay();
+  const account = useAccount();
 
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => {
@@ -134,11 +140,11 @@ export function CommandPalette() {
         { id: "scripts", group: "Go to", label: "Scripts", hint: "Analytics, tags and consent", icon: "data", run: go(`${base}/scripts`) },
         { id: "brand", group: "Go to", label: "Brand", hint: "Colours, fonts and voice", icon: "registration", run: go(`${base}/brand`) },
         { id: "history", group: "Go to", label: "Version history", icon: "history", run: go(`${base}/history`) },
-        { id: "site-settings", group: "Go to", label: "Site settings", icon: "settings", run: go(`${base}/settings`) },
-        { id: "site-plugins", group: "Go to", label: "Plugins for this site", hint: "What’s active here", icon: "plugin", run: go(`${base}/plugins`) },
+        { id: "site-settings", group: "Go to", label: "Site settings", icon: "settings", run: go(`${base}/settings`), route: "PUT /api/sites/:siteId/config" },
+        { id: "site-plugins", group: "Go to", label: "Plugins for this site", hint: "What’s active here", icon: "plugin", run: go(`${base}/plugins`), route: "POST /api/plugins/enabled" },
         { id: "proof", group: "Actions", label: "Open the proof", hint: count(pending, "change"), icon: "proof", run: go(`${base}/proof`) },
       );
-      if (pending > 0) list.push({ id: "publish", group: "Actions", label: "Publish changes", hint: count(pending, "change"), icon: "arrow-up", run: () => setPublishOpen(true) });
+      if (pending > 0) list.push({ id: "publish", group: "Actions", label: "Publish changes", hint: count(pending, "change"), icon: "arrow-up", run: () => setPublishOpen(true), route: "POST /api/sites/:siteId/publish" });
       list.push(
         previewState === "ready"
           ? { id: "restart", group: "Actions", label: "Restart preview", icon: "refresh", run: () => void runPreview(siteId, "restart") }
@@ -157,12 +163,13 @@ export function CommandPalette() {
     }
     if (hosted) {
       list.push(
-        { id: "install", group: "Go to", label: "Install", hint: "Address, password and backups", icon: "folder", run: go("/install") },
-        { id: "settings", group: "Go to", label: "App settings", icon: "settings", run: go("/settings") },
-        { id: "plugins", group: "Go to", label: "Plugins", hint: "Generators, destinations, tools", icon: "plugin", run: go("/plugins") },
+        { id: "install", group: "Go to", label: "Install", hint: account ? "Address, people and backups" : "Address, password and backups", icon: "folder", run: go("/install"), route: "GET /api/install" },
+        { id: "settings", group: "Go to", label: "App settings", icon: "settings", run: go("/settings"), route: "PATCH /api/settings" },
+        { id: "plugins", group: "Go to", label: "Plugins", hint: "Generators, destinations, tools", icon: "plugin", run: go("/plugins"), route: "POST /api/plugins/enabled" },
       );
+      if (account) list.push({ id: "account", group: "Go to", label: "Your account", hint: "Name, e-mail and password", icon: "person", run: go("/account") });
       if (!siteId) list.push({ id: "site", group: "Go to", label: "The site", icon: "folder-site", run: go("/") });
-      return list;
+      return list.filter((command) => !command.route || may(command.route));
     }
     list.push(
       { id: "sites", group: "Go to", label: "All sites", icon: "sites", run: go("/") },
@@ -180,7 +187,7 @@ export function CommandPalette() {
     }
     list.push({ id: "add-sites", group: "Actions", label: "Add sites from a folder", icon: "sites", run: go("/?open=sites") });
     return list;
-  }, [siteId, detail, sites, groups, pending, previewState, navigate, runPreview, setPublishOpen, hosted]);
+  }, [siteId, detail, sites, groups, pending, previewState, navigate, runPreview, setPublishOpen, hosted, account, may]);
 
   const visible = useMemo(() => {
     const others = query.trim() ? commands.filter((command) => command.group !== "Sites" && matches(command.label, query)) : commands.filter((command) => command.group !== "Sites");

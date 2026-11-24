@@ -11,4 +11,8 @@ describe("who a version is recorded as, in the Publish dialog", () => {
     expect(authorLine({ ...who, from: "machine" }, "s1")).toMatchObject({ note: "To use another name, set it in", change: { label: "App settings › You" } });
     expect(authorLine({ name: "Site editor", email: "site-editor@localhost", from: "default" }, "s1").text).toContain("no name is set yet");
   });
+
+  it("on a hosted install with accounts, names the signed-in person's own account", () => {
+    expect(authorLine({ ...who, from: "account" }, "s1", true)).toEqual({ text: "Recorded as Ana Ruiz (ana@example.com), from your account.", change: { label: "Your account", to: "/account" } });
+  });
 });

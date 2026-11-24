@@ -1,12 +1,14 @@
 /**
  * First run, step 3: everything else on one screen — the publishing name and
- * email (needed), the live address and the assistant's key (both can wait).
+ * email (needed; with accounts, only for what publishes with nobody signed
+ * in), the live address and the assistant's key (both can wait).
  * Whatever whoever runs the server set is shown as set there, not editable.
  */
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { api, errorShape } from "@/lib/api";
 import { useQuery } from "@/lib/query";
 import { keys } from "@/lib/sync";
+import { useAccount } from "@/lib/may";
 import { Badge, Button, Field, Input } from "@/ui";
 import { detailsProblems, detailsRequest, isFixed } from "../logic";
 import { Problem } from "../parts";
@@ -36,12 +38,22 @@ function SetOnServer({ value }: { value: ReactNode }) {
   );
 }
 
+/**
+ * With accounts, every person's publishes carry their own name (core
+ * workspace/author.ts). The install's name is left for what publishes with
+ * nobody signed in — the server's access key, used by scripts and AI tools —
+ * and for an account that has no name and e-mail yet.
+ */
+export const ACCOUNTS_PUBLISHING_LINE = "What people publish here carries their own name. This one is for versions published with nobody signed in, by a script or an AI tool using this server’s access key.";
+
 export function DetailsStep({ status, onStatus, heading }: StepProps) {
   const siteId = status.site.id;
   // The site's own settings may already name its live address: offer it.
   const site = useQuery(siteId ? keys.site(siteId) : ["site", "none"], () => api("GET /api/sites/:siteId", { params: { siteId: siteId ?? "" } }), { enabled: Boolean(siteId) && !status.liveUrl });
-  const [name, setName] = useState(status.author?.name ?? "");
-  const [email, setEmail] = useState(status.author?.email ?? "");
+  // The owner's own account (made at the first step) is the likeliest publishing name.
+  const account = useAccount();
+  const [name, setName] = useState(status.author?.name ?? account?.name ?? "");
+  const [email, setEmail] = useState(status.author?.email ?? account?.email ?? "");
   const [liveUrl, setLiveUrl] = useState(status.liveUrl ?? "");
   const [liveTouched, setLiveTouched] = useState(false);
   const [key, setKey] = useState("");
@@ -83,7 +95,7 @@ export function DetailsStep({ status, onStatus, heading }: StepProps) {
     <form className="wizard-form" onSubmit={(event) => void submit(event)} noValidate>
       <StepHead heading={heading} title="A few details." lede="Only the name and email are needed now. Everything here can be changed later." />
 
-      <Part title="Publishing name" why="Each version published from this editor is recorded with this name and email, in Version history and in the repository.">
+      <Part title="Publishing name" why={account ? ACCOUNTS_PUBLISHING_LINE : "Each version published from this editor is recorded with this name and email, in Version history and in the repository."}>
         {isFixed(fixed, "author") ? (
           <SetOnServer
             value={

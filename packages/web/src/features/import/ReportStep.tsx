@@ -12,6 +12,7 @@ import { count } from "@/lib/format";
 import { Button, Icon, buttonClass, cx } from "@/ui";
 import { WORDPRESS_IMPORT } from "@/features/redirects/words";
 import { nextSteps, reportStanding, shortAddress, type NextStep } from "./logic";
+import { useWhoPublishes } from "@/lib/may";
 
 interface ReportStepProps {
   siteId: string;
@@ -64,6 +65,7 @@ function StepAction({ step, siteId, onRebuildAll, onAgain, first }: { step: Next
 
 export function ReportStep({ siteId, report, onAgain, onRebuild, onRebuildAll, rebuilding }: ReportStepProps) {
   const [allRedirects, setAllRedirects] = useState(false);
+  const publishes = useWhoPublishes();
   // Only what actually arrived: a zero isn't news.
   const arrived = [
     ...(report.arrived.posts ? [{ value: report.arrived.posts, label: report.arrived.posts === 1 ? "post" : "posts" }] : []),
@@ -81,7 +83,7 @@ export function ReportStep({ siteId, report, onAgain, onRebuild, onRebuildAll, r
   return (
     <div className="imp-report">
       <ol className="imp-next" aria-label="What to do next">
-        {nextSteps(report).map((step, index) => (
+        {nextSteps(report, publishes).map((step, index) => (
           <li key={step.id} className="imp-next__item">
             <span className="imp-next__number" aria-hidden="true">
               {index + 1}

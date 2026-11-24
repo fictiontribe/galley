@@ -1,5 +1,5 @@
 /**
- * The install's sign-in password, stored only as an scrypt hash.
+ * A person's sign-in password, stored only as an scrypt hash.
  *
  * The hash string carries its own parameters —
  * `scrypt$<N>$<r>$<p>$<salt>$<hash>` (salt and hash base64url) — so the cost

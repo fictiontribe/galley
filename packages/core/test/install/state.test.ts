@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import { GalleyError } from "../../src/errors";
 import { hashPassword, verifyPassword, passwordProblem } from "../../src/install/password";
 import { migrate } from "../../src/install/migrate";
+import { createPeople } from "../../src/install/people";
 import { openInstallState, sha256Hex, STATE_FILE } from "../../src/install/state";
 import { INSTALL_SCHEMA_VERSION, MIN_INSTALL_PASSWORD_LENGTH } from "../../src/install/types";
 import { sh, tempDir } from "./helpers";
@@ -37,7 +38,7 @@ describe("upgrading a data folder from before installs (layout 0 → 1)", () => 
     const store = await openInstallState(home);
     const state = store.read();
 
-    expect(state).toMatchObject({ schema: INSTALL_SCHEMA_VERSION, password: null, site: null, setup: { tokenSha256: null, finishedAt: null }, lastBackupAt: null });
+    expect(state).toMatchObject({ schema: INSTALL_SCHEMA_VERSION, accounts: [], links: [], site: null, setup: { tokenSha256: null, finishedAt: null }, lastBackupAt: null });
     expect(statSync(join(home, STATE_FILE)).mode & 0o777).toBe(0o600);
     expect(statSync(home).mode & 0o777).toBe(0o700);
     expect(store.siteFolder()).toBe(join(home, "site"));
@@ -91,7 +92,7 @@ describe("upgrading a data folder from before installs (layout 0 → 1)", () => 
     const newer = tempDir("install-home-");
 
     writeFileSync(join(newer, STATE_FILE), JSON.stringify({ schema: INSTALL_SCHEMA_VERSION + 1 }));
-    await expect(openInstallState(newer)).rejects.toThrow(/last used by a newer version of Galley \(data layout 2; this version knows up to 1\)/);
+    await expect(openInstallState(newer)).rejects.toThrow(new RegExp(`last used by a newer version of Galley \\(data layout ${INSTALL_SCHEMA_VERSION + 1}; this version knows up to ${INSTALL_SCHEMA_VERSION}\\)`));
     await expect(migrate({}, INSTALL_SCHEMA_VERSION + 3, { home: newer, now: new Date() })).rejects.toThrow(/newer version/);
 
     const damaged = tempDir("install-home-");
@@ -152,18 +153,19 @@ describe("the password", () => {
   it("lives in the state file as its hash only", async () => {
     const home = tempDir("install-home-");
     const store = await openInstallState(home);
+    const people = createPeople(store);
 
-    await store.setPassword(PASSWORD);
-    expect(store.hasPassword()).toBe(true);
-    expect(await store.checkPassword(PASSWORD)).toBe(true);
-    expect(await store.checkPassword("wrong password here")).toBe(false);
+    await people.createOwner({ password: PASSWORD });
+    expect(store.hasOwner()).toBe(true);
+    expect(await people.ownerPasswordIs(PASSWORD)).toBe(true);
+    expect(await people.ownerPasswordIs("wrong password here")).toBe(false);
     expect(readFileSync(join(home, STATE_FILE), "utf8")).not.toContain(PASSWORD);
-    expect((await openInstallState(home)).hasPassword()).toBe(true);
+    expect((await openInstallState(home)).hasOwner()).toBe(true);
   });
 });
 
 describe("the one-time setup code", () => {
-  it("is kept as its SHA-256 only, works until a password is chosen, then never again", async () => {
+  it("is kept as its SHA-256 only, works until the owner is made, then never again", async () => {
     const home = tempDir("install-home-");
     const store = await openInstallState(home);
     const code = "a-setup-code-for-this-test-only-0123";
@@ -175,15 +177,18 @@ describe("the one-time setup code", () => {
     expect(store.setupCodeMatches(`${code}x`)).toBe(false);
     expect(store.setupCodeMatches("")).toBe(false);
 
-    await store.setPassword(PASSWORD);
+    await createPeople(store).createOwner({ password: PASSWORD });
     expect(store.read().setup.tokenSha256).toBeNull();
     expect(store.setupCodeMatches(code)).toBe(false);
-    // Once a password exists, no code can be set again except by --reset-password.
+    // Once an owner exists, no code can be set again.
     await store.setSetupCode({ plain: code });
     expect(store.setupCodeMatches(code)).toBe(false);
     expect((await openInstallState(home)).setupCodeMatches(code)).toBe(false);
 
-    await store.clearPassword();
+    // A state with no owner again (a backup of a half-finished first run put back): a fresh code works, the used one never.
+    await store.update((draft) => {
+      draft.accounts = [];
+    });
     await store.setSetupCode({ plain: "a-fresh-code-after-reset-0123456789" });
     expect(store.setupCodeMatches("a-fresh-code-after-reset-0123456789")).toBe(true);
     expect(store.setupCodeMatches(code)).toBe(false);
@@ -217,17 +222,20 @@ describe("sessions", () => {
     expect(restarted.sessionValid(fresh)).toBe(true);
   });
 
-  it("a changed password signs everyone out; one sign-out is kept until the cookie would have expired anyway", async () => {
+  it("a changed password signs that person out everywhere; one sign-out is kept until the cookie would have expired anyway", async () => {
     const home = tempDir("install-home-");
     const store = await openInstallState(home);
-    const old = { id: "old", issuedAt: Date.now() - 10 };
+    const people = createPeople(store);
     let told = 0;
 
     store.onSessionsChanged(() => (told += 1));
-    await store.setPassword(PASSWORD);
+    const owner = await people.createOwner({ password: PASSWORD });
+    const old = { id: "old", issuedAt: Date.now() - 10, accountId: owner.id };
+
     expect(store.sessionValid(old)).toBe(true);
-    await store.setPassword("another long password", { signOutEveryone: true });
+    expect(await people.changePassword(owner.id, PASSWORD, "another long password")).toBe(true);
     expect(store.sessionValid(old)).toBe(false);
+    expect(store.sessionValid({ id: "new", issuedAt: store.nextIssuedAt(Date.now(), owner.id), accountId: owner.id })).toBe(true);
     expect(told).toBe(1);
 
     const one = { id: "one", issuedAt: store.nextIssuedAt() };

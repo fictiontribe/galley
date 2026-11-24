@@ -1,14 +1,14 @@
 ---
 title: Run a hosted install
 navTitle: Hosted install
-description: Run Galley on a server for one site — start it with Docker and Caddy, point three names at it, finish first run, back it up, upgrade it, and know what it can reach.
+description: Run Galley on a server for one site — start it with Docker and Caddy, point three names at it, finish first run, let people in with their own accounts, back it up, upgrade it, and know what it can reach.
 group: running
 order: 2
 ---
 
-This page is for whoever runs Galley on a server so a site can be edited from any browser. A **hosted install** is the same server and app as on a laptop, for **one site**, behind a password, with everything it keeps in one data folder. Ten sites are ten installs that share nothing. The desktop app keeps its list of many sites; a hosted install has no Sites screen.
+This page is for whoever runs Galley on a server so a site can be edited from any browser. A **hosted install** is the same server and app as on a laptop, for **one site**, for the people its owner invites — each with their own e-mail and password — with everything it keeps in one data folder. Ten sites are ten installs that share nothing. The desktop app keeps its list of many sites; a hosted install has no Sites screen.
 
-> **Status.** New in 0.2.0. **The image isn't published to a registry yet**, so you build it yourself (below). Run for real on 2026-11-24, as this page describes it: built from source on a small Google Cloud VM and running this project's own website's editor behind Caddy on a real domain; a whole first run, preview, Proof, Publish, restart, upgrade, backup and restore on the real image. Not yet run: on Fly.io or with a Cloudflare tunnel, behind Cloudflare Access, with a deploy key accepted by GitHub, GitLab or Bitbucket end to end, or `scripts/create-install.sh` beyond its dry run. The full account: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#what-has-been-run).
+> **Status.** New in 0.2.0. **The image isn't published to a registry yet**, so you build it yourself (below). Run for real on 2026-11-24, as this page describes it: built from source on a small Google Cloud VM and running this project's own website's editor behind Caddy on a real domain; a whole first run, preview, Proof, Publish, restart, upgrade, backup and restore on the real image. Not yet run: on Fly.io or with a Cloudflare tunnel, behind Cloudflare Access, with a deploy key accepted by GitHub, GitLab or Bitbucket end to end, or `scripts/create-install.sh` beyond its dry run. **Accounts and roles are newer than 0.2.0 and that run**, and not in a release yet: covered by automated tests, by a rehearsal over HTTP against the real server on one computer (`scripts/rehearse-accounts.mjs`) and by a pass in a real browser (first run, signing in, People, an invitation, joining from its link, a contributor's screens and switching someone off), not yet tried on the real image or with a real mail server. The full account: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#what-has-been-run).
 
 ## Start one
 
@@ -41,7 +41,7 @@ Copy the folder to the server. Then, in that folder there:
    docker compose up -d
    ```
 
-3. **Open the setup link** straight away — whoever opens it first chooses the password. Nothing is needed before the first start: the editor makes a one-time link and prints it in its log.
+3. **Open the setup link** straight away — whoever opens it first becomes the owner. Nothing is needed before the first start: the editor makes a one-time link and prints it in its log.
 
    ```sh
    docker compose logs editor
@@ -79,13 +79,13 @@ GALLEY_PUBLIC_URL=https://cms.example.com GALLEY_TRUST_PROXY=1 node packages/cli
 Galley is serving on 127.0.0.1 (this computer only; put a reverse proxy in front), port 4400.
 Address:   https://cms.example.com
 Setup:     https://cms.example.com/setup?token=<one-time code>
-           Open it now: it works once, and whoever opens it first chooses the password.
+           Open it now: it works once, and whoever opens it first creates the owner's account.
 …
 Previews:  https://cms-preview.example.com (the live site beside it at https://cms-live.example.com), through this port; only a signed-in browser is let in
 Data:      /data (the site, its settings and stored keys, sessions — everything this install keeps)
 ```
 
-The docs ran it on a spare port with a throwaway data folder; the output shows the image's folder, `/data`. Outside the image the data folder is `GALLEY_HOME`, default `~/.galley`. A setup code you supplied yourself isn't printed again: the line shows a placeholder. `galley serve --help` lists every variable it reads; they are all in [Environment variables](/docs/reference/environment/#a-hosted-install).
+The docs ran it on a spare port with a throwaway data folder; the output shows the image's folder, `/data`. Outside the image the data folder is `GALLEY_HOME`, default `~/.galley`. A setup code you supplied yourself isn't printed again: the line shows a placeholder. Among the lines the "…" leaves out, `E-mail:` says whether invitations and new-password links are e-mailed ([below](#outgoing-e-mail)). `galley serve --help` lists every variable it reads; they are all in [Environment variables](/docs/reference/environment/#a-hosted-install).
 
 ## The three names
 
@@ -107,20 +107,21 @@ The proxy in front must keep the `Host` header (Caddy does), terminate HTTPS for
 
 ## First run
 
-1. **Choose the password**, 12 characters or more.
+1. **Create your account**: your name, your e-mail and a password of 12 characters or more. You are the install's first **owner**.
 2. **Connect the site**: an existing repository, or a starter sent to an empty one. The install reaches it with **its own deploy key** — it shows the public half; add it to the repository **with write access** and choose **Check again** — or with an access token over HTTPS. A site in a folder of a larger repository: give the folder (`apps/site`). The whole repository is copied; only that folder is the site, and changes outside it are neither shown nor published.
-3. **A few details**: the name and e-mail every publish is recorded with, the live address, the assistant's key.
+3. **A few details**: the install's publishing name and e-mail (filled in from your account), the live address, the assistant's key. The screen says *What people publish here carries their own name. This one is for versions published with nobody signed in, by a script or an AI tool using this server’s access key.* A starter sent at first run is the owner's first version, under the owner's own name.
 
-Or, on the first screen, **Restore from a backup**. First run leaves nothing to publish: the live address is kept in the install's own state, not in the site's `galley.config.json` (when the site's settings name a live address of their own, that one wins and is shown as set). A first run left half-way carries on after the ordinary sign-in.
+Or, on the first screen, **Restore from a backup**. First run leaves nothing to publish: the live address is kept in the install's own state, not in the site's `galley.config.json` (when the site's settings name a live address of their own, that one wins and is shown as set). A first run left half-way carries on after the owner signs in.
 
 ### Start it unattended
 
-Everything first run asks can be given up front as **starting values**: `GALLEY_PASSWORD`, `GALLEY_SITE_REPOSITORY`, `GALLEY_SITE_BRANCH`, `GALLEY_SITE_FOLDER`, `GALLEY_SITE_ACCESS`, `GALLEY_SITE_TOKEN`, `GALLEY_SITE_STARTER`, `GALLEY_AUTHOR_NAME`, `GALLEY_AUTHOR_EMAIL`, `GALLEY_SITE_LIVE_URL`, `ANTHROPIC_API_KEY` — or one JSON file named by `GALLEY_INSTALL_CONFIG` (readable by the server's user only):
+Everything first run asks can be given up front as **starting values**: `GALLEY_PASSWORD` with `GALLEY_OWNER_NAME` and `GALLEY_OWNER_EMAIL` (the first owner), `GALLEY_SITE_REPOSITORY`, `GALLEY_SITE_BRANCH`, `GALLEY_SITE_FOLDER`, `GALLEY_SITE_ACCESS`, `GALLEY_SITE_TOKEN`, `GALLEY_SITE_STARTER`, `GALLEY_AUTHOR_NAME`, `GALLEY_AUTHOR_EMAIL`, `GALLEY_SITE_LIVE_URL`, `ANTHROPIC_API_KEY` — or one JSON file named by `GALLEY_INSTALL_CONFIG` (readable by the server's user only):
 
 ```json
 {
   "address": "https://cms.example.com",
   "password": "…",
+  "owner": { "name": "Sam", "email": "sam@example.com" },
   "site": { "repository": "git@github.com:example/acme-site.git", "branch": "main", "access": "deploy-key" },
   "author": { "name": "Sam", "email": "sam@example.com" },
   "liveUrl": "https://www.example.com",
@@ -128,11 +129,46 @@ Everything first run asks can be given up front as **starting values**: `GALLEY_
 }
 ```
 
-Each starting value is used once, only while the install lacks that thing, so restarting with the same values changes nothing, and what someone changes in the app afterwards stays changed. With a password, a repository and the publishing name, first run finishes by itself. To keep the setup code out of the log, give your own with `GALLEY_SETUP_TOKEN` (24+ characters), or only its SHA-256 with `GALLEY_SETUP_TOKEN_SHA256`.
+Each starting value is used once, only while the install lacks that thing, so restarting with the same values changes nothing, and what someone changes in the app afterwards stays changed. With a password, a repository and the publishing name, first run finishes by itself. Without the owner's name and e-mail, the owner signs in with the password alone and the app asks them for the rest once; without `GALLEY_PASSWORD`, the owner's name and e-mail are ignored (a notice says so) and first run asks. To keep the setup code out of the log, give your own with `GALLEY_SETUP_TOKEN` (24+ characters), or only its SHA-256 with `GALLEY_SETUP_TOKEN_SHA256`.
+
+## People and roles
+
+A hosted install has accounts, not one shared password. The owner invites everyone else from **People** on the Install page, each with one of three roles:
+
+| Role | What they can do |
+| --- | --- |
+| **Owner** | Everything: the site, Publish, the inbox, and the install itself — people, keys, backups, the site's settings, plugins, where the site is hosted. |
+| **Editor** | Change the site and publish it; undo a publish, get the latest, put the site live; read the inbox. No Install page, keys, settings or plugins. |
+| **Contributor** | Change the site and see Proof. An editor or owner publishes. |
+
+The rule behind it: changing the draft is for everyone; what changes the live site or the repository, and reading what visitors sent, needs an editor; the install itself needs an owner. One table in the code decides it for every request (`packages/core/src/install/route-access.ts`), and a role change applies to that person's next request. What each person sees is in [Sign in to a hosted editor](/docs/editing/signing-in/).
+
+**What roles are not.** They keep people out of each other's way and out of trouble; they are not a wall against someone who means harm. The preview runs the site's own code on the server, so anyone who can change the draft — a contributor too — can change what runs there. Give an account only to someone you would trust with the site's repository. And the draft is one shared working copy: anyone, a contributor included, can **Discard** the pending changes, everyone's. Single sign-on isn't there yet.
+
+### Invitations and one-time links
+
+**Invite someone** takes an e-mail and a role, and shows the invitation link **once**, to copy and send. The person opens it, types their name and a password, and is in. An owner can also make a **new-password link** for anyone who forgot theirs (People › **…** › New-password link).
+
+| Link | Lasts | Looks like |
+| --- | --- | --- |
+| Invitation | 7 days | `https://cms.example.com/join#…` |
+| New-password link | 60 minutes | `https://cms.example.com/new-password#…` |
+
+Each works once. Taking an invitation back, or making a newer new-password link, ends the old one. The code is after the `#` because that part of an address never leaves the browser, so it reaches no server log or proxy; the server keeps only its SHA-256. A person's old password works until they use a new-password link, and using it signs their other browsers out.
+
+### Outgoing e-mail
+
+Set `GALLEY_SMTP_URL` (`smtp://user:pass@host:587`, or `smtps://`) and `GALLEY_MAIL_FROM` — the same two the inbox's e-mail alerts use — and invitations and new-password links are e-mailed as well as shown, and **Forgot your password?** on the sign-in page e-mails a link by itself. Without them everything else works: the owner sends each link themselves, and **Forgot your password?** tells people to ask an owner. A mail server that fails or takes longer than 15 seconds never stops the request; the log says so. **Not yet tried against a real mail server.**
+
+### Sign-in limits
+
+The same answer for an unknown e-mail, a wrong password and a switched-off account. 5 failures a minute from one address, then a minute's wait (wrong setup codes and bad link codes count too); 10 failed sign-ins for one e-mail in 15 minutes, from anywhere, then that e-mail waits 15 minutes; **Forgot your password?** 5 times per address in 15 minutes, and at most 3 e-mails an hour to one address. The limits are kept in memory, so a restart resets them.
 
 ### A forgotten password
 
-Stop the editor first — nothing stops a second server starting on the same data folder — then start it once with `--reset-password`, in the install's folder:
+- **With outgoing e-mail**, people use **Forgot your password?** under Sign in.
+- **Without it**, an owner makes a new-password link for them in People.
+- **An owner who can't get in** — the only owner, or every owner — is let back in by whoever runs the server. Stop the editor first (nothing stops a second server starting on the same data folder), then start it once with `--reset-password`, in the install's folder:
 
 ```sh
 docker compose stop editor
@@ -141,32 +177,34 @@ docker compose run --rm --use-aliases editor serve --reset-password
 
 ```output
 …
-Setup:     https://cms.example.com/setup?token=<one-time code>
-           Open it now: it works once, and whoever opens it first chooses the password.
+Password:  https://cms.example.com/new-password#<one-time code>
+           Open it now: it lets Sam choose a new password, once, until 14:05 UTC. Nobody else's account changed.
 …
 ```
 
-It forgets the password, signs everyone out, prints a new one-time link and keeps serving. Open the link, choose the new password, then stop it with Ctrl+C and start the editor again:
+It prints a one-time new-password link for the owner (60 minutes, once) and keeps serving. Nobody else's account changes, nobody is signed out, and the owner's old password works until the link is used; an owner who was switched off is switched back on. With several owners, say whose with `--email`: `serve --reset-password --email sam@example.com`. Open the link, choose the new password, then stop it with Ctrl+C and start the editor again:
 
 ```sh
 docker compose start editor
 ```
 
-The site and everything else stay. A setup code that has been used stays dead: an old code or hash still in the environment is ignored, and a fresh link is made instead (a notice says so).
+With no owner yet, it prints a fresh setup link instead. A setup code that has been used stays dead: an old code or hash still in the environment is ignored, and a fresh link is made (a notice says so). `GALLEY_PASSWORD` is never put back by it.
 
 ## The Install page
 
-`/install`, for whoever is signed in: the three addresses and the version; the repository, how it is reached and the install's public key (**Make a new key** replaces it); the publishing name; **Change the password** (every other browser is signed out); **Sign out everywhere**; backups; and what is stored where, with sizes (measured in the background, never counting installed packages, so a size can be empty for a while). What the operator set with a starting value is marked "Set by whoever runs the server".
+`/install`, for owners only: the three addresses and the version; the repository, how it is reached and the install's public key (**Make a new key** replaces it); **People** — everyone, their roles and when they last signed in, the open invitations, **Invite someone**, and for each other person a role, a new-password link, Sign out, Switch off and Remove (what they published keeps their name); backups; and what is stored where, with sizes (measured in the background, never counting installed packages, so a size can be empty for a while). What the operator set with a starting value is marked "Set by whoever runs the server".
+
+Two rules hold in People: the last owner who can still sign in stays an owner and stays switched on, and nobody changes their own account there — each person's own name, e-mail, password and **Sign out everywhere** (theirs only) are on **Your account**. **Sign everyone out** in People signs out everyone, you included.
 
 ### What is kept where
 
-All of it is in the data folder (`/data` in the image, one volume): `install.json` (the install's state: the password's hash, the site's repository and live address), `session.key`, `settings.json` and `secrets.json`, `keys/` (the deploy key, an access token, `known_hosts`), `site/` (the repository's copy, with unpublished changes), `state/<siteId>/` (the inbox, conversations, brand material), `plugins/`, `home/` (package caches, rebuilt when needed), and `backups/` (backups you keep on the volume; never part of a backup).
+All of it is in the data folder (`/data` in the image, one volume): `install.json` (the install's state: the accounts with their password hashes, open invitations and links as hashes of their codes, the site's repository and live address), `install.json.schema-1.bak` (after the upgrade to accounts: the state file as it was before), `session.key`, `settings.json` and `secrets.json`, `keys/` (the deploy key, an access token, `known_hosts`), `site/` (the repository's copy, with unpublished changes), `state/<siteId>/` (the inbox, conversations, brand material), `plugins/`, `home/` (package caches, rebuilt when needed), and `backups/` (backups you keep on the volume; never part of a backup).
 
 ## Back it up
 
-**Download a backup** on the Install page asks for a passphrase (12+ characters) and gives you one sealed file: the site with its history and **unpublished changes**, the settings, the stored keys and the sign-in. Not in it: installed packages and caches, which are rebuilt — add plugins again after a restore. **The passphrase can't be recovered.**
+**Download a backup** on the Install page asks for a passphrase (12+ characters) and gives you one sealed file: the site with its history and **unpublished changes**, the settings, the stored keys and the accounts. Not in it: installed packages and caches, which are rebuilt — add plugins again after a restore. **The passphrase can't be recovered.**
 
-**Restore** on the Install page, or on a fresh install's first screen, checks the whole file before changing anything, then signs everyone out; sign in with the password of the editor the backup came from. The upload takes up to 2048 MB (`GALLEY_RESTORE_MAX_MB`).
+**Restore** on the Install page, or on a fresh install's first screen, checks the whole file before changing anything, then signs everyone out; from then on the backup's own people and passwords apply, so anyone added since it was made is gone. Only an owner can restore. The upload takes up to 2048 MB (`GALLEY_RESTORE_MAX_MB`).
 
 From a terminal, with the editor stopped, in the install's folder, and `GALLEY_BACKUP_PASSPHRASE` set in your shell:
 
@@ -194,7 +232,7 @@ docker compose start editor
 ```output
 …
 Restored the backup made … (by version …) into /data.
-Everyone is signed out: sign in with the password the backup was made with.
+Everyone is signed out: sign in with the accounts and passwords the backup was made with.
 …
 ```
 
@@ -204,24 +242,29 @@ Both refuse while they can tell a server holds the folder, but stop the editor f
 
 A new version is a new image on the **same volume**: build or pull it, change the `image:` line in `compose.yaml` if its name changed, and run `docker compose up -d` again. At start-up it upgrades the data folder by itself; in the real runs the editor was healthy again within about ten seconds, with everything as it was. Never start an older image on a folder a newer one has used — it refuses to — so download a backup before each upgrade; going back means restoring it into a fresh volume.
 
+### From one password to accounts
+
+An install from before accounts is upgraded at its first start on the new image. The shared password becomes **one owner** with the same password and no name or e-mail yet: that owner signs in with the password alone, as before, and the app asks them once for their name and e-mail (until then they can't invite anyone). **Everyone is signed out once.** The old state file is kept beside the new one as `install.json.schema-1.bak`. Then the owner invites everyone else. `--reset-password` now makes a new-password link instead of a setup link, and no longer signs everyone out. Details: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#upgrading-to-accounts).
+
 ## Health, logs and stopping
 
 - `GET /healthz` answers 200 while the server runs; `GET /readyz` says `starting`, `setup`, `ready` or `restoring`. Neither needs a sign-in or says anything about the install. The image's health check uses `/healthz`.
-- The log has one line per request (`GALLEY_LOG_REQUESTS=0` leaves them out) and one for each sign-in, password change, backup and restore. No secret is ever written to it; the setup link is the one exception, on purpose.
+- The log has one line per request (`GALLEY_LOG_REQUESTS=0` leaves them out), one for each backup and restore, and one for each thing people do to accounts — signed in or failed to, invited, accepted, taken back, role changed, switched off or on, removed, password changed, a new-password link made, asked for or used, signed out everywhere, an e-mail that couldn't be sent. People are named by name and role only, never by e-mail address. No secret is ever written to it; the setup link is the one exception, on purpose, and a one-time link or its code never is.
 - Stopping lets a publish in progress finish (20 seconds, `GALLEY_SHUTDOWN_GRACE_MS`), stops the preview and exits by itself. The compose files give it 30 seconds.
 - `GALLEY_PREVIEW_MEMORY_MB` caps the memory of the site's own preview and build; the generated files set 1024.
 - The first preview installs the site's packages inside the container — in the real run about 80 seconds with the install. In a site without a lockfile, that install never leaves one behind.
 
 ## Forms on a hosted install
 
-A hosted install at a public `https://` address is what lets the live site's forms send to the inbox: the capture address is `https://cms.example.com/f/<siteId>` ([Forms](/docs/forms/#where-visitors-can-reach-it)). The inbox says whether visitors can reach it, and why not when they can't. Keep `/f/` reachable by everyone if you put another sign-in, such as Cloudflare Access, in front. For e-mail alerts set `GALLEY_SMTP_URL` and `GALLEY_MAIL_FROM`.
+A hosted install at a public `https://` address is what lets the live site's forms send to the inbox: the capture address is `https://cms.example.com/f/<siteId>` ([Forms](/docs/forms/#where-visitors-can-reach-it)). The inbox says whether visitors can reach it, and why not when they can't. Keep `/f/` reachable by everyone if you put another sign-in, such as Cloudflare Access, in front. For e-mail alerts set `GALLEY_SMTP_URL` and `GALLEY_MAIL_FROM` (the same two send invitations and new-password links). Only editors and owners can read the inbox.
 
 ## What it can reach
 
-The install reaches the site's git host (SSH on port 22 with the deploy key, or HTTPS with a token), the package registry when it installs the site's dependencies, the live site (the comparison) and, when keys are set, the AI providers. Nothing else, and nothing to Fiction Tribe. The site's own preview and build are code from the repository running in the container, by design: the container is the boundary ([Security model](/docs/running/security/#a-hosted-install)).
+The install reaches the site's git host (SSH on port 22 with the deploy key, or HTTPS with a token), the package registry when it installs the site's dependencies, the live site (the comparison) and, when keys are set, the AI providers, and the mail server when one is set. Nothing else, and nothing to Fiction Tribe. The site's own preview and build are code from the repository running in the container, by design: the container is the boundary ([Security model](/docs/running/security/#a-hosted-install)).
 
 ## Next
 
+- [Sign in to a hosted editor](/docs/editing/signing-in/) — the same install from the side of the people who use it.
 - [Host the editor online](/docs/editing/editor-online/) — let the desktop app create an install on Fly.io, behind Cloudflare, or on a server of yours.
 - [Security model](/docs/running/security/).
 - [White-label](/docs/configuration/white-label/) — rename and recolour it.

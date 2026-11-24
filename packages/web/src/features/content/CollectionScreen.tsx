@@ -17,6 +17,7 @@ import { collectionSiteTarget, openPreviewTarget } from "@/features/hosting/prev
 import { needsEntry } from "@/features/preview/entry";
 import { useMeta } from "@/lib/stores/meta";
 import { NewEntryDialog } from "./collection/NewEntryDialog";
+import { useWhoPublishes } from "@/lib/may";
 
 type StatusFilter = "all" | Exclude<ChangeStatus, "deleted">;
 type Sort = "title" | "date" | "modified";
@@ -52,6 +53,7 @@ function CollectionList({ siteId, collection }: { siteId: string; collection: Co
   const media = useSite((s) => s.detail?.model.media ?? null);
   const production = useSite((s) => s.detail?.model.urls.production ?? s.detail?.model.urls.staging ?? null);
   const preview = usePreviewStatus(siteId);
+  const publishes = useWhoPublishes();
   const [typed, setTyped] = useState("");
   const search = useDebounced(typed.trim(), SEARCH_DELAY_MS);
   const [sort, setSort] = useState<Sort>(collection.dateField ? "date" : "title");
@@ -104,7 +106,7 @@ function CollectionList({ siteId, collection }: { siteId: string; collection: Co
     notify({
       tone: "neutral",
       title: `${target.title} deleted`,
-      body: "It leaves the site when you publish. Until then, Undo brings it back.",
+      body: `It leaves the site when ${publishes}. Until then, Undo brings it back.`,
       action: {
         label: "Undo",
         onClick: () =>
@@ -210,7 +212,7 @@ function CollectionList({ siteId, collection }: { siteId: string; collection: Co
         onCreated={(entry) => {
           setCreating(false);
           invalidate(keys.entries(siteId, collection.id));
-          notify({ tone: "success", title: `${collection.singular.charAt(0).toUpperCase()}${collection.singular.slice(1)} created`, body: "It’s waiting in Proof until you publish." });
+          notify({ tone: "success", title: `${collection.singular.charAt(0).toUpperCase()}${collection.singular.slice(1)} created`, body: `It’s waiting in Proof until ${publishes}.` });
           navigate(`/sites/${siteId}/edit?path=${encodeURIComponent(entry.path)}`);
         }}
       />
@@ -218,7 +220,7 @@ function CollectionList({ siteId, collection }: { siteId: string; collection: Co
         open={deleting !== null}
         onClose={() => setDeleting(null)}
         title={`Delete “${deleting?.title ?? ""}”?`}
-        body={`It comes off the site when you publish. Until then you can undo this — the ${collection.singular} stays in Proof as a deletion you can discard.`}
+        body={`It comes off the site when ${publishes}. Until then you can undo this — the ${collection.singular} stays in Proof as a deletion you can discard.`}
         confirmLabel={`Delete ${collection.singular}`}
         busyLabel="Deleting"
         cancelLabel={`Keep ${collection.singular}`}

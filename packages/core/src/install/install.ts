@@ -10,19 +10,22 @@
 import { existsSync } from "node:fs";
 import { realpath, rm, stat } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
+import { PRODUCT } from "../brand";
 import { GalleyError } from "../errors";
 import { createJobTracker } from "../site/jobs";
 import { checkLook, scaffoldSite } from "../site/scaffold-site";
 import { listStarters } from "../site/starters";
 import type { EventBus, Job, SecretName, SettingsService, SiteRegistry } from "../types";
 import { cloneRepository, detectPackageManager, installDependencies } from "../workspace/index";
+import { currentAccountAuthor } from "../workspace/author";
 import { GIT_NETWORK_TIMEOUT_MS, registerGitAccess, runGit } from "../workspace/git";
 import { parseRemoteUrl, redactRemoteUrl } from "../workspace/remote";
 import { loadSiteModel } from "../content/index";
 import { normalizeRepository, redactAddress, type RepositoryAddress } from "./address";
 import { accessEnv, ensureDeployKey, forgetAccessToken, hasAccessToken, readDeployKey, storeAccessToken, trialAccess, type RepositoryAccess } from "./access";
+import { createPeople, type PeopleService } from "./people";
 import { createSingleSiteRegistry, type SingleSiteRegistry } from "./single-site";
-import { mintSetupCode, SITE_FOLDER, type InstallStore } from "./state";
+import { hasOwner, mintSetupCode, SITE_FOLDER, type InstallStore } from "./state";
 import type { StartingValues } from "./starting";
 import type { DeployKeyInfo, InstallFixed, InstallMeta, InstallSite, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./types";
 
@@ -48,13 +51,22 @@ export interface InstallOptions {
 }
 
 export interface StartOptions {
-  /** `--reset-password`: forget the password, end every session, mint a new setup link. */
+  /**
+   * `--reset-password`: the operator's way back in. With an owner: a
+   * one-time new-password link for the only owner (or the owner with
+   * `resetPasswordEmail`), nobody else's account touched. Without one: a
+   * fresh setup link, as always.
+   */
   resetPassword?: boolean;
+  /** Which owner `resetPassword` is for, when there are several. */
+  resetPasswordEmail?: string;
 }
 
 export interface StartResult {
   /** The one-time setup code to print, when first run waits for it and the operator didn't supply only its hash. */
   setupCode: string | null;
+  /** `resetPassword` with an owner: the new-password link's code (it goes after LINK_PATHS.password and a "#"), when it stops working, and for whom. */
+  passwordLink: { code: string; expiresAt: string; name: string } | null;
   notices: string[];
 }
 
@@ -62,6 +74,8 @@ export interface Install {
   readonly home: string;
   readonly store: InstallStore;
   readonly registry: SingleSiteRegistry;
+  /** The people who may sign in (people.ts). */
+  readonly people: PeopleService;
   /** The site's folder (absolute). */
   siteFolder(): string;
   /** The connected site's id, else null. */
@@ -222,6 +236,7 @@ export function createInstall(options: InstallOptions): Install {
   let autoFinish = false;
   let disposed = false;
   const notice = options.notice ?? (() => {});
+  const people = createPeople(store);
 
   const hostOf = (repository: string | null) => (repository ? (parseRemoteUrl(repository)?.kind ?? null) : null);
 
@@ -243,7 +258,7 @@ export function createInstall(options: InstallOptions): Install {
   function step(): SetupStatus["step"] {
     const state = store.read();
 
-    if (!state.password) return "password";
+    if (!hasOwner(state)) return "password";
     if (!state.site?.connectedAt) return "site";
     if (!state.setup.finishedAt) return "details";
     return "done";
@@ -299,7 +314,7 @@ export function createInstall(options: InstallOptions): Install {
   }
 
   async function afterConnected(): Promise<void> {
-    if (autoFinish && store.hasPassword() && !store.read().setup.finishedAt) {
+    if (autoFinish && store.hasOwner() && !store.read().setup.finishedAt) {
       await store.update((draft) => {
         draft.setup.finishedAt = new Date().toISOString();
         draft.setup.tokenSha256 = null;
@@ -359,7 +374,7 @@ export function createInstall(options: InstallOptions): Install {
       settings.get().then((current) => current.secrets.some((secret) => secret.name === "anthropic" && secret.configured), () => false),
     ]);
 
-    return { step: step(), passwordSet: store.hasPassword(), site: installSite, author, liveUrl, assistantKey: assistant, fixed: inFile ? [...new Set([...fixed, "liveUrl" as const])] : [...fixed] };
+    return { step: step(), passwordSet: store.hasOwner(), site: installSite, author, liveUrl, assistantKey: assistant, fixed: inFile ? [...new Set([...fixed, "liveUrl" as const])] : [...fixed] };
   }
 
   /** The repository address, access and access key for a request, checked — nothing stored yet. */
@@ -465,7 +480,8 @@ export function createInstall(options: InstallOptions): Install {
       targetDir: target,
       name,
       ...(starter.look ? { look: starter.look } : {}),
-      author: await savedAuthor(),
+      // The owner who sent it from first run, like every other version a person records; started unattended, the install's own name.
+      author: currentAccountAuthor() ?? (await savedAuthor()),
       beforeFirstVersion: async (root) => {
         update("Installing the site's dependencies", 0.3);
         try {
@@ -612,7 +628,7 @@ export function createInstall(options: InstallOptions): Install {
   }
 
   async function finish(): Promise<SetupStatus> {
-    if (!store.hasPassword()) throw new GalleyError("conflict", "Choose the password first.");
+    if (!store.hasOwner()) throw new GalleyError("conflict", "Create the owner's account first.");
     if (!store.read().site?.connectedAt) throw new GalleyError("conflict", "Connect the site first.");
     if (!store.read().setup.finishedAt) {
       await store.update((draft) => {
@@ -625,26 +641,38 @@ export function createInstall(options: InstallOptions): Install {
 
   async function start(values: StartingValues, startOptions: StartOptions = {}): Promise<StartResult> {
     const notices: string[] = [];
+    let passwordLink: StartResult["passwordLink"] = null;
 
     if (startOptions.resetPassword) {
-      await store.clearPassword();
-      // The new password is chosen through the new setup link — never put straight back from GALLEY_PASSWORD.
+      // A first owner is chosen through the setup link, never put straight back from GALLEY_PASSWORD.
       await store.markSeeded(["password"]);
+      const rescued = await people.rescue(startOptions.resetPasswordEmail);
+
+      if (rescued) passwordLink = { code: rescued.link.code, expiresAt: rescued.link.expiresAt, name: rescued.account.name };
     }
-    // The password: a starting value, used once, only while there's none.
+    // The first owner's password: a starting value, used once, only while there's no owner.
     if (values.password) {
-      if (!store.hasPassword() && !store.isSeeded("password")) {
-        await store.setPassword(values.password);
-        await store.markSeeded(["password"]);
-      } else if (store.hasPassword() && !(await store.checkPassword(values.password))) {
-        notices.push("GALLEY_PASSWORD no longer matches the password chosen in the app, so it's ignored. Sign in with the app's password; to start over with a new setup link, run `galley serve --reset-password`.");
-      } else if (!store.hasPassword()) {
-        notices.push("GALLEY_PASSWORD is ignored: it set this install's password once already. Choose the new password through the setup link.");
+      if (!store.hasOwner() && !store.isSeeded("password")) {
+        await people.createOwner({ password: values.password, ...(values.owner ?? {}) });
+        await store.markSeeded(["password", ...(values.owner ? ["owner"] : [])]);
+      } else if (store.hasOwner() && !(await people.ownerPasswordIs(values.password))) {
+        notices.push(`GALLEY_PASSWORD no longer matches the password chosen in the app, so it's ignored. Everyone signs in with their own password; an owner who can't gets back in with \`${PRODUCT.slug} serve --reset-password\`.`);
+      } else if (!store.hasOwner()) {
+        notices.push("GALLEY_PASSWORD is ignored: it set this install's first password once already. Choose the owner's password through the setup link.");
+      }
+    }
+    // The owner's name and e-mail: filled in once, while the owner (carried over from a single password) has none.
+    if (values.owner && !store.isSeeded("owner")) {
+      if (store.hasOwner()) {
+        await people.completeOwner(values.owner);
+        await store.markSeeded(["owner"]);
+      } else {
+        notices.push("GALLEY_OWNER_NAME and GALLEY_OWNER_EMAIL are used with GALLEY_PASSWORD only; without it, the owner chooses them through the setup link.");
       }
     }
     let setupCode: string | null = null;
 
-    if (!store.hasPassword()) {
+    if (!store.hasOwner()) {
       // A code that was used once stays dead: after a password reset the operator's environment may
       // still carry it (or its hash), and arming it again would let an old link choose the new password.
       const supplied = values.setupToken ? { plain: values.setupToken } : values.setupTokenSha256 ? { sha256: values.setupTokenSha256 } : null;
@@ -719,17 +747,18 @@ export function createInstall(options: InstallOptions): Install {
       await applyLiveUrl(validLiveUrl(values.liveUrl));
       await store.markSeeded(["liveUrl"]);
     }
-    return { setupCode, notices };
+    return { setupCode, passwordLink, notices };
   }
 
   const install: Install = {
     home,
     store,
     registry,
+    people,
     siteFolder: () => store.siteFolder(),
     siteId,
     setupNeeded: () => step() !== "done",
-    meta: (signedIn) => ({ singleSite: true, setupNeeded: step() !== "done", passwordSet: store.hasPassword(), siteId: signedIn ? siteId() : null }),
+    meta: (signedIn) => ({ singleSite: true, setupNeeded: step() !== "done", passwordSet: store.hasOwner(), siteId: signedIn ? siteId() : null, signInWith: people.signInWith() }),
     site,
     status,
     start,

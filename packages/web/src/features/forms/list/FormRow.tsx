@@ -5,6 +5,7 @@ import { Badge, Icon, Menu, type MenuItem } from "@/ui";
 import { isLayout } from "../logic/fieldTypes";
 import { providerName } from "../logic/providers";
 import { Mark, providerMark } from "../file/Mark";
+import { useMay } from "@/lib/may";
 
 export interface FormRowProps {
   siteId: string;
@@ -37,12 +38,14 @@ export function FormRow({ siteId, item: summary, onDuplicate, onDelete }: FormRo
   const navigate = useNavigate();
   const form = summary.definition;
   const formId = summary.id;
+  const mayReadInbox = useMay()("GET /api/sites/:siteId/inbox");
   const to = `/sites/${siteId}/forms/${encodeURIComponent(formId)}`;
   const providers = form ? form.destinations.map((destination) => providerName(destination.provider)) : [];
   const fieldCount = form ? form.fields.filter((field) => !isLayout(field)).length : 0;
   const capturing = Boolean(form?.destinations.some((destination) => destination.provider === "galley"));
   const items: MenuItem[] = [
-    ...(capturing ? [{ id: "submissions", label: "See submissions", icon: "inbox" as const, onSelect: () => navigate(`/sites/${siteId}/inbox?form=${encodeURIComponent(formId)}`) }, { kind: "separator" as const, id: "sep-inbox" }] : []),
+    // What visitors sent is read by people who may publish: only they are offered it.
+    ...(capturing && mayReadInbox ? [{ id: "submissions", label: "See submissions", icon: "inbox" as const, onSelect: () => navigate(`/sites/${siteId}/inbox?form=${encodeURIComponent(formId)}`) }, { kind: "separator" as const, id: "sep-inbox" }] : []),
     { id: "duplicate", label: "Duplicate", icon: "copy", onSelect: () => onDuplicate(summary) },
     { kind: "separator", id: "sep" },
     { id: "delete", label: "Delete form…", icon: "trash", tone: "danger", onSelect: () => onDelete(summary) },

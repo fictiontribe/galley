@@ -7,6 +7,67 @@ entry says how.
 
 ## Unreleased
 
+A hosted install has accounts instead of one shared password. If you run a
+hosted install today, read **Changed** before upgrading. The desktop app and
+local mode have no accounts and are unchanged.
+
+### Added
+
+- **Accounts and roles on a hosted install.** Each person signs in with their
+  own e-mail and password, as an **Owner** (everything), an **Editor**
+  (changes the site and publishes it, reads the inbox) or a **Contributor**
+  (changes the site and sees Proof; an editor or owner publishes). One table
+  decides which role may call which route
+  (`packages/core/src/install/route-access.ts`), and the app hides what a role
+  can't use. First run now creates the owner's account; `GALLEY_OWNER_NAME`
+  and `GALLEY_OWNER_EMAIL` give it a name and e-mail on an unattended start.
+- **People**, on the Install page, for owners: invite someone (a link shown
+  once, good for 7 days), change a role, make a new-password link (good for
+  60 minutes), sign one person or everyone out, switch an account off or on,
+  remove it. The last owner who can sign in always stays.
+- **Your account**: your name and e-mail (changing the e-mail needs your
+  password), your password, and **Sign out everywhere** for yourself.
+- **E-mail for invitations and new-password links**, and **Forgot your
+  password?** on the sign-in page, when `GALLEY_SMTP_URL` and
+  `GALLEY_MAIL_FROM` are set. Without them, owners send each link
+  themselves. Not yet tried against a real mail server.
+- **Each publish carries its author**: a signed-in person's publishes and
+  undos are recorded with their own name and e-mail.
+- **Limits**: besides 5 failures a minute per address, 10 failed sign-ins per
+  e-mail in 15 minutes, and limits on "forgot my password".
+- The HTTP API gains `/api/account`, `/api/people/*`, `/api/auth/link`,
+  `/api/auth/link/check` and `/api/auth/forgot`; `POST /api/auth/login` takes
+  an `email`; `POST /api/setup/password` takes the owner's `name` and
+  `email`; `GET /api/meta` gains `account`, `install.signInWith` and
+  `install.passwordEmail`.
+
+### Changed
+
+- **Upgrading an install** (its data layout goes from 1 to 2): the shared
+  password becomes one owner with the same password and no name or e-mail
+  yet, who signs in with the password alone and is asked once for the rest.
+  **Everyone is signed out once**; old cookies and the preview's old viewer
+  cookies are refused. The old state file is kept as
+  `install.json.schema-1.bak`.
+- **`galley serve --reset-password`** now prints a one-time new-password link
+  for the owner (`--email <owner>` when there are several) and no longer
+  signs everyone out or forgets the password; the owner's old password works
+  until the link is used. With no owner yet it still prints a setup link.
+- **`POST /api/install/password`** changes the signed-in person's own
+  password; with the operator's token (`GALLEY_TOKEN`) it is refused (403).
+  `POST /api/auth/logout-all` signs out only the person calling it (with the
+  token: everyone).
+- A publish made over MCP or with the operator's token carries the install's
+  publishing name, not a person's.
+- The Install page is for owners. Editors and contributors don't see it;
+  their password and **Sign out everywhere** are on **Your account**.
+- A restore signs everyone out, and the backup's own people and passwords
+  apply from then on.
+- For anyone who can't read the inbox, the live event stream carries that a
+  form was submitted, never what was sent.
+- The last characters of a stored key are shown only to owners; everyone
+  else still sees whether a key is set.
+
 ### Fixed
 
 - **Next.js 16 no longer writes an AGENTS.md into the site** when Galley

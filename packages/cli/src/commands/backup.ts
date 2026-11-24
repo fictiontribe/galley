@@ -52,8 +52,8 @@ The passphrase is read from GALLEY_BACKUP_PASSPHRASE, or asked for (not shown as
 you type it). It needs at least ${MIN_INSTALL_PASSWORD_LENGTH} characters. Without it the backup can't be
 opened: keep it somewhere safe.
 
-After a restore everyone is signed out; sign in with the password the backup was
-made with.`;
+After a restore everyone is signed out. The backup's people come back with it:
+each signs in with the password they had when the backup was made.`;
 
 const posix = (from: string, to: string) => relative(from, to).split(sep).join("/");
 
@@ -172,7 +172,7 @@ async function restore(io: Io, home: string, input: string | undefined, force: b
     await staged.discard();
   }
   io.out(`Restored the backup made ${staged.manifest.createdAt} (by version ${staged.manifest.version}) into ${home}.`);
-  io.out("Everyone is signed out: sign in with the password the backup was made with.");
+  io.out("Everyone is signed out: sign in with the accounts and passwords the backup was made with.");
   return 0;
 }
 

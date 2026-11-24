@@ -1,7 +1,10 @@
 /**
  * /install — a hosted install's own page: where it is, what it runs, the
- * repository it is connected to (and its key), the publishing name, the
- * password, signing out everywhere, backups, and what is stored where.
+ * repository it is connected to (and its key), the publishing name, who can
+ * sign in, backups, and what is stored where. With accounts, "who can sign
+ * in" is People (features/accounts) and each person's own password lives in
+ * Your account; a server from before accounts keeps the one shared password
+ * and "Sign out everywhere" here, as before.
  */
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -19,6 +22,8 @@ import { Badge, Button, ConfirmDialog, Dialog, ErrorState, Field, Input, PageHea
 import { accessWords, isFixed, passphraseProblem, passwordProblem } from "./logic";
 import { KeySteps, Problem, RestoreFlow } from "./parts";
 import { downloadBackup } from "./transport";
+import { useAccount } from "@/lib/may";
+import { PeopleSection } from "@/features/accounts/People";
 import "./install.css";
 
 function Section({ id, title, description, children }: { id: string; title: string; description?: ReactNode; children: ReactNode }) {
@@ -107,6 +112,21 @@ function Repository({ info, onKey }: { info: InstallInfo; onKey: (key: DeployKey
 }
 
 function Author({ info }: { info: InstallInfo }) {
+  const account = useAccount();
+  if (account) {
+    return (
+      <Section id="author" title="Publishing name" description="Each version is recorded with the name and e-mail of the person who published it.">
+        <p className="install-note">
+          Yours is {account.name || "not set yet"}
+          {account.email ? <span className="g-mono"> &lt;{account.email}&gt;</span> : null}. Change it in{" "}
+          <Link className="g-link" to="/account">
+            Your account
+          </Link>
+          .
+        </p>
+      </Section>
+    );
+  }
   return (
     <Section id="author" title="Publishing name" description="Recorded with each version published from this editor.">
       {info.author ? (
@@ -294,6 +314,7 @@ function BackupDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
 
 function RestoreDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [busy, setBusy] = useState(false);
+  const accounts = useAccount() !== null;
   return (
     <Dialog
       open={open}
@@ -309,7 +330,7 @@ function RestoreDialog({ open, onClose }: { open: boolean; onClose: () => void }
       <div className="app-form-stack">
         <p className="install-warning">
           <ProofMark kind="bang" />
-          <span>Restoring replaces everything this editor keeps — the site and its unpublished changes, settings, stored keys and the password — with what the backup holds. What’s here now is gone unless you download a backup of it first.</span>
+          <span>{`Restoring replaces everything this editor keeps — the site and its unpublished changes, settings, stored keys and ${accounts ? "the people who can sign in" : "the password"} — with what the backup holds. What’s here now is gone unless you download a backup of it first.`}</span>
         </p>
         <RestoreFlow
           onBusy={setBusy}
@@ -374,6 +395,7 @@ function Storage({ info }: { info: InstallInfo }) {
 
 export function InstallScreen() {
   useTopBar({ crumbs: [{ label: "Install" }] });
+  const accounts = useAccount() !== null;
   const info = useQuery(keys.install(), () => api("GET /api/install"));
   const refresh = () => void info.refetch();
   return (
@@ -393,8 +415,14 @@ export function InstallScreen() {
             <Where info={info.data} />
             <Repository info={info.data} onKey={(deployKey) => info.data && setQueryData(keys.install(), { ...info.data, site: { ...info.data.site, deployKey } })} />
             <Author info={info.data} />
-            <Password info={info.data} onChanged={refresh} />
-            <SignOutEverywhere />
+            {accounts ? (
+              <PeopleSection />
+            ) : (
+              <>
+                <Password info={info.data} onChanged={refresh} />
+                <SignOutEverywhere />
+              </>
+            )}
             <Backup info={info.data} onChanged={refresh} />
             <Storage info={info.data} />
           </div>

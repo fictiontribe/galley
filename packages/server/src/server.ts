@@ -14,12 +14,14 @@ import { GalleyError, isGalleyError } from "@galley/core";
 import { PRODUCT, VERSION } from "@galley/core/brand";
 import { hideFromSiteCommands, limitSiteCommandMemory, parsePortRange, type PortRange, type PreviewGateway } from "@galley/core/workspace";
 import { setHostedMode } from "@galley/core/plugins";
+import { createSmtpTransport, mailConfigFromEnv, type MailTransport } from "@galley/core/forms";
 import {
   APP_SECRET_ENV_NAMES,
   createInstall,
   createInstallRegistry,
   holdDataFolder,
   isSingleSiteRegistry,
+  LINK_PATHS,
   openInstallState,
   readStartingValues,
   SITE_FOLDER,
@@ -559,6 +561,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   let services: Services;
   let install: Install | null = null;
   let setupCode: string | null = null;
+  let passwordLink: RunningServer["passwordLink"] = null;
   const notices: string[] = [];
   // The install's own jobs (connecting the site, a restore), found through the registry like every other job.
   const installJobs = () => (install ? (id: string) => install!.job(id) ?? ops?.job(id) ?? null : null);
@@ -619,10 +622,19 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         ...(options.siteInstall ? { installDependencies: options.siteInstall } : {}),
       });
       try {
-        const started = await install.start(config.starting ?? {}, { resetPassword: options.resetPassword === true });
+        const started = await install.start(config.starting ?? {}, {
+          resetPassword: options.resetPassword === true,
+          ...(options.resetPasswordEmail !== undefined ? { resetPasswordEmail: options.resetPasswordEmail } : {}),
+        });
 
         setupCode = started.setupCode;
         out.remember(setupCode);
+        if (started.passwordLink) {
+          // A link this server made, printed once to whoever runs it — and never written to the log.
+          out.remember(started.passwordLink.code);
+          passwordLink = { url: `${url}${LINK_PATHS.password}#${started.passwordLink.code}`, expiresAt: started.passwordLink.expiresAt, name: started.passwordLink.name };
+          out.event(`A new-password link was made for ${started.passwordLink.name || "the owner with no name yet"} (Owner) by whoever runs the server (--reset-password).`);
+        }
         notices.push(...started.notices);
       } catch (error) {
         if (isGalleyError(error)) throw new StartupError(error.message);
@@ -660,6 +672,18 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     }
   });
 
+  // Hosted: invitations and new-password links are also e-mailed when the server has outgoing mail.
+  let mailer: MailTransport | null = null;
+
+  if (hosted) {
+    if (options.mailer !== undefined) mailer = options.mailer;
+    else {
+      const { config: mail, problem } = mailConfigFromEnv(env);
+
+      if (problem) notice(`${problem} Invitations and new-password links are shown to the owner who makes them, but not e-mailed.`);
+      mailer = mail ? createSmtpTransport(mail) : null;
+    }
+  }
   if (install) {
     ops = createInstallOps({
       install,
@@ -709,6 +733,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     ...(hosted ? { previewEntry: gateway && tickets ? { origins: gateway.origins, issue: (session) => tickets!.issue(session) } : null, previewUnavailable: gateway ? null : NO_PREVIEW_ADDRESS } : {}),
     ...(revocations ? { revocations } : {}),
     ops,
+    mailer,
     heartbeatMs: options.heartbeatMs,
     log: out.log,
     streams,
@@ -739,6 +764,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     home: config.home,
     install,
     setupUrl: setupCode ? `${url}/setup?token=${encodeURIComponent(setupCode)}` : null,
+    passwordLink,
     notices,
     previews: gateway ? gateway.origins : null,
     readiness,

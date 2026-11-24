@@ -16,6 +16,7 @@ import { useState } from "react";
 import { editorAddress } from "@/features/inbox/reach";
 import { docsPage } from "../logic/locate";
 import { setInboxAddress, useKitStatus } from "./kit";
+import { useWhoPublishes } from "@/lib/may";
 
 /** Whether the step is needed: a form uses the inbox, the kit is there, and its settings name no address. */
 export function needsInboxAddress(status: SiteKitStatus | undefined): boolean {
@@ -27,6 +28,7 @@ export function InboxAddressStep() {
   const docsUrl = useMeta((s) => s.meta?.brand.docsUrl);
   const status = useKitStatus(siteId);
   const hosted = useHostedInstall();
+  const publishes = useWhoPublishes();
   const [busy, setBusy] = useState(false);
   const kit = status.data;
   if (!kit || !needsInboxAddress(kit)) return null;
@@ -36,7 +38,7 @@ export function InboxAddressStep() {
     setBusy(true);
     try {
       await setInboxAddress(siteId);
-      notify({ tone: "neutral", title: "The inbox address is set", body: "The live site sends its forms here once you publish. It’s waiting in Proof." });
+      notify({ tone: "neutral", title: "The inbox address is set", body: `The live site sends its forms here once ${publishes}. It’s waiting in Proof.` });
     } catch (error) {
       notify({ tone: "danger", title: "Couldn’t set the inbox address", body: errorShape(error).message });
     } finally {
@@ -55,7 +57,7 @@ export function InboxAddressStep() {
     body = (
       <>
         <p className="kit-callout__body">
-          Visitors’ browsers can reach this app’s inbox at <span className="g-mono">{inbox.address}</span>. Set it, and the live site sends its forms there once you publish.
+          Visitors’ browsers can reach this app’s inbox at <span className="g-mono">{inbox.address}</span>. Set it, and the live site sends its forms there once {publishes}.
         </p>
         <div className="kit-callout__actions">
           <Button size="sm" variant="primary" busy={busy} busyLabel="Setting…" onClick={() => void use()}>

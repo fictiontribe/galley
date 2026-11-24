@@ -26,7 +26,8 @@ and serves. Signal handling belongs to the caller (the CLI).
 | `GALLEY_HOST` | `127.0.0.1` | Interface to listen on. Anything other than a loopback address means **hosted mode**: one site. |
 | `GALLEY_PUBLIC_URL` | — | Hosted: the external address, e.g. `https://cms.example.com`. Used for the Host and Origin checks, the preview's and live comparison's default hostnames, and the CSP `frame-src`. Without it the server answers to any hostname and has no preview (with a warning). |
 | `GALLEY_PREVIEW_URL`, `GALLEY_LIVE_VIEW_URL` | worked out from `GALLEY_PUBLIC_URL` | Hosted: where the preview and the live comparison are served, by hostname, on the same port (`cms-preview.example.com`, `cms-live.example.com`). See [Previews](#previews). |
-| `GALLEY_PASSWORD` | — | Hosted: a starting value — the first sign-in password (12+ characters), used only while none exists. Without it the server prints a one-time setup link. Read from the environment only. The other starting values (`GALLEY_SITE_*`, `GALLEY_AUTHOR_*`, `GALLEY_SETUP_TOKEN*`, `GALLEY_INSTALL_CONFIG`) and the operations variables are listed by `galley serve --help`. |
+| `GALLEY_PASSWORD` | — | Hosted: a starting value — the first owner's password (12+ characters), used once, only while there is no owner; with `GALLEY_OWNER_NAME` and `GALLEY_OWNER_EMAIL` it makes a complete owner. Without it the server prints a one-time setup link. Read from the environment only. The other starting values (`GALLEY_OWNER_*`, `GALLEY_SITE_*`, `GALLEY_AUTHOR_*`, `GALLEY_SETUP_TOKEN*`, `GALLEY_INSTALL_CONFIG`) and the operations variables are listed by `galley serve --help`. |
+| `GALLEY_SMTP_URL`, `GALLEY_MAIL_FROM` | — | Hosted: outgoing e-mail (`smtp://` or `smtps://`). With both, invitations and new-password links are also e-mailed and "Forgot your password?" works; without them an owner copies each link and sends it. |
 | `GALLEY_TOKEN` | random | Local: the session token (32 random bytes when unset). Hosted: optional, enables `Authorization: Bearer` for scripts. At least 16 characters. |
 | `GALLEY_HOME` | `~/.galley` | State: settings, stored keys (0600), usage, the list of known sites, each site's conversations (`state/<site id>/threads`), the cookie-signing key (`session.key`, 0600). Hosted: the install's data folder — its state (`install.json`), its keys (`keys/`) and its one site (`site/`). |
 | `GALLEY_SITES_DIR` | `<home>/sites` | Local: where cloned and new sites go. Ignored in hosted mode (said once at start-up). |
@@ -76,27 +77,46 @@ same path without the token. API calls need that cookie or
 
 **Hosted mode** (`GALLEY_HOST` not loopback, or `galley serve`). One site
 (`hosted-refusals.ts` answers the multi-site routes with 403 and the "Host the
-editor online" routes with 404). With no password yet, the server prints a
-one-time setup link; the code is kept as its SHA-256 and the first-run routes
-(`/api/setup…`) take it as a Bearer value until a password exists. The
-password is stored as an scrypt hash in the install's state.
-`POST /api/auth/login` compares in constant time; wrong passwords and wrong
-setup codes share one limit, 5 a minute per client address, then a 429 until
-the minute is up. The session cookie is signed with a key kept in the home,
-valid for 30 days, `HttpOnly; SameSite=Strict`; on an `https://` public
-address it is `__Host-` and always `Secure`. Logout, "sign out everywhere"
-(`POST /api/auth/logout-all`) and a password change are recorded in the
+editor online" routes with 404), for people with accounts: each signs in with
+their own e-mail and password and is an owner, an editor or a contributor
+(`packages/core/src/install/accounts.ts`, `people.ts`). With no owner yet, the
+server prints a one-time setup link; the code is kept as its SHA-256, the
+first-run routes (`/api/setup…`) take it as a Bearer value until an owner
+exists, and whoever opens it creates the first owner. Owners invite everyone
+else with one-time links (`accounts-routes.ts`). Passwords are stored as
+scrypt hashes in the install's state. `POST /api/auth/login` takes an e-mail
+and password and compares in constant time; an unknown e-mail, a wrong
+password and a switched-off account get the same answer. Wrong passwords,
+wrong setup codes, bad link codes and a wrong current password share one
+limit, 5 a minute per client address, then a 429 until the minute is up;
+sign-ins to one e-mail are also limited, 10 failures in 15 minutes from
+anywhere. Each session cookie belongs to one person; it is signed with a key
+kept in the home, valid for 30 days, `HttpOnly; SameSite=Strict`; on an
+`https://` public address it is `__Host-` and always `Secure`. Signing out,
+"sign out everywhere" (`POST /api/auth/logout-all`, the caller only), an
+owner signing someone out, and a password change are recorded in the
 install's state, so they survive a restart. `GET /healthz` and `GET /readyz`
 answer anyone, with nothing that identifies the install.
+
+**Who may call what** on a hosted install is one table, `ROUTE_ACCESS` in
+`packages/core/src/install/route-access.ts`: every route has a level (edit,
+publish or manage), and `app.ts` checks the caller's role against it on
+every request. Someone signed in below the level gets `403`: "Your account
+can't do that. Ask an owner of this editor." The operator's `GALLEY_TOKEN`
+reaches every route except those that need a person (your own account,
+people, backups, restores, opening the preview). Local mode has no accounts
+and ignores the table.
 
 **Every request**: the `Host` header must name the server (loopback names, the
 listening address, the public URL's host) — the DNS-rebinding guard. **Every
 state-changing request** (not GET/HEAD/OPTIONS) needs an `Origin` equal to the
 server's own origin (or `Sec-Fetch-Site: same-origin`), or a valid Bearer
 token; otherwise 403 — the CSRF guard. Only `GET /api/meta`,
-`POST /api/auth/login` and `POST /api/auth/logout` work without a session;
-unauthenticated, meta reveals the brand, the mode and `authenticated: false`
-and nothing else.
+`POST /api/auth/login` and `POST /api/auth/logout` work without a session
+(and, hosted, the three one-time-link routes `POST /api/auth/link/check`,
+`POST /api/auth/link` and `POST /api/auth/forgot`, where the link's code is
+the proof); unauthenticated, meta reveals the brand, the mode and
+`authenticated: false` and nothing else.
 
 **Files on the app's origin.** `GET …/raw` and image candidates are sent with
 `X-Content-Type-Options: nosniff` and
@@ -122,9 +142,11 @@ else is logged to stderr with its stack and answered with
 Bad input is `400 invalid` naming the field. No session, an ended session, a
 wrong token or a wrong password is `401 unauthorized`; `403 forbidden` is for
 requests that are understood but not allowed (a foreign Host or Origin, a
-path outside what the mode may write). A broken operator setting (brand
+path outside what the mode may write, a role below the route's level). A broken operator setting (brand
 file, accent, port range) stops start-up with one plain sentence. Secrets are never read by the
-server; secret routes return `SecretStatus` only (hint cut to 4 characters),
+server; secret routes return `SecretStatus` only (hint cut to 4 characters,
+and on a hosted install no hint at all for anyone who isn't an owner,
+`key-hints.ts`),
 and an engine error that quotes a secret is scrubbed before it is answered or
 logged.
 

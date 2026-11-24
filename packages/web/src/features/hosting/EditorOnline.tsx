@@ -129,7 +129,7 @@ function EditorOnline({ siteId }: { siteId: string }) {
   } else if (state === "none") {
     card = (
       <div className="app-card app-card--pad deploy-card">
-        <p className="deploy-card__text">Edit this site from any browser, not just this computer. The editor runs on your own account with a host, with its own password.</p>
+        <p className="deploy-card__text">Edit this site from any browser, not just this computer. The editor runs on your own account with a host, with its own sign-in: you create its first account, then invite the people who work on the site.</p>
         {failedCreate ? <EditorJobFailure job={job} title="Couldn’t put the editor online" /> : null}
         <div className="deploy-card__actions">
           <Button variant="secondary" size="sm" icon="globe" onClick={() => useEditorHostingUi.getState().open(siteId)}>

@@ -15,6 +15,7 @@ import { MediaLibraryPane } from "./MediaLibraryPane";
 import type { MediaKind } from "./mediaPaths";
 import { GenerateVideoPanel } from "./video/GenerateVideoPanel";
 import { VideoJobs } from "./video/VideoJobs";
+import { useWhoPublishes } from "@/lib/may";
 
 const KINDS: Array<{ value: MediaKind; label: string }> = [
   { value: "all", label: "All" },
@@ -27,6 +28,7 @@ const KINDS: Array<{ value: MediaKind; label: string }> = [
 export function MediaScreen() {
   const { siteId = "" } = useParams();
   useTopBar({ crumbs: [{ label: "Media" }] });
+  const publishes = useWhoPublishes();
   const media = useQuery(keys.media(siteId), () => api("GET /api/sites/:siteId/media", { params: { siteId } }));
   const [kind, setKind] = useState<MediaKind>("all");
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export function MediaScreen() {
     notify({
       tone: "neutral",
       title: `${item.name} deleted`,
-      body: item.status === "modified" ? "It leaves the site when you publish. Until then, Undo brings back the published version." : "It leaves the site when you publish. Until then, Undo brings it back.",
+      body: item.status === "modified" ? `It leaves the site when ${publishes}. Until then, Undo brings back the published version.` : `It leaves the site when ${publishes}. Until then, Undo brings it back.`,
       action: {
         label: "Undo",
         onClick: () =>

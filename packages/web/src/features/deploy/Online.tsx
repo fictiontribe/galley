@@ -22,6 +22,7 @@ import { copyText, DeployProgress } from "./parts";
 import { DomainSection } from "./Domain";
 import { SharePreviewButton } from "./SharePreview";
 import { deployKeys, setAutoDeploy, useDeployStatus, useDeployTargets, useDeployUi, useLatestDeployJob } from "./useDeploy";
+import { useMay } from "@/lib/may";
 import "./deploy.css";
 
 /** The label the engine gives a deploy that publishing started by itself. */
@@ -36,6 +37,10 @@ export function OnlineCard({ siteId, variant = "home", listLink = true }: { site
   const config = data?.config;
   /** The switch's new position while it is being saved. */
   const [saving, setSaving] = useState<boolean | null>(null);
+  const may = useMay();
+  // Choosing where the site is hosted is the install's business; putting it live is a publish.
+  const maySetUp = may("PUT /api/sites/:siteId/deploy");
+  const mayPutLive = may("POST /api/sites/:siteId/deploy");
 
   if (status.loading) return <Skeleton height={120} />;
   if (!data) return <ErrorState compact title="Couldn’t check whether the site is online" error={status.error} onRetry={() => void status.refetch()} />;
@@ -44,12 +49,18 @@ export function OnlineCard({ siteId, variant = "home", listLink = true }: { site
     <div className="app-card app-card--pad deploy-card">
       {!config ? (
         <>
-          <p className="deploy-card__text">Put the site at a real address with Cloudflare or Vercel. After that, publishing can put changes live by itself, and you can share a preview link before you publish.</p>
-          <div className="deploy-card__actions">
-            <Button variant="primary" size="sm" icon="globe" onClick={() => useDeployUi.getState().openSetup()}>
-              Put this site online
-            </Button>
-          </div>
+          {maySetUp ? (
+            <>
+              <p className="deploy-card__text">Put the site at a real address with Cloudflare or Vercel. After that, publishing can put changes live by itself, and you can share a preview link before you publish.</p>
+              <div className="deploy-card__actions">
+                <Button variant="primary" size="sm" icon="globe" onClick={() => useDeployUi.getState().openSetup()}>
+                  Put this site online
+                </Button>
+              </div>
+            </>
+          ) : (
+            <p className="deploy-card__text">The site isn’t at an address of its own yet. An owner of this editor can put it online.</p>
+          )}
         </>
       ) : (
         <>
@@ -71,7 +82,7 @@ export function OnlineCard({ siteId, variant = "home", listLink = true }: { site
             On {targetName(targets.data, config.target)} · project <span className="g-mono">{config.project}</span>
           </p>
           <div className="deploy-card__actions">
-            {data.behind !== 0 || !data.production ? (
+            {mayPutLive && (data.behind !== 0 || !data.production) ? (
               <Button variant="primary" size="sm" disabled={status.job?.state === "running"} onClick={() => void putLive(siteId)}>
                 Put live
               </Button>
@@ -83,8 +94,8 @@ export function OnlineCard({ siteId, variant = "home", listLink = true }: { site
               </Link>
             ) : null}
           </div>
-          {variant === "settings" ? <DomainSection siteId={siteId} /> : null}
-          {variant === "settings" ? (
+          {variant === "settings" && maySetUp ? <DomainSection siteId={siteId} /> : null}
+          {variant === "settings" && maySetUp ? (
             <div className="deploy-card__settings">
               <Toggle
                 checked={saving ?? Boolean(config.autoDeploy)}
@@ -112,9 +123,11 @@ export function OnlineCard({ siteId, variant = "home", listLink = true }: { site
 export function PutLiveButton() {
   const { siteId = "" } = useParams();
   const status = useDeployStatus(siteId);
+  const may = useMay();
   const data = status.data;
   if (!data) return null;
   if (!data.config) {
+    if (!may("PUT /api/sites/:siteId/deploy")) return null;
     return (
       <Button size="sm" variant="quiet" icon="globe" onClick={() => useDeployUi.getState().openSetup()}>
         Put this site online
@@ -123,6 +136,7 @@ export function PutLiveButton() {
   }
   if (status.job?.state === "running") return <Badge tone="info">Putting it live…</Badge>;
   if (data.production && data.behind === 0) return <Badge tone="success">Live</Badge>;
+  if (!may("POST /api/sites/:siteId/deploy")) return null;
   return (
     <Button size="sm" variant="secondary" icon="globe" onClick={() => void putLive(siteId)}>
       Put live
@@ -139,9 +153,11 @@ export function PublishDeployNote({ siteId }: { siteId: string }) {
   const job = latest && (latest.startedAt >= since.current || (latest.label === AUTO_LABEL && latest.startedAt >= since.current - 30_000)) ? latest : null;
   const config = status.data?.config;
   const [starting, setStarting] = useState(false);
+  const may = useMay();
 
   if (!status.data) return null;
   if (!config) {
+    if (!may("PUT /api/sites/:siteId/deploy")) return null;
     return (
       <p className="deploy-note">
         <span>Want it at a real address?</span>
@@ -239,6 +255,7 @@ function DeploymentRow({ item, versions }: { item: Deployment; versions: Map<str
 export function OnlineScreen() {
   const { siteId = "" } = useParams();
   useTopBar({ crumbs: [{ label: "Online" }] });
+  const mayPublish = useMay()("POST /api/sites/:siteId/publish");
   const list = useQuery(deployKeys.deployments(siteId), () => api("GET /api/sites/:siteId/deployments", { params: { siteId }, query: { limit: 50 } }));
   const history = useQuery(keys.history(siteId, 50), () => api("GET /api/sites/:siteId/history", { params: { siteId }, query: { limit: 50 } }));
   const versions = new Map((history.data?.items ?? []).map((item) => [item.commit, item.message]));
@@ -247,7 +264,7 @@ export function OnlineScreen() {
   return (
     <div className="app-screen">
       <div className="app-screen__inner">
-        <PageHeader title="Online" description="Where the site lives on the internet. What’s live is what you’ve published; a preview link shows unpublished changes too." />
+        <PageHeader title="Online" description={mayPublish ? "Where the site lives on the internet. What’s live is what you’ve published; a preview link shows unpublished changes too." : "Where the site lives on the internet. What’s live is what an editor or owner has published."} />
         <OnlineCard siteId={siteId} variant="settings" listLink={false} />
         <EditorOnlineSection siteId={siteId} />
         <h2 className="app-section__title deploy-list__title">Deployments</h2>

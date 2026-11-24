@@ -3,9 +3,11 @@
  *
  * Local mode: a random token minted at start-up travels once in the URL the
  * CLI opens (`?token=`), and is exchanged for an HttpOnly cookie. Hosted
- * mode: a password exchanged for the same kind of cookie. Either way the
- * cookie value is `issuedAt.nonce.hmac` signed with a server key, so it can
- * be checked without server-side session state.
+ * mode: a person's e-mail and password exchanged for the same kind of
+ * cookie. The cookie value is `issuedAt.nonce.hmac` (local) or
+ * `issuedAt.nonce.accountId.hmac` (hosted: whose session it is, under the
+ * MAC, so it can't be swapped), signed with a server key, so it can be
+ * checked without server-side session state.
  */
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Context } from "hono";
@@ -14,6 +16,17 @@ import { getCookie } from "hono/cookie";
 export const SESSION_MAX_AGE_S = 30 * 24 * 60 * 60;
 export const LOGIN_LIMIT = 5;
 export const LOGIN_WINDOW_MS = 60_000;
+/** Failed sign-ins for one e-mail, from any number of addresses, before that e-mail waits: slows guesses spread over many addresses. */
+export const EMAIL_LOGIN_LIMIT = 10;
+export const EMAIL_LOGIN_WINDOW_MS = 15 * 60_000;
+/** "Forgot my password" requests per client address, and e-mails per address asked for, in their windows. */
+export const FORGOT_CLIENT_LIMIT = 5;
+export const FORGOT_CLIENT_WINDOW_MS = 15 * 60_000;
+export const FORGOT_EMAIL_LIMIT = 3;
+export const FORGOT_EMAIL_WINDOW_MS = 60 * 60_000;
+/** The MAC's label for a hosted (person's) cookie: its MAC is never a local cookie's MAC, whatever the payload. */
+const ACCOUNT_PURPOSE = "account-session/v1";
+const ACCOUNT_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 export function mintToken(): string {
   return randomBytes(32).toString("base64url");
@@ -31,16 +44,23 @@ function mac(key: Uint8Array, payload: string): string {
   return createHmac("sha256", key).update(payload).digest("base64url");
 }
 
-export function signSession(key: Uint8Array, issuedAt = Date.now(), nonce = randomBytes(16).toString("base64url")): string {
+export function signSession(key: Uint8Array, issuedAt = Date.now(), nonce = randomBytes(16).toString("base64url"), accountId?: string): string {
+  if (accountId !== undefined) {
+    if (!ACCOUNT_ID.test(accountId)) throw new Error("An account id is letters, digits, - and _ only.");
+    const payload = `${issuedAt}.${nonce}.${accountId}`;
+
+    return `${payload}.${mac(key, `${ACCOUNT_PURPOSE}\n${payload}`)}`;
+  }
   const payload = `${issuedAt}.${nonce}`;
 
   return `${payload}.${mac(key, payload)}`;
 }
 
-/** A session cookie that is correctly signed and not too old: its id (the nonce) and when it was issued. */
+/** A session cookie that is correctly signed and not too old: its id (the nonce), when it was issued, and whose it is (hosted). */
 export interface SessionInfo {
   id: string;
   issuedAt: number;
+  accountId?: string;
 }
 
 /** The session in `value` when it is validly signed and unexpired, else null. Says nothing about revocation. */
@@ -48,15 +68,19 @@ export function readSession(key: Uint8Array, value: string | undefined, now = Da
   if (!value) return null;
   const parts = value.split(".");
 
-  if (parts.length !== 3) return null;
-  const [issued, nonce, signature] = parts as [string, string, string];
-  const expected = mac(key, `${issued}.${nonce}`);
+  if (parts.length !== 3 && parts.length !== 4) return null;
+  const signature = parts[parts.length - 1]!;
+  const payload = parts.slice(0, -1).join(".");
+  const accountId = parts.length === 4 ? parts[2]! : undefined;
+
+  if (accountId !== undefined && !ACCOUNT_ID.test(accountId)) return null;
+  const expected = mac(key, accountId !== undefined ? `${ACCOUNT_PURPOSE}\n${payload}` : payload);
 
   if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
-  const issuedAt = Number(issued);
+  const issuedAt = Number(parts[0]);
 
   if (!Number.isFinite(issuedAt) || issuedAt > now + 60_000 || now - issuedAt > SESSION_MAX_AGE_S * 1000) return null;
-  return { id: nonce, issuedAt };
+  return { id: parts[1]!, issuedAt, ...(accountId !== undefined ? { accountId } : {}) };
 }
 
 /** Returns the session nonce when `value` is a valid, unexpired session, else null. */
@@ -166,8 +190,8 @@ export interface SessionCheck {
   revoked: RevocationList;
   /** Hosted install: whether a signed, unexpired session still counts ("sign out everywhere", a changed password). */
   valid?: (session: SessionInfo) => boolean;
-  /** Hosted install: a new cookie value — issued after the last "sign out everywhere", so it isn't caught by it. */
-  issue?: () => string;
+  /** Hosted install: a new cookie value for this person — issued after the last "sign out everywhere" (theirs and the install's), so it isn't caught by it. */
+  issue?: (accountId?: string) => string;
   /** Hosted install: checks the sign-in password against the stored hash. */
   verifyPassword?: (password: string) => Promise<boolean>;
   /** Always mark the cookie Secure (a hosted install on an https:// address), whatever the forwarded protocol says. */

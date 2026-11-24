@@ -1,5 +1,5 @@
 import type { AgentRuntime, BrandConfig, EventBus, ImageCandidate, ImageGenRequest, ImageService, SettingsService, SiteRegistry, SiteService, VideoService } from "@galley/core/types";
-import type { FormCaptureService } from "@galley/core/forms";
+import type { FormCaptureService, MailTransport } from "@galley/core/forms";
 import type { DeployService } from "@galley/core/deploy";
 import type { RedirectsService } from "@galley/core/redirects";
 import type { PluginRegistry } from "@galley/core/plugins";
@@ -112,6 +112,13 @@ export interface AppOptions {
   revocations?: RevocationList;
   /** Hosted mode: health, backups, restores and the Install page (ops.ts). */
   ops?: InstallOps | null;
+  /**
+   * Hosted mode: the server's outgoing e-mail (GALLEY_SMTP_URL and
+   * GALLEY_MAIL_FROM), for invitations and new-password links. Absent: links
+   * are only shown to the owner who made them, and "Forgot your password?"
+   * tells people to ask an owner.
+   */
+  mailer?: MailTransport | null;
 }
 
 /** Keeps track of open event streams so shutdown can end them. */
@@ -153,10 +160,16 @@ export interface ServerOptions {
   /** Plain-language notices (port changes, warnings). Default: stderr. */
   notice?: (line: string) => void;
   /**
-   * Hosted mode, `--reset-password`: forget the stored password, end every
-   * session, and print a new one-time setup link.
+   * Hosted mode, `--reset-password`: the operator's way back in. With an
+   * owner, a one-time new-password link for the only owner (or the one
+   * `resetPasswordEmail` names); nobody else's account is touched. Without
+   * one, a new one-time setup link.
    */
   resetPassword?: boolean;
+  /** Which owner `resetPassword` is for, when there are several (`--email`). */
+  resetPasswordEmail?: string;
+  /** Hosted mode, test seam: the outgoing e-mail to use instead of the one GALLEY_SMTP_URL and GALLEY_MAIL_FROM describe (null: none). */
+  mailer?: MailTransport | null;
   /** Hosted mode, test seam: replaces installing a starter's dependencies when first run sends one to the repository. */
   siteInstall?: (root: string, onLog: (line: string) => void) => Promise<void>;
   log?: (line: string) => void;
@@ -192,10 +205,16 @@ export interface RunningServer {
   install: Install | null;
   /**
    * Hosted mode, first run pending: `<address>/setup?token=…`, the one-time
-   * link that lets whoever has it choose the password. Null once a password
-   * exists, in local mode, or when the operator supplied only the code's hash.
+   * link that lets whoever has it create the owner's account. Null once an
+   * owner exists, in local mode, or when the operator supplied only the code's hash.
    */
   setupUrl: string | null;
+  /**
+   * Hosted mode, `--reset-password` with an owner: `<address>/new-password#…`,
+   * the one-time link that lets that owner choose a new password, and when
+   * it stops working. Null otherwise.
+   */
+  passwordLink: { url: string; expiresAt: string; name: string } | null;
   /** Hosted mode: things the operator should hear once at start (a GALLEY_PASSWORD that no longer applies…). Already passed to `notice`. */
   notices: string[];
   /** Hosted mode: the preview's and the live comparison's addresses, or null when none could be worked out. */

@@ -443,7 +443,7 @@ export function createHostingService(options: HostingServiceOptions): HostingSer
 
     if (answer.status === 0) throw new HostingError("unanswered", `The editor at https://${record.addresses.editor} stopped answering while the site was being handed over. Choose Check to try again.`, say(answer.error ?? ""));
     if (answer.status === 401 || answer.status === 403) {
-      throw new HostingError("host", "The editor didn't accept this computer's setup code: its first run may already be finished. Open it and sign in with its password.", `POST /api/setup/handover → ${answer.status}`);
+      throw new HostingError("host", "The editor didn't accept this computer's setup code: its first run may already be finished. Open it and sign in.", `POST /api/setup/handover → ${answer.status}`);
     }
     if (answer.status < 200 || answer.status >= 300) {
       throw new HostingError("host", `The editor couldn't take the site${answer.body?.error?.message ? `: “${say(answer.body.error.message).slice(0, 200)}”` : ""}. Choose Check to try again.`, `POST /api/setup/handover → ${answer.status}`);
@@ -648,7 +648,7 @@ export function createHostingService(options: HostingServiceOptions): HostingSer
         await waitForInstall(record.addresses.editor, job, 0.6, 0.9);
         job.update({ detail: "Handing the site over…", progress: 0.92 });
         await handOver(site, record);
-        return { detail: "The editor is online. Open its first-run link to choose its password.", url: `https://${record.addresses.editor}` };
+        return { detail: "The editor is online. Open its first-run link to create the owner's account.", url: `https://${record.addresses.editor}` };
       });
     },
 
@@ -681,7 +681,7 @@ export function createHostingService(options: HostingServiceOptions): HostingSer
 
     async setupLink(site) {
       const record = await needRecord(site);
-      const finished = "First run on the editor is finished, so its setup link no longer works. Open it and sign in with its password.";
+      const finished = "First run on the editor is finished, so its setup link no longer works. Open it and sign in.";
 
       if (record.setup === "done") throw new HostingError("invalid", finished);
       if ((await readyz(target(record.addresses.editor)))?.state === "ready") {

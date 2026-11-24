@@ -55,6 +55,9 @@ describe("the WordPress move's words and checks", () => {
     expect(full.map((step) => step.id)).toEqual(["proof", "rebuild", "redirects", "online", "domain"]);
     expect(full[0]!.body).toBe("50 entries and 120 images are waiting there. Nothing is live until you publish.");
     expect(full[2]!.body).toBe("So 412 old addresses keep working, and search engines follow them.");
+    // Someone whose role doesn't publish reads who does.
+    expect(nextSteps(report(), "an editor or owner publishes")[0]!.body).toBe("50 entries and 120 images are waiting there. Nothing is live until an editor or owner publishes.");
+    expect(reportHead(report(), "an editor or owner publishes").lede).toBe("Everything is a pending change: nothing is live until an editor or owner publishes.");
   });
 
   it("says so once what it brought isn't waiting any more, and offers to start again when it was all discarded", () => {

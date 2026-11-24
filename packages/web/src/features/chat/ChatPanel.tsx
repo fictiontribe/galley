@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from "react";
-import { Link } from "react-router-dom";
 import type { AgentMode, ChatContext, SendMessageRequest } from "@galley/core/types";
 import { api, errorShape } from "@/lib/api";
 import { invalidate, useQuery } from "@/lib/query";
@@ -16,6 +15,8 @@ import { promptHistory, quickReplies } from "./threadState";
 import { useThread } from "./useThread";
 import { continueLine, lastConversation } from "./resume";
 import "./chat.css";
+import { SettingsLink } from "@/features/accounts/SettingsLink";
+import { useWhoPublishes } from "@/lib/may";
 
 export interface ChatPanelProps {
   siteId: string;
@@ -51,9 +52,9 @@ function NoKey() {
       <ProofMark kind="reg" className="chat-nokey__mark" />
       <h3 className="chat-nokey__title">Connect the assistant.</h3>
       <p className="chat-nokey__body">{`Paste an API key in Settings. It’s stored ${where.keyStore}. Until then you can still edit in the form and on the page.`}</p>
-      <Link className={buttonClass("primary", "sm")} to="/settings">
+      <SettingsLink route="PUT /api/secrets/:name" className={buttonClass("primary", "sm")} to="/settings" fallback="An owner of this editor can connect it.">
         Open settings
-      </Link>
+      </SettingsLink>
     </div>
   );
 }
@@ -66,6 +67,7 @@ export function ChatPanel({ siteId, context, initialMessage }: ChatPanelProps) {
   const confirmBuild = useChatUi((s) => s.confirmBuild);
   const draftOffer = useChatUi((s) => (s.draft?.siteId === siteId ? s.draft : null));
   const allowBuild = useSite((s) => s.detail?.model.ai.allowBuild ?? false);
+  const publishes = useWhoPublishes();
   const threads = useThreads(siteId);
   const settings = useQuery(keys.settings(), () => api("GET /api/settings"));
   const keyReady = settings.data ? settings.data.secrets.some((secret) => secret.name === "anthropic" && secret.configured) : null;
@@ -337,7 +339,7 @@ export function ChatPanel({ siteId, context, initialMessage }: ChatPanelProps) {
         onClose={() => setAskBuild(false)}
         tone="primary"
         title="Let the assistant change the site’s code?"
-        body="In build mode the assistant can also change the site’s design — its layouts, components and styles — and run the site’s build to check its work. Every change still waits in Proof until you publish."
+        body={`In build mode the assistant can also change the site’s design — its layouts, components and styles — and run the site’s build to check its work. Every change still waits in Proof until ${publishes}.`}
         confirmLabel="Use build mode"
         cancelLabel="Keep content mode"
         onConfirm={() => {

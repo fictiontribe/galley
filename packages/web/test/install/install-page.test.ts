@@ -1,8 +1,11 @@
 // @vitest-environment happy-dom
 /**
  * The Install page against the mock install: what it shows, and each action —
- * a new key (after a warning), the password, signing out everywhere (after a
- * confirmation), the backup download's request and file, restore's warning.
+ * a new key (after a warning), the backup download's request and file,
+ * restore's warning. With accounts, who can sign in is People
+ * (accounts-people.test.ts) and each person's password is in Your account; a
+ * server from before accounts keeps the one password and "Sign out
+ * everywhere" here, as it always did.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { byText, click, field, renderApp, saved, startServer, submit, type, until, type MockServer, type Rendered } from "./harness";
@@ -18,8 +21,8 @@ function calls(server: MockServer, method: string, path: string) {
   return server.log.filter((entry) => entry.method === method && entry.path === path);
 }
 
-async function open(): Promise<MockServer> {
-  const server = await startServer({ mode: "hosted", setup: "done" });
+async function open(options: { accounts?: boolean } = {}): Promise<MockServer> {
+  const server = await startServer({ mode: "hosted", setup: "done", ...options });
   server.backend.authenticated = true;
   page = await renderApp(server, "/install");
   await until(() => expect(page?.text()).toContain("What is stored where"));
@@ -40,7 +43,10 @@ describe("the Install page", () => {
     expect(text).toContain("git@github.com:example/site.git");
     expect(text).toContain("This editor’s own key");
     expect((document.querySelector('textarea[aria-label="This editor’s public key"]') as HTMLTextAreaElement).value).toMatch(/^ssh-ed25519 /);
-    expect(byText(document, "a", "App settings › You")?.getAttribute("href")).toBe("/settings#you");
+    // Each person publishes under their own name, changed in Your account.
+    expect(text).toContain("the name and e-mail of the person who published it");
+    expect(byText(document, "a", "Your account")?.getAttribute("href")).toBe("/account");
+    expect(text).toContain("People");
     expect(text).toContain("/data");
     expect(text).toContain("Previews are the site’s own code, running on this server.");
     const rows = [...document.querySelectorAll(".install-table tbody tr")];
@@ -60,8 +66,14 @@ describe("the Install page", () => {
     await until(() => expect((document.querySelector('textarea[aria-label="This editor’s public key"]') as HTMLTextAreaElement).value).not.toBe(before));
   });
 
-  it("changes the password, saying other browsers are signed out, and shows the server's sentence when the current one is wrong", async () => {
-    const server = await open();
+  it("keeps the one password and “Sign out everywhere” on a server from before accounts", async () => {
+    const server = await open({ accounts: false });
+    expect(byText(document, "a", "App settings › You")?.getAttribute("href")).toBe("/settings#you");
+    expect(page?.text()).not.toContain("People");
+  });
+
+  it("changes the password, saying other browsers are signed out, and shows the server's sentence when the current one is wrong (a server from before accounts)", async () => {
+    const server = await open({ accounts: false });
     expect(page?.text()).toContain("signs out every other browser");
     await type(field(document, "Current password"), "not it");
     await type(field(document, "New password"), "a brand new password");
@@ -77,8 +89,8 @@ describe("the Install page", () => {
     expect(calls(server, "POST", "/api/install/password").at(-1)?.body).toEqual({ current: "proof", next: "a brand new password" });
   });
 
-  it("signs out everywhere only after a confirmation, then asks for the password", async () => {
-    const server = await open();
+  it("signs out everywhere only after a confirmation, then asks for the password (a server from before accounts)", async () => {
+    const server = await open({ accounts: false });
     await click(byText(document, "button", "Sign out everywhere…"));
     await until(() => expect(dialog().textContent).toContain("this one included"));
     expect(calls(server, "POST", "/api/auth/logout-all")).toHaveLength(0);

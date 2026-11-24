@@ -491,7 +491,7 @@ async function create(argv: string[], io: HostIo): Promise<number> {
     }
     if (link) {
       io.out(`✓ The editor is online at https://${plan.addresses.editor}`);
-      io.out(`  Open this link to choose its password and finish setting it up (it works once): ${link}`);
+      io.out(`  Open this link to create the owner's account and finish setting it up (it works once): ${link}`);
     } else {
       io.out(`✓ ${job.detail ?? "Created."}`);
       if (written) io.out(`  The files to run it are in ${written}.`);

@@ -23,7 +23,7 @@ Galley is running at http://127.0.0.1:4400
 …
 Open: http://127.0.0.1:4400/sites/e9f5bf4fa34d?token=…
 \`\`\``,
-  serve: `A hosted install: Galley for one site, on a server, behind a password. Everything it keeps is in its data folder (\`GALLEY_HOME\`). With no password yet it prints a one-time setup link; \`--reset-password\` makes a new one for a forgotten password and keeps serving. Not in a release yet: it is in the repository. What it prints, the image, the three addresses and the proxy in front: [Run a hosted install](/docs/running/hosted/).`,
+  serve: `A hosted install: Galley for one site, on a server, for the people its owner invites, each signing in with their own e-mail and password. Everything it keeps is in its data folder (\`GALLEY_HOME\`). With no owner yet it prints a one-time setup link, and whoever opens it creates the owner's account; \`--reset-password\` prints a one-time link for a locked-out owner to choose a new password (\`--email\` says which owner, when there are several) and keeps serving. Not in a release yet: it is in the repository. What it prints, the image, the three addresses and the proxy in front: [Run a hosted install](/docs/running/hosted/).`,
   backup: `Backs up a hosted install's data folder into one file sealed with a passphrase, or puts such a file back — the same file the Install page downloads. Stop the server first. In a container whose only volume is \`/data\`, write to \`/data/backups/\`: no backup includes it and no restore replaces it. Not in a release yet. What a backup holds: [Run a hosted install](/docs/running/hosted/#back-it-up).
 
 \`\`\`sh

@@ -27,7 +27,7 @@ export const HELP = `${PRODUCT.name} — ${PRODUCT.descriptor}. ${PRODUCT.taglin
 
 Usage
   ${PRODUCT.slug} [path]          Open the site in [path] (default: this folder) in the browser
-  ${PRODUCT.slug} serve           Run for other computers, behind a password
+  ${PRODUCT.slug} serve           Run for other computers, for the people you invite
   ${PRODUCT.slug} backup …        Back up a hosted install's data folder, or put a backup back
   ${PRODUCT.slug} init [path]     Write ${PRODUCT.configFile} from what detection finds
   ${PRODUCT.slug} doctor [path]   Check that a site and this computer are ready

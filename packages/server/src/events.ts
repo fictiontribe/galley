@@ -24,11 +24,25 @@ export function createStreamRegistry(): StreamRegistry {
 }
 
 /**
+ * What one listener may hear (a hosted install's signed-in person): checked
+ * per event, so a role change applies to the next one, and the stream ends
+ * when the person may no longer listen at all.
+ */
+export interface StreamAccess {
+  /** The event as this listener may see it, or null to leave it out. */
+  filter(event: ServerEvent): ServerEvent | null;
+  /** Whether the listener may still listen (signed in, not switched off or removed). */
+  live(): boolean;
+  /** Calls back whenever `live` may have changed (a sign-out anywhere). Returns the way to stop. */
+  onChange?(listener: () => void): () => void;
+}
+
+/**
  * GET /api/events — the EventBus as Server-Sent Events. One `data:` line of
  * JSON per event, a comment heartbeat so proxies keep the connection open,
  * and the subscription is dropped the moment the client goes away.
  */
-export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, heartbeatMs = HEARTBEAT_MS): Response {
+export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, heartbeatMs = HEARTBEAT_MS, access?: StreamAccess): Response {
   const encoder = new TextEncoder();
   let cleanup: (() => void) | null = null;
 
@@ -43,8 +57,19 @@ export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, 
           finish();
         }
       };
-      const sendEvent = (event: ServerEvent) => send(`data: ${JSON.stringify(event)}\n\n`);
+      const sendEvent = (event: ServerEvent) => {
+        if (access && !access.live()) {
+          finish();
+          return;
+        }
+        const shown = access ? access.filter(event) : event;
+
+        if (shown) send(`data: ${JSON.stringify(shown)}\n\n`);
+      };
       const unsubscribe = bus.subscribe(sendEvent);
+      const unwatch = access?.onChange?.(() => {
+        if (!access.live()) finish();
+      }) ?? (() => {});
       const heartbeat = setInterval(() => send(": heartbeat\n\n"), heartbeatMs);
       const onAbort = () => finish();
       let unregister: () => void = () => {};
@@ -54,6 +79,7 @@ export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, 
         closed = true;
         clearInterval(heartbeat);
         unsubscribe();
+        unwatch();
         unregister();
         c.req.raw.signal?.removeEventListener("abort", onAbort);
         try {

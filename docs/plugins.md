@@ -712,7 +712,7 @@ site already gets when its dev server starts. Only what the config names is
 loaded, only from inside the site folder or its `node_modules`, and only for
 that site. `GALLEY_DISABLE_SITE_PLUGINS=1` turns site plugins off (and site
 adapters with them; `GALLEY_DISABLE_SITE_ADAPTERS=1` still turns off adapters
-alone). On a hosted server — `galley serve`, behind a password — they are off
+alone). On a hosted server — `galley serve`, which people sign in to — they are off
 unless the operator sets `GALLEY_ALLOW_SITE_PLUGINS=1`, because anyone who can
 open a site there would otherwise run code on the server. A site's image and
 video providers are not used (they are server-wide choices); install the

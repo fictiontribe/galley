@@ -3,21 +3,23 @@
  * 0600, written atomically (temp file + rename) and one write at a time.
  *
  * It holds what makes this install itself and nothing that could be read
- * back as a secret: the password as an scrypt hash, the one-time setup code
- * as its SHA-256, when sessions stop counting, the one site's folder and how
- * it reaches its repository (never the key itself — that is in `keys/`).
+ * back as a secret: the people who may sign in (each password as an scrypt
+ * hash), the one-time links that let someone in (each code as its SHA-256),
+ * the one-time setup code as its SHA-256, when sessions stop counting, the
+ * one site's folder and how it reaches its repository (never the key itself
+ * — that is in `keys/`).
  *
  * A file that can't be read stops the start: starting over would forget the
- * password, and a forgotten password means a fresh setup link anyone with
- * the address could race for.
+ * accounts, and an install without an owner means a fresh setup link anyone
+ * with the address could race for.
  */
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { GalleyError } from "../errors";
+import type { AccountRole } from "./accounts";
 import { migrate, type MigrationContext } from "./migrate";
-import { hashPassword, passwordProblem, verifyPassword } from "./password";
 import { INSTALL_SCHEMA_VERSION, type SiteAccess } from "./types";
 
 export const STATE_FILE = "install.json";
@@ -41,14 +43,56 @@ export interface InstallSiteRecord {
   starter: { id: string; look?: string; name?: string } | null;
 }
 
+/** A person who may sign in, as the state file keeps them. Never sent anywhere as it is (people.ts makes the public `Account`). */
+export interface StoredAccount {
+  id: string;
+  /** Empty only for an owner carried over from the single password, until they add it. */
+  name: string;
+  /** Lower-case, unique. Empty only for that same owner. */
+  email: string;
+  role: AccountRole;
+  /** scrypt (password.ts). */
+  passwordHash: string;
+  passwordChangedAt: string;
+  createdAt: string;
+  lastSeenAt: string | null;
+  disabled: boolean;
+  incomplete: boolean;
+  /** This person's cookies issued at or before this moment (ms) no longer count: signed out everywhere, a new password, switched off. */
+  sessionsValidAfter: number;
+}
+
+/** An open one-time link: an invitation, or choosing a new password. Only the code's SHA-256 is kept. */
+export interface StoredLink {
+  id: string;
+  kind: "invitation" | "password";
+  codeSha256: string;
+  /** Who it is for: the invited address, or the account's address when the link was made. */
+  email: string;
+  /** Invitations: the role the new account gets. */
+  role: AccountRole | null;
+  /** New-password links: whose password it sets. */
+  accountId: string | null;
+  /** The account that made it; null: whoever runs the server (`serve --reset-password`). */
+  createdBy: string | null;
+  /** That person's name when they made it, so an invitation still says who sent it after they've gone. */
+  createdByName: string;
+  createdAt: string;
+  expiresAt: string;
+  emailed: boolean;
+}
+
 export interface InstallStateFile {
   schema: number;
   createdAt: string;
-  password: { hash: string; changedAt: string } | null;
+  /** The people who may sign in. The first owner is made by first run (or by GALLEY_PASSWORD). */
+  accounts: StoredAccount[];
+  /** Open invitations and new-password links. A used, taken-back or expired one is removed. */
+  links: StoredLink[];
   /**
    * `spent`: the SHA-256 of every setup code that has been used. A used code
-   * stays dead for good — also after `serve --reset-password`, when the
-   * operator's environment may still carry the same code or its hash.
+   * stays dead for good — also after the install is emptied and starts over,
+   * when the operator's environment may still carry the same code or its hash.
    */
   setup: { tokenSha256: string | null; finishedAt: string | null; spent?: string[] };
   /** Cookies issued at or before `validAfter` (ms) are refused; so are revoked ids until they'd have expired anyway. */
@@ -81,10 +125,40 @@ const SiteRecordSchema = z.object({
 /** How many used setup codes are remembered (one is used per first run or password reset). */
 const SPENT_CODES_KEPT = 50;
 
+const ROLE = z.enum(["owner", "editor", "contributor"]);
+const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
+const AccountSchema = z.object({
+  id: ID,
+  name: z.string().max(200),
+  email: z.string().max(320),
+  role: ROLE,
+  passwordHash: z.string().min(1),
+  passwordChangedAt: z.string(),
+  createdAt: z.string(),
+  lastSeenAt: z.string().nullable(),
+  disabled: z.boolean(),
+  incomplete: z.boolean(),
+  sessionsValidAfter: z.number(),
+});
+const LinkSchema = z.object({
+  id: ID,
+  kind: z.enum(["invitation", "password"]),
+  codeSha256: z.string().regex(/^[0-9a-f]{64}$/),
+  email: z.string().max(320),
+  role: ROLE.nullable(),
+  accountId: ID.nullable(),
+  createdBy: ID.nullable(),
+  createdByName: z.string().max(200),
+  createdAt: z.string(),
+  expiresAt: z.string(),
+  emailed: z.boolean(),
+});
+
 const StateSchema = z.object({
   schema: z.number().int(),
   createdAt: z.string(),
-  password: z.object({ hash: z.string().min(1), changedAt: z.string() }).nullable(),
+  accounts: z.array(AccountSchema).max(10_000),
+  links: z.array(LinkSchema).max(10_000),
   setup: z.object({ tokenSha256: z.string().regex(/^[0-9a-f]{64}$/).nullable(), finishedAt: z.string().nullable(), spent: z.array(z.string().regex(/^[0-9a-f]{64}$/)).max(SPENT_CODES_KEPT).optional().catch(undefined) }),
   sessions: z.object({ validAfter: z.number(), revoked: z.array(z.object({ id: z.string().max(200), until: z.number() })).max(100_000) }),
   site: SiteRecordSchema.nullable(),
@@ -121,6 +195,19 @@ export interface SessionStamp {
   id: string;
   /** When the cookie was issued (ms). */
   issuedAt: number;
+  /** Whose session it is (hosted cookies carry it; the person's own sign-outs then apply). */
+  accountId?: string;
+}
+
+/** Remembers the live setup code as used and disarms it: a used code is never accepted again. */
+export function spendSetupCode(draft: InstallStateFile): void {
+  if (draft.setup.tokenSha256) draft.setup.spent = [...(draft.setup.spent ?? []), draft.setup.tokenSha256].slice(-SPENT_CODES_KEPT);
+  draft.setup.tokenSha256 = null;
+}
+
+/** Whether an owner who can sign in exists: what "the password is chosen" used to mean for first run. */
+export function hasOwner(state: Pick<InstallStateFile, "accounts">): boolean {
+  return state.accounts.some((account) => account.role === "owner");
 }
 
 export interface InstallStore {
@@ -139,26 +226,30 @@ export interface InstallStore {
   /** The one site's folder when it is connected, else null. */
   connectedSiteFolder(): string | null;
 
-  hasPassword(): boolean;
-  checkPassword(password: string): Promise<boolean>;
-  /** Stores a new password (hashed). The setup code dies with it; `signOutEveryone` ends every session issued so far. */
-  setPassword(password: string, options?: { signOutEveryone?: boolean }): Promise<void>;
-  /** `--reset-password`: forgets the password and ends every session. A new setup code must be set after. */
-  clearPassword(): Promise<void>;
+  /** An owner account exists: first run's first step (the owner and their password) is done. The setup code no longer works. */
+  hasOwner(): boolean;
+  /** One account as it is kept (a copy), without copying the whole state: read on every request and every event a person is sent. */
+  account(id: string): StoredAccount | null;
 
-  /** Whether `code` is the live setup code. Never true once a password exists. */
+  /** Whether `code` is the live setup code. Never true once an owner exists. */
   setupCodeMatches(code: string): boolean;
   /** Whether a code (or its SHA-256) was used already: such a code is never accepted again. */
   setupCodeSpent(code: { plain: string } | { sha256: string }): boolean;
-  /** Keeps a setup code (by its SHA-256 only). Ignored once a password exists. */
+  /** Keeps a setup code (by its SHA-256 only). Ignored once an owner exists. */
   setSetupCode(code: { plain: string } | { sha256: string }): Promise<void>;
 
-  /** Whether a session cookie (already checked for its signature and age) still counts. */
+  /**
+   * Whether a session cookie (already checked for its signature and age)
+   * still counts. With `accountId`: also only while that account exists, is
+   * switched on, and hasn't been signed out everywhere since.
+   */
   sessionValid(session: SessionStamp, now?: number): boolean;
   /** Whether this one session was signed out (its cookie's other checks aside). */
   isRevoked(id: string, now?: number): boolean;
-  /** The issue time for a new cookie: now, or just after the last "sign out everywhere" so it isn't caught by it. */
-  nextIssuedAt(now?: number): number;
+  /** The issue time for a new cookie: now, or just after the last "sign out everywhere" (the install's, and this person's) so it isn't caught by it. */
+  nextIssuedAt(now?: number, accountId?: string): number;
+  /** Tells everything bound to a session (a viewer cookie, an open event stream) to look again: called after an account was switched off, removed or signed out. */
+  sessionsChanged(): void;
   /** Ends one session, for as long as its cookie could live. */
   revokeSession(id: string, until?: number): Promise<void>;
   /** Ends every session issued so far. */
@@ -299,33 +390,11 @@ export async function openInstallState(home: string, options: OpenInstallStateOp
     siteFolder: () => folderOf(home, state.site),
     connectedSiteFolder: () => (state.site?.connectedAt ? folderOf(home, state.site) : null),
 
-    hasPassword: () => state.password !== null,
-    async checkPassword(password) {
-      const stored = state.password?.hash;
+    hasOwner: () => hasOwner(state),
+    account(id) {
+      const found = state.accounts.find((candidate) => candidate.id === id);
 
-      return stored ? verifyPassword(password, stored) : false;
-    },
-    async setPassword(password, setOptions = {}) {
-      const problem = passwordProblem(password);
-
-      if (problem) throw new GalleyError("invalid", problem);
-      const hash = await hashPassword(password);
-
-      await update((draft) => {
-        draft.password = { hash, changedAt: new Date().toISOString() };
-        // The setup link works once: its code is remembered as used, so it can never be armed again.
-        if (draft.setup.tokenSha256) draft.setup.spent = [...(draft.setup.spent ?? []), draft.setup.tokenSha256].slice(-SPENT_CODES_KEPT);
-        draft.setup.tokenSha256 = null;
-        if (setOptions.signOutEveryone) draft.sessions.validAfter = Math.max(Date.now(), draft.sessions.validAfter + 1);
-      });
-      if (setOptions.signOutEveryone) sessionsChanged();
-    },
-    async clearPassword() {
-      await update((draft) => {
-        draft.password = null;
-        draft.sessions.validAfter = Math.max(Date.now(), draft.sessions.validAfter + 1);
-      });
-      sessionsChanged();
+      return found ? { ...found } : null;
     },
 
     setupCodeSpent(code) {
@@ -336,14 +405,14 @@ export async function openInstallState(home: string, options: OpenInstallStateOp
     setupCodeMatches(code) {
       const stored = state.setup.tokenSha256;
 
-      if (state.password !== null || !stored || typeof code !== "string" || code.length === 0 || code.length > 1024) return false;
+      if (hasOwner(state) || !stored || typeof code !== "string" || code.length === 0 || code.length > 1024) return false;
       return sameHex(sha256Hex(code), stored);
     },
     async setSetupCode(code) {
       const sha = "plain" in code ? sha256Hex(code.plain) : code.sha256.toLowerCase();
 
       if (!/^[0-9a-f]{64}$/.test(sha)) throw new GalleyError("invalid", "A setup code's SHA-256 is 64 hexadecimal characters.");
-      if (state.password !== null) return;
+      if (hasOwner(state)) return;
       if (state.setup.tokenSha256 === sha) return;
       await update((draft) => {
         draft.setup.tokenSha256 = sha;
@@ -352,14 +421,21 @@ export async function openInstallState(home: string, options: OpenInstallStateOp
 
     sessionValid(session, now = Date.now()) {
       if (session.issuedAt <= state.sessions.validAfter) return false;
-      return !state.sessions.revoked.some((entry) => entry.id === session.id && entry.until > now);
+      if (state.sessions.revoked.some((entry) => entry.id === session.id && entry.until > now)) return false;
+      if (session.accountId === undefined) return true;
+      const account = state.accounts.find((candidate) => candidate.id === session.accountId);
+
+      return Boolean(account && !account.disabled && session.issuedAt > account.sessionsValidAfter);
     },
     isRevoked(id, now = Date.now()) {
       return state.sessions.revoked.some((entry) => entry.id === id && entry.until > now);
     },
-    nextIssuedAt(now = Date.now()) {
-      return Math.max(now, state.sessions.validAfter + 1);
+    nextIssuedAt(now = Date.now(), accountId) {
+      const account = accountId === undefined ? undefined : state.accounts.find((candidate) => candidate.id === accountId);
+
+      return Math.max(now, state.sessions.validAfter + 1, (account?.sessionsValidAfter ?? 0) + 1);
     },
+    sessionsChanged,
     async revokeSession(id, until = Date.now() + SESSION_LIFETIME_MS) {
       if (state.sessions.revoked.some((entry) => entry.id === id)) return;
       await update((draft) => {

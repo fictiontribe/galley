@@ -12,6 +12,7 @@ import { count } from "@/lib/format";
 import { Button, Dialog, ErrorState, Icon, ProofMark, Skeleton, Spinner, buttonClass, cx } from "@/ui";
 import { importKeys } from "./data";
 import { costRange } from "./logic";
+import { SettingsLink } from "@/features/accounts/SettingsLink";
 
 export function RebuildAllDialog({ siteId, open, onClose, onFinished }: { siteId: string; open: boolean; onClose: () => void; onFinished: () => void }) {
   const plan = useQuery(importKeys.rebuildPlan(siteId), () => api("GET /api/sites/:siteId/import/rebuild-all", { params: { siteId } }), { enabled: open });
@@ -77,9 +78,9 @@ export function RebuildAllDialog({ siteId, open, onClose, onFinished }: { siteId
               Not now
             </Button>
             {plan.data && !plan.data.connected ? (
-              <Link className={buttonClass("primary", "md")} to="/settings">
+              <SettingsLink route="PUT /api/secrets/:name" className={buttonClass("primary", "md")} to="/settings" fallback="An owner of this editor can connect the assistant.">
                 Connect the assistant
-              </Link>
+              </SettingsLink>
             ) : (
               <Button variant="primary" busy={starting} busyLabel="Starting…" disabled={!plan.data || pages.length === 0} onClick={() => void start()}>
                 {`Rebuild ${count(pages.length, "page")}`}

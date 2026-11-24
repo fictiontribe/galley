@@ -1,6 +1,9 @@
 /**
  * Who a published version is recorded as. The most specific choice wins:
  *
+ *   0. on a hosted install, the signed-in person whose request it is
+ *      (`withAccountAuthor`, set by the server for the whole request and the
+ *      work it starts),
  *   1. this site's own author (Site settings › Connections),
  *   2. the site repository's own git settings (`git config --local`),
  *   3. the app's author (App settings › You), when someone saved one,
@@ -11,7 +14,9 @@
  * a client's bot account) is honoured over the app-wide setting; the app's
  * setting still beats whatever the computer happens to be configured with.
  */
-export type AuthorSource = "site" | "repository" | "app" | "machine" | "default";
+import { AsyncLocalStorage } from "node:async_hooks";
+
+export type AuthorSource = "account" | "site" | "repository" | "app" | "machine" | "default";
 
 export interface Identity {
   name: string;
@@ -40,4 +45,22 @@ export function chooseAuthor(layers: { site?: Partial<Identity> | null; reposito
     if (complete(identity)) return { ...clean(identity), from };
   }
   return { ...DEFAULT_AUTHOR, from: "default" };
+}
+
+const accountAuthor = new AsyncLocalStorage<Identity>();
+
+/**
+ * Runs `run` as the signed-in person: everything it records in a repository
+ * — a publish, undoing one, the work it starts that outlives the request —
+ * carries their name and e-mail. Like the site's scope (site/scope.ts) it
+ * follows the asynchronous work, so no id has to be threaded through. An
+ * incomplete identity (no e-mail yet) changes nothing.
+ */
+export function withAccountAuthor<T>(identity: Partial<Identity> | null, run: () => T): T {
+  return complete(identity) ? accountAuthor.run(clean(identity), run) : run();
+}
+
+/** The signed-in person whose work this is, or null outside such a request (local mode, a script's token, a timer). */
+export function currentAccountAuthor(): Identity | null {
+  return accountAuthor.getStore() ?? null;
 }

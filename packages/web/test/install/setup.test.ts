@@ -1,13 +1,15 @@
 // @vitest-environment happy-dom
 /**
  * First run, step by step, against the mock install: the setup code leaves
- * the address bar at once and goes only to first-run routes; the password;
+ * the address bar at once and goes only to first-run routes; the owner's
+ * account (name, e-mail, password);
  * connecting the site (waiting for the key, a failure, a reload mid-way);
  * the details, with what the operator fixed; done; and restoring a backup
  * instead.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MIN_INSTALL_PASSWORD_LENGTH } from "@galley/core/install/types";
+import { ACCOUNTS_PUBLISHING_LINE } from "../../src/features/install/setup/DetailsStep";
 import { byText, click, field, renderApp, settle, startServer, submit, type, until, type MockServer, type Rendered } from "./harness";
 
 const CODE = "mock-setup-code-not-a-secret";
@@ -25,6 +27,8 @@ function calls(server: MockServer, method: string, path: string) {
 }
 
 async function choosePassword(): Promise<void> {
+  await type(field(document, "Your name"), "Sam Rivera");
+  await type(field(document, "E-mail"), "Sam@Example.com");
   await type(field(document, "Password"), PASSWORD);
   await type(field(document, "The same password again"), PASSWORD);
   await submit(field(document, "Password"));
@@ -36,7 +40,7 @@ describe("first run", () => {
     page = await renderApp(server, `/setup?token=${CODE}`);
     expect(window.location.search).toBe("");
     expect(window.location.href).not.toContain(CODE);
-    await until(() => expect(page?.text()).toContain("Choose the password."));
+    await until(() => expect(page?.text()).toContain("Create your account."));
     expect(localStorage.length + sessionStorage.length).toBe(0);
 
     // Too short, then not the same twice: said under the form, nothing sent.
@@ -53,7 +57,10 @@ describe("first run", () => {
     await choosePassword();
     await until(() => expect(page?.text()).toContain("Connect the site."));
     const [sent] = calls(server, "POST", "/api/setup/password");
-    expect(sent?.body).toEqual({ password: PASSWORD });
+    expect(sent?.body).toEqual({ name: "Sam Rivera", email: "sam@example.com", password: PASSWORD });
+    // The owner exists, and this browser is signed in as them.
+    expect(server.accounts?.current()?.email).toBe("sam@example.com");
+    expect(server.accounts?.current()?.role).toBe("owner");
     expect(server.backend.authenticated).toBe(true);
     await settle();
 
@@ -82,7 +89,7 @@ describe("first run", () => {
   it("connects an existing repository with the editor's own key, waiting for the key as a normal state", async () => {
     const server = await startServer({ mode: "hosted", setup: "password" });
     page = await renderApp(server, `/setup?token=${CODE}`);
-    await until(() => expect(page?.text()).toContain("Choose the password."));
+    await until(() => expect(page?.text()).toContain("Create your account."));
     await choosePassword();
     await until(() => expect(page?.text()).toContain("Connect the site."));
 
@@ -216,6 +223,8 @@ describe("first run", () => {
     server.backend.authenticated = true;
     page = await renderApp(server, "/setup");
     await until(() => expect(page?.text()).toContain("A few details."));
+    // The install's name, said for what it is now that each person publishes under their own.
+    expect(page.text()).toContain(ACCOUNTS_PUBLISHING_LINE);
     await type(field(document, "Name"), "");
     await submit(field(document, "Name"));
     expect(page.text()).toContain("Enter the name to publish under.");
@@ -256,7 +265,7 @@ describe("first run", () => {
   it("can start from a backup instead, with the setup code, then signs in", async () => {
     const server = await startServer({ mode: "hosted", setup: "password" });
     page = await renderApp(server, `/setup?token=${CODE}`);
-    await until(() => expect(page?.text()).toContain("Choose the password."));
+    await until(() => expect(page?.text()).toContain("Create your account."));
     await click(byText(document, "button", "Restore from a backup instead"));
     await until(() => expect(page?.text()).toContain("Restore from a backup."));
 
@@ -287,7 +296,7 @@ describe("first run", () => {
   it("says when a backup's passphrase is wrong", async () => {
     const server = await startServer({ mode: "hosted", setup: "password" });
     page = await renderApp(server, `/setup?token=${CODE}`);
-    await until(() => expect(page?.text()).toContain("Choose the password."));
+    await until(() => expect(page?.text()).toContain("Create your account."));
     await click(byText(document, "button", "Restore from a backup instead"));
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     Object.defineProperty(input, "files", { value: [new File([new Uint8Array(16)], "b.bin")], configurable: true });

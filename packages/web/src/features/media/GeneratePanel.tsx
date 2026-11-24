@@ -9,6 +9,8 @@ import { fileNameFromPrompt } from "@/features/media/fileName";
 import { imageModelFacts, modelOptionLabel } from "./video/cost";
 import { BrandDirectionNote } from "@/features/brand/BrandDirectionNote";
 import { useImageryDirection } from "@/features/brand/useBrand";
+import { SettingsLink } from "@/features/accounts/SettingsLink";
+import { useMay } from "@/lib/may";
 
 /** The built-in generator: labelled placeholder artwork, no key needed. */
 const PLACEHOLDER = "mock";
@@ -33,6 +35,7 @@ function discard(candidates: readonly ImageCandidate[], keep?: string): void {
 export function GeneratePanel({ siteId, onSaved, initialPrompt = "" }: GeneratePanelProps) {
   const providers = useQuery(["images", "providers"], () => api("GET /api/images/providers"));
   const settings = useQuery(keys.settings(), () => api("GET /api/settings"));
+  const mayChooseService = useMay()("PATCH /api/settings");
   const configured = useMemo(() => (providers.data?.providers ?? []).filter((provider) => provider.configured), [providers.data]);
   // The site's imagery direction rides along with every request, as it does when the assistant makes an image.
   const brandDirection = useImageryDirection(siteId);
@@ -132,11 +135,17 @@ export function GeneratePanel({ siteId, onSaved, initialPrompt = "" }: GenerateP
         <p className="g-margin-note app-generate__note">
           <ProofMark kind="stet" />
           <span>
-            These will be placeholders: simple artwork labelled with your description. Choosing an image service in{" "}
-            <Link className="g-link" to="/settings#images">
-              Settings
-            </Link>{" "}
-            makes real images. You can still try everything here.
+            {mayChooseService ? (
+              <>
+                These will be placeholders: simple artwork labelled with your description. Choosing an image service in{" "}
+                <Link className="g-link" to="/settings#images">
+                  Settings
+                </Link>{" "}
+                makes real images. You can still try everything here.
+              </>
+            ) : (
+              "These will be placeholders: simple artwork labelled with your description. An owner of this editor can choose an image service for real images. You can still try everything here."
+            )}
           </span>
         </p>
       ) : null}
@@ -188,9 +197,9 @@ export function GeneratePanel({ siteId, onSaved, initialPrompt = "" }: GenerateP
           detail={errorShape(error).detail}
           actions={
             unconfigured ? (
-              <Link className={buttonClass("secondary", "sm")} to="/settings#images">
+              <SettingsLink route="PATCH /api/settings" className={buttonClass("secondary", "sm")} to="/settings#images">
                 Open settings
-              </Link>
+              </SettingsLink>
             ) : undefined
           }
         />
