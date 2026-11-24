@@ -458,7 +458,7 @@ export function ConnectBucketDialog({ siteId, open, onClose }: { siteId: string;
                     <span className="deploy-choice__text">{candidate.blurb}</span>
                     {candidate.pricingUrl ? (
                       <a className="g-link deploy-choice__link" href={candidate.pricingUrl} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()}>
-                        {candidate.name}’s prices
+                        {`${candidate.name}${candidate.name.endsWith("s") ? "’" : "’s"} prices`}
                       </a>
                     ) : null}
                   </span>
