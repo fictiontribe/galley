@@ -27,6 +27,7 @@
     "./deploy-info": "./src/deploy/info.ts",
     "./media-storage": "./src/media-storage/index.ts",
     "./media-storage/info": "./src/media-storage/info.ts",
+    "./media-storage/images-info": "./src/media-storage/images-info.ts",
     "./media-storage/contract": "./src/media-storage/contract.ts",
     "./install": "./src/install/index.ts",
     "./install/types": "./src/install/types.ts",

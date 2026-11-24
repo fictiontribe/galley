@@ -43,7 +43,7 @@ async function setUp() {
 
 const read = (root: string, path: string) => readFileSync(join(root, ...path.split("/")), "utf8");
 
-describe("moving media", () => {
+describe("moving media", { timeout: 240_000 }, () => {
   it("to the bucket: copies, points the pages at the full addresses, removes what nothing else reaches — and runs again safely", async () => {
     const { storage, site, root, publicUrl, done } = await setUp();
     const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });

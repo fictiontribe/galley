@@ -10,6 +10,8 @@ export { runCheck, CHECK_LABELS, TEST_PNG } from "./check";
 export { createMediaKeys, MEDIA_KEY_ENV, normalizeMediaKey } from "./keys";
 export type { MediaKeyName, MediaKeys } from "./keys";
 export * from "./info";
+export { IMAGES_INFO, imagesSettingsProblems, normalizeImagesConfig } from "./images-info";
+export { createImagesStore, imageIdOf, deliveryBase, CLOUDFLARE_API, IMAGEDELIVERY } from "./cloudflare-images";
 export * from "./store";
 export type * from "./contract";
 export { createS3Client, S3Error, S3NetworkError } from "./s3";

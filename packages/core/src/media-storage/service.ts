@@ -11,7 +11,9 @@
  * replaces one that does. Nothing here returns, throws or logs a key.
  */
 import { GalleyError } from "../errors";
-import type { EventBus, GalleyConfig, Job, MediaItem, MediaStorageConfig, SettingsService, SiteService } from "../types";
+import type { EventBus, GalleyConfig, Job, MediaImagesConfig, MediaItem, MediaStorageConfig, SettingsService, SiteService } from "../types";
+import { createImagesStore, deliveryBase } from "./cloudflare-images";
+import { IMAGES_INFO, imagesSettingsProblems, normalizeImagesConfig } from "./images-info";
 import { createJobTracker } from "../site/jobs";
 import { requireLevel } from "../install/caller";
 import { levelFor } from "../install/route-access";
@@ -20,12 +22,12 @@ import { planMove, runMove, type MoveContext, type MoveOutcome } from "./move";
 import { checkUpload, mediaSubfolder } from "../workspace/media";
 import { createBucketStore } from "./bucket-store";
 import { runCheck, settingsFailure, testNameFor } from "./check";
-import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaStoreLocation, MediaUsage } from "./contract";
+import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaImagesStatus, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaStoreLocation, MediaUsage } from "./contract";
 import { createMediaLibrary, type LibraryItem, type MediaLibrary } from "./library";
 import { BUCKET_CONNECTORS, isTrialAddress, normalizePrefix, normalizeStorageConfig, settingsProblems } from "./info";
 import { createMediaKeys, normalizeMediaKey, scrub, type MediaKeys } from "./keys";
 import type { Credentials } from "./sigv4";
-import { parseStorePath, placeFile, StoreError, StoreNameTaken, storePath, trimFound, type MediaStore } from "./store";
+import { parseStorePath, placeFile, StoreError, StoreNameTaken, storePath, trimFound, type MediaStore, type StoredItem } from "./store";
 
 /** A kind of bucket the site can connect: what the person is told, and how its store is made. */
 export interface BucketConnector {
@@ -64,6 +66,8 @@ export interface MediaStorageServiceOptions {
   listTtlMs?: number;
   /** For the "media" jobs moving files. Absent: moves run without job events (the CLI waits on them). */
   events?: EventBus;
+  /** Cloudflare's API origin for Cloudflare Images. Tests and the rehearsal point it at a stand-in. Default GALLEY_MEDIA_IMAGES_API, else Cloudflare's. */
+  imagesApi?: string;
 }
 
 export type MediaUpload = { filename: string; directory?: string; data: Uint8Array };
@@ -83,6 +87,15 @@ export interface MediaStorageService {
   bucket(site: SiteService): Promise<MediaStore | null>;
   /** Removes the site's media keys (it left the list). */
   forgetSite(siteId: string): Promise<void>;
+
+  // ── Cloudflare Images, for pictures
+
+  /** Runs the check on the request's settings (nothing saved), or the saved ones. */
+  checkImages(site: SiteService, request?: MediaImagesConnectRequest): Promise<MediaCheckResult>;
+  /** Checks, and only when that passes saves `media.images` and the token (or the choice of the site's Cloudflare key). */
+  connectImages(site: SiteService, request: MediaImagesConnectRequest): Promise<MediaImagesConnectResult>;
+  /** Pictures go where other files go again. Pictures already in Images stay, and pages using them keep working. */
+  disconnectImages(site: SiteService, options?: { forgetKeys?: boolean }): Promise<MediaStorageStatus>;
 
   // ── the library, for the site service (SiteDeps.media)
 
@@ -203,7 +216,8 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   }
 
   const service: MediaStorageService = {
-    connectors: () => all().map((connector) => connector.info),
+    // The buckets, then Cloudflare Images (pictures only, alongside a bucket or the repository).
+    connectors: () => [...all().map((connector) => connector.info), IMAGES_INFO],
 
     async status(site) {
       const config = await savedConfig(site);
@@ -223,6 +237,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
           created: null,
           ...(config && isTrialAddress(config.publicUrl) ? { trialAddress: true } : {}),
         },
+        images: await imagesStatus(site),
         cloudflare: { keyStored: Boolean(cloudflareKey) },
       };
     },
@@ -237,6 +252,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
 
     async connect(site, request) {
       guard("PUT /api/sites/:siteId/media/storage");
+      if (request.config.connector === IMAGES_INFO.id) throw new GalleyError("invalid", "Cloudflare Images is connected on its own, beside a bucket: use Keep pictures in Cloudflare Images.");
       const config = normalizeStorageConfig(request.config);
       const check = await checkWith(site, config, request);
 
@@ -267,9 +283,40 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     },
 
     async stores(site) {
-      const bucket = await service.bucket(site);
+      const [images, bucket] = await Promise.all([imagesStore(site), service.bucket(site)]);
 
-      return bucket ? [bucket] : [];
+      // Most specific first: pictures to Images, everything else (and what Images won't take) to the bucket.
+      return [...(images ? [images] : []), ...(bucket ? [bucket] : [])];
+    },
+
+    async checkImages(site, request) {
+      guard("POST /api/sites/:siteId/media/images/check");
+      const config = request?.config ? normalizeImagesConfig(request.config) : ((await site.model()).media.images ?? null);
+
+      if (!config) return settingsFailure([{ field: "account", message: "The site isn't connected to Cloudflare Images yet." }]);
+      return checkImagesWith(site, config, request);
+    },
+
+    async connectImages(site, request) {
+      guard("PUT /api/sites/:siteId/media/images");
+      const config = normalizeImagesConfig(request.config);
+      const check = await checkImagesWith(site, config, request);
+
+      if (!check.ok) return { check };
+      if (request.token) await keys.set(site.id, "imagesToken", request.token);
+      await useDeployKey.set(site.id, request.useDeployKey ? !request.token : false);
+      await writeImages(site, config);
+      return { check, status: await service.status(site) };
+    },
+
+    async disconnectImages(site, disconnect = {}) {
+      guard("DELETE /api/sites/:siteId/media/images");
+      await writeImages(site, null);
+      if (disconnect.forgetKeys) {
+        await keys.set(site.id, "imagesToken", null);
+        await useDeployKey.set(site.id, false);
+      }
+      return service.status(site);
     },
 
     forgetSite: (siteId) => keys.forget(siteId),
@@ -295,7 +342,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
         const name = `${checked.base}${attempt === 1 ? "" : `-${attempt}`}.${checked.ext}`;
         const wanted = store.keyFor(`${subfolder}${name}`);
 
-        if (known.has(wanted)) continue;
+        if (store.abilities.naming === "galley" && known.has(wanted)) continue;
         let stored;
 
         try {
@@ -309,7 +356,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
           location: store.location,
           key: stored.key,
           url: stored.url,
-          name: stored.key.split("/").pop() ?? stored.key,
+          name: stored.name ?? stored.key.split("/").pop() ?? stored.key,
           size: upload.data.byteLength,
           type: checked.type,
           ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}),
@@ -469,6 +516,91 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     },
   };
 
+  /** Whether the site uses its Cloudflare key for putting it online as the Images token (a flag in its media key file). */
+  const useDeployKey = {
+    async get(siteId: string): Promise<boolean> {
+      return (await keys.raw(siteId, "media:images:useDeployKey")) === "yes";
+    },
+    async set(siteId: string, on: boolean): Promise<void> {
+      await keys.setRaw(siteId, "media:images:useDeployKey", on ? "yes" : null);
+    },
+  };
+
+  async function imagesToken(site: SiteService, request?: MediaImagesConnectRequest): Promise<{ token: string | null; use: "own" | "deploy" | null; source: "site" | "env" | null }> {
+    if (request?.token) return { token: normalizeMediaKey("imagesToken", request.token), use: "own", source: "site" };
+    const wantsDeploy = request ? Boolean(request.useDeployKey) : await useDeployKey.get(site.id);
+
+    if (wantsDeploy) {
+      const deploy = (await options.settings?.readSecret("cloudflare", { siteId: site.id }).catch(() => null)) ?? null;
+
+      return { token: deploy, use: deploy ? "deploy" : null, source: deploy ? "site" : null };
+    }
+    const own = await keys.get(site.id, "imagesToken");
+
+    return { token: own.value, use: own.value ? "own" : null, source: own.source };
+  }
+
+  async function imagesStatus(site: SiteService): Promise<MediaImagesStatus> {
+    const config = (await site.model()).media.images ?? null;
+    const { token, use, source } = await imagesToken(site);
+
+    return { connected: Boolean(config && token), config, token: token ? { configured: true, source, hint: token.slice(-4), use } : { configured: false, source: null, use: null } };
+  }
+
+  function makeImagesStore(config: MediaImagesConfig, token: string, use: "own" | "deploy" | null): MediaStore {
+    const apiBase = options.imagesApi ?? options.env?.GALLEY_MEDIA_IMAGES_API;
+
+    return createImagesStore({ config, token, tokenSource: use === "deploy" ? "deploy" : "images", ...(options.fetch ? { fetch: options.fetch } : {}), ...(apiBase ? { apiBase } : {}), ...(options.now ? { now: options.now } : {}) });
+  }
+
+  async function imagesStore(site: SiteService): Promise<MediaStore | null> {
+    const config = (await site.model()).media.images;
+
+    if (!config) return null;
+    const { token, use } = await imagesToken(site);
+
+    return token ? makeImagesStore(config, token, use) : null;
+  }
+
+  async function checkImagesWith(site: SiteService, config: MediaImagesConfig, request?: MediaImagesConnectRequest): Promise<MediaCheckResult> {
+    const problems = imagesSettingsProblems(config);
+
+    if (problems.length) return settingsFailure(problems);
+    let resolved: Awaited<ReturnType<typeof imagesToken>>;
+
+    try {
+      resolved = await imagesToken(site, request);
+    } catch (error) {
+      return settingsFailure([{ field: "token", message: error instanceof Error ? error.message : String(error) }]);
+    }
+    if (!resolved.token) {
+      return settingsFailure([
+        {
+          field: "token",
+          message: request?.useDeployKey ? "The site has no Cloudflare key for putting it online yet. Paste an API token for Images instead." : "Paste an API token with Account › Cloudflare Images › Edit.",
+        },
+      ]);
+    }
+    const store = makeImagesStore(config, resolved.token, resolved.use);
+    const result = await runCheck(store, { testName: "galley-check.png", ...(options.publicFetch ? { fetch: options.publicFetch } : {}) });
+
+    return {
+      ...result,
+      steps: result.steps.map((step) => (step.message ? { ...step, message: scrub(step.message) } : step)),
+      ...(result.message ? { message: scrub(result.message) } : {}),
+      ...(result.detail ? { detail: scrub(result.detail) } : {}),
+    };
+  }
+
+  async function writeImages(site: SiteService, next: MediaImagesConfig | null): Promise<void> {
+    const current: GalleyConfig = (await site.readConfig()) ?? {};
+    const { images: _old, ...media } = current.media ?? {};
+    const nextMedia = next ? { ...media, images: next } : media;
+    const { media: _media, ...rest } = current;
+
+    await site.saveConfig(Object.keys(nextMedia).length ? { ...rest, media: nextMedia } : rest);
+  }
+
   async function moveContext(site: SiteService, onProgress?: (detail: string, progress: number) => void): Promise<MoveContext> {
     const stores = await service.stores(site);
 
@@ -491,7 +623,19 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
         return (await library.all(site.id)).filter((item) => item.location === location);
       },
       async saveAddress(location, publicUrl) {
-        if (location !== "bucket") throw new GalleyError("invalid", "Only a bucket's address can be changed here.");
+        if (location === "images") {
+          const images = (await site.model()).media.images;
+
+          if (!images) throw new GalleyError("unconfigured", "The site isn't connected to Cloudflare Images.");
+          const origin = publicUrl.replace(/\/+$/, "");
+          const { deliveryUrl: _old, ...rest } = images;
+
+          await writeImages(site, origin === "https://imagedelivery.net" ? rest : { ...rest, deliveryUrl: origin });
+          const store = stores.find((candidate) => candidate.location === "images");
+
+          await library.update(site.id, (items) => items.map((item) => (item.location === "images" ? { ...item, url: store?.rebase?.(item.url, origin) ?? item.url } : item)));
+          return;
+        }
         const config = await savedConfig(site);
 
         if (!config) throw new GalleyError("unconfigured", "The site isn't connected to a bucket.");
@@ -511,7 +655,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
 
   /** Lists a store in full and brings the record up to date: new names are added (measured when the store keeps sizes), gone ones dropped. */
   async function relist(site: SiteService, store: MediaStore): Promise<void> {
-    const found: Array<{ key: string; url: string; size: number | null; type: string | null; uploadedAt: number; width?: number; height?: number }> = [];
+    const found: StoredItem[] = [];
     let cursor: string | undefined;
 
     do {
@@ -542,7 +686,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
               location: store.location,
               key: item.key,
               url: item.url,
-              name: item.key.split("/").pop() ?? item.key,
+              name: item.name ?? item.key.split("/").pop() ?? item.key,
               size: item.size,
               type: item.type,
               ...(item.width && item.height ? { width: item.width, height: item.height } : size ? size : {}),

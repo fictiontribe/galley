@@ -202,6 +202,32 @@ export interface MediaConfig {
    * `media.storage`). Absent: media lives in the repository, as it always has.
    */
   storage?: MediaStorageConfig;
+  /**
+   * Pictures go to Cloudflare Images instead (galley.config.json
+   * `media.images`); files it doesn't take go to `storage`, else the repository.
+   */
+  images?: MediaImagesConfig;
+}
+
+/**
+ * Cloudflare Images for the site's pictures: resized and converted to modern
+ * formats by Cloudflare. Ids only; the API token is kept in the site's key
+ * store (or the site's Cloudflare key for putting it online is used).
+ */
+export interface MediaImagesConfig {
+  connector: "cloudflare-images";
+  /** The Cloudflare account ID. */
+  account: string;
+  /** The Images account hash, from Hosted Images › Developer Resources: part of every delivery address. */
+  accountHash: string;
+  /** The variant pages ask for. Default "public". */
+  variant?: string;
+  /**
+   * Deliver from a domain of the same Cloudflare account
+   * ("https://www.example.com" → https://www.example.com/cdn-cgi/imagedelivery/…).
+   * Absent: https://imagedelivery.net.
+   */
+  deliveryUrl?: string;
 }
 
 /**
@@ -335,7 +361,7 @@ export interface GalleyConfig {
   dev?: { command?: string; port?: number };
   build?: { command?: string; outDir?: string };
   urls?: { production?: string; staging?: string };
-  media?: { dir?: string; publicPath?: string; roots?: Array<{ dir: string; publicPath: string }>; storage?: MediaStorageConfig };
+  media?: { dir?: string; publicPath?: string; roots?: Array<{ dir: string; publicPath: string }>; storage?: MediaStorageConfig; images?: MediaImagesConfig };
   publish?: Partial<PublishConfig>;
   ai?: Partial<AiConfig>;
   writable?: Partial<WritableConfig>;

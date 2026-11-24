@@ -30,6 +30,8 @@ export interface LibraryItem {
   published: boolean;
   /** Uploaded from this app (rather than found by listing the store). */
   uploaded?: boolean;
+  /** Moved here from the repository: the path it came from (so a move run again finds it). */
+  source?: string;
 }
 
 interface LibraryFile {

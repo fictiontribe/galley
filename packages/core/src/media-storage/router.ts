@@ -6,6 +6,7 @@
  */
 import type { MediaConfig, MediaItem, SiteService } from "../types";
 import { keyUnder } from "./bucket-store";
+import { imageIdOf } from "./cloudflare-images";
 import { normalizePrefix } from "./info";
 
 export interface SiteMediaRouter {
@@ -14,10 +15,11 @@ export interface SiteMediaRouter {
   pending(site: SiteService): Promise<MediaItem[]>;
 }
 
-/** Whether a reference is a full address of a file in the site's bucket (inside its folder). */
+/** Whether a reference is a full address of a file in the site's bucket (inside its folder) or one of its Cloudflare Images pictures (any variant). */
 export function isStoreAddress(media: MediaConfig, url: string): boolean {
   const storage = media.storage;
 
+  if (media.images && imageIdOf(media.images.accountHash, url) !== null) return true;
   if (!storage?.publicUrl) return false;
   return keyUnder(storage.publicUrl, normalizePrefix(storage.prefix), url) !== null;
 }

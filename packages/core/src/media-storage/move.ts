@@ -30,9 +30,9 @@ export interface MoveContext {
   site: SiteService;
   stores: MediaStore[];
   /** Records a file now kept in a store (the site's media record). */
-  recordStored(item: { location: MediaStoreLocation; key: string; url: string; name: string; size: number; type: string; width?: number; height?: number }): Promise<void>;
+  recordStored(item: { location: MediaStoreLocation; key: string; url: string; name: string; size: number; type: string; width?: number; height?: number; source?: string }): Promise<void>;
   /** All files the site's record knows in a store. */
-  storedItems(location: MediaStoreLocation): Promise<Array<{ key: string; url: string; name: string; size: number | null }>>;
+  storedItems(location: MediaStoreLocation): Promise<Array<{ key: string; url: string; name: string; size: number | null; source?: string }>>;
   /** Saves a new public address for the bucket. */
   saveAddress(location: MediaStoreLocation, publicUrl: string): Promise<void>;
   fetch: typeof fetch;
@@ -199,7 +199,17 @@ async function prepare(context: MoveContext, request: Extract<MediaMoveRequest, 
 
     references = await storeReferences(site, store);
     for (const item of await context.storedItems(store.location)) {
-      const relative = prefix && item.key.startsWith(prefix) ? item.key.slice(prefix.length) : item.key;
+      // Back where it came from, when it was moved from the repository; else into the media folder,
+      // under its key — or, for a store that names things itself (Cloudflare Images), under the file's own name.
+      const root = item.source ? media.roots.find((candidate) => item.source!.startsWith(`${candidate.dir.replace(/\/+$/, "")}/`)) : undefined;
+
+      if (item.source && root) {
+        const within = item.source.slice(root.dir.replace(/\/+$/, "").length + 1);
+
+        moves.push({ from: item.key, oldUrl: item.url, to: item.source, newUrl: publicUrlOf(root.publicPath, within), size: item.size ?? 0, name: item.name });
+        continue;
+      }
+      const relative = store.abilities.naming === "service" ? item.name : prefix && item.key.startsWith(prefix) ? item.key.slice(prefix.length) : item.key;
       const path = `${media.dir.replace(/\/+$/, "")}/${relative}`;
 
       if (!mediaExtension(path)) {
@@ -220,9 +230,10 @@ export async function planMove(context: MoveContext, request: MediaMoveRequest):
   // Already there from an earlier run.
   if (request.from === "repository") {
     const store = storeOf(context, request.to as MediaStoreLocation);
-    const known = new Set((await context.storedItems(store.location)).map((item) => item.key));
+    const stored = await context.storedItems(store.location);
+    const known = new Set(store.abilities.naming === "service" ? stored.map((item) => item.source ?? "") : stored.map((item) => item.key));
 
-    done = moves.filter((move) => known.has(move.to)).length;
+    done = moves.filter((move) => known.has(store.abilities.naming === "service" ? move.from : move.to)).length;
   } else {
     for (const move of moves) if ((await context.site.listFiles({ glob: move.to, limit: 1 })).length) done += 1;
   }
@@ -296,6 +307,26 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
         const store = storeOf(context, request.to as MediaStoreLocation);
         const bytes = new Uint8Array(Buffer.from(await readRepoBytes(context.site, move.from)));
         const checked = checkUpload({ filename: move.name, data: bytes });
+
+        if (store.abilities.naming === "service") {
+          // The store names it: an earlier run's copy is found by where it came from.
+          const earlier = (await context.storedItems(store.location)).find((item) => item.source === move.from);
+
+          if (earlier) {
+            move.to = earlier.key;
+            move.newUrl = earlier.url;
+            skipped += 1;
+          } else {
+            const stored = await store.put({ name: move.name, data: bytes, type: checked.type, ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}) });
+
+            move.to = stored.key;
+            move.newUrl = stored.url;
+            copied += 1;
+          }
+          await context.recordStored({ location: store.location, key: move.to, url: move.newUrl, name: move.name, size: bytes.byteLength, type: checked.type, source: move.from, ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}) });
+          copiedMoves.push(move);
+          continue;
+        }
         const existing = await store.head(move.to);
 
         if (existing) {
@@ -313,7 +344,7 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
             skipped += 1;
           }
         }
-        await context.recordStored({ location: store.location, key: move.to, url: move.newUrl, name: move.name, size: bytes.byteLength, type: checked.type, ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}) });
+        await context.recordStored({ location: store.location, key: move.to, url: move.newUrl, name: move.name, size: bytes.byteLength, type: checked.type, source: move.from, ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}) });
       } else {
         const store = storeOf(context, request.from);
         const bytes = await store.get(move.from);

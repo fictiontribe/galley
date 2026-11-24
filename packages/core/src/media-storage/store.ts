@@ -54,6 +54,8 @@ export interface StoredItem {
   height?: number;
   /** ms. */
   uploadedAt: number;
+  /** The file's own name, when the store's name for it is an id ("coat.webp"). */
+  name?: string;
 }
 
 export interface StorePutInput {

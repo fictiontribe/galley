@@ -114,6 +114,18 @@ const mediaStorage = z
   .strict()
   .describe("New media goes to this bucket instead of the repository. Set by Media › Storage (or `galley media connect`).");
 
+/** Ids only: the API token is kept in the site's key store, never in this file. */
+const mediaImages = z
+  .object({
+    connector: z.literal("cloudflare-images").describe("Cloudflare Images."),
+    account: z.string().regex(/^[0-9a-f]{32}$/, { message: "must be the 32-character Cloudflare account ID." }).describe("The Cloudflare account ID."),
+    accountHash: z.string().min(8).max(64).describe("The Images account hash, from Hosted Images › Developer Resources."),
+    variant: z.string().regex(/^[A-Za-z0-9_-]{1,99}$/, { message: "must be a variant's name, like “public”." }).optional().describe("The variant pages ask for. Default: public."),
+    deliveryUrl: z.string().url().optional().describe("Deliver from a domain of the same Cloudflare account (its /cdn-cgi/imagedelivery/ path). Default: https://imagedelivery.net."),
+  })
+  .strict()
+  .describe("Pictures go to Cloudflare Images instead; files it doesn't take go to `media.storage`, else the repository.");
+
 /** Project names both built-in hosts accept, short enough for a preview address label (`<8 chars>-<name>`). */
 const DEPLOY_PROJECT = /^[a-z0-9](?:[a-z0-9-]{0,52}[a-z0-9])?$/;
 
@@ -186,7 +198,7 @@ export const galleyConfigSchema = z
     dev: z.object({ command: z.string().optional(), port: z.number().int().positive().optional() }).strict().optional(),
     build: z.object({ command: z.string().optional(), outDir: z.string().optional() }).strict().optional(),
     urls: z.object({ production: z.string().url().optional(), staging: z.string().url().optional() }).strict().optional(),
-    media: z.object({ dir: z.string().optional(), publicPath: z.string().optional(), roots: z.array(mediaRoot).optional(), storage: mediaStorage.optional() }).strict().optional(),
+    media: z.object({ dir: z.string().optional(), publicPath: z.string().optional(), roots: z.array(mediaRoot).optional(), storage: mediaStorage.optional(), images: mediaImages.optional() }).strict().optional(),
     publish: z
       .object({ branch: z.string().optional(), mode: z.enum(["commit", "pull-request"]).optional(), remote: z.string().nullable().optional(), push: z.boolean().optional() })
       .strict()

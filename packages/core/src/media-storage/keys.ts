@@ -7,7 +7,8 @@
  *
  * Resolution: the site's own key, then the environment the app was started
  * from (an operator pinning one bucket for a hosted install):
- *   GALLEY_MEDIA_ACCESS_KEY_ID, GALLEY_MEDIA_SECRET_ACCESS_KEY.
+ *   GALLEY_MEDIA_ACCESS_KEY_ID, GALLEY_MEDIA_SECRET_ACCESS_KEY (a bucket),
+ *   GALLEY_MEDIA_IMAGES_TOKEN (Cloudflare Images).
  */
 import { GalleyError } from "../errors";
 import { rememberSecret, scrubSecrets } from "../ai/errors";
@@ -17,21 +18,24 @@ import { createFileSecretStore, type SecretStore } from "../ai/secrets";
 import { isSiteId } from "../site/scope";
 import type { MediaKeyStatus } from "./contract";
 
-export type MediaKeyName = "accessKeyId" | "secretAccessKey";
+export type MediaKeyName = "accessKeyId" | "secretAccessKey" | "imagesToken";
 
 const STORED: Record<MediaKeyName, string> = {
   accessKeyId: "media:bucket:accessKeyId",
   secretAccessKey: "media:bucket:secretAccessKey",
+  imagesToken: "media:images:token",
 };
 
 export const MEDIA_KEY_ENV: Record<MediaKeyName, string> = {
   accessKeyId: "GALLEY_MEDIA_ACCESS_KEY_ID",
   secretAccessKey: "GALLEY_MEDIA_SECRET_ACCESS_KEY",
+  imagesToken: "GALLEY_MEDIA_IMAGES_TOKEN",
 };
 
 const SHAPES: Record<MediaKeyName, { test: RegExp; message: string }> = {
   accessKeyId: { test: /^[A-Za-z0-9]{16,128}$/, message: "That doesn't look like an Access Key ID: one word of letters and digits, like the one shown next to the secret." },
   secretAccessKey: { test: /^[A-Za-z0-9/+=_-]{20,256}$/, message: "That doesn't look like a Secret Access Key: one long word, shown once when the key was made." },
+  imagesToken: { test: /^[A-Za-z0-9_-]{30,}$/, message: "That doesn\'t look like a Cloudflare API token: one long word of letters and numbers, shown once when it was made." },
 };
 
 /** Trims a pasted key and refuses obvious mistakes. Never echoes it. */
@@ -48,6 +52,9 @@ export interface MediaKeys {
   status(siteId: string, name: MediaKeyName): Promise<MediaKeyStatus>;
   /** Removes every media key of the site (it left the list). */
   forget(siteId: string): Promise<void>;
+  /** A setting kept beside the keys (not a key), by its stored name. */
+  raw(siteId: string, name: string): Promise<string | null>;
+  setRaw(siteId: string, name: string, value: string | null): Promise<void>;
 }
 
 function mediaStateDir(home: string, siteId: string): string {
@@ -102,6 +109,8 @@ export function createMediaKeys(options: { home: string; env?: NodeJS.ProcessEnv
       // An Access Key ID isn't secret on its own, but the hint is the same four characters either way.
       return value ? { configured: true, source, hint: value.slice(-4) } : { configured: false, source: null };
     },
+    raw: (siteId, name) => storeFor(siteId).get(name),
+    setRaw: (siteId, name, value) => storeFor(siteId).set(name, value),
     async forget(siteId) {
       if (!isSiteId(siteId)) return;
       stores.delete(siteId);

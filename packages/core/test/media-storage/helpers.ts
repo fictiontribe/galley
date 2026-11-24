@@ -23,6 +23,7 @@ export function fakeSite(id = "lowfield", config: GalleyConfig = {}): FakeSite {
         publicPath: "/images",
         roots: [{ dir: "public/images", publicPath: "/images" }],
         ...(state.config.media?.storage ? { storage: state.config.media.storage } : {}),
+        ...(state.config.media?.images ? { images: state.config.media.images } : {}),
       },
     }) as unknown as SiteModel;
 

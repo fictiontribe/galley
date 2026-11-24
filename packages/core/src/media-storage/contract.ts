@@ -5,13 +5,13 @@
  * media and deleting from a store. Types only, so the web app and its
  * fixture backend import it freely.
  */
-import type { MediaItem, MediaLocation, MediaStorageConfig } from "../types";
+import type { MediaImagesConfig, MediaItem, MediaLocation, MediaStorageConfig } from "../types";
 
 /** A place media can be kept other than the repository. */
 export type MediaStoreLocation = Exclude<MediaLocation, "repository">;
 
 /** A value the person types in the "Connect a bucket" form. */
-export type MediaStoreFieldId = "account" | "bucket" | "region" | "endpoint" | "prefix" | "publicUrl" | "accessKeyId" | "secretAccessKey";
+export type MediaStoreFieldId = "account" | "bucket" | "region" | "endpoint" | "prefix" | "publicUrl" | "accessKeyId" | "secretAccessKey" | "accountHash" | "variant" | "deliveryUrl" | "token";
 
 export interface MediaStoreField {
   id: MediaStoreFieldId;
@@ -86,8 +86,29 @@ export interface MediaBucketStatus {
   trialAddress?: boolean;
 }
 
+/** Cloudflare Images for pictures (at most one). */
+export interface MediaImagesStatus {
+  connected: boolean;
+  config: MediaImagesConfig | null;
+  /** The token in use: the site's own (or the environment's), or the site's Cloudflare key for putting it online. */
+  token: MediaKeyStatus & { use: "own" | "deploy" | null };
+}
+
+/** Connecting Cloudflare Images. `token` only when pasted; `useDeployKey`: use the site's Cloudflare key for putting it online. */
+export interface MediaImagesConnectRequest {
+  config: MediaImagesConfig;
+  token?: string;
+  useDeployKey?: boolean;
+}
+
+export interface MediaImagesConnectResult {
+  check: MediaCheckResult;
+  status?: MediaStorageStatus;
+}
+
 export interface MediaStorageStatus {
   bucket: MediaBucketStatus;
+  images: MediaImagesStatus;
   /** How many files are kept where, when known. */
   counts?: Partial<Record<MediaLocation, number>>;
   /** "Make the bucket for me" on Cloudflare: possible with the site's Cloudflare key, or why not. */

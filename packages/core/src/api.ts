@@ -72,7 +72,7 @@ import type { CloudflareCheck, CloudflarePlan, ImportMode, ImportResolutions, Im
 import type { AddSitesRequest, AddSitesResult, ScanSitesRequest, ScanSitesResult, SiteConnections, SiteGroup, SiteGroupInput, SitePatch, SiteUsageTotals } from "./types";
 import type { DeployKeyInfo, InstallInfo, RestoreUpload, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./install/types";
 import type { Account, AccountRole, AccountSession, Invitation, LinkPreview, OneTimeLink, People } from "./install/accounts";
-import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaLibraryAnswer, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaUsage } from "./media-storage/contract";
+import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaLibraryAnswer, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaUsage } from "./media-storage/contract";
 import type { EditorHostAbsent, EditorHostAccount, EditorHostInfo, HostedEditorBackup, HostedEditorPlan, HostedEditorRemoval, HostedEditorRequest, HostedEditorStatus } from "./hosting/types";
 
 /**
@@ -510,6 +510,12 @@ export interface ApiRoutes {
   "PUT /api/sites/:siteId/media/storage": { body: MediaConnectRequest; response: MediaConnectResult };
   /** Stop putting new media in the bucket. Files there stay, and pages using them keep working. `forgetKeys`: remove its keys too. */
   "DELETE /api/sites/:siteId/media/storage": { query: { forgetKeys?: boolean }; response: MediaStorageStatus };
+  /** Run the Cloudflare Images check — on the body's settings (nothing is saved), or on the saved ones. Uploads and removes a tiny test picture. */
+  "POST /api/sites/:siteId/media/images/check": { body: Partial<MediaImagesConnectRequest>; response: MediaCheckResult };
+  /** Check, and only when that passes keep pictures in Cloudflare Images (galley.config.json `media.images`). */
+  "PUT /api/sites/:siteId/media/images": { body: MediaImagesConnectRequest; response: MediaImagesConnectResult };
+  /** Pictures go where other files go again. Pictures already in Images stay. `forgetKeys`: remove its token too. */
+  "DELETE /api/sites/:siteId/media/images": { query: { forgetKeys?: boolean }; response: MediaStorageStatus };
   /** Where an address is used: pages of the working copy (with titles) and files of the published version. */
   "GET /api/sites/:siteId/media/usage": { query: { url: string }; response: MediaUsage };
   /**

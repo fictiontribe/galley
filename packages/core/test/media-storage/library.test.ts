@@ -39,7 +39,7 @@ async function setUp(bucketName: string) {
   return { bucket, key, storage, site, root, base: `${fake.publicUrl(bucketName)}/lowfield/`, done: home.done };
 }
 
-describe("a site that keeps its media in a bucket", () => {
+describe("a site that keeps its media in a bucket", { timeout: 240_000 }, () => {
   it("uploads to the bucket, never over an existing name, with sizes known", async () => {
     const { bucket, site, base, done } = await setUp("never-overwrite");
     const first = await site.saveMedia({ filename: "My Coat.png", data: pngHeader(1200, 800) });

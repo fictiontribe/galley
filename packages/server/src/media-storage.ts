@@ -19,6 +19,9 @@ type MediaStorageRouteKey =
   | "POST /api/sites/:siteId/media/storage/check"
   | "PUT /api/sites/:siteId/media/storage"
   | "DELETE /api/sites/:siteId/media/storage"
+  | "POST /api/sites/:siteId/media/images/check"
+  | "PUT /api/sites/:siteId/media/images"
+  | "DELETE /api/sites/:siteId/media/images"
   | "GET /api/sites/:siteId/media/usage"
   | "POST /api/sites/:siteId/media/storage/delete"
   | "POST /api/sites/:siteId/media/storage/move/plan"
@@ -40,6 +43,22 @@ export const storageConfigBody = z
   .strict();
 
 const keyText = z.string().max(512);
+
+export const imagesConfigBody = z
+  .object({
+    connector: z.literal("cloudflare-images"),
+    account: shortText(64),
+    accountHash: shortText(64),
+    variant: shortText(99).optional(),
+    deliveryUrl: shortText(500).optional(),
+  })
+  .strict();
+export const imagesConnectBody = z.object({ config: imagesConfigBody, token: keyText.optional(), useDeployKey: z.boolean().optional() }).strict();
+export const imagesCheckBody = z
+  .object({ config: imagesConfigBody.optional(), token: keyText.optional(), useDeployKey: z.boolean().optional() })
+  .strict()
+  .optional()
+  .transform((value) => value ?? {});
 
 export const connectBody = z.object({ config: storageConfigBody, accessKeyId: keyText.optional(), secretAccessKey: keyText.optional() }).strict();
 export const checkBody = z
@@ -109,6 +128,26 @@ export const mediaStorageRoutes: Pick<RouteTable, MediaStorageRouteKey> = {
     const { forgetKeys } = v.query(c, disconnectQuery);
 
     return storage.disconnect(await siteOf(c, ctx), { forgetKeys: forgetKeys === "true" });
+  },
+  "POST /api/sites/:siteId/media/images/check": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const request = await v.body(c, imagesCheckBody);
+    const site = await siteOf(c, ctx);
+
+    return engine(() => storage.checkImages(site, request.config ? { config: definedOnly(request.config), ...definedOnly({ token: request.token, useDeployKey: request.useDeployKey }) } : undefined));
+  },
+  "PUT /api/sites/:siteId/media/images": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const request = await v.body(c, imagesConnectBody);
+    const site = await siteOf(c, ctx);
+
+    return engine(() => storage.connectImages(site, { config: definedOnly(request.config), ...definedOnly({ token: request.token, useDeployKey: request.useDeployKey }) }));
+  },
+  "DELETE /api/sites/:siteId/media/images": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const { forgetKeys } = v.query(c, disconnectQuery);
+
+    return storage.disconnectImages(await siteOf(c, ctx), { forgetKeys: forgetKeys === "true" });
   },
   "GET /api/sites/:siteId/media/usage": async (c, ctx) => {
     const storage = mediaStorageOf(ctx);
