@@ -26,6 +26,7 @@ import {
   openInstallState,
   readStartingValues,
   SITE_FOLDER,
+  type DataFolderHold,
   type Install,
   type InstallFixed,
   type InstallStore,
@@ -425,6 +426,16 @@ async function bind(server: Server, config: ResolvedConfig, notice: (line: strin
   throw new StartupError("No free port was found.");
 }
 
+/** Takes the data folder for this server. Another server running on it, or a folder the hold can't be written to, stops the start in plain words. */
+async function takeDataFolder(config: ResolvedConfig, notice: (line: string) => void, beatMs: number | undefined): Promise<DataFolderHold> {
+  try {
+    return await holdDataFolder(config.home, null, { log: notice, ...(beatMs !== undefined ? { beatMs } : {}) });
+  } catch (error) {
+    if (isGalleyError(error)) throw new StartupError(error.message);
+    throw error;
+  }
+}
+
 /** Opens (and, for an older data folder, upgrades) the install's state. A folder it can't use stops the start in one plain sentence. */
 async function openState(config: ResolvedConfig, notice: (line: string) => void): Promise<InstallStore> {
   try {
@@ -493,12 +504,25 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
 
   for (const warning of config.warnings) notice(warning);
   await mkdir(config.home, { recursive: true, mode: 0o700 });
+  // Hosted: one server to a data folder. It is taken before anything in it is read or changed, and a start that can't take it stops here.
+  const hold = hosted ? await takeDataFolder(config, notice, options.holdBeatMs) : null;
+  const release = async () => {
+    await hold?.release();
+  };
   // Hosted: the install's state, migrated before anything else reads the data folder.
-  const store = hosted ? await openState(config, notice) : null;
+  const store = hosted
+    ? await openState(config, notice).catch(async (error) => {
+        await release();
+        throw error;
+      })
+    : null;
 
   if (!hosted) await mkdir(config.sitesDir, { recursive: true });
 
-  const cookieKey = await sessionKey(config.home);
+  const cookieKey = await sessionKey(config.home).catch(async (error) => {
+    await release();
+    throw error;
+  });
   const hideSecrets = () => hideFromSiteCommands([...APP_SECRET_ENV_NAMES, ...pluginSecretEnv]);
 
   // A shared server only runs a site's own plugins when the operator allows it (GALLEY_ALLOW_SITE_PLUGINS=1).
@@ -562,10 +586,11 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     port = await bind(server, config, notice);
   } catch (error) {
     undo();
+    await release();
     throw error;
   }
-  // Hosted: while this server runs, `backup create` and `backup restore` on the command line refuse this folder.
-  const release = hosted ? await holdDataFolder(config.home, port).catch(() => async () => undefined) : async () => undefined;
+  // The hold says where this server listens: `backup create` and `backup restore` on the command line name it when they refuse this folder.
+  await hold?.setPort(port);
   const url = hosted && config.publicUrl ? config.publicUrl.origin : `http://${formatHost(isWildcard(config.host) ? "127.0.0.1" : config.host)}:${port}`;
   let services: Services;
   let install: Install | null = null;

@@ -15,6 +15,7 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { GalleyError } from "../errors";
 import { ACCOUNT_ROLES, INVITATION_DAYS, PASSWORD_LINK_MINUTES, ROLE_ACCESS, type Account, type AccountRole, type AccountSession, type Invitation, type LinkPreview } from "./accounts";
+import { nameKey, tidyName } from "./names";
 import { hashPassword, passwordProblem, verifyPassword } from "./password";
 import { hasOwner, sha256Hex, spendSetupCode, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink } from "./state";
 
@@ -148,14 +149,34 @@ export function normalizeEmail(raw: unknown): string {
   return email;
 }
 
-/** A person's name as it is kept: single spaces, no line breaks or angle brackets (it ends up in e-mails and in the repository's history). */
+/**
+ * A person's name as it is kept: single spaces, no line breaks or angle
+ * brackets (it ends up in e-mails and in the repository's history), and
+ * nothing in it that a reader can't see (names.ts).
+ */
 export function cleanName(raw: unknown): string {
-  const name = typeof raw === "string" ? raw.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim() : "";
+  const tooLong = () => new GalleyError("invalid", `Keep the name under ${NAME_LIMIT} characters.`);
+
+  // Far past the limit already: refused before any of it is read through.
+  if (typeof raw === "string" && raw.length > NAME_LIMIT * 16) throw tooLong();
+  const name = typeof raw === "string" ? tidyName(raw) : "";
 
   if (!name) throw new GalleyError("invalid", "Add a name. It's what this editor shows, and what your publishes carry.");
-  if ([...name].length > NAME_LIMIT) throw new GalleyError("invalid", `Keep the name under ${NAME_LIMIT} characters.`);
+  if ([...name].length > NAME_LIMIT) throw tooLong();
   if (/[<>]/.test(name)) throw new GalleyError("invalid", "A name can't contain < or >.");
   return name;
+}
+
+/** Said when a name would read as another person's here. */
+function nameTaken(name: string): GalleyError {
+  return new GalleyError("conflict", `Someone here is already called “${name}”. Add something that tells the two apart, such as a middle initial.`);
+}
+
+/** Whether someone else here has a name a reader would take for this one (names.ts `nameKey`). */
+function sharesName(state: InstallStateFile, name: string, exceptId: string | null): boolean {
+  const key = nameKey(name);
+
+  return key !== "" && state.accounts.some((account) => account.id !== exceptId && account.name !== "" && nameKey(account.name) === key);
 }
 
 function newId(): string {
@@ -305,6 +326,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       await store.update((draft) => {
         if (hasOwner(draft)) throw new GalleyError("conflict", "This editor has an owner already. Sign in instead.");
         if (email && draft.accounts.some((account) => account.email === email)) throw new GalleyError("conflict", "Someone with that e-mail already has an account here.");
+        if (name && sharesName(draft, name, null)) throw nameTaken(name);
         const at = iso(now());
 
         created = { id: newId(), name, email, role: "owner", passwordHash: hash, passwordChangedAt: at, createdAt: at, lastSeenAt: null, disabled: false, incomplete: !name || !email, sessionsValidAfter: 0 };
@@ -324,7 +346,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         const owner = draft.accounts.find((account) => account.role === "owner" && account.incomplete);
 
         if (!owner) return;
-        if (!owner.name && name) {
+        // Like an e-mail that is taken: a name someone else here has is left for the owner to choose in the app.
+        if (!owner.name && name && !sharesName(draft, name, owner.id)) {
           owner.name = name;
           changed = true;
         }
@@ -504,6 +527,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         const link = linkFor(draft, code, now());
 
         if (!link) throw new GalleyError("not-found", LINK_REFUSED);
+        // Refused before the link is spent, so the same link works with another name.
+        if (link.kind === "invitation" && sharesName(draft, name!, null)) throw nameTaken(name!);
         draft.links = draft.links.filter((candidate) => candidate !== link);
         const at = iso(now());
 
@@ -587,7 +612,11 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
           if (draft.accounts.some((account) => account.email === email && account.id !== target.id)) throw new GalleyError("conflict", "Someone with that e-mail already has an account here.");
           target.email = email;
         }
-        if (name !== undefined) target.name = name;
+        if (name !== undefined) {
+          // Keeping one's own name, however it is spelt, is never a clash: accounts alike from before stay as they are until one of them changes.
+          if (nameKey(name) !== nameKey(target.name) && sharesName(draft, name, target.id)) throw nameTaken(name);
+          target.name = name;
+        }
         target.incomplete = !target.name || !target.email;
         updated = publicAccount(target);
       });

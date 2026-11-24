@@ -49,7 +49,7 @@ import {
 import { realClock, SignInGate, type Outcome, type Ticket } from "./sign-in-gate";
 import { GalleyError } from "@galley/core";
 import { AuthError, invalid, notFound, RateLimitError } from "./errors";
-import type { StreamAccess } from "./events";
+import { MAX_STREAMS_PER_ACCOUNT, type StreamAccess, type StreamLimits } from "./events";
 import type { RouteContext, RouteTable } from "./routes";
 import * as v from "./validate";
 import { audit, callerOf, named, personOf } from "./who";
@@ -431,6 +431,24 @@ export function eventAccess(c: Context, ctx: RouteContext): StreamAccess | undef
     },
     onChange: (listener) => install.store.onSessionsChanged(listener),
   };
+}
+
+/** What a signed-in person is told when their account has every stream it may have open. */
+export const TOO_MANY_WINDOWS = `Too many windows of the editor are open on this account: ${MAX_STREAMS_PER_ACCOUNT} is the limit. Close one of the others, and this one connects again.`;
+/** The same for whoever holds the operator's token. */
+export const TOO_MANY_TOKEN_STREAMS = `Too many event streams are open with this access token: ${MAX_STREAMS_PER_ACCOUNT} is the limit. Close one of the others first.`;
+
+/**
+ * GET /api/events on a hosted install: each signed-in account may hold so
+ * many streams open, and the operator's token counts as one identity. Local
+ * mode and the desktop app are one person on one computer: not counted.
+ */
+export function streamLimits(c: Context, ctx: RouteContext): StreamLimits {
+  if (ctx.options.mode !== "hosted") return {};
+  const caller = callerOf(c, ctx);
+
+  if (caller?.kind === "person") return { owner: `account:${caller.account.id}`, refusal: TOO_MANY_WINDOWS };
+  return caller?.kind === "token" ? { owner: "operator", refusal: TOO_MANY_TOKEN_STREAMS } : {};
 }
 
 export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {

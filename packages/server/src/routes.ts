@@ -30,7 +30,7 @@ import { visibilityRoutes } from "./visibility";
 import { importRoutes, importsOf } from "./import";
 import { siteBrandRoutes } from "./sitebrand";
 import { installRoutes } from "./install-routes";
-import { accountsMeta, accountsRoutes, eventAccess, signInWithAccount, signOutThisBrowser } from "./accounts-routes";
+import { accountsMeta, accountsRoutes, eventAccess, signInWithAccount, signOutThisBrowser, streamLimits } from "./accounts-routes";
 import { previewEntry } from "./preview-entry";
 import { hostingRoutes } from "./hosting-routes";
 import { assertInside, listFolders, looksLikeSite, realDirectory } from "./fs-list";
@@ -248,7 +248,7 @@ export const routes: RouteTable = {
     deleteCookie(c, ctx.session.cookieName, { path: "/", ...(ctx.session.secure ? { secure: true } : {}) });
     return ok;
   },
-  "GET /api/events": async (c, ctx) => eventStream(c, ctx.services.events, ctx.streams, ctx.options.heartbeatMs, eventAccess(c, ctx)),
+  "GET /api/events": async (c, ctx) => eventStream(c, ctx.services.events, ctx.streams, ctx.options.heartbeatMs, eventAccess(c, ctx), streamLimits(c, ctx)),
 
   // ── settings ───────────────────────────────────────────────────────────
   "GET /api/settings": async (_c, ctx) => publicSettings(await ctx.services.settings.get()),
