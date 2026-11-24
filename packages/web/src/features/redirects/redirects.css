@@ -114,9 +114,9 @@
 
 .redir-exports ul { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
-.redir-hosts { margin: 0; padding: 0; border: 0; display: grid; gap: var(--space-2); min-inline-size: 0; }
-.redir-hosts > legend { margin-block-end: var(--space-1); }
-.redir-hosts__options { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.redir-hosts { display: grid; gap: var(--space-2); min-inline-size: 0; }
+/* One host to a row: four choices read as a list. Two across left each about 130 px wide in the side column, and their words broke one at a time. */
+.redir-hosts__options { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); margin-block-start: var(--space-1); }
 .redir-host {
   display: grid; gap: var(--space-1); text-align: start; padding: var(--space-3); cursor: pointer;
   border: var(--border-hair) solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink-primary); font: inherit;
@@ -128,7 +128,7 @@
 .redir-host--suggested { border-color: var(--accent-line); }
 .redir-host--on { border-color: var(--accent); background: var(--accent-subtle); }
 .redir-host__name { display: flex; gap: var(--space-2); align-items: center; font-weight: var(--weight-semibold); }
-.redir-host__blurb { color: var(--ink-secondary); font-size: var(--text-xs); line-height: var(--leading-sm); }
+.redir-host__blurb { color: var(--ink-secondary); font-size: var(--text-sm); line-height: var(--leading-sm); }
 @media (prefers-reduced-motion: reduce) { .redir-host, .redir-host:hover:not(:disabled) { transition: none; transform: none; } }
 
 .redir-cf { display: grid; gap: var(--space-2); justify-items: start; padding-block-start: var(--space-3); border-block-start: var(--border-hair) solid var(--border-subtle); }
