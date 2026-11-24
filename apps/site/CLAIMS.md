@@ -11,7 +11,7 @@ badges on `/wordpress/` steps, `/starters/` and `/ai-first/`, and the agent
 files all render from it. Flip a status there and every page follows; keep
 the table below in step.
 
-Updated 2026-11-24 (Galley on npm; “for static sites” instead of “for Astro”). Before that, 2026-11-23 (rebuild of the site).
+Updated 2026-11-24 (the README, ROADMAP and npm READMEs rewritten; Galley on npm; “for static sites” instead of “for Astro”). Before that, 2026-11-23 (rebuild of the site).
 
 ## The status table (src/data/status.json)
 
@@ -98,6 +98,34 @@ caption was written against the matching guide in `docs/editing/`.
 `redirects.md` and `search-and-ai.md` still say “Status: new, in final
 checks”, while `status.json` (and so the tour) says Built for `brand`,
 `redirects` and `checks`. One of the two should move.
+
+## The repository's front pages (README.md, ROADMAP.md, the npm READMEs)
+
+Added 2026-11-24, when the README was rewritten and ROADMAP.md replaced the
+pre-release list. These files are not on the site, but they say the same
+things, so they answer to the same rules: statuses from `status.json`, no
+version number in prose (the npm badge carries it), no client names.
+`check-docs` reads `README.md`, `ROADMAP.md` and `packages/cli/README.md`;
+`packages/create-galley/README.md` is checked by hand.
+
+| Statement | Where | Support |
+| --- | --- | --- |
+| Badges: npm versions of `galley-cms` and `create-galley`, CI on `main`, the release workflow, licence, Node.js version, last commit, “PRs welcome” | README top (two rows); `packages/cli/README.md` (npm, CI, licence, Node); `packages/create-galley/README.md` (npm, CI, licence) | Every badge is read live from img.shields.io, nothing typed in: `npm/v/<package>`, `github/actions/workflow/status/fictiontribe/galley/{ci,release}.yml`, `github/license/…`, `node/v/galley-cms`, `github/last-commit/…`; each returned a real value on 2026-11-24. No downloads badge yet: npm's download counts answer “package not found or too new” for a package this young. |
+| Pictures: `form` (top of the README and the cli README), `assistant`, `proof-changes`, `arrange`, `site-home` (README gallery; `site-home` also in the create-galley README) | README, npm READMEs | The captures in `public/screens/` (see the tour rows above); the npm READMEs load them from `raw.githubusercontent.com/fictiontribe/galley/main/…`, so they show what `main` holds |
+| “No database, no account, no telemetry.” | README intro | /docs/running/security/ (“no telemetry and no account”), /privacy/, `docs/ARCHITECTURE.md` (the working tree is the draft; no database) |
+| “One field changed, one value changed. Comments, quoting, key order and the markdown body stay exactly as they were.” | README “What it does” | /docs/concepts/surgical-edits/ (a scalar is spliced at its byte range; the worked example keeps quotes, comment, key order and body byte-identical); the home page's “One field changed, one value changed” |
+| The `diff` of one heading on the Lowfield Studio starter | README “How it works” | The heading is `starters/astro-starter/src/content/pages/index.md` line 7, “Make more of the *home you already have*.”; a one-word edit through the form gives that one-line diff (surgical edits, above) |
+| Status markers in “What it does”: page builder *Preview*; Vercel and the Shopify storefront *in progress*; the move from WordPress *New, in final checks*; everything else built | README | `status.json` (`builder`, `deploy-vercel`, `shopify`, `wordpress-guided`; every other item `built`). Flip a status there and change the README with it |
+| Many sites: filed by client, your brand on the app, client changes as pull requests | README | `status.json` `agencies`; /docs/editing/many-sites/ (groups); /docs/configuration/white-label/ (name, colour and logo from `/api/meta`) |
+| “a plugin can be one file” | README | /docs/plugins/ (“how to write one in a single file”); `examples/plugin-example` |
+| “The documentation checks itself against the code on every build” | README “Documentation” | `apps/site/package.json` `build` runs `scripts/check-docs.mjs` first; CI runs the site build |
+| Works with: Astro fits deepest; seven frameworks by convention; anything else through an adapter; never “official”, “partner” or “endorsed” | README | The row “Astro fits deepest…” under Other statements; the credits line says Galley is not affiliated with or endorsed by Astro, WordPress or the other names' owners |
+| ROADMAP “Shipped so far”: 0.1.0 (2026-11-23, first on npm); 0.1.1 own domain and npm-first docs; 0.1.2 redirects not read as links, brand and WordPress fixes; the tour and twelve how-to guides | ROADMAP.md | CHANGELOG.md; `npm view galley-cms time` (0.1.0 published 2026-11-23); `src/data/howto.json` (12 guides). 0.1.1 and 0.1.2 are listed without dates: the changelog says 2026-11-24, npm's UTC times say 2026-11-23 |
+| ROADMAP “Now”: the guided move from WordPress in final checks | ROADMAP.md, README | `status.json` `wordpress-guided` (`new`). The interface fixes shipped as 0.1.3 (`CHANGELOG.md`) and are listed under “Shipped so far”. |
+| ROADMAP “Next”: Vercel, Bulk Redirects and a fresh own domain run on the real services; the Shopify storefront starter; the editor hosted on your own server, one site per install; a signed desktop app and Windows and Linux; the kits on npm; the starters in Astro's catalogue; full adapters beyond Astro | ROADMAP.md (all), README (all but the catalogue) | `status.json` `deploy-vercel`, `shopify` (`progress`); the rows on redirects and `galley domain` above (Bulk Redirects and attaching a fresh domain run against stand-ins only); the `cloud-install` branch on GitHub (commit “Hosted editor: one site per install…”), not in a release; SUPPORT.md (Windows and Linux not verified, no signed builds); the kits' `"private": true`; `docs/astro-catalog/` (the submission kit; the listing needs the owner's sign-in); `packages/core/src/adapters/conventions/` (the convention adapters). Nothing in “Next” has a date |
+| ROADMAP “Later”: accounts and roles for hosted installs; Galley Cloud, no date or price | ROADMAP.md, README | /docs/running/hosted/ (one shared password, one author for every publish); `status.json` `cloud` (`later`) |
+| “It runs on your computer.” | `packages/cli/README.md` | `npx galley-cms` listens on `127.0.0.1` (the install row above). The assistant and image services are called only with the person's own keys (/docs/running/security/) |
+| `pnpm create galley`, `yarn create galley` and `bun create galley` work the same way | `packages/create-galley/README.md` | Carried over from the previous README; not run by the docs (see the install row above) |
 
 ## Install commands
 

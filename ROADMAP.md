@@ -1,61 +1,68 @@
 # Roadmap
 
-What is missing or unverified today, in rough order. No dates: a line moves to
-the [changelog](CHANGELOG.md) when it ships, and anything here can be picked up
-— open an issue first to agree the shape.
+Where Galley is going, as far as anyone can say today. This is intent, not a
+promise: there are no dates, and the order can change. The statuses on
+[the website](https://galley.fictiontribe.com/) are the source of truth for
+what is built; when something here ships, it moves to the
+[changelog](CHANGELOG.md).
 
-## To finish before a first release
+## Shipped so far
 
-- **The web UI's editing screens.** The shell, Sites, site home, settings,
-  version history and the editor's container are built; the content form, the
-  media library, chat, the proof, the preview pane and the new-site screen are
-  being finished.
-- **Publish the packages.** `galley-cms` on npm (so `npx galley-cms` works),
-  `@galley/adapter-kit`, the public repository and the website. See
-  [RELEASING.md](RELEASING.md).
-- **Build and verify the container.** The `Dockerfile` and
-  `docker-compose.yml` are written and have never been built.
-- **Finish the MCP server** (`galley mcp`, `packages/mcp`): it already gives
-  any MCP client the built-in assistant's tools over stdio or HTTP. Missing,
-  per [`docs/mcp.md`](docs/mcp.md): **OAuth 2.1 with dynamic client
-  registration** for remote connectors that won't send a Bearer token;
-  `galley://` resources when several sites are open over HTTP; the 2026-07-28
-  protocol revision; undoing one harness turn the way the built-in assistant
-  can.
+- **0.1.0** (2026-11-23): the first release, on npm as `galley-cms` and
+  `create-galley`.
+- **0.1.1**: your own domain for a site that is online; documentation that
+  starts from `npm create galley@latest` and `npx galley-cms`.
+- **0.1.2**: fixes. Redirects are no longer read as page links; the brand
+  set-up and the move from WordPress get smaller fixes.
+- **0.1.3**: a batch of interface fixes found while making the tour: forms,
+  Proof, the Search and AI checks, the brand, click-to-edit and more.
+- **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
+  and [twelve how-to guides](https://galley.fictiontribe.com/how-to/), with
+  pictures.
 
-## Verification
+## Now
 
-- **The image providers.** OpenAI and Google image generation are tested
-  against scripted responses only; neither has been run against the live
-  service.
-- **The assistant's plain request profile.** The normal profile has been run
-  against the live Anthropic API; the fallback used when a beta feature is
-  refused is tested against scripted responses only.
-- **Windows and Linux.** Every part has been run on macOS only. The desktop
-  app has Windows and Linux code paths that have never been built.
+In final checks.
 
-## Running it
+- **The guided move from WordPress.** Built and run against an export file
+  and a stand-in WordPress site; not yet against a real one.
 
-- **Hosted previews behind a fixed port.** In hosted mode each preview listens
-  on a free port chosen at start-up, over plain HTTP, so a reverse proxy or a
-  container with one port mapped can't reach it, and an HTTPS page can't frame
-  it. Previews need to be served through the main address.
-- **Accounts in hosted mode.** One shared password today: no per-person
-  sign-in, roles or audit trail, and every publish from a hosted Galley carries
-  the same author.
-- **Signed desktop builds.** Code signing and notarisation are wired into the
-  release workflow and have never run (no certificates). No auto-update yet.
-- **The OS keychain** for API keys in the desktop app.
+## Next
 
-## Frameworks
+Built and waiting to be proven, or being built.
 
-- **More adapters.** Astro is the only framework with an adapter that reads
-  its own configuration. Eleventy, Hugo, Jekyll, Next.js, Nuxt Content,
-  SvelteKit and Docusaurus are recognised by convention; full adapters for any
-  of them are welcome ([`docs/adapters.md`](docs/adapters.md); a worked
-  Eleventy example is in [`examples/adapter-eleventy`](examples/adapter-eleventy)).
-- **An optional Astro integration for exact route mapping.** Today URL
-  patterns are read statically from `src/pages`, so a route that decides at
-  run time which collection it renders can't be matched. An integration could
-  report Astro's own route table to Galley.
-- **TOML editing.** TOML front matter and data files are read-only.
+- **Deploys to Vercel, run on the real service.** Built and tested against
+  stand-ins.
+- **Setting redirects on Cloudflare itself (Bulk Redirects), run on the real
+  service.** The redirects file that travels with the site already works.
+- **Attaching a fresh own domain, run on the real services.** Taking over an
+  address that already points at the site has been run on Cloudflare.
+- **The Shopify storefront starter.** A shop built from sections; it works
+  with a demo catalogue today.
+- **The editor hosted on your own server**, as an install that serves one
+  site. In development on a branch, not in a release yet.
+- **The desktop app signed**, and built for Windows and Linux. Today it is an
+  unsigned macOS app.
+- **The kits on npm as packages**: the site kit (`@galley/astro`), the adapter
+  kit and the plugin kit. Sites carry the site kit vendored today.
+- **The starters listed in Astro's catalogue** of themes.
+- **Full adapters beyond Astro.** Docusaurus, Nuxt, Next.js, SvelteKit,
+  Eleventy, Hugo and Jekyll are recognised by their conventions; that is the
+  floor. A full adapter reads the framework's own configuration. This is a
+  good place to contribute: [`docs/adapters.md`](docs/adapters.md) shows how,
+  and [`examples/adapter-eleventy`](examples/adapter-eleventy) is a worked
+  example.
+
+## Later
+
+- **Accounts and roles for hosted installs.** Today a hosted Galley has one
+  shared password, and every publish from it carries the same author.
+- **Galley Cloud**: the editor, hosted for you. No date or price yet.
+
+## Have a say
+
+Open an [issue](https://github.com/fictiontribe/galley/issues) for a bug or a
+specific request, or start a
+[discussion](https://github.com/fictiontribe/galley/discussions) for an idea
+or a question about direction. Before you write a lot of code, open an issue
+to agree the shape ([CONTRIBUTING.md](CONTRIBUTING.md#bigger-changes)).

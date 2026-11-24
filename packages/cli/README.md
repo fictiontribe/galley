@@ -1,77 +1,91 @@
-# galley-cms
+<div align="center">
 
-[Galley](https://galley.fictiontribe.com) is an open-source AI CMS for static sites:
-change a page in a form, on the page or by asking, check every change in
-Proof beside the live site, then publish it to your own git repository.
-Everything stays on your computer.
+<a href="https://galley.fictiontribe.com">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/fictiontribe/galley/main/brand/logo/lockup-reverse.svg">
+    <img src="https://raw.githubusercontent.com/fictiontribe/galley/main/brand/logo/lockup.svg" alt="Galley" width="200">
+  </picture>
+</a>
 
-A new site, from one of Galley's starters, with Galley running on it:
+<p><strong>galley-cms</strong> · the open-source AI CMS for static sites<br>
+Prompt it. Proof it. Publish it.</p>
 
-```sh
-npm create galley@latest
-```
+<p>
+<a href="https://www.npmjs.com/package/galley-cms"><img alt="galley-cms on npm" src="https://img.shields.io/npm/v/galley-cms"></a>
+<a href="https://github.com/fictiontribe/galley/actions/workflows/ci.yml"><img alt="CI on main" src="https://github.com/fictiontribe/galley/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+<a href="https://github.com/fictiontribe/galley/blob/main/LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/npm/l/galley-cms"></a>
+<a href="https://nodejs.org"><img alt="Node.js 20.11 or newer" src="https://img.shields.io/node/v/galley-cms"></a>
+</p>
 
-A site you already have — run this in its folder:
+<p>
+<a href="https://galley.fictiontribe.com">Website</a> ·
+<a href="https://galley.fictiontribe.com/tour/">Tour</a> ·
+<a href="https://galley.fictiontribe.com/docs/">Docs</a> ·
+<a href="https://github.com/fictiontribe/galley">GitHub</a>
+</p>
+
+</div>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/fictiontribe/galley/main/apps/site/public/screens/form.webp" width="760" alt="Galley's editor on Caddow, a made-up fashion label's site. On the left, a form for the home page with the heading field marked Edited; on the right, the page itself with the new heading “Coats for low sun.”">
+</p>
+
+Galley opens a site whose content lives in git and lets anyone change it —
+in a form, on the page or by asking the assistant. You check every change in
+Proof beside the live site, then publish it as a commit to your own
+repository. It runs on your computer.
+
+## Run it
+
+In a site you already have, run this in its folder:
 
 ```sh
 npx galley-cms
 ```
 
-It needs Node 20.11 or newer (22.23.4 for the starters, which are Astro 7
-sites) and git. There are no install scripts and nothing native: the package
-is one bundled file with the web app and the starters beside it.
-
-Inside this repository, to work on Galley itself:
+Galley opens in your browser on `127.0.0.1`, ready to edit the site. For a new
+site from one of the starters, use
+[`create-galley`](https://www.npmjs.com/package/create-galley):
 
 ```sh
-node packages/cli/bin/galley.js --help
-node packages/cli/bin/galley.js doctor starters/astro-starter
+npm create galley@latest
 ```
 
-`bin/galley.js` runs the bundle in `dist/galley.mjs` when it exists, and the
-TypeScript source through `tsx` otherwise — so delete `dist/` after building
-it, or it hides changes to the source.
+It needs Node.js 20.11 or newer and git (22.23.4 or newer for the starters,
+which are Astro 7 sites). There are no install scripts and nothing native:
+the package is one bundled file, with the web app and the starters beside it.
+
+## Commands
 
 | Command | Does |
 | --- | --- |
-| `galley [path]` | Open the site in `path` (default: this folder) and the browser, on 127.0.0.1 |
-| `galley serve` | Hosted mode, behind `GALLEY_PASSWORD` |
+| `galley [path]` | Open the site in `path` (default: this folder) in the browser |
+| `galley serve` | Run for other computers, behind a password |
 | `galley init [path]` | Write `galley.config.json` from what detection finds |
-| `galley doctor [path]` | Check the site and this computer |
-| `galley new [name]` | Start a new site from a starter (`--starter caddow`, `ferrow`, `lowfield` or `storefront`; `--look`, `--use`, `--no-install`, `--no-open`): asks for what's missing in a terminal, installs with the package manager that ran it, records the first version and opens Galley on it. `npm create galley` runs this |
-| `galley starters` | List the starters: what each is, what's inside, its looks and the command that makes a site from it |
-| `galley mcp [path]` | Let an AI tool edit the site over the Model Context Protocol (`galley mcp config`, `galley mcp token`) |
-| `galley schema` | Print the JSON Schema of `galley.config.json` (what `$schema` in the file points at). `--out <folder>` writes every schema the app's files name (`galley.config.json`, `brand.json`) and lists the address each must be served at |
+| `galley doctor [path]` | Check that a site and this computer are ready |
+| `galley deploy [path]` | Put the site online with Cloudflare or Vercel |
+| `galley domain [path]` | Use your own domain for a site that is online |
+| `galley new <name>` | Start a new site from a starter (`npm create galley` runs this) |
+| `galley import …` | Bring a WordPress site into a site |
+| `galley starters` | List the starters and their looks |
+| `galley mcp [path]` | Let an AI tool edit the site over MCP |
+| `galley plugin …` | Add plugins, list them, turn them on or off |
+| `galley schema` | Print the JSON Schema of `galley.config.json` |
 | `galley version` | Print the version |
-| `galley desktop` | The server for the desktop app (not for people) |
 
-Every option, with the real help text: the documentation's *Command line*
-page (`apps/site/src/content/docs/reference/cli.md`).
+`galley <command> --help` lists a command's options; every option, with the
+real help text and the exit codes, is on the
+[Command line](https://galley.fictiontribe.com/docs/reference/cli/) page.
 
-## Build and test
+## Working on Galley itself
 
-```sh
-pnpm --filter galley-cms test         # vitest
-pnpm --filter galley-cms typecheck
-pnpm --filter @galley/web build && pnpm --filter galley-cms build   # dist/galley.mjs, with web/, starters/ and the overlay beside it
-```
+This package is [`packages/cli`](https://github.com/fictiontribe/galley/tree/main/packages/cli)
+in the Galley repository. From a clone, `node packages/cli/bin/galley.js` runs
+the bundle in `dist/galley.mjs` when it exists and the TypeScript source
+otherwise, so delete `dist/` after building it or it hides changes to the
+source. The setup is in
+[CONTRIBUTING.md](https://github.com/fictiontribe/galley/blob/main/CONTRIBUTING.md#dev-setup);
+how the package is built, checked and published is in
+[RELEASING.md](https://github.com/fictiontribe/galley/blob/main/RELEASING.md).
 
-Exit codes: 0 success, 1 it couldn't do it, 2 the command was typed wrong. A
-setting the operator got wrong (a brand file, a port range) is one plain line
-and exit 1, never a stack trace.
-
-## What `npm pack` publishes
-
-`prepack` (`node build.mjs --release`) builds the web UI, the bundle, the
-site kit and the starters into `dist/`; `postpack` deletes `dist/` again.
-The tarball is `bin/galley.js` and `dist/` (`galley.mjs`, `web/`,
-`starters/`, `overlay.js`, `LICENSE`, `NOTICE`), about 13 MB. It has no
-runtime dependencies — the engine, server and MCP packages are bundled in, so
-they are `devDependencies` here. The starters are copied as git lists them,
-never what else is in their folders. npm never packs a `.gitignore`, so the
-build stores each starter's as `gitignore` and `galley new` puts the dot back.
-
-`node scripts/verify-pack.mjs <tarball>…` checks a packed tarball before it
-is published (the release workflow runs it): nothing private, no tests or
-source maps, no paths from the machine that built it, the size limit, and
-that it starts. See [RELEASING.md](../../RELEASING.md).
+Apache-2.0. Made by [Fiction Tribe](https://www.fictiontribe.com).
