@@ -1353,9 +1353,10 @@ the code host, not the clone, so the editor looks for itself:
   changed).`, `Repository: couldn't check for newer versions: …`,
   `Repository: the code host answers again.`, `Repository: 1 newer version
   waiting, not brought in: …`, `Repository: nothing is in the way of newer
-  versions any more.`, `Repository: no newer versions have been brought in
-  for 31 minutes, because the assistant is working on the site. They come in
-  once that is over.`, `Repository: newer versions can be brought in again.`
+  versions any more.`, `Repository: the editor's rounds have been skipped
+  for 31 minutes, because the assistant is working on the site. Newer
+  versions, if there are any, come in once that is over.`, `Repository: the
+  editor's rounds run again.`
 
 A look holds no save back: it fetches outside the lock that saves take, so
 a code host that hangs (the network timeout is 120 seconds) delays only other
@@ -1369,7 +1370,9 @@ Bringing commits in (`git merge --ff-only`) runs with
 `core.hooksPath=/dev/null`: none of the repository's own hooks run for it
 (a `post-merge` hook that installs packages would hold the save lock for as
 long as it took; the preview installs what changed dependencies need).
-Hooks still run for a publish, whose pre-commit checks are the site's own.
+This holds for a person's **Get latest** as well as the round, in local
+mode and the desktop app too. Hooks still run for a publish, whose
+pre-commit checks are the site's own.
 Fetches and that merge also run with `maintenance.auto=false` and
 `gc.auto=0`, so git starts no background tidying that could outlast them.
 A Get latest whose fetch can't reach the code host answers 502 with the

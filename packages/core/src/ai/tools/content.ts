@@ -10,7 +10,7 @@ import type { EditOp, Entry, FieldPath, JsonValue } from "../../types";
 import { describeFields } from "../site-card";
 import { entryName, plural, quoted } from "./labels";
 import { checkPageDraws, drawWarning } from "./draws";
-import { CHANGED_AFTER_READ, rememberVersion, versionRead } from "./reads";
+import { CHANGED_AFTER_READ, forgetVersion, rememberVersion, versionRead } from "./reads";
 import { defineTool, ok, READ_ONLY, refuse, type AssistantTool, type ToolContext } from "./types";
 import { siteImageryBrief } from "../../sitebrand/tools";
 
@@ -433,8 +433,17 @@ const deleteEntry = defineTool({
   label: (input, ctx) => `Deleting ${entryName(input.path, ctx.model, ctx.titles)}`,
   async run(input, ctx) {
     const name = entryName(input.path, ctx.model, ctx.titles);
+    // With the version it read, when it has read the entry: one that has changed since (newer versions came in, someone
+    // saved) is not deleted as it now is on the strength of what it was. An entry it never read is deleted as asked.
+    const read = versionRead(ctx, input.path);
 
-    await ctx.site.deleteEntry(input.path, { origin: "agent" });
+    try {
+      await ctx.site.deleteEntry(input.path, { origin: "agent", ...(read ? { baseHash: read } : {}) });
+    } catch (error) {
+      if (!(read && error instanceof GalleyError && error.code === "conflict")) throw error;
+      return refuse(`The entry ${CHANGED_AFTER_READ}, so it wasn't deleted. Read it again with read_entry, and delete it only if that is still what the person wants.`, `Couldn't delete ${name}`);
+    }
+    forgetVersion(ctx, input.path);
     return ok({ deleted: input.path }, `Deleted ${name}`);
   },
 });

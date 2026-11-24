@@ -63,5 +63,10 @@ export function rememberVersion(ctx: ToolContext, path: string, hash: string): v
   }
 }
 
+/** Forgets a file that is gone: one made later under the same name was never read. */
+export function forgetVersion(ctx: ToolContext, path: string): void {
+  readsOf(ctx).delete(readKey(ctx, path));
+}
+
 /** What the assistant is told when the file is no longer what it read. */
 export const CHANGED_AFTER_READ = "changed after you read it";

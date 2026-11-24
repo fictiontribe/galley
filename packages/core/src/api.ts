@@ -393,8 +393,10 @@ export interface ApiRoutes {
   "DELETE /api/sites/:siteId": { response: Ok };
   "POST /api/sites/:siteId/refresh": { response: SiteModel };
   /** `detected` is the model before the config file is applied. */
-  "GET /api/sites/:siteId/config": { response: { config: GalleyConfig | null; detected: SiteModel } };
-  "PUT /api/sites/:siteId/config": { body: { config: GalleyConfig }; response: SiteModel };
+  /** `hash`: the version of the settings file `config` was read from (null: the site has no settings file yet). */
+  "GET /api/sites/:siteId/config": { response: { config: GalleyConfig | null; detected: SiteModel; hash: string | null } };
+  /** `baseHash`: the `hash` the settings were opened with. When the file is no longer that version, nothing is saved (409 conflict). */
+  "PUT /api/sites/:siteId/config": { body: { config: GalleyConfig; baseHash?: string | null }; response: SiteModel };
 
   // ── content ────────────────────────────────────────────────────────────
   "GET /api/sites/:siteId/entries": {

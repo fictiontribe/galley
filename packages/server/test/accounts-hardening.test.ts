@@ -90,6 +90,25 @@ describe("the site's settings file and build mode, by every route", () => {
     expect(saved.status, saved.text).toBe(200);
     expect((await call(port, "POST", `/api/sites/${siteId}/discard`, { cookie: cy.cookie, body: {} })).body.error.message).toBe(SITE_SETTINGS_REFUSAL);
     expect(settings()).toContain("Owner's name");
+    // The settings come with the version of the file they were read from, and a save names the version it was made from:
+    // one made from a version that has been replaced since saves nothing.
+    const opened = await call(port, "GET", `/api/sites/${siteId}/config`, { cookie: owner });
+
+    expect(opened.body).toMatchObject({ config: { name: "Owner's name" }, hash: expect.stringMatching(/^[0-9a-f]{16}$/) });
+    const first = await call(port, "PUT", `/api/sites/${siteId}/config`, { cookie: owner, body: { config: { ...opened.body.config, name: "Saved first" }, baseHash: opened.body.hash } });
+
+    expect(first.status, first.text).toBe(200);
+    const stale = await call(port, "PUT", `/api/sites/${siteId}/config`, { cookie: owner, body: { config: { ...opened.body.config, name: "From the older reading" }, baseHash: opened.body.hash } });
+
+    expect(stale.status, stale.text).toBe(409);
+    expect(stale.body.error).toMatchObject({ code: "conflict", message: "The site's settings changed since they were opened, so nothing was saved. Open them again, then make the change again." });
+    expect(settings()).toContain("Saved first");
+    expect((await call(port, "PUT", `/api/sites/${siteId}/config`, { cookie: owner, body: { config: opened.body.config, baseHash: 7 } })).status).toBe(400);
+    const again = await call(port, "GET", `/api/sites/${siteId}/config`, { cookie: owner });
+
+    expect(again.body.hash).not.toBe(opened.body.hash);
+    expect((await call(port, "PUT", `/api/sites/${siteId}/config`, { cookie: owner, body: { config: { ...again.body.config, name: "Owner's name" }, baseHash: again.body.hash } })).status).toBe(200);
+    expect(settings()).toContain("Owner's name");
     // An editor publishes: the version is theirs, though the owner's request opened the site.
     const published = await call<PublishResult>(port, "POST", `/api/sites/${siteId}/publish`, { cookie: ed.cookie, body: { message: "Ed's publish", paths: ["src/components/Note.astro"] } });
 

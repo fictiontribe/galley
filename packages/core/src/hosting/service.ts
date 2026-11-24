@@ -25,6 +25,7 @@ import { VERSION } from "../brand";
 import { secretHint, SECRET_ENV } from "../ai/secrets";
 import { git } from "../workspace/git";
 import { createJobTracker, type JobHandle } from "../site/jobs";
+import { changeSettings } from "../site/settings-records";
 import type { EventBus, GalleyConfig, Job, SecretName, SecretStatus, SettingsService, SiteService } from "../types";
 import type { SetupHandover } from "../install/types";
 import { editorNameProblem, defaultEditorName, resolveAddresses } from "./addresses";
@@ -254,11 +255,13 @@ export function createHostingService(options: HostingServiceOptions): HostingSer
   }
 
   async function writeEditorConfig(site: SiteService, editor: EditorConfig | null): Promise<void> {
-    const current = (await site.readConfig()) ?? {};
-    const { editor: _old, ...rest } = current;
+    // On top of the settings as they are, and only over the version that was read.
+    await changeSettings(site, (current) => {
+      const { editor: _old, ...rest } = current;
 
-    if (!editor && !_old) return;
-    await site.saveConfig(editor ? { ...rest, editor } : rest);
+      if (!editor && !_old) return null;
+      return editor ? { ...rest, editor } : rest;
+    });
   }
 
   async function needRecord(site: SiteService): Promise<HostedEditorRecord> {
