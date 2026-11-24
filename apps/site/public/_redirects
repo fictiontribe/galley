@@ -1,8 +1,10 @@
 # Redirects for Cloudflare, kept in step with src/data/redirects.json by Galley.
 # Change the list there (or on the app's Redirects screen), not this file: this file is rewritten from the list.
-# galley-redirects-checksum: b0fcec48969044f8
+# galley-redirects-checksum: 2f8038ad031fad01
 /adapters        /docs/adapters/  301
 /adapters/       /docs/adapters/  301
+/download        /apps/           301
+/download/       /apps/           301
 /features        /                301
 /features/       /                301
 /fiction-tribe   /team/           301

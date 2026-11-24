@@ -52,6 +52,8 @@ const heroSection = z.object({
   cta: link.optional(),
   /** A quieter second link beside the action. */
   secondary: link.optional(),
+  /** The label of a second action to the in-browser demo; shown only while src/data/site.json → demo.available is true. */
+  demo: z.string().optional(),
   /** A short line under the action (while Galley isn't published). */
   note: z.string().optional(),
   /** The line under the action once install.published is true in site.json. */
@@ -303,6 +305,10 @@ const tourSection = z.object({
       ratio: z.string().optional(),
       /** One quiet line under the link: how the pictures were made, when a reader would wonder. */
       note: z.string().optional(),
+      /** A link of its own instead of "How to do it" (e.g. to /apps/). */
+      link: link.optional(),
+      /** Leave the whole item out until its main capture exists (no words-only item for a screen still to come). */
+      whenPictured: z.boolean().optional(),
       visual,
       inset: visual.optional(),
     }),
@@ -319,15 +325,19 @@ const filmstripSection = z.object({
   items: z.array(z.object({ label: z.string(), href: z.string(), visual })),
 });
 
-/** The desktop app: icon, one sentence and the download. Shown only while src/data/downloads.json offers one. */
+/** The desktop app: icon, one sentence, a capture of the app, and the download once src/data/downloads.json offers one (until then, a way to /apps/). */
 const desktopSection = z.object({
   type: z.literal("desktop"),
   ...common,
   heading: z.string(),
   text: z.string(),
-  /** The button without JavaScript (it goes to /download/), and the link to the other systems. */
+  /** The button without JavaScript (it goes to /apps/), and the link to the other systems. */
   fallback: z.string(),
   other: z.string(),
+  /** The button while downloads are off: to /apps/. */
+  apps: z.string(),
+  /** Said beside a system that isn't signed yet. */
+  unsigned: z.string().optional(),
 });
 
 const section = z.discriminatedUnion("type", [

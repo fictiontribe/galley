@@ -5,6 +5,7 @@ sections:
   - type: hero
     layout: text
     heading: See the whole app.
+    demo: Or try it yourself, in the demo
     text: Every picture here is a capture of Galley, most of them on Caddow — a fashion label we made up. Open any one to see it full size.
   - type: tour
     id: change
@@ -50,6 +51,14 @@ sections:
           x: -700
           y: -90
           alt: The assistant beside the Caddow home page — the request to change the campaign heading and its first button, the lines Read the home page and Edited the home page, the reply saying what changed, that the button still goes to the same lookbook and that the changes wait in Proof, a note about the italics, and the buttons Review in Proof and Undo this change.
+      - id: dark
+        layout: wide
+        whenPictured: true
+        heading: Light or dark
+        text: The whole app comes in light and dark, and follows your computer’s setting.
+        visual:
+          src: dark-editor
+          alt: ""
   - type: tour
     id: check
     label: Check and publish
@@ -207,7 +216,7 @@ sections:
     id: live
     label: Go live and grow
     heading: Go live and grow.
-    text: A real address for the site and, if you want one, for its editor; every site you look after; and a way out of WordPress.
+    text: A real address for the site and, if you want one, for its editor and its team; every site you look after, on your desktop; and a way out of WordPress.
     items:
       - id: online
         layout: full
@@ -233,7 +242,7 @@ sections:
         layout: flip
         ratio: 5/4
         heading: The editor, online
-        text: Edit the site from any browser. The app puts an editor for it on your own Fly.io account, on Cloudflare in front of a computer of yours, or on a server with Docker — and shows what it will create and what it costs a month before anything exists.
+        text: Edit the site from any browser. The app puts an editor for it on your own Fly.io account, in your Google Cloud project, on Cloudflare in front of a computer of yours, or on a server with Docker — and shows what it will create and what it costs a month before anything exists.
         status: editor-online
         guide: /docs/editing/editor-online/
         note: Pictured against a stand-in for Fly.io, with made-up addresses; nothing was created.
@@ -252,7 +261,7 @@ sections:
       - id: hosted
         layout: wide
         heading: One editor per site, on your own server
-        text: A hosted install is the same app on a server, for one site, behind its own password, with everything it keeps in one folder. It runs with Docker on your own server; Fiction Tribe hosts nothing.
+        text: A hosted install is the same app on a server, for one site, with an account for each person who edits it and everything it keeps in one folder. It runs with Docker on your own server; Fiction Tribe hosts nothing.
         status: hosted-install
         guide: /docs/running/hosted/
         note: Pictured on a test install on one computer, before any site was connected.
@@ -261,13 +270,19 @@ sections:
           x: -344
           y: -150
           alt: A hosted install’s first run, step 2 of 3, Connect the site — a repository that already holds the site, or a starter sent to an empty one; the repository’s address; and how the editor reaches it, with its own key (recommended), shown to be added to the repository with write access, or an access token from the code host.
+      - id: people
+        layout: flip
+        whenPictured: true
+        heading: People and roles
+        text: Owners invite everyone else with a one-time link, as an owner, an editor or a contributor. Contributors change the content and see Proof; editors and owners publish; and each publish carries the name of the person who made it.
+        status: hosted-accounts
+        guide: /docs/running/hosted/#people-and-roles
+        visual:
+          src: people
+          alt: ""
         inset:
-          src: hosted-sign-in
-          x: -511
-          y: -253
-          w: 419
-          h: 258
-          alt: The hosted install’s sign-in — Sign in to edit, a password field and Sign in, with a note that setting up this editor isn’t finished and carries on once you sign in.
+          src: invite
+          alt: ""
       - id: sites
         layout: flip
         heading: Many sites, one app
@@ -285,6 +300,16 @@ sections:
           w: 480
           h: 238
           alt: Site home for Caddow, Waiting to publish — three pages edited since the last publish, the home page, Journal and The atelier, with Review changes.
+      - id: desktop
+        layout: wide
+        heading: On your desktop
+        text: The same app in its own window, for every site you look after — for Mac, Windows and Linux. The Mac app is signed and notarised by Apple, so it opens like any other app.
+        link:
+          label: See the apps
+          href: /apps/
+        visual:
+          src: desktop-mac-home
+          alt: The Galley app on a Mac, in a window titled Caddow — the site’s home screen, with a box to ask for a change, one change waiting to publish, the site live at www.caddow.example, and its pages, lookbooks, journal and forms listed.
       - id: wordpress
         layout: wide
         heading: Move from WordPress

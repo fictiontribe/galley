@@ -100,6 +100,8 @@ code { font: 400 0.875em/1 var(--font-mono); padding: 2px 5px; border-radius: 4p
 .link:hover::after { transform: translateX(2px); }
 .link--accent { color: var(--accent-text); }
 .link--plain::after { content: none; }
+.link__note { display: none; color: var(--ink-3); font-weight: 400; }
+@media (max-width: 1023px) { .link__note { display: inline; } }
 button.link { background: none; border: 0; padding: 0; cursor: pointer; }
 button.link::after { content: none; }
 .badge { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: var(--r-pill); font: 500 12px/1 var(--font-text); background: var(--sunken); color: var(--ink-2); white-space: nowrap; vertical-align: middle; }
@@ -630,6 +632,7 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
 .filmstrip__item:hover .filmstrip__label::after { transform: translateX(3px); }
 
 /* ---------- how-to ---------- */
+.howto-index__demo { color: var(--ink-2); }
 .howto-index .page-head { margin-bottom: var(--s7); }
 /* the how-to filter: a thin bar of pills under the header, like the tour's index; one marker slides to the chosen pill */
 .howto-index--filtered .page-head { margin-bottom: var(--s6); }
@@ -706,6 +709,9 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
 .dl__btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .dl__meta { font: 400 0.8125rem/1.4 var(--font-mono); color: var(--ink-3); }
 .dl__hint { font-size: var(--t-small); color: var(--ink-3); }
+.dl__also { font-size: var(--t-small); color: var(--ink-3); }
+.dl__also a, .dl__alt { color: var(--ink-2); text-underline-offset: 0.2em; }
+.dl__alt { justify-self: start; font-size: 0.8125rem; }
 .dl__all { margin-top: var(--s6); text-align: left; }
 .dl.is-picked .dl__all { margin-top: var(--s7); }
 .dl__label { margin-bottom: var(--s2); }
@@ -747,6 +753,26 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
 .dlpage__foot { margin-top: var(--section); padding-bottom: var(--section); }
 .dlpage__footin { display: grid; gap: var(--s5); padding-top: var(--s5); border-top: 1px solid var(--line-2); }
 .dlpage__npx { display: grid; gap: var(--s3); max-width: 40rem; }
+.dlpage__pending { text-align: left; justify-items: stretch; }
+.dlpage__pending > .body { text-align: center; }
+.dlpage__coming .dl__name span { font: 400 0.8125rem/1.4 var(--font-mono); }
+.dlpage__ways { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px var(--s2); margin-top: var(--s6); font-size: 0.9375rem; color: var(--ink-3); }
+.dlpage__ways a { color: var(--ink-2); text-underline-offset: 0.22em; text-decoration-color: color-mix(in oklab, currentColor 40%, transparent); }
+.dlpage__ways a:hover { color: var(--ink); text-decoration-color: currentColor; }
+.dlopen__line { margin: calc(-1 * var(--s2)) 0 var(--s4); font-size: var(--t-small); color: var(--ink-3); }
+.dlpage__guide { margin-top: var(--s7); }
+/* Other ways to run it: two or three equal cards. */
+.appways { margin-top: var(--section); padding-bottom: var(--section); }
+.appways__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); margin-top: var(--s6); }
+.appways__grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.way-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s3); min-width: 0; padding: var(--s6); border-radius: var(--r-lg); background: var(--raised); border: 1px solid var(--line); scroll-margin-top: calc(var(--header-h) + 24px); }
+.way-card__t { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); font: 400 var(--t-h3)/1.2 var(--font-display); letter-spacing: -0.01em; }
+.way-card .body { max-width: 34rem; }
+.way-card .cmd { margin-top: var(--s1); }
+.way-card > .link, .way-card__links { margin-top: auto; padding-top: var(--s2); }
+.way-card__links { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5); }
+.way-card .btn { margin-top: auto; }
+a.desk__frame { text-decoration: none; }
 /* The home section: one ruled row — icon, words, the download — or, with a capture of the app, the words beside it. */
 .desk { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s5) var(--s7); align-items: center; padding-block: var(--s6); border-block: 1px solid var(--line-2); }
 .desk__words { display: grid; gap: var(--s3); max-width: 36rem; }
@@ -904,6 +930,7 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
 /* the desktop app, narrower */
 @media (max-width: 1023px) {
   .dlpage__points ul { grid-template-columns: minmax(0, 1fr); gap: var(--s5); }
+  .appways__grid, .appways__grid--3 { grid-template-columns: minmax(0, 1fr); }
   .dlshots { grid-template-columns: minmax(0, 1fr); }
   .desk { grid-template-columns: auto minmax(0, 1fr); }
   .desk__get { grid-column: 1 / -1; }
@@ -919,6 +946,7 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
   .dl--page .dl__primary { width: 100%; }
   .dl__row { min-height: 60px; }
   .dlshot, .dlshot--lead { padding: 14px; }
+  .way-card { padding: var(--s5); }
 }
 
 @media (prefers-reduced-motion: reduce) {

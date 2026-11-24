@@ -10,12 +10,15 @@ import Command from "../Command.astro";
 import { firstCommand, published } from "../../lib/install";
 import { inline } from "../../lib/markdown";
 import { fill, site } from "../../lib/site";
+import { demo } from "../../lib/demo";
 
 const { s, block, first } = Astro.props;
 const H = first ? "h1" : "h2";
 const hid = `${s.id ?? "hero"}-h`;
 const note = published && s.notePublished !== undefined ? s.notePublished : s.note;
 const isRec = s.visual?.kind === "recording";
+// `demo`: the label of a second action to the in-browser demo, shown only while site.json → demo is available.
+const secondary = s.secondary ?? (s.demo && demo.on ? { label: s.demo, href: demo.href, note: site.ui.demoSmall } : undefined);
 // Short sentences in a heading ("Prompt it. Proof it. Publish it.") wrap whole, never mid-sentence.
 const heading = inline(s.heading).split(/(?<=[.?])\s+(?=[A-Z])/).map((part) => `<span class="nowrap-s">${part}</span>`).join(" ");
 ---
@@ -31,7 +34,7 @@ const heading = inline(s.heading).split(/(?<=[.?])\s+(?=[A-Z])/).map((part) => `
           <div class="hero__row">
             <p class="lead">{fill(s.text)}</p>
             <div class="hero__side">
-              <Actions cta={s.cta} secondary={s.secondary} />
+              <Actions cta={s.cta} secondary={secondary} />
               {note && <p class="hero__note">{fill(note)}</p>}
               {s.command && (
                 <Command lines={[firstCommand()]} />
@@ -54,7 +57,7 @@ const heading = inline(s.heading).split(/(?<=[.?])\s+(?=[A-Z])/).map((part) => `
           {s.eyebrow && <p class="label">{s.eyebrow}</p>}
           <H class="h1" id={hid} set:html={heading} />
           <p class="lead">{fill(s.text)}</p>
-          <Actions cta={s.cta} secondary={s.secondary} />
+          <Actions cta={s.cta} secondary={secondary} />
           {note && <p class="hero__note">{fill(note)}</p>}
           {s.command && (
             <Command lines={[firstCommand()]} />

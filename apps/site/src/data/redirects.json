@@ -5,6 +5,8 @@
     {"from":"/features","to":"/","status":301,"source":"import:list"},
     {"from":"/features/","to":"/","status":301,"source":"import:list"},
     {"from":"/fiction-tribe","to":"/team/","status":301,"note":"The Fiction Tribe page became the team page"},
-    {"from":"/fiction-tribe/","to":"/team/","status":301,"note":"The Fiction Tribe page became the team page"}
+    {"from":"/fiction-tribe/","to":"/team/","status":301,"note":"The Fiction Tribe page became the team page"},
+    {"from":"/download","to":"/apps/","status":301,"note":"The download page became the Apps page"},
+    {"from":"/download/","to":"/apps/","status":301,"note":"The download page became the Apps page"}
   ]
 }

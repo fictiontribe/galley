@@ -1,7 +1,8 @@
 ---
-// A section's action and its quieter second link.
+// A section's action and its quieter second link. `note` is a few words shown
+// after the second link on narrow screens only (the demo needs a computer).
 import { fill } from "../lib/site";
-interface Link { label: string; href: string }
+interface Link { label: string; href: string; note?: string }
 interface Props { cta?: Link; secondary?: Link }
 const { cta, secondary } = Astro.props;
 ---
@@ -10,7 +11,12 @@ const { cta, secondary } = Astro.props;
   (cta || secondary) && (
     <div class="hero__actions">
       {cta && <a class="btn btn--primary" href={fill(cta.href)}>{cta.label}</a>}
-      {secondary && <a class="link" href={fill(secondary.href)}>{secondary.label}</a>}
+      {secondary && (
+        <a class="link" href={fill(secondary.href)}>
+          {secondary.label}
+          {secondary.note && <span class="link__note"> ({secondary.note})</span>}
+        </a>
+      )}
     </div>
   )
 }

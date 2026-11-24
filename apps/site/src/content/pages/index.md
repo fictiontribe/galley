@@ -9,6 +9,7 @@ sections:
     cta:
       label: Get started
       href: /docs/getting-started/quickstart/
+    demo: Try the demo
     note: "Starts a new site and opens Galley. Already have a site? Run npx galley-cms in its folder."
     command: true
     copyFile:
@@ -196,10 +197,12 @@ sections:
           alt: The list of your sites.
   - type: desktop
     id: desktop
-    heading: Galley, on your desktop.
-    text: The same app, in its own window, for every site you look after.
+    heading: The desktop app.
+    text: The same app, in its own window, for every site you look after — on Mac, Windows and Linux.
     fallback: Download the app
     other: Other systems
+    apps: See the apps
+    unsigned: not signed yet
   - type: status
     id: whats-in
     heading: What’s in {version}.
