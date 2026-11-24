@@ -1,0 +1,82 @@
+{
+  "about": "The desktop app's downloads. The one switch is `available`: while it is false nothing on the site offers a download — /download/ exists but is linked from nowhere, carries noindex and shows the one-command start; the home section and the footer's Download link stay off. Set it to true once at least one platform below has `available: true` and a real `url`; a platform that isn't available is listed as coming, never as a button. `url` is the file's direct address (a release asset); `size` is as people read it (\"92 MB\"); `requires` is the oldest system it runs on, in words; `signed` false makes the page say plainly that the app isn't signed yet and show `open`, the steps past the system's warning (markdown: **bold** for what to click, `code` for commands). `also` lists other files for the same platform. `screens` are captures of the app window in public/screens (<src>.webp + <src>@1x.webp, 2×): one without its file, or without alt text written after looking at it, is left out — never a stand-in. The first screen with `home: true` is the one on the home page. Statuses stay in status.json; CLAIMS.md says what supports each line.",
+  "available": false,
+  "version": "",
+  "released": "",
+  "releasePage": "{repository}/releases",
+  "platforms": [
+    {
+      "id": "mac-arm",
+      "label": "Mac with Apple silicon",
+      "button": "Download for Mac",
+      "file": "",
+      "url": "",
+      "size": "",
+      "requires": "macOS 11 or later",
+      "signed": false,
+      "available": false,
+      "open": [
+        "Open the downloaded `.dmg` and drag **Galley** into **Applications**.",
+        "In **Applications**, right-click **Galley**, choose **Open**, then **Open** again in the window that asks.",
+        "If macOS still won’t open it, go to **System Settings › Privacy & Security**, find the line about Galley and choose **Open Anyway**."
+      ],
+      "also": []
+    },
+    {
+      "id": "mac-intel",
+      "label": "Mac with an Intel processor",
+      "button": "Download for Intel Mac",
+      "file": "",
+      "url": "",
+      "size": "",
+      "requires": "macOS 11 or later",
+      "signed": false,
+      "available": false,
+      "open": [
+        "Open the downloaded `.dmg` and drag **Galley** into **Applications**.",
+        "In **Applications**, right-click **Galley**, choose **Open**, then **Open** again in the window that asks.",
+        "If macOS still won’t open it, go to **System Settings › Privacy & Security**, find the line about Galley and choose **Open Anyway**."
+      ],
+      "also": []
+    },
+    {
+      "id": "windows",
+      "label": "Windows",
+      "button": "Download for Windows",
+      "file": "",
+      "url": "",
+      "size": "",
+      "requires": "",
+      "signed": false,
+      "available": false,
+      "open": [
+        "Open the downloaded installer.",
+        "If Windows says it protected your PC, choose **More info**, then **Run anyway**.",
+        "Follow the installer, then open **Galley** from the Start menu."
+      ],
+      "also": []
+    },
+    {
+      "id": "linux",
+      "label": "Linux",
+      "button": "Download for Linux",
+      "file": "",
+      "url": "",
+      "size": "",
+      "requires": "",
+      "signed": false,
+      "available": false,
+      "open": [
+        "Let the downloaded `.AppImage` run as a program: in its **Properties**, allow executing it — or run `chmod +x` on it in a terminal.",
+        "Open it."
+      ],
+      "also": []
+    }
+  ],
+  "screens": [
+    { "src": "desktop-mac-home", "alt": "", "home": true },
+    { "src": "desktop-mac-editor", "alt": "" },
+    { "src": "desktop-mac-sites", "alt": "" },
+    { "src": "desktop-windows-home", "alt": "" }
+  ]
+}

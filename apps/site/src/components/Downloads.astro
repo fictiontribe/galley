@@ -1,0 +1,58 @@
+---
+// The downloads themselves, from src/data/downloads.json (lib/downloads.ts).
+// Without JavaScript every platform is listed equally. With it, the visitor's
+// own system becomes the one primary button and the rest a quiet list. A
+// platform that isn't available is listed as coming, never as a button.
+//   page — the list, with each platform's size and system
+//   home — one button (to /download/ without JavaScript) and "Other systems"
+import { metaOf, platforms, version } from "../lib/downloads";
+
+interface Props {
+  variant?: "page" | "home";
+  words: { download: string; coming: string; otherSystems: string; macHint: string; systems: string; fallback?: string };
+}
+const { variant = "page", words } = Astro.props;
+const versionMeta = (p: (typeof platforms)[number]) => [version && `v${version}`, metaOf(p)].filter(Boolean).join(" · ");
+---
+
+<div class:list={["dl", `dl--${variant}`]} data-dl data-galley-agent="skip">
+  {
+    platforms.filter((p) => p.available).map((p) => (
+      <div class="dl__primary" data-dl-for={p.id} hidden>
+        <a class="btn btn--primary dl__btn" href={p.url} download={p.file || undefined}>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" /></svg>
+          {p.button}
+        </a>
+        <p class="dl__meta">{variant === "home" ? metaOf(p) : versionMeta(p)}</p>
+        {p.id === "mac-arm" && variant === "page" && <p class="dl__hint" data-dl-machint hidden>{words.macHint}</p>}
+      </div>
+    ))
+  }
+  {
+    variant === "home" ? (
+      <div class="dl__home">
+        <a class="btn btn--primary dl__fallback" href="/download/" data-dl-fallback>{words.fallback}</a>
+        <a class="link" href="/download/#systems" data-dl-other hidden>{words.otherSystems}</a>
+      </div>
+    ) : (
+      <div class="dl__all" id="systems">
+        <h2 class="label dl__label" data-dl-label data-picked={words.otherSystems}>{words.systems}</h2>
+        <ul class="dl__list">
+          {platforms.map((p) => (
+            <li class:list={["dl__row", !p.available && "is-coming"]} data-dl-row={p.id}>
+              <span class="dl__name">
+                <b>{p.label}</b>
+                {metaOf(p) && <span>{metaOf(p)}</span>}
+              </span>
+              {p.available ? (
+                <a class="dl__get" href={p.url} download={p.file || undefined} aria-label={`${words.download}: ${p.label}${p.size ? `, ${p.size}` : ""}`}>{words.download}</a>
+              ) : (
+                <span class="badge dl__coming">{words.coming}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+</div>

@@ -1,0 +1,40 @@
+---
+// The desktop app, on the home page: the icon, one sentence, the download for
+// the visitor's own system and "Other systems" — and one capture of the app
+// window, when one exists. Renders nothing while downloads are off
+// (src/data/downloads.json → available, lib/downloads.ts).
+import AppIcon from "../AppIcon.astro";
+import Downloads from "../Downloads.astro";
+import { inline } from "../../lib/markdown";
+import { fill } from "../../lib/site";
+import { homeScreen, on } from "../../lib/downloads";
+
+const { s, block, first } = Astro.props;
+const H = first ? "h1" : "h2";
+const hid = `${s.id ?? "desktop"}-h`;
+const shot = homeScreen;
+---
+
+{
+  on && (
+    <section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+      <div class:list={["desk", shot && "desk--shot"]}>
+        <AppIcon size={shot ? 96 : 88} class="desk__icon" id="home-icon" />
+        <div class="desk__words">
+          <H class="h2" id={hid} set:html={inline(s.heading)} />
+          <p class="lead">{fill(s.text)}</p>
+        </div>
+        <div class="desk__get">
+          <Downloads variant="home" words={{ download: "", coming: "", macHint: "", systems: "", otherSystems: s.other, fallback: s.fallback }} />
+        </div>
+        {shot && (
+          <div class="frame desk__frame">
+            <div class="dlshot__win">
+              <img src={shot.pic.src} srcset={shot.pic.srcset} sizes="(max-width: 1023px) 100vw, 720px" width={shot.pic.width} height={shot.pic.height} alt={shot.alt} loading="lazy" decoding="async" />
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}

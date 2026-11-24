@@ -194,6 +194,12 @@ sections:
           src: sites
           x: -148
           alt: The list of your sites.
+  - type: desktop
+    id: desktop
+    heading: Galley, on your desktop.
+    text: The same app, in its own window, for every site you look after.
+    fallback: Download the app
+    other: Other systems
   - type: status
     id: whats-in
     heading: What’s in {version}.
