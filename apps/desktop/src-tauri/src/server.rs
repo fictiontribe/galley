@@ -54,6 +54,35 @@ pub fn bundle_script_name() -> String {
     format!("{}.mjs", brand::SLUG)
 }
 
+/// Windows hands back "verbatim" paths (`\\?\C:\…`) from `canonicalize` and
+/// for the app's own folders. Node can't open its entry script through one —
+/// resolving it walks the path piece by piece and stops at `\\?\C:` — so the
+/// server exited before it had started and the app said it couldn't start.
+/// The ordinary spelling of the same path works. Everything that isn't such
+/// a path is returned as it is.
+pub fn plain_path(path: &Path) -> PathBuf {
+    match path.to_str() {
+        Some(text) => PathBuf::from(strip_verbatim(text)),
+        None => path.to_path_buf(),
+    }
+}
+
+fn strip_verbatim(text: &str) -> String {
+    if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
+        return format!(r"\\{rest}");
+    }
+    if let Some(rest) = text.strip_prefix(r"\\?\") {
+        // Only a drive path ("C:\…") has an ordinary spelling; a volume id has none.
+        let mut start = rest.chars();
+        let drive = start.next().is_some_and(|letter| letter.is_ascii_alphabetic());
+
+        if drive && start.next() == Some(':') && start.next() == Some('\\') {
+            return rest.to_string();
+        }
+    }
+    text.to_string()
+}
+
 /// Finds the server: the bundled one when this is a packaged app, the
 /// monorepo's CLI when it is a debug build run from the repository.
 pub fn locate(
@@ -66,7 +95,10 @@ pub fn locate(
         let script = resource_dir.join("server").join(bundle_script_name());
 
         if runtime.is_file() && script.is_file() {
-            return Ok(Launch::Packaged { runtime, script });
+            return Ok(Launch::Packaged {
+                runtime: plain_path(&runtime),
+                script: plain_path(&script),
+            });
         }
     }
     if cfg!(debug_assertions) {
@@ -79,7 +111,10 @@ pub fn locate(
         let node = crate::env_path::which("node", path)
             .ok_or("Node.js isn't installed, and a development build runs the server with it.")?;
 
-        return Ok(Launch::Dev { node, cli });
+        return Ok(Launch::Dev {
+            node,
+            cli: plain_path(&cli),
+        });
     }
     Err("This copy of the app is missing its server. Reinstall it.".into())
 }
@@ -392,6 +427,33 @@ mod tests {
             }
             other => panic!("{other:?}"),
         }
+    }
+
+    #[test]
+    fn verbatim_windows_paths_get_their_ordinary_spelling() {
+        // What Windows gives for the installed app's script, and what Node can open.
+        assert_eq!(
+            strip_verbatim(r"\\?\C:\Users\sam\AppData\Local\App\server\app.mjs"),
+            r"C:\Users\sam\AppData\Local\App\server\app.mjs"
+        );
+        assert_eq!(
+            strip_verbatim(r"\\?\UNC\files\apps\App\server\app.mjs"),
+            r"\\files\apps\App\server\app.mjs"
+        );
+        // No ordinary spelling exists, or none is needed: left exactly as it is.
+        assert_eq!(
+            strip_verbatim(r"\\?\Volume{0000}\App\app.mjs"),
+            r"\\?\Volume{0000}\App\app.mjs"
+        );
+        assert_eq!(strip_verbatim(r"C:\Program Files\App"), r"C:\Program Files\App");
+        assert_eq!(
+            strip_verbatim("/Applications/App.app/Contents/Resources/server/app.mjs"),
+            "/Applications/App.app/Contents/Resources/server/app.mjs"
+        );
+        assert_eq!(
+            plain_path(Path::new("/opt/app/server/app.mjs")),
+            PathBuf::from("/opt/app/server/app.mjs")
+        );
     }
 
     #[test]

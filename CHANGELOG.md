@@ -22,6 +22,10 @@ entry says how.
 - **On Windows, a site's preview could not start**: the command lookup found
   the plain `npm` file that ships beside `npm.cmd`, which Windows can't run.
   Names are now tried with Windows' own endings first.
+- **On Windows, the desktop app could not start**: it handed its server's
+  path to Node.js in the long `\\?\C:\…` form Windows returns, which Node
+  can't open, so the window said "Couldn't start" on every launch. It now
+  uses the ordinary spelling.
 - **On Windows, the desktop app's start-up check said git was missing** for
   every Git for Windows install (it reports itself as `2.47.1.windows.1`).
 - **Building on Windows** stopped at the first file read exactly, because
