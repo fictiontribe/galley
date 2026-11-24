@@ -64,6 +64,7 @@ function recordingSite(calls: Calls): SiteService {
     revert: { ok: true, commit: "0123abc", files: [], pushed: false },
     gitStatus: { branch: "main", detached: false, hasRemote: false, ahead: 0, behind: 0, clean: true },
     pull: { branch: "main", detached: false, hasRemote: true, ahead: 0, behind: 0, clean: true },
+    checkGit: { branch: "main", detached: false, hasRemote: true, ahead: 0, behind: 2, clean: true, checkedAt: "2026-11-24T10:00:00.000Z" },
     build: { ok: true, output: "", durationMs: 1 },
   };
   const impl: Record<string, unknown> = { id: SITE_ID, root: "/tmp/site-1", preview: () => preview };
@@ -210,6 +211,7 @@ const happy: Row[] = [
   { key: "POST /api/sites/:siteId/revert", url: `${S}/revert`, body: { commit: "def5678" }, call: ["revert", ["def5678"]] },
   { key: "GET /api/sites/:siteId/git", url: `${S}/git`, call: ["gitStatus", []] },
   { key: "POST /api/sites/:siteId/pull", url: `${S}/pull`, call: ["pull", []] },
+  { key: "POST /api/sites/:siteId/git/check", url: `${S}/git/check`, call: ["checkGit", []] },
   { key: "POST /api/sites/:siteId/send", url: `${S}/send`, call: ["send", []] },
   { key: "GET /api/sites/:siteId/preview", url: `${S}/preview` },
   { key: "POST /api/sites/:siteId/preview/start", url: `${S}/preview/start` },
@@ -446,6 +448,12 @@ describe("happy paths", () => {
     expect(response.headers.get("content-type")).toMatch(/application\/json/);
     await response.json();
     if (row.call) expect(calls).toContainEqual(row.call);
+  });
+
+  it("POST git/check answers the site's look as the engine reported it", async () => {
+    const { call } = testApp(services([]));
+
+    expect(await json(await call("POST", `${S}/git/check`))).toEqual({ branch: "main", detached: false, hasRemote: true, ahead: 0, behind: 2, clean: true, checkedAt: "2026-11-24T10:00:00.000Z" });
   });
 
   it("stops the preview and reports its status", async () => {

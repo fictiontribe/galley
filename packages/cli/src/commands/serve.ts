@@ -48,6 +48,9 @@ Operations
                             (default 20000)
   GALLEY_RESTORE_MAX_MB     The largest backup a restore in the app takes (default 2048);
                             larger ones: \`${PRODUCT.slug} backup restore\` with the server stopped
+  GALLEY_SYNC_MINUTES       How often the editor looks for newer versions in the site's
+                            repository and brings them in when nothing here is in the way
+                            (default 5; 0: only when someone opens Version history)
 
 E-mail (optional; without it, invitation and new-password links are shown to the owner
 who makes them, to send however they like)
@@ -189,6 +192,15 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
     io.out(`AI tools:  MCP at ${publicUrl ? `${publicUrl.replace(/\/+$/, "")}/mcp` : "/mcp"} with a token from \`${PRODUCT.slug} mcp token\` (GALLEY_MCP=off removes it)`);
   }
   io.out(`Site:      ${describeSite(site)}`);
+  const minutes = server.syncMinutes;
+
+  if (typeof minutes === "number") {
+    io.out(
+      minutes > 0
+        ? `Repository: checked every ${minutes === 1 ? "minute" : `${minutes} minutes`}; newer versions are brought in when nothing here is in the way`
+        : "Repository: not checked by itself (GALLEY_SYNC_MINUTES=0)"
+    );
+  }
   io.out(
     server.previews
       ? `Previews:  ${server.previews.preview} (the live site beside it at ${server.previews.live}), through this port; only a signed-in browser is let in`

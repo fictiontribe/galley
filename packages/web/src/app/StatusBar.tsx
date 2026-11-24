@@ -6,6 +6,7 @@ import { useHostedInstall } from "@/lib/stores/meta";
 import { usePreviewStatus } from "@/lib/stores/preview";
 import { useSite } from "@/lib/stores/site";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { sendNowWithToast } from "@/features/proof/sendNow";
 import { useMay } from "@/lib/may";
 import { Kbd, ProofMark, Spinner } from "@/ui";
@@ -101,6 +102,24 @@ function ProofStrip() {
   );
 }
 
+/**
+ * "Newer versions are waiting", to Version history — only when something
+ * needs a person: a hosted editor brings newer versions in by itself, so
+ * this shows only while they can't come in (or haven't yet). Not on a
+ * person's own computer, where nothing looks by itself.
+ */
+function WaitingItem({ siteId }: { siteId: string }) {
+  const hosted = useHostedInstall();
+  const behind = useSite((s) => (s.detail?.git.hasRemote ? s.detail.git.behind : 0));
+  if (!hosted || behind <= 0) return null;
+  return (
+    <Link className="g-statusbar__item app-status--waiting" to={`/sites/${encodeURIComponent(siteId)}/history`}>
+      <ProofMark kind="bang" />
+      Newer versions are waiting
+    </Link>
+  );
+}
+
 /** Bottom status line: preview, unpublished changes, last publish, connection. */
 export function SiteStatusBar({ siteId }: { siteId: string }) {
   const pending = usePendingCount();
@@ -111,6 +130,7 @@ export function SiteStatusBar({ siteId }: { siteId: string }) {
       <span className="g-statusbar__item app-hide-narrow">{pending > 0 ? <ProofStrip /> : null}{pending > 0 ? count(pending, "unpublished change") : "Everything is published"}</span>
       {lastCommit ? <span className="g-statusbar__item app-hide-narrow">Last published {relativeTime(lastCommit.date)}</span> : null}
       <UnsentItem siteId={siteId} />
+      <WaitingItem siteId={siteId} />
       <DeployStatusItem siteId={siteId} />
       <span className="g-toolbar__spacer" />
       <OtherSitesItem />

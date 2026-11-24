@@ -3,6 +3,7 @@
  * boot. This is the only place that decides which data an event makes stale.
  */
 import { coalesceBy } from "./coalesce";
+import { count } from "./format";
 import { connectEvents, onReconnect, subscribe } from "./events";
 import { invalidate } from "./query";
 import { useChanges } from "./stores/changes";
@@ -10,6 +11,7 @@ import { useJobs } from "./stores/jobs";
 import { usePreview } from "./stores/preview";
 import { useSite } from "./stores/site";
 import { useSites } from "./stores/sites";
+import { notify } from "./stores/toasts";
 
 /** Cache keys used across screens. Keep them here so invalidation stays in one place. */
 export const keys = {
@@ -80,6 +82,16 @@ export function startSync(): void {
   subscribe("site.updated", (event) => {
     if (useSite.getState().siteId === event.siteId) void useSite.getState().refresh();
     invalidate(["site", event.siteId]);
+  });
+
+  // A look found something different, or the hosted editor brought newer versions in by itself: the files that changed come as changes.updated.
+  subscribe("repository.checked", (event) => {
+    invalidate(keys.git(event.siteId));
+    if (useSite.getState().siteId !== event.siteId) return;
+    void useSite.getState().refresh();
+    if (event.brought > 0) {
+      notify({ tone: "neutral", title: "Newer versions brought in", body: `${count(event.brought, "newer version")} from the repository ${event.brought === 1 ? "was" : "were"} brought in.` });
+    }
   });
 
   subscribe("sites.updated", () => {
