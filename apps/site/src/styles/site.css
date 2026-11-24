@@ -728,6 +728,8 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
 .dlshots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); }
 .dlshot { display: grid; place-items: center; padding: clamp(20px, 3.4vw, 48px); }
 .dlshot--lead { grid-column: 1 / -1; padding: clamp(24px, 5vw, 72px); }
+/* An even number of pictures sits as pairs: a wide first one would leave the last alone in half a row. */
+.dlshots--pairs .dlshot--lead { grid-column: auto; padding: clamp(20px, 3.4vw, 48px); }
 .dlshots > .dlshot:last-child:nth-child(even) { grid-column: auto; }
 .dlshot__win { width: 100%; }
 .dlshot__win img { width: 100%; height: auto; filter: drop-shadow(0 2px 4px rgb(26 23 18 / .1)) drop-shadow(0 28px 48px rgb(26 23 18 / .28)); }
