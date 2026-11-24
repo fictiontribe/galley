@@ -26,17 +26,19 @@ const TOOLS: [&str; 2] = ["git", "node"];
 const VERSION_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// "git version 2.39.5 (Apple Git-154)" → "2.39.5"; "v22.3.0" → "22.3.0".
+/// Git for Windows adds a suffix of its own ("git version 2.47.1.windows.1"
+/// → "2.47.1"): only the leading numbers count, or every Windows computer
+/// would be told git is missing.
 pub fn parse_version(output: &str) -> Option<String> {
-    output
-        .split_whitespace()
-        .map(|word| word.trim_start_matches('v'))
-        .find(|word| {
-            word.split('.').count() >= 2
-                && word
-                    .split('.')
-                    .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()))
-        })
-        .map(str::to_string)
+    output.split_whitespace().find_map(|word| {
+        let numbers: Vec<&str> = word
+            .trim_start_matches('v')
+            .split('.')
+            .take_while(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()))
+            .collect();
+
+        (numbers.len() >= 2).then(|| numbers.join("."))
+    })
 }
 
 /// Runs `<file> --version` with PATH set, killing it if it hangs. On a Mac
@@ -102,6 +104,11 @@ mod tests {
             Some("2.39.5")
         );
         assert_eq!(parse_version("v22.3.0\n").as_deref(), Some("22.3.0"));
+        assert_eq!(
+            parse_version("git version 2.47.1.windows.1\n").as_deref(),
+            Some("2.47.1")
+        );
+        assert_eq!(parse_version("release 3 of 2.x"), None);
         assert_eq!(parse_version("nothing useful"), None);
         assert_eq!(parse_version("version 2."), None);
     }

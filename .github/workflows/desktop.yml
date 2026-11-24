@@ -18,8 +18,19 @@
 # (apps/desktop/scripts/prepare-sidecar.mjs copies process.execPath), so the
 # Node version below is the version every installer ships.
 #
-# This workflow has not been run yet; it was written against the Tauri 2
-# docs (distribute/sign/macos, distribute/sign/windows, start/prerequisites).
+# After each build the job starts the packaged server the way the app does and
+# walks a site through open → edit → proof → publish → preview
+# (apps/desktop/scripts/sidecar-e2e.mjs), and a signed build has its signature
+# checked — so a broken or half-signed installer fails here, not on someone's
+# computer.
+#
+# On a version tag the installers that were built are gathered, with their
+# SHA-256 sums, into a DRAFT release: nothing is public until a person
+# publishes the draft (RELEASING.md, "The GitHub release").
+#
+# Written against the Tauri 2 docs (distribute/sign/macos,
+# distribute/sign/windows, start/prerequisites). The signing steps have not
+# been exercised yet: no certificate has been set.
 name: Desktop
 
 on:
@@ -42,7 +53,9 @@ jobs:
       matrix:
         include:
           - name: macOS (Apple silicon)
-            os: macos-14
+            # GitHub retired the macOS 14 runners in November 2026. The app's own
+            # minimum (macOS 11, tauri.conf.json) doesn't depend on the runner.
+            os: macos-15
             target: aarch64-apple-darwin
             bundles: app,dmg
           - name: macOS (Intel)
@@ -154,6 +167,39 @@ jobs:
         working-directory: apps/desktop
         run: pnpm exec tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.signing.conf.json
 
+      # ── Proof ──────────────────────────────────────────────────────────
+      # The server exactly as the installer carries it: the bundled Node.js
+      # runtime and the single-file bundle beside it.
+      - name: Start the packaged server and walk a site through it
+        shell: bash
+        working-directory: apps/desktop
+        run: |
+          runtime="$(find src-tauri/binaries -maxdepth 1 -name "*-node-${{ matrix.target }}*" | head -1)"
+          bundle="$(find src-tauri/resources/server -maxdepth 1 -name "*.mjs" | head -1)"
+          node scripts/sidecar-e2e.mjs -- "$runtime" "$bundle"
+
+      - name: Check the macOS signature
+        if: runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE == 'true'
+        run: |
+          app="$(find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos" -maxdepth 1 -name "*.app" | head -1)"
+          codesign --verify --deep --strict "$app"
+          if [ "$HAS_APPLE_NOTARY" = "true" ]; then
+            # Notarised and stapled: Gatekeeper opens it without asking, offline too.
+            xcrun stapler validate "$app"
+            spctl --assess --type execute "$app"
+          fi
+
+      - name: Check the Windows signature
+        if: runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE == 'true'
+        shell: pwsh
+        run: |
+          $installers = Get-ChildItem "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle" -Recurse -Include *.exe, *.msi
+          if (-not $installers) { throw "No installer was built." }
+          foreach ($file in $installers) {
+            $signature = Get-AuthenticodeSignature $file.FullName
+            if ($signature.Status -ne "Valid") { throw "$($file.Name): the signature is $($signature.Status)." }
+          }
+
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.target }}
@@ -165,3 +211,56 @@ jobs:
             apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
             apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
             apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+
+  # On a version tag: the installers that were built, with their SHA-256 sums,
+  # in a DRAFT release. A person reads it and publishes it; a platform whose
+  # build failed is simply missing, and the notes say what is there.
+  draft-release:
+    name: Draft release
+    needs: build
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+      SIGNED_MACOS: ${{ secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_ID != '' && secrets.APPLE_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
+      SIGNED_WINDOWS: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: artifacts
+
+      - name: Gather the installers
+        run: |
+          mkdir installers
+          # The .app folders stay behind: the .dmg is how a Mac app is handed over.
+          find artifacts -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" \) -exec cp {} installers/ \;
+          [ -n "$(find installers -type f | head -1)" ] || { echo "No installer was built."; exit 1; }
+          (cd installers && sha256sum -- * > ../SHA256SUMS.txt)
+          mv SHA256SUMS.txt installers/ && cat installers/SHA256SUMS.txt
+
+      - name: Write the notes
+        run: |
+          signed() { [ "$1" = "true" ] && echo "$2" || echo "$3"; }
+          {
+            echo "Desktop installers for ${TAG}."
+            echo
+            echo "- macOS: $(signed "$SIGNED_MACOS" "signed and notarised." "**not signed** — macOS refuses to open it the first time; allow it under System Settings › Privacy & Security.")"
+            echo "- Windows: $(signed "$SIGNED_WINDOWS" "signed." "**not signed** — Windows will warn before it runs the installer.")"
+            echo "- Linux: not signed."
+            echo
+            echo "\`SHA256SUMS.txt\` lists the SHA-256 sum of every file here."
+          } > notes.md
+          cat notes.md
+
+      # A draft release for this tag made by hand is added to, never replaced.
+      - name: Create or add to the draft
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" installers/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" installers/* --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "$TAG" --notes-file notes.md
+          fi
