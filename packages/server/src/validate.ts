@@ -179,7 +179,7 @@ export const settingsPatchBody: z.ZodType<SettingsPatch> = z.object({
   images: z.object({ provider: z.string().nullable().optional(), model: z.string().nullable().optional() }).optional(),
   videos: z.object({ provider: z.string().max(100).nullable().optional(), model: z.string().max(200).nullable().optional() }).optional(),
   author: z.object({ name: z.string().max(200).optional(), email: z.string().max(320).optional() }).optional(),
-  appearance: z.object({ theme: z.enum(["system", "light", "dark"]).optional() }).optional(),
+  appearance: z.object({ theme: z.enum(["system", "light", "dark"]).optional(), look: z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/, "choose one of the themes listed").optional() }).optional(),
   previews: z.object({ maxRunning: z.number().int().optional(), idleMinutes: z.number().int().optional() }).optional(),
 });
 

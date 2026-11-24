@@ -17,6 +17,8 @@ import { useUi } from "@/lib/stores/ui";
 import { keys } from "@/lib/sync";
 import { Badge, Button, ErrorState, Field, Input, PageHeader, ProofMark, SegmentedControl, Select, Skeleton, cx } from "@/ui";
 import { PreviewsSection } from "./PreviewsSection";
+import { refreshThemes, useServerThemes, useThemeList } from "@/app/look";
+import { ThemeField } from "@/features/themes/ThemeField";
 import { VideoSettingsSection } from "@/features/media/video/VideoSettingsSection";
 import { imageModelFacts, modelOptionLabel } from "@/features/media/video/cost";
 
@@ -25,7 +27,7 @@ const SECTIONS = [
   { id: "images", label: "Images" },
   { id: "videos", label: "Videos" },
   { id: "you", label: "You" },
-  { id: "appearance", label: "Appearance" },
+  { id: "appearance", label: "Theme and appearance" },
   { id: "previews", label: "Previews" },
   { id: "usage", label: "Usage" },
 ] as const;
@@ -403,39 +405,60 @@ function YouSection({ settings }: { settings: Settings }) {
 }
 
 /**
- * The theme. In local mode and the desktop app it is the computer's, saved
- * with these settings so every window agrees. On a hosted install each
- * person keeps their own, in their browser; what is saved here is only the
- * theme someone starts with until they choose (lib/theme.ts).
+ * The theme (Quiet, Plate, Desk or one made here) and the appearance (light,
+ * dark or the system's). In local mode and the desktop app both are the
+ * computer's, saved with these settings so every window agrees. On a hosted
+ * install each person keeps their own, in their browser; what is saved here
+ * is what someone starts with until they choose (lib/theme.ts, lib/themes).
  */
 function AppearanceSection({ settings }: { settings: Settings }) {
   const theme = useUi((s) => s.theme);
   const hosted = useMeta((s) => themeKeeper(s.meta) === "browser");
   const [savingDefault, setSavingDefault] = useState(false);
+  const [savingLook, setSavingLook] = useState(false);
+  const themes = useThemeList().filter((entry) => entry.origin === "builtin" || entry.origin === "saved" || entry.origin === "plugin");
+  const defaultId = useServerThemes().data.defaultId;
   return (
     <SettingsSection
       id="appearance"
-      title="Appearance"
-      description={hosted ? "Each person chooses their own theme, kept in their browser. The switch at the foot of the sidebar changes it too." : undefined}
+      title="Theme and appearance"
+      description={hosted ? "Each person chooses their own theme and appearance, kept in their browser. The two switches at the foot of the sidebar change them too." : "The two switches at the foot of the sidebar change them too."}
     >
-      <Field label="Theme" group hint={hosted ? "Kept in this browser. Match my system follows your computer’s light or dark setting" : "Match my system follows your computer’s light or dark setting"}>
-        <SegmentedControl<ThemeSetting> label="Theme" value={theme} options={[...THEME_OPTIONS]} onChange={chooseTheme} />
+      <ThemeField hint={hosted ? "Yours, kept in this browser" : "For this app"} />
+      <Field label="Appearance" group hint={hosted ? "Kept in this browser. Match my system follows your computer’s light or dark setting" : "Match my system follows your computer’s light or dark setting"}>
+        <SegmentedControl<ThemeSetting> label="Appearance" value={theme} options={[...THEME_OPTIONS]} onChange={chooseTheme} />
       </Field>
       {hosted ? (
-        <Field label="Theme for someone new" group hint="What a person sees until they choose their own">
-          <SegmentedControl<ThemeSetting>
-            label="Theme for someone new"
-            value={settings.appearance.theme}
-            options={THEME_OPTIONS.map((option) => ({ ...option, disabled: savingDefault }))}
-            onChange={(next) => {
-              setSavingDefault(true);
-              patchSettings({ appearance: { theme: next } })
-                .then(followSettingsTheme)
-                .catch((caught: unknown) => notify({ tone: "danger", title: "Couldn’t save the theme", body: errorShape(caught).message }))
-                .finally(() => setSavingDefault(false));
-            }}
-          />
-        </Field>
+        <>
+          <Field label="Theme for someone new" hint="What a person sees until they choose their own, the sign-in screen included">
+            <Select
+              value={defaultId}
+              disabled={savingLook}
+              options={themes.map((entry) => ({ value: entry.theme.id, label: entry.theme.name }))}
+              onChange={(next) => {
+                setSavingLook(true);
+                patchSettings({ appearance: { look: next } })
+                  .then(() => refreshThemes())
+                  .catch((caught: unknown) => notify({ tone: "danger", title: "Couldn’t change the default theme", body: errorShape(caught).message }))
+                  .finally(() => setSavingLook(false));
+              }}
+            />
+          </Field>
+          <Field label="Appearance for someone new" group hint="What a person sees until they choose their own">
+            <SegmentedControl<ThemeSetting>
+              label="Appearance for someone new"
+              value={settings.appearance.theme}
+              options={THEME_OPTIONS.map((option) => ({ ...option, disabled: savingDefault }))}
+              onChange={(next) => {
+                setSavingDefault(true);
+                patchSettings({ appearance: { theme: next } })
+                  .then(followSettingsTheme)
+                  .catch((caught: unknown) => notify({ tone: "danger", title: "Couldn’t save the appearance", body: errorShape(caught).message }))
+                  .finally(() => setSavingDefault(false));
+              }}
+            />
+          </Field>
+        </>
       ) : null}
     </SettingsSection>
   );

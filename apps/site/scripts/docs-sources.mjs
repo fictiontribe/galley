@@ -73,6 +73,19 @@ export const GENERATED = [
       "> This page is [`docs/mcp.md`]({repository}/blob/main/docs/mcp.md) from the repository, rendered as it is. The tool reference below is generated from the same catalogue the server registers its tools from, and this site's build checks it is current.",
   },
   {
+    source: "docs/themes.md",
+    target: "src/content/docs/plugins/themes.md",
+    frontMatter: {
+      title: "Themes for the editing app",
+      navTitle: "Themes (developers)",
+      description: "The theme contract, the legibility check and how it matches the CSS, where themes are kept and who may change them, the routes, sharing, the plugin contribution and galley theme.",
+      group: "extend",
+      order: 5,
+    },
+    intro:
+      "> This page is [`docs/themes.md`]({repository}/blob/main/docs/themes.md) from the repository, rendered as it is. The person's version is [Themes: choose one, make one, share one](/docs/editing/themes/).",
+  },
+  {
     source: "docs/wordpress-import.md",
     target: "src/content/docs/getting-started/wordpress.md",
     frontMatter: {

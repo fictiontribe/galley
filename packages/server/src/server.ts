@@ -36,7 +36,7 @@ import {
 import type { BrandConfig, Job } from "@galley/core/types";
 import { createApp, installRevocations } from "./app";
 import { isLoopbackHost, mintToken } from "./auth";
-import { loadBrand } from "./brand";
+import { brandWarnings, loadBrand } from "./brand";
 import { createGatewayTickets, type GatewayTickets } from "./gateway-auth";
 import { createPreviewGateway, defaultGatewayOrigins, hostnameOf, withGateway, type ServerGateway } from "./gateway";
 import { answerHealth } from "./health";
@@ -219,6 +219,10 @@ export function resolveConfig(options: ServerOptions = {}): ResolvedConfig {
   const loopback = isLoopbackHost(host);
   const mode: ServerMode = options.mode ?? (loopback ? "local" : "hosted");
   const name = PRODUCT.name;
+  const brand = loadBrand(env, options.brandFile ?? env.GALLEY_BRAND_FILE);
+
+  // A brand accent that can't be the app's pencil is said at start-up, not silently dropped.
+  warnings.push(...brandWarnings(brand));
 
   if (mode === "local" && !loopback) {
     throw new StartupError(`Local mode only listens on this computer (127.0.0.1), not on ${host}. To serve other computers, use \`${PRODUCT.slug} serve\`.`);
@@ -319,7 +323,7 @@ export function resolveConfig(options: ServerOptions = {}): ResolvedConfig {
     sitesDir: mode === "hosted" ? join(home, SITE_FOLDER) : resolve(options.sitesDir ?? env.GALLEY_SITES_DIR?.trim() ?? join(home, "sites")),
     startersDir: resolve(options.startersDir ?? env.GALLEY_STARTERS_DIR?.trim() ?? defaultStartersDir()),
     webDir: resolve(options.webDir ?? env.GALLEY_WEB_DIR?.trim() ?? defaultWebDir()),
-    brand: loadBrand(env, options.brandFile ?? env.GALLEY_BRAND_FILE),
+    brand,
     trustProxy: options.trustProxy ?? flag(env.GALLEY_TRUST_PROXY),
     desktop: options.desktop ?? flag(env.GALLEY_DESKTOP),
     mcp: {

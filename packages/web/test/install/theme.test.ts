@@ -55,11 +55,11 @@ describe("the theme switch, local mode", () => {
     await until(() => expect(calls(server, "GET", "/api/settings").length).toBeGreaterThan(0));
     await settle();
     // The computer is light here, and the setting matches it: a click goes dark.
-    expect(themeSwitch().getAttribute("aria-label")).toBe("Switch to dark theme");
+    expect(themeSwitch().getAttribute("aria-label")).toBe("Switch to dark appearance");
     await click(themeSwitch());
     expect(shownTheme()).toBe("dark");
     await until(() => expect(calls(server, "PATCH", "/api/settings").at(-1)?.body).toEqual({ appearance: { theme: "dark" } }));
-    expect(themeSwitch().getAttribute("aria-label")).toBe("Switch to light theme");
+    expect(themeSwitch().getAttribute("aria-label")).toBe("Switch to light appearance");
     // No corner copy inside the shell.
     expect(document.querySelector(".app-theme-corner")).toBeNull();
   });
@@ -71,14 +71,14 @@ describe("the theme switch, local mode", () => {
     await settle();
     await openPalette();
     const labels = paletteOptions().map((option) => option.textContent ?? "");
-    expect(labels).toContain("Switch to dark theme");
-    expect(labels).toContain("Switch to light theme");
+    expect(labels).toContain("Switch to dark appearance");
+    expect(labels).toContain("Switch to light appearance");
     expect(labels.some((label) => label.includes("Match my system"))).toBe(false);
-    await click(paletteOptions().find((option) => option.textContent === "Switch to dark theme") ?? null);
+    await click(paletteOptions().find((option) => option.textContent === "Switch to dark appearance") ?? null);
     expect(shownTheme()).toBe("dark");
     await until(() => expect(calls(server, "PATCH", "/api/settings").at(-1)?.body).toEqual({ appearance: { theme: "dark" } }));
     await openPalette();
-    expect(paletteOptions().map((option) => option.textContent)).toContain("Match my system’s theme");
+    expect(paletteOptions().map((option) => option.textContent)).toContain("Match my system’s appearance");
   });
 
   it("follows another window of this app at once, without asking the server", async () => {
@@ -142,8 +142,8 @@ describe("the theme switch, hosted install", () => {
     await act(async () => {
       themeSwitch().dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
     });
-    await until(() => expect(document.querySelector('[role="menu"][aria-label="Theme"]')).not.toBeNull());
-    const items = [...document.querySelectorAll('[role="menu"][aria-label="Theme"] [role="menuitem"]')].map((item) => item.textContent);
+    await until(() => expect(document.querySelector('[role="menu"][aria-label="Appearance"]')).not.toBeNull());
+    const items = [...document.querySelectorAll('[role="menu"][aria-label="Appearance"] [role="menuitem"]')].map((item) => item.textContent);
     expect(items).toEqual(["Light", "Dark", "Match my system"]);
     await click(byText(document, '[role="menuitem"]', "Match my system"));
     expect(shownTheme()).toBe("system");

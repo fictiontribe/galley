@@ -66,7 +66,7 @@ export function chooseTheme(next: ThemeSetting): void {
     } catch (caught) {
       // Only undo what is still showing: a later choice has its own save.
       if (ticket === latest && useUi.getState().theme === next) useUi.getState().followTheme(before);
-      notify({ tone: "danger", title: "Couldn’t save the theme", body: errorShape(caught).message });
+      notify({ tone: "danger", title: "Couldn’t save the appearance", body: errorShape(caught).message });
     }
   });
 }

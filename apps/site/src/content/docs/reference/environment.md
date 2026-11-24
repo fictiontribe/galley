@@ -131,7 +131,7 @@ Keys are looked for in this order: the site's own key (Site settings › Connect
 | --- | --- | --- |
 | `GALLEY_BRAND_FILE` | — | A JSON brand override — [White-label](/docs/configuration/white-label/). |
 | `GALLEY_BRAND_NAME` | — | The product name shown in the app. Beats the brand file. |
-| `GALLEY_BRAND_ACCENT` | — | The accent colour (hex). Beats the brand file. |
+| `GALLEY_BRAND_ACCENT` | — | The accent colour (hex). Beats the brand file. In the editing app it is the built-in themes' pencil, checked for legibility like any pencil; one too close to grey is not used there, and the server says so when it starts ([themes](/docs/plugins/themes/)). |
 
 ## The site kit
 

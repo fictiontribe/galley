@@ -43,7 +43,9 @@
     "./redirects-info": "./src/redirects/info.ts",
     "./sitebrand": "./src/sitebrand/index.ts",
     "./sitebrand/color": "./src/sitebrand/color.ts",
-    "./sitebrand/types": "./src/sitebrand/types.ts"
+    "./sitebrand/types": "./src/sitebrand/types.ts",
+    "./themes": "./src/themes/index.ts",
+    "./themes/store": "./src/themes/store.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",

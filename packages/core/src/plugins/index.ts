@@ -13,6 +13,7 @@ export type {
   DeploymentInfo,
   DeployTargetContribution,
   EditorHostContribution,
+  ThemeContribution,
   FormFieldInfo,
   FormForwardContext,
   FormProviderContribution,

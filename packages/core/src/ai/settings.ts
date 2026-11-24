@@ -1,6 +1,6 @@
 /**
  * Settings: `<home>/settings.json` (model, effort, image provider, author,
- * theme), secrets (a site's own key first, then the environment, then the
+ * appearance and the default theme's id), secrets (a site's own key first, then the environment, then the
  * SecretStore — see site-settings.ts) and usage.
  */
 import { execFile } from "node:child_process";
@@ -21,6 +21,7 @@ import type { PreviewPolicySettings, SiteUsageTotals } from "../types";
 import { currentSiteId, isSiteId } from "../site/scope";
 import { createSiteSettingsStore, describeConnections, resolveSecret } from "./site-settings";
 import { DEFAULT_PREVIEW_POLICY, PREVIEW_LIMITS } from "../site/preview-policy";
+import { isThemeId } from "../themes/contract";
 
 const run = promisify(execFile);
 const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly", "gcp"];
@@ -31,7 +32,8 @@ const StoredSettings = z.object({
   images: z.object({ provider: z.string().nullable().optional(), model: z.string().nullable().optional() }).optional(),
   videos: z.object({ provider: z.string().nullable().optional(), model: z.string().nullable().optional() }).optional(),
   author: z.object({ name: z.string().optional(), email: z.string().optional() }).optional(),
-  appearance: z.object({ theme: z.enum(["system", "light", "dark"]).optional() }).optional(),
+  // A default theme that isn't a theme's id (a hand edit) is ignored on its own; it never makes the rest of the file unreadable.
+  appearance: z.object({ theme: z.enum(["system", "light", "dark"]).optional(), look: z.string().refine(isThemeId).optional().catch(undefined) }).optional(),
   previews: z.object({ maxRunning: z.number().int().optional(), idleMinutes: z.number().int().optional() }).optional(),
 });
 type Stored = z.infer<typeof StoredSettings>;
@@ -154,7 +156,7 @@ export function createSettingsService(options: SettingsServiceOptions): GalleySe
       videos: { provider: data.videos?.provider ?? null, model: data.videos?.provider ? (data.videos.model ?? null) : null },
       author: ownAuthor ?? { name: data.author?.name || identity.name, email: data.author?.email || identity.email },
       authorSaved: Boolean(data.author?.name?.trim() && data.author.email?.trim()),
-      appearance: { theme: data.appearance?.theme ?? "system" },
+      appearance: { theme: data.appearance?.theme ?? "system", ...(data.appearance?.look ? { look: data.appearance.look } : {}) },
       secrets,
       previews: previewsFrom(data),
     };
@@ -216,6 +218,10 @@ export function createSettingsService(options: SettingsServiceOptions): GalleySe
     if (patch.appearance?.theme !== undefined && !["system", "light", "dark"].includes(patch.appearance.theme)) {
       throw new GalleyError("invalid", "Choose system, light or dark.");
     }
+    // Whether the theme exists is the caller's to check (the server knows the saved and plugin themes); here, only its shape.
+    if (patch.appearance?.look !== undefined && !isThemeId(patch.appearance.look)) {
+      throw new GalleyError("invalid", "Choose one of the themes listed.");
+    }
     for (const key of ["maxRunning", "idleMinutes"] as const) {
       const value = patch.previews?.[key];
       const [min, max] = PREVIEW_LIMITS[key];
@@ -237,6 +243,10 @@ export function createSettingsService(options: SettingsServiceOptions): GalleySe
   return {
     get,
     authorLayers,
+
+    async look() {
+      return (await load()).appearance?.look;
+    },
 
     update(patch) {
       const task = async () => {

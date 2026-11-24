@@ -14,6 +14,9 @@
  * an installed one beats a built-in; within one layer the earlier
  * registration wins. Every conflict is reported.
  */
+import { checkTheme } from "../themes/check";
+import type { PluginTheme } from "../themes/catalog";
+import type { ThemeFile } from "../themes/contract";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -163,6 +166,8 @@ export interface PluginRegistry {
 
   adapters(siteRoot?: string | null): GalleyAdapter[];
   imageProviders(): ImageProviderHandle[];
+  /** Themes the enabled plugins add to the editing app, checked (docs/themes.md). */
+  themes(): PluginTheme[];
   videoProviders(): VideoProviderHandle[];
   formProviders(siteRoot?: string | null): ResolvedFormProvider[];
   /** The plugin form provider with this id, for forwarding and field introspection. */
@@ -400,6 +405,14 @@ export function createPluginRegistry(options: PluginRegistryOptions = {}): Plugi
         (tool) => tool.name
       ),
     dataSources: (list: Entry[]) => resolve(list, "dataSource", (entry) => entry.plugin?.dataSources, (source: DataSourceContribution) => source.id),
+    // The app's, never a site's: a site's own plugin can't change how the editing app looks.
+    themes: (list: Entry[]) =>
+      resolve(
+        list.filter((entry) => entry.source !== "site"),
+        "theme",
+        (entry) => (entry.plugin?.themes ?? []).map((theme) => checkTheme(theme)).filter((check) => check.ok && check.theme).map((check) => check.theme!),
+        (theme: ThemeFile) => theme.id
+      ),
   };
 
   function contributions(plugin: GalleyPlugin | null): PluginContributions {
@@ -414,6 +427,7 @@ export function createPluginRegistry(options: PluginRegistryOptions = {}): Plugi
       ...(plugin?.editorHosts?.length ? { editorHosts: plugin.editorHosts.map((host) => host.info?.name || host.name) } : {}),
       tools: (plugin?.tools ?? []).map((tool) => ({ name: tool.name, title: tool.title, mode: tool.mode, readOnly: tool.effect.readOnly })),
       ...(plugin?.dataSources?.length ? { dataSources: plugin.dataSources.map((source) => source.label) } : {}),
+      ...(plugin?.themes?.length ? { themes: plugin.themes.map((theme) => (typeof theme?.name === "string" ? theme.name : String(theme?.id ?? "theme"))) } : {}),
       hooks: Object.keys(plugin?.hooks ?? {}),
     };
   }
@@ -705,6 +719,7 @@ export function createPluginRegistry(options: PluginRegistryOptions = {}): Plugi
         ...kinds.editorHosts(list).conflicts,
         ...kinds.tools(list).conflicts,
         ...kinds.dataSources(list).conflicts,
+        ...kinds.themes(list).conflicts,
       ];
     },
 
@@ -713,6 +728,9 @@ export function createPluginRegistry(options: PluginRegistryOptions = {}): Plugi
     },
     imageProviders() {
       return kinds.images(inUse(null)).items.map(({ item }) => item);
+    },
+    themes() {
+      return kinds.themes(inUse(null)).items.map(({ item, entry }) => ({ plugin: entry.name, theme: item }));
     },
     videoProviders() {
       return kinds.videos(inUse(null)).items.map(({ item }) => item);

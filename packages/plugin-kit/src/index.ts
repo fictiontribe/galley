@@ -35,6 +35,7 @@ export type {
   ScriptIntegrationContribution,
   SitePluginContext,
   SiteToolContribution,
+  ThemeContribution,
   ToolCallContext,
   ToolInputProperty,
   ToolInputSchema,

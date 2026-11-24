@@ -32,6 +32,7 @@ const PluginsScreen = lazy(() => import("@/features/plugins/PluginsScreen").then
 const SitePluginsScreen = lazy(() => import("@/features/plugins/PluginsScreen").then((m) => ({ default: m.SitePluginsScreen })));
 const SetupScreen = lazy(() => import("@/features/install/setup/SetupScreen").then((m) => ({ default: m.SetupScreen })));
 const InstallScreen = lazy(() => import("@/features/install/InstallScreen").then((m) => ({ default: m.InstallScreen })));
+const ThemesScreen = lazy(() => import("@/features/themes/ThemesScreen").then((m) => ({ default: m.ThemesScreen })));
 const AccountScreen = lazy(() => import("@/features/accounts/AccountScreen").then((m) => ({ default: m.AccountScreen })));
 const LinkScreen = lazy(() => import("@/features/accounts/LinkScreen").then((m) => ({ default: m.LinkScreen })));
 
@@ -61,6 +62,8 @@ export function AppRoutes() {
         <Route index element={hosted ? <HostedHome /> : <SitesScreen />} />
         {hosted ? null : <Route path="new" element={<NewSiteScreen />} />}
         <Route path="settings" element={<Allowed route="PATCH /api/settings"><AppSettingsScreen /></Allowed>} />
+        {/* Everyone's: anyone signed in chooses and makes their own theme; saving one for everyone is checked where it happens. */}
+        <Route path="settings/themes" element={<ThemesScreen />} />
         <Route path="plugins" element={<Allowed route="POST /api/plugins/enabled"><PluginsScreen /></Allowed>} />
         {hosted ? <Route path="install" element={<Allowed route="GET /api/install"><InstallScreen /></Allowed>} /> : null}
         {hosted ? <Route path="account" element={<AccountScreen />} /> : null}

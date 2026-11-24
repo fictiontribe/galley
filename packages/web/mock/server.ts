@@ -71,6 +71,8 @@ export interface MockServerOptions {
   accounts?: boolean;
   /** The role-access table, when the caller loads it (the dev server: see `loadAccess`). */
   access?: Promise<MockAccessTable>;
+  /** Core's theme engine, when the caller loads it (the dev server, through Vite: see themes.ts). */
+  themes?: Promise<import("./themes.ts").ThemesEngine>;
   /**
    * Replace or wrap some answers before requests are routed. The in-browser
    * demo (packages/web/demo) uses it for what only a demo says (the recorded
@@ -147,6 +149,10 @@ function json(status: number, body: unknown): MockAnswer {
 export function createMockServer(options: MockServerOptions): MockServer {
   const listeners = new Set<(event: ServerEvent) => void>();
   const backend = new MockBackend({ mode: options.mode, emit: (event) => listeners.forEach((listener) => listener(event)) });
+  if (options.themes) {
+    const themes = options.themes;
+    backend.themesEngine = () => themes;
+  }
   const install = options.mode === "hosted" ? new MockInstall(backend, { setup: options.setup ?? "done", fixed: options.fixed, stepMs: options.stepMs, allowLocalRepositories: options.allowLocalRepositories, address: options.address }) : null;
   const accounts = install && options.accounts !== false ? new MockAccounts(backend, install, { email: options.email, publicAddress: options.publicAddress, legacy: options.legacy, role: options.role }) : null;
   const local = createHandlers(backend);
