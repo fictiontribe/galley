@@ -15,6 +15,7 @@
  * install doesn't have that thing yet, and only once (install.ts), so what a
  * person later changes in the app sticks across restarts.
  */
+import { MEDIA_KEY_ENV } from "../media-storage/env";
 import { readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
@@ -68,6 +69,7 @@ export const APP_SECRET_ENV_NAMES: readonly string[] = [
   "GALLEY_SITE_TOKEN",
   "GALLEY_INSTALL_CONFIG",
   ...Object.values(SECRET_ENV).flat(),
+  ...Object.values(MEDIA_KEY_ENV),
 ];
 
 export const MIN_SETUP_TOKEN_LENGTH = 24;

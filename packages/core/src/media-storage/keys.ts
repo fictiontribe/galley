@@ -17,6 +17,7 @@ import { join } from "node:path";
 import { createFileSecretStore, type SecretStore } from "../ai/secrets";
 import { isSiteId } from "../site/scope";
 import type { MediaKeyStatus } from "./contract";
+import { MEDIA_KEY_ENV } from "./env";
 
 export type MediaKeyName = "accessKeyId" | "secretAccessKey" | "imagesToken";
 
@@ -26,11 +27,7 @@ const STORED: Record<MediaKeyName, string> = {
   imagesToken: "media:images:token",
 };
 
-export const MEDIA_KEY_ENV: Record<MediaKeyName, string> = {
-  accessKeyId: "GALLEY_MEDIA_ACCESS_KEY_ID",
-  secretAccessKey: "GALLEY_MEDIA_SECRET_ACCESS_KEY",
-  imagesToken: "GALLEY_MEDIA_IMAGES_TOKEN",
-};
+export { MEDIA_KEY_ENV };
 
 const SHAPES: Record<MediaKeyName, { test: RegExp; message: string }> = {
   accessKeyId: { test: /^[A-Za-z0-9]{16,128}$/, message: "That doesn't look like an Access Key ID: one word of letters and digits, like the one shown next to the secret." },
