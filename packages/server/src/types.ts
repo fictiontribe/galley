@@ -124,9 +124,12 @@ export interface AppOptions {
   signInClock?: SignInClock;
 }
 
-/** Keeps track of open event streams so shutdown can end them. */
+/** Keeps track of open event streams so shutdown can end them, and of how many each identity has open where that is limited. */
 export interface StreamRegistry {
-  add(close: () => void): () => void;
+  /** `owner`: whose stream it is, when streams are counted per identity. Returns how to take it off again. */
+  add(close: () => void, owner?: string): () => void;
+  /** How many streams `owner` has open. */
+  count(owner: string): number;
   closeAll(): void;
   readonly size: number;
 }
@@ -175,6 +178,8 @@ export interface ServerOptions {
   mailer?: MailTransport | null;
   /** Hosted mode, test seam: what runs the editor's own rounds with the repository instead of a real interval (keep-up.ts). */
   syncTimer?: import("./keep-up").KeepUpTimer;
+  /** Hosted mode, test seam: ms between refreshes of this server's hold on the data folder (default 10 000). A start that finds another server's hold watches it for two of these. */
+  holdBeatMs?: number;
   /** Hosted mode, test seam: replaces installing a starter's dependencies when first run sends one to the repository. */
   siteInstall?: (root: string, onLog: (line: string) => void) => Promise<void>;
   log?: (line: string) => void;

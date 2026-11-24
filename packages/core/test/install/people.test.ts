@@ -167,6 +167,112 @@ describe("first run's owner", () => {
   });
 });
 
+describe("names", () => {
+  const ALIKE = ["sam owner", "SAM OWNER", "Ｓａｍ　Ｏｗｎｅｒ", "Sam  Owner", "Sa\u200bm Owner", "Sam\u00a0Owner", "\u202eSam Owner"];
+  const taken = (name: string) => `Someone here is already called “${name}”. Add something that tells the two apart, such as a middle initial.`;
+
+  it("are kept without what a reader can't see, on every way a name is set", async () => {
+    const { people, owner, join } = await withOwner();
+
+    // Changing your own.
+    expect((await people.updateProfile(owner.id, { name: "Sam\u202e Own\u200ber\u2060" })).name).toBe("Sam Owner");
+    // Accepting an invitation.
+    expect((await join("ed@example.com", "editor", "\ufeffEd\u00ad \u2066Editor\u2069")).name).toBe("Ed Editor");
+    // First run's owner, and an owner given a name afterwards.
+    const fresh = await opened();
+
+    expect((await fresh.people.createOwner({ password: PASSWORD, name: "Pat\u200b Owner" })).name).toBe("Pat Owner");
+    const later = await opened();
+
+    await later.people.createOwner({ password: PASSWORD });
+    expect(await later.people.completeOwner({ name: "Lee\u200e Owner", email: "lee@example.com" })).toBe(true);
+    expect(later.people.list().accounts[0]).toMatchObject({ name: "Lee Owner" });
+  });
+
+  it("keep a joiner where writing needs one", async () => {
+    const { people, owner } = await withOwner();
+
+    expect((await people.updateProfile(owner.id, { name: "می‌خواهم 👨‍👩‍👧" })).name).toBe("می‌خواهم 👨‍👩‍👧");
+  });
+
+  it("with nothing to see in them are no name", async () => {
+    const { people, owner } = await withOwner();
+
+    expect((await refusal(people.updateProfile(owner.id, { name: "\u200b\u202e\u3164" }))).message).toMatch(/Add a name/);
+    expect((await refusal(people.updateProfile(owner.id, { name: "x".repeat(5000) }))).message).toMatch(/under 100 characters/);
+  });
+
+  it("can't be taken by someone accepting an invitation, and the invitation still works with another name", async () => {
+    const { people, owner } = await withOwner();
+
+    for (const name of ALIKE) {
+      const { link } = await people.invite(owner.id, { email: "ed@example.com", role: "contributor" });
+      const error = await refusal(people.useLink(link.code, { password: PASSWORD, name }));
+
+      expect(error.code, name).toBe("conflict");
+      expect(error.message.startsWith("Someone here is already called “"), name).toBe(true);
+      // Not spent by the refusal.
+      expect(people.checkLink(link.code).kind).toBe("invitation");
+      await people.cancelInvitation(owner.id, people.list().invitations[0]!.id);
+    }
+    const { link } = await people.invite(owner.id, { email: "ed@example.com", role: "contributor" });
+
+    expect((await refusal(people.useLink(link.code, { password: PASSWORD, name: "Sam Owner" }))).message).toBe(taken("Sam Owner"));
+    expect((await people.useLink(link.code, { password: PASSWORD, name: "Sam O. (design)" })).account.name).toBe("Sam O. (design)");
+  });
+
+  it("can't be changed to someone else's, in any case or width", async () => {
+    const { people, owner, join } = await withOwner();
+    const ed = await join("ed@example.com", "contributor", "Ed Editor");
+
+    for (const name of ALIKE) expect((await refusal(people.updateProfile(ed.id, { name }))).code, name).toBe("conflict");
+    expect((await refusal(people.updateProfile(ed.id, { name: "sam owner" }))).message).toBe(taken("sam owner"));
+    expect(people.get(ed.id)?.name).toBe("Ed Editor");
+    // The other way round too: an owner can't take a contributor's.
+    expect((await refusal(people.updateProfile(owner.id, { name: "ED EDITOR" }))).code).toBe("conflict");
+  });
+
+  it("can be kept, and respelt, by the person whose name it is", async () => {
+    const { people, owner } = await withOwner();
+
+    expect((await people.updateProfile(owner.id, { name: "Sam Owner" })).name).toBe("Sam Owner");
+    expect((await people.updateProfile(owner.id, { name: "SAM OWNER" })).name).toBe("SAM OWNER");
+    expect((await people.updateProfile(owner.id, { name: "Sam B Owner" })).name).toBe("Sam B Owner");
+  });
+
+  it("that were alike before this rule are left alone until one of them changes", async () => {
+    const { people, owner, join, store } = await withOwner();
+    const ed = await join("ed@example.com", "editor", "Ed Editor");
+
+    // As a data folder from an earlier version can hold them.
+    await store.update((draft) => {
+      draft.accounts.find((account) => account.id === ed.id)!.name = "sam owner";
+    });
+    expect(people.list().accounts.map((account) => account.name).sort()).toEqual(["Sam Owner", "sam owner"]);
+    // Each keeps their own, and can save the rest of their details.
+    expect((await people.updateProfile(ed.id, { name: "sam owner" })).name).toBe("sam owner");
+    expect((await people.updateProfile(owner.id, { name: "Sam Owner" })).name).toBe("Sam Owner");
+    // One of them changes: the new name is checked like any other.
+    expect((await people.updateProfile(ed.id, { name: "Ed Editor" })).name).toBe("Ed Editor");
+    expect((await refusal(people.updateProfile(ed.id, { name: "Sam Owner" }))).code).toBe("conflict");
+  });
+
+  it("first run's owner can't take a name someone here has, and starting values leave such a name for the owner to choose", async () => {
+    const setup = await opened();
+
+    // An install whose owner is gone but whose people remain, as a state file edited by hand can be.
+    await setup.store.update((draft) => {
+      draft.accounts.push({ id: "kept1", name: "Kit Keeper", email: "kit@example.com", role: "editor", passwordHash: "x", passwordChangedAt: "2026-11-01T00:00:00.000Z", createdAt: "2026-11-01T00:00:00.000Z", lastSeenAt: null, disabled: false, incomplete: false, sessionsValidAfter: 0 });
+    });
+    expect((await refusal(setup.people.createOwner({ password: PASSWORD, name: "kit keeper" }))).message).toBe(taken("kit keeper"));
+    const owner = await setup.people.createOwner({ password: PASSWORD });
+
+    // The e-mail is taken up; the name, which is Kit's, is not.
+    expect(await setup.people.completeOwner({ name: "KIT KEEPER", email: "owner@example.com" })).toBe(true);
+    expect(setup.people.get(owner.id)).toMatchObject({ name: "", email: "owner@example.com", incomplete: true });
+  });
+});
+
 describe("signing in", () => {
   it("the same answer for an unknown e-mail, a wrong password and a switched-off account; a stand-in hash is checked when there's no account", async () => {
     const { people, owner, join } = await withOwner();

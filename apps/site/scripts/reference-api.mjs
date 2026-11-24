@@ -168,7 +168,7 @@ Addresses outside \`/api\` have their own rules: \`/mcp\` (the [MCP endpoint](/d
 
 const OUTRO = `## Events
 
-\`GET /api/events\` is a Server-Sent Events stream: a \`hello\` event first, then every event as \`data: <json>\`, and a \`: heartbeat\` comment every 20 seconds. Event \`type\`s: ${"{EVENTS}"}. Their shapes are \`ServerEvent\` in [\`packages/core/src/types.ts\`]({repository}/blob/main/packages/core/src/types.ts). \`changes.updated\` carries its origin: \`user\`, \`agent\`, \`external\`, \`publish\`, \`discard\` or \`undo\`.
+\`GET /api/events\` is a Server-Sent Events stream: a \`hello\` event first, then every event as \`data: <json>\`, and a \`: heartbeat\` comment every 20 seconds. Event \`type\`s: ${"{EVENTS}"}. Their shapes are \`ServerEvent\` in [\`packages/core/src/types.ts\`]({repository}/blob/main/packages/core/src/types.ts). \`changes.updated\` carries its origin: \`user\`, \`agent\`, \`external\`, \`publish\`, \`discard\` or \`undo\`. On a hosted install one account (or the operator's token) may hold 16 streams open; the next is answered 429. A stream whose reader stops reading is ended once 1 MB is waiting for it: connect again and read what you need afresh.
 
 \`\`\`sh
 curl -sN -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/events
