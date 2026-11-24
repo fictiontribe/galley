@@ -103,6 +103,8 @@ Only a browser the editor let in sees the preview: the editor gets a one-use tic
 
 The proxy in front must keep the `Host` header (Caddy does), terminate HTTPS for all three names, and pass WebSockets and the event stream `GET /api/events` unbuffered. With it, set `GALLEY_TRUST_PROXY=1`.
 
+**Behind Cloudflare** (proxied names, or a Cloudflare Tunnel), Cloudflare's Web Analytics can add its beacon, `https://static.cloudflareinsights.com/beacon.min.js/…`, to every page; for proxied sites its automatic setup is on by default. The editor's Content Security Policy runs only the editor's own scripts, so the browser blocks the beacon and logs *Loading the script 'https://static.cloudflareinsights.com/beacon.min.js/…' violates the following Content Security Policy directive: "script-src 'self'"* on each page. It is harmless: nothing breaks and the beacon never runs. To stop it, open **Web Analytics** in Cloudflare's dashboard, then **Manage site** for that site, and set the automatic setup to **Disable**, or add a rule that leaves out the editor's names ([Cloudflare](https://developers.cloudflare.com/web-analytics/configuration-options/rules/), read 2026-11-24). Don't loosen the policy instead. The preview's pages keep the site's own headers, so on the preview's names the beacon runs unless the site's own policy blocks it.
+
 ## First run
 
 1. **Choose the password**, 12 characters or more.

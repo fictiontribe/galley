@@ -47,6 +47,7 @@ This page is for developers. Galley's messages are written to say what happened 
 | `403` *This address isn't one this app answers to.* | The `Host` header isn't a loopback name, the listening address or `GALLEY_PUBLIC_URL`'s host. Behind a proxy, set `GALLEY_PUBLIC_URL`, or make the proxy pass the original `Host`. |
 | `403` *This request came from outside the app, so it was blocked.* | A state-changing request without a matching `Origin`. Scripts: use the Bearer token. A dev proxy (Vite): rewrite `Origin` to the server's — see [`packages/server/README.md`]({repository}/blob/main/packages/server/README.md). |
 | `429` *Too many sign-in attempts. Wait a minute, then try again.* | Five wrong passwords from one address in a minute. Behind a proxy without `GALLEY_TRUST_PROXY=1`, every user shares the proxy's address. |
+| In the browser's console, on every page of a hosted install behind Cloudflare: *Loading the script 'https://static.cloudflareinsights.com/beacon.min.js/…' violates the following Content Security Policy directive: "script-src 'self'"* | Cloudflare's Web Analytics added its beacon to the page, and the editor's policy blocked it. Harmless. Turn off Web Analytics' automatic setup for that site in Cloudflare, or leave the editor's names out with a rule; keep the policy as it is ([Behind Cloudflare](/docs/running/hosted/#the-three-names)). |
 
 ## Detection and configuration
 
