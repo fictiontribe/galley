@@ -9,6 +9,10 @@ entry says how.
 
 ### Fixed
 
+- **Next.js 16 no longer writes an AGENTS.md into the site** when Galley
+  is started from Cursor's agent, GitHub Copilot's CLI, Augment or
+  Antigravity: the preview's dev server no longer gets the variables those
+  tools set, which `next dev` takes as an AI agent running it.
 - **Media detection** no longer picks a `public/images` that doesn't exist
   when the site keeps its images in a folder of another name
   (`public/imagery`): new images are saved there. A site with no images
