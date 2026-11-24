@@ -120,7 +120,7 @@ export function galleyMock(): Plugin {
           const look = await mock.backend.defaultLook().catch(() => null);
           const start = JSON.stringify({ keeper: mode === "hosted" ? "browser" : "server", look }).replace(/</g, "\\u003c");
           res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" });
-          res.end(`self.GALLEY_START=${start};\n${script}`);
+          res.end(`self.galleyStart=${start};\n${script}`);
         } catch {
           next();
         }

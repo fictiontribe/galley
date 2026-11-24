@@ -110,5 +110,5 @@ export async function themeScript(webDir: string, ctx: Pick<RouteContext, "servi
   const keeper = ctx.options.mode === "hosted" ? "browser" : "server";
   const start = JSON.stringify({ keeper, look }).replace(/</g, "\\u003c");
 
-  return `self.GALLEY_START=${start};\n${script}`;
+  return `self.galleyStart=${start};\n${script}`;
 }

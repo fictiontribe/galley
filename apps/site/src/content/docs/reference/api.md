@@ -56,6 +56,14 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `PUT /api/secrets/:name` | Save a shared key — `anthropic`, `openai`, `google`, `cloudflare` or `vercel`; `null` removes it. Returns its status only. | `{ value }` | `SecretStatus` | Owners |
 | `GET /api/usage` | What the assistant and image generation cost at list prices: today, 7 and 30 days, all time, per model. | — | `UsageSummary` | Owners |
 
+## Themes for the app (docs/themes.md)
+
+| Route | Does | Takes | Returns | Who |
+| --- | --- | --- | --- | --- |
+| `GET /api/themes` | The themes saved for everyone here, the ones plugins add, and the install's default. | — | `ThemesInfo` | Any signed-in person |
+| `PUT /api/themes/:themeId` | Save a theme for everyone here (adding or replacing). | `{ theme }` | `SavedTheme` | Owners |
+| `DELETE /api/themes/:themeId` | Delete a theme saved for everyone here. | — | `Ok` | Owners |
+
 ## Sites
 
 | Route | Does | Takes | Returns | Who |
@@ -378,7 +386,7 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 
 ## Events
 
-`GET /api/events` is a Server-Sent Events stream: a `hello` event first, then every event as `data: <json>`, and a `: heartbeat` comment every 20 seconds. Event `type`s: `hello`, `chat.delta`, `chat.tool`, `chat.message`, `chat.done`, `chat.error`, `changes.updated`, `preview.status`, `site.updated`, `repository.checked`, `sites.updated`, `job`, `plugins.updated`, `forms.submission`. Their shapes are `ServerEvent` in [`packages/core/src/types.ts`]({repository}/blob/main/packages/core/src/types.ts). `changes.updated` carries its origin: `user`, `agent`, `external`, `publish`, `discard` or `undo`.
+`GET /api/events` is a Server-Sent Events stream: a `hello` event first, then every event as `data: <json>`, and a `: heartbeat` comment every 20 seconds. Event `type`s: `hello`, `chat.delta`, `chat.tool`, `chat.message`, `chat.done`, `chat.error`, `changes.updated`, `preview.status`, `site.updated`, `repository.checked`, `sites.updated`, `job`, `plugins.updated`, `themes.updated`, `forms.submission`. Their shapes are `ServerEvent` in [`packages/core/src/types.ts`]({repository}/blob/main/packages/core/src/types.ts). `changes.updated` carries its origin: `user`, `agent`, `external`, `publish`, `discard` or `undo`.
 
 ```sh
 curl -sN -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/events

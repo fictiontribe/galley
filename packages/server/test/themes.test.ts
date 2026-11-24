@@ -93,7 +93,7 @@ describe("the install's default theme", () => {
     expect(meta.look.id).toBe("fog");
     expect(Object.keys(meta.look).sort()).toEqual(["dark", "id", "light", "switches", "tuned"]);
     const script = await (await app.request("/theme.js")).text();
-    expect(script.startsWith("self.GALLEY_START={")).toBe(true);
+    expect(script.startsWith("self.galleyStart={")).toBe(true);
     expect(script).toContain('"keeper":"server"');
     expect(script).toContain('"id":"fog"');
     expect(script.endsWith("/* the start-up script */")).toBe(true);

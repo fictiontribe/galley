@@ -7,9 +7,9 @@
  * fails: then the engine and the CSS disagree, and the CSS is what ships.
  *
  * Needs a Chromium through playwright-core, which is not one of the repo's
- * dependencies (nothing is downloaded for it). Point GALLEY_PLAYWRIGHT at a
+ * dependencies (nothing is downloaded for it). Point THEME_PARITY_PLAYWRIGHT at a
  * folder whose node_modules has playwright-core (and its browsers installed):
- *   GALLEY_PLAYWRIGHT=/path/to/project pnpm --filter @galley/web exec vitest run test/themes/parity.browser.test.ts
+ *   THEME_PARITY_PLAYWRIGHT=/path/to/project pnpm --filter @galley/web exec vitest run test/themes/parity.browser.test.ts
  * Without it the test is skipped, and says so.
  */
 import { readFileSync } from "node:fs";
@@ -28,7 +28,7 @@ type Page = {
 };
 
 function loadChromium(): { launch(options: object): Promise<Browser> } | null {
-  const from = process.env.GALLEY_PLAYWRIGHT;
+  const from = process.env.THEME_PARITY_PLAYWRIGHT;
   if (!from) return null;
   try {
     return (createRequire(`${from.replace(/\/$/, "")}/package.json`)("playwright-core") as { chromium: { launch(options: object): Promise<Browser> } }).chromium;
@@ -144,5 +144,5 @@ describe.skipIf(!chromium)("the engine derives what the browser paints", () => {
 });
 
 describe.runIf(!chromium)("the engine derives what the browser paints", () => {
-  it.skip("needs GALLEY_PLAYWRIGHT (a folder with playwright-core) to run in a browser", () => undefined);
+  it.skip("needs THEME_PARITY_PLAYWRIGHT (a folder with playwright-core) to run in a browser", () => undefined);
 });

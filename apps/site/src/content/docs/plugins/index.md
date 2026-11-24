@@ -5,7 +5,7 @@ group: extend
 order: 3
 ---
 
-This page is for developers. A plugin adds something to Galley without changing Galley: a framework adapter, an image or video generator, a form destination, a third-party script, an importer, a deploy host, a data source for a field's picker, a tool for the assistant (and every MCP client), or a hook that runs around publishing. Every built-in is registered the same way, through the same API. *Status: built.*
+This page is for developers. A plugin adds something to Galley without changing Galley: a framework adapter, an image or video generator, a form destination, a third-party script, an importer, a deploy host, a data source for a field's picker, a tool for the assistant (and every MCP client), a theme for the editing app (checked like any other: [themes](/docs/plugins/themes/)), or a hook that runs around publishing. Every built-in is registered the same way, through the same API. *Status: built.*
 
 ## What a plugin can do — and what it is not
 

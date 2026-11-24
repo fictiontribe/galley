@@ -6,7 +6,7 @@
 // The appearance comes from the copy the app keeps in localStorage
 // ("galley.ui"; see src/lib/theme.ts). The theme comes from this browser's
 // copy of the last theme shown ("galley.look"; src/lib/themes/apply.ts) or,
-// when the server put it in front of this script (GALLEY_START), the
+// when the server put it in front of this script (galleyStart), the
 // install's default: in local mode and the desktop app the default is the
 // person's choice, so it wins; on a hosted install it applies until this
 // browser's person has chosen their own.
@@ -44,7 +44,7 @@
     var appearance = ui && ui.state && ui.state.theme;
     if (appearance === "light" || appearance === "dark" || appearance === "system") root.dataset.theme = appearance;
 
-    var start = self.GALLEY_START || null;
+    var start = self.galleyStart || null;
     var mine = read("galley.look");
     var fromServer = start && valid(start.look) ? start.look : null;
     var look = fromServer && (start.keeper === "server" || !(mine && mine.chosen)) ? fromServer : mine && valid(mine.look) ? mine.look : fromServer;

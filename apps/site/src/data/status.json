@@ -148,6 +148,13 @@
       "home": false
     },
     {
+      "id": "themes",
+      "label": "Themes for the editing app",
+      "line": "Quiet, Plate and Desk, and themes you make, checked for readability and shared as a file. Tried in a real browser against the app’s stand-in server.",
+      "status": "new",
+      "home": false
+    },
+    {
       "id": "hosted-sso",
       "label": "Single sign-on for a hosted editor",
       "line": "Signing in through your own identity provider. Today: an e-mail and a password.",

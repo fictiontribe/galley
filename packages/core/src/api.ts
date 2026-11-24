@@ -348,6 +348,7 @@ export interface ApiRoutes {
   "GET /api/themes": { response: ThemesInfo };
   /** Save a theme for everyone here (adding or replacing). It is checked first; a refused theme is a 400 with the check's words, an adjusted one is stored adjusted. */
   "PUT /api/themes/:themeId": { body: { theme: ThemeFile }; response: SavedTheme };
+  /** Delete a theme saved for everyone here. Anyone using it goes back to the default; a default that named it falls through to the brand's, else Quiet. */
   "DELETE /api/themes/:themeId": { response: Ok };
 
   // ── sites ──────────────────────────────────────────────────────────────
