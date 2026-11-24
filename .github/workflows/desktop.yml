@@ -10,6 +10,8 @@
 #   macOS notarising   APPLE_ID                    Apple ID e-mail
 #   (needs signing)    APPLE_PASSWORD              an app-specific password for it
 #                      APPLE_TEAM_ID               the 10-character team id
+#                      Both the app and the disk image it is handed over in are
+#                      notarised and stapled, and the job fails unless both pass.
 #   Windows signing    Azure Artifact Signing (once "Trusted Signing"): a publicly trusted
 #                      certificate can no longer be had as a file, so the installers are
 #                      signed by Microsoft's service.
@@ -173,6 +175,31 @@ jobs:
           APPLE_TEAM_ID: ${{ env.HAS_APPLE_NOTARY == 'true' && secrets.APPLE_TEAM_ID || '' }}
         run: pnpm exec tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config src-tauri/tauri.bundle.conf.json
 
+      # The bundler notarises and staples the app, then signs the disk image it
+      # puts the app in — but the image is what people download, and Apple's
+      # ticket should travel with the outermost thing: without it a Mac that is
+      # offline, or one held to a stricter policy, can refuse the image though
+      # the app inside is fine. So the image is sent to Apple too and its ticket
+      # stapled on.
+      - name: Notarise and staple the Mac disk image
+        if: runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_NOTARY == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          image="$(find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/dmg" -maxdepth 1 -name "*.dmg" | head -1)"
+          if [ -z "$image" ]; then echo "No disk image was built."; exit 1; fi
+          xcrun notarytool submit "$image" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait --output-format json > "$RUNNER_TEMP/notary.json"
+          status="$(plutil -extract status raw -o - "$RUNNER_TEMP/notary.json")"
+          if [ "$status" != "Accepted" ]; then
+            # Apple's own account of why, which names the file and the rule.
+            xcrun notarytool log "$(plutil -extract id raw -o - "$RUNNER_TEMP/notary.json")" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" || true
+            echo "Apple didn't accept the disk image: $status."
+            exit 1
+          fi
+          xcrun stapler staple "$image"
+
       - name: Build (signed, Windows)
         if: runner.os == 'Windows' && env.HAS_WINDOWS_SIGNING == 'true'
         working-directory: apps/desktop
@@ -222,10 +249,15 @@ jobs:
         run: |
           app="$(find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos" -maxdepth 1 -name "*.app" | head -1)"
           codesign --verify --deep --strict "$app"
+          image="$(find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/dmg" -maxdepth 1 -name "*.dmg" | head -1)"
+          codesign --verify --strict "$image"
           if [ "$HAS_APPLE_NOTARY" = "true" ]; then
             # Notarised and stapled: Gatekeeper opens it without asking, offline too.
             xcrun stapler validate "$app"
             spctl --assess --type execute "$app"
+            # The same for the disk image, the file people actually download.
+            xcrun stapler validate "$image"
+            spctl --assess --type open --context context:primary-signature -vv "$image"
           fi
 
       - name: Check the Windows signature
