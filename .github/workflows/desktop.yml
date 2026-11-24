@@ -10,8 +10,13 @@
 #   macOS notarising   APPLE_ID                    Apple ID e-mail
 #   (needs signing)    APPLE_PASSWORD              an app-specific password for it
 #                      APPLE_TEAM_ID               the 10-character team id
-#   Windows signing    WINDOWS_CERTIFICATE         base64 of the code-signing .pfx (certutil -encode)
-#                      WINDOWS_CERTIFICATE_PASSWORD
+#   Windows signing    Azure Artifact Signing (once "Trusted Signing"): a publicly trusted
+#                      certificate can no longer be had as a file, so the installers are
+#                      signed by Microsoft's service.
+#                      AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET   the app registration that may sign
+#                      AZURE_SIGNING_ENDPOINT   e.g. https://eus.codesigning.azure.net
+#                      AZURE_SIGNING_ACCOUNT    the signing account's name
+#                      AZURE_SIGNING_PROFILE    the certificate profile's name
 #   Linux              not signed
 #
 # The packaged app runs its server on the Node.js that runs this job
@@ -29,8 +34,9 @@
 # publishes the draft (RELEASING.md, "The GitHub release").
 #
 # Written against the Tauri 2 docs (distribute/sign/macos,
-# distribute/sign/windows, start/prerequisites). The signing steps have not
-# been exercised yet: no certificate has been set.
+# distribute/sign/windows, start/prerequisites). macOS signing and
+# notarisation run for real. The Windows signing steps run once the Azure
+# secrets are set; until a run has signed with them they are unproven.
 name: Desktop
 
 on:
@@ -76,7 +82,7 @@ jobs:
       # Secrets can't be tested in `if:` directly; these say whether each one is set.
       HAS_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE != '' }}
       HAS_APPLE_NOTARY: ${{ secrets.APPLE_ID != '' && secrets.APPLE_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
-      HAS_WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
+      HAS_WINDOWS_SIGNING: ${{ secrets.AZURE_TENANT_ID != '' && secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' && secrets.AZURE_SIGNING_ENDPOINT != '' && secrets.AZURE_SIGNING_ACCOUNT != '' && secrets.AZURE_SIGNING_PROFILE != '' }}
       GALLEY_SKIP_WEB_BUILD: "0"
     steps:
       - uses: actions/checkout@v4
@@ -129,29 +135,30 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
           rm "$RUNNER_TEMP/certificate.p12"
 
-      # ── Windows signing (only with WINDOWS_CERTIFICATE) ─────────────────
-      - name: Import the Windows signing certificate
-        if: runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE == 'true'
+      # ── Windows signing (only with the Azure secrets) ───────────────────
+      # Tauri hands every file it would sign to `signCommand` (%1). The tool is
+      # the one Tauri's guide names for this service; it signs in to Azure with
+      # the three AZURE_ variables the build step is given. The account's names
+      # stay in secrets, so they appear in no file and no log.
+      - name: Set up Windows signing
+        if: runner.os == 'Windows' && env.HAS_WINDOWS_SIGNING == 'true'
         shell: pwsh
         env:
-          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          AZURE_SIGNING_PROFILE: ${{ secrets.AZURE_SIGNING_PROFILE }}
         run: |
-          New-Item -ItemType directory -Path certificate | Out-Null
-          Set-Content -Path certificate/tempCert.txt -Value $env:WINDOWS_CERTIFICATE
-          certutil -decode certificate/tempCert.txt certificate/certificate.pfx
-          Remove-Item -Path certificate/tempCert.txt
-          $password = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
-          $cert = Import-PfxCertificate -FilePath certificate/certificate.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
-          Remove-Item -Recurse -Force certificate
-          $config = @{ bundle = @{ windows = @{ certificateThumbprint = $cert.Thumbprint; digestAlgorithm = "sha256"; timestampUrl = "http://timestamp.digicert.com" } } } | ConvertTo-Json -Depth 4 -Compress
+          cargo install artifact-signing-cli --version 0.12.0 --locked
+          $product = (Get-Content apps/desktop/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).productName
+          $command = "artifact-signing-cli -e $env:AZURE_SIGNING_ENDPOINT -a $env:AZURE_SIGNING_ACCOUNT -c $env:AZURE_SIGNING_PROFILE -d $product %1"
+          $config = @{ bundle = @{ windows = @{ signCommand = $command } } } | ConvertTo-Json -Depth 4 -Compress
           Set-Content -Path apps/desktop/src-tauri/tauri.signing.conf.json -Value $config
 
       # ── Build ──────────────────────────────────────────────────────────
       # tauri.bundle.conf.json adds the sidecar and the server bundle and runs
       # scripts/prepare-sidecar.mjs first (TAURI_ENV_TARGET_TRIPLE tells it the target).
       - name: Build (unsigned)
-        if: (runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE != 'true') || (runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE != 'true') || runner.os == 'Linux'
+        if: (runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE != 'true') || (runner.os == 'Windows' && env.HAS_WINDOWS_SIGNING != 'true') || runner.os == 'Linux'
         working-directory: apps/desktop
         run: pnpm exec tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config src-tauri/tauri.bundle.conf.json
 
@@ -167,8 +174,12 @@ jobs:
         run: pnpm exec tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config src-tauri/tauri.bundle.conf.json
 
       - name: Build (signed, Windows)
-        if: runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE == 'true'
+        if: runner.os == 'Windows' && env.HAS_WINDOWS_SIGNING == 'true'
         working-directory: apps/desktop
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: pnpm exec tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.signing.conf.json
 
       # ── Proof ──────────────────────────────────────────────────────────
@@ -194,7 +205,7 @@ jobs:
           fi
 
       - name: Check the Windows signature
-        if: runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE == 'true'
+        if: runner.os == 'Windows' && env.HAS_WINDOWS_SIGNING == 'true'
         shell: pwsh
         run: |
           $installers = Get-ChildItem "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle" -Recurse -Include *.exe, *.msi
@@ -203,6 +214,35 @@ jobs:
             $signature = Get-AuthenticodeSignature $file.FullName
             if ($signature.Status -ne "Valid") { throw "$($file.Name): the signature is $($signature.Status)." }
           }
+
+      # A picture of the real window on Windows, where no person has opened the
+      # app yet. Never fails the build: it is evidence, not a gate.
+      - name: Open the app on Windows and take a picture
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GALLEY_HOME: ${{ runner.temp }}\galley-home
+        run: |
+          $exe = Get-ChildItem "apps/desktop/src-tauri/target/${{ matrix.target }}/release" -Filter *.exe | Where-Object { $_.Name -notmatch "node" } | Select-Object -First 1
+          if (-not $exe) { throw "The app's executable wasn't found." }
+          $app = Start-Process $exe.FullName -PassThru
+          Start-Sleep -Seconds 40
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          [System.Drawing.Graphics]::FromImage($bitmap).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $bitmap.Save("$env:RUNNER_TEMP\galley-windows.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          Write-Host "Still running after 40 seconds: $(-not $app.HasExited)"
+          taskkill /pid $app.Id /T /F | Out-Null
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        with:
+          name: desktop-windows-picture
+          if-no-files-found: ignore
+          path: ${{ runner.temp }}/galley-windows.png
 
       - uses: actions/upload-artifact@v4
         with:
@@ -230,7 +270,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ github.ref_name }}
       SIGNED_MACOS: ${{ secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_ID != '' && secrets.APPLE_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
-      SIGNED_WINDOWS: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
+      SIGNED_WINDOWS: ${{ secrets.AZURE_TENANT_ID != '' && secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' && secrets.AZURE_SIGNING_ENDPOINT != '' && secrets.AZURE_SIGNING_ACCOUNT != '' && secrets.AZURE_SIGNING_PROFILE != '' }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -241,7 +281,18 @@ jobs:
         run: |
           mkdir installers
           # The .app folders stay behind: the .dmg is how a Mac app is handed over.
-          find artifacts -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" \) -exec cp {} installers/ \;
+          # Names without the version, so …/releases/latest/download/<name> always
+          # works. The product's name is taken from the files Tauri named.
+          keep() {
+            file="$(find "artifacts/$1" -type f -name "$2" | head -1)"
+            if [ -n "$file" ]; then product="$(basename "$file")"; cp "$file" "installers/${product%%_*}-$3"; fi
+          }
+          keep desktop-aarch64-apple-darwin "*.dmg" mac-apple-silicon.dmg
+          keep desktop-x86_64-apple-darwin "*.dmg" mac-intel.dmg
+          keep desktop-x86_64-pc-windows-msvc "*-setup.exe" windows-setup.exe
+          keep desktop-x86_64-pc-windows-msvc "*.msi" windows.msi
+          keep desktop-x86_64-unknown-linux-gnu "*.AppImage" linux.AppImage
+          keep desktop-x86_64-unknown-linux-gnu "*.deb" linux.deb
           [ -n "$(find installers -type f | head -1)" ] || { echo "No installer was built."; exit 1; }
           (cd installers && sha256sum -- * > ../SHA256SUMS.txt)
           mv SHA256SUMS.txt installers/ && cat installers/SHA256SUMS.txt

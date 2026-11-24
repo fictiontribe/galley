@@ -298,9 +298,14 @@ doesn't match the target. Set `GALLEY_SKIP_WEB_BUILD=1` to use
 `packages/web/dist` as it is. Output: `src-tauri/target/release/bundle/`.
 
 CI (`.github/workflows/desktop.yml`) builds macOS (Apple silicon and Intel),
-Windows and Linux on version tags and uploads the unsigned installers. Signing
-and notarisation steps are there, and run only when their secrets exist; the
-workflow's header lists them.
+Windows and Linux on version tags and by hand. After each build it starts the
+packaged server the way the app does and walks a site through it
+(`scripts/sidecar-e2e.mjs`), so an installer whose server can't run fails
+there. The macOS builds are signed with a Developer ID and notarised by
+Apple, and the job checks the result (`codesign`, `stapler`, `spctl`); the
+signing steps run only when their secrets exist, and the workflow's header
+lists them. On a version tag the installers and their SHA-256 sums go into a
+draft release for a person to publish.
 
 ## Tests
 
@@ -338,12 +343,15 @@ are committed.
 ## Not done yet
 
 - **Auto-update.** No updater; new versions are installed by hand.
-- **Code signing.** Wired in CI but never exercised: no certificates. Unsigned
-  macOS builds need right-click → Open (or System Settings › Privacy &
-  Security) the first time; unsigned Windows installers trigger SmartScreen.
-- **Windows and Linux** compile paths exist (process-tree kill with
-  `taskkill /T`, no login-shell PATH on Windows, `ps`-based orphan sweep on
-  Linux) but have not been built or run.
+- **Code signing on Windows and Linux.** macOS is signed and notarised. The
+  Windows installers are unsigned and trigger SmartScreen (More info › Run
+  anyway); CI signs them through Azure Artifact Signing once its secrets are set
+  (the workflow's header lists them); until a run has, that step is unproven.
+- **Windows and Linux in a person's hands.** Both are built in CI, their Rust
+  tests pass, and the packaged server opens, edits, proofs, publishes and
+  previews a site there. The shell itself — the window, the menu, the folder
+  picker, process-tree kill with `taskkill /T`, the `ps`-based orphan sweep on
+  Linux — has only been used by a person on macOS.
 - **The OS keychain for secrets** (ARCHITECTURE.md §6) isn't wired yet; keys
   are still kept by the engine in the Galley home.
 - **The "closing the last window quits" path** is implemented by Tauri's

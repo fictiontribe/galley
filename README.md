@@ -192,7 +192,7 @@ Intent, not a promise. The longer version is [ROADMAP.md](ROADMAP.md).
 - The Shopify storefront starter
 - Hosting the editor online from the app (Fly.io, Cloudflare, your own
   server), run on the real services
-- A signed desktop app, and Windows and Linux
+- The desktop app for Windows and Linux, tried by people and signed
 - The site kit, adapter kit and plugin kit on npm
 - Full adapters beyond Astro
 
@@ -257,7 +257,8 @@ change between minor versions ([what the numbers mean](RELEASING.md#what-the-ver
   service); hosting the editor online on your own Fly.io, Cloudflare or
   server (run against stand-ins for Fly.io and Cloudflare, not the real
   services); the Shopify storefront starter.
-- **Not verified yet**: Windows and Linux; a signed desktop app; the OpenAI
+- **Not verified yet**: the desktop app on Windows and Linux beyond its
+  automated checks (the macOS app is signed and notarised); the OpenAI
   and Google image providers; the assistant's fallback request profile;
   setting redirects on Cloudflare itself (Bulk Redirects); attaching a fresh
   own domain on the real services; a hosted editor's own key accepted by a

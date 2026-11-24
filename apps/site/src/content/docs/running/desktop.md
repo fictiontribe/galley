@@ -7,7 +7,15 @@ order: 1
 
 This page is for developers building or evaluating the desktop app. It is a thin native shell — Tauri 2, Rust, the system webview (WebKit on macOS), no bundled Chromium — around the same server and web UI the CLI runs. It starts the server privately on `127.0.0.1`, shows the UI in a native window, and stops everything when you quit. The source and its full account are in [`apps/desktop/`]({repository}/tree/main/apps/desktop) and its [README]({repository}/blob/main/apps/desktop/README.md).
 
-> **Status.** Built and tested on macOS. There are no published downloads, and the installers are **unsigned**: macOS needs right-click → Open the first time; Windows SmartScreen will warn. Windows and Linux compile paths exist but have not been built or run. There is no auto-update. The OS keychain is **not** used for keys yet — they are kept in the Galley home like the CLI's.
+> **Status.** Built and tested on macOS, where the app is **signed and notarised by Apple**: it opens like any other downloaded app. The Windows and Linux installers are built on every release and their packaged server is started and walked through a site (open, edit, proof, publish, preview) on each system, but they are **unsigned**, and nobody has yet used the app's window on a real Windows or Linux computer. There are no published downloads yet: the installers are attached to a release from the next version on. There is no auto-update. The OS keychain is **not** used for keys yet — they are kept in the Galley home like the CLI's.
+
+## Opening it the first time
+
+- **macOS** (11 or later; one download for Apple silicon, one for Intel): open the `.dmg` and drag the app to Applications. macOS asks once whether to open an app downloaded from the internet.
+- **Windows** (10 or later): the installer isn't signed, so Windows shows *Windows protected your PC*. Choose **More info**, then **Run anyway**.
+- **Linux** (built on Ubuntu 22.04; needs WebKitGTK 4.1): install the `.deb`, or make the `.AppImage` executable (`chmod +x`) and run it. Neither is signed.
+
+Each release lists the SHA-256 sum of every installer in `SHA256SUMS.txt`.
 
 ## What it adds over a browser tab
 
@@ -69,8 +77,8 @@ None of these is part of `pnpm test`.
 ## Not done yet
 
 - Auto-update.
-- Code signing and notarisation: wired into the release workflow, never exercised (no certificates).
-- Windows and Linux: written for, not built or run.
+- Signing on Windows and Linux. (macOS is signed and notarised.)
+- Windows and Linux: built and their server exercised on every release, but the window, the menu and the folder picker have only been used by a person on macOS.
 - The OS keychain for secrets.
 
 ## Next

@@ -50,8 +50,10 @@ Built and waiting to be proven, or being built.
 - **Hosting the editor online from the app**, on your own Fly.io, Cloudflare
   or server. Built and run against stand-ins for Fly.io and Cloudflare; not
   yet on the real services.
-- **The desktop app signed**, and built for Windows and Linux. Today it is an
-  unsigned macOS app.
+- **The desktop app on Windows and Linux, tried by people and signed.** The
+  macOS app is signed and notarised. Windows and Linux installers are built
+  and their server is exercised on every release; they are unsigned, and
+  nobody has used the window there yet.
 - **The kits on npm as packages**: the site kit (`@galley/astro`), the adapter
   kit and the plugin kit. Sites carry the site kit vendored today.
 - **The starters listed in Astro's catalogue** of themes.

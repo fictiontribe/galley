@@ -7,8 +7,26 @@ entry says how.
 
 ## Unreleased
 
+### Changed
+
+- **The macOS desktop app is signed and notarised by Apple.** It opens like
+  any other downloaded app, on Apple silicon and Intel.
+- **Desktop installers for Windows and Linux are built on every release**,
+  unsigned, alongside the two for macOS, and gathered with their SHA-256
+  sums into a draft release. On each system the packaged server is started
+  and walked through a site before the installer is kept. Nobody has used
+  the app's window on Windows or Linux yet.
+
 ### Fixed
 
+- **On Windows, a site's preview could not start**: the command lookup found
+  the plain `npm` file that ships beside `npm.cmd`, which Windows can't run.
+  Names are now tried with Windows' own endings first.
+- **On Windows, the desktop app's start-up check said git was missing** for
+  every Git for Windows install (it reports itself as `2.47.1.windows.1`).
+- **Building on Windows** stopped at the first file read exactly, because
+  git there checked text files out with CRLF line endings. Every text file
+  is now checked out with LF on every system (`.gitattributes`).
 - **Next.js 16 no longer writes an AGENTS.md into the site** when Galley
   is started from Cursor's agent, GitHub Copilot's CLI, Augment or
   Antigravity: the preview's dev server no longer gets the variables those
