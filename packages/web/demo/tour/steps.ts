@@ -106,7 +106,7 @@ export const STEPS: StepCopy[] = [
     id: "done",
     number: 7,
     title: "That’s the idea.",
-    body: "Prompt it, proof it, publish it. Everything else is here too, on sample data: forms and the inbox, scripts, brand, Search & AI, redirects and Online. Where a screen would need a real account, it says what the demo stands in for.",
+    body: "Prompt it, proof it, publish it. Everything else is here too, on sample data: forms and the inbox, scripts, brand, Search & AI, redirects and Online. Where a screen would need a real account, it says what the demo stands in for. The moon at the foot of the sidebar turns the app dark.",
   },
 ];
 
