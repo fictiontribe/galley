@@ -14,14 +14,17 @@ import { fileName, plural } from "./labels";
 import { CHANGED_AFTER_READ, NEVER_READ, rememberVersion, versionRead } from "./reads";
 import { defineTool, ok, READ_ONLY, refuse, type AssistantTool, type ToolContext } from "./types";
 
-/** Whether a file is there, for a write that was told it replaces nothing it has read. */
-async function isThere(ctx: ToolContext, path: string): Promise<boolean> {
+/**
+ * What is at a path, for a write that was told it replaces nothing it has
+ * read: nothing, a file that can be read (and so must be, first), or one
+ * that can't be read as text at all (a picture, a font) and so can never be
+ * replaced from a reading.
+ */
+async function whatIsThere(ctx: ToolContext, path: string): Promise<"nothing" | "readable" | "unreadable"> {
   try {
-    await ctx.site.readFile(path);
-    return true;
+    return (await ctx.site.readFile(path)).binary ? "unreadable" : "readable";
   } catch (error) {
-    // Anything but "it isn't there" (a picture, say, which can't be read as text) is a file that is there.
-    return !(error instanceof GalleyError && error.code === "not-found");
+    return error instanceof GalleyError && error.code === "not-found" ? "nothing" : "unreadable";
   }
 }
 
@@ -116,8 +119,14 @@ const writeFile = defineTool({
     } catch (error) {
       if (!(error instanceof GalleyError && error.code === "conflict")) throw error;
       if (read) return refuse(`The file ${CHANGED_AFTER_READ}, so it wasn't replaced. Read it again, then make your change to what is there now.`, couldnt);
-      if (await isThere(ctx, input.path)) {
+      const there = await whatIsThere(ctx, input.path);
+
+      if (there === "readable") {
         return refuse("That file is already there and you haven't read it in this conversation, so it wasn't replaced. Read it with read_file first, then write it.", couldnt);
+      }
+      if (there === "unreadable") {
+        // Not "read it first": it can't be read, so that could never be done.
+        return refuse("That file is already there and it isn't text (a picture, a font or another kind of file), so it can't be read and write_file doesn't replace it. Write to another name, or tell the person the file has to be replaced by hand.", couldnt);
       }
       // A new file: there was nothing to read.
       await ctx.site.writeFile(input.path, input.content, { origin: "agent", mode: ctx.mode });
@@ -205,7 +214,7 @@ const saveSiteConfig = defineTool({
     } catch (error) {
       if (!(error instanceof GalleyError && error.code === "conflict")) throw error;
       if (read) return refuse(`The configuration file ${CHANGED_AFTER_READ}, so it wasn't replaced. Read it again with read_file, then send the whole new configuration.`, couldnt);
-      if (await isThere(ctx, PRODUCT.configFile)) {
+      if ((await whatIsThere(ctx, PRODUCT.configFile)) !== "nothing") {
         return refuse(`You haven't read the configuration file (${PRODUCT.configFile}) in this conversation, so it wasn't replaced. Read it with read_file first, then send the whole new configuration.`, couldnt);
       }
       // The site has no configuration file yet: there was nothing to read.

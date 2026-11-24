@@ -4,7 +4,7 @@ import { checkAttachments, MAX_ATTACHMENTS } from "../../src/features/chat/attac
 import { renderMarkdown, safeHref } from "../../src/features/chat/renderMarkdown";
 import { activityKind, applyEvent, mergeThread, promptHistory, quickReplies, type ChatEvent } from "../../src/features/chat/threadState";
 import { continueLine, lastConversation } from "../../src/features/chat/resume";
-import { undoneNote } from "../../src/features/chat/undone";
+import { undoneNote, undoRefusal } from "../../src/features/chat/undone";
 
 const S = "site-1";
 const T = "thread-1";
@@ -160,17 +160,30 @@ describe("picking up the last conversation", () => {
 
 describe("what the chat says under an undone reply", () => {
   it("says everything is back when nothing was left", () => {
-    expect(undoneNote(2, [])).toBe("Undone. Everything this reply changed is back to how it was.");
+    expect(undoneNote([], true)).toBe("Undone. Everything this reply changed is back to how it was.");
   });
 
   it("names the pages an undo left, and why", () => {
-    expect(undoneNote(3, ["Home"])).toBe("Undone, except Home. It was changed again after this reply, so it was left as it is.");
-    expect(undoneNote(3, ["Home", "Pricing"])).toBe("Undone, except Home and Pricing. They were changed again after this reply, so they were left as they are.");
-    expect(undoneNote(6, ["Home", "Pricing", "About", "Contact", "Team"])).toBe("Undone, except Home, Pricing and 3 more. They were changed again after this reply, so they were left as they are.");
+    expect(undoneNote(["Home"], true)).toBe("Undone, except Home. It was changed again after this reply, so it was left as it is.");
+    expect(undoneNote(["Home", "Pricing"], true)).toBe("Undone, except Home and Pricing. They were changed again after this reply, so they were left as they are.");
+    expect(undoneNote(["Home", "Pricing", "About", "Contact", "Team"], true)).toBe("Undone, except Home, Pricing and 3 more. They were changed again after this reply, so they were left as they are.");
   });
 
   it("never says undone when no page was put back", () => {
-    expect(undoneNote(1, ["Home"])).toBe("Nothing was put back: Home. It was changed again after this reply, so it was left as it is.");
-    expect(undoneNote(2, ["Home", "Pricing"])).toBe("Nothing was put back: Home and Pricing. They were changed again after this reply, so they were left as they are.");
+    expect(undoneNote(["Home"], false)).toBe("Nothing was put back: Home. It was changed again after this reply, so it was left as it is.");
+    expect(undoneNote(["Home", "Pricing"], false)).toBe("Nothing was put back: Home and Pricing. They were changed again after this reply, so they were left as they are.");
   });
 });
+
+describe("whether Undo is offered under a reply", () => {
+  it("not to someone who couldn't undo a reply made in build mode: they read why, in the server's own words", () => {
+    expect(undoRefusal({ mode: "build" }, false)).toBe("Your account can't undo this reply: it changed the site's code and templates (build mode). Ask an owner or an editor of this editor.");
+  });
+
+  it("to anyone for a reply made in content mode, to whoever may use build mode for one made in it, and for a reply from before the mode was recorded", () => {
+    expect(undoRefusal({ mode: "content" }, false)).toBeNull();
+    expect(undoRefusal({ mode: "build" }, true)).toBeNull();
+    expect(undoRefusal({}, false)).toBeNull();
+  });
+});
+

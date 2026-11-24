@@ -81,7 +81,7 @@ import type { PreviewGateway } from "../workspace/preview/proxy";
 import type { AuthorLayers } from "../workspace/author";
 import type { AroundBringIn } from "../workspace/publish";
 import { formCodeRefusal } from "../site-kit/guard";
-import { outsideAnyPerson, requireBuildMode, requireLevel, requireSiteSettings } from "../install/caller";
+import { outsideAnyPerson, requireBuildMode, requireLevel, requireName, requireSiteSettings } from "../install/caller";
 import { levelFor, SITE_METHOD_ACCESS, SITE_SETTINGS_RECORDS, siteMethodLevel, type GuardedSiteMethod } from "../install/route-access";
 import { applyRecord, RECORD_SETTINGS, type SettingsRecord } from "./settings-records";
 import { createEnricher, describeChanges, sortChanges } from "./enrich";
@@ -966,7 +966,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       }
       await pathLock(target.path, async () => {
         if (!(await workspace.exists(target.path))) throw new GalleyError("not-found", GONE, target.path);
-        await workspace.deleteFile(target.path, { origin: options.origin ?? "user", mode: "content" });
+        await workspace.deleteFile(target.path, { origin: options.origin ?? "user", mode: "content", ...(options.baseHash ? { baseHash: options.baseHash } : {}) });
       });
     },
 
@@ -1304,6 +1304,8 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
 
     (service as unknown as Record<GuardedSiteMethod, (...args: unknown[]) => Promise<unknown>>)[method] = async (...args: unknown[]) => {
       requireLevel(siteMethodLevel(method));
+      // These record or move versions, and a version is read by the name of whoever published it.
+      requireName();
       return unguarded.apply(service, args);
     };
   }

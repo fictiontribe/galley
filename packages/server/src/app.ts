@@ -33,7 +33,7 @@ import type { ApiRouteKey } from "@galley/core/api";
 import { withSiteScope } from "@galley/core/site";
 import { createHash } from "node:crypto";
 import { getCookie } from "hono/cookie";
-import { asOperator, ROLE_REFUSAL as CORE_ROLE_REFUSAL, ROUTE_ACCESS, roleMay, withCaller, type AccessLevel, type AccountRole, type InstallStore } from "@galley/core/install";
+import { asOperator, needsName, ROLE_REFUSAL as CORE_ROLE_REFUSAL, ROUTE_ACCESS, roleMay, withCaller, type AccessLevel, type AccountRole, type InstallStore } from "@galley/core/install";
 import type { PreviewStatus } from "@galley/core/types";
 import { withAccountAuthor } from "@galley/core/workspace";
 import { bearerToken, clientAddress, clientKeyOf, isAuthenticated, loopbackHostnames, normalizeHostname, requestProtocol, requestSession, safeEqual, signSession, LoginLimiter, type RevocationList, type SessionCheck } from "./auth";
@@ -284,6 +284,12 @@ export function createApp(services: Services, options: AppOptions): Hono {
 
     return account && !account.disabled ? account.role : null;
   };
+  /** Whether the person has a name to publish under now (core accounts.ts `needsName`). */
+  const liveNamed = (accountId: string): boolean => {
+    const account = install?.store.account(accountId);
+
+    return !account || !needsName(account);
+  };
 
   // 4b. First run: the setup code until an owner exists, then an owner like everything else of the install's.
   const requireSetupAccess: MiddlewareHandler = async (c, next) => {
@@ -346,7 +352,7 @@ export function createApp(services: Services, options: AppOptions): Hono {
       // someone; the mark keeps a local app in the same process (tests, an embedding) as it always was.
       const operator = options.mode === "local" || caller?.kind === "token";
       const result = person
-        ? await withCaller({ accountId: person.id, role: person.role, current: () => liveRole(person.id) }, () => withAccountAuthor(person, scoped))
+        ? await withCaller({ accountId: person.id, role: person.role, current: () => liveRole(person.id), named: () => liveNamed(person.id) }, () => withAccountAuthor(person, scoped))
         : operator
           ? await asOperator(() => withAccountAuthor(null, scoped))
           : await withAccountAuthor(null, scoped);

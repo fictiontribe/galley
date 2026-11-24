@@ -14,6 +14,7 @@ import { hashPassword, INSTALL_SCHEMA_VERSION, type AccountSession, type LinkPre
 import type { GitStatus, MetaInfo, PublishResult } from "@galley/core/types";
 import { signSession } from "../src/auth";
 import { SIGN_IN_REFUSED } from "../src/accounts-routes";
+import { NAME_NEEDED, NAME_NEEDED_REFUSAL } from "@galley/core/install";
 import { call, EDITOR, git, sandbox, siteRepository, startHosted, until, type Started } from "./hosted-helpers";
 
 const box = sandbox("accounts");
@@ -412,6 +413,56 @@ describe("one-time links and e-mail", () => {
 });
 
 describe("publishes carry the person's name", () => {
+  it(
+    "someone let in without a name is recorded as nobody else: their own e-mail stands in, and publishing waits until they choose a name",
+    async () => {
+      const bare = siteRepository(box);
+      const { port, owner, server } = await withOwner({
+        GALLEY_SITE_REPOSITORY: bare,
+        GALLEY_SITE_ACCESS: "token",
+        GALLEY_SITE_TOKEN: "fake-access-key-for-the-repository-0000",
+        GALLEY_AUTHOR_NAME: "Site Publisher",
+        GALLEY_AUTHOR_EMAIL: "publisher@example.com",
+      });
+
+      await server.install!.idle();
+      const siteId = server.install!.siteId()!;
+      const site = server.install!.siteFolder();
+      // Ed accepts his invitation with a name someone here already has: he is let in without it.
+      const ed = await join_(port, owner, "ed@example.com", "editor", "Sam Owner");
+
+      expect((await call<AccountSession>(port, "GET", "/api/account", { cookie: ed.cookie })).body).toMatchObject({ name: "", email: "ed@example.com", incomplete: true });
+      // Who a publish of his would be recorded as: himself, by his e-mail. Not the install's publishing name, and not the owner's.
+      expect((await call<GitStatus>(port, "GET", `/api/sites/${siteId}/git`, { cookie: ed.cookie })).body.author).toEqual({ name: "ed@example.com", email: "ed@example.com", from: "account" });
+
+      // He can change the draft like anyone.
+      writeFileSync(join(site, "src/content/pages", "eds.md"), "---\ntitle: Ed's page\n---\nEd's page\n");
+      const head = git(site, "rev-parse", "HEAD");
+      const publish = () => call<PublishResult>(port, "POST", `/api/sites/${siteId}/publish`, { cookie: ed.cookie, body: { message: "Ed's page", paths: ["src/content/pages/eds.md"] } });
+
+      // Publishing, undoing a publish, sending and getting the latest wait for a name, in words that say so.
+      for (const refused of [
+        await publish(),
+        await call(port, "POST", `/api/sites/${siteId}/revert`, { cookie: ed.cookie, body: { commit: head } }),
+        await call(port, "POST", `/api/sites/${siteId}/send`, { cookie: ed.cookie, body: {} }),
+        await call(port, "POST", `/api/sites/${siteId}/pull`, { cookie: ed.cookie, body: {} }),
+      ]) {
+        expect(refused.status, refused.text).toBe(403);
+        expect(refused.body.error).toMatchObject({ code: "forbidden", message: NAME_NEEDED_REFUSAL, detail: NAME_NEEDED });
+      }
+      expect(git(site, "rev-parse", "HEAD")).toBe(head);
+
+      // With a name of his own, the same publish goes through and carries it.
+      expect((await call(port, "PATCH", "/api/account", { cookie: ed.cookie, body: { name: "Ed Editor" } })).status).toBe(200);
+      const published = await publish();
+
+      expect(published.status, published.text).toBe(200);
+      expect(published.body.ok, published.text).toBe(true);
+      expect(git(site, "log", "-1", "--format=%an <%ae>|%cn <%ce>")).toBe("Ed Editor <ed@example.com>|Ed Editor <ed@example.com>");
+    },
+    180_000
+  );
+
   it(
     "two people publish: the history shows two authors; undoing a publish is the undoer's; a script's token and the Proof screen use the install's",
     async () => {

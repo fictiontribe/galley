@@ -4,11 +4,13 @@
  * makes real edits through the mock site, so Proof and Undo work end to end.
  *
  * Script: a request with quoted text (“…”) sets the page's first heading to
- * it; "find"/"search" runs a search; anything else gets one question with
- * options, and answering with an option makes that edit.
+ * it — and, when it says "both", "every" or "all", the next page's too, so a
+ * reply that changed two pages can be undone in part; "find"/"search" runs a
+ * search; anything else gets one question with options, and answering with
+ * an option makes that edit.
  */
 import { randomUUID } from "node:crypto";
-import type { ChatMessage, ChatThread, FieldPath, JsonValue, SendMessageRequest, ToolActivity, TurnUsage } from "@galley/core/types";
+import type { ChatMessage, ChatThread, FieldPath, JsonValue, SendMessageRequest, ToolActivity, TurnUsage, UndoResult } from "@galley/core/types";
 import type { MockBackend } from "./backend.ts";
 import type { MockSite } from "./site.ts";
 
@@ -97,7 +99,8 @@ export function runTurn(mock: MockBackend, site: MockSite, thread: ChatThread, r
   mock.emit({ type: "chat.message", siteId, threadId, message: user });
 
   void (async () => {
-    const assistant: ChatMessage = { id: randomUUID(), role: "assistant", text: "", at: Date.now(), turnId, pending: true, tools: [] };
+    // The mode the reply is made in, as the real assistant records it: Undo is offered only to someone who could undo it.
+    const assistant: ChatMessage = { id: randomUUID(), role: "assistant", text: "", at: Date.now(), turnId, pending: true, tools: [], mode: request.mode ?? thread.mode ?? "content" };
     thread.messages.push(assistant);
     mock.emit({ type: "chat.message", siteId, threadId, message: { ...assistant } });
 
@@ -134,6 +137,19 @@ export function runTurn(mock: MockBackend, site: MockSite, thread: ChatThread, r
           mock.changed(siteId, [path], "agent");
         });
         reply = `The ${field.label.split(" › ").pop()?.toLowerCase()} now reads “${next}”. It’s waiting in Proof.`;
+        // A second page in the same reply, when asked for more than one.
+        const other = quoted && /\b(both|every|all)\b/i.test(request.text) ? site.listEntries(entry.collection, { limit: 5 }).items.find((item) => item.path !== path) : undefined;
+        const otherEntry = other ? site.readEntry(other.path) : null;
+        const otherField = otherEntry ? headingField(otherEntry.data, "Heading") : null;
+
+        if (other && otherEntry && otherField) {
+          await tool("update_entry", `Editing ${otherEntry.title} › ${otherField.label}`, `Edited ${otherEntry.title} › ${otherField.label}`, () => {
+            site.updateEntry(other.path, [{ op: "set", path: otherField.path, value: next }], turnId);
+            assistant.changedPaths = [path, other.path];
+            mock.changed(siteId, [other.path], "agent");
+          });
+          reply = `Both headings now read “${next}”. They’re waiting in Proof.`;
+        }
       }
     } else if (/\b(find|search|where)\b/i.test(request.text)) {
       const term = request.text.replace(/.*\b(find|search|where)\b\s*(for|is|are)?\s*/i, "").replace(/[?.!]+$/, "").trim() || "home";
@@ -176,17 +192,31 @@ export function runTurn(mock: MockBackend, site: MockSite, thread: ChatThread, r
   return { turnId };
 }
 
-export function undoTurn(mock: MockBackend, site: MockSite, thread: ChatThread, turnId: string): string[] {
+/** As the engine does: a file goes back only while it still holds what the reply left there; one changed again since is left, and named. */
+export function undoTurn(mock: MockBackend, site: MockSite, thread: ChatThread, turnId: string): UndoResult {
   const checkpoint = site.checkpoints.get(turnId);
-  const restored = checkpoint ? [...checkpoint.keys()] : [];
-  for (const [path, bytes] of checkpoint ?? []) site.write(path, bytes);
+  const wrote = site.wrote.get(turnId);
+  const same = (a: Buffer | null, b: Buffer | null) => (a === null || b === null ? a === b : a.equals(b));
+  const restored: string[] = [];
+  const left: string[] = [];
+
+  for (const [path, bytes] of checkpoint ?? []) {
+    const now = site.read(path);
+
+    if (same(now, bytes) || same(now, wrote?.get(path) ?? null)) {
+      site.write(path, bytes);
+      restored.push(path);
+    } else left.push(path);
+  }
   site.checkpoints.delete(turnId);
+  site.wrote.delete(turnId);
   for (const message of thread.messages) {
     if (message.turnId === turnId && message.role === "assistant") {
       message.undone = true;
+      if (left.length) message.undoLeft = left;
       mock.emit({ type: "chat.message", siteId: site.id, threadId: thread.id, message: { ...message } });
     }
   }
   if (restored.length) mock.changed(site.id, restored, "undo");
-  return restored;
+  return { restored, left };
 }

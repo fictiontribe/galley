@@ -10,7 +10,8 @@ import { EVENTS_URL, buildUrl, reportUnauthorized } from "./api";
 
 export type EventType = ServerEvent["type"];
 export type EventOf<T extends EventType> = Extract<ServerEvent, { type: T }>;
-export type ConnectionState = "idle" | "connecting" | "open" | "down";
+/** "limited": the server answered, and said this account has every stream it may have open (too many windows). */
+export type ConnectionState = "idle" | "connecting" | "open" | "down" | "limited";
 
 interface ConnectionStore {
   state: ConnectionState;
@@ -18,9 +19,11 @@ interface ConnectionStore {
   openedAt: number | null;
   /** Seconds until the next attempt while down. */
   retryIn: number | null;
+  /** While limited: what the server said, in words to show. */
+  problem: string | null;
 }
 
-export const useConnection = create<ConnectionStore>(() => ({ state: "idle", openedAt: null, retryIn: null }));
+export const useConnection = create<ConnectionStore>(() => ({ state: "idle", openedAt: null, retryIn: null, problem: null }));
 
 type AnyHandler = (event: ServerEvent) => void;
 
@@ -33,6 +36,10 @@ let attempt = 0;
 let hasOpened = false;
 
 const MAX_BACKOFF_MS = 15_000;
+/** How long to wait before asking again once the server said the account has too many streams open. */
+export const LIMITED_RETRY_MS = 30_000;
+/** The last stream was refused for the account's limit: asking again is quiet until one is let in. */
+let limited = false;
 
 /** Delay before reconnect attempt n (0-based): 1 s, 2 s, 4 s … capped at 15 s, with jitter. */
 export function backoffDelay(n: number, random: () => number = Math.random): number {
@@ -90,16 +97,22 @@ host.addEventListener?.("online", retryNow);
 
 function open(): void {
   retryTimer = null;
-  useConnection.setState({ state: hasOpened ? "down" : "connecting" });
+  // Asking again after being told there are too many windows changes nothing on the screen until the server lets this one in.
+  if (!limited) useConnection.setState({ state: hasOpened ? "down" : "connecting" });
   const es = new EventSource(EVENTS_URL, { withCredentials: true });
   source = es;
 
-  es.onopen = () => {
+  const opened = () => {
     const wasReconnect = hasOpened;
     hasOpened = true;
     attempt = 0;
-    useConnection.setState({ state: "open", openedAt: Date.now(), retryIn: null });
+    useConnection.setState({ state: "open", openedAt: Date.now(), retryIn: null, problem: null });
     if (wasReconnect) for (const listener of [...reconnectListeners]) listener();
+  };
+
+  es.onopen = () => {
+    // A stream that is about to say "too many windows" opens too: after one such answer, wait for the first real event.
+    if (!limited) opened();
   };
 
   es.onmessage = (message) => {
@@ -108,6 +121,24 @@ function open(): void {
       event = JSON.parse(String(message.data)) as ServerEvent;
     } catch {
       return;
+    }
+    if (event.type === "stream.limit") {
+      // The server ends the stream after this. Said once; asked again every so often, and at once on coming back to the window.
+      const first = !limited;
+
+      limited = true;
+      es.close();
+      if (source !== es) return;
+      source = null;
+      attempt = 0;
+      useConnection.setState({ state: "limited", retryIn: null, problem: event.message });
+      retryTimer = setTimeout(() => void probe(), LIMITED_RETRY_MS);
+      if (first) dispatch(event);
+      return;
+    }
+    if (limited) {
+      limited = false;
+      opened();
     }
     dispatch(event);
   };
@@ -136,7 +167,8 @@ export function disconnectEvents(): void {
   source = null;
   hasOpened = false;
   attempt = 0;
-  useConnection.setState({ state: "idle", retryIn: null });
+  limited = false;
+  useConnection.setState({ state: "idle", retryIn: null, problem: null });
 }
 
 /** Listen for one event type. Returns the unsubscribe function. */

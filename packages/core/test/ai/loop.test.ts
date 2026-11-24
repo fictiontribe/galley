@@ -6,7 +6,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { REFUSAL_MESSAGE, STEP_LIMIT_MESSAGE, TOO_LONG_MESSAGE } from "../../src/ai/loop";
+import { UNDO_BUILD_REFUSAL } from "../../src/ai/runtime";
 import { BUILD_TOOL_NAMES } from "../../src/ai/tools/index";
+import { withCaller } from "../../src/install/caller";
 import { GalleyError } from "../../src/errors";
 import type { ChatMessage, ServerEvent } from "../../src/types";
 import { hashContent } from "../../src/workspace/files";
@@ -449,6 +451,34 @@ describe("modes", () => {
 });
 
 describe("undo", () => {
+  it("of a reply made in build mode needs the level build mode needs; a content reply is anyone's to undo", async () => {
+    const { site, h, thread } = await setup([
+      stream(toolStep([{ id: "toolu_b", name: "edit_file", input: { path: "src/styles/tokens.css", old_string: "#1f6feb", new_string: "#0b3d91" } }])),
+      stream(text("I changed the accent colour.")),
+      stream(toolStep([{ id: "toolu_c", name: "update_entry", input: { path: "src/content/pages/about.md", baseHash: ABOUT_AS_READ, ops: [{ op: "body-replace", find: "before dawn.", replace: "at midnight.", all: true }] } }])),
+      stream(text("Done.")),
+    ]);
+    const as = <T>(role: "editor" | "contributor", work: () => T): T => withCaller({ accountId: role, role }, work);
+    const tokens = site.files.get("src/styles/tokens.css");
+    const about = site.files.get("src/content/pages/about.md");
+    const build = await as("editor", () => h.turn(thread.id, "Make the accent navy", { mode: "build" }));
+    // Said, not left to the conversation: it stays in build mode until someone switches it back.
+    const content = await as("editor", () => h.turn(thread.id, "Say we bake at midnight", { mode: "content" }));
+
+    expect(site.files.get("src/styles/tokens.css")).not.toBe(tokens);
+    // Each reply says which mode it was made in, so the app offers Undo only to someone who could.
+    const replies = h.bus.events.filter((e): e is Extract<ServerEvent, { type: "chat.message" }> => e.type === "chat.message").map((e) => e.message).filter((m) => m.role === "assistant" && !m.pending);
+
+    expect(replies.map((m) => [m.turnId, m.mode])).toEqual([[build.turnId, "build"], [content.turnId, "content"]]);
+    await expect(as("contributor", () => h.runtime.undoTurn(site.id, thread.id, build.turnId))).rejects.toMatchObject({ code: "forbidden", message: UNDO_BUILD_REFUSAL });
+    // Refused before anything was put back, and still there for someone who may.
+    expect(site.files.get("src/styles/tokens.css")).not.toBe(tokens);
+    expect((await as("contributor", () => h.runtime.undoTurn(site.id, thread.id, content.turnId))).restored).toEqual(["src/content/pages/about.md"]);
+    expect(site.files.get("src/content/pages/about.md")).toBe(about);
+    expect((await as("editor", () => h.runtime.undoTurn(site.id, thread.id, build.turnId))).restored).toEqual(["src/styles/tokens.css"]);
+    expect(site.files.get("src/styles/tokens.css")).toBe(tokens);
+  });
+
   it("restores a turn's files, marks the reply undone, and tells the model with a system note", async () => {
     const { script, site, h, thread } = await setup([
       stream(toolStep([{ id: "toolu_u", name: "update_entry", input: { path: "src/content/pages/about.md", baseHash: ABOUT_AS_READ, ops: [{ op: "body-replace", find: "before dawn.", replace: "at midnight.", all: true }] } }])),

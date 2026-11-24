@@ -17,7 +17,7 @@
  * record is scrubbed of it.
  */
 import { GalleyError } from "../errors";
-import { recordSettings } from "../site/settings-records";
+import { changeSettings, recordSettings } from "../site/settings-records";
 import type {
   DeployAccount,
   DeployConfig,
@@ -44,6 +44,7 @@ import { defaultProjectName, projectNameProblem } from "./names";
 import { builtInTargets } from "./registry";
 import { buildForDeploy, publishedCommit, versionsBetween } from "./source";
 import { requireHostname } from "./domains";
+import { currentAccountAuthor } from "../workspace/author";
 import type { DeployContext, DeployTarget, DomainInput } from "./types";
 
 export interface DeployServiceOptions {
@@ -214,13 +215,25 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
   }
 
   async function writeDeployConfig(site: SiteService, next: DeployConfig | null, extra: (config: GalleyConfig) => GalleyConfig = (config) => config): Promise<void> {
-    const current = (await site.readConfig()) ?? {};
-    const { deploy: _old, ...rest } = current;
+    // On top of the settings as they are, and only over the version that was read.
+    await changeSettings(site, (current) => {
+      const { deploy: _old, ...rest } = current;
 
-    await site.saveConfig(extra(next ? { ...rest, deploy: next } : rest));
+      return extra(next ? { ...rest, deploy: next } : rest);
+    });
   }
 
+  /**
+   * Who put this online. On an install with accounts it is the signed-in
+   * person (their e-mail address until they have chosen a name), never the
+   * app's publishing name, which is someone else's. Outside a person's request
+   * (local mode, a script's token, publishing that goes live by itself for
+   * nobody in particular) it is the app's publishing name, as before.
+   */
   async function who(): Promise<string | undefined> {
+    const person = currentAccountAuthor()?.name.trim();
+
+    if (person) return person;
     try {
       const name = (await options.settings.get()).author.name.trim();
 

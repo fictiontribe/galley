@@ -32,7 +32,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { readlinkSync } from "node:fs";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { link, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join, resolve } from "node:path";
 import { GalleyError } from "../errors";
@@ -61,6 +61,12 @@ export interface HoldOptions {
   watchMs?: number;
   /** One plain line for whoever runs the server. */
   log?: (line: string) => void;
+  /**
+   * Called once, when a refresh finds the hold is another server's (`by`: as
+   * that server wrote it, in words). The folder is no longer this server's
+   * to write to: whoever holds it stops, so the two never write over each other.
+   */
+  onLost?: (by: string) => void;
 }
 
 export interface DataFolderHold {
@@ -105,6 +111,47 @@ function parse(raw: string): ServerLock | null {
       : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Writes the hold whole or not at all: first beside it, then into place in
+ * one step. Whoever reads the hold never finds half of one, and a write that
+ * fails (a full disk, a volume that went away for a moment) leaves the hold
+ * that was there. `only-new`: only where there is none yet; false when
+ * someone else got there first.
+ */
+async function put(home: string, text: string, how: "over" | "only-new"): Promise<boolean> {
+  const file = lockFile(home);
+  // Ends in .tmp: a backup leaves such files out, should one ever be left behind.
+  const beside = `${file}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
+
+  try {
+    await writeFile(beside, text, { mode: 0o600, flag: "wx" });
+    if (how === "over") {
+      await rename(beside, file);
+      return true;
+    }
+    try {
+      // A link fails when the name is taken, which a rename would not.
+      await link(beside, file);
+      return true;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+
+      if (code === "EEXIST") return false;
+      if (code !== "EPERM" && code !== "ENOTSUP" && code !== "EOPNOTSUPP" && code !== "ENOSYS") throw error;
+    }
+    // A file system that has no links: made in place, still only where there is none.
+    try {
+      await writeFile(file, text, { mode: 0o600, flag: "wx" });
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
+      throw error;
+    }
+  } finally {
+    await rm(beside, { force: true }).catch(() => undefined);
   }
 }
 
@@ -186,20 +233,14 @@ export async function holdDataFolder(home: string, port: number | null, options:
   }
 
   /** Writes the hold where there is none. False when someone else got there first. */
-  async function create(): Promise<boolean> {
-    try {
-      await writeFile(lockFile(home), text(), { mode: 0o600, flag: "wx" });
-      return true;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
-      throw error;
-    }
+  function create(): Promise<boolean> {
+    return put(home, text(), "only-new");
   }
 
   /** Puts this hold in place of a stale one — unless the file changed since `seen`, or someone else replaced it at the same moment. */
   async function replace(seen: string): Promise<boolean> {
     if ((await look(home)).raw !== seen) return false;
-    await writeFile(lockFile(home), text(), { mode: 0o600 });
+    await put(home, text(), "over");
     // Two servers that both found the same stale hold: the later write stands, and the earlier one sees it here.
     await pause(Math.min(250, Math.max(10, Math.round(beatMs / 10))));
     return (await look(home)).lock?.id === mine.id;
@@ -247,6 +288,7 @@ export async function holdDataFolder(home: string, port: number | null, options:
   let stopped = false;
   let lost = false;
   let saidUnwritable = false;
+  let saidDamaged = false;
   /** One write at a time: a beat and the port can't land half over each other. */
   let writing: Promise<void> = Promise.resolve();
   const inTurn = (work: () => Promise<void>) => (writing = writing.then(work, work));
@@ -256,19 +298,30 @@ export async function holdDataFolder(home: string, port: number | null, options:
     try {
       const current = await look(home);
 
-      if (current.raw === null) {
-        // Removed by hand while this server runs: nobody else holds the folder, so the hold goes back.
-        next();
-        if (await create()) return;
-      } else if (current.lock?.id === mine.id) {
-        next();
-        await writeFile(lockFile(home), text(), { mode: 0o600 });
-        saidUnwritable = false;
+      // Only a hold that can be read, and names another server, means the folder is someone else's now.
+      if (current.lock !== null && current.lock.id !== mine.id) {
+        lost = true;
+        clearInterval(timer);
+        const by = describe(current.lock);
+
+        log(`Another server has taken this data folder${by} while this one was running.`);
+        options.onLost?.(by);
         return;
       }
-      lost = true;
-      clearInterval(timer);
-      log(`Another server has taken this data folder${describe((await look(home)).lock)} while this one is still running. Stop one of them: two servers on one data folder write over each other.`);
+      next();
+      if (current.raw === null) {
+        // Removed by hand while this server runs: nobody else holds the folder, so the hold goes back. Should another
+        // server take the folder in the same moment, its hold is what the next refresh finds.
+        await create();
+      } else {
+        // A file that is there but is no hold is what a write that didn't finish leaves, not another server: said once, and written whole again.
+        if (current.lock === null && !saidDamaged) {
+          saidDamaged = true;
+          log("This server couldn't refresh its hold on the data folder: the hold file was damaged (a write to it didn't finish). It has been written again.");
+        }
+        await put(home, text(), "over");
+      }
+      saidUnwritable = false;
     } catch (error) {
       // Said once, tried again at the next beat: a hold that stops changing looks abandoned to another server.
       if (!saidUnwritable) log(`This server couldn't refresh its hold on the data folder: ${error instanceof Error ? error.message : String(error)}`);

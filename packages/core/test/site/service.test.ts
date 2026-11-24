@@ -455,6 +455,45 @@ describe("files", () => {
 });
 
 describe("checkpoints", () => {
+  it("another person's save to another page, under way at the same time, is not the turn's", async () => {
+    const root = makeSite();
+    const { site } = await openSite(root);
+    const home = read(root, HOME);
+    const checkpoint = site.checkpoint("assistant turn");
+    // Both in flight together, each through its own page's lock.
+    const turn = checkpoint.run(async () => {
+      await site.updateEntry(HOME, [{ op: "set", path: ["title"], value: "By the assistant" }], { origin: "agent" });
+      await site.updateEntry(HOME, [{ op: "set", path: ["description"], value: "And again." }], { origin: "agent" });
+    });
+    const other = site.updateEntry(PRICING, [{ op: "set", path: ["title"], value: "Fees, by someone else" }]);
+
+    await Promise.all([turn, other]);
+    checkpoint.close();
+    expect(checkpoint.paths()).toEqual([HOME]);
+    expect(await checkpoint.restore()).toEqual([HOME]);
+    expect(checkpoint.left()).toEqual([]);
+    expect(read(root, HOME)).toBe(home);
+    expect(read(root, PRICING)).toContain("Fees, by someone else");
+  });
+
+  it("another person's save to the same page, waiting behind the turn's on that page, is kept: the page is left and named", async () => {
+    const root = makeSite();
+    const { site } = await openSite(root);
+    const checkpoint = site.checkpoint("assistant turn");
+    // Asked for in the same moment: the page's lock takes the turn's edit first, and the other person's is made on top of it.
+    const turn = checkpoint.run(() => site.updateEntry(HOME, [{ op: "set", path: ["title"], value: "By the assistant" }], { origin: "agent" }));
+    const other = site.updateEntry(HOME, [{ op: "set", path: ["description"], value: "By someone else." }]);
+
+    await Promise.all([turn, other]);
+    checkpoint.close();
+    expect(checkpoint.paths()).toEqual([HOME]);
+    expect(await checkpoint.restore()).toEqual([]);
+    expect(checkpoint.left()).toEqual([HOME]);
+    expect(read(root, HOME)).toContain("By the assistant");
+    expect(read(root, HOME)).toContain("By someone else.");
+    expect((await site.changes()).files.map((file) => file.path)).toEqual([HOME]);
+  });
+
   it("restores only the edits made while the checkpoint was open", async () => {
     const root = makeSite();
     const { site } = await openSite(root);

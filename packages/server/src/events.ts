@@ -1,7 +1,6 @@
 import type { Context } from "hono";
 import { VERSION } from "@galley/core/brand";
 import type { EventBus, ServerEvent } from "@galley/core/types";
-import { RateLimitError } from "./errors";
 import type { StreamRegistry } from "./types";
 
 export const HEARTBEAT_MS = 20_000;
@@ -9,29 +8,44 @@ export const HEARTBEAT_MS = 20_000;
 export const MAX_QUEUED_BYTES = 1024 * 1024;
 /** Open streams one identity may have where they are counted (a hosted install): a window of the editor is one. */
 export const MAX_STREAMS_PER_ACCOUNT = 16;
+/** How often, at most, one identity's streams are all ended to find the ones nobody is reading any more. */
+export const STREAM_SWEEP_MS = 10 * 60_000;
+/** How long a browser told its account has too many streams waits before it asks again. */
+export const STREAM_LIMIT_RETRY_MS = 30_000;
 
 export function createStreamRegistry(): StreamRegistry {
   const open = new Set<() => void>();
-  const owned = new Map<string, number>();
+  const owned = new Map<string, Set<() => void>>();
+  const swept = new Map<string, number>();
 
   return {
     add(close, owner) {
-      let counted = owner !== undefined;
-
       open.add(close);
-      if (owner !== undefined) owned.set(owner, (owned.get(owner) ?? 0) + 1);
+      if (owner !== undefined) {
+        const mine = owned.get(owner) ?? new Set<() => void>();
+
+        mine.add(close);
+        owned.set(owner, mine);
+      }
       return () => {
         open.delete(close);
-        if (owner === undefined || !counted) return;
-        counted = false;
-        const left = (owned.get(owner) ?? 1) - 1;
+        if (owner === undefined) return;
+        const mine = owned.get(owner);
 
-        if (left > 0) owned.set(owner, left);
-        else owned.delete(owner);
+        mine?.delete(close);
+        if (mine?.size === 0) owned.delete(owner);
       };
     },
     count(owner) {
-      return owned.get(owner) ?? 0;
+      return owned.get(owner)?.size ?? 0;
+    },
+    sweep(owner, everyMs, now = Date.now()) {
+      const last = swept.get(owner);
+
+      if (last !== undefined && now - last < everyMs) return false;
+      swept.set(owner, now);
+      for (const close of [...(owned.get(owner) ?? [])]) close();
+      return true;
     },
     closeAll() {
       for (const close of [...open]) close();
@@ -65,6 +79,27 @@ export interface StreamLimits {
   refusal?: string;
   maxStreams?: number;
   maxQueuedBytes?: number;
+  /** How often, at most, the identity's streams are all ended to make room (default STREAM_SWEEP_MS). */
+  sweepEveryMs?: number;
+}
+
+const STREAM_HEADERS = {
+  "content-type": "text/event-stream; charset=utf-8",
+  "cache-control": "no-cache, no-transform",
+  connection: "keep-alive",
+  "x-accel-buffering": "no",
+};
+
+/**
+ * What an identity with every stream it may have is answered: one event
+ * that says so, and the end of the stream. A stream and not an error
+ * status, because a browser's EventSource can't read the words of a
+ * refusal and would only say it lost the connection.
+ */
+function limitStream(message: string): Response {
+  const event: ServerEvent = { type: "stream.limit", message };
+
+  return new Response(`retry: ${STREAM_LIMIT_RETRY_MS}\ndata: ${JSON.stringify(event)}\n\n`, { status: 200, headers: STREAM_HEADERS });
 }
 
 /**
@@ -76,25 +111,39 @@ export interface StreamLimits {
  */
 export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, heartbeatMs = HEARTBEAT_MS, access?: StreamAccess, limits: StreamLimits = {}): Response {
   const max = limits.maxStreams ?? MAX_STREAMS_PER_ACCOUNT;
+  const bound = limits.maxQueuedBytes ?? MAX_QUEUED_BYTES;
 
-  if (limits.owner !== undefined && streams.count(limits.owner) >= max) throw new RateLimitError(limits.refusal ?? `Too many event streams are open: ${max} is the limit. Close one of the others first.`);
+  // As many open as this identity may have. Some may be windows that went without a word (a laptop closed, a connection
+  // dropped behind a proxy), which nothing here can tell from ones still reading. So, once in a while, all of them are
+  // ended: the windows still there connect again by themselves, and this one takes a place. Otherwise it is told.
+  if (limits.owner !== undefined && streams.count(limits.owner) >= max && !streams.sweep(limits.owner, limits.sweepEveryMs ?? STREAM_SWEEP_MS)) {
+    return limitStream(limits.refusal ?? `Too many event streams are open: ${max} is the limit. Close one of the others first.`);
+  }
   const encoder = new TextEncoder();
   let cleanup: (() => void) | null = null;
 
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
       let closed = false;
+      // Room given for one event that is larger than the bound by itself: a reader that keeps up is not let go for it.
+      let spare = 0;
       const send = (chunk: string) => {
         if (closed) return;
+        const bytes = encoder.encode(chunk);
+        const room = controller.desiredSize ?? 0;
+
+        // The reader has caught up since the large one.
+        if (room > 0) spare = 0;
         // This much unread already: the reader has stopped reading. It is let go rather than kept for without end, and its
         // connection is ended so what was waiting is freed. A browser connects again and reads everything afresh.
-        if ((controller.desiredSize ?? 0) <= 0) {
+        if (room + spare <= 0) {
           finish();
           (c.env as { outgoing?: { destroy(): void } } | undefined)?.outgoing?.destroy();
           return;
         }
+        if (bytes.byteLength > bound) spare = Math.max(spare, bytes.byteLength);
         try {
-          controller.enqueue(encoder.encode(chunk));
+          controller.enqueue(bytes);
         } catch {
           finish();
         }
@@ -140,15 +189,7 @@ export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, 
     cancel() {
       cleanup?.();
     },
-  }, new ByteLengthQueuingStrategy({ highWaterMark: limits.maxQueuedBytes ?? MAX_QUEUED_BYTES }));
+  }, new ByteLengthQueuingStrategy({ highWaterMark: bound }));
 
-  return new Response(body, {
-    status: 200,
-    headers: {
-      "content-type": "text/event-stream; charset=utf-8",
-      "cache-control": "no-cache, no-transform",
-      connection: "keep-alive",
-      "x-accel-buffering": "no",
-    },
-  });
+  return new Response(body, { status: 200, headers: STREAM_HEADERS });
 }

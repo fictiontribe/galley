@@ -36,12 +36,16 @@ async function withTwoPeople(): Promise<Started & { owner: string; editor: strin
 }
 
 interface Stream {
-  status: number;
+  /** Let in, or told the account has too many open. */
+  let: boolean;
+  /** What the server said when it wasn't let in. */
   message: string | null;
+  /** Resolves when the server ends the stream. */
+  ended: Promise<void>;
   close(): void;
 }
 
-/** Opens a stream and waits for its first words (or its refusal). */
+/** Opens a stream and reads its first words: the hello, or the one event that says there are too many. */
 async function open(port: number, auth: { cookie?: string; bearer?: string }): Promise<Stream> {
   const controller = new AbortController();
   const response = await fetch(`http://127.0.0.1:${port}/api/events`, {
@@ -49,17 +53,24 @@ async function open(port: number, auth: { cookie?: string; bearer?: string }): P
     signal: controller.signal,
   });
 
-  if (response.status !== 200) {
-    const body = (await response.json()) as { error?: { message?: string } };
-
-    return { status: response.status, message: body.error?.message ?? null, close: () => undefined };
-  }
+  // A browser's event stream can't read an error's words: the limit is said in an event, on a stream.
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toMatch(/^text\/event-stream/);
   const reader = response.body!.getReader();
+  const first = Buffer.from((await reader.read()).value ?? new Uint8Array()).toString("utf8");
+  const event = JSON.parse(/^data: (.+)$/m.exec(first)?.[1] ?? "{}") as { type?: string; message?: string };
+  const ended = (async () => {
+    for (;;) {
+      const { done } = await reader.read().catch(() => ({ done: true }));
 
-  await reader.read();
+      if (done) return;
+    }
+  })();
+
   return {
-    status: 200,
-    message: null,
+    let: event.type === "hello",
+    message: event.type === "stream.limit" ? (event.message ?? null) : null,
+    ended,
     close: () => {
       void reader.cancel().catch(() => undefined);
       controller.abort();
@@ -68,24 +79,37 @@ async function open(port: number, auth: { cookie?: string; bearer?: string }): P
 }
 
 describe("event streams on a hosted install", () => {
-  it("gives each account so many streams, counts them apart, and gives a place back when one closes", async () => {
+  it("gives each account so many streams, counts them apart, says so in an event at the limit, and gives a place back when one closes", async () => {
     const { port, owner, editor } = await withTwoPeople();
-    const owners: Stream[] = [];
+    const first: Stream[] = [];
 
-    for (let n = 0; n < MAX_STREAMS_PER_ACCOUNT; n += 1) owners.push(await open(port, { cookie: owner }));
-    expect(owners.map((stream) => stream.status)).toEqual(owners.map(() => 200));
+    for (let n = 0; n < MAX_STREAMS_PER_ACCOUNT; n += 1) first.push(await open(port, { cookie: owner }));
+    expect(first.map((stream) => stream.let)).toEqual(first.map(() => true));
 
-    // One more on the same account is refused, in words a person can act on.
+    // One more. Some of the others may be windows that went without a word, so they are all ended (the ones still
+    // there would connect again by themselves) and this one is let in.
+    const newcomer = await open(port, { cookie: owner });
+
+    expect(newcomer.let).toBe(true);
+    await Promise.all(first.map((stream) => stream.ended));
+
+    // Up to the limit again with windows that are there. That was done a moment ago, so the next one is told.
+    const owners: Stream[] = [newcomer];
+
+    for (let n = 1; n < MAX_STREAMS_PER_ACCOUNT; n += 1) owners.push(await open(port, { cookie: owner }));
+    expect(owners.map((stream) => stream.let)).toEqual(owners.map(() => true));
     const over = await open(port, { cookie: owner });
 
-    expect(over.status).toBe(429);
+    expect(over.let).toBe(false);
     expect(over.message).toBe(TOO_MANY_WINDOWS);
     expect(TOO_MANY_WINDOWS).toContain(String(MAX_STREAMS_PER_ACCOUNT));
+    // One event, and the stream is over.
+    await over.ended;
 
     // Someone else's account is counted on its own.
     const eds = await open(port, { cookie: editor });
 
-    expect(eds.status).toBe(200);
+    expect(eds.let).toBe(true);
 
     // Closing one of the owner's gives the place back.
     owners.pop()!.close();
@@ -93,9 +117,9 @@ describe("event streams on a hosted install", () => {
 
     await until(async () => {
       again = await open(port, { cookie: owner });
-      return again.status === 200;
+      return again.let;
     });
-    expect(again!.status).toBe(200);
+    expect(again!.let).toBe(true);
     for (const stream of [...owners, eds, again!]) stream.close();
   }, 60_000);
 
@@ -103,14 +127,16 @@ describe("event streams on a hosted install", () => {
     const { port, owner } = await withTwoPeople();
     const scripts: Stream[] = [];
 
-    for (let n = 0; n < MAX_STREAMS_PER_ACCOUNT; n += 1) scripts.push(await open(port, { bearer: OPERATOR }));
+    // The limit, one more (which ends the others and is let in), and up to the limit again.
+    for (let n = 0; n < MAX_STREAMS_PER_ACCOUNT + 1; n += 1) scripts.push(await open(port, { bearer: OPERATOR }));
+    for (let n = 1; n < MAX_STREAMS_PER_ACCOUNT; n += 1) scripts.push(await open(port, { bearer: OPERATOR }));
     const over = await open(port, { bearer: OPERATOR });
 
-    expect(over.status).toBe(429);
+    expect(over.let).toBe(false);
     expect(over.message).toBe(TOO_MANY_TOKEN_STREAMS);
     const person = await open(port, { cookie: owner });
 
-    expect(person.status).toBe(200);
+    expect(person.let).toBe(true);
     for (const stream of [...scripts, person]) stream.close();
   }, 60_000);
 

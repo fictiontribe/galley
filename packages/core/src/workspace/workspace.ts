@@ -283,20 +283,46 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
   }
 
   const checkpoints = new CheckpointManager({
-    restoreFile: async (path, bytes, unchanged) => {
-      // Undo bypasses the mode (the turn may have run in build mode) but never
-      // containment or the hard deny-list.
-      const resolved = resolve(path);
-      const denied = deniedReason(resolved.path, "build") ?? deniedReason(resolved.realPath, "build");
+    restoreFiles: async (files) => {
+      const targets = files.map((file) => {
+        // Undo bypasses the mode (the turn may have run in build mode) but never
+        // containment or the hard deny-list.
+        const resolved = resolve(file.path);
+        const denied = deniedReason(resolved.path, "build") ?? deniedReason(resolved.realPath, "build");
 
-      if (denied) throw new GalleyError("forbidden", denied, path);
-      // Putting the settings file back is changing it, whoever's turn changed it first.
-      if (touchesSettings(resolved)) requireSiteSettings();
+        if (denied) throw new GalleyError("forbidden", denied, file.path);
+        // Putting the settings file back is changing it, whoever's turn changed it first.
+        if (touchesSettings(resolved)) requireSiteSettings();
+        return { ...file, resolved, absolute: join(realRoot, ...resolved.realPath.split("/")) };
+      });
+
       return lock(async () => {
-        // Asked here, with the write: a save that was waiting its turn ahead of this undo has landed by now.
-        if (!unchanged(await readIfExists(join(realRoot, ...resolved.realPath.split("/"))))) return false;
-        await applyWrite(resolved, bytes, {});
-        return true;
+        const held: Array<{ target: (typeof targets)[number]; current: Uint8Array | null }> = [];
+
+        // Asked here, with the writes: a save that was waiting its turn ahead of this undo has landed by now.
+        for (const target of targets) {
+          const current = await readIfExists(target.absolute);
+
+          if (!target.unchanged(current)) return [];
+          held.push({ target, current });
+        }
+        // A file put back before one taken away: when the second step fails, a moved page is there twice for a moment, never gone.
+        held.sort((a, b) => Number(a.target.bytes === null) - Number(b.target.bytes === null));
+        const done: typeof held = [];
+
+        try {
+          for (const step of held) {
+            await applyWrite(step.target.resolved, step.target.bytes, {});
+            done.push(step);
+          }
+        } catch {
+          // Together or not at all: what was already put back goes to what it held a moment ago. Whatever can't is reported as put back, because it is.
+          const stuck: string[] = [];
+
+          for (const step of done.reverse()) await applyWrite(step.target.resolved, step.current, {}).catch(() => stuck.push(step.target.path));
+          return stuck;
+        }
+        return held.map((step) => step.target.path);
       });
     },
     emitUndo: async (paths) => {
@@ -308,7 +334,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
         try {
           return touchesSettings(resolve(path));
         } catch {
-          // A path that no longer resolves is refused by restoreFile itself; here only its name counts.
+          // A path that no longer resolves is refused when it is put back; here only its name counts.
           return isSiteSettingsPath(path);
         }
       };

@@ -41,7 +41,15 @@ function OtherSitesItem() {
 }
 
 function ConnectionItem() {
-  const { state, retryIn } = useConnection();
+  const { state, retryIn, problem } = useConnection();
+  if (state === "limited") {
+    return (
+      <span className="g-statusbar__item app-status--offline" role="status" title={problem ?? undefined}>
+        <ProofMark kind="bang" />
+        Live updates paused — too many windows open
+      </span>
+    );
+  }
   if (state !== "down") return null;
   return (
     <span className="g-statusbar__item app-status--offline" role="status">

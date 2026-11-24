@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import type { ChatAttachment, ChatMessage, ChatOption, ToolActivity } from "@galley/core/types";
 import { api, errorShape, rawFileUrl } from "@/lib/api";
 import { count } from "@/lib/format";
+import { useMayBuild } from "@/lib/may";
 import { useNameOf } from "@/lib/names";
 import { Button, ProofMark } from "@/ui";
 import { Markdown } from "./Markdown";
 import { activityKind } from "./threadState";
-import { undoneNote } from "./undone";
+import { undoneNote, undoRefusal } from "./undone";
 
 function Activity({ tool }: { tool: ToolActivity }) {
   const kind = activityKind(tool);
@@ -44,6 +45,8 @@ function Thumbnails({ siteId, attachments }: { siteId: string; attachments: Chat
 function TurnActions({ siteId, threadId, message }: { siteId: string; threadId: string; message: ChatMessage }) {
   const navigate = useNavigate();
   const nameOf = useNameOf();
+  // Not offered where it would be refused: the reason stands in the button's place.
+  const refusal = undoRefusal(message, useMayBuild());
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const changed = message.changedPaths ?? [];
@@ -53,7 +56,13 @@ function TurnActions({ siteId, threadId, message }: { siteId: string; threadId: 
     const note = (
       <p className="chat-turn__note">
         <ProofMark kind={left.length ? "bang" : "stet"} />
-        <span>{undoneNote(changed.length, left.map((path) => nameOf({ path })))}</span>
+        <span>
+          {undoneNote(
+            left.map((path) => nameOf({ path })),
+            // A page it left may be one the reply wrote too late to be counted among its changes.
+            changed.some((path) => !left.includes(path)),
+          )}
+        </span>
       </p>
     );
     if (left.length === 0) return note;
@@ -85,10 +94,18 @@ function TurnActions({ siteId, threadId, message }: { siteId: string; threadId: 
         <Button size="sm" variant="secondary" icon="proof" onClick={() => navigate(`/sites/${siteId}/proof?path=${encodeURIComponent(changed[0] ?? "")}`)}>
           Review in Proof
         </Button>
-        <Button size="sm" variant="quiet" icon="undo" busy={busy} busyLabel="Undoing" onClick={() => void undo()}>
-          {changed.length === 1 ? "Undo this change" : `Undo these ${count(changed.length, "change")}`}
-        </Button>
+        {refusal ? null : (
+          <Button size="sm" variant="quiet" icon="undo" busy={busy} busyLabel="Undoing" onClick={() => void undo()}>
+            {changed.length === 1 ? "Undo this change" : `Undo these ${count(changed.length, "change")}`}
+          </Button>
+        )}
       </div>
+      {refusal ? (
+        <p className="chat-turn__note">
+          <ProofMark kind="bang" />
+          <span>{refusal}</span>
+        </p>
+      ) : null}
       {problem ? (
         <p className="g-error-text" role="alert">
           <ProofMark kind="bang" />

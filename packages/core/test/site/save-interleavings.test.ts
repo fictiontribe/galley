@@ -19,6 +19,7 @@ import type { ToolContext } from "../../src/ai/tools/types";
 import type { AgentMode } from "../../src/types";
 import { hashContent } from "../../src/workspace/index";
 import type { OpenSite } from "../../src/site/service";
+import { changeSettings, readSettings } from "../../src/site/settings-records";
 import { addBareRemote, cleanupAll, disposeAll, HOME, makeSite, openSite, POST, PRICING, sh, tempDir, until } from "./helpers";
 
 const GIT_HEAVY = { timeout: 180_000 };
@@ -335,6 +336,85 @@ describe("the site's settings file", GIT_HEAVY, () => {
     await tool(ctx, "read_file", { path: SETTINGS });
     expect((await tool(ctx, "save_site_config", { config: { ...config, name: "The assistant's" } })).error).toBe(false);
     expect(read(root, SETTINGS)).toContain("The assistant's");
+  });
+});
+
+describe("the assistant's delete, and a file it can't read", GIT_HEAVY, () => {
+  it("deletes an entry it has read only as it read it, and is told plainly about a file that can never be read", async () => {
+    const root = makeSite();
+    const { site: open } = await openSite(root);
+    const model = await open.model();
+    const content = toolContext(open, model, "content", new Map());
+
+    // Read, then changed by someone else (newer versions came in, a person saved): not deleted as it now is.
+    expect((await tool(content, "read_entry", { path: POST })).error).toBe(false);
+    const theirs = versionOf(read(root, POST), POST, "Theirs");
+
+    writeFileSync(join(root, POST), theirs);
+    const refused = await tool(content, "delete_entry", { path: POST });
+
+    expect(refused).toMatchObject({ error: true, text: "The entry changed after you read it, so it wasn't deleted. Read it again with read_entry, and delete it only if that is still what the person wants." });
+    expect(read(root, POST)).toBe(theirs);
+    // Read again, it goes; and it is forgotten with it, so a new entry of that name was never read.
+    await tool(content, "read_entry", { path: POST });
+    expect((await tool(content, "delete_entry", { path: POST })).error).toBe(false);
+    expect(existsSync(join(root, POST))).toBe(false);
+    writeFileSync(join(root, POST), theirs);
+    expect((await tool(content, "update_entry", { path: POST, ops: [{ op: "set", path: "title", value: "Blind" }] })).text).toContain("You haven't read this entry in this conversation");
+    // An entry it never read is deleted as asked: nothing it wrote was made from an older reading.
+    expect((await tool(content, "delete_entry", { path: OTHER_POST })).error).toBe(false);
+    expect(existsSync(join(root, OTHER_POST))).toBe(false);
+    // The engine's own check, for any caller that names a version.
+    await expect(open.deleteEntry(PRICING, { baseHash: "0000000000000000" })).rejects.toMatchObject({ code: "conflict", status: 409 });
+    expect(existsSync(join(root, PRICING))).toBe(true);
+
+    // A picture that is already there can't be read, so "read it first" could never be done: said as it is.
+    const build = toolContext(open, model, "build", new Map());
+    const picture = "public/images/share.png";
+    const bytes = readFileSync(join(root, picture));
+    const unreadable = await tool(build, "write_file", { path: picture, content: "not a picture\n" });
+
+    expect(unreadable).toMatchObject({ error: true, text: expect.stringMatching(/^That file is already there and it isn't text \(a picture, a font or another kind of file\), so it can't be read and write_file doesn't replace it\./) });
+    expect(unreadable.text).not.toContain("Read it");
+    expect(readFileSync(join(root, picture)).equals(bytes)).toBe(true);
+    // A new file beside it is made as before.
+    expect((await tool(build, "write_file", { path: "public/images/note.txt", content: "a note\n" })).error).toBe(false);
+  });
+});
+
+describe("settings changed on top of what is there", GIT_HEAVY, () => {
+  it("a key someone else set between the read and the save is not set back", async () => {
+    const root = makeSite();
+    const { site: open } = await openSite(root);
+    let meddled = false;
+    // The site as a service holds it, with someone else saving the settings just after they are read.
+    const meddling = new Proxy(open, {
+      get(target, key) {
+        if (key === "readConfig") {
+          return async () => {
+            const config = await target.readConfig();
+
+            if (!meddled) {
+              meddled = true;
+              await target.saveConfig({ ...config, name: "Set by someone else" });
+            }
+            return config;
+          };
+        }
+        const value = Reflect.get(target, key) as unknown;
+
+        return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : value;
+      },
+    });
+
+    await changeSettings(meddling, (current) => ({ ...current, urls: { ...current.urls, production: "https://www.example.com" } }));
+    expect(await open.readConfig()).toMatchObject({ name: "Set by someone else", urls: { production: "https://www.example.com" } });
+    // Nothing to change: nothing is written.
+    const before = read(root, "galley.config.json");
+
+    expect(await changeSettings(open, () => null)).toBeNull();
+    expect(read(root, "galley.config.json")).toBe(before);
+    expect(await readSettings(open)).toEqual({ config: await open.readConfig(), hash: hashOf(root, "galley.config.json") });
   });
 });
 

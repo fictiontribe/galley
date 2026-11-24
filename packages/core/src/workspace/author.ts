@@ -15,6 +15,7 @@
  * setting still beats whatever the computer happens to be configured with.
  */
 import { AsyncLocalStorage } from "node:async_hooks";
+import { tidyName } from "../install/names";
 
 export type AuthorSource = "account" | "site" | "repository" | "app" | "machine" | "default";
 
@@ -35,8 +36,9 @@ export interface AuthorLayers {
 
 export const DEFAULT_AUTHOR: Identity = { name: "Site editor", email: "site-editor@localhost" };
 
-const complete = (identity: Partial<Identity> | null | undefined): identity is Identity => Boolean(identity?.name?.trim() && identity.email?.trim());
-const clean = (identity: Identity): Identity => ({ name: identity.name.trim(), email: identity.email.trim() });
+// A publishing name is shown beside every version it made: kept, like a person's name, without what nobody sees (install/names.ts).
+const complete = (identity: Partial<Identity> | null | undefined): identity is Identity => Boolean(tidyName(identity?.name ?? "") && identity?.email?.trim());
+const clean = (identity: Identity): Identity => ({ name: tidyName(identity.name), email: identity.email.trim() });
 
 export function chooseAuthor(layers: { site?: Partial<Identity> | null; repository?: Partial<Identity> | null; app?: Partial<Identity> | null; machine?: Partial<Identity> | null }): ChosenAuthor {
   for (const from of ["site", "repository", "app", "machine"] as const) {
@@ -53,11 +55,18 @@ const accountAuthor = new AsyncLocalStorage<Identity>();
  * Runs `run` as the signed-in person: everything it records in a repository
  * — a publish, undoing one, the work it starts that outlives the request —
  * carries their name and e-mail. Like the site's scope (site/scope.ts) it
- * follows the asynchronous work, so no id has to be threaded through. An
- * incomplete identity (no e-mail yet) changes nothing.
+ * follows the asynchronous work, so no id has to be threaded through.
+ *
+ * Someone with an e-mail and no name yet is still themselves: their e-mail
+ * address stands in for the name, so nothing they record falls back to the
+ * site's author, the repository's or the app's, which are other people's
+ * names. An identity with no e-mail (the owner of an install from before
+ * accounts) changes nothing, as before.
  */
 export function withAccountAuthor<T>(identity: Partial<Identity> | null, run: () => T): T {
-  return complete(identity) ? accountAuthor.run(clean(identity), run) : run();
+  const email = identity?.email?.trim() ?? "";
+
+  return email ? accountAuthor.run({ name: tidyName(identity?.name ?? "") || email, email }, run) : run();
 }
 
 /** Runs `run` as nobody's work: what it records later falls back to the site's, the repository's or the app's author. */

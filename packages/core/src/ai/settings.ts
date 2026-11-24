@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
 import { GalleyError } from "../errors";
+import { tidyName } from "../install/names";
 import type { Effort, SecretName, SecretStatus, Settings, SettingsPatch, SettingsService, UsageSummary } from "../types";
 import { rememberSecret } from "./errors";
 import { builtinImageHandles } from "../plugins/defaults";
@@ -90,7 +91,12 @@ export function createSettingsService(options: SettingsServiceOptions): GalleySe
     try {
       const parsed = StoredSettings.safeParse(JSON.parse(await readFile(file, "utf8")));
 
-      return parsed.success ? parsed.data : {};
+      if (!parsed.success) return {};
+      const data = parsed.data;
+
+      // A publishing name saved before names were tidied: cleaned as it is read (install/names.ts).
+      if (typeof data.author?.name === "string") data.author = { ...data.author, name: tidyName(data.author.name) };
+      return data;
     } catch {
       return {};
     }
@@ -258,7 +264,7 @@ export function createSettingsService(options: SettingsServiceOptions): GalleySe
           ...(patch.videos || data.videos ? { videos: { ...data.videos, ...definedOnly(patch.videos) } } : {}),
           author: {
             ...data.author,
-            ...definedOnly({ name: patch.author?.name?.trim(), email: patch.author?.email?.trim() }),
+            ...definedOnly({ name: patch.author?.name === undefined ? undefined : tidyName(patch.author.name), email: patch.author?.email?.trim() }),
           },
           appearance: { ...data.appearance, ...definedOnly(patch.appearance) },
           ...(patch.previews || data.previews ? { previews: { ...data.previews, ...definedOnly(patch.previews) } } : {}),
@@ -355,7 +361,7 @@ export function createSettingsService(options: SettingsServiceOptions): GalleySe
     async setSiteAuthor(siteId, author) {
       if (!isSiteId(siteId)) throw new GalleyError("not-found", "That site isn't in the list.", siteId);
       if (author) {
-        const name = author.name.trim();
+        const name = tidyName(author.name);
         const email = author.email.trim();
 
         if (!name || name.length > 200) throw new GalleyError("invalid", "Give the author a name of up to 200 characters.");

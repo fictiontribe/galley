@@ -336,6 +336,13 @@ function introspectForm(provider: string, settings: { [key: string]: unknown }):
 }
 const num = (value: string | undefined) => (value === undefined || value === "" ? undefined : Number(value));
 
+/** The settings file's version, made as a file's is when it is read here (null: the site has no settings file). */
+function settingsVersion(site: { read(path: string): Buffer | null }): string | null {
+  const bytes = site.read("galley.config.json");
+
+  return bytes ? bytes.toString("base64").slice(-16) : null;
+}
+
 /** Every route in ApiRoutes, answered from memory. */
 export function createHandlers(mock: MockBackend): Handlers {
   const author = () => mock.settings.author;
@@ -499,10 +506,13 @@ export function createHandlers(mock: MockBackend): Handlers {
     },
     "GET /api/sites/:siteId/config": ({ params }) => {
       const site = mock.site(params.siteId);
-      return { config: site.config, detected: site.detectedModel() };
+      return { config: site.config, detected: site.detectedModel(), hash: settingsVersion(site) };
     },
     "PUT /api/sites/:siteId/config": ({ params, body }) => {
       const site = mock.site(params.siteId);
+      if (body.baseHash && settingsVersion(site) !== body.baseHash) {
+        throw new MockError("conflict", "The site’s settings changed since they were opened, so nothing was saved. Open them again, then make the change again.");
+      }
       site.config = body.config;
       site.write("galley.config.json", Buffer.from(`${JSON.stringify(body.config, null, 2)}\n`));
       mock.emit({ type: "site.updated", siteId: site.id });
@@ -779,7 +789,7 @@ export function createHandlers(mock: MockBackend): Handlers {
       const site = mock.site(params.siteId);
       const thread = mock.threads.get(params.siteId)?.find((t) => t.id === params.threadId);
       if (!thread) throw new MockError("not-found", "That conversation was deleted.");
-      return { restored: undoTurn(mock, site, thread, body.turnId), left: [] };
+      return undoTurn(mock, site, thread, body.turnId);
     },
   };
 }

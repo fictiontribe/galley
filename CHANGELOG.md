@@ -109,18 +109,37 @@ entry says how.
   started without a word. After a server that didn't stop cleanly, the next
   start takes the folder over: at once when that server's process is gone
   on the same machine, otherwise after watching its hold for about 20
-  seconds. Local mode and the desktop app take no hold.
+  seconds. A running server that finds another server's hold on its folder
+  stops by itself: it answers nobody, writes nothing more to the folder,
+  says why, and `galley serve` exits 1. The hold is written whole or not at
+  all, so a write that fails (a full disk) leaves the hold that was there,
+  and a hold file that can't be read is written again, never taken for
+  another server's. Local mode and the desktop app take no hold.
 - **Names say who someone is.** A person's name is kept without characters
   a reader can't see (the controls that reorder text, characters with no
   width, blank fillers), and a name that reads as someone else's on the same
   editor — in another case or width, or with unseen characters in it — is
-  refused wherever a name is set. Names that were alike before stay until
-  one of them changes. Look-alike letters from different alphabets are not
-  caught.
+  refused wherever someone signed in sets a name. Someone accepting an
+  invitation with such a name is let in without it and asked to choose
+  one, so an invitation link says nothing about who is here. Until they
+  have, they can't publish, undo a publish, send or get the latest (*Choose
+  your name first…*), and anything they would record carries their e-mail
+  address in the name's place, never the install's publishing name. Names
+  saved
+  before are cleaned when they are read, and a publishing name (the
+  install's, App settings › You, a site's own author) is kept the same way.
+  Names that were alike before stay until one of them changes. Look-alike
+  letters from different alphabets are not caught.
 - **The event stream keeps to its readers.** On a hosted editor one account
   may hold 16 streams open (16 windows of the editor; the operator's token
-  counts as one identity) and the next is answered 429. A stream whose
-  reader has stopped reading is ended once 1 MB is waiting for it; the app
+  counts as one identity). One more is told so in a new event,
+  `stream.limit`, on a stream that then ends; the app shows it ("Live
+  updates paused — too many windows open") and asks again until a place is
+  free. At most once in 10 minutes the newcomer is let in instead and the
+  account's other streams are ended, so windows that went without a word (a
+  closed laptop) give up their place while the ones still there connect
+  again. A stream whose reader has stopped reading is ended once 1 MB is
+  waiting for it, not counting one event larger than that by itself; the app
   connects again and reads everything afresh, as after any drop.
 - **Version history tells the truth about the repository.** It looks when
   it opens, says "Checking the repository…" until it knows, and then says
@@ -137,11 +156,15 @@ entry says how.
   that store too when the copy has moved to another version since the
   preview started. Newer versions that change `package.json` or a lockfile
   make the next start install the site's packages first.
-- **Bringing newer versions in runs none of the repository's own hooks**
-  (Get latest and a hosted editor's round alike), and starts none of git's
-  background tidying. A hook that ran after a merge, to install packages
-  say, no longer runs here: the preview installs what newer versions need.
-  Publishing still runs the site's own checks.
+- **Bringing newer versions in runs none of the repository's own hooks**,
+  and starts none of git's background tidying. That is so wherever the app
+  runs: a hosted editor's own round, and **Get latest** when you press it
+  on your own computer or in the desktop app. A `post-merge` hook no longer
+  runs when versions come in through the app (it still does when you pull
+  in a terminal). The usual reason for one is covered: when the newer
+  versions change `package.json` or a lockfile, the preview installs the
+  site's packages before it starts again. Publishing still runs the site's
+  own checks.
 - **Get latest** no longer starts when it can already tell git would refuse:
   it says which files with unpublished changes the newer versions change.
 - **A quieter, more finished look, in the app and on the site.** Sheets rest
@@ -242,12 +265,20 @@ entry says how.
   worked out again from what is there now; an edit that said which version
   it had open is refused, as before, so the person reopens it. The same now
   holds for the redirects list and the host's redirects file, the site
-  kit's settings and the site's own settings file
-  (`SiteService.saveConfig` takes a `baseHash`).
+  kit's settings, the stylesheet a brand is applied to, and the site's own
+  settings file: Site settings, putting the site online and hosting the
+  editor each save their keys over the version they read, so a key someone
+  else changed in between is not set back. `SiteService.saveConfig` and
+  `deleteEntry` take a `baseHash`; `GET /api/sites/:siteId/config` answers
+  the file's `hash`, and `PUT` takes it back as `baseHash` (409 when the
+  file has changed since).
 - **The assistant changes only what it has read, as it read it.** It
   changes an entry, replaces a file or saves the site's configuration only
   if it has read it in the conversation and it is still that version;
-  otherwise nothing is changed and it reads again. Its edits are never
+  otherwise nothing is changed and it reads again. An entry it has read is
+  deleted only while it is still that version. A file that is already
+  there and can't be read as text (a picture, a font) is not replaced, and
+  the assistant is told so plainly. Its edits are never
   worked out again on newer text. What a conversation has read is
   remembered from one reply to the next, so versions that come in between
   two replies are not written over from the first one's reading. A hosted
@@ -286,6 +317,18 @@ entry says how.
   repository behind it, instead of "not connected yet". A temporary copy of
   the install's state file, left behind when the server was stopped in the
   middle of a write, is removed at the next start.
+- **Undo, in the cases that were left.** A change a reply made after it had
+  ended is no longer passed over in silence: it is left and named. A page
+  the reply moved goes back as a pair or stays as a pair, never the page
+  twice (two short pages that only share what every page starts with are
+  not taken for one). An undo that can't put a file back puts back the rest, names that
+  file and says what it put back, instead of stopping half-way. What is
+  made during a reply to serve everyone after (a site reopened, its
+  preview) is no part of the reply. Undoing a reply made in build mode
+  needs the level build mode needs: a contributor reads *Your account
+  can't undo this reply: it changed the site's code and templates (build
+  mode). Ask an owner or an editor of this editor.* in the Undo button's
+  place (a chat message gains `mode`).
 
 ## 0.3.1 — 2026-11-24
 

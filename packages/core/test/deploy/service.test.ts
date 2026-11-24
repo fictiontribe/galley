@@ -5,6 +5,7 @@
  * auto-deploy after publishing that can never fail the publish, and the
  * access key scrubbed from everything a person or a log could see.
  */
+import { withAccountAuthor } from "../../src/workspace/author";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
@@ -111,6 +112,21 @@ async function rig(root: string, options: { token?: string; secrets?: Partial<Re
 const page = (deployment: { files: Map<string, Buffer> } | undefined, path: string) => deployment?.files.get(path)?.toString();
 
 describe("deploying a site", () => {
+  it("records who put it online: the signed-in person, their e-mail address until they have a name, and the app's publishing name only for nobody's work", async () => {
+    const root = makeTinySite();
+    const { harness, deploy } = await rig(root);
+    const site = harness.site;
+
+    await deploy.configure(site, { target: "cloudflare", account: ACCOUNT, project: "lowfield-studio" });
+    const named = await withAccountAuthor({ name: "Ed Editor", email: "ed@example.com" }, () => deploy.run(site, { kind: "production" }));
+    const nameless = await withAccountAuthor({ name: "", email: "ed@example.com" }, () => deploy.run(site, { kind: "production" }));
+    const nobody = await deploy.run(site, { kind: "production" });
+
+    expect(named.who).toBe("Ed Editor");
+    expect(nameless.who).toBe("ed@example.com");
+    expect(nobody.who).toBe("Test Editor");
+  });
+
   it("first production deploy: builds the published version, uploads all of dist, records it and the live address", async () => {
     const root = makeTinySite();
     const { harness, deploy, jobs } = await rig(root);

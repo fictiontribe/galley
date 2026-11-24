@@ -30,6 +30,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { PRODUCT } from "../brand";
 import { GalleyError } from "../errors";
 import { withoutAccountAuthor } from "../workspace/author";
+import { outsideAnyCheckpoint } from "../workspace/checkpoint";
 import { roleMay, type AccessLevel, type AccountRole } from "./accounts";
 import { BUILD_MODE_LEVEL, ROLE_REFUSAL, SITE_SETTINGS_LEVEL } from "./route-access";
 
@@ -40,12 +41,23 @@ export interface Caller {
   role: AccountRole;
   /** The role now, read whenever access is checked. Null: the account was switched off or removed. */
   current?: () => AccountRole | null;
+  /**
+   * Whether the person has a name of their own to publish under, read when
+   * it is checked. False for an account with an e-mail and no name yet
+   * (accounts.ts `needsName`); absent: yes.
+   */
+  named?: () => boolean;
 }
 
 /** Said when someone without BUILD_MODE_LEVEL asks for build mode, whichever way they ask. */
 export const BUILD_MODE_REFUSAL = "Your account can change the site's content, but not its code and templates (build mode). Ask an owner or an editor of this editor.";
 /** Said when someone without SITE_SETTINGS_LEVEL would change the site's settings file, whichever way. */
 export const SITE_SETTINGS_REFUSAL = "Your account can't change the site's settings. Ask an owner of this editor.";
+
+/** Said when someone whose account has no name yet would publish, undo a publish, send or get the latest. */
+export const NAME_NEEDED_REFUSAL = "Choose your name first: your account has none yet, and each version carries the name of whoever published it.";
+/** The refusal's `detail`, so the app knows to ask for the name there and then. */
+export const NAME_NEEDED = "name-needed";
 
 /** Said, on a hosted install, when guarded work runs for nobody. */
 export const NO_CALLER_REFUSAL =
@@ -100,11 +112,12 @@ export function currentCaller(): Caller | null {
 
 /**
  * Runs `run` as nobody: neither this person's access nor their publishing
- * name. For what is made once during someone's request and serves everyone
- * after (an open site, its watcher, the preview).
+ * name, and no part of an assistant turn that happens to be under way
+ * (workspace/checkpoint.ts). For what is made once during someone's request
+ * and serves everyone after (an open site, its watcher, the preview).
  */
 export function outsideAnyPerson<T>(run: () => T): T {
-  return storage.run(null, () => withoutAccountAuthor(run));
+  return storage.run(null, () => withoutAccountAuthor(() => outsideAnyCheckpoint(run)));
 }
 
 /** Whether the work in progress may do what needs `level`: the role it began with and the role now must both allow it. */
@@ -130,6 +143,19 @@ export function requireLevel(level: AccessLevel, refusal: string = ROLE_REFUSAL)
 /** What a refusal says: `refusal` for a person; for work done for nobody (hosted), that it needs someone. */
 export function callerRefusal(refusal: string): string {
   return storage.getStore() ? refusal : NO_CALLER_REFUSAL;
+}
+
+/**
+ * Refuses publishing, undoing a publish, sending and getting the latest for
+ * a person whose account has no name yet. What they record would still be
+ * their own (workspace/author.ts puts their e-mail in the name's place),
+ * but a version is read by its name: they choose one first. Nobody, the
+ * operator and the engine are not people and pass.
+ */
+export function requireName(): void {
+  const scope = storage.getStore();
+
+  if (scope?.kind === "person" && scope.caller.named && !scope.caller.named()) throw new GalleyError("forbidden", NAME_NEEDED_REFUSAL, NAME_NEEDED);
 }
 
 export function requireBuildMode(): void {

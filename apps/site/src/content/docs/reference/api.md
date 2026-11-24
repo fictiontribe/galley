@@ -80,8 +80,8 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `GET /api/sites/:siteId` | The site, with its full model (detection merged with the config file). | — | `SiteDetail` | Any signed-in person |
 | `DELETE /api/sites/:siteId` | Forget the site, its own keys and author. Its files stay on disk. Refused on a hosted install. | — | `Ok` | Owners |
 | `POST /api/sites/:siteId/refresh` | Run detection again. | — | `SiteModel` | Any signed-in person |
-| `GET /api/sites/:siteId/config` | The site's `galley.config.json` (or `null`) and the model detection found before it. | — | `{ config, detected }` | Any signed-in person |
-| `PUT /api/sites/:siteId/config` | Replace `galley.config.json`. Validated; refused when invalid. | `{ config }` | `SiteModel` | Owners |
+| `GET /api/sites/:siteId/config` | The site's `galley.config.json` (or `null`) and the model detection found before it. | — | `{ config, detected, hash }` | Any signed-in person |
+| `PUT /api/sites/:siteId/config` | Replace `galley.config.json`. Validated; refused when invalid. | `{ config, baseHash? }` | `SiteModel` | Owners |
 
 ## Content
 
@@ -405,7 +405,7 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 
 ## Events
 
-`GET /api/events` is a Server-Sent Events stream: a `hello` event first, then every event as `data: <json>`, and a `: heartbeat` comment every 20 seconds. Event `type`s: `hello`, `chat.delta`, `chat.tool`, `chat.message`, `chat.done`, `chat.error`, `changes.updated`, `preview.status`, `site.updated`, `repository.checked`, `sites.updated`, `job`, `plugins.updated`, `themes.updated`, `forms.submission`. Their shapes are `ServerEvent` in [`packages/core/src/types.ts`]({repository}/blob/main/packages/core/src/types.ts). `changes.updated` carries its origin: `user`, `agent`, `external`, `publish`, `discard` or `undo`. On a hosted install one account (or the operator's token) may hold 16 streams open; the next is answered 429. A stream whose reader stops reading is ended once 1 MB is waiting for it: connect again and read what you need afresh.
+`GET /api/events` is a Server-Sent Events stream: a `hello` event first, then every event as `data: <json>`, and a `: heartbeat` comment every 20 seconds. Event `type`s: `hello`, `chat.delta`, `chat.tool`, `chat.message`, `chat.done`, `chat.error`, `changes.updated`, `preview.status`, `site.updated`, `repository.checked`, `sites.updated`, `job`, `plugins.updated`, `themes.updated`, `stream.limit`, `forms.submission`. Their shapes are `ServerEvent` in [`packages/core/src/types.ts`]({repository}/blob/main/packages/core/src/types.ts). `changes.updated` carries its origin: `user`, `agent`, `external`, `publish`, `discard` or `undo`. On a hosted install one account (or the operator's token) may hold 16 streams open. One more is answered with a stream that carries a single `stream.limit` event (its `message` says so in words) and ends; at most once in 10 minutes it is let in instead and the account's other streams are ended, so ones nobody reads any more give up their place. A stream whose reader stops reading is ended once 1 MB is waiting for it: connect again and read what you need afresh.
 
 ```sh
 curl -sN -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/events

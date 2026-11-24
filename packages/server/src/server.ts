@@ -430,10 +430,13 @@ async function bind(server: Server, config: ResolvedConfig, notice: (line: strin
   throw new StartupError("No free port was found.");
 }
 
+/** What a request is told once this server has stopped because another server took its data folder. */
+export const DISPLACED_MESSAGE = "This editor has stopped: another server is running on its data folder. Ask whoever runs this editor to start it again.";
+
 /** Takes the data folder for this server. Another server running on it, or a folder the hold can't be written to, stops the start in plain words. */
-async function takeDataFolder(config: ResolvedConfig, notice: (line: string) => void, beatMs: number | undefined): Promise<DataFolderHold> {
+async function takeDataFolder(config: ResolvedConfig, notice: (line: string) => void, beatMs: number | undefined, onLost: (by: string) => void): Promise<DataFolderHold> {
   try {
-    return await holdDataFolder(config.home, null, { log: notice, ...(beatMs !== undefined ? { beatMs } : {}) });
+    return await holdDataFolder(config.home, null, { log: notice, onLost, ...(beatMs !== undefined ? { beatMs } : {}) });
   } catch (error) {
     if (isGalleyError(error)) throw new StartupError(error.message);
     throw error;
@@ -509,7 +512,17 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   for (const warning of config.warnings) notice(warning);
   await mkdir(config.home, { recursive: true, mode: 0o700 });
   // Hosted: one server to a data folder. It is taken before anything in it is read or changed, and a start that can't take it stops here.
-  const hold = hosted ? await takeDataFolder(config, notice, options.holdBeatMs) : null;
+  // Set once another server is found to hold the folder (`displacedBy`: that server, in words). From then on this one writes nothing more to it.
+  let displacedBy: string | null = null;
+  let stopDisplaced: () => void = () => undefined;
+  let tellDisplaced: () => void = () => undefined;
+  const displaced = new Promise<void>((resolve) => (tellDisplaced = resolve));
+  const hold = hosted
+    ? await takeDataFolder(config, notice, options.holdBeatMs, (by) => {
+        displacedBy = by;
+        stopDisplaced();
+      })
+    : null;
   const release = async () => {
     await hold?.release();
   };
@@ -564,7 +577,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
       if (answerHealth(req, res, readiness)) return true;
       if (draining) {
         res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store", connection: "close" });
-        res.end(JSON.stringify({ error: { code: "busy", message: "This editor is stopping. Try again in a moment." } }));
+        res.end(JSON.stringify({ error: { code: "busy", message: displacedBy === null ? "This editor is stopping. Try again in a moment." : DISPLACED_MESSAGE } }));
         return true;
       }
       const started = performance.now();
@@ -825,7 +838,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     if (busy()) notice(`Stopping without waiting any longer: ${busyJobs.size > 0 ? [...new Set(busyJobs.values())].join(", ") : "a request"} still in progress after ${Math.round(ms / 1000)} s.`);
   }
 
-  return {
+  const running: RunningServer = {
     url,
     port,
     host: config.host,
@@ -834,6 +847,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     services,
     home: config.home,
     install,
+    displaced,
     setupUrl: setupCode ? `${url}/setup?token=${encodeURIComponent(setupCode)}` : null,
     passwordLink,
     notices,
@@ -849,7 +863,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     },
     close(closeOptions = {}) {
       closing ??= (async () => {
-        const grace = closeOptions.graceMs ?? config.shutdownGraceMs;
+        // Displaced: nothing is waited for. Whatever is still in progress would write to a folder that is another server's now.
+        const grace = displacedBy === null ? (closeOptions.graceMs ?? config.shutdownGraceMs) : 0;
         const deadline = Date.now() + grace;
 
         // No new connections, and new requests on open ones are told the editor is stopping.
@@ -883,7 +898,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         // The preview and its whole process group go with the sites.
         await services.registry.dispose();
         // Anything still being written to the state file is written before the process lets go of the folder.
-        await store?.update(() => undefined).catch(() => undefined);
+        if (displacedBy === null) await store?.update(() => undefined).catch(() => undefined);
         await release();
         setHostedMode(false);
         if (hosted) {
@@ -895,4 +910,22 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
       return closing;
     },
   };
+
+  /**
+   * Another server has taken the data folder (the hold's refresh found its
+   * hold there): two servers on one folder write over each other, so this
+   * one stops serving at once and says so. Whoever started it hears through
+   * `displaced` and ends the process.
+   */
+  stopDisplaced = () => {
+    draining = true;
+    notice(`This server has stopped: the data folder ${config.home} is another server's now${displacedBy ?? ""}, and two servers on one data folder write over each other. Stop the other one, or give this one a data folder of its own (GALLEY_HOME), then start it again.`);
+    void running
+      .close({ graceMs: 0 })
+      .catch(() => undefined)
+      .then(() => tellDisplaced());
+  };
+  // Lost while this server was still starting: stopped now that there is something to stop.
+  if (displacedBy !== null) stopDisplaced();
+  return running;
 }

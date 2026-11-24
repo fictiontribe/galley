@@ -25,6 +25,7 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { GalleyError } from "../errors";
+import { tidyName } from "../install/names";
 import type { SecretName, SiteConnections, SiteSecretConnection } from "../types";
 import { isSiteId } from "../site/scope";
 import { rememberSecret } from "./errors";
@@ -57,7 +58,7 @@ export function createSiteSettingsStore(home: string) {
   async function readAuthor(siteId: string): Promise<SiteAuthor | null> {
     try {
       const parsed = JSON.parse(await readFile(join(stateDir(home, siteId), "settings.json"), "utf8")) as { author?: Partial<SiteAuthor> };
-      const name = typeof parsed.author?.name === "string" ? parsed.author.name.trim() : "";
+      const name = typeof parsed.author?.name === "string" ? tidyName(parsed.author.name) : "";
       const email = typeof parsed.author?.email === "string" ? parsed.author.email.trim() : "";
 
       return name && email ? { name, email } : null;
