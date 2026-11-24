@@ -147,7 +147,7 @@ ships and the engine follows it:
 | Built-ins (Quiet, Plate, Desk) | ship with the app | ship with the app |
 | Community themes | bundled when the app was built | bundled when the app was built |
 | Saved for everyone here | `<home>/themes/<id>.json` | `<data folder>/themes/<id>.json` (people who can **manage**) |
-| Saved for me | — (one person: Save is for everyone) | this browser's storage (`galley.themes`), anyone signed in |
+| Saved for me | — (one person: Save is for everyone) | this browser's storage (`galley.themes`), anyone signed in; kept for that account only and forgotten on sign-out |
 | Added by plugins | installed plugins | installed plugins |
 | The theme a person sees | the default (App settings), one for the app | their own choice, kept in their browser; until they choose, the default |
 | The default | `settings.json` → `appearance.look` (a value that isn't a theme's id is ignored, and the rest of the file kept) | the same, set by people who can manage |

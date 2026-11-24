@@ -104,6 +104,15 @@ export function useLookOnPage(): void {
     };
   }, [look, shown]);
 
+  // A hosted account's own themes: another person signing in on this browser starts from the default, with none of them.
+  const account = useMeta((s) => s.meta?.account?.id ?? null);
+  useEffect(() => {
+    if (!account) return;
+    const before = useMyThemes.getState().account;
+    if (before !== null && before !== account) useUi.getState().setLook(null);
+    useMyThemes.getState().adopt(account);
+  }, [account]);
+
   useEffect(() => {
     const ui = useUi.getState();
     const next = lookFromServer(keeper, serverId, { look: ui.look, chosen: ui.lookChosen });

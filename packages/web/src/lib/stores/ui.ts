@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { isThemeId } from "@galley/core/themes";
 import type { ThemeSetting } from "../theme";
 
 export type { ThemeSetting } from "../theme";
@@ -73,6 +74,12 @@ export const useUi = create<UiStore>()(
       // Version 1 had no record of a choice. A theme other than the default
       // was somebody's choice (or the server's, which is the same thing to
       // the person), so it stays; the default keeps following the install.
+      // What was stored is read back only as far as it holds: a theme id that isn't one is no theme (the default), never a crash.
+      merge: (persisted, current) => {
+        const stored = (typeof persisted === "object" && persisted !== null ? persisted : {}) as Partial<UiStore>;
+        const look = isThemeId(stored.look) ? stored.look : null;
+        return { ...current, ...stored, look, lookChosen: look !== null && stored.lookChosen === true };
+      },
       migrate: (persisted, version) => {
         const state = (persisted ?? {}) as Partial<UiStore>;
         if (version < 2) return { ...state, themeChosen: state.theme !== undefined && state.theme !== "system" } as UiStore;
