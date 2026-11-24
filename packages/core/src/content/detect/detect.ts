@@ -11,7 +11,7 @@
  * inference, notes. Detection never throws because a file looked unusual or
  * an adapter misbehaved; what could not be read becomes a note.
  */
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename } from "node:path";
 
 import { PRODUCT } from "../../brand";
@@ -121,12 +121,60 @@ function gitInfo(root: string): { branch: string; remote: string | null } {
   return { branch: branch || "main", remote: remotes.includes("origin") ? "origin" : (remotes[0] ?? null) };
 }
 
+const IMAGE_FILE = /\.(png|jpe?g|gif|webp|avif|svg)$/i;
+
+/** How many image files a folder holds, looking a few levels down and stopping early in a big tree. */
+function countImages(root: string, path: string, depth = 3, budget = { left: 2000 }): number {
+  let entries;
+
+  try {
+    entries = readdirSync(absolute(root, path), { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+  let count = 0;
+
+  for (const entry of entries) {
+    if (budget.left-- <= 0) break;
+    if (entry.name.startsWith(".")) continue;
+    if (entry.isFile() && IMAGE_FILE.test(entry.name)) count++;
+    else if (entry.isDirectory() && depth > 1) count += countImages(root, `${path}/${entry.name}`, depth - 1, budget);
+  }
+
+  return count;
+}
+
+/**
+ * The public folder's subfolder holding the most images, for a site whose
+ * images folder has a name of its own (`public/imagery`); null when none does.
+ */
+function imagesFolderIn(root: string, publicDir: string): string | null {
+  let entries;
+
+  try {
+    entries = readdirSync(absolute(root, publicDir), { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  let best: { name: string; count: number } | null = null;
+
+  for (const entry of entries.filter((item) => item.isDirectory() && !item.name.startsWith(".")).sort((a, b) => a.name.localeCompare(b.name))) {
+    const count = countImages(root, `${publicDir}/${entry.name}`);
+
+    if (count > 0 && (!best || count > best.count)) best = { name: entry.name, count };
+  }
+
+  return best?.name ?? null;
+}
+
 /** An images folder under the public folder, plus the public folder itself served at "/". */
 function detectMedia(root: string, declaredPublicDir: string, override: AdapterConventions["media"]): MediaConfig {
   const publicDir = isDir(root, declaredPublicDir) ? declaredPublicDir : isDir(root, "public") ? "public" : declaredPublicDir;
   const prefix = publicDir === "." ? "" : `${publicDir}/`;
   const candidates = ["images", "img", "assets/images", "assets/img", "assets", "media", "uploads"];
-  const found = candidates.find((dir) => isDir(root, `${prefix}${dir}`)) ?? (publicDir === "." ? "assets/images" : "images");
+  const found =
+    candidates.find((dir) => isDir(root, `${prefix}${dir}`)) ??
+    (publicDir === "." ? "assets/images" : (imagesFolderIn(root, publicDir) ?? "images"));
   const dir = `${prefix}${found}`;
   const roots = [{ dir, publicPath: `/${found}` }];
 

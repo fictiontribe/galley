@@ -11,7 +11,7 @@ This page is for developers. Galley's media library is the image files in your r
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `media.dir` | the first of `images`, `img`, `assets/images`, `assets/img`, `assets`, `media`, `uploads` inside the public folder; else `<public>/images` | Where uploads and generated images are saved, relative to the site root. |
+| `media.dir` | the first of `images`, `img`, `assets/images`, `assets/img`, `assets`, `media`, `uploads` inside the public folder; else the public folder's subfolder holding the most images (`public/imagery`); else `<public>/images` | Where uploads and generated images are saved, relative to the site root. |
 | `media.publicPath` | `media.dir` without its first segment: `public/images` → `/images` | The URL prefix that folder is served from. |
 | `media.roots` | `media.dir`, and the whole public folder at `/` | Every folder the library lists, each `{ "dir", "publicPath" }`. `media.dir` is always included. |
 

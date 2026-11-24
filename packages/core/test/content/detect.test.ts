@@ -140,6 +140,38 @@ describe("detectSite on other kinds of folder", () => {
     expect(model.notes.some((note) => /builds `collections` with code/.test(note))).toBe(true);
   });
 
+  it("saves new images in the public folder's own images folder when it has another name", async () => {
+    const root = join(scratch, "imagery");
+
+    mkdirSync(join(root, "public/imagery/team"), { recursive: true });
+    mkdirSync(join(root, "public/fonts"), { recursive: true });
+    mkdirSync(join(root, "public/icons"), { recursive: true });
+    writeFileSync(join(root, "package.json"), JSON.stringify({ dependencies: { next: "16.0.0" } }));
+    for (const name of ["hero.webp", "team/sam.jpg", "team/alex.jpg"]) writeFileSync(join(root, `public/imagery/${name}`), "");
+    writeFileSync(join(root, "public/icons/logo.svg"), "<svg/>");
+    writeFileSync(join(root, "public/fonts/body.woff2"), "");
+    const model = await detectSite(root);
+
+    expect(model.media.dir).toBe("public/imagery");
+    expect(model.media.publicPath).toBe("/imagery");
+    expect(model.media.roots).toEqual([
+      { dir: "public/imagery", publicPath: "/imagery" },
+      { dir: "public", publicPath: "/" },
+    ]);
+  });
+
+  it("keeps <public>/images for new images when no folder in the public folder holds any", async () => {
+    const root = join(scratch, "no-images");
+
+    mkdirSync(join(root, "public/fonts"), { recursive: true });
+    writeFileSync(join(root, "package.json"), JSON.stringify({ dependencies: { next: "16.0.0" } }));
+    writeFileSync(join(root, "public/fonts/body.woff2"), "");
+    const model = await detectSite(root);
+
+    expect(model.media.dir).toBe("public/images");
+    expect(model.media.publicPath).toBe("/images");
+  });
+
   it("never throws on an empty folder", async () => {
     const root = join(scratch, "empty");
 
