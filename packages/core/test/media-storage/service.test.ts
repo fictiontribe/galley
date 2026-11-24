@@ -1,6 +1,8 @@
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { withCaller } from "../../src/install/caller";
+import { ROLE_REFUSAL } from "../../src/install/route-access";
 import { createMediaStorageService, type MediaStorageService } from "../../src/media-storage/service";
 import type { MediaStorageConfig } from "../../src/types";
 import { startFakeS3, type FakeS3 } from "./fakes/s3";
@@ -149,5 +151,20 @@ describe("connecting a bucket", () => {
     } finally {
       fake.clockOffsetMs = 0;
     }
+  });
+});
+
+describe("who may", () => {
+  it("checks the level in the engine, whoever calls: manage to connect or move, publish to delete for good", async () => {
+    const lowfield = fakeSite();
+    const as = <T>(role: "owner" | "editor" | "contributor", run: () => Promise<T>) => withCaller({ accountId: `${role}-1`, role }, run);
+
+    await expect(as("editor", () => service.connect(lowfield.site, { config: r2(), ...R2_KEY }))).rejects.toThrow(ROLE_REFUSAL);
+    await expect(as("editor", () => service.planMove(lowfield.site, { kind: "move", from: "repository", to: "bucket" }))).rejects.toThrow(ROLE_REFUSAL);
+    await expect(as("contributor", () => service.deleteStored(lowfield.site, ["bucket:a.png"]))).rejects.toThrow(ROLE_REFUSAL);
+    expect(lowfield.saves).toBe(0);
+    expect((await as("owner", () => service.connect(lowfield.site, { config: r2(), ...R2_KEY }))).check.ok).toBe(true);
+    // Reading where files go is for everyone who edits.
+    expect((await as("contributor", () => service.status(lowfield.site))).bucket.connected).toBe(true);
   });
 });

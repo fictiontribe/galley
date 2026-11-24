@@ -13,6 +13,9 @@
 import { GalleyError } from "../errors";
 import type { EventBus, GalleyConfig, Job, MediaItem, MediaStorageConfig, SettingsService, SiteService } from "../types";
 import { createJobTracker } from "../site/jobs";
+import { requireLevel } from "../install/caller";
+import { levelFor } from "../install/route-access";
+import type { ApiRouteKey } from "../api";
 import { planMove, runMove, type MoveContext, type MoveOutcome } from "./move";
 import { checkUpload, mediaSubfolder } from "../workspace/media";
 import { createBucketStore } from "./bucket-store";
@@ -115,6 +118,17 @@ export interface MediaStorageService {
   job(id: string): Job | null;
 }
 
+/**
+ * The engine checks the level itself, whoever calls (a route, the assistant,
+ * an MCP tool, a plugin), against the route that reaches the same work — so
+ * the two can't disagree (install/route-access.ts).
+ */
+function guard(route: ApiRouteKey): void {
+  const level = levelFor(route);
+
+  if (level) requireLevel(level);
+}
+
 export function createMediaStorageService(options: MediaStorageServiceOptions): MediaStorageService {
   const keys = options.keys ?? createMediaKeys({ home: options.home, ...(options.env ? { env: options.env } : {}) });
   const library = options.library ?? createMediaLibrary(options.home);
@@ -214,6 +228,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     },
 
     async check(site, request) {
+      guard("POST /api/sites/:siteId/media/storage/check");
       const config = request?.config ? normalizeStorageConfig(request.config) : await savedConfig(site);
 
       if (!config) return settingsFailure([{ field: "bucket", message: "The site isn't connected to a bucket yet." }]);
@@ -221,6 +236,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     },
 
     async connect(site, request) {
+      guard("PUT /api/sites/:siteId/media/storage");
       const config = normalizeStorageConfig(request.config);
       const check = await checkWith(site, config, request);
 
@@ -232,6 +248,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     },
 
     async disconnect(site, disconnect = {}) {
+      guard("DELETE /api/sites/:siteId/media/storage");
       await writeStorage(site, null);
       if (disconnect.forgetKeys) {
         await keys.set(site.id, "accessKeyId", null);
@@ -392,15 +409,18 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     },
 
     async planMove(site, request) {
+      guard("POST /api/sites/:siteId/media/storage/move/plan");
       return planMove(await moveContext(site), request);
     },
 
     async move(site, request, onProgress) {
+      guard("POST /api/sites/:siteId/media/storage/move");
       if (moving.has(site.id) && jobs.get(moving.get(site.id)!)?.state === "running") throw new GalleyError("busy", "Files are already being moved for this site. Wait for that to finish.");
       return runMove(await moveContext(site, onProgress), request);
     },
 
     async startMove(site, request) {
+      guard("POST /api/sites/:siteId/media/storage/move");
       const running = moving.get(site.id);
 
       if (running && jobs.get(running)?.state === "running") throw new GalleyError("busy", "Files are already being moved for this site. Wait for that to finish.");
@@ -420,6 +440,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     job: (id) => jobs.get(id),
 
     async deleteStored(site, paths) {
+      guard("POST /api/sites/:siteId/media/storage/delete");
       const stores = await service.stores(site);
       const result: MediaStoreDeleteResult = { deleted: [], refused: [] };
 
