@@ -8,7 +8,7 @@ order: 8
 
 For people who edit a site. **Version history** is the list of everything ever published on the site, newest first, with who published it and when.
 
-<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/history@1x.webp" srcset="/docs/history@1x.webp 1x, /docs/history.webp 2x" alt="Version history for Caddow: a note that versions are kept on this computer only, then the newest version, a note about the hero heading and button and the Journal and atelier headings, by Tobiah Rusk just now, marked Latest and Published here, with Put this site online and Undo this publish; two earlier versions below it." width="964" height="353" loading="lazy" decoding="async"></figure>
+<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/history@1x.webp" srcset="/docs/history@1x.webp 1x, /docs/history.webp 2x" alt="Version history for Caddow: a note that versions are kept on this computer only, then the newest version, Update headings and button label on Home, Journal, and The atelier pages, by Tobiah Rusk just now, marked Latest and Published here, with Put this site online and Undo this publish; two earlier versions below it." width="964" height="353" loading="lazy" decoding="async"></figure>
 
 ## Undo a publish
 

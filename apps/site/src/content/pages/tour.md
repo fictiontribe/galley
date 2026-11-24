@@ -21,7 +21,7 @@ sections:
         guide: /docs/editing/form/
         visual:
           src: form
-          alt: The editor on Caddow’s home page — the page’s form on the left with the Campaign hero section open and its Heading marked Edited, beside a Put back button, and the page itself on the right, now headed “Coats for low sun.”
+          alt: The editor on Caddow’s home page — the page’s form on the left with the Campaign hero section open and its Heading, “Coats for low sun.”, marked Edited beside a Put back button, and the page itself on the right, scrolled to a photograph of the workroom above the Journal heading, Marrowby notes.
         inset:
           src: form
           x: -16
@@ -48,7 +48,8 @@ sections:
         visual:
           src: assistant
           x: -700
-          alt: The assistant beside the Caddow home page — the request to change the campaign heading and its first button, the lines Read the home page and Edited the home page, the reply saying what changed and that both changes wait in Proof, and the buttons Review in Proof and Undo this change.
+          y: -90
+          alt: The assistant beside the Caddow home page — the request to change the campaign heading and its first button, the lines Read the home page and Edited the home page, the reply saying what changed, that the button still goes to the same lookbook and that the changes wait in Proof, a note about the italics, and the buttons Review in Proof and Undo this change.
   - type: tour
     id: check
     label: Check and publish
@@ -121,14 +122,14 @@ sections:
         visual:
           src: forms
           x: -290
-          alt: The Forms screen for Caddow — three forms, Become a stockist, Caddow letters and Write to the workroom, each sending to the Inbox, with their number of fields, under a note about where the live site should send submissions.
+          alt: The Forms screen for Caddow — three forms, Become a stockist, Caddow letters and Write to the workroom, each sending to the Inbox, with their number of fields and the page each is used on, under a note about where the live site should send submissions.
         inset:
           src: inbox
           x: -901
           y: -263
           w: 476
           h: 330
-          alt: One submission open in the Inbox — Corin Vale, marked Test, asking about a repair, with every answer beside its label.
+          alt: One submission open in the Inbox — Corin Vale, asking about a repair, with every answer beside its label.
       - id: scripts
         layout: half
         heading: Scripts, with consent
@@ -182,14 +183,14 @@ sections:
           src: brand-proposal
           x: -290
           y: -64
-          alt: The brand proposal for Caddow, read from the site — Nothing is saved yet with Save the brand, Worth a look notes on near-identical greys and text contrast, and the first colours, Lime-wash, Paper white, Chalk grey and Ink, each marked Measured or Declared with where it was found.
+          alt: The brand proposal for Caddow, read from the site — Nothing is saved yet with Save the brand, Worth a look notes on near-identical greys and text contrast, and the first colours, Lime-wash, Chalk white, Plaster and Ink, each marked Measured or Declared, some with where in the styles they were found.
         inset:
           src: brand-voice
           x: -505
           y: -178
           w: 470
           h: 232
-          alt: The Voice part of the proposal — plain, patient, exact, quietly dry, unhurried — then rules drawn from the site’s own words, each with a line to avoid struck out and the site’s way written in, such as “Our luxurious, beautifully crafted signature coat” becoming “Waxed cotton, unlined, horn buttons.”
+          alt: "The Voice part of the proposal — rules drawn from the site’s own words, each quoting the page it came from, with a line to avoid struck out and the site’s way written in: “Our coats are made in exclusive limited runs” becomes “Forty of each, cut by one cutter in a month.”"
       - id: search
         layout: flip
         heading: Search and AI checks
@@ -206,7 +207,7 @@ sections:
     id: live
     label: Go live and grow
     heading: Go live and grow.
-    text: A real address, every site you look after, and a way out of WordPress.
+    text: A real address for the site and, if you want one, for its editor; every site you look after; and a way out of WordPress.
     items:
       - id: online
         layout: full
@@ -227,7 +228,46 @@ sections:
           y: -209
           w: 470
           h: 218
-          alt: The Online screen afterwards — www.caddow.example, Live and updated just now, on Cloudflare in the project caddow, marked as your own address.
+          alt: The Online screen afterwards — www.caddow.example with its Copy button, Live and updated just now, on Cloudflare in the project caddow, marked as your own address.
+      - id: editor-online
+        layout: flip
+        ratio: 5/4
+        heading: The editor, online
+        text: Edit the site from any browser. The app puts an editor for it on your own Fly.io account, on Cloudflare in front of a computer of yours, or on a server with Docker — and shows what it will create and what it costs a month before anything exists.
+        status: editor-online
+        guide: /docs/editing/editor-online/
+        note: Pictured against a stand-in for Fly.io, with made-up addresses; nothing was created.
+        visual:
+          src: editor-online-plan
+          x: -350
+          y: -230
+          alt: Host the editor online, step 5 of 5, Check the plan — what would be created on Fly.io (the editor’s app, two addresses, a 3 GB disk, a computer with 2 GB of memory that sleeps while nobody uses it, three certificates for cms.caddow.example and its preview and live names), and What it costs, up to about $13 a month and usually much less, with each line and where the prices were read; then Back and Create the editor.
+        inset:
+          src: editor-online
+          x: -390
+          y: -520
+          w: 470
+          h: 142
+          alt: The Online screen’s Editor online section — edit this site from any browser, not just this computer; the editor runs on your own account with a host, with its own password — and the button Host the editor online.
+      - id: hosted
+        layout: wide
+        heading: One editor per site, on your own server
+        text: A hosted install is the same app on a server, for one site, behind its own password, with everything it keeps in one folder. It runs with Docker on your own server; Fiction Tribe hosts nothing.
+        status: hosted-install
+        guide: /docs/running/hosted/
+        note: Pictured on a test install on one computer, before any site was connected.
+        visual:
+          src: hosted-first-run
+          x: -344
+          y: -150
+          alt: A hosted install’s first run, step 2 of 3, Connect the site — a repository that already holds the site, or a starter sent to an empty one; the repository’s address; and how the editor reaches it, with its own key (recommended), shown to be added to the repository with write access, or an access token from the code host.
+        inset:
+          src: hosted-sign-in
+          x: -511
+          y: -253
+          w: 419
+          h: 258
+          alt: The hosted install’s sign-in — Sign in to edit, a password field and Sign in, with a note that setting up this editor isn’t finished and carries on once you sign in.
       - id: sites
         layout: flip
         heading: Many sites, one app

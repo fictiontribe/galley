@@ -25,7 +25,7 @@ To follow a link without editing it, use the **Follow link** button on its tag, 
 
 Some words come from more than one place — the same menu item in the header and in the footer. Galley won't guess:
 
-<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/on-the-page-which-one@1x.webp" srcset="/docs/on-the-page-which-one@1x.webp 1x, /docs/on-the-page-which-one.webp 2x" alt="A small window under the word Atelier in the Caddow footer, titled Which one did you mean?, saying the text appears in 2 places and listing Navigation › Header › 2 › Label and Navigation › Footer › 1 › Links › 2 › Label." width="429" height="267" loading="lazy" decoding="async"></figure>
+<figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/on-the-page-which-one@1x.webp" srcset="/docs/on-the-page-which-one@1x.webp 1x, /docs/on-the-page-which-one.webp 2x" alt="A small window under the word Atelier in the Caddow footer, titled Which one did you mean?, saying the text appears in 2 places and listing Navigation › Header › 2 › Label and Navigation › Footer › 1 › Links › 2 › Label, with a Close button." width="429" height="267" loading="lazy" decoding="async"></figure>
 
 Choose the one you meant, then type.
 
