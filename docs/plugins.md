@@ -528,6 +528,7 @@ is a problem and the plugin doesn't load; a theme it would adjust is a
 warning — ship the adjusted values (`galley theme check` prints them). The
 themes appear in everyone's theme picker while the plugin is on.
 
+<!-- include: packages/plugin-kit/test/samples/theme-plugin.mjs#theme -->
 ```js
 export default {
   name: "galley-plugin-harbour",
