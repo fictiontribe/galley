@@ -4,8 +4,8 @@
  * relative luminance and WCAG 2 contrast.
  *
  * Colours travel as gamma-encoded sRGB channels that are NOT clamped: CSS
- * keeps a colour outside sRGB (a dark, saturated `oklch(from … min(l, 0.45)
- * c h)`) as it is through later mixes and only fits it to the screen when it
+ * keeps a colour outside sRGB (a dark, saturated `oklab(from … min(l, 0.45)
+ * a b)`) as it is through later mixes and only fits it to the screen when it
  * paints. `display()` is that last step (each channel clipped, as the
  * browser does for an sRGB screen); contrast is always measured on it.
  */
@@ -119,7 +119,12 @@ export function mixSrgb(a: Rgb, b: Rgb, weight: number): Rgb {
   return { r: a.r * weight + b.r * (1 - weight), g: a.g * weight + b.g * (1 - weight), b: a.b * weight + b.b * (1 - weight) };
 }
 
-/** `oklch(from c …)`: change a colour's lightness, chroma or hue. */
+/**
+ * Change a colour's lightness, chroma or hue in OKLCH. tokens.css says the
+ * same changes in OKLab, with no hue in them (`oklab(from c …)`, its section
+ * 6 says why): the two agree, and the parity check in packages/web holds
+ * them to it.
+ */
 export function withOklch(color: Rgb, change: (value: Oklch) => Oklch): Rgb {
   return fromOklch(change(toOklch(color)));
 }

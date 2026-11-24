@@ -177,6 +177,14 @@ entry says how.
 
 ### Fixed
 
+- **The app's colours no longer take a pink cast in new versions of
+  Chrome.** The steps a theme derives from its ink and paper (wells, rules,
+  the quieter inks, the words on the plate) were written so that the
+  browser handed back the hue of each mixed colour. Chrome 159 treats the
+  hue of so pale a colour as missing and painted every one of them at red.
+  They are written without a hue now (`brand/tokens.css`, section 6) and
+  paint the same in Chrome 151, 156 and 159 and in WebKit; the engine's own
+  derivation, which the legibility check uses, was right and is unchanged.
 - **One focus ring, not two, on the boxes where you ask the assistant.** On a
   site's home the text field drew its own ring inside the box's ring, and
   tabbing to the send button drew a second one there and in the editor's
