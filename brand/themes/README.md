@@ -113,6 +113,10 @@ runs before any theme is shown, saved or published. It never trusts the file.
    and its lightness within 0.12 of the insert, delete, change, success,
    warning or danger ink: *"Your pencil is close to the delete colour; selected
    things may look like deletions."* The marks still carry the meaning.
+   Also warn when the pencil is light — when the pencil's text colour (the
+   clamped one) differs from the pencil itself by more than 0.15 in OKLCH
+   lightness: *"This pencil colour is light, so lines and text drawn in it
+   will look darker than the button."* Nothing is changed.
 
 ### The pairs
 
@@ -127,7 +131,7 @@ runs before any theme is shown, saved or published. It never trusts the file.
 | focus ring (pencil text) on paper, sheet, well, overlay; on the plate (pencil-on-plate) | 3 |
 | button text on the pencil fill (and hover, pressed) | 4.5 |
 | pencil-800 on pencil-100; ink on pencil-200 | 4.5 |
-| selection tint (pencil-100) against the sheet | 1.1, so a selected row is visible as well as marked |
+| selection tint (pencil-100) against the sheet | 1.1 (a Galley rule, not WCAG: a selected row is visible as well as marked) |
 | pencil-400 (the assistant's ruled edge) on the sheet | 3 |
 | on-plate on the plate · on-plate-2 · on-plate-3 | 7 · 4.5 · 4.5 |
 | white on the current place on the plate | 4.5 |
@@ -145,7 +149,7 @@ tokens.css §6.
 | **Plate** | Nothing. It has the same seeds as Quiet; only the switches differ. |
 | **Desk** | Nothing. ink-3 on the desk tone is 4.63 (dark 4.93). |
 | **Fog** (paper `#CFCBC4`, ink `#6E6A64`: grey on grey, 2.9:1) | Paper lightened to `#EBE7E0` (it was L 0.84, below 0.93). Ink darkened to `#36322D` (it was L 0.53, above 0.32). On the paler well that this produced, delete was tuned `#B8361A → #B53216` and warning `#8A5800 → #875500` (lightness only), each reported. Everything else then passes: ink-3 on the well is 4.96, the strong edge 3.48. |
-| **Lemon** (pencil `#F2E35C`, a pale yellow) | Nothing refused, nothing adjusted. The button keeps its yellow fill with near-black text (15.63). Pencil text, lines and tints come from the clamped pencil text (`#665600`, olive): text 7.06 on the sheet, ruled edge 3.0, pencil-800 on pencil-100 4.60, selection tint 1.16. It is legible but olive where you expect yellow; the editor should show that preview before saving. |
+| **Lemon** (pencil `#F2E35C`, a pale yellow) | Nothing refused, nothing adjusted. The button keeps its yellow fill with near-black text (15.63). Pencil text, lines and tints come from the clamped pencil text (`#665600`, olive): text 7.06 on the sheet, ruled edge 3.0, pencil-800 on pencil-100 4.60, selection tint 1.16. Warned: *"This pencil colour is light, so lines and text drawn in it will look darker than the button."* (pencil L 0.90, its text colour L 0.45). |
 
 ## What a theme cannot change
 
