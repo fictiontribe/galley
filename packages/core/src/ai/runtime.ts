@@ -32,7 +32,7 @@ import { buildSiteCard, loadInstructionFiles } from "./site-card";
 import { hashText, summaryOf, ThreadStore, titleFrom, type StoredImageRef, type StoredMessage, type ThreadRecord } from "./threads";
 import { buildToolNames, offeredBuildToolNames } from "./tools/index";
 import { BUILD_MODE_REFUSAL, callerMay, requireBuildMode, requireLevel } from "../install/caller";
-import { BUILD_MODE_LEVEL } from "../install/route-access";
+import { BUILD_MODE_LEVEL, UNDO_BUILD_REFUSAL } from "../install/route-access";
 import { siteBrandInstructions } from "../sitebrand/tools";
 import { plural } from "./tools/labels";
 import type { ToolContext } from "./tools/types";
@@ -93,8 +93,7 @@ interface HeldCheckpoint {
   mode: AgentMode;
 }
 
-/** Said when someone below BUILD_MODE_LEVEL would undo a reply made in build mode. */
-export const UNDO_BUILD_REFUSAL = "Your account can't undo this reply: it changed the site's code and templates (build mode). Ask an owner or an editor of this editor.";
+export { UNDO_BUILD_REFUSAL };
 
 function release(checkpoint: Checkpoint): void {
   // The workspace's checkpoints keep their pre-images until released; the
@@ -243,8 +242,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
     assistantId: string;
     checkpoint: Checkpoint;
     outcome: LoopResult;
+    mode: AgentMode;
   }): Promise<void> {
-    const { siteId, threadId, turnId, assistantId, checkpoint, outcome } = params;
+    const { siteId, threadId, turnId, assistantId, checkpoint, outcome, mode } = params;
 
     checkpoint.close();
     const changedPaths = checkpoint.paths();
@@ -260,6 +260,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
       text,
       at: now(),
       turnId,
+      mode,
       tools: outcome.tools,
       changedPaths,
       usage: outcome.usage,
@@ -436,7 +437,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
           ...(staged.length ? { attachments: staged.map((s) => s.shown) } : {}),
         };
         const assistantId = randomUUID();
-        const pending: ChatMessage = { id: assistantId, role: "assistant", text: "", at: now(), turnId, pending: true };
+        const pending: ChatMessage = { id: assistantId, role: "assistant", text: "", at: now(), turnId, pending: true, mode };
         const lastAssistant = [...record.thread.messages].reverse().find((m) => m.role === "assistant");
         const askedLastTurn = Boolean(lastAssistant?.options?.length) && !lastAssistant?.undone;
 
@@ -540,7 +541,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
           turnProfiles.set(turnId, outcome.profile);
           if (turnProfiles.size > 500) turnProfiles.delete(turnProfiles.keys().next().value as string);
           try {
-            await finishTurn({ siteId, threadId, turnId, assistantId, checkpoint, outcome });
+            await finishTurn({ siteId, threadId, turnId, assistantId, checkpoint, outcome, mode });
             hold(threadKey, turnId, checkpoint, mode);
           } catch (error) {
             log(`couldn't finish the turn: ${safeDetail(error)}`);

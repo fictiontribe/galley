@@ -83,15 +83,21 @@ entry says how.
   on the same machine, otherwise after watching its hold for about 20
   seconds. A running server that finds another server's hold on its folder
   stops by itself: it answers nobody, writes nothing more to the folder,
-  says why, and `galley serve` exits 1. Local mode and the desktop app take
-  no hold.
+  says why, and `galley serve` exits 1. The hold is written whole or not at
+  all, so a write that fails (a full disk) leaves the hold that was there,
+  and a hold file that can't be read is written again, never taken for
+  another server's. Local mode and the desktop app take no hold.
 - **Names say who someone is.** A person's name is kept without characters
   a reader can't see (the controls that reorder text, characters with no
   width, blank fillers), and a name that reads as someone else's on the same
   editor — in another case or width, or with unseen characters in it — is
   refused wherever someone signed in sets a name. Someone accepting an
   invitation with such a name is let in without it and asked to choose
-  one, so an invitation link says nothing about who is here. Names saved
+  one, so an invitation link says nothing about who is here. Until they
+  have, they can't publish, undo a publish, send or get the latest (*Choose
+  your name first…*), and anything they would record carries their e-mail
+  address in the name's place, never the install's publishing name. Names
+  saved
   before are cleaned when they are read, and a publishing name (the
   install's, App settings › You, a site's own author) is kept the same way.
   Names that were alike before stay until one of them changes. Look-alike
@@ -274,13 +280,15 @@ entry says how.
 - **Undo, in the cases that were left.** A change a reply made after it had
   ended is no longer passed over in silence: it is left and named. A page
   the reply moved goes back as a pair or stays as a pair, never the page
-  twice. An undo that can't put a file back puts back the rest, names that
+  twice (two short pages that only share what every page starts with are
+  not taken for one). An undo that can't put a file back puts back the rest, names that
   file and says what it put back, instead of stopping half-way. What is
   made during a reply to serve everyone after (a site reopened, its
   preview) is no part of the reply. Undoing a reply made in build mode
-  needs the level build mode needs: a contributor is told *Your account
+  needs the level build mode needs: a contributor reads *Your account
   can't undo this reply: it changed the site's code and templates (build
-  mode). Ask an owner or an editor of this editor.*
+  mode). Ask an owner or an editor of this editor.* in the Undo button's
+  place (a chat message gains `mode`).
 
 ## 0.3.1 — 2026-11-24
 

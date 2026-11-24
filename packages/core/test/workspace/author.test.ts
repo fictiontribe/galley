@@ -7,7 +7,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { chooseAuthor, createWorkspace, type AuthorLayers, type Workspace } from "../../src/workspace/index";
+import { chooseAuthor, createWorkspace, withAccountAuthor, type AuthorLayers, type Workspace } from "../../src/workspace/index";
 import { cleanupAll, makeRepo, PUBLISH, sh, tempDir, WRITABLE } from "./helpers";
 
 const SITE = { name: "Site Author", email: "site@example.com" };
@@ -62,6 +62,23 @@ describe("through a real repository", () => {
     open.push(ws);
     return { root, ws, status: (await ws.gitStatus()).author };
   }
+
+  it("someone signed in with an e-mail and no name yet is recorded under that e-mail: never the site's author, the repository's or the app's", async () => {
+    const { root, ws } = await author({ site: SITE, app: APP }, true);
+
+    for (const name of ["", "   ", "\u200b\u202e"]) {
+      writeFileSync(join(root, "src/content/a.md"), `changed by someone with the name ${JSON.stringify(name)}\n`);
+      await withAccountAuthor({ name, email: "ed@example.com" }, async () => {
+        expect((await ws.gitStatus()).author).toEqual({ name: "ed@example.com", email: "ed@example.com", from: "account" });
+        await ws.publish({ message: "Edit" }, PUBLISH);
+      });
+      expect(sh(root, "log", "-1", "--format=%an <%ae>|%cn <%ce>")).toBe("ed@example.com <ed@example.com>|ed@example.com <ed@example.com>");
+    }
+    // Someone with neither (the owner of an install from before accounts) is recorded as before: the site's own author.
+    writeFileSync(join(root, "src/content/a.md"), "changed by the owner from before accounts\n");
+    await withAccountAuthor({ name: "", email: "" }, () => ws.publish({ message: "Edit" }, PUBLISH));
+    expect(sh(root, "log", "-1", "--format=%an <%ae>")).toBe(`${SITE.name} <${SITE.email}>`);
+  });
 
   it("records the repository's own git identity over App settings › You", async () => {
     const { root, ws, status } = await author({ site: null, app: APP }, true);

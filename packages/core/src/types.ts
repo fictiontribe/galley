@@ -1183,6 +1183,12 @@ export interface ChatMessage {
   tools?: ToolActivity[];
   /** Files this turn changed — drives "Review changes" and "Undo". */
   changedPaths?: string[];
+  /**
+   * An assistant's reply: the mode its turn ran in. Undoing a reply needs
+   * the level its mode needs, so the app offers Undo only to someone who
+   * has it. Absent on a reply from before this was recorded.
+   */
+  mode?: AgentMode;
   /** True once the turn's file changes were rolled back. */
   undone?: boolean;
   /**

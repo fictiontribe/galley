@@ -99,7 +99,8 @@ export function runTurn(mock: MockBackend, site: MockSite, thread: ChatThread, r
   mock.emit({ type: "chat.message", siteId, threadId, message: user });
 
   void (async () => {
-    const assistant: ChatMessage = { id: randomUUID(), role: "assistant", text: "", at: Date.now(), turnId, pending: true, tools: [] };
+    // The mode the reply is made in, as the real assistant records it: Undo is offered only to someone who could undo it.
+    const assistant: ChatMessage = { id: randomUUID(), role: "assistant", text: "", at: Date.now(), turnId, pending: true, tools: [], mode: request.mode ?? thread.mode ?? "content" };
     thread.messages.push(assistant);
     mock.emit({ type: "chat.message", siteId, threadId, message: { ...assistant } });
 

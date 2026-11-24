@@ -805,6 +805,12 @@ else, is told *Someone here is already called “…”. Add something that tell
 the two apart, such as a middle initial.* Someone accepting an invitation is
 not told at the door, where it would say who is here to anyone holding a
 link: they are let in without a name, and the app asks them to choose one.
+Until they have, nothing of theirs carries anyone else's name: publishing,
+undoing a publish, sending and getting the latest answer *Choose your name
+first: your account has none yet, and each version carries the name of
+whoever published it.* (and the app asks for the name again there and then),
+and anything they would record carries their e-mail address in the name's
+place, never the install's publishing name.
 Names saved before this rule are cleaned when the install's state is read.
 A publishing name (the install's, App settings › You, a site's own author)
 is kept without unseen characters in the same way. Look-alike letters from
@@ -1023,7 +1029,12 @@ Signing in records when that person last signed in.
   window is told, in an event on its stream, *Too many windows of the
   editor are open on this account: 16 is the limit. Close one of the
   others, and this one connects again.* It shows that, and asks again every
-  30 seconds and whenever it is brought to the front. A window that stops
+  30 seconds and whenever it is brought to the front. **Where several people
+  share one account**, that means one more window than the limit makes
+  every other window on that account lose its live updates for a moment and
+  read everything again, at most once in 10 minutes; nothing typed is lost,
+  and other accounts are never touched. Give people accounts of their own
+  to avoid it. A window that stops
   reading its stream is let go once 1 MB is waiting for it (not counting
   one event larger than that by itself), and reads everything again when it
   comes back.
@@ -1217,6 +1228,12 @@ one a data folder of its own (GALLEY_HOME).*
   on the time.
 - **A folder the server can't write its hold to** stops the start with the
   reason.
+- **The hold is written whole or not at all** (beside it first, then into
+  place), so a full disk or a volume that goes away for a moment leaves the
+  hold that was there. A running server that can't refresh its hold says so
+  once (*This server couldn't refresh its hold on the data folder: …*) and
+  keeps trying; a hold file it finds damaged it writes again. Neither is
+  taken for another server.
 - **If another server takes the folder while this one runs** (this one
   couldn't refresh its hold for a while and a start elsewhere took it for
   gone, or the hold was replaced by hand), this one stops: it notices at
@@ -1225,8 +1242,22 @@ one a data folder of its own (GALLEY_HOME).*
   server has taken this data folder … while this one was running.* and
   *This server has stopped: … Stop the other one, or give this one a data
   folder of its own (GALLEY_HOME), then start it again.* `galley serve`
-  exits 1. Under `restart: unless-stopped` it is started again and refused,
-  until one of the two is stopped.
+  exits 1.
+
+**What an operator sees when two servers are on one folder.** The one that
+lost the folder exits 1 with the two lines above. Under a restart policy
+(`restart: unless-stopped`, a platform that restarts failed machines) it is
+started again, and each start logs *Another server's hold is on this data
+folder (…). Checking whether it is still running: about 21 seconds.* and
+then stops with *Another editor is running on this data folder (…). Stop it
+first, or give this one a data folder of its own (GALLEY_HOME).* That
+repeats, with the platform's own pause between tries, for as long as both
+are there; the server that holds the folder is not disturbed by it. To end
+it, find the second server (the lines name its process, machine and port: a
+second compose project or service pointed at the same volume, a machine
+that was scaled to two, a container left running by hand) and stop it, or
+give it a data folder of its own. The one that is left starts, or carries
+on, by itself.
 
 Local mode and the desktop app take no hold.
 

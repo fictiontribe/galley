@@ -147,6 +147,26 @@ describe("a hosted server and its data folder", () => {
     expect(existsSync(stateFile) ? readFileSync(stateFile) : null).toEqual(state);
   });
 
+  it("carries on when its hold file is left empty by a write that didn't finish: that is not another server", async () => {
+    const home = box.folder("home");
+    const started = await startHosted(box, home, {}, { holdBeatMs: BEAT });
+    const id = read(home).id;
+
+    writeFileSync(lockOf(home), "");
+    const outcome = await Promise.race([started.server.displaced!.then(() => "stopped"), new Promise<string>((resolve) => setTimeout(() => resolve("running"), BEAT * 8))]);
+
+    expect(outcome).toBe("running");
+    expect((await call(started.port, "GET", "/api/meta")).status).toBe(200);
+    // Its hold is whole again, and its own.
+    expect(read(home)).toMatchObject({ id, pid: process.pid, port: started.port });
+    const said = started.notices.join("\n");
+
+    expect(said).not.toMatch(/Another server has taken|This server has stopped/);
+    expect(said).toContain("the hold file was damaged (a write to it didn't finish). It has been written again.");
+    await stopHosted(box, started);
+    expect(existsSync(lockOf(home))).toBe(false);
+  });
+
   it("takes no hold in local mode", async () => {
     const home = box.folder("local-home");
     const options = { mode: "local" as const, host: "127.0.0.1", port: 0, home, webDir: join(box.root, "no-ui"), env: { PATH: process.env.PATH, HOME: box.root, GALLEY_MCP: "off" }, notice: () => undefined, log: () => undefined };

@@ -258,8 +258,9 @@ Everything with side effects on the machine.
   has changed since is left as it is and named by `left()`, because putting
   the whole file back would take their change with it. So is a file that
   work wrote after the checkpoint was closed, and one that can't be put
-  back; a page the work moved (one file gone, another much like it made)
-  goes back as a pair or stays as a pair. What is made during a turn to
+  back; a page the work moved (one file gone, another made that is the
+  same, or much the same where it is long enough to tell) goes back as a
+  pair or stays as a pair. What is made during a turn to
   serve everyone after (`outsideAnyPerson`: an open site, its watcher, the
   preview) is no checkpoint's work. This is how one assistant turn is
   undone without touching anyone's other pending edits. Undoing a reply

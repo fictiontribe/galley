@@ -15,8 +15,9 @@
  * write that was still waiting its turn when the reply ended): nobody was
  * told the reply changed it, so it is named rather than quietly put back.
  *
- * A page the work moved — one file gone, another much like it made — goes
- * back as a pair or stays as a pair, so an undo never leaves the page twice.
+ * A page the work moved — one file gone, another made that is the same or,
+ * for a page long enough to tell, much the same — goes back as a pair or
+ * stays as a pair, so an undo never leaves the page twice.
  */
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
@@ -33,6 +34,13 @@ export const SPILL_BYTES = 5 * 1024 * 1024;
 const PRINT_BYTES = 512 * 1024;
 /** How alike two files must be (lines in common over lines in either) to be one page that moved. */
 const MOVED_ALIKE = 0.6;
+/**
+ * And how many lines they must have in common at the least. Short pages
+ * share most of their few lines with any other page of their kind (the
+ * fences, a layout, a draft flag): likeness says nothing there, so they are
+ * a pair only when they are the same byte for byte.
+ */
+const MOVED_SHARED_LINES = 8;
 
 type PreImage = { kind: "absent" } | { kind: "memory"; bytes: Uint8Array } | { kind: "spilled"; file: string };
 
@@ -61,7 +69,7 @@ function alike(a: Print, b: Print): number {
   let shared = 0;
 
   for (const line of a) if (b.has(line)) shared += 1;
-  return shared / (a.size + b.size - shared);
+  return shared < MOVED_SHARED_LINES ? 0 : shared / (a.size + b.size - shared);
 }
 
 interface Recorded {
@@ -168,8 +176,10 @@ class CheckpointImpl implements WorkspaceCheckpoint {
 
   /**
    * The files this work removed, each with the file it made that is the same
-   * page under another name: the same bytes, or text much the same. One made
-   * file answers for one removed file, the likeliest first.
+   * page under another name: the same bytes, or text much the same where
+   * there is enough of it to tell. One made file answers for one removed
+   * file, the likeliest first. Not taken for a pair, the two are put back
+   * each on its own: the removed one returns whatever became of the other.
    */
   private moved(files: Map<string, RestoreFile>): Map<string, string> {
     const pairs = new Map<string, string>();

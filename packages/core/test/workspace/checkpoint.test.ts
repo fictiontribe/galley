@@ -403,7 +403,9 @@ describe("an undo that can't finish", () => {
 describe("a page the turn moved", () => {
   const OLD = "src/content/pages/about.md";
   const NEW = "src/content/pages/about-us.md";
-  const page = (title: string) => `---\ntitle: ${title}\n---\nWe are four people.\nWe draw houses.\nCome and see us.\n`;
+  // Long enough to tell one page from another: a page moved with its title changed is still that page.
+  const page = (title: string) =>
+    `---\ntitle: ${title}\ndescription: Who we are and how we work.\n---\nWe are four people.\nWe draw houses.\nWe measure twice.\nWe answer the phone.\nWe fix our fees.\nWe like old brick.\nCome and see us.\n`;
 
   async function moved() {
     const root = makeRepo({ [OLD]: page("About"), "src/content/pages/other.md": "other\n" });
@@ -437,6 +439,45 @@ describe("a page the turn moved", () => {
     expect(existsSync(join(root, OLD))).toBe(false);
     expect(read(root, NEW)).toContain("And Bob's line.");
     expect(read(root, "src/content/pages/other.md")).toBe("other\n");
+  });
+
+  it("is taken of a short page moved exactly as it was", async () => {
+    const short = "---\ntitle: Opening hours\nlayout: page\ndraft: false\n---\n";
+    const root = makeRepo({ "src/content/pages/hours.md": short });
+    const ws = await workspaceFor(root);
+    const turn = ws.checkpoint("turn");
+
+    await turn.run(async () => {
+      await ws.writeFile("src/content/pages/opening-hours.md", short, content);
+      await ws.deleteFile("src/content/pages/hours.md", content);
+    });
+    turn.close();
+    await as("bob", () => ws.writeFile("src/content/pages/opening-hours.md", `${short}Bob's hours.\n`, typed));
+
+    // The same page under another name, byte for byte: left as a pair, never there twice.
+    expect(await turn.restore()).toEqual([]);
+    expect(turn.left().sort()).toEqual(["src/content/pages/hours.md", "src/content/pages/opening-hours.md"]);
+    expect(existsSync(join(root, "src/content/pages/hours.md"))).toBe(false);
+  });
+
+  it("is not assumed of two short pages that share only what every page starts with: the removed one comes back", async () => {
+    const short = (title: string) => `---\ntitle: ${title}\nlayout: page\ndraft: false\n---\n`;
+    const root = makeRepo({ "src/content/pages/hours.md": short("Opening hours") });
+    const ws = await workspaceFor(root);
+    const turn = ws.checkpoint("turn");
+
+    await turn.run(async () => {
+      await ws.deleteFile("src/content/pages/hours.md", content);
+      await ws.writeFile("src/content/pages/prices.md", short("Prices"), content);
+    });
+    turn.close();
+    await as("bob", () => ws.writeFile("src/content/pages/prices.md", `${short("Prices")}Bob's prices.\n`, typed));
+
+    // Most of their few lines are the same, and they are still two pages: the one the turn removed is put back.
+    expect(await turn.restore()).toEqual(["src/content/pages/hours.md"]);
+    expect(turn.left()).toEqual(["src/content/pages/prices.md"]);
+    expect(read(root, "src/content/pages/hours.md")).toBe(short("Opening hours"));
+    expect(read(root, "src/content/pages/prices.md")).toContain("Bob's prices.");
   });
 
   it("is not assumed of a page removed and an unrelated page made", async () => {

@@ -241,6 +241,76 @@ describe("a server's hold on its data folder", () => {
     expect(read(home).id).toBe("theirs");
   });
 
+  it.each([
+    ["empty", ""],
+    ["cut off half-way", '{"pid":4242,"hostname":"this-machi'],
+    ["not a hold at all", "\u0000\u0000\u0000"],
+  ])("a hold file that is %s is nobody else's: the server is not told it lost the folder, and its hold goes back", async (_what, damaged) => {
+    const home = tempDir("hold-");
+    const log: string[] = [];
+    const lost: string[] = [];
+    const taken = await hold(home, log, 4400, (by) => lost.push(by));
+    const id = read(home).id;
+
+    // What a write that failed part-way leaves behind (a full disk, a volume that hiccuped).
+    writeFileSync(lockFile(home), damaged);
+    await pause(BEAT * 5);
+    expect(lost).toEqual([]);
+    expect(log.filter((line) => /Another server has taken/.test(line))).toEqual([]);
+    // Whole again, and still this server's own.
+    expect(read(home)).toMatchObject({ pid: process.pid, id, port: 4400 });
+    const beat = read(home).beat!;
+
+    await pause(BEAT * 4);
+    expect(read(home).beat!).toBeGreaterThan(beat);
+    await taken.release();
+    expect(existsSync(lockFile(home))).toBe(false);
+  });
+
+  it("is never seen half-written by anyone reading it while the server refreshes it", async () => {
+    const home = tempDir("hold-");
+
+    await hold(home);
+    const id = read(home).id;
+    let reads = 0;
+
+    // Read as often as this process can for a dozen refreshes: always a whole hold, always this server's.
+    for (const until = Date.now() + BEAT * 12; Date.now() < until; ) {
+      expect(JSON.parse(readFileSync(lockFile(home), "utf8")).id).toBe(id);
+      reads += 1;
+      if (reads % 50 === 0) await pause(0);
+    }
+    expect(reads).toBeGreaterThan(100);
+  });
+
+  it.skipIf(process.getuid?.() === 0)("a refresh that can't be written is said once and tried again, and is not the folder being lost", async () => {
+    const home = tempDir("hold-");
+    const log: string[] = [];
+    const lost: string[] = [];
+
+    await hold(home, log, null, (by) => lost.push(by));
+    const before = read(home);
+
+    // Nothing can be written to the folder for a while.
+    chmodSync(home, 0o500);
+    try {
+      await pause(BEAT * 6);
+      expect(lost).toEqual([]);
+      expect(log.filter((line) => /couldn't refresh its hold/.test(line))).toHaveLength(1);
+      // The hold that was there is untouched: whole, this server's, and no longer changing.
+      expect(read(home)).toMatchObject({ id: before.id, pid: process.pid });
+    } finally {
+      chmodSync(home, 0o700);
+    }
+    const stuck = read(home).beat!;
+
+    await pause(BEAT * 5);
+    // Writable again: it carries on, with nothing more said.
+    expect(read(home).beat!).toBeGreaterThan(stuck);
+    expect(lost).toEqual([]);
+    expect(log.filter((line) => /couldn't refresh its hold/.test(line))).toHaveLength(1);
+  });
+
   it("puts its hold back when the file is removed while it runs", async () => {
     const home = tempDir("hold-");
 

@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { PRODUCT } from "../../src/brand";
 import { GalleyError } from "../../src/errors";
-import { BUILD_MODE_REFUSAL, currentCaller, SITE_SETTINGS_REFUSAL, withCaller, type Caller } from "../../src/install/caller";
+import { BUILD_MODE_REFUSAL, currentCaller, NAME_NEEDED, NAME_NEEDED_REFUSAL, SITE_SETTINGS_REFUSAL, withCaller, type Caller } from "../../src/install/caller";
 import { roleMay, type AccountRole } from "../../src/install/accounts";
 import { BUILD_MODE_LEVEL, levelFor, ROLE_REFUSAL, ROUTE_ACCESS, SITE_METHOD_ACCESS, SITE_SETTINGS_LEVEL, SITE_SETTINGS_RECORDS, siteMethodLevel, type GuardedSiteMethod } from "../../src/install/route-access";
 import { formCodeRefusal } from "../../src/site-kit/guard";
@@ -226,6 +226,31 @@ describe("publishing and the site's other guarded methods", () => {
         else expect(message, `${method} ${who}`).toBe(ROLE_REFUSAL);
       }
     }
+  });
+
+  it("wait for a name: someone whose account has none yet can change the draft, and is asked to choose a name before anything is published in it", async () => {
+    const root = makeSite();
+    const { site } = await openSite(root);
+    let named = false;
+    const nameless: Caller = { accountId: "editor-2", role: "editor", named: () => named };
+    const refused = async (work: () => Promise<unknown>) => {
+      const error = await withCaller(nameless, work).then(() => null, (caught: unknown) => caught);
+
+      return error instanceof GalleyError ? { code: error.code, message: error.message, detail: error.detail } : error;
+    };
+    const head = sh(root, "rev-parse", "HEAD");
+
+    // The draft is theirs to change, like anyone's.
+    await withCaller(nameless, () => site.writeFile("src/content/pages/about.md", "---\ntitle: About us\n---\nHello\n", { origin: "user", mode: "content" }));
+    for (const work of [() => site.publish({ message: "Edit" }), () => site.revert(head), () => site.send(), () => site.pull()]) {
+      expect(await refused(work)).toEqual({ code: "forbidden", message: NAME_NEEDED_REFUSAL, detail: NAME_NEEDED });
+    }
+    expect(sh(root, "rev-parse", "HEAD")).toBe(head);
+    // Read again when it is checked: once they have a name, the same request's later work goes through.
+    named = true;
+    expect((await withCaller(nameless, () => site.publish({ message: "Edit" }))).ok).toBe(true);
+    // A role without the publish level reads the role's refusal, name or no name.
+    expect(await withCaller({ accountId: "c-1", role: "contributor", named: () => false }, () => refusalOf(site.publish({ message: "x" })))).toBe(ROLE_REFUSAL);
   });
 
   it("the role is read again when it matters: demoted or switched off part-way, the work can do only what the role allows now", async () => {

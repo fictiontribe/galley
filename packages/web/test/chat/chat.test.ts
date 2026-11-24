@@ -4,7 +4,7 @@ import { checkAttachments, MAX_ATTACHMENTS } from "../../src/features/chat/attac
 import { renderMarkdown, safeHref } from "../../src/features/chat/renderMarkdown";
 import { activityKind, applyEvent, mergeThread, promptHistory, quickReplies, type ChatEvent } from "../../src/features/chat/threadState";
 import { continueLine, lastConversation } from "../../src/features/chat/resume";
-import { undoneNote } from "../../src/features/chat/undone";
+import { undoneNote, undoRefusal } from "../../src/features/chat/undone";
 
 const S = "site-1";
 const T = "thread-1";
@@ -174,3 +174,16 @@ describe("what the chat says under an undone reply", () => {
     expect(undoneNote(["Home", "Pricing"], false)).toBe("Nothing was put back: Home and Pricing. They were changed again after this reply, so they were left as they are.");
   });
 });
+
+describe("whether Undo is offered under a reply", () => {
+  it("not to someone who couldn't undo a reply made in build mode: they read why, in the server's own words", () => {
+    expect(undoRefusal({ mode: "build" }, false)).toBe("Your account can't undo this reply: it changed the site's code and templates (build mode). Ask an owner or an editor of this editor.");
+  });
+
+  it("to anyone for a reply made in content mode, to whoever may use build mode for one made in it, and for a reply from before the mode was recorded", () => {
+    expect(undoRefusal({ mode: "content" }, false)).toBeNull();
+    expect(undoRefusal({ mode: "build" }, true)).toBeNull();
+    expect(undoRefusal({}, false)).toBeNull();
+  });
+});
+

@@ -455,7 +455,7 @@ describe("undo", () => {
     const { site, h, thread } = await setup([
       stream(toolStep([{ id: "toolu_b", name: "edit_file", input: { path: "src/styles/tokens.css", old_string: "#1f6feb", new_string: "#0b3d91" } }])),
       stream(text("I changed the accent colour.")),
-      stream(toolStep([{ id: "toolu_c", name: "update_entry", input: { path: "src/content/pages/about.md", ops: [{ op: "body-replace", find: "before dawn.", replace: "at midnight.", all: true }] } }])),
+      stream(toolStep([{ id: "toolu_c", name: "update_entry", input: { path: "src/content/pages/about.md", baseHash: ABOUT_AS_READ, ops: [{ op: "body-replace", find: "before dawn.", replace: "at midnight.", all: true }] } }])),
       stream(text("Done.")),
     ]);
     const as = <T>(role: "editor" | "contributor", work: () => T): T => withCaller({ accountId: role, role }, work);
@@ -466,6 +466,10 @@ describe("undo", () => {
     const content = await as("editor", () => h.turn(thread.id, "Say we bake at midnight", { mode: "content" }));
 
     expect(site.files.get("src/styles/tokens.css")).not.toBe(tokens);
+    // Each reply says which mode it was made in, so the app offers Undo only to someone who could.
+    const replies = h.bus.events.filter((e): e is Extract<ServerEvent, { type: "chat.message" }> => e.type === "chat.message").map((e) => e.message).filter((m) => m.role === "assistant" && !m.pending);
+
+    expect(replies.map((m) => [m.turnId, m.mode])).toEqual([[build.turnId, "build"], [content.turnId, "content"]]);
     await expect(as("contributor", () => h.runtime.undoTurn(site.id, thread.id, build.turnId))).rejects.toMatchObject({ code: "forbidden", message: UNDO_BUILD_REFUSAL });
     // Refused before anything was put back, and still there for someone who may.
     expect(site.files.get("src/styles/tokens.css")).not.toBe(tokens);

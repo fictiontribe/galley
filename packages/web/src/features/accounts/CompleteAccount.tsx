@@ -12,7 +12,7 @@
 import { useState, type FormEvent } from "react";
 import { useLocation } from "react-router-dom";
 import { create } from "zustand";
-import { api, errorShape } from "@/lib/api";
+import { api, errorShape, setNameNeededHandler } from "@/lib/api";
 import { useAccount } from "@/lib/may";
 import { useMeta } from "@/lib/stores/meta";
 import { notify } from "@/lib/stores/toasts";
@@ -23,6 +23,9 @@ import { completeKind, emailProblem, linkKindAt, nameProblem } from "./logic";
 
 /** "Not now", for as long as this page is open: in memory on purpose, so the question comes back next time. */
 const useLater = create<{ later: boolean; setLater: (later: boolean) => void }>((set) => ({ later: false, setLater: (later) => set({ later }) }));
+
+// Publishing is refused until the account has a name (the server says so in words): the question comes back at once, "Not now" or not.
+setNameNeededHandler(() => useLater.getState().setLater(false));
 
 export const COMPLETE_TITLE = "Add your name and e-mail";
 export const NAME_TITLE = "Choose your name";
@@ -91,7 +94,7 @@ export function CompleteAccountPrompt() {
         {nameOnly ? (
           <>
             <p className="install-note">
-              Your account has no name yet. Choose one: it’s what this editor shows, and what the versions you publish carry. A name someone else here already has can’t be used; add something that tells the two of you apart, such as a middle initial.
+              Your account has no name yet. Choose one: it’s what this editor shows, and what the versions you publish carry, so publishing waits until you have. A name someone else here already has can’t be used; add something that tells the two of you apart, such as a middle initial.
             </p>
             <Field label="Name" error={problems.name}>
               <Input value={name ?? account.name} autoComplete="name" onChange={(event) => setName(event.target.value)} data-autofocus />

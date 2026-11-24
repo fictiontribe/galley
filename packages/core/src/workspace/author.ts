@@ -55,11 +55,18 @@ const accountAuthor = new AsyncLocalStorage<Identity>();
  * Runs `run` as the signed-in person: everything it records in a repository
  * — a publish, undoing one, the work it starts that outlives the request —
  * carries their name and e-mail. Like the site's scope (site/scope.ts) it
- * follows the asynchronous work, so no id has to be threaded through. An
- * incomplete identity (no e-mail yet) changes nothing.
+ * follows the asynchronous work, so no id has to be threaded through.
+ *
+ * Someone with an e-mail and no name yet is still themselves: their e-mail
+ * address stands in for the name, so nothing they record falls back to the
+ * site's author, the repository's or the app's, which are other people's
+ * names. An identity with no e-mail (the owner of an install from before
+ * accounts) changes nothing, as before.
  */
 export function withAccountAuthor<T>(identity: Partial<Identity> | null, run: () => T): T {
-  return complete(identity) ? accountAuthor.run(clean(identity), run) : run();
+  const email = identity?.email?.trim() ?? "";
+
+  return email ? accountAuthor.run({ name: tidyName(identity?.name ?? "") || email, email }, run) : run();
 }
 
 /** Runs `run` as nobody's work: what it records later falls back to the site's, the repository's or the app's author. */

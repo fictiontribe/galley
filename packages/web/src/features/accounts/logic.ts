@@ -4,7 +4,7 @@
  * how long a link stays good, in plain words.
  */
 import type { InstallMeta } from "@galley/core/install/types";
-import { LINK_PATHS, type LinkPreview } from "@galley/core/install/accounts";
+import { LINK_PATHS, needsName, type LinkPreview } from "@galley/core/install/accounts";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -109,6 +109,6 @@ export function takeLinkCode(address?: AddressBar, past?: PageHistory): string |
  * someone here already has, or their name held nothing a reader can see).
  */
 export function completeKind(account: { name: string; email: string }): "details" | "name" {
-  return account.email && !account.name ? "name" : "details";
+  return needsName(account) ? "name" : "details";
 }
 

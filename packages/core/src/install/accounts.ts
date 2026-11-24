@@ -59,6 +59,18 @@ export function roleMay(role: AccountRole, level: AccessLevel): boolean {
   return ROLE_ACCESS[role].includes(level);
 }
 
+/**
+ * Whether the account still has to choose a name: it has an e-mail and no
+ * name (it accepted an invitation with a name someone here already has, or
+ * its name held nothing a reader can see). Until it has one it can't
+ * publish, and what it would record carries its e-mail in the name's place.
+ * The owner of an install from before accounts, who has neither, is asked
+ * for both in their own time and is not held up.
+ */
+export function needsName(account: { name: string; email: string }): boolean {
+  return Boolean(account.email) && !account.name;
+}
+
 /** A person who may sign in. */
 export interface Account {
   id: string;
