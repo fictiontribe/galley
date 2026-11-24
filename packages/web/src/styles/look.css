@@ -1,0 +1,68 @@
+/* ==========================================================================
+   The look — colour, depth, shape and detail on top of the app's layout.
+   Only paint lives here: colours, shadows, radii, borders, marks. No sizes,
+   spacing, grids or page frames (app.css and the features own those), so
+   this file and a layout change never touch the same line.
+   Built on brand/tokens.css §5 (ramps, depth, shape roles). Selectors start
+   with .g-root so they outrank the feature sheets that load after this one.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Chrome and work. The sidebar is the desk's edge: a step deeper than the
+   ground, so the page you're on reads as a sheet pulled forward onto it.
+   -------------------------------------------------------------------------- */
+.g-root .app-sidebar { background: color-mix(in srgb, var(--surface-paper) 55%, var(--surface-sunken)); }
+.g-root .app-sidebar .g-nav__meta { color: var(--ink-tertiary); }
+.g-root .app-nav__search { color: var(--ink-secondary); }
+.g-root .app-nav__search .g-kbd { background: var(--surface-paper); }
+.g-root .app-brand--switcher:hover { background: color-mix(in srgb, var(--ink-primary) 5%, transparent); }
+
+/* Labels over a pane are words, not code: capital first letter, the rest as written. */
+
+.g-root .g-eyebrow::first-letter { text-transform: uppercase; }
+
+/* --------------------------------------------------------------------------
+   The status line: the press's control strip. Each unpublished file is one
+   cell, coloured by what happened to it AND drawn by it — a solid cell for
+   new, a hollow one for edited, a struck one for removed — beside the words
+   that already count them. Once per screen, nowhere else in the app.
+   -------------------------------------------------------------------------- */
+.g-root .app-statusbar { background: color-mix(in srgb, var(--surface-paper) 55%, var(--surface-sunken)); color: var(--ink-tertiary); }
+.g-root .app-status--ready .app-status__mark { color: var(--success); }
+.g-root .app-strip { display: inline-flex; gap: 2px; align-items: center; margin-inline-end: 2px; }
+.g-root .app-strip__cell { inline-size: 7px; block-size: 7px; border-radius: 1px; background: var(--_c); box-shadow: inset 0 0 0 1.5px var(--_c); }
+.g-root .app-strip__cell--added { --_c: var(--proof-insert); }
+.g-root .app-strip__cell--modified { --_c: var(--proof-change); background: transparent; }
+.g-root .app-strip__cell--deleted { --_c: var(--proof-delete); background: linear-gradient(to bottom right, transparent 42%, var(--_c) 42% 58%, transparent 58%); }
+.g-root .app-strip__more { font: inherit; color: var(--ink-tertiary); margin-inline-start: 2px; }
+
+/* --------------------------------------------------------------------------
+   Sheets on the ground: cards and panes rest, with an edge and a whisper of
+   shadow. Placeholders are blank paper, not grey boxes.
+   -------------------------------------------------------------------------- */
+.g-root .app-card { border-radius: var(--radius-tray); box-shadow: var(--shadow-sheet); }
+.g-root .app-card--quiet { box-shadow: none; }
+.g-root .app-row__thumb, .g-root .app-pick__thumb { background: var(--surface-raised); box-shadow: inset 0 0 0 1px var(--border-subtle); color: var(--border-worn); }
+.g-root .app-row__thumb img { border-radius: inherit; }
+.g-root .app-pane-head .g-eyebrow { text-transform: capitalize; }
+.g-root .app-preview-state { background: var(--surface-table); }
+.g-root .app-error { border-radius: var(--radius-tray); box-shadow: var(--shadow-sheet); }
+.g-root .app-sync, .g-root .app-secret, .g-root .app-model, .g-root .app-config-file { border-radius: var(--radius-tray); }
+.g-root .app-model--checked { background: var(--pencil-50); border-color: var(--pencil-300); }
+.g-root .app-site-card { box-shadow: var(--shadow-sheet); }
+
+/* The empty page: a sheet on the proofing table. */
+.g-root .app-empty__sheet { box-shadow: 0 0 0 6px var(--surface-table), var(--shadow-sheet); }
+
+/* Menus and the palette: the row you're on takes a pencil tint and its icon's accent. */
+.g-root .app-palette__option[aria-selected="true"] { background: var(--pencil-100); --icon-accent: var(--icon-accent-current); }
+.g-root .app-palette__option[aria-selected="true"] .g-icon { color: inherit; }
+.g-root .app-folder__row[aria-selected="true"] { background: var(--pencil-100); }
+.g-root .app-tooltip { border-radius: var(--radius-control); box-shadow: var(--shadow-2); }
+.g-root .app-popover .g-menu { box-shadow: var(--edge-highlight), var(--shadow-2); }
+
+/* Dialog: the sheet floats; its foot is the well it sits in. */
+.g-root .app-dialog .g-dialog__actions { background: var(--surface-sunken); border-block-start-color: var(--border-subtle); }
+
+/* Progress runs in pencil on a ruled track. */
+.g-root .app-progress { background: var(--pencil-100); }

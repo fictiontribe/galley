@@ -480,3 +480,118 @@
     --duration-ink:  0ms;
   }
 }
+
+/* --------------------------------------------------------------------------
+   5. Ramps, depth and shape roles (the look, 2026-11).
+   Additive: new names only, built on the roles above, so a white-label
+   --accent and both themes carry through. Light values are listed for the
+   app's surfaces (section 1b) and the default accent; dark beneath.
+
+   Colour has jobs, and only these:
+     Blue Pencil (--pencil-*)  the action (one primary per view), where you
+                               are (current nav item, chosen view, focus),
+                               and the assistant's hand. Never a heading,
+                               a section ground, an illustration or a chart
+                               series other than "this one".
+     Proof trio                a change and nothing else (insert/delete/change).
+     Status four               the system's state (done, needs you, failed, note).
+     Table (--surface-table)   a material, not a signal: the warm ground under
+                               a page being proofed — the preview gutter, the
+                               marketing captures. No tertiary text on it.
+   Everything else is paper and ink.
+   -------------------------------------------------------------------------- */
+:root,
+[data-theme],
+.g-scope {
+  /* Blue Pencil ramp, from the brand input (sRGB mixes keep its violet).
+     Default light → #F3F2FA · #E8E7FB · #D8D6FB · #B7B5FC · #7D7AFD · #2E2BFF
+     · #2421D1 · #1A18A4 · #23207D · #1F1C4D
+     Text on 50/100/200: ink-primary 16.08/14.68/12.71, accent-text 7.75/7.08/6.12. */
+  --pencil-50:  color-mix(in srgb, var(--accent) 5%,  var(--surface-raised));
+  --pencil-100: color-mix(in srgb, var(--accent) 10%, var(--surface-raised));
+  --pencil-200: color-mix(in srgb, var(--accent) 18%, var(--surface-raised));
+  --pencil-300: color-mix(in srgb, var(--accent) 34%, var(--surface-raised));
+  --pencil-400: color-mix(in srgb, var(--accent) 62%, var(--surface-raised));
+  --pencil-500: var(--accent-fill);
+  --pencil-600: var(--accent-hover);
+  --pencil-700: var(--accent-pressed);
+  --pencil-800: color-mix(in srgb, var(--accent-fill) 45%, var(--ink-primary));
+  --pencil-900: color-mix(in srgb, var(--accent-fill) 25%, var(--ink-primary));
+
+  /* Icons: one ink at rest; the accent part and tint wake up where an icon
+     marks the current place (see brand/icons.ts). */
+  --icon-accent-current: var(--accent-text);
+  --icon-tint-current:   var(--pencil-100);
+}
+
+:root,
+[data-theme="light"] {
+  /* Paper ramp (app surfaces): overlay #FFFEFC · sheet #FDFCFA · ground
+     #F6F4F0 · well #EDEAE4 · rule #E7E3DC · edge #D7D1C7 · seam #C9C2B6 ·
+     worn #B4AC9F · strong #817A6F. Seam and worn are decorative (< 3:1): a
+     button's edge where its words already say what it is, a hover edge. */
+  --border-seam:  #C9C2B6;
+  --border-worn:  #B4AC9F;
+  /* The proofing table. ink-primary 13.00, ink-secondary 6.36; no
+     ink-tertiary (4.31). */
+  --surface-table: #E3DBCD;
+
+  /* Depth: what rests, what is raised, what floats.
+       ground   no edge, no shadow
+       sheet    edge + resting shadow (cards, panes, blocks)
+       control  seam + a 1 px contact line (secondary buttons, chips, the
+                segmented thumb) — touched, never floating
+       field    strong edge + a hairline of inner shade (inputs: recessed)
+       overlay  shadow-2 / shadow-3 (menus, popovers, dialogs, toasts)
+     Buttons never take a drop shadow; overlays are the only things that float. */
+  --shadow-sheet:   0 1px 0 rgb(var(--shadow-color) / 0.03), 0 1px 2px rgb(var(--shadow-color) / 0.05);
+  --shadow-control: 0 1px 0 rgb(var(--shadow-color) / 0.07);
+  --shadow-field:   inset 0 1px 1px rgb(var(--shadow-color) / 0.05);
+  --shadow-press:   inset 0 1px 0 rgb(255 255 255 / 0.14), inset 0 -1px 0 rgb(0 0 0 / 0.16);
+  --edge-highlight: none;
+}
+
+[data-theme="dark"] {
+  /* Dark: the inked plate. Sheets lift by tone and a lit top edge, not by
+     shadow (shadows vanish on ink). Pencil tints mix from the accent text so
+     the ramp stays visible: 100 → #2D2A2E (ink-primary 12.05, accent-text 6.15). */
+  --pencil-50:  color-mix(in srgb, var(--accent-text) 6%,  var(--surface-raised));
+  --pencil-100: color-mix(in srgb, var(--accent-text) 10%, var(--surface-raised));
+  --pencil-200: color-mix(in srgb, var(--accent-text) 18%, var(--surface-raised));
+  --pencil-300: color-mix(in srgb, var(--accent-text) 30%, var(--surface-raised));
+  --pencil-400: color-mix(in srgb, var(--accent-text) 60%, var(--surface-raised));
+  --border-seam:  #464036;
+  --border-worn:  #5A5347;
+  --surface-table: #2B2620;
+  --shadow-sheet:   inset 0 1px 0 rgb(255 255 255 / 0.035), 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 1px rgb(0 0 0 / 0.45);
+  --shadow-field:   inset 0 1px 2px rgb(0 0 0 / 0.30);
+  --shadow-press:   inset 0 1px 0 rgb(255 255 255 / 0.16), inset 0 -1px 0 rgb(0 0 0 / 0.22);
+  --edge-highlight: inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    --pencil-50:  color-mix(in srgb, var(--accent-text) 6%,  var(--surface-raised));
+    --pencil-100: color-mix(in srgb, var(--accent-text) 10%, var(--surface-raised));
+    --pencil-200: color-mix(in srgb, var(--accent-text) 18%, var(--surface-raised));
+    --pencil-300: color-mix(in srgb, var(--accent-text) 30%, var(--surface-raised));
+    --pencil-400: color-mix(in srgb, var(--accent-text) 60%, var(--surface-raised));
+    --border-seam:  #464036;
+    --border-worn:  #5A5347;
+    --surface-table: #2B2620;
+    --shadow-sheet:   inset 0 1px 0 rgb(255 255 255 / 0.035), 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 1px rgb(0 0 0 / 0.45);
+    --shadow-field:   inset 0 1px 2px rgb(0 0 0 / 0.30);
+    --shadow-press:   inset 0 1px 0 rgb(255 255 255 / 0.16), inset 0 -1px 0 rgb(0 0 0 / 0.22);
+    --edge-highlight: inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+}
+
+/* Shape roles. Pills are for pressing (buttons and only buttons); selection
+   and suggestion are soft rectangles; status is a stamp. */
+:root {
+  --radius-stamp:   3px;   /* badges, tags, counts — a rubber stamp, not a lozenge */
+  --radius-control: 6px;   /* segmented thumb, chips, nav and menu items, inputs */
+  --radius-tray:    8px;   /* segmented track, cards, panes, menus, toasts */
+  --radius-sheet:   12px;  /* dialogs, framed captures */
+}
