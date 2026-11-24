@@ -7,7 +7,7 @@ order: 7.5
 
 For people who look after a site. **Put this site online** puts the *site* at a real address; **Host the editor online** puts the *editor* there too, so the site can be edited from any browser, not just this computer. The editor runs on your own account with a host, for this one site, with its own password. Nothing is run by Fiction Tribe: Galley Cloud, a managed service, is [coming later](/cloud/).
 
-*Status: not in a release yet. Run on 2026-11-24 from the real app in a real browser against strict stand-ins for Fly.io and Cloudflare, with the stand-in's machine started as a real editor: the plan and its cost shown before anything, nothing created before the yes, the editor created and answering, and removal deleting exactly what was created. Not yet run against Fly.io or Cloudflare themselves. The editor's image isn't published yet, so for now this needs an image you built and pushed (`GALLEY_HOSTING_IMAGE`). What was run, exactly: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#what-has-been-run).*
+*Status: new in 0.2.0 and still in progress. Run on 2026-11-24 from the real app in a real browser against strict stand-ins for Fly.io and Cloudflare, with the stand-in's machine started as a real editor: the plan and its cost shown before anything, nothing created before the yes, the editor created and answering, and removal deleting exactly what was created. Not yet run against Fly.io or Cloudflare themselves. The editor's image isn't published yet, so for now this needs an image you built and pushed (`GALLEY_HOSTING_IMAGE`). What was run, exactly: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#what-has-been-run).*
 
 ## Where it can run
 

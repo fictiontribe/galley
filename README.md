@@ -182,8 +182,8 @@ Intent, not a promise. The longer version is [ROADMAP.md](ROADMAP.md).
 **Now**
 
 - The guided move from WordPress, in final checks
-- The editor hosted on your own server, one site per install: in the
-  repository, not in a release yet
+- The editor hosted on your own server, one site per install, in final
+  checks
 
 **Next**
 
@@ -251,8 +251,7 @@ change between minor versions ([what the numbers mean](RELEASING.md#what-the-ver
 - **New, in final checks**: the guided move from WordPress, run against an
   export file and a stand-in WordPress site, not yet a real one; a hosted
   editor, one site per install, run for real on its image and on a server
-  behind HTTPS (in the repository, not in a release yet, and its image isn't
-  on a registry: [`docs/cloud-install.md`](docs/cloud-install.md)).
+  behind HTTPS (its image isn't on a registry yet: [`docs/cloud-install.md`](docs/cloud-install.md)).
 - **Preview**: the page builder.
 - **In progress**: deploys to Vercel (built, not yet run on the real
   service); hosting the editor online on your own Fly.io, Cloudflare or

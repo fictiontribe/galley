@@ -16,6 +16,10 @@ what is built; when something here ships, it moves to the
   set-up and the move from WordPress get smaller fixes.
 - **0.1.3**: a batch of interface fixes found while making the tour: forms,
   Proof, the Search and AI checks, the brand, click-to-edit and more.
+- **0.2.0**: a hosted editor that looks after one site (`galley serve` and
+  the image), with first run from a setup link, backups and an Install page;
+  “Host the editor online” for your own Fly.io, Cloudflare or server, still
+  in progress.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [twelve how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.
@@ -27,8 +31,8 @@ In final checks.
 - **The guided move from WordPress.** Built and run against an export file
   and a stand-in WordPress site; not yet against a real one.
 - **The editor hosted on your own server**, as an install that serves one
-  site. In the repository and run for real, on its image and on a server
-  behind HTTPS; not in a release yet, and its image isn't on a registry
+  site. Released in 0.2.0 and run for real, on its image and on a server
+  behind HTTPS; its image isn't on a registry yet
   ([`docs/cloud-install.md`](docs/cloud-install.md)).
 
 ## Next

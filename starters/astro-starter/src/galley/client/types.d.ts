@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.1.3 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.2.0 by scripts/vendor.mjs. Don't edit: run the script again to update.
 import type { FormAction, FormDestination, FormField } from "../kit";
 
 /** What a submitter is given besides the values and the destination. */
