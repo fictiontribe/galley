@@ -383,10 +383,20 @@ export function createInstall(options: InstallOptions): Install {
 
     if (access !== "deploy-key" && access !== "token") throw new GalleyError("invalid", "Choose how this editor reaches the repository: its own key, or an access key.");
     const address = normalizeRepository(request.repository, access, { allowLocal: options.allowLocalRepositories === true });
-    const branch = validBranch(request.branch);
-    const folder = validFolder(request.folder);
+    let branch = validBranch(request.branch);
+    let folder = validFolder(request.folder);
 
     if (folder && request.starter) throw new GalleyError("invalid", "A starter is always sent to the top of an empty repository, so choose a starter or a folder, not both.");
+    // A site that is known and still waiting — whoever runs the server named it, or an earlier try did — keeps the
+    // folder and branch it was given when the same repository is connected without saying them again. The first-run
+    // screen may ask only for the repository and how to reach it, and "the folder wasn't mentioned" must never
+    // turn into "the whole repository is the site". A starter is the exception: it always goes to the top.
+    const waiting = store.read().site;
+
+    if (waiting && !waiting.connectedAt && waiting.repository === redactAddress(address.url) && !request.starter) {
+      if (request.folder === undefined) folder = waiting.folder;
+      if (request.branch === undefined) branch = waiting.branch ?? undefined;
+    }
     let token: string | null = null;
 
     if (access === "token") {

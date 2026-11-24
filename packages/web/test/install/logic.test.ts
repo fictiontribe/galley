@@ -122,7 +122,10 @@ describe("first run's forms", () => {
 
   it("builds the connect request, with the token only for token access and the starter only for a starter", () => {
     const draft = { ...emptySiteDraft(), repository: " git@github.com:example/site.git ", starter: "astro", name: "Sam’s site" };
-    expect(connectRequest(draft, "ignored")).toEqual({ repository: "git@github.com:example/site.git", access: "deploy-key" });
+    expect(connectRequest(draft, "ignored")).toEqual({ repository: "git@github.com:example/site.git", folder: "", access: "deploy-key" });
+    // The folder is said every time for a repository that holds the site, so it can't be dropped on the way; a starter always goes to the top.
+    expect(connectRequest({ ...draft, folder: " apps/site " }, "ignored")).toEqual({ repository: "git@github.com:example/site.git", folder: "apps/site", access: "deploy-key" });
+    expect(connectRequest({ ...draft, folder: "apps/site", source: "starter" }, "ignored")).not.toHaveProperty("folder");
     expect(connectRequest({ ...draft, access: "token", source: "starter" }, " fake-token ")).toEqual({ repository: "git@github.com:example/site.git", access: "token", token: "fake-token", starter: { id: "astro", name: "Sam’s site" } });
   });
 

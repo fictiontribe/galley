@@ -50,6 +50,8 @@ export type SiteSource = "existing" | "starter";
 export interface SiteDraft {
   source: SiteSource;
   repository: string;
+  /** The folder inside the repository that holds the site; empty: the top. */
+  folder: string;
   access: "deploy-key" | "token";
   starter: string | null;
   look: string | null;
@@ -57,12 +59,14 @@ export interface SiteDraft {
 }
 
 export function emptySiteDraft(): SiteDraft {
-  return { source: "existing", repository: "", access: "deploy-key", starter: null, look: null, name: "" };
+  return { source: "existing", repository: "", folder: "", access: "deploy-key", starter: null, look: null, name: "" };
 }
 
 /** The request body for check and connect. */
 export function connectRequest(draft: SiteDraft, token: string): SiteConnectRequest {
   const request: SiteConnectRequest = { repository: draft.repository.trim(), access: draft.access };
+  // A starter always goes to the top of an empty repository. Otherwise the folder is said every time — empty for the top — so it can't be dropped on the way.
+  if (draft.source === "existing") request.folder = draft.folder.trim();
   if (draft.access === "token") request.token = token.trim();
   if (draft.source === "starter" && draft.starter) {
     request.starter = { id: draft.starter, ...(draft.look ? { look: draft.look } : {}), ...(draft.name.trim() ? { name: draft.name.trim() } : {}) };

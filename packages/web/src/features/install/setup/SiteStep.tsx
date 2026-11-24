@@ -22,7 +22,10 @@ import { StepHead, type StepProps } from "./head";
 const SAVED = "galley.setup.site";
 
 function loadDraft(status: SetupStatus): SiteDraft {
-  const fromServer: Partial<SiteDraft> = status.site.repository ? { repository: status.site.repository, ...(status.site.access !== "none" ? { access: status.site.access } : {}) } : {};
+  // The folder comes with the repository: a site the server already knows in a folder is connected in that folder.
+  const fromServer: Partial<SiteDraft> = status.site.repository
+    ? { repository: status.site.repository, folder: status.site.folder ?? "", ...(status.site.access !== "none" ? { access: status.site.access } : {}) }
+    : {};
   try {
     const raw = sessionStorage.getItem(SAVED);
     const saved = raw ? (JSON.parse(raw) as Partial<SiteDraft>) : {};
@@ -209,6 +212,12 @@ export function SiteStep({ status, onStatus, heading }: StepProps) {
         <StepHead heading={heading} title="Waiting for the key." lede="The repository hasn’t accepted this editor’s key yet. Add it with write access, then check again — nothing else needs doing here." />
         <p className="install-note">
           Repository: <span className="g-mono">{status.site.repository}</span>
+          {status.site.folder ? (
+            <>
+              {" "}
+              · the site is its folder <span className="g-mono">{status.site.folder}</span>
+            </>
+          ) : null}
         </p>
         {deployKey.key ? <KeySteps info={deployKey.key} repository={status.site.repository ?? draft.repository} /> : deployKey.error ? <ErrorState compact title="Couldn’t show the key" error={deployKey.error} onRetry={deployKey.retry} /> : <Skeleton height={96} />}
         {check ? <CheckLine check={check} draft={draft} /> : null}
@@ -315,6 +324,12 @@ export function SiteStep({ status, onStatus, heading }: StepProps) {
       >
         <Input mono spellCheck={false} autoComplete="off" value={draft.repository} placeholder="git@github.com:you/site.git" onChange={(event) => update({ repository: event.target.value })} data-autofocus />
       </Field>
+
+      {draft.source === "existing" ? (
+        <Field label="Folder inside the repository" hint="Optional. Only when the site isn’t at the top of the repository — for example apps/site">
+          <Input mono spellCheck={false} autoComplete="off" value={draft.folder} placeholder="the top of the repository" onChange={(event) => update({ folder: event.target.value })} />
+        </Field>
+      ) : null}
 
       <fieldset className="deploy-choices">
         <legend className="g-label">How the editor reaches it</legend>
