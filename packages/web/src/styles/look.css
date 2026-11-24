@@ -51,8 +51,8 @@
 .g-root .app-model--checked { background: var(--pencil-50); border-color: var(--pencil-300); }
 .g-root .app-site-card { box-shadow: var(--shadow-sheet); }
 
-/* The empty page: a sheet on the proofing table. */
-.g-root .app-empty__sheet { box-shadow: 0 0 0 6px var(--surface-table), var(--shadow-sheet); }
+/* The empty page: a sheet whose crop marks are drawn in pencil — a page set and waiting. */
+.g-root .app-empty__sheet { --crop-color: var(--pencil-300); box-shadow: var(--shadow-sheet); }
 
 /* Menus and the palette: the row you're on takes a pencil tint and its icon's accent. */
 .g-root .app-palette__option[aria-selected="true"] { background: var(--pencil-100); --icon-accent: var(--icon-accent-current); }
@@ -66,3 +66,20 @@
 
 /* Progress runs in pencil on a ruled track. */
 .g-root .app-progress { background: var(--pencil-100); }
+
+
+/* --------------------------------------------------------------------------
+   The assistant's hand. Wherever you can ask for a change, the field is ruled
+   in Blue Pencil (pencil-400: 3.37:1 on the sheet, 3.48 dark), so the one
+   place the editor's pencil writes for you is the one place it is drawn.
+   -------------------------------------------------------------------------- */
+.g-root .kit-ask--line .kit-ask__field,
+.g-root .g-composer { border-color: var(--pencil-400); box-shadow: 0 0 0 3px var(--pencil-50), var(--shadow-sheet); }
+.g-root .kit-ask--line .kit-ask__field:has(.kit-ask__input:focus-visible),
+.g-root .g-composer:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring), 0 0 0 4px var(--pencil-100); }
+.g-root .kit-ask--line .kit-ask__label { color: var(--ink-primary); border-inline-end-color: var(--pencil-200); }
+
+/* Icons in the sidebar rest a step quieter than their words. */
+.g-root .app-sidebar .g-nav__item > .g-icon { color: var(--ink-secondary); }
+.g-root .app-sidebar .g-nav__item[aria-current="page"] > .g-icon,
+.g-root .app-sidebar .g-nav__item:hover > .g-icon { color: var(--ink-primary); }
