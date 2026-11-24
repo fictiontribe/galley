@@ -147,6 +147,12 @@ describe("every assistant tool, by role", () => {
         const input = inputFor(tool.name, who, config);
 
         expect(input, `a sample call for ${tool.name}`).toBeDefined();
+        // The configuration is replaced only by a conversation that has read it.
+        if (tool.name === "save_site_config" && may(who, NEEDS[tool.name]!)) {
+          const reading = toolsFor().find((candidate) => candidate.name === "read_file")!;
+
+          await as(who, () => executeTool(reading, reading.name, { path: "galley.config.json" }, ctx, reading.title));
+        }
         const outcome = await as(who, () => executeTool(tool, tool.name, input, ctx, tool.title));
 
         if (may(who, NEEDS[tool.name]!)) {

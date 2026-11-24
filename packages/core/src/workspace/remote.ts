@@ -13,12 +13,37 @@ export interface RemoteLocation {
   kind: HostKind | null;
 }
 
+/** A query value that signs in: `?access_token=…`, `&private_token=…`, `X-Amz-Signature=…`. The name is kept, the value goes. */
+const SIGNING_VALUE = /([?&](?:[\w.-]*[_.-])?(?:token|secret|password|passwd|pwd|key|apikey|signature|sig|auth|credentials?)(?:[_.-][\w.-]*)?=)[^&\s'"#]+/gi;
+/** Access keys of shapes that can be told apart from anything else, wherever they sit (a folder in an address, say). */
+const KNOWN_KEYS = [/\bgh[pousr]_[A-Za-z0-9]{20,}/g, /\bgithub_pat_[A-Za-z0-9_]{20,}/g, /\bglpat-[A-Za-z0-9_-]{16,}/g];
+
 /**
- * Removes any user:password@ from an https remote URL before it is shown or
- * returned anywhere. Tokens embedded in remote URLs are common.
+ * Removes what signs in from the addresses in a text before it is shown or
+ * returned anywhere: an address on its own, or every address inside a longer
+ * message (git quotes the address it was using in the middle of what it
+ * reports, and a failed command's details quote its arguments). Tokens
+ * embedded in remote URLs are common.
+ *
+ * - `https://user:password@host`, `https://token@host`: everything before
+ *   the host goes, up to the last `@` in front of it, so a password with an
+ *   `@` of its own goes whole;
+ * - `ssh://user:password@host` and other schemes: the password goes and the
+ *   user stays (`ssh://git@host` is an address, not a secret);
+ * - a query value whose name says it signs in;
+ * - GitHub's and GitLab's own key formats, anywhere.
+ *
+ * A key of no known shape in the path of an address can't be told from a
+ * folder name, and is left.
  */
-export function redactRemoteUrl(url: string): string {
-  return url.replace(/^(https?:\/\/)[^@/]+@/i, "$1");
+export function redactRemoteUrl(text: string): string {
+  let out = text
+    .replace(/(\bhttps?:\/\/)[^\s/'"]*@/gi, "$1")
+    .replace(/(\b(?!https?:)[a-z][a-z0-9+.-]*:\/\/[^\s/'":@]*):[^\s/'"]*@/gi, "$1@")
+    .replace(SIGNING_VALUE, "$1");
+
+  for (const key of KNOWN_KEYS) out = out.replace(key, "");
+  return out;
 }
 
 export function parseRemoteUrl(url: string): RemoteLocation | null {

@@ -86,6 +86,8 @@ export function createMcpServer(options: McpServerOptions): McpServer {
   const describeChanges = options.describeChanges ?? (async (_siteId: string, changes: ChangeSet) => deterministicSummary(changes));
   /** Titles seen on this connection, so activity labels in errors can name things. */
   const titles = new Map<string, string>();
+  /** Source files as this session last read or wrote them (ToolContext.read). */
+  const read = new Map<string, string>();
   /** Resource URIs use the product's slug as their scheme ("galley://site" unbranded). */
   const scheme = slugOf(options.brand.name);
   const server = new McpServer(
@@ -139,6 +141,7 @@ export function createMcpServer(options: McpServerOptions): McpServer {
           images: options.images ?? NO_IMAGES,
           signal,
           titles,
+          read,
           question: null,
           askedLastTurn: false,
         };

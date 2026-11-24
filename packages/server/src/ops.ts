@@ -86,6 +86,13 @@ export interface InstallOpsOptions {
   log: ServerLog;
   restoreMaxBytes: number;
   phase: { get(): ServerPhase; set(phase: ServerPhase): void };
+  /**
+   * Resolves once the editor's own round in progress, if there is one, has
+   * finished (keep-up.ts). A restore waits for it before it closes the site:
+   * a round bringing versions into the files must not have them replaced
+   * under it. New rounds are refused from the moment a restore begins.
+   */
+  roundIdle?: () => Promise<void>;
 }
 
 function slugOf(name: string | null | undefined): string {
@@ -137,6 +144,8 @@ export function createInstallOps(options: InstallOpsOptions): InstallOps {
       job.update({ detail: "Stopping the preview and closing the site", progress: 0.6 });
       restoring = true;
       options.phase.set("restoring");
+      // No new round starts from here; one already bringing versions in finishes first.
+      await options.roundIdle?.();
       await install.idle();
       await install.closeSite();
       job.update({ detail: "Putting the backup in place", progress: 0.75 });

@@ -267,6 +267,7 @@ describe.skipIf(!available)("assistant on the real facade (starters/astro-starte
       "Make a new picture for the services page hero",
       [
         tool("t10", "generate_image", { prompt, aspect: "4:3" }),
+        tool("t10b", "read_entry", { path: "src/content/pages/services.md" }),
         tool("t11", "update_entry", { path: "src/content/pages/services.md", ops: [{ op: "set", path: "sections.0.image", value: url }, { op: "set", path: "sections.0.imageAlt", value: "A sunlit garden room with a timber frame" }] }),
         say("I made a new hero picture for the Services page. It's in Proof."),
       ],
@@ -282,7 +283,8 @@ describe.skipIf(!available)("assistant on the real facade (starters/astro-starte
 
     expect(hero.image).toBe(url);
     expect(services.issues.filter((i) => i.code === "broken-image")).toEqual([]);
-    const generated = script.requests.at(-2)!.body.messages.at(-1).content[0];
+    // The request after the picture was made (two back from the last now: the entry is read before it is changed).
+    const generated = script.requests.at(-3)!.body.messages.at(-1).content[0];
 
     expect(JSON.parse(generated.content).url).toBe(url);
   });

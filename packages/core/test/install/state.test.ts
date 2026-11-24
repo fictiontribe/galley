@@ -4,7 +4,7 @@
  * folder a newer version wrote, atomic writes and modes, the password hash,
  * the one-time setup code and sessions that outlive a restart.
  */
-import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { rename as renameFile, writeFile as writeFileNow } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
@@ -340,5 +340,40 @@ describe("saving the state when the disk won't take it", () => {
     expect((odd as NodeJS.ErrnoException).code).toBe("EXDEV");
     expect(store.read().liveUrl).toBeNull();
     expect(leftovers(home)).toEqual([]);
+  });
+});
+
+describe("what a stopped write left behind", () => {
+  it("is taken away the next time the install opens, and nothing else is", async () => {
+    const home = tempDir("install-home-");
+    const first = await openInstallState(home);
+
+    await first.update((draft) => void (draft.liveUrl = "https://www.example.com"));
+    const saved = readFileSync(join(home, STATE_FILE), "utf8");
+    // A process stopped between writing its temporary file and putting it in place, ten minutes ago…
+    const old = new Date(Date.now() - 10 * 60_000);
+    const left = join(home, `.${STATE_FILE}.0123456789ab.tmp`);
+
+    writeFileSync(left, "{ half a file");
+    utimesSync(left, old, old);
+    // …a write that may be going on right now, and files that only look similar.
+    const fresh = join(home, `.${STATE_FILE}.ba9876543210.tmp`);
+    const others = [`.${STATE_FILE}.notes.tmp`, `${STATE_FILE}.0123456789ab.tmp`, "notes.tmp"].map((name) => join(home, name));
+
+    writeFileSync(fresh, "{}");
+    for (const other of others) {
+      writeFileSync(other, "kept");
+      utimesSync(other, old, old);
+    }
+    const again = await openInstallState(home);
+
+    expect(readdirSync(home)).not.toContain(`.${STATE_FILE}.0123456789ab.tmp`);
+    expect(readdirSync(home)).toContain(`.${STATE_FILE}.ba9876543210.tmp`);
+    for (const other of others) expect(readFileSync(other, "utf8")).toBe("kept");
+    // The state itself is as it was saved, and writing goes on leaving nothing behind.
+    expect(readFileSync(join(home, STATE_FILE), "utf8")).toBe(saved);
+    expect(again.read().liveUrl).toBe("https://www.example.com");
+    await again.update((draft) => void (draft.liveUrl = "https://example.com"));
+    expect(readdirSync(home).filter((name) => name.endsWith(".tmp")).sort()).toEqual([`.${STATE_FILE}.ba9876543210.tmp`, `.${STATE_FILE}.notes.tmp`, `${STATE_FILE}.0123456789ab.tmp`, "notes.tmp"].sort());
   });
 });

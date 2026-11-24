@@ -9,6 +9,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GitStatus, ServerEvent } from "@galley/core/types";
+import { relativeTime } from "@/lib/format";
 import { byText, click, renderApp, settle, startServer, until, type MockServer, type Rendered } from "./harness";
 
 let page: Rendered | null = null;
@@ -100,12 +101,20 @@ describe.each(["owner", "contributor"] as const)("Version history, signed in as 
 
   it("says it couldn't look, why, and when it last knew — never in step on the strength of an old look", async () => {
     const problem = "Couldn't reach the code host. Check your connection and try again.";
-    const look: Look = { status: status({ checkedAt: ago(3 * 60 * MINUTE), checkProblem: problem }), gate: null, emit: null };
+    // Three hours ago is "3 h ago" for most of the day and "yesterday" in the small hours, so the words are the
+    // screen's own for that moment, worked out on either side of reading the line in case midnight falls between.
+    const lastKnown = Date.now() - 3 * 60 * MINUTE;
+    const look: Look = { status: status({ checkedAt: new Date(lastKnown).toISOString(), checkProblem: problem }), gate: null, emit: null };
+    const wordsBefore = relativeTime(lastKnown);
     const { server } = await open("hosted", look, role);
 
     await until(() => expect(line()).toContain("Couldn’t check the repository."));
     expect(line()).toContain(problem);
-    expect(line()).toContain("It was last checked 3 h ago.");
+    const said = line();
+    const words = [wordsBefore, relativeTime(lastKnown)];
+
+    expect(words.every((text) => /^(3 h ago|yesterday)$/.test(text))).toBe(true);
+    expect(words.some((text) => said.includes(`It was last checked ${text}.`))).toBe(true);
     expect(line()).not.toContain("In step");
     // Trying again asks again.
     const before = server.log.filter((entry) => entry.path.endsWith("/git/check")).length;
