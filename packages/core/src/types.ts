@@ -197,6 +197,33 @@ export interface MediaConfig {
   publicPath: string;
   /** Every directory scanned for the library (always includes `dir`). */
   roots: Array<{ dir: string; publicPath: string }>;
+  /**
+   * New media goes to this bucket instead of `dir` (galley.config.json
+   * `media.storage`). Absent: media lives in the repository, as it always has.
+   */
+  storage?: MediaStorageConfig;
+}
+
+/**
+ * A bucket the site's media is kept in, behind a public address. No secrets:
+ * the access key and secret are kept in the site's key store, never here.
+ */
+export interface MediaStorageConfig {
+  /** The connector: "r2" (Cloudflare R2), "s3" (Amazon S3), "s3-compatible", or a plugin's id. */
+  connector: string;
+  bucket: string;
+  /** Cloudflare R2: the account ID the bucket is in. */
+  account?: string;
+  /** Amazon S3: the bucket's region ("eu-west-1"). R2: "auto". S3-compatible: the store's region name. */
+  region?: string;
+  /** S3-compatible: the store's address ("https://s3.eu-central-003.backblazeb2.com"). Only https:// (loopback http:// for tests). */
+  endpoint?: string;
+  /** Bucket name in the path (endpoint/bucket/key) rather than the host. Default: true except for Amazon S3. */
+  pathStyle?: boolean;
+  /** Folder inside the bucket every file of this site is kept under ("lowfield/"). Empty: the bucket's top. */
+  prefix?: string;
+  /** Where visitors load the files from: "https://media.example.com". The content stores full addresses under it. */
+  publicUrl: string;
 }
 
 export type PublishMode = "commit" | "pull-request";
@@ -308,7 +335,7 @@ export interface GalleyConfig {
   dev?: { command?: string; port?: number };
   build?: { command?: string; outDir?: string };
   urls?: { production?: string; staging?: string };
-  media?: { dir?: string; publicPath?: string; roots?: Array<{ dir: string; publicPath: string }> };
+  media?: { dir?: string; publicPath?: string; roots?: Array<{ dir: string; publicPath: string }>; storage?: MediaStorageConfig };
   publish?: Partial<PublishConfig>;
   ai?: Partial<AiConfig>;
   writable?: Partial<WritableConfig>;
@@ -589,6 +616,12 @@ export interface ChangeSet {
   baseCommit: string | null;
   files: FileChange[];
   totals: { files: number; additions: number; deletions: number };
+  /**
+   * Files put in the site's bucket since the last publish. They are public at
+   * their addresses already; nothing links to them until the pages that use
+   * them are published. Absent when the site keeps no media in a bucket.
+   */
+  bucketUploads?: MediaItem[];
 }
 
 export interface DiffLine {
@@ -890,9 +923,9 @@ export type HostToOverlay =
 // ─────────────────────────────────────────────────────────────── media
 
 export interface MediaItem {
-  /** Repo-relative path. */
+  /** Repo-relative path. For a file in the bucket: "bucket:" and its key ("bucket:images/coat.webp"), never a repository path. */
   path: string;
-  /** Site URL, e.g. "/images/team/ana.webp". */
+  /** Site URL, e.g. "/images/team/ana.webp". In the bucket: its full public address. */
   url: string;
   name: string;
   size: number;
@@ -901,7 +934,14 @@ export interface MediaItem {
   width?: number;
   height?: number;
   modifiedAt: number;
+  /** In the bucket: "added" while no published version uses it yet (it is public at its address all the same), else "clean". */
   status: ChangeStatus;
+  /** Where it is kept. Absent: the repository. */
+  location?: "repository" | "bucket";
+  /** In the bucket: the object's key. */
+  key?: string;
+  /** In the bucket, in Proof: whether the working copy still uses it. */
+  used?: boolean;
 }
 
 export type ImageAspect = "1:1" | "16:9" | "4:3" | "3:2" | "9:16" | "3:4" | "2:3";
@@ -1151,7 +1191,7 @@ export type ServerEvent =
 /** A long-running operation: cloning a repo, creating a site, installing dependencies. */
 export interface Job {
   id: string;
-  kind: "clone" | "create" | "install" | "build" | "publish" | "deploy" | "video" | "visibility" | "redirects" | "brand" | "kit-setup" | "import" | "domain" | "setup" | "restore" | "editor-host";
+  kind: "clone" | "create" | "install" | "build" | "publish" | "deploy" | "video" | "visibility" | "redirects" | "brand" | "kit-setup" | "import" | "domain" | "setup" | "restore" | "editor-host" | "media";
   label: string;
   state: "running" | "done" | "error";
   /** 0–1 when measurable. */
