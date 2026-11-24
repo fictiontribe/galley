@@ -509,6 +509,72 @@ describe("preview controller", () => {
     expect(started.env.PORT).toBe(started.argv[1]);
   });
 
+  it("passes a free PORT when the configured port is taken and the adapter has no portArgs", async () => {
+    const port = await listen((_req, res) => {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end("<html><head></head><body>someone else's site</body></html>");
+    });
+    const root = site("mine");
+
+    writeTree(root, {
+      "env-port-server.mjs": `
+import http from "node:http";
+import { readFileSync, writeFileSync } from "node:fs";
+const port = Number(process.env.PORT || process.argv[2]);
+const label = readFileSync("label.txt", "utf8").trim();
+writeFileSync("started.json", JSON.stringify({ portEnv: process.env.PORT ?? null, port }));
+const server = http.createServer((_req, res) => {
+  res.writeHead(200, { "content-type": "text/html" });
+  res.end("<html><head></head><body><h1>" + label + "</h1></body></html>");
+});
+server.listen(port, "127.0.0.1", () => console.log("  Local: http://localhost:" + server.address().port + "/"));
+`,
+    });
+    const { controller } = controllerFor(root, { dev: { command: `node env-port-server.mjs ${port}`, port } });
+    const status = await controller.start();
+
+    expect(status).toMatchObject({ state: "ready", detail: "The preview is ready." });
+    const page = await (await fetch((status.url as string) + "/")).text();
+
+    expect(page).toContain("<h1>mine</h1>");
+    expect(page).not.toContain("someone else");
+    const started = JSON.parse(readFileSync(join(root, "started.json"), "utf8")) as { portEnv: string | null; port: number };
+
+    expect(started.portEnv).not.toBeNull();
+    expect(Number(started.portEnv)).not.toBe(port);
+  });
+
+  it("never proxies the foreign server on the configured port when a dev server announces that port", async () => {
+    const port = await listen((_req, res) => {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end("<html><head></head><body>someone else's site</body></html>");
+    });
+    const root = site("mine");
+
+    writeTree(root, {
+      "announce-conflict.mjs": `
+import http from "node:http";
+import { readFileSync } from "node:fs";
+const busyPort = Number(process.argv[2]);
+const label = readFileSync("label.txt", "utf8").trim();
+console.log("  Local: http://localhost:" + busyPort + "/");
+const server = http.createServer((_req, res) => {
+  res.writeHead(200, { "content-type": "text/html" });
+  res.end("<html><head></head><body><h1>" + label + "</h1></body></html>");
+});
+server.listen(0, "127.0.0.1", () => console.log("  Local: http://localhost:" + server.address().port + "/"));
+`,
+    });
+    const { controller } = controllerFor(root, { dev: { command: `node announce-conflict.mjs ${port}`, port } });
+    const status = await controller.start();
+
+    expect(status.state).toBe("ready");
+    const page = await (await fetch((status.url as string) + "/")).text();
+
+    expect(page).toContain("<h1>mine</h1>");
+    expect(page).not.toContain("someone else");
+  });
+
   it("doesn't adopt a listener it can't identify", async () => {
     const root = site("unknown-owner");
     const port = await freeLoopbackPort();
