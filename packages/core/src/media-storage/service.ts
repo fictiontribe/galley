@@ -498,6 +498,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       const store = parsed ? (await service.stores(site)).find((candidate) => candidate.location === parsed.location) : null;
 
       if (!parsed || !store) return null;
+      await assertOwnKey(site, store, parsed.key);
       try {
         return await store.get(parsed.key);
       } catch (error) {
@@ -547,6 +548,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
         const store = parsed ? stores.find((candidate) => candidate.location === parsed.location) : null;
 
         if (!parsed || !store) throw new GalleyError("invalid", "That file isn't in one of the site's media stores.", path);
+        await assertOwnKey(site, store, parsed.key);
         const [working, published] = await Promise.all([filesUsing(site, store, parsed.key, "working"), filesUsing(site, store, parsed.key, "base")]);
         const name = parsed.key.split("/").pop() ?? parsed.key;
 
@@ -566,6 +568,18 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       return result;
     },
   };
+
+  /**
+   * A stored file's name must be the site's own before anything reads or
+   * deletes it: inside its folder, with no empty, "." or ".." part — and for a
+   * store that names things itself, one the site's record says it holds.
+   */
+  async function assertOwnKey(site: SiteService, store: MediaStore, key: string): Promise<void> {
+    const refused = () => new GalleyError("forbidden", "That file isn't one of this site's.", `${store.location}:${key.slice(0, 200)}`);
+
+    if (!store.ownsKey(key)) throw refused();
+    if (store.abilities.naming === "service" && !(await library.all(site.id)).some((item) => item.location === store.location && item.key === key)) throw refused();
+  }
 
   async function madeRecord(siteId: string): Promise<MediaCreatedRecord | null> {
     try {
@@ -687,7 +701,8 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
         const store = stores.find((candidate) => candidate.location === location);
 
         if (store?.list) await relist(site, store);
-        return (await library.all(site.id)).filter((item) => item.location === location);
+        // Only names that are the site's own, whatever a listing returned.
+        return (await library.all(site.id)).filter((item) => item.location === location && (!store || store.ownsKey(item.key)));
       },
       async saveAddress(location, publicUrl) {
         if (location === "images") {

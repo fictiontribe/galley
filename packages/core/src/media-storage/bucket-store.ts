@@ -11,7 +11,7 @@ import type { MediaCheckStepId } from "./contract";
 import { endpointFor, normalizePrefix, pathStyleFor, publicUrlOf, regionFor } from "./info";
 import { createS3Client, S3Error, S3NetworkError, type S3Client } from "./s3";
 import type { Credentials } from "./sigv4";
-import { ADDRESS_TAIL, escapePattern, StoreError, StoreNameTaken, type MediaStore, type StoredItem } from "./store";
+import { ADDRESS_TAIL, cleanKey, escapePattern, StoreError, StoreNameTaken, type MediaStore, type StoredItem } from "./store";
 
 export const BUCKET_CONNECTOR_NAMES: Record<string, string> = {
   r2: "Cloudflare R2",
@@ -236,6 +236,10 @@ export function createBucketStore(options: BucketStoreOptions): MediaStore & { c
 
     urlOf(key) {
       return publicUrlOf(publicBase, key);
+    },
+
+    ownsKey(key) {
+      return cleanKey(key) && (!prefix || key.startsWith(prefix));
     },
 
     keyFor(relative) {

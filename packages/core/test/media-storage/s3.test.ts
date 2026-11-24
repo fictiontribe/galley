@@ -28,6 +28,18 @@ beforeAll(async () => {
 });
 afterAll(() => fake.close());
 
+describe("names with . or .. parts", () => {
+  it("are never sent: a URL would resolve them into another object's name", async () => {
+    const s3 = client();
+
+    for (const key of ["a/../b.txt", "./b.txt", "a/./b.txt", "..", ""]) {
+      await expect(s3.getObject(key), key).rejects.toMatchObject({ code: "InvalidObjectName" });
+      await expect(s3.deleteObject(key), key).rejects.toMatchObject({ code: "InvalidObjectName" });
+    }
+    expect(fake.log.some((entry) => entry.path.includes(".."))).toBe(false);
+  });
+});
+
 describe("the S3 client against the stand-in", () => {
   it("puts, reads back, heads, lists with paging and deletes", async () => {
     const s3 = client();

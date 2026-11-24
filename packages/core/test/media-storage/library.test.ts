@@ -125,6 +125,27 @@ describe("a site that keeps its media in a bucket", { timeout: 240_000 }, () => 
     await done();
   });
 
+  it("reads and deletes only the site's own names: nothing outside its folder, no . or .. parts", async () => {
+    const { storage, site, done } = await setUp("confined");
+    const own = await site.saveMedia({ filename: "own.png", data: pngHeader(4, 4) });
+    const objects = fake.buckets.get("confined")!.objects;
+    const secret = { body: Buffer.from("not this site's"), contentType: "image/png", cacheControl: null, metadata: {}, etag: "s", lastModified: new Date() };
+
+    objects.set("other-site/secret.png", secret);
+    fake.addBucket("elsewhere", { region: "auto" }).objects.set("secret.png", secret);
+    fake.keys.get(KEY.accessKeyId)!.buckets.elsewhere = ["read", "write", "list", "delete"];
+    const outside = ["bucket:other-site/secret.png", "bucket:lowfield/../other-site/secret.png", "bucket:lowfield/./own.png", "bucket:lowfield//own.png", "bucket:lowfield/../../elsewhere/secret.png", "bucket:lowfield/..\\x.png"];
+
+    for (const path of outside) {
+      await expect(storage.readStored(site, path), path).rejects.toThrow("That file isn't one of this site's.");
+      await expect(storage.deleteStored(site, [path]), path).rejects.toThrow("That file isn't one of this site's.");
+    }
+    expect(objects.has("other-site/secret.png")).toBe(true);
+    expect(fake.buckets.get("elsewhere")!.objects.has("secret.png")).toBe(true);
+    expect(Buffer.from((await storage.readStored(site, own.path))!).byteLength).toBeGreaterThan(0);
+    await done();
+  });
+
   it("goes back to the repository once disconnected; the bucket's files stay", async () => {
     const { storage, site, done } = await setUp("disconnect");
     const stored = await site.saveMedia({ filename: "kept.png", data: pngHeader(5, 5) });

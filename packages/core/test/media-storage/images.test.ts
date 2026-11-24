@@ -169,6 +169,21 @@ describe("a site with pictures in Images and other files in a bucket", { timeout
     await done();
   });
 
+  it("reads and deletes only pictures this site holds", async () => {
+    const { storage, site, done } = await setUp(false);
+    const own = await site.saveMedia({ filename: "own.png", data: pngHeader(8, 8) });
+
+    images.accounts.get(ACCOUNT)!.images.set("someone-elses", { id: "someone-elses", filename: "theirs.png", meta: {}, uploaded: new Date().toISOString(), body: Buffer.from("x"), type: "image/png" });
+    for (const path of ["images:someone-elses", "images:../someone-elses", "images:a/./b"]) {
+      await expect(storage.readStored(site, path), path).rejects.toThrow("That file isn't one of this site's.");
+      await expect(storage.deleteStored(site, [path]), path).rejects.toThrow("That file isn't one of this site's.");
+    }
+    expect(images.accounts.get(ACCOUNT)!.images.has("someone-elses")).toBe(true);
+    expect(await storage.readStored(site, own.path)).not.toBeNull();
+    images.accounts.get(ACCOUNT)!.images.delete("someone-elses");
+    await done();
+  });
+
   it("knows sizes from the listing, finds pages using any variant, and refuses to delete a used picture", async () => {
     const { storage, site, root, done } = await setUp(false);
     const picture = await site.saveMedia({ filename: "hero.png", data: pngHeader(2400, 1200) });

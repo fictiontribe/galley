@@ -26,7 +26,7 @@
  */
 import type { MediaImagesConfig } from "../types";
 import type { MediaCheckStepId } from "./contract";
-import { ADDRESS_TAIL, escapePattern, StoreError, type MediaStore, type StoredItem } from "./store";
+import { ADDRESS_TAIL, cleanKey, escapePattern, StoreError, type MediaStore, type StoredItem } from "./store";
 
 export const CLOUDFLARE_API = "https://api.cloudflare.com/client/v4";
 export const IMAGEDELIVERY = "https://imagedelivery.net";
@@ -235,6 +235,11 @@ export function createImagesStore(options: ImagesStoreOptions): MediaStore {
 
     urlOf(key) {
       return `${base}/${encodeURIComponent(key)}/${variant}`;
+    },
+
+    ownsKey(key) {
+      // The shape only: whether this site uploaded it is the site's record's to say (the service asks it too).
+      return cleanKey(key);
     },
 
     keyFor(relative) {

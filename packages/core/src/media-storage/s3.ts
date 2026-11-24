@@ -142,6 +142,8 @@ export function createS3Client(options: S3ClientOptions): S3Client {
   let skew = 0;
 
   function urlFor(key: string | null, query: Record<string, string | undefined> = {}): URL {
+    // A URL resolves "." and ".." before anything is signed: such a key would name another object.
+    if (key !== null && (key === "" || key.split("/").some((part) => part === "." || part === ".."))) throw new S3Error(400, "InvalidObjectName", "That name has a . or .. part, so it isn't sent.");
     const base = endpoint.pathname.replace(/\/+$/, "");
     const keyPath = key === null ? "" : encodeKey(key);
     let url: URL;

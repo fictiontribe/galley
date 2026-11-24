@@ -118,6 +118,11 @@ export interface MediaStore {
   list?(cursor?: string): Promise<{ items: StoredItem[]; next: string | null }>;
   /** The public address of a name. */
   urlOf(key: string): string;
+  /**
+   * Whether a name is one of this site's: inside its folder, with no empty,
+   * "." or ".." part. Every read, delete and move back asks first.
+   */
+  ownsKey(key: string): boolean;
   /** The name a file asked for at `relative` ("team/ana.webp") is stored under: the bucket adds the site's folder. */
   keyFor(relative: string): string;
   /**
@@ -207,6 +212,11 @@ export function placeFile(stores: MediaStore[], file: FileFacts): Placement {
     passedOver.push({ location: store.location, reason });
   }
   return { location: "repository", store: null, passedOver };
+}
+
+/** A name's parts are all real names: none empty, none "." or "..", no backslash. */
+export function cleanKey(key: string): boolean {
+  return key.length > 0 && key.length <= 1024 && !key.includes("\\") && !key.includes("\0") && key.split("/").every((part) => part !== "" && part !== "." && part !== "..");
 }
 
 /** "bucket:lowfield/coat.webp" → { location: "bucket", key: "lowfield/coat.webp" }; a repository path → null. */
