@@ -130,6 +130,66 @@ describe("the Online screen's editor card", () => {
   });
 });
 
+describe("hosting the editor on Google Cloud", () => {
+  it("takes the key file pasted whole into the one-line field, and plans a virtual machine with its network and fixed address", async () => {
+    const server = await startServer({ mode: "local" });
+    storeKey(server, "cloudflare", "cf01");
+    const siteId = sites(server)[0]!;
+    page = await openOnline(server, siteId);
+    await startFlow();
+
+    await click(radio("Google Cloud"));
+    expect(dialogText()).toMatch(/About \$18 a month · prices read/);
+    await click(dialogButton("Continue"));
+    await until(() => expect(dialogText()).toContain("Give it the roles “Compute Instance Admin (v1)”, “Compute Network Admin” and “Compute Security Admin”"));
+    expect(dialogText()).toContain("A key file from Google Cloud (a service account's JSON key)");
+    // A password field drops line breaks: the key file still arrives whole, and is never put on the page.
+    const keyFile = JSON.stringify({ type: "service_account", project_id: "example-project", private_key_id: "0123456789abcdef0123456789abcdefk3y9", private_key: "-----BEGIN PRIVATE KEY-----\\nMIIEnotarealkey\\n-----END PRIVATE KEY-----\\n", client_email: "editor-maker@example-project.iam.gserviceaccount.com" }, null, 2).replace(/\n/g, "");
+    await type(field(dialog(), "Google Cloud key file"), keyFile);
+    await click(dialogButton("Check"));
+    await until(() => expect(dialogText()).toContain("The key can create the editor on Google Cloud."));
+    expect(calls(server, "POST", "/api/editor-hosts/gcp/connect")[0]?.body).toEqual({ key: keyFile, secret: "gcp" });
+    expect(document.body.innerHTML).not.toContain("MIIEnotarealkey");
+    await click(dialogButton("Continue"));
+
+    await until(() => expect(dialogText()).toContain("On your domains:"));
+    await click(byText(dialog(), "button", "cms.example.com"));
+    await type(field(dialog(), "Short name"), "acme-editor");
+    expect(dialogText()).toContain("Created in “example-project” on Google Cloud.");
+    await choose(field(dialog(), "Where it runs"), "europe-west1");
+    await click(radio("4 GB (e2-medium)"));
+    await click(dialogButton("Continue"));
+    await until(() => expect(dialogText()).toContain("Nothing else leaves this computer."));
+    await click(dialogButton("See the plan"));
+
+    await until(() => expect(dialogText()).toContain("What will be created on Google Cloud"));
+    expect(dialogText()).toContain("Nothing has been created yet.");
+    expect(dialogText()).toContain("About $30 a month");
+    for (const words of ["A network of its own", "Its subnet", "A firewall rule", "A fixed address", "The disk", "no SSH", "in Belgium (europe-west1)"]) expect(dialogText()).toContain(words);
+    const [planned] = calls(server, "POST", `/api/sites/${siteId}/editor/plan`);
+    expect(planned?.body).toMatchObject({ host: "gcp", account: "example-project", name: "acme-editor", options: { size: "e2-medium", region: "europe-west1" } });
+    expect(calls(server, "POST", `/api/sites/${siteId}/editor`)).toHaveLength(0);
+    await click(dialogButton("Create the editor"));
+    await until(() => expect(dialogText()).toContain("Open first run"), 8000);
+  });
+
+  it("refuses something that isn't a key file, and stops at an API that is off", async () => {
+    const server = await startServer({ mode: "local" });
+    page = await openOnline(server, sites(server)[0]!);
+    await startFlow();
+    await click(radio("Google Cloud"));
+    await click(dialogButton("Continue"));
+    await until(() => expect(field(dialog(), "Google Cloud key file")).not.toBeNull());
+    await type(field(dialog(), "Google Cloud key file"), "AIzaSyNotAServiceAccountKey0123456789");
+    await click(dialogButton("Check"));
+    await until(() => expect(dialogText()).toContain("That isn't a key file from Google Cloud (a service account's JSON key)."));
+    await type(field(dialog(), "Google Cloud key file"), JSON.stringify({ type: "service_account", private_key_id: "api-is-off-0001" }));
+    await click(dialogButton("Check"));
+    await until(() => expect(dialogText()).toContain("The Compute Engine API is off in the project “example-project”"));
+    expect(dialogText()).toContain("This has to be fixed before the editor can be created:");
+  });
+});
+
 describe("hosting the editor on Fly.io", () => {
   it("creates nothing before the yes, sends the plan and only the ticked keys, and asks for the setup link only on the click", async () => {
     stubTabs();

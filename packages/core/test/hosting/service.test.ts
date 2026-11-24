@@ -632,6 +632,7 @@ describe("hosting the editor on any server with Docker", () => {
 
     expect(hosts.map((host) => [host.id, host.kind, host.secrets.map((secret) => `${secret.name}:${secret.configured}:${secret.hint ?? ""}`)])).toEqual([
       ["fly", "managed", [`fly:true:${fly!.token.slice(-4)}`, `cloudflare:true:${cf!.token.slice(-4)}`]],
+      ["gcp", "managed", ["gcp:false:", `cloudflare:true:${cf!.token.slice(-4)}`]],
       ["cloudflare", "self-run", [`cloudflare:true:${cf!.token.slice(-4)}`]],
       ["own-server", "self-run", []],
     ]);

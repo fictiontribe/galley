@@ -7,6 +7,21 @@ entry says how.
 
 ## Unreleased
 
+### Added
+
+- **Host the editor online on Google Cloud.** A fourth place for the
+  editor: a virtual machine of its own in your Google Cloud project, with a
+  20 GB disk, a network of its own, one firewall rule for the web ports (no
+  SSH) and a fixed address, running the same compose recipe as "Any server
+  with Docker" (the editor and Caddy for HTTPS). It needs a key file from
+  Google Cloud (a service account's JSON key) with Compute Instance Admin
+  (v1), Compute Network Admin and Compute Security Admin; the app checks the
+  roles and the Compute Engine API before anything is made. About $17.88 a
+  month with 2 GB, $30.11 with 4 GB (on-demand in Iowa, worked out from
+  Google's hourly prices, read 2026-11-24). Also `galley host --host gcp`
+  and `GOOGLE_APPLICATION_CREDENTIALS_JSON`. Run only against a stand-in for
+  Google's APIs so far.
+
 ### Changed
 
 - **The macOS desktop app is signed and notarised by Apple.** It opens like

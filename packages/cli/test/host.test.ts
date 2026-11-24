@@ -11,6 +11,7 @@ import { dirname, join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { startFakeCloudflareHosting, type FakeCloudflareHosting } from "../../core/test/hosting/fakes/cloudflare";
 import { startFakeFly, type FakeFly } from "../../core/test/hosting/fakes/fly";
+import { startFakeGcp } from "../../core/test/hosting/fakes/gcp";
 import { startFakeInstall, type FakeInstall } from "../../core/test/hosting/fakes/install";
 import type { HostIo } from "../src/commands/host";
 import { main } from "../src/main";
@@ -156,6 +157,49 @@ describe("galley host", () => {
     expect(asked).toEqual(["Choose 1–17 [1]: ", "\nCreate all of this on Fly.io, for about $13.24 a month? [y/N] "]);
     expect(io.stderr.at(-1)).toBe("Nothing was created.");
     expect(fly!.writes()).toEqual([]);
+  });
+
+  it("on Google Cloud: the plan and its cost with the key from the environment, or the key file pasted line by line", async () => {
+    const google = await startFakeGcp();
+
+    try {
+      const apis = { GALLEY_HOSTING_GCP_COMPUTE_API: google.apis["gcp-compute"], GALLEY_HOSTING_GCP_OAUTH_API: google.apis["gcp-oauth"], GALLEY_HOSTING_GCP_RESOURCE_MANAGER_API: google.apis["gcp-resource-manager"] };
+      const { io, root, home } = await rig({ ...apis, GOOGLE_APPLICATION_CREDENTIALS_JSON: google.key.json });
+
+      expect(await main(["host", root, "--host", "gcp", "--region", "europe-west1", "--address", "cms.example.com", "--dry-run"], io)).toBe(0);
+      const text = io.stdout.join("\n");
+
+      expect(text).toContain("Google Cloud: the editor “corner-bakery-editor” in example-project");
+      expect(text).toContain("Costs about $17.88 a month:");
+      expect(text).toContain("  - machine “corner-bakery-editor”: A virtual machine with 2 GB of memory (e2-small), Ubuntu 24.04, in Belgium (europe-west1)");
+      expect(text).toContain("  - firewall-rule “corner-bakery-editor-web”: Lets the web in on ports 80 and 443");
+      expect(google.writes()).toEqual([]);
+      // No key in the environment: the file is pasted, and a terminal hands it over one line at a time.
+      const pasted = google.key.json.split("\n");
+      const asked: string[] = [];
+      const second = await rig({ ...apis, GOOGLE_APPLICATION_CREDENTIALS_JSON: "" });
+
+      second.io.prompt = async (question) => {
+        asked.push(question);
+        return question.startsWith("Choose") ? "" : (pasted.shift() ?? "");
+      };
+      expect(await main(["host", second.root, "--host", "gcp", "--name", "bakery-editor", "--address", "cms.example.com", "--dry-run"], second.io)).toBe(0);
+      expect(asked[0]).toBe("Paste the key file from Google Cloud (a service account's JSON key), or type the path to it: ");
+      expect(asked.at(-1)).toBe("Choose 1–3 [1]: ");
+      expect(JSON.parse(JSON.parse(readFileSync(join(second.home, "secrets.json"), "utf8")).gcp).private_key_id).toBe(google.key.privateKeyId);
+      expect(second.io.stdout.join("\n")).toContain("in Iowa (us-central1)");
+      const pem = JSON.parse(google.key.json).private_key as string;
+
+      for (const output of [io, second.io]) {
+        const all = [...output.stdout, ...output.stderr].join("\n");
+
+        for (const line of pem.split("\n").filter((entry) => entry.length >= 16)) expect(all).not.toContain(line);
+        expect(all).not.toContain("ya29.");
+      }
+      void home;
+    } finally {
+      await google.close();
+    }
   });
 
   it("says which key is missing and where it is read from", async () => {

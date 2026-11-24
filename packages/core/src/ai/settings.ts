@@ -23,7 +23,7 @@ import { createSiteSettingsStore, describeConnections, resolveSecret } from "./s
 import { DEFAULT_PREVIEW_POLICY, PREVIEW_LIMITS } from "../site/preview-policy";
 
 const run = promisify(execFile);
-const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly"];
+const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly", "gcp"];
 const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh"];
 
 const StoredSettings = z.object({
@@ -395,6 +395,7 @@ const SECRET_ENV_HINT: Record<SecretName, string> = {
   cloudflare: "CLOUDFLARE_API_TOKEN",
   vercel: "VERCEL_TOKEN",
   fly: "FLY_API_TOKEN",
+  gcp: "GOOGLE_APPLICATION_CREDENTIALS_JSON",
 };
 
 function definedOnly<T extends object>(value: T | undefined): Partial<T> {

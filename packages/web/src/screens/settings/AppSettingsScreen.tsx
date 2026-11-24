@@ -46,6 +46,7 @@ const SECRET_LABEL: Record<SecretName, string> = {
   cloudflare: "Cloudflare access key",
   vercel: "Vercel access key",
   fly: "Fly.io access key",
+  gcp: "Google Cloud key file",
 };
 
 async function patchSettings(patch: SettingsPatch): Promise<Settings> {

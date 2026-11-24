@@ -22,7 +22,7 @@
 import type { Job, SecretName, SecretStatus } from "../types";
 
 /** A place an editor can run. "own-server" needs no account: it writes the files to run one anywhere. */
-export type EditorHostId = "fly" | "cloudflare" | "own-server" | (string & {});
+export type EditorHostId = "fly" | "gcp" | "cloudflare" | "own-server" | (string & {});
 
 /** One thing the person must provide to use a host. */
 export interface EditorHostCredential {
@@ -301,7 +301,7 @@ export interface EditorHostContext {
   /** `fetch`, swappable in tests. */
   fetch: typeof fetch;
   /**
-   * The origin of one of the host's APIs by name ("fly", "cloudflare"). Tests
+   * The origin of one of the host's APIs by name ("fly", "cloudflare", "gcp-compute"). Tests
    * and the rehearsal point these at fake hosts (GALLEY_HOSTING_<NAME>_API).
    */
   api(name: string): string;
@@ -350,8 +350,11 @@ export interface EditorHost {
   pending?(ctx: EditorHostContext, record: HostedEditorRecord): Promise<{ steps: ManualStep[]; files: RecipeFile[] }>;
   /** Copy the install's disk on the host, when the host can. */
   backup?(ctx: EditorHostContext, record: HostedEditorRecord): Promise<HostedEditorBackup>;
-  /** Check each recorded resource still is what was created (name and tag). Deletes nothing. */
-  removal(ctx: EditorHostContext, record: HostedEditorRecord): Promise<Pick<HostedEditorRemoval, "resources" | "skipped">>;
+  /**
+   * Check each recorded resource still is what was created (name and tag). Deletes nothing.
+   * `kept`: what the host leaves on purpose besides the site (Google Cloud: the snapshots Back up made), added to the removal's list.
+   */
+  removal(ctx: EditorHostContext, record: HostedEditorRecord): Promise<Pick<HostedEditorRemoval, "resources" | "skipped"> & { kept?: string[] }>;
   /** Delete the recorded resources that `removal` confirmed, newest first. */
   remove(ctx: EditorHostContext, record: HostedEditorRecord, input: { onRemoved(resource: HostedResource): Promise<void>; onProgress(progress: { detail: string; progress?: number }): void }): Promise<void>;
 }

@@ -10,6 +10,7 @@ import { randomUUID } from "node:crypto";
 import { GalleyError } from "../errors";
 import type { SecretName, SecretStatus } from "../types";
 import { rememberSecret } from "./errors";
+import { normalizeServiceAccountKey, serviceAccountKeyHint } from "../hosting/gcp-api";
 
 /**
  * Names are the app's own keys (SecretName) or a plugin's secrets
@@ -30,6 +31,8 @@ export const SECRET_ENV: Record<SecretName, string[]> = {
   vercel: ["VERCEL_TOKEN"],
   // What flyctl reads, so a shell set up for it just works.
   fly: ["FLY_API_TOKEN"],
+  // The whole key file's text (GOOGLE_APPLICATION_CREDENTIALS names a file; this holds what is in it).
+  gcp: ["GOOGLE_APPLICATION_CREDENTIALS_JSON"],
 };
 
 const LABELS: Record<SecretName, string> = {
@@ -39,6 +42,7 @@ const LABELS: Record<SecretName, string> = {
   cloudflare: "a Cloudflare access key (API token)",
   vercel: "a Vercel access key (access token)",
   fly: "a Fly.io access key (organization token)",
+  gcp: "a key file from Google Cloud (a service account's JSON key)",
 };
 
 /** Rough shapes — enough to catch a pasted sentence or the wrong service's key. */
@@ -50,6 +54,8 @@ const SHAPES: Record<SecretName, { test: RegExp; hint: string }> = {
   vercel: { test: /^[A-Za-z0-9_-]{20,}$/, hint: "Copy it from the page Vercel shows right after you create it: one long word of letters and numbers." },
   // Fly.io shows its keys as "FlyV1 fm2_…" (one or more parts joined by commas); the whole string, prefix included, is the key.
   fly: { test: /^(?:FlyV1 )?[A-Za-z0-9_]+_[A-Za-z0-9_+/=,.-]{20,}$/, hint: "Copy the whole key Fly.io shows, including “FlyV1” at the start." },
+  // Checked by parsing it (normalizeSecret), not by this pattern.
+  gcp: { test: /^\{[\s\S]*\}$/, hint: "Paste the whole JSON file Google Cloud downloads for a service account's key: it starts with “{” and says \"type\": \"service_account\"." },
 };
 
 export function envSecret(env: NodeJS.ProcessEnv, name: SecretName): string | null {
@@ -66,6 +72,13 @@ export function normalizeSecret(name: SecretName, value: string): string {
   const trimmed = value.trim().replace(/^["']|["']$/g, "");
 
   if (trimmed === "") throw new GalleyError("invalid", `Paste ${LABELS[name]} to save it.`);
+  // A JSON document, not one word: stored compact, whatever line breaks it lost or kept on the way.
+  if (name === "gcp") {
+    const key = normalizeServiceAccountKey(value);
+
+    if (!key) throw new GalleyError("invalid", `That doesn't look like ${LABELS[name]}. ${SHAPES[name].hint}`);
+    return key;
+  }
   // Fly.io's keys are the one shape with a space in them ("FlyV1 fm2_…"), and they are long.
   const key = name === "fly" ? trimmed.replace(/^FlyV1\s+/, "FlyV1 ") : trimmed;
   const body = name === "fly" ? key.replace(/^FlyV1 /, "") : key;
@@ -79,9 +92,15 @@ export function normalizeSecret(name: SecretName, value: string): string {
   return key;
 }
 
+/** The last four characters shown for a stored key — for a Google Cloud key file, of its key id, never of the private key. */
+export function secretHint(name: string, value: string): string {
+  if (name === "gcp") return serviceAccountKeyHint(value) ?? "····";
+  return value.slice(-4);
+}
+
 export function statusFor(name: SecretName, value: string | null, source: SecretStatus["source"]): SecretStatus {
   if (!value) return { name, configured: false, source: null };
-  return { name, configured: true, source, hint: value.slice(-4) };
+  return { name, configured: true, source, hint: secretHint(name, value) };
 }
 
 type SecretFile = Partial<Record<string, string>>;

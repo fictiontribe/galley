@@ -193,7 +193,7 @@ export function volumeName(name: string): string {
 }
 
 /** The Cloudflare domain the three names can be added to by this app, or null (they are added by hand). */
-async function cloudflareDns(ctx: EditorHostContext, addresses: EditorAddresses): Promise<{ key: string; zone: CfZone } | null> {
+export async function cloudflareDns(ctx: EditorHostContext, addresses: EditorAddresses): Promise<{ key: string; zone: CfZone } | null> {
   const key = await ctx.secret("cloudflare");
 
   if (!key) return null;
