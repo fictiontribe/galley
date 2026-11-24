@@ -28,7 +28,7 @@ When each section is its own component, pass the marker down from the loop and w
 
 ## Without the attributes
 
-Galley looks for evidence instead: text and images that only one section holds, each on exactly one element of the page. It uses that mapping only when **every** section resolves to its own element, none inside another, in the content's order. Otherwise Arrange is not offered for the page — the panel says **Sections can't be arranged on this page**, with the reason under **Technical details**, and the form keeps working. It never uses a partial or "probable" mapping. Typical reasons: two sections show the same words (a duplicated section), a section shows nothing of its own, or the page renders sections out of order or nested.
+Galley looks for evidence instead: text and images that only one section holds, each on exactly one element of the page. It uses that mapping only when **every** section resolves to its own element, none inside another, in the content's order. Otherwise Arrange is not offered for the page — the panel says **Sections can't be arranged on this page**, with the reason under **Technical details**, and the form keeps working. (It says that only of a page that drew. A page the dev server answered with an error is "This page couldn't be drawn", below.) It never uses a partial or "probable" mapping. Typical reasons: two sections show the same words (a duplicated section), a section shows nothing of its own, or the page renders sections out of order or nested.
 
 ## Pictures and descriptions in the panel
 
@@ -66,3 +66,16 @@ A new section starts from the most complete existing one of its type (or the con
 A selected section's **options** are its short, closed choices: `select` fields with two to six values become a segmented control, `boolean` fields a switch. Everything else is edited in the form.
 
 How it works underneath — the overlay protocol, the drag, the edit queue: [`docs/visual-builder.md`]({repository}/blob/main/docs/visual-builder.md).
+
+## Every section must draw when it is new
+
+People add sections on the page, so each section's component must draw with its fields empty — a blank heading, no picture, no video. A new section's words start blank; a required picture, video or file starts with the one a section of the same type already uses (or the `examples` your config or zod's `.meta({ examples })` declares), and stays blank when there is none. If the component throws, the whole page stops drawing: Galley says **This page couldn't be drawn**, names the change it began with and offers **Undo**, with the framework's first line under **Technical details** — but the person can't see their page until they take the section back out.
+
+For a picture or file read from disk, check before you read, and show the section's words without it:
+
+```astro
+const file = s.image ? join(process.cwd(), "public", s.image) : "";
+const size = file && existsSync(file) ? imageSize(file) : null;
+```
+
+Render the picture only when `size` is set — in the preview (`import.meta.env.DEV`), a marked placeholder that says to add it in the form helps. Keep one such guard per site, in the helper every section uses for pictures, rather than a check in each section.

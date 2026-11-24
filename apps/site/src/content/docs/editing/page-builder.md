@@ -35,4 +35,6 @@ Arrange works with the site's own sections. It doesn't change spacing, columns o
 ## If something's different
 
 - **"Sections can't be arranged on this page."** The site hasn't marked its sections for Arrange. Add, move and remove them in the [form](/docs/editing/form/) instead, and point the site's developer to [what Arrange needs](/docs/visual-builder/).
+- **"This page couldn't be drawn."** The site ran into a problem drawing the page — usually a section just added that needs something filled in. The note names the change; **Undo** takes it back and the page draws again, or **Show the form** to fill the section in. Nothing is lost, and nothing goes live until you publish.
+- **"The new … section starts with the video from the “Home” page."** A picture, video or file a section can't do without starts with one this site already uses. It's yours to change in the form.
 - **An option switches back by itself.** The site refused the value; the panel says why.

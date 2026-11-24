@@ -70,6 +70,39 @@ entry says how.
 - **Site settings** put each section's title and note beside its fields when
   there is room. **Online** has a heading for each of its three sections.
 
+### Fixed
+
+- **A section added on the page no longer takes the page down.** A new
+  section's words still start blank, but a required field a blank can't
+  draw — a picture, a video or download named by its file, a choice, a
+  reference, a date — starts with what the site declares for it (a default,
+  or `examples` in galley.config.json or zod's `.meta({ examples })`), else
+  with the value the nearest section of the same type already has (this
+  page, then this collection, then anywhere). The person is told once, with
+  Undo, what was borrowed and from where ("The new Film section starts with
+  the video from the “Home” page. Change it in the form."). Lists start with
+  as many items as the schema asks for (`.min()`), and an optional group
+  that would hold only blanks is left out. The form's **Add section** and
+  Arrange share the one rule.
+- **A page that fails to draw is said to have failed.** Arrange no longer
+  says a site "hasn't marked its sections" when the dev server answered the
+  page with an error: the panel, and the preview in every mode and in
+  Proof, say "This page couldn't be drawn", with the framework's first line
+  under **Technical details** and the site's own error one click away. When
+  it began with a change made here, the note names it ("after adding a
+  Steps section") and offers **Undo** for exactly that change; the page is
+  reloaded once the file is back and Arrange carries on. A preview that
+  isn't answering, and a page the preview doesn't have, are said as such.
+  The overlay reports `page-state` and a `cause` with `arrange-status`; the
+  preview proxy hands it the page's status on its script tag.
+- **The assistant hears when its change stopped a page drawing.**
+  `update_entry` loads the changed page from a running preview and, when it
+  answers with an error, returns a warning with the dev server's own line,
+  so the assistant fixes or undoes its change instead of reporting success.
+- **The Caddow starters' form sections draw before a form is chosen**
+  (editorial and storefront): a note while developing, as the other
+  starters already did.
+
 ## 0.3.1 — 2026-11-24
 
 ### Fixed
