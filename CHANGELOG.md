@@ -70,6 +70,49 @@ entry says how.
 - **Site settings** put each section's title and note beside its fields when
   there is room. **Online** has a heading for each of its three sections.
 
+### Fixed
+
+- **Looking at the code host no longer holds up saves.** A hosted editor's
+  round, Version history's look and Get latest asked the code host while
+  holding the lock every save takes, so a code host that was slow to answer
+  stalled saving for up to two minutes at a time. The look now runs outside
+  that lock, which is taken only for the moment newer versions change the
+  files. People who open Version history together share one look, and a
+  round uses a look that is already going.
+- **An edit never lands on top of text that was replaced under it.** An
+  edit to an entry is written only over the text it was worked out from.
+  When a discard, newer versions coming in, an undone publish or an edit
+  from outside the app rewrote the file first, the edit is worked out again
+  from what is there now; an edit that said which version it had open is
+  refused, as before, so the person reopens it. The assistant's file
+  replacements carry what it last read of the file in the same way, and a
+  hosted editor's round waits while the assistant is working on the site
+  (`AgentRuntime` gains `working(siteId)`).
+- **A preview that is installing is left to finish.** A round waits for the
+  install, and Get latest says to try again once it has finished; bringing
+  versions in used to wait for the whole install with every save held up
+  behind it. When the preview was stopped during an install, or the install
+  failed, the next start installs again even though the packages folder is
+  already there.
+- **The preview can't be started in the middle of newer versions coming
+  in.** A Start pressed then waits until the files are in, and the preview
+  says so. When stopping the preview fails, it is still started again.
+- **Get latest and a failed look speak for themselves.** A refused Get
+  latest (unpublished changes in the way, or the two having gone separate
+  ways) answers 409 `conflict` rather than 500. A look that couldn't reach
+  the code host no longer borrows the words of a failed publish, bringing
+  versions in that took too long no longer blames the connection, and the
+  words for a site with no repository or code host no longer speak of
+  fetching.
+- **Technical details never carry what signs in to an address.** The part
+  of an address that signs in is removed wherever the address appears in a
+  message, not only at its start, and from every failed git command's
+  details.
+- **`galley serve`** says which site it has when that site has no
+  repository behind it, instead of "not connected yet". A temporary copy of
+  the install's state file, left behind when the server was stopped in the
+  middle of a write, is removed at the next start.
+
 ## 0.3.1 — 2026-11-24
 
 ### Fixed

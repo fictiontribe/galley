@@ -1206,9 +1206,11 @@ the code host, not the clone, so the editor looks for itself:
   **Get latest** on Version history does. Nothing here is ever overwritten,
   merged or rewritten. The rounds start once the site is connected; a site
   waiting for its deploy key is left to first run's own retry. A round is
-  skipped, not queued, while a publish, an undo of a publish, a connect, a
-  restore or another look (or any other git work on the clone) is in
-  progress, and never overlaps itself. The start-up lines say which: `Repository: checked every
+  skipped, not queued, while a save, a publish, an undo of a publish, Get
+  latest, a connect or a restore is in progress, while the assistant is
+  working on the site, and while the preview is installing the site's
+  packages; it never overlaps itself. When a person's look is already going
+  the round uses that one rather than fetching again. The start-up lines say which: `Repository: checked every
   5 minutes; newer versions are brought in when nothing here is in the way`,
   or `Repository: not checked by itself (GALLEY_SYNC_MINUTES=0)`.
 - **Version history looks when it opens** (`POST /api/sites/:siteId/git/check`,
@@ -1216,7 +1218,8 @@ the code host, not the clone, so the editor looks for itself:
   until the code host answers. It then says when it last heard from it
   ("checked 4 min ago"), and never says the copy is in step on the strength
   of a look more than ten minutes old that a newer one couldn't repeat.
-  The look runs even with `GALLEY_SYNC_MINUTES=0`.
+  The look runs even with `GALLEY_SYNC_MINUTES=0`. People who open Version
+  history at the same moment share one look: the code host is asked once.
 - **"In the way"** means git would refuse the fast-forward, so the round
   doesn't try: a file with unpublished changes here that the new commits
   change too (publish or discard that change, and the next round brings them
@@ -1231,9 +1234,16 @@ the code host, not the clone, so the editor looks for itself:
   store is removed (for Astro, exactly `.astro/data-store.json` and
   `node_modules/.astro/data-store.json`; see the adapter's
   `forgetPreviewSaves`), and the preview is started again — the same for
-  **Get latest**. A stopped preview stays stopped. When the new commits
+  **Get latest**. A stopped preview stays stopped, and a **Start** pressed
+  while the files are changing waits until they are in (the preview says
+  "Newer versions are coming in. The preview starts as soon as they are
+  in."). A preview that is installing the site's packages is left to
+  finish: the round waits for it, and **Get latest** says to try again
+  once it has finished. When the new commits
   change `package.json` or a lockfile at the site's top, the next start
-  installs the site's packages first, as a first start does. The app's own
+  installs the site's packages first, as a first start does; so does the
+  start after an install that failed or during which the preview was
+  stopped. The app's own
   **Restart preview** also removes that store when the copy is on another
   commit than the one the preview last started on; on a large site that
   restart then costs the framework's first-start content sync again.
@@ -1245,8 +1255,15 @@ the code host, not the clone, so the editor looks for itself:
   waiting, not brought in: …`, `Repository: nothing is in the way of newer
   versions any more.`
 
-A look takes the clone's own lock, like a publish, so a code host that hangs
-holds saves back for up to the network timeout (120 seconds). The round runs
+A look holds no save back: it fetches outside the lock that saves take, so
+a code host that hangs (the network timeout is 120 seconds) delays only other
+looks, publishes and Get latest, which take their turn one at a time. The
+save lock is taken only for the moment the fetched commits are brought into
+the files. An edit to an entry is written only over the text it was worked
+out from: when a discard, incoming commits or an undone publish rewrote the
+file first, the edit is worked out again from what is there, or, when the
+editor said which version it had open, refused so that the person reopens
+it. The round runs
 as the engine (core `install/caller.ts` `asEngine`), around the one call that
 brings commits in; the events it causes go out as nobody, so a plugin
 reacting to one can't bring commits in or publish.
