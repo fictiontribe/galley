@@ -100,7 +100,7 @@
      overlay 8.41, accent-subtle 6.46. Sweep of 251 accents (24 hues × 2
      saturations × 5 lightnesses + 11 extremes incl. black/white): worst case
      4.83:1 across paper/raised/sunken. */
-  --accent-text: oklch(from var(--accent) min(l, 0.45) c h);
+  --accent-text: oklab(from var(--accent) min(l, 0.45) a b);
 
   /* ---- Shadows (warm, restrained: paper on a desk, not glass) ----------- */
   --shadow-color: 26 23 18;
@@ -396,7 +396,7 @@
   /* Accent-as-text (dark): mix toward ink first (keeps the hue in gamut),
      then lift lightness. Default resolves to #A4A1FF: paper 7.99, raised 7.30,
      sunken 8.43, overlay 6.79. 251-accent sweep worst case: 7.04:1. */
-  --accent-text: oklch(from color-mix(in srgb, var(--accent), var(--ink-primary) 45%) max(l, 0.76) c h);
+  --accent-text: oklab(from color-mix(in srgb, var(--accent), var(--ink-primary) 45%) max(l, 0.76) a b);
   /* Link underlines and selected outlines. Mixed from the accent text, not
      the raw accent: a dark accent mixed into dark paper all but vanished
      (default #211E7B, 1.6:1 on paper). Default now #5D5B91: paper 2.94,
@@ -455,7 +455,7 @@
     --info-tint:     #172A40;
     --info-ink:      #BCD5F7;
 
-    --accent-text: oklch(from color-mix(in srgb, var(--accent), var(--ink-primary) 45%) max(l, 0.76) c h);
+    --accent-text: oklab(from color-mix(in srgb, var(--accent), var(--ink-primary) 45%) max(l, 0.76) a b);
     --accent-line: color-mix(in srgb, var(--accent-text) 50%, var(--surface-paper));
 
     --shadow-color: 0 0 0;
@@ -467,7 +467,7 @@
 
 /* Engines without relative colour syntax cannot derive accent text; fall
    back to the raw accent (correct for the default and other dark accents). */
-@supports not (color: oklch(from red l c h)) {
+@supports not (color: oklab(from red l a b)) {
   :root, [data-theme], .g-scope { --accent-text: var(--accent); }
 }
 
@@ -623,6 +623,14 @@
      desk     ink 8 % into paper (dark 7)
      "warmed" keeps a printing ink's warmth in the mixed steps: OKLCH chroma
      ×2.5 (dark ×1.7), never above 0.04, so a neutral ink stays neutral.
+     It is written in OKLab, with no hue in it: both of the mix's colour
+     axes are scaled by min(k, 0.04 / chroma), which is the same thing
+     (chroma × k, capped, the hue untouched). Written as
+     oklch(from <mix> l min(calc(c * k), 0.04) h) it depended on the browser
+     handing the mix's hue back, and a browser may call the hue of so pale a
+     colour missing and paint it at hue 0: Chrome 159 does below a chroma of
+     about 0.02, which turned every warmed step pink. The recipes that only
+     move lightness are written the same way (l changed, a and b kept).
      plate inks: on-plate = paper 94 % into the plate, warmed (dark: the ink);
               on-plate-2/3 = on-plate 78/62 % into the plate
      pencil-on-plate = the pencil half-mixed with white, lightness ≥ 0.78
@@ -647,33 +655,33 @@
   --surface-paper:   var(--seed-paper);
   --surface-raised:  color-mix(in oklab, var(--seed-paper) 30%, #FFFFFF);
   --surface-overlay: color-mix(in oklab, var(--seed-paper) 12%, #FFFFFF);
-  --surface-sunken:  oklch(from color-mix(in oklab, var(--seed-ink) 4%, var(--seed-paper)) l min(calc(c * 1.5), 0.04) h);
+  --surface-sunken:  oklab(from color-mix(in oklab, var(--seed-ink) 4%, var(--seed-paper)) l calc(a * min(1.5, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.5, 0.04 / max(hypot(a, b), 0.000001))));
   --surface-inverse: var(--seed-ink);
   --surface-table:   var(--seed-table);
   --scrim:           color-mix(in srgb, var(--seed-ink) 42%, transparent);
 
   --ink-primary:   var(--seed-ink);
-  --ink-secondary: oklch(from color-mix(in oklab, var(--seed-ink) 73%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
-  --ink-tertiary:  oklch(from color-mix(in oklab, var(--seed-ink) 62%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
-  --ink-disabled:  oklch(from color-mix(in oklab, var(--seed-ink) 38%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
+  --ink-secondary: oklab(from color-mix(in oklab, var(--seed-ink) 73%, var(--seed-paper)) l calc(a * min(2.5, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.5, 0.04 / max(hypot(a, b), 0.000001))));
+  --ink-tertiary:  oklab(from color-mix(in oklab, var(--seed-ink) 62%, var(--seed-paper)) l calc(a * min(2.5, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.5, 0.04 / max(hypot(a, b), 0.000001))));
+  --ink-disabled:  oklab(from color-mix(in oklab, var(--seed-ink) 38%, var(--seed-paper)) l calc(a * min(2.5, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.5, 0.04 / max(hypot(a, b), 0.000001))));
   --ink-inverse:   var(--seed-paper);
 
-  --border-subtle:  oklch(from color-mix(in oklab, var(--seed-ink) 7%,  var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
-  --border-default: oklch(from color-mix(in oklab, var(--seed-ink) 14%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
-  --border-seam:    oklch(from color-mix(in oklab, var(--seed-ink) 20%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
-  --border-worn:    oklch(from color-mix(in oklab, var(--seed-ink) 29%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
-  --border-strong:  oklch(from color-mix(in oklab, var(--seed-ink) 51%, var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
-  --desk-toned:     oklch(from color-mix(in oklab, var(--seed-ink) 8%,  var(--seed-paper)) l min(calc(c * 2.5), 0.04) h);
+  --border-subtle:  oklab(from color-mix(in oklab, var(--seed-ink) 7%,  var(--seed-paper)) l calc(a * min(2.5, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.5, 0.04 / max(hypot(a, b), 0.000001))));
+  --border-default: oklab(from color-mix(in oklab, var(--seed-ink) 14%, var(--seed-paper)) l calc(a * min(2.5, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.5, 0.04 / max(hypot(a, b), 0.000001))));
+  --border-seam:    oklab(from color-mix(in oklab, var(--seed-ink) 20%, var(--seed-paper)) l calc(a * min(2.5, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.5, 0.04 / max(hypot(a, b), 0.000001))));
+  --border-worn:    oklab(from color-mix(in oklab, var(--seed-ink) 29%, var(--seed-paper)) l calc(a * min(2.5, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.5, 0.04 / max(hypot(a, b), 0.000001))));
+  --border-strong:  oklab(from color-mix(in oklab, var(--seed-ink) 51%, var(--seed-paper)) l calc(a * min(2.5, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.5, 0.04 / max(hypot(a, b), 0.000001))));
+  --desk-toned:     oklab(from color-mix(in oklab, var(--seed-ink) 8%,  var(--seed-paper)) l calc(a * min(2.5, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.5, 0.04 / max(hypot(a, b), 0.000001))));
 
   --plate:           var(--seed-plate);
-  --on-plate:        oklch(from color-mix(in oklab, var(--seed-paper) 94%, var(--seed-plate)) l min(calc(c * 2.5), 0.04) h);
-  --on-plate-2:      oklch(from color-mix(in oklab, var(--on-plate) 78%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
-  --on-plate-3:      oklch(from color-mix(in oklab, var(--on-plate) 62%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
+  --on-plate:        oklab(from color-mix(in oklab, var(--seed-paper) 94%, var(--seed-plate)) l calc(a * min(2.5, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.5, 0.04 / max(hypot(a, b), 0.000001))));
+  --on-plate-2:      oklab(from color-mix(in oklab, var(--on-plate) 78%, var(--seed-plate)) l calc(a * min(2.2, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.2, 0.04 / max(hypot(a, b), 0.000001))));
+  --on-plate-3:      oklab(from color-mix(in oklab, var(--on-plate) 62%, var(--seed-plate)) l calc(a * min(2.2, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.2, 0.04 / max(hypot(a, b), 0.000001))));
   --plate-raised:    color-mix(in oklab, var(--seed-plate) 90%, var(--on-plate));
   --plate-sunken:    color-mix(in oklab, var(--seed-plate) 70%, #000000);
   --plate-edge:      color-mix(in oklab, var(--seed-plate) 86%, var(--on-plate));
   --plate-tint:      color-mix(in srgb, var(--pencil-on-plate) 22%, var(--seed-plate));
-  --pencil-on-plate: oklch(from color-mix(in srgb, var(--seed-pencil), #FFFFFF 50%) max(l, 0.78) c h);
+  --pencil-on-plate: oklab(from color-mix(in srgb, var(--seed-pencil), #FFFFFF 50%) max(l, 0.78) a b);
   --plate-current:   color-mix(in srgb, var(--accent-fill) 38%, var(--seed-plate));
 
   --shadow-ink:     var(--seed-ink);
@@ -704,27 +712,27 @@
   --scrim:           rgb(0 0 0 / 0.62);
 
   --ink-primary:   var(--seed-ink);
-  --ink-secondary: oklch(from color-mix(in oklab, var(--seed-ink) 77%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-  --ink-tertiary:  oklch(from color-mix(in oklab, var(--seed-ink) 60%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-  --ink-disabled:  oklch(from color-mix(in oklab, var(--seed-ink) 36%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+  --ink-secondary: oklab(from color-mix(in oklab, var(--seed-ink) 77%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+  --ink-tertiary:  oklab(from color-mix(in oklab, var(--seed-ink) 60%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+  --ink-disabled:  oklab(from color-mix(in oklab, var(--seed-ink) 36%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
   --ink-inverse:   var(--seed-paper);
 
-  --border-subtle:  oklch(from color-mix(in oklab, var(--seed-ink) 13%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-  --border-default: oklch(from color-mix(in oklab, var(--seed-ink) 18%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-  --border-seam:    oklch(from color-mix(in oklab, var(--seed-ink) 24%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-  --border-worn:    oklch(from color-mix(in oklab, var(--seed-ink) 34%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-  --border-strong:  oklch(from color-mix(in oklab, var(--seed-ink) 48%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-  --desk-toned:     oklch(from color-mix(in oklab, var(--seed-ink) 7%,  var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+  --border-subtle:  oklab(from color-mix(in oklab, var(--seed-ink) 13%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+  --border-default: oklab(from color-mix(in oklab, var(--seed-ink) 18%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+  --border-seam:    oklab(from color-mix(in oklab, var(--seed-ink) 24%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+  --border-worn:    oklab(from color-mix(in oklab, var(--seed-ink) 34%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+  --border-strong:  oklab(from color-mix(in oklab, var(--seed-ink) 48%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+  --desk-toned:     oklab(from color-mix(in oklab, var(--seed-ink) 7%,  var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
 
   --plate:           var(--seed-plate);
   --on-plate:        var(--seed-ink);
-  --on-plate-2:      oklch(from color-mix(in oklab, var(--on-plate) 78%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
-  --on-plate-3:      oklch(from color-mix(in oklab, var(--on-plate) 62%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
+  --on-plate-2:      oklab(from color-mix(in oklab, var(--on-plate) 78%, var(--seed-plate)) l calc(a * min(2.2, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.2, 0.04 / max(hypot(a, b), 0.000001))));
+  --on-plate-3:      oklab(from color-mix(in oklab, var(--on-plate) 62%, var(--seed-plate)) l calc(a * min(2.2, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.2, 0.04 / max(hypot(a, b), 0.000001))));
   --plate-raised:    color-mix(in oklab, var(--seed-plate) 90%, var(--on-plate));
   --plate-sunken:    color-mix(in oklab, var(--seed-plate) 70%, #000000);
   --plate-edge:      color-mix(in oklab, var(--seed-plate) 86%, var(--on-plate));
   --plate-tint:      color-mix(in srgb, var(--pencil-on-plate) 22%, var(--seed-plate));
-  --pencil-on-plate: oklch(from color-mix(in srgb, var(--seed-pencil), #FFFFFF 50%) max(l, 0.78) c h);
+  --pencil-on-plate: oklab(from color-mix(in srgb, var(--seed-pencil), #FFFFFF 50%) max(l, 0.78) a b);
   --plate-current:   color-mix(in srgb, var(--accent-fill) 38%, var(--seed-plate));
 
   --shadow-1:       0 1px 0 rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.30);
@@ -754,27 +762,27 @@
     --scrim:           rgb(0 0 0 / 0.62);
 
     --ink-primary:   var(--seed-ink);
-    --ink-secondary: oklch(from color-mix(in oklab, var(--seed-ink) 77%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-    --ink-tertiary:  oklch(from color-mix(in oklab, var(--seed-ink) 60%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-    --ink-disabled:  oklch(from color-mix(in oklab, var(--seed-ink) 36%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+    --ink-secondary: oklab(from color-mix(in oklab, var(--seed-ink) 77%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+    --ink-tertiary:  oklab(from color-mix(in oklab, var(--seed-ink) 60%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+    --ink-disabled:  oklab(from color-mix(in oklab, var(--seed-ink) 36%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
     --ink-inverse:   var(--seed-paper);
 
-    --border-subtle:  oklch(from color-mix(in oklab, var(--seed-ink) 13%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-    --border-default: oklch(from color-mix(in oklab, var(--seed-ink) 18%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-    --border-seam:    oklch(from color-mix(in oklab, var(--seed-ink) 24%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-    --border-worn:    oklch(from color-mix(in oklab, var(--seed-ink) 34%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-    --border-strong:  oklch(from color-mix(in oklab, var(--seed-ink) 48%, var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
-    --desk-toned:     oklch(from color-mix(in oklab, var(--seed-ink) 7%,  var(--seed-paper)) l min(calc(c * 1.7), 0.04) h);
+    --border-subtle:  oklab(from color-mix(in oklab, var(--seed-ink) 13%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+    --border-default: oklab(from color-mix(in oklab, var(--seed-ink) 18%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+    --border-seam:    oklab(from color-mix(in oklab, var(--seed-ink) 24%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+    --border-worn:    oklab(from color-mix(in oklab, var(--seed-ink) 34%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+    --border-strong:  oklab(from color-mix(in oklab, var(--seed-ink) 48%, var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
+    --desk-toned:     oklab(from color-mix(in oklab, var(--seed-ink) 7%,  var(--seed-paper)) l calc(a * min(1.7, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(1.7, 0.04 / max(hypot(a, b), 0.000001))));
 
     --plate:           var(--seed-plate);
     --on-plate:        var(--seed-ink);
-    --on-plate-2:      oklch(from color-mix(in oklab, var(--on-plate) 78%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
-    --on-plate-3:      oklch(from color-mix(in oklab, var(--on-plate) 62%, var(--seed-plate)) l min(calc(c * 2.2), 0.04) h);
+    --on-plate-2:      oklab(from color-mix(in oklab, var(--on-plate) 78%, var(--seed-plate)) l calc(a * min(2.2, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.2, 0.04 / max(hypot(a, b), 0.000001))));
+    --on-plate-3:      oklab(from color-mix(in oklab, var(--on-plate) 62%, var(--seed-plate)) l calc(a * min(2.2, 0.04 / max(hypot(a, b), 0.000001))) calc(b * min(2.2, 0.04 / max(hypot(a, b), 0.000001))));
     --plate-raised:    color-mix(in oklab, var(--seed-plate) 90%, var(--on-plate));
     --plate-sunken:    color-mix(in oklab, var(--seed-plate) 70%, #000000);
     --plate-edge:      color-mix(in oklab, var(--seed-plate) 86%, var(--on-plate));
     --plate-tint:      color-mix(in srgb, var(--pencil-on-plate) 22%, var(--seed-plate));
-    --pencil-on-plate: oklch(from color-mix(in srgb, var(--seed-pencil), #FFFFFF 50%) max(l, 0.78) c h);
+    --pencil-on-plate: oklab(from color-mix(in srgb, var(--seed-pencil), #FFFFFF 50%) max(l, 0.78) a b);
     --plate-current:   color-mix(in srgb, var(--accent-fill) 38%, var(--seed-plate));
 
     --shadow-1:       0 1px 0 rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.30);
