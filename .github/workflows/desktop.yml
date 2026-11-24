@@ -215,25 +215,41 @@ jobs:
             if ($signature.Status -ne "Valid") { throw "$($file.Name): the signature is $($signature.Status)." }
           }
 
-      # A picture of the real window on Windows, where no person has opened the
-      # app yet. Never fails the build: it is evidence, not a gate.
-      - name: Open the app on Windows and take a picture
+      # The installer run for real on Windows, where no person has opened the
+      # app yet: install it silently, start the installed app, and keep a
+      # picture of the screen (with the start-up window's details open, should
+      # it say it couldn't start). Evidence, not a gate: it never fails the build.
+      - name: Install the app on Windows, open it and take a picture
         if: runner.os == 'Windows'
         continue-on-error: true
         shell: pwsh
         env:
           GALLEY_HOME: ${{ runner.temp }}\galley-home
         run: |
-          $exe = Get-ChildItem "apps/desktop/src-tauri/target/${{ matrix.target }}/release" -Filter *.exe | Where-Object { $_.Name -notmatch "node" } | Select-Object -First 1
-          if (-not $exe) { throw "The app's executable wasn't found." }
+          $setup = Get-ChildItem "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/nsis" -Filter *-setup.exe | Select-Object -First 1
+          if (-not $setup) { throw "The installer wasn't found." }
+          Start-Process $setup.FullName -ArgumentList "/S" -Wait
+          $product = (Get-Content apps/desktop/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).productName
+          $folder = @("$env:LOCALAPPDATA\$product", "$env:ProgramFiles\$product") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $folder) { throw "The installer left no folder behind." }
+          Get-ChildItem $folder -Recurse -Depth 2 | Select-Object -First 30 | ForEach-Object { Write-Host $_.FullName.Substring($folder.Length) }
+          $exe = Get-ChildItem $folder -Filter *.exe | Where-Object { $_.Name -notmatch "node|uninstall" } | Select-Object -First 1
+          if (-not $exe) { throw "The installed app wasn't found." }
           $app = Start-Process $exe.FullName -PassThru
-          Start-Sleep -Seconds 40
-          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          Start-Sleep -Seconds 45
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing, Microsoft.VisualBasic
+          try {
+            # Open "Technical details" if the start-up window is still showing: Tab past the two buttons, Space.
+            [Microsoft.VisualBasic.Interaction]::AppActivate($app.Id)
+            Start-Sleep -Milliseconds 500
+            [System.Windows.Forms.SendKeys]::SendWait("{TAB}{TAB} ")
+            Start-Sleep -Seconds 2
+          } catch { Write-Host "The window couldn't be brought forward: $($_.Exception.Message)" }
           $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
           $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
           [System.Drawing.Graphics]::FromImage($bitmap).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
           $bitmap.Save("$env:RUNNER_TEMP\galley-windows.png", [System.Drawing.Imaging.ImageFormat]::Png)
-          Write-Host "Still running after 40 seconds: $(-not $app.HasExited)"
+          Write-Host "Still running after 45 seconds: $(-not $app.HasExited)"
           taskkill /pid $app.Id /T /F | Out-Null
 
       - uses: actions/upload-artifact@v4
