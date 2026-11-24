@@ -28,7 +28,7 @@ import { GalleyError } from "../errors";
 import type { SecretName, SiteConnections, SiteSecretConnection } from "../types";
 import { isSiteId } from "../site/scope";
 import { rememberSecret } from "./errors";
-import { createFileSecretStore, envSecret, type SecretStore } from "./secrets";
+import { createFileSecretStore, envSecret, secretHint, type SecretStore } from "./secrets";
 
 export interface SiteAuthor {
   name: string;
@@ -145,9 +145,9 @@ export async function describeConnections(
       return {
         name,
         inUse,
-        ...(value ? { hint: value.slice(-4) } : {}),
-        site: own ? { configured: true, hint: own.slice(-4) } : { configured: false },
-        shared: shared ? { configured: true, source: fromEnv ? "env" : "stored", hint: shared.slice(-4) } : { configured: false, source: null },
+        ...(value ? { hint: secretHint(name, value) } : {}),
+        site: own ? { configured: true, hint: secretHint(name, own) } : { configured: false },
+        shared: shared ? { configured: true, source: fromEnv ? "env" : "stored", hint: secretHint(name, shared) } : { configured: false, source: null },
       };
     })
   );

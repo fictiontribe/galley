@@ -80,9 +80,13 @@ would only add a download.
       `https://galley.fictiontribe.com/schema/galley.config.json` (from
       `configJsonSchema()` in `packages/core/src/content/config/schema.ts`).
 - [ ] The `Dockerfile` has been built and run, and the image has a name.
-- [ ] Code-signing certificates exist for macOS and Windows, and the secrets
-      named in the header of `.github/workflows/desktop.yml` are set — or the
-      release notes say the installers are unsigned.
+- [x] macOS: the signing and notarisation secrets named in the header of
+      `.github/workflows/desktop.yml` are set, and a build signed with them
+      has been checked in CI.
+- [ ] Windows: the Azure Artifact Signing secrets named in the same header
+      are set and a build signed with them has been checked in CI — until
+      then the release notes say the Windows installers are unsigned (the
+      draft the workflow writes already does).
 
 ## Every release
 
@@ -153,8 +157,12 @@ would only add a download.
    "nothing is published yet" notes from the docs
    (`grep -rn "once published\|not on npm\|Nothing is on npm" apps/site/src`)
    and from `starters/*/README.md`.
-10. **The GitHub release**: the changelog entry as its notes, the installers
-    attached, and plainly whether they are signed.
+10. **The GitHub release**: `desktop.yml` leaves a draft for the tag with the
+    installers that were built, `SHA256SUMS.txt`, and notes that say plainly
+    which are signed. Check that every platform is there, put the changelog
+    entry above those notes, and publish it. The file names carry no version
+    (`Galley-mac-apple-silicon.dmg` …), so
+    `…/releases/latest/download/<name>` always points at the newest.
 
 ## Undoing a bad release
 

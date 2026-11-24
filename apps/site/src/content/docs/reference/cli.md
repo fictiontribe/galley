@@ -450,6 +450,8 @@ created, and asks before creating it. The site's settings
 (galley.config.json › editor) then say where its editor lives.
 Where (--host)
   fly           Fly.io: everything is created on your Fly.io account
+  gcp           Google Cloud: a virtual machine of its own, with its own disk,
+                network and fixed address, in your Google Cloud project
   cloudflare    Cloudflare in front of a computer of yours: a tunnel and three
                 DNS names on Cloudflare; you start the files it writes
   own-server    Any server with Docker: it writes the files, you start them
@@ -462,10 +464,12 @@ Options
                            worked-out names would be someone else's domain
       --name <name>        The short name everything created carries
                            (default: from the site's name)
-      --account <id>       The Fly.io organization or Cloudflare account
-      --region <id>        Fly.io: where it runs (default: iad)
+      --account <id>       The Fly.io organization, Google Cloud project or
+                           Cloudflare account
+      --region <id>        Where it runs (Fly.io default: iad; Google Cloud
+                           default: us-central1)
       --option <key=value> A host's own choice, e.g. memory=1024, sleep=off,
-                           proxy=shared-proxy (repeatable)
+                           size=e2-medium, proxy=shared-proxy (repeatable)
       --hand-over <keys>   Keys to copy to it, by name, comma-separated
                            (e.g. anthropic). Default: none
       --out <folder>       Where to write the files a self-run install needs
@@ -492,10 +496,13 @@ recipe: the files to run one install with Docker, for an operator
       --setup-token-sha256 <hex>  The SHA-256 of a one-time setup code
       --out <folder|->        Write the files there (default -: print them)
 Keys
-  Read from FLY_API_TOKEN or CLOUDFLARE_API_TOKEN when set, otherwise the one
-  stored with the app, otherwise asked for on a terminal (and stored).
+  Read from FLY_API_TOKEN, GOOGLE_APPLICATION_CREDENTIALS_JSON (the whole
+  key file's text) or CLOUDFLARE_API_TOKEN when set, otherwise the one stored
+  with the app, otherwise asked for on a terminal (and stored). For Google
+  Cloud, paste the key file or type the path to it.
 Examples
   galley host --host fly --address cms.example.com --dry-run
+  galley host --host gcp --region europe-west1 --address cms.example.com
   galley host --host own-server --address cms.example.com --yes
   galley host recipe --name acme-editor --address cms.example.com --out ./acme
 ```

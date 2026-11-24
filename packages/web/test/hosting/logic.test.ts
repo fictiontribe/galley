@@ -253,6 +253,19 @@ describe("what is created and removed, in plain words", () => {
     expect(resourceWords({ kind: "widget", id: "", name: "w1", detail: "A widget" })).toEqual({ what: null, name: "w1", detail: "A widget" });
   });
 
+  it("puts Google Cloud's DNS names on Cloudflare too, and names its network, address and disk", () => {
+    const made = [
+      { kind: "network", id: "global/networks/site-editor-net", name: "site-editor-net", detail: "A network of its own" },
+      { kind: "firewall-rule", id: "global/firewalls/site-editor-web", name: "site-editor-web" },
+      { kind: "address", id: "regions/us-central1/addresses/site-editor-ip", name: "site-editor-ip", detail: "Reserved in us-central1" },
+      { kind: "disk", id: "zones/us-central1-a/disks/site-editor", name: "site-editor" },
+      { kind: "dns-record", id: "zone-1/rec-1", name: "cms.example.com" },
+    ];
+    expect(resourceGroups(made, { id: "gcp", name: "Google Cloud" }).map((group) => [group.place, group.resources.length])).toEqual([["Google Cloud", 4], ["Cloudflare", 1]]);
+    expect(made.slice(0, 4).map((resource) => resourceWords(resource).what)).toEqual(["A network of its own", "A firewall rule", "A fixed address", "The disk"]);
+    expect(resourceWords(made[2]!, { regions: [{ id: "us-central1", name: "Iowa (us-central1)" }] }).detail).toBe("Reserved in Iowa (us-central1)");
+  });
+
   it("says what a finished removal took, by place", () => {
     expect(removedLine({ resources: record }, fly)).toBe("Deleted 5 things from Fly.io and 1 from Cloudflare.");
     expect(removedLine({ resources: record.slice(0, 1) }, fly)).toBe("Deleted 1 thing from Fly.io.");

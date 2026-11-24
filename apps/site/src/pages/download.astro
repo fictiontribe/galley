@@ -73,7 +73,7 @@ const words = { download: p.download, coming: p.coming, otherSystems: p.otherSys
   {
     on && lead && (
       <section class="wrap dlpage__screens" aria-label={p.screensLabel}>
-        <div class:list={["dlshots", rest.length === 0 && "dlshots--one"]}>
+        <div class:list={["dlshots", rest.length === 0 && "dlshots--one", rest.length % 2 === 1 && "dlshots--pairs"]}>
           {[lead, ...rest].map((s, i) => (
             <figure class:list={["frame", "dlshot", i === 0 && "dlshot--lead"]} data-zoom-panel>
               <div class="dlshot__win" data-zoom-at="0" style={`max-width:${s.pic.width}px`}>

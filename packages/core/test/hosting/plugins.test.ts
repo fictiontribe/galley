@@ -77,7 +77,7 @@ describe("editor hosts from plugins", () => {
     const ids = new Set(builtIns.map((host) => host.id));
     const merged = [...builtIns, ...plugins.editorHostObjects().filter((host) => !ids.has(host.id))];
 
-    expect(merged.map((host) => host.id)).toEqual(["fly", "cloudflare", "own-server", "example-cloud"]);
+    expect(merged.map((host) => host.id)).toEqual(["fly", "gcp", "cloudflare", "own-server", "example-cloud"]);
     expect(merged.find((host) => host.id === "fly")!.info.summary).toContain("Fly.io");
     expect(() => registerEditorHost(exampleHost("own-server"))).toThrow("already registered");
   });
@@ -91,7 +91,7 @@ describe("editor hosts from plugins", () => {
       env: {},
     });
 
-    expect((await hosting.hosts()).map((host) => host.id)).toEqual(["fly", "cloudflare", "own-server", "example-cloud"]);
+    expect((await hosting.hosts()).map((host) => host.id)).toEqual(["fly", "gcp", "cloudflare", "own-server", "example-cloud"]);
     expect(await hosting.connect("example-cloud")).toEqual({ accounts: [{ id: "team", name: "Team" }], regions: [], domains: [], gaps: [] });
     hosting.dispose();
   });

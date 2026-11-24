@@ -12,12 +12,14 @@ short, task-first version for the documentation site is
 > tests, and run for real on 2026-11-24: on the real image with a real
 > browser, and as this project's own website's editor on a small Google Cloud
 > VM behind Caddy on a real domain. Never run on Fly.io or with a Cloudflare
-> tunnel, and the image is not published to a registry. **Accounts** (people,
-> roles, invitations, one-time links) are newer than that run: they are
-> covered by automated tests, a rehearsal over HTTP against the real server
-> and a pass in a real browser, and have not yet been tried on the real
-> image or against a real mail server. Exactly what has
-> been run is in [What has been run](#what-has-been-run); what hasn't is in
+> tunnel; "Host the editor online" has never created anything on Google
+> Cloud itself (only against a stand-in); and the image is not published to
+> a registry. **Accounts** (people, roles, invitations, one-time links) are
+> newer than that run: they are covered by automated tests, a rehearsal
+> over HTTP against the real server and a pass in a real browser, and have
+> not yet been tried on the real image or against a real mail server.
+> Exactly what has been
+> run is in [What has been run](#what-has-been-run); what hasn't is in
 > [Not verified yet](#not-verified-yet).
 
 - [What a hosted install is](#what-a-hosted-install-is)
@@ -1439,9 +1441,8 @@ The full list, with what is sent, is the documentation site's
 
 ## Where an install runs
 
-Three shapes, and a word on Google Cloud. Prices are rough, monthly, for one
-install, from each provider's own page as read on the date given — an
-estimate, not a quote.
+Four shapes. Prices are rough, monthly, for one install, from each
+provider's own page as read on the date given — an estimate, not a quote.
 
 ### A plain server with Docker and Caddy (the reference)
 
@@ -1465,11 +1466,74 @@ image itself, three DNS names, Caddy's certificates, an upgrade in place and
 the operator's backup, restore and reset commands; and on a Mac with Docker,
 a whole first run to Publish. See [What has been run](#what-has-been-run).
 
-### Google Cloud
+### Google Cloud (a virtual machine per install)
 
-- **A Compute Engine VM is a plain server.** It runs the reference recipe
-  above unchanged; this project's own website's editor runs that way. No
-  Google price is given here: none was checked.
+A Compute Engine virtual machine is a plain server: it runs the reference
+recipe above unchanged, and this project's own website's editor runs that
+way, set up by hand. **Host the editor online** or `galley host --host gcp`
+now makes the same shape through Google's API, in the person's own project,
+with a key file from Google Cloud (a service account's JSON key):
+
+- a network of its own (custom subnets) with one subnet, `10.20.0.0/24`;
+- one firewall rule: tcp 80 and 443 and udp 443 from anywhere, to the
+  machine's network tag only — no SSH rule, because nothing needs one;
+- a fixed address (a reserved regional external IPv4 address);
+- the virtual machine: `e2-small` (2 GB, the default) or `e2-medium` (4 GB,
+  for a site whose repository holds much more than the site), Ubuntu 24.04
+  LTS (`ubuntu-os-cloud`, family `ubuntu-2404-lts-amd64`), a 20 GB balanced
+  boot disk, the fixed address, Shielded VM (secure boot, vTPM, integrity
+  monitoring), **no service account**, and a `startup-script` that installs
+  Docker and the compose plugin, writes the recipe's `caddy` files
+  (`compose.yaml`, `Caddyfile`, `.env` — byte for byte what `recipe.ts`
+  writes) to `/opt/galley` and runs `docker compose up -d`. It runs on every
+  boot and is safe to: Docker only when missing, the files rewritten whole.
+  It holds nothing secret — the setup code only as its SHA-256;
+- the three DNS names as DNS-only A records to the fixed address, with a
+  comment naming the install, when a stored Cloudflare key may edit the
+  domain; otherwise the exact three records to add by hand, with the address
+  once it exists.
+
+Everything that can carry a label (the machine, its disk, the address, a
+snapshot) carries `galley-install=<name>`; networks, subnets and firewall
+rules can't, so their name and a description naming the install tag them.
+The key needs three roles: **Compute Instance Admin (v1)**, **Compute
+Network Admin** and **Compute Security Admin** (Compute Admin would do, but
+is far broader). The app checks them before anything is made with Cloud
+Resource Manager's `projects.testIamPermissions`, and says which role is
+missing and where to add it; a Compute Engine API that is off is said with
+the page that turns it on. **Upgrade** puts the new image into the startup
+script (`setMetadata`, with its fingerprint), then stops and starts the
+machine — a clean shutdown, not Google's `reset`, which is a hard reset that
+would cut off a publish in progress; the same disk keeps everything.
+**Back up** makes a labelled snapshot of the disk, which stays in the
+project until deleted; removing the editor leaves snapshots. **Remove**
+deletes, after checking each still carries its label or description: the DNS
+records, the machine (its disk goes with it), the address, the firewall
+rule, the subnet, the network — and leaves alone anything changed, anything
+the kept machine still uses, and a network someone added to.
+
+What one install costs, on demand in Iowa (`us-central1`), worked out at 730
+hours a month from Google's hourly prices (no monthly figure is printed):
+
+| Size | Machine | 20 GB balanced disk | Fixed address | A month |
+| --- | --- | --- | --- | --- |
+| 2 GB (`e2-small`, $0.016752855 an hour) | $12.23 | $2.00 | $3.65 | about $17.88 |
+| 4 GB (`e2-medium`, $0.03350571 an hour) | $24.46 | $2.00 | $3.65 | about $30.11 |
+
+Sources, read 2026-11-24: [machines](https://cloud.google.com/products/compute/pricing/general-purpose)
+(the "Default", on-demand column), [disks](https://cloud.google.com/compute/disks-image-pricing)
+("Balanced provisioned space $0.000136986 / 1 gibibyte hour"),
+[addresses](https://cloud.google.com/vpc/network-pricing) ("Static and
+ephemeral IP addresses in use on standard VM instances $0.005 / 1 hour").
+Outgoing data, snapshots and taxes aren't included.
+
+**What was run:** "Host the editor online" for Google Cloud has run only
+against a strict local stand-in for Google's token endpoint,
+testIamPermissions and Compute Engine (`core/test/hosting/gcp.test.ts`,
+`core/test/hosting/fakes/gcp.ts`): never against Google, and never with a
+real key or project. The shape it makes is the one the hand-made VM above
+runs.
+
 - **Cloud Run can't hold an install.** Its volumes are in memory, a Cloud
   Storage bucket, or an NFS share — there is no persistent disk for the
   site's checkout and its unpublished changes
@@ -1477,8 +1541,6 @@ a whole first run to Publish. See [What has been run](#what-has-been-run).
   [NFS volumes](https://docs.cloud.google.com/run/docs/configuring/services/nfs-volume-mounts),
   [in-memory volumes](https://docs.cloud.google.com/run/docs/configuring/jobs/in-memory-volume-mounts),
   read 2026-11-24).
-- Google Cloud is **not** a host in "Host the editor online": that isn't
-  built. Run the recipe on the VM yourself.
 
 ### Fly.io (a managed volume per install)
 
@@ -1591,8 +1653,8 @@ online for the site it has open, on the person's own account. It sits beside
 **Put this site online** on the Online screen, as **Editor online**, and is
 built the same way (`packages/core/src/hosting/`).
 
-1. **Where.** Fly.io; Cloudflare, in front of a computer of yours; or any
-   server with Docker. "Why not Vercel, Netlify or Cloudflare Containers?"
+1. **Where.** Fly.io; Google Cloud; Cloudflare, in front of a computer of
+   yours; or any server with Docker. "Why not Vercel, Netlify or Cloudflare Containers?"
    gives each one's reason.
 2. **The key, found out, not guessed.** The key the host needs (with the
    permissions to tick, in order) is checked with the host before it is
@@ -1630,7 +1692,8 @@ built the same way (`packages/core/src/hosting/`).
    its own key to the repository. For the self-run hosts, the person starts the files and
    chooses **Check**.
 7. **Later**: **Upgrade to …** (a new image, the disk kept), **Back up**
-   (on Fly.io, a snapshot of the disk that Fly.io keeps for 7 days; otherwise
+   (on Fly.io, a snapshot of the disk that Fly.io keeps for 7 days; on
+   Google Cloud, a labelled snapshot that stays until deleted; otherwise
    where the install's Install page downloads one), **Remove the hosted editor** (it lists what it will delete,
    leaves alone anything whose name or tag changed, keeps the site, its
    repository and live address, says plainly that unpublished changes on the
@@ -1665,27 +1728,33 @@ Hands the new editor:
 Nothing was created (--dry-run).
 ```
 
-`galley host` is in 0.2.0 and newer (`npx galley-cms host`). Then
-`galley host status|link|check|upgrade|backup|remove`. Keys come from
-`FLY_API_TOKEN` or `CLOUDFLARE_API_TOKEN`, else the stored one, else a prompt
-(and stored). Until the image is published, set `GALLEY_HOSTING_IMAGE` to an
+`galley host` is in 0.2.0 and newer (`npx galley-cms host`); Google Cloud as
+a host isn't in a release yet, so run that one from a clone of this
+repository. Then `galley host status|link|check|upgrade|backup|remove`. Keys come from
+`FLY_API_TOKEN`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` (the key file's whole
+text, not its path) or `CLOUDFLARE_API_TOKEN`, else the stored one, else a
+prompt (and stored; for Google Cloud, the key file pasted or its path).
+Until the image is published, set `GALLEY_HOSTING_IMAGE` to an
 image you pushed. A hosted install never offers any of this (its routes
 answer 404).
 
 **Hosts are pluggable.** A plugin can add one through `editorHosts` in the
 plugin API ([docs/plugins.md](plugins.md#editor-hosts)): the same
-`EditorHost` interface (`packages/core/src/hosting/types.ts`) the three
+`EditorHost` interface (`packages/core/src/hosting/types.ts`) the four
 built-ins implement — inspect, plan (creating nothing), create exactly the
 plan, remove only what was created. A plugin can't replace a built-in.
 
 **The rehearsal.** `scripts/rehearse-hosting.mjs` starts the strict fake
-Fly.io and Cloudflare APIs the tests use on local ports and prints the
-variables to start the app with (`GALLEY_HOSTING_FLY_API`,
-`GALLEY_HOSTING_CLOUDFLARE_API`, `GALLEY_HOSTING_INSTALL_API` and the fakes'
-made-up keys), so the whole flow can be walked with no real host. A small
-fake install answers by default; with `GALLEY_FAKE_LAUNCH` every machine the
-fake Fly.io creates becomes a real `galley serve` process. Every call the
-fakes answered is written to an evidence file, with no keys in it.
+Fly.io, Google Cloud and Cloudflare APIs the tests use on local ports and
+prints the variables to start the app with (`GALLEY_HOSTING_FLY_API`,
+`GALLEY_HOSTING_GCP_COMPUTE_API`, `GALLEY_HOSTING_GCP_OAUTH_API`,
+`GALLEY_HOSTING_GCP_RESOURCE_MANAGER_API`, `GALLEY_HOSTING_CLOUDFLARE_API`,
+`GALLEY_HOSTING_INSTALL_API` and the fakes' made-up keys — for Google Cloud
+a made-up key file written beside the evidence), so the whole flow can be
+walked with no real host. A small fake install answers by default; with
+`GALLEY_FAKE_LAUNCH` every machine the fake Fly.io or Google Cloud creates
+becomes a real `galley serve` process. Every call the fakes answered is
+written to an evidence file, with no keys in it.
 
 ---
 
@@ -1745,7 +1814,8 @@ git repositories and started servers:
 - the security pass (`server/test/hosted-security.test.ts`);
 - every host's whole life — inspect, plan, create, hand over, upgrade, back
   up, remove — against strict local fakes of Fly.io and Cloudflare
-  (`core/test/hosting/service.test.ts`);
+  (`core/test/hosting/service.test.ts`) and of Google Cloud's sign-in,
+  permission check and Compute Engine (`core/test/hosting/gcp.test.ts`);
 - no lockfile left behind by the preview's package install
   (`core/test/workspace/install-lockfile.test.ts`); the Install page's
   storage sizes (`core/test/install/storage.test.ts`); the repository's
@@ -1903,6 +1973,14 @@ BuildKit, 4 GB):
   engine, not over HTTP. The sign-in limits have not been run end to end
   against a real server (the tests and the app's stand-in server check
   them); they live in memory, so a restart resets them.
+- **Any real run of "Host the editor online" on Google Cloud.** In
+  particular: whether an address takes its labels on insert (the code sets
+  them with setLabels when it didn't), the status code of a stale metadata
+  fingerprint (the code reads again and retries once on 409 or 412), whether
+  Cloud Resource Manager must be on for the permission check (the code then
+  says it couldn't check, without blocking), how long the first boot takes to
+  install Docker and pull the image, and whether 1536 MB for the editor on a
+  2 GB `e2-small` (with 2 GB of swap) is enough for a real site's preview.
 - **Any real run on Fly.io or with a Cloudflare tunnel.** On Fly.io in
   particular: whether outbound SSH (port 22) works, whether it honours the
   image's user, how its proxy treats the editor's live updates, and its region
@@ -1915,5 +1993,6 @@ BuildKit, 4 GB):
 - **The image on a registry.** Nothing is published; the default image name is
   where it will be.
 - **Prices.** Every price here is an estimate from the provider's page on the
-  date given; the Fly.io 2 GB figure is derived from its rates, not printed.
-  No Google Cloud price is given.
+  date given; the Fly.io 2 GB figure is derived from its rates, not printed;
+  the Google Cloud monthly figures are worked out from hourly prices at 730
+  hours, for Iowa only.

@@ -178,9 +178,10 @@ export async function recordsNamed(ctx: EditorHostContext, key: string, zoneId: 
   return (await cf<CfRecord[]>(ctx, key, "GET", `zones/${encodeURIComponent(zoneId)}/dns_records`, "read the domain's DNS records", { query: { name, per_page: "50" } })) ?? [];
 }
 
-export async function createRecord(ctx: EditorHostContext, key: string, zone: CfZone, record: { name: string; content: string; proxied: boolean; comment: string }): Promise<CfRecord> {
+/** A CNAME unless `type` says otherwise (an A record to a fixed address, for Google Cloud). */
+export async function createRecord(ctx: EditorHostContext, key: string, zone: CfZone, record: { name: string; content: string; proxied: boolean; comment: string; type?: "CNAME" | "A" }): Promise<CfRecord> {
   const created = await cf<CfRecord>(ctx, key, "POST", `zones/${encodeURIComponent(zone.id)}/dns_records`, `add the DNS record for ${record.name}`, {
-    json: { type: "CNAME", name: record.name, content: record.content, proxied: record.proxied, ttl: 1, comment: record.comment },
+    json: { type: record.type ?? "CNAME", name: record.name, content: record.content, proxied: record.proxied, ttl: 1, comment: record.comment },
     permission: dnsGap(zone.name, true),
   });
 

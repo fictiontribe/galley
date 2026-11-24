@@ -83,6 +83,18 @@ local mode have no accounts and are unchanged.
   an `email`; `POST /api/setup/password` takes the owner's `name` and
   `email`; `GET /api/meta` gains `account`, `install.signInWith` and
   `install.passwordEmail`.
+- **Host the editor online on Google Cloud.** A fourth place for the
+  editor: a virtual machine of its own in your Google Cloud project, with a
+  20 GB disk, a network of its own, one firewall rule for the web ports (no
+  SSH) and a fixed address, running the same compose recipe as "Any server
+  with Docker" (the editor and Caddy for HTTPS). It needs a key file from
+  Google Cloud (a service account's JSON key) with Compute Instance Admin
+  (v1), Compute Network Admin and Compute Security Admin; the app checks the
+  roles and the Compute Engine API before anything is made. About $17.88 a
+  month with 2 GB, $30.11 with 4 GB (on-demand in Iowa, worked out from
+  Google's hourly prices, read 2026-11-24). Also `galley host --host gcp`
+  and `GOOGLE_APPLICATION_CREDENTIALS_JSON`. Run only against a stand-in for
+  Google's APIs so far.
 
 ### Changed
 
@@ -110,9 +122,34 @@ local mode have no accounts and are unchanged.
   form was submitted, never what was sent.
 - The last characters of a stored key are shown only to owners; everyone
   else still sees whether a key is set.
+- **The macOS desktop app is signed and notarised by Apple.** It opens like
+  any other downloaded app, on Apple silicon and Intel.
+- **Desktop installers for Windows and Linux are built on every release**,
+  unsigned, alongside the two for macOS, and gathered with their SHA-256
+  sums into a draft release. On each system the packaged server is started
+  and walked through a site before the installer is kept, and on Windows
+  the app is installed and opened. No person has used it on Windows or Linux
+  yet.
+
 
 ### Fixed
 
+- **On Windows, a site's preview could not start**: the command lookup found
+  the plain `npm` file that ships beside `npm.cmd`, which Windows can't run.
+  Names are now tried with Windows' own endings first.
+- **The Mac app, started from a terminal through a path with a symbolic link
+  in it** (a copy under `/tmp`, say), said "This copy is incomplete. Reinstall
+  it." with nothing missing. It now finds its server from its own folder,
+  and when something really is missing the details say what was looked for.
+- **On Windows, the desktop app could not start**: it handed its server's
+  path to Node.js in the long `\\?\C:\…` form Windows returns, which Node
+  can't open, so the window said "Couldn't start" on every launch. It now
+  uses the ordinary spelling.
+- **On Windows, the desktop app's start-up check said git was missing** for
+  every Git for Windows install (it reports itself as `2.47.1.windows.1`).
+- **Building on Windows** stopped at the first file read exactly, because
+  git there checked text files out with CRLF line endings. Every text file
+  is now checked out with LF on every system (`.gitattributes`).
 - **Next.js 16 no longer writes an AGENTS.md into the site** when Galley
   is started from Cursor's agent, GitHub Copilot's CLI, Augment or
   Antigravity: the preview's dev server no longer gets the variables those

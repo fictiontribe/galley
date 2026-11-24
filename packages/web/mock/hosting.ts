@@ -1,13 +1,15 @@
 /**
  * "Host the editor online", answered from memory for `dev:mock` and the
- * app's tests: three hosts (Fly.io does everything; Cloudflare and "any
- * server" hand over files to start), what a key can do, a plan with its cost
+ * app's tests: four hosts (Fly.io and Google Cloud do everything; Cloudflare
+ * and "any server" hand over files to start), what a key can do, a plan with its cost
  * and handover, a create job that progresses, self-run installs that wait for
  * "check", and upgrade, backup and removal. Like the real server, a hosted
  * install answers every route with "not here".
  *
  * Words that steer it, for trying every state:
  *   a Fly.io key containing "apps"      may only manage particular apps: a blocking gap
+ *   a Google Cloud key containing "off"   the Compute Engine API is off: a blocking gap
+ *   a Google Cloud key containing "roles" its service account lacks Compute Security Admin: a blocking gap
  *   a Cloudflare key containing "readonly"  can't change DNS names: done by hand (a gap
  *                                        that blocks the Cloudflare host, not Fly.io)
  *   any key containing "wrong"          is refused by the host
@@ -99,6 +101,33 @@ function flyCost(memory: string, sleeps: boolean): CostEstimate {
   };
 }
 
+const GCP_REGIONS = [
+  { id: "us-central1", name: "Iowa (us-central1)" },
+  { id: "europe-west1", name: "Belgium (europe-west1)" },
+  { id: "europe-west2", name: "London (europe-west2)" },
+  { id: "us-west1", name: "Oregon (us-west1)" },
+  { id: "asia-northeast1", name: "Tokyo (asia-northeast1)" },
+];
+
+/** As the engine works it out (core/src/hosting/gcp.ts): Iowa's hourly prices × 730 hours. */
+function gcpCost(size: string): CostEstimate {
+  const machine = size === "e2-medium" ? 24.46 : 12.23;
+  return {
+    monthly: Math.round((machine + 2 + 3.65) * 100) / 100,
+    currency: "USD",
+    lines: [
+      { label: `Virtual machine: ${size === "e2-medium" ? "e2-medium, 4 GB" : "e2-small, 2 GB"} memory, running all day`, amount: machine },
+      { label: "Disk: 20 GB (balanced)", amount: 2 },
+      { label: "A fixed address (an external IPv4 address in use)", amount: 3.65 },
+      { label: "Its network, subnet and firewall rule", amount: 0 },
+      { label: "HTTPS certificates (Caddy gets them from Let's Encrypt)", amount: 0 },
+    ],
+    note: "On-demand prices for Iowa (us-central1); other regions cost a little more or less. Worked out at 730 hours a month from Google's hourly prices: an estimate to check on Google's pricing pages, not a quote.",
+    source: "https://cloud.google.com/products/compute/pricing/general-purpose",
+    checked: "2026-11-24",
+  };
+}
+
 const CLOUDFLARE_COST: CostEstimate = {
   monthly: 0,
   currency: "USD",
@@ -175,6 +204,49 @@ const HOSTS: Array<Omit<EditorHostInfo, "secrets">> = [
     docsUrl: "https://docs.fly.io/machines/api/",
   },
   {
+    id: "gcp",
+    name: "Google Cloud",
+    summary: "Runs the editor on a virtual machine of its own in your Google Cloud project, with its own disk, a network of its own and a fixed address. Everything is created in your project; your domain gives it its three addresses.",
+    kind: "managed",
+    credentials: [
+      {
+        secret: "gcp",
+        label: "Google Cloud key file",
+        help: "A key file from Google Cloud (a service account's JSON key): paste the whole file. It lets this app create the editor's virtual machine, network and fixed address in the key's project. It's kept on this computer only.",
+        docsUrl: "https://docs.cloud.google.com/iam/docs/keys-create-delete",
+        permissions: [
+          "Turn on the Compute Engine API in the project (APIs & Services › Library › Compute Engine API › Enable)",
+          "Create a service account (IAM & Admin › Service accounts › Create service account)",
+          "Give it the roles “Compute Instance Admin (v1)”, “Compute Network Admin” and “Compute Security Admin”",
+          "Create its key: Keys › Add key › Create new key › JSON",
+        ],
+        required: true,
+      },
+      {
+        secret: "cloudflare",
+        label: "Cloudflare access key (optional)",
+        help: "When your domain is on Cloudflare, this key lets the app add the editor's three DNS names for you. Without it, you add them by hand.",
+        docsUrl: CF_DOCS,
+        permissions: ["Zone › DNS › Edit", "Zone › Zone › Read"],
+        required: false,
+      },
+    ],
+    cost: gcpCost("e2-small"),
+    options: [
+      {
+        key: "size",
+        label: "Memory",
+        help: "The editor runs the site's own preview, which needs room.",
+        choices: [
+          { value: "e2-small", label: "2 GB (e2-small)", note: "Recommended for most sites" },
+          { value: "e2-medium", label: "4 GB (e2-medium)", note: "For a site whose repository holds much more than the site itself: its preview and package install need the room" },
+        ],
+        default: "e2-small",
+      },
+    ],
+    docsUrl: "https://docs.cloud.google.com/compute/docs/instances/create-start-instance",
+  },
+  {
     id: "cloudflare",
     name: "Cloudflare, in front of a computer of yours",
     summary: "Runs the editor on any computer of yours with Docker and reaches it at your own addresses through Cloudflare, with no ports opened. A tunnel and three DNS names are created on your Cloudflare account.",
@@ -229,6 +301,7 @@ const KEY_LABEL: Record<SecretName, string> = {
   cloudflare: "the Cloudflare key",
   vercel: "the Vercel key",
   fly: "the Fly.io key",
+  gcp: "the Google Cloud key file",
 };
 
 const DOMAINS = [
@@ -370,6 +443,14 @@ export function hostingHandlers(mock: MockBackend): Pick<Handlers, HostingRouteK
       if (cfReadOnly) gaps.push({ what: "The Cloudflare key can't change DNS names (it's missing Zone › DNS › Edit), so the three names will be added by hand.", where: "Cloudflare › My Profile › API Tokens: edit the key and add Zone › DNS › Edit.", url: "https://dash.cloudflare.com/profile/api-tokens", blocking: false });
       return { accounts: [{ id: "studio", name: "Studio" }, { id: "personal", name: "Personal" }], regions: FLY_REGIONS, domains: cfReadOnly ? [] : domains, gaps };
     }
+    if (hostId === "gcp") {
+      const key = state.keys.gcp ?? "";
+      if (!stored("gcp")) gaps.push({ what: "There's no key file from Google Cloud (a service account's JSON key) yet.", where: "In the Google Cloud console, open IAM & Admin › Service accounts, create one with the roles listed here, then Keys › Add key › Create new key › JSON.", url: "https://console.cloud.google.com/iam-admin/serviceaccounts", blocking: true });
+      if (key.includes("off")) gaps.push({ what: "The Compute Engine API is off in the project “example-project”, so nothing can be created there yet.", where: "Open the page, choose Enable (it can take a minute), then check again. Turning it on may ask for a billing account on the project.", url: "https://console.cloud.google.com/apis/library/compute.googleapis.com?project=example-project", blocking: true });
+      if (key.includes("roles")) gaps.push({ what: "The key can't open the web ports to the editor or close the web ports again: its service account needs the role “Compute Security Admin”.", where: "In the Google Cloud console, open IAM & Admin › IAM for the project “example-project”, find editor-maker@example-project.iam.gserviceaccount.com, choose Edit, then Add another role: “Compute Security Admin”. Save, wait a minute, then check again.", url: "https://console.cloud.google.com/iam-admin/iam?project=example-project", blocking: true });
+      if (cfReadOnly) gaps.push({ what: "The Cloudflare key can't change DNS names (it's missing Zone › DNS › Edit), so the three names will be added by hand.", where: "Cloudflare › My Profile › API Tokens: edit the key and add Zone › DNS › Edit.", url: "https://dash.cloudflare.com/profile/api-tokens", blocking: false });
+      return { accounts: stored("gcp") ? [{ id: "example-project", name: "example-project" }] : [], regions: stored("gcp") && !key.includes("off") ? GCP_REGIONS : [], domains: cfReadOnly ? [] : domains, gaps };
+    }
     if (!stored("cloudflare")) gaps.push({ what: "There's no Cloudflare access key yet.", where: "Cloudflare › My Profile › API Tokens › Create Token.", url: "https://dash.cloudflare.com/profile/api-tokens", blocking: true });
     if (cfReadOnly) gaps.push({ what: "This Cloudflare key can't create the three DNS names: it's missing Zone › DNS › Edit.", where: "Cloudflare › My Profile › API Tokens: edit the key and add Zone › DNS › Edit, then check again.", url: "https://dash.cloudflare.com/profile/api-tokens", blocking: true });
     return { accounts: [{ id: "4f1c0a9e2b7d4c18a3e5f60718293a4b", name: "Studio account" }], regions: [], domains: cfReadOnly ? [] : domains, gaps };
@@ -473,7 +554,20 @@ export function hostingHandlers(mock: MockBackend): Pick<Handlers, HostingRouteK
         if (!name || !host.credentials.some((credential) => credential.secret === name)) throw new MockError("invalid", `${host.name} doesn't use that key.`);
         const label = host.credentials.find((credential) => credential.secret === name)?.label.replace(/ \(optional\)$/, "") ?? "The key";
         if (key.includes("wrong")) throw new MockError("unconfigured", `${label.replace(/ access key$/, "")} didn't accept the access key. It may have been deleted or have expired. Make a new one and paste it here.${stored(name) ? " The key saved before is still the one in use." : ""}`);
-        mock.secrets[name] = { name, configured: true, source: "stored", hint: key.slice(-4) };
+        let hint = key.slice(-4);
+        // A Google Cloud key file is a JSON document, shown by its key id's last four (as the engine does).
+        if (name === "gcp") {
+          let id: unknown;
+          try {
+            const parsed = JSON.parse(key) as { type?: unknown; private_key_id?: unknown };
+            id = parsed.type === "service_account" ? parsed.private_key_id : undefined;
+          } catch {
+            id = undefined;
+          }
+          if (typeof id !== "string" || !id) throw new MockError("invalid", "That isn't a key file from Google Cloud (a service account's JSON key). In the Google Cloud console, open IAM & Admin › Service accounts, choose the account, then Keys › Add key › Create new key › JSON, and paste the whole file.");
+          hint = id.slice(-4);
+        }
+        mock.secrets[name] = { name, configured: true, source: "stored", hint };
         state.keys[name] = key;
       }
       return inspect(host.id);
@@ -500,7 +594,7 @@ export function hostingHandlers(mock: MockBackend): Pick<Handlers, HostingRouteK
       const steps: ManualStep[] = [];
       const handover: HandoverLine[] = [];
       if (state.records.has(site.id) || state.configs.has(site.id)) problems.push({ message: `This site already has an editor online.`, fix: "Remove it first, then put a new one online." });
-      if (name === "taken") problems.push({ message: `There's already an app called “taken” on your ${host.id === "fly" ? "Fly.io" : "Cloudflare"} account.`, fix: "Choose another name." });
+      if (name === "taken") problems.push(host.id === "gcp" ? { message: "There's already a network called “taken-net” in the project “example-project”.", fix: "Choose another short name." } : { message: `There's already an app called “taken” on your ${host.id === "fly" ? "Fly.io" : "Cloudflare"} account.`, fix: "Choose another name." });
       if (host.id !== "own-server" && !body.account) problems.push({ message: "Choose the account the editor goes in." });
 
       const summary = site.summaryInfo();
@@ -547,6 +641,25 @@ export function hostingHandlers(mock: MockBackend): Pick<Handlers, HostingRouteK
           ...(dns ? namesOf(addresses).map((hostname) => ({ kind: "dns-record", id: "", name: hostname, detail: `${hostname} → ${name}.fly.dev, on Cloudflare` })) : []),
         ];
         if (!dns) steps.unshift(...dnsSteps(addresses, name));
+      } else if (host.id === "gcp") {
+        const size = options.size === "e2-medium" ? "e2-medium" : "e2-small";
+        const place = GCP_REGIONS.find((entry) => entry.id === (options.region ?? "us-central1"))?.name ?? "Iowa (us-central1)";
+        cost = gcpCost(size);
+        resources = [
+          { kind: "network", id: "", name: `${name}-net`, detail: "A network of its own for the editor, apart from anything else in the project" },
+          { kind: "subnet", id: "", name: `${name}-subnet`, detail: `Its one subnet (10.20.0.0/24), in ${place}` },
+          { kind: "firewall-rule", id: "", name: `${name}-web`, detail: "Lets the web in on ports 80 and 443, to the editor's virtual machine only — no other port, no SSH" },
+          { kind: "address", id: "", name: `${name}-ip`, detail: `A fixed address in ${place}, so the three names keep pointing at the editor` },
+          { kind: "machine", id: "", name, detail: `A virtual machine with ${size === "e2-medium" ? "4 GB" : "2 GB"} of memory (${size}), Ubuntu 24.04, in ${place}; it installs Docker and starts the editor with Caddy for HTTPS by itself` },
+          { kind: "disk", id: "", name, detail: "A 20 GB disk for everything the editor keeps; it goes with the virtual machine" },
+          ...(dns ? namesOf(addresses).map((hostname) => ({ kind: "dns-record", id: "", name: hostname, detail: `${hostname} → the editor's fixed address (DNS only), on Cloudflare` })) : []),
+        ];
+        if (!dns) {
+          steps.unshift(
+            ...namesOf(addresses).map((hostname) => ({ title: `Add the DNS name ${hostname}`, detail: `At the company that holds your domain, add an A record for ${hostname} with the editor's fixed address (this app shows it once it exists).`, copy: `${hostname}.  A  <the editor's fixed address, shown once it exists>` })),
+            { title: "Then choose Check", detail: `Once the three names lead to the virtual machine, ${addresses.editor} answers and the site is handed over.` },
+          );
+        }
       } else if (host.id === "cloudflare") {
         resources = [
           { kind: "tunnel", id: "", name, detail: "A tunnel: the connector on your computer dials out to Cloudflare, so no ports are opened" },
@@ -640,6 +753,10 @@ export function hostingHandlers(mock: MockBackend): Pick<Handlers, HostingRouteK
       local();
       const record = needRecord(params.siteId);
       await sleep(STEP_MS * 2);
+      if (record.host === "gcp") {
+        const snapshot = `${record.name}-${new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15)}`;
+        return { kind: "snapshot", snapshot, message: `Google Cloud copied the editor's disk as the snapshot “${snapshot}”. It stays until you delete it (Compute Engine › Snapshots in the Google Cloud console); removing the editor here leaves it.` };
+      }
       if (record.host === "fly") {
         const snapshot = `vs_${randomBytes(4).toString("hex")}`;
         return { kind: "snapshot", snapshot, message: "Fly.io copied the editor's disk. The copy is kept for 5 days; restore it from the Fly.io dashboard." };
@@ -655,7 +772,7 @@ export function hostingHandlers(mock: MockBackend): Pick<Handlers, HostingRouteK
       return {
         resources: record.resources.filter((resource) => !skipped.some((entry) => entry.resource === resource)),
         skipped,
-        kept: ["The site, its repository and its version history", `The live site${mock.site(params.siteId).model().urls.production ? ` at ${mock.site(params.siteId).model().urls.production}` : ""}`, "This computer's copy of the site, with any changes not yet published"],
+        kept: ["The site, its repository and its version history", `The live site${mock.site(params.siteId).model().urls.production ? ` at ${mock.site(params.siteId).model().urls.production}` : ""}`, "This computer's copy of the site, with any changes not yet published", ...(record.host === "gcp" ? ["Copies of the editor's disk made with Back up (snapshots): they stay in the project until you delete them in Compute Engine › Snapshots"] : [])],
         warning: "Changes made on the hosted editor that were never published are deleted with it. Publish them first, or download a backup from its Install page.",
       };
     },

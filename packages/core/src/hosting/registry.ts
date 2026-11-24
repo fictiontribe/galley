@@ -1,17 +1,18 @@
 /**
  * The places an editor can be hosted that this process knows. Fly.io,
- * Cloudflare (in front of a computer of yours) and any server with Docker are
- * always there; a plugin can add one with `registerEditorHost` before the
+ * Google Cloud, Cloudflare (in front of a computer of yours) and any server
+ * with Docker are always there; a plugin can add one with `registerEditorHost` before the
  * hosting service is created (or pass `hosts` to it directly). Mirrors
  * deploy/registry.ts.
  */
 import { PRODUCT } from "../brand";
 import { createCloudflareEditorHost } from "./cloudflare";
 import { createFlyHost } from "./fly";
+import { createGcpHost } from "./gcp";
 import { createOwnServerHost } from "./own-server";
 import type { EditorHost, EditorHostAbsent } from "./types";
 
-export const BUILT_IN_EDITOR_HOSTS = ["fly", "cloudflare", "own-server"] as const;
+export const BUILT_IN_EDITOR_HOSTS = ["fly", "gcp", "cloudflare", "own-server"] as const;
 
 const extra: EditorHost[] = [];
 
@@ -23,9 +24,9 @@ export function registerEditorHost(host: EditorHost): void {
   extra.push(host);
 }
 
-/** Built-ins first (Fly.io, the one that does everything itself), then registered ones. */
+/** Built-ins first (Fly.io and Google Cloud, the ones that do everything themselves), then registered ones. */
 export function builtInEditorHosts(): EditorHost[] {
-  return [createFlyHost(), createCloudflareEditorHost(), createOwnServerHost(), ...extra];
+  return [createFlyHost(), createGcpHost(), createCloudflareEditorHost(), createOwnServerHost(), ...extra];
 }
 
 /**

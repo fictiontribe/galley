@@ -1,8 +1,8 @@
 /**
  * `galley host` — "Host the editor online" from the terminal, with the same
  * engine the app uses: a hosted install of this app for the site, on the
- * person's own account (Fly.io), behind Cloudflare on a computer of theirs,
- * or on any server with Docker.
+ * person's own account (Fly.io or Google Cloud), behind Cloudflare on a
+ * computer of theirs, or on any server with Docker.
  *
  * It always prints the plan and its monthly cost first; `--dry-run` stops
  * there having created nothing, and without `--yes` it asks. It asks only on
@@ -11,7 +11,7 @@
  * up and removes it. `galley host recipe` needs no site and no account: it
  * writes the files to run an install with Docker.
  */
-import { chmodSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { dirname, join, resolve } from "node:path";
 import { PRODUCT } from "@galley/core/brand";
@@ -50,6 +50,8 @@ created, and asks before creating it. The site's settings
 
 Where (--host)
   fly           Fly.io: everything is created on your Fly.io account
+  gcp           Google Cloud: a virtual machine of its own, with its own disk,
+                network and fixed address, in your Google Cloud project
   cloudflare    Cloudflare in front of a computer of yours: a tunnel and three
                 DNS names on Cloudflare; you start the files it writes
   own-server    Any server with Docker: it writes the files, you start them
@@ -63,10 +65,12 @@ Options
                            worked-out names would be someone else's domain
       --name <name>        The short name everything created carries
                            (default: from the site's name)
-      --account <id>       The Fly.io organization or Cloudflare account
-      --region <id>        Fly.io: where it runs (default: iad)
+      --account <id>       The Fly.io organization, Google Cloud project or
+                           Cloudflare account
+      --region <id>        Where it runs (Fly.io default: iad; Google Cloud
+                           default: us-central1)
       --option <key=value> A host's own choice, e.g. memory=1024, sleep=off,
-                           proxy=shared-proxy (repeatable)
+                           size=e2-medium, proxy=shared-proxy (repeatable)
       --hand-over <keys>   Keys to copy to it, by name, comma-separated
                            (e.g. anthropic). Default: none
       --out <folder>       Where to write the files a self-run install needs
@@ -96,11 +100,14 @@ recipe: the files to run one install with Docker, for an operator
       --out <folder|->        Write the files there (default -: print them)
 
 Keys
-  Read from FLY_API_TOKEN or CLOUDFLARE_API_TOKEN when set, otherwise the one
-  stored with the app, otherwise asked for on a terminal (and stored).
+  Read from FLY_API_TOKEN, GOOGLE_APPLICATION_CREDENTIALS_JSON (the whole
+  key file's text) or CLOUDFLARE_API_TOKEN when set, otherwise the one stored
+  with the app, otherwise asked for on a terminal (and stored). For Google
+  Cloud, paste the key file or type the path to it.
 
 Examples
   ${PRODUCT.slug} host --host fly --address cms.example.com --dry-run
+  ${PRODUCT.slug} host --host gcp --region europe-west1 --address cms.example.com
   ${PRODUCT.slug} host --host own-server --address cms.example.com --yes
   ${PRODUCT.slug} host recipe --name acme-editor --address cms.example.com --out ./acme`;
 
@@ -110,7 +117,7 @@ export interface HostIo extends Io {
 }
 
 const SUBCOMMANDS = new Set(["status", "link", "check", "upgrade", "backup", "remove", "recipe"]);
-const KEY_VARIABLE: Partial<Record<SecretName, string>> = { fly: "FLY_API_TOKEN", cloudflare: "CLOUDFLARE_API_TOKEN" };
+const KEY_VARIABLE: Partial<Record<SecretName, string>> = { fly: "FLY_API_TOKEN", gcp: "GOOGLE_APPLICATION_CREDENTIALS_JSON", cloudflare: "CLOUDFLARE_API_TOKEN" };
 
 function terminalPrompt(): HostIo["prompt"] | null {
   if (!process.stdin.isTTY || !process.stderr.isTTY) return null;
@@ -348,6 +355,34 @@ async function withEngine<T>(io: Io, path: string | undefined, work: (engine: Si
   }
 }
 
+/**
+ * A key file from Google Cloud: its path, or the file itself pasted — which a
+ * terminal hands over one line at a time, so lines are read until the JSON
+ * is whole (or a bounded number of lines have come).
+ */
+async function keyFile(io: HostIo, ask: NonNullable<HostIo["prompt"]>): Promise<string> {
+  const first = await ask("Paste the key file from Google Cloud (a service account's JSON key), or type the path to it: ", { secret: true });
+
+  if (!first) return "";
+  if (!first.startsWith("{")) {
+    const path = resolve(io.cwd, first.replace(/^~(?=\/)/, io.env.HOME ?? "~"));
+
+    if (!existsSync(path)) throw new UsageError(`There's no file at ${path}.`);
+    return readFileSync(path, "utf8");
+  }
+  let text = first;
+
+  for (let line = 0; line < 200; line += 1) {
+    try {
+      JSON.parse(text);
+      return text;
+    } catch {
+      text += `\n${await ask("", { secret: true })}`;
+    }
+  }
+  return text;
+}
+
 async function ensureKeys(io: HostIo, hosting: HostingService, host: EditorHostInfo, ask: HostIo["prompt"] | null): Promise<void> {
   for (const credential of host.credentials.filter((entry) => entry.required)) {
     if (host.secrets.some((status) => status.name === credential.secret && status.configured)) continue;
@@ -357,7 +392,7 @@ async function ensureKeys(io: HostIo, hosting: HostingService, host: EditorHostI
     io.err(`${host.name} needs a ${credential.label}. ${credential.help}`);
     if (credential.permissions.length) io.err(`  It needs: ${credential.permissions.join(", ")}.`);
     io.err(`  How to make one: ${credential.docsUrl}`);
-    const value = await ask(`Paste the ${credential.label}: `, { secret: true });
+    const value = credential.secret === "gcp" ? await keyFile(io, ask) : await ask(`Paste the ${credential.label}: `, { secret: true });
 
     if (!value) throw new UsageError("No key was pasted, so nothing was created.");
     // Checked with the host first; only a key it accepts is stored.
@@ -424,11 +459,11 @@ async function create(argv: string[], io: HostIo): Promise<number> {
       if (blocking.length) return fail(io, json, `${host.name} can't be used with this key yet: ${blocking[0]!.what}`, blocking.map((gap) => `${gap.what} ${gap.where}`).join("\n"));
       if (!account) {
         if (found.accounts.length === 1) account = found.accounts[0]!.id;
-        else if (found.accounts.length > 1 && ask) account = (await choose(ask, io, `Which ${host.id === "fly" ? "organization" : "account"}?`, found.accounts, (entry) => `${entry.name} (${entry.id})`)).id;
+        else if (found.accounts.length > 1 && ask) account = (await choose(ask, io, `Which ${host.id === "fly" ? "organization" : host.id === "gcp" ? "project" : "account"}?`, found.accounts, (entry) => `${entry.name} (${entry.id})`)).id;
         else if (found.accounts.length > 1) throw new UsageError(`The key can use ${found.accounts.length} accounts; say which with --account: ${found.accounts.map((entry) => `${entry.id} (${entry.name})`).join(", ")}.`);
         else throw new UsageError("The key can't list its accounts; say which with --account.");
       }
-      if (host.id === "fly" && !options.region && ask && found.regions.length) {
+      if ((host.id === "fly" || host.id === "gcp") && !options.region && ask && found.regions.length) {
         options.region = (await choose(ask, io, "Where should it run?", found.regions, (region) => `${region.name} (${region.id})`)).id;
       }
     }

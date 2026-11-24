@@ -10,16 +10,33 @@
 #   macOS notarising   APPLE_ID                    Apple ID e-mail
 #   (needs signing)    APPLE_PASSWORD              an app-specific password for it
 #                      APPLE_TEAM_ID               the 10-character team id
-#   Windows signing    WINDOWS_CERTIFICATE         base64 of the code-signing .pfx (certutil -encode)
-#                      WINDOWS_CERTIFICATE_PASSWORD
+#   Windows signing    Azure Artifact Signing (once "Trusted Signing"): a publicly trusted
+#                      certificate can no longer be had as a file, so the installers are
+#                      signed by Microsoft's service.
+#                      AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET   the app registration that may sign
+#                      AZURE_SIGNING_ENDPOINT   e.g. https://eus.codesigning.azure.net
+#                      AZURE_SIGNING_ACCOUNT    the signing account's name
+#                      AZURE_SIGNING_PROFILE    the certificate profile's name
 #   Linux              not signed
 #
 # The packaged app runs its server on the Node.js that runs this job
 # (apps/desktop/scripts/prepare-sidecar.mjs copies process.execPath), so the
 # Node version below is the version every installer ships.
 #
-# This workflow has not been run yet; it was written against the Tauri 2
-# docs (distribute/sign/macos, distribute/sign/windows, start/prerequisites).
+# After each build the job starts the packaged server the way the app does and
+# walks a site through open → edit → proof → publish → preview
+# (apps/desktop/scripts/sidecar-e2e.mjs), and a signed build has its signature
+# checked — so a broken or half-signed installer fails here, not on someone's
+# computer.
+#
+# On a version tag the installers that were built are gathered, with their
+# SHA-256 sums, into a DRAFT release: nothing is public until a person
+# publishes the draft (RELEASING.md, "The GitHub release").
+#
+# Written against the Tauri 2 docs (distribute/sign/macos,
+# distribute/sign/windows, start/prerequisites). macOS signing and
+# notarisation run for real. The Windows signing steps run once the Azure
+# secrets are set; until a run has signed with them they are unproven.
 name: Desktop
 
 on:
@@ -42,7 +59,9 @@ jobs:
       matrix:
         include:
           - name: macOS (Apple silicon)
-            os: macos-14
+            # GitHub retired the macOS 14 runners in November 2026. The app's own
+            # minimum (macOS 11, tauri.conf.json) doesn't depend on the runner.
+            os: macos-15
             target: aarch64-apple-darwin
             bundles: app,dmg
           - name: macOS (Intel)
@@ -63,7 +82,7 @@ jobs:
       # Secrets can't be tested in `if:` directly; these say whether each one is set.
       HAS_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE != '' }}
       HAS_APPLE_NOTARY: ${{ secrets.APPLE_ID != '' && secrets.APPLE_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
-      HAS_WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
+      HAS_WINDOWS_SIGNING: ${{ secrets.AZURE_TENANT_ID != '' && secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' && secrets.AZURE_SIGNING_ENDPOINT != '' && secrets.AZURE_SIGNING_ACCOUNT != '' && secrets.AZURE_SIGNING_PROFILE != '' }}
       GALLEY_SKIP_WEB_BUILD: "0"
     steps:
       - uses: actions/checkout@v4
@@ -72,8 +91,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # LTS: this exact runtime is bundled into the app.
+          # LTS: this exact runtime is bundled into the app. check-latest,
+          # because a runner's own copy of Node 22 can lag (the Intel Mac's did,
+          # behind what the starter sites need) and every installer should
+          # carry the same, current one.
           node-version: 22
+          check-latest: true
           cache: pnpm
 
       - uses: dtolnay/rust-toolchain@stable
@@ -112,29 +135,30 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
           rm "$RUNNER_TEMP/certificate.p12"
 
-      # ── Windows signing (only with WINDOWS_CERTIFICATE) ─────────────────
-      - name: Import the Windows signing certificate
-        if: runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE == 'true'
+      # ── Windows signing (only with the Azure secrets) ───────────────────
+      # Tauri hands every file it would sign to `signCommand` (%1). The tool is
+      # the one Tauri's guide names for this service; it signs in to Azure with
+      # the three AZURE_ variables the build step is given. The account's names
+      # stay in secrets, so they appear in no file and no log.
+      - name: Set up Windows signing
+        if: runner.os == 'Windows' && env.HAS_WINDOWS_SIGNING == 'true'
         shell: pwsh
         env:
-          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          AZURE_SIGNING_PROFILE: ${{ secrets.AZURE_SIGNING_PROFILE }}
         run: |
-          New-Item -ItemType directory -Path certificate | Out-Null
-          Set-Content -Path certificate/tempCert.txt -Value $env:WINDOWS_CERTIFICATE
-          certutil -decode certificate/tempCert.txt certificate/certificate.pfx
-          Remove-Item -Path certificate/tempCert.txt
-          $password = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
-          $cert = Import-PfxCertificate -FilePath certificate/certificate.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
-          Remove-Item -Recurse -Force certificate
-          $config = @{ bundle = @{ windows = @{ certificateThumbprint = $cert.Thumbprint; digestAlgorithm = "sha256"; timestampUrl = "http://timestamp.digicert.com" } } } | ConvertTo-Json -Depth 4 -Compress
+          cargo install artifact-signing-cli --version 0.12.0 --locked
+          $product = (Get-Content apps/desktop/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).productName
+          $command = "artifact-signing-cli -e $env:AZURE_SIGNING_ENDPOINT -a $env:AZURE_SIGNING_ACCOUNT -c $env:AZURE_SIGNING_PROFILE -d $product %1"
+          $config = @{ bundle = @{ windows = @{ signCommand = $command } } } | ConvertTo-Json -Depth 4 -Compress
           Set-Content -Path apps/desktop/src-tauri/tauri.signing.conf.json -Value $config
 
       # ── Build ──────────────────────────────────────────────────────────
       # tauri.bundle.conf.json adds the sidecar and the server bundle and runs
       # scripts/prepare-sidecar.mjs first (TAURI_ENV_TARGET_TRIPLE tells it the target).
       - name: Build (unsigned)
-        if: (runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE != 'true') || (runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE != 'true') || runner.os == 'Linux'
+        if: (runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE != 'true') || (runner.os == 'Windows' && env.HAS_WINDOWS_SIGNING != 'true') || runner.os == 'Linux'
         working-directory: apps/desktop
         run: pnpm exec tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config src-tauri/tauri.bundle.conf.json
 
@@ -150,9 +174,127 @@ jobs:
         run: pnpm exec tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config src-tauri/tauri.bundle.conf.json
 
       - name: Build (signed, Windows)
-        if: runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE == 'true'
+        if: runner.os == 'Windows' && env.HAS_WINDOWS_SIGNING == 'true'
         working-directory: apps/desktop
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: pnpm exec tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.signing.conf.json
+
+      # ── Proof ──────────────────────────────────────────────────────────
+      # The server exactly as the installer carries it: the bundled Node.js
+      # runtime and the single-file bundle beside it.
+      - name: Start the packaged server and walk a site through it
+        shell: bash
+        working-directory: apps/desktop
+        run: |
+          runtime="$(find src-tauri/binaries -maxdepth 1 -name "*-node-${{ matrix.target }}*" | head -1)"
+          bundle="$(find src-tauri/resources/server -maxdepth 1 -name "*.mjs" | head -1)"
+          node scripts/sidecar-e2e.mjs -- "$runtime" "$bundle"
+
+      # Started from a terminal, the app's own program can be reached through a
+      # path with a symbolic link in it (/tmp is one). The framework then
+      # refuses to say where the app is, and the app used to answer that it
+      # was incomplete. It must start its server all the same.
+      - name: Start the Mac app through a path with a link in it
+        if: runner.os == 'macOS'
+        env:
+          GALLEY_HOME: ${{ runner.temp }}/home-through-a-link
+        run: |
+          app="$(find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos" -maxdepth 1 -name "*.app" | head -1)"
+          link="$RUNNER_TEMP/through-a-link"
+          ln -s "$(cd "$(dirname "$app")" && pwd)" "$link"
+          program="$(find "$link/$(basename "$app")/Contents/MacOS" -type f ! -name "*-node" | head -1)"
+          "$program" > "$RUNNER_TEMP/app-through-a-link.log" 2>&1 &
+          started=""
+          for _ in $(seq 1 40); do
+            if pgrep -f "desktop --exit-with-parent" > /dev/null; then started="yes"; break; fi
+            sleep 1
+          done
+          kill %1 2> /dev/null || true
+          sleep 2
+          pkill -f "desktop --exit-with-parent" 2> /dev/null || true
+          if [ -z "$started" ]; then cat "$RUNNER_TEMP/app-through-a-link.log"; echo "The app didn't start its server when opened through a link."; exit 1; fi
+
+      - name: Check the macOS signature
+        if: runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE == 'true'
+        run: |
+          app="$(find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos" -maxdepth 1 -name "*.app" | head -1)"
+          codesign --verify --deep --strict "$app"
+          if [ "$HAS_APPLE_NOTARY" = "true" ]; then
+            # Notarised and stapled: Gatekeeper opens it without asking, offline too.
+            xcrun stapler validate "$app"
+            spctl --assess --type execute "$app"
+          fi
+
+      - name: Check the Windows signature
+        if: runner.os == 'Windows' && env.HAS_WINDOWS_SIGNING == 'true'
+        shell: pwsh
+        run: |
+          $installers = Get-ChildItem "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle" -Recurse -Include *.exe, *.msi
+          if (-not $installers) { throw "No installer was built." }
+          foreach ($file in $installers) {
+            $signature = Get-AuthenticodeSignature $file.FullName
+            if ($signature.Status -ne "Valid") { throw "$($file.Name): the signature is $($signature.Status)." }
+          }
+
+      # The installer run for real on Windows, where no person has opened the
+      # app yet: install it silently, start the installed app, and keep a
+      # picture of the screen (with the start-up window's details open, should
+      # it say it couldn't start). Evidence, not a gate: it never fails the build.
+      - name: Install the app on Windows, open it and take a picture
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GALLEY_HOME: ${{ runner.temp }}\galley-home
+        run: |
+          $setup = Get-ChildItem "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/nsis" -Filter *-setup.exe | Select-Object -First 1
+          if (-not $setup) { throw "The installer wasn't found." }
+          Start-Process $setup.FullName -ArgumentList "/S" -Wait
+          $product = (Get-Content apps/desktop/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).productName
+          $folder = @("$env:LOCALAPPDATA\$product", "$env:ProgramFiles\$product") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $folder) { throw "The installer left no folder behind." }
+          Get-ChildItem $folder -Recurse -Depth 2 | Select-Object -First 30 | ForEach-Object { Write-Host $_.FullName.Substring($folder.Length) }
+          $exe = Get-ChildItem $folder -Filter *.exe | Where-Object { $_.Name -notmatch "node|uninstall" } | Select-Object -First 1
+          if (-not $exe) { throw "The installed app wasn't found." }
+          # The server exactly as the installed app starts it, with its output kept: if the
+          # window says it couldn't start, this says why.
+          $node = Get-ChildItem $folder -Filter *-node.exe | Select-Object -First 1
+          $bundle = Get-ChildItem "$folder\server" -Filter *.mjs | Select-Object -First 1
+          $env:GALLEY_DESKTOP = "1"; $env:GALLEY_HOST = "127.0.0.1"; $env:GALLEY_PORT = "45991"; $env:GALLEY_TOKEN = "not-a-secret-ci-token"
+          $server = Start-Process $node.FullName -ArgumentList "`"$($bundle.FullName)`"", "desktop", "--port", "45991" -WorkingDirectory $env:USERPROFILE -RedirectStandardOutput "$env:RUNNER_TEMP\server-out.txt" -RedirectStandardError "$env:RUNNER_TEMP\server-err.txt" -PassThru -NoNewWindow
+          Start-Sleep -Seconds 12
+          Write-Host "--- the installed server, started by hand: running after 12 seconds: $(-not $server.HasExited)"
+          Get-Content "$env:RUNNER_TEMP\server-out.txt", "$env:RUNNER_TEMP\server-err.txt" -ErrorAction SilentlyContinue | Select-Object -First 60
+          if (-not $server.HasExited) { taskkill /pid $server.Id /T /F | Out-Null }
+          Remove-Item Env:GALLEY_DESKTOP, Env:GALLEY_HOST, Env:GALLEY_PORT, Env:GALLEY_TOKEN
+          Write-Host "--- the app itself"
+          $app = Start-Process $exe.FullName -PassThru
+          Start-Sleep -Seconds 45
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing, Microsoft.VisualBasic
+          try {
+            # Open "Technical details" if the start-up window is still showing: Tab past the two buttons, Space.
+            [Microsoft.VisualBasic.Interaction]::AppActivate($app.Id)
+            Start-Sleep -Milliseconds 500
+            [System.Windows.Forms.SendKeys]::SendWait("{TAB}{TAB} ")
+            Start-Sleep -Seconds 2
+          } catch { Write-Host "The window couldn't be brought forward: $($_.Exception.Message)" }
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          [System.Drawing.Graphics]::FromImage($bitmap).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $bitmap.Save("$env:RUNNER_TEMP\galley-windows.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          Write-Host "Still running after 45 seconds: $(-not $app.HasExited)"
+          taskkill /pid $app.Id /T /F | Out-Null
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        with:
+          name: desktop-windows-picture
+          if-no-files-found: ignore
+          path: ${{ runner.temp }}/galley-windows.png
 
       - uses: actions/upload-artifact@v4
         with:
@@ -165,3 +307,67 @@ jobs:
             apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
             apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
             apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+
+  # On a version tag: the installers that were built, with their SHA-256 sums,
+  # in a DRAFT release. A person reads it and publishes it; a platform whose
+  # build failed is simply missing, and the notes say what is there.
+  draft-release:
+    name: Draft release
+    needs: build
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+      SIGNED_MACOS: ${{ secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_ID != '' && secrets.APPLE_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
+      SIGNED_WINDOWS: ${{ secrets.AZURE_TENANT_ID != '' && secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' && secrets.AZURE_SIGNING_ENDPOINT != '' && secrets.AZURE_SIGNING_ACCOUNT != '' && secrets.AZURE_SIGNING_PROFILE != '' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: artifacts
+
+      - name: Gather the installers
+        run: |
+          mkdir installers
+          # The .app folders stay behind: the .dmg is how a Mac app is handed over.
+          # Names without the version, so …/releases/latest/download/<name> always
+          # works. The product's name is taken from the files Tauri named.
+          keep() {
+            file="$(find "artifacts/$1" -type f -name "$2" | head -1)"
+            if [ -n "$file" ]; then product="$(basename "$file")"; cp "$file" "installers/${product%%_*}-$3"; fi
+          }
+          keep desktop-aarch64-apple-darwin "*.dmg" mac-apple-silicon.dmg
+          keep desktop-x86_64-apple-darwin "*.dmg" mac-intel.dmg
+          keep desktop-x86_64-pc-windows-msvc "*-setup.exe" windows-setup.exe
+          keep desktop-x86_64-pc-windows-msvc "*.msi" windows.msi
+          keep desktop-x86_64-unknown-linux-gnu "*.AppImage" linux.AppImage
+          keep desktop-x86_64-unknown-linux-gnu "*.deb" linux.deb
+          [ -n "$(find installers -type f | head -1)" ] || { echo "No installer was built."; exit 1; }
+          (cd installers && sha256sum -- * > ../SHA256SUMS.txt)
+          mv SHA256SUMS.txt installers/ && cat installers/SHA256SUMS.txt
+
+      - name: Write the notes
+        run: |
+          signed() { [ "$1" = "true" ] && echo "$2" || echo "$3"; }
+          {
+            echo "Desktop installers for ${TAG}."
+            echo
+            echo "- macOS: $(signed "$SIGNED_MACOS" "signed and notarised." "**not signed** — macOS refuses to open it the first time; allow it under System Settings › Privacy & Security.")"
+            echo "- Windows: $(signed "$SIGNED_WINDOWS" "signed." "**not signed** — Windows will warn before it runs the installer.")"
+            echo "- Linux: not signed."
+            echo
+            echo "\`SHA256SUMS.txt\` lists the SHA-256 sum of every file here."
+          } > notes.md
+          cat notes.md
+
+      # A draft release for this tag made by hand is added to, never replaced.
+      - name: Create or add to the draft
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" installers/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" installers/* --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "$TAG" --notes-file notes.md
+          fi
