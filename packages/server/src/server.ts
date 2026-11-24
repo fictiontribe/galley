@@ -18,6 +18,7 @@ import { createSmtpTransport, mailConfigFromEnv, type MailTransport } from "@gal
 import {
   APP_SECRET_ENV_NAMES,
   createInstall,
+  requireCallerForGuardedWork,
   createInstallRegistry,
   holdDataFolder,
   isSingleSiteRegistry,
@@ -497,6 +498,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
 
   // A shared server only runs a site's own plugins when the operator allows it (GALLEY_ALLOW_SITE_PLUGINS=1).
   setHostedMode(hosted);
+  // Hosted: guarded work (publishing, the site's settings, build mode) needs a person, the operator or the engine (core install/caller.ts).
+  if (hosted) requireCallerForGuardedWork(true);
   // The site's own commands never inherit this app's password, setup code, access key, provider keys or plugin secrets.
   if (hosted) hideSecrets();
   if (hosted) limitSiteCommandMemory(config.previewMemoryMb);
@@ -546,6 +549,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     if (hosted) {
       hideFromSiteCommands([]);
       limitSiteCommandMemory(null);
+      requireCallerForGuardedWork(false);
     }
   };
 
@@ -813,6 +817,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         if (hosted) {
           hideFromSiteCommands([]);
           limitSiteCommandMemory(null);
+          requireCallerForGuardedWork(false);
         }
       })();
       return closing;

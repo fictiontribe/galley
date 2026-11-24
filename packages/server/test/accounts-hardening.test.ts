@@ -1,17 +1,17 @@
 /**
  * A hosted install over real HTTP: the site's settings file and build mode
  * by every route-level path, by role; whose name a publish carries when
- * someone else's request opened the site; sign-in limits that slow other
- * people's guesses but never refuse the right password; a bounded number of
- * password checks at once; who changes an e-mail; and signing out that
- * keeps the state small.
+ * someone else's request opened the site; the sign-in limits on the real
+ * server, and a browser that has signed in before; who changes an e-mail;
+ * and signing out that keeps the state small.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { BUILD_MODE_REFUSAL, hashPassword, OWN_EMAIL_REFUSAL, REVOKED_SESSIONS_KEPT, ROLE_REFUSAL, SESSION_LIFETIME_MS, SITE_SETTINGS_REFUSAL, type AccountSession } from "@galley/core/install";
 import type { PublishResult } from "@galley/core/types";
-import { TOO_MANY_FOR_EMAIL, TOO_MANY_SIGN_INS } from "../src/accounts-routes";
+import { TOO_MANY_SIGN_INS } from "../src/accounts-routes";
+import { EMAIL_DELAY_BASE_MS, EMAIL_SLOW_AFTER } from "../src/sign-in-gate";
 import { signSession } from "../src/auth";
 import { call, EDITOR, git, sandbox, siteRepository, startHosted, stopHosted, type Started } from "./hosted-helpers";
 
@@ -99,52 +99,39 @@ describe("the site's settings file and build mode, by every route", () => {
 });
 
 describe("sign-in limits", () => {
-  it("guesses from other addresses only slow a sign-in down: the right password still gets in", async () => {
+  // The limits themselves, with a clock that never really waits, are in sign-in-gate.test.ts; here, the real server end to end.
+  it("a browser that has signed in before gets in at once while its e-mail is being guessed at; its cookie is never a session", async () => {
     const { port } = await withOwner({ GALLEY_TRUST_PROXY: "1" });
+    const first = await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD }, headers: from("198.51.100.7") });
+    const known = first.cookies.find((cookie) => cookie.startsWith("__Host-galley_session_known="))!;
 
-    // 36 failures for Sam's e-mail, from twelve addresses: past the point where attempts are slowed.
-    for (let i = 1; i <= 12; i += 1) {
-      for (let j = 0; j < 3; j += 1) expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: "wrong wrong wrong" }, headers: from(`203.0.113.${i}`) })).status).toBe(401);
-    }
+    expect(first.cookies[0]).toMatch(/^__Host-galley_session=/);
+    expect(known).toBeTruthy();
+    expect(first.headers["set-cookie"]!.find((line) => line.startsWith("__Host-galley_session_known="))).toMatch(/HttpOnly.*Secure|Secure.*HttpOnly/i);
+    expect((await call(port, "GET", "/api/account", { cookie: known })).status).toBe(401);
+    expect((await call(port, "GET", "/api/account", { cookie: `__Host-galley_session=${known.split("=")[1]}` })).status).toBe(401);
+    // EMAIL_SLOW_AFTER failures for Sam's e-mail, from ten addresses.
+    for (let i = 1; i <= EMAIL_SLOW_AFTER; i += 1) expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: "wrong wrong wrong" }, headers: from(`203.0.113.${i}`) })).status).toBe(401);
     const started = Date.now();
-    const right = await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD }, headers: from("198.51.100.7") });
+    const right = await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD }, headers: from("192.0.2.44"), cookie: known });
 
     expect(right.status, right.text).toBe(200);
-    // Slowed: it waited its turn.
-    expect(Date.now() - started).toBeGreaterThanOrEqual(900);
+    expect(Date.now() - started).toBeLessThan(EMAIL_DELAY_BASE_MS);
   }, 120_000);
 
-  it("the limits still stop one address: five a minute, and ten in fifteen minutes for one e-mail — the same for an e-mail nobody has", async () => {
-    const { port, owner } = await withOwner({ GALLEY_TRUST_PROXY: "1" });
-
-    await join_(port, owner, "ed@example.com", "editor", "Ed Editor");
+  it("five failures a minute stop one address, the right password included; anywhere else it gets in", async () => {
+    const { port } = await withOwner({ GALLEY_TRUST_PROXY: "1" });
     const attempt = (email: string, password: string, address: string) => call(port, "POST", "/api/auth/login", { body: { email, password }, headers: from(address) });
 
-    for (let i = 0; i < 5; i += 1) expect((await attempt("sam@example.com", "wrong wrong wrong", "203.0.113.1")).status).toBe(401);
+    for (let i = 0; i < 5; i += 1) expect((await attempt(i % 2 ? "sam@example.com" : "nobody@example.com", "wrong wrong wrong", "203.0.113.1")).status).toBe(401);
     const held = await attempt("sam@example.com", PASSWORD, "203.0.113.1");
 
     expect(held.status).toBe(429);
     expect(held.body.error.message).toBe(TOO_MANY_SIGN_INS);
-    // Ten for one e-mail from one address (a sign-in to another account between them doesn't reset that count).
-    for (const target of ["sam@example.com", "nobody@example.com"]) {
-      const address = target === "sam@example.com" ? "203.0.113.2" : "203.0.113.3";
-
-      for (let round = 0; round < 3; round += 1) {
-        for (let i = 0; i < (round < 2 ? 4 : 2); i += 1) expect((await attempt(target, "wrong wrong wrong", address)).status).toBe(401);
-        expect((await attempt("ed@example.com", PASSWORD, address)).status).toBe(200);
-      }
-    }
-    const pair = await attempt("sam@example.com", PASSWORD, "203.0.113.2");
-    const unknown = await attempt("nobody@example.com", "wrong wrong wrong", "203.0.113.3");
-
-    expect(pair.status).toBe(429);
-    expect(pair.body.error.message).toBe(TOO_MANY_FOR_EMAIL);
-    expect(unknown.text).toBe(pair.text);
-    // From anywhere else, the right password gets in at once.
     expect((await attempt("sam@example.com", PASSWORD, "203.0.113.9")).status).toBe(200);
   }, 120_000);
 
-  it("the owner carried over from before accounts (no e-mail) is counted the same way", async () => {
+  it("the owner carried over from before accounts (no e-mail) is held to the same limits, and has a known browser too", async () => {
     const home = box.folder("home");
 
     writeFileSync(
@@ -153,26 +140,27 @@ describe("sign-in limits", () => {
       { mode: 0o600 }
     );
     const { port } = await startHosted(box, home, { GALLEY_PUBLIC_URL: EDITOR, GALLEY_TRUST_PROXY: "1" });
+    const first = await call(port, "POST", "/api/auth/login", { body: { password: PASSWORD }, headers: from("198.51.100.7") });
+    const known = first.cookies.find((cookie) => cookie.startsWith("__Host-galley_session_known="))!;
 
-    for (let i = 1; i <= 8; i += 1) {
-      for (let j = 0; j < 4; j += 1) expect((await call(port, "POST", "/api/auth/login", { body: { password: "wrong wrong wrong" }, headers: from(`203.0.113.${i}`) })).status).toBe(401);
-    }
+    expect(known).toBeTruthy();
+    for (let i = 0; i < 5; i += 1) expect((await call(port, "POST", "/api/auth/login", { body: { password: "wrong wrong wrong" }, headers: from("203.0.113.1") })).status).toBe(401);
+    expect((await call(port, "POST", "/api/auth/login", { body: { password: PASSWORD }, headers: from("203.0.113.1") })).status).toBe(429);
+    for (let i = 2; i <= EMAIL_SLOW_AFTER - 4; i += 1) expect((await call(port, "POST", "/api/auth/login", { body: { password: "wrong wrong wrong" }, headers: from(`203.0.113.${i}`) })).status).toBe(401);
     const started = Date.now();
 
-    expect((await call(port, "POST", "/api/auth/login", { body: { password: PASSWORD }, headers: from("198.51.100.7") })).status).toBe(200);
-    expect(Date.now() - started).toBeGreaterThanOrEqual(900);
+    expect((await call(port, "POST", "/api/auth/login", { body: { password: PASSWORD }, headers: from("192.0.2.44"), cookie: known })).status).toBe(200);
+    expect(Date.now() - started).toBeLessThan(EMAIL_DELAY_BASE_MS);
   }, 120_000);
 
-  it("only a few passwords are checked at once: a flood beyond the short queue is told to wait, and the server keeps answering", async () => {
+  it("a flood of sign-ins from many addresses is checked a few at a time and every one is answered; the server keeps answering", async () => {
     const { port } = await withOwner({ GALLEY_TRUST_PROXY: "1" });
     const answers = await Promise.all(
       Array.from({ length: 60 }, (_, i) => call(port, "POST", "/api/auth/login", { body: { email: `person${i}@example.com`, password: "wrong wrong wrong" }, headers: from(`192.0.2.${i + 1}`) }))
     );
-    const statuses = answers.map((answer) => answer.status);
 
-    expect(statuses.every((status) => status === 401 || status === 429), statuses.join(",")).toBe(true);
-    expect(statuses.filter((status) => status === 429).length).toBeGreaterThan(0);
-    expect(answers.find((answer) => answer.status === 429)!.body.error.message).toBe(TOO_MANY_SIGN_INS);
+    // Within the waiting room nobody is told to wait: each gets the same refusal.
+    expect(answers.map((answer) => answer.status)).toEqual(Array(60).fill(401));
     expect((await call(port, "GET", "/api/meta")).status).toBe(200);
     expect(await signIn(port, "sam@example.com", PASSWORD, from("198.51.100.8"))).toBeTruthy();
   }, 120_000);

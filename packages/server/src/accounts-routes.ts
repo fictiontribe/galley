@@ -11,7 +11,7 @@
  * a code never reaches the log; neither does an e-mail address.
  */
 import type { Context } from "hono";
-import { deleteCookie, setCookie } from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { z } from "zod";
 import type { ApiRouteKey } from "@galley/core/api";
 import type { MailMessage, MailTransport } from "@galley/core/forms";
@@ -31,25 +31,22 @@ import {
 import type { ServerEvent } from "@galley/core/types";
 import {
   clientAddress,
-  EMAIL_LOGIN_LIMIT,
+  clientKeyOf,
   EMAIL_LOGIN_WINDOW_MS,
   FORGOT_CLIENT_LIMIT,
   FORGOT_CLIENT_WINDOW_MS,
   FORGOT_EMAIL_LIMIT,
   FORGOT_EMAIL_WINDOW_MS,
-  Bounded,
-  EMAIL_SLOW_AFTER,
-  EMAIL_SLOW_DELAY_MS,
-  EMAIL_SLOW_QUEUE,
   isLoopbackHost,
+  KNOWN_BROWSER_MAX_AGE_S,
   LoginLimiter,
+  readKnownBrowser,
   requestProtocol,
   requestSession,
-  SerialDelay,
-  SIGN_IN_HASHING,
-  SIGN_IN_QUEUE,
   SESSION_MAX_AGE_S,
+  signKnownBrowser,
 } from "./auth";
+import { realClock, SignInGate, type Outcome, type Ticket } from "./sign-in-gate";
 import { GalleyError } from "@galley/core";
 import { AuthError, invalid, notFound, RateLimitError } from "./errors";
 import type { StreamAccess } from "./events";
@@ -75,10 +72,17 @@ export type AccountsRouteKey = Extract<
   | "POST /api/auth/forgot"
 >;
 
-/** Too many attempts from one address, or too many sign-ins being checked at once. */
+/** Too many attempts from one address (or one network). */
 export const TOO_MANY_SIGN_INS = "Too many sign-in attempts. Wait a minute, then try again.";
 /** Too many wrong attempts for one e-mail from one address. The same for an e-mail nobody has. */
 export const TOO_MANY_FOR_EMAIL = `Too many sign-in attempts for that e-mail. Wait ${EMAIL_LOGIN_WINDOW_MS / 60_000} minutes, then try again.`;
+/** Too many attempts for one e-mail waiting their turn, from anywhere. The same for an e-mail nobody has. */
+export const EMAIL_BUSY =
+  "That e-mail has more sign-in attempts waiting than can be checked right now. Wait a minute, then try again. A browser you have signed in on before isn't held up, and a one-time link always works.";
+/** More sign-ins being checked across the whole editor than it takes at once. */
+export const SIGN_INS_BUSY = "This editor is checking a lot of sign-ins right now. Wait a moment, then try again.";
+/** A password check other than signing in (your own current password), refused for its address. */
+export const TOO_MANY_ATTEMPTS = "Too many attempts. Wait a minute, then try again.";
 /** The key the owner who has no e-mail yet is counted under: nothing typed into the e-mail field can be it. */
 const NO_EMAIL = "\u0000(no e-mail)";
 
@@ -125,14 +129,9 @@ function idParam(c: Context, param: string): string {
 }
 
 interface Limits {
-  /** Failed sign-ins per e-mail and client address together: refused past EMAIL_LOGIN_LIMIT. */
-  pair: LoginLimiter;
-  /** Failed sign-ins per e-mail from every address: past EMAIL_SLOW_AFTER, slowed (never refused). */
-  email: LoginLimiter;
-  slow: SerialDelay;
-  /** Password checks for sign-in, a few at a time. */
-  hashing: Bounded;
-  /** "Forgot my password" per client address (every request counts). */
+  /** Every password check: per client, per e-mail, and the checks themselves (sign-in-gate.ts). */
+  gate: SignInGate;
+  /** "Forgot my password" per client (every request counts). */
   forgotClient: LoginLimiter;
   /** New-password e-mails per address asked for (every request counts, known or not). */
   forgotEmail: LoginLimiter;
@@ -145,10 +144,7 @@ function limitsOf(ctx: RouteContext): Limits {
 
   if (!limits) {
     limits = {
-      pair: new LoginLimiter(EMAIL_LOGIN_LIMIT, EMAIL_LOGIN_WINDOW_MS),
-      email: new LoginLimiter(Number.MAX_SAFE_INTEGER, EMAIL_LOGIN_WINDOW_MS),
-      slow: new SerialDelay(EMAIL_SLOW_DELAY_MS, EMAIL_SLOW_QUEUE),
-      hashing: new Bounded(SIGN_IN_HASHING, SIGN_IN_QUEUE),
+      gate: new SignInGate(ctx.options.signInClock ?? realClock, ctx.limiter),
       forgotClient: new LoginLimiter(FORGOT_CLIENT_LIMIT, FORGOT_CLIENT_WINDOW_MS),
       forgotEmail: new LoginLimiter(FORGOT_EMAIL_LIMIT, FORGOT_EMAIL_WINDOW_MS),
     };
@@ -157,18 +153,65 @@ function limitsOf(ctx: RouteContext): Limits {
   return limits;
 }
 
-/** Signs this browser in as `accountId`: a fresh cookie, issued after that person's and the install's last "sign out everywhere". */
+/** The sign-in gate of this app (tests: to watch it). */
+export function signInGateOf(ctx: RouteContext): SignInGate {
+  return limitsOf(ctx).gate;
+}
+
+/**
+ * Signs this browser in as `accountId`: a fresh cookie, issued after that
+ * person's and the install's last "sign out everywhere" — and, beside it, a
+ * fresh known-browser cookie for that account (never a session: see auth.ts).
+ */
 export function signInAs(c: Context, ctx: RouteContext, accountId: string): void {
   const value = ctx.session.issue?.(accountId);
 
   if (!value) throw new AuthError("Sign in to continue.");
-  setCookie(c, ctx.session.cookieName, value, {
-    httpOnly: true,
-    sameSite: "Strict",
-    path: "/",
-    secure: ctx.session.secure === true || requestProtocol(c, Boolean(ctx.options.trustProxy)) === "https",
-    maxAge: SESSION_MAX_AGE_S,
-  });
+  const secure = ctx.session.secure === true || requestProtocol(c, Boolean(ctx.options.trustProxy)) === "https";
+
+  setCookie(c, ctx.session.cookieName, value, { httpOnly: true, sameSite: "Strict", path: "/", secure, maxAge: SESSION_MAX_AGE_S });
+  const install = ctx.options.mode === "hosted" ? ctx.options.install : null;
+
+  if (install && ctx.session.knownCookieName) {
+    const known = signKnownBrowser(ctx.session.key, accountId, install.store.nextIssuedAt(Date.now(), accountId));
+
+    setCookie(c, ctx.session.knownCookieName, known, { httpOnly: true, sameSite: "Strict", path: "/", secure, maxAge: KNOWN_BROWSER_MAX_AGE_S });
+  }
+}
+
+/**
+ * The id of this browser's known-browser cookie when it counts for a
+ * sign-in to `email` (null: the owner who has no e-mail yet): correctly
+ * signed, not too old, for the account that e-mail belongs to, which is
+ * still there and switched on, and issued after that person's and the
+ * install's last "sign out everywhere". Anything else: null — exactly as if
+ * there were no cookie, so the answer is the same for an e-mail nobody has.
+ */
+function knownBrowserFor(c: Context, ctx: RouteContext, install: Install, email: string | null): string | null {
+  const name = ctx.session.knownCookieName;
+  const known = name ? readKnownBrowser(ctx.session.key, getCookie(c, name)) : null;
+
+  if (!known) return null;
+  const account = install.people.get(known.accountId);
+
+  if (!account || account.disabled || account.email !== (email ?? "")) return null;
+  return install.store.sessionValid({ id: known.id, issuedAt: known.issuedAt, accountId: known.accountId }) ? known.id : null;
+}
+
+/** A password check refused before it ran: the sentence for why. */
+function refusalFor(refused: Exclude<Outcome<unknown>["refused"], null>): string {
+  return refused === "client" ? TOO_MANY_SIGN_INS : refused === "pair" ? TOO_MANY_FOR_EMAIL : refused === "email" ? EMAIL_BUSY : SIGN_INS_BUSY;
+}
+
+/** Reserves one password check for this request's client, before anything is awaited; a plain refusal past its limits. */
+function reserveCheck(c: Context, ctx: RouteContext, message: string, what: string): Ticket {
+  const ticket = limitsOf(ctx).gate.reserve(clientKeyOf(c, Boolean(ctx.options.trustProxy)));
+
+  if (!ticket) {
+    audit(ctx, `${what} from ${clientAddress(c, Boolean(ctx.options.trustProxy))} was refused: too many attempts.`);
+    throw new RateLimitError(message);
+  }
+  return ticket;
 }
 
 function signOutHere(c: Context, ctx: RouteContext): void {
@@ -255,50 +298,39 @@ export function accountsMeta(c: Context, ctx: RouteContext): { account?: Account
 export async function signInWithAccount(c: Context, ctx: RouteContext): Promise<typeof ok> {
   const install = installOf(ctx);
   const client = clientAddress(c, Boolean(ctx.options.trustProxy));
-  const limits = limitsOf(ctx);
+  const ticket = reserveCheck(c, ctx, TOO_MANY_SIGN_INS, "A sign-in");
 
-  if (ctx.limiter.blocked(client)) {
-    audit(ctx, `A sign-in from ${client} was refused: too many attempts.`);
-    throw new RateLimitError(TOO_MANY_SIGN_INS);
-  }
-  const body = await v.body(c, loginBody);
-  const address = body.email === undefined ? null : body.email.trim().toLowerCase();
-  // The owner who has no e-mail yet is held to the same limits, under a key no e-mail can be.
-  const key = address ?? NO_EMAIL;
-  const pair = `${key}\n${client}`;
+  try {
+    const body = await v.body(c, loginBody);
+    const address = body.email === undefined ? null : body.email.trim().toLowerCase();
+    // The owner who has no e-mail yet is held to the same limits, under a key no e-mail can be.
+    const key = address ?? NO_EMAIL;
+    const outcome = await limitsOf(ctx).gate.signIn(ticket, key, knownBrowserFor(c, ctx, install, address), () => install.people.verify(address, body.password), (result) => !result.ok);
 
-  if (limits.pair.blocked(pair)) {
-    audit(ctx, `A sign-in from ${client} was refused: too many attempts for that e-mail from there.`);
-    throw new RateLimitError(TOO_MANY_FOR_EMAIL);
-  }
-  // Guesses from other addresses only slow this e-mail's sign-ins down, one at a time; they never refuse the right password.
-  if (limits.email.count(key) >= EMAIL_SLOW_AFTER) await limits.slow.wait(key);
-  const result = await limits.hashing.run(() => install.people.verify(address, body.password));
+    if (outcome.refused !== null) {
+      audit(ctx, `A sign-in from ${client} was refused: ${outcome.refused === "busy" ? "too many sign-ins being checked at once" : outcome.refused === "email" ? "too many attempts waiting for that e-mail" : "too many attempts"}.`);
+      throw new RateLimitError(refusalFor(outcome.refused));
+    }
+    const result = outcome.value;
 
-  if (result === null) {
-    audit(ctx, `A sign-in from ${client} was refused: too many sign-ins being checked at once.`);
-    throw new RateLimitError(TOO_MANY_SIGN_INS);
+    if (!result.ok) {
+      audit(
+        ctx,
+        result.reason === "disabled"
+          ? `A sign-in to ${named(result.account!)} from ${client} was refused: the account is switched off.`
+          : result.reason === "wrong"
+            ? `A sign-in to ${named(result.account!)} from ${client} failed: wrong password.`
+            : `A sign-in from ${client} failed: no account has that e-mail.`
+      );
+      throw new AuthError(address === null ? "That password isn't right. Check it and try again." : SIGN_IN_REFUSED);
+    }
+    signInAs(c, ctx, result.account.id);
+    await install.people.noteSignIn(result.account.id).catch((error: unknown) => audit(ctx, `When ${named(result.account)} last signed in couldn't be saved: ${error instanceof Error ? error.message : String(error)}`));
+    audit(ctx, `Signed in: ${named(result.account)}, from ${client}.`);
+    return ok;
+  } finally {
+    ticket.release();
   }
-  if (!result.ok) {
-    ctx.limiter.fail(client);
-    limits.pair.fail(pair);
-    limits.email.fail(key);
-    audit(
-      ctx,
-      result.reason === "disabled"
-        ? `A sign-in to ${named(result.account!)} from ${client} was refused: the account is switched off.`
-        : result.reason === "wrong"
-          ? `A sign-in to ${named(result.account!)} from ${client} failed: wrong password.`
-          : `A sign-in from ${client} failed: no account has that e-mail.`
-    );
-    throw new AuthError(address === null ? "That password isn't right. Check it and try again." : SIGN_IN_REFUSED);
-  }
-  ctx.limiter.succeed(client);
-  limits.pair.succeed(pair);
-  signInAs(c, ctx, result.account.id);
-  await install.people.noteSignIn(result.account.id).catch((error: unknown) => audit(ctx, `When ${named(result.account)} last signed in couldn't be saved: ${error instanceof Error ? error.message : String(error)}`));
-  audit(ctx, `Signed in: ${named(result.account)}, from ${client}.`);
-  return ok;
 }
 
 /**
@@ -321,17 +353,23 @@ export async function changeOwnPassword(c: Context, ctx: RouteContext): Promise<
   const install = installOf(ctx);
   const { account } = personOf(c, ctx);
   const client = clientAddress(c, Boolean(ctx.options.trustProxy));
+  const ticket = reserveCheck(c, ctx, TOO_MANY_ATTEMPTS, `A password change for ${named(account)}`);
+  let changed: boolean;
 
-  if (ctx.limiter.blocked(client)) throw new RateLimitError("Too many attempts. Wait a minute, then try again.");
-  const body = await v.body(c, passwordBody);
+  try {
+    const body = await v.body(c, passwordBody);
+    const outcome = await limitsOf(ctx).gate.checkPassword(ticket, () => install.people.changePassword(account.id, body.current, body.next), (done) => !done);
 
-  if (!(await install.people.changePassword(account.id, body.current, body.next))) {
-    ctx.limiter.fail(client);
+    if (outcome.refused !== null) throw new RateLimitError(refusalFor(outcome.refused));
+    changed = outcome.value;
+  } finally {
+    ticket.release();
+  }
+  if (!changed) {
     audit(ctx, `A password change for ${named(account)} from ${client} was refused: the current password was wrong.`);
     // 400, not 401: the session is fine, only the typed password is wrong.
     throw invalid("That isn't the current password.");
   }
-  ctx.limiter.succeed(client);
   // Every other browser of theirs is signed out; this one gets a fresh cookie.
   signInAs(c, ctx, account.id);
   audit(ctx, `${named(account)} changed their password (from ${client}); their other browsers were signed out.`);
@@ -409,22 +447,30 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
     const { account } = personOf(c, ctx);
     const client = clientAddress(c, Boolean(ctx.options.trustProxy));
     const body = await v.body(c, profileBody);
-    // The current password typed to change an e-mail is held to the same limit as changing the password itself.
+    // The current password typed to change an e-mail goes through the same limits and the same checking as changing the password itself.
     const checksPassword = body.email !== undefined && body.password !== undefined;
-
-    if (checksPassword && ctx.limiter.blocked(client)) throw new RateLimitError("Too many attempts. Wait a minute, then try again.");
+    const ticket = checksPassword ? reserveCheck(c, ctx, TOO_MANY_ATTEMPTS, `An e-mail change for ${named(account)}`) : null;
     let updated: Awaited<ReturnType<Install["people"]["updateProfile"]>>;
 
     try {
-      updated = await install.people.updateProfile(account.id, body);
-    } catch (error) {
-      if (error instanceof GalleyError && error.message === WRONG_CURRENT_PASSWORD) {
-        ctx.limiter.fail(client);
-        audit(ctx, `An e-mail change for ${named(account)} from ${client} was refused: the current password was wrong.`);
+      const update = () =>
+        install.people.updateProfile(account.id, body).then(
+          (value) => ({ ok: true as const, value }),
+          (error: unknown) => ({ ok: false as const, error })
+        );
+      const outcome = ticket ? await limitsOf(ctx).gate.checkPassword(ticket, update, (done) => !done.ok && done.error instanceof GalleyError && done.error.message === WRONG_CURRENT_PASSWORD) : { refused: null, value: await update() };
+
+      if (outcome.refused !== null) throw new RateLimitError(refusalFor(outcome.refused));
+      if (!outcome.value.ok) {
+        const { error } = outcome.value;
+
+        if (error instanceof GalleyError && error.message === WRONG_CURRENT_PASSWORD) audit(ctx, `An e-mail change for ${named(account)} from ${client} was refused: the current password was wrong.`);
+        throw error;
       }
-      throw error;
+      updated = outcome.value.value;
+    } finally {
+      ticket?.release();
     }
-    if (checksPassword) ctx.limiter.succeed(client);
 
     if (body.email !== undefined && updated.email !== account.email) audit(ctx, `${named(updated)} changed the e-mail they sign in with.`);
     if (updated.name !== account.name) audit(ctx, `${named(account)} is now called ${updated.name}.`);
@@ -542,15 +588,18 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
   "POST /api/auth/link/check": async (c, ctx) => {
     const install = installOf(ctx);
     const client = clientAddress(c, Boolean(ctx.options.trustProxy));
+    const key = clientKeyOf(c, Boolean(ctx.options.trustProxy));
 
-    if (ctx.limiter.blocked(client)) throw new RateLimitError("Too many attempts. Wait a minute, then try again.");
+    if (ctx.limiter.blocked(key)) throw new RateLimitError(TOO_MANY_ATTEMPTS);
     const body = await v.body(c, checkBody);
 
+    // Asked again after the body is read: from here to the failure being counted nothing is awaited.
+    if (ctx.limiter.blocked(key)) throw new RateLimitError(TOO_MANY_ATTEMPTS);
     try {
       return install.people.checkLink(body.code);
     } catch (error) {
       if (error instanceof Error && error.message === LINK_REFUSED) {
-        ctx.limiter.fail(client);
+        ctx.limiter.fail(key);
         audit(ctx, `A one-time link opened from ${client} was refused.`);
       }
       throw error;
@@ -560,16 +609,19 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
   "POST /api/auth/link": async (c, ctx) => {
     const install = installOf(ctx);
     const client = clientAddress(c, Boolean(ctx.options.trustProxy));
+    const key = clientKeyOf(c, Boolean(ctx.options.trustProxy));
 
-    if (ctx.limiter.blocked(client)) throw new RateLimitError("Too many attempts. Wait a minute, then try again.");
+    if (ctx.limiter.blocked(key)) throw new RateLimitError(TOO_MANY_ATTEMPTS);
     const body = await v.body(c, useBody);
+
+    if (ctx.limiter.blocked(key)) throw new RateLimitError(TOO_MANY_ATTEMPTS);
     let used: Awaited<ReturnType<Install["people"]["useLink"]>>;
 
     try {
       used = await install.people.useLink(body.code, { password: body.password, ...(body.name !== undefined ? { name: body.name } : {}) });
     } catch (error) {
       if (error instanceof Error && error.message === LINK_REFUSED) {
-        ctx.limiter.fail(client);
+        ctx.limiter.fail(key);
         audit(ctx, `A one-time link used from ${client} was refused.`);
       }
       throw error;
@@ -587,7 +639,7 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
 
   "POST /api/auth/forgot": async (c, ctx) => {
     const install = installOf(ctx);
-    const client = clientAddress(c, Boolean(ctx.options.trustProxy));
+    const client = clientKeyOf(c, Boolean(ctx.options.trustProxy));
     const limits = limitsOf(ctx);
 
     if (limits.forgotClient.blocked(client)) throw new RateLimitError(`Too many requests. Wait ${FORGOT_CLIENT_WINDOW_MS / 60_000} minutes, then try again.`);

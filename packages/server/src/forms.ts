@@ -16,7 +16,7 @@ import { CAPTURE_KEY_HEADER, introspectForm, type CaptureResponse, type FormCapt
 import type { FormSubmission } from "@galley/core/kit";
 import type { JsonValue } from "@galley/core/types";
 import { GalleyError } from "@galley/core";
-import { clientAddress, requestProtocol } from "./auth";
+import { clientKeyOf, requestProtocol } from "./auth";
 import { notFound } from "./errors";
 import type { RouteContext, RouteTable } from "./routes";
 import type { AppOptions, Services } from "./types";
@@ -77,7 +77,7 @@ export function captureHandlers(services: Services, options: AppOptions) {
           origin: c.req.header("origin") ?? null,
           captureKey: c.req.header(CAPTURE_KEY_HEADER) ?? null,
           contentType: c.req.header("content-type") ?? null,
-          client: clientAddress(c, Boolean(options.trustProxy)),
+          client: clientKeyOf(c, Boolean(options.trustProxy)),
           body: await c.req.text(),
           ownOrigins: ownOrigins(c, options),
         })

@@ -86,16 +86,33 @@ exists, and whoever opens it creates the first owner. Owners invite everyone
 else with one-time links (`accounts-routes.ts`). Passwords are stored as
 scrypt hashes in the install's state. `POST /api/auth/login` takes an e-mail
 and password and compares in constant time; an unknown e-mail, a wrong
-password and a switched-off account get the same answer. The limits
-(`auth.ts`, kept in memory): wrong passwords, wrong setup codes, bad link
-codes and a wrong current password share one limit, 5 a minute per client
-address, then a 429 until the minute is up; one e-mail from one client
-address gets 10 failed sign-ins in 15 minutes, then a 429 for that pair;
-failures for an e-mail from every address together only slow it — past 30
-in 15 minutes, its attempts wait their turn one at a time, 1 s apart, at
-most 10 in line — and never refuse the right password by themselves;
-password checks run 2 at a time with at most 16 waiting, and past that the
-answer is a 429. Each session cookie belongs to one person; it is signed
+password and a switched-off account get the same answer, the same number
+of password checks and the same place in line. The limits
+(`sign-in-gate.ts`, kept in memory, its clock injectable for tests) apply
+to every password check — sign-in, a password change, the current password
+for an e-mail change — and count a **client** as `clientKey` in `auth.ts`
+does for every limit in the server: an IPv4 address, or a whole IPv6 `/64`
+(IPv4-mapped IPv6 is the IPv4 address). Per client, checked and reserved in
+one synchronous step before any `await`: 2 checks in flight, 20 attempts a
+minute (successes count), and 5 failures a minute shared with wrong setup
+codes and bad link codes (`ctx.limiter`), an attempt in flight counting as
+one until it ends; one e-mail from one client gets 10 failed sign-ins in 15
+minutes, then a 429 for that pair. Per e-mail from every client together,
+known or not: strictly one check at a time, 3 more waiting, then a 429
+without a check; past 10 failures (forgotten after 15 quiet minutes) each
+turn begins with a delay of 1 s doubling to 30 s, so at most about 2,900
+guesses a day reach one e-mail (the arithmetic is beside the constants).
+A successful sign-in also sets a known-browser cookie (`<session
+cookie>_known`, a year, `HttpOnly`, its own MAC label, five parts so it is
+never read as a session): a sign-in to that account from it skips the
+e-mail's line and delay (still one check at a time for the e-mail), until 3
+wrong passwords in 15 minutes or until that person is switched off, removed
+or signed out everywhere. The checks themselves run 2 at a time, at most one
+per client, waiting ones served round-robin across clients, known browsers
+first with 64 places of their own and 256 for the rest; past those, a 429.
+The stated cost: while an e-mail is being guessed at, its right password
+from an unknown browser may wait or be told to wait; a known browser and a
+one-time link go round it. Each session cookie belongs to one person; it is signed
 with a key kept in the home, valid for 30 days, `HttpOnly; SameSite=Strict`;
 on an `https://` public address it is `__Host-` and always `Secure`. Signing
 out, "sign out everywhere" (`POST /api/auth/logout-all`, the caller only),
@@ -121,7 +138,14 @@ and ignores the table. `app.ts` also runs each person's request inside
 two rules no route level can express, wherever the write happens: build
 mode needs `BUILD_MODE_LEVEL` (an editor or owner) and the site's settings
 file needs `SITE_SETTINGS_LEVEL` (an owner) — a route, an assistant tool, an
-MCP tool or a plugin's tool alike. An e-mail address is changed by an owner
+MCP tool or a plugin's tool alike. A hosted server also sets
+`requireCallerForGuardedWork(true)` at start: from then on publishing and
+the site's other guarded methods, the settings file and build mode are
+refused to work done for nobody (what runs outside any request, a plugin's
+hooks included). The exceptions are the two marks in `caller.ts`:
+`asOperator`, which `app.ts` puts around a request with the operator's
+token (and every request in local mode) and `mcp.ts` around `/mcp`, and
+`asEngine`, for the engine's own unattended work. An e-mail address is changed by an owner
 (`PATCH /api/people/:accountId`, or their own on `PATCH /api/account`);
 an editor or contributor changing their own is refused with 403, and an
 account with no e-mail yet adds one.

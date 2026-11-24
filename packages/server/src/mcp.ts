@@ -16,6 +16,7 @@
 import type { Context } from "hono";
 import { createMcpHttpHandler, createMcpServer, jsonRpcError, mcpTokenVerifier, registrySites, type McpHttpHandler } from "@galley/mcp";
 import type { GalleyImageService } from "@galley/core/ai";
+import { asOperator } from "@galley/core/install";
 import type { AgentMode } from "@galley/core/types";
 import { bearerToken, safeEqual } from "./auth";
 import type { Services } from "./types";
@@ -97,6 +98,7 @@ export function mcpRoute(mount: McpMount, guard: McpGuard) {
         { "www-authenticate": `Bearer realm="${guard.productSlug}"` }
       );
     }
-    return mount.handler.handle(c.req.raw);
+    // Only the operator's tokens get this far: what the tools do is the operator's (core install/caller.ts).
+    return asOperator(() => mount.handler.handle(c.req.raw));
   };
 }

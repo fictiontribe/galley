@@ -148,10 +148,15 @@ The rule behind it: changing the draft's content is for everyone; what changes t
 - **Build mode** — the site's code and templates, custom code in a form, saving the brand outside the content files — needs an editor or owner. A contributor works in content mode, and a request for build mode is refused in plain words rather than quietly narrowed: *Your account can change the site's content, but not its code and templates (build mode). Ask an owner or an editor of this editor.*
 - **The site's settings file** (`galley.config.json`) is an owner's: the Settings screen, a file write, the assistant's `save_site_config`, and discarding or undoing a change to it, or undoing a publish that changed it. Anyone else reads *Your account can't change the site's settings. Ask an owner of this editor.* The few values the editor records for itself as part of an action someone else may take — the live address after an editor puts the site online, where the redirects list lives (where the redirects take effect is an owner's to choose) — are written on their own, without opening the rest of the file to that person.
 - **The assistant** offers each person only the tools their role includes, and checks again on every call.
+- **Work that isn't done for someone** can't publish, change the site's settings or write outside the content. These happen only for a signed-in person (as their role allows), for the operator's token (on the API and on `/mcp`), or as the engine's own unattended steps. That is what a plugin reacting to events runs as — a publish, a deploy, a form a visitor sent — and so is anything it leaves running: *Only someone signed in to this editor, or whoever runs it, can do that. …*
 
 The full rules: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#build-mode-and-the-sites-settings).
 
-**What roles are not.** They keep people out of each other's way and out of trouble, and the server enforces them at every way in; they are not a wall against someone who means harm. The preview runs the site's own code on the server for every role: editors and owners can change that code, and a contributor's content is what it reads and renders, and in some sites runs. Give an account only to someone you would trust with the site's repository. And the draft is one shared working copy: anyone, a contributor included, can **Discard** the pending changes, everyone's (a change to the site's settings file only an owner discards). Single sign-on isn't there yet.
+**What roles are not.** They keep people out of each other's way and out of trouble, and the server enforces them at every way in; they are not a wall against someone who means harm. The preview runs the site's own code on the server for every role: editors and owners can change that code, and a contributor's content is what it reads and renders, and in some sites runs. Give an account only to someone you would trust with the site's repository.
+
+The assistant reads the site's content, and that includes what a contributor wrote, so words placed in content can try to steer an owner's or editor's assistant. The assistant can't publish: every change it makes waits in Proof until a person publishes it. It changes code and templates, and runs the site's build, only in a conversation someone has switched to build mode — and there it doesn't ask before each change. Choosing build mode, reading Proof and pressing Publish are the controls.
+
+And the draft is one shared working copy: anyone, a contributor included, can **Discard** the pending changes, everyone's (a change to the site's settings file only an owner discards). Single sign-on isn't there yet.
 
 ### Invitations and one-time links
 
@@ -180,15 +185,18 @@ E-mail:    set up, but no link is e-mailed until the editor's public address is 
 
 ### Sign-in limits
 
-The same answer for an unknown e-mail, a wrong password and a switched-off account. The limits:
+The same answer, the same work and the same wait for an unknown e-mail, a wrong password and a switched-off account. A **client** is one IPv4 address, or a whole IPv6 `/64`. The limits:
 
-- **Per address:** 5 failures a minute from one address, then a minute's wait (wrong setup codes, bad link codes and a wrong current password count too).
-- **Per e-mail, from one address:** 10 failed sign-ins for one e-mail from one address in 15 minutes, then that e-mail waits 15 minutes there.
-- **From other addresses:** failures for an e-mail from elsewhere only slow its sign-ins — past 30 in 15 minutes, one at a time, a second apart — and never refuse the right password by themselves.
-- **At once:** only 2 password checks run at a time, with 16 waiting; a flood beyond that is told to wait a minute.
-- **Forgot your password?** 5 times per address in 15 minutes, and at most 3 e-mails an hour to one address.
+- **Per client:** 2 sign-ins checked at once, 20 attempts a minute (successful ones too), and 5 failures a minute (wrong setup codes, bad link codes and a wrong current password count too). Checked before the password is.
+- **Per e-mail, from one client:** 10 failed sign-ins in 15 minutes, then that e-mail waits 15 minutes there.
+- **Per e-mail, from everywhere:** its sign-ins are checked one at a time, with 3 more waiting; past that, *wait a minute*. After 10 failures each turn starts with a delay — 1 second, doubling to 30 — so one e-mail gets at most about 2,900 guesses a day, from any number of addresses. The count is forgotten after 15 quiet minutes.
+- **A browser someone has signed in on before** keeps a cookie of its own (a year; never a session) and skips that line and the delay, until 3 wrong passwords in 15 minutes, or that person is switched off, removed or signed out everywhere.
+- **At once:** 2 password checks run at a time, at most one per client; whoever waits is served client by client, known browsers first. Only past 256 waiting (64 for known browsers) is a sign-in told to wait.
+- **Forgot your password?** 5 times per client in 15 minutes, and at most 3 e-mails an hour to one address.
 
-The limits are kept in memory, so a restart resets them. Behind a proxy, set `GALLEY_TRUST_PROXY=1`, or everyone shares the proxy's address.
+**While an account is being guessed at**, a right password typed in a browser that hasn't signed in before may wait its turn, up to a couple of minutes, or be told to wait a minute. A browser that has signed in before isn't held up, and a one-time link (*Forgot your password?*, or a new-password link from an owner) doesn't wait at all.
+
+The limits are kept in memory, so a restart resets them. Behind a proxy, set `GALLEY_TRUST_PROXY=1`, or everyone shares the proxy's address. The details: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#signing-in).
 
 ### A forgotten password
 

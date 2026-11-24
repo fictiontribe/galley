@@ -54,11 +54,25 @@ local mode have no accounts and are unchanged.
   mail server.
 - **Each publish carries its author**: a signed-in person's publishes and
   undos are recorded with their own name and e-mail.
-- **Limits**: 5 failures a minute per address; 10 failed sign-ins for one
-  e-mail from one address in 15 minutes; failures from other addresses only
-  slow a sign-in for that e-mail and never refuse the right password by
-  themselves; 2 password checks at a time with 16 waiting, past which the
-  answer is "wait"; and limits on "forgot my password".
+- **Sign-in limits.** A client is an IPv4 address or a whole IPv6 `/64`,
+  held, before its password is checked, to 2 checks at once, 20 attempts a
+  minute (successful ones too) and 5 failures a minute; 10 failed sign-ins
+  for one e-mail from one client in 15 minutes. One e-mail's sign-ins are
+  checked one at a time from everywhere, 3 more waiting, and after 10
+  failures each waits a delay that grows from 1 to 30 seconds: at most
+  about 2,900 guesses a day at one account. A browser that has signed in
+  before keeps a cookie of its own (never a session) and isn't held up; an
+  unknown browser may have to wait while an account is being guessed at,
+  and a one-time link always works. Password checks run 2 at a time, shared
+  out client by client with known browsers first, and "wait" comes only
+  past 256 waiting. Changing your password, and the password typed to
+  change an e-mail, go through the same limits. Plus limits on "forgot my
+  password".
+- **Guarded work needs someone.** On a hosted install, publishing, the
+  site's settings file and writing outside the content happen only for a
+  signed-in person, the operator's token or the engine's own steps; work
+  done for nobody — a plugin reacting to events, or anything it leaves
+  running — is refused.
 - **Sign-outs are kept within a cap** (10,000 signed-out browsers). Past it,
   a sign-out signs that person out everywhere; a longer list is trimmed at
   start-up by signing everyone out once, with a line in the log.

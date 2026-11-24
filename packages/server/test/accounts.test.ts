@@ -109,16 +109,15 @@ describe("signing in", () => {
     expect((await call(port, "POST", "/api/auth/login", { body: { password: PASSWORD } })).status).toBe(401);
   });
 
-  it("limits guesses per address (5 a minute) and per e-mail from one address (10 in 15 minutes) — for e-mails without an account too", async () => {
-    // Was: ten failures for an e-mail from any number of addresses held that e-mail everywhere, the right password included.
-    // Now other addresses' failures only slow a sign-in (accounts-hardening.test.ts); one address is still stopped.
+  it("limits guesses per address (5 a minute) — for e-mails without an account too", async () => {
+    // Every limit, with a clock that never really waits: sign-in-gate.test.ts.
     const { port } = await withOwner({ GALLEY_TRUST_PROXY: "1" });
     const from = (address: string) => ({ "x-forwarded-for": address });
 
     for (let i = 0; i < 5; i += 1) expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: "wrong wrong wrong" }, headers: from("203.0.113.1") })).status).toBe(401);
     expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD }, headers: from("203.0.113.1") })).status).toBe(429);
-    // Five more from other addresses make ten for Sam's e-mail: the right password from elsewhere still gets in.
-    for (let i = 2; i <= 6; i += 1) expect((await call(port, "POST", "/api/auth/login", { body: { email: "Sam@example.com", password: "wrong wrong wrong" }, headers: from(`203.0.113.${i}`) })).status).toBe(401);
+    // Four more from other addresses: below the point where Sam's e-mail is slowed, the right password from elsewhere gets in at once.
+    for (let i = 2; i <= 5; i += 1) expect((await call(port, "POST", "/api/auth/login", { body: { email: "Sam@example.com", password: "wrong wrong wrong" }, headers: from(`203.0.113.${i}`) })).status).toBe(401);
     expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD }, headers: from("198.51.100.7") })).status).toBe(200);
     // An e-mail nobody has is answered the same way as one that has an account.
     const answers = [

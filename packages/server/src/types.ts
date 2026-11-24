@@ -6,6 +6,7 @@ import type { PluginRegistry } from "@galley/core/plugins";
 import type { VisibilityService } from "@galley/core/seo";
 import type { Install, SessionStamp } from "@galley/core/install";
 import type { RevocationList } from "./auth";
+import type { SignInClock } from "./sign-in-gate";
 import type { InstallOps } from "./ops";
 import type { McpMount } from "./mcp";
 import type { ImportService } from "./import";
@@ -119,6 +120,8 @@ export interface AppOptions {
    * tells people to ask an owner.
    */
   mailer?: MailTransport | null;
+  /** Hosted mode: the clock the sign-in limits run on (sign-in-gate.ts). Tests give one that never really waits; absent: the real one. */
+  signInClock?: SignInClock;
 }
 
 /** Keeps track of open event streams so shutdown can end them. */

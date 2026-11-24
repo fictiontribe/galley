@@ -12,11 +12,19 @@
  * again when it is checked: a person demoted or switched off mid-turn can
  * do no more than their role allows now.
  *
- * No person in scope — local mode, the desktop app, the operator's token,
- * the engine's own background work — is everything allowed, exactly as
- * before accounts. Long-lived things made lazily during a request (an open
- * site and its watcher, the preview) are made `outsideAnyPerson`, so they
- * carry nobody's name or access into work done later for someone else.
+ * Local mode and the desktop app have no accounts: no person in scope is
+ * everything allowed. A hosted install switches that off at start
+ * (requireCallerForGuardedWork): there, guarded work runs only for a
+ * person, inside `asOperator` (the operator's token on the API and /mcp,
+ * the command line's operator commands) or inside `asEngine` (the engine's
+ * own unattended steps: start-up, first run, a restore). Anything else —
+ * what runs outside any request, such as a plugin reacting to an event
+ * after the request that loaded it ended — is refused. The two marks are
+ * deliberately few and named, so each use is a decision someone can review.
+ *
+ * Long-lived things made lazily during a request (an open site and its
+ * watcher, the preview, a site's plugins) are made `outsideAnyPerson`, so
+ * they carry nobody's name or access into work done later for someone else.
  */
 import { AsyncLocalStorage } from "node:async_hooks";
 import { PRODUCT } from "../brand";
@@ -39,16 +47,50 @@ export const BUILD_MODE_REFUSAL = "Your account can change the site's content, b
 /** Said when someone without SITE_SETTINGS_LEVEL would change the site's settings file, whichever way. */
 export const SITE_SETTINGS_REFUSAL = "Your account can't change the site's settings. Ask an owner of this editor.";
 
-const storage = new AsyncLocalStorage<Caller | null>();
+/** Said, on a hosted install, when guarded work runs for nobody. */
+export const NO_CALLER_REFUSAL =
+  "Only someone signed in to this editor, or whoever runs it, can do that. Work that runs on its own, such as a plugin reacting to an event, can't publish, change the site's settings or change anything outside the content.";
 
-/** Runs `run` as this person (null: nobody — everything allowed). Follows the asynchronous work `run` starts. */
-export function withCaller<T>(caller: Caller | null, run: () => T): T {
-  return storage.run(caller, run);
+type Scope = { kind: "person"; caller: Caller } | { kind: "operator" } | { kind: "engine" };
+
+const storage = new AsyncLocalStorage<Scope | null>();
+
+/** Hosted install: whether guarded work with nobody in scope is refused. Never set in local mode or the desktop app. */
+let callerRequired = false;
+
+/** Set by a hosted server at start (and cleared when it stops): from then on, guarded work needs a person, the operator or the engine. */
+export function requireCallerForGuardedWork(on: boolean): void {
+  callerRequired = on;
 }
 
-/** The person whose work this is, or null (local mode, the operator's token, the engine's own work). */
+/** Runs `run` as this person (null: nobody). Follows the asynchronous work `run` starts. */
+export function withCaller<T>(caller: Caller | null, run: () => T): T {
+  return storage.run(caller ? { kind: "person", caller } : null, run);
+}
+
+/**
+ * The operator's mark: `run` is done by whoever runs the server — its access
+ * token on the API or /mcp, or an operator's command on the command line.
+ * Everything is allowed inside it, as it always was for the operator.
+ */
+export function asOperator<T>(run: () => T): T {
+  return storage.run({ kind: "operator" }, run);
+}
+
+/**
+ * The engine's mark: `run` is the engine's own unattended work (start-up,
+ * first run's steps, a restore, its own bookkeeping in the settings file),
+ * which no person asked for and which must not fail for want of one.
+ */
+export function asEngine<T>(run: () => T): T {
+  return storage.run({ kind: "engine" }, run);
+}
+
+/** The person whose work this is, or null (nobody, the operator, the engine). */
 export function currentCaller(): Caller | null {
-  return storage.getStore() ?? null;
+  const scope = storage.getStore();
+
+  return scope?.kind === "person" ? scope.caller : null;
 }
 
 /**
@@ -62,9 +104,12 @@ export function outsideAnyPerson<T>(run: () => T): T {
 
 /** Whether the work in progress may do what needs `level`: the role it began with and the role now must both allow it. */
 export function callerMay(level: AccessLevel): boolean {
-  const caller = storage.getStore();
+  const scope = storage.getStore();
 
-  if (!caller) return true;
+  if (!scope) return !callerRequired;
+  if (scope.kind !== "person") return true;
+  const { caller } = scope;
+
   if (!roleMay(caller.role, level)) return false;
   if (!caller.current) return true;
   const now = caller.current();
@@ -74,7 +119,12 @@ export function callerMay(level: AccessLevel): boolean {
 
 /** Refuses, in one plain sentence, what the person whose work this is may not do. */
 export function requireLevel(level: AccessLevel, refusal: string = ROLE_REFUSAL): void {
-  if (!callerMay(level)) throw new GalleyError("forbidden", refusal);
+  if (!callerMay(level)) throw new GalleyError("forbidden", callerRefusal(refusal));
+}
+
+/** What a refusal says: `refusal` for a person; for work done for nobody (hosted), that it needs someone. */
+export function callerRefusal(refusal: string): string {
+  return storage.getStore() ? refusal : NO_CALLER_REFUSAL;
 }
 
 export function requireBuildMode(): void {

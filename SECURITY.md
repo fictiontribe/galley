@@ -46,6 +46,12 @@ preview overlay (`packages/overlay`), the adapter kit, the desktop shell
   a route, a file write, the assistant, an AI tool: on a hosted install,
   build mode is an editor's or owner's and the site's settings file an
   owner's;
+- on a hosted install, work done for nobody — a plugin's hooks, or anything
+  left running after a request — publishing, changing the site's settings
+  file or writing outside the content;
+- more guesses at one account's password than the sign-in limits allow
+  (about 2,900 a day, from any number of addresses), or making sign-in fail
+  for everyone from one address or one IPv6 `/64`;
 - a one-time link built from anything but the editor's public address (or,
   without one, the loopback address of a trial on one computer), or a
   new-password link the server e-mailed reaching anyone but the person it
@@ -73,12 +79,16 @@ model* (`apps/site/src/content/docs/running/security.md`).
    own e-mail and password (12 or more characters, stored as an scrypt hash)
    and is an owner, an editor or a contributor. Whoever opens a one-time setup
    link creates the first owner; owners invite everyone else with one-time
-   links. Sign-in is rate limited; each session cookie belongs to one person
+   links. Sign-in is limited per client (an IPv4 address or an IPv6 `/64`)
+   and per e-mail from everywhere, one check at a time, with a growing
+   delay; a browser that has signed in before isn't held up. Each session
+   cookie belongs to one person
    and is signed, `HttpOnly`, `SameSite=Strict`, and `Secure` (`__Host-`) over
    HTTPS. One table (`packages/core/src/install/route-access.ts`) gives every
    route the level it needs, and the server checks it on every request; the
    engine also checks build mode (an editor or owner) and the site's settings
-   file (an owner) where the write happens, whichever way it comes. Links
+   file (an owner) where the write happens, whichever way it comes, and
+   refuses both, and publishing, to work done for nobody. Links
    are only ever built from the editor's public address. The preview is
    served on a hostname of its own, only to a browser the editor let in.
 2. **Every request** must name the server in `Host` (against DNS rebinding);
@@ -113,7 +123,12 @@ Stated so they aren't reported as discoveries: the desktop app's installers
 are unsigned; it does not use the OS keychain yet; on a hosted install,
 the preview runs the site's code for every role, editors and owners can change
 that code, and the site's own code can read what its container holds;
-sign-in limits are kept in memory, so a restart resets them; the hosted install has not been run on Fly.io or Cloudflare; Windows and
+sign-in limits are kept in memory, so a restart resets them; while an
+account is being guessed at, its right password from a browser that hasn't
+signed in before may have to wait or be told to wait (a browser used before
+and a one-time link go round it); the assistant reads what contributors
+wrote, and in a conversation someone switched to build mode it changes code
+without asking before each change (it never publishes); the hosted install has not been run on Fly.io or Cloudflare; Windows and
 Linux have not been verified.
 
 ## Cryptography

@@ -7,8 +7,9 @@
 // (node:net) as the outgoing mail server. Then it walks, as separate
 // browsers (cookie jars, each from its own client address), through first
 // run, invitations, roles, Publish, switching people off, e-mailed links,
-// signing everyone out, an install from before accounts,
-// `serve --reset-password`, and a starter sent from first run.
+// signing everyone out, the operator's access token, the sign-in limits and
+// a browser someone has signed in on before, an install from before
+// accounts, `serve --reset-password`, and a starter sent from first run.
 //
 //   npx tsx scripts/rehearse-accounts.mjs [--dir <scratch folder>] [--keep]
 //
@@ -40,9 +41,10 @@ const PEOPLE_PASSWORD = "a long password for the team";
 const KEY = "sk-ant-rehearsal-not-a-real-key-WXYZ";
 const HOST_KEY = "rehearsal-host-key-not-real-0000WXYZ";
 const KEY_TAIL = "WXYZ";
+const OPERATOR_TOKEN = "rehearsal-operator-token-not-real-0000";
 
 /** Everything secret this run makes or types: none of it may reach a server's log. */
-const secrets = new Set([PASSWORD, NEW_PASSWORD, PEOPLE_PASSWORD, KEY, HOST_KEY]);
+const secrets = new Set([PASSWORD, NEW_PASSWORD, PEOPLE_PASSWORD, KEY, HOST_KEY, OPERATOR_TOKEN]);
 const running = [];
 let sink = null;
 
@@ -344,7 +346,7 @@ async function main() {
   sink = await startSink();
   const bare = siteRepository();
   const home = join(scratch, "install");
-  const server = await serve(home, { mail: true, publicUrl: true });
+  const server = await serve(home, { mail: true, publicUrl: true, env: { GALLEY_TOKEN: OPERATOR_TOKEN } });
   const setupUrl = /Setup:\s+(\S+)/.exec(server.out)?.[1];
   let owner = browser(server, "owner");
   const people = {};
@@ -594,6 +596,37 @@ async function main() {
     expectStatus(await owner.call("POST", "/api/auth/login", { email: "sam@example.com", password: PASSWORD }), 200, "signing in again");
     expectStatus(await owner.call("POST", "/api/auth/logout"), 200, "signing out");
     return "password link, sign out one, take back, remove, rename, password, out everywhere";
+  });
+
+  await step("the operator's access token still publishes: guarded work done for the operator, not for nobody", async () => {
+    const sam = browser(server, "Sam, editing for the operator");
+    expectStatus(await sam.call("POST", "/api/auth/login", { email: "sam@example.com", password: PASSWORD }), 200, "signing in");
+    expectStatus(await sam.call("PATCH", `/api/sites/${siteId}/entry?path=${encodeURIComponent("src/content/pages/about.md")}`, { ops: [{ op: "set", path: ["title"], value: "About, published by a script" }] }), 200, "an edit to publish");
+    const published = expectStatus(await browser(server, "a script").call("POST", `/api/sites/${siteId}/publish`, { message: "Published with the operator's token" }, { authorization: `Bearer ${OPERATOR_TOKEN}` }), 200, "publishing with the operator's token");
+    check(published.body.ok === true, `the operator's Publish: ${published.text.slice(0, 400)}`);
+    const log = git(["--git-dir", bare, "log", "--format=%s", "-n", "1", "main"]);
+    check(log === "Published with the operator's token", `newest version: ${log}`);
+    return log;
+  });
+
+  await step("sign-in limits: a browser that signed in before gets in at once while its e-mail is guessed at; an unknown one waits its turn", async () => {
+    const own = browser(server, "Sam's own browser");
+    const first = expectStatus(await own.call("POST", "/api/auth/login", { email: "sam@example.com", password: PASSWORD }), 200, "signing in");
+    check(own.signedIn(), `no cookie after signing in: ${first.text}`);
+    let guesses = 0;
+    for (let i = 0; i < 10; i += 1) {
+      expectStatus(await browser(server, `a guesser ${i}`).call("POST", "/api/auth/login", { email: "sam@example.com", password: "a guess at Sam's password" }), 401, "a guess");
+      guesses += 1;
+    }
+    let started = Date.now();
+    expectStatus(await own.call("POST", "/api/auth/login", { email: "sam@example.com", password: PASSWORD }), 200, "the browser Sam used before");
+    const knownMs = Date.now() - started;
+    check(knownMs < 900, `the browser Sam used before waited ${knownMs} ms`);
+    started = Date.now();
+    expectStatus(await browser(server, "a new browser of Sam's").call("POST", "/api/auth/login", { email: "sam@example.com", password: PASSWORD }), 200, "a browser Sam never used");
+    const unknownMs = Date.now() - started;
+    check(unknownMs >= 900, `a new browser didn't wait its turn (${unknownMs} ms)`);
+    return `${guesses} guesses; the known browser in ${knownMs} ms, a new one after ${unknownMs} ms`;
   });
 
   await step("the log never shows a password, a key, a link's code or anyone's e-mail", async () => {

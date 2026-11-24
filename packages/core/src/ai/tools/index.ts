@@ -15,7 +15,7 @@ import { GalleyError } from "../../errors";
 import type { AgentMode, ToolActivity } from "../../types";
 import { activePlugins } from "../../plugins/active";
 import type { AccessLevel } from "../../install/accounts";
-import { BUILD_MODE_REFUSAL, callerMay } from "../../install/caller";
+import { BUILD_MODE_REFUSAL, callerMay, callerRefusal } from "../../install/caller";
 import { BUILD_MODE_LEVEL, ROLE_REFUSAL } from "../../install/route-access";
 import { safeDetail } from "../errors";
 import { BUILD_TOOLS } from "./build";
@@ -170,7 +170,7 @@ export async function executeTool(tool: AssistantTool | undefined, name: string,
   // Checked again on every call: the list offered is a convenience, and the person's role may have changed since it was made.
   if (!callerMayUse(tool)) {
     return {
-      content: `${tool.mode === "build" && toolLevel(tool) === BUILD_MODE_LEVEL ? BUILD_MODE_REFUSAL : ROLE_REFUSAL} Tell the person their account can't do this, and don't try another way round it.`,
+      content: `${callerRefusal(tool.mode === "build" && toolLevel(tool) === BUILD_MODE_LEVEL ? BUILD_MODE_REFUSAL : ROLE_REFUSAL)} Tell the person their account can't do this, and don't try another way round it.`,
       isError: true,
       doneLabel: "Not something this account can do",
     };

@@ -12,29 +12,18 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
+import { isIP } from "node:net";
 
 export const SESSION_MAX_AGE_S = 30 * 24 * 60 * 60;
 export const LOGIN_LIMIT = 5;
 export const LOGIN_WINDOW_MS = 60_000;
 /**
- * Failed sign-ins for one e-mail from one client address before that pair
- * waits out the window. Guesses from other addresses never count here, so
- * they can't keep the right password out.
+ * Failed sign-ins for one e-mail from one client before that pair waits out
+ * the window. The e-mail's own limits, whatever the client, are the sign-in
+ * gate's (sign-in-gate.ts).
  */
 export const EMAIL_LOGIN_LIMIT = 10;
 export const EMAIL_LOGIN_WINDOW_MS = 15 * 60_000;
-/**
- * Failed sign-ins for one e-mail from every address together, in the same
- * window, past which each attempt for it waits its turn: one at a time,
- * EMAIL_SLOW_DELAY_MS apart. Slowed, never refused — and the wait is
- * bounded: beyond EMAIL_SLOW_QUEUE waiting, an attempt waits the delay alone.
- */
-export const EMAIL_SLOW_AFTER = 30;
-export const EMAIL_SLOW_DELAY_MS = 1_000;
-export const EMAIL_SLOW_QUEUE = 10;
-/** Password checks for sign-in run this many at a time, with at most SIGN_IN_QUEUE waiting; beyond that the answer is "too many attempts". */
-export const SIGN_IN_HASHING = 2;
-export const SIGN_IN_QUEUE = 16;
 /** "Forgot my password" requests per client address, and e-mails per address asked for, in their windows. */
 export const FORGOT_CLIENT_LIMIT = 5;
 export const FORGOT_CLIENT_WINDOW_MS = 15 * 60_000;
@@ -99,6 +88,48 @@ export function readSession(key: Uint8Array, value: string | undefined, now = Da
   return { id: parts[1]!, issuedAt, ...(accountId !== undefined ? { accountId } : {}) };
 }
 
+/**
+ * A browser someone has signed in on before (hosted): a long-lived cookie of
+ * its own, `kb1.issuedAt.nonce.accountId.hmac` under its own MAC label. Five
+ * parts and a different label, so it is never read as a session (three or
+ * four parts, other labels), whatever it holds. All it does is let a
+ * sign-in to that one account skip the e-mail's line (sign-in-gate.ts).
+ */
+export const KNOWN_BROWSER_MAX_AGE_S = 365 * 24 * 60 * 60;
+const KNOWN_BROWSER_PURPOSE = "known-browser/v1";
+const KNOWN_BROWSER_TAG = "kb1";
+
+export interface KnownBrowser {
+  id: string;
+  issuedAt: number;
+  accountId: string;
+}
+
+export function signKnownBrowser(key: Uint8Array, accountId: string, issuedAt = Date.now(), nonce = randomBytes(16).toString("base64url")): string {
+  if (!ACCOUNT_ID.test(accountId)) throw new Error("An account id is letters, digits, - and _ only.");
+  const payload = `${KNOWN_BROWSER_TAG}.${issuedAt}.${nonce}.${accountId}`;
+
+  return `${payload}.${mac(key, `${KNOWN_BROWSER_PURPOSE}\n${payload}`)}`;
+}
+
+/** The known browser in `value` when it is validly signed and not too old, else null. Says nothing about the account. */
+export function readKnownBrowser(key: Uint8Array, value: string | undefined, now = Date.now()): KnownBrowser | null {
+  if (!value) return null;
+  const parts = value.split(".");
+
+  if (parts.length !== 5 || parts[0] !== KNOWN_BROWSER_TAG) return null;
+  const [, issued, id, accountId, signature] = parts as [string, string, string, string, string];
+
+  if (!ACCOUNT_ID.test(accountId) || !id) return null;
+  const expected = mac(key, `${KNOWN_BROWSER_PURPOSE}\n${parts.slice(0, 4).join(".")}`);
+
+  if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+  const issuedAt = Number(issued);
+
+  if (!Number.isFinite(issuedAt) || issuedAt > now + 60_000 || now - issuedAt > KNOWN_BROWSER_MAX_AGE_S * 1000) return null;
+  return { id, issuedAt, accountId };
+}
+
 /** Returns the session nonce when `value` is a valid, unexpired session, else null. */
 export function verifySession(key: Uint8Array, value: string | undefined, now = Date.now()): string | null {
   return readSession(key, value, now)?.id ?? null;
@@ -148,69 +179,6 @@ export class LoginLimiter {
   }
 }
 
-const sleep = (ms: number) =>
-  new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, ms);
-
-    timer.unref?.();
-  });
-
-/** Attempts for one key, one at a time and `delayMs` apart (at most `queue` waiting; past that, each waits `delayMs` alone). */
-export class SerialDelay {
-  private readonly lines = new Map<string, { tail: Promise<void>; waiting: number }>();
-
-  constructor(
-    private readonly delayMs = EMAIL_SLOW_DELAY_MS,
-    private readonly queue = EMAIL_SLOW_QUEUE
-  ) {}
-
-  async wait(key: string): Promise<void> {
-    const line = this.lines.get(key) ?? { tail: Promise.resolve(), waiting: 0 };
-
-    if (line.waiting >= this.queue) return sleep(this.delayMs);
-    const mine = line.tail.then(() => sleep(this.delayMs));
-
-    line.tail = mine;
-    line.waiting += 1;
-    this.lines.set(key, line);
-    try {
-      await mine;
-    } finally {
-      line.waiting -= 1;
-      if (line.waiting === 0 && line.tail === mine) this.lines.delete(key);
-    }
-  }
-}
-
-/** Runs at most `limit` tasks at a time with at most `queue` waiting; `run` answers null when both are full. */
-export class Bounded {
-  private running = 0;
-  private readonly waiting: Array<() => void> = [];
-
-  constructor(
-    private readonly limit = SIGN_IN_HASHING,
-    private readonly queue = SIGN_IN_QUEUE
-  ) {}
-
-  async run<T>(task: () => Promise<T>): Promise<T | null> {
-    if (this.running >= this.limit) {
-      if (this.waiting.length >= this.queue) return null;
-      await new Promise<void>((resolve) => this.waiting.push(resolve));
-    } else {
-      this.running += 1;
-    }
-    try {
-      return await task();
-    } finally {
-      // The slot passes straight to the next one waiting, so the count stays right.
-      const next = this.waiting.shift();
-
-      if (next) next();
-      else this.running -= 1;
-    }
-  }
-}
-
 // ─────────────────────────────────────────────────────────────── hosts and origins
 
 const LOOPBACK_NAMES = new Set(["localhost", "127.0.0.1", "::1"]);
@@ -256,6 +224,63 @@ export function clientAddress(c: Context, trustProxy: boolean): string {
   return env?.incoming?.socket?.remoteAddress ?? "unknown";
 }
 
+/**
+ * What every limit in the server counts a client as: an IPv4 address is
+ * itself (also when it arrives IPv4-mapped, ::ffff:a.b.c.d); an IPv6 address
+ * is its /64, the smallest network one subscriber is normally given, so
+ * the addresses inside it are one client. Anything else is keyed as it is.
+ */
+export function clientKey(address: string): string {
+  let value = address.trim().toLowerCase();
+  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(value);
+
+  if (bracketed) value = bracketed[1]!;
+  const withPort = /^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/.exec(value);
+
+  if (withPort) value = withPort[1]!;
+  value = value.replace(/%.*$/, "");
+  const kind = isIP(value);
+
+  if (kind === 4) return value;
+  if (kind !== 6) return address;
+  const groups = ipv6Groups(value);
+
+  if (!groups) return address;
+  if (groups.slice(0, 5).every((group) => group === 0) && groups[5] === 0xffff) {
+    return [groups[6]! >> 8, groups[6]! & 255, groups[7]! >> 8, groups[7]! & 255].join(".");
+  }
+  return `${groups.slice(0, 4).map((group) => group.toString(16)).join(":")}::/64`;
+}
+
+/** The eight 16-bit groups of a valid IPv6 address (`isIP` said so), a trailing dotted IPv4 part included. */
+function ipv6Groups(address: string): number[] | null {
+  let text = address;
+  const dotted = /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(text);
+
+  if (dotted) {
+    const [a, b, c, d] = dotted.slice(1).map(Number) as [number, number, number, number];
+
+    text = `${text.slice(0, dotted.index)}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
+  }
+  const [head = "", tail, extra] = text.split("::");
+
+  if (extra !== undefined) return null;
+  const parse = (part: string) => (part ? part.split(":").map((group) => Number.parseInt(group, 16)) : []);
+  const front = parse(head);
+  const back = tail === undefined ? [] : parse(tail);
+  const missing = 8 - front.length - back.length;
+
+  if (missing < 0 || (tail === undefined && missing !== 0)) return null;
+  const groups = [...front, ...Array<number>(missing).fill(0), ...back];
+
+  return groups.every((group) => Number.isInteger(group) && group >= 0 && group <= 0xffff) ? groups : null;
+}
+
+/** The client a request counts as for every limit: clientKey of its address. */
+export function clientKeyOf(c: Context, trustProxy: boolean): string {
+  return clientKey(clientAddress(c, trustProxy));
+}
+
 export function bearerToken(c: Context): string | null {
   const header = c.req.header("authorization");
   const match = header ? /^Bearer\s+(\S+)\s*$/i.exec(header) : null;
@@ -273,6 +298,8 @@ export interface SessionCheck {
   key: Uint8Array;
   token: string | null;
   cookieName: string;
+  /** Hosted install: the known-browser cookie's name (never a session). */
+  knownCookieName?: string;
   revoked: RevocationList;
   /** Hosted install: whether a signed, unexpired session still counts ("sign out everywhere", a changed password). */
   valid?: (session: SessionInfo) => boolean;

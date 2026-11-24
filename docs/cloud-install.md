@@ -714,6 +714,23 @@ reads them to decide what to offer.
 - **The role is read again whenever it is checked**, so work a request
   started — an assistant reply that is still running — can do only what the
   person's role allows at that moment.
+- **Work that isn't done for someone does none of it.** On a hosted install,
+  publishing and the site's other guarded actions (undoing a publish,
+  getting the latest, sending), changing the site's settings file and
+  writing outside the content are done only for a signed-in person (as
+  their role allows), for the operator (the operator's token on the API
+  and on `/mcp`) or by the engine itself as part of its own unattended
+  steps. Anything else is refused: *Only someone signed in to this editor,
+  or whoever runs it, can do that. Work that runs on its own, such as a
+  plugin reacting to an event, can't publish, change the site's settings
+  or change anything outside the content.* That is what a plugin's hooks
+  run as — reacting to a publish, a deploy or a form a visitor sent — and
+  so does what they leave running, and what runs in the open site after
+  the request that opened it: its watcher and the preview. In code, the
+  two exceptions are two named functions, `asOperator` and `asEngine`
+  (`packages/core/src/install/caller.ts`), set by the server at the few
+  places that are the operator's or the engine's. Local mode and the
+  desktop app, with no accounts, are as before.
 
 ### What roles are, and what they aren't
 
@@ -728,8 +745,17 @@ contributor changes is what that code reads and renders, and in some sites
 runs. That code can reach what the container holds. An account is for a
 person the owner would trust with the site's repository.
 
-Two more things to know:
+Three more things to know:
 
+- **The assistant reads what contributors wrote.** It works from the site's
+  content, and that includes what any contributor put there, so words
+  placed in a page can try to steer the assistant of an owner or an editor
+  who later asks it something. The assistant has no way to publish: every
+  change it makes waits in Proof until a person publishes it. It changes
+  the site's code and templates, and runs the site's build, only in a
+  conversation a person has switched to build mode, and there it does not
+  ask before each change. So the controls are a person's: choosing build
+  mode, reading Proof, and pressing Publish.
 - **The draft is one shared working copy.** Everyone edits the same draft,
   and **Discard** is at the edit level: a contributor can throw away pending
   changes — everyone's, not only their own (except a change to the site's
@@ -866,37 +892,78 @@ The password alone is asked for only while every account that can sign in
 has no e-mail yet — an install upgraded from one shared password, until its
 owner adds theirs (`install.signInWith` in `GET /api/meta`).
 
-**The limits** (kept in memory: a restart resets them, and two server
-processes don't share them):
+**The limits** (`packages/server/src/sign-in-gate.ts`; kept in memory: a
+restart resets them, and two server processes don't share them). Every
+password check goes through them — signing in, and the current password
+typed to change your password or your e-mail. A **client** is an IPv4
+address, or a whole IPv6 `/64` (the addresses one subscriber is normally
+given); an IPv4 address written as IPv6 (`::ffff:203.0.113.7`) is the IPv4
+address. Behind a proxy, set `GALLEY_TRUST_PROXY=1` so the client is the
+address the proxy saw; without it every person shares the proxy's address.
 
-- **5 failures a minute per client address**, then that address waits a
-  minute (429, *Too many sign-in attempts. Wait a minute, then try
-  again.*). Wrong passwords, wrong setup codes, bad link codes and a wrong
-  current password when changing your password or your e-mail all count
-  against it.
-- **10 failed sign-ins for one e-mail from one client address in 15
-  minutes**, then that e-mail waits 15 minutes from that address (429,
-  *Too many sign-in attempts for that e-mail. Wait 15 minutes, then try
-  again.*). It counts every e-mail, whether or not it has an account, so a
-  refusal reveals nothing.
-- **Failures from other addresses only slow a sign-in for that e-mail,
-  and never refuse the right password by themselves.** Once 30 failures for
-  one e-mail have built up from every address together in 15 minutes, each
-  sign-in for it waits its turn: one at a time, a second apart, with at most
-  10 in line (past that, each waits a second on its own). Nothing is said;
-  the answer only comes later.
-- **Only a few password checks run at once**: 2 at a time, with at most 16
-  waiting. Past that, a sign-in is answered at once with 429, *Too many
-  sign-in attempts. Wait a minute, then try again.*, and the server keeps
-  answering everything else.
-- **Forgot your password?**: 5 requests per client address in 15 minutes
-  (then 429), and at most 3 e-mails an hour to any one address (more
-  requests are quietly skipped).
+- **Per client.** Its limits are checked, and its attempt counted, in one
+  step before its password is checked, so attempts sent together are held
+  to them too:
+  - **2 password checks at once**;
+  - **20 attempts a minute**, successful or not;
+  - **5 failures a minute** — wrong passwords, wrong setup codes, bad link
+    codes, a wrong current password; an attempt still being checked counts
+    as one until it ends.
+
+  Past any of them: 429, *Too many sign-in attempts. Wait a minute, then
+  try again.* (for a password change or an e-mail change, *Too many
+  attempts. Wait a minute, then try again.*).
+- **Per e-mail, from one client: 10 failed sign-ins in 15 minutes**, then
+  that e-mail waits 15 minutes from that client (429, *Too many sign-in
+  attempts for that e-mail. Wait 15 minutes, then try again.*).
+- **Per e-mail, from every client together**, whether or not the e-mail has
+  an account — the same line, the same delays and the same answers, so
+  nothing says whether it does:
+  - sign-ins for one e-mail are checked **strictly one at a time**. Up to
+    **3 more wait their turn**; past that, the answer is at once and without
+    checking the password: 429, *That e-mail has more sign-in attempts
+    waiting than can be checked right now. Wait a minute, then try again. A
+    browser you have signed in on before isn't held up, and a one-time link
+    always works.*
+  - after **10 failures** for the e-mail, each turn begins with a delay:
+    1 second, then 2, 4, 8, 16, then **30 seconds** for every one after
+    that. The count is forgotten after 15 minutes without a failure.
+  - so one e-mail can receive **at most about 2,900 guesses a day**, from
+    any number of addresses: 10 at full speed, 5 more over 31 seconds, then
+    one every 30 seconds for the rest of the day.
+- **A browser someone has signed in on before.** Every successful sign-in
+  (and a one-time link, the first-run account, a password change) also sets
+  a **known-browser cookie** for that account: `__Host-galley_session_known`
+  on an `https://` address (`galley_session_<port>_known` otherwise),
+  `HttpOnly`, `Secure` there, `SameSite=Strict`, one year, signed with
+  `session.key` under a label of its own. It is never accepted as a
+  session. A sign-in to that same account from that browser skips the
+  e-mail's line and its delay — though its password is still never checked
+  beside another attempt for the same e-mail — and is served first when
+  password checks are waiting. It counts only while the account is there,
+  switched on and not signed out everywhere since it was set; after **3
+  wrong passwords in 15 minutes** that browser is treated like any other.
+  The per-client limits still apply to it.
+- **The password checks themselves: 2 at a time**, at most one of them for
+  any one client. Whoever waits is served in turn, client by client, not
+  first come first served; known browsers first, with **64 places** of
+  their own; everyone else has **256**. Only past those is the answer 429,
+  *This editor is checking a lot of sign-ins right now. Wait a moment, then
+  try again.* One person or one network can't fill them.
+- **Forgot your password?**: 5 requests per client in 15 minutes (then
+  429), and at most 3 e-mails an hour to any one address (more requests are
+  quietly skipped).
+
+**The trade-off.** While an e-mail is being guessed at, someone typing the
+right password for it in a browser they have **not** signed in on before
+waits their turn and its delay — up to a couple of minutes — or, when the
+line is full, is told to wait a minute. The ways round it are a **browser
+they have signed in on before**, which isn't held up, and a **one-time
+link** (*Forgot your password?*, or a new-password link an owner makes),
+which doesn't go through the e-mail's line at all.
 
 The owner carried over from before accounts, who signs in with the
-password alone, is held to the same limits. Behind a proxy, set
-`GALLEY_TRUST_PROXY=1` so the client address is the one the proxy saw;
-without it every person shares the proxy's address.
+password alone, is held to the same limits and has a known browser too.
 
 **The rules for an account:** the e-mail is kept lower-case, is unique
 whatever the letter case, and is at most 254 characters; a name is 1 to 100
@@ -1042,8 +1109,8 @@ a code:
 
 - signed in; a sign-in that failed (wrong password, no account with that
   e-mail); one refused (the account is switched off, too many attempts
-  from that address or for that e-mail from there, too many sign-ins being
-  checked at once);
+  from that client or for that e-mail from there, too many attempts
+  waiting for that e-mail, too many sign-ins being checked at once);
 - the owner made through the setup link;
 - someone invited (as which role, and whether it was e-mailed); an
   invitation accepted; one taken back;
@@ -1262,7 +1329,8 @@ the main ones; its test titles are the claims.
 | Sessions end on sign-out everywhere, across a restart; a changed password signs that person's other browsers out. | `server/test/hosted-security.test.ts`, `server/test/install.test.ts`, `core/test/install/state.test.ts` |
 | Passwords are scrypt hashes; the setup code and every one-time link's code are kept as a SHA-256 only; wrong codes count against the sign-in limit. | `core/test/install/state.test.ts`, `core/test/install/people.test.ts`, `server/test/install.test.ts` |
 | Every route answers each role exactly as the one table says: the right level gets through, anyone below it gets 403, nobody signed in gets 401. | `server/test/accounts-access.test.ts` |
-| An unknown e-mail, a wrong password and a switched-off account get the same answer; guesses are limited per address and per e-mail from one address; guesses from other addresses only slow a sign-in, and the right password still gets in; only a few password checks run at once. | `server/test/accounts.test.ts`, `server/test/accounts-hardening.test.ts`, `core/test/install/people.test.ts` |
+| An unknown e-mail, a wrong password and a switched-off account get the same answer, the same number of password checks and the same line; a client (an IPv4 address or an IPv6 `/64`) is held to its limits before its password is checked, successes included; one e-mail's sign-ins are checked one at a time from any number of clients, a few wait, the rest are told to wait without a check, and past 10 failures each waits a delay that grows to 30 s, so a day holds at most about 2,900 guesses for it; a browser that signed in before skips the line and is never a session; password checks are shared out client by client, and one client can't fill them. | `server/test/sign-in-gate.test.ts`, `server/test/accounts.test.ts`, `server/test/accounts-hardening.test.ts`, `core/test/install/people.test.ts` |
+| On a hosted install, publishing, the site's settings file and writes outside the content are refused for work done for nobody — a plugin's hooks included — and work for the operator's token, the engine's own steps or a person goes ahead as before; local mode is unchanged. | `core/test/install/caller-required.test.ts` |
 | Every link is built from the editor's public address; without it nothing is e-mailed and a link is shown only on a loopback address; a new-password link the server e-mailed isn't shown to the owner. | `server/test/accounts-links.test.ts` |
 | The site's settings file — saved, written as a file in any mode or letter case, discarded, or put back by undoing a reply or a publish — is an owner's by every route; build mode, custom code in a form and the brand outside the content files are an editor's or owner's, and a request for build mode below that is refused, not narrowed; the values the editor records for itself change nothing else in the file. | `core/test/install/caller-access.test.ts`, `server/test/accounts-hardening.test.ts`, `core/test/install/settings-records.test.ts` |
 | The assistant offers each role only its tools and checks again on every call; every MCP tool, run as each role, does only what that role allows. | `core/test/ai/tools-access.test.ts`, `server/test/mcp-access.test.ts` |
@@ -1612,13 +1680,20 @@ git repositories and started servers:
   and the upgrade from one password (`core/test/install/people.test.ts`);
   links built only from the public address, with and without it and with
   and without a mail transport, and the e-mailed new-password link kept
-  from the owner (`server/test/accounts-links.test.ts`); the sign-in limits
-  as they are now, changing e-mails, the cap on signed-out browsers, and
-  the settings file and build mode by every route
+  from the owner (`server/test/accounts-links.test.ts`); the sign-in
+  limits with a clock that never really waits and a password check the
+  test holds: one e-mail from many clients, a simulated day of guesses
+  against the bound, an IPv6 `/64` as one client, the known browser, one
+  client firing many at once, floods within and past the waiting rooms
+  (`server/test/sign-in-gate.test.ts`); the known browser on a started
+  server, changing e-mails, the cap on signed-out browsers, and the
+  settings file and build mode by every route
   (`server/test/accounts-hardening.test.ts`); the settings file and build
   mode by every way into the engine, a role changed part-way, and work that
   outlives its request (`core/test/install/caller-access.test.ts`,
-  `core/test/install/settings-records.test.ts`); every assistant tool and
+  `core/test/install/settings-records.test.ts`); guarded work for nobody
+  refused on a hosted install, a plugin's hooks included, and allowed for
+  the operator, the engine and a person (`core/test/install/caller-required.test.ts`); every assistant tool and
   every MCP tool as an owner, an editor, a contributor and nobody
   (`core/test/ai/tools-access.test.ts`, `server/test/mcp-access.test.ts`);
   the screens for each role against the app's local stand-in server
@@ -1664,7 +1739,8 @@ on 2026-11-24 on a Mac: the real `galley serve`, from the repository, in
 hosted mode on a loopback port, with temporary data folders, a local bare
 repository as the site, a small SMTP sink as the mail server, and each
 "browser" its own cookies and client address. The main server has the
-editor's public address set (its own loopback port). All 17 steps passed:
+editor's public address set (its own loopback port), and an operator's
+access token. All 19 steps passed:
 
 1. first run with the setup code: the owner's account, the site connected,
    finished; the setup code refused a second time;
@@ -1695,20 +1771,26 @@ editor's public address set (its own loopback port). All 17 steps passed:
 11. the rest of People and Your account, with the bodies the web app sends;
     a new-password link the owner makes arrives only in the person's inbox,
     built from the public address, and isn't handed to the owner;
-12. the log: no password, key, link code or e-mail address in it;
-13. the built web app: `/join`, `/new-password` and `/account` are the app's
+12. the operator's access token publishes: work done for the operator,
+    not for nobody;
+13. the sign-in limits: after 10 guesses at the owner's e-mail from 10
+    addresses, the browser the owner signed in on before gets in at once,
+    and a browser never used here waits its turn and its delay, then gets
+    in;
+14. the log: no password, key, link code or e-mail address in it;
+15. the built web app: `/join`, `/new-password` and `/account` are the app's
     own page, signed out and signed in;
-14. without the editor's public address, outgoing e-mail set up: the
+16. without the editor's public address, outgoing e-mail set up: the
     `E-mail:` start-up line says no link is e-mailed until it is set;
     "forgot my password" answers that nothing can be e-mailed; an invitation
     asked for through another hostname is refused with the sentence that
     names `GALLEY_PUBLIC_URL`; one made on the loopback address is shown,
     built from it; no message reaches the mail server;
-15. an install from before accounts (data layout 1): the password alone,
+17. an install from before accounts (data layout 1): the password alone,
     the account completed, then sign-in by e-mail;
-16. `serve --reset-password` for a locked-out owner, twice: the first link
+18. `serve --reset-password` for a locked-out owner, twice: the first link
     dies when the second is made; the second works once;
-17. a starter sent from first run: its first version carries the owner's
+19. a starter sent from first run: its first version carries the owner's
     name, with no publishing name saved yet.
 
 **On the real image, on a Mac with Docker (linux/arm64), by hand and with a

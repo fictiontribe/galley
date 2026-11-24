@@ -33,10 +33,10 @@ import type { ApiRouteKey } from "@galley/core/api";
 import { withSiteScope } from "@galley/core/site";
 import { createHash } from "node:crypto";
 import { getCookie } from "hono/cookie";
-import { ROLE_REFUSAL as CORE_ROLE_REFUSAL, ROUTE_ACCESS, roleMay, withCaller, type AccessLevel, type AccountRole, type InstallStore } from "@galley/core/install";
+import { asOperator, ROLE_REFUSAL as CORE_ROLE_REFUSAL, ROUTE_ACCESS, roleMay, withCaller, type AccessLevel, type AccountRole, type InstallStore } from "@galley/core/install";
 import type { PreviewStatus } from "@galley/core/types";
 import { withAccountAuthor } from "@galley/core/workspace";
-import { bearerToken, clientAddress, isAuthenticated, loopbackHostnames, normalizeHostname, requestProtocol, requestSession, safeEqual, signSession, LoginLimiter, type RevocationList, type SessionCheck } from "./auth";
+import { bearerToken, clientAddress, clientKeyOf, isAuthenticated, loopbackHostnames, normalizeHostname, requestProtocol, requestSession, safeEqual, signSession, LoginLimiter, type RevocationList, type SessionCheck } from "./auth";
 import { hostedRefusals } from "./hosted-refusals";
 import { withoutKeyHints } from "./key-hints";
 import { errorBody, errorResponse } from "./errors";
@@ -112,6 +112,8 @@ export function createApp(services: Services, options: AppOptions): Hono {
     key: options.cookieKey,
     token: options.token,
     cookieName: options.cookieName ?? `${PRODUCT.slug}_session`,
+    // Its own name: a browser someone has signed in on before (sign-in-gate.ts), never a session.
+    ...(install ? { knownCookieName: `${options.cookieName ?? `${PRODUCT.slug}_session`}_known` } : {}),
     revoked: options.revocations ?? (install ? installRevocations(install.store, log) : new Set()),
     ...(install
       ? {
@@ -209,7 +211,7 @@ export function createApp(services: Services, options: AppOptions): Hono {
     let verdict: SetupBearer | null = null;
 
     if (bearer !== null && install) {
-      const client = clientAddress(c, trustProxy);
+      const client = clientKeyOf(c, trustProxy);
 
       if (session.token !== null && safeEqual(bearer, session.token)) verdict = "token";
       else if (install.store.hasOwner() && requestSession(c, session) !== null) verdict = "session";
@@ -338,9 +340,15 @@ export function createApp(services: Services, options: AppOptions): Hono {
       // and everything it does is held to their role at the point of use, the work it starts included (core install/caller.ts).
       const caller = install ? callerOf(c, ctx) : null;
       const person = caller?.kind === "person" ? caller.account : null;
+      // The operator's mark (core install/caller.ts) for the operator's token on a hosted install, and for every request in local mode,
+      // where whoever holds the start-up token is the one person who runs the app. Only a hosted server makes guarded work need
+      // someone; the mark keeps a local app in the same process (tests, an embedding) as it always was.
+      const operator = options.mode === "local" || caller?.kind === "token";
       const result = person
         ? await withCaller({ accountId: person.id, role: person.role, current: () => liveRole(person.id) }, () => withAccountAuthor(person, scoped))
-        : await withAccountAuthor(null, scoped);
+        : operator
+          ? await asOperator(() => withAccountAuthor(null, scoped))
+          : await withAccountAuthor(null, scoped);
 
       if (result instanceof Response) return result;
       // A key's last characters are for whoever may manage the keys (key-hints.ts): the role as the request began and as it is now must both allow it.

@@ -9,7 +9,7 @@
  * editing.
  */
 import { BUILD_MODE_LEVEL } from "../install/route-access";
-import { BUILD_MODE_REFUSAL, callerMay } from "../install/caller";
+import { BUILD_MODE_REFUSAL, callerMay, callerRefusal } from "../install/caller";
 import type { AgentMode, ChangeOrigin } from "../types";
 
 type Json = Record<string, unknown>;
@@ -48,7 +48,7 @@ export function formCodeRefusal(before: string | null, after: string, who: { ori
 
   if (mode === "content") return "Custom code in a form runs in every visitor's browser, so it can only be added in build mode. Nothing was changed.";
   // The person in the app counts as build mode here, so their account must allow build mode too.
-  if (!callerMay(BUILD_MODE_LEVEL)) return BUILD_MODE_REFUSAL;
+  if (!callerMay(BUILD_MODE_LEVEL)) return callerRefusal(BUILD_MODE_REFUSAL);
   if (!who.allowBuild) return "Custom code in a form can only be added on sites that allow build mode. Nothing was changed.";
   return null;
 }
