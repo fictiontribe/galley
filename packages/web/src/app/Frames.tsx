@@ -1,7 +1,9 @@
 import { Suspense, useEffect, useRef } from "react";
-import { Link, Outlet, useLocation, useParams } from "react-router-dom";
+import { Link, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { isApiFailure } from "@/lib/api";
+import { hostedHome } from "@/lib/hosted";
 import { useChanges } from "@/lib/stores/changes";
+import { useHostedInstall, useMeta } from "@/lib/stores/meta";
 import { useSite } from "@/lib/stores/site";
 import { useUi } from "@/lib/stores/ui";
 import { EmptyState, ErrorState, Skeleton, buttonClass, cx } from "@/ui";
@@ -80,12 +82,49 @@ export function HomeFrame() {
   );
 }
 
+/**
+ * `/` on a hosted install: straight to the site (or first run). With no site
+ * to open, the Install page is the one place that can say why.
+ */
+export function HostedHome() {
+  const meta = useMeta((s) => s.meta);
+  useTopBar({ crumbs: [{ label: "Site" }] });
+  const target = hostedHome(meta);
+  if (target) return <Navigate to={target} replace />;
+  return (
+    <div className="app-screen app-screen--center">
+      <EmptyState
+        title="This editor has no site yet."
+        body="Its site isn’t connected. The Install page shows what this editor is connected to."
+        mark="pilcrow"
+        actions={
+          <Link className={buttonClass("primary")} to="/install">
+            Open the Install page
+          </Link>
+        }
+      />
+    </div>
+  );
+}
+
 function SiteProblem({ error }: { error: unknown }) {
-  useTopBar({ crumbs: [{ label: "Sites", to: "/" }, { label: "Site" }] });
+  const hosted = useHostedInstall();
+  useTopBar({ crumbs: hosted ? [{ label: "Site" }] : [{ label: "Sites", to: "/" }, { label: "Site" }] });
   const notFound = isApiFailure(error) && error.status === 404;
   return (
     <div className="app-screen app-screen--center">
-      {notFound ? (
+      {notFound && hosted ? (
+        <EmptyState
+          title="This editor doesn’t have that site."
+          body="It edits one site, and this address points at another. It may be an old link."
+          mark="dele"
+          actions={
+            <Link className={buttonClass("primary")} to="/">
+              Go to the site
+            </Link>
+          }
+        />
+      ) : notFound ? (
         <EmptyState
           title="This site isn’t in your list."
           body="It may have been forgotten from this app. Its files are still wherever they were on disk."
@@ -104,7 +143,24 @@ function SiteProblem({ error }: { error: unknown }) {
 }
 
 function MissingFolder({ name, root }: { name: string; root: string }) {
-  useTopBar({ crumbs: [{ label: "Sites", to: "/" }, { label: name }] });
+  const hosted = useHostedInstall();
+  useTopBar({ crumbs: hosted ? [{ label: name }] : [{ label: "Sites", to: "/" }, { label: name }] });
+  if (hosted) {
+    return (
+      <div className="app-screen app-screen--center">
+        <EmptyState
+          title="This site’s files are missing."
+          body="The copy of the site this editor keeps on the server isn’t where it should be. The Install page shows what is stored where."
+          mark="bang"
+          actions={
+            <Link className={buttonClass("primary")} to="/install">
+              Open the Install page
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
   return (
     <div className="app-screen app-screen--center">
       <EmptyState

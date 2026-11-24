@@ -55,6 +55,7 @@ describe("paths", () => {
     expect(dirName("index.md")).toBe("");
     expect(friendlyLabel("src/content/blog/living-through-a-renovation.md")).toBe("Living through a renovation");
     expect(friendlyLabel("src/content/pages/index.md")).toBe("Home");
+    expect(friendlyLabel("galley.config.json")).toBe("Site settings");
   });
 });
 

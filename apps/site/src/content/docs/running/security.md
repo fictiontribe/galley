@@ -11,13 +11,13 @@ This page is for developers, operators, and whoever approves running Galley. It 
 
 **Locally** (the CLI, the desktop app) the server listens on `127.0.0.1` only. Starting it on any other address in local mode is refused. At start-up it mints a random session token (or takes `GALLEY_TOKEN`, 16+ characters) and prints a link carrying it; the first visit exchanges the token, compared in constant time, for an `HttpOnly; SameSite=Strict` cookie whose name includes the port, and redirects to the same address without the token. Other users of the same computer can connect to the port, but without the token they get `401`.
 
-**Hosted** (`galley serve`, or `GALLEY_HOST` not a loopback address) it refuses to start without `GALLEY_PASSWORD` of 12 or more characters. Sign-in compares in constant time; five failures per minute from one address earn a `429` for the rest of the minute. The session cookie is `issuedAt.nonce.HMAC-SHA256`, signed with a key in the Galley home, valid 30 days, `HttpOnly; SameSite=Strict`, and `Secure` over HTTPS. There is one password and no per-user accounts or roles: everyone who signs in can do everything. Sites are confined to `GALLEY_SITES_DIR`.
+**A hosted install** (`galley serve`, the image, or `GALLEY_HOST` not a loopback address) looks after **one site**, with one password and everything it keeps in its data folder; [below](#a-hosted-install) is what that adds. There is one password and no per-user accounts or roles: everyone who signs in can do everything.
 
-Only `GET /api/meta`, `POST /api/auth/login` and `POST /api/auth/logout` answer without a session, and unauthenticated `meta` reveals the brand, the mode and `authenticated: false` — nothing else.
+Only `GET /api/meta`, `POST /api/auth/login` and `POST /api/auth/logout` answer without a session, and unauthenticated `meta` reveals the brand, the mode and `authenticated: false` — nothing else. On a hosted install, `GET /healthz` and `GET /readyz` also answer anyone and say nothing about the install, and the first-run routes take the one-time setup code until a password exists.
 
 ## Every request
 
-- **Host check** (against DNS rebinding): the `Host` header must name the server — loopback names, the listening address, or the host of `GALLEY_PUBLIC_URL`. Otherwise `403`: *This address isn't one this app answers to.*
+- **Host check** (against DNS rebinding): the `Host` header must name the server — loopback names, the listening address, or the host of `GALLEY_PUBLIC_URL`. Otherwise `403`: *This address isn't one this app answers to.* On a hosted install, requests for the preview's and live comparison's names go to the preview gateway and never reach the app.
 - **Origin check** (against cross-site requests): every state-changing request (anything but `GET`, `HEAD`, `OPTIONS`) must carry an `Origin` equal to the server's own, or `Sec-Fetch-Site: same-origin`, or a valid `Authorization: Bearer` token. Otherwise `403`: *This request came from outside the app, so it was blocked.*
 - **Limits**: JSON bodies up to 40 MB; uploads are `data:` URLs of images, MP4 or PDF up to 25 MB.
 
@@ -25,9 +25,9 @@ Two addresses outside `/api` have their own rules. **`/mcp`** (the [MCP endpoint
 
 ## What it serves
 
-- **The UI** with a strict Content Security Policy: scripts, styles, fonts and connections from its own origin only; frames only from the preview proxies; no plugins; `frame-ancestors 'self'`.
+- **The UI** with a strict Content Security Policy: scripts, styles, fonts and connections from its own origin only; frames only from the preview proxies (on a hosted install, the preview's and live comparison's two origins); no plugins; `frame-ancestors 'self'`.
 - **Files from a site** (`GET …/raw`, image candidates) with `X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`, so an uploaded SVG can't run script with the app's cookies. HTML, JavaScript and XML from a site are sent as `text/plain`. `.git/` and `.env*` are never served.
-- **Previews** on separate loopback ports (separate origins), with the overlay script added. The site's pages there run with the site's own origin, not the app's.
+- **Previews** on separate loopback ports locally, and on a name of their own on a hosted install (`cms-preview.example.com`) — separate origins either way — with the overlay script added. The site's pages there run with the site's own origin, not the app's.
 
 ## What it can write
 
@@ -44,9 +44,23 @@ Galley never executes a site's config files to *read* them — detection is stat
 - **Adapters and plugins a site names** in its `galley.config.json` are loaded from inside the site folder or its `node_modules`. On a hosted Galley they are off unless the operator sets `GALLEY_ALLOW_SITE_PLUGINS=1`; `GALLEY_DISABLE_SITE_PLUGINS=1` and `GALLEY_DISABLE_SITE_ADAPTERS=1` turn them off anywhere.
 - **Plugins installed** with `galley plugin add` run inside the server for every site. A plugin is not a sandbox: it has the server's permissions, your files and the network. Its rules stop accidents — it can't read the app's own keys or another plugin's settings, or write from a hook — but don't contain a plugin written to do harm. Install only plugins you trust ([Plugins](/docs/plugins/)). Installing runs npm with `--ignore-scripts`.
 
-So opening a repository in Galley and starting its preview trusts that repository the way `npm install && npm run dev` would. On a hosted server, anyone with the password can clone a repository and start its preview — treat the password as giving the ability to run code on that server, and run it as an unprivileged user, in a container or a VM of its own.
+So opening a repository in Galley and starting its preview trusts that repository the way `npm install && npm run dev` would. On a hosted install, anyone with the password can change the site's code and run it in its preview — treat the password as giving the ability to run code where the install runs. The container is the boundary ([below](#a-hosted-install)).
 
 git always runs with argument arrays, never a shell string; clones refuse addresses starting with `-` and `ext::` transports. Galley never force-pushes, never rewrites history and never changes git configuration outside the repository.
+
+## A hosted install
+
+What a hosted install adds, each held by a test (the list, with the test files: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#the-security-model)):
+
+- **One site.** Every route that would add, remove, scan for or file sites answers `403` — *This editor looks after one site. Each site gets an editor of its own.* — and the engine refuses the same. Ten sites are ten installs that share no folder, password, key or session.
+- **The setup link.** With no password yet, the server prints `<address>/setup?token=…`. The code is kept as its SHA-256, works until a password is chosen, then never again — even after `--reset-password`, which makes a fresh one; the operator can give only its hash (`GALLEY_SETUP_TOKEN_SHA256`) so it never reaches the server. Wrong codes count against the sign-in limit. The link is the one secret ever printed, on purpose.
+- **The password** is stored as an scrypt hash and checked in constant time; 12 characters or more. Wrong passwords and setup codes share one limit: five a minute per address, then `429` for the rest of the minute.
+- **Sessions.** On an `https://` address the cookie is `__Host-galley_session`: `HttpOnly`, always `Secure`, `SameSite=Strict`, `Path=/`, no `Domain`, signed with `session.key`, 30 days. Changing the password signs every other browser out; **Sign out everywhere** ends every session; both, and single sign-outs, survive a restart. A cookie one install issued is refused by another: two installs run side by side from one image, on 2026-11-24, each refused the other's cookie, password and form-capture key.
+- **The preview's own origin, behind a gate.** The preview and the live comparison are served on names of their own, so the site's scripts can never act as the person signed in. Only a browser the editor let in sees them: a one-use, 60-second ticket from `POST /api/sites/:siteId/preview/entry` is traded for a viewer cookie tied to that sign-in, which ends with it. Anyone else gets a 401 page. Neither cookie is ever passed to the site's dev server, and a write from the preview's origin is refused even with the editor's cookie attached.
+- **The container is the boundary.** The site's preview, its dependency installs and its build run code from the repository, by design. The image runs the server as the unprivileged user `node` and drops root and every capability before it starts; the generated compose files add a read-only root filesystem, `cap_drop: ALL`, `no-new-privileges`, memory and process limits, one volume and no published port for the editor. The site's own commands don't receive the app's password, setup code, access token or provider keys. What the site's code can reach is the container: the data folder, with its stored keys, and the network.
+- **The site's repository** is reached with the install's own deploy key (ed25519, private half 0600, never read back) or an access token handed to git through an askpass helper only — never in an argument, the address or `.git/config`.
+- **Backups are sealed.** A backup is one file encrypted with a passphrase (scrypt, then AES-256-GCM in authenticated frames): a changed, cut or foreign file never opens. A restore checks the whole file before changing anything and can't write outside the data folder. The passphrase can't be recovered.
+- **Logs** pass one scrubber; no secret is written to them.
 
 ## Secrets
 
@@ -58,7 +72,7 @@ Galley has no telemetry and no account. It connects to:
 
 | Destination | When | What is sent |
 | --- | --- | --- |
-| Your git host | clone, pull, publish, undo a publish | git's own traffic, with your machine's git credentials |
+| Your git host | clone, pull, publish, undo a publish | git's own traffic, with your machine's git credentials — on a hosted install, its own deploy key (SSH, port 22) or access token (HTTPS) |
 | The package registry your site uses | the first preview of a site without `node_modules`, and `galley new` | the package manager's own traffic |
 | The deployed site (`urls.staging` or `urls.production`) | when the side-by-side view shows it | ordinary page requests through the baseline proxy |
 | `api.anthropic.com` (or `GALLEY_ANTHROPIC_BASE_URL`) | only when someone sends the assistant a message, or the Publish dialog suggests a message, and a key is set | the instructions, a description of the site's collections and fields, the conversation, attached images, and whatever the tools read |
@@ -74,12 +88,12 @@ The placeholder image provider is offline. The web UI loads nothing from anyone 
 
 ## Not covered yet
 
-- No per-user accounts, roles or audit log in hosted mode; every publish in a hosted Galley carries the author set in its shared Settings.
+- No per-user accounts, roles, single sign-on or audit log on a hosted install: one password for everyone, and every publish carries the install's one publishing name. (Where they would attach is a design note in [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#a-design-note-accounts-roles-and-single-sign-on); nothing is built.)
+- The site's own code runs inside the hosted install's container and can read what the container holds.
 - The desktop app's installers are unsigned, and keys are kept in owner-only files, not the OS keychain.
-- Hosted mode has one shared password for everyone.
 - Windows and Linux have not been verified.
 
 ## Next
 
-- [Hosting for a team](/docs/running/hosted/).
+- [Run a hosted install](/docs/running/hosted/).
 - [SECURITY.md]({repository}/blob/main/SECURITY.md) — reporting a vulnerability.

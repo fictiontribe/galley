@@ -9,17 +9,70 @@
  * stripping and redirect rewriting, and the same overlay script in its
  * read-only "follow" role, so the two frames can scroll and navigate together.
  *
+ * Each proxy either listens on a port of its own (on this computer, and on a
+ * server with a range of preview ports), or — given a PreviewGateway — is
+ * mounted on the server's one address and reached by a hostname of its own,
+ * so a hosted install needs no extra ports, certificates or firewall rules.
+ * The behaviour is the same either way; only where requests come from differs.
+ *
  * Built on node:http/net directly: the behaviour needed is small and specific
  * (header surgery, HTML-only buffering, raw upgrade piping) and a proxy
  * library would add a dependency without removing much code.
  */
 import http, { type IncomingHttpHeaders, type IncomingMessage, type ServerResponse } from "node:http";
 import https from "node:https";
-import net, { type Socket } from "node:net";
-import { pipeline } from "node:stream";
+import net from "node:net";
+import { pipeline, type Duplex } from "node:stream";
 import zlib from "node:zlib";
 import { OVERLAY_SCRIPT_PATH, PROXY_HEALTH_PATH } from "../../api";
+import { PRODUCT } from "../../brand";
 import type { PortPool } from "./ports";
+
+/** What a proxy does with a request and with an upgrade, apart from where they arrive. */
+export interface ProxyHandlers {
+  request(req: IncomingMessage, res: ServerResponse): void;
+  upgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void;
+}
+
+/** Where the proxies are reached when they don't listen on ports of their own (a hosted install's one address). */
+export interface PreviewGateway {
+  /** Mounts a proxy under the gateway's address for `kind`; returns that address (an origin, no trailing slash) and how to take it down. */
+  mount(kind: "preview" | "baseline", handlers: ProxyHandlers): { url: string; unmount(): void };
+}
+
+/**
+ * The cookie a gateway keeps to know a browser may see the preview. Host-only
+ * on each gateway hostname; `__Host-` (Secure) on https, a plain name on the
+ * plain-http addresses of a local trial, where a Secure cookie can't be set.
+ */
+export function viewerCookieName(secure: boolean): string {
+  return secure ? `__Host-${PRODUCT.slug}_viewer` : `${PRODUCT.slug}_viewer`;
+}
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** `<slug>_session`, `<slug>_session_<port>`, `__Host-<slug>_session` (and `__Secure-`), and the viewer cookie in both forms. */
+const APP_COOKIE = new RegExp(`^(?:__Host-|__Secure-)?${escapeRegExp(PRODUCT.slug)}_(?:session(?:_\\d+)?|viewer)$`);
+
+/** Whether a cookie name is one of this app's own: the editor's session in any of its forms, or a gateway's viewer cookie. */
+export function isAppCookie(name: string): boolean {
+  return APP_COOKIE.test(name.trim());
+}
+
+/**
+ * A `Cookie` request header without this app's own cookies; undefined when
+ * nothing else is left. The site's dev server runs the site's code (and the
+ * deployed site is someone else's server): neither may ever see the editor's
+ * session or the preview's viewer cookie. Applies with and without a gateway.
+ */
+export function withoutAppCookies(header: string | string[] | undefined): string | undefined {
+  if (header === undefined) return undefined;
+  const kept = (Array.isArray(header) ? header : [header])
+    .flatMap((value) => value.split(";"))
+    .map((pair) => pair.trim())
+    .filter((pair) => pair !== "" && !isAppCookie(pair.split("=")[0] ?? ""));
+
+  return kept.length > 0 ? kept.join("; ") : undefined;
+}
 
 /** Headers that describe one hop and must not be forwarded as-is. */
 const HOP_BY_HOP = new Set([
@@ -141,6 +194,7 @@ function decoderFor(encoding: string): NodeJS.ReadWriteStream | null | "unsuppor
 }
 
 export interface ProxyHandle {
+  /** The port it listens on; 0 when it is mounted on a gateway and has none of its own. */
   readonly port: number;
   /** Origin as the browser should use it. */
   readonly url: string;
@@ -182,6 +236,12 @@ function requestHeaders(req: IncomingMessage, target: UpstreamTarget, proxyOrigi
     const lower = name.toLowerCase();
 
     if (HOP_BY_HOP.has(lower) || lower === "host") continue;
+    if (lower === "cookie") {
+      const cookie = withoutAppCookies(value);
+
+      if (cookie !== undefined) out.cookie = cookie;
+      continue;
+    }
     out[lower] = value;
   }
   out.host = target.hostHeader;
@@ -243,6 +303,8 @@ interface ProxyOptions {
   onActivity?: () => void;
   /** Attributes for every page's `<html>` (see markHtmlElement), read per page. */
   pageAttributes?: () => Record<string, string>;
+  /** Mount on this gateway instead of listening; `host`, `publicHost`, `publicProtocol` and `ports` are then unused. */
+  gateway?: PreviewGateway;
 }
 
 /** A port pool and the preview that will hold the port (its two proxies share one owner). */
@@ -252,13 +314,18 @@ export interface ProxyPorts {
 }
 
 async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
-  const { target, kind } = options;
+  const { target, kind, gateway } = options;
   const transport = target.protocol === "https:" ? https : http;
   const agent = new transport.Agent({ keepAlive: true, maxSockets: 64 });
-  const sockets = new Set<Socket>();
+  /** Sockets this proxy owns: its listener's connections, piped upgrades and their upstream ends. */
+  const sockets = new Set<Duplex>();
+  const track = (socket: Duplex) => {
+    sockets.add(socket);
+    socket.on("close", () => sockets.delete(socket));
+  };
   let proxyOrigin = "";
 
-  const server = http.createServer(async (req, res) => {
+  const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
     const url = req.url ?? "/";
     const pathname = url.split("?")[0];
 
@@ -319,7 +386,13 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       const status = upstreamRes.statusCode ?? 502;
 
       if (typeof headers.location === "string") headers.location = rewriteLocation(headers.location, target.origins, proxyOrigin);
-      if (kind === "baseline" && headers["set-cookie"]) headers["set-cookie"] = stripCookieDomain(headers["set-cookie"]);
+      // Behind a gateway the preview's hostname is a sibling of the editor's:
+      // a `Domain=` the previewed server names could reach the editor's own
+      // hostname, so it is cut there too (the baseline always cuts it, since
+      // its domain is the deployed site's and means nothing here).
+      if ((kind === "baseline" || gateway) && headers["set-cookie"]) headers["set-cookie"] = stripCookieDomain(headers["set-cookie"]);
+      // A preview reachable on a public hostname must never be indexed, whatever the site says.
+      if (gateway) headers["x-robots-tag"] = "noindex";
 
       const bodyless = req.method === "HEAD" || status === 204 || status === 304 || (status >= 100 && status < 200);
       const encoding = String(upstreamRes.headers["content-encoding"] ?? "").trim().toLowerCase();
@@ -353,25 +426,18 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       });
     });
     pipeline(req, upstream, () => undefined);
-  });
+  };
 
-  server.on("connection", (socket) => {
-    sockets.add(socket);
-    socket.on("close", () => sockets.delete(socket));
-  });
-
-  server.on("upgrade", (req, socket: Socket, head: Buffer) => {
+  const handleUpgrade = (req: IncomingMessage, socket: Duplex, head: Buffer) => {
     if (kind !== "preview") {
       socket.destroy();
       return;
     }
-    sockets.add(socket);
-    socket.on("close", () => sockets.delete(socket));
+    track(socket);
     options.onActivity?.();
     const upstream = net.connect({ host: target.hostname, port: target.port });
 
-    sockets.add(upstream);
-    upstream.on("close", () => sockets.delete(upstream));
+    track(upstream);
     const fail = () => {
       upstream.destroy();
       socket.destroy();
@@ -395,7 +461,39 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       upstream.pipe(socket);
       socket.pipe(upstream);
     });
-  });
+  };
+
+  const handlers: ProxyHandlers = {
+    request: (req, res) => void handleRequest(req, res),
+    upgrade: handleUpgrade,
+  };
+
+  if (gateway) {
+    // No port of its own: the server's one listener hands this proxy the
+    // requests for its hostname. The connections are the server's, so only
+    // what the proxy opened itself (piped upgrades, upstream sockets) is closed here.
+    const mounted = gateway.mount(kind, handlers);
+    let closed = false;
+
+    proxyOrigin = mounted.url.replace(/\/+$/, "");
+    return {
+      port: 0,
+      url: proxyOrigin,
+      close: async () => {
+        if (closed) return;
+        closed = true;
+        mounted.unmount();
+        for (const socket of sockets) socket.destroy();
+        sockets.clear();
+        agent.destroy();
+      },
+    };
+  }
+
+  const server = http.createServer(handlers.request);
+
+  server.on("connection", track);
+  server.on("upgrade", handlers.upgrade);
 
   if (options.ports) {
     await options.ports.pool.listen(server, options.host, options.ports.owner);
@@ -440,11 +538,14 @@ export function startPreviewProxy(options: {
   ports?: ProxyPorts;
   onActivity?: () => void;
   pageAttributes?: () => Record<string, string>;
+  /** Mount on the server's one address instead of listening on a port (see PreviewGateway). */
+  gateway?: PreviewGateway;
 }): Promise<ProxyHandle> {
   const port = options.upstreamPort;
 
   return startProxy({
     kind: "preview",
+    ...(options.gateway ? { gateway: options.gateway } : {}),
     ...(options.pageAttributes ? { pageAttributes: options.pageAttributes } : {}),
     host: options.host,
     publicHost: options.publicHost,
@@ -473,6 +574,8 @@ export function startBaselineProxy(options: {
   overlayScript?: () => string | Promise<string>;
   ports?: ProxyPorts;
   publicProtocol?: "http" | "https";
+  /** Mount on the server's one address instead of listening on a port (see PreviewGateway). */
+  gateway?: PreviewGateway;
 }): Promise<ProxyHandle> {
   const upstream = new URL(options.url);
   const protocol = upstream.protocol === "http:" ? "http:" : "https:";
@@ -481,6 +584,7 @@ export function startBaselineProxy(options: {
 
   return startProxy({
     kind: "baseline",
+    ...(options.gateway ? { gateway: options.gateway } : {}),
     host: options.host,
     publicHost: options.publicHost,
     ...(options.publicProtocol ? { publicProtocol: options.publicProtocol } : {}),

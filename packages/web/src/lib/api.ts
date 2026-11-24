@@ -10,6 +10,7 @@ import type {
   RouteResponse,
 } from "@galley/core/api";
 import type { GalleyErrorShape } from "@galley/core/types";
+import { carriesSetupCode } from "./hosted";
 import { isUnauthorized } from "./session";
 
 /** Routes that answer with something other than JSON (SSE, raw bytes). */
@@ -129,8 +130,34 @@ export function buildUrl<K extends ApiRouteKey>(
   return fillPath(path, params as Record<string, string> | undefined) + queryString(query as Record<string, QueryValue> | undefined);
 }
 
-/** Routes whose 401 is handled where they're called (sign-in, the session hand-off, /open's own explanation). */
-const AUTH_ROUTES: ReadonlySet<string> = new Set<JsonRoute>(["POST /api/auth/login", "GET /api/meta", "GET /api/open"]);
+/** Routes whose 401 is handled where they're called (sign-in, the session hand-off, /open's own explanation, a wrong current password). */
+const AUTH_ROUTES: ReadonlySet<string> = new Set<JsonRoute>(["POST /api/auth/login", "GET /api/meta", "GET /api/open", "POST /api/install/password"]);
+
+/**
+ * A hosted install's one-time setup code, from the setup link. Held in memory
+ * only — never in storage or the address bar — and sent only to first-run
+ * routes, until choosing the password signs this browser in.
+ */
+let setupCode: string | null = null;
+
+export function setSetupCode(code: string | null): void {
+  setupCode = code;
+}
+
+export function getSetupCode(): string | null {
+  return setupCode;
+}
+
+/** The setup code as a header, for the routes that take it; nothing for every other route. */
+export function setupCodeHeaders(url: string): Record<string, string> {
+  return setupCode && carriesSetupCode(url) ? { authorization: `Bearer ${setupCode}` } : {};
+}
+
+/** A refusal on a first-run route is the setup screen's to explain (a used or wrong link), not a lost session. */
+function handledInPlace(route: ApiRouteKey): boolean {
+  const { path } = splitRoute(route);
+  return AUTH_ROUTES.has(route) || path === "/api/setup" || path.startsWith("/api/setup/") || (setupCode !== null && carriesSetupCode(path.replace(/:[A-Za-z]+/g, "x")));
+}
 
 async function readError(route: string, response: Response): Promise<ApiFailure> {
   let shape: GalleyErrorShape | null = null;
@@ -159,7 +186,7 @@ async function readError(route: string, response: Response): Promise<ApiFailure>
 /** The failure a non-OK response means; a lost session also sends the person to sign in (once). */
 export async function failureFrom(route: ApiRouteKey, response: Response): Promise<ApiFailure> {
   const failure = await readError(route, response);
-  if (!AUTH_ROUTES.has(route) && isUnauthorized(response.status, failure.shape)) unauthorizedHandler?.();
+  if (!handledInPlace(route) && isUnauthorized(response.status, failure.shape)) unauthorizedHandler?.();
   return failure;
 }
 
@@ -180,11 +207,12 @@ export async function api<K extends JsonRoute>(route: K, ...[options]: ApiArgs<K
   };
   const { method, path } = splitRoute(route);
   const url = fillPath(path, opts.params) + queryString(opts.query);
-  const hasBody = method !== "GET" && method !== "DELETE";
+  // A DELETE carries a body only when its route's contract has one (removing the hosted editor takes `{ confirm: true }`); the types let no other DELETE pass one.
+  const hasBody = method === "DELETE" ? opts.body !== undefined : method !== "GET";
   const init: RequestInit = {
     method,
     credentials: "same-origin",
-    headers: hasBody ? { "content-type": "application/json", accept: "application/json" } : { accept: "application/json" },
+    headers: { ...(hasBody ? { "content-type": "application/json" } : {}), accept: "application/json", ...setupCodeHeaders(url) },
     signal: opts.signal,
   };
   if (hasBody) init.body = JSON.stringify(opts.body ?? {});

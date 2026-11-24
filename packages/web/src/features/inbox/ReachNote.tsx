@@ -4,12 +4,29 @@
  * `<CaptureReachNote siteId={…} />` beside the "Galley inbox" destination.
  */
 import type { CaptureSettings } from "@galley/core/api";
+import { useHostedInstall } from "@/lib/stores/meta";
 import { Icon, Skeleton, cx } from "@/ui";
 import { useCaptureSettings } from "./data";
+import { editorAddress, inboxReach } from "./reach";
 import "./inbox.css";
 
 export function ReachText({ settings, compact }: { settings: CaptureSettings; compact?: boolean }) {
-  if (settings.captureReachable) {
+  const reach = inboxReach(settings.captureReachable, useHostedInstall(), settings.captureReach);
+  if (reach === "private-address") {
+    return (
+      <div className={cx("app-reach", "app-reach--warning", compact && "app-reach--compact")} role="note">
+        <Icon name="warning" />
+        <div>
+          <p className="app-reach__lead">
+            This editor’s address, <span className="g-mono">{editorAddress(settings.captureAddress)}</span>, isn’t one visitors’ browsers can reach, so the live site’s forms can’t send to this inbox.
+          </p>
+          <p>Give the editor a public address, or send the form to a webhook or your CRM instead.</p>
+          {compact ? null : <p className="app-reach__address g-mono">{settings.captureAddress}</p>}
+        </div>
+      </div>
+    );
+  }
+  if (reach === "reachable") {
     return (
       <div className={cx("app-reach", "app-reach--ok", compact && "app-reach--compact")} role="note">
         <Icon name="globe" />

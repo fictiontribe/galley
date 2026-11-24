@@ -5,6 +5,67 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## Unreleased
+
+### Added
+
+- **A hosted install looks after one site.** `galley serve` (and the image)
+  now runs Galley for exactly one site, with its own state in one data
+  folder: ten sites are ten installs that share nothing. The desktop app and
+  the local command line stay multi-site. The multi-site routes answer 403 on
+  a hosted install, and it has an **Install** page instead of a Sites screen.
+  An older hosted data folder with one site is adopted in place; with several,
+  `GALLEY_SITE_DIR` names the one to keep. The whole account:
+  [`docs/cloud-install.md`](docs/cloud-install.md).
+- **First run from a one-time setup link**: choose the password, connect the
+  site — an existing repository, a folder inside one, or a starter sent to an
+  empty repository — with the install's own deploy key or an access token,
+  then the publishing name, the live address and the assistant's key. Or
+  restore from a backup. Everything it asks can be given up front as starting
+  values (the environment or one JSON file), used once, so restarts change
+  nothing.
+- **The preview through one address.** The preview and the live comparison
+  are served by hostname on the server's one port (`cms-preview.example.com`,
+  `cms-live.example.com`), on origins of their own, only to a browser the
+  editor let in.
+- **Backups**: one file sealed with a passphrase, from the Install page or
+  `galley backup create|restore`, with the site's unpublished changes and
+  history. Backups kept in the data folder's `backups/` are never part of a
+  backup and a restore leaves them alone.
+- **Operations**: `/healthz` and `/readyz`, logs with no secrets and one line
+  per request, a graceful stop, a memory ceiling for the site's own commands.
+- **The image and its files.** The image runs the server as `node` with no
+  capabilities. `galley host recipe` writes one install's compose file,
+  Caddyfile and `.env` (Caddy, a Caddy shared by several installs, or a
+  Cloudflare Tunnel in front), hardened, with no port published for the
+  editor; the repository's own `docker-compose.yml`, `Caddyfile` and
+  `.env.example` are that output. `scripts/create-install.sh` adds one install
+  per run to a server with Docker. Building the image needs Docker's
+  BuildKit. The image is not on a registry yet.
+- **Host the editor online**, from **Online** or `galley host`: a hosted
+  install for the open site on your own Fly.io account, behind a Cloudflare
+  Tunnel on a computer of yours, or as files for any server with Docker —
+  planned and priced before anything is created, keys handed over only when
+  you tick them, removed exactly. `--preview-address` and `--live-address`
+  for addresses like `example.co.uk`. Run against strict stand-ins for
+  Fly.io and Cloudflare, not yet against the real services. Plugins can add
+  hosts (`editorHosts`); `galley.config.json` gains `editor` (`url`, `host`).
+
+### Changed
+
+- **Sign-in on a hosted install**: `galley serve` no longer needs
+  `GALLEY_PASSWORD`. The password is stored as an scrypt hash, can be changed
+  in the app, and **Sign out everywhere** and sign-outs survive a restart; the
+  cookie is `__Host-` on `https://`. `galley serve --reset-password` replaces
+  a forgotten password with a new setup link and keeps serving; a setup code
+  that was used stays dead.
+- On a hosted install, preview ports are no longer used, and
+  `GALLEY_PREVIEW_PORTS` and `GALLEY_SITES_DIR` are ignored.
+- A hosted install keeps the site's live address in its own state, never in
+  the site's `galley.config.json` (the site's own `urls.production` wins), so
+  first run leaves no unpublished change; and installing the site's packages
+  for the preview never leaves a lockfile in a site that has none.
+- `galley serve` exits by itself once it has stopped.
 ## 0.1.3 — 2026-11-24
 
 Fixes for problems seen while capturing the tour and the how-to guides.

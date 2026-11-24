@@ -10,7 +10,7 @@ This page is for developers and operators. Galley keeps no database. Per-compute
 
 ## The Galley home
 
-`GALLEY_HOME`, default `~/.galley`. The CLI, the desktop app and a hosted server all use it the same way, so they see the same sites and settings when they share a home.
+`GALLEY_HOME`, default `~/.galley`. The CLI and the desktop app use it the same way, so they see the same sites and settings when they share a home. A hosted install's home is its **data folder** (`/data` in the image): the same settings and keys, plus its one site and its own state, and no sites list — see [what is kept where](/docs/running/hosted/#what-is-kept-where).
 
 | Path | What | Written |
 | --- | --- | --- |
@@ -23,6 +23,7 @@ This page is for developers and operators. Galley keeps no database. Per-compute
 | `plugins/` | plugins added with `galley plugin add` | `galley plugin` |
 | `tmp/candidates/` | generated images not saved to a site yet | image generation |
 | `session.key` | the key session cookies are signed with — 0600 | first start |
+| `install.json`, `keys/`, `site/` | a hosted install only: its state and the password's hash, its own deploy key, the site's copy | first run |
 
 Removing a site from the list (`DELETE /api/sites/<id>`) forgets its entry, its own keys and author; its folder stays on disk.
 
@@ -48,9 +49,11 @@ Secrets never cross the HTTP boundary: Settings receives whether each key is con
 
 Every variable the server, the engine, the CLI, the plugins and the site kit read is in [Environment variables](/docs/reference/environment/), checked against the source on every build of this site. Command-line options beat variables; variables beat defaults.
 
+A hosted install's own variables — its three addresses, the starting values first run would otherwise ask for, health, logs, stopping and backups — have a section of their own there: [A hosted install](/docs/reference/environment/#a-hosted-install). Its starting values are used once, so what someone changes in the app afterwards stays changed. The variables for creating one from this computer are under [Hosting the editor online](/docs/reference/environment/#hosting-the-editor-online).
+
 For development inside the repository, `pnpm dev` runs the server from source and opens the site in `GALLEY_SITE` (or the current folder), with state in `./.galley-home` unless `GALLEY_HOME` is set.
 
 ## Next
 
 - [Security model](/docs/running/security/).
-- [Hosting for a team](/docs/running/hosted/).
+- [Run a hosted install](/docs/running/hosted/).

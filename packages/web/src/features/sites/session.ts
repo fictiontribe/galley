@@ -77,9 +77,11 @@ export function useSiteSession(siteId: string): void {
 
 const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
-export function useSiteShortcuts(): void {
+/** ⌘1…⌘9 to the pinned and recent sites; off where there are no other sites (a hosted install). */
+export function useSiteShortcuts(enabled = true): void {
   const navigate = useNavigate();
   useEffect(() => {
+    if (!enabled) return;
     const onKey = (event: KeyboardEvent) => {
       const digit = shortcutDigit(event, isMac());
       if (digit === null) return;
@@ -90,5 +92,5 @@ export function useSiteShortcuts(): void {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [navigate]);
+  }, [navigate, enabled]);
 }

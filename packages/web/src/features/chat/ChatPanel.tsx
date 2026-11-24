@@ -4,6 +4,7 @@ import type { AgentMode, ChatContext, SendMessageRequest } from "@galley/core/ty
 import { api, errorShape } from "@/lib/api";
 import { invalidate, useQuery } from "@/lib/query";
 import { useSite } from "@/lib/stores/site";
+import { usePlaceWords } from "@/lib/where";
 import { keys } from "@/lib/sync";
 import { ConfirmDialog, EmptyState, ErrorState, IconButton, ProofMark, SegmentedControl, Skeleton, buttonClass } from "@/ui";
 import { checkAttachments } from "./attachments";
@@ -44,11 +45,12 @@ const readFile = (file: File) =>
   });
 
 function NoKey() {
+  const where = usePlaceWords();
   return (
     <div className="chat-nokey">
       <ProofMark kind="reg" className="chat-nokey__mark" />
       <h3 className="chat-nokey__title">Connect the assistant.</h3>
-      <p className="chat-nokey__body">Paste an API key in Settings. It’s stored on this computer only. Until then you can still edit in the form and on the page.</p>
+      <p className="chat-nokey__body">{`Paste an API key in Settings. It’s stored ${where.keyStore}. Until then you can still edit in the form and on the page.`}</p>
       <Link className={buttonClass("primary", "sm")} to="/settings">
         Open settings
       </Link>

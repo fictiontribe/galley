@@ -72,14 +72,15 @@ describe("resolveConfig", () => {
       },
     });
 
-    expect(config).toMatchObject({ mode: "hosted", port: 5000, home: "/data", sitesDir: "/data/sites", trustProxy: true, desktop: true, token: null, findFreePort: false });
+    // Hosted: one site, kept in the data folder (the owner's single-site decision).
+    expect(config).toMatchObject({ mode: "hosted", port: 5000, home: "/data", sitesDir: "/data/site", trustProxy: true, desktop: true, token: null, findFreePort: false });
     expect(config.publicUrl?.origin).toBe("https://cms.example.com");
   });
 
-  it("refuses hosted mode without a password, explaining why", () => {
-    expect(() => resolveConfig({ env: { GALLEY_HOST: "0.0.0.0" } })).toThrow(StartupError);
-    expect(() => resolveConfig({ env: { GALLEY_HOST: "0.0.0.0" } })).toThrow(/without a password: anyone who can reach that address could edit and publish/);
-    expect(() => resolveConfig({ env: {}, mode: "hosted" })).toThrow(/GALLEY_PASSWORD/);
+  it("starts hosted mode without a password: first run chooses it behind a one-time setup link", () => {
+    // Was "refuses hosted mode without a password" before installs had first run.
+    expect(resolveConfig({ env: { GALLEY_HOST: "0.0.0.0" } })).toMatchObject({ mode: "hosted", password: null });
+    expect(resolveConfig({ env: {}, mode: "hosted" })).toMatchObject({ mode: "hosted", password: null, starting: {} });
   });
 
   it("refuses a password under 12 characters", () => {

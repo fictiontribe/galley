@@ -8,6 +8,7 @@ import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { Deployment } from "@galley/core/types";
 import { useTopBar } from "@/app/chrome";
+import { EditorOnlineSection } from "@/features/hosting/EditorOnline";
 import { api, errorShape } from "@/lib/api";
 import { absoluteTime, bytes, count, relativeTime } from "@/lib/format";
 import { useQuery } from "@/lib/query";
@@ -248,6 +249,7 @@ export function OnlineScreen() {
       <div className="app-screen__inner">
         <PageHeader title="Online" description="Where the site lives on the internet. What’s live is what you’ve published; a preview link shows unpublished changes too." />
         <OnlineCard siteId={siteId} variant="settings" listLink={false} />
+        <EditorOnlineSection siteId={siteId} />
         <h2 className="app-section__title deploy-list__title">Deployments</h2>
         {list.loading ? (
           <Skeleton lines={4} />

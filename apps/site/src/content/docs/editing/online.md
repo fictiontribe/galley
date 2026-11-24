@@ -41,3 +41,5 @@ Galley first puts the site at the host's own address (`…workers.dev` or `…ve
 - **"The site's own build stopped with a problem."** The live site is unchanged. The last lines of the build are under **Technical details** — a job for whoever looks after the site's code.
 
 Costs are the host's: see Cloudflare's and Vercel's prices from the first step. Developers: [Deploying, for developers](/docs/running/deploy/).
+
+To edit the site from any browser too, put its editor online the same way: [Host the editor online](/docs/editing/editor-online/).

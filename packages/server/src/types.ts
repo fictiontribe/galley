@@ -4,6 +4,9 @@ import type { DeployService } from "@galley/core/deploy";
 import type { RedirectsService } from "@galley/core/redirects";
 import type { PluginRegistry } from "@galley/core/plugins";
 import type { VisibilityService } from "@galley/core/seo";
+import type { Install, SessionStamp } from "@galley/core/install";
+import type { RevocationList } from "./auth";
+import type { InstallOps } from "./ops";
 import type { McpMount } from "./mcp";
 import type { ImportService } from "./import";
 
@@ -35,6 +38,8 @@ export interface Services {
   imports?: ImportService;
   /** The site's own brand (galley/brand). Absent: the brand routes say it isn't available. */
   siteBrand?: import("@galley/core/sitebrand").SiteBrandService;
+  /** "Host the editor online" (local mode only). Absent: its routes say it isn't available. */
+  hosting?: import("@galley/core/hosting").HostingService;
 }
 
 export type ServerMode = "local" | "hosted";
@@ -82,6 +87,31 @@ export interface AppOptions {
   streams?: StreamRegistry;
   /** Serve the engine's tools over MCP at /mcp. Absent: no such route. */
   mcp?: McpMount | null;
+  /**
+   * Hosted mode: the install this server is — its state (password hash,
+   * sessions, setup code), its one site and first run. Created once in
+   * startServer. When present, sign-in checks the stored hash, sessions
+   * follow the install's "sign out everywhere", and /api/setup/* work.
+   */
+  install?: Install | null;
+  /** Mark the session cookie Secure always (hosted, https:// address): what lets it be a `__Host-` cookie. */
+  secureCookie?: boolean;
+  /**
+   * Hosted mode with a preview gateway: the gateway's two origins and how a
+   * one-use ticket is made for a signed-in session (gateway-auth.ts). Absent:
+   * the entry route answers the proxies' own addresses (local) or nothing (hosted).
+   */
+  previewEntry?: { origins: { preview: string; live: string }; issue(session: SessionStamp): string } | null;
+  /**
+   * Hosted mode without a preview gateway: the sentence a preview start ends
+   * with, at once — the editor has no address to show the preview on, and a
+   * hosted install never opens ports for it.
+   */
+  previewUnavailable?: string | null;
+  /** Signed-out sessions, shared with whatever else checks them (the preview gateway). Made from the install when absent. */
+  revocations?: RevocationList;
+  /** Hosted mode: health, backups, restores and the Install page (ops.ts). */
+  ops?: InstallOps | null;
 }
 
 /** Keeps track of open event streams so shutdown can end them. */
@@ -122,8 +152,23 @@ export interface ServerOptions {
   previewPorts?: string;
   /** Plain-language notices (port changes, warnings). Default: stderr. */
   notice?: (line: string) => void;
+  /**
+   * Hosted mode, `--reset-password`: forget the stored password, end every
+   * session, and print a new one-time setup link.
+   */
+  resetPassword?: boolean;
+  /** Hosted mode, test seam: replaces installing a starter's dependencies when first run sends one to the repository. */
+  siteInstall?: (root: string, onLog: (line: string) => void) => Promise<void>;
   log?: (line: string) => void;
   heartbeatMs?: number;
+  /** Hosted mode: where the preview is served (default GALLEY_PREVIEW_URL, then worked out from the public address). */
+  previewUrl?: string;
+  /** Hosted mode: where the live comparison is served (default GALLEY_LIVE_VIEW_URL, then worked out from the public address). */
+  liveViewUrl?: string;
+  /** How long a shutdown waits for a publish or a connect in progress (default GALLEY_SHUTDOWN_GRACE_MS, then 20 s). */
+  shutdownGraceMs?: number;
+  /** One line per request (default: on in hosted mode, GALLEY_LOG_REQUESTS=0 turns it off; off in local mode). */
+  logRequests?: boolean;
   /**
    * The MCP endpoint at /mcp. Defaults come from GALLEY_MCP (off/0 removes it),
    * GALLEY_MCP_BUILD (1: build mode) and GALLEY_MCP_PUBLISH (0: no publishing);
@@ -141,7 +186,28 @@ export interface RunningServer {
   /** Local mode token (or the operator's hosted token). */
   token: string | null;
   services: Services;
+  /** The data folder (GALLEY_HOME). */
+  home: string;
+  /** Hosted mode: the install (its state, its one site, first run). Null in local mode. */
+  install: Install | null;
+  /**
+   * Hosted mode, first run pending: `<address>/setup?token=…`, the one-time
+   * link that lets whoever has it choose the password. Null once a password
+   * exists, in local mode, or when the operator supplied only the code's hash.
+   */
+  setupUrl: string | null;
+  /** Hosted mode: things the operator should hear once at start (a GALLEY_PASSWORD that no longer applies…). Already passed to `notice`. */
+  notices: string[];
+  /** Hosted mode: the preview's and the live comparison's addresses, or null when none could be worked out. */
+  previews: { preview: string; live: string } | null;
+  /** What GET /readyz answers now. */
+  readiness(): import("@galley/core/install").ReadyStatus;
   /** URL that signs the browser in (local mode) and lands on `path`. */
   openUrl(path?: string): string;
-  close(): Promise<void>;
+  /**
+   * Stops taking requests, ends the event streams, lets a publish or a
+   * connect in progress finish for up to `graceMs` (default: the configured
+   * shutdown grace), stops the preview and closes everything.
+   */
+  close(options?: { graceMs?: number }): Promise<void>;
 }

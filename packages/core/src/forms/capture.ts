@@ -133,6 +133,15 @@ function json(status: number, body: CaptureResponse["body"], allowOrigin: string
   return { status, body, allowOrigin, ...extra };
 }
 
+/** The host name of an address, without IPv6 brackets; null when it can't be read. */
+function hostOf(address: string): string | null {
+  try {
+    return new URL(address).hostname.replace(/^\[|\]$/g, "") || null;
+  } catch {
+    return null;
+  }
+}
+
 /** "https://example.com" → also "https://www.example.com" (and back): one site, both addresses. */
 function withTwin(origin: string): string[] {
   const url = new URL(origin);
@@ -590,13 +599,19 @@ export class FormCaptureService {
     const app = this.appUrl() ?? "http://127.0.0.1";
     const captureAddress = `${app}/f/${encodeURIComponent(site.id)}`;
     const reachable = this.reachable(app);
+    const host = hostOf(app);
+    const kind = this.options.mode !== "hosted" ? "this-computer" : reachable ? "public" : "private-address";
 
     return {
       captureAddress,
       captureReachable: reachable,
-      reachability: reachable
-        ? "Visitors' browsers send submissions to this server's public address."
-        : "Submissions can only arrive when this app runs on a server visitors can reach. On this computer it works for testing.",
+      reachability:
+        kind === "public"
+          ? "Visitors' browsers send submissions to this server's public address."
+          : kind === "private-address"
+            ? `Browsers on the internet can't reach this editor's address${host ? ` (${host})` : ""}: it's a local or private name, not one on the internet. Test submissions arrive; for real ones, give the editor a public address.`
+            : "Submissions can only arrive when this app runs on a server visitors can reach. On this computer it works for testing.",
+      captureReach: { kind, host },
       origins,
       captureKey: stored.captureKey ? { enabled: true, hint: stored.captureKey.hint, createdAt: stored.captureKey.createdAt } : { enabled: false },
       notify: stored.notify,

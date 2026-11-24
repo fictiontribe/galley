@@ -18,6 +18,7 @@ export function summarizePlugin(plugin: GalleyPlugin): string {
   list(plugin.scriptIntegrations, "script integration", undefined, (item) => item.name);
   list(plugin.importers, "importer", undefined, (item) => item.name);
   list(plugin.deployTargets, "deploy target", undefined, (item) => item.name);
+  list(plugin.editorHosts, "editor host", undefined, (item) => item.info?.name || item.name);
   list(plugin.tools, "assistant tool", undefined, (item) => `${item.name}${item.effect.readOnly ? ", read-only" : ""}`);
   const hooks = Object.keys(plugin.hooks ?? {});
 

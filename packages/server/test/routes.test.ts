@@ -215,6 +215,8 @@ const happy: Row[] = [
   { key: "POST /api/sites/:siteId/preview/start", url: `${S}/preview/start` },
   { key: "POST /api/sites/:siteId/preview/stop", url: `${S}/preview/stop` },
   { key: "POST /api/sites/:siteId/preview/restart", url: `${S}/preview/restart` },
+  // Local mode: the proxies' own addresses. The hosted answer (one-use entry addresses) is in hosted-gateway.test.ts.
+  { key: "POST /api/sites/:siteId/preview/entry", url: `${S}/preview/entry` },
   { key: "POST /api/sites/:siteId/build", url: `${S}/build`, call: ["build", []] },
   { key: "GET /api/sites/:siteId/threads", url: `${S}/threads`, call: ["agent.listThreads", [SITE_ID]] },
   { key: "POST /api/sites/:siteId/threads", url: `${S}/threads`, body: { title: "Hero copy", mode: "content" }, call: ["agent.createThread", [SITE_ID, { title: "Hero copy", mode: "content" }]] },
@@ -366,6 +368,34 @@ const coveredElsewhere: ApiRouteKey[] = [
   "POST /api/sites/:siteId/import/rebuild-all",
   "GET /api/sites/:siteId/import/rebuild-all/:jobId",
   "POST /api/sites/:siteId/import/rebuild-all/:jobId/cancel",
+  // The hosted install's first run and sessions: test/install.test.ts, over real HTTP against the real engine.
+  "GET /api/setup",
+  "POST /api/setup/password",
+  "POST /api/setup/deploy-key",
+  "POST /api/setup/site/check",
+  "POST /api/setup/site",
+  "PUT /api/setup/details",
+  "POST /api/setup/handover",
+  "POST /api/setup/finish",
+  "POST /api/install/password",
+  "POST /api/auth/logout-all",
+  // The Install page, backups and restores: test/install-ops.test.ts, over real HTTP against real folders and a real repository.
+  "GET /api/install",
+  "POST /api/install/backup",
+  "POST /api/install/restore/upload",
+  "POST /api/install/restore",
+  // "Host the editor online": test/hosting.test.ts (the routes over a faked engine) and core test/hosting/ (the engine against fake hosts).
+  "GET /api/editor-hosts",
+  "POST /api/editor-hosts/:hostId/connect",
+  "GET /api/sites/:siteId/editor",
+  "POST /api/sites/:siteId/editor/plan",
+  "POST /api/sites/:siteId/editor",
+  "POST /api/sites/:siteId/editor/setup-link",
+  "POST /api/sites/:siteId/editor/check",
+  "POST /api/sites/:siteId/editor/upgrade",
+  "POST /api/sites/:siteId/editor/backup",
+  "GET /api/sites/:siteId/editor/removal",
+  "DELETE /api/sites/:siteId/editor",
 ];
 
 describe("route coverage", () => {

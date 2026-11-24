@@ -70,6 +70,8 @@ import type { PluginConflict, PluginInfo, VideoGenRequest, VideoJobStatus, Video
 import type { FormProviderInfo, ScriptIntegrationInfo } from "./kit";
 import type { CloudflareCheck, CloudflarePlan, ImportMode, ImportResolutions, ImportReview, Redirect, RedirectExportFormat, RedirectHealth, RedirectHostId, RedirectsOverview, RedirectTrace } from "./redirects/types";
 import type { AddSitesRequest, AddSitesResult, ScanSitesRequest, ScanSitesResult, SiteConnections, SiteGroup, SiteGroupInput, SitePatch, SiteUsageTotals } from "./types";
+import type { DeployKeyInfo, InstallInfo, RestoreUpload, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./install/types";
+import type { EditorHostAbsent, EditorHostAccount, EditorHostInfo, HostedEditorBackup, HostedEditorPlan, HostedEditorRemoval, HostedEditorRequest, HostedEditorStatus } from "./hosting/types";
 
 /**
  * Every catalogue the app chooses from, merged from all enabled plugins
@@ -83,6 +85,8 @@ export interface PluginCatalog {
   videoProviders: VideoProviderInfo[];
   importers: Array<{ id: string; name: string; description: string; input: "url" | "file" | "url-or-file"; docsUrl?: string; plugin: string; command: boolean }>;
   deployTargets: Array<{ id: string; name: string; blurb?: string; plugin: string }>;
+  /** Where the editor itself can be hosted online ("Host the editor online"). */
+  editorHosts?: Array<{ id: string; name: string; summary?: string; plugin: string }>;
   /** Where field values can be picked from (a field opts in with `dataSource` in galley.config.json). */
   dataSources?: Array<{ id: string; label: string; description?: string; plugin: string }>;
 }
@@ -247,6 +251,16 @@ export interface CaptureSettings {
   captureReachable: boolean;
   /** One plain sentence about reachability, for wherever the inbox is offered. */
   reachability: string;
+  /**
+   * Why `captureReachable` is what it is, so the screens can say the true thing:
+   *  public          — a hosted install on an address on the internet;
+   *  this-computer   — the app runs on this computer (local mode);
+   *  private-address — a hosted install whose address is a local or private
+   *                    name or number (`host`: "cms.localhost", "10.0.0.5"),
+   *                    which browsers on the internet can't reach.
+   * `host` is the capture address's host name (null when it can't be read).
+   */
+  captureReach?: { kind: "public" | "this-computer" | "private-address"; host: string | null };
   origins: {
     /** From the site's production and staging addresses (with the www. twin). */
     site: string[];
@@ -809,6 +823,67 @@ export interface ApiRoutes {
   "POST /api/sites/:siteId/brand/import": { body: { bundle: unknown }; response: import("./sitebrand/types").BrandProposal };
   /** One of the site's own web fonts, for the specimen. Not called through the JSON client. */
   "GET /api/sites/:siteId/brand/fonts/:fontId": { response: never };
+
+  /**
+   * The addresses to load the two preview frames from, right now. Locally
+   * they are the preview's own; on a hosted install each carries a one-use
+   * ticket that lets this browser (and nobody else) see the preview.
+   */
+  "POST /api/sites/:siteId/preview/entry": { response: { preview: string | null; baseline: string | null } };
+
+  // ── the hosted install: first run (install/types.ts) ───────────────────
+  // Hosted mode only; in local mode every one of these answers 404.
+  // Until a password exists they accept the one-time setup code as
+  // `Authorization: Bearer`; afterwards only a signed-in session.
+  "GET /api/setup": { response: SetupStatus };
+  /** Choose the sign-in password. Uses up the setup link and signs this browser in. */
+  "POST /api/setup/password": { body: { password: string }; response: SetupStatus };
+  /** The install's own deploy key: made on first use, replaced with `rotate`. Only ever the public half. */
+  "POST /api/setup/deploy-key": { body: { rotate?: boolean }; response: DeployKeyInfo };
+  /** Whether the repository can be reached and written to. Changes nothing. */
+  "POST /api/setup/site/check": { body: SiteConnectRequest; response: SiteAccessCheck };
+  /** Connect the install's one site: copy the repository, or send a starter to an empty one. A second site is refused. */
+  "POST /api/setup/site": { body: SiteConnectRequest; response: Job };
+  "PUT /api/setup/details": { body: { author?: { name: string; email: string }; liveUrl?: string | null }; response: SetupStatus };
+  /** Everything at once, from the app that created the install (the unattended half of first run). */
+  "POST /api/setup/handover": { body: SetupHandover; response: SetupStatus };
+  "POST /api/setup/finish": { response: SetupStatus };
+
+  // ── the hosted install: the Install page ───────────────────────────────
+  "GET /api/install": { response: InstallInfo };
+  /** Change the sign-in password. Every other browser is signed out. */
+  "POST /api/install/password": { body: { current: string; next: string }; response: Ok };
+  /** Sign out everywhere, this browser included. */
+  "POST /api/auth/logout-all": { response: Ok };
+  /**
+   * Download a backup of the install's state, sealed with the passphrase
+   * (application/octet-stream). Not called through the JSON client.
+   */
+  "POST /api/install/backup": { body: { passphrase: string }; response: never };
+  /** Upload a backup file as the raw request body (application/octet-stream). Also accepted with the setup code, to start an install from a backup. */
+  "POST /api/install/restore/upload": { response: RestoreUpload };
+  /** Put an uploaded backup back in place of the install's current state. */
+  "POST /api/install/restore": { body: { upload: string; passphrase: string }; response: Job };
+
+  // ── "Host the editor online" (hosting/types.ts) ────────────────────────
+  // Local mode only: a hosted install never creates other installs.
+  "GET /api/editor-hosts": { response: { hosts: EditorHostInfo[]; absent: EditorHostAbsent[] } };
+  /** With `key`: check it with the host and store it only when accepted. Then: what the key can do. Creates nothing. */
+  "POST /api/editor-hosts/:hostId/connect": { body: { key?: string; secret?: SecretName }; response: EditorHostAccount };
+  "GET /api/sites/:siteId/editor": { response: HostedEditorStatus };
+  /** Everything that would be created, what it costs and what the install is handed. Creates nothing. */
+  "POST /api/sites/:siteId/editor/plan": { body: HostedEditorRequest; response: HostedEditorPlan };
+  /** Create the install a plan described. `confirm` must be true: nothing is created without the person's yes. */
+  "POST /api/sites/:siteId/editor": { body: { plan: string; confirm: true }; response: Job };
+  /** The first-run link of an install whose setup isn't finished. One use; told to this computer only. */
+  "POST /api/sites/:siteId/editor/setup-link": { response: { url: string } };
+  /** own-server: the person says the files are running; check the address, hand the site over. */
+  "POST /api/sites/:siteId/editor/check": { response: HostedEditorStatus };
+  "POST /api/sites/:siteId/editor/upgrade": { response: Job };
+  "POST /api/sites/:siteId/editor/backup": { response: HostedEditorBackup };
+  /** What removing would delete. Deletes nothing. */
+  "GET /api/sites/:siteId/editor/removal": { response: HostedEditorRemoval };
+  "DELETE /api/sites/:siteId/editor": { body: { confirm: true }; response: Job };
 }
 
 export type ApiRouteKey = keyof ApiRoutes;
@@ -829,4 +904,4 @@ export const OVERLAY_SCRIPT_PATH = "/__galley/overlay.js";
 export const PROXY_HEALTH_PATH = "/__galley/health";
 
 /** Secret names accepted by PUT /api/secrets/:name. */
-export const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel"];
+export const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly"];

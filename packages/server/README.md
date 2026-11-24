@@ -3,7 +3,8 @@
 The engine behind an HTTP API, a live event stream and the web UI. It
 implements every route in `ApiRoutes` (`packages/core/src/api.ts`) and nothing
 else; the web UI, the CLI (`galley`), the desktop shell and hosted deployments
-all run this same server.
+all run this same server. A hosted server looks after exactly one site
+(`docs/cloud-install.md`).
 
 ```ts
 import { createApp, startServer } from "@galley/server";
@@ -22,15 +23,16 @@ and serves. Signal handling belongs to the caller (the CLI).
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `GALLEY_PORT` | `4400` | Port. In local mode a busy port moves to the next free one (and says so); in hosted mode it is an error. |
-| `GALLEY_HOST` | `127.0.0.1` | Interface to listen on. Anything other than a loopback address means **hosted mode**. |
-| `GALLEY_PUBLIC_URL` | — | Hosted: the external address, e.g. `https://cms.example.com`. Used for the Host and Origin checks, the preview proxies' hostname, and the CSP `frame-src`. Without it the server answers to any hostname (with a warning). |
-| `GALLEY_PASSWORD` | — | Hosted: the sign-in password, at least 12 characters. Required; the server refuses to start without it. Read from the environment only. |
+| `GALLEY_HOST` | `127.0.0.1` | Interface to listen on. Anything other than a loopback address means **hosted mode**: one site. |
+| `GALLEY_PUBLIC_URL` | — | Hosted: the external address, e.g. `https://cms.example.com`. Used for the Host and Origin checks, the preview's and live comparison's default hostnames, and the CSP `frame-src`. Without it the server answers to any hostname and has no preview (with a warning). |
+| `GALLEY_PREVIEW_URL`, `GALLEY_LIVE_VIEW_URL` | worked out from `GALLEY_PUBLIC_URL` | Hosted: where the preview and the live comparison are served, by hostname, on the same port (`cms-preview.example.com`, `cms-live.example.com`). See [Previews](#previews). |
+| `GALLEY_PASSWORD` | — | Hosted: a starting value — the first sign-in password (12+ characters), used only while none exists. Without it the server prints a one-time setup link. Read from the environment only. The other starting values (`GALLEY_SITE_*`, `GALLEY_AUTHOR_*`, `GALLEY_SETUP_TOKEN*`, `GALLEY_INSTALL_CONFIG`) and the operations variables are listed by `galley serve --help`. |
 | `GALLEY_TOKEN` | random | Local: the session token (32 random bytes when unset). Hosted: optional, enables `Authorization: Bearer` for scripts. At least 16 characters. |
-| `GALLEY_HOME` | `~/.galley` | State: settings, stored keys (0600), usage, the list of known sites, each site's conversations (`state/<site id>/threads`), the hosted cookie-signing key (`session.key`, 0600). |
-| `GALLEY_SITES_DIR` | `<home>/sites` | Where cloned and new sites go. In hosted mode, the only folder sites can be opened from, cloned into or created in, and the root of the folder picker. |
+| `GALLEY_HOME` | `~/.galley` | State: settings, stored keys (0600), usage, the list of known sites, each site's conversations (`state/<site id>/threads`), the cookie-signing key (`session.key`, 0600). Hosted: the install's data folder — its state (`install.json`), its keys (`keys/`) and its one site (`site/`). |
+| `GALLEY_SITES_DIR` | `<home>/sites` | Local: where cloned and new sites go. Ignored in hosted mode (said once at start-up). |
 | `GALLEY_STARTERS_DIR` | repo `starters/` (bundle: `dist/starters`) | Starter templates for new sites, one folder each. |
 | `GALLEY_WEB_DIR` | `packages/web/dist` (bundle: `dist/web`) | The built web UI. When it has no `index.html`, a page explains how to build it. |
-| `GALLEY_PREVIEW_PORTS` | any free port | A range like `4410-4429` that every preview proxy and live-site (baseline) proxy is given a port from, lowest free first — for a container or firewall that forwards fixed ports. An open preview holds one port, two when its site has a live address. When all are taken, starting another preview says how many are open. Also the `previewPorts` option. See [Previews](#previews). |
+| `GALLEY_PREVIEW_PORTS` | any free port | Local: a range like `4410-4429` that every preview proxy and live-site (baseline) proxy is given a port from, lowest free first. An open preview holds one port, two when its site has a live address. When all are taken, starting another preview says how many are open. Also the `previewPorts` option. Ignored in hosted mode, which opens no preview port. |
 | `GALLEY_BRAND_FILE` | — | JSON brand override (`productName`, `byline`, `logoUrl`, `accent`, `supportUrl`, `docsUrl`), validated at start-up. |
 | `GALLEY_BRAND_NAME` | — | Shortcut: product name shown in the UI. Beats the brand file. |
 | `GALLEY_BRAND_ACCENT` | — | Shortcut: accent color (hex). Beats the brand file. |
@@ -72,15 +74,20 @@ checks it in constant time, sets an `HttpOnly; SameSite=Strict` session cookie
 same path without the token. API calls need that cookie or
 `Authorization: Bearer <token>`.
 
-**Hosted mode** (`GALLEY_HOST` not loopback, or `galley serve`). Refuses to
-start without `GALLEY_PASSWORD` (12+ characters). `POST /api/auth/login`
-compares in constant time; 5 failed attempts per minute per client address
-earn a 429 until the minute is up. The session cookie is
-`issuedAt.nonce.HMAC-SHA256`, signed with a key kept in the home, valid for 30
-days, `HttpOnly; SameSite=Strict`, and `Secure` when the request is HTTPS (or
-`X-Forwarded-Proto: https` with `GALLEY_TRUST_PROXY=1`). Logout clears it and
-revokes it for the life of the process. Sites are confined to
-`GALLEY_SITES_DIR`.
+**Hosted mode** (`GALLEY_HOST` not loopback, or `galley serve`). One site
+(`hosted-refusals.ts` answers the multi-site routes with 403 and the "Host the
+editor online" routes with 404). With no password yet, the server prints a
+one-time setup link; the code is kept as its SHA-256 and the first-run routes
+(`/api/setup…`) take it as a Bearer value until a password exists. The
+password is stored as an scrypt hash in the install's state.
+`POST /api/auth/login` compares in constant time; wrong passwords and wrong
+setup codes share one limit, 5 a minute per client address, then a 429 until
+the minute is up. The session cookie is signed with a key kept in the home,
+valid for 30 days, `HttpOnly; SameSite=Strict`; on an `https://` public
+address it is `__Host-` and always `Secure`. Logout, "sign out everywhere"
+(`POST /api/auth/logout-all`) and a password change are recorded in the
+install's state, so they survive a restart. `GET /healthz` and `GET /readyz`
+answer anyone, with nothing that identifies the install.
 
 **Every request**: the `Host` header must name the server (loopback names, the
 listening address, the public URL's host) — the DNS-rebinding guard. **Every
@@ -103,8 +110,8 @@ bodies are limited to 40 MB.
 `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src <previews>; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'`,
 where `<previews>` is `http://127.0.0.1:* http://localhost:*` locally (not
 `[::1]`: browsers reject an IPv6 literal with a port wildcard as a source, and
-the preview proxies bind 127.0.0.1 anyway) and the public host on any port,
-over http and https, when hosted. Hashed assets
+the preview proxies bind 127.0.0.1 anyway) and the preview's and live
+comparison's two origins when hosted. Hashed assets
 (`/assets/*`) are cached for a year; everything else, including `index.html`,
 is `no-cache`. Unknown non-API paths fall back to `index.html`.
 
@@ -130,35 +137,27 @@ free ports. A dev server already answering on the site's configured port is
 used only when it runs from that site's folder; otherwise the site gets its
 own, on a free port.
 
-**Hosted behind a fixed port mapping** (a container, a firewall), set
-`GALLEY_PREVIEW_PORTS=4410-4429` and forward that range unchanged: the
-proxies take ports from it, and the preview URLs name the `GALLEY_PUBLIC_URL`
-host with those ports. The `Dockerfile` sets that range and `EXPOSE`s it, and
-`docker-compose.yml` publishes it.
-
-**Over HTTPS there is a limitation.** The proxies speak plain HTTP. When the
-app itself is served over HTTPS, a browser blocks a plain-HTTP preview inside
-it as mixed content. Previews are therefore offered as
-`https://<public host>:<port>` whenever `GALLEY_PUBLIC_URL` is `https://` —
-and your reverse proxy must terminate TLS on each port of the range too, and
-forward it to the same port on Galley. With Caddy, for example (publish the
-range on Caddy instead of on the Galley container):
+**Hosted**, no preview port is opened. Three hostnames reach the server's
+one port: the editor (`GALLEY_PUBLIC_URL`), the preview (`GALLEY_PREVIEW_URL`,
+default `cms-preview.example.com`) and the live comparison
+(`GALLEY_LIVE_VIEW_URL`, default `cms-live.example.com`). Requests for the
+last two never reach the app: the preview gateway (`src/gateway.ts`) hands
+them to the proxy mounted for that hostname. Hostnames, not paths, because
+sites and dev servers use root-absolute URLs and hot reload assumes the root;
+and another origin than the editor, so the site's scripts can never act as
+the signed-in person. Only a browser the editor let in sees them: the editor
+gets a one-use, 60-second ticket from `POST /api/sites/:siteId/preview/entry`,
+each frame loads `/__galley/enter?ticket=…` on its hostname, and the gateway
+trades the ticket for a viewer cookie derived from that sign-in, which ends
+with it (`src/gateway-auth.ts`). Strangers get a 401 page; neither cookie is
+forwarded to the site. A reverse proxy in front must keep the `Host` header
+and terminate TLS for all three names — one Caddy site block does:
 
 ```caddyfile
-cms.example.com {
-	reverse_proxy galley:4400
+cms.example.com, cms-preview.example.com, cms-live.example.com {
+	reverse_proxy editor:4400
 }
-cms.example.com:4410 {
-	reverse_proxy galley:4410
-}
-cms.example.com:4411 {
-	reverse_proxy galley:4411
-}
-# …one block per port, through 4429
 ```
-
-Routing previews through the main origin (one port, no extra TLS) would
-remove this step; it is future work.
 
 ## Deep links from a site's dev toolbar
 

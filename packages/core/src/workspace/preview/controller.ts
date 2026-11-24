@@ -31,7 +31,7 @@ import { resolveCommand } from "../command";
 import { IS_WINDOWS, killTree, stripAnsi } from "../exec";
 import { portOwnership, type Ownership } from "./owner";
 import { freePort, type PortPool } from "./ports";
-import { probe, startBaselineProxy, startPreviewProxy, type ProxyHandle, type ProxyPorts } from "./proxy";
+import { probe, startBaselineProxy, startPreviewProxy, type PreviewGateway, type ProxyHandle, type ProxyPorts } from "./proxy";
 
 export interface PreviewSettings {
   dev: { command: string; port: number | null; portArgs?: string[] } | null;
@@ -58,6 +58,12 @@ export interface PreviewOptions {
   publicProtocol?: "http" | "https";
   /** The operator's port range for the proxies (GALLEY_PREVIEW_PORTS). Default: any free port. */
   ports?: PortPool;
+  /**
+   * Mount both proxies on the server's one address instead of giving them
+   * ports (a hosted install). `host`, `publicHost`, `publicProtocol` and
+   * `ports` are then unused, and the status's URLs are the gateway's.
+   */
+  gateway?: PreviewGateway;
   onStatus?: (status: PreviewStatus) => void;
   /** How long to wait for the dev server to answer. Default 120 s. */
   readyTimeoutMs?: number;
@@ -65,6 +71,8 @@ export interface PreviewOptions {
   ownership?: (port: number, root: string) => Promise<Ownership>;
   /** A request or upgrade reached the preview proxy (the multi-site preview policy measures "unused" with it). */
   onActivity?: () => void;
+  /** False: installing the site's dependencies never adds a lockfile the site doesn't have (see InstallDependenciesOptions). Default true. */
+  addLockfile?: boolean;
 }
 
 /** What the status says after a pause, and while the preview wakes again. */
@@ -469,7 +477,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
     try {
       if (!settings.installed && existsSync(join(options.root, "package.json"))) {
         set("installing", { detail: "Installing the site's dependencies. The first time can take a few minutes.", startedAt });
-        await installDependencies(options.root, settings.packageManager, pushLog, settings.environment);
+        await installDependencies(options.root, settings.packageManager, pushLog, settings.environment, options.addLockfile === false ? { addLockfile: false } : {});
         if (stale()) return snapshot();
       }
       set("starting", { detail: waking ? WAKING_DETAIL : "Starting the preview.", startedAt });
@@ -597,6 +605,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
         ...(options.pageAttributes ? { pageAttributes: options.pageAttributes } : {}),
         ...(ports ? { ports } : {}),
         ...(options.publicProtocol ? { publicProtocol: options.publicProtocol } : {}),
+        ...(options.gateway ? { gateway: options.gateway } : {}),
         onActivity: () => {
           lastActivityAt = Date.now();
           options.onActivity?.();
@@ -622,12 +631,15 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
           overlayScript: options.overlayScript,
           ...(ports ? { ports } : {}),
           ...(options.publicProtocol ? { publicProtocol: options.publicProtocol } : {}),
+          ...(options.gateway ? { gateway: options.gateway } : {}),
         });
         if (stale()) {
           await teardown();
           return snapshot();
         }
-        const answer = await probe(baseline.url + "/", 8000);
+        // A gateway lets only signed-in browsers through (and its public
+        // address may not even resolve from here), so the deployed site is asked directly.
+        const answer = await probe(options.gateway ? new URL("/", baselineTarget).href : baseline.url + "/", 8000);
 
         if (answer === 401 || answer === 403) {
           detail += " The deployed site asks for a password, so you may need to sign in to see it side by side.";

@@ -35,6 +35,8 @@ import { createMockVisibility } from "./visibility.ts";
 import { createMockBrand } from "./brand.ts";
 import { createMockImport } from "./import.ts";
 import { createMockPlugins } from "./plugins.ts";
+import { installHandlers } from "./install.ts";
+import { hostingHandlers } from "./hosting.ts";
 
 // ── handler types ─────────────────────────────────────────────────────────
 
@@ -116,6 +118,7 @@ export class MockBackend {
     google: { name: "google", configured: false, source: null },
     cloudflare: { name: "cloudflare", configured: false, source: null },
     vercel: { name: "vercel", configured: false, source: null },
+    fly: { name: "fly", configured: false, source: null },
   };
   settings: Omit<Settings, "secrets">;
   /** Image providers the enabled plugins add (OpenRouter); set by the plugin handlers (plugins.ts). */
@@ -343,6 +346,8 @@ export function createHandlers(mock: MockBackend): Handlers {
     ...plugins.handlers,
     ...siteBrand.handlers,
     ...wordpress.handlers,
+    ...installHandlers(),
+    ...hostingHandlers(mock),
     "GET /api/meta": ({ search }) => {
       if (search.get("token")) mock.authenticated = true;
       const meta: MetaInfo = { version: VERSION, brand: DEFAULT_BRAND, mode: mock.options.mode, authenticated: mock.authenticated, desktop: false, platform: process.platform };
@@ -672,6 +677,11 @@ export function createHandlers(mock: MockBackend): Handlers {
       mock.stopPreview(params.siteId);
       void mock.startPreview(params.siteId);
       return mock.previews.get(params.siteId)?.status ?? { state: "starting", url: null, baselineUrl: null, baselineSource: null, log: [] };
+    },
+    "POST /api/sites/:siteId/preview/entry": ({ params }) => {
+      const status = mock.previews.get(params.siteId)?.status;
+
+      return { preview: status?.url ?? null, baseline: status?.baselineUrl ?? null };
     },
     "POST /api/sites/:siteId/build": async ({ params }) => {
       const site = mock.site(params.siteId);

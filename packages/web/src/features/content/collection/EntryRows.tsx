@@ -19,10 +19,11 @@ export interface EntryRowsProps {
   label: string;
   onDelete: (entry: EntrySummary) => void;
   siteUrl: (path: string) => string | null;
+  openSite?: (path: string) => void;
 }
 
 function PageRows({ page, props, active, onActivate, focusRequest }: { page: number; props: EntryRowsProps; active: number; onActivate: (index: number) => void; focusRequest: RefObject<boolean> }) {
-  const { siteId, queryKey, fetchPage, total, columns, media, onDelete, siteUrl } = props;
+  const { siteId, queryKey, fetchPage, total, columns, media, onDelete, siteUrl, openSite } = props;
   const result = useQuery([...queryKey, page], () => fetchPage(page * PAGE_SIZE, PAGE_SIZE));
   const start = page * PAGE_SIZE;
   if (!result.data) {
@@ -57,6 +58,7 @@ function PageRows({ page, props, active, onActivate, focusRequest }: { page: num
           onActivate={onActivate}
           onDelete={onDelete}
           siteUrl={siteUrl}
+          openSite={openSite}
           focusRequest={focusRequest}
         />
       ))}

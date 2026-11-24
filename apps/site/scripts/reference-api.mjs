@@ -15,7 +15,7 @@ import ts from "typescript";
 /** One line per route, where the doc comment in api.ts is missing or too long for a table. */
 const LINES = {
   "GET /api/meta": "Version, brand, mode (`local` or `hosted`), whether the caller is signed in, whether the desktop app is the host. Answers without a session, with less detail.",
-  "POST /api/auth/login": "Hosted mode: sign in with the shared password; sets the session cookie. Rate-limited.",
+  "POST /api/auth/login": "Hosted install: sign in with the password; sets the session cookie. Rate-limited.",
   "POST /api/auth/logout": "Clear and revoke the session.",
   "GET /api/events": "The live event stream ([below](#events)).",
   "GET /api/settings": "Model and effort, image and video choices, author, theme, previews, and each key's status (never its value).",
@@ -23,14 +23,14 @@ const LINES = {
   "PUT /api/secrets/:name": "Save a shared key — `anthropic`, `openai`, `google`, `cloudflare` or `vercel`; `null` removes it. Returns its status only.",
   "GET /api/usage": "What the assistant and image generation cost at list prices: today, 7 and 30 days, all time, per model.",
   "GET /api/sites": "The sites in this app's list, with their group, note and what each is waiting on.",
-  "POST /api/sites/open": "Add and open a folder (an absolute path). In hosted mode, only inside the sites folder.",
-  "POST /api/sites/clone": "Clone a repository into the sites folder, as a job.",
-  "POST /api/sites/create": "Create a site from a starter, as a job.",
+  "POST /api/sites/open": "Add and open a folder (an absolute path). A hosted install refuses it (403): it looks after one site.",
+  "POST /api/sites/clone": "Clone a repository into the sites folder, as a job. Refused on a hosted install.",
+  "POST /api/sites/create": "Create a site from a starter, as a job. Refused on a hosted install.",
   "GET /api/starters": "The starters and their looks.",
   "GET /api/jobs/:jobId": "A job's state, progress and result.",
-  "GET /api/fs/list": "Folders on the server's disk, for the folder picker; marks the ones that look like sites. Confined to the sites folder in hosted mode.",
+  "GET /api/fs/list": "Folders on this computer's disk, for the folder picker; marks the ones that look like sites. Refused on a hosted install.",
   "GET /api/sites/:siteId": "The site, with its full model (detection merged with the config file).",
-  "DELETE /api/sites/:siteId": "Forget the site, its own keys and author. Its files stay on disk.",
+  "DELETE /api/sites/:siteId": "Forget the site, its own keys and author. Its files stay on disk. Refused on a hosted install.",
   "POST /api/sites/:siteId/refresh": "Run detection again.",
   "GET /api/sites/:siteId/config": "The site's `galley.config.json` (or `null`) and the model detection found before it.",
   "PUT /api/sites/:siteId/config": "Replace `galley.config.json`. Validated; refused when invalid.",
@@ -106,6 +106,15 @@ const LINES = {
   "DELETE /api/sites/:siteId/brand/sources/:sourceId": "Remove a piece of material.",
   "DELETE /api/sites/:siteId/brand/proposal": "Throw the proposal away.",
   "POST /api/sites/:siteId/brand/apply": "Write the brand's values into the site's tokens file, as pending changes.",
+  "GET /api/setup": "Where first run is: password, site, details or done, with the site's state and what the operator fixed. Takes the setup code until a password exists.",
+  "PUT /api/setup/details": "Save the publishing name and e-mail and the live address during first run.",
+  "POST /api/setup/finish": "End first run once the password is chosen and the site connected. The setup link stops working.",
+  "GET /api/install": "The Install page: address, version, the site's repository and how it is reached, the publishing name, what is stored where.",
+  "GET /api/editor-hosts": "The places the editor can be hosted, each key's status (never its value), and the hosts that can't run it with the reason.",
+  "GET /api/sites/:siteId/editor": "The site's editor online: what its settings say, what this computer created, whether it answers, its version.",
+  "POST /api/sites/:siteId/editor/upgrade": "Move the hosted editor to this version's image, keeping its disk, as a job.",
+  "POST /api/sites/:siteId/editor/backup": "Copy the hosted editor's disk on the host, or say where its backups are downloaded.",
+  "DELETE /api/sites/:siteId/editor": "Delete exactly what was created for the hosted editor, as a job. `confirm` must be true.",
 };
 
 /** Section headings in api.ts that read better with a different title here. */
@@ -117,6 +126,9 @@ const SECTION_TITLES = {
   "bringing a site over: the WordPress import (docs/wordpress-import.md)": "The WordPress import",
   "the site's brand (docs/brand.md)": "The site's brand",
   "files (source view)": "Files (the source view)",
+  "the hosted install: first run (install/types.ts)": "The hosted install: first run",
+  "the hosted install: the Install page": "The hosted install: the Install page",
+  "\"Host the editor online\" (hosting/types.ts)": "Host the editor online",
 };
 
 const INTRO = `This page is for developers integrating with Galley — scripts, CI jobs, other tools. The web app uses exactly this API and nothing else: its client is typed from the \`ApiRoutes\` map in [\`packages/core/src/api.ts\`]({repository}/blob/main/packages/core/src/api.ts), where every request and response type named below is defined. **This page is generated from that file** (\`apps/site/scripts/reference-api.mjs\`), so it lists every route there is. The API is at version 0.1 and may change before 1.0.
@@ -124,7 +136,7 @@ const INTRO = `This page is for developers integrating with Galley — scripts, 
 ## Conventions
 
 - **JSON in, JSON out.** File and entry paths travel in the query string or the body, never as an address segment, relative to the site's folder with \`/\` separators: \`?path=src/content/journal/why-we-make-forty.md\`.
-- **Who may call.** Three routes answer anyone: \`GET /api/meta\`, sign-in and sign-out (*Anyone* below). Every other route needs a session (*Signed in*): the browser's session cookie, or \`Authorization: Bearer <token>\`. On your own computer the token is the one in the link Galley prints (set your own with \`GALLEY_TOKEN\`, 16 characters or more); in hosted mode set \`GALLEY_TOKEN\` on the server to allow Bearer access at all. There are no roles: a session can call every route.
+- **Who may call.** Three routes answer anyone: \`GET /api/meta\`, sign-in and sign-out (*Anyone* below). Every other route needs a session (*Signed in*): the browser's session cookie, or \`Authorization: Bearer <token>\`. On your own computer the token is the one in the link Galley prints (set your own with \`GALLEY_TOKEN\`, 16 characters or more); in hosted mode set \`GALLEY_TOKEN\` on the server to allow Bearer access at all. On a hosted install the first-run routes also take the one-time setup code as the Bearer token until a password exists. There are no roles: a session can call every route.
 - **State-changing requests** (\`POST\`, \`PUT\`, \`PATCH\`, \`DELETE\`) also need the Bearer token, or a same-origin \`Origin\` header. Request bodies are limited to 40 MB.
 - **Site routes** (\`/api/sites/:siteId/…\`) run with that site's own keys and author when it has them ([Look after many sites](/docs/editing/many-sites/)).
 - **Errors** are \`{ "error": { "code", "message", "detail"? } }\` with a matching status. \`message\` is written for a person; \`detail\` carries the technical cause when it is safe to show.
@@ -147,7 +159,7 @@ curl -s -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/sites
 
 In the tables, *Takes* is the query (\`?…\`) and body; *Returns* is the response type, both named as in \`api.ts\`. A response of *a file* or *a stream* isn't JSON.
 
-Two addresses outside \`/api\` have their own rules: \`/mcp\` (the [MCP endpoint](/docs/integrations/mcp/), Bearer only) and \`/f/:siteId\` (form submissions from the site's own pages — [Forms for developers](/docs/forms/)).`;
+Addresses outside \`/api\` have their own rules: \`/mcp\` (the [MCP endpoint](/docs/integrations/mcp/), Bearer only), \`/f/:siteId\` (form submissions from the site's own pages — [Forms for developers](/docs/forms/)), and on a hosted install \`/healthz\` and \`/readyz\`, which answer anyone and say nothing about the install ([Run a hosted install](/docs/running/hosted/#health-logs-and-stopping)).`;
 
 const OUTRO = `## Events
 
@@ -159,7 +171,7 @@ curl -sN -H "Authorization: Bearer $GALLEY_TOKEN" http://127.0.0.1:4400/api/even
 
 ## Next
 
-- [Security](/docs/running/security/) — what a session can do, and what hosted mode adds.
+- [Security](/docs/running/security/) — what a session can do, and what a hosted install adds.
 - [Environment variables](/docs/reference/environment/) — \`GALLEY_TOKEN\` and the rest.`;
 
 const cell = (text) => text.replace(/\|/g, "\\|").replace(/\s+/g, " ").trim();

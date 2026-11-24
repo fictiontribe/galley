@@ -14,7 +14,7 @@ afterEach(() => {
 
 const SITE_ORIGIN = "https://example.com";
 
-function setup(options: { mode?: "local" | "hosted"; working?: Record<string, FormDefinition | string>; published?: Record<string, FormDefinition | string>; hook?: Array<number>; previewUrl?: string } = {}) {
+function setup(options: { mode?: "local" | "hosted"; appUrl?: string; working?: Record<string, FormDefinition | string>; published?: Record<string, FormDefinition | string>; hook?: Array<number>; previewUrl?: string } = {}) {
   const { home, cleanup } = tempHome();
 
   cleanups.push(cleanup);
@@ -33,7 +33,7 @@ function setup(options: { mode?: "local" | "hosted"; working?: Record<string, Fo
     registry: { get: async (id: string) => (id === site.id ? site : null) },
     events,
     mode: options.mode ?? "hosted",
-    appUrl: () => "https://cms.example.com",
+    appUrl: () => options.appUrl ?? "https://cms.example.com",
     mailer: { from: "inbox@cms.example.com", send: async (message) => void mails.push(message) },
     fetch: createGuardedFetch({ resolve: async () => [{ address: "93.184.216.34", family: 4 }], transport }),
     retry: { attempts: 3, delays: [0] },
@@ -424,6 +424,25 @@ describe("the inbox", () => {
 
     expect(withSecret.forwardSecrets).toEqual(["crm-token"]);
     expect(JSON.stringify(withSecret)).not.toContain("s3cret-value");
+  });
+
+  it("says why the inbox can or can't be reached: a public address, this computer, or a hosted install on a private name", async () => {
+    const reach = async (options: Parameters<typeof setup>[0]) => {
+      const settings = await setup(options).capture.captureSettings(SITE_ID);
+
+      return { reachable: settings.captureReachable, reach: settings.captureReach, sentence: settings.reachability };
+    };
+
+    expect(await reach({})).toMatchObject({ reachable: true, reach: { kind: "public", host: "cms.example.com" } });
+    expect(await reach({ mode: "local", appUrl: "http://127.0.0.1:4400" })).toMatchObject({ reachable: false, reach: { kind: "this-computer", host: "127.0.0.1" }, sentence: /On this computer it works for testing/ });
+    for (const [appUrl, host] of [["https://cms.localhost", "cms.localhost"], ["https://cms.internal", "cms.internal"], ["http://10.0.0.5:4400", "10.0.0.5"], ["http://[::1]:4400", "::1"]]) {
+      const answer = await reach({ appUrl: appUrl! });
+
+      expect(answer, appUrl).toMatchObject({ reachable: false, reach: { kind: "private-address", host } });
+      // Hosted: never "this app runs on this computer".
+      expect(answer.sentence).toContain(`(${host})`);
+      expect(answer.sentence).not.toMatch(/this computer/i);
+    }
   });
 
   it("lists a form whose file is gone but whose submissions remain, with a plain note", async () => {

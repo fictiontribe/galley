@@ -4,11 +4,13 @@ import { ArrangePanel } from "@/features/builder/ArrangePanel";
 import { useArrange, type BuilderSource } from "@/features/builder/useArrange";
 import type { EditorSelection } from "@/features/editor/EditorContext";
 import { errorShape } from "@/lib/api";
+import { useMeta } from "@/lib/stores/meta";
 import { usePreview, usePreviewStatus } from "@/lib/stores/preview";
 import { notify } from "@/lib/stores/toasts";
-import { ProofMark, Spinner } from "@/ui";
+import { ErrorState, ProofMark, Spinner } from "@/ui";
 import { EditAssist } from "./EditAssist";
 import { useAppAppearance } from "./appearance";
+import { entryAddress, isSignInNeeded, needsEntry, openEntry, type EntrySession } from "./entry";
 import { addressToPath, canGo, frameUrl, go, pagePath, parseOverlayMessage, startHistory, toOverlay, visit } from "./frames";
 import { NoLiveSite, PreviewStates } from "./PreviewStates";
 import { frameName } from "./frameNames";
@@ -60,8 +62,14 @@ const originOf = (url: string | null): string | null => {
   }
 };
 
-function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = true, onSelection, onAsk, highlight, onShowForm, builder }: PreviewPaneProps & { status: PreviewStatus }) {
-  const origins: Record<Role, string | null> = { proposed: originOf(status.url), live: originOf(status.baselineUrl) };
+/** Where a frame starts: its entry address on a hosted install, else the proxy's own. */
+const firstAddress = (entry: EntrySession | undefined, role: Role): string | null => (entry ? (role === "proposed" ? entry.first.preview : entry.first.baseline) : null);
+
+function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = true, onSelection, onAsk, highlight, onShowForm, builder, entry }: PreviewPaneProps & { status: PreviewStatus; entry?: EntrySession }) {
+  // A message is only ever taken from the origin a frame was loaded from: on a hosted install, its entry address's.
+  const origins: Record<Role, string | null> = entry
+    ? { proposed: originOf(entry.first.preview), live: originOf(entry.first.baseline) }
+    : { proposed: originOf(status.url), live: originOf(status.baselineUrl) };
   const frames: Record<Role, RefObject<HTMLIFrameElement | null>> = { proposed: useRef<HTMLIFrameElement>(null), live: useRef<HTMLIFrameElement>(null) };
   const stage = useRef<HTMLDivElement>(null);
   const primary: Role = mode === "live" ? "live" : "proposed";
@@ -89,12 +97,9 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
     // The frames' refs and origins are fixed for this component's life: it is keyed by the origins.
     [],
   );
-  const navigateFrame = useCallback((role: Role, path: string) => {
+  const loadFrame = useCallback((role: Role, url: string) => {
     const frame = frames[role].current;
-    const origin = origins[role];
-    if (!frame || !origin) return;
-    sent.current[role] = path;
-    const url = frameUrl(origin, path);
+    if (!frame) return;
     try {
       // Replacing keeps the app's own back button out of the frame's history.
       frame.contentWindow?.location.replace(url);
@@ -102,6 +107,45 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
       frame.src = url;
     }
   }, []);
+  const navigateFrame = useCallback((role: Role, path: string) => {
+    const origin = origins[role];
+    if (!frames[role].current || !origin) return;
+    sent.current[role] = path;
+    loadFrame(role, frameUrl(origin, path));
+  }, [loadFrame]);
+
+  // Hosted install: a frame turned away at the preview's address goes back in through a fresh entry address.
+  const reenter = (role: Role) => {
+    if (!entry) return;
+    const path = sent.current[role] ?? at.current[role] ?? shown;
+    entry.renew(role, path).then(
+      (address) => {
+        // Null: asked too often lately. The frame's own page says what to do.
+        if (!address) return;
+        ready.current[role] = false;
+        sent.current[role] = path;
+        loadFrame(role, address);
+      },
+      (error: unknown) => notify({ tone: "danger", title: "Couldn’t open the preview", body: errorShape(error).message, detail: errorShape(error).detail }),
+    );
+  };
+  const reenterRef = useRef(reenter);
+  reenterRef.current = reenter;
+  const openInTab = entry
+    ? () => {
+        // Opened now, inside the click, so it isn't taken for a pop-up; it gets its address when the ticket arrives.
+        const tab = window.open("", "_blank");
+        if (!tab) return;
+        tab.opener = null;
+        entry.address(primary, shown).then(
+          (address) => (address ? tab.location.replace(address) : tab.close()),
+          (error: unknown) => {
+            tab.close();
+            notify({ tone: "danger", title: "Couldn’t open the preview", body: errorShape(error).message, detail: errorShape(error).detail });
+          },
+        );
+      }
+    : undefined;
 
   // The overlay outlines and labels in the app's own accent and theme.
   const appearance = useAppAppearance();
@@ -194,6 +238,10 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
     const onMessage = (event: MessageEvent) => {
       const role = ROLES.find((candidate) => frames[candidate].current?.contentWindow === event.source && origins[candidate] === event.origin);
       if (!role) return;
+      if (isSignInNeeded(event.data)) {
+        reenterRef.current(role);
+        return;
+      }
       const message = parseOverlayMessage(event.data);
       if (message) handleRef.current(role, message);
     };
@@ -265,13 +313,14 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
         onWidth={setWidth}
         tool={editable && mode !== "live" ? { value: current, onChange: setTool, arrange: arrange.available } : undefined}
         openUrl={origins[primary] ? frameUrl(origins[primary] as string, shown) : null}
+        onOpen={openInTab}
       />
       <div className="preview-body">
       {arranging ? <ArrangePanel siteId={siteId} arrange={arrange} onShowForm={onShowForm} /> : null}
       <div ref={stage} className={`preview-stage preview-stage--${mode}`} style={mode === "split" ? { gridTemplateColumns: `${ratio}fr auto ${1 - ratio}fr` } : undefined}>
         {mode !== "proposed" ? (
           origins.live ? (
-            <Sheet key="live" frameRef={frames.live} name={frameName("live", editable)} src={frameUrl(origins.live, startAt)} title="Live site" width={pixel} caption={mode === "split" ? liveCaption : undefined} onLoad={() => greet("live")} />
+            <Sheet key="live" frameRef={frames.live} name={frameName("live", editable)} src={firstAddress(entry, "live") ? entryAddress(firstAddress(entry, "live") as string, startAt) : frameUrl(origins.live, startAt)} title="Live site" width={pixel} caption={mode === "split" ? liveCaption : undefined} onLoad={() => greet("live")} />
           ) : (
             <div key="live" className="preview-side">
               <NoLiveSite siteId={siteId} />
@@ -280,7 +329,7 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
         ) : null}
         {mode === "split" ? <Divider key="divider" ratio={ratio} onRatio={setRatio} stage={stage} /> : null}
         {mode !== "live" && origins.proposed ? (
-          <Sheet key="proposed" frameRef={frames.proposed} name={frameName("proposed", editable)} src={frameUrl(origins.proposed, startAt)} title="Proposed page" width={pixel} caption={mode === "split" ? "Proposed · your changes" : undefined} onLoad={() => greet("proposed")} />
+          <Sheet key="proposed" frameRef={frames.proposed} name={frameName("proposed", editable)} src={firstAddress(entry, "proposed") ? entryAddress(firstAddress(entry, "proposed") as string, startAt) : frameUrl(origins.proposed, startAt)} title="Proposed page" width={pixel} caption={mode === "split" ? "Proposed · your changes" : undefined} onLoad={() => greet("proposed")} />
         ) : null}
       </div>
       </div>
@@ -319,6 +368,7 @@ export function PreviewPane(props: PreviewPaneProps) {
   const { siteId } = props;
   const status = usePreviewStatus(siteId);
   const run = usePreview((s) => s.run);
+  const hosted = useMeta((s) => needsEntry(s.meta));
   const started = useRef(false);
 
   useEffect(() => {
@@ -328,5 +378,58 @@ export function PreviewPane(props: PreviewPaneProps) {
   }, [siteId, status, run]);
 
   if (!status || status.state !== "ready" || !status.url) return <PreviewStates siteId={siteId} status={status} />;
+  // A restart (a new start time) or new addresses ask for fresh entry addresses: a new EnteredPreview.
+  if (hosted) return <EnteredPreview key={`${status.url} ${status.baselineUrl ?? ""} ${status.startedAt ?? ""}`} {...props} status={status} />;
   return <RunningPreview key={`${status.url} ${status.baselineUrl ?? ""}`} {...props} status={status} />;
+}
+
+/**
+ * A hosted install's preview: the frames' first addresses come from the
+ * entry route (one-use tickets that let this browser in), asked for once per
+ * running preview. See entry.ts.
+ */
+function EnteredPreview(props: PreviewPaneProps & { status: PreviewStatus }) {
+  const { siteId } = props;
+  const [entry, setEntry] = useState<EntrySession | null>(null);
+  const [failed, setFailed] = useState<unknown>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let current = true;
+    setFailed(null);
+    setEntry(null);
+    openEntry(siteId).then(
+      (session) => {
+        if (current) setEntry(session);
+      },
+      (error: unknown) => {
+        if (current) setFailed(error);
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [siteId, attempt]);
+
+  if (failed !== null || entry?.first.preview === null) {
+    return (
+      <div className="app-preview-state">
+        <ErrorState
+          compact
+          title="The preview couldn’t be opened"
+          message={failed !== null ? errorShape(failed).message : "The preview isn’t answering yet. Try again in a moment."}
+          detail={failed !== null ? errorShape(failed).detail : undefined}
+          onRetry={() => setAttempt((count) => count + 1)}
+        />
+      </div>
+    );
+  }
+  if (!entry) {
+    return (
+      <div className="app-preview-state" aria-busy="true">
+        <Spinner label="Opening the preview" />
+      </div>
+    );
+  }
+  return <RunningPreview {...props} entry={entry} />;
 }

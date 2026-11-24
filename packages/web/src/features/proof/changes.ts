@@ -4,8 +4,9 @@
  */
 import type { Collection, Field, FieldChange, FileChange, JsonValue } from "@galley/core/types";
 import { entryName, plainFieldLabel } from "@/features/preview/clickToEdit";
+import { PRODUCT } from "@galley/core/brand";
 import { scriptName } from "@/features/scripts/logic/entries";
-import { count, fileName, friendlyLabel } from "@/lib/format";
+import { SITE_SETTINGS_LABEL, count, fileName, friendlyLabel } from "@/lib/format";
 
 export type ChangeGroupId = "content" | "media" | "code";
 
@@ -40,9 +41,11 @@ export function groupChanges(files: FileChange[], collections: Collection[] = []
 
 /**
  * The name a person knows the file by: "Home page", a page's title (short
- * form), the settings' own name ("Site", "Navigation"), an image's file name.
+ * form), the settings' own name ("Site", "Navigation"), "Site settings" for
+ * the site's settings file, an image's file name.
  */
 export function titleOf(change: FileChange, collections: Collection[] = []): string {
+  if (change.path === PRODUCT.configFile) return SITE_SETTINGS_LABEL;
   const data = collections.find((collection) => collection.id === change.collection && collection.kind === "data");
   if (data) return data.label;
   if (change.title) return entryName(change.path, change.title);

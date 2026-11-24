@@ -20,10 +20,12 @@ Galley — The AI CMS for static sites. Prompt it. Proof it. Publish it.
 Usage
   galley [path]          Open the site in [path] (default: this folder) in the browser
   galley serve           Run for other computers, behind a password
+  galley backup …        Back up a hosted install's data folder, or put a backup back
   galley init [path]     Write galley.config.json from what detection finds
   galley doctor [path]   Check that a site and this computer are ready
   galley deploy [path]   Put the site online with Cloudflare or Vercel (--preview: unpublished changes)
   galley domain [path]   Use your own domain for a site that is online
+  galley host [path]     Host the editor online for the site, on your own account (Fly.io, Cloudflare, a server)
   galley new <name>      Start a new site from a starter
   galley import …        Bring a WordPress site (or another importer's) into a site
   galley starters        List the starters and their looks
@@ -62,25 +64,89 @@ Options
 
 ## `galley serve`
 
-Hosted mode: one Galley for several people, behind one shared password. What it prints at start-up, the container and the reverse proxy: [Self-hosting](/docs/running/hosted/).
+A hosted install: Galley for one site, on a server, behind a password. Everything it keeps is in its data folder (`GALLEY_HOME`). With no password yet it prints a one-time setup link; `--reset-password` makes a new one for a forgotten password and keeps serving. Not in a release yet: it is in the repository. What it prints, the image, the three addresses and the proxy in front: [Run a hosted install](/docs/running/hosted/).
 
 Its help (`--help`):
 
 ```text
 Usage: galley serve [options]
-Run Galley for other computers (hosted mode), behind a password.
+Run Galley for other computers (hosted mode): one site, behind a password.
+Everything it keeps — the site, settings, keys, sessions — is in its data folder (GALLEY_HOME).
 Options
       --host <address>      Interface to listen on (default GALLEY_HOST, then 0.0.0.0)
   -p, --port <port>         Port to listen on (default GALLEY_PORT, then 4400)
-      --sites-dir <folder>  The only folder sites can be opened from or created in
-                            (default GALLEY_SITES_DIR, then <GALLEY_HOME>/sites)
+      --reset-password      Forget the password, sign everyone out and print a new
+                            one-time setup link, then serve as usual until stopped.
+                            Whoever opens the link first chooses the new password.
+                            Stopped before that, the next start prints a fresh link
   -h, --help                Show this help
-Required
-  GALLEY_PASSWORD           The sign-in password, 12 characters or more. Read from the
-                            environment only, so it never shows up in a process list.
+First run
+  With no password yet, the server prints a one-time setup link. Whoever opens it first
+  chooses the password and connects the site, so open it straight away.
 Recommended
   GALLEY_PUBLIC_URL         The address people use, e.g. https://cms.example.com
   GALLEY_TRUST_PROXY=1      When a reverse proxy terminates HTTPS in front of this server
+Previews (served through this server's one port, by hostname; point both names at it)
+  GALLEY_PREVIEW_URL        Where the site's preview is shown. Default: worked out from
+                            GALLEY_PUBLIC_URL (cms.example.com → cms-preview.example.com)
+  GALLEY_LIVE_VIEW_URL      Where the live site is shown beside it (→ cms-live.example.com)
+  GALLEY_PREVIEW_MEMORY_MB  A memory ceiling for the site's own preview, build and install
+                            commands (default: none)
+Operations
+  GET /healthz, /readyz     Health and readiness, for a load balancer or a container's check
+  GALLEY_LOG_REQUESTS=0     Leave out the one line per request (on by default)
+  GALLEY_SHUTDOWN_GRACE_MS  How long stopping waits for a publish or a connect in progress
+                            (default 20000)
+  GALLEY_RESTORE_MAX_MB     The largest backup a restore in the app takes (default 2048);
+                            larger ones: `galley backup restore` with the server stopped
+Unattended start (starting values: each is used once, while the install doesn't have
+that thing yet, so what someone later changes in the app sticks)
+  GALLEY_PASSWORD           The sign-in password, 12 characters or more
+  GALLEY_SETUP_TOKEN        The one-time setup code to use (24 characters or more), or
+  GALLEY_SETUP_TOKEN_SHA256 only its SHA-256, so the code never reaches the server
+  GALLEY_SITE_REPOSITORY    The site's repository: git@host:owner/name.git or https://…
+  GALLEY_SITE_ACCESS        deploy-key (the install's own key; default) or token
+  GALLEY_SITE_TOKEN         The access token, with GALLEY_SITE_ACCESS=token
+  GALLEY_SITE_BRANCH        Default: the repository's own default branch
+  GALLEY_SITE_FOLDER        The folder inside the repository that holds the site (e.g. apps/site)
+  GALLEY_SITE_STARTER       Send this starter to an empty repository instead
+  GALLEY_AUTHOR_NAME        The name and e-mail every publish is recorded with
+  GALLEY_AUTHOR_EMAIL
+  GALLEY_SITE_LIVE_URL      The site's live address
+  GALLEY_INSTALL_CONFIG     One JSON file with any of the above (the environment wins)
+Secrets are read from the environment or that file only, so they never show up in a process list.
+```
+
+## `galley backup`
+
+Backs up a hosted install's data folder into one file sealed with a passphrase, or puts such a file back — the same file the Install page downloads. Stop the server first. In a container whose only volume is `/data`, write to `/data/backups/`: no backup includes it and no restore replaces it. Not in a release yet. What a backup holds: [Run a hosted install](/docs/running/hosted/#back-it-up).
+
+```sh
+GALLEY_HOME=/data galley backup create --out /data/backups/site.bak
+```
+
+Its help (`--help`):
+
+```text
+Usage: galley backup create --out <file>
+       galley backup restore <file>
+Back up a hosted Galley's data folder (GALLEY_HOME), or put a backup
+back in its place, with the server stopped. The file is the same one the app's
+Install page downloads: the site with its history and unpublished changes, the
+settings, the keys and the sign-in, sealed with a passphrase.
+Options
+      --out <file>          Where to write the backup (create). Inside the data
+                            folder, use its backups/ folder: it is never part of
+                            a backup and a restore leaves it alone
+      --home <folder>       The data folder (default GALLEY_HOME)
+      --force               Go ahead though a lock file says a server on another
+                            machine uses the folder (only when you know it is stopped)
+  -h, --help                Show this help
+The passphrase is read from GALLEY_BACKUP_PASSPHRASE, or asked for (not shown as
+you type it). It needs at least 12 characters. Without it the backup can't be
+opened: keep it somewhere safe.
+After a restore everyone is signed out; sign in with the password the backup was
+made with.
 ```
 
 ## `galley init [path]`
@@ -347,6 +413,79 @@ Options
 Examples
   galley domain www.example.com
   galley domain ./site --remove --yes
+```
+
+## `galley host`
+
+Puts an editor for the site online on your own account — Fly.io, Cloudflare in front of a computer of yours, or any server with Docker — as the Online screen's **Host the editor online** does. It prints the plan and the monthly cost before anything is created, and asks. `galley host recipe` writes the files to run one install with Docker, for an operator. `--preview-address` and `--live-address` set the other two names (needed for an address like `example.co.uk`). Not in a release yet: it is in the repository. [Host the editor online](/docs/editing/editor-online/).
+
+```sh
+galley host --host fly --address cms.example.com --dry-run
+galley host recipe --name acme --address cms.example.com --out -
+```
+
+Its help (`--help`):
+
+```text
+Usage: galley host [path] --host <where> --address <name> [options]
+       galley host status|link|check|upgrade|backup|remove [path]
+       galley host recipe --name <name> --address <name> [options]
+Put an editor for the site in [path] (default: this folder) online, on your
+own account: a hosted Galley with its own disk, at three addresses of
+your domain (the editor, its preview and the live comparison). It prints
+everything it would create and what it costs a month before anything is
+created, and asks before creating it. The site's settings
+(galley.config.json › editor) then say where its editor lives.
+Where (--host)
+  fly           Fly.io: everything is created on your Fly.io account
+  cloudflare    Cloudflare in front of a computer of yours: a tunnel and three
+                DNS names on Cloudflare; you start the files it writes
+  own-server    Any server with Docker: it writes the files, you start them
+Options
+      --address <name>     The editor's address, like cms.example.com
+      --preview-address <name>  The preview's address (default: worked out from
+                           --address, cms.example.com → cms-preview.example.com)
+      --live-address <name>     The live comparison's (→ cms-live.example.com).
+                           Give both for an address like example.co.uk, whose
+                           worked-out names would be someone else's domain
+      --name <name>        The short name everything created carries
+                           (default: from the site's name)
+      --account <id>       The Fly.io organization or Cloudflare account
+      --region <id>        Fly.io: where it runs (default: iad)
+      --option <key=value> A host's own choice, e.g. memory=1024, sleep=off,
+                           proxy=shared-proxy (repeatable)
+      --hand-over <keys>   Keys to copy to it, by name, comma-separated
+                           (e.g. anthropic). Default: none
+      --out <folder>       Where to write the files a self-run install needs
+                           (default: a folder named after it, here)
+      --dry-run            Print the plan and stop: nothing is created
+  -y, --yes                Don't ask: create (or remove) what the plan says
+      --json               Print the result as JSON
+  -h, --help               Show this help
+Afterwards
+  status     Where the editor is, whether it answers, what is left to do
+  link       The first-run link, while its first run isn't finished
+  check      Look again (after starting the files or adding DNS names by
+             hand) and hand the site over once it answers
+  upgrade    Move it to this version of Galley, keeping its disk
+  backup     Copy its disk on the host, or say where backups are downloaded
+  remove     Print exactly what will be deleted, then delete it (asks; --yes)
+recipe: the files to run one install with Docker, for an operator
+      --name <name> --address <name>      Required
+      --preview-address <name> --live-address <name>  As above
+      --repository <address>  The site's repository
+      --folder <path>         Where the site is inside it ("apps/site")
+      --proxy <how>           caddy (default), shared-proxy or tunnel
+      --image <reference>     Default: ghcr.io/fictiontribe/galley:0.1.3
+      --setup-token-sha256 <hex>  The SHA-256 of a one-time setup code
+      --out <folder|->        Write the files there (default -: print them)
+Keys
+  Read from FLY_API_TOKEN or CLOUDFLARE_API_TOKEN when set, otherwise the one
+  stored with the app, otherwise asked for on a terminal (and stored).
+Examples
+  galley host --host fly --address cms.example.com --dry-run
+  galley host --host own-server --address cms.example.com --yes
+  galley host recipe --name acme-editor --address cms.example.com --out ./acme
 ```
 
 ## `galley schema`

@@ -1,105 +1,225 @@
 ---
-title: Hosting Galley for a team
-navTitle: Hosting for a team
-description: Run Galley on a server behind a password with galley serve or the container, put HTTPS in front, and know the one thing that doesn't work behind a proxy yet — the preview.
+title: Run a hosted install
+navTitle: Hosted install
+description: Run Galley on a server for one site — start it with Docker and Caddy, point three names at it, finish first run, back it up, upgrade it, and know what it can reach.
 group: running
 order: 2
 ---
 
-This page is for whoever runs Galley on a server so several people can use it from their browsers. Hosted mode is the same server and UI as on a laptop, with a password instead of a one-time link and every site kept in one folder.
+This page is for whoever runs Galley on a server so a site can be edited from any browser. A **hosted install** is the same server and app as on a laptop, for **one site**, behind a password, with everything it keeps in one data folder. Ten sites are ten installs that share nothing. The desktop app keeps its list of many sites; a hosted install has no Sites screen.
 
-> **Status.** `galley serve` and its security checks are built and tested. The `Dockerfile` and `docker-compose.yml` are written but have **never been built**. Previews need their own ports reachable (and HTTPS on them behind an HTTPS address) — see [Previews: a known gap](#previews-a-known-gap) before you plan a deployment. Only macOS has been used to run it so far.
+> **Status.** Not in a release yet: it is in the repository, and **the image isn't published to a registry**, so you build it yourself (below). Run for real on 2026-11-24, as this page describes it: built from source on a small Google Cloud VM and running this project's own website's editor behind Caddy on a real domain; a whole first run, preview, Proof, Publish, restart, upgrade, backup and restore on the real image. Not yet run: on Fly.io or with a Cloudflare tunnel, behind Cloudflare Access, with a deploy key accepted by GitHub, GitLab or Bitbucket end to end, or `scripts/create-install.sh` beyond its dry run. The full account: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#what-has-been-run).
 
-## Start it
+## Start one
 
-Behind a reverse proxy that terminates HTTPS, listening on this computer only, with a fixed range of preview ports:
+You need a server with Docker and its compose plugin, ports 80 and 443 open, about 2 GB of memory for the editor, and a domain you can add three DNS names to.
+
+**Build the image** on the server, in a clone of the repository. It needs Docker's BuildKit — the default builder of Docker Engine with its buildx plugin; with Debian's and Ubuntu's own `docker.io` package, install `docker-buildx` beside it. The old builder stops at the Dockerfile's `--platform=$BUILDPLATFORM`.
 
 ```sh
-GALLEY_PASSWORD='correct-horse-battery' GALLEY_PUBLIC_URL=https://cms.example.com GALLEY_TRUST_PROXY=1 GALLEY_PREVIEW_PORTS=4410-4429 galley serve --host 127.0.0.1
+docker build -t galley .
+```
+
+**Write the files for one install.** The repository's own [`docker-compose.yml`]({repository}/blob/main/docker-compose.yml), [`Caddyfile`]({repository}/blob/main/Caddyfile) and [`.env.example`]({repository}/blob/main/.env.example) are exactly these files for `cms.example.com`. Copy them — `.env.example` as `.env`, the `image:` line naming the image you built — and change the names, or write them for your own names with the command line, from a clone on your own computer with its dependencies installed ([`CONTRIBUTING.md`]({repository}/blob/main/CONTRIBUTING.md); `galley host` isn't in a release on npm yet):
+
+```sh
+node packages/cli/bin/galley.js host recipe --name acme --address cms.example.com --repository git@github.com:example/acme-site.git --image galley --out acme
+```
+
+```output
+✓ Wrote compose.yaml, Caddyfile, .env to …/acme
+```
+
+`acme/` now holds `compose.yaml` (the editor and [Caddy](https://caddyserver.com), which gets the HTTPS certificates; project `galley-acme`), `Caddyfile` (the three names, one block) and `.env` (the editor's settings; nothing secret). `--out -` prints them instead. The editor runs as the user `node` with a read-only root filesystem, every capability dropped, a 2 GB memory limit, one volume and 30 seconds to stop, and publishes no port: only Caddy reaches it. `--image` names the image you built; the default is where the image will be published.
+
+Copy the folder to the server. Then, in that folder there:
+
+1. **Point three names at the server**: an A record (and AAAA, with IPv6) for each of `cms.example.com`, `cms-preview.example.com` and `cms-live.example.com`. On Cloudflare, set them to "DNS only". Caddy gets the three certificates by itself once they point there.
+2. **Start it**:
+
+   ```sh
+   docker compose up -d
+   ```
+
+3. **Open the setup link** straight away — whoever opens it first chooses the password. Nothing is needed before the first start: the editor makes a one-time link and prints it in its log.
+
+   ```sh
+   docker compose logs editor
+   ```
+
+### Several sites on one server
+
+`scripts/create-install.sh` makes one install per run — its own project, its own volume, its own folder — behind one Caddy all of them share, and prints the setup link once at the end. `--dry-run` says what it would do:
+
+```sh
+sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.1.3 --dry-run
+```
+
+```output
+Dry run: nothing is written, started or changed.
+…
+  folder        ./galley-installs/acme/  (compose.yaml, .env)
+  shared proxy  ./galley-installs/proxy/  (compose.yaml, Caddyfile — first install on this server)
+  proxy entry   ./galley-installs/proxy/sites/acme.caddy
+  volume        galley-acme_data  (the install's whole state)
+…
+```
+
+It takes `--preview-address` and `--live-address` too, as `galley host recipe` does. Only its dry run has been run so far.
+
+### Without Docker
+
+`galley serve` is the same server; the image runs it. From a clone, behind a reverse proxy on the same machine:
+
+```sh
+GALLEY_PUBLIC_URL=https://cms.example.com GALLEY_TRUST_PROXY=1 node packages/cli/bin/galley.js serve --host 127.0.0.1
 ```
 
 ```output
 Galley is serving on 127.0.0.1 (this computer only; put a reverse proxy in front), port 4400.
 Address:   https://cms.example.com
+Setup:     https://cms.example.com/setup?token=<one-time code>
+           Open it now: it works once, and whoever opens it first chooses the password.
 …
-Previews:  each site's preview listens on 127.0.0.1 at a port in 4410-4429 (GALLEY_PREVIEW_PORTS), reached at cms.example.com
-…
-Press Ctrl+C to stop.
+Previews:  https://cms-preview.example.com (the live site beside it at https://cms-live.example.com), through this port; only a signed-in browser is let in
+Data:      /data (the site, its settings and stored keys, sessions — everything this install keeps)
 ```
 
-It then lists how sign-in, sessions, requests, the MCP endpoint and the sites folder are set up. The docs ran it on a spare port with a throwaway home.
+The docs ran it on a spare port with a throwaway data folder; the output shows the image's folder, `/data`. Outside the image the data folder is `GALLEY_HOME`, default `~/.galley`. A setup code you supplied yourself isn't printed again: the line shows a placeholder. `galley serve --help` lists every variable it reads; they are all in [Environment variables](/docs/reference/environment/#a-hosted-install).
 
-Without a password, or with one shorter than 12 characters, it refuses to start and says why.
+## The three names
 
-The password is read from the environment only, so it never appears in a process list.
+The editor, its preview and the live comparison are three names on **one port**:
 
-| Option | Default | |
+| Name | What answers | Set with |
 | --- | --- | --- |
-| `--host <address>` | `GALLEY_HOST`, then `0.0.0.0` | The interface to listen on. `127.0.0.1` when a reverse proxy on the same machine is the only way in. |
-| `-p`, `--port <port>` | `GALLEY_PORT`, then `4400` | A busy port is an error in hosted mode (no moving to the next one). |
-| `--sites-dir <folder>` | `GALLEY_SITES_DIR`, then `<GALLEY_HOME>/sites` | The only folder sites can be opened from, cloned into or created in. |
+| `cms.example.com` | the editor | `GALLEY_PUBLIC_URL` |
+| `cms-preview.example.com` | the site's preview, with click-to-edit | `GALLEY_PREVIEW_URL` |
+| `cms-live.example.com` | the live site, beside the preview in Proof | `GALLEY_LIVE_VIEW_URL` |
 
-Every environment variable is in [Settings, secrets and the Galley home](/docs/running/settings/#environment-variables).
+The last two are worked out from the first unless you set them. Names, not paths, because sites and their dev servers expect to be at the root; and the preview must be another origin than the editor, so the site's own scripts can never act as the person signed in. Sibling names (`cms-preview.`, not `preview.cms.`) because free certificates, Cloudflare's included, cover one level below the domain only. An editor at the top of a two-part suffix (`example.co.uk`) would get someone else's names (`example-preview.co.uk`): use `cms.example.co.uk`, or give both names with `--preview-address` and `--live-address`.
 
-## Signing in
+Only a browser the editor let in sees the preview: the editor gets a one-use ticket (60 seconds), the frame trades it for a cookie tied to that sign-in, and signing out ends it. Anyone else gets a 401 page.
 
-People open the address and see a sign-in page. `POST /api/auth/login` checks the password in constant time and sets a session cookie: `HttpOnly`, `SameSite=Strict`, signed with HMAC-SHA256 using a key kept in the Galley home (`session.key`, mode 0600, so sessions survive a restart), valid for 30 days, and `Secure` when the request came over HTTPS. Five wrong passwords from one address within a minute, and that address gets `429` — *Too many sign-in attempts. Wait a minute, then try again.* — until the minute is up. Signing out revokes the session for the life of the process.
+The proxy in front must keep the `Host` header (Caddy does), terminate HTTPS for all three names, and pass WebSockets and the event stream `GET /api/events` unbuffered. With it, set `GALLEY_TRUST_PROXY=1`.
 
-There is one shared password and no user accounts. Settings live in the server's Galley home and are shared by everyone who signs in — including App settings › You, the name and email every publish is committed as. Until there are accounts, publishes from a hosted Galley all carry the same author.
+## First run
 
-For scripts, set `GALLEY_TOKEN` (16 characters or more) and send `Authorization: Bearer <token>`.
+1. **Choose the password**, 12 characters or more.
+2. **Connect the site**: an existing repository, or a starter sent to an empty one. The install reaches it with **its own deploy key** — it shows the public half; add it to the repository **with write access** and choose **Check again** — or with an access token over HTTPS. A site in a folder of a larger repository: give the folder (`apps/site`). The whole repository is copied; only that folder is the site, and changes outside it are neither shown nor published.
+3. **A few details**: the name and e-mail every publish is recorded with, the live address, the assistant's key.
 
-## Behind HTTPS
+Or, on the first screen, **Restore from a backup**. First run leaves nothing to publish: the live address is kept in the install's own state, not in the site's `galley.config.json` (when the site's settings name a live address of their own, that one wins and is shown as set). A first run left half-way carries on after the ordinary sign-in.
 
-Put a reverse proxy that terminates TLS in front, then tell Galley about it:
+### Start it unattended
 
-- `GALLEY_PUBLIC_URL=https://cms.example.com` — the address people use. Requests for any other `Host` are refused (*This address isn't one this app answers to.*), and state-changing requests must come from that origin. Without it, the server answers to any hostname and warns at start-up.
-- `GALLEY_TRUST_PROXY=1` — honour `X-Forwarded-Proto` (so cookies are `Secure`) and `X-Forwarded-For` (so the sign-in rate limit is per client, not per proxy). Only behind a proxy you control.
+Everything first run asks can be given up front as **starting values**: `GALLEY_PASSWORD`, `GALLEY_SITE_REPOSITORY`, `GALLEY_SITE_BRANCH`, `GALLEY_SITE_FOLDER`, `GALLEY_SITE_ACCESS`, `GALLEY_SITE_TOKEN`, `GALLEY_SITE_STARTER`, `GALLEY_AUTHOR_NAME`, `GALLEY_AUTHOR_EMAIL`, `GALLEY_SITE_LIVE_URL`, `ANTHROPIC_API_KEY` — or one JSON file named by `GALLEY_INSTALL_CONFIG` (readable by the server's user only):
 
-A minimal [Caddy](https://caddyserver.com) site block — untested with Galley, shown for its shape:
-
-```text
-cms.example.com {
-	reverse_proxy 127.0.0.1:4400
+```json
+{
+  "address": "https://cms.example.com",
+  "password": "…",
+  "site": { "repository": "git@github.com:example/acme-site.git", "branch": "main", "access": "deploy-key" },
+  "author": { "name": "Sam", "email": "sam@example.com" },
+  "liveUrl": "https://www.example.com",
+  "keys": { "anthropic": "sk-ant-…" }
 }
 ```
 
-`GET /api/events` is a Server-Sent Events stream with a heartbeat every 20 seconds; a proxy that buffers responses must not buffer that path.
+Each starting value is used once, only while the install lacks that thing, so restarting with the same values changes nothing, and what someone changes in the app afterwards stays changed. With a password, a repository and the publishing name, first run finishes by itself. To keep the setup code out of the log, give your own with `GALLEY_SETUP_TOKEN` (24+ characters), or only its SHA-256 with `GALLEY_SETUP_TOKEN_SHA256`.
 
-A `GALLEY_PUBLIC_URL` that starts with `http://` on a non-loopback host gets a warning: the password and cookie would cross the network unencrypted.
+### A forgotten password
 
-## Run it in a container
-
-The repository's [`Dockerfile`]({repository}/blob/main/Dockerfile) builds the web UI and the single-file CLI bundle on `node:22-bookworm-slim`, and the runtime image adds `git`, `openssh-client` and `tini`, runs as the `node` user, keeps all state in `/data` (`GALLEY_HOME`), listens on `0.0.0.0:4400`, and runs `galley serve`. Its health check calls `/api/meta`. **It has not been built yet**; the commands are what it is written for:
+Stop the editor first — nothing stops a second server starting on the same data folder — then start it once with `--reset-password`, in the install's folder:
 
 ```sh
-docker build -t galley .
-docker run -p 4400:4400 -e GALLEY_PASSWORD='correct-horse-battery' \
-    -e GALLEY_PUBLIC_URL=https://cms.example.com -v galley-data:/data galley
+docker compose stop editor
+docker compose run --rm --use-aliases editor serve --reset-password
 ```
 
-[`docker-compose.yml`]({repository}/blob/main/docker-compose.yml) does the same with the variables read from a `.env` beside it, and passes `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY` through from the shell when they are set.
+```output
+…
+Setup:     https://cms.example.com/setup?token=<one-time code>
+           Open it now: it works once, and whoever opens it first chooses the password.
+…
+```
 
-Sites cloned in the container live in `/data/sites` and are pushed with the container's git credentials: mount an SSH key or a credential helper configuration for the `node` user, or the first publish to a private repository fails with *The code host didn't accept your sign-in.*
+It forgets the password, signs everyone out, prints a new one-time link and keeps serving. Open the link, choose the new password, then stop it with Ctrl+C and start the editor again:
 
-## Previews: a known gap
+```sh
+docker compose start editor
+```
 
-Each site's preview runs behind its own small proxy on a port of its own, and the editor frames it as `<scheme>://<public host>:<that port>`. Two consequences:
+The site and everything else stay. A setup code that has been used stays dead: an old code or hash still in the environment is ignored, and a fresh link is made instead (a notice says so).
 
-- **The browser must reach those ports.** Set `GALLEY_PREVIEW_PORTS` (e.g. `4410-4429`) so they are a fixed range, and publish or forward that range in your container, firewall or proxy. Without it, the ports are random and a fixed port mapping can't reach them: the preview pane stays empty.
-- **On an HTTPS address, the preview ports need HTTPS too.** When `GALLEY_PUBLIC_URL` starts with `https://`, the editor frames the previews over `https://` on those ports, so your reverse proxy must terminate TLS for each of them as well (the proxies themselves speak plain HTTP).
+## The Install page
 
-The docs haven't run this setup behind a real reverse proxy. Until it's in place, hosted mode still works for editing in the form, the assistant, Proof's list of changes and publishing; the live preview, click to edit and Arrange need the preview ports. Serving previews through the main address is on the [roadmap]({repository}/blob/main/ROADMAP.md).
+`/install`, for whoever is signed in: the three addresses and the version; the repository, how it is reached and the install's public key (**Make a new key** replaces it); the publishing name; **Change the password** (every other browser is signed out); **Sign out everywhere**; backups; and what is stored where, with sizes (measured in the background, never counting installed packages, so a size can be empty for a while). What the operator set with a starting value is marked "Set by whoever runs the server".
 
-## Forms on a hosted Galley
+### What is kept where
 
-A hosted Galley at a public `https://` address is what lets the live site's forms send to the inbox: the capture address is `https://cms.example.com/f/<siteId>` ([Forms](/docs/forms/#where-visitors-can-reach-it)). For e-mail alerts set `GALLEY_SMTP_URL` and `GALLEY_MAIL_FROM`.
+All of it is in the data folder (`/data` in the image, one volume): `install.json` (the install's state: the password's hash, the site's repository and live address), `session.key`, `settings.json` and `secrets.json`, `keys/` (the deploy key, an access token, `known_hosts`), `site/` (the repository's copy, with unpublished changes), `state/<siteId>/` (the inbox, conversations, brand material), `plugins/`, `home/` (package caches, rebuilt when needed), and `backups/` (backups you keep on the volume; never part of a backup).
+
+## Back it up
+
+**Download a backup** on the Install page asks for a passphrase (12+ characters) and gives you one sealed file: the site with its history and **unpublished changes**, the settings, the stored keys and the sign-in. Not in it: installed packages and caches, which are rebuilt — add plugins again after a restore. **The passphrase can't be recovered.**
+
+**Restore** on the Install page, or on a fresh install's first screen, checks the whole file before changing anything, then signs everyone out; sign in with the password of the editor the backup came from. The upload takes up to 2048 MB (`GALLEY_RESTORE_MAX_MB`).
+
+From a terminal, with the editor stopped, in the install's folder, and `GALLEY_BACKUP_PASSPHRASE` set in your shell:
+
+```sh
+docker compose stop editor
+docker compose run --rm -e GALLEY_BACKUP_PASSPHRASE editor backup create --out /data/backups/site.bak
+docker compose start editor
+```
+
+```output
+…
+Backup written to /data/backups/site.bak (…).
+Keep the passphrase somewhere safe: without it the backup can't be opened.
+…
+```
+
+The file stays on the install's volume, in `backups/`, which no backup includes and no restore replaces; copy it off the server to keep it safe. A restore is the same three steps with `backup restore /data/backups/site.bak` in the middle:
+
+```sh
+docker compose stop editor
+docker compose run --rm -e GALLEY_BACKUP_PASSPHRASE editor backup restore /data/backups/site.bak
+docker compose start editor
+```
+
+```output
+…
+Restored the backup made … (by version …) into /data.
+Everyone is signed out: sign in with the password the backup was made with.
+…
+```
+
+Both refuse while they can tell a server holds the folder, but stop the editor first: nothing stops a second server starting on the same folder. Use this for a backup too large to upload — Cloudflare's free plan stops request bodies at 100 MB. Without Docker, run `galley backup` on the data folder (`GALLEY_HOME`) the same way.
+
+## Upgrade it
+
+A new version is a new image on the **same volume**: build or pull it, change the `image:` line in `compose.yaml` if its name changed, and run `docker compose up -d` again. At start-up it upgrades the data folder by itself; in the real runs the editor was healthy again within about ten seconds, with everything as it was. Never start an older image on a folder a newer one has used — it refuses to — so download a backup before each upgrade; going back means restoring it into a fresh volume.
+
+## Health, logs and stopping
+
+- `GET /healthz` answers 200 while the server runs; `GET /readyz` says `starting`, `setup`, `ready` or `restoring`. Neither needs a sign-in or says anything about the install. The image's health check uses `/healthz`.
+- The log has one line per request (`GALLEY_LOG_REQUESTS=0` leaves them out) and one for each sign-in, password change, backup and restore. No secret is ever written to it; the setup link is the one exception, on purpose.
+- Stopping lets a publish in progress finish (20 seconds, `GALLEY_SHUTDOWN_GRACE_MS`), stops the preview and exits by itself. The compose files give it 30 seconds.
+- `GALLEY_PREVIEW_MEMORY_MB` caps the memory of the site's own preview and build; the generated files set 1024.
+- The first preview installs the site's packages inside the container — in the real run about 80 seconds with the install. In a site without a lockfile, that install never leaves one behind.
+
+## Forms on a hosted install
+
+A hosted install at a public `https://` address is what lets the live site's forms send to the inbox: the capture address is `https://cms.example.com/f/<siteId>` ([Forms](/docs/forms/#where-visitors-can-reach-it)). The inbox says whether visitors can reach it, and why not when they can't. Keep `/f/` reachable by everyone if you put another sign-in, such as Cloudflare Access, in front. For e-mail alerts set `GALLEY_SMTP_URL` and `GALLEY_MAIL_FROM`.
 
 ## What it can reach
 
-The server needs outbound access to your git host (clone, pull, push), the package registry (installing a site's dependencies before its first preview), the deployed site (the side-by-side view) and, when keys are set, the AI providers. Nothing else, and nothing to Fiction Tribe. Details in the [security model](/docs/running/security/#what-leaves-the-machine).
+The install reaches the site's git host (SSH on port 22 with the deploy key, or HTTPS with a token), the package registry when it installs the site's dependencies, the live site (the comparison) and, when keys are set, the AI providers. Nothing else, and nothing to Fiction Tribe. The site's own preview and build are code from the repository running in the container, by design: the container is the boundary ([Security model](/docs/running/security/#a-hosted-install)).
 
 ## Next
 
+- [Host the editor online](/docs/editing/editor-online/) — let the desktop app create an install on Fly.io, behind Cloudflare, or on a server of yours.
 - [Security model](/docs/running/security/).
-- [White-label](/docs/configuration/white-label/) — rename and recolour it for your team.
+- [White-label](/docs/configuration/white-label/) — rename and recolour it.

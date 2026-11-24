@@ -5,6 +5,7 @@
  */
 import type { PublishMode, PublishResult } from "@galley/core/types";
 import { count } from "@/lib/format";
+import { placeWords } from "@/lib/where";
 
 export type PublishOutcomeKind =
   | "published"
@@ -42,7 +43,8 @@ export interface PublishOutcome {
 
 const NOTHING = /nothing to publish|none of those files|match the last published/i;
 
-export function publishOutcome(result: PublishResult, { message, mode }: { message: string; mode: PublishMode }): PublishOutcome {
+/** `hosted`: a hosted install records versions in this editor, on its server — not on "this computer". */
+export function publishOutcome(result: PublishResult, { message, mode, hosted = false }: { message: string; mode: PublishMode; hosted?: boolean }): PublishOutcome {
   const changes = count(result.files.length, "change");
   if (!result.ok) {
     if (NOTHING.test(result.error ?? "")) {
@@ -97,7 +99,7 @@ export function publishOutcome(result: PublishResult, { message, mode }: { messa
   return {
     kind: "saved-local",
     tone: "success",
-    title: "Published on this computer",
+    title: `Published ${placeWords(hosted).recorded}`,
     body: `${changes.charAt(0).toUpperCase()}${changes.slice(1)} ${result.files.length === 1 ? "is" : "are"} saved as a new version. This site isn’t set up to send versions to a host, so they stay here.`,
     canRetry: false,
   };

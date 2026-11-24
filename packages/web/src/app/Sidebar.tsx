@@ -2,7 +2,7 @@ import { Link, NavLink, useLocation, useNavigate, useSearchParams } from "react-
 import type { ReactNode } from "react";
 import { collectionForPath, collectionIcon, visibleCollections } from "@/lib/collections";
 import { usePendingCount } from "@/lib/stores/changes";
-import { useMeta } from "@/lib/stores/meta";
+import { useHostedInstall, useInstallSiteId, useMeta } from "@/lib/stores/meta";
 import { useSite } from "@/lib/stores/site";
 import { useSites } from "@/lib/stores/sites";
 import { useUi } from "@/lib/stores/ui";
@@ -11,6 +11,7 @@ import { Count, Icon, IconButton, Kbd, Logo, Menu, Skeleton, type IconName, type
 import { isKitFile } from "@/features/forms/logic/locate";
 import { InboxNavBadge } from "@/features/inbox/InboxNavBadge";
 import { SiteSwitcherButton } from "@/features/sites/SiteSwitcherButton";
+import { useSiteSession } from "@/features/sites/session";
 import { useTwinLine } from "@/features/sites/store";
 import { useChrome } from "./chrome";
 
@@ -81,8 +82,41 @@ function RecentSite({ id, name }: { id: string; name: string }) {
   return <NavItem to={`/sites/${id}`} icon="folder-site" label={name} trailing={twin ? <span className="app-nav__twin">{twin}</span> : undefined} />;
 }
 
+/**
+ * A hosted install's sidebar outside the site (App settings, Plugins, the
+ * Install page): the way back to its one site, and nothing about others.
+ */
+function HostedHomeSidebar() {
+  const brand = useMeta((s) => s.meta?.brand);
+  const siteId = useInstallSiteId();
+  const site = useSites((s) => s.sites?.find((candidate) => candidate.id === siteId) ?? s.sites?.[0] ?? null);
+  return (
+    <nav className="g-sidebar app-sidebar" aria-label="App">
+      <Link to="/" className="g-brand app-brand" aria-label={`${brand?.productName ?? ""} — the site`}>
+        <Logo />
+        <span className="g-brand__name app-nav__text">{brand?.productName}</span>
+      </Link>
+      <div className="g-nav">
+        {site ? <NavItem to={`/sites/${site.id}`} icon="folder-site" label={site.name} /> : null}
+        <NavItem to="/install" icon="folder" label="Install" />
+        <NavItem to="/settings" icon="settings" label="App settings" />
+        <NavItem to="/plugins" icon="plugin" label="Plugins" />
+      </div>
+      <div className="app-sidebar__foot">
+        {brand?.byline ? <span className="app-sidebar__byline app-nav__text">{brand.byline}</span> : null}
+        <CollapseButton />
+      </div>
+    </nav>
+  );
+}
+
 /** Sidebar outside a site: the product, Sites, New site, App settings, recent sites. */
 export function HomeSidebar() {
+  const hosted = useHostedInstall();
+  return hosted ? <HostedHomeSidebar /> : <MultiSiteHomeSidebar />;
+}
+
+function MultiSiteHomeSidebar() {
   const brand = useMeta((s) => s.meta?.brand);
   const sites = useSites((s) => s.sites);
   return (
@@ -113,9 +147,26 @@ export function HomeSidebar() {
   );
 }
 
+/**
+ * The top of a hosted install's site sidebar: the site's name, going to its
+ * home — there is no other site to switch to. It carries the site's session
+ * (place memory, presence, waking a paused preview) as the switcher does.
+ */
+function SiteHeader({ siteId }: { siteId: string }) {
+  const detail = useSite((s) => s.detail);
+  useSiteSession(siteId);
+  return (
+    <Link to={`/sites/${siteId}`} className="g-brand app-brand" aria-label={`${detail?.name ?? "This site"} — site home`}>
+      <Logo />
+      <span className="g-brand__name app-nav__text">{detail?.name ?? <Skeleton width={110} height={14} />}</span>
+    </Link>
+  );
+}
+
 /** The quick switcher (type to find a site, pinned and recent first, attention chips) — features/sites. */
-function SiteSwitcher() {
-  return <SiteSwitcherButton />;
+function SiteSwitcher({ siteId }: { siteId: string }) {
+  const hosted = useHostedInstall();
+  return hosted ? <SiteHeader siteId={siteId} /> : <SiteSwitcherButton />;
 }
 
 /** Sidebar inside a site, per the specimen: site, Proof, CONTENT collections, Media, SITE history + settings. */
@@ -127,10 +178,11 @@ export function SiteSidebar({ siteId }: { siteId: string }) {
   const editingPath = location.pathname.endsWith("/edit") ? params.get("path") : null;
   const editingCollection = editingPath ? collectionForPath(detail?.model, editingPath) : null;
   const base = `/sites/${siteId}`;
+  const hosted = useHostedInstall();
 
   return (
     <nav className="g-sidebar app-sidebar" aria-label="Site">
-      <SiteSwitcher />
+      <SiteSwitcher siteId={siteId} />
       <div className="g-nav">
         <SearchButton />
         <NavItem to={base} end icon="home" label="Site home" />
@@ -183,6 +235,13 @@ export function SiteSidebar({ siteId }: { siteId: string }) {
         <NavItem to={`${base}/online`} icon="globe" label="Online" />
         <NavItem to={`${base}/redirects`} icon="link" label="Redirects" />
         <NavItem to={`${base}/settings`} icon="settings" label="Settings" />
+        {hosted ? (
+          <>
+            <NavLabel>Editor</NavLabel>
+            <NavItem to="/install" icon="folder" label="Install" />
+            <NavItem to="/settings" icon="settings" label="App settings" />
+          </>
+        ) : null}
       </div>
       <div className="app-sidebar__foot">
         <CollapseButton />

@@ -26,6 +26,10 @@ In final checks.
 
 - **The guided move from WordPress.** Built and run against an export file
   and a stand-in WordPress site; not yet against a real one.
+- **The editor hosted on your own server**, as an install that serves one
+  site. In the repository and run for real, on its image and on a server
+  behind HTTPS; not in a release yet, and its image isn't on a registry
+  ([`docs/cloud-install.md`](docs/cloud-install.md)).
 
 ## Next
 
@@ -39,8 +43,9 @@ Built and waiting to be proven, or being built.
   address that already points at the site has been run on Cloudflare.
 - **The Shopify storefront starter.** A shop built from sections; it works
   with a demo catalogue today.
-- **The editor hosted on your own server**, as an install that serves one
-  site. In development on a branch, not in a release yet.
+- **Hosting the editor online from the app**, on your own Fly.io, Cloudflare
+  or server. Built and run against stand-ins for Fly.io and Cloudflare; not
+  yet on the real services.
 - **The desktop app signed**, and built for Windows and Linux. Today it is an
   unsigned macOS app.
 - **The kits on npm as packages**: the site kit (`@galley/astro`), the adapter

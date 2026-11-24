@@ -23,7 +23,18 @@ Galley is running at http://127.0.0.1:4400
 …
 Open: http://127.0.0.1:4400/sites/e9f5bf4fa34d?token=…
 \`\`\``,
-  serve: `Hosted mode: one Galley for several people, behind one shared password. What it prints at start-up, the container and the reverse proxy: [Self-hosting](/docs/running/hosted/).`,
+  serve: `A hosted install: Galley for one site, on a server, behind a password. Everything it keeps is in its data folder (\`GALLEY_HOME\`). With no password yet it prints a one-time setup link; \`--reset-password\` makes a new one for a forgotten password and keeps serving. Not in a release yet: it is in the repository. What it prints, the image, the three addresses and the proxy in front: [Run a hosted install](/docs/running/hosted/).`,
+  backup: `Backs up a hosted install's data folder into one file sealed with a passphrase, or puts such a file back — the same file the Install page downloads. Stop the server first. In a container whose only volume is \`/data\`, write to \`/data/backups/\`: no backup includes it and no restore replaces it. Not in a release yet. What a backup holds: [Run a hosted install](/docs/running/hosted/#back-it-up).
+
+\`\`\`sh
+GALLEY_HOME=/data galley backup create --out /data/backups/site.bak
+\`\`\``,
+  host: `Puts an editor for the site online on your own account — Fly.io, Cloudflare in front of a computer of yours, or any server with Docker — as the Online screen's **Host the editor online** does. It prints the plan and the monthly cost before anything is created, and asks. \`galley host recipe\` writes the files to run one install with Docker, for an operator. \`--preview-address\` and \`--live-address\` set the other two names (needed for an address like \`example.co.uk\`). Not in a release yet: it is in the repository. [Host the editor online](/docs/editing/editor-online/).
+
+\`\`\`sh
+galley host --host fly --address cms.example.com --dry-run
+galley host recipe --name acme --address cms.example.com --out -
+\`\`\``,
   init: `Writes the corrections file with what detection found, for you to edit. Without \`--force\`, an existing file is left alone (exit 1). The file: [galley.config.json](/docs/configuration/).`,
   doctor: `Reads the site without running any of its code and prints what Galley sees — framework, package manager, dev and build commands, each collection with its fields, media, git, and the assistant's key. Exits with 1 only when something would stop Galley working. [Detection](/docs/concepts/detection/) explains each line.`,
   deploy: `Puts the site online from a terminal, as the app's **Online** screen does. Not run against the live services by the docs; Cloudflare has been verified by the people who built it, Vercel not yet. \`--domain\` is new in 0.1.1. Details: [Deploying, for developers](/docs/running/deploy/).`,

@@ -61,6 +61,7 @@ export function errorResponse(c: Context, error: unknown, log: (line: string) =>
   }
   const stack = error instanceof Error ? (error.stack ?? `${error.name}: ${error.message}`) : String(error);
 
-  log(`[${new Date().toISOString()}] ${c.req.method} ${new URL(c.req.url).pathname} failed:\n${stack}`);
+  // The time is added where the line is written (log.ts), like every other line's.
+  log(`${c.req.method} ${new URL(c.req.url).pathname} failed:\n${stack}`);
   return c.json(errorBody("internal", INTERNAL_MESSAGE), 500);
 }

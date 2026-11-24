@@ -33,6 +33,24 @@ export interface PluginSystemOptions {
   productName?: string;
   /** Skip loading `<home>/plugins` (GALLEY_DISABLE_USER_PLUGINS=1 does the same). */
   installed?: boolean;
+  /**
+   * Told the environment variables every plugin registered (built in,
+   * installed, or a site's own, later) names for its secret settings — so a
+   * hosted install hides them from the site's own commands too.
+   */
+  onSecretEnv?: (names: string[]) => void;
+}
+
+/** The environment variables a plugin's secret settings are read from. Read defensively: the plugin hasn't been checked yet. */
+export function secretEnvNames(plugin: unknown): string[] {
+  const settings = (plugin as { settings?: unknown } | null)?.settings;
+
+  if (!Array.isArray(settings)) return [];
+  return settings.flatMap((field: unknown) => {
+    const { secret, env } = (field ?? {}) as { secret?: unknown; env?: unknown };
+
+    return secret === true && Array.isArray(env) ? env.filter((name): name is string => typeof name === "string" && /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) : [];
+  });
 }
 
 export async function createPluginSystem(options: PluginSystemOptions): Promise<PluginRegistry> {
@@ -50,6 +68,18 @@ export async function createPluginSystem(options: PluginSystemOptions): Promise<
     ...(options.log ? { log: options.log } : {}),
   });
 
+  if (options.onSecretEnv) {
+    const register = plugins.register.bind(plugins);
+    const notify = options.onSecretEnv;
+
+    // Every registration goes through here, a site's own plugins (registered later, as the site opens) included.
+    plugins.register = (plugin, registerOptions) => {
+      const names = secretEnvNames(plugin);
+
+      if (names.length > 0) notify(names);
+      return register(plugin, registerOptions);
+    };
+  }
   plugins.register(builtinPlugin, { source: "builtin", required: true, location: "built in" });
   for (const plugin of firstPartyPlugins()) plugins.register(plugin, { source: "builtin", location: "ships with the app" });
   // A literal specifier, so the CLI bundle (and the desktop sidecar, which runs it) carries the importer inside it.

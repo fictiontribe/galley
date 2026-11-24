@@ -3,6 +3,7 @@ import type { SecretName, SiteConnections, SiteSecretConnection, UsageTotals } f
 import { api, errorShape } from "@/lib/api";
 import { count, money } from "@/lib/format";
 import { setQueryData, useQuery } from "@/lib/query";
+import { useHostedInstall } from "@/lib/stores/meta";
 import { notify } from "@/lib/stores/toasts";
 import { Badge, Button, ErrorState, Field, Input, Skeleton } from "@/ui";
 
@@ -182,13 +183,17 @@ function UsageLine({ label, totals }: { label: string; totals: UsageTotals }) {
  * characters.
  */
 export function ConnectionsSection({ siteId }: { siteId: string }) {
-  const connections = useQuery(connectionsKey(siteId), () => api("GET /api/sites/:siteId/connections", { params: { siteId } }));
+  // A hosted install has one site: its keys and author are the editor's own
+  // (App settings, the Install page), so there is no shared one to override.
+  const hosted = useHostedInstall();
+  const connections = useQuery(connectionsKey(siteId), () => api("GET /api/sites/:siteId/connections", { params: { siteId } }), { enabled: !hosted });
   const usage = useQuery(usageKey(siteId), () => api("GET /api/sites/:siteId/usage", { params: { siteId } }));
   const update = (next: SiteConnections) => setQueryData(connectionsKey(siteId), next);
   const order: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel"];
 
   return (
     <div className="app-settings__sections sites-connections">
+      {hosted ? null : (
       <section className="app-settings__section" id="connections">
         <header className="app-settings__section-head">
           <h2 className="app-settings__section-title">Connections</h2>
@@ -213,6 +218,7 @@ export function ConnectionsSection({ siteId }: { siteId: string }) {
           ) : null}
         </div>
       </section>
+      )}
       <section className="app-settings__section" id="site-usage">
         <header className="app-settings__section-head">
           <h2 className="app-settings__section-title">Assistant use</h2>

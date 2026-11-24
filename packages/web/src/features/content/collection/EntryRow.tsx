@@ -25,6 +25,8 @@ export interface EntryRowProps {
   onDelete: (entry: EntrySummary) => void;
   /** Where the live/preview page opens, or null. */
   siteUrl: (path: string) => string | null;
+  /** Opens the page itself instead (a hosted install's preview goes through its entry); absent: `siteUrl` in a new tab. */
+  openSite?: (path: string) => void;
   /** Set when keyboard movement wants the active row focused once it is on screen (it may still be loading). */
   focusRequest?: RefObject<boolean>;
 }
@@ -47,7 +49,7 @@ export function StatusBadges({ entry }: { entry: Pick<EntrySummary, "status" | "
 }
 
 /** One entry in the collection list: a link that opens the editor, plus a menu. */
-export const EntryRow = memo(function EntryRow({ siteId, entry, index, top, columns, active, media, onActivate, onDelete, siteUrl, focusRequest }: EntryRowProps) {
+export const EntryRow = memo(function EntryRow({ siteId, entry, index, top, columns, active, media, onActivate, onDelete, siteUrl, openSite, focusRequest }: EntryRowProps) {
   const link = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     if (!active || !focusRequest?.current) return;
@@ -59,7 +61,7 @@ export const EntryRow = memo(function EntryRow({ siteId, entry, index, top, colu
   const live = entry.url ? siteUrl(entry.url) : null;
   const items: MenuItem[] = [
     { id: "open", label: "Open", icon: "page", onSelect: () => document.getElementById(`row-${index}`)?.click() },
-    { id: "site", label: "Open on the site", icon: "external", disabled: !live, onSelect: () => live && window.open(live, "_blank", "noopener") },
+    { id: "site", label: "Open on the site", icon: "external", disabled: !live, onSelect: () => live && (openSite && entry.url ? openSite(entry.url) : window.open(live, "_blank", "noopener")) },
     { kind: "separator", id: "sep" },
     { id: "delete", label: "Delete…", icon: "trash", tone: "danger", disabled: entry.status === "deleted", onSelect: () => onDelete(entry) },
   ];

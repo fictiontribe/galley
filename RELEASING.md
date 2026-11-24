@@ -105,6 +105,11 @@ would only add a download.
      into the starters and the website again
      (`node packages/astro/scripts/vendor.mjs <folder>` for each of
      `starters/*` and `apps/site`), so every copy says which kit it is.
+   - the repository's `docker-compose.yml`, `Caddyfile` and `.env.example`,
+     which name the image's version: write them again from the recipe by
+     running `packages/core/test/hosting/compose-example.test.ts` with the
+     update switch its header names, in `packages/core` (without it, the same
+     test fails while they disagree with the recipe).
 
    The release workflow refuses to publish when the tag, the two packages and
    `brand.ts` disagree.

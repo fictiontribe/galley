@@ -2,6 +2,7 @@ import type { PreviewState } from "@galley/core/types";
 import { useConnection } from "@/lib/events";
 import { count, relativeTime } from "@/lib/format";
 import { usePendingCount } from "@/lib/stores/changes";
+import { useHostedInstall } from "@/lib/stores/meta";
 import { usePreviewStatus } from "@/lib/stores/preview";
 import { useSite } from "@/lib/stores/site";
 import { useState } from "react";
@@ -29,6 +30,12 @@ function PreviewItem({ siteId }: { siteId: string }) {
       {PREVIEW_TEXT[state]}
     </span>
   );
+}
+
+/** "3 sites need attention" — only where there are other sites. */
+function OtherSitesItem() {
+  const hosted = useHostedInstall();
+  return hosted ? null : <AttentionIndicator />;
 }
 
 function ConnectionItem() {
@@ -80,7 +87,7 @@ export function SiteStatusBar({ siteId }: { siteId: string }) {
       <UnsentItem siteId={siteId} />
       <DeployStatusItem siteId={siteId} />
       <span className="g-toolbar__spacer" />
-      <AttentionIndicator />
+      <OtherSitesItem />
       <ConnectionItem />
       <span className="g-statusbar__item app-hide-narrow">
         <Kbd keys={["mod", "K"]} /> to jump
@@ -93,7 +100,7 @@ export function HomeStatusBar() {
   return (
     <footer className="g-statusbar app-statusbar">
       <span className="g-toolbar__spacer" />
-      <AttentionIndicator />
+      <OtherSitesItem />
       <ConnectionItem />
       <span className="g-statusbar__item">
         <Kbd keys={["mod", "K"]} /> to jump

@@ -343,13 +343,53 @@ describe("galley [path]", () => {
 });
 
 describe("galley serve", () => {
-  it("refuses to start without a password, saying why", async () => {
+  it("starts without a password and prints the one-time setup link, and nothing else secret", async () => {
+    // Was "refuses to start without a password": a hosted install now starts in first run instead.
     const { startServer } = await import("@galley/server");
-    const io = testIo({ startServer, env: { HOME: tmp, GALLEY_HOME: join(tmp, "serve-home") } });
+    const home = join(tmp, "serve-home");
+    const io = testIo({ startServer, env: { PATH: process.env.PATH, HOME: tmp, GALLEY_HOME: home, GALLEY_HOST: "127.0.0.1", GALLEY_PORT: "0", GALLEY_MCP: "off" } });
 
-    expect(await main(["serve", "--port", "4999"], io)).toBe(1);
-    expect(io.stderr.join("\n")).toMatch(/won't start on 0\.0\.0\.0 without a password/);
-    expect(existsSync(join(tmp, "serve-home"))).toBe(false);
+    expect(await main(["serve"], io)).toBe(0);
+    const output = io.stdout.join("\n");
+    const link = /Setup: {5}(http:\/\/127\.0\.0\.1:\d+\/setup\?token=([A-Za-z0-9_-]{43}))\n/.exec(output);
+
+    expect(link).not.toBeNull();
+    expect(output).toContain("it works once, and whoever opens it first chooses the password");
+    expect(output).toContain("Site:      not connected yet");
+    expect(output).toContain(`Data:      ${home}`);
+    expect(output).not.toContain("Sign-in:");
+    // Only the code's hash is kept; the code itself is printed once and stored nowhere.
+    const state = readFileSync(join(home, "install.json"), "utf8");
+
+    expect(state).not.toContain(link![2]);
+    expect(io.stderr.join("\n")).not.toContain(link![2]);
+  });
+
+  it("doesn't print a setup code the operator supplied: it would only end up in the server's log", async () => {
+    const { startServer } = await import("@galley/server");
+    const home = join(tmp, "serve-home-supplied");
+    const code = "operator-supplied-setup-code-0123456789";
+    const io = testIo({ startServer, env: { PATH: process.env.PATH, HOME: tmp, GALLEY_HOME: home, GALLEY_HOST: "127.0.0.1", GALLEY_PORT: "0", GALLEY_MCP: "off", GALLEY_SETUP_TOKEN: code } });
+
+    expect(await main(["serve"], io)).toBe(0);
+    const output = [...io.stdout, ...io.stderr].join("\n");
+
+    expect(output).toMatch(/Setup: {5}http:\/\/127\.0\.0\.1:\d+\/setup\?token=<the setup code you supplied>\n/);
+    expect(output).not.toContain(code);
+    expect(readFileSync(join(home, "install.json"), "utf8")).not.toContain(code);
+  });
+
+  it("--reset-password asks the server to forget the password", async () => {
+    let received: Record<string, unknown> = {};
+    const io = testIo({
+      startServer: async (options) => {
+        received = { ...options };
+        return { url: "http://127.0.0.1:4400", port: 4400, close: async () => {} } as unknown as RunningServer;
+      },
+    });
+
+    expect(await main(["serve", "--reset-password"], io)).toBe(0);
+    expect(received).toMatchObject({ mode: "hosted", resetPassword: true });
   });
 
   it("refuses a short password", async () => {
@@ -370,16 +410,35 @@ describe("galley serve", () => {
       },
     });
 
+    // --sites-dir is still accepted (the server says it is ignored: a hosted install keeps its one site in its data folder).
     expect(await main(["serve", "--sites-dir", "sites"], io)).toBe(0);
     expect(received).toMatchObject({ mode: "hosted", host: "0.0.0.0", sitesDir: join(tmp, "sites") });
     const output = io.stdout.join("\n");
 
     expect(output).toContain("0.0.0.0 (every network interface), port 4400");
     expect(output).toContain("Address:   https://cms.example.com");
-    expect(output).toContain("password from GALLEY_PASSWORD");
-    expect(output).toContain(`Sites:     ${join(tmp, "sites")}`);
+    // Was "the password chosen in the app", which isn't true when GALLEY_PASSWORD set it.
+    expect(output).toContain("Sign-in:   this editor's password (it is changed on the Install page)");
+    expect(output).toContain("Site:      not connected yet");
+    expect(output).toContain("Data:      /data");
     expect(output).not.toContain("a long enough password");
     expect(output).toContain("Requests:  only for cms.example.com and loopback names; changes must come from that address");
+  });
+
+  it("says which password signs in: the one GALLEY_PASSWORD set, while it still is the one", async () => {
+    const { startServer } = await import("@galley/server");
+    const home = join(tmp, "serve-home-password");
+    const env = { PATH: process.env.PATH, HOME: tmp, GALLEY_HOME: home, GALLEY_HOST: "127.0.0.1", GALLEY_PORT: "0", GALLEY_MCP: "off", GALLEY_PASSWORD: "a long enough password" };
+    const first = testIo({ startServer, env });
+
+    expect(await main(["serve"], first)).toBe(0);
+    expect(first.stdout.join("\n")).toContain("Sign-in:   the password GALLEY_PASSWORD set; after 5 wrong attempts in a minute, that address waits a minute");
+    expect(first.stdout.join("\n")).not.toContain("a long enough password");
+    // Changed in the app since: GALLEY_PASSWORD no longer signs in, and the line doesn't say it does.
+    const changed = testIo({ startServer, env: { ...env, GALLEY_PASSWORD: "another long enough password" } });
+
+    expect(await main(["serve"], changed)).toBe(0);
+    expect(changed.stdout.join("\n")).toContain("Sign-in:   this editor's password (it is changed on the Install page)");
   });
 
   it("says plainly what it answers to without a public address", async () => {
@@ -398,7 +457,8 @@ describe("galley serve", () => {
     for (const [env, expected] of [
       [{ GALLEY_BRAND_FILE: join(tmp, "missing-brand.json") }, `The brand file ${join(tmp, "missing-brand.json")} can't be used because it doesn't exist.`],
       [{ GALLEY_BRAND_ACCENT: "blue" }, "GALLEY_BRAND_ACCENT must be a hex color like #1a2b3c, not “blue”."],
-      [{ GALLEY_PREVIEW_PORTS: "lots" }, "GALLEY_PREVIEW_PORTS must be a range of ports like 4410-4429, not “lots”."],
+      // Was GALLEY_PREVIEW_PORTS "lots": a hosted install ignores the preview ports now (it serves previews by hostname, through its one port).
+      [{ GALLEY_PREVIEW_URL: "cms-preview" }, "GALLEY_PREVIEW_URL must be a full address like https://cms-preview.example.com, not “cms-preview”."],
     ] as const) {
       const io = testIo({ env: { HOME: tmp, GALLEY_HOME: join(tmp, "brand-home"), GALLEY_PASSWORD: "a long enough password", ...env }, startServer });
 

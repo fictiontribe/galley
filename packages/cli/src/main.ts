@@ -6,10 +6,12 @@ import { isGalleyError } from "@galley/core";
 import { PRODUCT, VERSION } from "@galley/core/brand";
 import { StartupError } from "@galley/server";
 import { UsageError } from "./args";
+import { backupCommand } from "./commands/backup";
 import { deployCommand } from "./commands/deploy";
 import { domainCommand } from "./commands/domain";
 import { desktopCommand } from "./commands/desktop";
 import { doctorCommand } from "./commands/doctor";
+import { hostCommand } from "./commands/host";
 import { importCommand } from "./commands/import";
 import { initCommand } from "./commands/init";
 import { mcpCommand } from "./commands/mcp";
@@ -26,10 +28,12 @@ export const HELP = `${PRODUCT.name} — ${PRODUCT.descriptor}. ${PRODUCT.taglin
 Usage
   ${PRODUCT.slug} [path]          Open the site in [path] (default: this folder) in the browser
   ${PRODUCT.slug} serve           Run for other computers, behind a password
+  ${PRODUCT.slug} backup …        Back up a hosted install's data folder, or put a backup back
   ${PRODUCT.slug} init [path]     Write ${PRODUCT.configFile} from what detection finds
   ${PRODUCT.slug} doctor [path]   Check that a site and this computer are ready
   ${PRODUCT.slug} deploy [path]   Put the site online with Cloudflare or Vercel (--preview: unpublished changes)
   ${PRODUCT.slug} domain [path]   Use your own domain for a site that is online
+  ${PRODUCT.slug} host [path]     Host the editor online for the site, on your own account (Fly.io, Cloudflare, a server)
   ${PRODUCT.slug} new <name>      Start a new site from a starter
   ${PRODUCT.slug} import …        Bring a WordPress site (or another importer's) into a site
   ${PRODUCT.slug} starters        List the starters and their looks
@@ -60,6 +64,7 @@ const versionCommand: Command = async (argv, io) => {
 
 export const COMMANDS: Record<string, Command> = {
   serve: serveCommand,
+  backup: backupCommand,
   init: initCommand,
   doctor: doctorCommand,
   new: newCommand,
@@ -69,6 +74,7 @@ export const COMMANDS: Record<string, Command> = {
   import: importCommand,
   deploy: deployCommand,
   domain: domainCommand,
+  host: hostCommand,
   schema: schemaCommand,
   version: versionCommand,
   // Started by the desktop app, not typed by people, so it isn't in HELP.

@@ -404,6 +404,26 @@
       },
       "additionalProperties": false
     },
+    "editor": {
+      "description": "Where this site's editor is hosted online, when it has one. An address and the host's id: no secrets, safe to publish.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^https:\\/\\/[^/?#]+\\/?$",
+          "description": "The editor's address, like https://cms.example.com."
+        },
+        "host": {
+          "description": "Where it is hosted: fly, cloudflare, own-server, or a plugin's host.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": false
+    },
     "siteBrand": {
       "description": "The site's own brand (look and voice): where its files live, the size above which added material stays out of the repository, and the stylesheet that holds its design values. See the brand guide.",
       "type": "object",

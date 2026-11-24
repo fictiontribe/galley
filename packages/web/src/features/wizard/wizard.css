@@ -74,3 +74,6 @@
 .wizard-phase--running, .wizard-phase--done { color: var(--ink-primary); }
 .wizard-phase__dot { inline-size: 8px; block-size: 8px; margin-inline: 3px; border-radius: 50%; border: var(--border-hair) solid var(--border-strong); }
 .wizard-detail { margin: 0; font-size: var(--text-2xs); color: var(--ink-tertiary); max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A new site's last screen: hosting the editor online, chosen while the site is set up. */
+.wizard-host { display: grid; gap: var(--space-1-5); justify-items: start; padding-block-start: var(--space-4); border-block-start: var(--border-hair) solid var(--border-subtle); inline-size: 100%; }
+.wizard-host .g-hint { margin: 0; }

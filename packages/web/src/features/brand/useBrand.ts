@@ -5,6 +5,9 @@ import { api } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
 import { setQueryData, useQuery } from "@/lib/query";
 import { usePreview } from "@/lib/stores/preview";
+import { useMeta } from "@/lib/stores/meta";
+import { needsEntry, requestEntry } from "@/features/preview/entry";
+import { enterInFrame, measureTarget } from "@/features/hosting/previewLinks";
 import { useSite } from "@/lib/stores/site";
 import { measureSite, type MeasureProgress } from "./measure";
 
@@ -44,6 +47,22 @@ async function previewOrigin(siteId: string, signal: AbortSignal): Promise<strin
   return null;
 }
 
+/**
+ * Where the measuring frame loads pages: the preview's own address on this
+ * computer; on a hosted install, the entry's origin once this browser has been
+ * let in there (see features/hosting/previewLinks.tsx).
+ */
+async function measuredFrom(siteId: string, previewUrl: string, signal: AbortSignal): Promise<{ origin: string } | null> {
+  const meta = useMeta.getState().meta;
+
+  if (!needsEntry(meta)) return measureTarget(meta, previewUrl, null);
+  const entry = await requestEntry(siteId).catch(() => null);
+  const target = measureTarget(meta, previewUrl, entry?.preview ?? null);
+
+  if (target?.enter) await enterInFrame(target.enter, signal);
+  return target;
+}
+
 /** The pages worth measuring besides home: the first page of every collection that has pages. */
 async function representativePages(siteId: string): Promise<string[]> {
   const model = useSite.getState().detail?.model;
@@ -77,8 +96,11 @@ export function useMeasure(siteId: string) {
       const origin = await previewOrigin(siteId, abort.signal);
 
       if (!origin) return { pages: [], problem: "The preview couldn't start, so only the site's code was read." };
+      const target = await measuredFrom(siteId, origin, abort.signal);
+
+      if (!target) return { pages: [], problem: "The preview couldn't be opened from here, so only the site's code was read." };
       setStarting(false);
-      const pages = await measureSite(origin, await representativePages(siteId), setProgress, abort.signal);
+      const pages = await measureSite(target.origin, await representativePages(siteId), setProgress, abort.signal);
 
       return { pages, problem: pages.length ? null : "The preview's pages didn't answer, so only the site's code was read." };
     } finally {

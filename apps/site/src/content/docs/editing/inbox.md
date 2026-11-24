@@ -34,7 +34,7 @@ The same window sets **Who can send** (the site's own addresses), **Spam protect
 
 Visitors' browsers can only reach an inbox that is on the internet. When Galley runs on your own computer, the Inbox says so: *Submissions can only arrive when this app runs on a server visitors can reach. On this computer it works for testing.* To collect real submissions, either:
 
-- run Galley on a server with a public address ([Self-hosting](/docs/running/hosted/)), or
+- run the site's editor on a server with a public address ([Host the editor online](/docs/editing/editor-online/), or [Run a hosted install](/docs/running/hosted/) yourself), or
 - send the form to your CRM or a webhook instead ([Make a form](/docs/editing/forms/#choose-where-submissions-go)).
 
 ## Deleting someone's data

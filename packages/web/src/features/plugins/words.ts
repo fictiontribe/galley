@@ -100,6 +100,7 @@ const CONFLICT_WORDS: Record<PluginConflict["kind"], string> = {
   scriptIntegration: "script",
   importer: "importer",
   deployTarget: "host",
+  editorHost: "place to host the editor",
   tool: "assistant tool",
   dataSource: "data source for fields",
 };

@@ -49,6 +49,7 @@ How the file merges over detection: [galley.config.json](/docs/configuration/#ho
 | `templates` | object[] | Ready-made entries a new one can start from — a landing page, a pricing page ([below](#templates)). *Default:* none. |
 | `deploy` | object | Where the site is put online ([below](#deploy)). Written by the **Online** setup and `galley deploy`. Ids only: the host's access key is never in this file. *Default:* none. |
 | `redirects` | object | Where the redirects list lives and which host applies it ([below](#redirects)). *Default:* detected. |
+| `editor` | object | Where this site's editor is hosted online ([below](#editor)). Written by **Host the editor online** and `galley host` once the hosted editor has the site. An address and a host id: no secrets, safe to publish. *Default:* none. |
 | `siteBrand` | object | Where the site's own brand is kept ([below](#site-brand)). *Default:* detected. |
 
 ## collections[]
@@ -137,6 +138,21 @@ Written by the **Online** setup and by `galley deploy` ([Deploying, for develope
 | `deploy.domain.pending` | boolean | `true` while the domain is attached but not answering over HTTPS yet. |
 | `deploy.autoDeploy` | boolean | **Put changes live every time I publish**: each publish puts the new version online by itself. *Default:* `false`. |
 | `deploy.previewOnShare` | boolean | `false` hides **Share a preview link** in Proof. *Default:* shown. |
+
+## Editor
+
+Written by **Host the editor online** and `galley host` when the hosted editor has the site, as a pending change you publish like any other ([Host the editor online](/docs/editing/editor-online/)). It tells every copy of the site where its editor lives; removing the hosted editor takes it out again.
+
+| Key | Type | Meaning and default |
+| --- | --- | --- |
+| `editor.url` | string, **required**, `https://` and a name with nothing after it | The editor's address: `https://cms.example.com`. |
+| `editor.host` | string, a host id (`fly`, `cloudflare`, `own-server`, or a plugin's) | Where it is hosted. |
+
+```json galley.config.json
+{
+  "editor": { "url": "https://cms.example.com", "host": "fly" }
+}
+```
 
 ## Redirects
 

@@ -29,12 +29,13 @@ This page is for developers. Galley's messages are written to say what happened 
 | `Port 4400 is already in use on 0.0.0.0. Stop whatever is using it, or choose another with --port or GALLEY_PORT.` | Hosted mode and the desktop command don't move to another port. |
 | `This user isn't allowed to listen on port 80. Choose a port above 1024.` | Privileged port. Put a reverse proxy in front instead. |
 | `This computer has no network address 10.0.0.9 to listen on.` | `--host` / `GALLEY_HOST` isn't an address of this machine. |
-| *Local mode only listens on this computer (127.0.0.1), not on 0.0.0.0. To serve other computers, use* `galley serve` *with GALLEY_PASSWORD set.* | `GALLEY_HOST` set to a non-loopback address for `galley [path]`. |
-| `Galley won't start on 0.0.0.0 without a password: …` | Hosted mode needs `GALLEY_PASSWORD`. |
+| *Local mode only listens on this computer (127.0.0.1), not on 0.0.0.0. To serve other computers, use* `galley serve`. | `GALLEY_HOST` set to a non-loopback address for `galley [path]`. |
 | `GALLEY_PASSWORD is too short. It needs at least 12 characters, …` | |
 | `GALLEY_TOKEN must be at least 16 characters long.` | |
 | `GALLEY_PUBLIC_URL must be a full address like https://cms.example.com, not “…”.` / `… must start with https:// (or http://) …` | |
-| `! GALLEY_PUBLIC_URL isn't set, so the server answers to any hostname …` | A warning in hosted mode. Set it to the address people use. |
+| `This editor looks after one site. Each site gets an editor of its own.` | A hosted install refused to add, open or remove another site. Run another install for the other site. |
+| `This data folder holds … sites (…), and a hosted Galley now looks after one site. Set GALLEY_SITE_DIR …` | An older hosted data folder holds several sites; a hosted install keeps one. Name it, and the others stay on disk untouched. |
+| `! GALLEY_PUBLIC_URL isn't set, so the server answers to any hostname and the preview has no address to be shown on. …` | A warning on a hosted install. Set it to the address people use. |
 | `! GALLEY_PUBLIC_URL uses http://, so the password and sign-in cookie cross the network unencrypted. …` | A warning. Put HTTPS in front. |
 | `Error: GALLEY_BRAND_ACCENT must be a hex color like #1a2b3c, not “blue”.` (with a stack trace) | A bad white-label setting; the first line is the message. Same for `The brand file … can't be used …`. See [White-label](/docs/configuration/white-label/#validation). |
 
@@ -79,7 +80,7 @@ These appear as notes in `galley doctor` (and in the site's model).
 | `The preview stopped before it was ready. The log below says why.` | The dev command exited — a build error, a missing dependency, a wrong Node version (Astro 7 needs 22.23.4+). |
 | `The preview stopped unexpectedly. Restart it to try again.` | The dev server crashed after starting. |
 | The preview starts, but the page is blank or the dev server exits at once when Galley runs inside an AI coding tool's terminal | Galley removes the agent variables (`CLAUDECODE`, `CLAUDE_*`, `CURSOR_AGENT`, `CODEX_*`, …) from the dev server's environment because Astro 7 backgrounds itself when it sees them. If a site's own scripts re-add them, they come back. |
-| The preview pane is empty in hosted mode | [A known gap](/docs/running/hosted/#previews-a-known-gap): previews use random ports over plain HTTP. |
+| The preview pane is empty on a hosted install | No address for the preview: set `GALLEY_PUBLIC_URL` (or `GALLEY_PREVIEW_URL` and `GALLEY_LIVE_VIEW_URL`), point the preview's and live comparison's names at the server, and keep the `Host` header in the proxy ([The three names](/docs/running/hosted/#the-three-names)). |
 
 ## Editing, publishing, cloning
 

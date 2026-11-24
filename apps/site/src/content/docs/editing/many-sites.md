@@ -41,4 +41,4 @@ Each site's preview runs on this computer. **App settings › Previews** sets ho
 
 ## Not there yet
 
-There are no user accounts or per-site permissions: anyone who can open this Galley can edit and publish every site in its list. Keys are kept in files only you can read, not yet in the system keychain. More: [Self-hosting](/docs/running/hosted/), [Security](/docs/running/security/).
+There are no user accounts or per-site permissions: anyone who can open this Galley can edit and publish every site in its list. Keys are kept in files only you can read, not yet in the system keychain. A hosted install on a server looks after one site only: each site you want to edit from a browser gets an editor of its own. More: [Run a hosted install](/docs/running/hosted/), [Security](/docs/running/security/).

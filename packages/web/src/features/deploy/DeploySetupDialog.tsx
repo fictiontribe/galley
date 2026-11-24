@@ -16,6 +16,7 @@ import { useJob, useShowingJob } from "@/lib/stores/jobs";
 import { useSite } from "@/lib/stores/site";
 import { publishOutcome, type PublishOutcome } from "@/features/proof/publishOutcome";
 import { keys } from "@/lib/sync";
+import { usePlaceWords } from "@/lib/where";
 import { Badge, Button, Dialog, ErrorState, Field, Icon, Input, ProofMark, Skeleton, Toggle, buttonClass, cx } from "@/ui";
 import { canContinue, failureFor, initialSetup, onlineSettingsWaiting, setupReducer, targetName, type Failure, type SetupState } from "./logic";
 import { AddressBlock, DeployProgress, JobFailure } from "./parts";
@@ -55,6 +56,7 @@ function HostChoice({ targets, value, onChange }: { targets: DeployTargetInfo[];
 
 function KeyStep({ target, value, onChange, error }: { target: DeployTargetInfo; value: string; onChange: (value: string) => void; error: string | null }) {
   const secret = target.secrets[0];
+  const where = usePlaceWords();
   const [replacing, setReplacing] = useState(false);
   const stored = secret?.configured && !replacing;
   return (
@@ -103,7 +105,7 @@ function KeyStep({ target, value, onChange, error }: { target: DeployTargetInfo;
           )}
         </div>
       ) : (
-        <Field label="Access key" hint="Kept on this computer only. Afterwards only its last four characters are shown." error={error ?? undefined}>
+        <Field label="Access key" hint={`Kept ${where.keyStore}. Afterwards only its last four characters are shown.`} error={error ?? undefined}>
           <Input type="password" mono autoComplete="off" spellCheck={false} value={value} placeholder={`Paste the ${target.name} key`} onChange={(event) => onChange(event.target.value)} data-autofocus />
         </Field>
       )}

@@ -36,3 +36,12 @@ export const DEFAULT_BRAND: BrandConfig = {
 };
 
 export const VERSION = "0.1.3";
+
+/**
+ * Where the hosted install's image is expected to be published: the GitHub
+ * container registry, under the same organisation as the repository. Nothing
+ * is published there yet (RELEASING.md lists the registry as not chosen);
+ * "Host the editor online" runs `${IMAGE_REPOSITORY}:${VERSION}` unless
+ * GALLEY_HOSTING_IMAGE names another image.
+ */
+export const IMAGE_REPOSITORY = `ghcr.io${new URL(REPOSITORY_URL).pathname.toLowerCase()}`;

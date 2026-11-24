@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node", "vite/client"],
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@brand/*": ["../../brand/*"]
+    }
+  },
+  // Tests that render the app (happy-dom). They reach the mock server and the
+  // app through dynamic imports, so neither is type-checked a second time here
+  // with the browser's types mixed into the server's.
+  "include": ["test/install", "test/hosting"]
+}

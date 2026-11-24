@@ -30,7 +30,7 @@ Galley has no git sign-in of its own. It runs `git` as you, so whatever lets `gi
 - **"Couldn't reach the code host."** Check the internet connection.
 - **The address is refused.** Only `https` and ssh addresses work — not local paths.
 
-Galley doesn't install the site's dependencies when it clones; the preview does that the first time it starts. On a shared Galley, the git sign-in is that of the server ([Self-hosting](/docs/running/hosted/)). The same over the API: `POST /api/sites/clone` ([HTTP API](/docs/reference/api/#sites)).
+Galley doesn't install the site's dependencies when it clones; the preview does that the first time it starts. A hosted install doesn't clone like this: it looks after one site, connected at its first run with its own deploy key or an access token ([Run a hosted install](/docs/running/hosted/#first-run)). The same over the API: `POST /api/sites/clone` ([HTTP API](/docs/reference/api/#sites)).
 
 ## Next
 

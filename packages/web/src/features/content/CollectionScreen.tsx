@@ -13,6 +13,9 @@ import { notify } from "@/lib/stores/toasts";
 import { keys } from "@/lib/sync";
 import { Button, ConfirmDialog, EmptyState, ErrorState, Icon, Input, PageHeader, SegmentedControl, Select, Skeleton } from "@/ui";
 import { EntryRows, PAGE_SIZE } from "./collection/EntryRows";
+import { collectionSiteTarget, openPreviewTarget } from "@/features/hosting/previewLinks";
+import { needsEntry } from "@/features/preview/entry";
+import { useMeta } from "@/lib/stores/meta";
 import { NewEntryDialog } from "./collection/NewEntryDialog";
 
 type StatusFilter = "all" | Exclude<ChangeStatus, "deleted">;
@@ -77,6 +80,15 @@ function CollectionList({ siteId, collection }: { siteId: string; collection: Co
     },
     [preview?.state, preview?.url, production],
   );
+  // A hosted install's preview answers only a browser let in through its entry: the row opens it that way.
+  const meta = useMeta((s) => s.meta);
+  const openSite = useMemo(() => {
+    if (!needsEntry(meta)) return undefined;
+    return (path: string) => {
+      const target = collectionSiteTarget(meta, preview?.state === "ready" && preview.url ? preview.url : null, production, path);
+      if (target) openPreviewTarget(siteId, target);
+    };
+  }, [meta, siteId, preview?.state, preview?.url, production]);
 
   // An author column appears when the entries carry one.
   const hasAuthor = Boolean(first.data?.items.some((entry) => entry.author));
@@ -160,7 +172,7 @@ function CollectionList({ siteId, collection }: { siteId: string; collection: Co
   } else {
     body = (
       <div className="app-rows__frame" style={{ ["--row-cols" as string]: cols }}>
-        <EntryRows siteId={siteId} queryKey={queryKey} fetchPage={fetchPage} total={total} columns={columns} media={media} label={collection.label} onDelete={setDeleting} siteUrl={siteUrl} />
+        <EntryRows siteId={siteId} queryKey={queryKey} fetchPage={fetchPage} total={total} columns={columns} media={media} label={collection.label} onDelete={setDeleting} siteUrl={siteUrl} openSite={openSite} />
       </div>
     );
   }

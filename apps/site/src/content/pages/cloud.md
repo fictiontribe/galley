@@ -36,6 +36,8 @@ sections:
   - type: close
     id: promise
     heading: The open source stays whole.
-    text: Nothing is taken out of the open-source product to fill Cloud, and you can leave with your repository.
-    actions: []
+    text: Nothing is taken out of the open-source product to fill Cloud, and you can leave with your repository. Until Cloud opens, you can run the editor online yourself, on your own account or server, one install per site.
+    actions:
+      - label: Run the editor online yourself
+        href: /docs/editing/editor-online/
 ---

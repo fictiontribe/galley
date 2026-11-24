@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AgentReadableReport, AgentView, CrawlerChoice, CrawlerReport, CrawlerStatus } from "@galley/core/seo/types";
+import { agentFileTarget, PreviewTabLink } from "@/features/hosting/previewLinks";
 import { api } from "@/lib/api";
+import { useMeta } from "@/lib/stores/meta";
 import { useQuery } from "@/lib/query";
 import { useSite } from "@/lib/stores/site";
 import { usePreviewStatus } from "@/lib/stores/preview";
@@ -155,6 +157,8 @@ export function AgentPanel({ siteId, report }: { siteId: string; report: AgentRe
   const options = useMemo(() => (lists.data ?? []).map((item) => ({ value: item.url!, label: `${item.title} · ${item.url}` })), [lists.data]);
   const [url, setUrl] = useState("/");
   const previewUrl = usePreviewStatus(siteId)?.url ?? null;
+  // On a hosted install the preview opens through its entry (features/hosting/previewLinks.tsx).
+  const meta = useMeta((s) => s.meta);
   const published = report.kit
     ? [report.kit.markdownTwins ? "a markdown version of every page" : null, report.kit.llmsTxt ? "llms.txt" : null, report.kit.llmsFullTxt ? "llms-full.txt (the whole site in one file)" : null, report.kit.agentPage ? "agent.md (a short guide for agents)" : null].filter((part): part is string => part !== null)
     : [];
@@ -189,15 +193,15 @@ export function AgentPanel({ siteId, report }: { siteId: string; report: AgentRe
           {previewUrl ? (
             <>
               In the preview:{" "}
-              <a className="g-link" href={`${previewUrl}/llms.txt`} target="_blank" rel="noreferrer">
+              <PreviewTabLink siteId={siteId} target={agentFileTarget(meta, previewUrl, "/llms.txt")} className="g-link" entryClassName="app-link-button">
                 llms.txt
                 <Icon name="external" size={12} />
-              </a>{" "}
+              </PreviewTabLink>{" "}
               ·{" "}
-              <a className="g-link" href={`${previewUrl}${twinOf(url)}`} target="_blank" rel="noreferrer">
+              <PreviewTabLink siteId={siteId} target={agentFileTarget(meta, previewUrl, twinOf(url))} className="g-link" entryClassName="app-link-button">
                 this page’s markdown version
                 <Icon name="external" size={12} />
-              </a>
+              </PreviewTabLink>
             </>
           ) : (
             "Start the preview to open them."

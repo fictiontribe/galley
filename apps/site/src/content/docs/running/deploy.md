@@ -66,6 +66,10 @@ Once a site is online it can answer at an address of yours, such as `www.example
 
 If the site lives in a git host and a team works through pull requests, connect the repository to Cloudflare or Vercel and let them build on every push. Don't use both for one project: two sources of truth for what's live is how sites go back in time.
 
+## Host the editor online
+
+Beside **Put this site online**, the Online screen offers **Host the editor online**: the editor itself, as a hosted install for this one site, on the person's own Fly.io account, behind a Cloudflare Tunnel on a computer of theirs, or on any server with Docker. It plans everything and shows the monthly cost before creating anything, and `galley host` does the same from a terminal. Vercel and Cloudflare's containers can't run it: their disks don't keep files. [Host the editor online](/docs/editing/editor-online/); the whole design, with sources and prices: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#host-the-editor-online). Hosts are added the same way as here, as a plugin's `editorHosts`.
+
 ## Adding a host
 
 Implement `DeployTarget` ([`packages/core/src/deploy/types.ts`]({repository}/blob/main/packages/core/src/deploy/types.ts)) and register it — as a plugin's `deployTargets` ([Plugins](/docs/plugins/)). Throw `DeployError` with a sentence that says what happened and what to do, and write a fake of the host's protocol to test against.

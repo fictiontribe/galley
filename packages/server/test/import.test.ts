@@ -7,7 +7,7 @@
  * and rebuilding page-builder pages one at a time or as a queue.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAgentRuntime, type GalleyImageService } from "@galley/core/ai";
 import type { ChatThread, ImportInspection, ImportPlanView, ImportRebuildPlan, ImportRebuildStatus, ImportRunStatus, ServerEvent, SiteDetail } from "@galley/core/types";
@@ -83,8 +83,18 @@ beforeAll(async () => {
   services.events.subscribe((event) => events.push(event));
   server = await startServer({ port: 0, home, webDir: join(home, "no-ui"), env, services, notice: () => {} });
   hostedSite = makeSite("hosted");
-  // Hosted mode opens sites only inside its sites folder.
-  hosted = await startServer({ port: 0, mode: "hosted", sitesDir: dirname(hostedSite), password: "a long operator password", token: "operator-token-for-tests", home: tempDir("srv-hosted-"), webDir: join(home, "no-ui"), env: { PATH: process.env.PATH, HOME: home, GALLEY_DISABLE_USER_PLUGINS: "1" }, notice: () => {} });
+  // A hosted install looks after one site, connected from its repository (here: the folder, which a test may allow).
+  hosted = await startServer({
+    port: 0,
+    mode: "hosted",
+    password: "a long operator password",
+    token: "operator-token-for-tests",
+    home: tempDir("srv-hosted-"),
+    webDir: join(home, "no-ui"),
+    env: { PATH: process.env.PATH, HOME: home, GALLEY_DISABLE_USER_PLUGINS: "1", GALLEY_ALLOW_LOCAL_REPOSITORIES: "1", GALLEY_SITE_REPOSITORY: hostedSite, GALLEY_SITE_ACCESS: "token", GALLEY_SITE_TOKEN: "unused-for-a-folder" },
+    notice: () => {},
+  });
+  await hosted.install!.idle();
 }, 120_000);
 
 afterAll(async () => {
@@ -142,7 +152,8 @@ describe("step 1: where is it?", () => {
 
 describe("hosted mode", () => {
   it("refuses to read this computer or a private network, before any connection", async () => {
-    const opened = await call<SiteDetail>(hosted, "POST", "/api/sites/open", { path: hostedSite });
+    // Was opened with POST /api/sites/open: a hosted install now has its one site from first run.
+    const opened = await call<SiteDetail>(hosted, "GET", `/api/sites/${hosted.install!.siteId()}`);
 
     expect(opened.status).toBe(200);
     const before = fake.requests.length;

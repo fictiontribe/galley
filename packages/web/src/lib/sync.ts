@@ -31,6 +31,12 @@ export const keys = {
   plugins: (siteId?: string) => (siteId ? (["plugins", "site", siteId] as const) : (["plugins", "app"] as const)),
   catalog: (siteId?: string) => (siteId ? (["catalog", "site", siteId] as const) : (["catalog", "app"] as const)),
   videoProviders: () => ["videos", "providers"] as const,
+  // A hosted install: the Install page and first run.
+  install: () => ["install"] as const,
+  setup: () => ["install", "setup"] as const,
+  // "Host the editor online" (local mode only): under the site's key, so `site.updated` refreshes it.
+  editor: (siteId: string) => ["site", siteId, "editor"] as const,
+  editorHosts: () => ["editor-hosts"] as const,
 };
 
 let started = false;

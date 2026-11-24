@@ -2,6 +2,7 @@
  * Formatting for people: times, sizes, counts and paths, per voice.md
  * ("2 min ago", "yesterday", "12 Mar, 14:05"; digits; correct plurals).
  */
+import { PRODUCT } from "@galley/core/brand";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -165,11 +166,16 @@ export function dirName(path: string): string {
   return at === -1 ? "" : trimmed.slice(0, at + 1);
 }
 
+/** What the site's own settings file (galley.config.json, at the site's root) is called wherever a person reads it. */
+export const SITE_SETTINGS_LABEL = "Site settings";
+
 /**
  * A human label from a path or slug: "src/content/blog/living-through-a-renovation.md"
- * → "Living through a renovation"; "index" → "Home".
+ * → "Living through a renovation"; "index" → "Home"; the site's settings
+ * file → "Site settings" (never "Galley.config").
  */
 export function friendlyLabel(path: string): string {
+  if (path === PRODUCT.configFile) return SITE_SETTINGS_LABEL;
   const name = fileName(path).replace(/\.[^.]+$/, "");
   if (name === "index" || name === "") return "Home";
   const words = name.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();

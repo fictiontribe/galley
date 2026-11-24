@@ -35,6 +35,7 @@ import type {
 import { loadSiteModel } from "../content/index";
 import { cloneRepository, detectPackageManager, installDependencies, packageName } from "../workspace/index";
 import type { PortPool } from "../workspace/preview/ports";
+import type { PreviewGateway } from "../workspace/preview/proxy";
 import { createJobTracker } from "./jobs";
 import { checkLook, scaffoldSite } from "./scaffold-site";
 import { openSiteService, type OpenSite } from "./service";
@@ -60,6 +61,8 @@ export interface SiteRegistryOptions {
   publicHost?: string;
   /** The operator's port range for every site's preview proxies (GALLEY_PREVIEW_PORTS). */
   previewPorts?: PortPool;
+  /** A hosted install's one address: every site's preview proxies are mounted there instead of given ports. */
+  previewGateway?: PreviewGateway;
   /** Scheme browsers reach the preview proxies with: the public URL's. */
   publicProtocol?: "http" | "https";
   /** Test seam: replaces dependency installation in create/clone. */
@@ -68,6 +71,10 @@ export interface SiteRegistryOptions {
   onPublished?: (site: SiteService, result: PublishResult) => void;
   /** A site's capture address, handed to its previewed pages (see SiteDeps.captureAddress). */
   captureAddress?: (siteId: string) => string | null;
+  /** A site's live address kept outside its files, used when its settings file names none (see SiteDeps.liveUrl). */
+  liveUrl?: (siteId: string) => string | null;
+  /** False: a site whose checkout has no lockfile isn't given one by the preview's package install (see SiteDeps.addLockfile). Default true. */
+  addLockfile?: boolean;
   /** The preview policy's timing (tests); false turns the policy off. Limits come from Settings. */
   previewPolicy?: false | Pick<PreviewPolicyOptions, "sweepMs" | "presenceMs" | "now" | "onPause">;
   /** An open site unused this long is closed again (watcher and index released). Default 60 min; 0 never. */
@@ -78,6 +85,13 @@ export interface SiteRegistryOptions {
   readFacts?: (record: SiteRecord) => Promise<FactsResult | null>;
   /** Test seam: the folder scan's limits. */
   scanLimits?: Partial<ScanLimits>;
+  /**
+   * A hosted install's one site folder (`<home>/site`). It sits inside the
+   * app's own folder on purpose — one install keeps everything in one data
+   * folder — so it, and only it, is exempt from the "that folder holds this
+   * app's own settings" refusal.
+   */
+  installSite?: string | (() => string | null);
 }
 
 /** The registry as the engine composes it: the contract, plus what tests and the server's shutdown use. */
@@ -155,6 +169,11 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
   const homeReal = realish(options.home);
   const sitesReal = realish(options.sitesDir);
   const userHome = realish(homedir());
+  const installSiteReal = (): string | null => {
+    const folder = typeof options.installSite === "function" ? options.installSite() : options.installSite;
+
+    return folder ? realish(folder) : null;
+  };
   const services = new Map<string, OpenSite>();
   const opening = new Map<string, Promise<OpenSite>>();
   const jobs = createJobTracker(options.events);
@@ -199,6 +218,7 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
 
   /** The app's own folder is never a site — unless it is the configured sites folder inside it. */
   function refuseAppFolder(real: string): void {
+    if (options.installSite !== undefined && real === installSiteReal()) return;
     if (isWithin(homeReal, real) && !(isWithin(sitesReal, real) && real !== sitesReal)) {
       throw new GalleyError("forbidden", "That folder holds this app's own settings, so it can't be opened as a site.", real);
     }
@@ -290,9 +310,12 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
         ...(options.host ? { host: options.host } : {}),
         ...(options.publicHost ? { publicHost: options.publicHost } : {}),
         ...(options.previewPorts ? { previewPorts: options.previewPorts } : {}),
+        ...(options.previewGateway ? { previewGateway: options.previewGateway } : {}),
         ...(options.publicProtocol ? { publicProtocol: options.publicProtocol } : {}),
         ...(options.onPublished ? { onPublished: (result: PublishResult) => options.onPublished?.(service, result) } : {}),
         ...(options.captureAddress ? { captureAddress: () => options.captureAddress?.(id) ?? null } : {}),
+        ...(options.liveUrl ? { liveUrl: () => options.liveUrl?.(id) ?? null } : {}),
+        ...(options.addLockfile === false ? { addLockfile: false } : {}),
       });
 
       services.set(id, service);

@@ -135,6 +135,18 @@
       "home": false
     },
     {
+      "id": "hosted-install",
+      "label": "A hosted editor, one per site",
+      "line": "One site, one password, its own state; run it with Docker on your own server.",
+      "status": "new"
+    },
+    {
+      "id": "editor-online",
+      "label": "Host the editor online",
+      "line": "On your own Fly.io, Cloudflare or server, priced before anything is created.",
+      "status": "progress"
+    },
+    {
       "id": "cloud",
       "label": "Galley Cloud",
       "line": "Galley, hosted. No date or price yet.",
