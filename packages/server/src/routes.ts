@@ -20,6 +20,7 @@ import { decodeMediaDataUrl } from "./data-url";
 import { AuthError, forbidden, invalid, notFound, RateLimitError } from "./errors";
 import { eventStream } from "./events";
 import { deployRoutes } from "./deploy";
+import { mediaStorageRoutes } from "./media-storage";
 import { redirectsRoutes } from "./redirects";
 import { inboxRoutes } from "./forms";
 import { siteKitJob, siteKitRoutes } from "./site-kit";
@@ -170,6 +171,9 @@ export const routes: RouteTable = {
 
   // ── putting the site online (deploy.ts) ───────────────────────────────
   ...deployRoutes,
+
+  // ── where media is kept (media-storage.ts) ─────────────────────────────
+  ...mediaStorageRoutes,
   ...redirectsRoutes,
   ...pluginRoutes,
   ...dataSourceRoutes,
@@ -350,6 +354,7 @@ export const routes: RouteTable = {
     // The site is already out of the list, so a failure here is logged, not thrown.
     try {
       await ctx.services.settings.forgetSite?.(site.id);
+      await ctx.services.mediaStorage?.forgetSite(site.id);
     } catch (error) {
       (ctx.options.log ?? ((line: string) => process.stderr.write(`${line}\n`)))(`Couldn't forget the keys kept for a removed site: ${error instanceof Error ? error.message : String(error)}`);
     }

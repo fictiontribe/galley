@@ -72,6 +72,7 @@ import type { CloudflareCheck, CloudflarePlan, ImportMode, ImportResolutions, Im
 import type { AddSitesRequest, AddSitesResult, ScanSitesRequest, ScanSitesResult, SiteConnections, SiteGroup, SiteGroupInput, SitePatch, SiteUsageTotals } from "./types";
 import type { DeployKeyInfo, InstallInfo, RestoreUpload, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./install/types";
 import type { Account, AccountRole, AccountSession, Invitation, LinkPreview, OneTimeLink, People } from "./install/accounts";
+import type { MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaStorageStatus, MediaStoreInfo } from "./media-storage/contract";
 import type { EditorHostAbsent, EditorHostAccount, EditorHostInfo, HostedEditorBackup, HostedEditorPlan, HostedEditorRemoval, HostedEditorRequest, HostedEditorStatus } from "./hosting/types";
 
 /**
@@ -496,6 +497,18 @@ export interface ApiRoutes {
     response: MediaItem;
   };
   "DELETE /api/sites/:siteId/media": { query: { path: string }; response: Ok };
+
+  // ── media storage: a bucket, and pictures in Cloudflare Images ─────────
+  /** The kinds of bucket a site can keep its media in, with the steps on the provider's side. */
+  "GET /api/media-storage/connectors": { response: { connectors: MediaStoreInfo[] } };
+  /** Where the site keeps new media, whether its keys are set (never the keys), and how many files are where. */
+  "GET /api/sites/:siteId/media/storage": { response: MediaStorageStatus };
+  /** Run the check — on the body's settings (nothing is saved), or on the saved ones. Stores and removes a tiny test picture. */
+  "POST /api/sites/:siteId/media/storage/check": { body: Partial<MediaConnectRequest>; response: MediaCheckResult };
+  /** Check, and only when that passes save the settings (galley.config.json `media.storage`) and any pasted keys. */
+  "PUT /api/sites/:siteId/media/storage": { body: MediaConnectRequest; response: MediaConnectResult };
+  /** Stop putting new media in the bucket. Files there stay, and pages using them keep working. `forgetKeys`: remove its keys too. */
+  "DELETE /api/sites/:siteId/media/storage": { query: { forgetKeys?: boolean }; response: MediaStorageStatus };
   /**
    * Raw bytes of a repo file from the working tree (`rev` absent) or the base
    * commit (`rev=base`). Used for thumbnails and before/after image diffs.

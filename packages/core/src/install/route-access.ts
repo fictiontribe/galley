@@ -117,6 +117,12 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "GET /api/sites/:siteId/media": "edit",
   "POST /api/sites/:siteId/media": "edit",
   "DELETE /api/sites/:siteId/media": "edit",
+  // Where media is kept is the install's business: its keys, and files public at once.
+  "GET /api/media-storage/connectors": "edit",
+  "GET /api/sites/:siteId/media/storage": "edit",
+  "POST /api/sites/:siteId/media/storage/check": "manage",
+  "PUT /api/sites/:siteId/media/storage": "manage",
+  "DELETE /api/sites/:siteId/media/storage": "manage",
   "GET /api/sites/:siteId/raw": "edit",
   "GET /api/images/providers": "edit",
   "POST /api/sites/:siteId/images/generate": "edit",

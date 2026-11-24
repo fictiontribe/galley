@@ -29,6 +29,7 @@ import { MockError, MockSite, imageSize } from "./site.ts";
 import { inboxHandlers } from "./inbox.ts";
 import { siteKitHandlers } from "./sitekit.ts";
 import { createMockDeploy } from "./deploy.ts";
+import { createMockMediaStorage } from "./media-storage.ts";
 import { createMockRedirects } from "./redirects.ts";
 import { createMultiSite } from "./multisite.ts";
 import { createMockVisibility } from "./visibility.ts";
@@ -332,6 +333,7 @@ const num = (value: string | undefined) => (value === undefined || value === "" 
 export function createHandlers(mock: MockBackend): Handlers {
   const author = () => mock.settings.author;
   const deploy = createMockDeploy(mock);
+  const mediaStorage = createMockMediaStorage(mock);
   const redirects = createMockRedirects((event) => mock.emit(event), (job) => mock.jobs.set(job.id, job));
   const multiSite = createMultiSite(mock);
   const visibility = createMockVisibility(mock);
@@ -343,6 +345,7 @@ export function createHandlers(mock: MockBackend): Handlers {
     ...inboxHandlers((event) => mock.emit(event)),
     ...siteKitHandlers(mock),
     ...deploy.handlers,
+    ...mediaStorage.handlers,
     ...redirects.handlers,
     ...multiSite.handlers,
     ...visibility.handlers,

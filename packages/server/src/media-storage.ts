@@ -1,0 +1,102 @@
+/**
+ * Media storage over HTTP: connecting a site to a bucket (and, for pictures,
+ * Cloudflare Images), the check, the status. The engine's media storage
+ * service does the work; this file validates input and makes sure only
+ * status ever leaves — a pasted key goes in, and never comes back out in an
+ * answer, an error or a log.
+ */
+import { z } from "zod";
+import { GalleyError } from "@galley/core";
+import type { MediaStorageService } from "@galley/core/media-storage";
+import type { SiteService } from "@galley/core/types";
+import { notFound } from "./errors";
+import type { RouteContext, RouteTable } from "./routes";
+import * as v from "./validate";
+
+type MediaStorageRouteKey =
+  | "GET /api/media-storage/connectors"
+  | "GET /api/sites/:siteId/media/storage"
+  | "POST /api/sites/:siteId/media/storage/check"
+  | "PUT /api/sites/:siteId/media/storage"
+  | "DELETE /api/sites/:siteId/media/storage";
+
+const shortText = (max: number) => z.string().trim().max(max);
+
+export const storageConfigBody = z
+  .object({
+    connector: z.string().trim().min(1, "choose where to keep the files").max(64),
+    bucket: shortText(63),
+    account: shortText(64).optional(),
+    region: shortText(40).optional(),
+    endpoint: shortText(500).optional(),
+    pathStyle: z.boolean().optional(),
+    prefix: shortText(200).optional(),
+    publicUrl: shortText(500),
+  })
+  .strict();
+
+const keyText = z.string().max(512);
+
+export const connectBody = z.object({ config: storageConfigBody, accessKeyId: keyText.optional(), secretAccessKey: keyText.optional() }).strict();
+export const checkBody = z
+  .object({ config: storageConfigBody.optional(), accessKeyId: keyText.optional(), secretAccessKey: keyText.optional() })
+  .strict()
+  .optional()
+  .transform((value) => value ?? {});
+export const disconnectQuery = z.object({ forgetKeys: z.enum(["true", "false"]).optional() });
+
+export function mediaStorageOf(ctx: RouteContext): MediaStorageService {
+  const storage = ctx.services.mediaStorage;
+
+  if (!storage) throw notFound("Keeping media outside the repository isn't available on this server.");
+  return storage;
+}
+
+async function siteOf(c: Parameters<RouteTable["GET /api/sites/:siteId"]>[0], ctx: RouteContext): Promise<SiteService> {
+  const site = await ctx.services.registry.get(c.req.param("siteId") ?? "");
+
+  if (!site) throw notFound("That site isn't open here. Open it again from the Sites screen.");
+  return site;
+}
+
+/** Drops undefined fields so the engine's optional settings stay absent. */
+function definedOnly<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined && item !== "")) as T;
+}
+
+/** A pasted key that is the wrong shape is a 400 with the engine's own sentence, never the value. */
+async function engine<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof GalleyError) throw new GalleyError(error.code, error.message);
+    throw error;
+  }
+}
+
+export const mediaStorageRoutes: Pick<RouteTable, MediaStorageRouteKey> = {
+  "GET /api/media-storage/connectors": async (_c, ctx) => ({ connectors: mediaStorageOf(ctx).connectors() }),
+  "GET /api/sites/:siteId/media/storage": async (c, ctx) => mediaStorageOf(ctx).status(await siteOf(c, ctx)),
+  "POST /api/sites/:siteId/media/storage/check": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const request = await v.body(c, checkBody);
+    const site = await siteOf(c, ctx);
+
+    return engine(() =>
+      storage.check(site, request.config ? { config: definedOnly(request.config), ...definedOnly({ accessKeyId: request.accessKeyId, secretAccessKey: request.secretAccessKey }) } : undefined)
+    );
+  },
+  "PUT /api/sites/:siteId/media/storage": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const request = await v.body(c, connectBody);
+    const site = await siteOf(c, ctx);
+
+    return engine(() => storage.connect(site, { config: definedOnly(request.config), ...definedOnly({ accessKeyId: request.accessKeyId, secretAccessKey: request.secretAccessKey }) }));
+  },
+  "DELETE /api/sites/:siteId/media/storage": async (c, ctx) => {
+    const storage = mediaStorageOf(ctx);
+    const { forgetKeys } = v.query(c, disconnectQuery);
+
+    return storage.disconnect(await siteOf(c, ctx), { forgetKeys: forgetKeys === "true" });
+  },
+};

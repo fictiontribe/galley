@@ -9,6 +9,7 @@ import { builtInTargets } from "@galley/core/deploy";
 import { ensureSitePlugins, setActivePlugins, withPluginHooks, withSiteHooks, type PluginRegistry } from "@galley/core/plugins";
 import { createEventBus, createSiteRegistry, createSiteService, siteIdFor } from "@galley/core/site";
 import { createDeployService } from "@galley/core/deploy";
+import { createMediaStorageService } from "@galley/core/media-storage";
 import { builtInEditorHosts, createHostingService } from "@galley/core/hosting";
 import { createFormCapture } from "@galley/core/forms";
 import { createRedirectsService } from "@galley/core/redirects";
@@ -88,6 +89,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
     // The built-in hosts, then any a plugin adds (a plugin can't replace a built-in host).
     targets: [...builtInTargets(), ...pluginRegistry.deployTargetObjects().filter((target) => !builtInIds.has(target.id))],
   });
+  const mediaStorage = createMediaStorageService({ home: options.home, settings, env: options.env ?? process.env });
   const sites = await createSiteRegistry({
     home: options.home,
     sitesDir: options.sitesDir,
@@ -176,7 +178,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
       ? createHostingService({ home: options.home, settings, events, env, hosts: [...builtInHosts, ...pluginRegistry.editorHostObjects().filter((host) => !builtInHostIds.has(host.id))] })
       : undefined;
 
-  return { registry, agent, images, settings, events, forms, deploy, plugins: pluginRegistry, videos, visibility, redirects, siteBrand, imports, ...(hosting ? { hosting } : {}) };
+  return { registry, agent, images, settings, events, forms, deploy, mediaStorage, plugins: pluginRegistry, videos, visibility, redirects, siteBrand, imports, ...(hosting ? { hosting } : {}) };
 }
 
 /** The commit author from Settings, as the registry uses it: both name and email, or the machine's git config. */
