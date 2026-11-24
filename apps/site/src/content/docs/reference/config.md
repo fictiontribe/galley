@@ -34,6 +34,22 @@ How the file merges over detection: [galley.config.json](/docs/configuration/#ho
 | `media.roots` | object[] | Every folder the library lists. Replaces the detected list; `media.dir` is always included. *Default:* `media.dir`, and the public folder at `/`. |
 | `media.roots[].dir` | string, **required**, non-empty | A folder, relative to the site root. |
 | `media.roots[].publicPath` | string, **required**, non-empty | The URL prefix it is served from. |
+| `media.storage` | object | New media goes to this bucket instead of the repository: [Media in a bucket](/docs/configuration/media-storage/). Ids and addresses only; the key is never here. *Default:* none — media stays in the repository. |
+| `media.storage.connector` | string, **required** | `r2` (Cloudflare R2), `s3` (Amazon S3) or `s3-compatible` (another S3-compatible store). |
+| `media.storage.bucket` | string, **required**, 3–63 characters | The bucket's name. |
+| `media.storage.account` | string | R2: the account ID the bucket is in. |
+| `media.storage.region` | string | S3: the bucket's Region code (`eu-west-1`). |
+| `media.storage.endpoint` | URL | The store's S3 address: an R2 bucket in a jurisdiction, or an S3-compatible store. https only. |
+| `media.storage.pathStyle` | boolean | The bucket name in the path (`address/bucket/key`) rather than the host name. *Default:* true, except for Amazon S3. |
+| `media.storage.prefix` | string | The folder of the bucket this site's files go in (`lowfield/`). *Default:* the bucket's top. |
+| `media.storage.publicUrl` | URL, **required** | Where visitors load the files from (`https://media.example.com`). Pages store full addresses under it. |
+| `media.images` | object | Pictures go to Cloudflare Images instead; other files go to `media.storage`, else the repository. [Media in a bucket](/docs/configuration/media-storage/#cloudflare-images-step-by-step). The token is never here. *Default:* none. |
+| `media.images.connector` | `"cloudflare-images"`, **required** | Cloudflare Images. |
+| `media.images.account` | string, **required**, 32 hex characters | The Cloudflare account ID. |
+| `media.images.accountHash` | string, **required** | The Images account hash, from Hosted Images › Developer Resources. |
+| `media.images.scope` | string | This site's mark on its pictures (Cloudflare's creator field), made by Galley when connecting. Only pictures with it are listed, shown, moved or deleted, so several sites can share an account. |
+| `media.images.variant` | string | The variant pages ask for. *Default:* `public`. |
+| `media.images.deliveryUrl` | URL | Deliver from a domain of the same Cloudflare account (its `/cdn-cgi/imagedelivery/` path). *Default:* `https://imagedelivery.net`. |
 | `publish` | object | [Publishing](/docs/configuration/publishing/). *Default:* detected. |
 | `publish.branch` | string | Commit mode: the branch publishing is allowed from. Pull-request mode: the target branch. *Default:* the branch checked out. |
 | `publish.mode` | `commit` · `pull-request` | Commit and push, or a new `galley/…` branch and a pull request. *Default:* `commit`. |

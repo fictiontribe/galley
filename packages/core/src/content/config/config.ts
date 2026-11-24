@@ -174,6 +174,8 @@ export function mergeConfig(detected: SiteModel, config: GalleyConfig | null): S
     dir: mediaDir,
     publicPath,
     roots: roots.some((root) => normalizePath(root.dir) === mediaDir) ? roots : [{ dir: mediaDir, publicPath }, ...roots],
+    ...(config.media?.storage ? { storage: config.media.storage } : {}),
+    ...(config.media?.images ? { images: config.media.images } : {}),
   };
   const added = collections
     .filter((collection) => !detected.collections.some((existing) => existing.id === collection.id && existing.path === collection.path))

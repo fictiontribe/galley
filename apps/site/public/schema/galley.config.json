@@ -115,6 +115,100 @@
             ],
             "additionalProperties": false
           }
+        },
+        "storage": {
+          "type": "object",
+          "properties": {
+            "connector": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$",
+              "description": "Which kind of bucket: “r2” (Cloudflare R2), “s3” (Amazon S3), or “s3-compatible” (another S3-compatible store)."
+            },
+            "bucket": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$",
+              "description": "The bucket's name."
+            },
+            "account": {
+              "description": "Cloudflare R2: the account ID the bucket is in.",
+              "type": "string",
+              "maxLength": 64
+            },
+            "region": {
+              "description": "Amazon S3: the bucket's Region code (“eu-west-1”). S3-compatible: the store's region name.",
+              "type": "string",
+              "maxLength": 40
+            },
+            "endpoint": {
+              "description": "The store's S3 address. S3-compatible stores, and R2 buckets in a jurisdiction. https:// only.",
+              "type": "string",
+              "format": "uri"
+            },
+            "pathStyle": {
+              "description": "The bucket name in the path (address/bucket/key) rather than the host name. Default: true except for Amazon S3.",
+              "type": "boolean"
+            },
+            "prefix": {
+              "description": "The folder inside the bucket this site's files are kept under (“lowfield/”). Absent: the bucket's top.",
+              "type": "string",
+              "maxLength": 200
+            },
+            "publicUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "Where visitors load the files from (“https://media.example.com”). Pages store full addresses under it."
+            }
+          },
+          "required": [
+            "connector",
+            "bucket",
+            "publicUrl"
+          ],
+          "additionalProperties": false,
+          "description": "New media goes to this bucket instead of the repository. Set by Media › Storage (or `galley media connect`)."
+        },
+        "images": {
+          "type": "object",
+          "properties": {
+            "connector": {
+              "type": "string",
+              "const": "cloudflare-images",
+              "description": "Cloudflare Images."
+            },
+            "account": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$",
+              "description": "The Cloudflare account ID."
+            },
+            "accountHash": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 64,
+              "description": "The Images account hash, from Hosted Images › Developer Resources."
+            },
+            "scope": {
+              "description": "This site's mark on its pictures in the account (Cloudflare's creator field); made by Galley when connecting. Only pictures with it are listed, shown, moved or deleted.",
+              "type": "string",
+              "pattern": "^[a-z0-9-]{8,64}$"
+            },
+            "variant": {
+              "description": "The variant pages ask for. Default: public.",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,99}$"
+            },
+            "deliveryUrl": {
+              "description": "Deliver from a domain of the same Cloudflare account (its /cdn-cgi/imagedelivery/ path). Default: https://imagedelivery.net.",
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "required": [
+            "connector",
+            "account",
+            "accountHash"
+          ],
+          "additionalProperties": false,
+          "description": "Pictures go to Cloudflare Images instead; files it doesn't take go to `media.storage`, else the repository."
         }
       },
       "additionalProperties": false

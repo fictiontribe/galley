@@ -8,7 +8,10 @@ import { invalidate, useQuery } from "@/lib/query";
 import { useChanges } from "@/lib/stores/changes";
 import { notify } from "@/lib/stores/toasts";
 import { keys } from "@/lib/sync";
-import { Button, ConfirmDialog, Dialog, PageHeader, SegmentedControl } from "@/ui";
+import { Button, Checkbox, ConfirmDialog, Dialog, Icon, PageHeader, SegmentedControl } from "@/ui";
+import { useMay } from "@/lib/may";
+import { ConnectBucketDialog } from "./storage/ConnectBucketDialog";
+import { deleteStored, isStored, useMediaStorage } from "./storage/useMediaStorage";
 import { GeneratePanel } from "./GeneratePanel";
 import { MediaDetails } from "./MediaDetails";
 import { MediaLibraryPane } from "./MediaLibraryPane";
@@ -36,6 +39,25 @@ export function MediaScreen() {
   const [makingVideo, setMakingVideo] = useState(false);
   const [deleting, setDeleting] = useState<MediaItem | null>(null);
   const selected = media.data?.items.find((item) => item.path === selectedPath) ?? null;
+  const storage = useMediaStorage(siteId);
+  const may = useMay();
+  const [storageOpen, setStorageOpen] = useState(false);
+  const [unusedOnly, setUnusedOnly] = useState(false);
+  const bucket = storage.data?.bucket.connected ? storage.data.bucket : null;
+  const images = storage.data?.images.connected ? storage.data.images : null;
+
+  /** Deleting from the bucket is for good, so it always asks; a file a page uses is refused, with where. */
+  const removeStored = async (item: MediaItem) => {
+    const result = await deleteStored(siteId, [item.path]);
+    const refused = result.refused[0];
+    if (refused) {
+      const pages = [...refused.working, ...refused.published.filter((path) => !refused.working.includes(path))];
+      notify({ tone: "warning", title: `${item.name} wasn’t deleted`, body: `A page still uses it: ${pages.join(", ")}. Take it out of ${pages.length === 1 ? "that page" : "those pages"} and publish first.` });
+      return;
+    }
+    setSelectedPath((current) => (current === item.path ? null : current));
+    notify({ tone: "neutral", title: `${item.name} deleted from the bucket` });
+  };
 
   /**
    * Delete, then offer Undo — which discards the deletion, exactly as Proof
@@ -71,7 +93,8 @@ export function MediaScreen() {
   };
   // Published files go at once (Undo brings them back); files with unpublished work ask first.
   const requestDelete = (item: MediaItem) => {
-    if (item.status === "clean") void remove(item).catch((error: unknown) => notify({ tone: "danger", title: "Couldn’t delete the file", body: errorShape(error).message, detail: errorShape(error).detail }));
+    if (isStored(item)) setDeleting(item);
+    else if (item.status === "clean") void remove(item).catch((error: unknown) => notify({ tone: "danger", title: "Couldn’t delete the file", body: errorShape(error).message, detail: errorShape(error).detail }));
     else setDeleting(item);
   };
 
@@ -92,6 +115,22 @@ export function MediaScreen() {
             </>
           }
         />
+        <div className="app-card app-card--pad media-storage-strip">
+          <Icon name="globe" />
+          <p>
+            {images
+              ? `New pictures go to Cloudflare Images, resized and sent as WebP or AVIF; other files go to ${bucket?.config ? `${bucket.store?.name ?? "the bucket"} (${bucket.config.bucket})` : "the site’s repository"}.`
+              : bucket?.config
+                ? `New files go to ${bucket.store?.name ?? "the bucket"} (${bucket.config.bucket}) and are loaded from ${bucket.config.publicUrl.replace(/^https?:\/\//, "")}.`
+                : "New files are kept in the site’s repository, with its pages."}
+            {bucket?.trialAddress ? " The r2.dev address is for trying out: connect a custom domain before the site goes live." : ""}
+          </p>
+          {may("PUT /api/sites/:siteId/media/storage") ? (
+            <Button size="sm" variant="secondary" onClick={() => setStorageOpen(true)}>
+              {bucket || images ? "Storage settings" : "Keep media outside the repository"}
+            </Button>
+          ) : null}
+        </div>
         <VideoJobs
           siteId={siteId}
           onSaved={(item) => {
@@ -106,7 +145,13 @@ export function MediaScreen() {
             selected={selectedPath}
             onSelect={(item) => setSelectedPath(item?.path ?? null)}
             onGenerate={() => setGenerating(true)}
-            toolbar={<SegmentedControl label="Show" options={KINDS} value={kind} onChange={setKind} />}
+            unusedOnly={unusedOnly}
+            toolbar={
+              <>
+                <SegmentedControl label="Show" options={KINDS} value={kind} onChange={setKind} />
+                {bucket || images ? <Checkbox label="Not used on any page" checked={unusedOnly} onChange={setUnusedOnly} /> : null}
+              </>
+            }
           />
           <MediaDetails siteId={siteId} item={selected} onDelete={requestDelete} />
         </div>
@@ -135,12 +180,15 @@ export function MediaScreen() {
           />
         ) : null}
       </Dialog>
+      <ConnectBucketDialog siteId={siteId} open={storageOpen} onClose={() => setStorageOpen(false)} />
       <ConfirmDialog
         open={deleting !== null}
         onClose={() => setDeleting(null)}
-        title={`Delete “${deleting?.name ?? ""}”?`}
+        title={isStored(deleting) ? `Delete “${deleting?.name ?? ""}” from the bucket?` : `Delete “${deleting?.name ?? ""}”?`}
         body={
-          deleting?.status === "added"
+          isStored(deleting)
+            ? "It is removed from the bucket for good: nothing can bring it back, and Proof can’t discard it. Galley checks first that no page uses it, published or not."
+            : deleting?.status === "added"
             ? "It hasn’t been published, so once it’s deleted it can’t be brought back. Pages that use it will show a missing image."
             : "Its unpublished changes are lost; Undo brings back only the published version. Pages that use it will show a missing image once this is published."
         }
@@ -148,7 +196,7 @@ export function MediaScreen() {
         busyLabel="Deleting"
         cancelLabel="Keep it"
         errorTitle="Couldn’t delete the file"
-        onConfirm={() => (deleting ? remove(deleting) : undefined)}
+        onConfirm={() => (deleting ? (isStored(deleting) ? removeStored(deleting) : remove(deleting)) : undefined)}
       />
     </div>
   );

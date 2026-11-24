@@ -9,6 +9,34 @@ entry says how.
 
 ### Added
 
+- **Media in a bucket.** A site can keep new pictures, PDFs and videos in a
+  Cloudflare R2 or Amazon S3 bucket instead of its repository (Media › Keep
+  media outside the repository, or `galley media connect`). Galley does the provider's
+  steps with you, then checks for real before saving — it stores a tiny test
+  picture, reads it back, lists, loads it from the public address and removes
+  it — and says what to change when a step fails. Pages store each file's full
+  address; names never overwrite; Proof lists what was put in the bucket since
+  the last publish; a file's details say which pages use it; deleting from the
+  bucket is refused while any page, published or not, uses it. Files move to
+  the bucket and back, and to a new public address, safely and repeatably
+  (`galley media move`). New configuration key `media.storage`; new routes
+  under `/api/sites/:siteId/media/storage` and `/api/media-storage`;
+  `GET /api/sites/:siteId/media` may also answer `storeProblems`. Not yet run
+  against the live services.
+- **Pictures in Cloudflare Images.** Beside a bucket or the repository, a
+  site's pictures can go to Cloudflare Images, which resizes them and sends
+  each browser WebP or AVIF (Media › Keep media outside the repository ›
+  Cloudflare Images, or `galley media connect --connector cloudflare-images`).
+  Files it doesn't take — PDFs, video, anything over 10 MB — go to the bucket
+  or the repository, and each upload says where it went. It can use the
+  site's Cloudflare key for putting it online when that key has Cloudflare
+  Images › Edit. New configuration key `media.images`; new routes under
+  `/api/sites/:siteId/media/images`. Not yet run against the live service.
+- **Make the bucket for me** (Cloudflare R2): with the site's Cloudflare key
+  for putting it online (it needs Workers R2 Storage › Edit), Galley makes
+  the bucket and its r2.dev address; the key for its files is still made by
+  hand. Another S3-compatible store (Backblaze B2, Spaces, Wasabi, MinIO) is
+  a fourth choice.
 - **Themes for the editing app.** Quiet stays the default; **Plate** and
   **Desk** ship beside it, and anyone can make their own. A theme is a small
   file (five colours per mode and four switches; `brand/themes/README.md`)

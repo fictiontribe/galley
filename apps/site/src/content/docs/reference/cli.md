@@ -25,6 +25,7 @@ Usage
   galley doctor [path]   Check that a site and this computer are ready
   galley deploy [path]   Put the site online with Cloudflare or Vercel (--preview: unpublished changes)
   galley domain [path]   Use your own domain for a site that is online
+  galley media …         Keep the site's media in a bucket (Cloudflare R2, Amazon S3), and move it there and back
   galley host [path]     Host the editor online for the site, on your own account (Fly.io, Cloudflare, a server)
   galley new <name>      Start a new site from a starter
   galley import …        Bring a WordPress site (or another importer's) into a site
@@ -454,6 +455,58 @@ Options
 Examples
   galley domain www.example.com
   galley domain ./site --remove --yes
+```
+
+## `galley media`
+
+Keeps the site's new media in a bucket (Cloudflare R2 or Amazon S3), and pictures in Cloudflare Images, instead of its repository, as Media › Keep media outside the repository does in the app. `connect` asks only for what the chosen bucket needs, reads the key from the environment or asks for it with nothing shown, and saves only after a real check passes. `move` shows its plan and needs `--yes`. Not yet run against the live services by the people who built it. Details: [Media in a bucket](/docs/configuration/media-storage/).
+
+Its help (`--help`):
+
+```text
+Usage: galley media [command] [path] [options]
+Where the site in [path] (default: this folder) keeps new media: its
+repository, a bucket that serves files at their own address, and — for
+pictures — Cloudflare Images, which resizes them and sends modern formats.
+Commands
+  status        Where new files go, and whether the bucket's key is set (the default)
+  connect       Connect a bucket: checks for real, then saves (asks what it needs)
+  check         Check what is connected again: store, read, list, load, remove a test picture
+  move          Move files: --to bucket, --to images, --to repository (with --from), or --address <url>
+  disconnect    Stop using the bucket (or Cloudflare Images, with --images); the files stay
+Options for connect
+      --connector <id>   r2 (Cloudflare R2), s3 (Amazon S3), s3-compatible, or cloudflare-images
+      --bucket <name>
+      --account <id>     R2: the account ID
+      --region <code>    S3: the bucket's Region ("eu-west-1")
+      --endpoint <url>   The store's S3 address (s3-compatible; R2 in a jurisdiction)
+      --prefix <folder>  Keep this site's files in a folder of the bucket
+      --public-url <url> Where visitors load the files from
+      --account-hash <h> Images: the account hash (Hosted Images › Developer Resources)
+      --variant <name>   Images: the variant pages ask for (default public)
+      --delivery-url <u> Images: deliver from a domain of the same Cloudflare account
+      --use-deploy-key   Images: use the site's Cloudflare key for putting it online
+      --make-bucket      R2: make the bucket and its r2.dev address with the site's
+                         Cloudflare key (it needs Workers R2 Storage › Edit)
+  The key is read from GALLEY_MEDIA_ACCESS_KEY_ID and GALLEY_MEDIA_SECRET_ACCESS_KEY
+  (Images: GALLEY_MEDIA_IMAGES_TOKEN), or asked for (nothing is shown as you
+  paste). It is never a flag.
+Options for move
+      --to <place>       bucket, images or repository
+      --from <place>     With --to repository: bucket (the default) or images
+      --address <url>    Use a new public address for the bucket's files
+      --keep-copies      Moving to the bucket: keep the repository's copies too
+Options
+      --images           disconnect: stop using Cloudflare Images instead of the bucket
+      --remove-made-bucket  disconnect: also remove the bucket Galley made (it must be empty)
+      --forget-keys      disconnect: remove its key from this computer too
+  -y, --yes              Don't ask before moving or disconnecting
+      --json             Print the result as JSON
+  -h, --help             Show this help
+Examples
+  galley media connect --connector r2 --bucket lowfield-media --account 4f0c… --public-url https://media.example.com
+  galley media move --to bucket
+  galley media move --address https://media.example.com
 ```
 
 ## `galley host`

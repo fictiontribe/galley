@@ -26,6 +26,7 @@ Updated 2026-11-25 (themes for the editing app: `themes` added, with four statem
 | Plugins, incl. image and video generation | Built | maintainers' check; `docs/plugins.md` |
 | One-click deploy to Cloudflare | Built ("verified on the real service, redirects file included") | maintainers' check |
 | One-click deploy to Vercel | In progress ("built; not yet verified on the real service") | maintainers' check |
+| Media in a bucket (Cloudflare R2, Amazon S3), and pictures in Cloudflare Images | In progress ("built; not yet verified on the real services") | `packages/core/test/media-storage/` against strict stand-ins (S3 signatures verified for real, the services' error codes; the Images stand-in marks which answer shapes are from Cloudflare's docs and which are assumed); Images prices quoted from Cloudflare's pricing page on 2026-11-24; the SigV4 signer against AWS's published vectors (botocore's copy of the suite and the S3 examples page, 2026-11-24); `docs/media-storage.md`. Not run against R2 or S3: `scripts/rehearse-media-storage.mjs` is for that |
 | Many sites in one app (agencies) | Built | maintainers' check; `docs/multi-site.md` |
 | Desktop app (macOS) and web app | Built | maintainers' check |
 | MCP | Built | `docs/mcp.md`, `galley mcp` |

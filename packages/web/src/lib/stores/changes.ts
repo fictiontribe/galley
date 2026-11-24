@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { ChangeSet } from "@galley/core/types";
-import { api } from "../api";
+import { api, errorShape } from "../api";
+import { notify } from "./toasts";
 import { coalesceBy } from "../coalesce";
 
 interface ChangesStore {
@@ -49,8 +50,29 @@ export const useChanges = create<ChangesStore>((set, get) => {
       const { siteId } = get();
       if (!siteId) return null;
       ticket++;
+      const before = new Set((get().changes?.storeUploads ?? []).filter((item) => item.used).map((item) => item.path));
       const changes = await api("POST /api/sites/:siteId/discard", { params: { siteId }, body: paths ? { paths } : {} });
       set({ changes, status: "ready" });
+      // Uploads to the bucket aren't discarded with the pages that used them: offer to remove the ones nothing uses now.
+      const orphaned = (changes.storeUploads ?? []).filter((item) => !item.used && before.has(item.path));
+      if (orphaned.length) {
+        notify({
+          tone: "neutral",
+          title: orphaned.length === 1 ? `${orphaned[0]!.name} isn’t used any more` : `${orphaned.length} uploads aren’t used any more`,
+          body: "They stay in the bucket, public at their addresses, until you remove them.",
+          action: {
+            label: orphaned.length === 1 ? "Remove it" : "Remove them",
+            onClick: () =>
+              void api("POST /api/sites/:siteId/media/storage/delete", { params: { siteId }, body: { paths: orphaned.map((item) => item.path) } }).then(
+                async (result) => {
+                  notify({ tone: "neutral", title: result.deleted.length === 1 ? "Removed from the bucket" : `${result.deleted.length} removed from the bucket` });
+                  await get().refresh();
+                },
+                (error: unknown) => notify({ tone: "danger", title: "Couldn’t remove them", body: errorShape(error).message })
+              ),
+          },
+        });
+      }
       return changes;
     },
     clear() {

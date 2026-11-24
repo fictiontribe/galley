@@ -5,7 +5,7 @@ group: configuration
 order: 4
 ---
 
-This page is for developers. Galley's media library is the image files in your repository — nothing is uploaded anywhere else. Two questions decide how it works: which folder new files are written to, and what URL that folder is served from, so the path written into content (`/images/hero.webp`) is the one the site can load. The code is [`workspace/media.ts`]({repository}/blob/main/packages/core/src/workspace/media.ts).
+This page is for developers. Galley's media library is the image files in your repository — unless the site keeps new media in a bucket instead ([Media in a bucket](/docs/configuration/media-storage/)). Two questions decide how it works: which folder new files are written to, and what URL that folder is served from, so the path written into content (`/images/hero.webp`) is the one the site can load. The code is [`workspace/media.ts`]({repository}/blob/main/packages/core/src/workspace/media.ts).
 
 ## The settings
 
@@ -58,5 +58,6 @@ Like every other edit, a new image is an uncommitted file in the working tree un
 
 ## Next
 
+- [Media in a bucket](/docs/configuration/media-storage/): Cloudflare R2 or Amazon S3 instead of the repository.
 - [Assistant instructions and build mode](/docs/configuration/assistant/).
 - [Connect the assistant](/docs/reference/assistant/#images) — the image providers.

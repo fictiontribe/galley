@@ -13,6 +13,8 @@ For people who edit a site. **Media** holds every picture, video and document th
 2. Press **Upload**, drop files anywhere on the screen, or paste a picture. Each file can be up to 25 MB.
 3. Choose a file to see its details: its address on the site, size, folder, and whether it is new or changed.
 
+If the site keeps its media in a bucket (or its pictures in Cloudflare Images), the line under the title says so, uploads go there, and a file's details say which pages use it. A file in the bucket is public at its address as soon as it is uploaded, and deleting it is for good, so Galley only deletes one no page uses. A file over 25 MB in the bucket isn't shown in the app: its details say so, and **Open full size** opens it at its own address. [Media in a bucket](/docs/configuration/media-storage/) explains it.
+
 To use a picture on a page, choose it from the picture field in the [form](/docs/editing/form/), or click the picture on the page with [Click to edit](/docs/editing/on-the-page/).
 
 ## Make an image from a description

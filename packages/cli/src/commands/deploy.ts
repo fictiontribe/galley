@@ -54,7 +54,7 @@ export interface DeployIo extends Io {
 }
 
 /** A readline prompt on this process's terminal, or null when there is none. */
-function terminalPrompt(): DeployIo["prompt"] | null {
+export function terminalPrompt(): DeployIo["prompt"] | null {
   if (!process.stdin.isTTY || !process.stderr.isTTY) return null;
   return (question, options = {}) =>
     new Promise((done) => {

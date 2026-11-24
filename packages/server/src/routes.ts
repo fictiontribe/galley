@@ -20,6 +20,7 @@ import { decodeMediaDataUrl } from "./data-url";
 import { AuthError, forbidden, invalid, notFound, RateLimitError } from "./errors";
 import { eventStream } from "./events";
 import { deployRoutes } from "./deploy";
+import { mediaStorageRoutes } from "./media-storage";
 import { redirectsRoutes } from "./redirects";
 import { inboxRoutes } from "./forms";
 import { siteKitJob, siteKitRoutes } from "./site-kit";
@@ -171,6 +172,9 @@ export const routes: RouteTable = {
 
   // ── putting the site online (deploy.ts) ───────────────────────────────
   ...deployRoutes,
+
+  // ── where media is kept (media-storage.ts) ─────────────────────────────
+  ...mediaStorageRoutes,
   ...redirectsRoutes,
   ...pluginRoutes,
   ...dataSourceRoutes,
@@ -321,7 +325,7 @@ export const routes: RouteTable = {
   },
   "GET /api/jobs/:jobId": async (c, ctx) => {
     // Deploy jobs are kept by the deploy service, so a page reload mid-deploy can still ask.
-    const job = ctx.services.registry.job(c.req.param("jobId") ?? "") ?? ctx.services.deploy?.job(c.req.param("jobId") ?? "") ?? ctx.services.hosting?.job(c.req.param("jobId") ?? "") ?? ctx.services.redirects?.job(c.req.param("jobId") ?? "") ?? siteKitJob(ctx.services, c.req.param("jobId") ?? "") ?? ctx.services.siteBrand?.job(c.req.param("jobId") ?? "") ?? importsOf(ctx.services).job(c.req.param("jobId") ?? "") ?? null;
+    const job = ctx.services.registry.job(c.req.param("jobId") ?? "") ?? ctx.services.deploy?.job(c.req.param("jobId") ?? "") ?? ctx.services.mediaStorage?.job(c.req.param("jobId") ?? "") ?? ctx.services.hosting?.job(c.req.param("jobId") ?? "") ?? ctx.services.redirects?.job(c.req.param("jobId") ?? "") ?? siteKitJob(ctx.services, c.req.param("jobId") ?? "") ?? ctx.services.siteBrand?.job(c.req.param("jobId") ?? "") ?? importsOf(ctx.services).job(c.req.param("jobId") ?? "") ?? null;
 
     if (!job) throw notFound("That task isn't known here. It may have finished before the app restarted.");
     return job;
@@ -368,6 +372,7 @@ export const routes: RouteTable = {
     // The site is already out of the list, so a failure here is logged, not thrown.
     try {
       await ctx.services.settings.forgetSite?.(site.id);
+      await ctx.services.mediaStorage?.forgetSite(site.id);
     } catch (error) {
       (ctx.options.log ?? ((line: string) => process.stderr.write(`${line}\n`)))(`Couldn't forget the keys kept for a removed site: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -470,7 +475,13 @@ export const routes: RouteTable = {
   },
 
   // ── media ──────────────────────────────────────────────────────────────
-  "GET /api/sites/:siteId/media": async (c, ctx) => ({ items: await (await siteOf(c, ctx)).listMedia() }),
+  "GET /api/sites/:siteId/media": async (c, ctx) => {
+    const site = await siteOf(c, ctx);
+    const items = await site.listMedia();
+    const storeProblems = ctx.services.mediaStorage?.problems(site.id) ?? {};
+
+    return Object.keys(storeProblems).length ? { items, storeProblems } : { items };
+  },
   "POST /api/sites/:siteId/media": async (c, ctx) => {
     const site = await siteOf(c, ctx);
     const { filename, directory, data } = await v.body(c, v.uploadBody);
@@ -488,6 +499,8 @@ export const routes: RouteTable = {
     const { path } = v.query(c, v.pathQuery);
     const extension = extensionOf(path);
 
+    // A file in the bucket or Cloudflare Images is gone for good once deleted: that has its own route and level.
+    if (/^(bucket|images):/.test(path)) throw invalid("That file is kept outside the repository. Delete it from the library's details, which checks no page uses it first.");
     if (!Object.values(UPLOAD_TYPES).includes(extension) && extension !== "jpeg") throw invalid("Only images, videos, and PDFs can be removed from media.");
     await site.deleteFile(path, { origin: "user", mode: "content" });
     return ok;
@@ -497,6 +510,14 @@ export const routes: RouteTable = {
     const { path, rev } = v.query(c, v.rawQuery);
     const type = rawContentTypeFor(path);
 
+    // A file kept in the bucket or Cloudflare Images: read from there, so the app's own pages never load other origins.
+    if (/^(bucket|images):/.test(path)) {
+      const bytes = await ctx.services.mediaStorage?.readStored(site, path);
+
+      if (!bytes) throw notFound("That file isn't in the site's media storage any more.");
+      // A stored name never changes what it holds.
+      return bytesResponse(bytes, type, bytes.byteLength, "private, max-age=86400");
+    }
     assertReadable(path);
     if (rev === "base") {
       const bytes = await site.readBase(path);
