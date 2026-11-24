@@ -6,18 +6,26 @@
  * passes is left out, never shown.
  */
 import { randomUUID } from "node:crypto";
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { GalleyError } from "../errors";
 import { isBuiltinTheme } from "./builtin";
 import { checkTheme, type ThemeCheck } from "./check";
-import { THEME_ID_PATTERN, THEME_MAX_BYTES, themeFileText, type ThemeFile } from "./contract";
+import { THEME_MAX_BYTES, isThemeId, printable, themeFileText, type ThemeFile } from "./contract";
 
 /** Enough for any install; a bound so a folder can't fill a menu or a disk. */
 export const MAX_SAVED_THEMES = 100;
 
+/** A file in the themes folder that was left out, and why, in words (printable: no control characters). */
+export interface SkippedTheme {
+  file: string;
+  reason: string;
+}
+
 export interface ThemeStore {
   list(): Promise<ThemeFile[]>;
+  /** The themes, and every file that was left out with the reason (one bad file never hides the others). */
+  scan(): Promise<{ themes: ThemeFile[]; skipped: SkippedTheme[] }>;
   get(id: string): Promise<ThemeFile | null>;
   /** Check and save (adding or replacing). Refused themes throw `invalid` with the check's words; the check is returned. */
   save(input: unknown, options?: { id?: string }): Promise<ThemeCheck>;
@@ -35,19 +43,43 @@ export function createThemeStore(options: { home: string }): ThemeStore {
     return result;
   };
 
-  async function read(id: string): Promise<ThemeFile | null> {
-    if (!THEME_ID_PATTERN.test(id)) return null;
-    let text: string;
+  /** One file, checked; never throws. The size is looked at before anything is read. */
+  async function inspect(id: string): Promise<{ theme: ThemeFile } | { reason: string }> {
+    if (!isThemeId(id)) return { reason: "its name isn’t a theme’s id." };
+    const file = join(folder, `${id}.json`);
 
     try {
-      text = await readFile(join(folder, `${id}.json`), "utf8");
-    } catch {
-      return null;
-    }
-    if (text.length > THEME_MAX_BYTES) return null;
-    const check = checkTheme(text);
+      const info = await stat(file);
 
-    return check.ok && check.theme && check.theme.id === id ? check.theme : null;
+      if (!info.isFile()) return { reason: "it isn’t a file." };
+      if (info.size > THEME_MAX_BYTES) return { reason: `it is over ${THEME_MAX_BYTES / 1024} KB, so it isn’t a theme.` };
+      const check = checkTheme(await readFile(file, "utf8"));
+
+      if (!check.ok || !check.theme) return { reason: printable(check.refused.join(" ")) || "it can’t be used." };
+      if (check.theme.id !== id) return { reason: `its id (${check.theme.id}) isn’t its file name.` };
+      return { theme: check.theme };
+    } catch (error) {
+      return { reason: (error as NodeJS.ErrnoException).code === "ENOENT" ? "it isn’t there." : "it can’t be read." };
+    }
+  }
+
+  async function read(id: string): Promise<ThemeFile | null> {
+    const found = await inspect(id);
+
+    return "theme" in found ? found.theme : null;
+  }
+
+  async function scan(): Promise<{ themes: ThemeFile[]; skipped: SkippedTheme[] }> {
+    const themes: ThemeFile[] = [];
+    const skipped: SkippedTheme[] = [];
+
+    for (const id of await ids()) {
+      const found = await inspect(id);
+
+      if ("theme" in found) themes.push(found.theme);
+      else skipped.push({ file: `${id}.json`, reason: found.reason });
+    }
+    return { themes, skipped };
   }
 
   async function ids(): Promise<string[]> {
@@ -55,7 +87,7 @@ export function createThemeStore(options: { home: string }): ThemeStore {
       return (await readdir(folder))
         .filter((name) => name.endsWith(".json"))
         .map((name) => name.slice(0, -5))
-        .filter((id) => THEME_ID_PATTERN.test(id))
+        .filter((id) => isThemeId(id))
         .sort();
     } catch {
       return [];
@@ -64,10 +96,10 @@ export function createThemeStore(options: { home: string }): ThemeStore {
 
   return {
     async list() {
-      const found = await Promise.all((await ids()).map(read));
-
-      return found.filter((theme): theme is ThemeFile => theme !== null);
+      return (await scan()).themes;
     },
+
+    scan,
 
     get: read,
 
@@ -94,7 +126,7 @@ export function createThemeStore(options: { home: string }): ThemeStore {
 
     remove(id) {
       return serial(async () => {
-        if (!THEME_ID_PATTERN.test(id)) return false;
+        if (!isThemeId(id)) return false;
         const file = join(folder, `${id}.json`);
         const existed = (await ids()).includes(id);
 

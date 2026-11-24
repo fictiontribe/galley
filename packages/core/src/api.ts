@@ -313,6 +313,8 @@ export interface ThemesInfo {
   plugins: PluginTheme[];
   /** The install's default theme: App settings' choice, else a white-label brand's, else Quiet. */
   defaultId: string;
+  /** Files in the themes folder that were left out, with the reason in words (one bad file never hides the others). */
+  skipped?: Array<{ file: string; reason: string }>;
 }
 
 /** `PUT /api/themes/:themeId`: the theme as saved (adjusted colours), and what the check changed and warned about. */

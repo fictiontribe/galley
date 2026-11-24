@@ -528,6 +528,15 @@ export function ThemesScreen() {
     const chosen = event.target.files?.[0];
     event.target.value = "";
     if (!chosen) return;
+    try {
+      await importChosen(chosen);
+    } catch {
+      // Whatever the file held, the person hears about it: nothing is added.
+      setRefusedImport({ name: chosen.name, problems: ["This file isn’t a theme: it can’t be read."] });
+    }
+  };
+
+  const importChosen = async (chosen: File) => {
     if (chosen.size > THEME_MAX_BYTES) {
       setRefusedImport({ name: chosen.name, problems: [`A theme file is a few hundred bytes; this one is ${Math.ceil(chosen.size / 1024)} KB, so it isn’t a theme.`] });
       return;
@@ -612,6 +621,16 @@ export function ThemesScreen() {
                 Every theme
               </h2>
               <p className="app-settings__section-text">{hosted ? "Choose yours: it’s kept in this browser. Make one from any of them." : "Choose the app’s theme, or make one from any of them."}</p>
+              {canManage && server.data.skipped?.length ? (
+                <ul className="theme-report">
+                  {server.data.skipped.map((skip) => (
+                    <li key={skip.file} className="theme-report__item theme-report__item--warning">
+                      <span className="theme-report__mark" aria-hidden="true" />
+                      <span>{`${skip.file} in this editor’s themes folder was left out: ${skip.reason}`}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </header>
             <div className="app-settings__section-body">
               <ul className="theme-list">

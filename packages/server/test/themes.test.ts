@@ -50,7 +50,7 @@ describe("themes saved for everyone", () => {
 
   it("refuse what can't be a theme, in words, and save nothing", async () => {
     const { home, call } = setup();
-    for (const theme of [{ ...FOG, light: { ...FOG.light, pencil: "#777777" } }, { ...FOG, light: { ...FOG.light, paper: "url(x)" } }, { ...FOG, css: "body{}" }, "not a theme"]) {
+    for (const theme of [{ ...FOG, switches: JSON.parse('{"constructor":"x"}') }, { ...FOG, switches: JSON.parse('{"__proto__":"x"}') }, { ...FOG, light: { ...FOG.light, pencil: "#777777" } }, { ...FOG, light: { ...FOG.light, paper: "url(x)" } }, { ...FOG, css: "body{}" }, "not a theme"]) {
       const response = await call("PUT", "/api/themes/fog", { theme });
       expect(response.status).toBe(400);
     }
@@ -66,7 +66,9 @@ describe("themes saved for everyone", () => {
     await call("PUT", "/api/themes/fog", { theme: FOG });
     mkdirSync(join(home, "themes"), { recursive: true });
     writeFileSync(join(home, "themes", "bad.json"), JSON.stringify({ ...FOG, id: "bad", light: { ...FOG.light, paper: "red; background:url(x)" } }));
-    expect((await json(await call("GET", "/api/themes"))).saved.map((t: { id: string }) => t.id)).toEqual(["fog"]);
+    const listed = await json(await call("GET", "/api/themes"));
+    expect(listed.saved.map((t: { id: string }) => t.id)).toEqual(["fog"]);
+    expect(listed.skipped.map((skip: { file: string }) => skip.file)).toEqual(["bad.json"]);
     expect((await call("DELETE", "/api/themes/fog")).status).toBe(200);
     expect((await call("DELETE", "/api/themes/fog")).status).toBe(404);
     expect((await json(await call("GET", "/api/themes"))).saved).toEqual([]);

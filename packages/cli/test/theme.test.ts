@@ -2,7 +2,7 @@
  * `galley theme …`: list, check (the app's own check, exit 1 when it would be
  * refused), add (kept adjusted, in the home's themes/), use, export, remove.
  */
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync, readdirSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -85,6 +85,26 @@ describe("galley theme", () => {
     expect(await main(["theme", "use", "nope"], io(home))).toBe(1);
     expect(await main(["theme", "remove", "quiet"], io(home))).toBe(1);
     expect(await main(["theme", "remove", "fog"], io(home))).toBe(0);
+  });
+
+  it("never crashes on a switch key every object inherits, and prints no escape sequence", async () => {
+    const hostileHome = join(tmp, "hostile-home");
+    const escapes = "\u001b]0;pwned\u0007\u001b[2J\u001b[31m";
+    for (const key of ["constructor", "__proto__", "toString"]) {
+      writeFileSync(join(tmp, "odd.json"), `{"contract":1,"id":"odd","name":"Odd","light":${JSON.stringify(QUIET_LIGHT)},"switches":{"${key}":"x"},${JSON.stringify(escapes + escapes)}:1}`);
+      const run = io(hostileHome);
+      expect(await main(["theme", "check", "odd.json"], run), key).toBe(1);
+      expect([...run.stdout, ...run.stderr].join("\n")).not.toMatch(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/);
+      expect(run.stderr.join("\n")).toContain("The switches have one a theme can’t hold");
+    }
+    // One such file in the themes folder: the others are listed, and it is named with the reason.
+    expect(await main(["theme", "add", "fog.json"], io(hostileHome))).toBe(0);
+    mkdirSync(join(hostileHome, "themes"), { recursive: true });
+    writeFileSync(join(hostileHome, "themes", "odd.json"), `{"contract":1,"id":"odd","name":"Odd","light":${JSON.stringify(QUIET_LIGHT)},"switches":{"constructor":"x"}}`);
+    const list = io(hostileHome);
+    expect(await main(["theme", "list"], list)).toBe(0);
+    expect(list.stdout.join("\n")).toContain("fog");
+    expect(list.stderr.join("\n")).toMatch(/^! odd\.json in the themes folder was left out: /m);
   });
 
   it("won't add a theme with a built-in's id, and explains its commands", async () => {

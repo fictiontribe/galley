@@ -6,7 +6,7 @@
  * per-mode hook for them; see docs/themes.md), so the caller passes it.
  */
 import { isHex } from "./colour";
-import { PEOPLE_COLOURS, PROOF_INKS, PROOF_INK_PROPERTY, SEED_NAMES, personProperty, SWITCHES, SWITCH_NAMES, THEME_ID_PATTERN, type AppliedTheme, type ThemeMode, type ThemeSwitches } from "./contract";
+import { PEOPLE_COLOURS, PROOF_INKS, PROOF_INK_PROPERTY, SEED_NAMES, personProperty, SWITCHES, SWITCH_NAMES, isThemeId, type AppliedTheme, type ThemeMode, type ThemeSwitches } from "./contract";
 import { QUIET } from "./builtin";
 
 export const THEME_ATTRIBUTES = ["data-look", ...SWITCH_NAMES.map((name) => `data-look-${name}`)] as const;
@@ -65,7 +65,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * `#RRGGBB`, switches from their lists. What fails is never put on a page.
  */
 export function isAppliedTheme(value: unknown): value is AppliedTheme {
-  if (!isObject(value) || typeof value.id !== "string" || !THEME_ID_PATTERN.test(value.id)) return false;
+  if (!isObject(value) || !isThemeId(value.id)) return false;
   for (const mode of ["light", "dark"] as const) {
     const seeds = value[mode];
 

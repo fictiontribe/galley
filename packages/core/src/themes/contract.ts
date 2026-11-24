@@ -111,8 +111,27 @@ export type ParsedTheme = { ok: true; theme: ThemeFile } | { ok: false; problems
 
 const TOP_KEYS = new Set(["$schema", "contract", "id", "name", "description", "author", "light", "dark", "switches"]);
 
-/** Control characters, and the marks that reorder text, never belong in a name. */
-const UNPRINTABLE = /[\u0000-\u001F\u007F-\u009F‎‏‪-‮⁦-⁩]/;
+/**
+ * Characters that are never shown: control characters (a terminal's escape
+ * sequences among them), the marks that reorder or hide text (bidirectional
+ * controls, zero-width characters) and the line and paragraph separators.
+ */
+const UNPRINTABLE_CLASS = "\\u0000-\\u001F\\u007F-\\u009F\\u061C\\u200B-\\u200F\\u2028\\u2029\\u202A-\\u202E\\u2060-\\u2064\\u2066-\\u2069\\uFEFF";
+const UNPRINTABLE = new RegExp(`[${UNPRINTABLE_CLASS}]`);
+const UNPRINTABLE_ALL = new RegExp(`[${UNPRINTABLE_CLASS}]`, "g");
+
+/** Text from a theme file made safe to print to a terminal or a log: every unprintable character removed (line breaks and tabs between lines kept). */
+export function printable(text: string): string {
+  return text.replace(UNPRINTABLE_ALL, (character) => (character === "\n" || character === "\t" ? character : ""));
+}
+
+/** Names a file can't have on Windows, whatever its extension; never a theme's id. */
+const RESERVED_IDS = /^(?:con|prn|aux|nul|com[0-9]|lpt[0-9])$/;
+
+/** A theme's id: the contract's slug, and not a name a file system reserves. */
+export function isThemeId(value: unknown): value is string {
+  return typeof value === "string" && THEME_ID_PATTERN.test(value) && !RESERVED_IDS.test(value);
+}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
@@ -156,7 +175,7 @@ function seeds(value: unknown, mode: ThemeMode, problems: string[]): ThemeSeeds 
 }
 
 function clipped(value: string): string {
-  const shown = value.replace(UNPRINTABLE, "").slice(0, 32);
+  const shown = printable(value).replace(/\s+/g, " ").slice(0, 32);
 
   return shown.length < value.length ? `${shown}…` : shown;
 }
@@ -195,7 +214,7 @@ export function parseTheme(input: unknown): ParsedTheme {
   if (value.contract !== THEME_CONTRACT) problems.push("This theme was written for a different version of themes (it needs “contract”: 1).");
   const id = value.id;
 
-  if (typeof id !== "string" || !THEME_ID_PATTERN.test(id)) problems.push("The theme’s id must be 1 to 32 lower-case letters, digits and dashes, starting with a letter or digit.");
+  if (!isThemeId(id)) problems.push(typeof id === "string" && THEME_ID_PATTERN.test(id) ? `The theme’s id can’t be “${id}”: some computers reserve that name for a file.` : "The theme’s id must be 1 to 32 lower-case letters, digits and dashes, starting with a letter or digit.");
   if (value.$schema !== undefined && (typeof value.$schema !== "string" || value.$schema.length > 200)) problems.push("This file isn’t a theme: its first line names something else.");
   const name = text(value.name, "name", THEME_NAME_MAX, problems, true);
   const description = text(value.description, "description", THEME_DESCRIPTION_MAX, problems, false);
@@ -207,7 +226,8 @@ export function parseTheme(input: unknown): ParsedTheme {
   if (!isPlainObject(value.switches)) problems.push("The theme needs its switches (they may be empty: {}).");
   else {
     for (const [key, choice] of Object.entries(value.switches)) {
-      const choices = (SWITCHES as Record<string, readonly string[]>)[key];
+      // Own keys only: "constructor", "__proto__" or "toString" must never find something on the prototype.
+      const choices = Object.hasOwn(SWITCHES, key) ? (SWITCHES as Record<string, readonly string[]>)[key] : undefined;
 
       if (!choices) problems.push(`The switches have one a theme can’t hold (“${clipped(key)}”).`);
       else if (typeof choice !== "string" || !choices.includes(choice)) problems.push(`The ${key} switch must be ${choices.map((c) => `“${c}”`).join(" or ")}.`);
@@ -251,5 +271,8 @@ export function themeIdFrom(name: string): string {
     .slice(0, 32)
     .replace(/-+$/g, "");
 
-  return slug || "theme";
+  if (!slug) return "theme";
+  const id: string = slug;
+
+  return isThemeId(id as unknown) ? id : `${id.slice(0, 26)}-theme`;
 }

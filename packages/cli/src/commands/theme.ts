@@ -9,7 +9,7 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { PRODUCT } from "@galley/core/brand";
 import { createSettingsService } from "@galley/core/ai";
-import { THEME_MAX_BYTES, checkTheme, defaultTheme, knownThemes, themeFileText, type ThemeCheck } from "@galley/core/themes";
+import { THEME_MAX_BYTES, checkTheme, defaultTheme, knownThemes, printable, themeFileText, type ThemeCheck } from "@galley/core/themes";
 import { createThemeStore } from "@galley/core/themes/store";
 import { defaultHome } from "@galley/server";
 import { parse, UsageError } from "../args";
@@ -38,7 +38,8 @@ in the app; \`use\` sets the one someone starts with.`;
 
 /** The check, said as lines a person reads: what can't be used, what was changed, what to know. */
 export function reportLines(check: ThemeCheck): string[] {
-  return [...check.refused.map((line) => `✗ ${line}`), ...check.adjusted.map((adjustment) => `~ ${adjustment.reason}`), ...check.warnings.map((warning) => `! ${warning.message}`)];
+  // Printed to a terminal: nothing from the file may carry an escape sequence (core's `printable`).
+  return [...check.refused.map((line) => `✗ ${line}`), ...check.adjusted.map((adjustment) => `~ ${adjustment.reason}`), ...check.warnings.map((warning) => `! ${warning.message}`)].map(printable);
 }
 
 async function readThemeFile(io: Io, file: string): Promise<{ text: string; path: string }> {
@@ -50,7 +51,9 @@ async function readThemeFile(io: Io, file: string): Promise<{ text: string; path
   return { text: await readFile(path, "utf8"), path };
 }
 
-export async function themeCommand(argv: string[], io: Io): Promise<number> {
+export async function themeCommand(argv: string[], rawIo: Io): Promise<number> {
+  // Every line this command prints may hold words from a theme file (a name, a key a file used): never an escape sequence.
+  const io: Io = { ...rawIo, out: (line = "") => rawIo.out(printable(line)), err: (line = "") => rawIo.err(printable(line)) };
   const { values, positionals } = parse("theme", argv, { json: { type: "boolean" }, out: { type: "string" } }, 2);
   const [action, target] = positionals;
 
@@ -63,6 +66,7 @@ export async function themeCommand(argv: string[], io: Io): Promise<number> {
   const store = createThemeStore({ home });
   const settings = createSettingsService({ home, env: io.env });
   const sources = async () => ({ saved: await store.list() });
+  const skippedLines = async () => (await store.scan()).skipped.map((skip) => `! ${skip.file} in the themes folder was left out: ${skip.reason}`);
 
   switch (action) {
     case "list": {
@@ -71,10 +75,11 @@ export async function themeCommand(argv: string[], io: Io): Promise<number> {
       const current = defaultTheme((await settings.get()).appearance.look, await sources()).theme.id;
 
       if (json) {
-        io.out(JSON.stringify({ default: current, themes: known.map((entry) => ({ id: entry.theme.id, name: entry.theme.name, source: entry.source })) }, null, 2));
+        io.out(JSON.stringify({ default: current, themes: known.map((entry) => ({ id: entry.theme.id, name: entry.theme.name, source: entry.source })), skipped: (await store.scan()).skipped }, null, 2));
         return 0;
       }
       for (const entry of known) io.out(`${entry.theme.id === current ? "•" : " "} ${entry.theme.id.padEnd(16)} ${entry.theme.name}${entry.source === "builtin" ? " (built in)" : ""}`);
+      for (const line of await skippedLines()) io.err(line);
       io.out("");
       io.out(`• the theme ${PRODUCT.name} opens with here. Change it with \`${PRODUCT.slug} theme use <id>\`.`);
       return 0;

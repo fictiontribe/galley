@@ -21,7 +21,7 @@ import type { PreviewPolicySettings, SiteUsageTotals } from "../types";
 import { currentSiteId, isSiteId } from "../site/scope";
 import { createSiteSettingsStore, describeConnections, resolveSecret } from "./site-settings";
 import { DEFAULT_PREVIEW_POLICY, PREVIEW_LIMITS } from "../site/preview-policy";
-import { THEME_ID_PATTERN } from "../themes/contract";
+import { THEME_ID_PATTERN, isThemeId } from "../themes/contract";
 
 const run = promisify(execFile);
 const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly", "gcp"];
@@ -218,7 +218,7 @@ export function createSettingsService(options: SettingsServiceOptions): GalleySe
       throw new GalleyError("invalid", "Choose system, light or dark.");
     }
     // Whether the theme exists is the caller's to check (the server knows the saved and plugin themes); here, only its shape.
-    if (patch.appearance?.look !== undefined && (typeof patch.appearance.look !== "string" || !THEME_ID_PATTERN.test(patch.appearance.look))) {
+    if (patch.appearance?.look !== undefined && !isThemeId(patch.appearance.look)) {
       throw new GalleyError("invalid", "Choose one of the themes listed.");
     }
     for (const key of ["maxRunning", "idleMinutes"] as const) {

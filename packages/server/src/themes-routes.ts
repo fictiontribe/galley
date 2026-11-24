@@ -63,9 +63,10 @@ export async function checkLookPatch(ctx: RouteContext, patch: SettingsPatch): P
 
 export const themeRoutes: Pick<RouteTable, ThemeRouteKey> = {
   "GET /api/themes": async (_c, ctx) => {
-    const [sources, settings] = await Promise.all([themeSources(ctx), ctx.services.settings.get()]);
+    const [sources, settings, scanned] = await Promise.all([themeSources(ctx), ctx.services.settings.get(), ctx.services.themes?.scan().catch(() => null)]);
+    const skipped = scanned?.skipped ?? [];
 
-    return { saved: sources.saved, plugins: sources.plugins ?? [], defaultId: defaultTheme(settings.appearance.look, sources).theme.id };
+    return { saved: sources.saved, plugins: sources.plugins ?? [], defaultId: defaultTheme(settings.appearance.look, sources).theme.id, ...(skipped.length ? { skipped } : {}) };
   },
 
   "PUT /api/themes/:themeId": async (c, ctx) => {

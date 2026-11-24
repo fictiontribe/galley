@@ -154,8 +154,19 @@ function checkFields(fields: unknown, at: string, problems: string[]): void {
   });
 }
 
-/** `label` names the plugin in messages ("./tools/plugin.mjs", "galley-plugin-foo"). */
+/**
+ * `label` names the plugin in messages ("./tools/plugin.mjs", "galley-plugin-foo").
+ * Never throws: whatever a plugin holds, a check that trips over it is a problem, not a crash.
+ */
 export function validatePlugin(value: unknown, label = "The plugin", options: ValidateOptions = {}): PluginCheck {
+  try {
+    return checkPluginValue(value, label, options);
+  } catch (error) {
+    return { ok: false, problems: [`${label}: it couldn't be checked (${error instanceof Error ? error.message.split("\n")[0] : "something in it isn't what a plugin holds"}).`], warnings: [] };
+  }
+}
+
+function checkPluginValue(value: unknown, label: string, options: ValidateOptions): PluginCheck {
   const problems: string[] = [];
   const warnings: string[] = [];
   const done = (): PluginCheck =>
