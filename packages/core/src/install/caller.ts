@@ -55,7 +55,12 @@ type Scope = { kind: "person"; caller: Caller } | { kind: "operator" } | { kind:
 
 const storage = new AsyncLocalStorage<Scope | null>();
 
-/** Hosted install: whether guarded work with nobody in scope is refused. Never set in local mode or the desktop app. */
+/**
+ * Hosted install: whether guarded work with nobody in scope is refused. Never set in local mode or the desktop app.
+ * One value for the whole process: a hosted and a local server started in the
+ * same process (tests, or an embedding) share it, which is why a local
+ * server marks its own requests as the operator's (server app.ts).
+ */
 let callerRequired = false;
 
 /** Set by a hosted server at start (and cleared when it stops): from then on, guarded work needs a person, the operator or the engine. */

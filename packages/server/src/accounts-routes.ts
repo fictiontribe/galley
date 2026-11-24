@@ -358,7 +358,8 @@ export async function changeOwnPassword(c: Context, ctx: RouteContext): Promise<
 
   try {
     const body = await v.body(c, passwordBody);
-    const outcome = await limitsOf(ctx).gate.checkPassword(ticket, () => install.people.changePassword(account.id, body.current, body.next), (done) => !done);
+    const address = account.email || null;
+    const outcome = await limitsOf(ctx).gate.checkPassword(ticket, address ?? NO_EMAIL, knownBrowserFor(c, ctx, install, address), () => install.people.changePassword(account.id, body.current, body.next), (done) => !done);
 
     if (outcome.refused !== null) throw new RateLimitError(refusalFor(outcome.refused));
     changed = outcome.value;
@@ -458,7 +459,8 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
           (value) => ({ ok: true as const, value }),
           (error: unknown) => ({ ok: false as const, error })
         );
-      const outcome = ticket ? await limitsOf(ctx).gate.checkPassword(ticket, update, (done) => !done.ok && done.error instanceof GalleyError && done.error.message === WRONG_CURRENT_PASSWORD) : { refused: null, value: await update() };
+      const address = account.email || null;
+      const outcome = ticket ? await limitsOf(ctx).gate.checkPassword(ticket, address ?? NO_EMAIL, knownBrowserFor(c, ctx, install, address), update, (done) => !done.ok && done.error instanceof GalleyError && done.error.message === WRONG_CURRENT_PASSWORD) : { refused: null, value: await update() };
 
       if (outcome.refused !== null) throw new RateLimitError(refusalFor(outcome.refused));
       if (!outcome.value.ok) {

@@ -194,9 +194,9 @@ The same answer, the same work and the same wait for an unknown e-mail, a wrong 
 - **At once:** 2 password checks run at a time, at most one per client; whoever waits is served client by client, known browsers first. Only past 256 waiting (64 for known browsers) is a sign-in told to wait.
 - **Forgot your password?** 5 times per client in 15 minutes, and at most 3 e-mails an hour to one address.
 
-**While an account is being guessed at**, a right password typed in a browser that hasn't signed in before may wait its turn, up to a couple of minutes, or be told to wait a minute. A browser that has signed in before isn't held up, and a one-time link (*Forgot your password?*, or a new-password link from an owner) doesn't wait at all.
+**While an account is being guessed at**, a right password typed in a browser that hasn't signed in before may wait its turn, up to a couple of minutes, or be told to wait — for as long as the guessing goes on. A browser that has signed in before isn't held up, a one-time link (*Forgot your password?*, or a new-password link from an owner) doesn't wait at all, and whoever runs the server can always let an owner in with `galley serve --reset-password`.
 
-The limits are kept in memory, so a restart resets them. Behind a proxy, set `GALLEY_TRUST_PROXY=1`, or everyone shares the proxy's address. The details: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#signing-in).
+The limits are kept in memory, so a restart resets them. Behind one reverse proxy that you run, set `GALLEY_TRUST_PROXY=1`, or everyone shares the proxy's address and one person's wrong guesses hold everyone up; with nothing in front of the server, leave it unset, or a request can claim any address. With a CDN in front of your proxy, everyone coming through one of its edges counts as one client: that set-up isn't supported well yet. The details and the table: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#signing-in).
 
 ### A forgotten password
 

@@ -341,13 +341,14 @@ export class SignInGate {
     }
   }
 
-  /** A password check that isn't a sign-in (your own current password): the client's limits and the pool's turn. */
-  async checkPassword<T>(ticket: Ticket, check: () => Promise<T>, failed: (value: T) => boolean): Promise<Outcome<T>> {
-    const ran = await this.pool.run(ticket.client, "standard", check);
-
-    if (ran === null) return { refused: "busy" };
-    if (failed(ran.value)) this.failures.fail(ticket.client, this.clock.now());
-    return { refused: null, value: ran.value };
+  /**
+   * A password check that isn't a sign-in (your own current password). It
+   * takes its turn in the account's own line exactly as a sign-in for that
+   * e-mail does, so a current password is tried no faster from inside a
+   * session than from the sign-in page, whatever addresses the tries come from.
+   */
+  checkPassword<T>(ticket: Ticket, email: string, knownBrowser: string | null, check: () => Promise<T>, failed: (value: T) => boolean): Promise<Outcome<T>> {
+    return this.signIn(ticket, email, knownBrowser, check, failed);
   }
 
   /** The delay this e-mail's next turn begins with. */

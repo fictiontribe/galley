@@ -895,11 +895,27 @@ owner adds theirs (`install.signInWith` in `GET /api/meta`).
 **The limits** (`packages/server/src/sign-in-gate.ts`; kept in memory: a
 restart resets them, and two server processes don't share them). Every
 password check goes through them — signing in, and the current password
-typed to change your password or your e-mail. A **client** is an IPv4
+typed to change your password or your e-mail, which takes its turn in the
+account's own line exactly as a sign-in for that e-mail does. A **client** is an IPv4
 address, or a whole IPv6 `/64` (the addresses one subscriber is normally
 given); an IPv4 address written as IPv6 (`::ffff:203.0.113.7`) is the IPv4
-address. Behind a proxy, set `GALLEY_TRUST_PROXY=1` so the client is the
-address the proxy saw; without it every person shares the proxy's address.
+address.
+
+**Which address counts as the client depends on what is in front of the
+server, and the setting has to match it:**
+
+| In front of the server | `GALLEY_TRUST_PROXY` | The client is |
+| --- | --- | --- |
+| One reverse proxy you run, receiving visitors directly (the compose recipe's Caddy) | `1` | the address that proxy saw: each visitor their own |
+| Nothing: the server's port is reached directly | unset | the connecting address |
+| A reverse proxy, with the setting left unset | — | **the proxy, for everyone**: all people share one client's limits, so one person's wrong guesses hold everyone up. Set it. |
+| The setting on, with no proxy in front | — | **whatever the request claims**: the limits per client mean nothing. Unset it. |
+| A CDN or a second proxy in front of your proxy | `1` | the hop nearest the server — the CDN's edge, shared by everyone coming through it (20 attempts a minute between them). Not supported well yet. |
+
+The server believes the last address in `X-Forwarded-For`, the one its own
+proxy appended. There is no setting yet for more than one trusted hop or
+for a list of proxy addresses, and no warning at start when forwarded
+headers arrive without the setting.
 
 - **Per client.** Its limits are checked, and its attempt counted, in one
   step before its password is checked, so attempts sent together are held
@@ -949,7 +965,9 @@ address the proxy saw; without it every person shares the proxy's address.
   first come first served; known browsers first, with **64 places** of
   their own; everyone else has **256**. Only past those is the answer 429,
   *This editor is checking a lot of sign-ins right now. Wait a moment, then
-  try again.* One person or one network can't fill them.
+  try again.* The places are shared fairly between clients, so one client
+  can't take more than its turn; someone with a large block of addresses
+  to send from can still keep them full.
 - **Forgot your password?**: 5 requests per client in 15 minutes (then
   429), and at most 3 e-mails an hour to any one address (more requests are
   quietly skipped).
@@ -957,10 +975,15 @@ address the proxy saw; without it every person shares the proxy's address.
 **The trade-off.** While an e-mail is being guessed at, someone typing the
 right password for it in a browser they have **not** signed in on before
 waits their turn and its delay — up to a couple of minutes — or, when the
-line is full, is told to wait a minute. The ways round it are a **browser
-they have signed in on before**, which isn't held up, and a **one-time
-link** (*Forgot your password?*, or a new-password link an owner makes),
-which doesn't go through the e-mail's line at all.
+line is full, is told to wait. That can last for as long as the guessing
+does: the line can be kept full. Three things get the real person in
+regardless: a **browser they have signed in on before**, which isn't held
+up; a **one-time link** from an owner (or *Forgot your password?* where
+links are e-mailed), which doesn't go through the e-mail's line at all;
+and, for an owner with nobody to ask, the **reset by whoever runs the
+server** (`galley serve --reset-password`). "Sign out everywhere" also
+ends that person's known browsers, so the next sign-in from each is an
+unknown browser's.
 
 The owner carried over from before accounts, who signs in with the
 password alone, is held to the same limits and has a known browser too.
@@ -1075,6 +1098,19 @@ offers a way to change the install's.
 - **An audit log as such.** The server's log records who did what to the
   people ([Logs](#logs)); there is no separate record, screen or export of
   it.
+- **A place kept for someone who hasn't been failing.** When an e-mail's
+  line is full, whoever comes next is told to wait, whether or not they
+  have failed for that e-mail before. So while an account is being guessed
+  at, its owner in a browser they haven't used before can be kept waiting
+  ([the trade-off](#signing-in) says what gets them in).
+- **Limits by network.** A client is one address, or one IPv6 `/64`.
+  Larger blocks of addresses aren't counted together, so someone with one
+  can keep the waiting places for password checks full.
+- **More than one proxy in front.** Only the hop nearest the server is
+  believed (the table under [Signing in](#signing-in)).
+- **Limits that outlast a restart.** They are kept in memory.
+- **Telling the old address** when an owner changes someone's e-mail.
+  Owners are trusted with that; it is logged.
 
 ---
 

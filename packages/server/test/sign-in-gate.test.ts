@@ -587,6 +587,41 @@ describe("nobody can make sign-in fail for everyone", () => {
     expect((await change("203.0.113.30")).status).toBe(429);
     expect(checks).toBe(before);
   });
+
+  it("the current password is tried no faster from inside a session than from the sign-in page: one at a time for the account, a few waiting, the rest told to wait", async () => {
+    const b = await bench();
+    const session = (await b.login("sam@example.com", PASSWORD, "198.51.100.1")).headers.getSetCookie()[0]!.split(";")[0]!;
+    let running = 0;
+    let most = 0;
+    let checks = 0;
+    const release: Array<() => void> = [];
+
+    (b.people as { changePassword: People["changePassword"] }).changePassword = async () => {
+      checks += 1;
+      running += 1;
+      most = Math.max(most, running);
+      await new Promise<void>((resolve) => release.push(resolve));
+      running -= 1;
+      return false;
+    };
+    // One session, from ten clients, without that browser's own known-browser cookie.
+    const attempts = Array.from({ length: 10 }, (_, i) =>
+      b.app.raw("POST", `${HOST}/api/account/password`, { body: { current: WRONG, next: "another long password" }, headers: { origin: HOST, cookie: session, "x-forwarded-for": `203.0.113.${i + 40}` } })
+    );
+
+    await settle();
+    expect(checks).toBe(1);
+    for (let i = 0; i < 1 + EMAIL_WAITING; i += 1) {
+      release.splice(0).forEach((done) => done());
+      await settle();
+    }
+    const answers = await Promise.all(attempts.map((attempt) => answer(attempt)));
+
+    expect(most).toBe(1);
+    expect(checks).toBe(1 + EMAIL_WAITING);
+    expect(answers.filter((a) => a.status === 400)).toHaveLength(1 + EMAIL_WAITING);
+    expect(answers.filter((a) => a.status === 429).map((a) => a.message)).toEqual(Array(10 - 1 - EMAIL_WAITING).fill(EMAIL_BUSY));
+  });
 });
 
 describe("the state stays bounded", () => {
