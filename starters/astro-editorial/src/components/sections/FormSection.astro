@@ -6,7 +6,7 @@ import Section from "../Section.astro";
 import SectionHeader from "../SectionHeader.astro";
 import Media from "../Media.astro";
 import { Form } from "../../galley/components/index.js";
-import type { Tone } from "../../lib/site";
+import { labels, type Tone } from "../../lib/site";
 
 interface Props {
   id?: string;
@@ -24,14 +24,17 @@ interface Props {
 
 const { id, tone, eyebrow, heading, text, form, image, imageAlt = "", index = 0, level = 2, block } = Astro.props;
 const headingId = `${id ?? `section-${index}`}-heading`;
-const formId = typeof form === "string" ? form : form.id;
+const formId = (typeof form === "string" ? form : form?.id) ?? "";
+// A section just added on the page names no form yet: it shows a note while
+// developing, so the preview keeps drawing; a production build stops with the reason.
+if (!formId && !import.meta.env.DEV) throw new Error("A form section has no form chosen: set its `form` to a file name in src/content/forms/.");
 ---
 
 <Section type="form" id={id} tone={tone} labelledby={headingId} block={block}>
   <div class:list={["form-section", { "form-section--image": image }]}>
     <div class="form-section__copy">
       <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} class="form-section__header" />
-      <Form id={formId} submitClass="button" />
+      {formId ? <Form id={formId} submitClass="button" /> : <p class="form-section__missing" role="note">{labels.dev.chooseForm}</p>}
     </div>
     {
       image && (
