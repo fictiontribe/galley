@@ -158,10 +158,22 @@ the icon is one ink; where it marks the current place, set `--icon-accent` and
 that part takes the Blue Pencil. Above 16 px the stroke thins in grid units so
 the line on screen grows slowly (`iconStroke(size)`).
 
+## Themes (tokens.css §6–7, [themes/](themes/README.md))
+
+The editing app's look is a **theme**: five seed colours per mode (paper,
+ink, pencil, plate, table) and four fixed switches (sidebar material, where
+the assistant works, icons at rest, depth). Everything else is derived in
+tokens.css §6 from the seeds. Quiet is Galley's look and the default; Plate
+and Desk are the other built-ins. People can make and share their own; a
+legibility check clamps any seed that would make text unreadable and says
+which colour it moved. Proof and status colours, shape, spacing and type are
+not themable. The marketing site is Quiet only.
+
 ## Colour jobs, depth and shape (tokens.css §5)
 
 Blue Pencil marks the action and where you are — and the fields where the
-assistant writes for you. Proof colours mean a change; status colours mean the
+assistant writes for you. Its tints and lines are drawn from the pencil's
+text colour, so a pale pencil still gives readable lines and visible tints. Proof colours mean a change; status colours mean the
 system's state; the table (`--surface-table`) is the ground under a page being
 proofed. Depth: a sheet rests (`--shadow-sheet`), a control is pressed in
 (`--shadow-control`), a field is recessed (`--shadow-field`), only overlays
