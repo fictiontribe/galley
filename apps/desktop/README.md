@@ -302,7 +302,8 @@ Windows and Linux on version tags and by hand. After each build it starts the
 packaged server the way the app does and walks a site through it
 (`scripts/sidecar-e2e.mjs`), so an installer whose server can't run fails
 there. The macOS builds are signed with a Developer ID and notarised by
-Apple, and the job checks the result (`codesign`, `stapler`, `spctl`); the
+Apple — the app, and the disk image it is handed over in, each with its
+ticket stapled on — and the job checks both (`codesign`, `stapler`, `spctl`); the
 signing steps run only when their secrets exist, and the workflow's header
 lists them. On a version tag the installers and their SHA-256 sums go into a
 draft release for a person to publish.
