@@ -1,0 +1,23 @@
+---
+// One glyph from the brand's icon family (brand/icons.ts — the same drawings
+// the editing app uses), inline so it takes the text colour. Decorative
+// unless given a label. Above 16 px the stroke thins in grid units, so the
+// line keeps near the weight of the type beside it.
+import { ICONS, iconStroke, type IconName } from "../../../../brand/icons";
+
+interface Props { name: IconName; size?: number; class?: string; label?: string }
+const { name, size = 20, class: cls, label } = Astro.props;
+---
+
+<svg
+  class:list={["glyph", cls]}
+  viewBox="0 0 16 16"
+  width={size}
+  height={size}
+  style={`--icon-stroke:${iconStroke(size)}`}
+  aria-hidden={label ? undefined : "true"}
+  role={label ? "img" : undefined}
+  aria-label={label}
+  focusable="false"
+  set:html={ICONS[name]}
+/>

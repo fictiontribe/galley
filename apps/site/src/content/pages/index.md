@@ -37,12 +37,15 @@ sections:
     chaptersLabel: The three steps, and where each starts in the film
     chapters:
       - label: Ask
+        icon: chat
         time: 6
         text: In plain words — or type in a form, or on the page itself.
       - label: Check
+        icon: proof
         time: 12
         text: Each change marked up beside the live site. Put back any one.
       - label: Publish
+        icon: publish
         time: 19
         text: To your own repository, or for review first. Undo adds a new version.
     link:
@@ -81,18 +84,21 @@ sections:
       href: /tour/
     items:
       - label: Forms
+        icon: form
         href: /tour/#forms
         visual:
           src: forms
           x: -148
           alt: The Forms screen.
       - label: Redirects
+        icon: link
         href: /tour/#redirects
         visual:
           src: redirects
           x: -148
           alt: The Redirects screen.
       - label: Brand
+        icon: brand
         href: /tour/#brand
         visual:
           src: brand-type
@@ -100,12 +106,14 @@ sections:
           y: -175
           alt: The brand’s type, set large in the site’s own heading face.
       - label: Search and AI
+        icon: visibility
         href: /tour/#search
         visual:
           src: search-ai
           x: -148
           alt: The Search & AI checks.
       - label: Your sites
+        icon: sites
         href: /tour/#sites
         visual:
           src: sites

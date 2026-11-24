@@ -1,5 +1,6 @@
 /* galley.fictiontribe.com — the one stylesheet.
-   Colours and faces from brand/tokens.css (the brand's own values, light only);
+   Colours and faces from brand/tokens.css (the brand's own values, light only;
+   the paper is the app's bond paper, tokens.css §1b, so both are one brand);
    the capture treatment is the site's: a warm tan panel, the app window cut by
    its right and bottom edges and dissolving into it.
 
@@ -10,14 +11,16 @@
      radii   6 windows · 8 panels · 12 cards · pills for things you press */
 
 :root {
-  --paper: #F6F1E7; --raised: #FDFAF4; --sunken: #EDE6D8;
+  --paper: #F6F4F0; --raised: #FDFCFA; --sunken: #EDEAE4;
   --ink: #1A1712; --ink-2: #514A3F; --ink-3: #6B6356;
-  --line: #E3DACA; --line-2: #D2C7B4; --line-strong: #857B69;
+  --line: #E7E3DC; --line-2: #D7D1C7; --line-seam: #C9C2B6; --line-strong: #817A6F;
+  --pencil-50: #F3F2FA; --pencil-100: #E8E7FB; --pencil-300: #B7B5FC;
   --accent: #2E2BFF; --accent-hover: #1F1CE0; --accent-text: #2910F1; --accent-tint: #E7E6FF;
   --ins: #0B6E55; --ins-tint: #DCEDE2; --ins-ink: #064534;
   --del: #B8361A; --del-tint: #F8E1D7; --del-ink: #7A2210;
   --chg: #8E3A7A; --chg-tint: #F1E1EA; --chg-ink: #5E2050;
-  --warn-tint: #F5E6C3; --warn-ink: #5C3A00;
+  --warn: #8A5800; --warn-tint: #F5E6C3; --warn-ink: #5C3A00;
+  --ok: #2D6A2E;
   /* the capture ground */
   --tan: #D9CCB7; --tan-surface: #E9E0D2; --tan-accent: #A8794A;
   --shot-line: color-mix(in oklab, #1A1712 14%, transparent);
@@ -40,7 +43,12 @@
   --container: 1280px;
   --gutter: clamp(20px, 5.5vw, 80px);
   --gap: clamp(16px, 2vw, 24px);
-  --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-pill: 999px;
+  --r-stamp: 3px; --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-pill: 999px;
+  /* depth (tokens.css §5): a sheet rests, a control is pressed in, a field is recessed */
+  --sh-sheet: 0 1px 0 rgb(26 23 18 / .03), 0 1px 2px rgb(26 23 18 / .05);
+  --sh-control: 0 1px 0 rgb(26 23 18 / .07);
+  --sh-field: inset 0 1px 1px rgb(26 23 18 / .05);
+  --sh-press: inset 0 1px 0 rgb(255 255 255 / .14), inset 0 -1px 0 rgb(0 0 0 / .16);
   --header-h: 68px;
 
   --m-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.6 10.4 6 3.2l4.4 7.2' fill='none' stroke='%23000' stroke-width='1.8'/%3E%3C/svg%3E");
@@ -87,12 +95,19 @@ main > .section:last-child, main > :last-child { padding-bottom: var(--section);
 .head--row { max-width: none; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: var(--s4) var(--s8); align-items: end; }
 code { font: 400 0.875em/1 var(--font-mono); padding: 2px 5px; border-radius: 4px; background: var(--sunken); color: var(--ink); }
 
+/* ---------- glyphs (brand/icons.ts via Glyph.astro): one ink; the accent part may take the pencil ---------- */
+.glyph { display: inline-block; flex: none; vertical-align: -0.2em; stroke: currentColor; fill: none; stroke-width: var(--icon-stroke, 1.5); stroke-linecap: butt; stroke-linejoin: miter; }
+.glyph .i-a { stroke: var(--icon-accent, currentColor); }
+.glyph .i-af { fill: var(--icon-accent, currentColor); stroke: none; }
+.glyph .i-f { fill: currentColor; stroke: none; }
+.glyph .i-t { fill: var(--icon-tint, none); stroke: none; }
+
 /* ---------- links, buttons, badges ---------- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); min-height: 48px; padding: 0 var(--s5); border-radius: var(--r-pill); border: 1px solid transparent; font: 500 var(--t-ui)/1 var(--font-text); text-decoration: none; white-space: nowrap; cursor: pointer; transition: background-color .15s, border-color .15s; }
-.btn--primary { background: var(--accent); color: #fff; }
+.btn--primary { background: var(--accent); color: #fff; box-shadow: var(--sh-press); }
 .btn--primary:hover { background: var(--accent-hover); }
-.btn--quiet { border-color: var(--line-strong); background: transparent; }
-.btn--quiet:hover { background: var(--sunken); }
+.btn--quiet { border-color: var(--line-seam); background: var(--raised); box-shadow: var(--sh-control); }
+.btn--quiet:hover { border-color: var(--line-strong); }
 .btn--sm { min-height: 40px; padding: 0 var(--s4); font-size: 0.9375rem; }
 .link { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.25em; text-decoration-color: color-mix(in oklab, currentColor 40%, transparent); }
 .link:hover { text-decoration-color: currentColor; }
@@ -104,10 +119,13 @@ code { font: 400 0.875em/1 var(--font-mono); padding: 2px 5px; border-radius: 4p
 @media (max-width: 1023px) { .link__note { display: inline; } }
 button.link { background: none; border: 0; padding: 0; cursor: pointer; }
 button.link::after { content: none; }
-.badge { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: var(--r-pill); font: 500 12px/1 var(--font-text); background: var(--sunken); color: var(--ink-2); white-space: nowrap; vertical-align: middle; }
-.badge--preview { background: var(--accent-tint); color: #2A27C9; }
-.badge--new { background: var(--ins-tint); color: var(--ins-ink); }
-.badge--progress { background: var(--warn-tint); color: var(--warn-ink); }
+/* Status is a stamp: a square-cornered tint, a hairline of its own ink, and the proof mark for its state. */
+.badge { --_c: var(--ink-3); display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px 0 7px; border-radius: var(--r-stamp); font: 600 12px/1 var(--font-text); background: var(--sunken); color: var(--ink-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--_c) 24%, transparent); white-space: nowrap; vertical-align: middle; }
+.badge .glyph { color: var(--_c); }
+.badge--built { --_c: var(--ok); background: color-mix(in srgb, var(--ok) 9%, var(--raised)); color: #1D4A1E; }
+.badge--preview { --_c: var(--accent-text); background: var(--pencil-100); color: #2A27C9; }
+.badge--new { --_c: var(--ins); background: var(--ins-tint); color: var(--ins-ink); }
+.badge--progress { --_c: var(--warn); background: var(--warn-tint); color: var(--warn-ink); }
 .badge--later { background: var(--sunken); color: var(--ink-2); }
 
 /* ---------- proof marks (brand glyphs as masks; never colour alone) ---------- */
@@ -177,13 +195,13 @@ button.link::after { content: none; }
 .hero__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s5); }
 .hero__note { font-size: var(--t-small); color: var(--ink-3); }
 /* What a person types: one command per line, Copy beside it (the script adds the button). */
-.cmd { contain: inline-size; display: flex; align-items: center; gap: var(--s2); width: 100%; max-width: 100%; min-height: 46px; padding-right: 6px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--raised); color: var(--ink); }
+.cmd { contain: inline-size; display: flex; align-items: center; gap: var(--s2); width: 100%; max-width: 100%; min-height: 46px; padding-right: 6px; border: 1px solid var(--line-seam); border-radius: var(--r-sm); background: var(--raised); box-shadow: var(--sh-field); color: var(--ink); }
 .cmd pre { flex: 1; min-width: 0; margin: 0; padding: 11px 0 11px var(--s4); overflow-x: auto; font: 400 0.875rem/1.6 var(--font-mono); white-space: pre; }
 .cmd pre code { padding: 0; background: none; border-radius: 0; font: inherit; color: inherit; }
 .cmd pre:focus-visible { outline-offset: -3px; }
 .cmd--multi { align-items: flex-start; }
 .cmd--multi button { margin-top: 6px; }
-.cmd button, .term__copy { flex: none; height: 34px; padding: 0 var(--s3); border: 1px solid var(--line-2); border-radius: var(--r-pill); background: var(--paper); font: 500 0.8125rem/1 var(--font-text); cursor: pointer; }
+.cmd button, .term__copy { flex: none; height: 34px; padding: 0 var(--s3); border: 1px solid var(--line-seam); border-radius: var(--r-pill); background: var(--raised); box-shadow: var(--sh-control); font: 500 0.8125rem/1 var(--font-text); cursor: pointer; }
 .cmd button:hover { background: var(--sunken); }
 /* What a person then sees: quieter, labelled, never copied. */
 .out { contain: inline-size; margin: 0; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink-2); }
@@ -198,6 +216,13 @@ button.link::after { content: none; }
 .close .out__label { color: var(--on-plate-3); }
 .copyfile { font-size: var(--t-small); color: var(--ink-2); }
 .showcase { height: clamp(440px, 46vw, 640px); }
+/* Crop marks at the four corners of the hero's panel: the one sheet on the page that is being proofed. Once per page. */
+.hero--showcase figure { position: relative; }
+.hero--showcase figure::before { content: ""; position: absolute; inset: -14px -14px auto; height: calc(clamp(440px, 46vw, 640px) + 28px); pointer-events: none; --c: var(--line-strong); --o: 14px; --l: 9px; background:
+    linear-gradient(var(--c), var(--c)) 0 calc(var(--o) - 1px) / var(--l) 1px no-repeat, linear-gradient(var(--c), var(--c)) calc(var(--o) - 1px) 0 / 1px var(--l) no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% calc(var(--o) - 1px) / var(--l) 1px no-repeat, linear-gradient(var(--c), var(--c)) calc(100% - var(--o)) 0 / 1px var(--l) no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 calc(100% - var(--o)) / var(--l) 1px no-repeat, linear-gradient(var(--c), var(--c)) calc(var(--o) - 1px) 100% / 1px var(--l) no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% calc(100% - var(--o)) / var(--l) 1px no-repeat, linear-gradient(var(--c), var(--c)) calc(100% - var(--o)) 100% / 1px var(--l) no-repeat; }
 .showcase .site { width: min(64%, 860px); }
 .showcase .over { --ax: calc(min(64%, 860px) - 150px); --ay: 21%; width: 1000px; z-index: 2; box-shadow: 0 2px 6px rgb(26 23 18 / .08), 0 32px 64px -24px rgb(26 23 18 / .45); }
 .showcase .over .window__bar i { background: var(--accent); }
@@ -627,7 +652,10 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
 .filmstrip__frame .stage { --fade-h: 56px; --fade-w: 28px; }
 .filmstrip__frame .shot { --ax: 18px; --ay: 18px; --ax-sm: 18px; --ay-sm: 18px; display: block; transition: translate .32s cubic-bezier(.16, 1, .3, 1); }
 .filmstrip__item:hover .shot { translate: -6px -6px; }
-.filmstrip__label { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); font: 500 1rem/1.3 var(--font-text); }
+.filmstrip__label { display: flex; align-items: center; gap: 10px; font: 500 1rem/1.3 var(--font-text); }
+.filmstrip__label .glyph { color: var(--ink-2); }
+.filmstrip__name { flex: 1; }
+.filmstrip__item:hover .filmstrip__label .glyph { --icon-accent: var(--accent-text); --icon-tint: var(--pencil-100); }
 .filmstrip__label::after { content: "→"; color: var(--accent-text); transition: transform .15s; }
 .filmstrip__item:hover .filmstrip__label::after { transform: translateX(3px); }
 
@@ -802,7 +830,8 @@ a.desk__frame { text-decoration: none; }
 .film__step { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; gap: 4px var(--s2); align-items: baseline; width: 100%; padding: var(--s4) var(--s2) var(--s4) 0; border: 0; border-top: 1px solid var(--ink); background: transparent; text-align: left; cursor: pointer; transition: background-color .14s; }
 .film__step:hover { background: color-mix(in oklab, var(--sunken) 60%, transparent); }
 .film__n { grid-row: span 2; font: 400 1.75rem/1 var(--font-display); color: var(--accent-text); }
-.film__t { font: 400 var(--t-h3)/1.2 var(--font-display); letter-spacing: -0.01em; }
+.film__t { display: flex; align-items: center; gap: 10px; font: 400 var(--t-h3)/1.2 var(--font-display); letter-spacing: -0.01em; }
+.film__t .glyph { order: 2; margin-left: auto; color: var(--ink-3); --icon-accent: var(--accent-text); }
 .film__at { grid-column: 3; grid-row: 1; font: 500 var(--t-label)/1.4 var(--font-mono); color: var(--ink-3); }
 .film__d { grid-column: 2 / -1; font-size: 0.9875rem; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
 .film__more { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s6); margin-top: var(--s4); }
@@ -813,6 +842,9 @@ a.desk__frame { text-decoration: none; }
 .starters--row .starter__name { font-size: 1.5rem; }
 .starters--row .starter__body { gap: var(--s1); }
 .spec-rows { margin: 0; border-top: 1px solid var(--ink); }
+/* The release rule carries the control strip: the inks this page uses, once, as a printer checks them. */
+.spec-rows { position: relative; }
+.spec-rows::before { content: ""; position: absolute; right: 0; top: -9px; width: 64px; height: 8px; background: linear-gradient(90deg, var(--accent) 0 14px, transparent 14px 16px, var(--ins) 16px 30px, transparent 30px 32px, var(--chg) 32px 46px, transparent 46px 48px, var(--del) 48px 62px, transparent 62px); }
 .spec-row { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--s2) var(--s5); align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--line-2); }
 .spec-row dd { margin: 0; color: var(--ink-2); line-height: 1.75; }
 .spec-row__item { white-space: nowrap; }
