@@ -12,6 +12,9 @@
 /* Toolbar */
 .redir-toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .redir-toolbar > .g-input { flex: 1 1 220px; max-inline-size: 360px; }
+/* The filter as wide as its words and as tall as the search beside it, so "Add one" stays on the line. */
+.redir-toolbar > .g-select-wrap { flex: none; inline-size: auto; }
+.redir-toolbar .g-select { block-size: var(--control-height-sm); font-size: var(--text-sm); }
 .redir-toolbar__count { margin-inline-start: auto; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 
 /* The table: one grid for the head, the rows and the row editor, so columns line up. */
