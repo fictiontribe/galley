@@ -75,7 +75,7 @@
 .g-root .kit-ask--line .kit-ask__field,
 .g-root .g-composer { border-color: var(--pencil-400); box-shadow: 0 0 0 3px var(--pencil-50), var(--shadow-sheet); }
 .g-root .kit-ask--line .kit-ask__field:has(.kit-ask__input:focus-visible),
-.g-root .g-composer:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring), 0 0 0 4px var(--pencil-100); }
+.g-root .g-composer:has(textarea:focus-visible) { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring), 0 0 0 4px var(--pencil-100); }
 .g-root .kit-ask--line .kit-ask__label { color: var(--ink-primary); border-inline-end-color: var(--pencil-200); }
 
 /* Icons in the sidebar rest a step quieter than their words. */

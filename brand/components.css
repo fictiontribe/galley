@@ -716,7 +716,11 @@
   box-shadow: var(--shadow-sheet);
   transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
 }
-.g-composer:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring), 0 0 0 4px var(--pencil-100); }
+/* The tray shows the focus for the text field inside it, so the field draws no
+   ring of its own: one ring inside another reads as a fault. A button in the
+   tray keeps its own ring, and the tray stays at rest while the button has it. */
+.g-composer:has(textarea:focus-visible) { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring), 0 0 0 4px var(--pencil-100); }
+.g-root .g-composer textarea:focus-visible { outline: none; }
 .g-composer textarea {
   border: 0; outline: 0; resize: none; background: transparent; color: var(--ink-primary);
   font: var(--text-md) / var(--leading-md) var(--font-text); padding: 4px 4px; min-block-size: 44px;
