@@ -1,0 +1,102 @@
+---
+// /themes/: the editing app's themes — the built-ins and the community's —
+// each drawn from its own colours and switches (CSS, no screenshots), from the
+// same files the app bundles. The site itself stays Quiet.
+import Site from "../layouts/Site.astro";
+import { fill } from "../lib/site";
+import { fullSwitches, siteThemes } from "../lib/themes";
+
+const title = "Themes for the editing app";
+const description = "Quiet, Plate, Desk and the community's themes for Galley's editing app: each a small file of colours and choices, checked to stay readable. Download one, or make your own in the app.";
+const cards = siteThemes.map((entry) => {
+  const c = entry.check.colours!.light;
+  const s = fullSwitches(entry.theme.switches);
+  const style = [
+    ["--sw-paper", c.paper], ["--sw-sheet", c.sheet], ["--sw-desk", c.desk], ["--sw-plate", c.plate], ["--sw-plate-current", c.plateCurrent],
+    ["--sw-pencil-on-plate", c.pencilOnPlate], ["--sw-on-plate", c.onPlate3], ["--sw-ink", c.ink], ["--sw-ink-3", c.ink3], ["--sw-edge", c.edge],
+    ["--sw-fill", c.accentFill], ["--sw-pencil-50", c.pencil50], ["--sw-pencil-300", c.pencil300], ["--sw-pencil-400", c.pencil400], ["--sw-table", c.table],
+  ].map(([name, value]) => `${name}:${value}`).join(";");
+  return { ...entry, style, switches: s };
+});
+const SIDEBAR: Record<string, string> = { sheet: "paper sidebar", desk: "desk sidebar", plate: "plate sidebar" };
+---
+
+<Site title={title} description={description}>
+  <section class="section wrap themes" aria-labelledby="themes-h">
+    <header class="head">
+      <h1 class="h1" id="themes-h">Themes</h1>
+      <p class="lead">Galley’s editing app comes in Quiet, its own look, and in themes: Plate, Desk, and ones people make. A theme is a small file of colors and choices. It changes the app, never your site.</p>
+    </header>
+
+    <ul class="themes__grid">
+      {
+        cards.map((entry) => (
+          <li class="themes__card">
+            <span class="theme-art" style={entry.style} data-sidebar={entry.switches.sidebar} data-assist={entry.switches.assist} data-depth={entry.switches.depth} data-icons={entry.switches.icons} aria-hidden="true">
+              <span class="theme-art__side">
+                <span class="theme-art__item theme-art__item--current" />
+                <span class="theme-art__item" />
+                <span class="theme-art__item" />
+                <span class="theme-art__item" />
+              </span>
+              <span class="theme-art__page">
+                <span class="theme-art__sheet">
+                  <span class="theme-art__line" />
+                  <span class="theme-art__line theme-art__line--quiet" />
+                  <span class="theme-art__field" />
+                </span>
+                <span class="theme-art__button" />
+              </span>
+            </span>
+            <span class="themes__text">
+              <h2 class="h3">{entry.theme.name}</h2>
+              <span class="small">{entry.source === "builtin" ? (entry.theme.id === "quiet" ? "Comes with the app · the default" : "Comes with the app") : `By ${entry.theme.author ?? "the community"}`} · {SIDEBAR[entry.switches.sidebar]}</span>
+              {entry.theme.description && <span class="body themes__desc">{entry.theme.description}</span>}
+              <a class="btn btn--quiet btn--sm themes__download" href={`/themes/${entry.theme.id}.json`} download={`${entry.theme.id}.json`}>Download {entry.theme.name}</a>
+            </span>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section class="section wrap" aria-labelledby="themes-use-h">
+    <h2 class="h2 head" id="themes-use-h">Use one, make your own</h2>
+    <ol class="themes__steps body">
+      <li><strong>Choose one</strong> with the small swatch beside light and dark, at the foot of the app’s sidebar. A downloaded file goes in with <strong>Import…</strong> in Settings › Themes.</li>
+      <li><strong>Make your own</strong> from any theme: Settings › Themes › Make a theme from this one. The app checks every theme stays readable and says what it adjusted.</li>
+      <li><strong>Share it</strong>: Share with the community opens GitHub with your theme filled in, to propose for this page. More in <a href={fill("/docs/editing/themes/")}>the docs</a>.</li>
+    </ol>
+  </section>
+</Site>
+
+<style>
+  .themes__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: var(--gap); margin: 0; padding: 0; list-style: none; }
+  .themes__card { display: grid; gap: var(--s4); align-content: start; padding: var(--s4); border-radius: var(--r-lg); background: var(--raised); border: 1px solid var(--line); box-shadow: var(--sh-sheet); }
+  .themes__text { display: grid; gap: var(--s2); justify-items: start; }
+  .themes__text .h3 { margin: 0; }
+  .themes__desc { font-size: 0.9375rem; }
+  .themes__download { margin-top: var(--s2); }
+  .themes__steps { display: grid; gap: var(--s3); max-width: 46rem; padding-left: 1.25em; margin: 0; }
+
+  /* A theme drawn from its seeds and switches: sidebar in its material, the paper, a sheet, the assistant's field, the one button. */
+  .theme-art { display: grid; grid-template-columns: 28% 1fr; aspect-ratio: 16 / 9; border-radius: var(--r-md, 8px); overflow: hidden; background: var(--sw-paper); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sw-ink) 14%, transparent); }
+  .theme-art__side { display: grid; align-content: start; gap: 10px; padding: 18px 12px; background: var(--sw-paper); box-shadow: inset -1px 0 0 color-mix(in srgb, var(--sw-ink) 10%, transparent); }
+  .theme-art[data-sidebar="desk"] .theme-art__side { background: var(--sw-desk); }
+  .theme-art[data-sidebar="plate"] .theme-art__side { background: var(--sw-plate); box-shadow: none; }
+  .theme-art__item { height: 6px; border-radius: 3px; background: var(--sw-ink-3); opacity: 0.5; }
+  .theme-art[data-sidebar="plate"] .theme-art__item { background: var(--sw-on-plate); }
+  .theme-art[data-icons="duotone"] .theme-art__item { background: var(--sw-pencil-300); opacity: 0.85; }
+  .theme-art__item--current { height: 14px; opacity: 1; background: var(--sw-sheet); box-shadow: inset 0 0 0 1px var(--sw-edge); }
+  .theme-art[data-sidebar="desk"] .theme-art__item--current { box-shadow: inset 3px 0 0 var(--sw-fill); }
+  .theme-art[data-sidebar="plate"] .theme-art__item--current { background: var(--sw-plate-current); box-shadow: inset 3px 0 0 var(--sw-pencil-on-plate); }
+  .theme-art__page { position: relative; padding: 18px 18px 0; }
+  .theme-art__sheet { display: grid; align-content: start; gap: 9px; height: 72%; padding: 16px; border-radius: 4px; background: var(--sw-sheet); box-shadow: 0 0 0 1px var(--sw-edge); }
+  .theme-art[data-depth="lit"] .theme-art__sheet { box-shadow: 0 0 0 1px color-mix(in srgb, var(--sw-ink) 8%, transparent), 0 6px 14px -6px color-mix(in srgb, var(--sw-ink) 35%, transparent); }
+  .theme-art__line { height: 6px; width: 78%; border-radius: 3px; background: var(--sw-ink); }
+  .theme-art__line--quiet { width: 52%; background: var(--sw-ink-3); }
+  .theme-art__field { height: 16px; border-radius: 4px; background: var(--sw-sheet); box-shadow: inset 0 0 0 1.5px var(--sw-pencil-400); }
+  .theme-art[data-assist="washed"] .theme-art__field { background: var(--sw-pencil-50); box-shadow: inset 0 0 0 1.5px var(--sw-pencil-300); }
+  .theme-art__button { position: absolute; right: 18px; bottom: 12%; width: 28%; height: 12%; border-radius: 999px; background: var(--sw-fill); }
+  .theme-art[data-depth="lit"] .theme-art__button { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 2px 3px color-mix(in srgb, var(--sw-ink) 35%, transparent); }
+</style>
