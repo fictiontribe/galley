@@ -15,6 +15,7 @@ import {
   expandOutputLine,
   isAgentMarker,
   injectIntoHtml,
+  overlayTagWithStatus,
   parseCommand,
   stripFrameAncestors,
   type PreviewControllerHandle,
@@ -56,6 +57,11 @@ const server = http.createServer((req, res) => {
   if (req.url === "/hashed.js") {
     res.writeHead(200, { "content-type": "text/javascript", "cache-control": "public, max-age=31536000, immutable" });
     return res.end("1");
+  }
+  if (req.url === "/broken") {
+    // Astro's dev error page: no <html>, no <head>, the message comes later over the socket.
+    res.writeHead(500, { "content-type": "text/html" });
+    return res.end("<title>Error</title><script type=\\"module\\" src=\\"/@vite/client\\"></script>");
   }
   if (req.url === "/echo") {
     res.writeHead(200, { "content-type": "application/json" });
@@ -348,6 +354,9 @@ describe("helpers", () => {
     expect(injectIntoHtml(Buffer.from('<body class="x">hi')).toString()).toBe(`<body class="x">${tag}hi`);
     expect(injectIntoHtml(Buffer.from("plain")).toString()).toBe(`plain${tag}`);
     expect(injectIntoHtml(Buffer.from(`<head>${tag}</head>`)).toString()).toBe(`<head>${tag}</head>`);
+    expect(overlayTagWithStatus(tag, 200)).toBe(tag);
+    expect(overlayTagWithStatus(tag, 404)).toBe(`<script data-galley-status="404" src="${OVERLAY_SCRIPT_PATH}" defer></script>`);
+    expect(overlayTagWithStatus(tag, 502, true)).toBe(`<script data-galley-status="502" data-galley-unavailable src="${OVERLAY_SCRIPT_PATH}" defer></script>`);
   });
 });
 
@@ -380,6 +389,12 @@ describe("preview controller", () => {
 
     expect(gz.headers.get("content-encoding")).toBeNull();
     expect(await gz.text()).toContain(OVERLAY_SCRIPT_PATH);
+
+    // A page the dev server answered with an error carries its status to the overlay, whatever shape the page has.
+    const broken = await fetch(url + "/broken");
+
+    expect(broken.status).toBe(500);
+    expect(await broken.text()).toBe(`<title>Error</title><script type="module" src="/@vite/client"></script><script data-galley-status="500" src="${OVERLAY_SCRIPT_PATH}" defer></script>`);
 
     // Non-HTML passes through untouched.
     const js = await fetch(url + "/app.js");

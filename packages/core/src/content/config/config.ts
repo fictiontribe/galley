@@ -59,7 +59,7 @@ function applyBlockConfig(blocks: BlockType[] | undefined, configs: NonNullable<
       ...base,
       ...(config.label !== undefined ? { label: config.label } : {}),
       ...(config.description !== undefined ? { description: config.description } : {}),
-      ...(config.example !== undefined ? { example: config.example } : {}),
+      ...(config.example !== undefined ? { example: config.example, exampleDeclared: true } : {}),
       ...(config.thumbnail !== undefined ? { thumbnail: normalizePath(config.thumbnail) } : {}),
       fields: applyFieldConfigs(base.fields, config.fields ?? []),
     };
@@ -77,6 +77,7 @@ function applyFieldConfig(field: Field | undefined, config: FieldConfig): Field 
   for (const key of ["label", "type", "required", "description", "options", "discriminator", "collection", "default", "examples", "hidden", "dataSource"] as const) {
     if (config[key] !== undefined) (out as unknown as Record<string, unknown>)[key] = config[key];
   }
+  if (config.examples !== undefined) out.examplesDeclared = true;
   if (config.of) out.of = applyFieldConfig(base.of, { ...config.of, key: config.of.key ?? "item" });
   if (config.fields) out.fields = applyFieldConfigs(base.fields ?? [], config.fields);
   if (config.blocks) out.blocks = applyBlockConfig(base.blocks, config.blocks);

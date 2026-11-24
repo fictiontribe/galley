@@ -101,7 +101,7 @@ function keyOrder(items: JsonObject[]): string[] {
   return order;
 }
 
-function leafCount(value: JsonValue): number {
+export function leafCount(value: JsonValue): number {
   if (Array.isArray(value)) return value.reduce<number>((sum, item) => sum + leafCount(item), 0);
   if (isObject(value)) return Object.values(value).reduce<number>((sum, item) => sum + leafCount(item), 0);
   return isEmpty(value) ? 0 : 1;

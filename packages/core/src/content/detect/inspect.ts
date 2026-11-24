@@ -6,6 +6,7 @@ import type { Collection, Field, MediaConfig, SiteModel } from "../../types";
 import { listCollectionFiles, readCached } from "../entries/files";
 import { inferFields, pickListFields, sample } from "../schema/infer";
 import { mergeFields } from "../schema/merge";
+import { withBlockSamples, type SampledEntry } from "../schema/samples";
 import type { JsonObject } from "../util/json";
 
 export async function inspectCollection(
@@ -17,14 +18,18 @@ export async function inspectCollection(
 ): Promise<Collection> {
   const files = await listCollectionFiles(root, model, collection);
   const items: JsonObject[] = [];
+  const entries: SampledEntry[] = [];
 
   for (const path of sample(files)) {
     const doc = await readCached(root, path, collection.format);
 
-    if (doc && doc.errors.length === 0) items.push(doc.data);
+    if (doc && doc.errors.length === 0) {
+      items.push(doc.data);
+      entries.push({ path, data: doc.data });
+    }
   }
   const inferred = inferFields(items, { mediaPublicPaths: media.roots.map((rootDir) => rootDir.publicPath) });
-  const fields = mergeFields(declared, inferred);
+  const fields = withBlockSamples(mergeFields(declared, inferred), entries, collection.titleField);
   const picks = pickListFields(fields);
 
   return {

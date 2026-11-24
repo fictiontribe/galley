@@ -6,13 +6,14 @@
  * truth for the selection; the page only reports clicks, keys and drops.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
-import type { BlockType, Entry, Field, HostToOverlay, JsonValue, OverlayToHost } from "@galley/core/types";
+import type { ArrangeDeclineCause, BlockType, Entry, Field, HostToOverlay, JsonValue, OverlayToHost } from "@galley/core/types";
 import { listActions, onListChange, undoLastListAction, type ListActions } from "@/features/content/fields/items/listActions";
 import { followIndex } from "@/features/content/fields/items/listPlan";
-import { blockScaffold } from "@/features/content/form/scaffold";
+import { addSection } from "@/features/content/form/addSection";
 import { blockLabel } from "@/features/content/form/summary";
 import type { FormState, FormStore } from "@/features/content/form/store";
 import { toOverlay } from "@/features/preview/frames";
+import { declineKind, declineWords, type DeclineKind, type DeclineWords, type PageReport } from "./declined";
 import { blocksFields, parseSectionKey, positionWords, sectionKey, sectionLists } from "./model";
 import { followPaletteDrag } from "./placing";
 
@@ -48,9 +49,19 @@ export interface ArrangeOptions {
   /** Post to the proposed page's overlay. */
   post: (message: HostToOverlay) => void;
   frame: RefObject<HTMLIFrameElement | null>;
+  /** What the proposed page's overlay said about whether it was drawn (null until it says, or from an older overlay). */
+  page?: PageReport | null;
 }
 
-export function useArrange({ source, on, post, frame }: ArrangeOptions) {
+/** Why the page can't be arranged, in one of four plain cases (declined.ts). */
+export interface Decline {
+  kind: DeclineKind;
+  words: DeclineWords;
+  /** The technical reason, for Technical details. */
+  reason: string | null;
+}
+
+export function useArrange({ source, on, post, frame, page = null }: ArrangeOptions) {
   const entry = source?.entry ?? null;
   const store = source?.store ?? null;
   const fields = useMemo(() => blocksFields(entry?.fields ?? NO_FIELDS), [entry?.fields]);
@@ -74,7 +85,7 @@ export function useArrange({ source, on, post, frame }: ArrangeOptions) {
     reveal.current = show;
     setSelectedState(key);
   }, []);
-  const [status, setStatus] = useState<{ status: MapStatus; how: "markers" | "evidence" | null; reason: string | null }>({ status: "loading", how: null, reason: null });
+  const [status, setStatus] = useState<{ status: MapStatus; how: "markers" | "evidence" | null; reason: string | null; cause?: ArrangeDeclineCause | null }>({ status: "loading", how: null, reason: null });
   const [awaitingUntil, setAwaitingUntil] = useState(0);
   const [target, setTarget] = useState<Target | null>(null);
   const [placing, setPlacing] = useState<{ block: BlockType; field: string } | null>(null);
@@ -162,15 +173,16 @@ export function useArrange({ source, on, post, frame }: ArrangeOptions) {
 
   const insertAt = useCallback(
     (block: BlockType, fieldKey: string, index: number) => {
-      const entry = actionsFor.get(fieldKey);
-      if (!entry || !editable) return;
+      const target = actionsFor.get(fieldKey);
+      if (!target || !editable || !store || !entry) return;
       const where = positionWords(labelsOf(fieldKey), index);
-      if (entry.actions.insert(index, blockScaffold(block, entry.field.discriminator ?? "type"))) {
+      // The form's "Add section" does exactly this: one rule for what a new section starts with.
+      if (addSection({ store, field: target.field, path: [fieldKey], block, index, entryPath: entry.path })) {
         select(sectionKey(fieldKey, index), true);
         setNote(`${block.label} added ${where}. It’s waiting in Proof.`);
       }
     },
-    [actionsFor, editable, labelsOf, select],
+    [actionsFor, editable, labelsOf, select, store, entry],
   );
 
   const stopPlacing = useCallback(() => {
@@ -184,7 +196,7 @@ export function useArrange({ source, on, post, frame }: ArrangeOptions) {
       switch (message.type) {
         case "arrange-status":
           if (message.revision !== revision.current.value) return;
-          setStatus({ status: message.status, how: message.how, reason: message.reason });
+          setStatus({ status: message.status, how: message.how, reason: message.reason, cause: message.cause ?? null });
           if (message.status === "mapped") setAwaitingUntil(0);
           return;
         case "arrange-select":
@@ -313,9 +325,20 @@ export function useArrange({ source, on, post, frame }: ArrangeOptions) {
     }
   }, [active]);
 
+  // A page that wasn't drawn can't be arranged, whatever the overlay last said about its sections.
+  const undrawn = page !== null && page.state !== "drawn";
+  const decline: Decline | null =
+    undrawn || status.status === "declined"
+      ? (() => {
+          const kind = declineKind(status.status === "declined" ? status.cause : null, page);
+          return { kind, words: declineWords(kind, { cause: status.cause ?? null }), reason: undrawn ? page.message : status.reason };
+        })()
+      : null;
+
   return {
     available,
     active,
+    decline,
     editable,
     fields,
     data,

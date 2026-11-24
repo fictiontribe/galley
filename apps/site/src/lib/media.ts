@@ -38,9 +38,25 @@ export interface Picture {
   height: number;
 }
 
+/**
+ * A picture that isn't there. The build fails loudly, so a page never goes
+ * live with a hole in it; the preview (`astro dev`) shows a marked stand-in
+ * instead, because a section just added in the editor names no picture yet
+ * and must not stop the whole page from drawing.
+ */
+function missingPicture(file: string, why: string, shape: { width: number; height: number } = { width: 800, height: 500 }): Picture {
+  if (!import.meta.env.DEV) throw new Error(why);
+  console.warn(`[site] ${why} — showing a stand-in in the preview.`);
+  const { width, height } = shape;
+  const label = file.endsWith("/.webp") || file.endsWith("/-poster.webp") ? "No picture yet. Choose one in the form." : `Missing ${file}`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#ecebe6" stroke="#b9b6ab" stroke-dasharray="6 6"/><text x="50%" y="50%" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" fill="#5f5c55">${label.replace(/[<&]/g, "")}</text></svg>`;
+  const src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  return { src, srcset: "", natural: width, width, height };
+}
+
 function picture(folder: string, name: string): Picture {
   const file = join(PUBLIC, folder, `${name}.webp`);
-  if (!existsSync(file)) throw new Error(`Missing public/${folder}/${name}.webp (scripts/capture-screens.mjs)`);
+  if (!name || !existsSync(file)) return missingPicture(`public/${folder}/${name}.webp`, `Missing public/${folder}/${name}.webp (scripts/capture-screens.mjs)`);
   const { width, height } = webpSize(file);
   const oneFile = join(PUBLIC, folder, `${name}@1x.webp`);
   const one = existsSync(oneFile) ? webpSize(oneFile).width : 0;
@@ -108,7 +124,10 @@ export interface Recording extends Picture {
 }
 
 export function recording(name: string): Recording {
-  if (!existsSync(join(PUBLIC, "screens", `${name}.webm`))) throw new Error(`Missing recording public/screens/${name}.webm`);
+  if (!name || !existsSync(join(PUBLIC, "screens", `${name}.webm`))) {
+    // The stand-in is a still: nothing to play until the recording is there.
+    return { ...missingPicture(`public/screens/${name}-poster.webp`, `Missing recording public/screens/${name}.webm`), video: "" };
+  }
   return { ...screen(`${name}-poster`), video: `/screens/${name}.webm` };
 }
 
@@ -119,7 +138,7 @@ export function recording(name: string): Recording {
  */
 export function portrait(name: string): Picture {
   const file = join(PUBLIC, "team", `${name}.webp`);
-  if (!existsSync(file)) throw new Error(`Missing public/team/${name}.webp`);
+  if (!name || !existsSync(file)) return missingPicture(`public/team/${name}.webp`, `Missing public/team/${name}.webp`, { width: 480, height: 600 });
   const { width, height } = webpSize(file);
   const oneFile = join(PUBLIC, "team", `${name}@1x.webp`);
   const one = existsSync(oneFile) ? webpSize(oneFile).width : 0;

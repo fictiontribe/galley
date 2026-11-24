@@ -15,7 +15,7 @@
  * started in the app — the app keeps the pointer, this frame only does the
  * geometry) or waits for a click on one of the insertion lines here.
  */
-import type { HostToOverlay, OverlayToHost } from "@galley/core/types";
+import type { ArrangeDeclineCause, HostToOverlay, OverlayToHost, PageDrawState } from "@galley/core/types";
 import { arrangeCss } from "./arrange-styles";
 import { edgeSpeed, gapAt, gapY, moveTo, nearGap, type Span } from "./geometry";
 import { mapSections, type MappedSection, type SectionMap } from "./sections";
@@ -30,6 +30,8 @@ export interface Arrange {
   pointer(point: { x: number; y: number } | null): void;
   drop(): void;
   appearance(look: Appearance): void;
+  /** The page's drawn state changed (page.ts): say again where Arrange stands. */
+  refresh(): void;
   /** Whether Arrange mode is on (click to edit stays off meanwhile). */
   readonly on: boolean;
   dispose(): void;
@@ -68,7 +70,14 @@ interface Drag {
   gap: number | null;
 }
 
-export function createArrange(win: Window, send: (message: Outgoing) => void): Arrange {
+/** Why a page that wasn't drawn can't be arranged. */
+const UNDRAWN: Record<Exclude<PageDrawState["state"], "drawn">, ArrangeDeclineCause> = {
+  failed: "page-failed",
+  missing: "page-missing",
+  unavailable: "preview-unavailable",
+};
+
+export function createArrange(win: Window, send: (message: Outgoing) => void, pageState: () => PageDrawState | null = () => null): Arrange {
   const doc = win.document;
   let state: ArrangeState | null = null;
   let on = false;
@@ -200,7 +209,18 @@ export function createArrange(win: Window, send: (message: Outgoing) => void): A
   };
 
   const report = () => {
-    if (!state || !on || !map) return;
+    if (!state || !on) return;
+    const page = pageState();
+    if (page && page.state !== "drawn") {
+      // An error page has no sections to find, and waiting won't bring them: say why at once.
+      const message = { type: "arrange-status" as const, status: "declined" as const, how: null, reason: page.message, revision: state.revision, cause: UNDRAWN[page.state] };
+      const signature = JSON.stringify(message);
+      if (signature === reported) return;
+      reported = signature;
+      send(message);
+      return;
+    }
+    if (!map) return;
     let status: "mapped" | "waiting" | "declined" = "mapped";
     if (!map.ok) {
       const settlingNow = waiting() || Date.now() - listsAt < GRACE_MS;
@@ -216,6 +236,7 @@ export function createArrange(win: Window, send: (message: Outgoing) => void): A
       how: map.ok ? map.how : null,
       reason: map.ok ? null : map.reason,
       revision: state.revision,
+      ...(map.ok ? {} : { cause: map.cause }),
     };
     const signature = JSON.stringify(message);
     if (signature === reported) return;
@@ -728,6 +749,9 @@ export function createArrange(win: Window, send: (message: Outgoing) => void): A
   return {
     get on() {
       return on;
+    },
+    refresh() {
+      if (on) remap();
     },
     update(next) {
       const before = state;

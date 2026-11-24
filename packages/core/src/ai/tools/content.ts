@@ -9,6 +9,7 @@ import { GalleyError } from "../../errors";
 import type { EditOp, Entry, FieldPath, JsonValue } from "../../types";
 import { describeFields } from "../site-card";
 import { entryName, plural, quoted } from "./labels";
+import { checkPageDraws, drawWarning } from "./draws";
 import { defineTool, ok, READ_ONLY, refuse, type AssistantTool, type ToolContext } from "./types";
 import { siteImageryBrief } from "../../sitebrand/tools";
 
@@ -363,7 +364,9 @@ const updateEntry = defineTool({
 
     if (result.applied === 0 && result.refused.length > 0) return { content: JSON.stringify(summary), isError: true, doneLabel: `Couldn't edit ${name}` };
     if (result.applied === 0) return ok({ ...summary, note: "Nothing changed: the entry already had those values." }, `Checked ${name} — already up to date`);
-    return ok(summary, `Edited ${name}`);
+    // Not success if the page stopped drawing: the assistant hears it from the same signal the preview does.
+    const warning = result.entry.url ? drawWarning(result.entry.url, await checkPageDraws(ctx.site, result.entry.url)) : null;
+    return ok(warning ? { ...summary, warning } : summary, `Edited ${name}`);
   },
 });
 
