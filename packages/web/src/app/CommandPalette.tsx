@@ -15,6 +15,9 @@ import { useSites } from "@/lib/stores/sites";
 import { Dialog, Icon, Kbd, Spinner, type IconName } from "@/ui";
 import { isKitFile } from "@/features/forms/logic/locate";
 import { useChrome } from "./chrome";
+import { chooseTheme } from "./theme";
+import { useUi } from "@/lib/stores/ui";
+import { themeCommands, type ThemeSetting } from "@/lib/theme";
 import { goToSite, inDesktop, openInNewWindow } from "@/features/sites/actions";
 import { attentionChips, rankSites } from "@/features/sites/logic";
 import { useSiteShortcuts } from "@/features/sites/session";
@@ -31,11 +34,22 @@ interface Command {
   route?: ApiRouteKey;
 }
 
+const THEME_ICON: Record<ThemeSetting, IconName> = { light: "sun", dark: "moon", system: "theme-system" };
+
+/** The theme rows: every theme but the one in use ("Switch to dark theme", "Match my system’s theme"). */
+function themeRows(theme: ThemeSetting): Command[] {
+  return themeCommands(theme).map((command) => ({ id: command.id, group: "Actions", label: command.label, icon: THEME_ICON[command.theme], run: () => chooseTheme(command.theme) }));
+}
+
+/** Labels use typographic apostrophes; a typed one is usually straight. */
+function plain(text: string): string {
+  return text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
+}
+
 /** Every word of the query appears in the label (case-insensitive). */
 function matches(label: string, query: string): boolean {
-  const text = label.toLowerCase();
-  return query
-    .toLowerCase()
+  const text = plain(label);
+  return plain(query)
     .split(/\s+/)
     .filter(Boolean)
     .every((word) => text.includes(word));
@@ -96,6 +110,7 @@ export function CommandPalette() {
   const { hits, searching } = useSearch(open ? siteId : null, query);
   const may = useMay();
   const account = useAccount();
+  const theme = useUi((s) => s.theme);
 
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => {
@@ -169,6 +184,7 @@ export function CommandPalette() {
       );
       if (account) list.push({ id: "account", group: "Go to", label: "Your account", hint: "Name, e-mail and password", icon: "person", run: go("/account") });
       if (!siteId) list.push({ id: "site", group: "Go to", label: "The site", icon: "folder-site", run: go("/") });
+      list.push(...themeRows(theme));
       return list.filter((command) => !command.route || may(command.route));
     }
     list.push(
@@ -186,8 +202,9 @@ export function CommandPalette() {
       if (inDesktop()) list.push({ id: `w-${site.id}`, group: "Sites", label: `Open ${site.name} in a new window`, icon: "external", run: () => openInNewWindow(site.id) });
     }
     list.push({ id: "add-sites", group: "Actions", label: "Add sites from a folder", icon: "sites", run: go("/?open=sites") });
+    list.push(...themeRows(theme));
     return list;
-  }, [siteId, detail, sites, groups, pending, previewState, navigate, runPreview, setPublishOpen, hosted, account, may]);
+  }, [siteId, detail, sites, groups, pending, previewState, navigate, runPreview, setPublishOpen, hosted, account, may, theme]);
 
   const visible = useMemo(() => {
     const others = query.trim() ? commands.filter((command) => command.group !== "Sites" && matches(command.label, query)) : commands.filter((command) => command.group !== "Sites");

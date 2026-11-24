@@ -64,6 +64,15 @@ html, body { overflow: hidden; }
 .app-sidebar__foot { margin-block-start: auto; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) 0; }
 .app-sidebar__byline { flex: 1; font-size: var(--text-xs); color: var(--ink-tertiary); }
 .app-sidebar__collapse { margin-inline-start: auto; }
+/* The theme switch and the collapse control, kept together at the foot's end; stacked when the sidebar is narrow. */
+.app-sidebar__tools { margin-inline-start: auto; display: flex; align-items: center; gap: 2px; }
+.app-sidebar__tools .app-sidebar__collapse { margin-inline-start: 0; }
+.app-frame--collapsed .app-sidebar__tools { flex-direction: column; margin-inline: auto; }
+@media (max-width: 1023px) { .app-frame .app-sidebar__tools { flex-direction: column; margin-inline: auto; } }
+/* The small screens outside the shell (sign-in, first run, a one-time link): the switch in the top corner. */
+.app-theme-corner { position: fixed; inset-block-start: var(--space-3); inset-inline-end: var(--space-3); z-index: var(--z-sticky); }
+.app-theme-switch__tip { display: grid; gap: 1px; }
+.app-theme-switch__more { font-weight: var(--weight-regular); opacity: 0.78; }
 
 /* Collapsed sidebar: icons only. Labels stay in the accessibility tree. */
 .app-frame--collapsed { grid-template-columns: var(--sidebar-width-collapsed) minmax(0, 1fr); }

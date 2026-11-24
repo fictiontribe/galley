@@ -346,6 +346,11 @@
      then lift lightness. Default resolves to #A4A1FF: paper 7.99, raised 7.30,
      sunken 8.43, overlay 6.79. 251-accent sweep worst case: 7.04:1. */
   --accent-text: oklch(from color-mix(in srgb, var(--accent), var(--ink-primary) 45%) max(l, 0.76) c h);
+  /* Link underlines and selected outlines. Mixed from the accent text, not
+     the raw accent: a dark accent mixed into dark paper all but vanished
+     (default #211E7B, 1.6:1 on paper). Default now #5D5B91: paper 2.94,
+     raised 2.69 (light's is 2.3 on paper). */
+  --accent-line: color-mix(in srgb, var(--accent-text) 50%, var(--surface-paper));
 
   --shadow-color: 0 0 0;
   --shadow-1: 0 1px 0 rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.30);
@@ -400,6 +405,7 @@
     --info-ink:      #BCD5F7;
 
     --accent-text: oklch(from color-mix(in srgb, var(--accent), var(--ink-primary) 45%) max(l, 0.76) c h);
+    --accent-line: color-mix(in srgb, var(--accent-text) 50%, var(--surface-paper));
 
     --shadow-color: 0 0 0;
     --shadow-1: 0 1px 0 rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.30);

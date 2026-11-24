@@ -13,6 +13,7 @@ import { HomeSidebar, SiteSidebar } from "./Sidebar";
 import { HomeStatusBar, SiteStatusBar } from "./StatusBar";
 import { HomeTopBar, SiteTopBar } from "./TopBar";
 import { useTopBar } from "./chrome";
+import { useFramePresence } from "./ThemeSwitch";
 
 /** What a lazily loaded screen shows while its code arrives: the shape of a screen, not a spinner. */
 export function ScreenSkeleton() {
@@ -63,6 +64,7 @@ function SkipLink() {
 
 /** Sidebar + top bar + content + status bar for screens outside a site. */
 export function HomeFrame() {
+  useFramePresence();
   const collapsed = useUi((s) => s.sidebarCollapsed);
   const closeSite = useSite((s) => s.close);
   const clearChanges = useChanges((s) => s.clear);
@@ -184,6 +186,7 @@ function MissingFolder({ name, root }: { name: string; root: string }) {
 
 /** The app frame for one site, matching the specimen: sidebar, top bar with Publish, status bar. */
 export function SiteFrame() {
+  useFramePresence();
   const { siteId = "" } = useParams();
   const collapsed = useUi((s) => s.sidebarCollapsed);
   const open = useSite((s) => s.open);

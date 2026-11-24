@@ -4,6 +4,7 @@ import { ActivityTray } from "./ActivityTray";
 import { Boot } from "./Boot";
 import { BrandEffects } from "./BrandEffects";
 import { CommandPalette } from "./CommandPalette";
+import { CornerThemeSwitch } from "./ThemeSwitch";
 import { CompleteAccountPrompt } from "@/features/accounts/CompleteAccount";
 import { AppRoutes } from "./routes";
 
@@ -14,6 +15,7 @@ export function App() {
       <Boot>
         <AppRoutes />
         <CommandPalette />
+        <CornerThemeSwitch />
         <CompleteAccountPrompt />
       </Boot>
       <ToastViewport>

@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Effort, SecretName, SecretStatus, Settings, SettingsPatch, UsageSummary, UsageTotals } from "@galley/core/types";
 import { Link, useNavigate } from "react-router-dom";
 import { useTopBar } from "@/app/chrome";
+import { chooseTheme, followSettingsTheme } from "@/app/theme";
+import { THEME_OPTIONS, themeKeeper, type ThemeSetting } from "@/lib/theme";
 import { useScrollToHash } from "@/lib/hashScroll";
 import { signOut } from "@/lib/auth";
 import { useHostedInstall, useMeta } from "@/lib/stores/meta";
@@ -400,31 +402,41 @@ function YouSection({ settings }: { settings: Settings }) {
   );
 }
 
+/**
+ * The theme. In local mode and the desktop app it is the computer's, saved
+ * with these settings so every window agrees. On a hosted install each
+ * person keeps their own, in their browser; what is saved here is only the
+ * theme someone starts with until they choose (lib/theme.ts).
+ */
 function AppearanceSection({ settings }: { settings: Settings }) {
-  const setTheme = useUi((s) => s.setTheme);
   const theme = useUi((s) => s.theme);
+  const hosted = useMeta((s) => themeKeeper(s.meta) === "browser");
+  const [savingDefault, setSavingDefault] = useState(false);
   return (
-    <SettingsSection id="appearance" title="Appearance">
-      <Field label="Theme" group hint="System follows your computer’s light or dark setting">
-        <SegmentedControl
-          label="Theme"
-          value={theme}
-          options={[
-            { value: "system", label: "System" },
-            { value: "light", label: "Light" },
-            { value: "dark", label: "Dark" },
-          ]}
-          onChange={(next) => {
-            // Shown at once; the server's setting is what every window follows.
-            setTheme(next);
-            if (next === settings.appearance.theme) return;
-            patchSettings({ appearance: { theme: next } }).catch((caught: unknown) => {
-              setTheme(settings.appearance.theme);
-              notify({ tone: "danger", title: "Couldn’t save the theme", body: errorShape(caught).message });
-            });
-          }}
-        />
+    <SettingsSection
+      id="appearance"
+      title="Appearance"
+      description={hosted ? "Each person chooses their own theme, kept in their browser. The switch at the foot of the sidebar changes it too." : undefined}
+    >
+      <Field label="Theme" group hint={hosted ? "Kept in this browser. Match my system follows your computer’s light or dark setting" : "Match my system follows your computer’s light or dark setting"}>
+        <SegmentedControl<ThemeSetting> label="Theme" value={theme} options={[...THEME_OPTIONS]} onChange={chooseTheme} />
       </Field>
+      {hosted ? (
+        <Field label="Theme for someone new" group hint="What a person sees until they choose their own">
+          <SegmentedControl<ThemeSetting>
+            label="Theme for someone new"
+            value={settings.appearance.theme}
+            options={THEME_OPTIONS.map((option) => ({ ...option, disabled: savingDefault }))}
+            onChange={(next) => {
+              setSavingDefault(true);
+              patchSettings({ appearance: { theme: next } })
+                .then(followSettingsTheme)
+                .catch((caught: unknown) => notify({ tone: "danger", title: "Couldn’t save the theme", body: errorShape(caught).message }))
+                .finally(() => setSavingDefault(false));
+            }}
+          />
+        </Field>
+      ) : null}
     </SettingsSection>
   );
 }

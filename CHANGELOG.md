@@ -95,6 +95,13 @@ local mode have no accounts and are unchanged.
   Google's hourly prices, read 2026-11-24). Also `galley host --host gcp`
   and `GOOGLE_APPLICATION_CREDENTIALS_JSON`. Run only against a stand-in for
   Google's APIs so far.
+- **A light and dark switch on every screen.** One click at the foot of the
+  sidebar (or in the corner of sign-in and first run) goes light ↔ dark;
+  holding it, right-clicking it or pressing ↓ offers Match my system, and
+  ⌘K has all three. Locally the theme is still saved for every window; on a
+  hosted install each person's theme is their own, kept in their browser,
+  and App settings sets the one a new person starts with. Dark link
+  underlines and selected outlines are easier to see.
 
 ### Changed
 

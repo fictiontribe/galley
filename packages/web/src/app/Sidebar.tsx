@@ -15,6 +15,7 @@ import { useSiteSession } from "@/features/sites/session";
 import { useTwinLine } from "@/features/sites/store";
 import { useAccount, useMay } from "@/lib/may";
 import { useChrome } from "./chrome";
+import { ThemeSwitch } from "./ThemeSwitch";
 
 interface NavItemProps {
   to: string;
@@ -77,6 +78,20 @@ function CollapseButton() {
   );
 }
 
+/**
+ * The foot of every sidebar: the theme switch beside the collapse control.
+ * It stays when the sidebar is collapsed (the two stack) and below 1024 px,
+ * where the sidebar is always narrow and the collapse control goes.
+ */
+function SidebarTools() {
+  return (
+    <div className="app-sidebar__tools">
+      <ThemeSwitch placement="top-start" tooltipSide="top" />
+      <CollapseButton />
+    </div>
+  );
+}
+
 /** A recent site; when another site has the same name, the folder that tells them apart follows it, quietly. */
 function RecentSite({ id, name }: { id: string; name: string }) {
   const twin = useTwinLine(id);
@@ -108,7 +123,7 @@ function HostedHomeSidebar() {
       </div>
       <div className="app-sidebar__foot">
         {brand?.byline ? <span className="app-sidebar__byline app-nav__text">{brand.byline}</span> : null}
-        <CollapseButton />
+        <SidebarTools />
       </div>
     </nav>
   );
@@ -145,7 +160,7 @@ function MultiSiteHomeSidebar() {
       </div>
       <div className="app-sidebar__foot">
         {brand?.byline ? <span className="app-sidebar__byline app-nav__text">{brand.byline}</span> : null}
-        <CollapseButton />
+        <SidebarTools />
       </div>
     </nav>
   );
@@ -252,7 +267,7 @@ export function SiteSidebar({ siteId }: { siteId: string }) {
         ) : null}
       </div>
       <div className="app-sidebar__foot">
-        <CollapseButton />
+        <SidebarTools />
       </div>
     </nav>
   );

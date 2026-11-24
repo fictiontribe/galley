@@ -6,16 +6,16 @@ import { connectEvents, disconnectEvents } from "@/lib/events";
 import { invalidate, setQueryData } from "@/lib/query";
 import { SETUP_PATH, hostedInstall, isHostedInstall, resumesAfterSignIn } from "@/lib/hosted";
 import { loginUrl, session } from "@/lib/session";
-import { accountOf, mayCall } from "@/lib/may";
+import { accountOf } from "@/lib/may";
 import { linkKindAt, takeLinkCode } from "@/features/accounts/logic";
 import { useMeta } from "@/lib/stores/meta";
 import { useToasts } from "@/lib/stores/toasts";
 import { useChanges } from "@/lib/stores/changes";
 import { useSite } from "@/lib/stores/site";
 import { useSites } from "@/lib/stores/sites";
-import { useUi } from "@/lib/stores/ui";
 import { keys, startSync } from "@/lib/sync";
 import { ErrorState, Skeleton } from "@/ui";
+import { followSettingsTheme } from "./theme";
 
 const FORBIDDEN_RELOAD_MS = 5_000;
 
@@ -108,8 +108,8 @@ export function Boot({ children }: { children: ReactNode }) {
     api("GET /api/settings")
       .then((settings) => {
         setQueryData(keys.settings(), settings);
-        // The saved theme is the editor's, chosen by whoever may change its settings; everyone else keeps their own, in this browser.
-        if (mayCall(useMeta.getState().meta, "PATCH /api/settings")) useUi.getState().setTheme(settings.appearance.theme);
+        // Local mode: the saved theme is the computer's. Hosted: it is where a browser starts, until its person chooses.
+        followSettingsTheme(settings);
       })
       .catch(() => undefined);
   }, [authenticated]);

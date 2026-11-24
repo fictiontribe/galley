@@ -98,6 +98,20 @@ const ICONS = {
       <circle cx="8" cy="8" r="1.8" />
     </>
   ),
+  // ── theme: the sun for light, the moon for dark, a half-inked disc for "match my system"
+  sun: (
+    <>
+      <circle cx="8" cy="8" r="2.6" />
+      <path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" />
+    </>
+  ),
+  moon: <path d="M13.3 9.7A5.6 5.6 0 1 1 6.3 2.7a5 5 0 0 0 7 7z" />,
+  "theme-system": (
+    <>
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" stroke="none" />
+    </>
+  ),
   // ── proof marks (same geometry as the brand masks, on their 12-unit grid scaled to 16)
   caret: <path d="M2.1 13.9 8 4.3l5.9 9.6" strokeWidth="2.2" />,
   dele: <path d="M1.1 9.9h7.5c2.9 0 4.5-1.7 4-3.6-.5-1.7-2.9-1.9-3.5-.1-.7 2.3 1.7 4.8 5.9 5.2" strokeLinecap="round" strokeWidth="1.9" />,

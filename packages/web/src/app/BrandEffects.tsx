@@ -4,9 +4,9 @@ import { api } from "@/lib/api";
 import { setQueryData } from "@/lib/query";
 import { useMeta } from "@/lib/stores/meta";
 import { keys } from "@/lib/sync";
-import { useUi } from "@/lib/stores/ui";
+import { UI_STORAGE_KEY, useUi } from "@/lib/stores/ui";
 import { useDocumentTitle } from "./title";
-import { mayCall } from "@/lib/may";
+import { followSettingsTheme, usePrintOnPaper, useThemeFromOtherWindows } from "./theme";
 
 /**
  * Applies the white-label brand and the theme to the document: --accent on
@@ -23,10 +23,14 @@ export function BrandEffects() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // The theme lives in the server's settings; the local copy only avoids a
-  // flash at start-up (and, on a hosted install, is the theme itself for
-  // people who don't look after the settings). Coming back to the window picks up a change made in
-  // another one.
+  // Where the theme lives depends on the app (lib/theme.ts): in local mode
+  // and the desktop app it is the server's setting, and the copy in this
+  // browser only avoids a flash at start-up; on a hosted install the copy is
+  // the person's own theme and the server's setting only where they start.
+  // Another window in this browser is followed at once; coming back to the
+  // window picks up a change the server holds.
+  useThemeFromOtherWindows(UI_STORAGE_KEY);
+  usePrintOnPaper();
   const authenticated = useMeta((s) => Boolean(s.meta?.authenticated));
   useEffect(() => {
     if (!authenticated) return;
@@ -37,8 +41,7 @@ export function BrandEffects() {
       api("GET /api/settings")
         .then((settings) => {
           setQueryData(keys.settings(), settings);
-          // Someone who can't change the editor's settings keeps their own theme, in this browser (Your account).
-          if (mayCall(useMeta.getState().meta, "PATCH /api/settings")) useUi.getState().setTheme(settings.appearance.theme);
+          followSettingsTheme(settings);
         })
         .catch(() => undefined)
         .finally(() => (inflight = false));
