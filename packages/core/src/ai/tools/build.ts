@@ -11,18 +11,26 @@ import type { GalleyConfig } from "../../types";
 import { hashContent } from "../../workspace/files";
 import { normalizeRepoPath } from "../../workspace/paths";
 import { fileName, plural } from "./labels";
-import { defineTool, ok, READ_ONLY, refuse, type AssistantTool } from "./types";
+import { defineTool, ok, READ_ONLY, refuse, type AssistantTool, type ToolContext } from "./types";
 
 const READ_LINES = 400;
 const BUILD_TAIL = 4_000;
 
-/** The path as the site names it, for remembering what was read; a path the site would refuse is remembered under itself and refused by the write. */
-function sitePath(path: string): string {
+/**
+ * What a file is remembered under in `ctx.read`: its site and the path as the
+ * site names it (another harness's session can work on several sites). A
+ * path the site would refuse is remembered under itself and refused by the
+ * write.
+ */
+function readKey(ctx: ToolContext, path: string): string {
+  let normalized = path;
+
   try {
-    return normalizeRepoPath(path);
+    normalized = normalizeRepoPath(path);
   } catch {
-    return path;
+    // Left as it was given.
   }
+  return `${ctx.siteId}\0${normalized}`;
 }
 
 function count(haystack: string, needle: string): number {
@@ -69,7 +77,7 @@ const readFile = defineTool({
     const done = `Read ${fileName(input.path)}`;
 
     if (file.binary) return refuse("That's a binary file (an image or similar), so it can't be read as text.", done);
-    ctx.read?.set(file.path, file.hash);
+    ctx.read?.set(readKey(ctx, file.path), file.hash);
     const lines = file.content.split("\n");
     const start = Math.max(1, input.startLine ?? 1);
     const end = Math.min(lines.length, input.endLine ?? start + READ_LINES - 1);
@@ -104,8 +112,8 @@ const writeFile = defineTool({
   effect: { readOnly: false, destructive: true, idempotent: true, openWorld: false },
   label: (input) => `Writing ${fileName(input.path)}`,
   async run(input, ctx) {
-    const path = sitePath(input.path);
-    const read = ctx.read?.get(path);
+    const key = readKey(ctx, input.path);
+    const read = ctx.read?.get(key);
 
     try {
       // With the hash of the file as it was last read here: one that changed since is not replaced.
@@ -116,7 +124,7 @@ const writeFile = defineTool({
       }
       throw error;
     }
-    ctx.read?.set(path, hashContent(input.content));
+    ctx.read?.set(key, hashContent(input.content));
     return ok({ written: input.path, lines: input.content.split("\n").length }, `Wrote ${fileName(input.path)}`);
   },
 });
@@ -150,7 +158,7 @@ const editFile = defineTool({
     const next = input.replace_all ? file.content.split(input.old_string).join(input.new_string) : file.content.replace(input.old_string, () => input.new_string);
 
     await ctx.site.writeFile(input.path, next, { origin: "agent", mode: ctx.mode, baseHash: file.hash });
-    ctx.read?.set(file.path, hashContent(next));
+    ctx.read?.set(readKey(ctx, file.path), hashContent(next));
     return ok({ replaced: input.replace_all ? found : 1 }, `Edited ${name}`);
   },
 });

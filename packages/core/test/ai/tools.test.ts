@@ -227,6 +227,14 @@ describe("build tools and the mode guard", () => {
     // A file that was never read is made, or replaced, as before.
     expect((await call(ctx, "write_file", { path: "src/styles/new.css", content: "a {}\n" })).result.is_error).toBeUndefined();
     expect(site.files.get("src/styles/new.css")).toBe("a {}\n");
+    // What was read on one site says nothing about the file of that name on another (a session can work on several).
+    const other = createFakeSite();
+    const elsewhere = context(other, "build", { read: ctx.read!, siteId: "another-site" });
+
+    site.files.set(path, "changed again\n");
+    expect((await call(elsewhere, "write_file", { path, content: "theirs\n" })).result.is_error).toBeUndefined();
+    expect(other.files.get(path)).toBe("theirs\n");
+    expect((await call(ctx, "write_file", { path, content: "mine\n" })).result.is_error).toBe(true);
   });
 
   it("edits exactly one match, or refuses with the reason", async () => {
