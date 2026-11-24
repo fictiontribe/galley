@@ -802,6 +802,34 @@ export interface OverlaySectionList {
   sections: OverlaySection[];
 }
 
+/**
+ * Why Arrange was declined (`arrange-status`), so the host can say the true
+ * reason: `unmarked` — the page drew, carries no section markers, and its
+ * sections can't be told apart by their words; `mismatch` — the page marks
+ * sections but they don't match the content (or only some are marked);
+ * `page-failed` — the preview answered this page with an error, so there are
+ * no sections to find; `page-missing` — the preview has no page at this
+ * address; `preview-unavailable` — the preview itself didn't answer (it is
+ * starting or restarting). Absent from older overlays.
+ */
+export type ArrangeDeclineCause = "unmarked" | "mismatch" | "page-failed" | "page-missing" | "preview-unavailable";
+
+/**
+ * Whether a page in the preview was drawn (`page-state`). `failed`: the dev
+ * server answered with an error (`status` 500 or more) or the framework's
+ * error overlay is showing; `message` is the framework's own first line about
+ * why, for Technical details. `missing`: the dev server has no page here
+ * (`status` 404). `unavailable`: the preview proxy answered because the dev
+ * server didn't. `drawn`: none of these.
+ */
+export interface PageDrawState {
+  state: "drawn" | "failed" | "missing" | "unavailable";
+  /** The HTTP status the page came with, when the proxy passed it on. */
+  status: number | null;
+  /** One line, at most 300 characters. */
+  message: string | null;
+}
+
 /** What the person asked to do to a section on the page, in Arrange mode. */
 export type ArrangeRequest =
   /** Dragged on the page: `to` is the section's final position. */
@@ -840,7 +868,15 @@ export type OverlayToHost =
    * `declined` — they can't be told apart, so arranging on the page isn't
    * offered. `revision` echoes the `arrange` message it answers.
    */
-  | { galley: 1; type: "arrange-status"; status: "mapped" | "waiting" | "declined"; how: "markers" | "evidence" | null; reason: string | null; revision: number }
+  | { galley: 1; type: "arrange-status"; status: "mapped" | "waiting" | "declined"; how: "markers" | "evidence" | null; reason: string | null; revision: number; cause?: ArrangeDeclineCause }
+  /**
+   * Whether the page in the frame could be drawn (PageDrawState). Sent after
+   * `ready` whenever the page isn't simply drawn, and again when the
+   * framework's own message about it arrives or its error clears. Hosts that
+   * don't know it ignore it; a host that never hears it can take the page as
+   * drawn.
+   */
+  | ({ galley: 1; type: "page-state" } & PageDrawState)
   /** Arrange mode: the person selected a section on the page (`<field>.<index>`), or none. */
   | { galley: 1; type: "arrange-select"; key: string | null }
   | ({ galley: 1; type: "arrange-action" } & ArrangeRequest)

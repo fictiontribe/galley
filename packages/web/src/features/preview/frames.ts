@@ -3,7 +3,7 @@
  * are real, where a frame should point, and the preview's own back/forward
  * history (the frames are cross-origin, so their history can't be read).
  */
-import type { HostToOverlay, OverlayRect, OverlayToHost } from "@galley/core/types";
+import type { ArrangeDeclineCause, HostToOverlay, OverlayRect, OverlayToHost } from "@galley/core/types";
 
 type Fields = Record<string, unknown>;
 const isObject = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
@@ -39,7 +39,21 @@ export function parseOverlayMessage(data: unknown): OverlayToHost | null {
       if (data.status !== "mapped" && data.status !== "waiting" && data.status !== "declined") return null;
       if (data.how !== null && data.how !== "markers" && data.how !== "evidence") return null;
       if ((data.reason !== null && typeof data.reason !== "string") || !isCount(data.revision)) return null;
-      return { galley: 1, type: "arrange-status", status: data.status, how: data.how, reason: data.reason, revision: data.revision };
+      return {
+        galley: 1,
+        type: "arrange-status",
+        status: data.status,
+        how: data.how,
+        reason: data.reason,
+        revision: data.revision,
+        // Older overlays send no cause; an unknown one is dropped rather than guessed.
+        ...(isDeclineCause(data.cause) ? { cause: data.cause } : {}),
+      };
+    case "page-state":
+      if (data.state !== "drawn" && data.state !== "failed" && data.state !== "missing" && data.state !== "unavailable") return null;
+      if (data.status !== null && !(isCount(data.status) && data.status < 1000)) return null;
+      if (data.message !== null && !(typeof data.message === "string" && data.message.length <= 400)) return null;
+      return { galley: 1, type: "page-state", state: data.state, status: data.status, message: data.message };
     case "arrange-select":
       return data.key === null || isKey(data.key) ? { galley: 1, type: "arrange-select", key: data.key } : null;
     case "arrange-action": {
@@ -70,6 +84,9 @@ export function parseOverlayMessage(data: unknown): OverlayToHost | null {
       return null;
   }
 }
+
+const DECLINE_CAUSES: readonly ArrangeDeclineCause[] = ["unmarked", "mismatch", "page-failed", "page-missing", "preview-unavailable"];
+const isDeclineCause = (value: unknown): value is ArrangeDeclineCause => typeof value === "string" && (DECLINE_CAUSES as readonly string[]).includes(value);
 
 /** "sections.3": a blocks field key and a position. */
 const isKey = (value: unknown): value is string => typeof value === "string" && /^[^\s]+\.\d+$/.test(value) && value.length <= 200;

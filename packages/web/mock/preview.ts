@@ -80,6 +80,28 @@ article{max-width:720px;margin:0 auto;padding:56px 28px}article img{width:100%;b
 @media (max-width:760px){.hero .wrap,.split .wrap{grid-template-columns:1fr}h1{font-size:34px}nav a{margin-left:12px;font-size:13px}section{padding:40px 0}}
 `;
 
+/**
+ * The first section that names a picture but leaves it blank — the case that
+ * stops a real site's page from drawing (its image component throws) — so
+ * the mock can answer the way a dev server does, with an error page.
+ */
+function undrawable(sections: JsonValue[]): { index: number; type: string } | null {
+  for (const [index, s] of sections.entries()) {
+    if (isObj(s) && Object.hasOwn(s, "image") && str(s.image).trim() === "") return { index, type: str(s.type) || "section" };
+  }
+  return null;
+}
+
+/**
+ * The dev server's error page, as Astro sends it (a title and a script), with
+ * what the overlay would say about it: the page wasn't drawn, and the
+ * framework's first line about why.
+ */
+function errorPage(message: string): string {
+  const say = (data: object) => `parent.postMessage(${JSON.stringify({ galley: 1, ...data })},"*");`;
+  return `<title>Error</title><script>${say({ type: "ready", path: "__PATH__", title: "Error" }).replace('"__PATH__"', "location.pathname")}${say({ type: "page-state", state: "failed", status: 500, message })}addEventListener("message",(e)=>{if(e.source===parent&&e.data&&e.data.galley===1&&e.data.type==="reload")location.reload()});</script><pre style="font:13px ui-monospace,monospace;padding:24px;color:#b3261e;white-space:pre-wrap">${esc(message)}</pre>`;
+}
+
 function page(site: MockSite, urlPath: string, rev: "base" | undefined): { status: number; html: string } {
   const readJson = (path: string) => {
     const bytes = site.read(path, rev);
@@ -105,13 +127,20 @@ function page(site: MockSite, urlPath: string, rev: "base" | undefined): { statu
       const data = (match ? YAML.parse(match[1] ?? "") : {}) as Obj;
       const body = match?.[2] ?? "";
       title = str(data.title) || entry.title;
-      if (Array.isArray(data.sections)) main = data.sections.map((s) => (isObj(s) ? section(s) : "")).join("");
+      if (Array.isArray(data.sections)) {
+        const broken = undrawable(data.sections);
+        if (broken) {
+          return { status: 500, html: errorPage(`Image's and getImage's src parameter must be an imported image or an URL, it cannot be undefined. (sections.${broken.index}, a ${broken.type} section)`) };
+        }
+        main = data.sections.map((s) => (isObj(s) ? section(s) : "")).join("");
+      }
       else main = `<article>${data.date ? `<p class="eyebrow">${esc(str(data.date))}</p>` : ""}<h1>${inline(title)}</h1>${data.description || data.summary ? `<p class="lede">${inline(str(data.description) || str(data.summary))}</p>` : ""}${data.image ? `<img src="${esc(str(data.image))}" alt="${esc(str(data.imageAlt))}">` : ""}${paragraphs(body.trim())}</article>`;
     }
   }
   const status = main ? 200 : 404;
   if (!main) main = `<article><p class="eyebrow">404</p><h1>Page not found</h1><p class="lede">${rev === "base" ? "This page isn’t on the live site yet." : "Nothing lives at this address."}</p></article>`;
-  const report = `<script>parent.postMessage({galley:1,type:"navigate",path:location.pathname,title:document.title},"*")</script>`;
+  // As the overlay would: where the page is, and that it was drawn.
+  const report = `<script>parent.postMessage({galley:1,type:"navigate",path:location.pathname,title:document.title},"*");parent.postMessage({galley:1,type:"page-state",state:"${status === 404 ? "missing" : "drawn"}",status:${status},message:null},"*")</script>`;
   return { status, html: `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${STYLE}</style></head><body>${header}<main>${main}</main>${footer}${report}</body></html>` };
 }
 

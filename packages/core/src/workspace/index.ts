@@ -15,6 +15,7 @@ export { createPreviewController, detectPid, detectPort, expandOutputLine } from
 export type { PreviewOptions, PreviewSettings, PreviewControllerHandle } from "./preview/controller";
 export {
   injectIntoHtml,
+  overlayTagWithStatus,
   stripFrameAncestors,
   rewriteLocation,
   OVERLAY_TAG,
