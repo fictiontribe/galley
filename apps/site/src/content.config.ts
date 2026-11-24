@@ -84,7 +84,8 @@ const filmSection = z.object({
   /** wide: the film across the page, its chapters as numbered steps under it · side: the words beside it. */
   layout: z.enum(["side", "wide"]).default("side"),
   /** Points in the film to jump to, in seconds; `text` is one line under the chapter (wide). */
-  chapters: z.array(z.object({ label: z.string(), time: z.number(), text: z.string().optional() })).default([]),
+  /** `icon`: a glyph name from brand/icons.ts, drawn beside the step's name. */
+  chapters: z.array(z.object({ label: z.string(), icon: z.string().optional(), time: z.number(), text: z.string().optional() })).default([]),
   link: link.optional(),
   chaptersLabel: z.string().optional(),
 });
@@ -329,7 +330,8 @@ const filmstripSection = z.object({
   heading: z.string(),
   text: z.string(),
   link: link,
-  items: z.array(z.object({ label: z.string(), href: z.string(), visual })),
+  /** `icon`: the glyph the app gives that screen (a name from brand/icons.ts). */
+  items: z.array(z.object({ label: z.string(), icon: z.string().optional(), href: z.string(), visual })),
 });
 
 /** The desktop app: icon, one sentence, a capture of the app, and the download once src/data/downloads.json offers one (until then, a way to /apps/). */

@@ -81,18 +81,21 @@ sections:
       href: /tour/
     items:
       - label: Forms
+        icon: form
         href: /tour/#forms
         visual:
           src: forms
           x: -148
           alt: The Forms screen.
       - label: Redirects
+        icon: link
         href: /tour/#redirects
         visual:
           src: redirects
           x: -148
           alt: The Redirects screen.
       - label: Brand
+        icon: brand
         href: /tour/#brand
         visual:
           src: brand-type
@@ -100,12 +103,14 @@ sections:
           y: -175
           alt: The brand’s type, set large in the site’s own heading face.
       - label: Search and AI
+        icon: visibility
         href: /tour/#search
         visual:
           src: search-ai
           x: -148
           alt: The Search & AI checks.
       - label: Your sites
+        icon: sites
         href: /tour/#sites
         visual:
           src: sites

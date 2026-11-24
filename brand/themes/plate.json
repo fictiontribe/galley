@@ -1,0 +1,27 @@
+{
+  "$schema": "./theme.schema.json",
+  "contract": 1,
+  "id": "plate",
+  "name": "Plate",
+  "description": "The sidebar and status line are an inked plate, the current place in Blue Pencil; the assistant works on pencil-washed paper; things stand off the page.",
+  "light": {
+    "paper": "#F6F4F0",
+    "ink": "#1A1712",
+    "pencil": "#2E2BFF",
+    "plate": "#1C1915",
+    "table": "#E3DBCD"
+  },
+  "dark": {
+    "paper": "#16140F",
+    "ink": "#F2ECE1",
+    "pencil": "#2E2BFF",
+    "plate": "#0E0C09",
+    "table": "#2B2620"
+  },
+  "switches": {
+    "sidebar": "plate",
+    "assist": "washed",
+    "icons": "duotone",
+    "depth": "lit"
+  }
+}

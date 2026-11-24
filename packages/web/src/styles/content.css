@@ -88,7 +88,7 @@
 .app-tags { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; min-block-size: var(--control-height-md); padding: 3px 4px; border: var(--border-hair) solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-raised); cursor: text; }
 .app-tags:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring); }
 .app-tags__list { display: contents; list-style: none; margin: 0; padding: 0; }
-.app-tags__chip { display: inline-flex; align-items: center; gap: 2px; block-size: 22px; padding-inline: 8px 2px; border-radius: var(--radius-pill); background: var(--surface-sunken); font-size: var(--text-xs); color: var(--ink-primary); }
+.app-tags__chip { display: inline-flex; align-items: center; gap: 2px; block-size: 22px; padding-inline: 8px 2px; border-radius: var(--radius-stamp); background: var(--surface-sunken); font-size: var(--text-xs); color: var(--ink-primary); }
 .app-tags__remove { display: grid; place-items: center; inline-size: 18px; block-size: 18px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink-tertiary); cursor: pointer; }
 .app-tags__remove:hover { color: var(--ink-primary); background: color-mix(in srgb, var(--ink-primary) 8%, transparent); }
 .app-tags__remove .g-icon { inline-size: 10px; block-size: 10px; }
