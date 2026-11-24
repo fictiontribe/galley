@@ -74,9 +74,22 @@
     }
   ],
   "screens": [
-    { "src": "desktop-mac-home", "alt": "", "home": true },
-    { "src": "desktop-mac-editor", "alt": "" },
-    { "src": "desktop-mac-sites", "alt": "" },
-    { "src": "desktop-windows-home", "alt": "" }
+    {
+      "src": "desktop-mac-home",
+      "alt": "The Galley app on a Mac, in a window titled Caddow: the site's home screen, with a box to ask for a change, one change waiting to publish, the site live at www.caddow.example, and its pages, lookbooks, journal and forms listed.",
+      "home": true
+    },
+    {
+      "src": "desktop-mac-editor",
+      "alt": ""
+    },
+    {
+      "src": "desktop-mac-sites",
+      "alt": "The Galley app on a Mac: Your sites, with two sites in two groups — Caddow Ltd holding the Caddow site's card, with its picture, its address and what is waiting on it, and Fernhill Garden Studio below — and the New group and Add sites buttons."
+    },
+    {
+      "src": "desktop-windows-home",
+      "alt": ""
+    }
   ]
 }
