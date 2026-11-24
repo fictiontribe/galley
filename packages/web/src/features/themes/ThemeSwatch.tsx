@@ -22,11 +22,27 @@ export function checked(theme: ThemeFile): ThemeCheck {
  * button in the pencil. Decorative: the name beside it says which theme it is.
  * Every colour comes from the check, so it is exactly `#RRGGBB`.
  */
-export function ThemeSwatch({ theme, mode, size = "md", className }: { theme: ThemeFile; mode: ThemeMode; size?: "sm" | "md" | "lg"; className?: string }) {
-  const check = checked(theme);
+export function ThemeSwatch({
+  theme,
+  mode,
+  size = "md",
+  className,
+  check: given,
+  switches: drawn,
+}: {
+  theme: ThemeFile;
+  mode: ThemeMode;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+  /** The theme's check, when the caller has it (the editor): switches don't change colours, so one check draws every choice. */
+  check?: ThemeCheck;
+  /** Draw these switches instead of the theme's own (a choice in the editor). */
+  switches?: Partial<ThemeFile["switches"]>;
+}) {
+  const check = given ?? checked(theme);
   const c = check.colours?.[mode];
   if (!c) return <span className={cx("theme-swatch", `theme-swatch--${size}`, "theme-swatch--refused", className)} aria-hidden="true" />;
-  const switches = fullSwitches(theme.switches);
+  const switches = fullSwitches({ ...theme.switches, ...drawn });
   const style = {
     "--sw-paper": c.paper,
     "--sw-sheet": c.sheet,

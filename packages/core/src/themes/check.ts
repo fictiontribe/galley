@@ -368,9 +368,11 @@ function checkMode(input: ThemeSeeds, mode: ThemeMode, derivedDark: boolean): Mo
     if (!first.length || refused.length) return;
     const from = seeds[seed];
     let current = first;
+    // Decided once, from where the colour starts: a direction worked out again each step could turn back and forth.
+    const sign = direction();
 
     for (let i = 0; i < MAX_STEPS && current.length; i++) {
-      const next = shift(seeds[seed], direction() * STEP);
+      const next = shift(seeds[seed], sign * STEP);
 
       if (!next || (range && !inRange(next, range))) break;
       seeds[seed] = next;

@@ -15,7 +15,7 @@ import { useUi } from "@/lib/stores/ui";
 import { shownTheme, themeKeeper } from "@/lib/theme";
 import { ORIGIN_WORDS, type ListedTheme } from "@/lib/themes/catalog";
 import { Badge, Button, Checkbox, ConfirmDialog, Dialog, PageHeader, cx } from "@/ui";
-import { SEED_WORDS, SWITCH_ORDER, SWITCH_WORDS, freeId, readColour, sameTheme, themeFrom, withOwnDark, withSeed, withSwitch } from "./model";
+import { SEED_WORDS, SWITCH_ORDER, SWITCH_WORDS, freeId, freeName, readColour, sameTheme, themeFrom, withOwnDark, withSeed, withSwitch } from "./model";
 import { ThemeSwatch, checked } from "./ThemeSwatch";
 import "./themes.css";
 
@@ -338,7 +338,7 @@ function Editor({ session, check, mode, onChange, onUndo, actions }: EditorProps
                 {Object.entries(words.choices).map(([choice, choiceWords]) => (
                   <label key={choice} className="theme-switch-choice">
                     <input type="radio" name={`switch-${name}`} value={choice} checked={value === choice} onChange={() => onChange(withSwitch(draft, name, choice), `switch.${name}`)} />
-                    <ThemeSwatch theme={withSwitch(draft, name, choice)} mode={mode} />
+                    <ThemeSwatch theme={draft} check={check} switches={{ [name]: choice }} mode={mode} />
                     <span>{choiceWords.label}</span>
                     <span className="theme-switch-choice__hint">{choiceWords.hint}</span>
                   </label>
@@ -518,7 +518,10 @@ export function ThemesScreen() {
 
   const save = async (where: "everyone" | "me") => {
     if (!session || !check?.ok || !check.theme) return;
-    const theme = check.theme;
+    // Saving for me a theme that is saved for everyone (or comes with the app): a copy of my own, or the saved one would hide it.
+    const heldElsewhere = where === "me" && themes.some((entry) => entry.theme.id === check.theme!.id && entry.origin !== "mine");
+    const copyName = heldElsewhere ? freeName(check.theme.name, taken.names) : check.theme.name;
+    const theme = heldElsewhere ? { ...check.theme, name: copyName, id: freeId(copyName, taken.ids) } : check.theme;
     setBusy(where);
     try {
       // What the person made, against what is saved: the check's adjustments of their draft (the server's own check of the adjusted theme changes nothing more).
@@ -530,7 +533,7 @@ export function ThemesScreen() {
         if (session.origin === "mine") removeMine(theme.id);
       } else saveMine(theme);
       chooseLook(theme.id);
-      setSession({ ...session, draft: theme, saved: theme, origin: where === "everyone" ? "saved" : "mine", history: [], note: undefined });
+      setSession({ ...session, draft: theme, saved: theme, origin: where === "everyone" ? "saved" : "mine", history: [], note: heldElsewhere ? `Saved for you as ${theme.name}: the one saved for everyone stays as it was.` : undefined });
       opened.current = `|${theme.id}`;
       setParams({ edit: theme.id }, { replace: true });
       notify({
