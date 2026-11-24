@@ -238,10 +238,15 @@ async function loadPluginModule(packageDir: string, name: string): Promise<Modul
   } catch (error) {
     return { ok: false, problems: [`${name} could not be loaded (${error instanceof Error ? error.message.split("\n")[0] : String(error)}).`] };
   }
-  const plugin = pluginFromModule(module);
-  const check = validatePlugin(plugin, name, { reservedTools: ALL_TOOLS.map((tool) => tool.name) });
+  try {
+    const plugin = pluginFromModule(module);
+    const check = validatePlugin(plugin, name, { reservedTools: ALL_TOOLS.map((tool) => tool.name) });
 
-  return check.ok ? { ok: true, plugin, warnings: check.warnings } : { ok: false, problems: check.problems };
+    return check.ok ? { ok: true, plugin, warnings: check.warnings } : { ok: false, problems: check.problems };
+  } catch (error) {
+    // A plugin that can't even be looked at is listed with the reason; it never stops the server.
+    return { ok: false, problems: [`${name} could not be checked (${error instanceof Error ? error.message.split("\n")[0] : String(error)}).`] };
+  }
 }
 
 /**

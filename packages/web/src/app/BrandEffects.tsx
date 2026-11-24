@@ -7,14 +7,16 @@ import { keys } from "@/lib/sync";
 import { UI_STORAGE_KEY, useUi } from "@/lib/stores/ui";
 import { useDocumentTitle } from "./title";
 import { followSettingsTheme, usePrintOnPaper, useThemeFromOtherWindows } from "./theme";
+import { useLookOnPage } from "./look";
 
 /**
- * Applies the white-label brand and the theme to the document: --accent on
- * :root (every accent shade re-derives from it in tokens.css), data-theme,
- * the favicon and the title.
+ * Applies the appearance (data-theme: light, dark or the system's), the
+ * theme (app/look.ts), the favicon and the title to the document. A
+ * white-label brand's accent is not set here on its own: it is the
+ * built-in themes' pencil (core themes/builtin.ts), so it arrives with the
+ * theme and the two never fight over the same properties.
  */
 export function BrandEffects() {
-  const accent = useMeta((s) => s.meta?.brand.accent);
   const logoUrl = useMeta((s) => s.meta?.brand.logoUrl);
   const theme = useUi((s) => s.theme);
   useDocumentTitle();
@@ -54,11 +56,7 @@ export function BrandEffects() {
     };
   }, [authenticated]);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    if (accent) root.style.setProperty("--accent", accent);
-    else root.style.removeProperty("--accent");
-  }, [accent]);
+  useLookOnPage();
 
   useEffect(() => {
     let link = document.querySelector<HTMLLinkElement>("link[rel=icon]");

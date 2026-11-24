@@ -21,8 +21,8 @@ describe("one click on the theme switch", () => {
   });
 
   it("is named for what it will do", () => {
-    expect(THEME_ACTION[oneClickTheme("light", false)]).toBe("Switch to dark theme");
-    expect(THEME_ACTION[oneClickTheme("system", true)]).toBe("Switch to light theme");
+    expect(THEME_ACTION[oneClickTheme("light", false)]).toBe("Switch to dark appearance");
+    expect(THEME_ACTION[oneClickTheme("system", true)]).toBe("Switch to light appearance");
   });
 });
 
@@ -58,9 +58,9 @@ describe("whose choice the theme is", () => {
 
 describe("the command palette's theme rows", () => {
   it("offers every theme but the one in use", () => {
-    expect(themeCommands("light").map((command) => command.label)).toEqual(["Switch to dark theme", "Match my system’s theme"]);
-    expect(themeCommands("dark").map((command) => command.label)).toEqual(["Switch to light theme", "Match my system’s theme"]);
-    expect(themeCommands("system").map((command) => command.label)).toEqual(["Switch to dark theme", "Switch to light theme"]);
+    expect(themeCommands("light").map((command) => command.label)).toEqual(["Switch to dark appearance", "Match my system’s appearance"]);
+    expect(themeCommands("dark").map((command) => command.label)).toEqual(["Switch to light appearance", "Match my system’s appearance"]);
+    expect(themeCommands("system").map((command) => command.label)).toEqual(["Switch to dark appearance", "Switch to light appearance"]);
   });
 
   it("runs the theme it names", () => {

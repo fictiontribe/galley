@@ -31,6 +31,7 @@ Usage
   galley starters        List the starters and their looks
   galley mcp [path]      Let an AI tool (Claude, Cursor, VS Code…) edit the site over MCP
   galley plugin …        Add plugins, list them, turn them on or off
+  galley theme …         List, check, add, choose and export the editing app's themes
   galley schema          Print the JSON Schema of galley.config.json (--out <folder>: write every schema)
   galley version         Print the version
 Run `galley <command> --help` for a command's options.
@@ -316,6 +317,31 @@ package's own scripts, and the exact version that arrived is kept. A running
 app picks up changes when it restarts.
 ```
 
+## `galley theme`
+
+New since 0.3.1, not in a release yet. Lists, checks, adds, chooses and exports the editing app's themes, kept in Galley's home (never in a site). `check` runs the app's own legibility check and exits 1 when the theme would be refused. [Themes for the editing app](/docs/plugins/themes/).
+
+Its help (`--help`):
+
+```text
+Usage: galley theme <command> [options]
+The editing app's themes: its paper, ink and pencil colors and a few
+materials. Light or dark is separate, chosen in the app.
+  galley theme list               The built-in themes and the ones saved here
+  galley theme check <file>       Check a theme file the way the app does (exit 1 when it would be refused)
+  galley theme add <file>         Save it for everyone who uses Galley here (checked first, kept adjusted)
+  galley theme use <id>           Make it the theme Galley opens with here
+  galley theme export <id>        Print a theme as a file (--out <file> to write it)
+  galley theme remove <id>        Delete a theme saved here
+Options
+      --out <file>   export: write the file instead of printing it
+      --json         Print the result as JSON
+  -h, --help         Show this help
+Saved themes are kept in this computer's (or server's) Galley folder, never
+in a site. On a hosted editor, each person can still choose their own theme
+in the app; `use` sets the one someone starts with.
+```
+
 ## `galley import`
 
 Brings content from another system into a site as pending changes. Each importer has its own help.
@@ -524,6 +550,7 @@ With --out, write every schema the app's files name instead, one file each,
 and list the address each must be served at:
   galley.config.json   https://galley.fictiontribe.com/schema/galley.config.json
   brand.json           https://galley.fictiontribe.com/schema/brand.json
+  theme.schema.json    https://galley.fictiontribe.com/schema/theme.schema.json
 Options
   -o, --out <folder>   Write the schemas into this folder (it is created)
   -h, --help           Show this help

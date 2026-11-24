@@ -1,0 +1,21 @@
+{
+  "$schema": "https://galley.fictiontribe.com/schema/theme.schema.json",
+  "contract": 1,
+  "id": "harbour",
+  "name": "Harbour",
+  "description": "A cooler, bluer Quiet: faintly cool paper, blue-black ink and a teal pencil. The worked example in brand/themes/README.md.",
+  "author": "Galley",
+  "light": {
+    "paper": "#F3F5F5",
+    "ink": "#101A24",
+    "pencil": "#00857A",
+    "plate": "#121A20",
+    "table": "#D7DDD9"
+  },
+  "switches": {
+    "sidebar": "sheet",
+    "assist": "ruled",
+    "icons": "one-tone",
+    "depth": "soft"
+  }
+}

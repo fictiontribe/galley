@@ -39,6 +39,8 @@ import { installHandlers } from "./install.ts";
 import { accountsHandlers } from "./accounts.ts";
 import { hostingHandlers } from "./hosting.ts";
 import { suggestedNote } from "./describe.ts";
+import { createMockThemes, loadThemesEngine, type ThemesEngine } from "./themes.ts";
+import type { AppliedTheme } from "@galley/core/themes";
 
 // ── handler types ─────────────────────────────────────────────────────────
 
@@ -126,6 +128,10 @@ export class MockBackend {
   settings: Omit<Settings, "secrets">;
   /** Image providers the enabled plugins add (OpenRouter); set by the plugin handlers (plugins.ts). */
   pluginImageProviders: () => ImageProviderInfo[] = () => [];
+  /** The theme engine (core's themes), loaded on first use; the dev server hands over one loaded through Vite (themes.ts). */
+  themesEngine: () => Promise<ThemesEngine> = loadThemesEngine;
+  /** The install's default theme as put on the page; set by the theme handlers (themes.ts). */
+  defaultLook: () => Promise<AppliedTheme | null> = async () => null;
 
   constructor(readonly options: MockOptions) {
     this.authenticated = options.mode === "local";
@@ -346,6 +352,8 @@ export function createHandlers(mock: MockBackend): Handlers {
   const siteBrand = createMockBrand(mock);
   const wordpress = createMockImport(mock);
   mock.pluginImageProviders = plugins.imageProviders;
+  const themes = createMockThemes(mock, () => mock.themesEngine(), plugins.themes);
+  mock.defaultLook = themes.look;
   return {
     ...inboxHandlers((event) => mock.emit(event)),
     ...siteKitHandlers(mock),
@@ -359,9 +367,14 @@ export function createHandlers(mock: MockBackend): Handlers {
     ...installHandlers(),
     ...accountsHandlers(),
     ...hostingHandlers(mock),
+    ...themes.handlers,
     "GET /api/meta": ({ search }) => {
       if (search.get("token")) mock.authenticated = true;
       const meta: MetaInfo = { version: VERSION, brand: DEFAULT_BRAND, mode: mock.options.mode, authenticated: mock.authenticated, desktop: false, platform: process.platform };
+      // The default theme, as the real server adds it (colours and switches only).
+      const look = themes.current();
+      // To anyone not signed in, under a constant id (its own is a slug of its name), as the real server sends it.
+      if (look) meta.look = mock.authenticated ? look : { ...look, id: "default" };
       return meta;
     },
     "POST /api/auth/login": ({ body }) => {
@@ -376,8 +389,10 @@ export function createHandlers(mock: MockBackend): Handlers {
     "GET /api/events": () => ({ kind: "sse" }),
 
     "GET /api/settings": () => mock.fullSettings(),
-    "PATCH /api/settings": ({ body }) => {
+    "PATCH /api/settings": async ({ body }) => {
+      await themes.checkLook(body.appearance?.look);
       const s = mock.settings;
+      const lookBefore = s.appearance.look;
       if (body.ai) s.ai = { ...s.ai, ...body.ai };
       if (body.images) s.images = { ...s.images, ...body.images };
       if (body.videos) {
@@ -387,6 +402,10 @@ export function createHandlers(mock: MockBackend): Handlers {
       }
       if (body.author) s.author = { ...s.author, ...body.author };
       if (body.appearance) s.appearance = { ...s.appearance, ...body.appearance };
+      if (body.appearance?.look !== undefined && body.appearance.look !== lookBefore) {
+        await themes.refresh();
+        mock.emit({ type: "themes.updated" });
+      }
       return mock.fullSettings();
     },
     "PUT /api/secrets/:name": ({ params, body }) => {

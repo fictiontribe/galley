@@ -14,6 +14,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import type { PluginTheme } from "@galley/core/themes";
 import type { DataSourceOption, PluginCatalog } from "@galley/core/api";
 import type { FormProviderInfo, ScriptIntegrationInfo } from "@galley/core/kit";
 import { FORM_PROVIDERS, SCRIPT_INTEGRATIONS } from "@galley/core/kit-catalog";
@@ -566,5 +567,8 @@ export function createMockPlugins(mock: MockBackend) {
     },
   };
 
-  return { handlers, imageProviders };
+  /** Themes the enabled plugins add (none of the fixtures adds one yet). */
+  const themes = (): PluginTheme[] => [];
+
+  return { handlers, imageProviders, themes };
 }

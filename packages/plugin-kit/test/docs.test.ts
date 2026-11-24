@@ -93,10 +93,18 @@ async function sample(name: string): Promise<GalleyPlugin> {
 }
 
 describe("the samples it quotes", () => {
-  it.each(["minimal-plugin", "image-provider", "form-provider", "importer", "before-publish"])("%s passes the kit's checks", async (name) => {
+  it.each(["minimal-plugin", "image-provider", "form-provider", "importer", "before-publish", "theme-plugin"])("%s passes the kit's checks", async (name) => {
     const report = await checkPlugin(await sample(name));
 
     expect(report.ok, formatPluginReport(report)).toBe(true);
+  });
+
+  it("the theme plugin's theme passes the app's check unchanged", async () => {
+    const { checkTheme } = await import("@galley/core/themes");
+    const check = checkTheme((await sample("theme-plugin")).themes![0]);
+
+    expect(check.ok).toBe(true);
+    expect(check.adjusted.filter((adjustment) => adjustment.kind !== "tuned" && adjustment.mode === "light")).toEqual([]);
   });
 
   it("the minimal plugin's tool says hello", async () => {

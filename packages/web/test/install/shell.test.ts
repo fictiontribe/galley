@@ -59,8 +59,8 @@ describe("a hosted install's shell", () => {
     await openPalette();
     const palette = paletteText();
     for (const words of ["All sites", "Create a new site", "Add sites from a folder", "in a new window"]) expect(palette).not.toContain(words);
-    // "Switch to" a site, that is: the palette's theme rows ("Switch to dark theme") are everyone's.
-    expect(palette.replace(/Switch to (dark|light) theme/g, "")).not.toContain("Switch to");
+    // "Switch to" a site, that is: the palette’s appearance rows ("Switch to dark appearance") are everyone's.
+    expect(palette.replace(/Switch to (dark|light) appearance/g, "")).not.toContain("Switch to");
     expect(palette).toContain("Install");
     expect(palette).toContain("App settings");
 

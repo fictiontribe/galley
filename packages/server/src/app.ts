@@ -45,6 +45,7 @@ import { captureHandlers, CAPTURE_BODY_LIMIT_BYTES, CAPTURE_PATH } from "./forms
 import { mcpRoute } from "./mcp";
 import { handOffToken, routes, type RouteContext } from "./routes";
 import { fileResponse, notBuiltPage, resolveStatic } from "./static";
+import { themeScript } from "./themes-routes";
 import type { AppOptions, Services } from "./types";
 import { callerOf, personFromCookie, settleCaller } from "./who";
 
@@ -402,6 +403,14 @@ export function createApp(services: Services, options: AppOptions): Hono {
 
       c.header("cache-control", "no-store");
       return c.redirect(`${url.pathname}${search ? `?${search}` : ""}`, 302);
+    }
+    // The start-up script carries the install's default theme, so a first visit paints it from the start.
+    if (url.pathname === "/theme.js" && options.webDir) {
+      const script = await themeScript(options.webDir, ctx);
+
+      const headers = { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" };
+
+      if (script !== null) return c.req.method === "HEAD" ? c.body(null, 200, headers) : c.body(script, 200, headers);
     }
     const file = await resolveStatic(options.webDir, url.pathname);
     const headers = { "content-security-policy": csp };

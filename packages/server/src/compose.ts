@@ -13,6 +13,7 @@ import { builtInEditorHosts, createHostingService } from "@galley/core/hosting";
 import { createFormCapture } from "@galley/core/forms";
 import { createRedirectsService } from "@galley/core/redirects";
 import { createSiteBrandService } from "@galley/core/sitebrand";
+import { createThemeStore } from "@galley/core/themes/store";
 import { createVisibilityService } from "@galley/core/seo";
 import type { EventBus, SettingsService, SiteRegistry, SiteService } from "@galley/core/types";
 import { createPortPool, type PortRange, type PreviewGateway } from "@galley/core/workspace";
@@ -176,7 +177,10 @@ export async function createServices(options: ServicesOptions): Promise<Services
       ? createHostingService({ home: options.home, settings, events, env, hosts: [...builtInHosts, ...pluginRegistry.editorHostObjects().filter((host) => !builtInHostIds.has(host.id))] })
       : undefined;
 
-  return { registry, agent, images, settings, events, forms, deploy, plugins: pluginRegistry, videos, visibility, redirects, siteBrand, imports, ...(hosting ? { hosting } : {}) };
+  // Themes saved for everyone here: in the data folder, never in a site.
+  const themes = createThemeStore({ home: options.home });
+
+  return { registry, agent, images, settings, events, forms, deploy, plugins: pluginRegistry, videos, visibility, redirects, siteBrand, imports, themes, ...(hosting ? { hosting } : {}) };
 }
 
 /** The commit author from Settings, as the registry uses it: both name and email, or the machine's git config. */

@@ -4,6 +4,7 @@ import { useUi } from "@/lib/stores/ui";
 import { THEME_ACTION, THEME_OPTIONS, oneClickTheme, type ThemeSetting } from "@/lib/theme";
 import { Icon, Menu, Tooltip, buttonClass, cx, type IconName, type MenuItem, type PopoverProps } from "@/ui";
 import { chooseTheme, switchTheme, useSystemDark } from "./theme";
+import { ThemePicker } from "@/features/themes/ThemePicker";
 
 const THEME_ICON: Record<ThemeSetting, IconName> = { light: "sun", dark: "moon", system: "theme-system" };
 
@@ -18,13 +19,27 @@ export interface ThemeSwitchProps {
 }
 
 /**
- * The theme switch: one click goes light ↔ dark (from "match my system", to
+ * The theme picker and the appearance switch, side by side wherever either
+ * appears: the theme (Quiet, Plate, Desk, yours) and the appearance (light,
+ * dark, or the system's) are two choices, and each has its own control.
+ */
+export function ThemeSwitch(props: ThemeSwitchProps) {
+  return (
+    <span className="app-look-switch">
+      <ThemePicker placement={props.placement} tooltipSide={props.tooltipSide} />
+      <AppearanceSwitch {...props} />
+    </span>
+  );
+}
+
+/**
+ * The appearance switch: one click goes light ↔ dark (from "match my system", to
  * the opposite of what is showing). Holding it, right-clicking it or pressing
  * the down arrow on it opens the three choices, Match my system among them.
  * Its name says what a click will do, and the mark is that theme's: the
  * moon to go dark, the sun to go light.
  */
-export function ThemeSwitch({ placement, tooltipSide, className }: ThemeSwitchProps) {
+function AppearanceSwitch({ placement, tooltipSide, className }: ThemeSwitchProps) {
   const theme = useUi((s) => s.theme);
   const systemDark = useSystemDark();
   const next = oneClickTheme(theme, systemDark);
@@ -43,7 +58,7 @@ export function ThemeSwitch({ placement, tooltipSide, className }: ThemeSwitchPr
   useEffect(() => stopHold, []);
 
   const items: MenuItem[] = [
-    { kind: "heading", id: "heading", label: "Theme" },
+    { kind: "heading", id: "heading", label: "Appearance" },
     ...THEME_OPTIONS.map((option) => ({ id: option.value, label: option.label, icon: THEME_ICON[option.value], current: theme === option.value, onSelect: () => chooseTheme(option.value) })),
   ];
   const now = theme === "system" ? "Matching your system now. " : "";
@@ -51,7 +66,7 @@ export function ThemeSwitch({ placement, tooltipSide, className }: ThemeSwitchPr
   return (
     <>
       <Menu
-        label="Theme"
+        label="Appearance"
         placement={placement}
         items={items}
         trigger={(props) => {

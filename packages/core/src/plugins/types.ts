@@ -315,6 +315,9 @@ export type DeployTargetContribution = DeployTarget;
  */
 export type EditorHostContribution = EditorHost;
 
+/** A theme file's contents (brand/themes/theme.schema.json), as an object. */
+export type ThemeContribution = import("../themes/contract").ThemeFile;
+
 // ─────────────────────────────────────────────────────────────── tools
 
 /**
@@ -473,6 +476,13 @@ export interface GalleyPlugin {
   tools?: SiteToolContribution[];
   /** Where a field's values can be picked from (a product, a collection). */
   dataSources?: DataSourceContribution[];
+  /**
+   * Themes for the editing app (docs/themes.md): theme files as data, checked
+   * like any other. One that would be refused is a problem; one the check
+   * adjusts is a warning (ship the adjusted values). Only plugins installed
+   * for the app add themes; a site's own plugin can't change the app.
+   */
+  themes?: ThemeContribution[];
   hooks?: PluginHooks;
   /** Settings the plugin needs (shown in the app; secrets are never returned). */
   settings?: PluginSettingField[];
