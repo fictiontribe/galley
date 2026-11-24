@@ -69,7 +69,7 @@
 
 /* --------------------------------------------------------------------------
    The assistant's hand. Wherever you can ask for a change, the field is ruled
-   in Blue Pencil (pencil-400: 3.37:1 on the sheet, 3.48 dark), so the one
+   in Blue Pencil (pencil-400: 4.56:1 on the sheet, 3.48 dark), so the one
    place the editor's pencil writes for you is the one place it is drawn.
    -------------------------------------------------------------------------- */
 .g-root .kit-ask--line .kit-ask__field,
