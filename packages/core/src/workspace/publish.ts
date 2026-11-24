@@ -45,6 +45,14 @@ export interface RepoHost {
 const TRAILER = `${PRODUCT.commitTrailer}: 1`;
 const TRAILER_LINE = new RegExp(`^${PRODUCT.commitTrailer}:\\s*\\S+\\s*$`, "m");
 const HOOK_TIMEOUT_MS = 5 * 60_000;
+/**
+ * Bringing fetched versions into the files is local work with no network in
+ * it, so it does not get the network's two minutes. Stopping git half-way
+ * through writing a large version would leave some files new and the rest
+ * old, and the new ones would then read as somebody's unpublished changes.
+ * The limit is only there so that a stuck disk cannot hold the lock for ever.
+ */
+const BRING_IN_TIMEOUT_MS = 60 * 60_000;
 const CHUNK = 200;
 
 export const NOT_A_REPO =
@@ -788,7 +796,7 @@ async function fastForward(host: RepoHost, info: RepoInfo, target: string, aroun
 
   await around?.before();
   try {
-    const merged = await repo.run(["merge", "--ff-only", "--no-edit", "--quiet", target], { allowFailure: true, timeoutMs: GIT_NETWORK_TIMEOUT_MS });
+    const merged = await repo.run(["merge", "--ff-only", "--no-edit", "--no-autostash", "--quiet", target], { allowFailure: true, timeoutMs: BRING_IN_TIMEOUT_MS });
 
     if (merged.code !== 0) {
       outcome = { ok: false, stderr: merged.stderr, timedOut: merged.timedOut };
