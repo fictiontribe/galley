@@ -185,9 +185,23 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     return config && !settingsProblems(config, { hosted: Boolean(options.hosted) }).length ? config : null;
   }
 
+  /** Whether two settings name the same bucket at the same address: a saved key is only ever sent where it was saved for. */
+  function sameBucket(a: MediaStorageConfig | null, b: MediaStorageConfig): boolean {
+    if (!a) return false;
+    return a.connector === b.connector && a.bucket === b.bucket && (a.account ?? "") === (b.account ?? "") && (a.region ?? "") === (b.region ?? "") && (a.endpoint ?? "") === (b.endpoint ?? "") && Boolean(a.pathStyle) === Boolean(b.pathStyle);
+  }
+
   async function credentialsFor(site: SiteService, request?: MediaConnectRequest): Promise<{ credentials: Credentials | null; missing: "accessKeyId" | "secretAccessKey" | null }> {
-    const accessKeyId = request?.accessKeyId ? normalizeMediaKey("accessKeyId", request.accessKeyId) : (await keys.get(site.id, "accessKeyId")).value;
-    const secretAccessKey = request?.secretAccessKey ? normalizeMediaKey("secretAccessKey", request.secretAccessKey) : (await keys.get(site.id, "secretAccessKey")).value;
+    // The site's saved key goes only to the bucket it was saved for; other settings need the key typed again.
+    // (A key from the environment is the operator's choice, for whatever the site names.)
+    const stored = async (name: "accessKeyId" | "secretAccessKey") => {
+      const found = await keys.get(site.id, name);
+
+      if (found.source === "site" && request?.config && !sameBucket(await savedConfig(site), normalizeStorageConfig(request.config))) return null;
+      return found.value;
+    };
+    const accessKeyId = request?.accessKeyId ? normalizeMediaKey("accessKeyId", request.accessKeyId) : await stored("accessKeyId");
+    const secretAccessKey = request?.secretAccessKey ? normalizeMediaKey("secretAccessKey", request.secretAccessKey) : await stored("secretAccessKey");
 
     if (!accessKeyId) return { credentials: null, missing: "accessKeyId" };
     if (!secretAccessKey) return { credentials: null, missing: "secretAccessKey" };
@@ -218,8 +232,17 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       return settingsFailure([{ field, message: error instanceof Error ? error.message : String(error) }]);
     }
     if (!resolved.credentials) {
+      const moved = request?.config && (await keys.get(site.id, resolved.missing!)).source === "site";
+
       return settingsFailure([
-        { field: resolved.missing!, message: resolved.missing === "accessKeyId" ? "Paste the key's Access Key ID." : "Paste the key's Secret Access Key." },
+        {
+          field: resolved.missing!,
+          message: moved
+            ? "These settings name a different bucket or address from the saved ones, so the saved key isn't sent there. Paste the key for this bucket."
+            : resolved.missing === "accessKeyId"
+              ? "Paste the key's Access Key ID."
+              : "Paste the key's Secret Access Key.",
+        },
       ]);
     }
     const store = makeStore(config, resolved.credentials);

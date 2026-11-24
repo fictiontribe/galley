@@ -135,6 +135,23 @@ describe("connecting a bucket", () => {
     expect(await service.stores(lowfield.site)).toEqual([]);
   });
 
+  it("never sends the saved key to a different bucket or address: the key has to be typed again", async () => {
+    const lowfield = fakeSite();
+
+    await service.connect(lowfield.site, { config: r2(), ...R2_KEY });
+    const before = fake.log.length;
+
+    for (const config of [r2({ endpoint: "http://127.0.0.1:9" }), r2({ bucket: "other-bucket" }), r2({ account: "f".repeat(32) })]) {
+      const result = await service.check(lowfield.site, { config });
+
+      expect(result.steps[0]).toMatchObject({ id: "settings", state: "failed", field: "accessKeyId" });
+      expect(result.message).toMatch(/saved key isn't sent there/);
+    }
+    expect(fake.log.length).toBe(before);
+    // The same bucket, unchanged: the saved key is used.
+    expect((await service.check(lowfield.site, { config: r2() })).ok).toBe(true);
+  });
+
   it("uses keys from the environment when the site has none of its own", async () => {
     const pinned = createMediaStorageService({ home: home.home, env: { GALLEY_MEDIA_ACCESS_KEY_ID: R2_KEY.accessKeyId, GALLEY_MEDIA_SECRET_ACCESS_KEY: R2_KEY.secretAccessKey } });
     const lowfield = fakeSite();
