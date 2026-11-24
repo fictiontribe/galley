@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { requestLeave } from "@/lib/leaveGuard";
 import type { SearchHit } from "@galley/core/types";
 import type { ApiRouteKey } from "@galley/core/api";
 import { useAccount, useMay } from "@/lib/may";
@@ -89,7 +90,9 @@ export function CommandPalette() {
   const open = useChrome((s) => s.paletteOpen);
   const setOpen = useChrome((s) => s.setPaletteOpen);
   const setPublishOpen = useChrome((s) => s.setPublishOpen);
-  const navigate = useNavigate();
+  const routerNavigate = useNavigate();
+  // A screen with unsaved work (the theme editor) is asked first (lib/leaveGuard.ts).
+  const navigate = (to: string) => requestLeave(() => routerNavigate(to));
   const siteId = useSite((s) => s.siteId);
   const name = useNameOf();
   const detail = useSite((s) => s.detail);

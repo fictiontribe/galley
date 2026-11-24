@@ -6,6 +6,7 @@ import { chooseLook, refreshThemes, useCurrentLookId, useServerThemes, useThemeL
 import { useSystemDark } from "@/app/theme";
 import { api, errorShape } from "@/lib/api";
 import { download } from "@/lib/download";
+import { setLeaveGuard } from "@/lib/leaveGuard";
 import { useMay } from "@/lib/may";
 import { useMeta } from "@/lib/stores/meta";
 import { useMyThemes, useThemeEdit } from "@/lib/stores/themes";
@@ -431,9 +432,11 @@ export function ThemesScreen() {
     else setSession({ draft: themeFrom(entry.theme, taken), saved: null, origin: "new", history: [], note: `Made from ${entry.theme.name}.` });
   }, [fromId, editId, paramsKey, themes, session, taken, server.loading, setParams]);
 
-  // Leaving with unsaved edits asks first: closing the tab, and every link in the app.
+  // Leaving with unsaved edits asks first: closing the tab, every link in the app, the command palette, and Back.
+  const leavingNow = useRef(false);
   useEffect(() => {
     if (!dirty) return;
+    leavingNow.current = false;
     const onUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
     };
@@ -446,10 +449,28 @@ export function ThemesScreen() {
       event.stopPropagation();
       setLeaving(() => () => navigate(href));
     };
+    // Back and Forward can't be stopped, so the editor keeps one extra entry of its own address in history: going back lands on
+    // the editor itself, which then asks. Leaving goes back once more; keeping on editing puts the extra entry back.
+    const here = window.location.href;
+    const guarded = { ...(window.history.state as object | null), themeEditor: true };
+    if (!(window.history.state as { themeEditor?: boolean } | null)?.themeEditor) window.history.pushState(guarded, "", here);
+    const onPop = () => {
+      if (leavingNow.current) return;
+      if ((window.history.state as { themeEditor?: boolean } | null)?.themeEditor) return;
+      window.history.pushState(guarded, "", here);
+      setLeaving(() => () => {
+        leavingNow.current = true;
+        window.history.go(-2);
+      });
+    };
+    const offGuard = setLeaveGuard((proceed) => setLeaving(() => proceed));
     window.addEventListener("beforeunload", onUnload);
+    window.addEventListener("popstate", onPop);
     document.addEventListener("click", onClick, true);
     return () => {
+      offGuard();
       window.removeEventListener("beforeunload", onUnload);
+      window.removeEventListener("popstate", onPop);
       document.removeEventListener("click", onClick, true);
     };
   }, [dirty, navigate]);
