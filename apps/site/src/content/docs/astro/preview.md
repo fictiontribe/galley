@@ -35,6 +35,7 @@ The preview proxy listens on a free port of its own and forwards everything to t
 
 - **HTTP and WebSocket upgrades**, so Vite's hot module reload works through it: save a file, the preview updates.
 - **Frame-blocking headers removed**: `X-Frame-Options`, and `frame-ancestors` from a `Content-Security-Policy` (every other directive kept), so the page can sit in the editor's iframe.
+- **Nothing kept on a guess**: a permanent redirect (301, 308) and any response without its own `Cache-Control` go out with `Cache-Control: no-store`. The preview's address outlives the dev server behind it, and a browser keeps a permanent redirect for good. A response with a policy of its own keeps it.
 - **The overlay script added** to HTML responses, just before `</head>`:
 
 ```sh
