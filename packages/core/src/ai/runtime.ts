@@ -445,7 +445,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
         };
         const tools = new Map<string, ToolActivity>();
 
-        void (async () => {
+        void checkpoint.run(async () => {
           let outcome: LoopResult;
 
           try {
@@ -519,7 +519,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
             active.delete(threadKey);
             resolveDone();
           }
-        })();
+        });
         return { turnId };
       } catch (error) {
         active.delete(threadKey);
@@ -551,7 +551,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
       const turn = record?.turns.find((t) => t.turnId === turnId);
 
       if (!record || !turn) throw new GalleyError("not-found", "That reply isn't in this conversation.", turnId);
-      if (turn.undone) return [];
+      if (turn.undone) return { restored: [], left: [] };
       const list = held.get(threadKey) ?? [];
       const index = list.findIndex((entry) => entry.turnId === turnId);
       const entry = list[index];
@@ -564,6 +564,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
         );
       }
       const restored = await entry.checkpoint.restore();
+      const left = entry.checkpoint.left();
 
       list.splice(index, 1);
       release(entry.checkpoint);
@@ -577,14 +578,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
 
         if (message) {
           message.undone = true;
+          if (left.length) message.undoLeft = left;
           updated = message;
         }
         // Told to the model on its next turn, as an operator note.
-        stored.api.pendingNotes.push(undoNote(turn.request, restored));
+        stored.api.pendingNotes.push(undoNote(turn.request, restored, left));
         stored.thread.updatedAt = now();
       });
       if (updated) emitMessage(siteId, threadId, updated);
-      return restored;
+      return { restored, left };
     },
 
     async describeChanges(siteId, changes) {

@@ -173,7 +173,10 @@ describe("fixes", () => {
     const after = await auditSite(site, { now: NOW });
 
     expect(codes(after.findings)).not.toEqual(expect.arrayContaining(["link-broken /about/", "noindex-important /"]));
-    expect(await undoFixes(site, result.undoId!)).toHaveLength(4);
+    const undone = await undoFixes(site, result.undoId!);
+
+    expect(undone.restored).toHaveLength(4);
+    expect(undone.left).toEqual([]);
     expect(sh(root, "status", "--porcelain")).toBe("");
   });
 

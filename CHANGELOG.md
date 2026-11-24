@@ -33,6 +33,26 @@ entry says how.
 
 ### Changed
 
+- **One server to a data folder.** A hosted server takes its data folder
+  before it reads or changes anything in it, keeps its hold (`server.lock`)
+  fresh while it runs, and refuses to start while another server is running
+  on the folder, or when it can't write its hold. Until now a second server
+  started without a word. After a server that didn't stop cleanly, the next
+  start takes the folder over: at once when that server's process is gone
+  on the same machine, otherwise after watching its hold for about 20
+  seconds. Local mode and the desktop app take no hold.
+- **Names say who someone is.** A person's name is kept without characters
+  a reader can't see (the controls that reorder text, characters with no
+  width, blank fillers), and a name that reads as someone else's on the same
+  editor — in another case or width, or with unseen characters in it — is
+  refused wherever a name is set. Names that were alike before stay until
+  one of them changes. Look-alike letters from different alphabets are not
+  caught.
+- **The event stream keeps to its readers.** On a hosted editor one account
+  may hold 16 streams open (16 windows of the editor; the operator's token
+  counts as one identity) and the next is answered 429. A stream whose
+  reader has stopped reading is ended once 1 MB is waiting for it; the app
+  connects again and reads everything afresh, as after any drop.
 - **Version history tells the truth about the repository.** It looks when
   it opens, says "Checking the repository…" until it knows, and then says
   when it last checked; it no longer says "In step" on the strength of what
@@ -88,6 +108,15 @@ entry says how.
 
 ### Fixed
 
+- **Undoing an assistant reply no longer undoes other people's work.** An
+  undo put back every file written while the reply was being made, whoever
+  wrote it, and put each one back whole. It now puts back only what that
+  reply itself changed, and only the pages still as the reply left them. A
+  page changed again since — by you, by someone else or by another reply —
+  is left as it is, and the reply says which pages those are. The same holds
+  for **Undo** after Search and AI fixes. `POST …/threads/:threadId/undo`
+  and `POST …/visibility/undo` answer `{ restored, left }`, and a chat
+  message gains `undoLeft`.
 - **Looking at the code host no longer holds up saves.** A hosted editor's
   round, Version history's look and Get latest asked the code host while
   holding the lock every save takes, so a code host that was slow to answer

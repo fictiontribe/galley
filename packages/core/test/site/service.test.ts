@@ -464,8 +464,10 @@ describe("checkpoints", () => {
     await site.updateEntry(PRICING, [{ op: "set", path: ["title"], value: "Fees, outside the turn" }]);
     const checkpoint = site.checkpoint("assistant turn");
 
-    await site.updateEntry(HOME, [{ op: "set", path: ["title"], value: "Changed inside the turn" }], { origin: "agent" });
-    await site.updateEntry(POST, [{ op: "body-replace", find: "Houses are never quite square", replace: "Inside the turn" }], { origin: "agent" });
+    await checkpoint.run(async () => {
+      await site.updateEntry(HOME, [{ op: "set", path: ["title"], value: "Changed inside the turn" }], { origin: "agent" });
+      await site.updateEntry(POST, [{ op: "body-replace", find: "Houses are never quite square", replace: "Inside the turn" }], { origin: "agent" });
+    });
     checkpoint.close();
     await site.updateEntry(PRICING, [{ op: "set", path: ["description"], value: "Also outside the turn." }]);
 
