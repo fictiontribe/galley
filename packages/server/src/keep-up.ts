@@ -104,14 +104,15 @@ export function createKeepUp(options: KeepUpOptions): KeepUp {
     skipping ??= { since: now, said: false };
     if (!skipping.said && now - skipping.since >= SKIPPED_SAID_AFTER_MS) {
       skipping.said = true;
-      options.log(`Repository: no newer versions have been brought in for ${Math.round((now - skipping.since) / 60_000)} minutes, because ${reason}. They come in once that is over.`);
+      // Whether there is anything to bring in isn't known here (a skipped round may not even have looked): it says what is known.
+      options.log(`Repository: the editor's rounds have been skipped for ${Math.round((now - skipping.since) / 60_000)} minutes, because ${reason}. Newer versions, if there are any, come in once that is over.`);
     }
     return "busy";
   }
 
   /** A round got its turn: skipping is over, and the log says so if it said rounds were being skipped. */
   function ran(): void {
-    if (skipping?.said) options.log("Repository: newer versions can be brought in again.");
+    if (skipping?.said) options.log("Repository: the editor's rounds run again.");
     skipping = null;
   }
 
