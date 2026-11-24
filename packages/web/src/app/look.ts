@@ -30,13 +30,24 @@ export function useServerThemes(): { data: ThemesInfo; loading: boolean; refetch
   return { data: query.data ?? EMPTY, loading: query.loading, refetch: query.refetch };
 }
 
-/** Every theme this app can show, checked, in the picker's order. */
+/**
+ * Every theme this app can show, checked, in the picker's order. Before
+ * signing in the saved themes aren't listed (they are the install's), but
+ * the default is: from /api/meta, colours and switches only, so it is named
+ * for what it is.
+ */
 export function useThemeList(): ListedTheme[] {
   const accent = useMeta((s) => s.meta?.brand.accent ?? null);
   const server = useServerThemes().data;
   const mine = useMyThemes((s) => s.mine);
   const hosted = useMeta((s) => themeKeeper(s.meta) === "browser");
-  return useMemo(() => listThemes({ brandAccent: accent, saved: server.saved, plugins: server.plugins, mine: hosted ? mine : [] }), [accent, server, mine, hosted]);
+  const fallback = useMeta((s) => s.meta?.look ?? null);
+  return useMemo(() => {
+    const listed = listThemes({ brandAccent: accent, saved: server.saved, plugins: server.plugins, mine: hosted ? mine : [] });
+    if (!fallback || listed.some((entry) => entry.theme.id === fallback.id)) return listed;
+    const theme: ThemeFile = { contract: 1, id: fallback.id, name: "The default", light: fallback.light, dark: fallback.dark, switches: fallback.switches };
+    return [...listed.filter((entry) => entry.origin !== "community"), { theme, origin: "saved" as const }, ...listed.filter((entry) => entry.origin === "community")];
+  }, [accent, server, mine, hosted, fallback]);
 }
 
 /** The theme on screen now (an edit in progress included). */
