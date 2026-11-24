@@ -35,7 +35,7 @@ How the file merges over detection: [galley.config.json](/docs/configuration/#ho
 | `media.roots[].dir` | string, **required**, non-empty | A folder, relative to the site root. |
 | `media.roots[].publicPath` | string, **required**, non-empty | The URL prefix it is served from. |
 | `media.storage` | object | New media goes to this bucket instead of the repository: [Media in a bucket](/docs/configuration/media-storage/). Ids and addresses only; the key is never here. *Default:* none — media stays in the repository. |
-| `media.storage.connector` | string, **required** | `r2` (Cloudflare R2) or `s3` (Amazon S3), or a plugin's connector. |
+| `media.storage.connector` | string, **required** | `r2` (Cloudflare R2), `s3` (Amazon S3) or `s3-compatible` (another S3-compatible store). |
 | `media.storage.bucket` | string, **required**, 3–63 characters | The bucket's name. |
 | `media.storage.account` | string | R2: the account ID the bucket is in. |
 | `media.storage.region` | string | S3: the bucket's Region code (`eu-west-1`). |

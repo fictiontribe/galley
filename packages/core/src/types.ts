@@ -273,7 +273,7 @@ export interface MediaImagesConfig {
  * the access key and secret are kept in the site's key store, never here.
  */
 export interface MediaStorageConfig {
-  /** The connector: "r2" (Cloudflare R2), "s3" (Amazon S3), "s3-compatible", or a plugin's id. */
+  /** The connector: "r2" (Cloudflare R2), "s3" (Amazon S3) or "s3-compatible". */
   connector: string;
   bucket: string;
   /** Cloudflare R2: the account ID the bucket is in. */

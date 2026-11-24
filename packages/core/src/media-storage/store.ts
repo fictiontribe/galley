@@ -1,7 +1,7 @@
 /**
  * The media store contract: a place outside the repository that keeps a
  * site's media and serves it at public addresses — a bucket (R2, S3, any
- * S3-compatible store), Cloudflare Images, or one a plugin adds.
+ * S3-compatible store) or Cloudflare Images.
  *
  * Stores differ in what they take and how they name and serve things, so a
  * store describes itself (`MediaStoreAbilities`) and the engine routes by
@@ -99,7 +99,7 @@ export class StoreError extends Error {
 
 export interface MediaStore {
   readonly location: MediaStoreLocation;
-  /** "r2", "s3", "s3-compatible", "cloudflare-images", or a plugin's. */
+  /** "r2", "s3", "s3-compatible" or "cloudflare-images". */
   readonly connector: string;
   /** "Cloudflare R2". */
   readonly name: string;

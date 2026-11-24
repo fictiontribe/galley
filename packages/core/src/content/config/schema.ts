@@ -105,7 +105,7 @@ const webAddress = z.string().url().refine((value) => /^https:\/\//i.test(value)
 /** Ids only: the access key and its secret are kept in the site's key store, never in this file. */
 const mediaStorage = z
   .object({
-    connector: z.string().regex(ADAPTER_ID, { message: "must be a connector id, like “r2”, “s3” or “s3-compatible”." }).describe("Which kind of bucket: “r2” (Cloudflare R2), “s3” (Amazon S3), “s3-compatible”, or a plugin's connector."),
+    connector: z.string().regex(ADAPTER_ID, { message: "must be a connector id, like “r2”, “s3” or “s3-compatible”." }).describe("Which kind of bucket: “r2” (Cloudflare R2), “s3” (Amazon S3), or “s3-compatible” (another S3-compatible store)."),
     bucket: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/, { message: "must be a bucket name: 3 to 63 lowercase letters, digits, dots and dashes." }).describe("The bucket's name."),
     account: z.string().max(64).optional().describe("Cloudflare R2: the account ID the bucket is in."),
     region: z.string().max(40).optional().describe("Amazon S3: the bucket's Region code (“eu-west-1”). S3-compatible: the store's region name."),

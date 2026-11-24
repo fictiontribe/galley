@@ -53,8 +53,6 @@ export interface MediaStoreInfo {
   publicNote: string;
   pricingUrl?: string;
   docsUrl?: string;
-  /** A plugin's connector: the plugin's name. */
-  plugin?: string;
 }
 
 /** Whether one key of the site is set, and where the one in use comes from. Never the value. */

@@ -122,12 +122,11 @@
             "connector": {
               "type": "string",
               "pattern": "^[a-z][a-z0-9-]*$",
-              "description": "Which kind of bucket: “r2” (Cloudflare R2), “s3” (Amazon S3), “s3-compatible”, or a plugin's connector."
+              "description": "Which kind of bucket: “r2” (Cloudflare R2), “s3” (Amazon S3), or “s3-compatible” (another S3-compatible store)."
             },
             "bucket": {
               "type": "string",
-              "minLength": 3,
-              "maxLength": 63,
+              "pattern": "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$",
               "description": "The bucket's name."
             },
             "account": {
@@ -186,6 +185,11 @@
               "minLength": 8,
               "maxLength": 64,
               "description": "The Images account hash, from Hosted Images › Developer Resources."
+            },
+            "scope": {
+              "description": "This site's mark on its pictures in the account (Cloudflare's creator field); made by Galley when connecting. Only pictures with it are listed, shown, moved or deleted.",
+              "type": "string",
+              "pattern": "^[a-z0-9-]{8,64}$"
             },
             "variant": {
               "description": "The variant pages ask for. Default: public.",

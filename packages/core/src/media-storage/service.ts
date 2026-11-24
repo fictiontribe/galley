@@ -41,7 +41,11 @@ export interface BucketConnector {
 
 const extra: BucketConnector[] = [];
 
-/** Adds a plugin's bucket connector. A taken id is refused, so a plugin can't quietly replace a built-in. */
+/**
+ * Adds a bucket connector to this process, for a program that embeds the
+ * engine. Plugins can't contribute one: that isn't part of the plugin API.
+ * A taken id is refused, so a built-in can't be quietly replaced.
+ */
 export function registerBucketConnector(connector: BucketConnector): void {
   if (builtInConnectors().some((known) => known.info.id === connector.info.id) || extra.some((known) => known.info.id === connector.info.id)) {
     throw new Error(`A media storage connector called “${connector.info.id}” is already registered.`);
