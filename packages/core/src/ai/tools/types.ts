@@ -13,6 +13,13 @@ export interface ToolContext {
   signal: AbortSignal;
   /** Titles seen this turn, so activity labels can name things the person recognises. */
   titles: Map<string, string>;
+  /**
+   * Source files as they were when this turn (or this session of another
+   * harness) last read or wrote them, by path: the hash goes with write_file,
+   * so a file that changed in between (newer versions coming in, someone
+   * else's edit) is read again instead of being replaced.
+   */
+  read?: Map<string, string>;
   /** Set when ask_user ran: the turn ends after this step. */
   question: { text: string; options: ChatOption[] } | null;
   /** The previous turn ended with a question — a second one in a row is refused. */

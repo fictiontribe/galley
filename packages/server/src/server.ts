@@ -761,7 +761,12 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
 
             return id ? services.registry.get(id) : null;
           },
-          busy: () => phase !== "running" || draining || (ops?.restoring() ?? false) || busyJobs.size > 0,
+          busy: () => {
+            const siteId = install!.siteId();
+
+            // An assistant's turn counts as work in progress: it writes from what it read, and versions coming in under it would be written over.
+            return phase !== "running" || draining || (ops?.restoring() ?? false) || busyJobs.size > 0 || (siteId !== null && (services.agent.working?.(siteId) ?? false));
+          },
           log: (line) => out.event(line),
           ...(options.syncTimer ? { timer: options.syncTimer } : {}),
         })

@@ -199,6 +199,36 @@ describe("build tools and the mode guard", () => {
     expect(site.files.get("src/components/Header.astro")).toContain("Home");
   });
 
+  it("doesn't replace a file that changed after it was read, until it has been read again", async () => {
+    const site = createFakeSite();
+    const ctx = context(site, "build", { read: new Map() });
+    const path = "src/styles/tokens.css";
+
+    await call(ctx, "read_file", { path });
+    // Newer versions came in, or someone else saved the file, before the write.
+    site.files.set(path, ":root { --accent: #000; }\n");
+    const refused = await call(ctx, "write_file", { path, content: "mine\n" });
+
+    expect(refused.result.is_error).toBe(true);
+    expect(refused.text).toBe("The file changed after you read it, so it wasn't replaced. Read it again, then make your change to what is there now.");
+    expect(refused.activity.label).toBe("Couldn't write the “tokens” stylesheet");
+    expect(site.files.get(path)).toBe(":root { --accent: #000; }\n");
+    // Trying again without reading is refused the same way.
+    expect((await call(ctx, "write_file", { path, content: "mine\n" })).result.is_error).toBe(true);
+    expect(site.files.get(path)).toBe(":root { --accent: #000; }\n");
+    expect((await call(ctx, "read_file", { path })).json().text).toContain("--accent: #000");
+    expect((await call(ctx, "write_file", { path, content: "mine\n" })).result.is_error).toBeUndefined();
+    expect(site.files.get(path)).toBe("mine\n");
+    // Its own edits and writes are not somebody else's changes.
+    expect((await call(ctx, "edit_file", { path, old_string: "mine", new_string: "ours" })).result.is_error).toBeUndefined();
+    expect((await call(ctx, "write_file", { path, content: "again\n" })).result.is_error).toBeUndefined();
+    expect((await call(ctx, "write_file", { path, content: "and again\n" })).result.is_error).toBeUndefined();
+    expect(site.files.get(path)).toBe("and again\n");
+    // A file that was never read is made, or replaced, as before.
+    expect((await call(ctx, "write_file", { path: "src/styles/new.css", content: "a {}\n" })).result.is_error).toBeUndefined();
+    expect(site.files.get("src/styles/new.css")).toBe("a {}\n");
+  });
+
   it("edits exactly one match, or refuses with the reason", async () => {
     const site = createFakeSite();
     const ctx = context(site, "build");

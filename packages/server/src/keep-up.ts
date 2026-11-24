@@ -6,8 +6,11 @@
  *
  * Only a hosted install runs it: on a person's own computer nothing reaches
  * for the network by itself. A round is skipped — never queued — while the
- * install is busy (a connect, a restore, a publish job), while git work on
- * the site is in progress, or while the previous round is still going.
+ * install is busy (a connect, a restore, a publish job), while the assistant
+ * is working on the site, while a save or other git work on the site is in
+ * progress, while the preview is installing the site's dependencies, or
+ * while the previous round is still going. Its look at the code host holds
+ * up no save, however long the code host takes to answer.
  */
 import { asEngine } from "@galley/core/install";
 import type { CatchUpResult, SiteService } from "@galley/core/types";
@@ -38,7 +41,7 @@ export interface KeepUpOptions {
   minutes: number;
   /** The connected site, or null while there is none (first run, waiting for its key, a restore). */
   site(): Promise<SiteService | null>;
-  /** Install-level work a round must not run beside: a connect, a restore, a publish job. */
+  /** Work a round must not run beside: a connect, a restore, a publish job, the assistant's turn. */
   busy(): boolean;
   /** One line for the operator's log. */
   log(line: string): void;

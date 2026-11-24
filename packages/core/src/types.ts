@@ -1976,6 +1976,13 @@ export interface AgentRuntime {
    * accepted; the reply streams as chat.* events and ends with chat.done.
    */
   send(siteId: string, threadId: string, request: SendMessageRequest): Promise<{ turnId: string }>;
+  /**
+   * Whether a turn is in progress in any of the site's conversations, from
+   * the moment its message is accepted. A hosted editor's own rounds wait
+   * for it: a turn works from what it read, and newer versions coming in
+   * under it would be written over. Optional so a stand-in may leave it out.
+   */
+  working?(siteId: string): boolean;
   cancel(siteId: string, threadId: string): Promise<void>;
   /** Roll back the files one turn changed. Returns the restored paths. */
   undoTurn(siteId: string, threadId: string, turnId: string): Promise<string[]>;

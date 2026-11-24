@@ -5,13 +5,25 @@
  * only in build mode is a convenience for the model, not the guardrail.
  */
 import { z } from "zod";
+import { GalleyError } from "../../errors";
 import { SITE_SETTINGS_LEVEL } from "../../install/route-access";
 import type { GalleyConfig } from "../../types";
+import { hashContent } from "../../workspace/files";
+import { normalizeRepoPath } from "../../workspace/paths";
 import { fileName, plural } from "./labels";
 import { defineTool, ok, READ_ONLY, refuse, type AssistantTool } from "./types";
 
 const READ_LINES = 400;
 const BUILD_TAIL = 4_000;
+
+/** The path as the site names it, for remembering what was read; a path the site would refuse is remembered under itself and refused by the write. */
+function sitePath(path: string): string {
+  try {
+    return normalizeRepoPath(path);
+  } catch {
+    return path;
+  }
+}
 
 function count(haystack: string, needle: string): number {
   let n = 0;
@@ -57,6 +69,7 @@ const readFile = defineTool({
     const done = `Read ${fileName(input.path)}`;
 
     if (file.binary) return refuse("That's a binary file (an image or similar), so it can't be read as text.", done);
+    ctx.read?.set(file.path, file.hash);
     const lines = file.content.split("\n");
     const start = Math.max(1, input.startLine ?? 1);
     const end = Math.min(lines.length, input.endLine ?? start + READ_LINES - 1);
@@ -91,7 +104,19 @@ const writeFile = defineTool({
   effect: { readOnly: false, destructive: true, idempotent: true, openWorld: false },
   label: (input) => `Writing ${fileName(input.path)}`,
   async run(input, ctx) {
-    await ctx.site.writeFile(input.path, input.content, { origin: "agent", mode: ctx.mode });
+    const path = sitePath(input.path);
+    const read = ctx.read?.get(path);
+
+    try {
+      // With the hash of the file as it was last read here: one that changed since is not replaced.
+      await ctx.site.writeFile(input.path, input.content, { origin: "agent", mode: ctx.mode, ...(read ? { baseHash: read } : {}) });
+    } catch (error) {
+      if (read && error instanceof GalleyError && error.code === "conflict") {
+        return refuse("The file changed after you read it, so it wasn't replaced. Read it again, then make your change to what is there now.", `Couldn't write ${fileName(input.path)}`);
+      }
+      throw error;
+    }
+    ctx.read?.set(path, hashContent(input.content));
     return ok({ written: input.path, lines: input.content.split("\n").length }, `Wrote ${fileName(input.path)}`);
   },
 });
@@ -125,6 +150,7 @@ const editFile = defineTool({
     const next = input.replace_all ? file.content.split(input.old_string).join(input.new_string) : file.content.replace(input.old_string, () => input.new_string);
 
     await ctx.site.writeFile(input.path, next, { origin: "agent", mode: ctx.mode, baseHash: file.hash });
+    ctx.read?.set(file.path, hashContent(next));
     return ok({ replaced: input.replace_all ? found : 1 }, `Edited ${name}`);
   },
 });

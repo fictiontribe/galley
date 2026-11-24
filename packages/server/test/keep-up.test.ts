@@ -4,9 +4,11 @@
  * temporary repositories — a bare one as the code host, a clone as someone
  * publishing elsewhere.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import { join } from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { NO_CALLER_REFUSAL, requireCallerForGuardedWork } from "@galley/core/install";
 import { createEventBus, createSiteService } from "@galley/core/site";
 import type { ServerEvent, SiteService } from "@galley/core/types";
@@ -197,6 +199,98 @@ describe("a started server", () => {
     box.running.splice(box.running.indexOf(server), 1);
     expect(hand.state.cancelled).toBe(true);
     expect(await hand.tick()).toBe("stopped");
+  }, 180_000);
+
+  it.skipIf(process.platform === "win32")("hosted: a round is skipped while a publish is really in progress and while the assistant is really working, and comes back for the version after", async () => {
+    const bare = siteRepository(box);
+    const elsewhere = publisher(bare);
+    const hand = handTimer();
+    // The assistant's service, standing in: it takes the request and says nothing until the turn is stopped.
+    const asked: string[] = [];
+    const service = http.createServer((req) => {
+      asked.push(`${req.method} ${req.url}`);
+      req.resume();
+    });
+
+    await new Promise<void>((resolve) => service.listen(0, "127.0.0.1", resolve));
+    // The assistant reads its service's address from the process's own environment. And should that ever stop
+    // being so, nothing in this test may reach a real service: any request that isn't to this computer is refused.
+    const realFetch = globalThis.fetch;
+    const addressBefore = process.env.GALLEY_ANTHROPIC_BASE_URL;
+
+    process.env.GALLEY_ANTHROPIC_BASE_URL = `http://127.0.0.1:${(service.address() as AddressInfo).port}`;
+    vi.stubGlobal("fetch", (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const host = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url).hostname;
+
+      if (host !== "127.0.0.1") return Promise.reject(new Error(`this test may only talk to this computer, not ${host}`));
+      return realFetch(input, init);
+    });
+    try {
+      const { server, port } = await startHosted(
+        box,
+        box.folder("home"),
+        {
+          GALLEY_PASSWORD: "correct horse battery staple",
+          GALLEY_OWNER_NAME: "Sam Owner",
+          GALLEY_OWNER_EMAIL: "sam@example.com",
+          GALLEY_TOKEN: OPERATOR,
+          GALLEY_SITE_REPOSITORY: bare,
+          GALLEY_SITE_ACCESS: "token",
+          GALLEY_SITE_TOKEN: "fake-access-key-for-the-repository-0000",
+          ANTHROPIC_API_KEY: "not-a-real-key-for-the-stand-in-0000",
+        },
+        { syncTimer: hand.timer }
+      );
+
+      await server.install!.idle();
+      const folder = server.install!.siteFolder();
+      const siteId = server.install!.siteId()!;
+      const page = () => readFileSync(join(folder, PAGE), "utf8");
+
+      // A publish, held open by the site's own check before a version is recorded.
+      const gate = box.folder("publish-gate");
+
+      writeFileSync(join(folder, ".git", "hooks", "pre-commit"), `#!/bin/sh\n: > '${gate}/reached'\nwhile [ ! -e '${gate}/go' ]; do sleep 0.05; done\n`, { mode: 0o755 });
+      writeFileSync(join(folder, "notes.md"), "A note to publish.\n");
+      const publishing = call(port, "POST", `/api/sites/${siteId}/publish`, { bearer: OPERATOR, body: { paths: ["notes.md"], message: "A note" } });
+
+      await until(() => existsSync(join(gate, "reached")));
+      expect(await hand.tick()).toBe("busy");
+      writeFileSync(join(gate, "go"), "");
+      const published = await publishing;
+
+      expect(published.status, published.text).toBe(200);
+      expect(published.body).toMatchObject({ ok: true, pushed: true });
+
+      // The assistant at work on the site: its turn began before the newer version was there, and writes from what it read.
+      const thread = await call(port, "POST", `/api/sites/${siteId}/threads`, { bearer: OPERATOR, body: {} });
+
+      expect(thread.status, thread.text).toBe(200);
+      const sent = await call(port, "POST", `/api/sites/${siteId}/threads/${thread.body.id}/messages`, { bearer: OPERATOR, body: { text: "Tidy the home page." } });
+
+      expect(sent.status, sent.text).toBe(200);
+      await until(() => asked.length > 0);
+      elsewhere("Brought in after the assistant finished", "From elsewhere");
+      expect(await hand.tick()).toBe("busy");
+      expect(await hand.tick()).toBe("busy");
+      expect(page()).not.toContain("Brought in after the assistant finished");
+      // A person's own look still answers meanwhile: it changes no file.
+      const looked = await call(port, "POST", `/api/sites/${siteId}/git/check`, { bearer: OPERATOR });
+
+      expect(looked.body).toMatchObject({ behind: 1 });
+      expect(page()).not.toContain("Brought in after the assistant finished");
+
+      // The turn is stopped: the next round brings the version in.
+      expect((await call(port, "POST", `/api/sites/${siteId}/threads/${thread.body.id}/cancel`, { bearer: OPERATOR })).status).toBe(200);
+      expect(await hand.tick()).toBe("brought");
+      expect(page()).toContain("Brought in after the assistant finished");
+    } finally {
+      vi.unstubAllGlobals();
+      if (addressBefore === undefined) delete process.env.GALLEY_ANTHROPIC_BASE_URL;
+      else process.env.GALLEY_ANTHROPIC_BASE_URL = addressBefore;
+      service.closeAllConnections();
+      await new Promise((resolve) => service.close(resolve));
+    }
   }, 180_000);
 
   it("hosted with GALLEY_SYNC_MINUTES=0 runs no rounds; local mode never does; a value that isn't a whole number stops the start", async () => {

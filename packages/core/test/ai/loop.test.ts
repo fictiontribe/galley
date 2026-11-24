@@ -4,7 +4,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { REFUSAL_MESSAGE, STEP_LIMIT_MESSAGE, TOO_LONG_MESSAGE } from "../../src/ai/loop";
 import { BUILD_TOOL_NAMES } from "../../src/ai/tools/index";
 import { GalleyError } from "../../src/errors";
@@ -287,6 +287,20 @@ describe("a turn", () => {
 
     expect(usage.outputTokens).toBe(20);
     expect(usage.cost).toBeCloseTo((100 * 4 + 5 * 20 + 100 * 5 + 15 * 25) / 1e6, 10);
+  });
+
+  it("counts as work in progress on its site from the moment the message is accepted until it is done", async () => {
+    const { site, h, thread } = await setup([stream(text("Done."))]);
+    const done = new Promise<void>((resolve) => h.bus.subscribe((event) => event.type === "chat.done" && resolve()));
+
+    expect(h.runtime.working(site.id)).toBe(false);
+    await h.runtime.send(site.id, thread.id, { text: "Hello" });
+    expect(h.runtime.working(site.id)).toBe(true);
+    expect(h.runtime.working("another-site")).toBe(false);
+    // A site whose name begins the same is another site.
+    expect(h.runtime.working(site.id.slice(0, -1))).toBe(false);
+    await done;
+    await vi.waitFor(() => expect(h.runtime.working(site.id)).toBe(false));
   });
 
   it("maps an overloaded response to one plain sentence", async () => {

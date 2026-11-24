@@ -74,6 +74,7 @@ export interface AgentRuntimeOptions {
 
 /** The runtime plus a diagnostic: which request profile a turn finished on. */
 export interface GalleyAgentRuntime extends AgentRuntime {
+  working(siteId: string): boolean;
   turnProfile(turnId: string): RequestProfile | undefined;
 }
 
@@ -438,6 +439,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
           images: options.images,
           signal: controller.signal,
           titles: new Map(),
+          read: new Map(),
           question: null,
           askedLastTurn,
         };
@@ -524,6 +526,13 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
         resolveDone();
         throw error;
       }
+    },
+
+    working(siteId) {
+      const prefix = key(siteId, "");
+
+      for (const threadKey of active.keys()) if (threadKey.startsWith(prefix)) return true;
+      return false;
     },
 
     async cancel(siteId, threadId) {
