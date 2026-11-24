@@ -16,33 +16,41 @@ import { terminalPrompt, type DeployIo } from "./deploy";
 export const MEDIA_HELP = `Usage: ${PRODUCT.slug} media [command] [path] [options]
 
 Where the site in [path] (default: this folder) keeps new media: its
-repository, or a bucket that serves files at their own address.
+repository, a bucket that serves files at their own address, and — for
+pictures — Cloudflare Images, which resizes them and sends modern formats.
 
 Commands
   status        Where new files go, and whether the bucket's key is set (the default)
   connect       Connect a bucket: checks for real, then saves (asks what it needs)
-  check         Check the connected bucket again: store, read, list, load, remove a test picture
-  move          Move files: --to bucket, --to repository, or --address <url>
-  disconnect    New files go to the repository again (the bucket's files stay)
+  check         Check what is connected again: store, read, list, load, remove a test picture
+  move          Move files: --to bucket, --to images, --to repository (with --from), or --address <url>
+  disconnect    Stop using the bucket (or Cloudflare Images, with --images); the files stay
 
 Options for connect
-      --connector <id>   r2 (Cloudflare R2) or s3 (Amazon S3)
+      --connector <id>   r2 (Cloudflare R2), s3 (Amazon S3) or cloudflare-images
       --bucket <name>
       --account <id>     R2: the account ID
       --region <code>    S3: the bucket's Region ("eu-west-1")
       --endpoint <url>   R2 in a jurisdiction: the bucket's S3 address
       --prefix <folder>  Keep this site's files in a folder of the bucket
       --public-url <url> Where visitors load the files from
-  The key is read from ${MEDIA_KEY_ENV.accessKeyId} and ${MEDIA_KEY_ENV.secretAccessKey},
-  or asked for (nothing is shown as you paste). It is never a flag.
+      --account-hash <h> Images: the account hash (Hosted Images › Developer Resources)
+      --variant <name>   Images: the variant pages ask for (default public)
+      --delivery-url <u> Images: deliver from a domain of the same Cloudflare account
+      --use-deploy-key   Images: use the site's Cloudflare key for putting it online
+  The key is read from ${MEDIA_KEY_ENV.accessKeyId} and ${MEDIA_KEY_ENV.secretAccessKey}
+  (Images: ${MEDIA_KEY_ENV.imagesToken}), or asked for (nothing is shown as you
+  paste). It is never a flag.
 
 Options for move
-      --to <place>       bucket or repository
+      --to <place>       bucket, images or repository
+      --from <place>     With --to repository: bucket (the default) or images
       --address <url>    Use a new public address for the bucket's files
       --keep-copies      Moving to the bucket: keep the repository's copies too
 
 Options
-      --forget-keys      disconnect: remove the bucket's key from this computer too
+      --images           disconnect: stop using Cloudflare Images instead of the bucket
+      --forget-keys      disconnect: remove its key from this computer too
   -y, --yes              Don't ask before moving or disconnecting
       --json             Print the result as JSON
   -h, --help             Show this help
@@ -79,6 +87,12 @@ export async function mediaCommand(argv: string[], io: DeployIo): Promise<number
       endpoint: { type: "string" },
       prefix: { type: "string" },
       "public-url": { type: "string" },
+      "account-hash": { type: "string" },
+      variant: { type: "string" },
+      "delivery-url": { type: "string" },
+      "use-deploy-key": { type: "boolean" },
+      from: { type: "string" },
+      images: { type: "boolean" },
       to: { type: "string" },
       address: { type: "string" },
       "keep-copies": { type: "boolean" },
@@ -108,14 +122,20 @@ export async function mediaCommand(argv: string[], io: DeployIo): Promise<number
       case "status":
         return await status(withPrompt, storage, engine.site, json);
       case "check": {
-        const result = await storage.check(engine.site);
+        const current = await storage.status(engine.site);
+        const results: Array<[string, MediaCheckResult]> = [];
 
-        if (json) io.out(JSON.stringify(result));
+        if (current.bucket.config || !current.images.config) results.push(["The bucket", await storage.check(engine.site)]);
+        if (current.images.config) results.push(["Cloudflare Images", await storage.checkImages(engine.site)]);
+        if (json) io.out(JSON.stringify(results.length === 1 ? results[0]![1] : Object.fromEntries(results.map(([name, result]) => [name === "The bucket" ? "bucket" : "images", result]))));
         else {
-          printCheck(withPrompt, result);
-          if (result.ok) io.out("✓ The bucket works: new files can be stored and visitors can load them.");
+          for (const [name, result] of results) {
+            if (results.length > 1) withPrompt.err(`${name}:`);
+            printCheck(withPrompt, result);
+            if (result.ok) io.out(`✓ ${name === "The bucket" ? "The bucket works" : "Cloudflare Images works"}: new files can be stored and visitors can load them.`);
+          }
         }
-        return result.ok ? 0 : 1;
+        return results.every(([, result]) => result.ok) ? 0 : 1;
       }
       case "connect":
         return await connect(withPrompt, storage, engine.site, values, json);
@@ -124,6 +144,17 @@ export async function mediaCommand(argv: string[], io: DeployIo): Promise<number
       case "disconnect": {
         const current = await storage.status(engine.site);
 
+        if (values.images) {
+          if (!current.images.config) throw new UsageError("This site isn't using Cloudflare Images.");
+          if (!values.yes) {
+            if (!withPrompt.prompt) throw new UsageError("Nothing was changed. Run it again with --yes to stop putting new pictures in Cloudflare Images.");
+            if (!/^y(es)?$/i.test(await withPrompt.prompt("New pictures go where other files go; the pictures in Images stay. Go ahead? [y/N] "))) return 1;
+          }
+          await storage.disconnectImages(engine.site, { forgetKeys: Boolean(values["forget-keys"]) });
+          if (json) io.out(JSON.stringify({ ok: true }));
+          else io.out("✓ New pictures go where other files go. The pictures in Cloudflare Images stay there, and pages that use them keep working.");
+          return 0;
+        }
         if (!current.bucket.config) throw new UsageError("This site isn't connected to a bucket.");
         if (!values.yes) {
           if (!withPrompt.prompt) throw new UsageError("Nothing was changed. Run it again with --yes to stop putting new files in the bucket.");
@@ -156,9 +187,14 @@ async function status(io: DeployIo, storage: MediaStorageService, site: Paramete
     return 0;
   }
   const config = current.bucket.config;
+  const images = current.images.config;
 
+  if (images) {
+    io.out(`New pictures go to Cloudflare Images (account hash ${images.accountHash}, variant ${images.variant ?? "public"}, delivered from ${images.deliveryUrl ?? "imagedelivery.net"}).`);
+    io.out(current.images.token.use === "deploy" ? "  Token: the site's Cloudflare key for putting it online." : current.images.token.configured ? `  Token: ending in ${current.images.token.hint ?? "····"}.` : `  The token is missing: run \`${PRODUCT.slug} media connect --connector cloudflare-images\` again.`);
+  }
   if (!config) {
-    io.out(`New files are kept in the site's repository. \`${PRODUCT.slug} media connect\` keeps them in a bucket instead.`);
+    io.out(images ? "Other files are kept in the site's repository." : `New files are kept in the site's repository. \`${PRODUCT.slug} media connect\` keeps them in a bucket (or pictures in Cloudflare Images) instead.`);
     return 0;
   }
   io.out(`New files go to ${current.bucket.store?.name ?? config.connector}: ${config.bucket}${config.prefix ? `/${config.prefix}` : ""}, loaded from ${config.publicUrl}.`);
@@ -182,6 +218,7 @@ async function connect(io: DeployIo, storage: MediaStorageService, site: Paramet
   const info = connectors.find((candidate) => candidate.id === connector);
 
   if (!info) throw new UsageError(`“${connector}” isn't a kind of bucket ${PRODUCT.name} knows. Use one of: ${connectors.map((c) => c.id).join(", ")}.`);
+  if (info.id === "cloudflare-images") return connectImages(io, storage, site, values, json);
   const option = (name: string, fallback: string | undefined) => (values[name] as string | undefined) ?? fallback;
   const config: MediaStorageConfig = { connector, bucket: option("bucket", saved?.bucket) ?? "", publicUrl: option("public-url", saved?.publicUrl) ?? "" };
 
@@ -218,13 +255,16 @@ async function move(io: DeployIo, storage: MediaStorageService, site: Parameters
   const to = values.to as string | undefined;
   const address = values.address as string | undefined;
 
-  if (Boolean(to) === Boolean(address)) throw new UsageError("Give either --to bucket, --to repository, or --address <url>.");
-  if (to && to !== "bucket" && to !== "repository") throw new UsageError("--to is bucket or repository.");
+  const from = values.from as string | undefined;
+
+  if (Boolean(to) === Boolean(address)) throw new UsageError("Give either --to bucket, --to images, --to repository, or --address <url>.");
+  if (to && to !== "bucket" && to !== "images" && to !== "repository") throw new UsageError("--to is bucket, images or repository.");
+  if (from && from !== "bucket" && from !== "images") throw new UsageError("--from is bucket or images.");
   const request: MediaMoveRequest = address
-    ? { kind: "address", store: "bucket", publicUrl: address }
-    : to === "bucket"
-      ? { kind: "move", from: "repository", to: "bucket", keepCopies: Boolean(values["keep-copies"]) }
-      : { kind: "move", from: "bucket", to: "repository" };
+    ? { kind: "address", store: from === "images" ? "images" : "bucket", publicUrl: address }
+    : to === "repository"
+      ? { kind: "move", from: from === "images" ? "images" : "bucket", to: "repository" }
+      : { kind: "move", from: "repository", to: to as "bucket" | "images", keepCopies: Boolean(values["keep-copies"]) };
   const plan = await storage.planMove(site, request);
 
   if (!json) {
@@ -253,4 +293,28 @@ async function move(io: DeployIo, storage: MediaStorageService, site: Parameters
     io.out(`${outcome.problems.length ? "!" : "✓"} ${outcome.summary}`);
   }
   return outcome.problems.length ? 1 : 0;
+}
+
+async function connectImages(io: DeployIo, storage: MediaStorageService, site: Parameters<MediaStorageService["status"]>[0], values: Record<string, unknown>, json: boolean): Promise<number> {
+  const current = await storage.status(site);
+  const saved = current.images.config;
+  const account = (values.account as string | undefined) ?? saved?.account ?? (await ask(io, "Account ID: "));
+  const accountHash = (values["account-hash"] as string | undefined) ?? saved?.accountHash ?? (await ask(io, "Account hash: "));
+  const variant = (values.variant as string | undefined) ?? saved?.variant;
+  const deliveryUrl = (values["delivery-url"] as string | undefined) ?? saved?.deliveryUrl;
+  const useDeployKey = Boolean(values["use-deploy-key"]);
+  let token: string | undefined;
+
+  if (!useDeployKey && !io.env[MEDIA_KEY_ENV.imagesToken]?.trim() && !(current.images.token.configured && current.images.token.use === "own")) {
+    token = await ask(io, "API token with Cloudflare Images › Edit (not shown): ", { secret: true });
+  }
+  if (!json) io.err("Checking Cloudflare Images for real…");
+  const result = await storage.connectImages(site, { config: { connector: "cloudflare-images", account, accountHash, ...(variant ? { variant } : {}), ...(deliveryUrl ? { deliveryUrl } : {}) }, ...(token ? { token } : {}), ...(useDeployKey ? { useDeployKey } : {}) });
+
+  if (json) io.out(JSON.stringify(result));
+  else {
+    printCheck(io, result.check);
+    if (result.status) io.out(`✓ Connected. New pictures go to Cloudflare Images; other files go ${result.status.bucket.config ? "to the bucket" : "to the repository"}. \`${PRODUCT.slug} media move --to images\` moves the pictures already in the repository.`);
+  }
+  return result.check.ok ? 0 : 1;
 }

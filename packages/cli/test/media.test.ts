@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { startFakeS3, type FakeS3 } from "../../core/test/media-storage/fakes/s3";
+import { startFakeImages, type FakeImages } from "../../core/test/media-storage/fakes/cloudflare-images";
 import type { DeployIo } from "../src/commands/deploy";
 import { main } from "../src/main";
 
@@ -11,15 +12,22 @@ const tmp = realpathSync(mkdtempSync(join(tmpdir(), "galley-cli-media-")));
 const gitConfig = join(tmp, "gitconfig");
 const KEY = { id: "0123456789abcdef0123456789abcdef", secret: "d".repeat(64) };
 let fake: FakeS3;
+let images: FakeImages;
+const IMAGES_ACCOUNT = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
+const IMAGES_TOKEN = "cli-images-token-0123456789abcdefghijk";
 
 writeFileSync(gitConfig, "[user]\n\tname = Test Editor\n\temail = editor@example.com\n[init]\n\tdefaultBranch = main\n");
 beforeAll(async () => {
   fake = await startFakeS3();
   fake.addBucket("cli-media", { region: "auto" });
   fake.addKey({ id: KEY.id, secret: KEY.secret, buckets: { "cli-media": ["read", "write", "list", "delete"] } });
+  images = await startFakeImages();
+  images.addAccount(IMAGES_ACCOUNT, { hash: "CliHash0001" });
+  images.addToken({ value: IMAGES_TOKEN, accounts: { [IMAGES_ACCOUNT]: "write" } });
 });
 afterAll(async () => {
   await fake.close();
+  await images.close();
   rmSync(tmp, { recursive: true, force: true });
 });
 
@@ -121,6 +129,28 @@ describe("galley media", () => {
 
     expect(await main(["media", "disconnect", root, "--yes", "--forget-keys"], off)).toBe(0);
     expect(off.stdout.join("\n")).toContain("stay there");
+  });
+
+  it("connects Cloudflare Images for pictures, with the token asked for and nothing shown", async () => {
+    const asked: Array<[string, boolean]> = [];
+    const io = testIo({ GALLEY_MEDIA_IMAGES_API: images.apiBase }, {
+      prompt: async (question, options) => {
+        asked.push([question, Boolean(options?.secret)]);
+        return IMAGES_TOKEN;
+      },
+    });
+    const args = ["media", "connect", root, "--connector", "cloudflare-images", "--account", IMAGES_ACCOUNT, "--account-hash", "CliHash0001", "--delivery-url", images.deliveryOrigin];
+
+    expect(await main(args, io), [...io.stdout, ...io.stderr].join("\n")).toBe(0);
+    expect(asked).toEqual([["API token with Cloudflare Images › Edit (not shown): ", true]]);
+    expect([...io.stdout, ...io.stderr].join("\n")).not.toContain(IMAGES_TOKEN);
+    const status = testIo({ GALLEY_MEDIA_IMAGES_API: images.apiBase });
+
+    expect(await main(["media", root], status)).toBe(0);
+    expect(status.stdout.join("\n")).toContain("New pictures go to Cloudflare Images");
+    const off = testIo({ GALLEY_MEDIA_IMAGES_API: images.apiBase });
+
+    expect(await main(["media", "disconnect", root, "--images", "--yes", "--forget-keys"], off)).toBe(0);
   });
 
   it("refuses a key given any other way than the environment or the prompt", async () => {
