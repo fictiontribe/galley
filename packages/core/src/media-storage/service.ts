@@ -59,6 +59,8 @@ function builtInConnectors(): BucketConnector[] {
 
 /** The most the app shows of a stored file through the server: the library's own upload limit. */
 export const RAW_LIMIT = 25 * 1024 * 1024;
+/** How many stored files one site may have read through the server at once. */
+export const RAW_AT_ONCE = 4;
 const TOO_LARGE_TO_SHOW = "That file is larger than 25 MB, so the app doesn't show it. Open it at its address instead.";
 
 export interface MediaStorageServiceOptions {
@@ -181,6 +183,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   const moving = new Map<string, string>();
   /** Sites whose move has been asked for and hasn't become a job yet (or runs without one). */
   const starting = new Set<string>();
+  const rawReads = new Map<string, number>();
   const claimMove = (siteId: string) => {
     const running = moving.get(siteId);
 
@@ -497,7 +500,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       const problems: Partial<Record<MediaStoreLocation, string>> = {};
 
       for (const store of stores) {
-        if (!store.abilities.canList || !store.list) continue;
+        if (!store.abilities.canList || !store.list || !(await mayList(site, store))) continue;
         const listedAt = await library.listedAt(site.id, store.location);
 
         if (listedAt !== null && clock() - listedAt < listTtl) continue;
@@ -567,23 +570,15 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     },
 
     async readStored(site, path) {
-      const parsed = parseStorePath(path);
-      const store = parsed ? (await service.stores(site)).find((candidate) => candidate.location === parsed.location) : null;
+      // A few at a time per site: each read is bounded, and so is how many run at once.
+      const reading = rawReads.get(site.id) ?? 0;
 
-      if (!parsed || !store) return null;
-      await assertOwnKey(site, store, parsed.key);
+      if (reading >= RAW_AT_ONCE) throw new GalleyError("busy", "Too many stored files are being shown at once. Try again in a moment.");
+      rawReads.set(site.id, reading + 1);
       try {
-        const head = await store.head(parsed.key);
-
-        if (!head) return null;
-        if (head.size !== null && head.size > RAW_LIMIT) throw new GalleyError("invalid", TOO_LARGE_TO_SHOW);
-        const bytes = await store.get(parsed.key);
-
-        if (bytes && bytes.byteLength > RAW_LIMIT) throw new GalleyError("invalid", TOO_LARGE_TO_SHOW);
-        return bytes;
-      } catch (error) {
-        if (error instanceof StoreError) throw new GalleyError(error.transient ? "busy" : "unconfigured", scrub(error.message));
-        throw error;
+        return await readOwn(site, path);
+      } finally {
+        rawReads.set(site.id, (rawReads.get(site.id) ?? 1) - 1);
       }
     },
 
@@ -658,6 +653,37 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     },
   };
 
+  /** Reads a stored file of the site's own, refusing anything over RAW_LIMIT. */
+  async function readOwn(site: SiteService, path: string): Promise<Uint8Array | null> {
+    const parsed = parseStorePath(path);
+    const store = parsed ? (await service.stores(site)).find((candidate) => candidate.location === parsed.location) : null;
+
+    if (!parsed || !store) return null;
+    await assertOwnKey(site, store, parsed.key);
+    try {
+      const head = await store.head(parsed.key);
+
+      if (!head) return null;
+      if (head.size !== null && head.size > RAW_LIMIT) throw new GalleyError("invalid", TOO_LARGE_TO_SHOW);
+      const bytes = await store.get(parsed.key);
+
+      if (bytes && bytes.byteLength > RAW_LIMIT) throw new GalleyError("invalid", TOO_LARGE_TO_SHOW);
+      return bytes;
+    } catch (error) {
+      if (error instanceof StoreError) throw new GalleyError(error.transient ? "busy" : "unconfigured", scrub(error.message));
+      throw error;
+    }
+  }
+
+  /**
+   * Cloudflare Images without the site's mark (a connection from before marks,
+   * or one removed by hand) would list the whole account: then only the
+   * pictures already in the site's record are used, until it is reconnected.
+   */
+  async function mayList(site: SiteService, store: MediaStore): Promise<boolean> {
+    return store.location !== "images" || Boolean((await site.model()).media.images?.scope);
+  }
+
   /**
    * A stored file's name must be the site's own before anything reads or
    * deletes it: inside its folder, with no empty, "." or ".." part — and for a
@@ -715,7 +741,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     const { token, use, source } = await imagesToken(site);
 
     // The site's Cloudflare key for putting it online is the install's business: none of it is shown here.
-    return { connected: Boolean(config && token), config, token: token ? { configured: true, source, ...(use === "deploy" ? {} : { hint: token.slice(-4) }), use } : { configured: false, source: null, use: null } };
+    return { connected: Boolean(config && token), config, ...(config && !config.scope ? { needsReconnect: true } : {}), token: token ? { configured: true, source, ...(use === "deploy" ? {} : { hint: token.slice(-4) }), use } : { configured: false, source: null, use: null } };
   }
 
   function makeImagesStore(config: MediaImagesConfig, token: string, use: "own" | "deploy" | null): MediaStore {
@@ -792,7 +818,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       async storedItems(location) {
         const store = stores.find((candidate) => candidate.location === location);
 
-        if (store?.list) await relist(site, store);
+        if (store?.list && (await mayList(site, store))) await relist(site, store);
         // Only names that are the site's own, whatever a listing returned.
         return (await library.all(site.id)).filter((item) => item.location === location && (!store || store.ownsKey(item.key)));
       },

@@ -178,6 +178,19 @@ describe("moving media", { timeout: 240_000 }, () => {
     await done();
   });
 
+  it("counts what is already back as names, not patterns", async () => {
+    const { storage, site, root, publicUrl, done } = await setUp();
+
+    fake.buckets.get("moves")!.objects.set("lowfield/st*r.svg", { body: Buffer.from("<svg/>"), contentType: "image/svg+xml", cacheControl: null, metadata: {}, etag: "e", lastModified: new Date() });
+    writeFileSync(join(root, "public/images/stXr.svg"), "<svg/>");
+    writeFileSync(join(root, AUTHOR), `${readFileSync(join(root, AUTHOR), "utf8")}\n![s](${publicUrl}/lowfield/st*r.svg)\n`);
+    const plan = await storage.planMove(site, { kind: "move", from: "bucket", to: "repository" });
+
+    expect(plan.files).toBe(1);
+    expect(plan.done).toBe(0);
+    await done();
+  });
+
   it("runs one move at a time for a site", async () => {
     const { storage, site, done } = await setUp();
     const both = await Promise.allSettled([storage.startMove(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true }), storage.startMove(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true })]);

@@ -150,6 +150,16 @@ describe("a site that keeps its media in a bucket", { timeout: 240_000 }, () => 
     expect(objects.has("other-site/secret.png")).toBe(true);
     expect(fake.buckets.get("elsewhere")!.objects.has("secret.png")).toBe(true);
     expect(Buffer.from((await storage.readStored(site, own.path))!).byteLength).toBeGreaterThan(0);
+    // A few at a time: the fifth read started together is turned away.
+    const together = await Promise.allSettled(Array.from({ length: 6 }, () => storage.readStored(site, own.path)));
+
+    expect(together.filter((result) => result.status === "rejected").map((result) => String((result as PromiseRejectedResult).reason))).toEqual([
+      expect.stringMatching(/Too many stored files/),
+      expect.stringMatching(/Too many stored files/),
+    ]);
+    // A folder whose name starts with the site's ("lowfieldx/") isn't the site's.
+    objects.set("lowfieldx/secret.png", secret);
+    await expect(storage.readStored(site, "bucket:lowfieldx/secret.png")).rejects.toThrow("That file isn't one of this site's.");
     // Larger than the app shows: refused before anything is read.
     objects.set("lowfield/huge.mp4", { body: Buffer.alloc(26 * 1024 * 1024), contentType: "video/mp4", cacheControl: null, metadata: {}, etag: "h", lastModified: new Date() });
     await expect(storage.readStored(site, "bucket:lowfield/huge.mp4")).rejects.toThrow(/larger than 25 MB/);

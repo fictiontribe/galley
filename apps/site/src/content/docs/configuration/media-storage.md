@@ -64,6 +64,13 @@ Optional: a **variant** other than `public` (one you made on the **Delivery** ta
 
 If something is wrong, the check says what: a token without **Cloudflare Images › Edit** (or the site's Cloudflare key without it, and how to add it), an account ID Cloudflare doesn't know, storage not turned on (the Paid plan), an account hash or variant that doesn't deliver.
 
+## Before you share a bucket or set keys for everyone
+
+- **Several sites in one bucket need a folder each.** An empty *Folder in the bucket* means the whole bucket: give every site its own folder, so none can see or remove another's files.
+- **Keys given by environment variable** (`GALLEY_MEDIA_ACCESS_KEY_ID`, `GALLEY_MEDIA_SECRET_ACCESS_KEY`, `GALLEY_MEDIA_IMAGES_TOKEN`) are used for whatever bucket and address an owner of the editor types in. Set them only on an install whose owners you trust with that key.
+- **A CDN in front of the bucket** may drop the header that makes an SVG download instead of opening; check it keeps `Content-Disposition`.
+- **Cloudflare Images connected before pictures were marked as each site's** shows only the pictures Galley already knows, and Storage settings says so: connect it again to mark new pictures and list them.
+
 ## What Galley checks
 
 Before it saves anything, Galley does everything the site will need, for real, with a tiny test picture: it reaches the bucket, stores the picture under a new name, reads it back, lists the site's files, loads it from the public address with no key, and removes it. It stops at the first step that fails and says what to change, with the cursor in that field — a key the service doesn't know, a secret that doesn't go with it, a bucket name that doesn't exist, the wrong Region, a key that can read but not write, an address that turns visitors away. A key that fails never replaces one that works.

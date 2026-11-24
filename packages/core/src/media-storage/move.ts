@@ -378,7 +378,10 @@ export async function planMove(context: MoveContext, request: MediaMoveRequest):
 
     done = moves.filter((move) => known.has(store.abilities.naming === "service" ? move.from : move.to)).length;
   } else {
-    for (const move of moves) if ((await context.site.listFiles({ glob: move.to, limit: 1 })).length) done += 1;
+    // Compared as names, never as patterns: a "*", "?" or "[" in one is just a character.
+    const present = new Set(await context.site.listFiles());
+
+    for (const move of moves) if (present.has(move.to)) done += 1;
   }
   const pages = new Set<string>();
   let count = 0;

@@ -198,6 +198,11 @@ function Summary({ siteId, status, onEdit, onStop, onChecked }: { siteId: string
       {images ? (
         <section className="media-storage__connection" aria-label="Cloudflare Images">
           <h3 className="media-storage__step-title">Cloudflare Images</h3>
+          {status.images.needsReconnect ? (
+            <p className="media-storage__note">
+              <ProofMark kind="bang" /> Connected before Galley marked pictures as this site’s, so only the pictures it already knows are shown. Connect it again (Change settings, then Check and connect) to mark new ones and list them.
+            </p>
+          ) : null}
           <dl className="app-media-details__facts">
             <dt>Account hash</dt>
             <dd className="g-mono">{images.accountHash}</dd>

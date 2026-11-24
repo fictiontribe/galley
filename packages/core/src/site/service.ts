@@ -1091,9 +1091,16 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     async changes(): Promise<ChangeSet> {
       const changes = sortChanges(await workspace.changes(createEnricher(() => model)));
       // Uploads to a media store since the last publish: never in a commit, but part of what is pending.
-      const storeUploads = deps.media ? await deps.media.pending(service).catch(() => []) : [];
+      let problem: string | null = null;
+      const storeUploads = deps.media
+        ? await deps.media.pending(service).catch((error: unknown) => {
+            // Said plainly in Proof rather than shown as nothing.
+            problem = `The uploads in the site's media storage couldn't be looked up just now: ${error instanceof Error ? error.message : String(error)}`;
+            return [];
+          })
+        : [];
 
-      return storeUploads.length ? { ...changes, storeUploads } : changes;
+      return { ...changes, ...(storeUploads.length ? { storeUploads } : {}), ...(problem ? { storeUploadsProblem: problem } : {}) };
     },
 
     pendingPaths() {

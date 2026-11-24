@@ -693,6 +693,8 @@ export interface ChangeSet {
    * them are published. Absent when the site keeps media in the repository only.
    */
   storeUploads?: MediaItem[];
+  /** Set when the uploads in a media store couldn't be looked up just now: one sentence. */
+  storeUploadsProblem?: string;
 }
 
 export interface DiffLine {

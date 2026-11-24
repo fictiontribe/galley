@@ -118,7 +118,8 @@ export function ProofScreen() {
     return <LoadingProof />;
   }
   const uploads = changes.storeUploads ?? [];
-  if (changes.files.length === 0 && uploads.length === 0) return <NothingWaiting siteId={siteId} />;
+  const uploadsProblem = changes.storeUploadsProblem ?? null;
+  if (changes.files.length === 0 && uploads.length === 0 && !uploadsProblem) return <NothingWaiting siteId={siteId} />;
 
   return (
     <div className="proof">
@@ -137,6 +138,11 @@ export function ProofScreen() {
       </header>
       <ValidationSummary siteId={siteId} changes={changes} titles={titles} />
       {uploads.length ? <StoreUploads siteId={siteId} items={uploads} /> : null}
+      {uploadsProblem ? (
+        <p className="app-card app-card--pad proof-uploads" role="status">
+          {uploadsProblem}
+        </p>
+      ) : null}
       <div className="proof-brand">
         <BrandCheckNotes siteId={siteId} />
       </div>

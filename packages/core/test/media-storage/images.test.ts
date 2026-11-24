@@ -191,6 +191,22 @@ describe("a site with pictures in Images and other files in a bucket", { timeout
     await done();
   });
 
+  it("without the site's mark, lists nothing new from the account and asks to be connected again", async () => {
+    const { storage, site, done } = await setUp(false);
+    const own = await site.saveMedia({ filename: "own.png", data: pngHeader(6, 6) });
+    const config = (await site.readConfig())!;
+    const { scope: _scope, ...unmarked } = config.media!.images!;
+
+    await site.saveConfig({ ...config, media: { ...config.media, images: unmarked } });
+    images.accounts.get(ACCOUNT)!.images.set("no-mark", { id: "no-mark", filename: "theirs.png", meta: { name: "theirs.png" }, uploaded: new Date().toISOString(), body: Buffer.from("x"), type: "image/png" });
+    const listed = (await site.listMedia()).filter((item) => item.location === "images").map((item) => item.key);
+
+    expect(listed).toEqual([own.key]);
+    expect((await storage.status(site)).images.needsReconnect).toBe(true);
+    images.accounts.get(ACCOUNT)!.images.delete("no-mark");
+    await done();
+  });
+
   it("reads and deletes only pictures this site holds", async () => {
     const { storage, site, done } = await setUp(false);
     const own = await site.saveMedia({ filename: "own.png", data: pngHeader(8, 8) });

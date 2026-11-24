@@ -88,6 +88,8 @@ export interface MediaBucketStatus {
 export interface MediaImagesStatus {
   connected: boolean;
   config: MediaImagesConfig | null;
+  /** Connected before pictures were marked as this site's: only the pictures already known are shown until it is connected again. */
+  needsReconnect?: boolean;
   /** The token in use: the site's own (or the environment's), or the site's Cloudflare key for putting it online. */
   token: MediaKeyStatus & { use: "own" | "deploy" | null };
 }
