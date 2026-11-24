@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    // The demo runs the mock (written for Node) in the browser: both worlds' types.
+    "types": ["node", "vite/client"],
+    "jsx": "react-jsx",
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@brand/*": ["../../brand/*"]
+    }
+  },
+  "include": ["demo", "vite.demo.config.ts", "test/demo"],
+  "exclude": ["demo/dist", "demo/.work", "demo/scripts"]
+}

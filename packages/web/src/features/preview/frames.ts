@@ -79,9 +79,39 @@ export function toOverlay(message: HostToOverlay extends infer M ? (M extends { 
   return { galley: 1, ...message } as HostToOverlay;
 }
 
-/** The frame address for a page path on a proxy origin. */
+/** The frame address for a page path on a proxy origin (or a preview address with a path of its own). */
 export function frameUrl(origin: string, path: string): string {
   return `${origin.replace(/\/+$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+/**
+ * The path a preview address is mounted at: "" for a proxy on an origin of
+ * its own (every real preview), "/demo/site" for one served under a path
+ * (the in-browser demo serves the sample site's files beside itself).
+ */
+export function basePathOf(address: string | null): string {
+  if (!address) return "";
+  try {
+    return new URL(address).pathname.replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
+
+/** A path the page reported (`/demo/site/about/`), as the site's own (`/about/`). Paths outside the base are left as they are. */
+export function withinBase(basePath: string, path: string): string {
+  if (!basePath || !path.startsWith(basePath)) return path;
+  const rest = path.slice(basePath.length);
+  if (rest === "") return "/";
+  return /^[/?#]/.test(rest) ? (rest.startsWith("/") ? rest : `/${rest}`) : path;
+}
+
+/** A frame's message with its page paths as the site's own, for a preview served under a path. Unchanged when there is none. */
+export function localizeMessage(message: OverlayToHost, basePath: string): OverlayToHost {
+  if (!basePath) return message;
+  if (message.type === "ready" || message.type === "navigate") return { ...message, path: withinBase(basePath, message.path) };
+  if (message.type === "select-image") return { ...message, src: withinBase(basePath, message.src) };
+  return message;
 }
 
 /**
@@ -94,8 +124,9 @@ export function addressToPath(input: string, origins: Array<string | null>): str
   if (/^[a-z][a-z0-9+.-]*:/i.test(text)) {
     try {
       const url = new URL(text);
-      if (!origins.some((origin) => origin && new URL(origin).origin === url.origin)) return null;
-      return `${url.pathname}${url.search}${url.hash}`;
+      const base = origins.find((origin) => origin && new URL(origin).origin === url.origin);
+      if (!base) return null;
+      return withinBase(basePathOf(base), `${url.pathname}${url.search}${url.hash}`);
     } catch {
       return null;
     }

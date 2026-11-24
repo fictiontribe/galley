@@ -1,3 +1,4 @@
+import type { ComponentType, ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { ToastViewport } from "@/ui";
 import { ActivityTray } from "./ActivityTray";
@@ -8,9 +9,19 @@ import { CornerThemeSwitch } from "./ThemeSwitch";
 import { CompleteAccountPrompt } from "@/features/accounts/CompleteAccount";
 import { AppRoutes } from "./routes";
 
-export function App() {
+export interface AppProps {
+  /**
+   * The router the app runs in. The app's own server answers every address
+   * with the app, so it uses the address bar as is; a build served from
+   * plain files with no such fallback (the in-browser demo) passes a hash
+   * router instead, so a reload or a shared link still opens the right screen.
+   */
+  router?: ComponentType<{ children?: ReactNode }>;
+}
+
+export function App({ router: Router = BrowserRouter }: AppProps = {}) {
   return (
-    <BrowserRouter>
+    <Router>
       <BrandEffects />
       <Boot>
         <AppRoutes />
@@ -21,6 +32,6 @@ export function App() {
       <ToastViewport>
         <ActivityTray />
       </ToastViewport>
-    </BrowserRouter>
+    </Router>
   );
 }

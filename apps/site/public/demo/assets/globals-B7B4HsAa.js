@@ -1,0 +1,1 @@
+import{t as e}from"./buffer-72n64Edk.js";var t=globalThis;t.Buffer??=e,t.process??={env:{},platform:`browser`};

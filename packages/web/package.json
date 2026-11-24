@@ -8,8 +8,11 @@
     "dev": "vite",
     "dev:mock": "GALLEY_MOCK=1 vite",
     "build": "vite build",
+    "build:demo": "node demo/scripts/build.mjs",
+    "demo:publish": "node demo/scripts/publish.mjs",
+    "demo:check": "node demo/scripts/publish.mjs --check",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.test-dom.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.test-dom.json && tsc --noEmit -p tsconfig.demo.json",
     "test": "vitest run"
   },
   "dependencies": {

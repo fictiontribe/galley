@@ -1,0 +1,99 @@
+/* The demo's own layer: the band at the top, the tour's card and spotlight,
+   and the small-screen page. Brand tokens only (brand/tokens.css), so the
+   layer follows the app's light and dark looks. */
+
+:root { --demo-band: 34px; }
+
+/* The app keeps the whole window below the band. */
+body:has(.demo-band) .app-frame { block-size: calc(100dvh - var(--demo-band)); margin-block-start: var(--demo-band); }
+body:has(.demo-band) .app-boot-error { block-size: calc(100vh - var(--demo-band)); margin-block-start: var(--demo-band); }
+
+.demo-band {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+  block-size: var(--demo-band);
+  padding-inline: 12px 8px;
+  background: var(--surface-sunken);
+  border-block-end: 1px solid var(--border-subtle);
+  color: var(--ink-secondary);
+  font: 500 12.5px/1 var(--font-text);
+}
+.demo-band__what { display: flex; align-items: center; gap: 10px; min-inline-size: 0; margin: 0; white-space: nowrap; }
+.demo-band__notice { overflow: hidden; text-overflow: ellipsis; padding-inline-start: 10px; border-inline-start: 1px solid var(--border-default); color: var(--ink-primary); }
+.demo-band__mark {
+  padding: 3px 7px 2px;
+  border-radius: 4px;
+  background: var(--ink-primary);
+  color: var(--ink-inverse);
+  font: 500 11px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.demo-band__actions, .demo-band__confirm { display: flex; align-items: center; gap: 4px; }
+.demo-band__confirm > span { margin-inline-end: 6px; color: var(--ink-primary); }
+.demo-band .g-btn { text-decoration: none; }
+
+/* Both live in the top layer (popover), so the browser's own popover box is undone. */
+.demo-tour[popover], .demo-spotlight[popover] { inset: auto; margin: 0; overflow: visible; }
+.demo-spotlight[popover] { padding: 0; border: 0; background: transparent; }
+
+/* The spotlight lets every click through: it only draws. */
+.demo-spotlight {
+  position: fixed;
+  z-index: 70;
+  border-radius: 10px;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 100vmax color-mix(in srgb, var(--ink-primary) 20%, transparent);
+  pointer-events: none;
+  transition: left 0.25s var(--ease-out, ease), top 0.25s var(--ease-out, ease), width 0.25s var(--ease-out, ease), height 0.25s var(--ease-out, ease);
+}
+/* Over a dialog, whose own backdrop already dims the page: the ring only. */
+.demo-spotlight--ring { box-shadow: 0 0 0 2px var(--accent); }
+
+.demo-tour {
+  position: fixed;
+  z-index: 80;
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: var(--ink-primary);
+  box-shadow: var(--shadow-3);
+  font: 400 14px/1.5 var(--font-text);
+  transition: left 0.25s var(--ease-out, ease), top 0.25s var(--ease-out, ease);
+}
+.demo-tour__head { display: flex; align-items: center; justify-content: space-between; margin-block: -4px -6px; }
+.demo-tour__count, .demo-tour__label { margin: 0; color: var(--ink-tertiary); font: 500 11px/1.2 var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.demo-tour__close { font-size: 18px; line-height: 1; }
+.demo-tour__title { margin: 0; font: 500 21px/1.2 var(--font-display); letter-spacing: -0.01em; outline: none; }
+.demo-tour__title:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: 2px; border-radius: 2px; }
+.demo-tour__body, .demo-tour__hint { margin: 0; }
+.demo-tour__hint { color: var(--accent-text); font-weight: 500; font-size: 13px; }
+.demo-tour__hint::before { content: "→ "; }
+.demo-tour__ask { display: grid; gap: 8px; justify-items: start; padding: 10px 12px; border-radius: 8px; background: var(--surface-sunken); }
+.demo-tour__request { margin: 0; font-family: var(--font-display); font-size: 16px; }
+.demo-tour__done { display: grid; gap: 8px; }
+.demo-tour__command { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 4px 4px 10px; border-radius: 8px; background: var(--surface-sunken); }
+.demo-tour__command code { font: 13px/1.4 var(--font-mono); }
+.demo-tour__links { display: flex; gap: 16px; margin: 2px 0 0; }
+.demo-tour__links a { color: var(--accent-text); }
+.demo-tour__actions { display: flex; justify-content: flex-end; gap: 6px; margin-block-start: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-spotlight, .demo-tour { transition: none; }
+}
+
+/* Below the size the app needs. */
+.demo-small { max-inline-size: 640px; margin: 0 auto; padding: 48px 24px; display: grid; gap: 16px; color: var(--ink-primary); font: 400 16px/1.55 var(--font-text); }
+.demo-small__eyebrow { margin: 0; color: var(--ink-tertiary); font: 500 12px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.demo-small__title { margin: 0; font: 500 32px/1.15 var(--font-display); }
+.demo-small__body { margin: 0; color: var(--ink-secondary); }
+.demo-small__film { inline-size: 100%; border-radius: 10px; background: var(--surface-sunken); aspect-ratio: 16 / 9; }
+.demo-small__links { margin: 0; }
+.demo-small__links a { color: var(--accent-text); }
