@@ -26,8 +26,8 @@ const BASE = "/demo/";
 const SITE_BASE = `${BASE}site/`;
 
 /** Photographs are shown in a preview frame, not full screen: this is plenty, and keeps the demo small. */
-const IMAGE_BOX = 1200;
-const IMAGE_QUALITY = 60;
+const IMAGE_BOX = 1000;
+const IMAGE_QUALITY = 58;
 /** Files of the built site the demo never shows. */
 const LEAVE_OUT = [/\.md$/, /^llms(-full)?\.txt$/, /^robots\.txt$/, /^sitemap\.xml$/];
 
@@ -101,7 +101,7 @@ async function buildSampleSite() {
     for (const name of readdirSync(join(starter, folder)).filter((file) => file.endsWith(".webp"))) {
       const to = join(publicDir, "repo", folder, name);
       mkdirSync(dirname(to), { recursive: true });
-      await sharp(join(starter, folder, name)).resize({ width: 640, withoutEnlargement: true }).webp({ quality: 70 }).toFile(to);
+      await sharp(join(starter, folder, name)).resize({ width: 480, withoutEnlargement: true }).webp({ quality: 62 }).toFile(to);
     }
   }
   copyFileSync(join(web, "public/theme.js"), join(publicDir, "theme.js"));
