@@ -30,7 +30,7 @@ function NoForms({ siteId }: { siteId: string }) {
     <div className="kit-screen">
       <div className="app-screen">
         <div className="app-screen__inner">
-          <PageHeader eyebrow="Site" title="Forms" />
+          <PageHeader title="Forms" />
           <SetupState feature="forms" />
         </div>
       </div>

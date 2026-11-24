@@ -464,7 +464,7 @@ export function InboxScreen() {
   if (forms.loading) {
     return (
       <div className="app-screen">
-        <div className="app-screen__inner app-screen__inner--wide" aria-busy="true">
+        <div className="app-screen__inner" aria-busy="true">
           <Skeleton width={160} height={28} />
           <Skeleton lines={6} style={{ marginBlockStart: 24 }} />
         </div>
@@ -481,7 +481,7 @@ export function InboxScreen() {
   if (!list.length) {
     return (
       <div className="app-screen">
-        <div className="app-screen__inner app-screen__inner--wide">{header}</div>
+        <div className="app-screen__inner">{header}</div>
         <NoForms siteId={siteId} settings={capture.data} />
       </div>
     );
@@ -557,7 +557,7 @@ export function InboxScreen() {
 
   return (
     <div className="app-screen app-inbox-screen">
-      <div className="app-screen__inner app-screen__inner--wide app-inbox-wrap">
+      <div className="app-screen__inner app-inbox-wrap">
         {header}
         {capture.data && !capture.data.captureReachable && !noneYet ? (
           <div className="app-inbox__reach">

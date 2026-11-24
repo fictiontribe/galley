@@ -76,7 +76,7 @@
 .plg-summary { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 .plg-summary__text { flex: 1; min-inline-size: 240px; margin: 0; color: var(--ink-secondary); font-size: var(--text-sm); }
 
-@media (max-width: 760px) {
+@container page (max-width: 639px) {
   .plg-add { grid-template-columns: minmax(0, 1fr); }
   .plg-card { padding: var(--space-3) var(--space-4); }
   .plg-card__head { flex-wrap: wrap; }

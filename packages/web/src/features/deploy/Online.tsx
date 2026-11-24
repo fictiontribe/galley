@@ -265,6 +265,7 @@ export function OnlineScreen() {
     <div className="app-screen">
       <div className="app-screen__inner">
         <PageHeader title="Online" description={mayPublish ? "Where the site lives on the internet. What’s live is what you’ve published; a preview link shows unpublished changes too." : "Where the site lives on the internet. What’s live is what an editor or owner has published."} />
+        <h2 className="app-section__title deploy-list__title deploy-list__title--first">The site</h2>
         <OnlineCard siteId={siteId} variant="settings" listLink={false} />
         <EditorOnlineSection siteId={siteId} />
         <h2 className="app-section__title deploy-list__title">Deployments</h2>
@@ -273,7 +274,9 @@ export function OnlineScreen() {
         ) : list.status === "error" && !list.data ? (
           <ErrorState compact title="Couldn’t load the deployments" error={list.error} onRetry={() => void list.refetch()} />
         ) : items.length === 0 ? (
-          <EmptyState compact title="Nothing put online yet." body="Each time the site goes live or a preview link is made, it’s listed here." mark="reg" />
+          <div className="app-card">
+            <EmptyState compact title="Nothing put online yet." body="Each time the site goes live or a preview link is made, it’s listed here." mark="reg" />
+          </div>
         ) : (
           <ul className="app-card deploy-list">
             {items.map((item) => (

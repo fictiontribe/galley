@@ -67,7 +67,8 @@ function issuesOf(list: Redirect[]): RedirectIssue[] {
 export function createMockRedirects(emit: (event: ServerEvent) => void, upsertJob: (job: Job) => void) {
   const states = new Map<string, State>();
   const state = (siteId: string): State => {
-    if (!states.has(siteId)) states.set(siteId, { list: [...SEED], host: null, version: 1, applied: null, appliedVersion: 0, jobId: null });
+    // The handbook starts with none, so the empty list and the host chooser beside it can be seen.
+    if (!states.has(siteId)) states.set(siteId, { list: siteId.startsWith("handbook") ? [] : [...SEED], host: null, version: 1, applied: null, appliedVersion: 0, jobId: null });
     return states.get(siteId)!;
   };
 

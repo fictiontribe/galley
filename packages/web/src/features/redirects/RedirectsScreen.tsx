@@ -82,7 +82,7 @@ export function RedirectsScreen() {
   if (query.loading) {
     return (
       <div className="app-screen" aria-busy="true">
-        <div className="app-screen__inner app-screen__inner--wide">
+        <div className="app-screen__inner">
           <Skeleton width={220} height={32} />
           <Skeleton lines={8} style={{ marginBlockStart: 24 }} />
         </div>
@@ -134,7 +134,7 @@ export function RedirectsScreen() {
 
   return (
     <div className="app-screen">
-      <div className="app-screen__inner app-screen__inner--wide redir-screen">
+      <div className="app-screen__inner redir-screen">
         <PageHeader
           title="Redirects"
           description="When a page moves, a redirect sends visitors and search engines from its old address to the new one."

@@ -40,7 +40,7 @@
 .app-media .app-page-header { margin-block-end: var(--space-5); }
 .app-media__layout { flex: 1; min-block-size: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-6); }
 .app-media__layout > .app-library { min-block-size: 0; }
-@media (max-width: 1100px) { .app-media__layout { grid-template-columns: 1fr; } }
+@container page (max-width: 899px) { .app-media__layout { grid-template-columns: 1fr; } }
 .app-media-details { display: grid; gap: var(--space-4); align-content: start; align-self: start; padding: var(--space-4); border: var(--border-hair) solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-raised); position: sticky; inset-block-start: 0; max-block-size: 100%; overflow-y: auto; }
 .app-media-details__preview { display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: var(--radius-sm); overflow: hidden; border: var(--border-hair) solid var(--border-subtle); background: var(--surface-sunken) repeating-conic-gradient(color-mix(in srgb, var(--ink-primary) 5%, transparent) 0 25%, transparent 0 50%) 0 0 / 14px 14px; }
 .app-media-details__preview img { inline-size: 100%; block-size: 100%; object-fit: contain; }
