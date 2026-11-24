@@ -1,15 +1,20 @@
 /* Redirects. Tokens only (brand/tokens.css); light and dark come from them. */
 
 .redir-screen { display: grid; gap: var(--space-6); }
-.redir-layout { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 22vw, 340px); gap: var(--space-6); align-items: start; }
-@media (max-width: 1100px) { .redir-layout { grid-template-columns: minmax(0, 1fr); } }
-.redir-main { display: grid; gap: var(--space-3); min-inline-size: 0; }
+/* The header keeps the same room under it as on every other screen (the grid gap adds the rest). */
+.redir-screen > .app-page-header { margin-block-end: var(--space-2); }
+.redir-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-6); align-items: start; }
+@container page (max-width: 899px) { .redir-layout { grid-template-columns: minmax(0, 1fr); } }
+.redir-main { display: grid; gap: var(--space-3); min-inline-size: 0; container: list / inline-size; }
 .redir-aside { display: grid; gap: var(--space-4); min-inline-size: 0; position: sticky; inset-block-start: 0; }
-@media (max-width: 1100px) { .redir-aside { position: static; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); } }
+@container page (max-width: 899px) { .redir-aside { position: static; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; } }
 
 /* Toolbar */
 .redir-toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .redir-toolbar > .g-input { flex: 1 1 220px; max-inline-size: 360px; }
+/* The filter as wide as its words and as tall as the search beside it, so "Add one" stays on the line. */
+.redir-toolbar > .g-select-wrap { flex: none; inline-size: auto; }
+.redir-toolbar .g-select { block-size: var(--control-height-sm); font-size: var(--text-sm); }
 .redir-toolbar__count { margin-inline-start: auto; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 
 /* The table: one grid for the head, the rows and the row editor, so columns line up. */
@@ -17,7 +22,7 @@
 .redir-table__head, .redir-row, .redir-edit {
   display: grid; align-items: center; column-gap: var(--space-3);
   /* The addresses take the room; the kind and "came from" stay narrow (the full address shows on hover and focus). */
-  grid-template-columns: 20px minmax(0, 1.25fr) 16px minmax(0, 1fr) 96px minmax(0, 88px) 64px;
+  grid-template-columns: 20px minmax(0, 1.25fr) 16px minmax(0, 1fr) 96px minmax(0, 120px) 64px;
   padding-inline: var(--space-3);
 }
 .redir-edit { grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr) 176px minmax(0, 0.8fr) auto; padding-block: var(--space-2); }
@@ -54,13 +59,16 @@
 .redir-address__path { color: var(--ink-primary); }
 .redir-arrow { color: var(--ink-tertiary); text-align: center; }
 .redir-kind { white-space: nowrap; color: var(--ink-primary); }
+/* Small enough that "WordPress import" and the other sources fit their column whole. */
+.redir-row > .redir-col--source { font-size: var(--text-sm); }
 .redir-kind__code { color: var(--ink-tertiary); font-size: var(--text-xs); }
 .redir-table__foot { margin: 0; padding: var(--space-2) var(--space-3); border-block-start: var(--border-hair) solid var(--border-subtle); }
-@media (max-width: 1280px) {
+/* The table's columns follow the list's own width. */
+@container list (max-width: 679px) {
   .redir-table__head, .redir-row { grid-template-columns: 20px minmax(0, 1.25fr) 16px minmax(0, 1fr) 96px 64px; }
   .redir-col--source { display: none; }
 }
-@media (max-width: 760px) {
+@container list (max-width: 559px) {
   .redir-table__head, .redir-row { grid-template-columns: 20px minmax(0, 1fr) 16px minmax(0, 1fr) 64px; }
   .redir-col--source, .redir-table__head > :nth-child(5), .redir-row > :nth-child(5) { display: none; }
   .redir-edit { grid-template-columns: minmax(0, 1fr); }
@@ -106,9 +114,9 @@
 
 .redir-exports ul { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
-.redir-hosts { margin: 0; padding: 0; border: 0; display: grid; gap: var(--space-2); min-inline-size: 0; }
-.redir-hosts > legend { margin-block-end: var(--space-1); }
-.redir-hosts__options { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.redir-hosts { display: grid; gap: var(--space-2); min-inline-size: 0; }
+/* One host to a row: four choices read as a list. Two across left each about 130 px wide in the side column, and their words broke one at a time. */
+.redir-hosts__options { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); margin-block-start: var(--space-1); }
 .redir-host {
   display: grid; gap: var(--space-1); text-align: start; padding: var(--space-3); cursor: pointer;
   border: var(--border-hair) solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink-primary); font: inherit;
@@ -120,7 +128,7 @@
 .redir-host--suggested { border-color: var(--accent-line); }
 .redir-host--on { border-color: var(--accent); background: var(--accent-subtle); }
 .redir-host__name { display: flex; gap: var(--space-2); align-items: center; font-weight: var(--weight-semibold); }
-.redir-host__blurb { color: var(--ink-secondary); font-size: var(--text-xs); line-height: var(--leading-sm); }
+.redir-host__blurb { color: var(--ink-secondary); font-size: var(--text-sm); line-height: var(--leading-sm); }
 @media (prefers-reduced-motion: reduce) { .redir-host, .redir-host:hover:not(:disabled) { transition: none; transform: none; } }
 
 .redir-cf { display: grid; gap: var(--space-2); justify-items: start; padding-block-start: var(--space-3); border-block-start: var(--border-hair) solid var(--border-subtle); }

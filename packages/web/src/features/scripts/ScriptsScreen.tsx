@@ -70,16 +70,18 @@ function Installed({ open, setOpen, onAdd, warned }: { open: ReadonlySet<number>
   };
   if (list.length === 0) {
     return (
-      <EmptyState
-        compact
-        title="No scripts yet."
-        body={`Add analytics, a tag manager, ad tracking or a chat widget. Nothing loads until ${publishes}.`}
-        actions={
-          <Button variant="primary" icon="plus" onClick={onAdd}>
-            Add a script
-          </Button>
-        }
-      />
+      <div className="app-card">
+        <EmptyState
+          title="No scripts yet."
+          body={`Add analytics, a tag manager, ad tracking or a chat widget. Nothing loads until ${publishes}.`}
+          mark="caret"
+          actions={
+            <Button variant="primary" icon="plus" onClick={onAdd}>
+              Add a script
+            </Button>
+          }
+        />
+      </div>
     );
   }
   return (
@@ -122,18 +124,20 @@ function ScriptsBody({ siteId, entry }: { siteId: string; entry: Entry }) {
 
   return (
     <div className="app-screen kit-scripts-screen">
-      <div className="app-screen__inner app-screen__inner--wide">
+      <div className="app-screen__inner">
         <PageHeader
-          eyebrow="Site"
           title="Scripts"
           description={`Analytics, tags and widgets the site loads. Adding or changing one is powerful, so every change waits in Proof like any other until ${publishes}.`}
           actions={
-            <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>
-              Add a script
-            </Button>
+            // While the list is empty, its own empty state offers this.
+            config.scripts.length > 0 ? (
+              <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>
+                Add a script
+              </Button>
+            ) : null
           }
         />
-        <AskBox subject="scripts" context={`About the scripts setup in ${entry.path}:`} examples={EXAMPLES} placeholder="Add GA4 with ID G-… and only load it after consent" />
+        <AskBox layout="line" subject="scripts" context={`About the scripts setup in ${entry.path}:`} examples={EXAMPLES} placeholder="Add GA4 with ID G-… and only load it after consent" />
         <SetupLeftNotice step="layout" />
         <ConflictNotice fields={entry.fields} noun={fileNoun(model, entry.collection)} />
         <SaveErrorNotice />
@@ -197,7 +201,7 @@ export function ScriptsScreen() {
     body = (
       <div className="app-screen">
         <div className="app-screen__inner">
-          <PageHeader eyebrow="Site" title="Scripts" />
+          <PageHeader title="Scripts" />
           <SetupState feature="scripts" />
         </div>
       </div>

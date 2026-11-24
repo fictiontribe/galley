@@ -21,7 +21,7 @@
 .seo-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: var(--space-6); align-items: start; }
 .seo-layout__main { display: grid; gap: var(--space-3); min-inline-size: 0; }
 .seo-layout__side { display: grid; gap: var(--space-4); }
-@media (max-width: 1240px) {
+@container page (max-width: 899px) {
   .seo-layout { grid-template-columns: minmax(0, 1fr); }
 }
 .seo-side__title { margin: 0; font: var(--weight-semibold) var(--text-md) / var(--leading-heading) var(--font-text); color: var(--ink-primary); }

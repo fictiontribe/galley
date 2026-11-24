@@ -2,8 +2,9 @@
 // The film: its poster first, nothing of the video loaded until someone
 // presses play; then it plays with controls and English captions. Chapters
 // jump to a point in it.
+import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { webpSize } from "../../lib/media";
+import { noteMissing, webpSize } from "../../lib/media";
 import { inline } from "../../lib/markdown";
 import { fill } from "../../lib/site";
 import Glyph from "../Glyph.astro";
@@ -13,7 +14,15 @@ const { s, block, first } = Astro.props;
 const H = first ? "h1" : "h2";
 const hid = `${s.id ?? "film"}-h`;
 const base = `/video/${s.video}`;
-const poster = webpSize(join(process.cwd(), "public", "video", `${s.video}-poster.webp`));
+// A film section just added in the editor names no film yet. It then shows its
+// words, and in the preview a place where the film will go, instead of failing the page.
+const posterFile = s.video ? join(process.cwd(), "public", "video", `${s.video}-poster.webp`) : "";
+const poster = posterFile && existsSync(posterFile) ? webpSize(posterFile) : null;
+if (!poster) {
+  if (s.video) noteMissing(`video/${s.video}-poster`, "the film section shows its words without a film");
+  else console.warn("[site] A film section names no video: it shows its words without a film.");
+}
+const empty = !poster && import.meta.env.DEV;
 ---
 
 <section class:list={["section wrap", s.layout === "wide" && "film--wide"]} id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
@@ -24,14 +33,18 @@ const poster = webpSize(join(process.cwd(), "public", "video", `${s.video}-poste
           <H class="h2" id={hid} set:html={inline(s.heading)} />
           <p class="lead">{fill(s.text)}</p>
         </div>
-        <div class="film__screen">
-          <video preload="none" playsinline controls poster={`${base}-poster.webp`} width={poster.width / 2} height={poster.height / 2} aria-label={s.title} data-film-video>
-            <source src={`${base}.webm`} type="video/webm" />
-            <source src={`${base}.mp4`} type="video/mp4" />
-            <track kind="captions" src={`${base}.en.vtt`} srclang="en" label={s.captions} default />
-          </video>
-        </div>
-        {s.chapters.length > 0 && (
+        {poster ? (
+          <div class="film__screen">
+            <video preload="none" playsinline controls poster={`${base}-poster.webp`} width={poster.width / 2} height={poster.height / 2} aria-label={s.title} data-film-video>
+              <source src={`${base}.webm`} type="video/webm" />
+              <source src={`${base}.mp4`} type="video/mp4" />
+              <track kind="captions" src={`${base}.en.vtt`} srclang="en" label={s.captions} default />
+            </video>
+          </div>
+        ) : (
+          empty && <p class="film__screen film__empty">This section has no film yet. Add its video in the form.</p>
+        )}
+        {poster && s.chapters.length > 0 && (
           <ol class="film__steps" aria-label={s.chaptersLabel}>
             {s.chapters.map((c: { label: string; icon?: string; time: number; text?: string }, i: number) => (
               <li>
@@ -60,15 +73,19 @@ const poster = webpSize(join(process.cwd(), "public", "video", `${s.video}-poste
         {s.transcript && <a class="link" href={fill(s.transcript.href)}>{s.transcript.label}</a>}
       </div>
       <div data-film>
-        <div class="film__screen">
-          <video preload="none" playsinline controls poster={`${base}-poster.webp`} width={poster.width / 2} height={poster.height / 2} aria-label={s.title} data-film-video>
-            <source src={`${base}.webm`} type="video/webm" />
-            <source src={`${base}.mp4`} type="video/mp4" />
-            <track kind="captions" src={`${base}.en.vtt`} srclang="en" label={s.captions} default />
-          </video>
-        </div>
+        {poster ? (
+          <div class="film__screen">
+            <video preload="none" playsinline controls poster={`${base}-poster.webp`} width={poster.width / 2} height={poster.height / 2} aria-label={s.title} data-film-video>
+              <source src={`${base}.webm`} type="video/webm" />
+              <source src={`${base}.mp4`} type="video/mp4" />
+              <track kind="captions" src={`${base}.en.vtt`} srclang="en" label={s.captions} default />
+            </video>
+          </div>
+        ) : (
+          empty && <p class="film__screen film__empty">This section has no film yet. Add its video in the form.</p>
+        )}
         {
-          s.chapters.length > 0 && (
+          poster && s.chapters.length > 0 && (
             <ol class="chapters" aria-label={s.chaptersLabel}>
               {s.chapters.map((c: { label: string; time: number }) => (
                 <li>
@@ -86,3 +103,17 @@ const poster = webpSize(join(process.cwd(), "public", "video", `${s.video}-poste
     )
   }
 </section>
+
+<style>
+  .film__empty {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 16 / 9;
+    margin: 0;
+    padding: 1.5rem;
+    background: none;
+    border: 1px dashed currentColor;
+    text-align: center;
+    opacity: 0.7;
+  }
+</style>
