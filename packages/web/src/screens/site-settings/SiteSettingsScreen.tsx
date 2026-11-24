@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import { PRODUCT } from "@galley/core/brand";
 import type { GalleyConfig, PublishMode, SiteModel } from "@galley/core/types";
@@ -101,7 +102,10 @@ function PublishModeChoice({ value, detected, onChange }: { value: PublishMode |
   );
 }
 
-function SettingsForm({ siteId, model, config }: { siteId: string; model: SiteModel; config: GalleyConfig | null }) {
+/** The form's id, for the Save button that sits outside it, below the scrolling part of the screen. */
+const SETTINGS_FORM = "site-settings-form";
+
+function SettingsForm({ siteId, model, config, foot }: { siteId: string; model: SiteModel; config: GalleyConfig | null; foot: HTMLElement | null }) {
   // `model` is what detection found, before the settings file is applied.
   const initial = useMemo<Draft>(() => config ?? {}, [config]);
   const [draft, setDraft] = useState<Draft>(initial);
@@ -137,7 +141,7 @@ function SettingsForm({ siteId, model, config }: { siteId: string; model: SiteMo
 
   const instructions = draft.ai?.instructions;
   return (
-    <form className="app-settings__sections" onSubmit={save}>
+    <form id={SETTINGS_FORM} className="app-settings__sections" onSubmit={save}>
       <Group title="Addresses" description="Where the site is published. The staging address powers the side-by-side comparison in the editor and in Proof: your changes beside what’s on staging now.">
         <Field label="Live site" fieldKey="urls.production" hint={<OverrideHint overridden={draft.urls?.production !== undefined} detected={model.urls.production} onClear={() => set(["urls", "production"], undefined)} hint="The address visitors use" />}>
           <Input type="url" mono value={draft.urls?.production ?? ""} placeholder={model.urls.production ?? "https://www.example.com"} onChange={(event) => set(["urls", "production"], event.target.value.trim())} />
@@ -247,23 +251,31 @@ function SettingsForm({ siteId, model, config }: { siteId: string; model: SiteMo
       </Group>
 
       {saveError ? <ErrorState compact title="Couldn’t save the settings" error={saveError} /> : null}
-      <div className="app-savebar app-savebar--then-more">
-        <span className="g-hint">{dirty ? "You have unsaved settings." : "Everything is saved."}</span>
-        <Button
-          variant="quiet"
-          disabled={!dirty || saving}
-          onClick={() => {
-            setDraft(initial);
-            setPortText(initial.dev?.port?.toString() ?? "");
-            setPortError(null);
-          }}
-        >
-          Reset
-        </Button>
-        <Button type="submit" variant="primary" disabled={!dirty || Boolean(portError)} busy={saving} busyLabel="Saving">
-          Save settings
-        </Button>
-      </div>
+      {/* The bar lives below the scrolling part, not over it (see .app-screen-frame): no heading ever rests under it. */}
+      {foot
+        ? createPortal(
+            <div className="app-savebar" role="region" aria-label="Save the site settings">
+              <div className="app-savebar__inner">
+                <span className="g-hint">{dirty ? "You have unsaved settings." : "Everything is saved."}</span>
+                <Button
+                  variant="quiet"
+                  disabled={!dirty || saving}
+                  onClick={() => {
+                    setDraft(initial);
+                    setPortText(initial.dev?.port?.toString() ?? "");
+                    setPortError(null);
+                  }}
+                >
+                  Reset
+                </Button>
+                <Button type="submit" form={SETTINGS_FORM} variant="primary" disabled={!dirty || Boolean(portError)} busy={saving} busyLabel="Saving">
+                  Save settings
+                </Button>
+              </div>
+            </div>,
+            foot,
+          )
+        : null}
     </form>
   );
 }
@@ -276,6 +288,7 @@ export function SiteSettingsScreen() {
   const config = useQuery(keys.config(siteId), () => api("GET /api/sites/:siteId/config", { params: { siteId } }));
   useScrollToHash(Boolean(config.data));
   const [detecting, setDetecting] = useState(false);
+  const [foot, setFoot] = useState<HTMLDivElement | null>(null);
 
   const detect = async () => {
     setDetecting(true);
@@ -292,33 +305,36 @@ export function SiteSettingsScreen() {
   };
 
   return (
-    <div className="app-screen">
-      <div className="app-screen__inner">
-        <PageHeader
-          title="Site settings"
-          description="Everything here was worked out from the site itself. Change only what needs correcting; empty fields keep the detected value shown in grey."
-          actions={
-            <Button variant="secondary" icon="refresh" busy={detecting} busyLabel="Reading the site" onClick={() => void detect()}>
-              Detect again
-            </Button>
-          }
-        />
-        {!detail || config.loading ? (
-          <div aria-busy="true">
-            {[0, 1, 2].map((index) => (
-              <Skeleton key={index} height={120} style={{ marginBlockEnd: "var(--space-6)" }} />
-            ))}
-          </div>
-        ) : config.status === "error" && !config.data ? (
-          <ErrorState title="Couldn’t read the site’s settings file" error={config.error} onRetry={() => void config.refetch()} />
-        ) : (
-          // Older servers send no `detected`; the site's model is the closest stand-in.
-          <SettingsForm siteId={siteId} model={config.data?.detected ?? detail.model} config={config.data?.config ?? null} />
-        )}
-        {/* Saved as it changes, outside the settings file: keys never go into the site. */}
-        {detail ? <ConnectionsSection siteId={siteId} /> : null}
-        {detail ? <SitePluginsSummary siteId={siteId} /> : null}
+    <div className="app-screen-frame">
+      <div className="app-screen">
+        <div className="app-screen__inner">
+          <PageHeader
+            title="Site settings"
+            description="Everything here was worked out from the site itself. Change only what needs correcting; empty fields keep the detected value shown in grey."
+            actions={
+              <Button variant="secondary" icon="refresh" busy={detecting} busyLabel="Reading the site" onClick={() => void detect()}>
+                Detect again
+              </Button>
+            }
+          />
+          {!detail || config.loading ? (
+            <div aria-busy="true">
+              {[0, 1, 2].map((index) => (
+                <Skeleton key={index} height={120} style={{ marginBlockEnd: "var(--space-6)" }} />
+              ))}
+            </div>
+          ) : config.status === "error" && !config.data ? (
+            <ErrorState title="Couldn’t read the site’s settings file" error={config.error} onRetry={() => void config.refetch()} />
+          ) : (
+            // Older servers send no `detected`; the site's model is the closest stand-in.
+            <SettingsForm siteId={siteId} model={config.data?.detected ?? detail.model} config={config.data?.config ?? null} foot={foot} />
+          )}
+          {/* Saved as it changes, outside the settings file: keys never go into the site. */}
+          {detail ? <ConnectionsSection siteId={siteId} /> : null}
+          {detail ? <SitePluginsSummary siteId={siteId} /> : null}
+        </div>
       </div>
+      <div className="app-screen-frame__foot" ref={setFoot} />
     </div>
   );
 }

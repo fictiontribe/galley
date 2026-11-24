@@ -238,6 +238,10 @@ html, body { overflow: hidden; }
 .app-menu .g-menu__item:disabled { color: var(--ink-disabled); cursor: not-allowed; background: none; }
 
 .app-toast-region { align-items: end; justify-items: end; }
+/* Notifications sit in room of their own (ToastViewport's toastRoom): the screen gives up the height of the stack at its
+   foot while they show, so they never cover a control, a bar that sticks to the screen's foot, or the status bar below. */
+.app-content { padding-block-end: var(--toast-room, 0px); }
+:root:has(.app-frame) .app-toast-region { inset-block-end: calc(var(--statusbar-height) + var(--space-2)); }
 .app-toast .g-toast__actions { gap: 2px; }
 .app-job .g-dots { font-size: 14px; margin-block-start: 4px; }
 .app-job--done > .g-mark { color: var(--success); }
@@ -474,6 +478,8 @@ html, body { overflow: hidden; }
 .app-screen__inner > .app-settings__sections { margin-block-start: 0; }
 .app-settings__section { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); padding-block: var(--space-8); border-block-start: var(--border-hair) solid var(--border-default); scroll-margin-block-start: var(--space-6); }
 .app-settings__section:first-child { border-block-start: 0; padding-block-start: 0; }
+/* A second group of sections (site settings' Connections, after the form) keeps the rule and the room between sections. */
+.app-settings__sections + .app-settings__sections > .app-settings__section:first-child { border-block-start: var(--border-hair) solid var(--border-default); padding-block-start: var(--space-8); }
 .app-settings__section-head { display: grid; gap: var(--space-1); }
 .app-settings__section-title { margin: 0; font: var(--weight-medium) var(--text-xl) / var(--leading-xl) var(--font-display); letter-spacing: var(--tracking-heading); }
 .app-settings__section-text { margin: 0; color: var(--ink-secondary); max-inline-size: 62ch; }
@@ -531,15 +537,16 @@ html, body { overflow: hidden; }
 .app-config-file { border-radius: var(--radius-md); border: var(--border-hair) solid var(--border-default); overflow: hidden; }
 .app-config-file__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-block-end: var(--border-hair) solid var(--border-subtle); background: var(--surface-raised); font-size: var(--text-xs); }
 .app-config-file__body { margin: 0; padding: var(--space-3) var(--space-4); max-block-size: 320px; overflow: auto; background: var(--surface-sunken); color: var(--ink-secondary); font: var(--text-xs) / 1.6 var(--font-mono); white-space: pre; }
-/* Sticky to the scroller's real bottom edge, past the screen's bottom padding. */
-.app-savebar { position: sticky; inset-block-end: calc(var(--space-16) * -1); z-index: var(--z-sticky); display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-block: var(--space-4) calc(var(--space-16) * -1); padding: var(--space-3) 0 var(--space-4); border-block-start: var(--border-hair) solid var(--border-default); background: var(--surface-paper); }
+/* A screen with a bar of its own (site settings' Save) is the scrolling part and the bar below it. The bar takes real
+   space at the foot instead of floating over the content, so a heading can't come to rest half under it at any size:
+   a sticky bar over the scroller cut through whatever heading the fold fell on, and no scroll padding changes that. */
+.app-screen-frame { display: flex; flex-direction: column; min-block-size: 0; min-inline-size: 0; }
+.app-screen-frame > .app-screen { flex: 1; min-block-size: 0; }
+.app-screen-frame__foot { flex: none; }
+/* Its own gutter matches the scroller's, so the buttons line up with the column above. */
+.app-savebar { padding: var(--space-3) clamp(var(--space-6), 4vw, var(--space-12)); border-block-start: var(--border-hair) solid var(--border-default); background: var(--surface-paper); overflow: hidden; scrollbar-gutter: stable; }
+.app-savebar__inner { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); max-inline-size: 880px; margin-inline: auto; }
 .app-savebar .g-hint { margin-inline-end: auto; }
-/* Where more sections follow the form (site settings), the bar's pull into the screen's bottom padding would slide the next heading under it. */
-.app-savebar--then-more { margin-block-end: var(--space-8); }
-/* What scrolls into view (a section from the nav, a field reached with Tab) stops clear of the bar, at any width: the bar is one line, 61px. */
-.app-screen:has(.app-savebar) { scroll-padding-block-end: calc(var(--space-16) + var(--space-4)); }
-/* Text passing under the bar fades out above it rather than being cut through mid-line. */
-.app-savebar::before { content: ""; position: absolute; inset-inline: 0; inset-block-end: 100%; block-size: var(--space-6); background: linear-gradient(to bottom, transparent, var(--surface-paper)); pointer-events: none; }
 
 /* --------------------------------------------------------------------------
    Login

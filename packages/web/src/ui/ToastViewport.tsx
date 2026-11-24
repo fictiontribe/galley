@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useToasts, type Toast } from "@/lib/stores/toasts";
 import { Button, IconButton } from "./Button";
 import { ProofMark, type MarkKind } from "./ProofMark";
@@ -65,55 +65,42 @@ export interface ToastViewportProps {
 }
 
 /**
- * How far the toasts rise so they never cover a bar that stays at the foot of
- * the screen with buttons in it (marked `data-keep-clear`, like the unsaved
- * crawler choices): the height of the tallest such bar on screen under the
- * toasts' corner. Measured only while there are toasts.
+ * The room the stack takes at the foot of the screen, as a CSS length: its
+ * height and a gap above and below. The screen gives up that much of its
+ * height while notifications show (`.app-content`), so they sit in space of
+ * their own. Floating over the screen they covered whatever was at its foot
+ * — a confirm bar, a crawler's switch, a status-bar link — and lifting them
+ * over the bars a screen marked only moved them onto the controls above.
  */
-function useKeepClear(active: boolean, region: RefObject<HTMLDivElement | null>): number {
-  const [lift, setLift] = useState(0);
-
-  useEffect(() => {
-    if (!active) {
-      setLift(0);
-      return;
-    }
-    let frame = 0;
-    const measure = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const left = region.current?.getBoundingClientRect().left ?? window.innerWidth;
-        let next = 0;
-        for (const bar of document.querySelectorAll<HTMLElement>("[data-keep-clear]")) {
-          const box = bar.getBoundingClientRect();
-          if (box.height === 0 || box.bottom <= 0 || box.top >= window.innerHeight || box.right <= left) continue;
-          next = Math.max(next, window.innerHeight - box.top);
-        }
-        setLift(next);
-      });
-    };
-    measure();
-    const changes = new MutationObserver(measure);
-    changes.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener("scroll", measure, true);
-    window.addEventListener("resize", measure);
-    return () => {
-      cancelAnimationFrame(frame);
-      changes.disconnect();
-      window.removeEventListener("scroll", measure, true);
-      window.removeEventListener("resize", measure);
-    };
-  }, [active, region]);
-  return lift;
+export function toastRoom(stackHeight: number): string {
+  return stackHeight > 0 ? `calc(${Math.ceil(stackHeight)}px + var(--space-2) * 2)` : "0px";
 }
 
-/** Bottom-right stack for toasts. Successes leave after 6 s (paused on hover/focus); errors and toasts with an action stay unless given a duration. */
+/** Keeps `--toast-room` on the document in step with the stack's height. */
+function useToastRoom(region: RefObject<HTMLDivElement | null>): void {
+  useLayoutEffect(() => {
+    const element = region.current;
+    const root = document.documentElement;
+    if (!element) return;
+    const measure = () => root.style.setProperty("--toast-room", toastRoom(element.getBoundingClientRect().height));
+    measure();
+    if (typeof ResizeObserver === "undefined") return () => root.style.removeProperty("--toast-room");
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--toast-room");
+    };
+  }, [region]);
+}
+
+/** Bottom-right stack for toasts, in room of its own at the foot of the screen (see `toastRoom`). Successes leave after 6 s (paused on hover/focus); errors and toasts with an action stay unless given a duration. */
 export function ToastViewport({ children }: ToastViewportProps) {
   const toasts = useToasts((s) => s.toasts);
   const region = useRef<HTMLDivElement>(null);
-  const lift = useKeepClear(toasts.length > 0, region);
+  useToastRoom(region);
   return (
-    <div ref={region} className="g-toast-region app-toast-region" aria-label="Notifications" style={lift ? { insetBlockEnd: `calc(${lift}px + var(--space-2))` } : undefined}>
+    <div ref={region} className="g-toast-region app-toast-region" aria-label="Notifications">
       {children}
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} />

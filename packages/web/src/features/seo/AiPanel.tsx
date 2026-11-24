@@ -3,6 +3,7 @@ import type { AgentReadableReport, AgentView, CrawlerChoice, CrawlerReport, Craw
 import { agentFileTarget, PreviewTabLink } from "@/features/hosting/previewLinks";
 import { api } from "@/lib/api";
 import { useMeta } from "@/lib/stores/meta";
+import { useNameOf } from "@/lib/names";
 import { useQuery } from "@/lib/query";
 import { useSite } from "@/lib/stores/site";
 import { usePreviewStatus } from "@/lib/stores/preview";
@@ -132,7 +133,7 @@ export function CrawlerPanel({ siteId, report, onSaved }: { siteId: string; repo
       {report.editable && !editable ? <p className="seo-panel__note">{CRAWLERS_BY_OTHERS}</p> : null}
       {editable && pending ? (
         // Stays in view at the foot of the screen while choices are waiting, so the confirm step is next to the switch just used.
-        <div className="seo-savebar" role="region" aria-label="Unsaved crawler choices" data-keep-clear>
+        <div className="seo-savebar" role="region" aria-label="Unsaved crawler choices">
           <p className="seo-savebar__text" role="status">
             <b>{pending.title}</b> {pending.detail}
           </p>
@@ -164,7 +165,8 @@ export function AgentPanel({ siteId, report }: { siteId: string; report: AgentRe
 
     return all.flatMap((list) => list.items).filter((item) => item.url);
   }, { enabled: collections.length > 0 });
-  const options = useMemo(() => (lists.data ?? []).map((item) => ({ value: item.url!, label: `${item.title} · ${item.url}` })), [lists.data]);
+  const name = useNameOf();
+  const options = useMemo(() => (lists.data ?? []).map((item) => ({ value: item.url!, label: `${name(item)} · ${item.url}` })), [lists.data, name]);
   const [url, setUrl] = useState("/");
   const previewUrl = usePreviewStatus(siteId)?.url ?? null;
   // On a hosted install the preview opens through its entry (features/hosting/previewLinks.tsx).

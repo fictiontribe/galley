@@ -110,6 +110,17 @@ export function safeSourceName(name: string, type: SourceType, mime: string): st
   return `${stem}.${ext}`;
 }
 
+/**
+ * A drawing's size as a person says it, "120 × 40": its width and height, or
+ * its viewBox's when it gives none. The viewBox itself ("0 0 120 40") is a
+ * coordinate system, not words. Null when the drawing names no size.
+ */
+export function svgSizeWords(svg: Pick<SvgSummary, "width" | "height">): string | null {
+  const plain = (n: number) => String(Math.round(n * 10) / 10);
+
+  return svg.width && svg.height ? `${plain(svg.width)} × ${plain(svg.height)}` : null;
+}
+
 /** Deterministic facts, and the plain sentences about them. */
 export function factsOf(type: SourceType, bytes: Uint8Array): { facts: SourceFacts; learned: string[]; pages?: number; width?: number; height?: number } {
   if (type === "pdf") {
@@ -126,7 +137,8 @@ export function factsOf(type: SourceType, bytes: Uint8Array): { facts: SourceFac
   }
   if (type === "svg") {
     const svg = readSvg(Buffer.from(bytes).toString("utf8"));
-    const learned = [`Drawn on a ${svg.viewBox ? `${svg.viewBox} ` : ""}canvas${svg.colors.length ? ` in ${svg.colors.map((color) => color.color).join(", ")}` : ""}.`];
+    const size = svgSizeWords(svg);
+    const learned = [`${size ? `Drawn at ${size}` : "A drawing"}${svg.colors.length ? ` in ${svg.colors.map((color) => color.color).join(", ")}` : ""}.`];
 
     if (svg.active) learned.push("It contained scripts or links, which were left out; it is only ever shown as a picture.");
     return { facts: { svg }, learned, ...(svg.width ? { width: Math.round(svg.width) } : {}), ...(svg.height ? { height: Math.round(svg.height) } : {}) };

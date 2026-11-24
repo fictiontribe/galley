@@ -6,6 +6,7 @@ import { isLayout } from "../logic/fieldTypes";
 import { providerName } from "../logic/providers";
 import { Mark, providerMark } from "../file/Mark";
 import { useMay } from "@/lib/may";
+import { useNameOf } from "@/lib/names";
 
 export interface FormRowProps {
   siteId: string;
@@ -16,6 +17,7 @@ export interface FormRowProps {
 }
 
 function UsedOn({ siteId, pages }: { siteId: string; pages: FormListItem["pages"] }) {
+  const name = useNameOf();
   if (pages.length === 0) return <span className="g-faint">Not used on any page yet</span>;
   return (
     <span>
@@ -24,7 +26,7 @@ function UsedOn({ siteId, pages }: { siteId: string; pages: FormListItem["pages"
         <span key={page.path}>
           {index > 0 ? ", " : ""}
           <Link className="g-link" to={`/sites/${siteId}/edit?path=${encodeURIComponent(page.path)}`}>
-            {page.title}
+            {name(page)}
           </Link>
         </span>
       ))}

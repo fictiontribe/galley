@@ -23,6 +23,15 @@ describe("Search & AI copy", () => {
     expect(pageName(finding("sitemap-missing", {}))).toBeNull();
   });
 
+  it("names a finding's page as the rest of the app does: Home page, a data file's own name, never a path", () => {
+    const stockists = { label: "Stockists", kind: "data" as const, path: "src/data/stockists.json" };
+
+    expect(pageName(finding("link-broken", { path: "src/content/pages/index.md", url: "/", pageTitle: "Caddow — coats and knitwear, made in runs of forty" }))).toBe("Home page");
+    expect(pageName(finding("link-broken", { path: "src/data/stockists.json" }), [stockists])).toBe("Stockists");
+    expect(pageName(finding("link-broken", { path: "src/data/stockists.json" }))).toBe("Stockists");
+    expect(pageName(finding("title-long", { path: "src/content/pages/atelier.md", url: "/atelier/", pageTitle: "The atelier — where the coats are cut" }))).toBe("The atelier");
+  });
+
   it("offers a batch only when more than one page can be written, with the count in the button", () => {
     const one = finding("description-missing", { path: "a.md", field: ["description"], write: "description" });
     const two = finding("description-missing", { path: "b.md", field: ["description"], write: "description" });

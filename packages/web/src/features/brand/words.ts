@@ -1,6 +1,6 @@
 /** Plain words for the Brand screen (brand/voice.md): roles, contrast, evidence, confidence. */
 import type { BrandSource, ColorRole, Confidence, ContrastResult, Evidence, SourceType } from "@galley/core/sitebrand/types";
-import { entryName } from "@/features/preview/clickToEdit";
+import { entryName } from "@/lib/format";
 
 export const ROLE_LABEL: Record<ColorRole, string> = {
   background: "Background",

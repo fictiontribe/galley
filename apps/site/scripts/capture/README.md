@@ -37,7 +37,7 @@ sh apps/site/scripts/capture/start.sh hosted
   (`scripts/rehearse-hosting.mjs`), and writes the variables `galley` needs to
   `$CAPTURE_DIR/hosting.env` (the stand-ins' addresses and the stand-in Fly.io's made-up key). Run
   it before `galley`.
-- `galley` starts the released app (`npx galley-cms@0.3.0`, or `GALLEY_VERSION`) on port 4790, open
+- `galley` starts the released app (`npx galley-cms@0.3.1`, or `GALLEY_VERSION`) on port 4790, open
   on Caddow, pointed at the stand-ins. The key is taken from your shell's `ANTHROPIC_API_KEY` and
   given to that process only; the script reads no key file. Its log
   (`$CAPTURE_DIR/logs/galley.log`) has the `Open:` line with the token.

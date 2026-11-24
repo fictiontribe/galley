@@ -6,6 +6,7 @@ import { useForm } from "../form/context";
 import { asText, useBinding } from "./binding";
 import { placeholderFor, type FieldProps } from "./common";
 import { FieldShell } from "./FieldShell";
+import { useNameOf } from "@/lib/names";
 
 const SEARCH_DELAY_MS = 250;
 
@@ -42,6 +43,7 @@ export function UrlField({ field, path, showKey }: FieldProps) {
   const [active, setActive] = useState(false);
   const text = asText(value);
   const hits = usePageSuggestions(siteId, text, active);
+  const name = useNameOf();
   const listId = useId();
   const external = /^https?:\/\//i.test(text);
   const internal = text.startsWith("/") && !text.startsWith("//");
@@ -66,7 +68,7 @@ export function UrlField({ field, path, showKey }: FieldProps) {
         <datalist id={listId}>
           {hits.map((hit) => (
             <option key={hit.url} value={hit.url ?? ""}>
-              {hit.title}
+              {name(hit)}
             </option>
           ))}
         </datalist>

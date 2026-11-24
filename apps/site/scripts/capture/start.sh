@@ -16,7 +16,7 @@
 #   start.sh stop                stop everything this script started (by PID)
 #
 # CAPTURE_DIR (default /tmp/galley-capture) holds home/, galley-home/, hosted-home/, logs/ and pids/.
-# GALLEY_VERSION (default 0.3.0) is the galley-cms release to run.
+# GALLEY_VERSION (default 0.3.1) is the galley-cms release to run.
 # The assistant: set ANTHROPIC_API_KEY in your own shell before "start.sh galley";
 # it is passed to that one process and to nothing else. This script reads no key file.
 # FAKES / WP_FAKES may point at copies of the test helpers (see README.md).
@@ -24,7 +24,7 @@ set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../../../.." && pwd)
 C=${CAPTURE_DIR:-/tmp/galley-capture}
-V=${GALLEY_VERSION:-0.3.0}
+V=${GALLEY_VERSION:-0.3.1}
 H="$C/home"
 mkdir -p "$H/sites" "$C/galley-home" "$C/logs" "$C/pids"
 # One npm cache for every npx below, inside the throwaway home.

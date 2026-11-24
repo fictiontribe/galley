@@ -1,6 +1,6 @@
 {
   "name": "@galley/import-wordpress",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "description": "Bring a WordPress site (REST API or export file) into a Galley site as pending changes: posts, pages, images, SEO details, redirects and page-builder rebuild briefs.",

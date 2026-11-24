@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { FileChange } from "@galley/core/types";
-import { count, friendlyLabel, joinWords } from "@/lib/format";
+import { count, joinWords } from "@/lib/format";
+import { useNameOf } from "@/lib/names";
 import { useChanges, usePendingCount } from "@/lib/stores/changes";
 import { notify } from "@/lib/stores/toasts";
 import { useMay } from "@/lib/may";
@@ -70,7 +71,8 @@ export function SiteTopBar({ siteId }: { siteId: string }) {
   useEffect(() => {
     if (publishOpen) setPublishMounted(true);
   }, [publishOpen]);
-  const names = files.map((file) => file.title ?? friendlyLabel(file.path));
+  const name = useNameOf();
+  const names = files.map((file) => name(file));
   const changesWord = count(pending, "change");
 
   return (

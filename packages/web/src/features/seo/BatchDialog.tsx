@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { WriteBatchStatus, WriteKind, WritePlan } from "@galley/core/seo/types";
 import { api } from "@/lib/api";
 import { Badge, Button, buttonClass, Dialog, ErrorState, Field, Input, Skeleton } from "@/ui";
+import { useNameOf } from "@/lib/names";
 import { count, WRITE_LABEL } from "./logic";
 
 export interface BatchDialogProps {
@@ -86,6 +87,7 @@ export function BatchDialog({ siteId, open, onClose, kind, paths, onFinished }: 
   };
   const label = kind ? WRITE_LABEL[kind] : null;
   const items = status?.items ?? plan?.items.map((item) => ({ ...item, state: "pending" as const })) ?? [];
+  const name = useNameOf();
   const written = status?.items.filter((item) => item.state === "written").length ?? 0;
 
   let body;
@@ -129,7 +131,7 @@ export function BatchDialog({ siteId, open, onClose, kind, paths, onFinished }: 
           {items.slice(0, status ? items.length : 8).map((item) => (
             <li key={`${item.path}:${item.field.join(".")}`} className="seo-batch__item">
               <span className="seo-batch__page">
-                {item.title}
+                {name(item)}
                 <span className="seo-batch__field">{item.fieldLabel}</span>
               </span>
               {status ? <Badge tone={STATE[item.state]!.tone}>{STATE[item.state]!.label}</Badge> : null}

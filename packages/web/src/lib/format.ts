@@ -3,6 +3,7 @@
  * ("2 min ago", "yesterday", "12 Mar, 14:05"; digits; correct plurals).
  */
 import { PRODUCT } from "@galley/core/brand";
+import type { Collection } from "@galley/core/types";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -180,4 +181,38 @@ export function friendlyLabel(path: string): string {
   if (name === "index" || name === "") return "Home";
   const words = name.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** What a person calls the entry: "Home page" for a site's front page, else its title, shortened at a dash. */
+export function entryName(path: string, title: string | null | undefined): string {
+  if (/(^|\/)index\.[a-z0-9]+$/i.test(path) && /\/pages\/index\.|^src\/content\/index\.|^content\/_?index\./i.test(path)) return "Home page";
+  // A summary with no title of its own carries its path as one ("src/data/stockists.json"): that isn't a name.
+  if (!title || title === path) return friendlyLabel(path);
+  const short = title.split(/ [—–|·] /)[0] ?? title;
+  return short.length >= 3 ? short : title;
+}
+
+/** Where a page or file is named to a person: in a list, a finding, a choice of page. */
+export interface NamedThing {
+  path?: string | null;
+  title?: string | null;
+  url?: string | null;
+}
+
+/**
+ * The one name for a page or a data file wherever the app lists it, as Proof
+ * and the editor name it: "Site settings" for the site's settings file, a
+ * data file's own name ("Stockists", "Navigation"), "Home page" for the
+ * front page, otherwise the page's title up to any " — " strapline. Never a
+ * file path when there is anything better.
+ */
+export function nameOf(thing: NamedThing, collections: readonly Pick<Collection, "kind" | "path" | "label">[] = []): string {
+  const { path, title, url } = thing;
+  if (path === PRODUCT.configFile) return SITE_SETTINGS_LABEL;
+  const data = path ? collections.find((collection) => collection.kind === "data" && collection.path === path) : undefined;
+  if (data) return data.label;
+  if (url === "/") return "Home page";
+  if (path) return entryName(path, title);
+  if (title) return entryName("", title);
+  return url ?? "";
 }

@@ -32,13 +32,19 @@ export interface FieldProps {
   group?: boolean;
   /** Extra content on the right of the label row. */
   aside?: ReactNode;
+  /**
+   * A control that belongs in the label row (a markdown field's Write/Preview
+   * switch). It takes its own place there, after `aside`, and the row wraps
+   * when it runs out of width, so it never lands on the save state.
+   */
+  tools?: ReactNode;
   id?: string;
   className?: string;
   children: ReactNode;
 }
 
 /** Label + hint + error around one control, wired for screen readers. */
-export function Field({ label, fieldKey, hint, error, edited, hideLabel, group, aside, id, className, children }: FieldProps) {
+export function Field({ label, fieldKey, hint, error, edited, hideLabel, group, aside, tools, id, className, children }: FieldProps) {
   const autoId = useId();
   const controlId = id ?? `f${autoId}`;
   const hintId = hint ? `${controlId}-hint` : undefined;
@@ -46,7 +52,7 @@ export function Field({ label, fieldKey, hint, error, edited, hideLabel, group, 
   const describedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined;
 
   const head = (
-    <div className={cx("g-field__head", hideLabel && "g-sr")}>
+    <div className={cx("g-field__head", tools ? "app-field-head--tools" : null, hideLabel && "g-sr")}>
       {group ? (
         <legend className="g-label">{label}</legend>
       ) : (
@@ -62,6 +68,7 @@ export function Field({ label, fieldKey, hint, error, edited, hideLabel, group, 
         </span>
       ) : null}
       {aside ? <span className="app-field-aside">{aside}</span> : null}
+      {tools ? <span className="app-field-tools">{tools}</span> : null}
     </div>
   );
 

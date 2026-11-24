@@ -38,6 +38,7 @@ import { createMockPlugins } from "./plugins.ts";
 import { installHandlers } from "./install.ts";
 import { accountsHandlers } from "./accounts.ts";
 import { hostingHandlers } from "./hosting.ts";
+import { suggestedNote } from "./describe.ts";
 
 // ── handler types ─────────────────────────────────────────────────────────
 
@@ -652,8 +653,8 @@ export function createHandlers(mock: MockBackend): Handlers {
     "POST /api/sites/:siteId/publish/message": ({ params, body }) => {
       const site = mock.site(params.siteId);
       const files = site.changes().files.filter((f) => !body.paths || body.paths.includes(f.path));
-      const titles = files.map((f) => f.title ?? f.path.split("/").pop() ?? f.path);
-      return { message: titles.length === 0 ? "Publish changes" : titles.length === 1 ? `Update ${titles[0]}` : `Update ${titles[0]} and ${titles.length - 1} more` };
+      // The engine's note when no assistant writes one: "Update Home page", never the home page's whole title.
+      return { message: suggestedNote(files) };
     },
     "POST /api/sites/:siteId/publish/check": ({ params, body }) => {
       const site = mock.site(params.siteId);
