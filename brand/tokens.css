@@ -648,6 +648,7 @@
   --plate-raised: #1E1B16;
   --plate-sunken: #080706;
   --plate-edge:   #2A261F;
+  --desk-toned:   #24201A;   /* dark toned desk: ink-primary 13.78, ink-secondary 7.82, ink-tertiary 4.89 */
   --shadow-1:       inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.5), 0 2px 6px -1px rgb(0 0 0 / 0.5), 0 12px 28px -14px rgb(0 0 0 / 0.7);
   --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px var(--border-seam), 0 1px 2px rgb(0 0 0 / 0.5);
   --shadow-field:   inset 0 1px 3px rgb(0 0 0 / 0.45);
@@ -660,6 +661,7 @@
     --plate-raised: #1E1B16;
     --plate-sunken: #080706;
     --plate-edge:   #2A261F;
+    --desk-toned:   #24201A;
     --shadow-1:       inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.5), 0 2px 6px -1px rgb(0 0 0 / 0.5), 0 12px 28px -14px rgb(0 0 0 / 0.7);
     --shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px var(--border-seam), 0 1px 2px rgb(0 0 0 / 0.5);
     --shadow-field:   inset 0 1px 3px rgb(0 0 0 / 0.45);
