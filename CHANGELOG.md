@@ -113,6 +113,11 @@ entry says how.
 
 ### Fixed
 
+- **One focus ring, not two, on the boxes where you ask the assistant.** On a
+  site's home the text field drew its own ring inside the box's ring, and
+  tabbing to the send button drew a second one there and in the editor's
+  assistant. The box now shows the focus for its text field only, and a
+  button in it keeps its own.
 - **A section added on the page no longer takes the page down.** A new
   section's words still start blank, but a required field a blank can't
   draw — a picture, a video or download named by its file, a choice, a
