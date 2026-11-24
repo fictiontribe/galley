@@ -71,6 +71,12 @@ export interface MockServerOptions {
   accounts?: boolean;
   /** The role-access table, when the caller loads it (the dev server: see `loadAccess`). */
   access?: Promise<MockAccessTable>;
+  /**
+   * Replace or wrap some answers before requests are routed. The in-browser
+   * demo (packages/web/demo) uses it for what only a demo says (the recorded
+   * assistant, its sample inbox); the dev server and the tests pass nothing.
+   */
+  handlers?: (handlers: Handlers, backend: MockBackend) => Handlers;
 }
 
 /** The one role-access table (core's install/route-access.ts), as the mock uses it. */
@@ -145,7 +151,8 @@ export function createMockServer(options: MockServerOptions): MockServer {
   const accounts = install && options.accounts !== false ? new MockAccounts(backend, install, { email: options.email, publicAddress: options.publicAddress, legacy: options.legacy, role: options.role }) : null;
   const local = createHandlers(backend);
   const hosted = install ? withInstall(backend, local, install) : null;
-  const handlers: Handlers = hosted && accounts ? withAccounts(backend, hosted, accounts) : (hosted ?? local);
+  const built: Handlers = hosted && accounts ? withAccounts(backend, hosted, accounts) : (hosted ?? local);
+  const handlers: Handlers = options.handlers ? options.handlers(built, backend) : built;
   const routes = compile(Object.keys(handlers) as ApiRouteKey[]);
   const open = new Set<ApiRouteKey>(["GET /api/meta", "POST /api/auth/login", "GET /api/events", ...(install ? SETUP_OPEN_ROUTES : [])]);
   // Only a hosted install has people to check; local mode never loads the table.
