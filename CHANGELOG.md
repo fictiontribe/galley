@@ -23,6 +23,15 @@ entry says how.
   under `/api/sites/:siteId/media/storage` and `/api/media-storage`;
   `GET /api/sites/:siteId/media` may also answer `storeProblems`. Not yet run
   against the live services.
+- **Pictures in Cloudflare Images.** Beside a bucket or the repository, a
+  site's pictures can go to Cloudflare Images, which resizes them and sends
+  each browser WebP or AVIF (Media › Keep media outside the repository ›
+  Cloudflare Images, or `galley media connect --connector cloudflare-images`).
+  Files it doesn't take — PDFs, video, anything over 10 MB — go to the bucket
+  or the repository, and each upload says where it went. It can use the
+  site's Cloudflare key for putting it online when that key has Cloudflare
+  Images › Edit. New configuration key `media.images`; new routes under
+  `/api/sites/:siteId/media/images`. Not yet run against the live service.
 
 ### Changed
 

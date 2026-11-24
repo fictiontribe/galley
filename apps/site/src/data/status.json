@@ -106,7 +106,7 @@
     {
       "id": "media-bucket",
       "label": "Media in a bucket",
-      "line": "Cloudflare R2 or Amazon S3. Built; not yet verified on the real services.",
+      "line": "Cloudflare R2, Amazon S3, and pictures in Cloudflare Images. Built; not yet verified on the real services.",
       "status": "progress"
     },
     {

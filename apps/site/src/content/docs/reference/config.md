@@ -43,6 +43,12 @@ How the file merges over detection: [galley.config.json](/docs/configuration/#ho
 | `media.storage.pathStyle` | boolean | The bucket name in the path (`address/bucket/key`) rather than the host name. *Default:* true, except for Amazon S3. |
 | `media.storage.prefix` | string | The folder of the bucket this site's files go in (`lowfield/`). *Default:* the bucket's top. |
 | `media.storage.publicUrl` | URL, **required** | Where visitors load the files from (`https://media.example.com`). Pages store full addresses under it. |
+| `media.images` | object | Pictures go to Cloudflare Images instead; other files go to `media.storage`, else the repository. [Media in a bucket](/docs/configuration/media-storage/#cloudflare-images-step-by-step). The token is never here. *Default:* none. |
+| `media.images.connector` | `"cloudflare-images"`, **required** | Cloudflare Images. |
+| `media.images.account` | string, **required**, 32 hex characters | The Cloudflare account ID. |
+| `media.images.accountHash` | string, **required** | The Images account hash, from Hosted Images › Developer Resources. |
+| `media.images.variant` | string | The variant pages ask for. *Default:* `public`. |
+| `media.images.deliveryUrl` | URL | Deliver from a domain of the same Cloudflare account (its `/cdn-cgi/imagedelivery/` path). *Default:* `https://imagedelivery.net`. |
 | `publish` | object | [Publishing](/docs/configuration/publishing/). *Default:* detected. |
 | `publish.branch` | string | Commit mode: the branch publishing is allowed from. Pull-request mode: the target branch. *Default:* the branch checked out. |
 | `publish.mode` | `commit` · `pull-request` | Commit and push, or a new `galley/…` branch and a pull request. *Default:* `commit`. |

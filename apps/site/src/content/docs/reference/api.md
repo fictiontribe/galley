@@ -141,6 +141,9 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `POST /api/sites/:siteId/media/storage/check` | Run the check — on the body's settings (nothing is saved), or on the saved ones. | `Partial<MediaConnectRequest>` | `MediaCheckResult` | Owners |
 | `PUT /api/sites/:siteId/media/storage` | Check, and only when that passes save the settings (galley.config.json `media.storage`) and any pasted keys. | `MediaConnectRequest` | `MediaConnectResult` | Owners |
 | `DELETE /api/sites/:siteId/media/storage` | Stop putting new media in the bucket. | `?forgetKeys?` | `MediaStorageStatus` | Owners |
+| `POST /api/sites/:siteId/media/images/check` | Run the Cloudflare Images check — on the body's settings (nothing is saved), or on the saved ones. | `Partial<MediaImagesConnectRequest>` | `MediaCheckResult` | Owners |
+| `PUT /api/sites/:siteId/media/images` | Check, and only when that passes keep pictures in Cloudflare Images (galley.config.json `media.images`). | `MediaImagesConnectRequest` | `MediaImagesConnectResult` | Owners |
+| `DELETE /api/sites/:siteId/media/images` | Pictures go where other files go again. | `?forgetKeys?` | `MediaStorageStatus` | Owners |
 | `GET /api/sites/:siteId/media/usage` | Where an address is used: pages of the working copy (with titles) and files of the published version. | `?url` | `MediaUsage` | Any signed-in person |
 | `POST /api/sites/:siteId/media/storage/delete` | Delete files from the bucket or Cloudflare Images, for good (it can't be discarded). | `{ paths }` | `MediaStoreDeleteResult` | Editors and owners |
 | `POST /api/sites/:siteId/media/storage/move/plan` | What moving files (to the bucket and back) or changing the bucket's address would do. | `MediaMoveRequest` | `MediaMovePlan` | Owners |

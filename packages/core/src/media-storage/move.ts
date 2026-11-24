@@ -413,7 +413,7 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
     `${copied} ${copied === 1 ? "file" : "files"} copied to ${where}${skipped ? ` (${skipped} already there)` : ""}, ${rewritten.size} ${rewritten.size === 1 ? "page" : "pages"} updated` +
     (removed ? `, ${removed} removed from the repository` : "") +
     (request.from !== "repository" ? `. The files are still in ${storeOf(context, request.from).name}; remove them there once the pages are published` : "") +
-    (plan.staying ? `. ${plan.staying.files} stayed where they were: ${plan.staying.reason}` : "") +
+    (plan.staying ? `. ${plan.staying.files} ${plan.staying.files === 1 ? "stayed where it was" : "stayed where they were"}: ${plan.staying.reason.replace(/\.$/, "")}` : "") +
     (problems.length ? `. ${problems.length} ${problems.length === 1 ? "problem" : "problems"} — see the list` : "") +
     ". Publish to make it live.";
 

@@ -1,7 +1,8 @@
 # Media storage
 
 How a site keeps its media outside its repository: a bucket (Cloudflare R2,
-Amazon S3, any S3-compatible store) for any kind of file. The people-facing
+Amazon S3, any S3-compatible store) for any kind of file, and Cloudflare
+Images for pictures. The people-facing
 page is `apps/site/src/content/docs/configuration/media-storage.md`; this one
 is for whoever works on the code (`packages/core/src/media-storage/`).
 
@@ -141,6 +142,65 @@ store has its own route and level).
   Proof, used-on, deletes and moves on a real site checkout.
 - `packages/web/mock/media-storage.ts` — the same flows for `dev:mock`.
 
+## Cloudflare Images
+
+`cloudflare-images.ts` is a store like the others, described as: pictures
+only (`image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/svg+xml`;
+AVIF input is Enterprise-only), at most 10 MB, 12,000 px a side and 100 MP;
+`naming: "service"`; `address: "variant"`; lists; knows dimensions.
+
+- **Settings** (`media.images`): `account`, `accountHash`, `variant`
+  (default `public`), `deliveryUrl` (a domain of the same account). At most
+  one, beside at most one bucket. Routing puts Images first, so pictures go
+  there and the rest to the bucket, else the repository.
+- **Token**: the site's own (`media:images:token` in its media key file), else
+  `GALLEY_MEDIA_IMAGES_TOKEN`; or, when the person chose it, the site's
+  Cloudflare key for putting it online (`settings.readSecret("cloudflare")`).
+  The permission is Account › Cloudflare Images › Edit (the API calls it
+  "Images Write"). The check says when the deploy key lacks it.
+- **Names**: Cloudflare's. Custom ids are allowed (up to 1,024 characters,
+  slashes allowed, fully URL-encoded in API paths), but the docs don't say
+  what happens when one is taken, and never overwriting is the promise every
+  store keeps. The file's own name, type, size and pixel size go in the
+  picture's metadata (≤ 1,024 bytes), which every listing returns.
+- **Addresses**: `https://imagedelivery.net/<hash>/<id>/<variant>`, or with
+  `deliveryUrl`, `https://<domain>/cdn-cgi/imagedelivery/<hash>/<id>/<variant>`.
+  Pages store the address with the configured variant, so the site needs no
+  build step. `imageIdOf` reads the id from either form and any last part — a
+  named variant or flexible-variant options (`w=400,sharpen=3`) — so used-on,
+  deletes, moves and address changes find every reference. The address
+  pattern covers imagedelivery.net and the configured domain only; a picture
+  referenced through another domain of the account isn't found.
+- **The check**: reach (list), write (upload the 1×1 PNG), read (`/blob`),
+  list, public (the delivery address answers 200 with an `image/*` type —
+  Cloudflare converts formats, so the bytes aren't compared), delete.
+- **Moves**: pictures only, there and back. A moved picture remembers the
+  repository path it came from (`source` in the record), so a second run
+  finds it and the way back puts it where it was. What Images doesn't take
+  stays, and the plan says how many.
+- **Address change** (`kind: "address", store: "images"`): to a domain of the
+  account, or back to imagedelivery.net; checked on one picture first.
+
+**Variants, and other sizes.** A variant is a named size and fit made on the
+Hosted Images › Delivery tab (up to 100); `public` exists on every account.
+A template that wants other sizes swaps the last part of the stored address:
+`…/<id>/public` → `…/<id>/thumb`, or, with flexible variants turned on (same
+tab), `…/<id>/w=640` and so on. Cloudflare picks AVIF, WebP or the original
+format from the browser's Accept header on every one. Responsive `srcset`
+output in the site kit is not built: it would take a small helper in
+`packages/astro` that, given a stored address, recognises an Images address
+(`imageIdOf` is pure and could be shared), writes `srcset` entries for a few
+widths (flexible variants) or named variants (a list in the site's config),
+and leaves every other address alone — plus a note in the wizard that
+flexible variants must be on. Without it, pages show the one configured
+variant, which already gets the modern format.
+
+**What the docs don't say** (the stand-in marks these as assumed, and the
+rehearsal settles them): the error codes for a bad token (Cloudflare's API
+answers `10000`, "Authentication error", per its Terraform troubleshooting
+page), an unknown account (`7003`), storage not on the Paid plan (matched by
+its words), a missing image (matched by its 404 status), too large (413).
+
 ## Sources
 
 Read on 24 November 2026:
@@ -157,5 +217,20 @@ Read on 24 November 2026:
   <https://docs.aws.amazon.com/IAM/latest/UserGuide/getting-started-workloads.html>,
   <https://docs.aws.amazon.com/IAM/latest/UserGuide/access-keys-admin-managed.html>,
   <https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html>.
+- Cloudflare Images:
+  <https://developers.cloudflare.com/images/get-started/limits/>,
+  <https://developers.cloudflare.com/images/pricing/>,
+  <https://developers.cloudflare.com/images/optimization/hosted-images/serve-uploaded-images/>,
+  <https://developers.cloudflare.com/images/optimization/hosted-images/serve-from-custom-domains/>,
+  <https://developers.cloudflare.com/images/optimization/hosted-images/enable-flexible-variants/>,
+  <https://developers.cloudflare.com/images/optimization/hosted-images/create-variants/>,
+  <https://developers.cloudflare.com/images/storage/upload-images/upload-custom-path/>,
+  <https://developers.cloudflare.com/images/storage/manage-images/delete-images/>,
+  the API reference (upload, details, blob, delete, list v2):
+  <https://developers.cloudflare.com/api/resources/images/subresources/v1/methods/create/>
+  and its neighbours, and the token permissions:
+  <https://developers.cloudflare.com/fundamentals/api/reference/permissions/>;
+  for code 10000:
+  <https://developers.cloudflare.com/terraform/troubleshooting/authentication-error-dns-records/>.
 - The SigV4 test suite as mirrored in botocore:
   <https://github.com/boto/botocore/tree/develop/tests/unit/auth/aws4_testsuite>.

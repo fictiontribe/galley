@@ -1,13 +1,13 @@
 ---
 title: Media in a bucket
-description: Keep a site's pictures, PDFs and videos in a Cloudflare R2 or Amazon S3 bucket instead of its repository — the steps on each side, what Galley checks, moving files there and back, and what it costs.
+description: Keep a site's pictures, PDFs and videos in a Cloudflare R2 or Amazon S3 bucket, and pictures in Cloudflare Images, instead of its repository — the steps on each side, what Galley checks, moving files there and back, and what it costs.
 group: configuration
 order: 4.5
 ---
 
-This page is for whoever looks after a site. Out of the box, Galley keeps media in the site's repository, beside its pages ([Media](/docs/configuration/media/)). That is simplest, but every picture makes the repository bigger for good. A bucket keeps the files elsewhere and serves each one at its own address: pages store that full address, so the site needs no build step to find them.
+This page is for whoever looks after a site. Out of the box, Galley keeps media in the site's repository, beside its pages ([Media](/docs/configuration/media/)). That is simplest, but every picture makes the repository bigger for good. A bucket keeps the files elsewhere and serves each one at its own address; Cloudflare Images does the same for pictures and also resizes them and sends each browser WebP or AVIF. Either way pages store the full address, so the site needs no build step to find them.
 
-Not yet run against the live services by the people who built it: everything here is checked against stand-ins that answer the way R2 and S3 do.
+Not yet run against the live services by the people who built it: everything here is checked against stand-ins that answer the way R2, S3 and Cloudflare Images do.
 
 ## What changes
 
@@ -16,22 +16,25 @@ Not yet run against the live services by the people who built it: everything her
 - **Proof lists them** under *In the bucket* until a published page uses them. Discarding a page doesn't remove its uploads; Galley offers to remove the ones nothing uses any more.
 - **Deleting is for good.** Galley deletes a file from the bucket only when no page uses it — not the pages waiting in Proof, not the published version — and on a hosted editor only people who can publish may.
 
-## Choose a bucket
+## Choose where
 
-| | Cloudflare R2 | Amazon S3 |
-| --- | --- | --- |
-| Best for | Most sites | Sites already on AWS |
-| Charges | What you store; nothing for visitors loading it; a free monthly allowance | What you store and what visitors download |
-| Public address | A custom domain on Cloudflare (or r2.dev, for trying out) | The bucket's own address, CloudFront, or your own |
+| | Cloudflare R2 | Amazon S3 | Cloudflare Images |
+| --- | --- | --- | --- |
+| Takes | Any file: pictures, PDFs, video | Any file | Pictures only (PNG, JPEG, GIF, WebP, SVG), up to 10 MB |
+| Best for | Most sites | Sites already on AWS | Sites that want pictures resized and sent as WebP or AVIF for them |
+| Charges | What you store; nothing for visitors loading it; a free monthly allowance | What you store and what visitors download | Per picture stored and per picture delivered; needs the Images Paid plan |
+| Public address | A custom domain on Cloudflare (or r2.dev, for trying out) | The bucket's own address, CloudFront, or your own | imagedelivery.net, or a domain of the same Cloudflare account |
 
-Prices change: see [R2's](https://developers.cloudflare.com/r2/pricing/) and [S3's](https://aws.amazon.com/s3/pricing/).
+One bucket at most, and Cloudflare Images at most, together or alone. With both, pictures go to Images and everything else to the bucket; with Images alone, everything else stays in the repository. An upload always says where it went.
+
+**R2 or Images?** R2 for everything, video included, with no charge per picture or per visit. Images when you want resizing and modern formats handled: it charges $5 per 100,000 pictures stored a month and $1 per 100,000 delivered (Cloudflare's prices on 24 November 2026). A site with 2,000 pictures and 300,000 picture views a month would pay about $0.10 + $3 a month in Images; in R2 the same pictures cost only their storage. Prices change: see [R2's](https://developers.cloudflare.com/r2/pricing/), [S3's](https://aws.amazon.com/s3/pricing/) and [Images'](https://developers.cloudflare.com/images/pricing/).
 
 ## Cloudflare R2, step by step
 
 1. In the Cloudflare dashboard, open **Storage & databases › R2 › Overview** (finish Cloudflare's checkout if it asks; R2 has a free allowance). Select **Create bucket** and name it with lowercase letters, digits and dashes.
 2. Open the bucket, select **Settings**, and under **Custom Domains** select **Add**. Type an address on a domain already in this Cloudflare account (`media.example.com`), **Continue**, then **Connect Domain**. It turns from *Initializing* to *Active* within minutes. Only trying it out? Under **Public Development URL**, **Enable** gives an r2.dev address — rate-limited, for development only.
 3. Back on **R2 › Overview**, under **Account Details**, select **Manage** next to **API Tokens**, then **Create Account API token**. Choose **Object Read & Write** and limit it to this bucket. Copy the **Access Key ID** and **Secret Access Key** (the secret is shown once). The **Account ID** is on the same page.
-4. In Galley, open **Media**, select **Keep media in a bucket**, choose **Cloudflare R2**, and paste the account ID, bucket name, public address and the key.
+4. In Galley, open **Media**, select **Keep media outside the repository**, choose **Cloudflare R2**, and paste the account ID, bucket name, public address and the key.
 
 A bucket made in a jurisdiction (such as the EU) is reached at its own S3 address: paste it under *S3 address of a jurisdiction bucket*.
 
@@ -45,6 +48,17 @@ A bucket made in a jurisdiction (such as the EU) is reached at its own S3 addres
 
 The key's policy lets it list, add, read and delete files **in the site's folder** of that one bucket. Even listing carries the folder as a condition, which is why Galley's first check lists that folder rather than asking about the whole bucket.
 
+## Cloudflare Images, step by step
+
+1. In the Cloudflare dashboard, open **Images › Hosted Images**. Keeping pictures there needs the **Images Paid plan**; take it if Cloudflare offers it.
+2. On the Hosted Images page, under **Developer Resources**, copy the **account hash** — the part after `imagedelivery.net/` in the example address. The **account ID** is in the dashboard's address, right after `dash.cloudflare.com/`.
+3. Open **My Profile › API Tokens**, **Create Token**, then **Get started** next to **Create Custom Token**. Under **Permissions** choose **Account › Cloudflare Images › Edit**; under **Account Resources**, **Include** this account. **Continue to summary**, **Create Token**, and copy it (it is shown once). If the site already has a Cloudflare key for putting it online, you can add **Account › Cloudflare Images › Edit** to that token instead.
+4. In Galley, open **Media**, select **Keep media outside the repository** (or **Storage settings**), choose **Cloudflare Images**, and paste the account ID, the account hash and the token — or tick **Use the site's Cloudflare key**.
+
+Optional: a **variant** other than `public` (one you made on the **Delivery** tab), and a domain to **deliver from** — a domain proxied by Cloudflare in the same account, whose `/cdn-cgi/imagedelivery/` path then serves the pictures. Pages store each picture's address with the variant (`https://imagedelivery.net/<hash>/<id>/public`). Cloudflare names each picture; its own name stays in Galley's library.
+
+If something is wrong, the check says what: a token without **Cloudflare Images › Edit** (or the site's Cloudflare key without it, and how to add it), an account ID Cloudflare doesn't know, storage not turned on (the Paid plan), an account hash or variant that doesn't deliver.
+
 ## What Galley checks
 
 Before it saves anything, Galley does everything the site will need, for real, with a tiny test picture: it reaches the bucket, stores the picture under a new name, reads it back, lists the site's files, loads it from the public address with no key, and removes it. It stops at the first step that fails and says what to change, with the cursor in that field — a key the service doesn't know, a secret that doesn't go with it, a bucket name that doesn't exist, the wrong Region, a key that can read but not write, an address that turns visitors away. A key that fails never replaces one that works.
@@ -53,7 +67,7 @@ The key is kept on the computer (or the hosted editor) that runs Galley, never i
 
 ## Move files there and back
 
-In **Media › Storage settings**, **Move files** shows what will happen before anything does: how many files, how many places in how many pages, and what stays.
+In **Media › Storage settings**, **Move files** shows what will happen before anything does: how many files, how many places in how many pages, and what stays. Moving to Cloudflare Images moves pictures only: PDFs, videos and anything over its limits stay where they are, and the plan says how many.
 
 - **To the bucket**: files are copied, pages are changed to the full addresses, and then the repository's copies are removed (they leave the site when you publish) — unless you keep them. A file used by something Galley can't change in content mode (a template) stays in the repository.
 - **Back to the repository**: files come back to the media folder and pages use the site's own addresses again. The bucket keeps its copies until you remove them.
@@ -73,7 +87,13 @@ The key is read from `GALLEY_MEDIA_ACCESS_KEY_ID` and `GALLEY_MEDIA_SECRET_ACCES
 galley media move --to bucket
 ```
 
-`galley media check` runs the check again; `galley media disconnect` sends new files to the repository again (the bucket's files stay). The [command-line reference](/docs/reference/cli/) has every option.
+For Cloudflare Images, the token is read from `GALLEY_MEDIA_IMAGES_TOKEN`, or asked for:
+
+```sh
+galley media connect --connector cloudflare-images --account <account-id> --account-hash <hash>
+```
+
+`galley media move --to images` moves the pictures. `galley media check` runs the checks again; `galley media disconnect` stops using the bucket (`--images`: Cloudflare Images); what is already there stays. The [command-line reference](/docs/reference/cli/) has every option.
 
 ## Next
 

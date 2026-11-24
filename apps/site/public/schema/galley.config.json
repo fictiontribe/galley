@@ -167,6 +167,44 @@
           ],
           "additionalProperties": false,
           "description": "New media goes to this bucket instead of the repository. Set by Media › Storage (or `galley media connect`)."
+        },
+        "images": {
+          "type": "object",
+          "properties": {
+            "connector": {
+              "type": "string",
+              "const": "cloudflare-images",
+              "description": "Cloudflare Images."
+            },
+            "account": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$",
+              "description": "The Cloudflare account ID."
+            },
+            "accountHash": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 64,
+              "description": "The Images account hash, from Hosted Images › Developer Resources."
+            },
+            "variant": {
+              "description": "The variant pages ask for. Default: public.",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,99}$"
+            },
+            "deliveryUrl": {
+              "description": "Deliver from a domain of the same Cloudflare account (its /cdn-cgi/imagedelivery/ path). Default: https://imagedelivery.net.",
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "required": [
+            "connector",
+            "account",
+            "accountHash"
+          ],
+          "additionalProperties": false,
+          "description": "Pictures go to Cloudflare Images instead; files it doesn't take go to `media.storage`, else the repository."
         }
       },
       "additionalProperties": false

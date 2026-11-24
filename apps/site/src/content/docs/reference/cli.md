@@ -430,36 +430,44 @@ Examples
 
 ## `galley media`
 
-Keeps the site's new media in a bucket (Cloudflare R2 or Amazon S3) instead of its repository, as Media › Keep media in a bucket does in the app. `connect` asks only for what the chosen bucket needs, reads the key from the environment or asks for it with nothing shown, and saves only after a real check passes. `move` shows its plan and needs `--yes`. Not yet run against the live services by the people who built it. Details: [Media in a bucket](/docs/configuration/media-storage/).
+Keeps the site's new media in a bucket (Cloudflare R2 or Amazon S3), and pictures in Cloudflare Images, instead of its repository, as Media › Keep media outside the repository does in the app. `connect` asks only for what the chosen bucket needs, reads the key from the environment or asks for it with nothing shown, and saves only after a real check passes. `move` shows its plan and needs `--yes`. Not yet run against the live services by the people who built it. Details: [Media in a bucket](/docs/configuration/media-storage/).
 
 Its help (`--help`):
 
 ```text
 Usage: galley media [command] [path] [options]
 Where the site in [path] (default: this folder) keeps new media: its
-repository, or a bucket that serves files at their own address.
+repository, a bucket that serves files at their own address, and — for
+pictures — Cloudflare Images, which resizes them and sends modern formats.
 Commands
   status        Where new files go, and whether the bucket's key is set (the default)
   connect       Connect a bucket: checks for real, then saves (asks what it needs)
-  check         Check the connected bucket again: store, read, list, load, remove a test picture
-  move          Move files: --to bucket, --to repository, or --address <url>
-  disconnect    New files go to the repository again (the bucket's files stay)
+  check         Check what is connected again: store, read, list, load, remove a test picture
+  move          Move files: --to bucket, --to images, --to repository (with --from), or --address <url>
+  disconnect    Stop using the bucket (or Cloudflare Images, with --images); the files stay
 Options for connect
-      --connector <id>   r2 (Cloudflare R2) or s3 (Amazon S3)
+      --connector <id>   r2 (Cloudflare R2), s3 (Amazon S3) or cloudflare-images
       --bucket <name>
       --account <id>     R2: the account ID
       --region <code>    S3: the bucket's Region ("eu-west-1")
       --endpoint <url>   R2 in a jurisdiction: the bucket's S3 address
       --prefix <folder>  Keep this site's files in a folder of the bucket
       --public-url <url> Where visitors load the files from
-  The key is read from GALLEY_MEDIA_ACCESS_KEY_ID and GALLEY_MEDIA_SECRET_ACCESS_KEY,
-  or asked for (nothing is shown as you paste). It is never a flag.
+      --account-hash <h> Images: the account hash (Hosted Images › Developer Resources)
+      --variant <name>   Images: the variant pages ask for (default public)
+      --delivery-url <u> Images: deliver from a domain of the same Cloudflare account
+      --use-deploy-key   Images: use the site's Cloudflare key for putting it online
+  The key is read from GALLEY_MEDIA_ACCESS_KEY_ID and GALLEY_MEDIA_SECRET_ACCESS_KEY
+  (Images: GALLEY_MEDIA_IMAGES_TOKEN), or asked for (nothing is shown as you
+  paste). It is never a flag.
 Options for move
-      --to <place>       bucket or repository
+      --to <place>       bucket, images or repository
+      --from <place>     With --to repository: bucket (the default) or images
       --address <url>    Use a new public address for the bucket's files
       --keep-copies      Moving to the bucket: keep the repository's copies too
 Options
-      --forget-keys      disconnect: remove the bucket's key from this computer too
+      --images           disconnect: stop using Cloudflare Images instead of the bucket
+      --forget-keys      disconnect: remove its key from this computer too
   -y, --yes              Don't ask before moving or disconnecting
       --json             Print the result as JSON
   -h, --help             Show this help

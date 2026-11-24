@@ -104,6 +104,8 @@ Keys are looked for in this order: the site's own key (Site settings › Connect
 | --- | --- | --- |
 | `GALLEY_MEDIA_ACCESS_KEY_ID` | — | The bucket key's Access Key ID, for every site that has none of its own. A site's own key beats it. [Media in a bucket](/docs/configuration/media-storage/). |
 | `GALLEY_MEDIA_SECRET_ACCESS_KEY` | — | The same key's Secret Access Key. |
+| `GALLEY_MEDIA_IMAGES_TOKEN` | — | The Cloudflare API token for Cloudflare Images (Account › Cloudflare Images › Edit), for every site that has none of its own. |
+| `GALLEY_MEDIA_IMAGES_API` | `https://api.cloudflare.com/client/v4` | Testing only: send Cloudflare Images API calls to another address (a stand-in). |
 
 ## Forms and e-mail
 

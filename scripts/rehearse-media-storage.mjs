@@ -8,8 +8,13 @@
 //   npx tsx scripts/rehearse-media-storage.mjs --connector s3 \
 //     --bucket <name> --region eu-west-1 --public-url https://<bucket>.s3.eu-west-1.amazonaws.com
 //
+//   npx tsx scripts/rehearse-media-storage.mjs --connector cloudflare-images \
+//     --account <account id> --account-hash <hash> [--variant public] [--delivery-url https://www.example.com]
+//
 // The key is read from GALLEY_MEDIA_ACCESS_KEY_ID and
-// GALLEY_MEDIA_SECRET_ACCESS_KEY — never an option.
+// GALLEY_MEDIA_SECRET_ACCESS_KEY (Cloudflare Images: GALLEY_MEDIA_IMAGES_TOKEN)
+// — never an option. Cloudflare Images names pictures itself, so there is no
+// folder: the run deletes exactly the pictures its own record says it made.
 //
 // It makes a throwaway copy of the starter (a git checkout in a temporary
 // folder, its own Galley home), connects it to the bucket under a folder of
@@ -39,6 +44,9 @@ const { values } = parseArgs({
     region: { type: "string" },
     endpoint: { type: "string" },
     "public-url": { type: "string" },
+    "account-hash": { type: "string" },
+    variant: { type: "string" },
+    "delivery-url": { type: "string" },
     keep: { type: "boolean", default: false },
   },
 });
@@ -48,12 +56,14 @@ function fail(message) {
   process.exitCode = 1;
 }
 
-if (!values.connector || !values.bucket || !values["public-url"]) {
-  fail("Give --connector (r2 or s3), --bucket and --public-url (and --account for R2, --region for S3).");
+const IMAGES = values.connector === "cloudflare-images";
+
+if (IMAGES ? !values.account || !values["account-hash"] : !values.connector || !values.bucket || !values["public-url"]) {
+  fail("Give --connector (r2 or s3), --bucket and --public-url (and --account for R2, --region for S3) — or --connector cloudflare-images with --account and --account-hash.");
   process.exit(2);
 }
-if (!process.env.GALLEY_MEDIA_ACCESS_KEY_ID || !process.env.GALLEY_MEDIA_SECRET_ACCESS_KEY) {
-  fail("Set GALLEY_MEDIA_ACCESS_KEY_ID and GALLEY_MEDIA_SECRET_ACCESS_KEY to the bucket's key.");
+if (IMAGES ? !process.env.GALLEY_MEDIA_IMAGES_TOKEN : !process.env.GALLEY_MEDIA_ACCESS_KEY_ID || !process.env.GALLEY_MEDIA_SECRET_ACCESS_KEY) {
+  fail(IMAGES ? "Set GALLEY_MEDIA_IMAGES_TOKEN to a token with Account › Cloudflare Images › Edit." : "Set GALLEY_MEDIA_ACCESS_KEY_ID and GALLEY_MEDIA_SECRET_ACCESS_KEY to the bucket's key.");
   process.exit(2);
 }
 
@@ -61,6 +71,9 @@ const folder = `galley-rehearsal-${randomBytes(4).toString("hex")}`;
 const scratch = realpathSync(mkdtempSync(join(tmpdir(), "rehearse-media-")));
 const home = join(scratch, "home");
 const root = join(scratch, "site");
+const imagesConfig = IMAGES
+  ? { connector: "cloudflare-images", account: values.account, accountHash: values["account-hash"], ...(values.variant ? { variant: values.variant } : {}), ...(values["delivery-url"] ? { deliveryUrl: values["delivery-url"] } : {}) }
+  : null;
 const config = {
   connector: values.connector,
   bucket: values.bucket,
@@ -71,7 +84,7 @@ const config = {
   ...(values.endpoint ? { endpoint: values.endpoint } : {}),
 };
 
-console.log(`Rehearsing ${values.connector} on bucket ${values.bucket}, folder ${folder}/ — everything made is removed at the end.`);
+console.log(IMAGES ? `Rehearsing Cloudflare Images on account ${values.account} — every picture this run makes is removed at the end.` : `Rehearsing ${values.connector} on bucket ${values.bucket}, folder ${folder}/ — everything made is removed at the end.`);
 cpSync(join(ROOT, "starters/astro-starter"), root, { recursive: true, filter: (source) => !["node_modules", "dist", ".astro"].includes(basename(source)) });
 const git = (...args) => execFileSync("git", args, { cwd: root, stdio: "pipe", env: { ...process.env, GIT_AUTHOR_NAME: "Rehearsal", GIT_AUTHOR_EMAIL: "rehearsal@example.com", GIT_COMMITTER_NAME: "Rehearsal", GIT_COMMITTER_EMAIL: "rehearsal@example.com" } });
 git("init", "-q", "-b", "main");
@@ -95,7 +108,7 @@ async function run(label, work) {
 
 try {
   await run("Check and connect", async () => {
-    const result = await storage.connect(site, { config });
+    const result = IMAGES ? await storage.connectImages(site, { config: imagesConfig }) : await storage.connect(site, { config });
     for (const s of result.check.steps) console.log(`    ${s.state === "ok" ? "✓" : s.state === "failed" ? "✗" : "·"} ${s.label}`);
     if (!result.check.ok) throw new Error(`${result.check.message}${result.check.detail ? ` (${result.check.detail})` : ""}`);
     return "the test picture was stored, read back, listed, loaded from the public address and removed";
@@ -104,7 +117,7 @@ try {
   let uploaded;
   await run("Upload a picture", async () => {
     uploaded = await site.saveMedia({ filename: "Rehearsal Coat.png", data: png });
-    if (uploaded.location !== "bucket") throw new Error(`it went to ${uploaded.location ?? "the repository"}`);
+    if (uploaded.location !== (IMAGES ? "images" : "bucket")) throw new Error(`it went to ${uploaded.location ?? "the repository"}`);
     const again = await site.saveMedia({ filename: "rehearsal-coat.png", data: png });
     if (again.key === uploaded.key) throw new Error("the second upload took the same name");
     return `${uploaded.url}, then ${again.key} for the same name`;
@@ -125,7 +138,7 @@ try {
     const changes = await site.changes();
     const listed = changes.storeUploads?.find((item) => item.key === uploaded.key);
     if (!listed?.used) throw new Error("not in Proof as used");
-    return `${changes.storeUploads.length} in the bucket`;
+    return `${changes.storeUploads.length} uploads waiting in Proof`;
   });
   await run("Used on, and a delete refused while used", async () => {
     const usage = await storage.usage(site, uploaded.url);
@@ -134,23 +147,46 @@ try {
     if (!deleted.refused.length) throw new Error("it was deleted");
     return usage.working.map((w) => w.path).join(", ");
   });
-  await run("Move the repository's media to the bucket", async () => {
+  if (IMAGES) {
+    await run("A PDF goes to the repository, and says why", async () => {
+      const pdf = await site.saveMedia({ filename: "menu.pdf", data: Buffer.from("%PDF-1.4\n%%EOF") });
+      if (pdf.location) throw new Error(`it went to ${pdf.location}`);
+      return pdf.placement;
+    });
+    await run("Another variant of the address is found too", async () => {
+      const other = uploaded.url.replace(/\/[^/]+$/, "/w=200");
+      writeFileSync(page, readFileSync(page, "utf8").replace(uploaded.url, other));
+      const usage = await storage.usage(site, uploaded.url);
+      if (!usage.working.length) throw new Error("not found");
+      const response = await fetch(other);
+      return `${usage.working.length} page; ${other} answers ${response.status} (404 is expected unless flexible variants are on)`;
+    });
+  }
+  await run(IMAGES ? "Move the repository's pictures to Cloudflare Images" : "Move the repository's media to the bucket", async () => {
     git("checkout", "--", "src/content/authors/tomas-reyes.md");
-    const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true });
+    const outcome = await storage.move(site, { kind: "move", from: "repository", to: IMAGES ? "images" : "bucket", keepCopies: true });
     // Templates that use media are left alone on purpose; anything else is a failure.
     const real = outcome.problems.filter((p) => !p.reason.includes("not its content"));
     if (real.length) throw new Error(real.map((p) => `${p.path}: ${p.reason}`).join("; "));
     return `${outcome.summary} (${outcome.problems.length - real.length} templates left as they are)`;
   });
   await run("And back to the repository", async () => {
-    const outcome = await storage.move(site, { kind: "move", from: "bucket", to: "repository" });
+    const outcome = await storage.move(site, { kind: "move", from: IMAGES ? "images" : "bucket", to: "repository" });
     return outcome.summary;
   });
 } catch {
   // Reported above; clean up below.
 } finally {
-  await run("Remove everything made under the folder", async () => {
+  await run(IMAGES ? "Remove every picture this run made" : "Remove everything made under the folder", async () => {
     const [store] = await storage.stores(site);
+    if (IMAGES) {
+      if (!store) return "nothing connected";
+      // Only what this run's own record says it made: never anything else in the account.
+      const { createMediaLibrary } = await import("../packages/core/src/media-storage/library.ts");
+      const made = (await createMediaLibrary(home).all("rehearsal")).filter((item) => item.location === "images" && (item.uploaded || item.source));
+      for (const item of made) await store.delete(item.key);
+      return `${made.length} pictures`;
+    }
     if (!store) return "nothing connected";
     let removed = 0;
     let cursor;
