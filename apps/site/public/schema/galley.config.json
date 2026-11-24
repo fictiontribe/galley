@@ -115,6 +115,58 @@
             ],
             "additionalProperties": false
           }
+        },
+        "storage": {
+          "type": "object",
+          "properties": {
+            "connector": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$",
+              "description": "Which kind of bucket: “r2” (Cloudflare R2), “s3” (Amazon S3), “s3-compatible”, or a plugin's connector."
+            },
+            "bucket": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 63,
+              "description": "The bucket's name."
+            },
+            "account": {
+              "description": "Cloudflare R2: the account ID the bucket is in.",
+              "type": "string",
+              "maxLength": 64
+            },
+            "region": {
+              "description": "Amazon S3: the bucket's Region code (“eu-west-1”). S3-compatible: the store's region name.",
+              "type": "string",
+              "maxLength": 40
+            },
+            "endpoint": {
+              "description": "The store's S3 address. S3-compatible stores, and R2 buckets in a jurisdiction. https:// only.",
+              "type": "string",
+              "format": "uri"
+            },
+            "pathStyle": {
+              "description": "The bucket name in the path (address/bucket/key) rather than the host name. Default: true except for Amazon S3.",
+              "type": "boolean"
+            },
+            "prefix": {
+              "description": "The folder inside the bucket this site's files are kept under (“lowfield/”). Absent: the bucket's top.",
+              "type": "string",
+              "maxLength": 200
+            },
+            "publicUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "Where visitors load the files from (“https://media.example.com”). Pages store full addresses under it."
+            }
+          },
+          "required": [
+            "connector",
+            "bucket",
+            "publicUrl"
+          ],
+          "additionalProperties": false,
+          "description": "New media goes to this bucket instead of the repository. Set by Media › Storage (or `galley media connect`)."
         }
       },
       "additionalProperties": false

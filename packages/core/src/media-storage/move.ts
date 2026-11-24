@@ -124,7 +124,7 @@ async function rewrite(site: SiteService, replacements: Map<string, Array<{ matc
       if (text !== file.content) await site.writeFile(path, text, { origin: "user", mode: "content", baseHash: file.hash });
       rewritten.add(path);
     } catch (error) {
-      refused.set(path, error instanceof Error ? error.message : String(error));
+      refused.set(path, error instanceof GalleyError && error.code === "forbidden" ? "it is part of the site's code or templates, not its content, so Galley leaves it as it is" : error instanceof Error ? error.message : String(error));
     }
     onFile?.((done += 1));
   }

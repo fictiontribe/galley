@@ -7,6 +7,23 @@ entry says how.
 
 ## Unreleased
 
+### Added
+
+- **Media in a bucket.** A site can keep new pictures, PDFs and videos in a
+  Cloudflare R2 or Amazon S3 bucket instead of its repository (Media › Keep
+  media in a bucket, or `galley media connect`). Galley does the provider's
+  steps with you, then checks for real before saving — it stores a tiny test
+  picture, reads it back, lists, loads it from the public address and removes
+  it — and says what to change when a step fails. Pages store each file's full
+  address; names never overwrite; Proof lists what was put in the bucket since
+  the last publish; a file's details say which pages use it; deleting from the
+  bucket is refused while any page, published or not, uses it. Files move to
+  the bucket and back, and to a new public address, safely and repeatably
+  (`galley media move`). New configuration key `media.storage`; new routes
+  under `/api/sites/:siteId/media/storage` and `/api/media-storage`;
+  `GET /api/sites/:siteId/media` may also answer `storeProblems`. Not yet run
+  against the live services.
+
 ### Changed
 
 - **A lighter, less yellow paper in the app.** The canvas, cards, wells and

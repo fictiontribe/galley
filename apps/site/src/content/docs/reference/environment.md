@@ -98,6 +98,13 @@ Keys are looked for in this order: the site's own key (Site settings › Connect
 | `GALLEY_DEPLOY_PROBE` | the domain itself, over HTTPS | Testing only: where Galley looks to see whether a site's own domain answers yet. A URL with `{host}` in it. |
 | `GALLEY_REDIRECTS_CLOUDFLARE_API` | `https://api.cloudflare.com/client/v4` | Testing only: the API address for setting redirects on Cloudflare. |
 
+## Media in a bucket
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `GALLEY_MEDIA_ACCESS_KEY_ID` | — | The bucket key's Access Key ID, for every site that has none of its own. A site's own key beats it. [Media in a bucket](/docs/configuration/media-storage/). |
+| `GALLEY_MEDIA_SECRET_ACCESS_KEY` | — | The same key's Secret Access Key. |
+
 ## Forms and e-mail
 
 | Variable | Default | Meaning |

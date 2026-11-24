@@ -25,6 +25,7 @@ Usage
   galley doctor [path]   Check that a site and this computer are ready
   galley deploy [path]   Put the site online with Cloudflare or Vercel (--preview: unpublished changes)
   galley domain [path]   Use your own domain for a site that is online
+  galley media …         Keep the site's media in a bucket (Cloudflare R2, Amazon S3), and move it there and back
   galley host [path]     Host the editor online for the site, on your own account (Fly.io, Cloudflare, a server)
   galley new <name>      Start a new site from a starter
   galley import …        Bring a WordPress site (or another importer's) into a site
@@ -425,6 +426,47 @@ Options
 Examples
   galley domain www.example.com
   galley domain ./site --remove --yes
+```
+
+## `galley media`
+
+Keeps the site's new media in a bucket (Cloudflare R2 or Amazon S3) instead of its repository, as Media › Keep media in a bucket does in the app. `connect` asks only for what the chosen bucket needs, reads the key from the environment or asks for it with nothing shown, and saves only after a real check passes. `move` shows its plan and needs `--yes`. Not yet run against the live services by the people who built it. Details: [Media in a bucket](/docs/configuration/media-storage/).
+
+Its help (`--help`):
+
+```text
+Usage: galley media [command] [path] [options]
+Where the site in [path] (default: this folder) keeps new media: its
+repository, or a bucket that serves files at their own address.
+Commands
+  status        Where new files go, and whether the bucket's key is set (the default)
+  connect       Connect a bucket: checks for real, then saves (asks what it needs)
+  check         Check the connected bucket again: store, read, list, load, remove a test picture
+  move          Move files: --to bucket, --to repository, or --address <url>
+  disconnect    New files go to the repository again (the bucket's files stay)
+Options for connect
+      --connector <id>   r2 (Cloudflare R2) or s3 (Amazon S3)
+      --bucket <name>
+      --account <id>     R2: the account ID
+      --region <code>    S3: the bucket's Region ("eu-west-1")
+      --endpoint <url>   R2 in a jurisdiction: the bucket's S3 address
+      --prefix <folder>  Keep this site's files in a folder of the bucket
+      --public-url <url> Where visitors load the files from
+  The key is read from GALLEY_MEDIA_ACCESS_KEY_ID and GALLEY_MEDIA_SECRET_ACCESS_KEY,
+  or asked for (nothing is shown as you paste). It is never a flag.
+Options for move
+      --to <place>       bucket or repository
+      --address <url>    Use a new public address for the bucket's files
+      --keep-copies      Moving to the bucket: keep the repository's copies too
+Options
+      --forget-keys      disconnect: remove the bucket's key from this computer too
+  -y, --yes              Don't ask before moving or disconnecting
+      --json             Print the result as JSON
+  -h, --help             Show this help
+Examples
+  galley media connect --connector r2 --bucket lowfield-media --account 4f0c… --public-url https://media.example.com
+  galley media move --to bucket
+  galley media move --address https://media.example.com
 ```
 
 ## `galley host`

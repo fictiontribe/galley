@@ -104,6 +104,12 @@
       "status": "built"
     },
     {
+      "id": "media-bucket",
+      "label": "Media in a bucket",
+      "line": "Cloudflare R2 or Amazon S3. Built; not yet verified on the real services.",
+      "status": "progress"
+    },
+    {
       "id": "deploy-vercel",
       "label": "Deploy to Vercel",
       "line": "Built; not yet verified on the real service.",
