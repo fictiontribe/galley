@@ -452,14 +452,16 @@ describe("remote URLs", GIT_HEAVY, () => {
     const root = makeRepo({ "src/content/a.md": "a\n" });
     const ws = await workspaceFor(root);
 
-    sh(root, "remote", "add", "origin", "https://x-access-token:not-a-real-key@127.0.0.1:9/acme/site.git");
-    // Any command that fails, with the address in what git says about it.
+    const address = "https://x-access-token:not-a-real-key@127.0.0.1:9/acme/site.git";
+
+    sh(root, "remote", "add", "origin", address);
+    // A command that is given the address itself and fails: the details quote the command as it was run.
     const failed = await git(root)
-      .run(["ls-remote", "--exit-code", "origin"], { timeoutMs: 20_000 })
+      .run(["ls-remote", "--exit-code", "--", address], { timeoutMs: 20_000 })
       .catch((error: unknown) => error);
 
     expect(failed).toMatchObject({ code: "git" });
-    expect((failed as GitCommandError).detail).toContain("127.0.0.1:9/acme/site.git");
+    expect((failed as GitCommandError).detail).toContain("git ls-remote --exit-code -- https://127.0.0.1:9/acme/site.git");
     expect((failed as GitCommandError).detail).not.toContain("not-a-real-key");
     expect((failed as GitCommandError).detail).not.toContain("x-access-token");
     // A look that fails says so in plain words, and its details are as clean.
