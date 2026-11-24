@@ -24,10 +24,11 @@ import Faq from "./sections/Faq.astro";
 import Team from "./sections/Team.astro";
 import Tour from "./sections/Tour.astro";
 import Filmstrip from "./sections/Filmstrip.astro";
+import Desktop from "./sections/Desktop.astro";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const { sections = [], field = "sections", from = 0, to } = Astro.props as { sections: any[]; field?: string; from?: number; to?: number };
-const components: Record<string, unknown> = { hero: Hero, film: Film, tabs: Tabs, proof: Proof, band: Band, starters: Starters, split: Split, status: Status, cards: Cards, close: Close, lists: Lists, comparison: Comparison, steps: Steps, faq: Faq, team: Team, tour: Tour, filmstrip: Filmstrip };
+const components: Record<string, unknown> = { hero: Hero, film: Film, tabs: Tabs, proof: Proof, band: Band, starters: Starters, split: Split, status: Status, cards: Cards, close: Close, lists: Lists, comparison: Comparison, steps: Steps, faq: Faq, team: Team, tour: Tour, filmstrip: Filmstrip, desktop: Desktop };
 const showHidden = process.env.GALLEY_SHOW_HIDDEN === "1";
 const shown = sections.map((s, index) => ({ s, index })).filter(({ s }) => components[s.type] && (!s.hidden || showHidden));
 // Each section's place among the shown sections of its own type (the tour numbers its parts).

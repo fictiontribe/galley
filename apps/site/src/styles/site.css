@@ -686,6 +686,80 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
 .docs__howto { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--s2); margin: calc(-1 * var(--s4)) 0 var(--s6); padding: 12px var(--s4); max-width: 44rem; border-radius: var(--r-md); background: var(--raised); border: 1px solid var(--line-2); color: var(--ink-2); font-size: 0.9375rem; }
 .docs__howto a { color: var(--accent-text); font-weight: 500; text-underline-offset: 0.2em; }
 
+/* ---------- the desktop app: /download/ and its home section ----------
+   The icon as the app's own face, centred above one button for the visitor's
+   system; the other systems in a ruled list; captures of the app window whole,
+   each on the tan panel with room around it (a native window is never cut). */
+.appicon { display: inline-flex; flex: none; }
+.appicon svg { display: block; }
+.dlpage { padding-top: clamp(28px, 4vw, 56px); }
+.dlpage__head { display: grid; justify-items: center; gap: var(--s4); max-width: 42rem; margin-inline: auto; text-align: center; }
+.dlpage__icon { margin-bottom: calc(-1 * var(--s3)); }
+.dlpage__icon svg { width: clamp(132px, 16vw, 168px); height: auto; }
+.dlpage__get, .dlpage__pending { display: grid; justify-items: center; gap: var(--s4); max-width: 34rem; margin: var(--s7) auto 0; text-align: center; }
+.dlpage__pending .cmd { text-align: left; }
+.dlpage__release a { color: var(--ink-2); text-underline-offset: 0.2em; }
+.dl { width: 100%; }
+.dl__primary { display: grid; justify-items: center; gap: var(--s2); }
+.dl__primary[hidden], .dl__hint[hidden] { display: none; }
+.dl__btn { min-height: 56px; padding: 0 var(--s6) 0 var(--s5); font-size: 1.0625rem; }
+.dl__btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.dl__meta { font: 400 0.8125rem/1.4 var(--font-mono); color: var(--ink-3); }
+.dl__hint { font-size: var(--t-small); color: var(--ink-3); }
+.dl__all { margin-top: var(--s6); text-align: left; }
+.dl.is-picked .dl__all { margin-top: var(--s7); }
+.dl__label { margin-bottom: var(--s2); }
+.dl__list { border-top: 1px solid var(--line-2); }
+.dl__row { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); min-height: 64px; padding: 10px 0; border-bottom: 1px solid var(--line-2); }
+.dl__row[hidden] { display: none; }
+.dl__name { display: grid; gap: 2px; min-width: 0; }
+.dl__name b { font-weight: 500; }
+.dl__name span { font: 400 0.8125rem/1.4 var(--font-mono); color: var(--ink-3); }
+.dl__get { display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--s4); border: 1px solid var(--line-strong); border-radius: var(--r-pill); font: 500 0.9375rem/1 var(--font-text); text-decoration: none; white-space: nowrap; transition: background-color .14s; }
+.dl__get:hover { background: var(--sunken); }
+.dl.is-picked .dl__row { min-height: 56px; }
+.dl.is-picked .dl__get { border-color: var(--line-2); color: var(--ink-2); }
+.dl__row.is-coming b { color: var(--ink-2); font-weight: 400; }
+.dlpage__points { margin-top: var(--section); }
+.dlpage__points ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s6) var(--gap); }
+.dlpage__points li { display: grid; gap: var(--s2); align-content: start; padding-top: var(--s4); border-top: 1px solid var(--ink); }
+.dlpage__pt { font: 400 var(--t-h3)/1.2 var(--font-display); letter-spacing: -0.01em; }
+.dlpage__screens { margin-top: var(--section); }
+.dlshots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); }
+.dlshot { display: grid; place-items: center; padding: clamp(20px, 3.4vw, 48px); }
+.dlshot--lead { grid-column: 1 / -1; padding: clamp(24px, 5vw, 72px); }
+/* An even number of pictures sits as pairs: a wide first one would leave the last alone in half a row. */
+.dlshots--pairs .dlshot--lead { grid-column: auto; padding: clamp(20px, 3.4vw, 48px); }
+.dlshots > .dlshot:last-child:nth-child(even) { grid-column: auto; }
+.dlshot__win { width: 100%; }
+.dlshot__win img { width: 100%; height: auto; filter: drop-shadow(0 2px 4px rgb(26 23 18 / .1)) drop-shadow(0 28px 48px rgb(26 23 18 / .28)); }
+[data-zoom-panel].is-zoomable .dlshot__win { cursor: zoom-in; }
+.dlpage__open { margin-top: var(--section); }
+.dlpage__unsigned { max-width: 44rem; margin-top: var(--s4); }
+.dlopen { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s6) var(--s7); margin-top: var(--s7); }
+.dlopen__group { padding-top: var(--s4); border-top: 1px solid var(--ink); }
+.dlopen__h { font: 600 var(--t-ui)/1.35 var(--font-text); margin-bottom: var(--s4); }
+.dlopen__steps { display: grid; gap: var(--s4); counter-reset: step; }
+.dlopen__steps li { position: relative; padding-left: 2.25rem; color: var(--ink-2); line-height: 1.5; counter-increment: step; }
+.dlopen__steps li::before { content: counter(step); position: absolute; left: 0; top: -0.1em; font: 400 1.75rem/1 var(--font-display); color: var(--accent-text); }
+.dlopen__steps strong { font-weight: 600; color: var(--ink); }
+.dlopen__steps code, .dl__hint code { padding: 1px 5px; border-radius: 4px; background: var(--sunken); font: 400 0.875em/1 var(--font-mono); }
+.dlpage__foot { margin-top: var(--section); padding-bottom: var(--section); }
+.dlpage__footin { display: grid; gap: var(--s5); padding-top: var(--s5); border-top: 1px solid var(--line-2); }
+.dlpage__npx { display: grid; gap: var(--s3); max-width: 40rem; }
+/* The home section: one ruled row — icon, words, the download — or, with a capture of the app, the words beside it. */
+.desk { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s5) var(--s7); align-items: center; padding-block: var(--s6); border-block: 1px solid var(--line-2); }
+.desk__words { display: grid; gap: var(--s3); max-width: 36rem; }
+.desk--shot { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto auto 1fr; gap: var(--s4) var(--s8); align-items: start; padding-block: 0; border: 0; }
+.desk--shot > :not(.desk__frame) { grid-column: 1; }
+.desk--shot .desk__icon { margin-bottom: var(--s2); }
+.desk__frame { grid-column: 2; grid-row: 1 / span 3; display: grid; place-items: center; padding: clamp(20px, 3.4vw, 48px); }
+.dl--home { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s3) var(--s5); }
+.dl--home .dl__primary { justify-items: start; }
+.dl--home .dl__btn { min-height: 48px; font-size: 1rem; }
+.dl__home { display: flex; align-items: center; gap: var(--s5); min-height: 48px; }
+.dl__home [hidden] { display: none; }
+
 /* ================= responsive ================= */
 @media (max-width: 1180px) {
   .hero__row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s5) var(--s6); }
@@ -825,6 +899,26 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
   .howto-step__frame { margin-inline: calc(-1 * var(--gutter)); padding: 12px; border-radius: 0; }
   .howto-step__do { font-size: 1.125rem; }
   .docs__howto { margin-top: calc(-1 * var(--s3)); }
+}
+
+/* the desktop app, narrower */
+@media (max-width: 1023px) {
+  .dlpage__points ul { grid-template-columns: minmax(0, 1fr); gap: var(--s5); }
+  .dlshots { grid-template-columns: minmax(0, 1fr); }
+  .desk { grid-template-columns: auto minmax(0, 1fr); }
+  .desk__get { grid-column: 1 / -1; }
+  .desk--shot { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .desk__frame { grid-column: 1; grid-row: auto; }
+}
+@media (max-width: 639px) {
+  .desk { grid-template-columns: minmax(0, 1fr); }
+  .desk__icon svg { width: 72px; height: 72px; }
+  .dl--home, .dl__home { flex-direction: column; align-items: flex-start; }
+  .dl__home { min-height: 0; gap: var(--s3); }
+  .dl__btn { width: 100%; }
+  .dl--page .dl__primary { width: 100%; }
+  .dl__row { min-height: 60px; }
+  .dlshot, .dlshot--lead { padding: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

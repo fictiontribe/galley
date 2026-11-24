@@ -49,6 +49,14 @@ const server = http.createServer((req, res) => {
     res.writeHead(302, { location: "http://localhost:" + port + "/landing/" });
     return res.end();
   }
+  if (req.url === "/moved") {
+    res.writeHead(308, { location: "/moved/", "cache-control": "public, max-age=3600" });
+    return res.end();
+  }
+  if (req.url === "/hashed.js") {
+    res.writeHead(200, { "content-type": "text/javascript", "cache-control": "public, max-age=31536000, immutable" });
+    return res.end("1");
+  }
   if (req.url === "/echo") {
     res.writeHead(200, { "content-type": "application/json" });
     return res.end(JSON.stringify({ host: req.headers.host, origin: req.headers.origin ?? null }));
@@ -370,6 +378,16 @@ describe("preview controller", () => {
 
     expect(redirect.headers.get("location")).toBe(`${url}/landing/`);
 
+    // Nothing is kept on a guess: the preview's origin outlives the server behind it. A permanent
+    // redirect is never cached, whatever it says; a response with its own policy keeps it.
+    expect(redirect.headers.get("cache-control")).toBe("no-store");
+    expect(js.headers.get("cache-control")).toBe("no-store");
+    const moved = await fetch(url + "/moved", { redirect: "manual" });
+
+    expect(moved.status).toBe(308);
+    expect(moved.headers.get("cache-control")).toBe("no-store");
+    expect((await fetch(url + "/hashed.js")).headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+
     // The proxy's own routes.
     const overlay = await fetch(url + OVERLAY_SCRIPT_PATH);
 
@@ -452,7 +470,11 @@ describe("preview controller", () => {
     expect(page.headers.get("x-frame-options")).toBeNull();
     expect(page.headers.get("content-security-policy")).toBe("script-src 'self'");
     expect(page.headers.get("set-cookie")).toBe("session=1; Path=/");
-    expect((await fetch(baseline + "/old", { redirect: "manual" })).headers.get("location")).toBe(`${baseline}/new/`);
+    const moved = await fetch(baseline + "/old", { redirect: "manual" });
+
+    expect(moved.headers.get("location")).toBe(`${baseline}/new/`);
+    // The live site's own headers are its business.
+    expect(moved.headers.get("cache-control")).toBeNull();
     expect(await (await fetch(baseline + PROXY_HEALTH_PATH)).json()).toEqual({ ok: true, kind: "baseline" });
     const baselineProxyPort = Number(new URL(baseline).port);
 

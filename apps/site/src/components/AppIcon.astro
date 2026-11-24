@@ -1,0 +1,17 @@
+---
+// The app icon, as drawn in brand/logo/app-icon.svg (the source of the
+// desktop app's own icons), inline so it stays sharp at any size. Its ids are
+// prefixed so two icons on one page never share a gradient or a clip.
+import raw from "../../../../brand/logo/app-icon.svg?raw";
+
+interface Props { size?: number; class?: string; id?: string }
+const { size = 128, class: cls, id = "ai" } = Astro.props;
+const svg = raw
+  .replace(/ width="1024" height="1024"/, ` width="${size}" height="${size}"`)
+  .replace(' role="img" aria-labelledby="t"', ' aria-hidden="true" focusable="false"')
+  .replace(/<title[^>]*>.*?<\/title>/, "")
+  .replace(/id="(\w+)"/g, `id="${id}-$1"`)
+  .replace(/url\(#(\w+)\)/g, `url(#${id}-$1)`);
+---
+
+<span class:list={["appicon", cls]} set:html={svg} />

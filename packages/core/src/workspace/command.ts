@@ -103,6 +103,20 @@ function isExecutable(candidate: string): boolean {
   }
 }
 
+/**
+ * The file names to try for a command, in order. On Windows a name without
+ * one of PATHEXT's endings is tried with each ending first, as cmd.exe does,
+ * and bare only last: npm ships a file called plain `npm` beside `npm.cmd` —
+ * a script for other shells that Windows can't start — and it must not win.
+ */
+export function candidateNames(name: string, windows: boolean, pathext: string | undefined = process.env.PATHEXT): string[] {
+  if (!windows) return [name];
+  const endings = (pathext || ".COM;.EXE;.BAT;.CMD").toLowerCase().split(";").filter(Boolean);
+
+  if (endings.some((ending) => name.toLowerCase().endsWith(ending))) return [name];
+  return [...endings.map((ending) => name + ending), name];
+}
+
 /** Finds a binary on a PATH string (honouring PATHEXT on Windows). */
 export function which(name: string, pathValue: string, cwd: string): string | null {
   if (name.includes("/") || (IS_WINDOWS && name.includes("\\"))) {
@@ -110,12 +124,12 @@ export function which(name: string, pathValue: string, cwd: string): string | nu
 
     return isExecutable(candidate) ? candidate : null;
   }
-  const extensions = IS_WINDOWS ? ["", ...(process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").toLowerCase().split(";")] : [""];
+  const names = candidateNames(name, IS_WINDOWS);
 
   for (const directory of pathValue.split(delimiter)) {
     if (!directory) continue;
-    for (const ext of extensions) {
-      const candidate = join(directory, name + ext);
+    for (const file of names) {
+      const candidate = join(directory, file);
 
       if (isExecutable(candidate)) return candidate;
     }

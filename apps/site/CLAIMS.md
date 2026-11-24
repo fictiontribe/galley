@@ -131,6 +131,26 @@ version number in prose (the npm badge carries it), no client names.
 | “It runs on your computer.” | `packages/cli/README.md` | `npx galley-cms` listens on `127.0.0.1` (the install row above). The assistant and image services are called only with the person's own keys (/docs/running/security/) |
 | `pnpm create galley`, `yarn create galley` and `bun create galley` work the same way | `packages/create-galley/README.md` | Carried over from the previous README; not run by the docs (see the install row above) |
 
+## The desktop app: /download/ and the home section
+
+Added 2026-11-24. Words in `src/content/pages/download.md` and the `desktop`
+section of `src/content/pages/index.md`; everything about the files comes from
+`src/data/downloads.json`, which is **off** (`available: false`): /download/
+exists with noindex, is linked from nowhere, offers no download and shows
+`npx galley-cms`; the home section and the footer's Download link don't render.
+`status.json` → `apps` is unchanged.
+
+| Statement | Where | Support |
+| --- | --- | --- |
+| “The same app, in its own window, for every site you look after.” | /download/, home section (when on) | `docs/running/desktop.md` (a native shell around the same server and web UI); `docs/multi-site.md` “Sites in their own windows (desktop app)” |
+| “The installers are on their way. Until then, Galley starts with one command in your site’s folder and opens in your browser.” | /download/ while off | `docs/running/desktop.md` Status (“There are no published downloads”); the install row above (`npx galley-cms`) |
+| The same editor: the form, the page, the assistant, Proof and Publish — the app runs exactly what runs in the browser, and stops it when you quit | /download/ | `docs/running/desktop.md` (same server and web UI; quitting stops the server and its previews) |
+| Every site in a window of its own; the app reopens them where you left them | /download/ | `docs/multi-site.md`: “Open in a new window”, “Windows are remembered: the site windows open when you quit reopen next time, at their size and position” |
+| Your sites stay folders on your computer, with their own files and version history, as without the app | /download/ | `docs/multi-site.md` (each site in its own folder, with its own version history); the app shares the Galley home with the CLI (`docs/running/desktop.md`) |
+| Size, oldest system, file names, version, which platforms are available | /download/, home (when on) | `downloads.json`, filled in from the builder’s report. `requires` for both Macs is “macOS 11 or later” from `apps/desktop/src-tauri/tauri.conf.json` (`minimumSystemVersion: 11.0`); Windows and Linux are left empty until the builder says |
+| “Galley isn’t signed yet, so your system warns you the first time you open it.” and the steps to open it | /download/ (when on and any available platform has `signed: false`) | `docs/running/desktop.md` Status and “Not done yet” (unsigned; right-click → Open on macOS; SmartScreen warns on Windows). The steps in `downloads.json` → `open` are placeholders written from that page and the platforms’ usual warnings; **check them against the real installers before switching on** (macOS 15 needs System Settings › Privacy & Security › Open Anyway, step 3) |
+| The app icon | /download/, home (when on) | `brand/logo/app-icon.svg`, the source of `apps/desktop/src-tauri/icons/` |
+
 ## Install commands
 
 Every command a page shows comes from `src/data/site.json → install`.

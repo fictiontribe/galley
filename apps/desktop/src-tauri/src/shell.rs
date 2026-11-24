@@ -302,10 +302,17 @@ fn boot(app: AppHandle, generation: u64) {
         }
     }
 
+    // The program's real folder: started from a terminal, the path it was
+    // given can run through a symbolic link.
     let exe_dir = std::env::current_exe()
         .ok()
+        .map(|exe| exe.canonicalize().unwrap_or(exe))
         .and_then(|exe| exe.parent().map(|dir| dir.to_path_buf()));
-    let resource_dir = app.path().resource_dir().ok();
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .ok()
+        .or_else(|| exe_dir.as_deref().and_then(server::resources_beside));
     let launch = match server::locate(exe_dir.as_deref(), resource_dir.as_deref(), &path) {
         Ok(launch) => launch,
         Err(detail) => return fail(&app, generation, "missing", detail, Vec::new()),
