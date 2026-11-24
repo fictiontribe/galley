@@ -10,7 +10,8 @@ import { EmptyState, IconButton, Menu, ProofMark, cx, type MenuItem } from "@/ui
 import { ACTION_KINDS, actionKind, actionNotes, canAdd, insertIndex, newAction, REDIRECT_DELAY_WITH_MESSAGE } from "../logic/actions";
 import { toJson } from "../logic/json";
 import { AREA_MARKS } from "../logic/marks";
-import { useAllowBuild } from "../file/assistant";
+import { useAllowBuild, useBuildByOthers } from "../file/assistant";
+import { CODE_BY_OTHERS } from "./ActionBody";
 import { useEdits, useFormDoc } from "../file/hooks";
 import { useChangeMarks } from "../file/KitFile";
 import { useListDrag, type ListDrag } from "../file/useListDrag";
@@ -22,6 +23,7 @@ const PATH = ["afterSubmit"];
 function ActionCard({ siteId, index, total, action, drag, onMove, onRemove }: { siteId: string; index: number; total: number; action: FormAction; drag: ListDrag; onMove: (from: number, to: number) => void; onRemove: (index: number) => void }) {
   const form = useFormDoc();
   const allowBuild = useAllowBuild();
+  const byOthers = useBuildByOthers();
   const card = useRef<HTMLElement>(null);
   const kind = actionKind(action.type);
   const onKey = (event: KeyboardEvent) => {
@@ -47,7 +49,7 @@ function ActionCard({ siteId, index, total, action, drag, onMove, onRemove }: { 
         </span>
       </header>
       <div className="g-block__body kit-action__body">
-        <ActionBody siteId={siteId} index={index} action={action} fields={form.fields} allowBuild={allowBuild} hasMessage={form.afterSubmit.some((other) => other.type === "message")} />
+        <ActionBody siteId={siteId} index={index} action={action} fields={form.fields} allowBuild={allowBuild} buildByOthers={byOthers} hasMessage={form.afterSubmit.some((other) => other.type === "message")} />
       </div>
     </section>
   );
@@ -58,6 +60,7 @@ export function AfterSending({ siteId }: { siteId: string }) {
   const form = useFormDoc();
   const edits = useEdits();
   const allowBuild = useAllowBuild();
+  const byOthers = useBuildByOthers();
   const raw = useFormValue(PATH);
   const marks = useChangeMarks();
   const scroller = useRef<HTMLDivElement>(null);
@@ -85,7 +88,7 @@ export function AfterSending({ siteId }: { siteId: string }) {
     edits.apply(...ops);
   };
   const items: MenuItem[] = ACTION_KINDS.map((kind) => {
-    const available = canAdd(actions, kind.type, allowBuild);
+    const available = canAdd(actions, kind.type, allowBuild, byOthers ? CODE_BY_OTHERS : undefined);
     return { id: kind.type, label: kind.label, hint: available.ok ? kind.description : available.reason, disabled: !available.ok, onSelect: () => add(kind.type) };
   });
   const answers = useMemo(() => sampleAnswers(form.fields), [form.fields]);

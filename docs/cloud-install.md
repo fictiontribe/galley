@@ -388,7 +388,7 @@ ready. From the environment, or from one JSON file named by
 
 | Variable | File key | |
 | --- | --- | --- |
-| `GALLEY_PUBLIC_URL` | `address` | The address people use. |
+| `GALLEY_PUBLIC_URL` | `address` | The address people use. Every invitation and new-password link is built from it ([One-time links](#one-time-links)). |
 | `GALLEY_PASSWORD` | `password` | The first owner's password, 12+ characters. |
 | `GALLEY_OWNER_NAME`, `GALLEY_OWNER_EMAIL` | `owner.name`, `owner.email` | The first owner's name and the e-mail they sign in with. |
 | `GALLEY_SETUP_TOKEN` | `setupToken` | A setup code of yours, 24+ characters. |
@@ -461,16 +461,20 @@ ignored, with a notice saying so.
 
 Three ways back in, from the gentlest:
 
-- **The server has outgoing e-mail** ([Outgoing e-mail](#outgoing-e-mail)):
-  the person chooses **Forgot your password?** under Sign in, types their
-  e-mail, and gets a new-password link by e-mail. The page always ends on
-  the same sentence, whether or not the address has an account here.
-- **No outgoing e-mail, or the e-mail doesn't arrive:** an owner opens
-  People on the Install page, and in that person's **…** menu chooses
-  **New-password link**. The link is shown once, to copy and send however
-  they like (it is e-mailed too when the server can). Without outgoing
-  e-mail, **Forgot your password?** tells the person to ask an owner for
-  one.
+- **The server e-mails links** (outgoing e-mail and the editor's public
+  address are both set; [Outgoing e-mail](#outgoing-e-mail)): the person
+  chooses **Forgot your password?** under Sign in, types their e-mail, and
+  gets a new-password link by e-mail. The page always ends on the same
+  sentence, whether or not the address has an account here.
+- **An owner makes one:** in People on the Install page, in that person's
+  **…** menu, **New-password link**. When the server e-mails it to the
+  person, the owner is told so and the link isn't shown: a link that signs
+  in as someone stays with them. When it can't be e-mailed, it is shown
+  once, for the owner to copy and send however they like. If an e-mailed
+  link doesn't arrive, check the person's e-mail (an owner can change it:
+  **Change e-mail…** in the same menu) and make a new one. When the server
+  doesn't e-mail links, **Forgot your password?** tells the person to ask
+  an owner for one.
 - **An owner who can't get in** — the only owner, or every owner — is let
   back in by whoever runs the server, with
   `galley serve --reset-password`. See below.
@@ -550,8 +554,10 @@ gives `cms-preview.example.com` and `cms-live.example.com`; a two-part name
 Requests for those two names never reach the app: they go to the preview
 gateway (`packages/server/src/gateway.ts`), which hands them to whichever
 preview proxy is mounted (`packages/core/src/workspace/preview/proxy.ts`).
-Without `GALLEY_PUBLIC_URL` the server answers any hostname and there is no
-preview. A hosted install never opens preview ports.
+Without `GALLEY_PUBLIC_URL` the server answers any hostname, there is no
+preview, and no invitation or new-password link is e-mailed
+([One-time links](#one-time-links)). A hosted install never opens preview
+ports.
 
 ### Why hostnames
 
@@ -621,16 +627,18 @@ Every route the server answers needs one of three levels, and the levels
 nest: whoever may publish may edit, whoever may manage may publish.
 
 - **Edit** — reading the site, and anything that only changes the draft
-  (the working copy on the server): pages, media, files, forms in the site,
-  the redirects list, the brand, the assistant, the preview and Proof.
-  Nothing at this level reaches the live site by itself.
+  (the working copy on the server) in content mode: pages, media, the
+  site's content files, forms in the site, the redirects list, the brand
+  where it is kept with the content, the assistant in content mode, the
+  preview and Proof. Nothing at this level reaches the live site by itself.
 - **Publish** — what changes the live site or the repository — Publish,
   undo a publish, send, get the latest, put the site live, set redirects on
-  Cloudflare — and reading what visitors sent through the site's forms (the
-  inbox).
+  Cloudflare — reading what visitors sent through the site's forms (the
+  inbox), and **build mode**: changing the site's code and templates
+  ([Build mode and the site's settings](#build-mode-and-the-sites-settings)).
 - **Manage** — the install itself: people, stored keys, the repository's
-  access, backups and restore, the site's settings, plugins, where the site
-  is hosted and its domain, app-wide settings, the Install page.
+  access, backups and restore, **the site's settings file**, plugins, where
+  the site is hosted and its domain, app-wide settings, the Install page.
 
 | Role | Edit | Publish | Manage |
 | --- | --- | --- | --- |
@@ -638,12 +646,15 @@ nest: whoever may publish may edit, whoever may manage may publish.
 | **Editor** | yes | yes | — |
 | **Contributor** | yes | — | — |
 
-So an **editor** changes the site and publishes it, and reads the inbox,
-but has no Install page, App settings, Plugins or site Settings, and can't
-set up where the site is hosted. A **contributor** changes the site and sees
-Proof, and an editor or owner publishes: no Publish, no undo of a publish,
-no Get latest or Send now, no putting the site live or sharing a preview
-link, no inbox, no redirects on Cloudflare.
+So an **editor** changes the site, its code and templates included, and
+publishes it, and reads the inbox, but has no Install page, App settings,
+Plugins or site Settings, can't change the site's settings file, and can't
+set up where the site is hosted. A **contributor** changes the site's
+content and sees Proof, and an editor or owner publishes: no Publish, no
+undo of a publish, no Get latest or Send now, no putting the site live or
+sharing a preview link, no inbox, no redirects on Cloudflare, and no build
+mode — no assistant in build mode, no set-up helpers that change the site's
+code, no custom code in forms or scripts.
 
 The one table that decides is `ROUTE_ACCESS` in
 `packages/core/src/install/route-access.ts`, one level for every route (a
@@ -653,23 +664,77 @@ who calls a route above their level gets 403: *Your account can't do that.
 Ask an owner of this editor.* A role is read on every request, so a change
 applies to that person's very next request.
 
+### Build mode and the site's settings
+
+Two rules depend on what a request asks for, not on which route it is, so
+the engine holds them itself, at the write, whichever way in a request
+comes: a route, the assistant, an AI tool over MCP, a plugin's tool
+(`packages/core/src/install/caller.ts`). Both levels are in
+`route-access.ts` (`BUILD_MODE_LEVEL`, `SITE_SETTINGS_LEVEL`), and the app
+reads them to decide what to offer.
+
+- **Build mode needs an editor or owner** (the publish level): writing
+  outside the site's content — its code, templates and the files it is
+  built from — and the assistant's build-mode tools. That includes adding
+  or changing custom code in a form (it runs in every visitor's browser),
+  and saving the brand when its folder isn't part of the site's content. A
+  contributor
+  works in content mode. A request for build mode from a contributor is
+  refused in plain words — never quietly carried out in content mode
+  instead: *Your account can change the site's content, but not its code
+  and templates (build mode). Ask an owner or an editor of this editor.* In
+  a conversation that is already in build mode, the assistant adds: *This
+  conversation is in build mode: switch it to content mode to carry on.*
+  A site's own `"ai": { "allowBuild": false }` still turns the assistant's
+  build mode off for everyone, owners included.
+- **The site's settings file (`galley.config.json`) is an owner's**, by
+  every way in: the site's Settings screen, a file write in any mode (by its
+  own name in any letter case, or through a link to it), the assistant's
+  `save_site_config`, an AI tool. So are discarding a pending change to it,
+  undoing an assistant reply that changed it, and undoing a publish that
+  changed it. Anyone else is told: *Your account can't change the site's
+  settings. Ask an owner of this editor.* The Settings screen's own route
+  answers with the table's sentence above.
+- **What the editor records for itself.** A few values go into the
+  settings file as part of an action someone below the owner may take, and
+  the engine writes just those values, without opening the rest of the
+  file to that person: the site's addresses after an editor puts it live
+  (`deploy.defaultUrl`, `deploy.productionUrl`), and where the redirects
+  list lives the first time anyone saves it (`redirects.file`). Each changes
+  only its own keys; every other line of the file stays as it was
+  (`packages/core/src/site/settings-records.ts`). Where the redirects take
+  effect — the host that applies them, and the Cloudflare account and
+  domains (`redirects.host`, `redirects.cloudflare`) — is part of the
+  site's settings and an owner's to choose.
+- **The assistant offers each person only the tools their role includes**,
+  and checks again on every call: a contributor's assistant has no
+  build-mode tools, and `save_site_config` is an owner's. The MCP endpoint
+  is reached with a token, not a person's account, so it keeps that token's
+  reach ([The operator's token](#the-operators-token)).
+- **The role is read again whenever it is checked**, so work a request
+  started — an assistant reply that is still running — can do only what the
+  person's role allows at that moment.
+
 ### What roles are, and what they aren't
 
 Roles keep people out of each other's way and out of trouble: a contributor
-can't publish by accident, an editor can't take a key or a backup away.
-**They are not a wall against someone who means harm.** The preview runs the
-site's own code on the server ([The container is the
-boundary](#the-container-is-the-boundary)), so anyone who can change the
-draft — a contributor included — can change what runs there, and that code
-can reach what the container holds. An account is for a person the owner
-would trust with the site's repository.
+can't publish by accident or change the site's code, an editor can't take a
+key or a backup away or change the site's settings. The server enforces
+them at every way in. **They are not a wall against someone who means
+harm.** The preview runs the site's own code on the server ([The container
+is the boundary](#the-container-is-the-boundary)), for every role: editors
+and owners can change that code in build mode, and the content a
+contributor changes is what that code reads and renders, and in some sites
+runs. That code can reach what the container holds. An account is for a
+person the owner would trust with the site's repository.
 
 Two more things to know:
 
 - **The draft is one shared working copy.** Everyone edits the same draft,
   and **Discard** is at the edit level: a contributor can throw away pending
-  changes — everyone's, not only their own. Publish often, and say who is
-  working on what.
+  changes — everyone's, not only their own (except a change to the site's
+  settings file, which only an owner discards). Publish often, and say who
+  is working on what.
 - **Everyone signed in can see which keys are set**, and where each comes
   from, because the app uses that to say what is available (the assistant,
   image services, hosts, plugins). The last characters of a key, which help
@@ -692,9 +757,14 @@ part of your account." rather than anything about setup links.
 
 ### Inviting someone
 
+**Before inviting anyone, set the editor's public address**
+(`GALLEY_PUBLIC_URL`, then start the server again): every link is built
+from it, and without it a link can be made only on a trial on one computer
+([One-time links](#one-time-links)).
+
 An owner opens **People** on the Install page and chooses **Invite
 someone**: an e-mail and a role. The invitation link is shown **once**, in a
-dialog with **Copy link**; when the server has outgoing e-mail it is also
+dialog with **Copy link**; when the server e-mails links it is also
 e-mailed, and the dialog says so. The person opens it, sees who invited them
 and as what, types their name and a password, and is signed in.
 
@@ -715,20 +785,31 @@ Invitations and new-password links are both one-time links:
 | Invitation | 7 days | `<address>/join#<code>` |
 | New-password link | 60 minutes | `<address>/new-password#<code>` |
 
-- `<address>` is `GALLEY_PUBLIC_URL`, or without it the address the request
-  came in on.
+- **`<address>` is the editor's public address, `GALLEY_PUBLIC_URL`**,
+  whatever address, `Host` or `Origin` a request came with.
+- **Without `GALLEY_PUBLIC_URL`**, no link is e-mailed, and a link is shown
+  to the owner only on a trial on one computer: the editor opened at a
+  loopback address (`localhost`, `127.0.0.1`, `::1`), with the request's
+  `Host` naming that same address; the link is built from it. Anywhere else
+  making a link is refused, before any invitation or link is made: *Links
+  can't be made yet: this editor doesn't know its public address. Set the
+  editor's public address (GALLEY_PUBLIC_URL), start it again, then make
+  the link.*
 - Each works **once**. Taking an invitation back, or making a newer
   new-password link for the same person, kills the older link. Switching a
-  person off or removing them ends their open new-password link, and so does
-  changing their password.
+  person off or removing them ends their open new-password link, and so do
+  changing their password and an owner changing their e-mail.
 - **Why the code is after a `#`:** the part of an address after `#` never
   leaves the browser, so the code reaches no server log and no proxy on the
   way. The page takes it out of the address bar at once and sends it in a
   request body.
 - The code is 32 random bytes; the server keeps only its SHA-256, so the
-  state file — or a backup of it — can't be used to sign anyone in. The link
-  is told once, to the owner who made it (and by e-mail to the person, when
-  the server can), and never again.
+  state file — or a backup of it — can't be used to sign anyone in. An
+  invitation is shown once, to the owner who made it, and e-mailed to the
+  person when the server e-mails links. A new-password link an owner makes
+  for someone goes to that person only, by e-mail, when the server e-mails
+  it; only when it can't be e-mailed is it shown, once, to the owner to
+  pass on. Neither is ever shown again.
 - A used, taken-back, expired or unknown link gets one and the same refusal,
   and counts against the per-address limit below.
 - Using a new-password link sets the password and signs that person's other
@@ -743,20 +824,34 @@ Accounts use the same two settings as the inbox's e-mail alerts:
 | `GALLEY_SMTP_URL` | The mail server: `smtp://user:pass@host:587`, or `smtps://` for TLS from the start. |
 | `GALLEY_MAIL_FROM` | The sender address. |
 
-**With both set:** invitations and the new-password links an owner makes are
-also e-mailed (the owner still sees the link once), and **Forgot your
+**Links are e-mailed only when both outgoing e-mail and the editor's
+public address (`GALLEY_PUBLIC_URL`) are set**, because a link is only ever
+built from that address. Then invitations are also e-mailed (the owner
+still sees the invitation link once); a new-password link an owner makes is
+e-mailed to the person and not shown to the owner; and **Forgot your
 password?** on the sign-in page e-mails a new-password link. The server
 waits at most 15 seconds for the mail server, then answers without it. A
 send that fails, or doesn't finish in time, never fails the request: the
-owner still gets the link, and the log gets one line with the mail server's
-error code — never the address, the link or the mail server's own words.
+owner is shown the link to pass on, and the log gets one line with the
+mail server's error code — never the address, the link or the mail
+server's own words.
 
-**Without them**, everything still works except e-mail: each link is shown
-to the owner who made it, to send however they like; People says links
-aren't e-mailed; **Forgot your password?** tells the person to ask an owner
-for a new-password link. With only one of the two set, nothing is e-mailed
-and a notice at start-up says which one is missing. `galley serve` says
-which it is in its `E-mail:` line.
+**When the server doesn't e-mail links** — no outgoing e-mail, or no public
+address — everything else still works: each link is shown to the owner who
+made it, to send however they like (without the public address, only on a
+trial on one computer; [One-time links](#one-time-links)); People says the
+server doesn't e-mail links and that whoever runs it can have it do so;
+**Forgot your password?** tells the person to ask an owner for a
+new-password link. With only one of the two mail settings set, nothing is
+e-mailed and a notice at start-up says which one is missing.
+
+`galley serve` says which case it is in its `E-mail:` start-up line:
+
+```
+E-mail:    not set up (GALLEY_SMTP_URL, GALLEY_MAIL_FROM): owners send invitation and new-password links themselves
+E-mail:    invitations and new-password links are e-mailed too
+E-mail:    set up, but no link is e-mailed until the editor's public address is set (GALLEY_PUBLIC_URL): a link is only ever built from it
+```
 
 Sending has been tried only against a stand-in mail transport in the tests,
 **not yet against a real mail server**.
@@ -775,16 +870,33 @@ owner adds theirs (`install.signInWith` in `GET /api/meta`).
 processes don't share them):
 
 - **5 failures a minute per client address**, then that address waits a
-  minute. Wrong passwords, wrong setup codes, bad link codes and a wrong
-  current password when changing your password all count against it.
-- **10 failed sign-ins per e-mail in 15 minutes**, from any address, then
-  that e-mail waits 15 minutes. It counts every e-mail, whether or not it
-  has an account, so a refusal reveals nothing. The trade-off: someone
-  guessing at a real person's e-mail can keep that person out for a while,
-  right password and all.
+  minute (429, *Too many sign-in attempts. Wait a minute, then try
+  again.*). Wrong passwords, wrong setup codes, bad link codes and a wrong
+  current password when changing your password or your e-mail all count
+  against it.
+- **10 failed sign-ins for one e-mail from one client address in 15
+  minutes**, then that e-mail waits 15 minutes from that address (429,
+  *Too many sign-in attempts for that e-mail. Wait 15 minutes, then try
+  again.*). It counts every e-mail, whether or not it has an account, so a
+  refusal reveals nothing.
+- **Failures from other addresses only slow a sign-in for that e-mail,
+  and never refuse the right password by themselves.** Once 30 failures for
+  one e-mail have built up from every address together in 15 minutes, each
+  sign-in for it waits its turn: one at a time, a second apart, with at most
+  10 in line (past that, each waits a second on its own). Nothing is said;
+  the answer only comes later.
+- **Only a few password checks run at once**: 2 at a time, with at most 16
+  waiting. Past that, a sign-in is answered at once with 429, *Too many
+  sign-in attempts. Wait a minute, then try again.*, and the server keeps
+  answering everything else.
 - **Forgot your password?**: 5 requests per client address in 15 minutes
   (then 429), and at most 3 e-mails an hour to any one address (more
   requests are quietly skipped).
+
+The owner carried over from before accounts, who signs in with the
+password alone, is held to the same limits. Behind a proxy, set
+`GALLEY_TRUST_PROXY=1` so the client address is the one the proxy saw;
+without it every person shares the proxy's address.
 
 **The rules for an account:** the e-mail is kept lower-case, is unique
 whatever the letter case, and is at most 254 characters; a name is 1 to 100
@@ -806,7 +918,16 @@ Signing in records when that person last signed in.
   browser; other people stay signed in.
 - **Sign everyone out** (People) signs out everyone, the owner's own browser
   included.
-- Sign-outs survive a restart.
+- Sign-outs survive a restart. Signing one browser out is written down in
+  the install's state only for a session that still counts, and only until
+  that cookie would have run out anyway.
+- **The list of signed-out browsers is capped at 10,000.** Past the cap, a
+  sign-out signs that person out of every browser instead of adding to the
+  list. A longer list in a state file from an older version is shortened
+  at start-up by signing everyone out once, with one line in the log (*The
+  list of signed-out browsers was longer than 10000, so everyone was signed
+  out once to shorten it. People sign in again as usual.*); the install
+  starts as usual.
 - An open live-update stream ends when its person is signed out, switched
   off or removed. For anyone who can't read the inbox, a new form
   submission arrives only as "the inbox changed", never its content.
@@ -819,8 +940,13 @@ invited, when, whether it was e-mailed, when it stops working). For each
 other person:
 
 - **Role**: Owner, Editor or Contributor.
-- **New-password link**: shown once, with Copy link; e-mailed too when the
-  server can. Not for a switched-off account: switch it on first.
+- **Change e-mail…**: the e-mail they sign in with, and where their
+  new-password links go. It must not be another account's; their open
+  new-password link stops working.
+- **New-password link**: when the server e-mails links, it is e-mailed to
+  the person and the owner reads "The link was e-mailed to …, and isn't
+  shown here."; otherwise it is shown once, with Copy link, to send
+  yourself. Not for a switched-off account: switch it on first.
 - **Sign out**: that person, out of every browser.
 - **Switch off** / **Switch on**: a switched-off person can't sign in;
   their sessions, open new-password link and preview access end at once.
@@ -834,9 +960,17 @@ against the state as it is at that moment):
   contributor, switched off or removed. Make someone else an owner first.
 - **Nobody changes their own account through People** — not their role,
   not switching themselves off, not removing themselves: *Ask another owner
-  to change your own account.* Your own name, e-mail and password are on
-  **Your account** (`/account`); changing your e-mail there needs your
-  current password, because the e-mail is where a new-password link goes.
+  to change your own account.* Your own name and password are on **Your
+  account** (`/account`).
+
+**E-mail addresses are an owner's to change.** An owner changes their own
+on Your account, with their current password (the e-mail is where a
+new-password link goes), and everyone else's with **Change e-mail…** in
+People. Editors and contributors see their e-mail on Your account but don't
+change it; asked anyway, the server answers *Only an owner can change the
+e-mail you sign in with. Ask an owner of this editor to change it for
+you.* An account with no e-mail yet (an owner carried over from before
+accounts) adds its own, with the current password.
 
 ### The operator's token
 
@@ -907,19 +1041,26 @@ with the client address for a sign-in — never an e-mail address, a link or
 a code:
 
 - signed in; a sign-in that failed (wrong password, no account with that
-  e-mail); one refused (the account is switched off, too many attempts);
+  e-mail); one refused (the account is switched off, too many attempts
+  from that address or for that e-mail from there, too many sign-ins being
+  checked at once);
 - the owner made through the setup link;
 - someone invited (as which role, and whether it was e-mailed); an
   invitation accepted; one taken back;
 - a role changed; someone switched off or back on; someone removed;
-- a password changed, or a change refused because the current password was
-  wrong; a name or e-mail changed (not the address);
-- a new-password link made by an owner, asked for with **Forgot your
-  password?**, or used; one made by whoever runs the server
+- a password changed, or a password or e-mail change refused because the
+  current password was wrong; a name changed; an e-mail changed, by the
+  person or by an owner for someone else (who changed it, never the
+  address);
+- a new-password link made by an owner — who made it for whom, and whether
+  it was e-mailed and not shown, or shown to pass on — asked for with
+  **Forgot your password?**, or used; one made by whoever runs the server
   (`--reset-password`);
 - signed out everywhere — one person, themselves, or everyone;
 - a one-time link refused;
-- an e-mail that couldn't be sent, or wasn't sent in time.
+- an e-mail that couldn't be sent, or wasn't sent in time;
+- at start-up, the list of signed-out browsers shortened by signing
+  everyone out once ([Sessions](#sessions)).
 
 ### Stopping
 
@@ -1121,7 +1262,12 @@ the main ones; its test titles are the claims.
 | Sessions end on sign-out everywhere, across a restart; a changed password signs that person's other browsers out. | `server/test/hosted-security.test.ts`, `server/test/install.test.ts`, `core/test/install/state.test.ts` |
 | Passwords are scrypt hashes; the setup code and every one-time link's code are kept as a SHA-256 only; wrong codes count against the sign-in limit. | `core/test/install/state.test.ts`, `core/test/install/people.test.ts`, `server/test/install.test.ts` |
 | Every route answers each role exactly as the one table says: the right level gets through, anyone below it gets 403, nobody signed in gets 401. | `server/test/accounts-access.test.ts` |
-| An unknown e-mail, a wrong password and a switched-off account get the same answer; guesses are limited per address and per e-mail. | `server/test/accounts.test.ts`, `core/test/install/people.test.ts` |
+| An unknown e-mail, a wrong password and a switched-off account get the same answer; guesses are limited per address and per e-mail from one address; guesses from other addresses only slow a sign-in, and the right password still gets in; only a few password checks run at once. | `server/test/accounts.test.ts`, `server/test/accounts-hardening.test.ts`, `core/test/install/people.test.ts` |
+| Every link is built from the editor's public address; without it nothing is e-mailed and a link is shown only on a loopback address; a new-password link the server e-mailed isn't shown to the owner. | `server/test/accounts-links.test.ts` |
+| The site's settings file — saved, written as a file in any mode or letter case, discarded, or put back by undoing a reply or a publish — is an owner's by every route; build mode, custom code in a form and the brand outside the content files are an editor's or owner's, and a request for build mode below that is refused, not narrowed; the values the editor records for itself change nothing else in the file. | `core/test/install/caller-access.test.ts`, `server/test/accounts-hardening.test.ts`, `core/test/install/settings-records.test.ts` |
+| The assistant offers each role only its tools and checks again on every call; every MCP tool, run as each role, does only what that role allows. | `core/test/ai/tools-access.test.ts`, `server/test/mcp-access.test.ts` |
+| Only an owner changes an e-mail address: their own, with their password, or anyone else's in People; it ends that person's open link. | `server/test/accounts-hardening.test.ts` |
+| The list of signed-out browsers stays within its cap; past it, a sign-out signs that person out everywhere; a longer list never stops the install from starting. | `server/test/accounts-hardening.test.ts` |
 | Switching someone off or removing them ends their access on their next request, their open event streams and their preview access; a role change applies to the next request. | `server/test/accounts.test.ts`, `server/test/gateway-auth.test.ts`, `core/test/install/people.test.ts` |
 | A one-time link works once and only while it lasts; every bad code gets the same refusal; a newer new-password link cancels the older. | `server/test/accounts.test.ts`, `core/test/install/people.test.ts` |
 | "Forgot my password" answers the same whether or not the address has an account, and can't flood a mailbox. | `server/test/accounts.test.ts` |
@@ -1144,9 +1290,11 @@ the other's cookie (401), password and form-capture key (403).
 
 The preview runs the site's own dev server, installs its dependencies (their
 install scripts included), and build mode runs its build. **That is code
-from the repository, running on the server, by design.** Anyone who can
-sign in — any role, a contributor included — can change that code and run
-it. The protection is around the process, not inside it:
+from the repository, running on the server, by design.** It runs for anyone
+who can sign in, whatever their role: editors and owners can change that
+code in build mode, and a contributor's content is what it reads and
+renders, and in some sites runs. The protection is around the process, not
+inside it:
 
 - the server runs as the unprivileged user `node`. With `user: node` in
   compose, root is never involved. Started as root (some hosts mount a
@@ -1161,9 +1309,9 @@ it. The protection is around the process, not inside it:
 What the site's code *can* reach is what the `node` user can inside that
 container: the data folder — so the stored keys, the deploy key and the
 session key — and the network. One install per site keeps that reach to the
-one site. Treat every account, whatever its role, as the ability to run code
-in that container ([What roles are, and what they
-aren't](#what-roles-are-and-what-they-arent)).
+one site. Give an account, whatever its role, only to someone you would
+trust with the repository and with what runs in that container ([What
+roles are, and what they aren't](#what-roles-are-and-what-they-arent)).
 
 ### What leaves the machine
 
@@ -1462,10 +1610,22 @@ git repositories and started servers:
   preview's viewer cookie ending with the account
   (`server/test/gateway-auth.test.ts`); the rules, the links running out
   and the upgrade from one password (`core/test/install/people.test.ts`);
+  links built only from the public address, with and without it and with
+  and without a mail transport, and the e-mailed new-password link kept
+  from the owner (`server/test/accounts-links.test.ts`); the sign-in limits
+  as they are now, changing e-mails, the cap on signed-out browsers, and
+  the settings file and build mode by every route
+  (`server/test/accounts-hardening.test.ts`); the settings file and build
+  mode by every way into the engine, a role changed part-way, and work that
+  outlives its request (`core/test/install/caller-access.test.ts`,
+  `core/test/install/settings-records.test.ts`); every assistant tool and
+  every MCP tool as an owner, an editor, a contributor and nobody
+  (`core/test/ai/tools-access.test.ts`, `server/test/mcp-access.test.ts`);
   the screens for each role against the app's local stand-in server
-  (`web/test/install/accounts-*.test.ts`), which refuses the way the real
-  server does — the same 403 for a role, the same error bodies, and its
-  sign-in limits answering 429;
+  (`web/test/install/accounts-*.test.ts`, with every screen walked as each
+  role in `accounts-build.test.ts`), which refuses the way the real server
+  does — the same 403 for a role, the same error bodies, and its sign-in
+  limits answering 429;
 - the preview through the one address on a started hosted server, including
   a WebSocket and cookie isolation (`server/test/hosted-gateway.test.ts`,
   `server/test/gateway.test.ts`);
@@ -1503,7 +1663,8 @@ from before accounts is asked.
 on 2026-11-24 on a Mac: the real `galley serve`, from the repository, in
 hosted mode on a loopback port, with temporary data folders, a local bare
 repository as the site, a small SMTP sink as the mail server, and each
-"browser" its own cookies and client address. All 15 steps passed:
+"browser" its own cookies and client address. The main server has the
+editor's public address set (its own loopback port). All 17 steps passed:
 
 1. first run with the setup code: the owner's account, the site connected,
    finished; the setup code refused a second time;
@@ -1514,24 +1675,40 @@ repository as the site, a small SMTP sink as the mail server, and each
 4. the contributor edits an entry; Publish, the inbox, People, the Install
    page and saving a key refused with 403; no key's last characters anywhere
    they read;
-5. the editor and the owner each publish: two authors in the repository;
-6. the editor made a contributor: their very next Publish refused, without
+5. the site's settings file by every route: the contributor's five ways in
+   (the settings screen, a file write in build mode by its own name and in
+   other letter case, a file write in content mode, a delete as media) and
+   the editor's file write in build mode refused — the build-mode writes
+   with the build-mode sentence, the editor's with the settings sentence —
+   and the file unchanged; the owner's save works, the contributor's discard of the
+   owner's change is refused, and the owner's own discard puts the file
+   back;
+6. the editor and the owner each publish: two authors in the repository;
+7. the editor made a contributor: their very next Publish refused, without
    signing in again;
-7. the contributor switched off: their next request 401, and their sign-in
+8. the contributor switched off: their next request 401, and their sign-in
    gets the wrong-password sentence;
-8. outgoing e-mail: an invitation and "forgot my password" each send one
+9. outgoing e-mail: an invitation and "forgot my password" each send one
    message whose link works; an unknown address gets the same answer and no
    message;
-9. "Sign everyone out", then the owner back in with e-mail and password;
-10. the rest of People and Your account, with the bodies the web app sends;
-11. the log: no password, key, link code or e-mail address in it;
-12. the built web app: `/join`, `/new-password` and `/account` are the app's
+10. "Sign everyone out", then the owner back in with e-mail and password;
+11. the rest of People and Your account, with the bodies the web app sends;
+    a new-password link the owner makes arrives only in the person's inbox,
+    built from the public address, and isn't handed to the owner;
+12. the log: no password, key, link code or e-mail address in it;
+13. the built web app: `/join`, `/new-password` and `/account` are the app's
     own page, signed out and signed in;
-13. an install from before accounts (data layout 1): the password alone,
+14. without the editor's public address, outgoing e-mail set up: the
+    `E-mail:` start-up line says no link is e-mailed until it is set;
+    "forgot my password" answers that nothing can be e-mailed; an invitation
+    asked for through another hostname is refused with the sentence that
+    names `GALLEY_PUBLIC_URL`; one made on the loopback address is shown,
+    built from it; no message reaches the mail server;
+15. an install from before accounts (data layout 1): the password alone,
     the account completed, then sign-in by e-mail;
-14. `serve --reset-password` for a locked-out owner, twice: the first link
+16. `serve --reset-password` for a locked-out owner, twice: the first link
     dies when the second is made; the second works once;
-15. a starter sent from first run: its first version carries the owner's
+17. a starter sent from first run: its first version carries the owner's
     name, with no publishing name saved yet.
 
 **On the real image, on a Mac with Docker (linux/arm64), by hand and with a
@@ -1598,8 +1775,11 @@ BuildKit, 4 GB):
 
 - **Accounts beyond the rehearsal and the browser pass above.** Not yet on
   the real image. In a real browser, not yet: the editor's role, the
-  new-password page, "Forgot your password?", and the question an owner
-  from before accounts is asked. Sending e-mail has not been tried against a
+  new-password page, "Forgot your password?", the question an owner from
+  before accounts is asked, **Change e-mail…**, a new-password link that is
+  e-mailed rather than shown, and what a contributor is offered where build
+  mode, custom code or the site's settings would be (the app's stand-in
+  server and the rehearsal cover these). Sending e-mail has not been tried against a
   real mail server (only the rehearsal's local sink and a stand-in
   transport). A link running out was tested with a moved clock in the
   engine, not over HTTP. The sign-in limits have not been run end to end

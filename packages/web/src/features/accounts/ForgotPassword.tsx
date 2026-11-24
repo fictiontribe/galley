@@ -1,5 +1,5 @@
 /**
- * "Forgot your password?" on the sign-in page. With outgoing e-mail the
+ * "Forgot your password?" on the sign-in page. When the server e-mails links the
  * person asks for a link themselves, and the page always ends on the same
  * sentence, sent or not — so it can't be used to find out who has an
  * account. Without it, an owner makes the link.
@@ -18,7 +18,7 @@ export function ForgotPassword({ emailAvailable, initialEmail, onBack }: { email
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
-  // The server has the last word: one without outgoing e-mail says so, even if the page thought otherwise.
+  // The server has the last word: one that doesn't e-mail links says so, even if the page thought otherwise.
   const [canEmail, setCanEmail] = useState(emailAvailable);
 
   const submit = async (event: FormEvent) => {

@@ -317,8 +317,14 @@ environment or one file — applied once, only while missing (`starting.ts`)
 — and backups: one file sealed with a passphrase (`backup.ts`). Contracts:
 `install/types.ts`, `install/accounts.ts` (roles and the levels each has)
 and `install/route-access.ts` (the level every API route needs — the one
-table the server enforces and the web app reads). Only a hosted server uses
-it.
+table the server enforces and the web app reads — and the two levels a
+route can't express: build mode, `BUILD_MODE_LEVEL`, and the site's
+settings file, `SITE_SETTINGS_LEVEL`). `install/caller.ts` carries the
+person whose request it is through the work it starts, so the engine
+checks those two where the write happens, whichever way it came; the few
+values the engine records in the settings file inside actions below that
+level go through `site/settings-records.ts`, each changing only its own
+keys. Only a hosted server uses it.
 
 ### 3.6 `hosting/` — host the editor online
 
@@ -389,8 +395,11 @@ Hono on Node. Implements `ApiRoutes` from `api.ts` exactly, plus:
   `core/src/install/route-access.ts`: every route has one level (edit,
   publish, manage — a route without one doesn't compile), each role has a
   set of levels, and the server's guards (`app.ts`) enforce it; the web app
-  reads the same table only to hide what a role can't use. Local mode has no
-  accounts and ignores the table.
+  reads the same table only to hide what a role can't use. Each person's
+  request runs inside `withCaller` (`core/src/install/caller.ts`), so build
+  mode and the site's settings file are held to their levels in the engine
+  too. One-time links are built only from `GALLEY_PUBLIC_URL`. Local mode
+  has no accounts and ignores the table.
   `Origin` is checked on every state-changing request. In both modes the
   cookie is signed with a key kept in the Galley home (`session.key`,
   owner-only), so restarting the app — which adding a plugin needs — doesn't

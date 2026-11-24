@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { hashPassword } from "../packages/core/src/install/password.ts";
 import { ROLE_REFUSAL } from "../packages/core/src/install/route-access.ts";
+import { BUILD_MODE_REFUSAL, SITE_SETTINGS_REFUSAL } from "../packages/core/src/install/caller.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = join(ROOT, "packages/cli/bin/galley.js");
@@ -168,9 +169,10 @@ function baseEnv() {
 }
 
 /** `galley serve` in hosted mode, until it says it is serving. */
-async function serve(home, { args = [], mail = false, env: extra = {} } = {}) {
+async function serve(home, { args = [], mail = false, publicUrl = false, env: extra = {} } = {}) {
   const port = await freePort();
-  const env = { ...baseEnv(), GALLEY_HOME: home, ...(mail ? { GALLEY_SMTP_URL: `smtp://127.0.0.1:${sink.port}`, GALLEY_MAIL_FROM: "editor@example.com" } : {}), ...extra };
+  // Links are only ever built from the editor's public address, and only e-mailed when it is set: here, this loopback port.
+  const env = { ...baseEnv(), GALLEY_HOME: home, ...(mail ? { GALLEY_SMTP_URL: `smtp://127.0.0.1:${sink.port}`, GALLEY_MAIL_FROM: "editor@example.com" } : {}), ...(publicUrl ? { GALLEY_PUBLIC_URL: `http://127.0.0.1:${port}` } : {}), ...extra };
   const child = spawn(process.execPath, [CLI, "serve", "--host", "127.0.0.1", "--port", String(port), ...args], { cwd: scratch, env, stdio: ["ignore", "pipe", "pipe"] });
   const server = { port, child, out: "", log: "" };
 
@@ -231,7 +233,7 @@ function browser(server, label) {
         send["content-type"] = "application/json";
         send["content-length"] = String(payload.length);
       }
-      if (method !== "GET") send.origin = origin;
+      if (method !== "GET") send.origin = headers.origin ?? origin;
       if (cookies.size) send.cookie = [...cookies].map(([name, value]) => `${name}=${value}`).join("; ");
       return new Promise((done, fail) => {
         const request = http.request({ host: "127.0.0.1", port: this.server.port, method, path, headers: send, agent: false }, (response) => {
@@ -342,7 +344,7 @@ async function main() {
   sink = await startSink();
   const bare = siteRepository();
   const home = join(scratch, "install");
-  const server = await serve(home, { mail: true });
+  const server = await serve(home, { mail: true, publicUrl: true });
   const setupUrl = /Setup:\s+(\S+)/.exec(server.out)?.[1];
   let owner = browser(server, "owner");
   const people = {};
@@ -440,6 +442,33 @@ async function main() {
     return "5 refusals, each the plain sentence; key set, no hint anywhere the contributor reads";
   });
 
+  await step("the site's settings file by every route: the contributor's and the editor's attempts refused in plain words, the owner's work", async () => {
+    const jo = people.contributor.browser;
+    const robin = people.editor.browser;
+    const read = async () => expectStatus(await owner.call("GET", `/api/sites/${siteId}/file?path=galley.config.json`), 200, "reading the settings file").body.content;
+    const config = expectStatus(await owner.call("GET", `/api/sites/${siteId}/config`), 200, "the settings").body.config;
+    const before = await read();
+    const raw = (who, path, mode) => who.call("PUT", `/api/sites/${siteId}/file?path=${encodeURIComponent(path)}`, { content: '{ "name": "Changed", "dev": { "command": "node other.mjs" } }\n', mode });
+    const refused = (answer, sentence, what) => {
+      check(answer.status === 403 && answer.body?.error?.message === sentence, `${what}: expected 403 "${sentence}", got ${answer.status} ${answer.text.slice(0, 300)}`);
+    };
+
+    refusedForRole(await jo.call("PUT", `/api/sites/${siteId}/config`, { config: { ...config, name: "Jo's settings" } }), "the contributor saving the settings screen");
+    refused(await raw(jo, "galley.config.json", "build"), BUILD_MODE_REFUSAL, "the contributor writing the settings file in build mode");
+    refused(await raw(jo, "GALLEY.CONFIG.JSON", "build"), BUILD_MODE_REFUSAL, "the contributor writing it in other letter case");
+    expectStatus(await raw(jo, "galley.config.json", "content"), 403, "the contributor writing it in content mode");
+    check((await jo.call("DELETE", `/api/sites/${siteId}/media?path=galley.config.json`)).status >= 400, "the contributor removing it as media");
+    refused(await raw(robin, "galley.config.json", "build"), SITE_SETTINGS_REFUSAL, "the editor writing the settings file in build mode");
+    check((await read()) === before, "the settings file changed");
+    // The owner's work; a pending change of theirs isn't the contributor's to discard either.
+    expectStatus(await owner.call("PUT", `/api/sites/${siteId}/config`, { config: { ...config, name: "Rehearsal site, renamed" } }), 200, "the owner saving the settings");
+    check((await read()).includes("Rehearsal site, renamed"), "the owner's settings weren't saved");
+    refused(await jo.call("POST", `/api/sites/${siteId}/discard`, { paths: ["galley.config.json"] }), SITE_SETTINGS_REFUSAL, "the contributor discarding the owner's settings change");
+    expectStatus(await owner.call("POST", `/api/sites/${siteId}/discard`, { paths: ["galley.config.json"] }), 200, "the owner discarding it");
+    check((await read()) === before, "the owner's discard didn't put the file back");
+    return `5 ways in refused for the contributor, 1 for the editor; "${BUILD_MODE_REFUSAL}"`;
+  });
+
   await step("the editor publishes, the owner changes another entry and publishes: two authors in the repository", async () => {
     const robin = people.editor.browser;
     const first = expectStatus(await robin.call("POST", `/api/sites/${siteId}/publish`, { message: "Robin publishes the new home title" }), 200, "the editor's Publish");
@@ -535,10 +564,14 @@ async function main() {
     check(kim && jo?.disabled === true, "Kim or Jo is missing from the list");
     const kimIn = browser(server, "Kim, signed in");
     expectStatus(await kimIn.call("POST", "/api/auth/login", { email: "kim@example.com", password: PEOPLE_PASSWORD }), 200, "Kim signing in");
-    // New-password link (People › … › New-password link): a OneTimeLink, e-mailed.
+    // New-password link (People › … › New-password link): a OneTimeLink, e-mailed — and then only in Kim's inbox, not handed to the owner.
+    const before = sink.messages.length;
     const made = expectStatus(await owner.call("POST", `/api/people/${kim.id}/password-link`), 200, "a new-password link for Kim").body;
-    check(new URL(made.url).pathname === "/new-password" && made.expiresAt && made.emailed === true, `the link: ${JSON.stringify({ ...made, url: "…" })}`);
-    secrets.add(codeOf(made.url));
+    check(made.url === null && made.expiresAt && made.emailed === true, `the link: ${JSON.stringify(made)}`);
+    await waitFor(() => sink.messages.length > before, 10_000, "the new-password e-mail to Kim");
+    const mailed = linkIn(sink.messages.at(-1).text, "/new-password");
+    check(sink.messages.at(-1).to.join() === "kim@example.com" && mailed && new URL(mailed).origin === `http://127.0.0.1:${server.port}`, `the e-mail to Kim: ${sink.messages.at(-1).to.join()} ${mailed}`);
+    secrets.add(codeOf(mailed));
     // Sign out (one person, everywhere).
     expectStatus(await owner.call("POST", `/api/people/${kim.id}/sign-out`), 200, "signing Kim out");
     expectStatus(await kimIn.call("GET", "/api/account"), 401, "Kim after being signed out");
@@ -593,6 +626,26 @@ async function main() {
   });
 
   await stop(server);
+
+  await step("without the editor's public address: no link is e-mailed, and one is shown only on this computer", async () => {
+    const bare = await serve(join(scratch, "no-address"), { mail: true, env: { GALLEY_PASSWORD: PASSWORD, GALLEY_OWNER_NAME: "Sam Owner", GALLEY_OWNER_EMAIL: "sam@example.com" } });
+    check(/E-mail: {4}set up, but no link is e-mailed until the editor's public address is set/.test(bare.out), `the start-up lines don't say so:
+${bare.out}`);
+    const sam = browser(bare, "Sam, no address");
+    const before = sink.messages.length;
+    expectStatus(await sam.call("POST", "/api/auth/login", { email: "sam@example.com", password: PASSWORD }), 200, "signing in");
+    const forgot = expectStatus(await browser(bare, "asking").call("POST", "/api/auth/forgot", { email: "sam@example.com" }), 200, "forgot");
+    check(forgot.body.emailAvailable === false, `forgot: ${forgot.text}`);
+    const foreign = await sam.call("POST", "/api/people/invitations", { email: "lee@example.com", role: "editor" }, { host: "editor.example.net", origin: "http://editor.example.net" });
+    check(foreign.status === 400 && /public address \(GALLEY_PUBLIC_URL\)/.test(foreign.body?.error?.message ?? ""), `an invitation through another address: ${foreign.status} ${foreign.text}`);
+    const here = expectStatus(await sam.call("POST", "/api/people/invitations", { email: "lee@example.com", role: "editor" }), 200, "an invitation on this computer");
+    check(here.body.link.emailed === false && new URL(here.body.link.url).origin === `http://127.0.0.1:${bare.port}`, `the invitation: ${JSON.stringify({ ...here.body.link, url: new URL(here.body.link.url).origin })}`);
+    secrets.add(codeOf(here.body.link.url));
+    await new Promise((later) => setTimeout(later, 1000));
+    check(sink.messages.length === before, `${sink.messages.length - before} e-mails went out without a public address`);
+    await stop(bare);
+    return "nothing e-mailed; the link shown on 127.0.0.1 only";
+  });
 
   const legacyHome = join(scratch, "legacy");
   let legacy = null;

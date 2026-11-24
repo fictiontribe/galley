@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 /**
  * Your account, for everyone on a hosted install: reached from the account
- * menu in the header (which says who is signed in); name and e-mail (a new
- * e-mail asks for the current password); the role in words; the password;
+ * menu in the header (which says who is signed in); name and e-mail (an
+ * owner's new e-mail asks for the current password; everyone else's is an
+ * owner's to change, in People); the role in words; the password;
  * signing yourself out everywhere; and, for someone who doesn't look after
  * the editor's settings, the theme kept in this browser. Publishes carry the
  * signed-in person's own name.
@@ -67,26 +68,43 @@ describe("Your account", () => {
     expect((page as Rendered | null)?.text()).toContain("Your name and e-mail go with every version you publish, in Version history.");
   });
 
-  it("changes the name at once, and the e-mail only with the current password", async () => {
-    const server = await open("editor");
+  it("changes the name at once; an owner changes their own e-mail only with the current password", async () => {
+    const editor = await open("editor");
     await type(field(document, "Name"), "Robin P. Park");
     await submit(field(document, "Name"));
-    await until(() => expect(calls(server, "PATCH", "/api/account")).toHaveLength(1));
-    expect(calls(server, "PATCH", "/api/account")[0]?.body).toEqual({ name: "Robin P. Park" });
+    await until(() => expect(calls(editor, "PATCH", "/api/account")).toHaveLength(1));
+    expect(calls(editor, "PATCH", "/api/account")[0]?.body).toEqual({ name: "Robin P. Park" });
     await until(() => expect(document.querySelector(".accounts-menu")?.getAttribute("aria-label")).toBe("Signed in as Robin P. Park. Your account"));
+    await page?.unmount();
+    page = null;
 
-    await type(field(document, "E-mail"), "robin@example.org");
+    const server = await open("owner");
+    await type(field(document, "E-mail"), "sam@example.org");
     await until(() => expect(field(document, "Current password")).not.toBeNull());
     await submit(field(document, "E-mail"));
-    expect(page?.text()).toContain("Enter your current password to change your e-mail.");
-    expect(calls(server, "PATCH", "/api/account")).toHaveLength(1);
+    // `open` sets `page` again; the compiler can't see that through the call.
+    expect((page as Rendered | null)?.text()).toContain("Enter your current password to change your e-mail.");
+    expect(calls(server, "PATCH", "/api/account")).toHaveLength(0);
     await type(field(document, "Current password"), "not it");
     await submit(field(document, "E-mail"));
     await until(() => expect(page?.text()).toContain("That isn't your current password."));
     await type(field(document, "Current password"), "proof");
     await submit(field(document, "E-mail"));
-    await until(() => expect(server.accounts?.current()?.email).toBe("robin@example.org"));
-    expect(calls(server, "PATCH", "/api/account").at(-1)?.body).toEqual({ name: "Robin P. Park", email: "robin@example.org", password: "proof" });
+    await until(() => expect(server.accounts?.current()?.email).toBe("sam@example.org"));
+    expect(calls(server, "PATCH", "/api/account").at(-1)?.body).toEqual({ name: "Sam Rivera", email: "sam@example.org", password: "proof" });
+  });
+
+  it.each<"editor" | "contributor">(["editor", "contributor"])("as the %s: the e-mail is shown, not editable, with who can change it — and saving sends no e-mail", async (role) => {
+    const server = await open(role);
+    const email = field(document, "E-mail");
+    expect(email?.readOnly).toBe(true);
+    expect(email?.value).toBe(server.accounts?.current()?.email);
+    expect(page?.text()).toContain("An owner of this editor can change it");
+    await type(field(document, "Name"), "A new name");
+    await submit(field(document, "Name"));
+    await until(() => expect(calls(server, "PATCH", "/api/account")).toHaveLength(1));
+    expect(calls(server, "PATCH", "/api/account")[0]?.body).toEqual({ name: "A new name" });
+    expect(refusals(server)).toEqual([]);
   });
 
   it("changes the password, saying other browsers are signed out", async () => {

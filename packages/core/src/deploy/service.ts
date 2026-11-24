@@ -17,6 +17,7 @@
  * record is scrubbed of it.
  */
 import { GalleyError } from "../errors";
+import { recordSettings } from "../site/settings-records";
 import type {
   DeployAccount,
   DeployConfig,
@@ -288,7 +289,10 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
         // The settings file records where the site lives, so the next session (and the CLI) knows its address.
         const next: DeployConfig = { ...latest, defaultUrl: hostDefault, ...(custom ? {} : { productionUrl: hostDefault }) };
 
-        if (next.defaultUrl !== latest.defaultUrl || next.productionUrl !== latest.productionUrl) await writeDeployConfig(site, next);
+        // The engine's own bookkeeping, at the deploy's level: the two addresses, and nothing else in the file.
+        if (next.defaultUrl !== latest.defaultUrl || next.productionUrl !== latest.productionUrl) {
+          await recordSettings(site, { kind: "deploy-address", defaultUrl: hostDefault, ...(custom ? {} : { productionUrl: hostDefault }) });
+        }
       }
       return record;
     } catch (error) {

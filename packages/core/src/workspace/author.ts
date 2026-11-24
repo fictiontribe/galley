@@ -60,6 +60,11 @@ export function withAccountAuthor<T>(identity: Partial<Identity> | null, run: ()
   return complete(identity) ? accountAuthor.run(clean(identity), run) : run();
 }
 
+/** Runs `run` as nobody's work: what it records later falls back to the site's, the repository's or the app's author. */
+export function withoutAccountAuthor<T>(run: () => T): T {
+  return accountAuthor.exit(run);
+}
+
 /** The signed-in person whose work this is, or null outside such a request (local mode, a script's token, a timer). */
 export function currentAccountAuthor(): Identity | null {
   return accountAuthor.getStore() ?? null;

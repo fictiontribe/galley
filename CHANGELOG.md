@@ -21,22 +21,51 @@ local mode have no accounts and are unchanged.
   (`packages/core/src/install/route-access.ts`), and the app hides what a role
   can't use. First run now creates the owner's account; `GALLEY_OWNER_NAME`
   and `GALLEY_OWNER_EMAIL` give it a name and e-mail on an unattended start.
+- **Build mode and the site's settings, by role, at every way in.** The
+  engine checks both where the write happens, whichever way a request comes
+  — a screen, a file write, the assistant, an AI tool. Build mode (the
+  site's code and templates, custom code in a form, saving the brand
+  outside the content files) needs an editor or owner; a contributor works
+  in content mode, and a request for build mode is refused in plain words.
+  The site's settings file — and discarding or undoing a change to it, and
+  undoing a publish that changed it — is an owner's. The few values the
+  editor records for itself inside an allowed action (the live address
+  after putting the site online, where the redirects list lives) are
+  written without opening the rest of the file. The assistant
+  offers each person only the tools their role includes.
 - **People**, on the Install page, for owners: invite someone (a link shown
-  once, good for 7 days), change a role, make a new-password link (good for
-  60 minutes), sign one person or everyone out, switch an account off or on,
+  once, good for 7 days), change a role, change someone's e-mail, make a
+  new-password link (good for 60 minutes; e-mailed to the person and not
+  shown to the owner when the server can e-mail it, shown to copy when it
+  can't), sign one person or everyone out, switch an account off or on,
   remove it. The last owner who can sign in always stays.
-- **Your account**: your name and e-mail (changing the e-mail needs your
-  password), your password, and **Sign out everywhere** for yourself.
+- **Your account**: your name, your password, and **Sign out everywhere**
+  for yourself. An owner changes their own e-mail here, with their
+  password; editors and contributors ask an owner. An account with no
+  e-mail yet adds one.
 - **E-mail for invitations and new-password links**, and **Forgot your
-  password?** on the sign-in page, when `GALLEY_SMTP_URL` and
-  `GALLEY_MAIL_FROM` are set. Without them, owners send each link
-  themselves. Not yet tried against a real mail server.
+  password?** on the sign-in page, when `GALLEY_SMTP_URL`,
+  `GALLEY_MAIL_FROM` and the editor's public address, `GALLEY_PUBLIC_URL`,
+  are set: a link is only ever built from that address. Without the public
+  address, a link is shown only on a trial on one computer (a loopback
+  address), and making one anywhere else is refused until it is set.
+  Without e-mail, owners send each link themselves. The `E-mail:` line
+  `galley serve` prints says which case it is. Not yet tried against a real
+  mail server.
 - **Each publish carries its author**: a signed-in person's publishes and
   undos are recorded with their own name and e-mail.
-- **Limits**: besides 5 failures a minute per address, 10 failed sign-ins per
-  e-mail in 15 minutes, and limits on "forgot my password".
+- **Limits**: 5 failures a minute per address; 10 failed sign-ins for one
+  e-mail from one address in 15 minutes; failures from other addresses only
+  slow a sign-in for that e-mail and never refuse the right password by
+  themselves; 2 password checks at a time with 16 waiting, past which the
+  answer is "wait"; and limits on "forgot my password".
+- **Sign-outs are kept within a cap** (10,000 signed-out browsers). Past it,
+  a sign-out signs that person out everywhere; a longer list is trimmed at
+  start-up by signing everyone out once, with a line in the log.
 - The HTTP API gains `/api/account`, `/api/people/*`, `/api/auth/link`,
-  `/api/auth/link/check` and `/api/auth/forgot`; `POST /api/auth/login` takes
+  `/api/auth/link/check` and `/api/auth/forgot` (`PATCH /api/people/:accountId`
+  takes a `role`, `disabled` or `email`; a `OneTimeLink`'s `url` is `null`
+  when the link was e-mailed to someone else); `POST /api/auth/login` takes
   an `email`; `POST /api/setup/password` takes the owner's `name` and
   `email`; `GET /api/meta` gains `account`, `install.signInWith` and
   `install.passwordEmail`.

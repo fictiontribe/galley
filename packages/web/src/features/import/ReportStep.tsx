@@ -11,8 +11,8 @@ import type { ImportReportView } from "@galley/core/types";
 import { count } from "@/lib/format";
 import { Button, Icon, buttonClass, cx } from "@/ui";
 import { WORDPRESS_IMPORT } from "@/features/redirects/words";
-import { nextSteps, reportStanding, shortAddress, type NextStep } from "./logic";
-import { useWhoPublishes } from "@/lib/may";
+import { REBUILD_BY_OTHERS, nextSteps, reportStanding, shortAddress, type NextStep } from "./logic";
+import { useMayBuild, useWhoPublishes } from "@/lib/may";
 
 interface ReportStepProps {
   siteId: string;
@@ -25,7 +25,7 @@ interface ReportStepProps {
 
 const edit = (siteId: string, path: string) => `/sites/${siteId}/edit?path=${encodeURIComponent(path)}`;
 
-function StepAction({ step, siteId, onRebuildAll, onAgain, first }: { step: NextStep; siteId: string; onRebuildAll: () => void; onAgain: () => void; first: boolean }) {
+function StepAction({ step, siteId, onRebuildAll, onAgain, first, mayRebuild }: { step: NextStep; siteId: string; onRebuildAll: () => void; onAgain: () => void; first: boolean; mayRebuild: boolean }) {
   switch (step.id) {
     case "again":
     case "resume":
@@ -41,11 +41,11 @@ function StepAction({ step, siteId, onRebuildAll, onAgain, first }: { step: Next
         </Link>
       );
     case "rebuild":
-      return (
+      return mayRebuild ? (
         <Button size="sm" variant="secondary" onClick={onRebuildAll}>
           Rebuild all…
         </Button>
-      );
+      ) : null;
     case "redirects":
       return (
         <Link className={buttonClass("secondary", "sm")} to={`/sites/${siteId}/redirects?add=${WORDPRESS_IMPORT}`}>
@@ -66,6 +66,8 @@ function StepAction({ step, siteId, onRebuildAll, onAgain, first }: { step: Next
 export function ReportStep({ siteId, report, onAgain, onRebuild, onRebuildAll, rebuilding }: ReportStepProps) {
   const [allRedirects, setAllRedirects] = useState(false);
   const publishes = useWhoPublishes();
+  // Rebuilding a page runs the assistant in build mode.
+  const mayRebuild = useMayBuild();
   // Only what actually arrived: a zero isn't news.
   const arrived = [
     ...(report.arrived.posts ? [{ value: report.arrived.posts, label: report.arrived.posts === 1 ? "post" : "posts" }] : []),
@@ -83,7 +85,7 @@ export function ReportStep({ siteId, report, onAgain, onRebuild, onRebuildAll, r
   return (
     <div className="imp-report">
       <ol className="imp-next" aria-label="What to do next">
-        {nextSteps(report, publishes).map((step, index) => (
+        {nextSteps(report, publishes, mayRebuild).map((step, index) => (
           <li key={step.id} className="imp-next__item">
             <span className="imp-next__number" aria-hidden="true">
               {index + 1}
@@ -92,7 +94,7 @@ export function ReportStep({ siteId, report, onAgain, onRebuild, onRebuildAll, r
               <p className="imp-next__title">{step.title}</p>
               <p className="imp-next__body">{step.body}</p>
             </div>
-            <StepAction step={step} siteId={siteId} onRebuildAll={onRebuildAll} onAgain={onAgain} first={index === 0} />
+            <StepAction step={step} siteId={siteId} onRebuildAll={onRebuildAll} onAgain={onAgain} first={index === 0} mayRebuild={mayRebuild} />
           </li>
         ))}
       </ol>
@@ -122,11 +124,16 @@ export function ReportStep({ siteId, report, onAgain, onRebuild, onRebuildAll, r
             <h2 className="imp-block__title" id="imp-rebuild">
               {`Rebuild ${count(report.rebuilds.length, "page")} from this site’s sections`}
             </h2>
-            <Button size="sm" variant="quiet" onClick={onRebuildAll}>
-              Rebuild all…
-            </Button>
+            {mayRebuild ? (
+              <Button size="sm" variant="quiet" onClick={onRebuildAll}>
+                Rebuild all…
+              </Button>
+            ) : null}
           </div>
-          <p className="imp-block__lede">They came across as plain text so nothing was lost. The assistant rebuilds one page at a time from the old layout’s outline, using its words exactly; each result waits in Proof beside the original.</p>
+          <p className="imp-block__lede">
+            They came across as plain text so nothing was lost. The assistant rebuilds one page at a time from the old layout’s outline, using its words exactly; each result waits in Proof beside the original.
+            {mayRebuild ? null : ` ${REBUILD_BY_OTHERS}`}
+          </p>
           <ul className="imp-rows">
             {report.rebuilds.map((rebuild) => (
               <li key={rebuild.path} className="imp-row">
@@ -145,9 +152,11 @@ export function ReportStep({ siteId, report, onAgain, onRebuild, onRebuildAll, r
                     The original
                   </a>
                 ) : null}
-                <Button size="sm" variant={rebuild.threadId ? "quiet" : "secondary"} busy={rebuilding === rebuild.path} busyLabel="Opening…" onClick={() => onRebuild(rebuild.path)}>
-                  {rebuild.threadId ? "Rebuild again" : "Rebuild this page"}
-                </Button>
+                {mayRebuild ? (
+                  <Button size="sm" variant={rebuild.threadId ? "quiet" : "secondary"} busy={rebuilding === rebuild.path} busyLabel="Opening…" onClick={() => onRebuild(rebuild.path)}>
+                    {rebuild.threadId ? "Rebuild again" : "Rebuild this page"}
+                  </Button>
+                ) : null}
               </li>
             ))}
           </ul>

@@ -420,9 +420,9 @@ async function bind(server: Server, config: ResolvedConfig, notice: (line: strin
 }
 
 /** Opens (and, for an older data folder, upgrades) the install's state. A folder it can't use stops the start in one plain sentence. */
-async function openState(config: ResolvedConfig): Promise<InstallStore> {
+async function openState(config: ResolvedConfig, notice: (line: string) => void): Promise<InstallStore> {
   try {
-    return await openInstallState(config.home, { keepSite: config.keepSite });
+    return await openInstallState(config.home, { keepSite: config.keepSite, log: notice });
   } catch (error) {
     if (isGalleyError(error)) throw new StartupError(error.message);
     throw error;
@@ -488,7 +488,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   for (const warning of config.warnings) notice(warning);
   await mkdir(config.home, { recursive: true, mode: 0o700 });
   // Hosted: the install's state, migrated before anything else reads the data folder.
-  const store = hosted ? await openState(config) : null;
+  const store = hosted ? await openState(config, notice) : null;
 
   if (!hosted) await mkdir(config.sitesDir, { recursive: true });
 

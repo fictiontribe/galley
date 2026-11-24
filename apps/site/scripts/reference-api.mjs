@@ -110,7 +110,7 @@ const LINES = {
   "GET /api/setup": "Where first run is: the owner's account, site, details or done, with the site's state and what the operator fixed. Takes the setup code until an owner exists.",
   "PUT /api/setup/details": "Save the publishing name and e-mail and the live address during first run.",
   "POST /api/setup/finish": "End first run once the owner's account exists and the site is connected. The setup link stops working.",
-  "GET /api/people": "Everyone with an account (role, switched off or not, when they last signed in), the open invitations, and whether this server can send e-mail.",
+  "GET /api/people": "Everyone with an account (role, switched off or not, when they last signed in), the open invitations, and whether this server e-mails links (it needs outgoing e-mail and its public address both set).",
   "GET /api/install": "The Install page: address, version, the site's repository and how it is reached, the publishing name, what is stored where.",
   "GET /api/editor-hosts": "The places the editor can be hosted, each key's status (never its value), and the hosts that can't run it with the reason.",
   "GET /api/sites/:siteId/editor": "The site's editor online: what its settings say, what this computer created, whether it answers, its version.",

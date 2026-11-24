@@ -3,7 +3,8 @@ import type { MetaInfo } from "@galley/core/types";
 import { ACCOUNT_ROLES, ROLE_ACCESS, type AccountRole, type AccountSession } from "@galley/core/install/accounts";
 import { ROUTE_ACCESS, roleMayCall } from "@galley/core/install/route-access";
 import type { ApiRouteKey } from "@galley/core/api";
-import { accountOf, mayCall, ROLE_LINES, whoPublishes } from "../../src/lib/may";
+import { BUILD_MODE_LEVEL, SITE_SETTINGS_LEVEL } from "@galley/core/install/route-access";
+import { BUILD_BY_OTHERS, SETTINGS_BY_OTHERS, accountOf, mayCall, mayLevel, ROLE_LINES, whoMay, whoMayFirst, whoPublishes } from "../../src/lib/may";
 import { codeFromHash, emailProblem, initials, linkKindAt, loginBody, loginProblem, nameProblem, personLabel, takeLinkCode, timeLeft } from "../../src/features/accounts/logic";
 
 function meta(role: AccountRole | null, mode: "local" | "hosted" = "hosted"): MetaInfo {
@@ -48,6 +49,29 @@ describe("may this person do that", () => {
     // Decided by the table, so a role's words follow what it may do.
     for (const role of ACCOUNT_ROLES) expect(whoPublishes(mayCall(meta(role), "POST /api/sites/:siteId/publish"))).toBe(role === "contributor" ? "an editor or owner publishes" : "you publish");
     expect(whoPublishes(mayCall(meta(null, "local"), "POST /api/sites/:siteId/publish"))).toBe("you publish");
+  });
+
+  it("answers build mode and the site's settings by level, never by role name", () => {
+    for (const role of ACCOUNT_ROLES) {
+      expect(mayLevel(meta(role), BUILD_MODE_LEVEL)).toBe(ROLE_ACCESS[role].includes(BUILD_MODE_LEVEL));
+      expect(mayLevel(meta(role), SITE_SETTINGS_LEVEL)).toBe(ROLE_ACCESS[role].includes(SITE_SETTINGS_LEVEL));
+    }
+    expect(mayLevel(meta("contributor"), BUILD_MODE_LEVEL)).toBe(false);
+    expect(mayLevel(meta("editor"), BUILD_MODE_LEVEL)).toBe(true);
+    expect(mayLevel(meta("editor"), SITE_SETTINGS_LEVEL)).toBe(false);
+    // No accounts: everything, as before.
+    expect(mayLevel(meta(null, "local"), SITE_SETTINGS_LEVEL)).toBe(true);
+    expect(mayLevel(meta("contributor", "local"), BUILD_MODE_LEVEL)).toBe(true);
+    expect(mayLevel(null, BUILD_MODE_LEVEL)).toBe(true);
+  });
+
+  it("says who may, from the roles that have the level", () => {
+    expect(whoMay("publish")).toBe("an editor or owner");
+    expect(whoMay("manage")).toBe("an owner");
+    expect(whoMay("edit")).toBe("anyone signed in");
+    expect(whoMayFirst(BUILD_MODE_LEVEL)).toBe("An editor or owner");
+    expect(BUILD_BY_OTHERS).toBe("An editor or owner can do this.");
+    expect(SETTINGS_BY_OTHERS).toBe("An owner of this editor can change this.");
   });
 
   it("has a line for every role, in plain words", () => {

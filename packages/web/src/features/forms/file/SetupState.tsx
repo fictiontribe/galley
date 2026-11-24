@@ -19,6 +19,13 @@ import { docsPage } from "../logic/locate";
 import { useAllowBuild, useAssistantPanel, useAssistantReady } from "./assistant";
 import { splitSteps, startKitSetup, useKitStatus } from "./kit";
 import { SettingsLink } from "@/features/accounts/SettingsLink";
+import { BUILD_MODE_LEVEL } from "@galley/core/install/route-access";
+import { useMayBuild, whoMayFirst } from "@/lib/may";
+
+/** Where the assistant would be offered to finish the set-up, for someone whose role doesn't include build mode. */
+export const FINISH_BY_OTHERS = `${whoMayFirst(BUILD_MODE_LEVEL)} can finish it with the assistant.`;
+/** Where "Set it up for me" would be, for someone whose role doesn't include build mode. */
+export const SET_UP_BY_OTHERS = `Setting it up changes the site’s code. ${whoMayFirst(BUILD_MODE_LEVEL)} can do it.`;
 
 export interface SetupStateProps {
   feature: "forms" | "scripts";
@@ -27,11 +34,13 @@ export interface SetupStateProps {
 const WORDS = {
   forms: {
     title: "This site doesn’t have forms yet.",
+    need: "Forms are files the site’s own pages show, so the site needs the site kit first.",
     body: "Forms are files the site’s own pages show, so the site needs the site kit first. Set it up for me adds it, with a first “Contact” form, as changes you check in Proof.",
     left: "Forms are nearly set up.",
   },
   scripts: {
     title: "This site doesn’t manage its scripts here yet.",
+    need: "Scripts are kept in one setup file the site reads when it builds, so the site needs the site kit first.",
     body: "Scripts are kept in one setup file the site reads when it builds, so the site needs the site kit first. Set it up for me adds it as changes you check in Proof.",
     left: "Scripts are nearly set up.",
   },
@@ -87,6 +96,7 @@ export function SetupState({ feature }: SetupStateProps) {
   const hosted = useHostedInstall();
   const ready = useAssistantReady();
   const allowBuild = useAllowBuild();
+  const mayBuild = useMayBuild();
   const show = useAssistantPanel((s) => s.show);
   const status = useKitStatus(siteId);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -176,6 +186,7 @@ export function SetupState({ feature }: SetupStateProps) {
         }
       >
         <StepList steps={left} />
+        {!mayBuild && kit.buildAllowed && kit.assistantRequest ? <p className="g-hint">{FINISH_BY_OTHERS}</p> : null}
         <DeveloperSteps steps={left} />
       </EmptyState>
     );
@@ -195,6 +206,14 @@ export function SetupState({ feature }: SetupStateProps) {
           </>
         }
       />
+    );
+  }
+  // The set-up writes the site's code (build mode): for someone whose role doesn't include that, say who does it instead of offering it.
+  if (!mayBuild) {
+    return (
+      <EmptyState mark="pilcrow" title={words.title} body={`${words.need} ${SET_UP_BY_OTHERS}`} actions={docsLink(true)}>
+        <StepList steps={[...todo, ...left]} />
+      </EmptyState>
     );
   }
   return (
@@ -232,6 +251,7 @@ export function SetupLeftNotice({ step }: { step: SiteKitStep["id"] }) {
   const status = useKitStatus(siteId);
   const ready = useAssistantReady();
   const allowBuild = useAllowBuild();
+  const mayBuild = useMayBuild();
   const show = useAssistantPanel((s) => s.show);
   const left = status.data?.steps.find((candidate) => candidate.id === step && candidate.state === "left");
   if (!left || !status.data) return null;
@@ -248,6 +268,8 @@ export function SetupLeftNotice({ step }: { step: SiteKitStep["id"] }) {
               Ask the assistant to finish it
             </Button>
           </div>
+        ) : !mayBuild && status.data.buildAllowed && status.data.assistantRequest ? (
+          <p className="kit-callout__body">{FINISH_BY_OTHERS}</p>
         ) : null}
       </div>
     </div>

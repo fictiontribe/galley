@@ -7,10 +7,10 @@ import type { ApiRouteKey } from "@galley/core/api";
 import type { GalleyErrorShape, ServerEvent } from "@galley/core/types";
 import type { InstallFixed } from "@galley/core/install/types";
 import type { AccountRole } from "@galley/core/install/accounts";
-import type { ROLE_REFUSAL as RoleRefusal, ROUTE_ACCESS as RouteAccessTable, roleMayCall as RoleMayCall } from "@galley/core/install/route-access";
+import type { BUILD_MODE_LEVEL as BuildModeLevel, ROLE_REFUSAL as RoleRefusal, ROUTE_ACCESS as RouteAccessTable, SITE_SETTINGS_LEVEL as SiteSettingsLevel, roleMayCall as RoleMayCall } from "@galley/core/install/route-access";
 import { MockBackend, createHandlers, type Handlers, type MockRequest, type RawReply } from "./backend.ts";
 import { MockInstall, SETUP_OPEN_ROUTES, withInstall, type MockSetupStep } from "./install.ts";
-import { MockAccounts, withAccounts } from "./accounts.ts";
+import { MockAccounts, MockRoleError, withAccounts } from "./accounts.ts";
 import { MockError, MockTooManyError } from "./site.ts";
 
 const STATUS: Record<GalleyErrorShape["code"], number> = {
@@ -63,6 +63,8 @@ export interface MockServerOptions {
   role?: AccountRole;
   /** Hosted only: the server has outgoing e-mail. */
   email?: boolean;
+  /** Hosted only: false — the server has no public address of its own, so it e-mails no link (see MockAccountsOptions). */
+  publicAddress?: boolean;
   /** Hosted only: an install from before accounts (one owner, no e-mail, the password alone). */
   legacy?: boolean;
   /** Hosted only: false answers as a server from before accounts did — one shared password, no `meta.account`, no people routes. */
@@ -76,6 +78,8 @@ export interface MockAccessTable {
   ROUTE_ACCESS: typeof RouteAccessTable;
   roleMayCall: typeof RoleMayCall;
   ROLE_REFUSAL: typeof RoleRefusal;
+  BUILD_MODE_LEVEL: typeof BuildModeLevel;
+  SITE_SETTINGS_LEVEL: typeof SiteSettingsLevel;
 }
 
 /**
@@ -100,7 +104,7 @@ export interface MockLogEntry {
   contentType: string | null;
   /** The JSON body as parsed, or the size of a raw one. */
   body: unknown;
-  /** Refused because the signed-in person's role may not call this route (ROUTE_ACCESS). */
+  /** Refused because the signed-in person's role may not call this route (ROUTE_ACCESS), or may not do what the request asks (build mode, the site's settings file). */
   refused?: boolean;
 }
 
@@ -138,7 +142,7 @@ export function createMockServer(options: MockServerOptions): MockServer {
   const listeners = new Set<(event: ServerEvent) => void>();
   const backend = new MockBackend({ mode: options.mode, emit: (event) => listeners.forEach((listener) => listener(event)) });
   const install = options.mode === "hosted" ? new MockInstall(backend, { setup: options.setup ?? "done", fixed: options.fixed, stepMs: options.stepMs, allowLocalRepositories: options.allowLocalRepositories, address: options.address }) : null;
-  const accounts = install && options.accounts !== false ? new MockAccounts(backend, install, { email: options.email, legacy: options.legacy, role: options.role }) : null;
+  const accounts = install && options.accounts !== false ? new MockAccounts(backend, install, { email: options.email, publicAddress: options.publicAddress, legacy: options.legacy, role: options.role }) : null;
   const local = createHandlers(backend);
   const hosted = install ? withInstall(backend, local, install) : null;
   const handlers: Handlers = hosted && accounts ? withAccounts(backend, hosted, accounts) : (hosted ?? local);
@@ -149,6 +153,7 @@ export function createMockServer(options: MockServerOptions): MockServer {
   const table = () => (access ??= (options.access ?? loadAccess()).then((loaded) => {
     // The routes that need no sign-in come from the same table.
     for (const key of Object.keys(loaded.ROUTE_ACCESS) as ApiRouteKey[]) if (loaded.ROUTE_ACCESS[key] === "public") open.add(key);
+    if (accounts) accounts.levels = { build: loaded.BUILD_MODE_LEVEL, settings: loaded.SITE_SETTINGS_LEVEL };
     return loaded;
   }));
   const latency = options.latency ?? 0;
@@ -198,6 +203,7 @@ export function createMockServer(options: MockServerOptions): MockServer {
       }
       return json(200, result);
     } catch (error) {
+      if (error instanceof MockRoleError) entry.refused = true;
       if (error instanceof MockError) return json(error instanceof MockTooManyError ? 429 : STATUS[error.code], errorBody(error.code, error.message, error.detail));
       return json(500, errorBody("internal", "The mock server ran into a problem.", error instanceof Error ? error.message : String(error)));
     }

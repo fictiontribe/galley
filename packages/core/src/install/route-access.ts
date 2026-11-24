@@ -15,6 +15,7 @@
  *   manage  — the install: people, keys, settings, backups, where the site is hosted.
  */
 import type { ApiRouteKey } from "../api";
+import type { SiteService } from "../types";
 import { roleMay, type AccessLevel, type AccountRole } from "./accounts";
 
 /**
@@ -199,7 +200,8 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "POST /api/sites/:siteId/redirects/review": "edit",
   "POST /api/sites/:siteId/redirects/import": "edit",
   "POST /api/sites/:siteId/redirects/try": "edit",
-  "PUT /api/sites/:siteId/redirects/settings": "edit",
+  // Where the redirects take effect, and the host's account behind them: part of the site's settings.
+  "PUT /api/sites/:siteId/redirects/settings": "manage",
   "POST /api/sites/:siteId/redirects/derived/replace": "edit",
   "POST /api/sites/:siteId/redirects/leftover/remove": "edit",
   "GET /api/sites/:siteId/redirects/export": "edit",
@@ -297,6 +299,56 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "GET /api/sites/:siteId/editor/removal": "manage",
   "DELETE /api/sites/:siteId/editor": "manage",
 };
+
+/**
+ * Two things a route's level can't express, because they depend on what a
+ * request asks for and not on which route it is. The engine holds every way
+ * in to them — a route, the assistant's tools, a plugin's tools — and the
+ * app reads them to decide what to offer:
+ *  - writing outside the site's content ("build" mode: templates, code, the
+ *    files the site is built from) needs BUILD_MODE_LEVEL;
+ *  - the site's settings file needs SITE_SETTINGS_LEVEL, whichever way it is
+ *    written. It holds the commands this server runs and where the site goes.
+ */
+export const BUILD_MODE_LEVEL: AccessLevel = "publish";
+export const SITE_SETTINGS_LEVEL: AccessLevel = "manage";
+
+/**
+ * The site's own methods (SiteService) that need more than "edit", each by
+ * the route that reaches it, so a method and its route can't disagree. The
+ * engine checks these itself, whoever calls — a route, the assistant's
+ * tools, an MCP tool, a plugin — against the person whose request it is
+ * (install/caller.ts). Writing the settings file and build mode are checked
+ * where the write happens, at the two levels above.
+ */
+export const SITE_METHOD_ACCESS = {
+  publish: "POST /api/sites/:siteId/publish",
+  revert: "POST /api/sites/:siteId/revert",
+  send: "POST /api/sites/:siteId/send",
+  pull: "POST /api/sites/:siteId/pull",
+} as const satisfies Partial<Record<keyof SiteService, ApiRouteKey>>;
+
+export type GuardedSiteMethod = keyof typeof SITE_METHOD_ACCESS;
+
+/**
+ * The settings file's bookkeeping the engine itself does inside actions
+ * below SITE_SETTINGS_LEVEL, each at the level of the route whose action it
+ * is: giving the redirects list its default place (saving the list), where
+ * the redirects apply (the redirects screen), and the address a production
+ * deploy reports back. Each writes only its own keys, through the engine's
+ * internal path (site/settings-records.ts) — never what a caller sends for
+ * the rest of the file. Every other change to the file needs SITE_SETTINGS_LEVEL.
+ */
+export const SITE_SETTINGS_RECORDS = {
+  "redirects-list": "PUT /api/sites/:siteId/redirects",
+  "redirects-host": "PUT /api/sites/:siteId/redirects/settings",
+  "deploy-address": "POST /api/sites/:siteId/deploy",
+} as const satisfies Record<string, ApiRouteKey>;
+
+/** The level one of the site's guarded methods needs. */
+export function siteMethodLevel(method: GuardedSiteMethod): AccessLevel {
+  return levelFor(SITE_METHOD_ACCESS[method]) ?? "edit";
+}
 
 /** The level a signed-in person needs for a route: "setup" and "restore" are an owner's once an owner exists. */
 export function levelFor(route: ApiRouteKey): AccessLevel | null {

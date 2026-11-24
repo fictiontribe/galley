@@ -25,8 +25,14 @@ import { emailProblem, nameProblem } from "./logic";
 import { Section } from "./parts";
 import "./accounts.css";
 
+/** Under someone's own e-mail when it isn't theirs to change. */
+export const EMAIL_BY_OWNER = "An owner of this editor can change it";
+
 function You({ account }: { account: AccountSession }) {
-  const mayPublish = useMay()("POST /api/sites/:siteId/publish");
+  const may = useMay();
+  const mayPublish = may("POST /api/sites/:siteId/publish");
+  // Your own e-mail is where a new-password link goes: an owner changes it (in People, or here for themselves); an account with none yet adds it here.
+  const ownEmail = may("PATCH /api/people/:accountId") || !account.email;
   const [name, setName] = useState(account.name);
   const [email, setEmail] = useState(account.email);
   const [password, setPassword] = useState("");
@@ -37,7 +43,7 @@ function You({ account }: { account: AccountSession }) {
     setName(account.name);
     setEmail(account.email);
   }, [account.name, account.email]);
-  const emailChanged = email.trim().toLowerCase() !== account.email;
+  const emailChanged = ownEmail && email.trim().toLowerCase() !== account.email;
   const dirty = name.trim() !== account.name || emailChanged;
 
   const save = async (event: FormEvent) => {
@@ -70,9 +76,15 @@ function You({ account }: { account: AccountSession }) {
           <Field label="Name" error={problems.name}>
             <Input value={name} autoComplete="name" onChange={(event) => setName(event.target.value)} />
           </Field>
-          <Field label="E-mail" error={problems.email}>
-            <Input type="email" value={email} autoComplete="email" spellCheck={false} onChange={(event) => setEmail(event.target.value)} />
-          </Field>
+          {ownEmail ? (
+            <Field label="E-mail" error={problems.email}>
+              <Input type="email" value={email} autoComplete="email" spellCheck={false} onChange={(event) => setEmail(event.target.value)} />
+            </Field>
+          ) : (
+            <Field label="E-mail" hint={EMAIL_BY_OWNER}>
+              <Input type="email" value={account.email} readOnly spellCheck={false} />
+            </Field>
+          )}
         </div>
         {emailChanged ? (
           <Field label="Current password" hint="Needed to change the e-mail: it’s where a new-password link is sent" error={problems.password}>

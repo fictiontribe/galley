@@ -17,6 +17,10 @@
  *   GALLEY_MOCK_EMAIL=1       hosted only — the server has outgoing e-mail:
  *                             links are "e-mailed" too (printed here), and
  *                             "Forgot your password?" sends one
+ *   GALLEY_MOCK_PUBLIC_ADDRESS=0
+ *                             hosted only — the server has no public address
+ *                             of its own: even with GALLEY_MOCK_EMAIL=1 no link
+ *                             is e-mailed, and People says to send each by hand
  *   GALLEY_MOCK_ACCOUNTS=legacy
  *                             hosted only — an install from before accounts: one
  *                             owner with no name or e-mail, who signs in with
@@ -78,6 +82,7 @@ export function galleyMock(): Plugin {
         latency: Number(process.env.GALLEY_MOCK_LATENCY ?? 120),
         role,
         email: process.env.GALLEY_MOCK_EMAIL === "1",
+        publicAddress: process.env.GALLEY_MOCK_PUBLIC_ADDRESS !== "0",
         legacy: process.env.GALLEY_MOCK_ACCOUNTS === "legacy",
         // Through Vite, which follows core's extension-less imports; Node's own loader (this file's) can't.
         access: mode === "hosted" ? (server.ssrLoadModule("@galley/core/install/route-access") as Promise<MockAccessTable>) : undefined,

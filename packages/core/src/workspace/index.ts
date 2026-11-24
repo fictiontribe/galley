@@ -4,7 +4,7 @@
  * and getting a site onto the machine. See docs/ARCHITECTURE.md §3.2.
  */
 export { createWorkspace, NEUTRAL_AUTHOR } from "./workspace";
-export { chooseAuthor, currentAccountAuthor, withAccountAuthor, DEFAULT_AUTHOR, type AuthorLayers, type AuthorSource, type ChosenAuthor } from "./author";
+export { chooseAuthor, currentAccountAuthor, withAccountAuthor, withoutAccountAuthor, DEFAULT_AUTHOR, type AuthorLayers, type AuthorSource, type ChosenAuthor } from "./author";
 export type { Workspace, WorkspaceOptions, WorkspaceWriteOptions } from "./workspace";
 export type { ChangeEnricher, PendingStatus } from "./changes";
 export { classifyKind, computeHunks, defaultSummary, parsePorcelain, MAX_DIFF_BYTES } from "./changes";

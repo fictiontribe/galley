@@ -75,6 +75,9 @@ import type { PortPool } from "../workspace/preview/ports";
 import type { PreviewGateway } from "../workspace/preview/proxy";
 import type { AuthorLayers } from "../workspace/author";
 import { formCodeRefusal } from "../site-kit/guard";
+import { outsideAnyPerson, requireBuildMode, requireLevel, requireSiteSettings } from "../install/caller";
+import { levelFor, SITE_METHOD_ACCESS, SITE_SETTINGS_RECORDS, siteMethodLevel, type GuardedSiteMethod } from "../install/route-access";
+import { applyRecord, RECORD_SETTINGS, type SettingsRecord } from "./settings-records";
 import { createEnricher, describeChanges, sortChanges } from "./enrich";
 import { shapesModel } from "./model-files";
 import { resolvePublishConfig, type PublishFacts } from "./publish-config";
@@ -615,7 +618,10 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       if (options.mode === "content") {
         throw new GalleyError("forbidden", "Changing the site's settings needs build mode. Content mode can change pages, posts, data files and images only.");
       }
+      if (options.mode === "build") requireBuildMode();
       if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF);
+      // Whatever it changes: the engine's own bookkeeping goes through RECORD_SETTINGS, never through here.
+      requireSiteSettings();
       const result = validateConfig(config);
 
       if (!result.ok) {
@@ -657,6 +663,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     },
 
     async updateEntry(path, ops, options = {}) {
+      if (options.mode === "build") requireBuildMode();
       const target = requireCollection(path);
 
       if (!Array.isArray(ops)) throw new GalleyError("invalid", "The edit didn't say what to change.");
@@ -710,6 +717,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     },
 
     async createEntry(input, options = {}) {
+      if (options.mode === "build") requireBuildMode();
       const collection = model.collections.find((candidate) => candidate.id === input?.collection);
 
       if (!collection) throw new GalleyError("not-found", "That collection doesn't exist on this site.", String(input?.collection));
@@ -813,6 +821,8 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     async writeFile(path, content, options) {
       const normalized = normalizeRepoPath(path);
 
+      // Asked for, not assumed: a request for build mode is refused, never quietly made a content-mode one.
+      if (options.mode === "build") requireBuildMode();
       if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF, normalized);
       if (collectionForPath(model, normalized)?.kit === "forms") {
         const before = (await workspace.exists(normalized)) ? await workspace.readText(normalized).catch(() => null) : null;
@@ -835,6 +845,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     async deleteFile(path, options) {
       const normalized = normalizeRepoPath(path);
 
+      if (options.mode === "build") requireBuildMode();
       if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF, normalized);
       await pathLock(normalized, () =>
         workspace.deleteFile(normalized, {
@@ -940,7 +951,8 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     // ── preview & build
 
     preview(): PreviewController {
-      preview ??= createPreviewController({
+      // Made once and shared by everyone who opens the site: made as nobody, so its timers and processes carry no one's access.
+      preview ??= outsideAnyPerson(() => createPreviewController({
         root,
         // Read at start time so a changed dev command or port applies on restart.
         settings: () => ({
@@ -968,11 +980,12 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         onStatus: (status: PreviewStatus) => {
           if (!disposed) deps.events.emit({ type: "preview.status", siteId: deps.id, status });
         },
-      });
+      }));
       return preview;
     },
 
     async build(options = {}) {
+      if (options.mode === "build") requireBuildMode();
       if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF);
       if (!model.build) {
         throw new GalleyError("unconfigured", "This site has no build command yet. Add one in the site settings (for example “npm run build”).");
@@ -993,6 +1006,41 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     },
   };
 
+  /**
+   * The engine's own bookkeeping (settings-records.ts): one record's keys,
+   * applied to the file as it is now, at the level of the route whose action
+   * records it. The rest of the file is never touched.
+   */
+  async function record(entry: SettingsRecord): Promise<SiteModel> {
+    const kind = entry?.kind as keyof typeof SITE_SETTINGS_RECORDS;
+    const route = Object.hasOwn(SITE_SETTINGS_RECORDS, kind) ? SITE_SETTINGS_RECORDS[kind] : null;
+
+    if (!route) throw new GalleyError("invalid", "That isn't something the engine records in the site's settings.");
+    requireLevel(levelFor(route) ?? "edit");
+    await pathLock(PRODUCT.configFile, async () => {
+      const previous = (await workspace.exists(PRODUCT.configFile)) ? await workspace.readText(PRODUCT.configFile) : null;
+      const current = previous === null ? {} : ((await readConfig(root)) ?? {});
+      const result = validateConfig(applyRecord(current, entry, model));
+
+      if (!result.ok) throw new GalleyError("invalid", `The site settings have ${result.errors.length === 1 ? "a problem" : `${result.errors.length} problems`}: ${result.errors.join(" ")}`, result.errors.join("\n"));
+      await workspace.writeFile(PRODUCT.configFile, updateConfigText(previous, result.config), { origin: "user", mode: "content", system: true });
+    });
+    await settled();
+    return model;
+  }
+
+  // Configurable and writable: the wrappers sites are handed out in (plugin hooks, a plugin's scoped site) are proxies, which may only bind it then.
+  Object.defineProperty(service, RECORD_SETTINGS, { value: record, enumerable: false, configurable: true, writable: true });
+
+  // Publishing and the rest of SITE_METHOD_ACCESS: checked here, once, for every caller of the site.
+  for (const method of Object.keys(SITE_METHOD_ACCESS) as GuardedSiteMethod[]) {
+    const unguarded = service[method] as (...args: unknown[]) => Promise<unknown>;
+
+    (service as unknown as Record<GuardedSiteMethod, (...args: unknown[]) => Promise<unknown>>)[method] = async (...args: unknown[]) => {
+      requireLevel(siteMethodLevel(method));
+      return unguarded.apply(service, args);
+    };
+  }
   return service;
 }
 

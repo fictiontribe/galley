@@ -14,6 +14,7 @@
  * build mode — and refused in plain words when it allows neither.
  */
 import { GalleyError } from "../errors";
+import { requireBuildMode } from "../install/caller";
 import type { AgentMode, GalleyConfig, SiteModel, SiteService } from "../types";
 import { matchesWritable } from "../workspace/policy";
 import { SITE_URL } from "../brand";
@@ -112,9 +113,13 @@ export function brandWriteMode(model: SiteModel, path: string): AgentMode {
 export async function writeBrandFiles(site: SiteService, files: Array<{ path: string; content: string | Uint8Array }>): Promise<string[]> {
   const model = await site.model();
   const written: string[] = [];
+  const modes = files.map((file) => brandWriteMode(model, file.path));
 
-  for (const file of files) {
-    const mode = brandWriteMode(model, file.path);
+  // A brand folder outside the site's content is the files the site is built from: build mode, and its level.
+  // Asked before anything is written, so a refusal never leaves half a brand saved.
+  if (modes.includes("build")) requireBuildMode();
+  for (const [index, file] of files.entries()) {
+    const mode = modes[index]!;
     let current: string | null = null;
 
     if (typeof file.content === "string") current = await readText(site, file.path);

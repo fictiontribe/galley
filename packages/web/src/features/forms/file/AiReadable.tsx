@@ -11,13 +11,19 @@ import { errorShape } from "@/lib/api";
 import { useSite } from "@/lib/stores/site";
 import { notify } from "@/lib/stores/toasts";
 import { Button } from "@/ui";
+import { BUILD_MODE_LEVEL } from "@galley/core/install/route-access";
+import { useMayBuild, whoMayFirst } from "@/lib/may";
 import { startKitSetup, useKitStatus } from "./kit";
+
+/** In place of "Turn it on", for someone whose role doesn't include changing the site's code. */
+export const AI_READABLE_BY_OTHERS = `${whoMayFirst(BUILD_MODE_LEVEL)} can turn it on.`;
 
 export function AiReadableOffer() {
   const navigate = useNavigate();
   const siteId = useSite((s) => s.detail?.id ?? "");
   const status = useKitStatus(siteId);
   const [busy, setBusy] = useState(false);
+  const mayBuild = useMayBuild();
   const step = status.data?.steps.find((candidate) => candidate.id === "visibility");
   if (!status.data?.kit || !status.data.buildAllowed || step?.state !== "ready") return null;
   const ended = (done: Job) => {
@@ -37,9 +43,14 @@ export function AiReadableOffer() {
   return (
     <p className="kit-quiet">
       <span>Also publish a version AI assistants can read: a plain copy of each page and a contents file for them.</span>
-      <Button size="sm" variant="quiet" busy={busy} busyLabel="Turning it on…" onClick={() => void run()}>
-        Turn it on
-      </Button>
+      {/* Turning it on writes the site's code (build mode). */}
+      {mayBuild ? (
+        <Button size="sm" variant="quiet" busy={busy} busyLabel="Turning it on…" onClick={() => void run()}>
+          Turn it on
+        </Button>
+      ) : (
+        <span className="g-hint">{AI_READABLE_BY_OTHERS}</span>
+      )}
     </p>
   );
 }

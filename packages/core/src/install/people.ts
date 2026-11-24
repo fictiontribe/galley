@@ -23,6 +23,10 @@ export const LINK_REFUSED = "This link doesn't work any more: it was used alread
 export const ASK_ANOTHER_OWNER = "Ask another owner to change your own account.";
 export const LAST_OWNER = "This is the last owner who can sign in, so they stay an owner and stay switched on. Make someone else an owner first.";
 export const NAME_LIMIT = 100;
+/** A typed current password that isn't the person's: the route counts it against the address's limit. */
+export const WRONG_CURRENT_PASSWORD = "That isn't your current password.";
+/** Someone who isn't an owner asks to change the e-mail they sign in with. */
+export const OWN_EMAIL_REFUSAL = "Only an owner can change the e-mail you sign in with. Ask an owner of this editor to change it for you.";
 /** The longest e-mail address there can be (RFC 5321's path limit). */
 export const EMAIL_LIMIT = 254;
 
@@ -71,8 +75,12 @@ export interface PeopleService {
   cancelInvitation(byId: string, invitationId: string): Promise<Invitation>;
   /** Writes down whether a link's e-mail went out. */
   markEmailed(linkId: string, emailed: boolean): Promise<void>;
-  /** Changes someone's role, or switches them off or on. Switching off ends their sessions and their open links at once. */
-  change(byId: string, accountId: string, input: { role?: AccountRole; disabled?: boolean }): Promise<{ before: Account; after: Account }>;
+  /**
+   * Changes someone's role or e-mail, or switches them off or on. Switching
+   * off ends their sessions and their open links at once; a new e-mail ends
+   * their open links (each was made for the old one).
+   */
+  change(byId: string, accountId: string, input: { role?: AccountRole; disabled?: boolean; email?: string }): Promise<{ before: Account; after: Account }>;
   /** Removes someone: their sessions and open links end at once. */
   remove(byId: string, accountId: string): Promise<Account>;
   /**
@@ -95,7 +103,11 @@ export interface PeopleService {
 
   /** Changes a person's own password. False: `current` isn't their password. Their other sessions end. */
   changePassword(accountId: string, current: string, next: string): Promise<boolean>;
-  /** A person's own name and e-mail. A different e-mail needs their current password. */
+  /**
+   * A person's own name and e-mail. A different e-mail needs their current
+   * password, and is theirs to change only as an owner or while their
+   * account has none yet; everyone else's is changed by an owner (`change`).
+   */
   updateProfile(accountId: string, input: { name?: string; email?: string; password?: string }): Promise<Account>;
   /** Signs one person out of every browser. */
   signOut(accountId: string): Promise<void>;
@@ -374,6 +386,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
     async change(byId, accountId, input) {
       if (input.role !== undefined && !ACCOUNT_ROLES.includes(input.role)) throw new GalleyError("invalid", "Choose a role: Owner, Editor or Contributor.");
+      const email = input.email === undefined ? undefined : normalizeEmail(input.email);
       let before: Account | null = null;
       let after: Account | null = null;
       let ended = false;
@@ -389,6 +402,13 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
         if (target.role === "owner" && !target.disabled && (role !== "owner" || disabled) && enabledOwners(draft, target.id) === 0) {
           throw new GalleyError("conflict", LAST_OWNER);
+        }
+        if (email !== undefined && email !== target.email) {
+          if (draft.accounts.some((account) => account.email === email && account.id !== target.id)) throw new GalleyError("conflict", "Someone with that e-mail already has an account here.");
+          // A link made for the old e-mail would still reach whoever reads that inbox.
+          dropPasswordLinks(draft, target.id);
+          target.email = email;
+          target.incomplete = !target.name || !target.email;
         }
         if (disabled && !target.disabled) {
           endSessions(target);
@@ -551,9 +571,11 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       const email = input.email === undefined ? undefined : normalizeEmail(input.email);
 
       if (email !== undefined && email !== current.email) {
+        // Only an owner manages who signs in as whom; an account with no e-mail yet (the owner from before accounts) adds its own.
+        if (current.email !== "" && current.role !== "owner") throw new GalleyError("forbidden", OWN_EMAIL_REFUSAL);
         // The e-mail is where a new-password link goes: a browser left signed in mustn't be enough to change it.
         if (typeof input.password !== "string" || input.password.length === 0) throw new GalleyError("invalid", "Type your current password to change your e-mail.");
-        if (!(await verifyPassword(input.password, current.passwordHash))) throw new GalleyError("invalid", "That isn't your current password.");
+        if (!(await verifyPassword(input.password, current.passwordHash))) throw new GalleyError("invalid", WRONG_CURRENT_PASSWORD);
       }
       let updated: Account | null = null;
 

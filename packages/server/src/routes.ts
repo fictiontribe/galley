@@ -30,7 +30,7 @@ import { visibilityRoutes } from "./visibility";
 import { importRoutes, importsOf } from "./import";
 import { siteBrandRoutes } from "./sitebrand";
 import { installRoutes } from "./install-routes";
-import { accountsMeta, accountsRoutes, eventAccess, signInWithAccount } from "./accounts-routes";
+import { accountsMeta, accountsRoutes, eventAccess, signInWithAccount, signOutThisBrowser } from "./accounts-routes";
 import { previewEntry } from "./preview-entry";
 import { hostingRoutes } from "./hosting-routes";
 import { assertInside, listFolders, looksLikeSite, realDirectory } from "./fs-list";
@@ -240,6 +240,8 @@ export const routes: RouteTable = {
     return ok;
   },
   "POST /api/auth/logout": async (c, ctx) => {
+    // A hosted install writes a sign-out down only for a session that still counts (accounts-routes.ts).
+    if (ctx.options.mode === "hosted" && ctx.options.install) return signOutThisBrowser(c, ctx);
     const nonce = sessionNonce(c, ctx.session);
 
     if (nonce) ctx.session.revoked.add(nonce);

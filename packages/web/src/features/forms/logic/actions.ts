@@ -33,11 +33,14 @@ export interface Availability {
   reason?: string;
 }
 
-/** Whether another step of this type may be added. */
-export function canAdd(actions: readonly FormAction[], type: ActionType, allowBuild: boolean): Availability {
+/** Why custom code can't be added where the site doesn't allow build mode. */
+export const CODE_SITE_OFF = "Custom code is only offered on sites where build mode is allowed.";
+
+/** Whether another step of this type may be added. `codeOff` says why custom code isn't offered when `allowBuild` is false. */
+export function canAdd(actions: readonly FormAction[], type: ActionType, allowBuild: boolean, codeOff: string = CODE_SITE_OFF): Availability {
   if (type === "message" && actions.some((action) => action.type === "message")) return { ok: false, reason: "This form already shows a thank-you message. Edit that one instead." };
   if (type === "redirect" && actions.some((action) => action.type === "redirect")) return { ok: false, reason: "This form already goes to a page. A visitor can only go to one." };
-  if (type === "script" && !allowBuild) return { ok: false, reason: "Custom code is only offered on sites where build mode is allowed." };
+  if (type === "script" && !allowBuild) return { ok: false, reason: codeOff };
   return { ok: true };
 }
 

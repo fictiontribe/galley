@@ -9,7 +9,11 @@ import { usePreviewStatus } from "@/lib/stores/preview";
 import { notify } from "@/lib/stores/toasts";
 import { Button, Icon, SegmentedControl, Select, Skeleton } from "@/ui";
 import { crawlerChangeWords, rebaseChoices } from "./logic";
-import { useWhoPublishes } from "@/lib/may";
+import { BUILD_MODE_LEVEL } from "@galley/core/install/route-access";
+import { useMayBuild, useWhoPublishes, whoMayFirst } from "@/lib/may";
+
+/** Where the crawler choices would be, for someone whose role doesn't include changing robots.txt (part of the site's code). */
+export const CRAWLERS_BY_OTHERS = `${whoMayFirst(BUILD_MODE_LEVEL)} can change these rules.`;
 
 const PURPOSE: Record<CrawlerStatus["purpose"], string> = {
   search: "Answers with links",
@@ -57,6 +61,9 @@ export function CrawlerPanel({ siteId, report, onSaved }: { siteId: string; repo
   const [draft, setDraft] = useState(initial);
   const [saving, setSaving] = useState(false);
   const publishes = useWhoPublishes();
+  const mayBuild = useMayBuild();
+  // The kit's data file is content; a robots.txt file is the site's code (build mode).
+  const editable = report.editable && (report.where.kind === "kit" || mayBuild);
   const changed = Object.keys(draft).filter((token) => draft[token] !== initial[token]);
   const vendors = [...new Set(report.crawlers.map((c) => c.vendor))];
   const pending = crawlerChangeWords(report.crawlers.filter((c) => changed.includes(c.token)).map((c) => ({ label: c.label, to: draft[c.token] ?? "allow" })));
@@ -115,14 +122,15 @@ export function CrawlerPanel({ siteId, report, onSaved }: { siteId: string; repo
               {report.crawlers
                 .filter((c) => c.vendor === vendor)
                 .map((crawler) => (
-                  <CrawlerRow key={crawler.token} crawler={crawler} value={draft[crawler.token] ?? "allow"} editable={report.editable} onChange={(next) => setDraft({ ...draft, [crawler.token]: next })} />
+                  <CrawlerRow key={crawler.token} crawler={crawler} value={draft[crawler.token] ?? "allow"} editable={editable} onChange={(next) => setDraft({ ...draft, [crawler.token]: next })} />
                 ))}
             </ul>
           </div>
         ))
       ) : null}
       {report.editNote ? <p className="seo-panel__note">{report.editNote}</p> : null}
-      {report.editable && pending ? (
+      {report.editable && !editable ? <p className="seo-panel__note">{CRAWLERS_BY_OTHERS}</p> : null}
+      {editable && pending ? (
         // Stays in view at the foot of the screen while choices are waiting, so the confirm step is next to the switch just used.
         <div className="seo-savebar" role="region" aria-label="Unsaved crawler choices" data-keep-clear>
           <p className="seo-savebar__text" role="status">

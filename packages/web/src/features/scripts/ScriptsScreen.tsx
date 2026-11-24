@@ -14,7 +14,7 @@ import { useSite } from "@/lib/stores/site";
 import { Button, EmptyState, ErrorState, PageHeader, ProofMark, Skeleton } from "@/ui";
 import { AskBox } from "@/features/forms/file/AskBox";
 import { AssistantPanel } from "@/features/forms/file/AssistantPanel";
-import { useAllowBuild } from "@/features/forms/file/assistant";
+import { useAllowBuild, useBuildByOthers } from "@/features/forms/file/assistant";
 import { useEdits, useScriptsDoc } from "@/features/forms/file/hooks";
 import { KitFile, useKitEntry } from "@/features/forms/file/KitFile";
 import { SetupLeftNotice, SetupState } from "@/features/forms/file/SetupState";
@@ -102,6 +102,7 @@ function ScriptsBody({ siteId, entry }: { siteId: string; entry: Entry }) {
   const config = useScriptsDoc();
   const edits = useEdits();
   const allowBuild = useAllowBuild();
+  const buildByOthers = useBuildByOthers();
   const model = useSite((s) => s.detail?.model);
   const outside = useFormState((state) => state.outside);
   const [adding, setAdding] = useState(false);
@@ -163,7 +164,7 @@ function ScriptsBody({ siteId, entry }: { siteId: string; entry: Entry }) {
           </div>
         </div>
       </div>
-      <AddScriptDialog open={adding} onClose={() => setAdding(false)} taken={config.scripts.map((script) => script.id)} allowBuild={allowBuild} onAdd={add} />
+      <AddScriptDialog open={adding} onClose={() => setAdding(false)} taken={config.scripts.map((script) => script.id)} allowBuild={allowBuild} buildByOthers={buildByOthers} onAdd={add} />
     </div>
   );
 }

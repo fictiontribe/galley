@@ -16,7 +16,8 @@ import { useState } from "react";
 import { editorAddress } from "@/features/inbox/reach";
 import { docsPage } from "../logic/locate";
 import { setInboxAddress, useKitStatus } from "./kit";
-import { useWhoPublishes } from "@/lib/may";
+import { BUILD_MODE_LEVEL } from "@galley/core/install/route-access";
+import { useMayBuild, useWhoPublishes, whoMayFirst } from "@/lib/may";
 
 /** Whether the step is needed: a form uses the inbox, the kit is there, and its settings name no address. */
 export function needsInboxAddress(status: SiteKitStatus | undefined): boolean {
@@ -29,6 +30,8 @@ export function InboxAddressStep() {
   const status = useKitStatus(siteId);
   const hosted = useHostedInstall();
   const publishes = useWhoPublishes();
+  // Setting it writes the site kit's own settings, which are part of the site's code (build mode).
+  const mayBuild = useMayBuild();
   const [busy, setBusy] = useState(false);
   const kit = status.data;
   if (!kit || !needsInboxAddress(kit)) return null;
@@ -59,11 +62,15 @@ export function InboxAddressStep() {
         <p className="kit-callout__body">
           Visitors’ browsers can reach this app’s inbox at <span className="g-mono">{inbox.address}</span>. Set it, and the live site sends its forms there once {publishes}.
         </p>
-        <div className="kit-callout__actions">
-          <Button size="sm" variant="primary" busy={busy} busyLabel="Setting…" onClick={() => void use()}>
-            Send them to this inbox
-          </Button>
-        </div>
+        {mayBuild ? (
+          <div className="kit-callout__actions">
+            <Button size="sm" variant="primary" busy={busy} busyLabel="Setting…" onClick={() => void use()}>
+              Send them to this inbox
+            </Button>
+          </div>
+        ) : (
+          <p className="kit-callout__body">{`${whoMayFirst(BUILD_MODE_LEVEL)} can set it.`}</p>
+        )}
       </>
     );
   } else {

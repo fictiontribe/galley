@@ -167,7 +167,15 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
       `Password:  ${server.passwordLink.url}\n           Open it now: it lets ${server.passwordLink.name || "the owner"} choose a new password, once, until ${until} UTC. Nobody else's account changed.`
     );
   }
-  io.out(`E-mail:    ${mailConfigFromEnv(env).config ? "invitations and new-password links are e-mailed too" : "not set up (GALLEY_SMTP_URL, GALLEY_MAIL_FROM): owners send invitation and new-password links themselves"}`);
+  io.out(
+    `E-mail:    ${
+      !mailConfigFromEnv(env).config
+        ? "not set up (GALLEY_SMTP_URL, GALLEY_MAIL_FROM): owners send invitation and new-password links themselves"
+        : publicUrl
+          ? "invitations and new-password links are e-mailed too"
+          : "set up, but no link is e-mailed until the editor's public address is set (GALLEY_PUBLIC_URL): a link is only ever built from it"
+    }`
+  );
   io.out(
     `Sessions:  signed HttpOnly SameSite=Strict cookie, 30 days; ${publicUrl?.startsWith("https://") ? "Secure, and a __Host- cookie on this https:// address" : `Secure over HTTPS${trustProxy ? " (X-Forwarded-Proto is trusted)" : " (X-Forwarded-Proto is ignored; set GALLEY_TRUST_PROXY=1 behind a proxy)"}`}`
   );

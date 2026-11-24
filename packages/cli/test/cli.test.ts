@@ -426,6 +426,21 @@ describe("galley serve", () => {
     expect(output).toContain("Requests:  only for cms.example.com and loopback names; changes must come from that address");
   });
 
+  it("says links are e-mailed only with both outgoing e-mail and the public address", async () => {
+    const lines = async (env: Record<string, string>) => {
+      const io = testIo({
+        env: { HOME: tmp, GALLEY_PASSWORD: "a long enough password", GALLEY_HOME: "/data", GALLEY_SMTP_URL: "smtp://127.0.0.1:2525", GALLEY_MAIL_FROM: "editor@example.com", ...env },
+        startServer: async () => ({ url: "https://cms.example.com", port: 4400, close: async () => {} }) as unknown as RunningServer,
+      });
+
+      expect(await main(["serve"], io)).toBe(0);
+      return io.stdout.join("\n");
+    };
+
+    expect(await lines({ GALLEY_PUBLIC_URL: "https://cms.example.com" })).toContain("E-mail:    invitations and new-password links are e-mailed too");
+    expect(await lines({})).toContain("E-mail:    set up, but no link is e-mailed until the editor's public address is set (GALLEY_PUBLIC_URL)");
+  });
+
   it("says how people sign in, and whether GALLEY_PASSWORD is still an owner's password", async () => {
     const { startServer } = await import("@galley/server");
     const home = join(tmp, "serve-home-password");
@@ -450,7 +465,8 @@ describe("galley serve", () => {
     const first = testIo({ startServer, env });
 
     expect(await main(["serve"], first)).toBe(0);
-    expect(first.stdout.join("\n")).toContain("E-mail:    invitations and new-password links are e-mailed too");
+    // Was "invitations and new-password links are e-mailed too": without the public address no link is e-mailed at all.
+    expect(first.stdout.join("\n")).toContain("E-mail:    set up, but no link is e-mailed until the editor's public address is set (GALLEY_PUBLIC_URL): a link is only ever built from it");
     const reset = testIo({ startServer, env });
 
     expect(await main(["serve", "--reset-password"], reset)).toBe(0);

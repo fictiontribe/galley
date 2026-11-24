@@ -23,17 +23,26 @@
  * The mock has one browser: `signedIn` is whoever that browser is signed in
  * as. A test that sets `backend.authenticated = true` without signing in is
  * the first owner, as before accounts.
+ *
+ * Like the real server, it also holds what a route's level can't say by
+ * itself: asking for build mode needs BUILD_MODE_LEVEL, and writing the
+ * site's settings file needs SITE_SETTINGS_LEVEL, whichever route writes it
+ * (`withAccounts`, "what a request asks for"). Those refusals are marked in
+ * the request log like the table's.
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import type { ApiRouteKey } from "@galley/core/api";
 import type { GitStatus, MetaInfo, SiteDetail } from "@galley/core/types";
 import { MIN_INSTALL_PASSWORD_LENGTH } from "@galley/core/install/types";
+import { PRODUCT } from "@galley/core/brand";
 import {
   ACCOUNT_ROLES,
   INVITATION_DAYS,
   LINK_PATHS,
   PASSWORD_LINK_MINUTES,
   ROLE_ACCESS,
+  roleMay,
+  type AccessLevel,
   type Account,
   type AccountRole,
   type AccountSession,
@@ -94,8 +103,15 @@ export function accountsHandlers(): Pick<Handlers, AccountsRouteKey> {
 export const MOCK_ACCOUNT_PASSWORD = "proof";
 
 export interface MockAccountsOptions {
-  /** This server has outgoing e-mail: links are e-mailed too, and "Forgot your password?" sends one. */
+  /** This server has outgoing e-mail: links are e-mailed too, and "Forgot your password?" sends one — when it also has a public address. */
   email?: boolean;
+  /**
+   * false: the server was started without its own public address. Then it
+   * e-mails no link at all, outgoing e-mail or not (`emailAvailable` false,
+   * "Forgot your password?" sends nothing); links are still shown to the
+   * owner who makes them, as on a trial on one computer.
+   */
+  publicAddress?: boolean;
   /** An install from before accounts: one owner, no name or e-mail, signing in with the password alone. */
   legacy?: boolean;
   /** Start this browser signed in as the first person with this role (first run must be over). */
@@ -134,6 +150,24 @@ const ASK_ANOTHER_OWNER = "Ask another owner to change your own account.";
 const LAST_OWNER = "This is the last owner who can sign in, so they stay an owner and stay switched on. Make someone else an owner first.";
 const SIGN_IN_REFUSED = "That e-mail and password don't match an account here. Check them and try again.";
 const TAKEN = "Someone with that e-mail already has an account here.";
+const NOT_AN_EMAIL = "That e-mail address is missing something. It should look like name@example.com.";
+/** What someone without the level is told when a request asks for build mode, or would write the site's settings file (the real server's sentences, core install/caller.ts). */
+export const BUILD_MODE_REFUSAL = "Your account can change the site's content, but not its code and templates (build mode). Ask an owner or an editor of this editor.";
+export const SITE_SETTINGS_REFUSAL = "Your account can't change the site's settings. Ask an owner of this editor.";
+export const OWN_EMAIL_REFUSAL = "Only an owner can change the e-mail you sign in with. Ask an owner of this editor to change it for you.";
+
+/** Refused for the signed-in person's role, though the route itself was theirs: server.ts marks it in the log like a refusal from the table. */
+export class MockRoleError extends MockError {
+  constructor(message: string) {
+    super("forbidden", message);
+  }
+}
+
+/** The two levels a route can't express (core route-access.ts), handed over by server.ts once the table is loaded. */
+export interface MockRequestLevels {
+  build: AccessLevel;
+  settings: AccessLevel;
+}
 
 const days = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
 
@@ -186,6 +220,8 @@ export class MockAccounts {
   /** Who the mock's one browser is signed in as. */
   signedIn: string | null = null;
   emailAvailable: boolean;
+  /** Set by server.ts from the loaded role-access table, before any request is answered. */
+  levels: MockRequestLevels = { build: "publish", settings: "manage" };
   /** The limits' clock: a test moves it on to let the wait run out. */
   now: () => number = () => Date.now();
   private readonly tries = new Tries(TRY_LIMIT, TRY_WINDOW_MS, () => this.now());
@@ -196,7 +232,8 @@ export class MockAccounts {
     readonly install: MockInstall,
     readonly options: MockAccountsOptions = {},
   ) {
-    this.emailAvailable = Boolean(options.email);
+    // A link is only ever e-mailed when it can be built from the server's own public address.
+    this.emailAvailable = Boolean(options.email) && options.publicAddress !== false;
     this.seed(install.step() === "done");
     if (options.role && install.step() === "done") {
       const person = this.accounts.find((account) => account.role === options.role && !account.disabled);
@@ -382,8 +419,10 @@ export class MockAccounts {
     let email: string | undefined;
     if (body.email !== undefined) {
       email = body.email.trim().toLowerCase();
-      if (!EMAIL.test(email)) throw new MockError("invalid", "That e-mail address is missing something. It should look like name@example.com.");
+      if (!EMAIL.test(email)) throw new MockError("invalid", NOT_AN_EMAIL);
       if (email !== person.email) {
+        // Your own e-mail is an owner's to change — yours, if you are one, or if your account has none yet.
+        if (person.role !== "owner" && person.email) throw new MockRoleError(OWN_EMAIL_REFUSAL);
         if (!body.password) throw new MockError("invalid", "Type your current password to change your e-mail.");
         if (body.password !== person.password) throw new MockError("invalid", "That isn't your current password.");
         if (this.accounts.some((account) => account.id !== person.id && account.email === email)) throw new MockError("conflict", TAKEN);
@@ -456,14 +495,25 @@ export class MockAccounts {
     return this.accounts.filter((account) => account.id !== person.id && account.role === "owner" && !account.disabled).length;
   }
 
-  change(accountId: string, body: { role?: AccountRole; disabled?: boolean }): Account {
+  change(accountId: string, body: { role?: AccountRole; disabled?: boolean; email?: string }): Account {
     if (body.role !== undefined && !ACCOUNT_ROLES.includes(body.role)) throw new MockError("invalid", "Choose a role: Owner, Editor or Contributor.");
     const person = this.person(accountId);
     if (person.id === this.me().id) throw new MockError("conflict", ASK_ANOTHER_OWNER);
+    const email = body.email === undefined ? undefined : body.email.trim().toLowerCase();
+    if (email !== undefined) {
+      if (!EMAIL.test(email)) throw new MockError("invalid", NOT_AN_EMAIL);
+      if (this.accounts.some((account) => account.id !== person.id && account.email === email)) throw new MockError("conflict", TAKEN);
+    }
     const losesOwner = person.role === "owner" && !person.disabled && ((body.role !== undefined && body.role !== "owner") || body.disabled === true);
     if (losesOwner && this.otherOwners(person) === 0) throw new MockError("conflict", LAST_OWNER);
     if (body.role !== undefined) person.role = body.role;
     if (body.disabled !== undefined) person.disabled = body.disabled;
+    if (email !== undefined && email !== person.email) {
+      person.email = email;
+      if (person.name) delete person.incomplete;
+      // A link made for the old address doesn't work any more.
+      for (const link of this.links.values()) if (link.accountId === person.id) link.used = true;
+    }
     return this.public(person);
   }
 
@@ -481,12 +531,19 @@ export class MockAccounts {
     const { url } = this.mint({ kind: "password", accountId: person.id, expiresAt, used: false });
     const emailed = this.emailAvailable && Boolean(person.email);
     if (emailed) this.outbox.push({ to: person.email, kind: "password", url });
-    return { url, expiresAt, emailed };
+    // E-mailed: the link goes only to the person it is for, not back to whoever asked for it.
+    return { url: emailed ? null : url, expiresAt, emailed };
   }
 
   signOutPerson(accountId: string): void {
     const person = this.person(accountId);
     if (this.current()?.id === person.id) this.signOutBrowser();
+  }
+
+  /** Refuse, for the signed-in person, what needs `level` and their role doesn't have. Nobody signed in as a person (first run, tests): allowed. */
+  need(level: AccessLevel, refusal: string): void {
+    const person = this.current();
+    if (person && !roleMay(person.role, level)) throw new MockRoleError(refusal);
   }
 
   /** The author a publish is recorded as: the signed-in person. */
@@ -555,6 +612,38 @@ export function withAccounts(mock: MockBackend, base: Handlers, accounts: MockAc
     const author = accounts.author();
     return author ? { ...git, author: { ...author, from: "account" } } : git;
   };
+  // ── what a request asks for (the real server holds these in the engine, whatever route asks) ──
+  const build = () => accounts.need(accounts.levels.build, BUILD_MODE_REFUSAL);
+  const settings = () => accounts.need(accounts.levels.settings, SITE_SETTINGS_REFUSAL);
+  wrap(handlers, "POST /api/sites/:siteId/threads", (req, original) => {
+    if (req.body?.mode === "build") build();
+    return original(req);
+  });
+  wrap(handlers, "POST /api/sites/:siteId/threads/:threadId/messages", (req, original) => {
+    if (req.body.mode === "build") build();
+    return original(req);
+  });
+  wrap(handlers, "PUT /api/sites/:siteId/file", (req, original) => {
+    if ((req.query.path ?? "").replace(/^\.?\/+/, "") === PRODUCT.configFile) settings();
+    if (req.body.mode === "build") build();
+    return original(req);
+  });
+  const before = <K extends ApiRouteKey>(key: K, check: () => void) =>
+    wrap(handlers, key, (req, original) => {
+      check();
+      return original(req);
+    });
+  // The site kit is code: setting it up, or any part of it, writes in build mode.
+  before("POST /api/sites/:siteId/kit/setup", build);
+  before("POST /api/sites/:siteId/kit/visibility", build);
+  before("POST /api/sites/:siteId/kit/endpoint", build);
+  // A host's leftover redirect file is the site's code; rebuilding an imported page runs the assistant in build mode.
+  before("POST /api/sites/:siteId/redirects/leftover/remove", build);
+  before("POST /api/sites/:siteId/import/rebuild", build);
+  before("POST /api/sites/:siteId/import/rebuild-all", build);
+  // Where the redirects take effect is kept in the site's settings file.
+  before("PUT /api/sites/:siteId/redirects/settings", settings);
+
   wrap(handlers, "POST /api/sites/:siteId/publish", (req, original) => asAuthor(() => original(req)));
   wrap(handlers, "POST /api/sites/:siteId/revert", (req, original) => asAuthor(() => original(req)));
   wrap(handlers, "GET /api/sites/:siteId/git", async (req, original) => withAuthor((await original(req)) as GitStatus));

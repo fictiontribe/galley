@@ -27,6 +27,12 @@ export const STATE_FILE = "install.json";
 export const SITE_FOLDER = "site";
 /** How long a session cookie lives (auth.ts in the server): revocations are kept as long, then pruned. */
 export const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+/**
+ * The most single signed-out sessions the state keeps. A sign-out past it
+ * ends that person's sessions by time instead (every browser of theirs), so
+ * the list — and the file — can't grow without bound.
+ */
+export const REVOKED_SESSIONS_KEPT = 10_000;
 
 export interface InstallSiteRecord {
   /** The repository's copy (the checkout), relative to the data folder (POSIX): "site", or an adopted "sites/name". */
@@ -160,7 +166,8 @@ const StateSchema = z.object({
   accounts: z.array(AccountSchema).max(10_000),
   links: z.array(LinkSchema).max(10_000),
   setup: z.object({ tokenSha256: z.string().regex(/^[0-9a-f]{64}$/).nullable(), finishedAt: z.string().nullable(), spent: z.array(z.string().regex(/^[0-9a-f]{64}$/)).max(SPENT_CODES_KEPT).optional().catch(undefined) }),
-  sessions: z.object({ validAfter: z.number(), revoked: z.array(z.object({ id: z.string().max(200), until: z.number() })).max(100_000) }),
+  // No cap here: a long list is trimmed on load (openInstallState), never a reason not to start.
+  sessions: z.object({ validAfter: z.number(), revoked: z.array(z.object({ id: z.string().max(200), until: z.number() })) }),
   site: SiteRecordSchema.nullable(),
   liveUrl: z.string().nullable().catch(null),
   pendingLiveUrl: z.string().nullable().catch(null),
@@ -252,6 +259,13 @@ export interface InstallStore {
   sessionsChanged(): void;
   /** Ends one session, for as long as its cookie could live. */
   revokeSession(id: string, until?: number): Promise<void>;
+  /**
+   * Signs one browser out: only a session that still counts is written down
+   * (signed and unexpired is the caller's check; this one: not ended already,
+   * its account there and switched on), kept only until it would have
+   * expired anyway. With the list full, that person's sessions end by time.
+   */
+  endSession(session: SessionStamp, now?: number): Promise<void>;
   /** Ends every session issued so far. */
   signOutEverywhere(): Promise<void>;
   /** Called after anything about sessions changed (so a viewer cookie bound to one can be dropped). */
@@ -266,6 +280,8 @@ export interface OpenInstallStateOptions {
   /** GALLEY_SITE_DIR, for the first upgrade of a folder with several sites. */
   keepSite?: string | null;
   now?: () => Date;
+  /** Where a trim made while loading is told (one line). */
+  log?: (line: string) => void;
 }
 
 async function readState(file: string): Promise<{ raw: unknown; schema: number } | null> {
@@ -321,6 +337,25 @@ async function writeState(home: string, file: string, state: InstallStateFile): 
   }
 }
 
+/**
+ * Keeps the signed-out sessions within REVOKED_SESSIONS_KEPT: the expired
+ * ones go, and if that isn't enough everyone is signed out once (which
+ * covers every entry), rather than the install refusing to start. Returns
+ * the line to log, or null when nothing was trimmed.
+ */
+function trimRevoked(state: InstallStateFile, now: number): string | null {
+  const live = state.sessions.revoked.filter((entry) => entry.until > now);
+
+  // Expired ones are dropped quietly: the next write leaves them out anyway.
+  if (live.length <= REVOKED_SESSIONS_KEPT) {
+    state.sessions.revoked = live;
+    return null;
+  }
+  state.sessions.validAfter = Math.max(now, state.sessions.validAfter + 1);
+  state.sessions.revoked = [];
+  return `The list of signed-out browsers was longer than ${REVOKED_SESSIONS_KEPT}, so everyone was signed out once to shorten it. People sign in again as usual.`;
+}
+
 /** Reads (and, when it is older, upgrades) the state of the install in `home`, creating it for a new install. */
 async function loadState(home: string, options: OpenInstallStateOptions): Promise<InstallStateFile> {
   const file = join(home, STATE_FILE);
@@ -329,8 +364,10 @@ async function loadState(home: string, options: OpenInstallStateOptions): Promis
   const from = found?.schema ?? 0;
   const migrated = await migrate(found?.raw ?? null, from, context);
   const state = parseState(migrated, file);
+  const trimmed = trimRevoked(state, context.now.getTime());
 
-  if (from !== INSTALL_SCHEMA_VERSION || !found) {
+  if (trimmed) options.log?.(trimmed);
+  if (from !== INSTALL_SCHEMA_VERSION || !found || trimmed) {
     // The old file stays beside the new one until the next upgrade, in case the new version has to be rolled back.
     if (found) await writeFile(join(home, `${STATE_FILE}.schema-${from}.bak`), `${JSON.stringify(found.raw, null, 2)}\n`, { mode: 0o600 });
     await writeState(home, file, state);
@@ -440,6 +477,21 @@ export async function openInstallState(home: string, options: OpenInstallStateOp
       if (state.sessions.revoked.some((entry) => entry.id === id)) return;
       await update((draft) => {
         draft.sessions.revoked.push({ id, until });
+      });
+      sessionsChanged();
+    },
+    async endSession(session, now = Date.now()) {
+      const until = session.issuedAt + SESSION_LIFETIME_MS;
+
+      if (until <= now || !store.sessionValid(session, now)) return;
+      await update((draft) => {
+        draft.sessions.revoked = draft.sessions.revoked.filter((entry) => entry.until > now);
+        if (draft.sessions.revoked.some((entry) => entry.id === session.id)) return;
+        const account = session.accountId === undefined ? undefined : draft.accounts.find((candidate) => candidate.id === session.accountId);
+
+        if (draft.sessions.revoked.length < REVOKED_SESSIONS_KEPT) draft.sessions.revoked.push({ id: session.id, until });
+        else if (account) account.sessionsValidAfter = Math.max(now, account.sessionsValidAfter + 1);
+        else draft.sessions.validAfter = Math.max(now, draft.sessions.validAfter + 1);
       });
       sessionsChanged();
     },

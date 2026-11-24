@@ -4,9 +4,12 @@
  * privileges, so adding or changing one is a build-mode change: refused in
  * content mode (the assistant or an AI tool editing content, which is also
  * what an "agent" write without a mode counts as), and refused when the site
- * doesn't allow build mode. Removing one, or editing anything else in the
- * form, is ordinary content editing.
+ * doesn't allow build mode, or the person's account can't use build mode.
+ * Removing one, or editing anything else in the form, is ordinary content
+ * editing.
  */
+import { BUILD_MODE_LEVEL } from "../install/route-access";
+import { BUILD_MODE_REFUSAL, callerMay } from "../install/caller";
 import type { AgentMode, ChangeOrigin } from "../types";
 
 type Json = Record<string, unknown>;
@@ -44,6 +47,8 @@ export function formCodeRefusal(before: string | null, after: string, who: { ori
   const mode = who.mode ?? (who.origin === "agent" ? "content" : undefined);
 
   if (mode === "content") return "Custom code in a form runs in every visitor's browser, so it can only be added in build mode. Nothing was changed.";
+  // The person in the app counts as build mode here, so their account must allow build mode too.
+  if (!callerMay(BUILD_MODE_LEVEL)) return BUILD_MODE_REFUSAL;
   if (!who.allowBuild) return "Custom code in a form can only be added on sites that allow build mode. Nothing was changed.";
   return null;
 }

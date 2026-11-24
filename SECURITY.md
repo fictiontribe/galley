@@ -42,7 +42,14 @@ preview overlay (`packages/overlay`), the adapter kit, the desktop shell
 - a secret (an API key, a password, a one-time link's code, the session key)
   reaching the browser, a log line or an error message, other than the one
   person a link is shown to;
-- a signed-in person reaching a route their role doesn't include;
+- a signed-in person doing what their role doesn't include, by any way in —
+  a route, a file write, the assistant, an AI tool: on a hosted install,
+  build mode is an editor's or owner's and the site's settings file an
+  owner's;
+- a one-time link built from anything but the editor's public address (or,
+  without one, the loopback address of a trial on one computer), or a
+  new-password link the server e-mailed reaching anyone but the person it
+  is for;
 - running code from a site in a way the trust model below doesn't already
   allow, or the assistant reaching a shell or the network;
 - script running on the app's own origin through content, uploads or the
@@ -50,8 +57,9 @@ preview overlay (`packages/overlay`), the adapter kit, the desktop shell
 
 Out of scope: a site's own code doing what its code does (see below); attacks
 that need someone who can already sign in to a hosted Galley, other than
-reaching a route their role doesn't include (anyone signed in can change the
-code the preview runs — see below); denial of service by a signed-in user; the deployed sites
+doing what their role doesn't include (the preview runs the site's code for
+anyone signed in, and editors and owners can change it — see below); denial
+of service by a signed-in user; the deployed sites
 themselves; third-party services (Anthropic, OpenAI, Google, your git host).
 
 ## The security model, in brief
@@ -68,9 +76,11 @@ model* (`apps/site/src/content/docs/running/security.md`).
    links. Sign-in is rate limited; each session cookie belongs to one person
    and is signed, `HttpOnly`, `SameSite=Strict`, and `Secure` (`__Host-`) over
    HTTPS. One table (`packages/core/src/install/route-access.ts`) gives every
-   route the level it needs, and the server checks it on every request. The
-   preview is served on a hostname of its own, only to a browser the editor
-   let in.
+   route the level it needs, and the server checks it on every request; the
+   engine also checks build mode (an editor or owner) and the site's settings
+   file (an owner) where the write happens, whichever way it comes. Links
+   are only ever built from the editor's public address. The preview is
+   served on a hostname of its own, only to a browser the editor let in.
 2. **Every request** must name the server in `Host` (against DNS rebinding);
    every state-changing request needs a same-origin `Origin` or a Bearer
    token (against cross-site requests).
@@ -83,10 +93,11 @@ model* (`apps/site/src/content/docs/running/security.md`).
    code, but the preview runs the site's own dev command (and installs its
    dependencies), build mode runs its build, and adapters a site names in its
    config are loaded. Opening a repository in Galley trusts it the way running
-   it locally would. On a hosted install, any account, whatever its role,
-   therefore grants the ability to run code there (roles keep people out of
-   each other's way; they are not a security boundary): the container is the
-   boundary (the image runs
+   it locally would. On a hosted install the preview runs that code for any
+   account, whatever its role, and editors and owners can change it, so an
+   account is for someone the owner would trust with the repository (roles
+   keep people out of each other's way; they are not a security boundary):
+   the container is the boundary (the image runs
    the server as an unprivileged user with no capabilities; see
    `docs/cloud-install.md`).
 5. **Secrets stay on the server.** Keys come from the environment or a 0600
@@ -100,8 +111,8 @@ model* (`apps/site/src/content/docs/running/security.md`).
 
 Stated so they aren't reported as discoveries: the desktop app's installers
 are unsigned; it does not use the OS keychain yet; on a hosted install,
-anyone who can change the draft can change the code its preview runs, whatever
-their role, and the site's own code can read what its container holds;
+the preview runs the site's code for every role, editors and owners can change
+that code, and the site's own code can read what its container holds;
 sign-in limits are kept in memory, so a restart resets them; the hosted install has not been run on Fly.io or Cloudflare; Windows and
 Linux have not been verified.
 

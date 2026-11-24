@@ -16,7 +16,7 @@ import { useThread } from "./useThread";
 import { continueLine, lastConversation } from "./resume";
 import "./chat.css";
 import { SettingsLink } from "@/features/accounts/SettingsLink";
-import { useWhoPublishes } from "@/lib/may";
+import { useMayBuild, useWhoPublishes } from "@/lib/may";
 
 export interface ChatPanelProps {
   siteId: string;
@@ -66,7 +66,9 @@ export function ChatPanel({ siteId, context, initialMessage }: ChatPanelProps) {
   const buildConfirmed = useChatUi((s) => Boolean(s.buildConfirmed[siteId]));
   const confirmBuild = useChatUi((s) => s.confirmBuild);
   const draftOffer = useChatUi((s) => (s.draft?.siteId === siteId ? s.draft : null));
-  const allowBuild = useSite((s) => s.detail?.model.ai.allowBuild ?? false);
+  // Build mode is offered only when the site allows it AND the person's role includes it; otherwise there is no toggle and no switch to it at all.
+  const mayBuild = useMayBuild();
+  const allowBuild = useSite((s) => s.detail?.model.ai.allowBuild ?? false) && mayBuild;
   const publishes = useWhoPublishes();
   const threads = useThreads(siteId);
   const settings = useQuery(keys.settings(), () => api("GET /api/settings"));
@@ -97,6 +99,10 @@ export function ChatPanel({ siteId, context, initialMessage }: ChatPanelProps) {
   useEffect(() => {
     if (thread) setMode(thread.mode === "build" && allowBuild ? "build" : "content");
   }, [thread?.id]);
+  // Build mode turned off for the site, or the role changed while the panel was open: the next request goes in content mode.
+  useEffect(() => {
+    if (!allowBuild && mode === "build") setMode("content");
+  }, [allowBuild, mode]);
 
   const busy = Boolean(thread?.busy);
   const effective: ChatContext = {

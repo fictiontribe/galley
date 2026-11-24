@@ -6,7 +6,7 @@
  * server is the judge of what is allowed (the last owner, your own account);
  * its refusals are shown in its own words.
  */
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ACCOUNT_ROLES, type Account, type AccountRole, type Invitation, type OneTimeLink } from "@galley/core/install/accounts";
 import { api, errorShape } from "@/lib/api";
@@ -24,7 +24,8 @@ import "./accounts.css";
 
 export const peopleKey = () => ["people"] as const;
 
-export const NO_EMAIL_LINE = "This server has no outgoing e-mail, so links aren’t e-mailed: copy each one and send it yourself. Whoever runs the server can set up e-mail — the guide to running this editor says how.";
+/** People.emailAvailable is false: the server can't e-mail links (it needs outgoing e-mail and its own public address, which is what the guide covers). True for either one missing. */
+export const NO_EMAIL_LINE = "This server doesn’t e-mail links, so copy each one and send it yourself. Whoever runs the server can have it e-mail them — the guide to running this editor says how.";
 
 const ROLE_OPTIONS = ACCOUNT_ROLES.map((role) => ({ value: role, label: roleName(role) }));
 
@@ -49,6 +50,78 @@ function LinkDialog({ shown, onClose }: { shown: Shown | null; onClose: () => vo
       }
     >
       {shown ? <LinkOnce link={shown.link} who={shown.who} again={shown.again} /> : null}
+    </Dialog>
+  );
+}
+
+/** "Change e-mail…" for someone else: the address they sign in with and new-password links go to. The server's refusals are shown as it words them. */
+function EmailDialog({ person, onClose, onChanged }: { person: Account | null; onClose: () => void; onChanged: () => void }) {
+  const [email, setEmail] = useState("");
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setEmail(person?.email ?? "");
+    setProblem(null);
+  }, [person?.id]);
+  const name = person ? personLabel(person) : "";
+
+  const save = async () => {
+    if (!person) return;
+    const issue = emailProblem(email);
+    if (issue) {
+      setProblem(issue);
+      return;
+    }
+    const next = email.trim().toLowerCase();
+    if (next === person.email) {
+      onClose();
+      return;
+    }
+    setBusy(true);
+    setProblem(null);
+    try {
+      await api("PATCH /api/people/:accountId", { params: { accountId: person.id }, body: { email: next } });
+      notify({ tone: "success", title: `${name}’s e-mail is ${next} now`, body: "They sign in with it from now on. Links made for them before don’t work any more." });
+      onChanged();
+      onClose();
+    } catch (caught) {
+      setProblem(errorShape(caught).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={person !== null}
+      onClose={onClose}
+      size="sm"
+      title={`Change ${name}’s e-mail`}
+      description="The address they sign in with, and where a new-password link is sent."
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Keep it
+          </Button>
+          <Button variant="primary" busy={busy} busyLabel="Saving…" onClick={() => void save()}>
+            Change e-mail
+          </Button>
+        </>
+      }
+    >
+      <form
+        className="app-form-stack"
+        noValidate
+        aria-label={`Change ${name}’s e-mail`}
+        onSubmit={(event: FormEvent) => {
+          event.preventDefault();
+          void save();
+        }}
+      >
+        <Field label="E-mail" error={problem ?? undefined}>
+          <Input type="email" autoComplete="off" spellCheck={false} value={email} placeholder="name@example.com" onChange={(event) => setEmail(event.target.value)} data-autofocus />
+        </Field>
+      </form>
     </Dialog>
   );
 }
@@ -115,9 +188,10 @@ interface RowProps {
   onProblem: (message: string | null) => void;
   onLink: (shown: Shown) => void;
   onRemove: (person: Account) => void;
+  onEmail: (person: Account) => void;
 }
 
-function PersonRow({ person, me, onChanged, onProblem, onLink, onRemove }: RowProps) {
+function PersonRow({ person, me, onChanged, onProblem, onLink, onRemove, onEmail }: RowProps) {
   const [busy, setBusy] = useState(false);
   const name = personLabel(person);
 
@@ -184,6 +258,7 @@ function PersonRow({ person, me, onChanged, onProblem, onLink, onRemove }: RowPr
                     onLink({ title: `A new-password link for ${name}`, who: name, link, again: "to get another, make a new one here." });
                   }),
               },
+              { id: "email", label: "Change e-mail…", icon: "person", onSelect: () => onEmail(person) },
               {
                 id: "sign-out",
                 label: "Sign out",
@@ -283,6 +358,7 @@ export function PeopleSection() {
   const [problem, setProblem] = useState<string | null>(null);
   const [shown, setShown] = useState<Shown | null>(null);
   const [removing, setRemoving] = useState<Account | null>(null);
+  const [emailing, setEmailing] = useState<Account | null>(null);
   const refresh = () => void people.refetch();
   const data = people.data;
 
@@ -309,7 +385,7 @@ export function PeopleSection() {
             </thead>
             <tbody>
               {data.accounts.map((person) => (
-                <PersonRow key={person.id} person={person} me={person.id === me?.id} onChanged={refresh} onProblem={setProblem} onLink={setShown} onRemove={setRemoving} />
+                <PersonRow key={person.id} person={person} me={person.id === me?.id} onChanged={refresh} onProblem={setProblem} onLink={setShown} onRemove={setRemoving} onEmail={setEmailing} />
               ))}
             </tbody>
           </table>
@@ -340,6 +416,7 @@ export function PeopleSection() {
         </>
       ) : null}
       <LinkDialog shown={shown} onClose={() => setShown(null)} />
+      <EmailDialog person={emailing} onClose={() => setEmailing(null)} onChanged={refresh} />
       <ConfirmDialog
         open={removing !== null}
         onClose={() => setRemoving(null)}

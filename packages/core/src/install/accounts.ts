@@ -103,7 +103,12 @@ export interface Invitation {
  * the server keeps only its hash.
  */
 export interface OneTimeLink {
-  url: string;
+  /**
+   * The link, to copy and send. Null when it isn't shown: a new-password
+   * link for someone else that the server has e-mailed to them. Only the
+   * person it is for should hold a link that signs in as them.
+   */
+  url: string | null;
   expiresAt: string;
   /** The server also e-mailed it to the person. */
   emailed: boolean;
@@ -113,7 +118,11 @@ export interface OneTimeLink {
 export interface People {
   accounts: Account[];
   invitations: Invitation[];
-  /** Outgoing e-mail is set up on this server: invitations are e-mailed and people can ask for a new password themselves. */
+  /**
+   * This server e-mails links: outgoing e-mail is set up AND the editor's
+   * public address is set (a link is only ever built from that address).
+   * Invitations are then e-mailed and people can ask for a new password themselves.
+   */
   emailAvailable: boolean;
 }
 

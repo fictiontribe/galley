@@ -109,21 +109,24 @@ describe("signing in", () => {
     expect((await call(port, "POST", "/api/auth/login", { body: { password: PASSWORD } })).status).toBe(401);
   });
 
-  it("limits guesses per address (5 a minute) and per e-mail from many addresses (10 in 15 minutes) — for e-mails without an account too", async () => {
+  it("limits guesses per address (5 a minute) and per e-mail from one address (10 in 15 minutes) — for e-mails without an account too", async () => {
+    // Was: ten failures for an e-mail from any number of addresses held that e-mail everywhere, the right password included.
+    // Now other addresses' failures only slow a sign-in (accounts-hardening.test.ts); one address is still stopped.
     const { port } = await withOwner({ GALLEY_TRUST_PROXY: "1" });
     const from = (address: string) => ({ "x-forwarded-for": address });
 
     for (let i = 0; i < 5; i += 1) expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: "wrong wrong wrong" }, headers: from("203.0.113.1") })).status).toBe(401);
     expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD }, headers: from("203.0.113.1") })).status).toBe(429);
-    // Five more from other addresses make ten for Sam's e-mail: now Sam's e-mail waits, from anywhere, the right password included.
+    // Five more from other addresses make ten for Sam's e-mail: the right password from elsewhere still gets in.
     for (let i = 2; i <= 6; i += 1) expect((await call(port, "POST", "/api/auth/login", { body: { email: "Sam@example.com", password: "wrong wrong wrong" }, headers: from(`203.0.113.${i}`) })).status).toBe(401);
-    const held = await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD }, headers: from("198.51.100.7") });
+    expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD }, headers: from("198.51.100.7") })).status).toBe(200);
+    // An e-mail nobody has is answered the same way as one that has an account.
+    const answers = [
+      await call(port, "POST", "/api/auth/login", { body: { email: "nobody@example.com", password: "x".repeat(12) }, headers: from("192.0.2.10") }),
+      await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: "x".repeat(12) }, headers: from("192.0.2.11") }),
+    ];
 
-    expect(held.status).toBe(429);
-    expect(held.body.error.message).toBe("Too many sign-in attempts for that e-mail. Wait 15 minutes, then try again.");
-    // An e-mail nobody has is held the same way, so the limit says nothing about who has an account.
-    for (let i = 10; i < 20; i += 1) await call(port, "POST", "/api/auth/login", { body: { email: "nobody@example.com", password: "x".repeat(12) }, headers: from(`192.0.2.${i}`) });
-    expect((await call(port, "POST", "/api/auth/login", { body: { email: "nobody@example.com", password: "x".repeat(12) }, headers: from("192.0.2.99") })).text).toBe(held.text);
+    expect(answers[0]!.text).toBe(answers[1]!.text);
   });
 
   it("the owner carried over from one shared password signs in with it alone, then completes the account", async () => {
@@ -335,10 +338,14 @@ describe("one-time links and e-mail", () => {
     const mail = fakeMail();
     const { port, owner } = await withOwner({}, mail);
     const ed = await join_(port, owner, "ed@example.com", "editor", "Ed Editor");
-    const first = await call(port, "POST", `/api/people/${ed.id}/password-link`, { cookie: owner });
+    await call(port, "POST", `/api/people/${ed.id}/password-link`, { cookie: owner });
     const second = await call(port, "POST", `/api/people/${ed.id}/password-link`, { cookie: owner });
+    // Was the link itself beside `emailed: true`: an e-mailed link for someone else now reaches only them.
+    const linkIn = (text: string) => /https:\/\/cms\.localhost\/new-password#[A-Za-z0-9_-]{43}/.exec(text)![0];
+    const first = { body: { url: linkIn(mail.sent.at(-2)!.text) } };
 
-    expect(second.body).toMatchObject({ url: expect.stringMatching(/^https:\/\/cms\.localhost\/new-password#[A-Za-z0-9_-]{43}$/), emailed: true });
+    expect(second.body).toEqual({ url: null, expiresAt: expect.any(String), emailed: true });
+    second.body.url = linkIn(mail.sent.at(-1)!.text);
     expect(mail.sent.at(-1)!.text).toMatch(/Sam Owner made you a link to choose a new password for Galley at cms\.localhost\./);
     expect(mail.sent.at(-1)!.text).toMatch(/Your current password keeps working until the link is used\./);
     expect((await call(port, "POST", "/api/auth/link/check", { body: { code: codeIn(first.body.url) } })).status).toBe(404);

@@ -69,6 +69,8 @@ export interface MockServerOptions {
   role?: "owner" | "editor" | "contributor";
   /** The server has outgoing e-mail. */
   email?: boolean;
+  /** false: the server has no public address of its own, so it e-mails no link. */
+  publicAddress?: boolean;
   /** An install from before accounts. */
   legacy?: boolean;
   /** false: a server from before accounts (one shared password). */

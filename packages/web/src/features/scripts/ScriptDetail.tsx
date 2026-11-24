@@ -1,6 +1,8 @@
 import type { ConsentCategory, ScriptEntry } from "@galley/core/kit";
 import { Field, ProofMark, SegmentedControl, Select } from "@/ui";
-import { useAllowBuild } from "@/features/forms/file/assistant";
+import { useAllowBuild, useBuildByOthers } from "@/features/forms/file/assistant";
+import { BUILD_MODE_LEVEL } from "@galley/core/install/route-access";
+import { whoMayFirst } from "@/lib/may";
 import { BoundText, BoundToggle } from "@/features/forms/file/Bound";
 import { useEdits } from "@/features/forms/file/hooks";
 import { ProviderSettings } from "@/features/forms/destinations/ProviderSettings";
@@ -14,6 +16,7 @@ const CATEGORIES: ConsentCategory[] = ["necessary", "analytics", "marketing", "p
 export function ScriptDetail({ index, entry }: { index: number; entry: ScriptEntry }) {
   const edits = useEdits();
   const allowBuild = useAllowBuild();
+  const byOthers = useBuildByOthers();
   const integration = integrationOf(entry.kind);
   const p = (...rest: Array<string | number>) => ["scripts", index, ...rest];
   const load = loadOf(entry);
@@ -30,7 +33,15 @@ export function ScriptDetail({ index, entry }: { index: number; entry: ScriptEnt
         {custom && !allowBuild ? (
           <p className="g-margin-note kit-note">
             <ProofMark kind="reg" />
-            <span>{hasInline ? "This script runs code written into the site. It can only be changed where build mode is allowed." : "Custom code can only be added on sites where build mode is allowed. A script address works everywhere."}</span>
+            <span>
+              {byOthers
+                ? hasInline
+                  ? `This script runs code written into the site. ${whoMayFirst(BUILD_MODE_LEVEL)} can change it.`
+                  : `${whoMayFirst(BUILD_MODE_LEVEL)} can add custom code. A script address works for everyone.`
+                : hasInline
+                  ? "This script runs code written into the site. It can only be changed where build mode is allowed."
+                  : "Custom code can only be added on sites where build mode is allowed. A script address works everywhere."}
+            </span>
           </p>
         ) : null}
         {integration?.docsUrl ? (

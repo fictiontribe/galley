@@ -2,7 +2,8 @@
 /**
  * People, on the Install page, as an owner: the list, inviting (the link
  * shown once, with Copy), taking an invitation back, changing a role,
- * switching someone off, a new-password link, removing someone, the
+ * switching someone off, a new-password link (not shown when it was
+ * e-mailed), changing someone's e-mail, removing someone, the
  * server's refusals in its own words, the line about outgoing e-mail, and
  * signing everyone out.
  */
@@ -16,7 +17,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-const NO_EMAIL = "This server has no outgoing e-mail, so links aren’t e-mailed";
+const NO_EMAIL = "This server doesn’t e-mail links, so copy each one and send it yourself.";
 
 function calls(server: MockServer, method: string, path: string | RegExp) {
   return server.log.filter((entry) => entry.method === method && (typeof path === "string" ? entry.path === path : path.test(entry.path)));
@@ -41,7 +42,7 @@ async function act(name: string, item: string): Promise<void> {
   await click(byText(document, '[role="menuitem"]', item));
 }
 
-async function open(options: { email?: boolean } = {}): Promise<MockServer> {
+async function open(options: { email?: boolean; publicAddress?: boolean } = {}): Promise<MockServer> {
   const server = await startServer({ mode: "hosted", setup: "done", role: "owner", ...options });
   page = await renderApp(server, "/install");
   await until(() => expect(document.querySelector(".accounts-table tbody tr")).not.toBeNull());
@@ -60,7 +61,7 @@ describe("People", () => {
     expect(row("Kim Lee").textContent).toContain("Not yet");
     expect(text).toContain("Open invitations");
     expect(text).toContain("new@example.com");
-    // No outgoing e-mail in this mock: one line saying links go by hand, and where e-mail is set up.
+    // This mock e-mails no links: one line saying links go by hand, and where whoever runs the server reads how to change that.
     expect(text).toContain(NO_EMAIL);
     expect(text).toContain("the guide to running this editor");
     const people = document.querySelector("#people")?.textContent?.toLowerCase() ?? "";
@@ -68,9 +69,20 @@ describe("People", () => {
     expect(refusals(server)).toEqual([]);
   });
 
-  it("says nothing about sending by hand when the server has outgoing e-mail", async () => {
+  it("says nothing about sending by hand when the server e-mails links", async () => {
     await open({ email: true });
     expect(page?.text()).not.toContain(NO_EMAIL);
+  });
+
+  it("says links go by hand when the server has outgoing e-mail but no public address — and e-mails none", async () => {
+    const server = await open({ email: true, publicAddress: false });
+    expect(page?.text()).toContain(NO_EMAIL);
+    expect(page?.text()).toContain("the guide to running this editor");
+    await type(field(document, "E-mail of the person to invite"), "ana@example.com");
+    await click(byText(document, "button", "Invite"));
+    await until(() => expect(openDialog().textContent).toContain("Send this link to ana@example.com yourself"));
+    expect((openDialog().querySelector('input[aria-label="The link"]') as HTMLInputElement).value).toMatch(/\/join#.+/);
+    expect(server.accounts?.outbox).toEqual([]);
   });
 
   it("invites someone: each role explained, the link shown once with Copy, then listed as an open invitation", async () => {
@@ -160,6 +172,52 @@ describe("People", () => {
     expect(calls(server, "POST", /\/password-link$/)).toHaveLength(1);
     await click(byText(openDialog(), "button", "Done"));
     await until(() => expect(document.body.innerHTML).not.toContain(shown.split("#")[1]));
+  });
+
+  it("a new-password link the server e-mailed isn't shown: the dialog says where it went, with nothing to copy", async () => {
+    const server = await open({ email: true });
+    await act("Robin Park", "New-password link");
+    await until(() => expect(openDialog().textContent).toContain("A new-password link for Robin Park"));
+    expect(openDialog().textContent).toContain("The link was e-mailed to Robin Park, and isn’t shown here.");
+    expect(openDialog().textContent).toContain("stops working in 1 hour");
+    expect(openDialog().querySelector("input")).toBeNull();
+    expect(byText(openDialog(), "button", "Copy link")).toBeNull();
+    const mailed = server.accounts?.outbox.at(-1);
+    expect(mailed).toMatchObject({ to: "robin@example.com", kind: "password" });
+    expect(document.body.innerHTML).not.toContain((mailed?.url ?? "#").split("#")[1]);
+    expect(calls(server, "POST", /\/password-link$/)).toHaveLength(1);
+  });
+
+  it("changes someone else's e-mail, showing the server's refusals in its words", async () => {
+    const server = await open();
+    await act("Jo Chen", "Change e-mail…");
+    await until(() => expect(openDialog().textContent).toContain("Change Jo Chen’s e-mail"));
+    const input = () => openDialog().querySelector<HTMLInputElement>('input[type="email"]');
+    expect(input()?.value).toBe("jo@example.com");
+
+    // Already someone else's: the server says so, and nothing changes.
+    await type(input(), "robin@example.com");
+    await click(byText(openDialog(), "button", "Change e-mail"));
+    await until(() => expect(openDialog().textContent).toContain("Someone with that e-mail already has an account here."));
+    expect(server.accounts?.accounts.find((person) => person.name === "Jo Chen")?.email).toBe("jo@example.com");
+
+    await type(input(), "Jo.Chen@Example.org");
+    await click(byText(openDialog(), "button", "Change e-mail"));
+    await until(() => expect(server.accounts?.accounts.find((person) => person.name === "Jo Chen")?.email).toBe("jo.chen@example.org"));
+    expect(calls(server, "PATCH", /^\/api\/people\//).at(-1)?.body).toEqual({ email: "jo.chen@example.org" });
+    await until(() => expect([...document.querySelectorAll("dialog")].some((element) => element.open)).toBe(false));
+    await until(() => expect(row("Jo Chen").textContent).toContain("jo.chen@example.org"));
+    expect(refusals(server)).toEqual([]);
+  });
+
+  it("says what an e-mail is missing before asking the server", async () => {
+    const server = await open();
+    await act("Jo Chen", "Change e-mail…");
+    await until(() => expect(openDialog().textContent).toContain("Change Jo Chen’s e-mail"));
+    await type(openDialog().querySelector('input[type="email"]'), "not an address");
+    await click(byText(openDialog(), "button", "Change e-mail"));
+    await until(() => expect(openDialog().textContent).toContain("That e-mail address is missing something."));
+    expect(calls(server, "PATCH", /^\/api\/people\//)).toHaveLength(0);
   });
 
   it("signs one person out", async () => {

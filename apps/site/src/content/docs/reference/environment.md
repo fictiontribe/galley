@@ -22,7 +22,7 @@ This page is for developers and whoever runs Galley. Command-line options beat v
 | --- | --- | --- |
 | `GALLEY_HOST` | `127.0.0.1` | The interface to listen on. Anything but a loopback address means a hosted install. `galley serve` defaults to `0.0.0.0`. |
 | `GALLEY_PORT` | `4400` | The port. On your own computer a busy port moves to the next free one (and says so); on a hosted install and for the desktop app it is an error. |
-| `GALLEY_PUBLIC_URL` | — | Hosted: the address people use, e.g. `https://cms.example.com`. Used for the Host and Origin checks, the preview's and live comparison's addresses, the forms' capture address and the MCP endpoint. Without it the server answers any hostname and there is no preview. |
+| `GALLEY_PUBLIC_URL` | — | Hosted: the address people use, e.g. `https://cms.example.com`. Used for the Host and Origin checks, the preview's and live comparison's addresses, the forms' capture address and the MCP endpoint, and every invitation and new-password link is built from it. Without it the server answers any hostname, there is no preview, no link is e-mailed, and a link can be made only from a loopback address. Set it before inviting anyone. |
 | `GALLEY_TRUST_PROXY` | off | `1`: honour `X-Forwarded-Proto` and `X-Forwarded-For` from a reverse proxy you control. |
 | `GALLEY_TOKEN` | random | On your own computer: the session token in the printed link (32 random bytes when unset). Hosted: optional; set it to allow `Authorization: Bearer` for scripts, which then reach every route except a person's own account, People, backups, restore and opening the preview. 16 characters or more. On a hosted install the site's own commands never see it. |
 | `GALLEY_PREVIEW_PORTS` | any free port | On your own computer: a port range for the previews and their proxies, e.g. `4410-4429`. Ignored on a hosted install, which serves the preview through its one port by hostname (it says so at start-up). |
@@ -101,7 +101,7 @@ Keys are looked for in this order: the site's own key (Site settings › Connect
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `GALLEY_SMTP_URL` | — | The mail server for the inbox's e-mail alerts and, on a hosted install, for invitations, new-password links and **Forgot your password?** ([Outgoing e-mail](/docs/running/hosted/#outgoing-e-mail)): `smtp://user:pass@host:587`, or `smtps://` for TLS from the start. Needs `GALLEY_MAIL_FROM`. |
+| `GALLEY_SMTP_URL` | — | The mail server for the inbox's e-mail alerts and, on a hosted install, for invitations, new-password links and **Forgot your password?** ([Outgoing e-mail](/docs/running/hosted/#outgoing-e-mail)): `smtp://user:pass@host:587`, or `smtps://` for TLS from the start. Needs `GALLEY_MAIL_FROM`; links are e-mailed only when `GALLEY_PUBLIC_URL` is set too. |
 | `GALLEY_MAIL_FROM` | — | The sender address for those e-mails. Needs `GALLEY_SMTP_URL`. |
 | `WORDPRESS_APP_PASSWORD` | — | `galley import wordpress --user`: the WordPress application password, to read drafts and private pages (another variable with `--app-password-env`). |
 

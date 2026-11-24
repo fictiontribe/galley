@@ -22,6 +22,7 @@
  */
 import { existsSync } from "node:fs";
 import { GalleyError } from "../errors";
+import { recordSettings } from "../site/settings-records";
 import { createJobTracker } from "../site/jobs";
 import type { EventBus, GalleyConfig, Job, SettingsService, SiteModel, SiteRegistry, SiteService } from "../types";
 import { writeRefusal } from "../workspace/policy";
@@ -210,8 +211,8 @@ export function createRedirectsService(options: RedirectsServiceOptions): Redire
     const config = (await site.readConfig()) ?? {};
 
     if (!config.redirects) {
-      const next: GalleyConfig = { ...config, redirects: { file } };
-      const saved = await site.saveConfig(next);
+      // The engine's own bookkeeping: only the list's place, never anything else in the file.
+      const saved = await recordSettings(site, { kind: "redirects-list" });
 
       if (!writeRefusal(listFileOf(saved), saved.writable, "content")) return saved;
     }
@@ -516,7 +517,7 @@ export function createRedirectsService(options: RedirectsServiceOptions): Redire
         else delete next.cloudflare;
       }
       await locked(site.id, async () => {
-        const saved = await site.saveConfig({ ...config, redirects: next });
+        const saved = await recordSettings(site, { kind: "redirects-host", ...(next.host ? { host: next.host } : {}), ...(next.cloudflare ? { cloudflare: next.cloudflare } : {}) });
         const loaded = await loadList(site, saved);
 
         // A new host gets its file straight away (when safe), so choosing the host is all it takes.

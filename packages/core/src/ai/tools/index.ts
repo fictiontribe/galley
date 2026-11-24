@@ -14,6 +14,9 @@ import { z } from "zod";
 import { GalleyError } from "../../errors";
 import type { AgentMode, ToolActivity } from "../../types";
 import { activePlugins } from "../../plugins/active";
+import type { AccessLevel } from "../../install/accounts";
+import { BUILD_MODE_REFUSAL, callerMay } from "../../install/caller";
+import { BUILD_MODE_LEVEL, ROLE_REFUSAL } from "../../install/route-access";
 import { safeDetail } from "../errors";
 import { BUILD_TOOLS } from "./build";
 import { CONTENT_TOOLS } from "./content";
@@ -45,15 +48,38 @@ export function toolsFor(siteRoot: string | null = null): AssistantTool[] {
   return extra.length ? [...ALL_TOOLS, ...extra].sort((a, b) => a.name.localeCompare(b.name)) : ALL_TOOLS;
 }
 
-/** The tools offered outside the app's own chat (over MCP), plugins' included. */
-export function everywhereTools(siteRoot: string | null = null): AssistantTool[] {
-  return toolsFor(siteRoot).filter((tool) => (tool.surface ?? "everywhere") === "everywhere");
+/**
+ * What the person whose turn it is needs for a tool, on a hosted install: its
+ * own level when it has one, else BUILD_MODE_LEVEL for a build-mode tool and
+ * "edit" for the rest. The engine holds the same line again underneath, at
+ * the write itself (install/caller.ts).
+ */
+export function toolLevel(tool: AssistantTool): AccessLevel {
+  return tool.level ?? (tool.mode === "build" ? BUILD_MODE_LEVEL : "edit");
 }
 
-/** Build-only tools, by name: the ones surfaced and withdrawn when the mode changes. */
+/** Whether the person whose work this is may be offered, and may run, this tool. Nobody in scope (local mode, the operator's token): every tool. */
+export function callerMayUse(tool: AssistantTool): boolean {
+  return callerMay(toolLevel(tool));
+}
+
+/** The tools offered outside the app's own chat (over MCP), plugins' included — those the caller may use. */
+export function everywhereTools(siteRoot: string | null = null): AssistantTool[] {
+  return toolsFor(siteRoot).filter((tool) => (tool.surface ?? "everywhere") === "everywhere" && callerMayUse(tool));
+}
+
+/** Build-only tools, by name: the ones surfaced and withdrawn when the mode changes. Every one, whoever asks: what was surfaced must be withdrawable. */
 export function buildToolNames(siteRoot: string | null = null): string[] {
   return toolsFor(siteRoot)
     .filter((tool) => tool.mode === "build")
+    .map((tool) => tool.name)
+    .sort();
+}
+
+/** The build-only tools the person whose turn it is may be offered, by name. */
+export function offeredBuildToolNames(siteRoot: string | null = null): string[] {
+  return toolsFor(siteRoot)
+    .filter((tool) => tool.mode === "build" && callerMayUse(tool))
     .map((tool) => tool.name)
     .sort();
 }
@@ -63,8 +89,9 @@ export function toolByName(name: string, siteRoot: string | null = null): Assist
   return BY_NAME.get(name) ?? toolsFor(siteRoot).find((tool) => tool.name === name);
 }
 
+/** The tools for a mode that the person whose turn it is may use. */
 export function toolsForMode(mode: AgentMode, siteRoot: string | null = null): AssistantTool[] {
-  return toolsFor(siteRoot).filter((tool) => tool.mode === "any" || mode === "build");
+  return toolsFor(siteRoot).filter((tool) => (tool.mode === "any" || mode === "build") && callerMayUse(tool));
 }
 
 function schemaOf(tool: AssistantTool): Anthropic.Beta.BetaTool.InputSchema {
@@ -140,6 +167,14 @@ function issueText(error: z.ZodError): string {
  */
 export async function executeTool(tool: AssistantTool | undefined, name: string, input: unknown, ctx: ToolContext, label: string): Promise<ToolOutcome> {
   if (!tool) return { content: `There is no tool called ${name}.`, isError: true, doneLabel: "Couldn't do that" };
+  // Checked again on every call: the list offered is a convenience, and the person's role may have changed since it was made.
+  if (!callerMayUse(tool)) {
+    return {
+      content: `${tool.mode === "build" && toolLevel(tool) === BUILD_MODE_LEVEL ? BUILD_MODE_REFUSAL : ROLE_REFUSAL} Tell the person their account can't do this, and don't try another way round it.`,
+      isError: true,
+      doneLabel: "Not something this account can do",
+    };
+  }
   if (tool.mode === "build" && ctx.mode !== "build") {
     return {
       content: "That isn't available in content mode: only pages, posts, data files and images can be changed. Tell the person this needs build mode and suggest switching.",

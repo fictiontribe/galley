@@ -7,6 +7,7 @@
 import type { PublishCheck, PublishRequest, PublishResult, SiteRegistry, SiteService } from "../types";
 import type { PluginRegistry } from "./registry";
 import { ensureSitePlugins } from "./site";
+import { outsideAnyPerson } from "../install/caller";
 
 /** The changes a publish would include: everything pending, or the paths asked for. */
 async function pendingFor(site: SiteService, request: PublishRequest) {
@@ -42,7 +43,8 @@ export async function checkPublish(site: SiteService, plugins: PluginRegistry, r
 
 /** One site, publishing through the plugins' hooks. Wrapping twice returns the same object. */
 export function withSiteHooks(site: SiteService, plugins: PluginRegistry, options: HookOptions = {}): SiteService {
-  const load = () => ensureSitePlugins(plugins, site, options.env).catch((error: unknown) => options.log?.(`A site's plugins couldn't be loaded: ${String(error)}`));
+  // Loaded once for everyone who uses the site: as nobody, so what a plugin starts carries no one's access.
+  const load = () => outsideAnyPerson(() => ensureSitePlugins(plugins, site, options.env)).catch((error: unknown) => options.log?.(`A site's plugins couldn't be loaded: ${String(error)}`));
 
   void load();
   return new Proxy(site, {

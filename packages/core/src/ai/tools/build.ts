@@ -5,6 +5,7 @@
  * only in build mode is a convenience for the model, not the guardrail.
  */
 import { z } from "zod";
+import { SITE_SETTINGS_LEVEL } from "../../install/route-access";
 import type { GalleyConfig } from "../../types";
 import { fileName, plural } from "./labels";
 import { defineTool, ok, READ_ONLY, refuse, type AssistantTool } from "./types";
@@ -156,6 +157,7 @@ const saveSiteConfig = defineTool({
     "Replace the site's configuration file (galley.config.json) with a new version — it corrects or extends what the app detected: collection labels, URL patterns, field settings, the media folder, instruction files. Read the current file with read_file first and send the whole new configuration. The site's structure is re-read afterwards.",
   input: z.object({ config: z.record(z.string(), z.unknown()).describe("The complete configuration object.") }),
   mode: "build",
+  level: SITE_SETTINGS_LEVEL,
   effect: { readOnly: false, destructive: true, idempotent: true, openWorld: false },
   label: () => "Updating the site configuration",
   async run(input, ctx) {

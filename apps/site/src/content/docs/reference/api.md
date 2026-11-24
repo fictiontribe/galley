@@ -218,7 +218,7 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `POST /api/sites/:siteId/redirects/review` | "Add many": what a pasted list (or a file in the site, `path`) would do. | `RedirectImportBody` | `ImportReview` | Any signed-in person |
 | `POST /api/sites/:siteId/redirects/import` | Add what `review` showed, as one pending change. | `RedirectImportBody & { baseHash? }` | `{ overview, review }` | Any signed-in person |
 | `POST /api/sites/:siteId/redirects/try` | "Try an address": where a visitor ends up, through which rules. | `{ address }` | `RedirectTrace` | Any signed-in person |
-| `PUT /api/sites/:siteId/redirects/settings` | Choose the host (when the deploy settings don't say), the Cloudflare account and the site's own domains. | `{ host?, cloudflare? }` | `RedirectsOverview` | Any signed-in person |
+| `PUT /api/sites/:siteId/redirects/settings` | Choose the host (when the deploy settings don't say), the Cloudflare account and the site's own domains. | `{ host?, cloudflare? }` | `RedirectsOverview` | Owners |
 | `POST /api/sites/:siteId/redirects/derived/replace` | Replace a host file that was edited by hand (or was the site's own) with one written from the list. | — | `RedirectsOverview` | Any signed-in person |
 | `POST /api/sites/:siteId/redirects/leftover/remove` | Remove a redirect file this app wrote for a host the site no longer uses. | `{ path }` | `RedirectsOverview` | Any signed-in person |
 | `GET /api/sites/:siteId/redirects/export` | The list in a host's format, as a download. | `?format&hostname?` | a file | Any signed-in person |
@@ -347,17 +347,17 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `GET /api/account` | The signed-in person. | — | `AccountSession` | Any signed-in person |
 | `PATCH /api/account` | Change your own name or e-mail. | `{ name?, email?, password? }` | `AccountSession` | Any signed-in person |
 | `POST /api/account/password` | Change your own password. | `{ current, next }` | `Ok` | Any signed-in person |
-| `GET /api/people` | Everyone with an account (role, switched off or not, when they last signed in), the open invitations, and whether this server can send e-mail. | — | `People` | Owners |
+| `GET /api/people` | Everyone with an account (role, switched off or not, when they last signed in), the open invitations, and whether this server e-mails links (it needs outgoing e-mail and its public address both set). | — | `People` | Owners |
 | `POST /api/people/invitations` | Invite someone. | `{ email, role }` | `{ invitation, link }` | Owners |
 | `DELETE /api/people/invitations/:invitationId` | Take an invitation back: its link stops working. | — | `Ok` | Owners |
-| `PATCH /api/people/:accountId` | Change someone's role, or switch their account off or on. | `{ role?, disabled? }` | `Account` | Owners |
+| `PATCH /api/people/:accountId` | Change someone's role or e-mail, or switch their account off or on. | `{ role?, disabled?, email? }` | `Account` | Owners |
 | `DELETE /api/people/:accountId` | Remove an account. | — | `Ok` | Owners |
 | `POST /api/people/:accountId/password-link` | A link for someone to choose a new password (they forgot it). | — | `OneTimeLink` | Owners |
 | `POST /api/people/:accountId/sign-out` | Sign one person out of every browser. | — | `Ok` | Owners |
 | `POST /api/people/sign-out` | Sign everyone out, this browser included. | — | `Ok` | Owners |
 | `POST /api/auth/link/check` | What a one-time link is for. | `{ code }` | `LinkPreview` | No sign-in |
 | `POST /api/auth/link` | Use a one-time link: an invitation creates the account (`name` required), a new-password link sets the password and signs that person's other browsers out. | `{ code, password, name? }` | `Ok` | No sign-in |
-| `POST /api/auth/forgot` | "I forgot my password." When the server has outgoing e-mail and the address has an account, a new-password link is e-mailed. | `{ email }` | `{ ok, emailAvailable }` | No sign-in |
+| `POST /api/auth/forgot` | "I forgot my password." When the server e-mails links (outgoing e-mail and its public address both set) and the address has an account, a new-password link is e-mailed. | `{ email }` | `{ ok, emailAvailable }` | No sign-in |
 
 ## Host the editor online
 

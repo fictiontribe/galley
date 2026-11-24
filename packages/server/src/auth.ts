@@ -16,9 +16,25 @@ import { getCookie } from "hono/cookie";
 export const SESSION_MAX_AGE_S = 30 * 24 * 60 * 60;
 export const LOGIN_LIMIT = 5;
 export const LOGIN_WINDOW_MS = 60_000;
-/** Failed sign-ins for one e-mail, from any number of addresses, before that e-mail waits: slows guesses spread over many addresses. */
+/**
+ * Failed sign-ins for one e-mail from one client address before that pair
+ * waits out the window. Guesses from other addresses never count here, so
+ * they can't keep the right password out.
+ */
 export const EMAIL_LOGIN_LIMIT = 10;
 export const EMAIL_LOGIN_WINDOW_MS = 15 * 60_000;
+/**
+ * Failed sign-ins for one e-mail from every address together, in the same
+ * window, past which each attempt for it waits its turn: one at a time,
+ * EMAIL_SLOW_DELAY_MS apart. Slowed, never refused — and the wait is
+ * bounded: beyond EMAIL_SLOW_QUEUE waiting, an attempt waits the delay alone.
+ */
+export const EMAIL_SLOW_AFTER = 30;
+export const EMAIL_SLOW_DELAY_MS = 1_000;
+export const EMAIL_SLOW_QUEUE = 10;
+/** Password checks for sign-in run this many at a time, with at most SIGN_IN_QUEUE waiting; beyond that the answer is "too many attempts". */
+export const SIGN_IN_HASHING = 2;
+export const SIGN_IN_QUEUE = 16;
 /** "Forgot my password" requests per client address, and e-mails per address asked for, in their windows. */
 export const FORGOT_CLIENT_LIMIT = 5;
 export const FORGOT_CLIENT_WINDOW_MS = 15 * 60_000;
@@ -120,8 +136,78 @@ export class LoginLimiter {
     this.attempts.delete(client);
   }
 
+  /** Failures counted for `client` in the current window. */
+  count(client: string, now = Date.now()): number {
+    const entry = this.attempts.get(client);
+
+    return entry && now - entry.since < this.windowMs ? entry.count : 0;
+  }
+
   private prune(now: number): void {
     for (const [client, entry] of this.attempts) if (now - entry.since >= this.windowMs) this.attempts.delete(client);
+  }
+}
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms);
+
+    timer.unref?.();
+  });
+
+/** Attempts for one key, one at a time and `delayMs` apart (at most `queue` waiting; past that, each waits `delayMs` alone). */
+export class SerialDelay {
+  private readonly lines = new Map<string, { tail: Promise<void>; waiting: number }>();
+
+  constructor(
+    private readonly delayMs = EMAIL_SLOW_DELAY_MS,
+    private readonly queue = EMAIL_SLOW_QUEUE
+  ) {}
+
+  async wait(key: string): Promise<void> {
+    const line = this.lines.get(key) ?? { tail: Promise.resolve(), waiting: 0 };
+
+    if (line.waiting >= this.queue) return sleep(this.delayMs);
+    const mine = line.tail.then(() => sleep(this.delayMs));
+
+    line.tail = mine;
+    line.waiting += 1;
+    this.lines.set(key, line);
+    try {
+      await mine;
+    } finally {
+      line.waiting -= 1;
+      if (line.waiting === 0 && line.tail === mine) this.lines.delete(key);
+    }
+  }
+}
+
+/** Runs at most `limit` tasks at a time with at most `queue` waiting; `run` answers null when both are full. */
+export class Bounded {
+  private running = 0;
+  private readonly waiting: Array<() => void> = [];
+
+  constructor(
+    private readonly limit = SIGN_IN_HASHING,
+    private readonly queue = SIGN_IN_QUEUE
+  ) {}
+
+  async run<T>(task: () => Promise<T>): Promise<T | null> {
+    if (this.running >= this.limit) {
+      if (this.waiting.length >= this.queue) return null;
+      await new Promise<void>((resolve) => this.waiting.push(resolve));
+    } else {
+      this.running += 1;
+    }
+    try {
+      return await task();
+    } finally {
+      // The slot passes straight to the next one waiting, so the count stays right.
+      const next = this.waiting.shift();
+
+      if (next) next();
+      else this.running -= 1;
+    }
   }
 }
 

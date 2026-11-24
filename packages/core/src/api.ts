@@ -888,25 +888,29 @@ export interface ApiRoutes {
    * what a new-password link is sent to.
    */
   "PATCH /api/account": { body: { name?: string; email?: string; password?: string }; response: AccountSession };
+  // `email` above: an owner may change their own (with `password`), and so may an
+  // account that has none yet. Everyone else's e-mail is changed by an owner, in People.
   /** Change your own password. Your other browsers are signed out; this one stays. */
   "POST /api/account/password": { body: { current: string; next: string }; response: Ok };
   "GET /api/people": { response: People };
   /**
    * Invite someone. The link is told once, here; it is also e-mailed when the
-   * server has outgoing e-mail. Inviting an e-mail that already has an
+   * server e-mails links (outgoing e-mail and its public address both set).
+   * A link is only ever built from that public address. Inviting an e-mail that already has an
    * account, or an open invitation, is refused.
    */
   "POST /api/people/invitations": { body: { email: string; role: AccountRole }; response: { invitation: Invitation; link: OneTimeLink } };
   /** Take an invitation back: its link stops working. */
   "DELETE /api/people/invitations/:invitationId": { response: Ok };
   /**
-   * Change someone's role, or switch their account off or on. Switching off
-   * signs them out at once. The last owner can't be demoted or switched off.
+   * Change someone's role or e-mail, or switch their account off or on.
+   * Switching off signs them out at once. The last owner can't be demoted
+   * or switched off.
    */
-  "PATCH /api/people/:accountId": { body: { role?: AccountRole; disabled?: boolean }; response: Account };
+  "PATCH /api/people/:accountId": { body: { role?: AccountRole; disabled?: boolean; email?: string }; response: Account };
   /** Remove an account. What they published keeps their name. The last owner can't be removed, and nobody removes themselves. */
   "DELETE /api/people/:accountId": { response: Ok };
-  /** A link for someone to choose a new password (they forgot it). Told once, here; also e-mailed when the server can. Their old password works until they use it. */
+  /** A link for someone to choose a new password (they forgot it). When the server e-mails links it goes to that person and `url` is null here; otherwise it is told once, here. Their old password works until they use it. */
   "POST /api/people/:accountId/password-link": { response: OneTimeLink };
   /** Sign one person out of every browser. */
   "POST /api/people/:accountId/sign-out": { response: Ok };
@@ -923,11 +927,12 @@ export interface ApiRoutes {
    */
   "POST /api/auth/link": { body: { code: string; password: string; name?: string }; response: Ok };
   /**
-   * "I forgot my password." When the server has outgoing e-mail and the
-   * address has an account, a new-password link is e-mailed. The answer is
-   * the same whether or not anything was sent, so it can't be used to find
-   * out who has an account. Without outgoing e-mail: `emailAvailable: false`,
-   * and the page tells the person to ask an owner for a link.
+   * "I forgot my password." When the server e-mails links (outgoing e-mail
+   * and its public address both set) and the address has an account, a
+   * new-password link is e-mailed. The answer is the same whether or not
+   * anything was sent, so it can't be used to find out who has an account.
+   * When the server doesn't e-mail links: `emailAvailable: false`, and the
+   * page tells the person to ask an owner for a link.
    */
   "POST /api/auth/forgot": { body: { email: string }; response: { ok: true; emailAvailable: boolean } };
 

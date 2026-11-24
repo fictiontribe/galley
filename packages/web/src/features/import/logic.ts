@@ -5,6 +5,8 @@
  */
 import type { ImportInspection, ImportReportView, ImportRunStatus, ImportStep } from "@galley/core/types";
 import { count } from "@/lib/format";
+import { BUILD_MODE_LEVEL } from "@galley/core/install/route-access";
+import { whoMayFirst } from "@/lib/may";
 
 export type FlowStep = "source" | "plan" | "run" | "report";
 export const FLOW: FlowStep[] = ["source", "plan", "run", "report"];
@@ -86,7 +88,11 @@ export function reportHead(report: ImportReportView, publishes = "you publish"):
 }
 
 /** Review in Proof → rebuild page-builder pages → set redirects → put the site online → switch the domain. Once it was all discarded: start again. */
-export function nextSteps(report: ImportReportView, publishes = "you publish"): NextStep[] {
+/** For someone whose role doesn't include build mode: the assistant rebuilds pages in build mode, so someone else starts it. */
+export const REBUILD_BY_OTHERS = `${whoMayFirst(BUILD_MODE_LEVEL)} can rebuild them with the assistant.`;
+
+/** `mayRebuild` false: the person's role doesn't include build mode, which rebuilding needs. */
+export function nextSteps(report: ImportReportView, publishes = "you publish", mayRebuild = true): NextStep[] {
   const standing = reportStanding(report);
   if (standing === "discarded") {
     return [{ id: "again", title: "Bring it over again", body: "From its address or an export file, as before. Nothing from the discarded import is left to get in the way." }];
@@ -112,7 +118,11 @@ export function nextSteps(report: ImportReportView, publishes = "you publish"): 
     steps.push({
       id: "rebuild",
       title: "Rebuild the page-builder pages",
-      body: rebuilt ? `${rebuilt} of ${report.rebuilds.length} started with the assistant.` : `${count(report.rebuilds.length, "page")} came across as plain text; the assistant rebuilds each from this site’s sections.`,
+      body: !mayRebuild
+        ? `${count(report.rebuilds.length, "page")} came across as plain text. ${whoMayFirst(BUILD_MODE_LEVEL)} can rebuild ${report.rebuilds.length === 1 ? "it" : "them"} with the assistant.`
+        : rebuilt
+          ? `${rebuilt} of ${report.rebuilds.length} started with the assistant.`
+          : `${count(report.rebuilds.length, "page")} came across as plain text; the assistant rebuilds each from this site’s sections.`,
     });
   }
   if (report.redirects.count) steps.push({ id: "redirects", title: "Set the redirects", body: `So ${count(report.redirects.count, "old address", "old addresses")} keep working, and search engines follow them.` });

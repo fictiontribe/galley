@@ -33,7 +33,7 @@ import type { ApiRouteKey } from "@galley/core/api";
 import { withSiteScope } from "@galley/core/site";
 import { createHash } from "node:crypto";
 import { getCookie } from "hono/cookie";
-import { ROLE_REFUSAL as CORE_ROLE_REFUSAL, ROUTE_ACCESS, roleMay, type AccessLevel, type InstallStore } from "@galley/core/install";
+import { ROLE_REFUSAL as CORE_ROLE_REFUSAL, ROUTE_ACCESS, roleMay, withCaller, type AccessLevel, type AccountRole, type InstallStore } from "@galley/core/install";
 import type { PreviewStatus } from "@galley/core/types";
 import { withAccountAuthor } from "@galley/core/workspace";
 import { bearerToken, clientAddress, isAuthenticated, loopbackHostnames, normalizeHostname, requestProtocol, requestSession, safeEqual, signSession, LoginLimiter, type RevocationList, type SessionCheck } from "./auth";
@@ -275,6 +275,12 @@ export function createApp(services: Services, options: AppOptions): Hono {
       return c.json(errorBody("forbidden", ROLE_REFUSAL), 403);
     };
   const requireOwner = requireLevel("manage");
+  /** A person's role as the install has it now: null once they are switched off or removed. */
+  const liveRole = (accountId: string): AccountRole | null => {
+    const account = install?.store.account(accountId);
+
+    return account && !account.disabled ? account.role : null;
+  };
 
   // 4b. First run: the setup code until an owner exists, then an owner like everything else of the install's.
   const requireSetupAccess: MiddlewareHandler = async (c, next) => {
@@ -328,9 +334,13 @@ export function createApp(services: Services, options: AppOptions): Hono {
     const respond: MiddlewareHandler = async (c) => {
       const run = () => handler(c, ctx);
       const scoped = () => (siteScoped ? withSiteScope(c.req.param("siteId") ?? "", run) : run());
-      // On a hosted install everything a person's request records in the repository carries their name (core workspace/author.ts).
+      // On a hosted install everything a person's request records in the repository carries their name (core workspace/author.ts),
+      // and everything it does is held to their role at the point of use, the work it starts included (core install/caller.ts).
       const caller = install ? callerOf(c, ctx) : null;
-      const result = await withAccountAuthor(caller?.kind === "person" ? caller.account : null, scoped);
+      const person = caller?.kind === "person" ? caller.account : null;
+      const result = person
+        ? await withCaller({ accountId: person.id, role: person.role, current: () => liveRole(person.id) }, () => withAccountAuthor(person, scoped))
+        : await withAccountAuthor(null, scoped);
 
       if (result instanceof Response) return result;
       // A key's last characters are for whoever may manage the keys (key-hints.ts): the role as the request began and as it is now must both allow it.
