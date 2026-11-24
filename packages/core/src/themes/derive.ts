@@ -82,7 +82,12 @@ export const DERIVED_PROPERTY: Record<keyof DerivedColours, string> = {
   pencil800: "--pencil-800",
 };
 
-/** "Warmed": keep a printing ink's warmth in a mixed step — OKLCH chroma × k, never above 0.04. */
+/**
+ * "Warmed": keep a printing ink's warmth in a mixed step — OKLCH chroma × k,
+ * never above 0.04, the hue kept. tokens.css writes it without a hue, as
+ * `oklab(from <mix> l calc(a * S) calc(b * S))` with
+ * `S = min(k, 0.04 / max(hypot(a, b), 0.000001))`: the same thing.
+ */
 function warm(color: Rgb, k: number): Rgb {
   return withOklch(color, ({ L, C, H }) => ({ L, C: Math.min(C * k, 0.04), H }));
 }
@@ -135,7 +140,7 @@ export function deriveColours(seeds: ThemeSeeds, mode: ThemeMode): DerivedColour
 
   const onPlate = light ? warm(mixOklab(paper, plate, 0.94), 2.5) : ink;
   const { fill, on, away } = accentRoles(pencil);
-  // §2 light: oklch(from accent min(l, 0.45) c h); §3 dark: oklch(from color-mix(in srgb, accent, ink 45%) max(l, 0.76) c h).
+  // §2 light: oklab(from accent min(l, 0.45) a b); §3 dark: oklab(from color-mix(in srgb, accent, ink 45%) max(l, 0.76) a b): lightness moved, chroma and hue kept.
   const accentText = light ? withOklch(pencil, ({ L, C, H }) => ({ L: Math.min(L, 0.45), C, H })) : withOklch(mixSrgb(pencil, ink, 0.55), ({ L, C, H }) => ({ L: Math.max(L, 0.76), C, H }));
   const tints = light ? [0.05, 0.1, 0.18, 0.34, 0.68] : [0.06, 0.1, 0.18, 0.3, 0.6];
   const tint = (index: number) => mixSrgb(accentText, sheet, tints[index]!);
