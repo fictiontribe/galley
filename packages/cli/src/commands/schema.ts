@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { CONFIG_SCHEMA_URL, PRODUCT } from "@galley/core/brand";
 import { configJsonSchema } from "@galley/core/content";
 import { BRAND_SCHEMA_URL, brandJsonSchema } from "@galley/core/sitebrand";
+import { THEME_SCHEMA_URL, themeJsonSchema } from "@galley/core/themes";
 import { parse } from "../args";
 import type { Io } from "../io";
 
@@ -10,6 +11,7 @@ import type { Io } from "../io";
 export const SCHEMAS = [
   { url: CONFIG_SCHEMA_URL, describe: `${PRODUCT.configFile} — a site's configuration`, make: configJsonSchema },
   { url: BRAND_SCHEMA_URL, describe: "brand.json — a site's brand (galley/brand/brand.json)", make: brandJsonSchema },
+  { url: THEME_SCHEMA_URL, describe: "a theme for the editing app (brand/themes/theme.schema.json)", make: themeJsonSchema },
 ] as const;
 
 /** The file name a schema is written as: the last part of its address ("galley.config.json", "brand.json"). */

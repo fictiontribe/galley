@@ -13,3 +13,4 @@ export { contrast, fromHex, toHex, toOklch, fromOklch, isHex } from "./colour";
 export * from "./apply";
 export * from "./catalog";
 export * from "./share";
+export { themeJsonSchema } from "./schema";

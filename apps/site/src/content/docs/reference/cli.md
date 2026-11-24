@@ -550,6 +550,7 @@ With --out, write every schema the app's files name instead, one file each,
 and list the address each must be served at:
   galley.config.json   https://galley.fictiontribe.com/schema/galley.config.json
   brand.json           https://galley.fictiontribe.com/schema/brand.json
+  theme.schema.json    https://galley.fictiontribe.com/schema/theme.schema.json
 Options
   -o, --out <folder>   Write the schemas into this folder (it is created)
   -h, --help           Show this help
