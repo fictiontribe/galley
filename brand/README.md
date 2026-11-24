@@ -146,6 +146,29 @@ markup, pair every inline diff with hidden words for screen readers:
 In forced-colours mode the tints drop away and real underline/strike
 decorations take over.
 
+## Icons
+
+One family in **[icons.ts](icons.ts)**, drawn once and used by the app
+(`packages/web/src/ui/Icon.tsx`) and the site (`apps/site/src/components/Glyph.astro`).
+16-unit grid; 1.5 stroke centred on .25/.75 so edges land on device pixels at
+2×; square-cut ends, mitred corners, 1-unit corners on sheets. Each glyph names
+an **accent part** (`i-a`, `i-af`) and sometimes a **tint** (`i-t`): at rest
+the icon is one ink; where it marks the current place, set `--icon-accent` and
+`--icon-tint` (tokens: `--icon-accent-current`, `--icon-tint-current`) and only
+that part takes the Blue Pencil. Above 16 px the stroke thins in grid units so
+the line on screen grows slowly (`iconStroke(size)`).
+
+## Colour jobs, depth and shape (tokens.css §5)
+
+Blue Pencil marks the action and where you are — and the fields where the
+assistant writes for you. Proof colours mean a change; status colours mean the
+system's state; the table (`--surface-table`) is the ground under a page being
+proofed. Depth: a sheet rests (`--shadow-sheet`), a control is pressed in
+(`--shadow-control`), a field is recessed (`--shadow-field`), only overlays
+float. Shape: pills are for pressing; selection and suggestion are soft
+rectangles (`--radius-control`, `--radius-tray`); status is a stamp
+(`--radius-stamp`).
+
 ## Motion
 
 Fast and calm: 140 ms for hover and colour, 200 ms for menus and toasts,
