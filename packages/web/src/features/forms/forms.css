@@ -165,7 +165,7 @@
 .kit-cfield__body { pointer-events: none; }
 .kit-cfield__tags { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-block-start: var(--space-1); pointer-events: none; }
 .kit-cfield__tags:empty { display: none; }
-.kit-cfield__tag { display: inline-flex; align-items: center; block-size: 18px; padding-inline: 6px; border-radius: var(--radius-pill); background: var(--info-tint); color: var(--info-ink); font-size: var(--text-2xs); }
+.kit-cfield__tag { display: inline-flex; align-items: center; block-size: 18px; padding-inline: 6px; border-radius: var(--radius-stamp); background: var(--info-tint); color: var(--info-ink); font-size: var(--text-2xs); }
 .kit-cfield__tag--quiet { background: var(--surface-sunken); color: var(--ink-secondary); }
 .kit-cfield__tag--flash { background: var(--accent-subtle); color: var(--accent-text); }
 .kit-cfield__mark { font-size: var(--text-2xs); }
