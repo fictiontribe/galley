@@ -121,8 +121,8 @@ describe.skipIf(!chromium)("the engine derives what the browser paints", () => {
     await browser?.close();
   });
 
-  // "pale" pushes the people colours: some are tuned, so their overrides are painted too.
-  const themes = { quiet: QUIET, plate: PLATE, desk: DESK, ...TEST_THEMES, pale: { ...QUIET, id: "pale", name: "Pale", light: { ...QUIET.light, paper: "#FDFDFF" }, dark: { ...QUIET.dark!, paper: "#3A3A44" } } };
+  // "deep" tunes a people colour, so its override is painted too.
+  const themes = { quiet: QUIET, plate: PLATE, desk: DESK, ...TEST_THEMES, deep: { ...QUIET, id: "deep", name: "Deep", dark: { ...QUIET.dark!, paper: "#132532" } } };
   for (const [name, theme] of Object.entries(themes)) {
     for (const mode of ["light", "dark"] as const) {
       it(`${name}, ${mode}`, async () => {

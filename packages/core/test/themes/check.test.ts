@@ -96,16 +96,32 @@ describe("checkTheme: the people colours", () => {
     expect(check.applied?.people).toBeUndefined();
   });
 
-  it("tunes one in lightness when its outline would not show, and says so", () => {
-    // The palest paper and the lightest dark paper the ranges allow, with a cool tint.
-    const check = checkTheme({ ...QUIET, id: "pale", name: "Pale", light: { ...QUIET.light, paper: "#FDFDFF" }, dark: { ...QUIET.dark!, paper: "#3A3A44" } });
+  it("measures the initials on each as text (4.5:1); Harbour's white initials pass with Quiet", () => {
+    const initials = checkTheme(QUIET).measures.filter((m) => m.label.startsWith("the initials on the "));
+    expect(initials).toHaveLength(12);
+    expect(initials.every((m) => m.ratio >= 4.5)).toBe(true);
+    expect(initials.find((m) => m.label === "the initials on the harbour people color")?.ratio).toBeCloseTo(4.54, 2);
+  });
+
+  it("tunes one in lightness when its outline would not show, keeping its initials readable, and says so", () => {
+    // A deep blue dark paper: rose's outline needs a step lighter there, and its white initials still read.
+    const check = checkTheme({ ...QUIET, id: "deep", name: "Deep", dark: { ...QUIET.dark!, paper: "#132532" } });
     expect(check.ok).toBe(true);
     const tuned = check.adjusted.filter((a) => a.colour.startsWith("person-"));
+    expect(tuned.map((a) => a.colour)).toEqual(["person-1"]);
     for (const adjustment of tuned) {
-      expect(adjustment.reason).toMatch(/^The [a-z]+ color that marks a person was (darkened|lightened) slightly, from #[0-9A-F]{6} to #[0-9A-F]{6}, so its outline shows on a sheet in this theme\. Its hue is kept, so that person looks the same to everyone\.$/);
+      expect(adjustment.reason).toMatch(/^The [a-z]+ color that marks a person was (darkened|lightened) slightly, from #[0-9A-F]{6} to #[0-9A-F]{6}, so its outline shows on a sheet in this theme and the initials on it still read\. Its hue is kept, so that person looks the same to everyone\.$/);
       expect(check.applied?.people?.[adjustment.colour.slice(7)]).toBe(adjustment.to);
     }
-    expect(check.measures.filter((m) => m.label.endsWith("as an outline on a sheet")).every((m) => m.ratio >= 3)).toBe(true);
+    const people = check.measures.filter((m) => m.label.includes("people color"));
+    expect(people.every((m) => m.ratio >= m.min)).toBe(true);
+  });
+
+  it("refuses, in words, a dark paper where an outline and its initials can't both hold", () => {
+    // Before the initials were measured, rose was lightened here until its white initials fell under 4.5.
+    const check = checkTheme({ ...QUIET, id: "light-dark", name: "Light dark", dark: { ...QUIET.dark!, paper: "#282621" } });
+    expect(check.ok).toBe(false);
+    expect(check.refused.join(" ")).toMatch(/^Some of the colors that mark people \(.*rose.*\) can’t both show as an outline on this theme’s sheets and keep their initials readable\./);
   });
 });
 
@@ -143,9 +159,14 @@ describe("checkTheme: rules", () => {
   });
 
   it("moves dark colors given the wrong way round into range", () => {
-    const check = checkTheme({ ...QUIET, dark: { ...QUIET.dark!, ink: "#000000", paper: "#FFFFFF" } });
-    expect(check.ok).toBe(true);
-    expect(check.adjusted.filter((a) => a.mode === "dark").length).toBeGreaterThan(0);
+    // White paper lands at the top of dark's range (L 0.27), where the people colours can't hold (see above): moved, then refused in words.
+    const white = checkTheme({ ...QUIET, dark: { ...QUIET.dark!, ink: "#000000", paper: "#FFFFFF" } });
+    expect(white.adjusted.filter((a) => a.mode === "dark" && a.kind === "range").map((a) => a.colour).sort()).toEqual(["ink", "paper"]);
+    expect(white.refused.join(" ")).toMatch(/colors that mark people/);
+    // A light grey paper and a black ink, given for dark: both moved into range, and the theme is usable.
+    const grey = checkTheme({ ...QUIET, dark: { ...QUIET.dark!, ink: "#000000", paper: "#202020" } });
+    expect(grey.ok).toBe(true);
+    expect(grey.adjusted.filter((a) => a.mode === "dark" && a.colour === "ink")[0]?.reason).toMatch(/^Your dark ink was too dark to read on a dark theme, so it was lightened/);
   });
 
   it("gives white-label installs their accent as the built-ins' pencil, and nothing else", () => {

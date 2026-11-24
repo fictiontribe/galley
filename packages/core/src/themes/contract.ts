@@ -71,21 +71,22 @@ export const PROOF_INK_VALUES: Record<ThemeMode, Record<ProofInk, string>> = {
 /**
  * The twelve people colours (tokens.css §8): who is here. Fixed in every
  * theme and the same in light and dark; the check may tune a lightness so
- * each still shows as an outline on the theme's sheets.
+ * each still shows as an outline on the theme's sheets. `on` is the fixed
+ * colour of the initials drawn on it (tokens.css §8 `--person-N-on`).
  */
-export const PEOPLE_COLOURS: ReadonlyArray<{ name: string; value: string }> = [
-  { name: "rose", value: "#C7446F" },
-  { name: "coral", value: "#E05B4D" },
-  { name: "rust", value: "#B35E00" },
-  { name: "mustard", value: "#B08500" },
-  { name: "olive", value: "#748C00" },
-  { name: "jade", value: "#00A45D" },
-  { name: "teal", value: "#00927E" },
-  { name: "lagoon", value: "#009DB7" },
-  { name: "harbour", value: "#007EB2" },
-  { name: "cornflower", value: "#5886F2" },
-  { name: "violet", value: "#9758C6" },
-  { name: "orchid", value: "#C360BD" },
+export const PEOPLE_COLOURS: ReadonlyArray<{ name: string; value: string; on: string }> = [
+  { name: "rose", value: "#C7446F", on: "#FFFFFF" },
+  { name: "coral", value: "#E05B4D", on: "#1A1712" },
+  { name: "rust", value: "#B35E00", on: "#FFFFFF" },
+  { name: "mustard", value: "#B08500", on: "#1A1712" },
+  { name: "olive", value: "#748C00", on: "#1A1712" },
+  { name: "jade", value: "#00A45D", on: "#1A1712" },
+  { name: "teal", value: "#00927E", on: "#1A1712" },
+  { name: "lagoon", value: "#009DB7", on: "#1A1712" },
+  { name: "harbour", value: "#007EB2", on: "#FFFFFF" },
+  { name: "cornflower", value: "#5886F2", on: "#1A1712" },
+  { name: "violet", value: "#9758C6", on: "#FFFFFF" },
+  { name: "orchid", value: "#C360BD", on: "#1A1712" },
 ];
 /** `--person-1` … `--person-12`. */
 export const personProperty = (index: number) => `--person-${index + 1}`;

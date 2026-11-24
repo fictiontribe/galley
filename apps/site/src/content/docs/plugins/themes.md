@@ -103,7 +103,10 @@ listed from a plugin or read back from disk, and it never trusts its input:
    table (and the ink again when the table is at the end of its range). Proof
    and status inks are tuned in lightness only and emitted as overrides.
    Each people colour must reach 3:1 as an outline on the light and the dark
-   sheet; one that doesn't is tuned in lightness only, once for both modes.
+   sheet, and its fixed initials colour 4.5:1 on it; one that doesn't is
+   tuned in lightness only, once for both modes. Where the two can't both
+   hold (a dark paper at the very top of its range, about L 0.26 and up),
+   the theme is refused in words.
 6. **Report** each change as `{ mode, colour, from, to, kind, reason }`, the
    reason a sentence for a person ("Your paper was too dark for a light
    theme, so it was lightened from #CFCBC4 to #ECE8E0.").

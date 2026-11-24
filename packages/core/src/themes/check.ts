@@ -7,7 +7,7 @@
  * result is the theme as it will be applied; a theme is shown, saved or
  * shared only in that form.
  */
-import { BLACK, contrast, fromHex, fromOklch, hueDistance, mixOklab, toHex, toOklch, type Rgb } from "./colour";
+import { BLACK, contrast, fromHex, luminance, fromOklch, hueDistance, mixOklab, toHex, toOklch, type Rgb } from "./colour";
 import {
   DEFAULT_SWITCHES,
   PEOPLE_COLOURS,
@@ -91,6 +91,8 @@ export const PENCIL_MIN_CHROMA = 0.06;
 const LIGHT_PENCIL_GAP = 0.15;
 /** A people colour as a 2 px outline on a sheet (WCAG 1.4.11). */
 const PERSON_OUTLINE = 3;
+/** The initials on a people colour (its fixed text colour on the fill): text, so WCAG's 4.5:1. */
+const PERSON_INITIALS = 4.5;
 /** A hex colour can't land exactly on a boundary; this much either side is inside. */
 const SLACK = 0.0005;
 const STEP = 0.01;
@@ -485,24 +487,34 @@ export function checkTheme(input: unknown): ThemeCheck {
   const peopleMeasures: PairMeasure[] = [];
   const sheets = { light: light.colours.sheet, dark: dark.colours.sheet };
 
-  PEOPLE_COLOURS.forEach(({ name, value: from }, index) => {
+  PEOPLE_COLOURS.forEach(({ name, value: from, on }, index) => {
     let value = from;
-    const ratios = (hex: string) => ({ light: contrast(fromHex(hex), sheets.light), dark: contrast(fromHex(hex), sheets.dark) });
+    const text = fromHex(on);
+    const textIsLight = luminance(text) > 0.5;
+    const ratios = (hex: string) => ({ light: contrast(fromHex(hex), sheets.light), dark: contrast(fromHex(hex), sheets.dark), initials: contrast(text, fromHex(hex)) });
 
     for (let i = 0; i < 40; i++) {
       const now = ratios(value);
+      const outline = now.light >= PERSON_OUTLINE && now.dark >= PERSON_OUTLINE;
 
-      if (now.light >= PERSON_OUTLINE && now.dark >= PERSON_OUTLINE) break;
+      if (outline && now.initials >= PERSON_INITIALS) break;
       // Failing on both sheets at once can't be helped by lightness; it stays and is reported below.
       if (now.light < PERSON_OUTLINE && now.dark < PERSON_OUTLINE) break;
-      const next = shift(value, now.light < PERSON_OUTLINE ? -STEP : STEP);
+      // The outline first; then the initials on the fill, away from their own colour.
+      const delta = !outline ? (now.light < PERSON_OUTLINE ? -STEP : STEP) : textIsLight ? -STEP : STEP;
+      const next = shift(value, delta);
 
       if (!next) break;
+      const after = ratios(next);
+      // A step that would undo what the other rule needs means the two can't both hold here: stop, and say so below.
+      if (!outline && now.initials >= PERSON_INITIALS && after.initials < PERSON_INITIALS) break;
+      if (outline && (after.light < PERSON_OUTLINE || after.dark < PERSON_OUTLINE)) break;
       value = next;
     }
     const final = ratios(value);
 
     for (const mode of THEME_MODES) peopleMeasures.push({ mode, label: `the ${name} people color as an outline on a sheet`, fg: value, bg: toHex(sheets[mode]), ratio: final[mode], min: PERSON_OUTLINE });
+    peopleMeasures.push({ mode: "light", label: `the initials on the ${name} people color`, fg: on, bg: value, ratio: final.initials, min: PERSON_INITIALS });
     if (value !== from) {
       people[String(index + 1)] = value;
       const darker = toOklch(fromHex(value)).L < toOklch(fromHex(from)).L;
@@ -513,13 +525,17 @@ export function checkTheme(input: unknown): ThemeCheck {
         from,
         to: value,
         kind: "tuned",
-        reason: `The ${name} color that marks a person was ${darker ? "darkened" : "lightened"} slightly, from ${from} to ${value}, so its outline shows on a sheet in this theme. Its hue is kept, so that person looks the same to everyone.`,
+        reason: `The ${name} color that marks a person was ${darker ? "darkened" : "lightened"} slightly, from ${from} to ${value}, so its outline shows on a sheet in this theme and the initials on it still read. Its hue is kept, so that person looks the same to everyone.`,
       });
     }
   });
   const peopleFailing = peopleMeasures.filter((m) => m.ratio < m.min);
 
-  if (peopleFailing.length) refused.push(`Some of the colors that mark people would not show on this theme’s sheets (${join(dedupe(peopleFailing.map((m) => m.label.replace(/^the | people color as an outline on a sheet$/g, ""))), "and")}). Try a sheet further from the middle grey.`);
+  if (peopleFailing.length) {
+    const names = dedupe(peopleFailing.map((m) => m.label.replace(/^the initials on the | people color$|^the | people color as an outline on a sheet$/g, "")));
+
+    refused.push(`Some of the colors that mark people (${join(names, "and")}) can’t both show as an outline on this theme’s sheets and keep their initials readable. Try a sheet further from the middle grey: a lighter paper, or a darker dark paper.`);
+  }
 
   const adjusted = [...light.adjusted, ...dark.adjusted, ...peopleAdjusted];
   const measures = [...light.measures, ...dark.measures, ...peopleMeasures];
