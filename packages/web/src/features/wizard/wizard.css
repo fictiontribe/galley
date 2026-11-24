@@ -43,7 +43,7 @@
 .wizard-pages__list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-1-5); }
 .wizard-page {
   display: inline-flex; align-items: center; gap: 2px;
-  block-size: 28px; padding-inline: 12px 2px; border-radius: var(--radius-pill);
+  block-size: 28px; padding-inline: 12px 2px; border-radius: var(--radius-control);
   border: var(--border-hair) solid var(--border-strong); background: var(--surface-raised);
   font-weight: var(--weight-medium);
 }

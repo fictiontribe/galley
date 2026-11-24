@@ -1039,3 +1039,15 @@ a.desk__frame { text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ================= Quiet on the inner pages =================
+   Labels are words, not mono capitals (mono stays for paths, times and
+   commands); selection in a bar is a soft rectangle, not a pill; counts and
+   small tags are stamps; cards and panels rest as sheets. */
+.label, .out__label, .howto-card__n, .howto-step__label, .compare thead th:first-child { font-family: var(--font-text); font-weight: 600; letter-spacing: .01em; text-transform: none; }
+.nav a, .gh, .tour-index a, .howto-filter__b, .howto-filter__b:focus-visible, .howto-filter__thumb { border-radius: var(--r-sm); }
+.chip, .tally b, .compare .more { border-radius: var(--r-stamp); }
+.card, .way-card, .docs__pager a, .howto__needs, .docs__howto, .list:not(.list--delete):not(.list--stet), .docs__nav[open] { box-shadow: var(--sh-sheet); }
+.way-card__t .glyph { color: var(--ink-2); --icon-accent: var(--accent-text); }
+.docs__group a[aria-current="page"] { box-shadow: inset 2px 0 0 var(--accent), var(--sh-sheet); }
+.docs__filter input { box-shadow: var(--sh-field); border-color: var(--line-seam); }

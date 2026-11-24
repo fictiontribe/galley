@@ -82,3 +82,29 @@
 .g-root .app-sidebar .g-nav__item > .g-icon { color: var(--ink-secondary); }
 .g-root .app-sidebar .g-nav__item[aria-current="page"] > .g-icon,
 .g-root .app-sidebar .g-nav__item:hover > .g-icon { color: var(--ink-primary); }
+
+/* --------------------------------------------------------------------------
+   Selection and hover tints come from the pencil ramp, so every feature that
+   still names the older accent tints draws the same pencil tints (and, under
+   any theme, the tints the legibility check measured).
+   -------------------------------------------------------------------------- */
+.g-root {
+  --accent-subtle: var(--pencil-100);
+  --accent-subtle-hover: var(--pencil-200);
+  --accent-line: var(--pencil-300);
+}
+
+/* --------------------------------------------------------------------------
+   Labels over columns, groups and facts are words: sentence case in the
+   interface face at 12/600, tertiary ink — never mono capitals, which stay
+   for what is literally code (paths, keys, file names). Brand's previews of
+   the customer's own type are left alone.
+   -------------------------------------------------------------------------- */
+.g-root :is(.app-rows__head, .app-table thead th, .deploy-records th, .redir-table__head, .kit-row--head, .kit-dest__section,
+  .kit-required, .brand-subhead, .brand-swatch__role, .brand-words th, .brand-format dt,
+  .seo-evidence__label, .seo-result__label, .seo-crawlers__vendor, .seo-batch__facts dt) {
+  font-family: var(--font-text); font-size: var(--text-xs); line-height: var(--leading-xs);
+  font-weight: var(--weight-semibold); letter-spacing: 0.01em; text-transform: none;
+}
+/* Brand's confidence marks ("measured", "declared") are stamps. */
+.g-root .brand-confidence { font-family: var(--font-text); font-size: var(--text-xs); font-weight: var(--weight-semibold); letter-spacing: 0.01em; text-transform: none; padding: 0 6px; border-radius: var(--radius-stamp); }
