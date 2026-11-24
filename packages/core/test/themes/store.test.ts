@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -91,4 +91,22 @@ describe("who may do what with themes (hosted)", () => {
       });
     }
   }
+});
+
+describe("the default theme in settings.json", () => {
+  it("a value that isn't a theme's id is ignored on its own: the rest of the file is kept, and stays after the next save", async () => {
+    const { createSettingsService } = await import("../../src/ai/settings");
+    const dir = home();
+    writeFileSync(join(dir, "settings.json"), JSON.stringify({ ai: { effort: "high" }, author: { name: "Sam", email: "sam@example.com" }, appearance: { theme: "dark", look: "Not An Id!" } }));
+    const settings = createSettingsService({ home: dir, env: {} });
+    const read = await settings.get();
+    expect(read.ai.effort).toBe("high");
+    expect(read.appearance).toEqual({ theme: "dark" });
+    expect(await settings.look!()).toBeUndefined();
+    await settings.update({ ai: { effort: "low" } });
+    const after = JSON.parse(readFileSync(join(dir, "settings.json"), "utf8"));
+    expect(after.author).toEqual({ name: "Sam", email: "sam@example.com" });
+    expect(after.appearance.theme).toBe("dark");
+    for (const look of ["con", "x".repeat(40)]) await expect(settings.update({ appearance: { look } })).rejects.toMatchObject({ code: "invalid" });
+  });
 });

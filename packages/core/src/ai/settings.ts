@@ -21,7 +21,7 @@ import type { PreviewPolicySettings, SiteUsageTotals } from "../types";
 import { currentSiteId, isSiteId } from "../site/scope";
 import { createSiteSettingsStore, describeConnections, resolveSecret } from "./site-settings";
 import { DEFAULT_PREVIEW_POLICY, PREVIEW_LIMITS } from "../site/preview-policy";
-import { THEME_ID_PATTERN, isThemeId } from "../themes/contract";
+import { isThemeId } from "../themes/contract";
 
 const run = promisify(execFile);
 const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly", "gcp"];
@@ -32,7 +32,8 @@ const StoredSettings = z.object({
   images: z.object({ provider: z.string().nullable().optional(), model: z.string().nullable().optional() }).optional(),
   videos: z.object({ provider: z.string().nullable().optional(), model: z.string().nullable().optional() }).optional(),
   author: z.object({ name: z.string().optional(), email: z.string().optional() }).optional(),
-  appearance: z.object({ theme: z.enum(["system", "light", "dark"]).optional(), look: z.string().regex(THEME_ID_PATTERN).optional() }).optional(),
+  // A default theme that isn't a theme's id (a hand edit) is ignored on its own; it never makes the rest of the file unreadable.
+  appearance: z.object({ theme: z.enum(["system", "light", "dark"]).optional(), look: z.string().refine(isThemeId).optional().catch(undefined) }).optional(),
   previews: z.object({ maxRunning: z.number().int().optional(), idleMinutes: z.number().int().optional() }).optional(),
 });
 type Stored = z.infer<typeof StoredSettings>;

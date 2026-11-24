@@ -128,7 +128,7 @@ describe("a visitor who isn't signed in", () => {
     const settings = createSettingsService({ home, env: {} });
     let gets = 0;
     let looks = 0;
-    const counted = { ...settings, get: (...args: Parameters<typeof settings.get>) => (gets++, settings.get(...args)), look: () => (looks++, settings.look()) };
+    const counted = { ...settings, get: (...args: Parameters<typeof settings.get>) => (gets++, settings.get(...args)), look: () => (looks++, settings.look!()) };
     const events = createEventBus();
     const app = createApp({ ...buildServices({ events, settings: counted }), themes: createThemeStore({ home }) }, appOptions());
     for (let i = 0; i < 5; i++) await app.request("/api/meta");

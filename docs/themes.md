@@ -150,7 +150,7 @@ ships and the engine follows it:
 | Saved for me | — (one person: Save is for everyone) | this browser's storage (`galley.themes`), anyone signed in |
 | Added by plugins | installed plugins | installed plugins |
 | The theme a person sees | the default (App settings), one for the app | their own choice, kept in their browser; until they choose, the default |
-| The default | `settings.json` → `appearance.look` | the same, set by people who can manage |
+| The default | `settings.json` → `appearance.look` (a value that isn't a theme's id is ignored, and the rest of the file kept) | the same, set by people who can manage |
 
 One theme for the app, not one per site: the app is the person's tool, the
 sidebar is shared across sites, and a theme must never change a site.
