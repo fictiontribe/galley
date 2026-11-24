@@ -144,8 +144,8 @@ are exactly the files below for the `caddy` variant at `cms.example.com`
 (project `galley-editor`); a test keeps them in step with the recipe
 (`packages/core/test/hosting/compose-example.test.ts`).
 
-1. **Write the files.** From a clone of this repository with its
-   dependencies installed (`galley host` isn't in a release on npm yet), or
+1. **Write the files.** With `npx galley-cms host recipe …` (0.2.0 or newer),
+   from a clone of this repository with its dependencies installed, or
    with the image itself (`docker run --rm <image> host recipe …`, as
    `scripts/create-install.sh` does):
 
@@ -1035,8 +1035,8 @@ Hands the new editor:
 Nothing was created (--dry-run).
 ```
 
-`galley host` isn't in a release yet: run it from a clone of this
-repository. Then `galley host status|link|check|upgrade|backup|remove`. Keys come from
+`galley host` is in 0.2.0 and newer (`npx galley-cms host`). Then
+`galley host status|link|check|upgrade|backup|remove`. Keys come from
 `FLY_API_TOKEN` or `CLOUDFLARE_API_TOKEN`, else the stored one, else a prompt
 (and stored). Until the image is published, set `GALLEY_HOSTING_IMAGE` to an
 image you pushed. A hosted install never offers any of this (its routes

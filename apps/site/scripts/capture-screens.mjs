@@ -68,6 +68,8 @@ const ALL = [
   "showcase", "form", "proof", "source",
   // Then publishing (and the undo window), and going online on the stand-in host.
   "publish", "online",
+  // The hosted editor: "Host the editor online" against the stand-in Fly.io, and a hosted install's first screens.
+  "editor-online", "hosted",
 ];
 const steps = process.argv.slice(2).length ? process.argv.slice(2) : ALL;
 const appSteps = steps.some((s) => s !== "own");
@@ -272,7 +274,7 @@ function writeHowto() {
   mkdirSync(dirname(HOWTO_JSON), { recursive: true });
   writeFileSync(HOWTO_JSON, `${JSON.stringify({
     about: "How-to sequences captured from the running app. Written by scripts/capture-screens.mjs; the wording of do/see may be polished by hand, the facts may not.",
-    captured: `${new Date().toLocaleDateString("sv")}, Galley ${process.env.GALLEY_VERSION ?? "0.1.2"}`,
+    captured: `${new Date().toLocaleDateString("sv")}, Galley ${appVersion}`,
     guides: list,
   }, null, 2)}\n`);
   console.log(`  howto.json: ${list.length} guides`);
@@ -424,8 +426,8 @@ async function whichOne(page) {
     await docShot(page, "on-the-page-which-one", ask.x - 39, ask.y - 80);
     const wf = await focus(page, [page.getByText("Which one did you mean?"), atelier], { min: 900 });
     await howto(page, "edit-on-the-page", 4, { ...wf, x: Math.max(wf.x, 268) }, {
-      alt: "The word Atelier in the Caddow footer, outlined, with a small window under it: Which one did you mean? This text appears in 2 places — Navigation › Header › 2 › Label and Navigation › Footer › 1 › Links › 2 › Label.",
-      do: "If the same words come from more than one place, it asks **Which one did you mean?** Choose one, then type.",
+      alt: "The word Atelier in the Caddow footer, outlined, with a small window under it: Which one did you mean? This text appears in 2 places — Navigation › Header › 2 › Label and Navigation › Footer › 1 › Links › 2 › Label, and Close.",
+      do: "If the same words come from more than one place, it asks **Which one did you mean?** Choose one, then type — or **Close** to leave them as they are.",
     });
 }
 
@@ -468,8 +470,25 @@ async function chatShot(page) {
     await page.waitForTimeout(3000);
   }
   await hideDevToolbar(page);
+  // The page may have scrolled to where the change landed; show the campaign hero at the top.
+  await previewFrame(page)?.evaluate(() => scrollTo(0, 0)).catch(() => {});
+  await page.waitForTimeout(1200);
   await shoot(page, "assistant", await chatClip());
   await howto(page, "ask-the-assistant", 2, await chatClip(), ASK_STEP_2);
+}
+
+/** Search & AI › AI crawlers: Block for OpenAI's training crawler, and the bar that asks to confirm it (how-to step 4). */
+async function crawlerChoice(page) {
+  const gptbot = page.locator(".seo-crawler, li").filter({ hasText: "OpenAI's training crawler" }).last();
+  await gptbot.getByRole("radio", { name: "Block" }).click();
+  await page.waitForTimeout(1500);
+  await gptbot.evaluate((e) => e.scrollIntoView({ block: "center" }));
+  await page.waitForTimeout(800);
+  await howto(page, "search-and-ai", 4, { x: 740, y: 315, width: 700, height: 560 }, {
+    alt: "The AI crawlers panel: OpenAI's training crawler (GPTBot, model training) switched to Block, the crawlers around it on Allow, and at the foot a bar: 1 rule will change — Block OpenAI's training crawler. Nothing changes until you confirm — with Keep as it is and Change 1 rule.",
+    do: "Under **AI crawlers**, choose **Allow** or **Block** for each one — here **Block** for OpenAI's training crawler. A bar at the foot says what will change; press **Change 1 rule**.",
+    see: "Search crawlers decide whether AI assistants can find and link to the site; training crawlers decide whether its pages may train models.",
+  });
 }
 
 /** The brand material the "brand" step adds: a two-page PDF of brand notes, the wordmark, a note (all invented). */
@@ -510,6 +529,8 @@ const ctx = await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE,
 await ctx.addInitScript(() => { try { localStorage.setItem("galley-theme", "light"); } catch {} });
 const page = await ctx.newPage();
 if (appSteps) await page.goto(`${ORIGIN}/?token=${TOKEN}`, { waitUntil: "networkidle" });
+// The release the pictures show, as the running app says (for howto.json's "captured").
+const appVersion = appSteps ? (await api("/api/meta")).version ?? "unknown" : "unknown";
 
 try {
   for (const step of steps) {
@@ -619,7 +640,7 @@ async function run(step) {
     });
     await go(page, `/sites/${SITE}/proof`, 2500);
     await howto(page, "add-analytics", 4, { x: 232, y: 0, width: 1208, height: 420 }, {
-      alt: "Proof with 1 change waiting to be published: Scripts, src/data/scripts.json, Edited — Added a script.",
+      alt: "Proof with 1 change waiting to be published: Scripts, src/data/scripts.json, Edited — Added a script; under What changed, Scripts › Google Analytics 4, Added, with Put back.",
       do: "Open **Proof** to see the change waiting, then press **Publish**.",
       see: "Nothing loads on the live site until you publish.",
     });
@@ -740,6 +761,17 @@ async function run(step) {
     });
   }
 
+  if (step === "crawler-bar") {
+    // How-to step 4 again, on a site where GPTBot is already blocked: allowed first (a change waiting),
+    // then Block chosen in the panel, the bar captured, kept as it is, and the change put back.
+    await api(`/api/sites/${SITE}/visibility/crawlers`, { method: "PUT", body: JSON.stringify({ choices: { GPTBot: "allow" } }) });
+    await page.goto(`${ORIGIN}/sites/${SITE}/visibility`, { waitUntil: "load" });
+    await checksDone(page);
+    await crawlerChoice(page);
+    await page.getByRole("button", { name: "Keep as it is" }).click();
+    await discard(["src/data/visibility.json"]);
+  }
+
   if (step === "search-ai") {
     // How-to: run the checks, fix one finding (a link to an old address, now redirected), block a crawler.
     // Also the docs' picture. First, the thing to fix: a journal post that still links to /about-us/
@@ -781,16 +813,7 @@ async function run(step) {
       see: "The fix is an ordinary change waiting in Proof, and the checks run again. **Undo** puts it back.",
     });
     await dismissToasts(page);
-    const gptbot = page.locator(".seo-crawler, li").filter({ hasText: "OpenAI's training crawler" }).last();
-    await gptbot.getByRole("radio", { name: "Block" }).click();
-    await page.waitForTimeout(1000);
-    await gptbot.evaluate((e) => e.scrollIntoView({ block: "center" }));
-    await page.waitForTimeout(800);
-    await howto(page, "search-and-ai", 4, await focus(page, [gptbot], { min: 700 }), {
-      alt: "The AI crawlers panel: under OpenAI, ChatGPT's search crawler set to Allow, OpenAI's training crawler (GPTBot, model training) switched to Block, and ChatGPT fetching a page for someone set to Allow.",
-      do: "Under **AI crawlers**, choose **Allow** or **Block** for each one — here **Block** for OpenAI's training crawler — then press **Change 1 rule** at the foot of the panel.",
-      see: "Search crawlers decide whether AI assistants can find and link to the site; training crawlers decide whether its pages may train models.",
-    });
+    await crawlerChoice(page);
     const change = page.getByRole("button", { name: /^Change 1 rule/ });
     await change.click();
     await until(page, "the crawler rules", async () => !(await page.getByRole("button", { name: /Saving…/ }).count()), 60_000);
@@ -882,6 +905,9 @@ async function run(step) {
     });
     await page.getByRole("link", { name: /^The atelier/ }).first().click();
     await waitForPreview(page);
+    // The panes are as the last page left them: the form shown, the assistant hidden.
+    const showForm = page.getByRole("button", { name: /^Show form/i }).first();
+    if (await showForm.count()) { await showForm.click(); await page.waitForTimeout(800); }
     const hideAssistant = page.getByRole("button", { name: /^Hide assistant/i }).first();
     if (await hideAssistant.count()) await hideAssistant.click();
     await tool(page, "Click to edit");
@@ -972,7 +998,8 @@ async function run(step) {
       see: "It's saved like any edit in the form, and waits in Proof.",
     });
     await whichOne(page);
-    // (The window has no close button; leaving the page closes it.)
+    // (Close it, and leave the page.)
+    await page.getByRole("button", { name: "Close" }).last().click().catch(() => {});
     await go(page, `/sites/${SITE}`, 1500);
   }
 
@@ -994,10 +1021,12 @@ async function run(step) {
       const fernhill = await groupFor("Fernhill Garden Studio");
       await api(`/api/sites/${WP_SITE}/listing`, { method: "PATCH", body: JSON.stringify({ group: fernhill.id, note: "Moving from WordPress: check the import before launch." }) });
     }
-    // Two visitors' messages and a sign-up, as the live site would send them (invented people).
+    // Two visitors' messages and a sign-up, as the live site would send them (invented people). They are
+    // posted from another local address (the site served some other way): from the app's own address
+    // or the preview's, the inbox would mark them Test.
     const { items = [] } = await api(`/api/sites/${SITE}/inbox/contact?filter=all`);
     if (!items.some((i) => !i.test)) {
-      const send = (form, values, url, title) => fetch(`${ORIGIN}/f/${SITE}`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: JSON.stringify({ form, values, page: { url, title, referrer: "" }, meta: { honeypot: "", elapsedMs: 24_000 } }) });
+      const send = (form, values, url, title) => fetch(`${ORIGIN}/f/${SITE}`, { method: "POST", headers: { "content-type": "application/json", origin: "http://localhost:8080" }, body: JSON.stringify({ form, values, page: { url, title, referrer: "" }, meta: { honeypot: "", elapsedMs: 24_000 } }) });
       await send("contact", { name: "Ines Marrow", email: "ines.marrow@example.com", topic: "size", height: "5 ft 9, the field coat", message: "I'm between a 2 and a 3 in the field coat. Could you measure the 3 across the shoulders for me?", consent: "yes" }, "https://www.caddow.example/contact/", "Contact");
       await page.waitForTimeout(1500);
       await send("contact", { name: "Corin Vale", email: "corin.vale@example.com", topic: "repair", message: "The left pocket of my 2024 rust coat has worn through at the corner. Can I post it to you for mending?", a_phone_number_if_you_d_rather_we_rang: "01632 960 418", consent: "yes" }, "https://www.caddow.example/contact/", "Contact");
@@ -1143,8 +1172,9 @@ async function run(step) {
     await until(page, "the deploy", async () => (await dialog().getByRole("heading", { name: "The site is online" }).count()) > 0, 600_000);
     await page.waitForTimeout(1500);
     await howto(page, "put-online", 4, await focus(page, ["dialog[open]"], { min: 800 }), {
-      alt: "The site is online: live at caddow.example-studio.workers.dev with Open and Copy, an offer to compare Proof against the live site (Use this address), Use your own domain…, and the switch Put changes live every time I publish.",
+      alt: "The site is online: live at caddow.example-studio.workers.dev with Open and Copy, an offer to compare Proof against the live site (Use this address), Use your own domain…, the switch Put changes live every time I publish, and a note: The site's online settings are a change waiting in Proof, with the button Publish the settings.",
       do: "Press **Open** to see it. **Put changes live every time I publish** makes each publish go live by itself.",
+      see: "Where the site is online is kept with the site, as a change waiting in Proof: **Publish the settings** keeps them, so anyone else who works on it uses the same host and address.",
     });
     await dialog().getByRole("button", { name: "Use your own domain…" }).click();
     await page.waitForTimeout(1200);
@@ -1166,6 +1196,56 @@ async function run(step) {
     await page.waitForTimeout(2000);
     await go(page, `/sites/${SITE}/online`, 2500);
     await shoot(page, "online-live", FULL);
+  }
+
+  if (step === "editor-online") {
+    // The Online screen's "Editor online" section, and "Host the editor online" up to its plan and price,
+    // against the stand-in Fly.io (start.sh hosting; the app started with its variables). Creates nothing.
+    const dialog = () => page.locator("dialog[open]");
+    await go(page, `/sites/${SITE}/online`, 2500);
+    await page.locator("main h2", { hasText: "Editor online" }).evaluate((e) => e.scrollIntoView({ block: "center" }));
+    await page.waitForTimeout(800);
+    await shoot(page, "editor-online", FULL);
+    await page.getByRole("button", { name: "Host the editor online" }).click();
+    await page.waitForTimeout(2000);
+    await dialog().getByRole("button", { name: "Continue" }).click();
+    await until(page, "the key step", async () => (await dialog().getByRole("heading", { name: /^Connect Fly/ }).count()) > 0, 60_000);
+    await until(page, "the key check", async () => (await dialog().getByText(/can create the editor/).count()) > 0, 60_000).catch(() => {
+      throw new Error("The app has no Fly.io key: run start.sh hosting before start.sh galley (see scripts/capture/README.md).");
+    });
+    await dialog().getByRole("button", { name: "Continue" }).click();
+    await until(page, "the address step", async () => (await dialog().getByLabel("The editor’s address").count()) > 0, 60_000);
+    await dialog().getByLabel("The editor’s address").fill("cms.caddow.example");
+    await page.waitForTimeout(600);
+    await dialog().getByRole("button", { name: "Continue" }).click();
+    // (Step 4, what the editor is handed, names stored keys by their last characters: not captured.)
+    await until(page, "the hand-over step", async () => (await dialog().getByRole("button", { name: "See the plan" }).count()) > 0, 60_000);
+    await dialog().getByRole("button", { name: "See the plan" }).click();
+    await until(page, "the plan", async () => (await dialog().getByRole("heading", { name: "Check the plan" }).count()) > 0, 120_000);
+    await page.waitForTimeout(1500);
+    await dialog().locator("h3", { hasText: "What it costs" }).evaluate((e) => e.scrollIntoView({ block: "center" }));
+    await page.waitForTimeout(800);
+    await shoot(page, "editor-online-plan", FULL);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(800);
+  }
+
+  if (step === "hosted") {
+    // A hosted install (galley serve, no site yet) started on this computer: its sign-in, and first run's
+    // "Connect the site". HOSTED_URL and HOSTED_PASSWORD: see scripts/capture/README.md.
+    const url = process.env.HOSTED_URL, password = process.env.HOSTED_PASSWORD;
+    if (!url || !password) { console.log("  (skipped: set HOSTED_URL and HOSTED_PASSWORD, after start.sh hosted)"); return; }
+    const hosted = await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE, colorScheme: "light" });
+    const view = await hosted.newPage();
+    await view.goto(url, { waitUntil: "networkidle" });
+    await view.waitForTimeout(1500);
+    await shoot(view, "hosted-sign-in", FULL);
+    await view.getByLabel("Password").fill(password);
+    await view.keyboard.press("Enter");
+    await view.getByRole("heading", { name: "Connect the site." }).waitFor({ timeout: 60_000 });
+    await view.waitForTimeout(1500);
+    await shoot(view, "hosted-first-run", FULL);
+    await hosted.close();
   }
 
   if (step === "brand-saved") await brandSaved(); // step 5 again, on a saved brand not yet published
@@ -1197,7 +1277,7 @@ async function run(step) {
     await docShot(page, "brand", 272, 190);
     await shoot(page, "brand-proposal", FULL);
     await howto(page, "set-up-brand", 2, exact(260, 370, 1140, 505), {
-      alt: "The proposal read from Caddow: Worth a look notes (11 greys in use, three nearly the same; body text contrast on the home page), and the first colours — Lime-wash, Paper white, Chalk grey and Ink — each with its role, value, where it was found and Measured or Declared.",
+      alt: "The proposal read from Caddow: Worth a look notes (11 greys in use, three nearly the same; body text contrast on the home page; no logo found), and the first colours — Lime-wash, Chalk white, Plaster and Ink — each with its role, value, where it was found and Measured or Declared.",
       do: "Check the proposal. Each colour, font and size says where it came from and whether it was **Measured** on the pages or **Declared** in the styles; **Worth a look** lists anything odd. Click any name, value or colour to change it.",
     });
     const toHeading = async (h) => {
@@ -1209,7 +1289,7 @@ async function run(step) {
     await toHeading("Voice");
     await shoot(page, "brand-voice", FULL);
     await howto(page, "set-up-brand", 3, exact(260, 104, 1140, 712), {
-      alt: "The Voice part of the proposal: the words plain, patient, exact, quietly dry and unhurried, then numbered rules such as “Use short sentences, often two together, the second one landing the point.”, each with a line quoted from the site and a struck-through example of what not to write beside the better one.",
+      alt: "The Voice part of the proposal: the words plain, concrete, unhurried, quietly confident and honest, then numbered rules such as “Use real numbers and specifics instead of claims about quality.”, each with a line quoted from the site and a struck-through example of what not to write beside the better one.",
       do: "Read the **Voice**: written by the assistant from the site's own words, with real lines from the pages as examples.",
     });
     await toHeading("Material");
@@ -1222,7 +1302,7 @@ async function run(step) {
     await toHeading("Material");
     await shoot(page, "brand-material", FULL);
     await howto(page, "set-up-brand", 4, exact(268, 175, 1120, 700), {
-      alt: "The Material part of the brand: caddow-brand-notes.pdf (2 pages, the fonts and colours inside it), caddow-wordmark.png (its colours by area) and window-notes.md (a note to read with the rest), each with its note in quotes and Leave out and Remove; below, the drop area and Choose files….",
+      alt: "The Material part of the brand: caddow-brand-notes.pdf (2 pages, the fonts and colours inside it), caddow-wordmark.png (its colours by area) and window-notes.md (a note to read with the rest), each saying it goes into the site (galley/brand/sources/) when you save, with its note in quotes and Leave out and Remove; below, the drop area and Choose files….",
       do: "Under **Material**, drop brand guidelines, logos, screenshots or notes — or press **Choose files…** — add a note to each, and press **Add 3 files**.",
       see: "Each file says what it can be read for. **Read them** (at the top) has the assistant read them for the look and the voice.",
     });

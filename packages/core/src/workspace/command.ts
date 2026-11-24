@@ -127,7 +127,8 @@ export function which(name: string, pathValue: string, cwd: string): string | nu
  * Environment variables that tell tools "an AI agent is driving this
  * terminal". Some dev servers change behaviour on seeing them — Astro 7 moves
  * its dev server into the background and exits at once, leaving a process we
- * do not own. The site's own commands are run as an ordinary user would run
+ * do not own, and `next dev` (16) writes an AGENTS.md into the site, which then
+ * shows as a change. Next reads them through @vercel/detect-agent. The site's own commands are run as an ordinary user would run
  * them, so these are removed (exact names and prefixes, matched
  * case-insensitively, ignoring leading underscores). `CLAUDE_` covers
  * CLAUDE_CODE_*, CLAUDE_AGENT_* and the other session variables (CLAUDE_PID…)
@@ -138,6 +139,13 @@ export const AGENT_ENV_NAMES = [
   "CLAUDECODE",
   "CURSOR_AGENT",
   "CURSOR_TRACE_ID",
+  "CURSOR_CLI",
+  "CURSOR_EXTENSION_HOST_ROLE",
+  "ANTIGRAVITY_AGENT",
+  "AUGMENT_AGENT",
+  "COPILOT_MODEL",
+  "COPILOT_ALLOW_ALL",
+  "COPILOT_GITHUB_TOKEN",
   "CODEX_SANDBOX",
   "CODEX_SANDBOX_NETWORK_DISABLED",
   "GEMINI_CLI",

@@ -9,6 +9,10 @@ entry says how.
 
 ### Fixed
 
+- **Next.js 16 no longer writes an AGENTS.md into the site** when Galley
+  is started from Cursor's agent, GitHub Copilot's CLI, Augment or
+  Antigravity: the preview's dev server no longer gets the variables those
+  tools set, which `next dev` takes as an AI agent running it.
 - **The preview no longer lets browsers keep its redirects.** A permanent
   redirect (301, 308) from the site's dev server, and anything it sends
   without a caching policy, now goes out as `no-store`. A browser that once

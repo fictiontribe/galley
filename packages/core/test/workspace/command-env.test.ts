@@ -32,6 +32,31 @@ describe("test-runner markers never reach a site's own commands", () => {
     expect(withoutAgentMarkers({ TEST: "staging" })).toEqual({ TEST: "staging" });
   });
 
+  it("strips every variable Next.js reads to decide an agent is running it (it then writes AGENTS.md)", () => {
+    // From @vercel/detect-agent, which `next dev` 16 uses; REPL_ID is left: it marks Replit, not an agent.
+    const detected = {
+      AI_AGENT: "x",
+      CURSOR_TRACE_ID: "t",
+      CURSOR_AGENT: "1",
+      CURSOR_CLI: "1",
+      CURSOR_EXTENSION_HOST_ROLE: "agent-exec",
+      GEMINI_CLI: "1",
+      CODEX_SANDBOX: "seatbelt",
+      CODEX_CI: "1",
+      CODEX_THREAD_ID: "t",
+      ANTIGRAVITY_AGENT: "1",
+      AUGMENT_AGENT: "1",
+      OPENCODE_CLIENT: "1",
+      CLAUDECODE: "1",
+      CLAUDE_CODE: "1",
+      COPILOT_MODEL: "m",
+      COPILOT_ALLOW_ALL: "1",
+      COPILOT_GITHUB_TOKEN: "t",
+    };
+
+    expect(withoutAgentMarkers({ ...detected, HOME: "/home/someone" })).toEqual({ HOME: "/home/someone" });
+  });
+
   it("resolveCommand drops the markers this test process carries, but keeps ones set on purpose", () => {
     // Vitest sets VITEST in this very process — the situation the fix is for.
     expect(process.env.VITEST).toBeDefined();
