@@ -23,6 +23,7 @@ function describe(plan: MediaMovePlan): string {
   ];
   if (plan.to !== "repository") parts.push(plan.keepCopies ? "The repository keeps its copies." : "Then the repository’s copies are removed; they leave the site when you publish. A file a page Galley can’t update still uses stays where it is.");
   else parts.push(`${plan.from === "images" ? "Cloudflare Images keeps its pictures" : "The bucket keeps its files"}; remove them once the pages are published.`);
+  if (plan.unpublished) parts.push(`${plan.unpublished} of them ${plan.unpublished === 1 ? "isn’t" : "aren’t"} published yet: once copied, ${plan.unpublished === 1 ? "it is" : "they are"} public at ${plan.unpublished === 1 ? "its address" : "their addresses"}, and ${plan.unpublished === 1 ? "waits" : "wait"} in Proof.`);
   if (plan.staying) parts.push(`${plan.staying.files} stay where they are: ${plan.staying.reason}`);
   if (plan.problems.length) parts.push(`${plan.problems.length} can’t be moved: ${plan.problems.map((problem) => `${problem.path} (${problem.reason})`).join("; ")}.`);
   return parts.join(" ");

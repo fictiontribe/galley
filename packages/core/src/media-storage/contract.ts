@@ -199,6 +199,8 @@ export interface MediaMovePlan {
   done: number;
   /** Files that can't be moved and why. */
   problems: Array<{ path: string; reason: string }>;
+  /** Of the files to copy, how many aren't published yet: copied to a store, they are public at their addresses at once. */
+  unpublished?: number;
   /** Files the destination doesn't take (Cloudflare Images: anything but pictures within its limits), left where they are. */
   staying?: { files: number; reason: string };
   keepCopies: boolean;

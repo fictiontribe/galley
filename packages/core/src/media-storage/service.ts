@@ -785,8 +785,8 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       async recordStored(item) {
         await library.update(site.id, (items) => [
           ...items.filter((known) => !(known.location === item.location && known.key === item.key)),
-          // Moved, not newly uploaded: the pages that use it show in Proof; the file itself isn't a pending upload.
-          { ...item, uploadedAt: clock(), published: true },
+          // A file that was published in the repository isn't a pending upload; one that wasn't stays in Proof until a page using it is published.
+          { ...item, uploadedAt: clock(), published: !item.draft, ...(item.draft ? { uploaded: true } : {}) },
         ]);
       },
       async storedItems(location) {

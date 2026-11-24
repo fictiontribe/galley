@@ -139,6 +139,20 @@ describe("moving media", { timeout: 240_000 }, () => {
     await done();
   });
 
+  it("says which files aren't published yet, and keeps them in Proof once moved", async () => {
+    const { storage, site, root, done } = await setUp();
+
+    await site.writeFile("public/images/draft.svg", '<svg xmlns="http://www.w3.org/2000/svg" width="3" height="3"/>', { origin: "user", mode: "content" });
+    const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true });
+
+    expect(plan.unpublished).toBe(1);
+    await storage.move(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true });
+    const pending = (await site.changes()).storeUploads ?? [];
+
+    expect(pending.map((item) => item.key)).toEqual(["lowfield/draft.svg"]);
+    await done();
+  });
+
   it("runs one move at a time for a site", async () => {
     const { storage, site, done } = await setUp();
     const both = await Promise.allSettled([storage.startMove(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true }), storage.startMove(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true })]);

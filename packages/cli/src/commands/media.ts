@@ -289,6 +289,7 @@ async function move(io: DeployIo, storage: MediaStorageService, site: Parameters
     else {
       io.err(`${plan.files} ${plan.files === 1 ? "file" : "files"} to copy${plan.done ? ` (${plan.done} already there)` : ""}; ${places} to update.`);
       if (plan.to === "bucket") io.err(plan.keepCopies ? "The repository keeps its copies." : "Then the repository's copies are removed (they leave the site when you publish).");
+      if (plan.unpublished) io.err(`${plan.unpublished} of them aren't published yet: once copied, they are public at their addresses.`);
       if (plan.staying) io.err(`${plan.staying.files} stay where they are: ${plan.staying.reason}`);
     }
     for (const problem of plan.problems) io.err(`  ! ${problem.path}: ${problem.reason}`);

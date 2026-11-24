@@ -32,7 +32,7 @@ export interface MoveContext {
   site: SiteService;
   stores: MediaStore[];
   /** Records a file now kept in a store (the site's media record). */
-  recordStored(item: { location: MediaStoreLocation; key: string; url: string; name: string; size: number; type: string; width?: number; height?: number; source?: string }): Promise<void>;
+  recordStored(item: { location: MediaStoreLocation; key: string; url: string; name: string; size: number; type: string; width?: number; height?: number; source?: string; draft?: boolean }): Promise<void>;
   /** All files the site's record knows in a store. */
   storedItems(location: MediaStoreLocation): Promise<Array<{ key: string; url: string; name: string; size: number | null; source?: string }>>;
   /** Saves a new public address for the bucket. */
@@ -61,6 +61,8 @@ interface Move {
   newUrl: string;
   size: number;
   name: string;
+  /** Not published yet (new or changed in the working copy). */
+  draft?: boolean;
 }
 
 const decodeSafe = (url: string) => {
@@ -241,7 +243,7 @@ async function prepare(context: MoveContext, request: Extract<MediaMoveRequest, 
       }
       const key = store.keyFor(relative);
 
-      moves.push({ from: item.path, oldUrl: item.url, to: key, newUrl: store.urlOf(key), size: item.size, name: item.name });
+      moves.push({ from: item.path, oldUrl: item.url, to: key, newUrl: store.urlOf(key), size: item.size, name: item.name, draft: item.status !== "clean" });
     }
     if (refused) staying = { files: refused, reason: `${reason} Those stay in the repository.` };
   } else {
@@ -306,6 +308,7 @@ export async function planMove(context: MoveContext, request: MediaMoveRequest):
     to: request.to,
     files: moves.length,
     bytes: moves.reduce((sum, move) => sum + move.size, 0),
+    ...(request.from === "repository" && moves.some((move) => move.draft) ? { unpublished: moves.filter((move) => move.draft).length } : {}),
     references: count,
     pages: pages.size,
     done,
@@ -377,7 +380,7 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
             move.newUrl = stored.url;
             copied += 1;
           }
-          await context.recordStored({ location: store.location, key: move.to, url: move.newUrl, name: move.name, size: bytes.byteLength, type: checked.type, source: move.from, ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}) });
+          await context.recordStored({ location: store.location, key: move.to, url: move.newUrl, name: move.name, size: bytes.byteLength, type: checked.type, source: move.from, draft: Boolean(move.draft), ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}) });
           copiedMoves.push(move);
           continue;
         }
@@ -399,7 +402,7 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
             skipped += 1;
           }
         }
-        await context.recordStored({ location: store.location, key: move.to, url: move.newUrl, name: move.name, size: bytes.byteLength, type: checked.type, source: move.from, ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}) });
+        await context.recordStored({ location: store.location, key: move.to, url: move.newUrl, name: move.name, size: bytes.byteLength, type: checked.type, source: move.from, draft: Boolean(move.draft), ...(checked.width && checked.height ? { width: checked.width, height: checked.height } : {}) });
       } else {
         const store = storeOf(context, request.from);
         const bytes = await store.get(move.from);
