@@ -281,10 +281,15 @@ const RESOURCE_WORDS: Record<string, string> = {
   certificate: "A certificate",
   "dns-record": "A name at your domain’s provider",
   tunnel: "The tunnel",
+  network: "A network of its own",
+  subnet: "Its subnet",
+  "firewall-rule": "A firewall rule",
+  address: "A fixed address",
+  disk: "The disk",
 };
 
-/** The built-in hosts make their DNS names on Cloudflare (Fly.io through the Cloudflare key, Cloudflare on itself). */
-const DNS_ON_CLOUDFLARE = new Set(["fly", "cloudflare"]);
+/** The built-in hosts make their DNS names on Cloudflare (Fly.io and Google Cloud through the Cloudflare key, Cloudflare on itself). */
+const DNS_ON_CLOUDFLARE = new Set(["fly", "gcp", "cloudflare"]);
 
 /** Where a resource lives: the host, or Cloudflare for a built-in host's DNS names. Null when nothing says (a plugin host's DNS name). */
 export function resourcePlace(resource: Pick<HostedResource, "kind">, host: { id: string; name: string }): string | null {

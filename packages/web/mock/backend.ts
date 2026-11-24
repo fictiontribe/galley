@@ -119,6 +119,7 @@ export class MockBackend {
     cloudflare: { name: "cloudflare", configured: false, source: null },
     vercel: { name: "vercel", configured: false, source: null },
     fly: { name: "fly", configured: false, source: null },
+    gcp: { name: "gcp", configured: false, source: null },
   };
   settings: Omit<Settings, "secrets">;
   /** Image providers the enabled plugins add (OpenRouter); set by the plugin handlers (plugins.ts). */

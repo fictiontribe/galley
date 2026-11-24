@@ -1404,7 +1404,7 @@ export interface ModelInfo {
   outputPrice: number;
 }
 
-export type SecretName = "anthropic" | "openai" | "google" | "cloudflare" | "vercel" | "fly";
+export type SecretName = "anthropic" | "openai" | "google" | "cloudflare" | "vercel" | "fly" | "gcp";
 
 export interface SecretStatus {
   name: SecretName;

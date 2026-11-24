@@ -22,7 +22,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { SECRET_NAMES } from "../api";
 import { VERSION } from "../brand";
-import { SECRET_ENV } from "../ai/secrets";
+import { secretHint, SECRET_ENV } from "../ai/secrets";
 import { git } from "../workspace/git";
 import { createJobTracker, type JobHandle } from "../site/jobs";
 import type { EventBus, GalleyConfig, Job, SecretName, SecretStatus, SettingsService, SiteService } from "../types";
@@ -31,6 +31,7 @@ import { editorNameProblem, defaultEditorName, resolveAddresses } from "./addres
 import { checkCloudflareKey, CLOUDFLARE_API } from "./cloudflare-api";
 import { HostingError, scrubHostingError, scrubText } from "./errors";
 import { checkFlyKey, FLY_API } from "./fly";
+import { checkGcpKey, GCP_APIS } from "./gcp-api";
 import { handover as sendHandover, healthz, readyz, type InstallTarget } from "./install-client";
 import { defaultImage, installEnvironment } from "./recipe";
 import { deleteRecord, forgetSetupCode, readRecord, readSetupCode, writeRecord, writeSetupCode } from "./record";
@@ -58,7 +59,7 @@ import type {
 } from "./types";
 
 export const PLAN_TTL_MS = 15 * 60_000;
-const DEFAULT_APIS: Record<string, string> = { fly: FLY_API, cloudflare: CLOUDFLARE_API };
+const DEFAULT_APIS: Record<string, string> = { fly: FLY_API, cloudflare: CLOUDFLARE_API, ...GCP_APIS };
 
 export interface HostingServiceOptions {
   /** Galley home: records live in `<home>/state/<siteId>/`. */
@@ -132,6 +133,7 @@ const KEY_LABEL: Record<SecretName, string> = {
   cloudflare: "the Cloudflare key",
   vercel: "the Vercel key",
   fly: "the Fly.io key",
+  gcp: "the Google Cloud key file",
 };
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
@@ -225,7 +227,7 @@ export function createHostingService(options: HostingServiceOptions): HostingSer
     const value = await readKey(name);
     const fromEnv = SECRET_ENV[name]?.some((variable) => Boolean(env[variable]?.trim())) ?? false;
 
-    return value ? { name, configured: true, source: fromEnv ? "env" : "stored", hint: value.slice(-4) } : { name, configured: false, source: null };
+    return value ? { name, configured: true, source: fromEnv ? "env" : "stored", hint: secretHint(name, value) } : { name, configured: false, source: null };
   }
 
   async function requireKeys(host: EditorHost): Promise<void> {
@@ -242,6 +244,7 @@ export function createHostingService(options: HostingServiceOptions): HostingSer
 
     // The built-in keys are checked by what they are, whichever host asks; a plugin's host checks its own.
     if (name === "fly") await checkFlyKey(ctx, key);
+    else if (name === "gcp") await checkGcpKey(ctx, key);
     else if (name === "cloudflare") await checkCloudflareKey(ctx, key);
     else await host.inspect(ctx);
   }
@@ -341,7 +344,7 @@ export function createHostingService(options: HostingServiceOptions): HostingSer
         continue;
       }
       record.keys.push(name);
-      lines.push({ label: `Key: ${KEY_LABEL[name]}`, value: `…${value.slice(-4)}`, secret: true });
+      lines.push({ label: `Key: ${KEY_LABEL[name]}`, value: `…${secretHint(name, value)}`, secret: true });
     }
     return { record, lines, steps, problems };
   }
@@ -735,7 +738,7 @@ export function createHostingService(options: HostingServiceOptions): HostingSer
     async removal(site) {
       const record = await needRecord(site);
       const host = hostFor(record.host);
-      const part = await withHost(host, (ctx) => host.removal(ctx, record));
+      const { kept: hostKept, ...part } = await withHost(host, (ctx) => host.removal(ctx, record));
       const model = await site.model();
       const live = model.urls?.production || model.deploy?.productionUrl;
 
@@ -745,6 +748,7 @@ export function createHostingService(options: HostingServiceOptions): HostingSer
           "The site, its repository and every version published from it",
           live ? `The live site at ${live}` : "The live site",
           ...(host.info.kind === "self-run" ? ["The editor on your computer and its disk: stop it there with “docker compose down” (add -v to delete its disk too)"] : []),
+          ...(hostKept ?? []),
         ],
         warning: "Changes made on the hosted editor that were never published are deleted with it. Publish them first, or download a backup from its Install page.",
       };

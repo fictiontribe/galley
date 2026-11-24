@@ -904,4 +904,4 @@ export const OVERLAY_SCRIPT_PATH = "/__galley/overlay.js";
 export const PROXY_HEALTH_PATH = "/__galley/health";
 
 /** Secret names accepted by PUT /api/secrets/:name. */
-export const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly"];
+export const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly", "gcp"];
