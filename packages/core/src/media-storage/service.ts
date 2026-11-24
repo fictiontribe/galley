@@ -309,8 +309,19 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       listProblems.set(site.id, problems);
       const locations = new Set(stores.map((store) => store.location));
       const kept = (await library.all(site.id)).filter((item) => locations.has(item.location));
+      // Whether any page uses each stored file, for the library's "not used yet" filter.
+      const [working, published] = kept.length ? await Promise.all([usedKeys(site, stores, "working"), usedKeys(site, stores, "base")]) : [new Set<string>(), new Set<string>()];
 
-      return [...repository, ...kept.sort((a, b) => b.uploadedAt - a.uploadedAt).map(itemOf)];
+      return [
+        ...repository,
+        ...kept
+          .sort((a, b) => b.uploadedAt - a.uploadedAt)
+          .map((item) => {
+            const path = storePath(item.location, item.key);
+
+            return { ...itemOf(item), used: working.has(path) || published.has(path) };
+          }),
+      ];
     },
 
     problems: (siteId) => listProblems.get(siteId) ?? {},

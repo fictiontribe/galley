@@ -130,3 +130,12 @@
   .proof-head { padding-inline: var(--space-4); }
 }
 .publish-author { margin: 0; }
+
+/* "In the bucket": uploads since the last publish, outside any commit. */
+.proof-uploads { display: grid; gap: var(--space-2); margin-block-end: var(--space-4); }
+.proof-uploads__title { margin: 0; font-size: var(--text-md); font-weight: var(--weight-semibold); }
+.proof-uploads__lede { margin: 0; font-size: var(--text-sm); color: var(--ink-secondary); line-height: var(--leading-body); }
+.proof-uploads__list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-1-5); }
+.proof-uploads__item { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; font-size: var(--text-sm); }
+.proof-uploads__item img, .proof-uploads__file { inline-size: 48px; block-size: 36px; object-fit: cover; border-radius: var(--radius-sm); border: var(--border-hair) solid var(--border-subtle); background: var(--surface-sunken); display: grid; place-items: center; font-size: var(--text-2xs); }
+.proof-uploads__name { font-weight: var(--weight-semibold); min-inline-size: 0; overflow-wrap: anywhere; }

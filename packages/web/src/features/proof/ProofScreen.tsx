@@ -12,6 +12,7 @@ import { ChangeList } from "./ChangeList";
 import { groupChanges, orderedPaths } from "./changes";
 import { useChangeName, useCollections } from "./useNames";
 import { ValidationSummary } from "./ValidationSummary";
+import { StoreUploads } from "./StoreUploads";
 import "./proof.css";
 import { useMay } from "@/lib/may";
 
@@ -116,14 +117,15 @@ export function ProofScreen() {
     }
     return <LoadingProof />;
   }
-  if (changes.files.length === 0) return <NothingWaiting siteId={siteId} />;
+  const uploads = changes.storeUploads ?? [];
+  if (changes.files.length === 0 && uploads.length === 0) return <NothingWaiting siteId={siteId} />;
 
   return (
     <div className="proof">
       <header className="proof-head">
         <div>
           <p className="g-eyebrow">Proof</p>
-          <h1 className="g-title proof-head__title">{`${count(total, "change")} waiting to be published`}</h1>
+          <h1 className="g-title proof-head__title">{total > 0 ? `${count(total, "change")} waiting to be published` : "Nothing waiting to be published"}</h1>
           <p className="proof-head__lede">{mayPublish ? "Check each one. Nothing goes live until you publish." : "Check each one. Nothing goes live until an editor or owner publishes."}</p>
         </div>
         <div className="proof-head__actions">
@@ -134,6 +136,7 @@ export function ProofScreen() {
         </div>
       </header>
       <ValidationSummary siteId={siteId} changes={changes} titles={titles} />
+      {uploads.length ? <StoreUploads siteId={siteId} items={uploads} /> : null}
       <div className="proof-brand">
         <BrandCheckNotes siteId={siteId} />
       </div>

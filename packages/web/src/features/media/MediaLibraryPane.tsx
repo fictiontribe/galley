@@ -8,6 +8,8 @@ import { MediaGrid } from "./MediaGrid";
 import { filterMedia, sortMedia, type MediaKind } from "./mediaPaths";
 import { UploadList, useFileDrop } from "./UploadList";
 import { useUploads } from "./useUploads";
+import { isStored, placeWords } from "./storage/useMediaStorage";
+import { notify } from "@/lib/stores/toasts";
 
 export interface MediaLibraryPaneProps {
   siteId: string;
@@ -19,21 +21,29 @@ export interface MediaLibraryPaneProps {
   onGenerate?: () => void;
   /** Extra controls beside search (the type filter on the Media screen). */
   toolbar?: ReactNode;
+  /** Only files kept in the bucket or Cloudflare Images that no page uses. */
+  unusedOnly?: boolean;
   className?: string;
 }
 
 /** Search, upload (button, drop, paste) and the grid — shared by the Media screen and the picker. */
-export function MediaLibraryPane({ siteId, kind, selected, onSelect, onActivate, onGenerate, toolbar, className }: MediaLibraryPaneProps) {
+export function MediaLibraryPane({ siteId, kind, selected, onSelect, onActivate, onGenerate, toolbar, unusedOnly, className }: MediaLibraryPaneProps) {
   const media = useQuery(keys.media(siteId), () => api("GET /api/sites/:siteId/media", { params: { siteId } }));
   const [query, setQuery] = useState("");
   const { tasks, upload, dismiss } = useUploads(siteId);
   const fileInput = useRef<HTMLInputElement>(null);
-  const items = useMemo(() => filterMedia(sortMedia(media.data?.items ?? []), query, kind), [media.data, query, kind]);
+  const items = useMemo(() => filterMedia(sortMedia(media.data?.items ?? []), query, kind).filter((item) => !unusedOnly || (isStored(item) && item.used === false)), [media.data, query, kind, unusedOnly]);
+  const problems = Object.values(media.data?.storeProblems ?? {});
 
   const add = async (files: File[]) => {
     const saved = await upload(files);
     const last = saved[saved.length - 1];
     if (last) onSelect(last);
+    // Say plainly where each file went once any went outside the repository, or not where it would have.
+    if (saved.some((item) => isStored(item) || item.placement)) {
+      const lines = saved.map((item) => item.placement ?? `${item.name} is in ${placeWords(item)}.`);
+      notify({ tone: "neutral", title: saved.length === 1 ? `${saved[0]!.name} uploaded` : `${saved.length} files uploaded`, body: lines.join(" ") });
+    }
   };
   const { over, handlers } = useFileDrop((files) => void add(files));
   const total = media.data?.items.length ?? 0;
@@ -69,6 +79,8 @@ export function MediaLibraryPane({ siteId, kind, selected, onSelect, onActivate,
         }
       />
     );
+  } else if (items.length === 0 && unusedOnly) {
+    body = <EmptyState compact title="Every file in the bucket is used on a page." body="Files no page uses show here, so they can be removed." />;
   } else if (items.length === 0) {
     body = <EmptyState compact title={query ? `Nothing in media matches “${query}”.` : "Nothing of this kind in media."} body="Try a shorter word, or show everything." actions={<Button variant="secondary" onClick={() => setQuery("")}>Clear search</Button>} />;
   } else {
@@ -103,6 +115,11 @@ export function MediaLibraryPane({ siteId, kind, selected, onSelect, onActivate,
         </Button>
       </div>
       <UploadList tasks={tasks} onDismiss={dismiss} />
+      {problems.length ? (
+        <p className="media-storage__note" role="status">
+          <Icon name="warning" /> {problems.join(" ")}
+        </p>
+      ) : null}
       <div className="app-library__body">{body}</div>
       {over ? (
         <div className="app-library__drop" aria-hidden="true">
