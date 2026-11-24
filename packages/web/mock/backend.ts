@@ -361,11 +361,11 @@ export function createHandlers(mock: MockBackend): Handlers {
     ...accountsHandlers(),
     ...hostingHandlers(mock),
     ...themes.handlers,
-    "GET /api/meta": async ({ search }) => {
+    "GET /api/meta": ({ search }) => {
       if (search.get("token")) mock.authenticated = true;
       const meta: MetaInfo = { version: VERSION, brand: DEFAULT_BRAND, mode: mock.options.mode, authenticated: mock.authenticated, desktop: false, platform: process.platform };
       // The default theme, as the real server adds it (colours and switches only).
-      const look = await themes.look().catch(() => null);
+      const look = themes.current();
       if (look) meta.look = look;
       return meta;
     },
@@ -394,7 +394,10 @@ export function createHandlers(mock: MockBackend): Handlers {
       }
       if (body.author) s.author = { ...s.author, ...body.author };
       if (body.appearance) s.appearance = { ...s.appearance, ...body.appearance };
-      if (body.appearance?.look !== undefined && body.appearance.look !== lookBefore) mock.emit({ type: "themes.updated" });
+      if (body.appearance?.look !== undefined && body.appearance.look !== lookBefore) {
+        await themes.refresh();
+        mock.emit({ type: "themes.updated" });
+      }
       return mock.fullSettings();
     },
     "PUT /api/secrets/:name": ({ params, body }) => {

@@ -174,13 +174,14 @@ the brand never fight over the same properties.
 
 `packages/web/public/theme.js` runs before the app's styles paint, on every
 screen the app opens on (sign-in, first run and one-time links included). It
-applies the appearance from `galley.ui` and the theme from this browser's copy
-of the last theme shown (`galley.look`), or from the install's default, which
-the server puts in front of the script it serves at `/theme.js`
-(`self.galleyStart = { keeper, look }`). In local mode and the desktop app
-the default is the person's choice, so it wins; on a hosted install it applies
-until the person has chosen. Only colours that are exactly `#RRGGBB` and
-switches from their lists are applied; anything else is ignored.
+applies the appearance from `galley.ui`, and the theme: the install's default,
+which the server puts in front of the script it serves at `/theme.js`
+(`self.galleyStart = { keeper, look }`), or, on a hosted editor where the
+person has chosen their own, this browser's copy of it (`galley.look`). In
+local mode and the desktop app the default is the person's choice, so it
+always wins. Nothing is stored for someone who hasn't chosen. Only colours
+that are exactly `#RRGGBB` and switches from their lists are applied; anything
+else is ignored.
 
 The default also goes out on `GET /api/meta` (`look`), to anyone: colours and
 switches only, never a name, description or author.

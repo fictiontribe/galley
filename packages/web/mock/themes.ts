@@ -22,8 +22,16 @@ export function loadThemesEngine(): Promise<ThemesEngine> {
 
 export interface MockThemes {
   handlers: Pick<Handlers, ThemeRouteKey>;
-  /** The install's default theme as it is put on the page (for /api/meta and /theme.js). */
+  /** The install's default theme as it is put on the page (for /theme.js), worked out now. */
   look(): Promise<AppliedTheme | null>;
+  /**
+   * The same, as last worked out: /api/meta answers at once (callers such as
+   * the demo wrap it without waiting), so it reads this, kept current after
+   * every change to the themes or the default.
+   */
+  current(): AppliedTheme | null;
+  /** The default changed (settings): work it out again. */
+  refresh(): Promise<void>;
   /** Refuses a default that isn't one of the install's themes. */
   checkLook(look: string | undefined): Promise<void>;
   saved: Map<string, ThemeFile>;
@@ -32,13 +40,21 @@ export interface MockThemes {
 export function createMockThemes(mock: MockBackend, engine: () => Promise<ThemesEngine>, plugins: () => PluginTheme[] = () => []): MockThemes {
   const saved = new Map<string, ThemeFile>();
   const sources = (): ThemeSources => ({ saved: [...saved.values()], plugins: plugins() });
+  let cached: AppliedTheme | null = null;
+  const look = async () => {
+    const themes = await engine();
+    return themes.checkTheme(themes.defaultTheme(mock.settings.appearance.look, sources()).theme).applied;
+  };
+  const refresh = async () => {
+    cached = await look().catch(() => cached);
+  };
+  void refresh();
 
   return {
     saved,
-    async look() {
-      const themes = await engine();
-      return themes.checkTheme(themes.defaultTheme(mock.settings.appearance.look, sources()).theme).applied;
-    },
+    look,
+    current: () => cached,
+    refresh,
     async checkLook(look) {
       if (look === undefined) return;
       const themes = await engine();
@@ -56,11 +72,13 @@ export function createMockThemes(mock: MockBackend, engine: () => Promise<Themes
         if (check.theme.id !== params.themeId) throw new MockError("invalid", "The theme’s id doesn’t match where it was saved.");
         if (themes.isBuiltinTheme(check.theme.id)) throw new MockError("conflict", `“${check.theme.name}” has the id of a theme that comes with the app. Give it another name.`);
         saved.set(check.theme.id, check.theme);
+        await refresh();
         mock.emit({ type: "themes.updated" });
         return { theme: check.theme, adjusted: check.adjusted, warnings: check.warnings };
       },
-      "DELETE /api/themes/:themeId": ({ params }) => {
+      "DELETE /api/themes/:themeId": async ({ params }) => {
         if (!saved.delete(params.themeId)) throw new MockError("not-found", "That theme isn’t saved here.");
+        await refresh();
         mock.emit({ type: "themes.updated" });
         return { ok: true };
       },

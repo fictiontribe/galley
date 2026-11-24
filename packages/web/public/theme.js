@@ -4,12 +4,11 @@
 // page).
 //
 // The appearance comes from the copy the app keeps in localStorage
-// ("galley.ui"; see src/lib/theme.ts). The theme comes from this browser's
-// copy of the last theme shown ("galley.look"; src/lib/themes/apply.ts) or,
-// when the server put it in front of this script (galleyStart), the
-// install's default: in local mode and the desktop app the default is the
-// person's choice, so it wins; on a hosted install it applies until this
-// browser's person has chosen their own.
+// ("galley.ui"; see src/lib/theme.ts). The theme is the install's default,
+// which the server puts in front of this script (galleyStart): in local mode
+// and the desktop app that is the person's choice, so it wins; on a hosted
+// install it applies until this browser's person has chosen their own, kept
+// in "galley.look" (src/lib/themes/apply.ts).
 //
 // Nothing read here reaches the page unless it is exactly what a theme may
 // hold: colours written #RRGGBB, switches from their fixed lists.

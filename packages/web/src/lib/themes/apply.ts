@@ -22,10 +22,21 @@ export function putLookOnPage(look: AppliedTheme | null, shown: ThemeMode, root:
   }
 }
 
-/** Keep this browser's copy for the next start (never an edit in progress). */
+/**
+ * Keep this browser's copy for the next start (never an edit in progress).
+ * Only a person's own choice is kept: the install's default comes in front of
+ * the start-up script from the server (themes-routes.ts), so nothing is
+ * written for someone who hasn't chosen (the sign-in and first-run screens
+ * store nothing).
+ */
 export function rememberLook(look: AppliedTheme | null, chosen: boolean): void {
   try {
-    localStorage.setItem(LOOK_COPY_KEY, JSON.stringify({ chosen, look }));
+    if (!chosen || !look) {
+      if (localStorage.getItem(LOOK_COPY_KEY) !== null) localStorage.removeItem(LOOK_COPY_KEY);
+      return;
+    }
+    const text = JSON.stringify({ chosen, look });
+    if (localStorage.getItem(LOOK_COPY_KEY) !== text) localStorage.setItem(LOOK_COPY_KEY, text);
   } catch {
     // Storage full or off: the next start shows the default, then this theme.
   }
