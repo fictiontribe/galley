@@ -7,12 +7,12 @@
  * its schema changing together under it leave a store that a plain restart
  * would serve forever.
  */
-import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { astroAdapter } from "../../src/adapters/index";
-import { forgetPreviewSaves } from "../../src/workspace/index";
+import { forgetPreviewSaves, HELD_DETAIL } from "../../src/workspace/index";
 import { cleanupAll, disposeAll, openSite, sh, tempDir, until, writeTree } from "./helpers";
 
 const SLOW = { timeout: 180_000 };
@@ -96,6 +96,68 @@ function astroSite() {
   };
 }
 
+/**
+ * A site whose install is a stand-in as well: `npm install` runs the site's
+ * own preinstall script, which makes node_modules straight away (as a real
+ * install does long before it is done), notes that it ran, and waits to be
+ * let through. Nothing is
+ * fetched: the site has no dependencies.
+ */
+function siteWithInstall() {
+  const root = tempDir("site-install-");
+  const gate = tempDir("site-install-gate-");
+  const log = join(gate, "installs.log");
+
+  writeTree(root, {
+    "package.json": JSON.stringify({ name: "harbour-notes", private: true, type: "module", scripts: { preinstall: "node install.mjs" } }),
+    "install.mjs": `import { appendFileSync, existsSync, mkdirSync } from "node:fs";
+mkdirSync("node_modules", { recursive: true });
+appendFileSync(${JSON.stringify(log)}, "install\\n");
+while (!existsSync(${JSON.stringify(join(gate, "go"))})) await new Promise((resolve) => setTimeout(resolve, 40));
+`,
+    "galley.config.json": JSON.stringify({ dev: { command: "node server.mjs" } }),
+    "server.mjs": DEV_SERVER,
+    [SCHEMA]: JSON.stringify({ fields: ["title"] }),
+    [PAGE]: "---\ntitle: Home\n---\nHello\n",
+    ".gitignore": ".astro\nnode_modules\nstarts.log\npackage-lock.json\n",
+  });
+  sh(root, "init", "-q", "-b", "main");
+  sh(root, "add", "-A");
+  sh(root, "commit", "-q", "-m", "First");
+  const bare = tempDir("site-install-bare-");
+
+  sh(bare, "init", "-q", "--bare", "-b", "main");
+  sh(root, "remote", "add", "origin", bare);
+  sh(root, "push", "-q", "-u", "origin", "main");
+  const other = tempDir("site-install-other-");
+
+  sh(other, "clone", "-q", bare, ".");
+  return {
+    root,
+    elsewhere(changes: Record<string, string>, message: string) {
+      writeTree(other, changes);
+      sh(other, "add", "-A");
+      sh(other, "commit", "-q", "-m", message);
+      sh(other, "push", "-q", "origin", "main");
+    },
+    installs: () => (existsSync(log) ? readFileSync(log, "utf8").trim().split("\n").length : 0),
+    /** Lets installs through from now on, or makes them wait again. */
+    letThrough: (open = true) => (open ? writeFileSync(join(gate, "go"), "") : rmSync(join(gate, "go"), { force: true })),
+    starts: () => (existsSync(join(root, "starts.log")) ? readFileSync(join(root, "starts.log"), "utf8").trim().split("\n").length : 0),
+  };
+}
+
+/** Holds a bring-in open once its files have changed: git runs the site's own after-merge hook, and this one waits to be let through. */
+function holdBringIn(root: string) {
+  const gate = tempDir("site-bring-in-gate-");
+
+  writeFileSync(join(root, ".git", "hooks", "post-merge"), `#!/bin/sh\n: > '${gate}/reached'\nwhile [ ! -e '${gate}/go' ]; do sleep 0.05; done\n`, { mode: 0o755 });
+  return { reached: () => existsSync(join(gate, "reached")), letThrough: () => writeFileSync(join(gate, "go"), "") };
+}
+
+// The stand-ins for a slow install and a slow bring-in are shell and npm scripts.
+const posix = process.platform !== "win32";
+
 function shown(url: string): Promise<Record<string, string>> {
   return new Promise((resolve, reject) => {
     http
@@ -166,7 +228,7 @@ describe("the preview follows newer versions", SLOW, () => {
     const mine = site.store();
 
     site.elsewhere({ [PAGE]: "---\ntitle: Theirs\n---\nHello\n" }, "Their title");
-    await expect(open.pull()).rejects.toMatchObject({ code: "git", message: expect.stringContaining("index.md") });
+    await expect(open.pull()).rejects.toMatchObject({ code: "conflict", message: expect.stringContaining("index.md") });
     expect(await open.catchUp()).toMatchObject({ brought: 0, status: { inTheWay: { kind: "changes" } } });
     expect(preview.status().state).toBe("ready");
     expect(open.previewHandle()?.pid).toBe(pid);
@@ -198,6 +260,93 @@ describe("the preview follows newer versions", SLOW, () => {
 
     await preview.restart();
     expect(site.store()).toBe(saved);
+  });
+});
+
+describe("the preview while newer versions come in", SLOW, () => {
+  it.skipIf(!posix)("an install is left to finish: the round waits for it, Get latest says so, and the versions come in afterwards", async () => {
+    const site = siteWithInstall();
+    const { site: open } = await openSite(site.root);
+    const preview = open.preview();
+    const starting = preview.start();
+
+    await until(() => preview.status().state === "installing" && site.installs() === 1, 60_000);
+    site.elsewhere({ [PAGE]: "---\ntitle: Theirs\n---\nHello\n" }, "Their title");
+    const head = sh(site.root, "rev-parse", "HEAD");
+
+    // The editor's own round: skipped like a save in progress, with nothing touched.
+    expect(await open.catchUp()).toBeNull();
+    // A person: told why, and what to do.
+    const refused = await open.pull().catch((error: unknown) => error);
+
+    expect(refused).toMatchObject({ code: "busy", status: 409, message: expect.stringMatching(/still installing the site's dependencies\. Get the latest versions once it has finished\.$/) });
+    expect(preview.status().state).toBe("installing");
+    expect(sh(site.root, "rev-parse", "HEAD")).toBe(head);
+    expect(readFileSync(join(site.root, PAGE), "utf8")).toContain("title: Home");
+
+    site.letThrough();
+    expect((await starting).state).toBe("ready");
+    expect(site.installs()).toBe(1);
+    expect(site.starts()).toBe(1);
+    // The install got through, so the next round brings the version in and the preview starts again without installing.
+    expect(await open.catchUp()).toMatchObject({ brought: 1, paths: [PAGE] });
+    await until(() => preview.status().state === "ready" && site.starts() === 2, 60_000);
+    expect(site.installs()).toBe(1);
+    expect(await shown(preview.status().url!)).toEqual({ title: "Theirs" });
+  });
+
+  it.skipIf(!posix)("a preview stopped while it was installing installs again at the next start, though the packages folder is there", async () => {
+    const site = siteWithInstall();
+    const { site: open } = await openSite(site.root);
+    const preview = open.preview();
+
+    void preview.start();
+    await until(() => preview.status().state === "installing" && site.installs() === 1, 60_000);
+    expect(existsSync(join(site.root, "node_modules"))).toBe(true);
+    const stopping = preview.stop();
+
+    site.letThrough();
+    await stopping;
+    expect(preview.status().state).toBe("stopped");
+    expect(site.starts()).toBe(0);
+    expect((await preview.start()).state).toBe("ready");
+    expect(site.installs()).toBe(2);
+    // That install got through: a plain restart doesn't install a third time.
+    expect((await preview.restart()).state).toBe("ready");
+    expect(site.installs()).toBe(2);
+  });
+
+  it.skipIf(!posix)("a start asked for while the files are changing waits until they are in, and is the one start that follows", async () => {
+    const site = astroSite();
+    const { site: open, of } = await openSite(site.root);
+    const preview = open.preview();
+
+    expect((await preview.start()).state).toBe("ready");
+    expect(site.starts()).toBe(1);
+    const hold = holdBringIn(site.root);
+
+    site.elsewhere({ [PAGE]: "---\ntitle: Home\nalign: center\n---\nHello\n", [SCHEMA]: JSON.stringify({ fields: ["title", "align"] }) }, "Centre the home page");
+    const pulling = open.pull();
+
+    // The files have changed and the bring-in isn't over: the preview reads "stopped", and a person presses Start.
+    await until(() => hold.reached(), 60_000);
+    expect(preview.status().state).toBe("stopped");
+    const asked = preview.start();
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(site.starts()).toBe(1);
+    expect(preview.status()).toMatchObject({ state: "starting", detail: HELD_DETAIL, url: null });
+    expect(HELD_DETAIL).not.toMatch(/merge|branch|fetch|commit|pull/i);
+
+    hold.letThrough();
+    expect(await pulling).toMatchObject({ behind: 0, lastCommit: { message: "Centre the home page" } });
+    expect((await asked).state).toBe("ready");
+    await until(() => preview.status().state === "ready" && site.starts() === 2, 60_000);
+    // Started on the new versions with nothing kept from the old ones, and only once.
+    expect(await shown(preview.status().url!)).toEqual({ title: "Home", align: "center" });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(site.starts()).toBe(2);
+    expect(of("preview.status").filter((event) => event.status.state === "ready")).toHaveLength(2);
   });
 });
 

@@ -79,6 +79,13 @@ export interface PreviewOptions {
    * saved under older versions (site/service.ts). What it throws is ignored.
    */
   beforeStart?: () => Promise<void> | void;
+  /**
+   * Asked at the very beginning of every start: a promise while the site's
+   * files are changing under it (newer versions coming in, site/service.ts),
+   * else null. The start waits for it before it reads the settings, installs
+   * or runs anything, saying why; stop() still ends a start that is waiting.
+   */
+  holdStart?: () => Promise<void> | null;
 }
 
 /** What the status says after a pause, and while the preview wakes again. */
@@ -87,6 +94,10 @@ export const PAUSE_DETAIL: Record<PreviewPause, string> = {
   limit: "Stopped to make room for another site's preview. It starts again when you come back.",
 };
 export const WAKING_DETAIL = "Waking the preview…";
+/** What the status says while a start waits for newer versions to finish coming in. */
+export const HELD_DETAIL = "Newer versions are coming in. The preview starts as soon as they are in.";
+/** How often a start that is waiting looks whether it was stopped meanwhile. */
+const HELD_POLL_MS = 100;
 
 export interface PreviewControllerHandle extends PreviewController {
   /** Stop everything; identical to stop(), named for symmetry with Workspace. */
@@ -468,6 +479,13 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
 
   async function doStart(myGeneration: number): Promise<PreviewStatus> {
     const stale = () => generation !== myGeneration;
+
+    // Before the settings are read: whether an install is needed is only known once the files are still.
+    for (let held = options.holdStart?.() ?? null; held && !stale(); held = options.holdStart?.() ?? null) {
+      if (status.detail !== HELD_DETAIL) set("starting", { url: null, baselineUrl: null, baselineSource: null, detail: HELD_DETAIL, startedAt: Date.now() });
+      await Promise.race([held.catch(() => undefined), delay(HELD_POLL_MS)]);
+    }
+    if (stale()) return snapshot();
     const settings = options.settings();
     const waking = pausedBy !== null;
 

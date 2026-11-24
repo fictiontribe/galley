@@ -61,6 +61,7 @@ import type {
   ValidationIssue,
 } from "../types";
 import {
+  CHANGED_SINCE_OPENED,
   createPreviewController,
   createWorkspace,
   forgetPreviewSaves,
@@ -169,6 +170,13 @@ const EXTERNAL_COALESCE_MS = 120;
 /** …but never held back longer than this while events keep arriving. */
 const EXTERNAL_MAX_WAIT_MS = 1_000;
 /** Files at the site's top that, when newer versions change them, mean its dependencies must be installed again before the preview runs. */
+/** A file was rewritten between the read an edit was worked out from and its write: the edit is worked out again (see `editing`). */
+class ChangedSinceRead extends Error {
+  constructor(readonly conflict: GalleyError) {
+    super(conflict.message);
+  }
+}
+
 const DEPENDENCY_FILES = new Set(["package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"]);
 /** Text files above this size are not indexed (matches the index's own source limit). */
 const MAX_INDEX_BYTES = 6 * 1024 * 1024;
@@ -479,13 +487,17 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     return buildEntry(model, path, raw, info ?? { mtimeMs: Date.now() }, statusOf(path), context, (id, slug) => live.titleOf(id, slug));
   }
 
-  async function readEntryText(path: string): Promise<string> {
+  async function readEntryBytes(path: string): Promise<Uint8Array> {
     try {
-      return await workspace.readText(path);
+      return await workspace.readBytes(path);
     } catch (error) {
       if (error instanceof GalleyError && error.code === "not-found") throw new GalleyError("not-found", GONE, path);
       throw error;
     }
+  }
+
+  async function readEntryText(path: string): Promise<string> {
+    return Buffer.from(await readEntryBytes(path)).toString("utf8");
   }
 
   /**
@@ -532,6 +544,63 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
   }
 
   const pathLock = createKeyedLock();
+
+  /**
+   * One edit at a time per file, each worked out from the file as it is.
+   *
+   * Three locks sequence everything that changes a site, always taken in
+   * this order and never the other way: the workspace's turn (the code host
+   * and moves between versions), this per-file lock, then the workspace's
+   * save lock. An edit takes the last two; a publish, an undone publish, Get
+   * latest and a hosted editor's round take the first and the last; a
+   * discard and an assistant's undo take the last alone. Nothing that holds
+   * a later one ever asks for an earlier one, so none can wait on another in
+   * a ring.
+   *
+   * The per-file lock keeps two edits to one file from working out their
+   * text from the same read. It can't keep the file still: a discard, newer
+   * versions coming in, an undone publish and an edit made outside the app
+   * all rewrite files without it. So an edit doesn't rely on it for that.
+   * Its write carries the hash of the text it was worked out from
+   * (`writeAsRead`), and the workspace checks that hash under the save lock,
+   * which every one of those takes. When the file is no longer that text,
+   * the edit is worked out again from what is there now, a few times at
+   * most, and is never written blind.
+   */
+  const EDIT_ATTEMPTS = 3;
+
+  function editing<T>(path: string, task: () => Promise<T>): Promise<T> {
+    return pathLock(path, async () => {
+      for (let attempt = 1; ; attempt += 1) {
+        try {
+          return await task();
+        } catch (error) {
+          if (!(error instanceof ChangedSinceRead)) throw error;
+          if (attempt >= EDIT_ATTEMPTS) throw error.conflict;
+        }
+      }
+    });
+  }
+
+  /**
+   * Writes an entry's new text only over the text it was worked out from
+   * (`read`). A caller that said what it had opened is told to reopen when
+   * that isn't what was read: its edit is never worked out again for it,
+   * and never written because the file happens to match again by the time
+   * of the write.
+   */
+  async function writeAsRead(path: string, content: string, read: Uint8Array, options: { origin?: ChangeOrigin; baseHash?: string }): Promise<void> {
+    const readHash = hashContent(read);
+
+    if (options.baseHash && options.baseHash !== readHash) throw new GalleyError("conflict", CHANGED_SINCE_OPENED, path);
+    try {
+      await workspace.writeFile(path, content, { origin: options.origin ?? "user", mode: "content", baseHash: readHash });
+    } catch (error) {
+      if (error instanceof GalleyError && error.code === "conflict") throw new ChangedSinceRead(error);
+      throw error;
+    }
+  }
+
   let preview: PreviewControllerHandle | null = null;
 
   function afterPublish(result: PublishResult): PublishResult {
@@ -573,11 +642,18 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     startedOn = head;
   }
 
-  const previewRunning = () => {
-    const state = preview?.status().state;
+  /**
+   * A preview that is installing is left alone by newer versions. Stopping
+   * it waits for the whole install, and a bring-in would do that waiting
+   * with the save lock held, so every save would wait minutes with it; and
+   * what was installed would be the older versions' packages. The versions
+   * wait for the install instead: a round is skipped, Get latest says so.
+   */
+  const previewInstalling = () => preview?.status().state === "installing";
+  const INSTALLING = "The preview is still installing the site's dependencies. Get the latest versions once it has finished.";
 
-    return state === "ready" || state === "starting" || state === "installing";
-  };
+  /** Set while newer versions are changing the files: a start asked for meanwhile waits for it (the preview's holdStart). */
+  let bringingIn: { done: Promise<void>; finish: () => void } | null = null;
 
   /**
    * Around bringing newer versions in — Get latest and a hosted editor's own
@@ -588,23 +664,40 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
    * plain restart keeps showing the old entry (found with Astro's content
    * store). So the preview stops before any file changes, what it saved is
    * forgotten once something changed, and only then does it start again; if
-   * bringing in fails or changes nothing, it starts again as it was.
+   * bringing in fails or changes nothing, it starts again as it was. A start
+   * a person asks for in between waits until the files are still, and a
+   * preview that is installing is left to finish: the versions wait.
    */
   function aroundBringIn(): AroundBringIn {
     let wasRunning = false;
 
     return {
       async before() {
-        wasRunning = previewRunning();
+        const state = preview?.status().state;
+
+        // Checked here too, under the save lock, for an install that began after pull and catchUp looked.
+        if (state === "installing") throw new GalleyError("busy", INSTALLING);
+        let finish = () => undefined as void;
+        const done = new Promise<void>((resolve) => (finish = resolve));
+
+        // From here until `after`, no start reads the settings, installs or runs anything.
+        bringingIn = { done, finish };
+        wasRunning = state === "ready" || state === "starting";
         // As nobody, like the start below: the preview's status events must not carry the caller's access (or the engine's).
         if (wasRunning && preview) await outsideAnyPerson(() => preview!.stop());
       },
       async after(paths) {
-        if (paths.length > 0) {
-          await forgetSaves();
-          if (paths.some((path) => DEPENDENCY_FILES.has(path))) reinstall = true;
+        try {
+          if (paths.length > 0) {
+            await forgetSaves();
+            if (paths.some((path) => DEPENDENCY_FILES.has(path))) reinstall = true;
+          }
+        } finally {
+          bringingIn?.finish();
+          bringingIn = null;
         }
         // Started as nobody, and not waited for: the dev server can take a while, and its status reaches the app as events.
+        // A start that was waiting for the files is this same start.
         if (wasRunning && preview) void outsideAnyPerson(() => preview!.start()).catch(() => undefined);
       },
     };
@@ -758,8 +851,9 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       const target = requireCollection(path);
 
       if (!Array.isArray(ops)) throw new GalleyError("invalid", "The edit didn't say what to change.");
-      return pathLock(target.path, async () => {
-        const raw = await readEntryText(target.path);
+      return editing(target.path, async () => {
+        const read = await readEntryBytes(target.path);
+        const raw = Buffer.from(read).toString("utf8");
         const format = formatForPath(target.path) ?? target.collection.format;
         const refused: EditRefusal[] = [];
         const kept: Array<{ index: number; op: EditOp }> = [];
@@ -796,11 +890,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
             ),
           };
         }
-        await workspace.writeFile(target.path, result.content, {
-          origin: options.origin ?? "user",
-          mode: "content",
-          ...(options.baseHash ? { baseHash: options.baseHash } : {}),
-        });
+        await writeAsRead(target.path, result.content, read, options);
         const edit: EditResult = { entry: await entryFromText(target.path, result.content), applied: result.applied, refused };
 
         return edit;
@@ -1035,6 +1125,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     },
 
     async pull() {
+      if (previewInstalling()) throw new GalleyError("busy", INSTALLING);
       const result = await workspace.getLatest(aroundBringIn());
 
       // A pull reports its files as external; don't make the caller wait out the coalescing window.
@@ -1044,7 +1135,12 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     },
 
     async catchUp(): Promise<CatchUpResult | null> {
-      const result = await workspace.catchUp(aroundBringIn());
+      // Busy, like a save in progress: the next round tries again.
+      if (previewInstalling()) return null;
+      const result = await workspace.catchUp(aroundBringIn()).catch((error: unknown) => {
+        if (error instanceof GalleyError && error.code === "busy" && error.message === INSTALLING) return null;
+        throw error;
+      });
 
       if (!result) return null;
       if (result.brought > 0) await settleBroughtIn();
@@ -1086,11 +1182,17 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         ...(deps.onPreviewActivity ? { onActivity: deps.onPreviewActivity } : {}),
         ...(deps.addLockfile === false ? { addLockfile: false } : {}),
         beforeStart: beforePreviewStart,
+        holdStart: () => bringingIn?.done ?? null,
         onStatus: (status: PreviewStatus) => {
           // An install that got as far as starting the dev server has done what newer dependencies needed.
+          // One that ended any other way (the preview was stopped meanwhile, or it failed) isn't known to have got through,
+          // and a packages folder it left half-filled would pass for installed: the next start installs again.
           if (status.state === "installing") installing = true;
           else if (installing && status.state === "starting") reinstall = installing = false;
-          else if (status.state !== "starting") installing = false;
+          else if (status.state !== "starting") {
+            if (installing) reinstall = true;
+            installing = false;
+          }
           if (!disposed) deps.events.emit({ type: "preview.status", siteId: deps.id, status });
         },
       }));

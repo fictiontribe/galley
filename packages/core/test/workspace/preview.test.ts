@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { OVERLAY_SCRIPT_PATH, PROXY_HEALTH_PATH } from "../../src/api";
 import type { PreviewStatus } from "../../src/types";
 import { createPortPool, parsePortRange, portIsFree } from "../../src/workspace/preview/ports";
-import { isWorkingPage, portArguments } from "../../src/workspace/preview/controller";
+import { HELD_DETAIL, isWorkingPage, portArguments } from "../../src/workspace/preview/controller";
 import {
   createPreviewController,
   detectPid,
@@ -269,6 +269,21 @@ function controllerFor(root: string, settings: Partial<PreviewSettings>, extra: 
 
   controllers.push(controller);
   return { controller, statuses };
+}
+
+/** A controller whose settings reads are counted, with a start that can be held. */
+function createCounter(root: string, onSettings: () => void, holdStart: () => Promise<void> | null) {
+  const controller = createPreviewController({
+    root,
+    settings: () => {
+      onSettings();
+      return { dev: { command: "node site-server.mjs", port: null }, packageManager: null, installed: true, urls: {} };
+    },
+    overlayScript: () => "window.__overlay = true;",
+    holdStart,
+  });
+
+  return { controller };
 }
 
 function listen(handler: http.RequestListener): Promise<number> {
@@ -843,6 +858,50 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
 
       await until(() => !alive(pid), 5000);
     }
+  });
+
+  it("a start that is held reads no settings and runs nothing until it is let go, and stop() ends the wait", async () => {
+    const root = site();
+    let release: () => void = () => undefined;
+    let held: Promise<void> | null = new Promise<void>((resolve) => (release = resolve));
+    let settingsRead = 0;
+    const { controller, statuses } = controllerFor(
+      root,
+      { dev: { command: "node site-server.mjs", port: null } },
+      { holdStart: () => held }
+    );
+    const original = controller.status;
+    const counted = createCounter(root, () => (settingsRead += 1), () => held);
+
+    controllers.push(counted.controller);
+    // Held: it says why, and nothing has been read or run.
+    const starting = counted.controller.start();
+
+    await until(() => counted.controller.status().state === "starting");
+    expect(counted.controller.status()).toMatchObject({ state: "starting", detail: HELD_DETAIL, url: null });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(settingsRead).toBe(0);
+    expect(existsSync(join(root, "started.json"))).toBe(false);
+    // Let go: the settings are read now, and it starts.
+    held = null;
+    release();
+    expect((await starting).state).toBe("ready");
+    expect(settingsRead).toBe(1);
+    await counted.controller.stop();
+
+    // Held again, and stopped while it waits: the stop doesn't wait for whatever holds the start.
+    held = new Promise<void>(() => undefined);
+    const again = controller.start();
+
+    await until(() => original().state === "starting");
+    const before = Date.now();
+
+    await controller.stop();
+    expect(Date.now() - before).toBeLessThan(2000);
+    expect((await again).state).toBe("stopped");
+    expect(statuses.map((status) => status.state)).toEqual(["starting", "stopped"]);
+    expect(statuses[0]?.detail).toBe(HELD_DETAIL);
+    expect(controller.pid).toBeUndefined();
   });
 
   it("a stop() that lands while start is finishing always wins", async () => {
