@@ -3,7 +3,7 @@
  * (Cloudflare R2, Amazon S3, S3-compatible stores) and, for pictures,
  * Cloudflare Images. See docs/media-storage.md.
  */
-export { createMediaStorageService, registerBucketConnector } from "./service";
+export { createMediaStorageService, registerBucketConnector, RAW_LIMIT } from "./service";
 export type { BucketConnector, MediaStorageService, MediaStorageServiceOptions } from "./service";
 export { createBucketStore, keyUnder, BUCKET_CONNECTOR_NAMES, IMMUTABLE } from "./bucket-store";
 export { runCheck, CHECK_LABELS, TEST_PNG } from "./check";

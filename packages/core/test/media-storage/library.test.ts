@@ -150,6 +150,9 @@ describe("a site that keeps its media in a bucket", { timeout: 240_000 }, () => 
     expect(objects.has("other-site/secret.png")).toBe(true);
     expect(fake.buckets.get("elsewhere")!.objects.has("secret.png")).toBe(true);
     expect(Buffer.from((await storage.readStored(site, own.path))!).byteLength).toBeGreaterThan(0);
+    // Larger than the app shows: refused before anything is read.
+    objects.set("lowfield/huge.mp4", { body: Buffer.alloc(26 * 1024 * 1024), contentType: "video/mp4", cacheControl: null, metadata: {}, etag: "h", lastModified: new Date() });
+    await expect(storage.readStored(site, "bucket:lowfield/huge.mp4")).rejects.toThrow(/larger than 25 MB/);
     await done();
   });
 

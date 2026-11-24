@@ -53,6 +53,10 @@ function builtInConnectors(): BucketConnector[] {
   return BUCKET_CONNECTORS.map((info) => ({ info, create: (input) => createBucketStore(input) }));
 }
 
+/** The most the app shows of a stored file through the server: the library's own upload limit. */
+export const RAW_LIMIT = 25 * 1024 * 1024;
+const TOO_LARGE_TO_SHOW = "That file is larger than 25 MB, so the app doesn't show it. Open it at its address instead.";
+
 export interface MediaStorageServiceOptions {
   home: string;
   /** For "does the site have a Cloudflare key" (Make the bucket for me, Cloudflare Images). */
@@ -553,7 +557,14 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       if (!parsed || !store) return null;
       await assertOwnKey(site, store, parsed.key);
       try {
-        return await store.get(parsed.key);
+        const head = await store.head(parsed.key);
+
+        if (!head) return null;
+        if (head.size !== null && head.size > RAW_LIMIT) throw new GalleyError("invalid", TOO_LARGE_TO_SHOW);
+        const bytes = await store.get(parsed.key);
+
+        if (bytes && bytes.byteLength > RAW_LIMIT) throw new GalleyError("invalid", TOO_LARGE_TO_SHOW);
+        return bytes;
       } catch (error) {
         if (error instanceof StoreError) throw new GalleyError(error.transient ? "busy" : "unconfigured", scrub(error.message));
         throw error;

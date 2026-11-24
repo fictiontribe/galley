@@ -52,13 +52,17 @@ export function MediaDetails({ siteId, item, onDelete }: MediaDetailsProps) {
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   };
-  const isImage = kindOf(item) === "image";
   const stored = isStored(item);
+  // The app shows a stored file through the server only up to 25 MB; a larger one opens at its own address.
+  const tooLarge = stored && item.size > 25 * 1024 * 1024;
+  const isImage = kindOf(item) === "image" && !tooLarge;
   return (
     <aside className="app-media-details" aria-label={`Details of ${item.name}`}>
       <div className="app-media-details__preview">
         {isImage ? (
           <img src={rawFileUrl(siteId, item.path)} alt="" />
+        ) : tooLarge ? (
+          <p className="g-hint">Larger than 25 MB, so it isn’t shown here. Open it at its address.</p>
         ) : kindOf(item) === "video" ? (
           <video src={rawFileUrl(siteId, item.path)} controls preload="metadata" playsInline aria-label={item.name} />
         ) : (
@@ -111,7 +115,7 @@ export function MediaDetails({ siteId, item, onDelete }: MediaDetailsProps) {
         </section>
       ) : null}
       <div className="app-media-details__actions">
-        <a className="g-btn g-btn--secondary g-btn--sm" href={rawFileUrl(siteId, item.path)} target="_blank" rel="noreferrer noopener">
+        <a className="g-btn g-btn--secondary g-btn--sm" href={stored ? item.url : rawFileUrl(siteId, item.path)} target="_blank" rel="noreferrer noopener">
           <Icon name="external" />
           Open full size
         </a>
