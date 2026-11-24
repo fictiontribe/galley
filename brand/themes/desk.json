@@ -1,0 +1,27 @@
+{
+  "$schema": "./theme.schema.json",
+  "contract": 1,
+  "id": "desk",
+  "name": "Desk",
+  "description": "Like Plate, on a toned desk instead of the plate: the sidebar a real step darker than the page, the current place a sheet with a pencil edge.",
+  "light": {
+    "paper": "#F6F4F0",
+    "ink": "#1A1712",
+    "pencil": "#2E2BFF",
+    "plate": "#1C1915",
+    "table": "#E3DBCD"
+  },
+  "dark": {
+    "paper": "#16140F",
+    "ink": "#F2ECE1",
+    "pencil": "#2E2BFF",
+    "plate": "#0E0C09",
+    "table": "#2B2620"
+  },
+  "switches": {
+    "sidebar": "desk",
+    "assist": "washed",
+    "icons": "duotone",
+    "depth": "lit"
+  }
+}

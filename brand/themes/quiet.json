@@ -1,0 +1,27 @@
+{
+  "$schema": "./theme.schema.json",
+  "contract": 1,
+  "id": "quiet",
+  "name": "Quiet",
+  "description": "Bond paper and printing ink; the Blue Pencil marks only the action and where you are. Galley's own look.",
+  "light": {
+    "paper": "#F6F4F0",
+    "ink": "#1A1712",
+    "pencil": "#2E2BFF",
+    "plate": "#1C1915",
+    "table": "#E3DBCD"
+  },
+  "dark": {
+    "paper": "#16140F",
+    "ink": "#F2ECE1",
+    "pencil": "#2E2BFF",
+    "plate": "#0E0C09",
+    "table": "#2B2620"
+  },
+  "switches": {
+    "sidebar": "sheet",
+    "assist": "ruled",
+    "icons": "one-tone",
+    "depth": "soft"
+  }
+}

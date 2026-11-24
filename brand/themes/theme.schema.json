@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://galley.fictiontribe.com/schema/theme.schema.json",
+  "title": "Galley theme",
+  "description": "A Galley editing-app theme: five seed colours per mode and four fixed switches. Nothing else — no selectors, no CSS, no sizes. See brand/themes/README.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "id",
+    "name",
+    "light",
+    "switches"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "contract": {
+      "const": 1,
+      "description": "The version of the theme contract this file is written to."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,31}$",
+      "description": "Lower-case name, used in file names and on <html data-look>."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "light": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "paper",
+        "ink",
+        "pencil",
+        "plate",
+        "table"
+      ],
+      "properties": {
+        "paper": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "The ground. Light: OKLCH lightness 0.93–0.995, chroma ≤ 0.035. Dark: lightness 0.14–0.27, chroma ≤ 0.035."
+        },
+        "ink": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Text. Light: lightness ≤ 0.32, chroma ≤ 0.05. Dark: lightness ≥ 0.90, chroma ≤ 0.04."
+        },
+        "pencil": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "The accent: the one action, where you are, focus, the assistant's hand. Any hue and lightness; chroma ≥ 0.06."
+        },
+        "plate": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "The dark material of a plate sidebar and status strip. Lightness ≤ 0.28 (dark mode: ≤ 0.22 and below the paper)."
+        },
+        "table": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "The warm ground under a page being proofed (the preview gutter). Light: lightness 0.80–0.93; dark: 0.24–0.34; chroma ≤ 0.06."
+        }
+      },
+      "description": "Seeds for the light mode."
+    },
+    "dark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "paper",
+        "ink",
+        "pencil",
+        "plate",
+        "table"
+      ],
+      "properties": {
+        "paper": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "The ground. Light: OKLCH lightness 0.93–0.995, chroma ≤ 0.035. Dark: lightness 0.14–0.27, chroma ≤ 0.035."
+        },
+        "ink": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Text. Light: lightness ≤ 0.32, chroma ≤ 0.05. Dark: lightness ≥ 0.90, chroma ≤ 0.04."
+        },
+        "pencil": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "The accent: the one action, where you are, focus, the assistant's hand. Any hue and lightness; chroma ≥ 0.06."
+        },
+        "plate": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "The dark material of a plate sidebar and status strip. Lightness ≤ 0.28 (dark mode: ≤ 0.22 and below the paper)."
+        },
+        "table": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "The warm ground under a page being proofed (the preview gutter). Light: lightness 0.80–0.93; dark: 0.24–0.34; chroma ≤ 0.06."
+        }
+      },
+      "description": "Seeds for the dark mode. Optional: when absent they are derived from the light seeds (README → Dark from light)."
+    },
+    "switches": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sidebar": {
+          "enum": [
+            "sheet",
+            "desk",
+            "plate"
+          ],
+          "default": "sheet",
+          "description": "The sidebar's material: paper with the current page as a sheet; a toned desk; an inked plate (with the status line as a strip of it)."
+        },
+        "assist": {
+          "enum": [
+            "ruled",
+            "washed"
+          ],
+          "default": "ruled",
+          "description": "Where the assistant works: its fields ruled in pencil, or its fields, pane, suggestions and selection washed in pencil."
+        },
+        "icons": {
+          "enum": [
+            "one-tone",
+            "duotone"
+          ],
+          "default": "one-tone",
+          "description": "Icons at rest: one ink, or ink line with a pencil tint (in the sidebar, palette and collection lists)."
+        },
+        "depth": {
+          "enum": [
+            "soft",
+            "lit"
+          ],
+          "default": "soft",
+          "description": "Soft: hairlines and a whisper of shadow. Lit: a crisp edge and a layered fall under sheets, lit and pressed buttons, recessed wells, the top bar as a band, stronger stamps."
+        }
+      }
+    }
+  }
+}
