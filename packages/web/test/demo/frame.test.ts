@@ -1,12 +1,13 @@
 /** How the preview frame finds and redraws the working copy's changes on a built page. */
 import { describe, expect, it } from "vitest";
+import type { JsonValue } from "@galley/core/types";
 import { blockKeyOf, inlineHtml, isImagePath, leafChanges, paragraphsOf, plainText, planFor, sectionsChanged } from "../../demo/frame/changes";
 import { isIdentity, matchSections } from "../../demo/frame/sections";
 
 describe("changes to draw", () => {
   it("lists every value that differs, down to the words", () => {
-    const before = { title: "Home", sections: [{ type: "hero", heading: "A" }, { type: "cta", label: "Go" }] };
-    const after = { title: "Home", sections: [{ type: "hero", heading: "B" }, { type: "cta", label: "Go" }] };
+    const before: JsonValue = { title: "Home", sections: [{ type: "hero", heading: "A" }, { type: "cta", label: "Go" }] };
+    const after: JsonValue = { title: "Home", sections: [{ type: "hero", heading: "B" }, { type: "cta", label: "Go" }] };
     expect(leafChanges(before, after)).toEqual([{ path: ["sections", 0, "heading"], before: "A", after: "B" }]);
     expect(leafChanges(before, before)).toEqual([]);
     expect(leafChanges({ tags: ["a"] }, { tags: ["a", "b"] })).toEqual([{ path: ["tags"], before: ["a"], after: ["a", "b"] }]);
@@ -33,9 +34,9 @@ describe("changes to draw", () => {
 });
 
 describe("sections in a new order", () => {
-  const hero = { type: "hero", heading: "A" };
-  const quote = { type: "quote", quote: "Q" };
-  const cta = { type: "cta", label: "Go" };
+  const hero: { [key: string]: JsonValue } = { type: "hero", heading: "A" };
+  const quote: { [key: string]: JsonValue } = { type: "quote", quote: "Q" };
+  const cta: { [key: string]: JsonValue } = { type: "cta", label: "Go" };
 
   it("leaves a page alone when nothing moved, even after an edit", () => {
     const match = matchSections([hero, quote], [{ ...hero, heading: "B" }, quote]);
