@@ -81,15 +81,16 @@ async function repositoryReferences(site: SiteService, items: MediaItem[]): Prom
   const found = new Map<string, Reference[]>();
 
   if (!site.grepText) return found;
-  const prefixes = new Set(media.roots.map((root) => root.publicPath.replace(/\/+$/, "")));
+  const prefixes = [...new Set(media.roots.map((root) => root.publicPath.replace(/\/+$/, "")))];
+  // One search for all the roots, so an address under two of them ("/" and "/images") is found once.
+  // A root at the top ("/") already covers every other: ERE has no empty alternative.
+  const pattern = prefixes.includes("") ? `/${ADDRESS_TAIL}` : `(${prefixes.map((prefix) => escapePattern(prefix)).join("|")})/${ADDRESS_TAIL}`;
 
-  for (const prefix of prefixes) {
-    for (const hit of await site.grepText(`${escapePattern(prefix)}/${ADDRESS_TAIL}`, { rev: "working" })) {
-      const url = byUrl.get(decodeSafe(trimFound(hit.match).split(/[?#]/)[0] ?? ""));
+  for (const hit of await site.grepText(pattern, { rev: "working" })) {
+    const url = byUrl.get(decodeSafe(trimFound(hit.match).split(/[?#]/)[0] ?? ""));
 
-      if (!url) continue;
-      found.set(url, [...(found.get(url) ?? []), hit]);
-    }
+    if (!url) continue;
+    found.set(url, [...(found.get(url) ?? []), hit]);
   }
   return found;
 }

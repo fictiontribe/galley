@@ -9,6 +9,7 @@ import { UsageError } from "./args";
 import { backupCommand } from "./commands/backup";
 import { deployCommand } from "./commands/deploy";
 import { domainCommand } from "./commands/domain";
+import { mediaCommand } from "./commands/media";
 import { desktopCommand } from "./commands/desktop";
 import { doctorCommand } from "./commands/doctor";
 import { hostCommand } from "./commands/host";
@@ -33,6 +34,7 @@ Usage
   ${PRODUCT.slug} doctor [path]   Check that a site and this computer are ready
   ${PRODUCT.slug} deploy [path]   Put the site online with Cloudflare or Vercel (--preview: unpublished changes)
   ${PRODUCT.slug} domain [path]   Use your own domain for a site that is online
+  ${PRODUCT.slug} media …         Keep the site's media in a bucket (Cloudflare R2, Amazon S3), and move it there and back
   ${PRODUCT.slug} host [path]     Host the editor online for the site, on your own account (Fly.io, Cloudflare, a server)
   ${PRODUCT.slug} new <name>      Start a new site from a starter
   ${PRODUCT.slug} import …        Bring a WordPress site (or another importer's) into a site
@@ -74,6 +76,7 @@ export const COMMANDS: Record<string, Command> = {
   import: importCommand,
   deploy: deployCommand,
   domain: domainCommand,
+  media: mediaCommand,
   host: hostCommand,
   schema: schemaCommand,
   version: versionCommand,
