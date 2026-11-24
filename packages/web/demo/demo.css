@@ -23,7 +23,8 @@ body:has(.demo-band) .app-boot-error { block-size: calc(100vh - var(--demo-band)
   color: var(--ink-secondary);
   font: 500 12.5px/1 var(--font-text);
 }
-.demo-band__what { display: flex; align-items: center; gap: 10px; margin: 0; }
+.demo-band__what { display: flex; align-items: center; gap: 10px; min-inline-size: 0; margin: 0; white-space: nowrap; }
+.demo-band__notice { overflow: hidden; text-overflow: ellipsis; padding-inline-start: 10px; border-inline-start: 1px solid var(--border-default); color: var(--ink-primary); }
 .demo-band__mark {
   padding: 3px 7px 2px;
   border-radius: 4px;

@@ -13,7 +13,9 @@
 import type { BlockType, Field, GalleyConfig, SiteModel } from "@galley/core/types";
 import type { MockBackend, Handlers } from "../mock/backend.ts";
 import { createMockServer, type MockServer } from "../mock/server.ts";
+import { MockError } from "../mock/site.ts";
 import { runDemoTurn } from "./assistant";
+import { CADDOW_BRAND, CADDOW_GUIDE } from "./brand";
 import { DEMO_SITE_ID } from "./fixtures";
 import { snapshotUrl } from "./preview";
 
@@ -93,8 +95,18 @@ function demoHandlers(handlers: Handlers, mock: MockBackend): Handlers {
       if (thread.busy) return handlers["POST /api/sites/:siteId/threads/:threadId/messages"]({ params, body } as Parameters<Handlers["POST /api/sites/:siteId/threads/:threadId/messages"]>[0]);
       return runDemoTurn(mock, site, thread, body);
     },
-    // The mock's brand checks report a sample problem in a file the sample site doesn't have.
+    // The sample site's brand, saved; the mock's own is another (invented) studio's.
+    "GET /api/sites/:siteId/brand": async (request) => {
+      const state = await handlers["GET /api/sites/:siteId/brand"](request);
+      if (state.brand || state.proposal || state.analysis) return state;
+      return { ...state, brand: CADDOW_BRAND, guide: CADDOW_GUIDE, pending: [], imagery: CADDOW_BRAND.imagery?.direction ?? null, digest: `The site's brand (galley/brand).\n\n${CADDOW_GUIDE}` };
+    },
+    "POST /api/sites/:siteId/brand/analyse": () => {
+      throw new MockError("unconfigured", "Reading a brand measures the site running on your own computer, so the demo keeps the brand it already has. On your own site this reads every page.");
+    },
+    // The mock's brand checks report sample problems in files and pages the sample site doesn't have.
     "POST /api/sites/:siteId/brand/check": () => ({ items: [] }),
+    "POST /api/sites/:siteId/brand/drift": () => ({ checkedAt: new Date().toISOString(), pages: ["/", "/atelier/", "/journal/"], unknown: [], unused: [], matching: 14 }),
     "GET /api/sites/:siteId/inbox": async (request) => {
       const answer = await handlers["GET /api/sites/:siteId/inbox"](request);
       const site = mock.sites.get(request.params.siteId);

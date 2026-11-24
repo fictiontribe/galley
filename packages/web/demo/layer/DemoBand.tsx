@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useTour } from "../tour/store";
+import { noticeFor } from "./notices";
+import { useHash } from "./route";
 import { startOver } from "./startOver";
+import { routeOf } from "../tour/facts";
 
 /**
  * The quiet, persistent mark: this is a demo on a sample site and nothing is
@@ -12,11 +15,13 @@ export function DemoBand() {
   const [confirming, setConfirming] = useState(false);
   const tourOpen = useTour((s) => s.open);
   const resume = useTour((s) => s.resume);
+  const notice = noticeFor(routeOf(useHash()).route);
   return (
     <div className="demo-band" role="region" aria-label="About this demo">
       <p className="demo-band__what">
         <span className="demo-band__mark">Demo</span>
         <span>Sample site, nothing is saved</span>
+        {notice ? <span className="demo-band__notice">{notice}</span> : null}
       </p>
       <div className="demo-band__actions">
         {!tourOpen ? (

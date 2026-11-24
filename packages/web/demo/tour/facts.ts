@@ -10,6 +10,7 @@ import type { MockServer } from "../../mock/server.ts";
 import { RECORDED_EDIT } from "../assistant";
 import { HOME_PAGE, type Facts } from "./steps";
 import { useTour } from "./store";
+import { useHash } from "../layer/route";
 
 /** The app's route and query from the hash: "#/sites/caddow/edit?path=…" → route and entry path. */
 export function routeOf(hash: string): { route: string; entryPath: string | null } {
@@ -49,19 +50,8 @@ export function readFacts(server: MockServer, siteId: string, hash: string, page
 export function useFacts(server: MockServer, siteId: string, sampleVersions: number): Facts {
   const pageEdited = useTour((s) => s.pageEdited);
   const markPageEdited = useTour((s) => s.markPageEdited);
-  const [hash, setHash] = useState(() => window.location.hash);
+  const hash = useHash();
   const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    const onHash = () => setHash(window.location.hash);
-    window.addEventListener("hashchange", onHash);
-    // The app's router changes the address with history.pushState, which fires no hashchange.
-    const timer = setInterval(onHash, 300);
-    return () => {
-      window.removeEventListener("hashchange", onHash);
-      clearInterval(timer);
-    };
-  }, []);
 
   useEffect(
     () =>
