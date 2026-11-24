@@ -42,7 +42,7 @@ The preview is the site running on its own dev server. In edit mode, hovering ou
 
 The assistant edits through the same guarded functions the form uses. It reads before it edits, asks one short question when a request is ambiguous, quotes the new text so you can check it without opening the proof, and never says it changed something unless the edit was accepted. In content mode it can only touch content and media; it has no shell and no network access.
 
-Each assistant turn opens a checkpoint. **Undo** on a turn puts back exactly the files that turn changed and leaves your other edits alone.
+Each assistant turn opens a checkpoint. **Undo** on a turn puts back exactly the files that turn changed and leaves your other edits alone. A page that was changed again after the turn — by you or by someone else — is left as it is, and the reply says which: putting the whole page back would take the later change with it.
 
 ## Proof: see it before anyone else does
 

@@ -90,7 +90,7 @@ export const visibilityRoutes: Pick<RouteTable, VisibilityRouteKey> = {
   "POST /api/sites/:siteId/visibility/undo": async (c, ctx) => {
     const site = await siteOf(c, ctx);
 
-    return { restored: await visibilityOf(ctx).undo(site, (await v.body(c, undoFixBody)).undoId) };
+    return visibilityOf(ctx).undo(site, (await v.body(c, undoFixBody)).undoId);
   },
   "GET /api/sites/:siteId/visibility/crawlers": async (c, ctx) => visibilityOf(ctx).crawlers(await siteOf(c, ctx)),
   "PUT /api/sites/:siteId/visibility/crawlers": async (c, ctx) => {

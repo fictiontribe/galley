@@ -108,10 +108,14 @@ export function modeChangeNote(mode: AgentMode): string {
     : "The person switched this conversation to content mode. From here on you can change pages, posts, data files and images only; source files can't be changed.";
 }
 
-export function undoNote(request: string, paths: string[]): string {
+export function undoNote(request: string, paths: string[], left: string[] = []): string {
   const files = paths.length ? ` These files are back to how they were before that turn: ${paths.join(", ")}.` : "";
+  const asked = `The person undid your turn that answered “${request.slice(0, 200)}”.`;
 
-  return `The person undid your turn that answered “${request.slice(0, 200)}”. Everything that turn changed has been rolled back, so those changes no longer exist on the site.${files} Read again before relying on anything from that turn.`;
+  if (left.length === 0) {
+    return `${asked} Everything that turn changed has been rolled back, so those changes no longer exist on the site.${files} Read again before relying on anything from that turn.`;
+  }
+  return `${asked}${files} These files were changed by someone else after your turn changed them, so they were left as they are and may still hold what your turn wrote: ${left.join(", ")}. Don't change them back unless you are asked to. Read again before relying on anything from that turn.`;
 }
 
 export function siteChangedNote(card: string): string {
