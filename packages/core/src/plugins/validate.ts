@@ -4,6 +4,7 @@
  * and by the kit's `checkPlugin` (where the same sentences tell the author
  * what to change). Never throws.
  */
+import { checkTheme } from "../themes/check";
 import { ADAPTER_ID, validateAdapter } from "../adapter/load";
 import { PLUGIN_API_VERSION } from "./define";
 import type { GalleyPlugin, ToolInputProperty } from "./types";
@@ -15,7 +16,7 @@ export const SETTING_KEY = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 export const TOOL_NAME = /^[a-z][a-z0-9_]{1,63}$/;
 export const SECRET_NAME = /^[a-z][a-z0-9_.-]{1,63}$/;
 const ENV_NAME = /^[A-Z_][A-Z0-9_]*$/;
-const CONTRIBUTIONS = ["adapters", "imageProviders", "videoProviders", "formProviders", "scriptIntegrations", "importers", "deployTargets", "editorHosts", "tools", "dataSources", "hooks", "settings", "setup"] as const;
+const CONTRIBUTIONS = ["adapters", "imageProviders", "videoProviders", "formProviders", "scriptIntegrations", "importers", "deployTargets", "editorHosts", "tools", "dataSources", "themes", "hooks", "settings", "setup"] as const;
 const KNOWN_KEYS = new Set<string>(["name", "displayName", "description", "version", "apiVersion", ...CONTRIBUTIONS]);
 const HOOKS = ["beforePublish", "afterPublish", "afterDeploy", "onSubmission"] as const;
 const SCRIPT_CATEGORIES = ["tag-manager", "analytics", "advertising", "marketing", "support", "other"];
@@ -335,6 +336,18 @@ export function validatePlugin(value: unknown, label = "The plugin", options: Va
     if (!nonEmpty(source.label)) problems.push(`${at} needs a label people will read in the picker.`);
     for (const fn of ["search", "get"]) if (typeof source[fn] !== "function") problems.push(`${at}.${fn} should be a function.`);
   });
+  // Themes are data: the app's own check decides (docs/themes.md). Refused is a problem; adjusted is a warning.
+  checkList(plugin, "themes", problems, (theme, at) => {
+    const check = checkTheme(theme);
+
+    if (!check.ok) problems.push(`${at} isn't a theme the app can use: ${check.refused.join(" ")}`);
+    else {
+      const moved = check.adjusted.filter((adjustment) => adjustment.kind !== "tuned" && !(adjustment.mode === "dark" && check.derivedDark));
+
+      if (moved.length) warnings.push(`${at} (${check.theme!.id}) is shown with ${moved.length === 1 ? "a color" : `${moved.length} colors`} adjusted to stay readable; ship the adjusted values: ${moved.map((adjustment) => adjustment.reason).join(" ")}`);
+    }
+  });
+  uniqueIds(plugin, "themes", "id", problems);
   uniqueIds(plugin, "dataSources", "id", problems);
   uniqueIds(plugin, "imageProviders", "id", problems);
   uniqueIds(plugin, "videoProviders", "id", problems);

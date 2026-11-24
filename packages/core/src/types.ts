@@ -2112,6 +2112,8 @@ export interface PluginContributions {
   tools: Array<{ name: string; title: string; mode: "content" | "build"; readOnly: boolean }>;
   /** Labels of the data sources it offers to fields (left out when none). */
   dataSources?: string[];
+  /** Names of the themes it adds to the editing app (left out when none). */
+  themes?: string[];
   hooks: string[];
 }
 
@@ -2142,7 +2144,7 @@ export interface PluginInfo {
 
 /** Two plugins offered the same thing; one was used. */
 export interface PluginConflict {
-  kind: "adapter" | "imageProvider" | "videoProvider" | "formProvider" | "scriptIntegration" | "importer" | "deployTarget" | "editorHost" | "tool" | "dataSource";
+  kind: "adapter" | "imageProvider" | "videoProvider" | "formProvider" | "scriptIntegration" | "importer" | "deployTarget" | "editorHost" | "tool" | "dataSource" | "theme";
   id: string;
   /** The plugin whose contribution is used. */
   used: string;
