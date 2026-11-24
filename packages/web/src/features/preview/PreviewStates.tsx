@@ -3,7 +3,8 @@ import { PreviewActions } from "@/components/PreviewControls";
 import { errorShape } from "@/lib/api";
 import { usePreview } from "@/lib/stores/preview";
 import { notify } from "@/lib/stores/toasts";
-import { EmptyState, ErrorState, Spinner, buttonClass } from "@/ui";
+import type { PageFailure } from "@/features/builder/usePageFailure";
+import { Button, EmptyState, ErrorState, Spinner, buttonClass } from "@/ui";
 import { SettingsLink } from "@/features/accounts/SettingsLink";
 
 function LogTail({ log, open }: { log: string[]; open?: boolean }) {
@@ -83,5 +84,49 @@ export function NoLiveSite({ siteId }: { siteId: string }) {
         }
       />
     </div>
+  );
+}
+
+/**
+ * Over a proposed page that couldn't be drawn: what happened in plain words,
+ * the framework's own line under Technical details, the way back when the
+ * failure began with a change made here, and the site's error page itself
+ * one click away (`onReveal`) for whoever wants the whole of it. Set calmly,
+ * like the preview's other states: the person's work is safe. In Arrange
+ * (`actions` false) the panel beside the page carries the words and the way
+ * back, so this only names what happened.
+ */
+export function PageFailedState({ failure, onReveal, actions = true }: { failure: PageFailure; onReveal: () => void; actions?: boolean }) {
+  return (
+    <EmptyState
+      compact
+      mark="bang"
+      title={failure.words.title}
+      body={actions ? failure.words.body : undefined}
+      actions={
+        <>
+          {actions && (failure.undo || failure.undoing) ? (
+            <Button size="sm" variant="primary" onClick={failure.undo ?? undefined} disabled={failure.undoing}>
+              {failure.undoing ? "Undoing…" : "Undo"}
+            </Button>
+          ) : null}
+          {actions && failure.showForm ? (
+            <Button size="sm" variant="secondary" onClick={failure.showForm}>
+              Show the form
+            </Button>
+          ) : null}
+          <Button size="sm" variant="quiet" onClick={onReveal}>
+            Show the site’s error
+          </Button>
+        </>
+      }
+    >
+      {failure.detail ? (
+        <details className="app-details preview-log">
+          <summary>Technical details</summary>
+          <pre className="app-error__detail">{failure.detail}</pre>
+        </details>
+      ) : null}
+    </EmptyState>
   );
 }

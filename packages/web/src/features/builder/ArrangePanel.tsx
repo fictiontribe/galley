@@ -8,7 +8,8 @@ import { Icon } from "@/ui/Icon";
 import { positionWords } from "./model";
 import { PaletteList } from "./PaletteList";
 import { SectionOptions } from "./SectionOptions";
-import type { ArrangeController } from "./useArrange";
+import type { ArrangeController, Decline } from "./useArrange";
+import type { PageFailure } from "./usePageFailure";
 
 const NARROW_PX = 760;
 
@@ -29,32 +30,72 @@ export interface ArrangePanelProps {
   arrange: ArrangeController;
   /** Show the form (for a page that can't be arranged on the page). */
   onShowForm?: () => void;
+  /** The proposed page couldn't be drawn (the pane works this out, and shows it over the page too). */
+  failure?: PageFailure | null;
 }
 
-function Declined({ reason, docsUrl, onShowForm }: { reason: string | null; docsUrl: string; onShowForm?: () => void }) {
+function Details({ text }: { text: string | null }) {
+  return text ? (
+    <details className="app-details builder-note__detail">
+      <summary>Technical details</summary>
+      <p className="g-mono">{text}</p>
+    </details>
+  ) : null;
+}
+
+/** A page that couldn't be drawn: what happened, the change it began with, and the way back. */
+export function FailedNote({ failure }: { failure: PageFailure }) {
+  return (
+    <div className="builder-note" role="alert">
+      <p className="builder-note__title">
+        <ProofMark kind="bang" />
+        <span>{failure.words.title}</span>
+      </p>
+      <p>{failure.words.body}</p>
+      {failure.undo || failure.undoing || failure.showForm ? (
+        <div className="builder-note__actions">
+          {failure.undo || failure.undoing ? (
+            <Button size="sm" variant="primary" onClick={failure.undo ?? undefined} disabled={failure.undoing}>
+              {failure.undoing ? "Undoing…" : "Undo"}
+            </Button>
+          ) : null}
+          {failure.showForm ? (
+            <Button size="sm" variant="secondary" onClick={failure.showForm}>
+              Show the form
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+      <Details text={failure.detail} />
+    </div>
+  );
+}
+
+function Declined({ decline, docsUrl, onShowForm }: { decline: Decline; docsUrl: string; onShowForm?: () => void }) {
+  const unavailable = decline.kind === "unavailable";
   return (
     <div className="builder-note" role="note">
       <p className="builder-note__title">
-        <ProofMark kind="bang" />
-        <span>Sections can’t be arranged on this page.</span>
+        {unavailable ? <Spinner label="Waiting for the preview" /> : <ProofMark kind="bang" />}
+        <span>{decline.words.title}</span>
       </p>
-      <p>This site hasn’t marked its sections for arranging on the page, and they can’t be told apart for certain here. The form’s section list still works: add, move and remove them there.</p>
-      <div className="builder-note__actions">
-        {onShowForm ? (
-          <Button size="sm" variant="secondary" onClick={onShowForm}>
-            Show the form
-          </Button>
-        ) : null}
-        <a className="g-link builder-note__link" href={`${docsUrl.replace(/\/+$/, "")}/visual-builder/`} target="_blank" rel="noopener noreferrer">
-          How a site marks its sections <Icon name="external" size={12} />
-        </a>
-      </div>
-      {reason ? (
-        <details className="app-details builder-note__detail">
-          <summary>Technical details</summary>
-          <p className="g-mono">{reason}</p>
-        </details>
+      <p>{decline.words.body}</p>
+      {!unavailable ? (
+        <div className="builder-note__actions">
+          {onShowForm ? (
+            <Button size="sm" variant="secondary" onClick={onShowForm}>
+              Show the form
+            </Button>
+          ) : null}
+          {/* The markers are the fix only when the page drew and has none. */}
+          {decline.kind === "unmarked" ? (
+            <a className="g-link builder-note__link" href={`${docsUrl.replace(/\/+$/, "")}/visual-builder/`} target="_blank" rel="noopener noreferrer">
+              How a site marks its sections <Icon name="external" size={12} />
+            </a>
+          ) : null}
+        </div>
       ) : null}
+      <Details text={decline.reason} />
     </div>
   );
 }
@@ -64,7 +105,7 @@ function Declined({ reason, docsUrl, onShowForm }: { reason: string | null; docs
  * selected section's options, and the palette of section types to drag onto
  * the page (or pick, then place).
  */
-export function ArrangePanel({ siteId, arrange, onShowForm }: ArrangePanelProps) {
+export function ArrangePanel({ siteId, arrange, onShowForm, failure = null }: ArrangePanelProps) {
   // A narrow preview keeps the page in view: the panel starts as a rail there and floats over the page when opened.
   const narrow = useNarrow();
   const [wideCollapsed, setWideCollapsed] = useStoredState<boolean>("galley.arrange.collapsed", false);
@@ -88,7 +129,8 @@ export function ArrangePanel({ siteId, arrange, onShowForm }: ArrangePanelProps)
   const field = selected?.field ?? fields[0] ?? null;
   const labels = field ? arrange.labelsOf(field.key) : [];
   const blocks = field?.blocks ?? [];
-  const mapped = status.status === "mapped";
+  const decline = arrange.decline;
+  const mapped = status.status === "mapped" && !decline && !failure;
   const block = selected ? blockTypeOf(selected.item, selected.field) : undefined;
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -129,13 +171,15 @@ export function ArrangePanel({ siteId, arrange, onShowForm }: ArrangePanelProps)
         <IconButton icon="panel-left" label="Hide the Arrange panel" tooltipSide="bottom" onClick={() => setCollapsed(true)} />
       </div>
       <div className="builder-panel__body">
-        {status.status === "loading" || (status.status === "waiting" && !mapped) ? (
+        {failure ? (
+          <FailedNote failure={failure} />
+        ) : decline ? (
+          <Declined decline={decline} docsUrl={docsUrl} onShowForm={onShowForm} />
+        ) : status.status === "loading" || (status.status === "waiting" && !mapped) ? (
           <p className="builder-panel__status" aria-busy="true">
             <Spinner label="Working" />
             <span>Finding the sections on the page…</span>
           </p>
-        ) : status.status === "declined" ? (
-          <Declined reason={status.reason} docsUrl={docsUrl} onShowForm={onShowForm} />
         ) : !editable ? (
           <p className="builder-panel__hint">This page can’t be changed here, so its sections stay where they are.</p>
         ) : !selected ? (

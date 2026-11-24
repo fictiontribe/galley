@@ -91,6 +91,22 @@ export const OVERLAY_TAG = `<script src="${OVERLAY_SCRIPT_PATH}" defer></script>
 /** The baseline's tag: the overlay only reports and obeys navigation and scrolling there. */
 export const OVERLAY_FOLLOW_TAG = `<script src="${OVERLAY_SCRIPT_PATH}" data-galley-role="follow" defer></script>`;
 
+/**
+ * The overlay tag for a page that didn't come back as a plain page: the
+ * status the dev server answered with (400 or more), or `unavailable` when
+ * the proxy answered because the dev server didn't. The overlay reads them
+ * from its own script element — an attribute on `<html>` can't be relied on,
+ * since a dev server's error page often has no `<html>` (Astro's is a
+ * `<title>` and a script) — and tells the app the page couldn't be drawn
+ * (`page-state`), instead of the app taking an error page for a page without
+ * sections.
+ */
+export function overlayTagWithStatus(tag: string, status: number, unavailable = false): string {
+  if (status < 400 && !unavailable) return tag;
+  const attributes = ` data-galley-status="${Math.trunc(status)}"${unavailable ? " data-galley-unavailable" : ""}`;
+  return tag.replace(/^<script\b/i, (start) => start + attributes);
+}
+
 /** Removes `frame-ancestors` from a CSP value and keeps every other directive. */
 export function stripFrameAncestors(policy: string): string {
   return policy
@@ -273,12 +289,14 @@ function stripCookieDomain(value: string | string[]): string[] {
   );
 }
 
-function sendError(res: ServerResponse, status: number, message: string, retry: boolean) {
+function sendError(res: ServerResponse, status: number, message: string, retry: boolean, overlayTag?: string) {
   if (res.headersSent) {
     res.destroy();
     return;
   }
-  const body = `<!doctype html><meta charset="utf-8">${retry ? '<meta http-equiv="refresh" content="2">' : ""}<title>${message}</title><body style="font:16px system-ui,sans-serif;padding:2rem;color:#444">${message}</body>`;
+  // With the overlay on it, the app learns the preview didn't answer (rather than waiting on a page that never says hello).
+  const tag = overlayTag ? overlayTagWithStatus(overlayTag, status, true) : "";
+  const body = `<!doctype html><meta charset="utf-8">${retry ? '<meta http-equiv="refresh" content="2">' : ""}<title>${message}</title>${tag}<body style="font:16px system-ui,sans-serif;padding:2rem;color:#444">${message}</body>`;
 
   res.writeHead(status, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-length": Buffer.byteLength(body) });
   res.end(body);
@@ -374,7 +392,8 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
         res,
         502,
         kind === "preview" ? "The preview isn't answering yet. It will reload by itself." : "The deployed site couldn't be reached.",
-        kind === "preview"
+        kind === "preview",
+        kind === "preview" && req.method === "GET" ? overlayTag : undefined
       );
     });
     res.on("close", () => {
@@ -424,7 +443,9 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       source.on("end", () => {
         const html = Buffer.concat(chunks);
         const marked = size <= MAX_HTML_BYTES && options.pageAttributes ? markHtmlElement(html, options.pageAttributes()) : html;
-        const body = size <= MAX_HTML_BYTES && overlayTag ? injectIntoHtml(marked, overlayTag) : marked;
+        // A preview page that came back as an error carries its status to the overlay (see overlayTagWithStatus).
+        const tag = overlayTag && kind === "preview" ? overlayTagWithStatus(overlayTag, status) : overlayTag;
+        const body = size <= MAX_HTML_BYTES && tag ? injectIntoHtml(marked, tag) : marked;
 
         delete headers["content-encoding"];
         delete headers["content-md5"];

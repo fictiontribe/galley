@@ -29,12 +29,16 @@ export interface MappedSection {
 
 export type SectionMap =
   | { ok: true; how: "markers" | "evidence"; sections: MappedSection[] }
-  /** `stale`: the page shows a different set of sections than the content (it hasn't reloaded yet). */
-  | { ok: false; stale: boolean; reason: string };
+  /**
+   * `stale`: the page shows a different set of sections than the content (it hasn't reloaded yet).
+   * `cause`: `unmarked` when the page carries no markers for these sections and their words don't
+   * tell them apart; `mismatch` when it marks sections that don't match the content.
+   */
+  | { ok: false; stale: boolean; reason: string; cause: "unmarked" | "mismatch" };
 
 export const sectionKey = (field: string, index: number): string => `${field}.${index}`;
 
-const fail = (reason: string, stale = false): SectionMap => ({ ok: false, stale, reason });
+const fail = (reason: string, stale = false, cause: "unmarked" | "mismatch" = "mismatch"): SectionMap => ({ ok: false, stale, reason, cause });
 const name = (label: string, index: number) => `section ${index + 1} (${label})`;
 
 const SITE_CHROME = "header,footer,nav,[role=banner],[role=contentinfo],[role=navigation]";
@@ -190,5 +194,7 @@ export function mapSections(doc: Document, allLists: OverlaySectionList[]): Sect
   // A site that marks its sections is read by its markers only; evidence is for sites that don't.
   if (marked.length === lists.length) return byMarkers(doc, lists);
   if (marked.length > 0) return fail("Some sections are marked on the page and some aren’t.");
-  return byEvidence(doc, lists);
+  const found = byEvidence(doc, lists);
+  // Only here is "the site hasn't marked its sections" true: the page drew, and it marks none of them.
+  return found.ok ? found : { ...found, cause: "unmarked" };
 }

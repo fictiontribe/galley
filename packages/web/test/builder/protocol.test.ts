@@ -15,6 +15,18 @@ describe("Arrange messages from the page", () => {
     expect(parseOverlayMessage({ galley: 1, type: "placing-at", field: null, index: null })).toMatchObject({ index: null });
     expect(parseOverlayMessage({ galley: 1, type: "place", field: "sections", index: -1 })).toBeNull();
   });
+
+  it("takes the reason a page was declined, and whether it was drawn", () => {
+    expect(parseOverlayMessage({ galley: 1, type: "arrange-status", status: "declined", how: null, reason: "x", revision: 2, cause: "page-failed" })).toMatchObject({ cause: "page-failed" });
+    // An older overlay says no cause; an unknown one is dropped, never guessed.
+    expect(parseOverlayMessage({ galley: 1, type: "arrange-status", status: "declined", how: null, reason: "x", revision: 2 })).not.toHaveProperty("cause");
+    expect(parseOverlayMessage({ galley: 1, type: "arrange-status", status: "declined", how: null, reason: "x", revision: 2, cause: "bored" })).not.toHaveProperty("cause");
+    expect(parseOverlayMessage({ galley: 1, type: "page-state", state: "failed", status: 500, message: "ENOENT: no such file" })).toEqual({ galley: 1, type: "page-state", state: "failed", status: 500, message: "ENOENT: no such file" });
+    expect(parseOverlayMessage({ galley: 1, type: "page-state", state: "drawn", status: null, message: null })).toMatchObject({ state: "drawn" });
+    expect(parseOverlayMessage({ galley: 1, type: "page-state", state: "broken", status: 500, message: null })).toBeNull();
+    expect(parseOverlayMessage({ galley: 1, type: "page-state", state: "failed", status: "500", message: null })).toBeNull();
+    expect(parseOverlayMessage({ galley: 1, type: "page-state", state: "failed", status: 500, message: "x".repeat(500) })).toBeNull();
+  });
 });
 
 describe("dragging a palette card onto the page", () => {
