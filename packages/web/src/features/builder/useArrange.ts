@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { ArrangeDeclineCause, BlockType, Entry, Field, HostToOverlay, JsonValue, OverlayToHost } from "@galley/core/types";
 import { listActions, onListChange, undoLastListAction, type ListActions } from "@/features/content/fields/items/listActions";
 import { followIndex } from "@/features/content/fields/items/listPlan";
-import { blockScaffold } from "@/features/content/form/scaffold";
+import { addSection } from "@/features/content/form/addSection";
 import { blockLabel } from "@/features/content/form/summary";
 import type { FormState, FormStore } from "@/features/content/form/store";
 import { toOverlay } from "@/features/preview/frames";
@@ -173,15 +173,16 @@ export function useArrange({ source, on, post, frame, page = null }: ArrangeOpti
 
   const insertAt = useCallback(
     (block: BlockType, fieldKey: string, index: number) => {
-      const entry = actionsFor.get(fieldKey);
-      if (!entry || !editable) return;
+      const target = actionsFor.get(fieldKey);
+      if (!target || !editable || !store || !entry) return;
       const where = positionWords(labelsOf(fieldKey), index);
-      if (entry.actions.insert(index, blockScaffold(block, entry.field.discriminator ?? "type"))) {
+      // The form's "Add section" does exactly this: one rule for what a new section starts with.
+      if (addSection({ store, field: target.field, path: [fieldKey], block, index, entryPath: entry.path })) {
         select(sectionKey(fieldKey, index), true);
         setNote(`${block.label} added ${where}. It’s waiting in Proof.`);
       }
     },
-    [actionsFor, editable, labelsOf, select],
+    [actionsFor, editable, labelsOf, select, store, entry],
   );
 
   const stopPlacing = useCallback(() => {

@@ -97,6 +97,12 @@ export interface Field {
   default?: JsonValue;
   /** Up to three real values from the corpus — shown as placeholders, given to the AI. */
   examples?: JsonValue[];
+  /**
+   * The site itself declared `examples` (galley.config.json, or zod's
+   * `.meta({ examples })`), rather than Galley reading them from the files:
+   * a new section may start with the first one where a blank wouldn't draw.
+   */
+  examplesDeclared?: boolean;
   /** Where this definition came from. Config beats schema beats inference. */
   source: "config" | "schema" | "inferred";
   /** Hidden from the form (still preserved in the file). */
@@ -107,6 +113,15 @@ export interface Field {
    * picker that searches the source. Set in galley.config.json.
    */
   dataSource?: string;
+}
+
+/** One real instance of a block type (BlockType.samples). */
+export interface BlockSample {
+  /** Repo-relative path of the entry it is on. */
+  path: string;
+  /** That entry's title, for "from the “Home” page". */
+  title: string;
+  value: { [key: string]: JsonValue };
 }
 
 /** One kind of block in a blocks field — a hero, a feature grid, a CTA. */
@@ -120,6 +135,15 @@ export interface BlockType {
   count: number;
   /** The most complete real instance — the scaffold for "add section". */
   example?: { [key: string]: JsonValue };
+  /** `example` was declared in galley.config.json, not read from the files. */
+  exampleDeclared?: boolean;
+  /**
+   * Real instances of this block in the collection's files, at most one per
+   * entry (its most complete) and a few entries, each with the entry it is
+   * on: values a new section can start with where a blank wouldn't draw
+   * (a picture, a video), and where to say they came from.
+   */
+  samples?: BlockSample[];
   /**
    * Repo-relative path of a picture of this block (declared in
    * galley.config.json), shown in the section palette. Absent → the palette

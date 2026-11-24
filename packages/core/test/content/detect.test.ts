@@ -69,6 +69,10 @@ describe("detectSite on an Astro site", async () => {
     ]);
     // The most complete real instance is kept as the scaffold for "add section".
     expect(hero.example).toMatchObject({ type: "hero", heading: "Light for every boat" });
+    // And each entry's own, with the entry it is on: what a new section may borrow where a blank wouldn't draw.
+    expect(hero.samples?.length).toBe(2);
+    expect(hero.samples?.[0]).toMatchObject({ path: expect.stringMatching(/\.md$/), title: expect.any(String), value: { type: "hero" } });
+    expect(new Set(hero.samples?.map((sample) => sample.path)).size).toBe(2);
     const grid = sections.blocks!.find((block) => block.type === "feature-grid")!;
 
     expect(grid.fields.find((field) => field.key === "items")?.of?.fields?.map((field) => field.key)).toEqual(["label", "text"]);
@@ -256,6 +260,20 @@ describe("analyzeAstroConfig (static, never executed)", () => {
       ["quote", "Quote", ["text:string", "by:string"]],
     ]);
     expect(field("blocks").blocks?.[1]?.fields[1]?.description).toBe("Who said it");
+  });
+
+  it("reads zod 4's .meta(): a description, and examples the site declares", () => {
+    const source = `
+      import { defineCollection } from "astro:content";
+      import { z } from "astro/zod";
+      const film = z.object({ type: z.literal("film"), video: z.string().meta({ description: "File stem in public/video", examples: ["galley-demo"] }), title: z.string() });
+      const pages = defineCollection({ schema: z.object({ sections: z.array(z.discriminatedUnion("type", [film])) }) });
+      export const collections = { pages };
+    `;
+    const [pages] = analyzeAstroConfig(source).collections;
+    const video = pages!.fields!.find((candidate) => candidate.key === "sections")!.blocks![0]!.fields.find((candidate) => candidate.key === "video")!;
+
+    expect(video).toMatchObject({ type: "string", required: true, description: "File stem in public/video", examples: ["galley-demo"], examplesDeclared: true });
   });
 
   it("returns no collections (and a note) for configs it cannot read", () => {
