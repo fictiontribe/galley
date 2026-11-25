@@ -325,6 +325,13 @@ describe("routes an embedding program adds", () => {
     const linked = await x("GET", site(`/file?path=${encodeURIComponent("src/content/pages/notes.txt")}`), { cookie: people.contributor.cookie });
 
     expect([linked.status, linked.body.error.message]).toEqual([403, UNREADABLE]);
+    // And through the editor's own routes: the file, its bytes and its changes, by the link's name.
+    for (const route of ["file", "raw", "diff"]) {
+      const own = await call(port, "GET", `/api/sites/${siteId}/${route}?path=${encodeURIComponent("src/content/pages/notes.txt")}`, { cookie: people.contributor.cookie, headers: OWN_PAGE });
+
+      expect(own.status, route).toBe(403);
+      expect(JSON.stringify(own.body), route).not.toContain("in-the-site");
+    }
     // The same through the host, outside a request.
     const open = (await probe.host!.sites.get(siteId))!;
 
