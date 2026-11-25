@@ -123,7 +123,9 @@ entry says how.
   two names, `.env` and `.env.` followed by something, so a file called
   `.envrc`, `.env-production` or `.env_local` was treated as an ordinary
   file of the site. Any file whose name starts with `.env` now counts, in
-  any letter case and in any folder. One rule decides it everywhere: the
+  any letter case and in any folder, and so does anything kept in a folder
+  so named, however the path to it is written. One rule decides it
+  everywhere: the
   editor's file routes, what an extension may read, what may be written,
   what a publish commits and what a deploy uploads. It errs on the side of
   refusing, so a harmless file that starts the same way (`.envoy.yaml`) is
@@ -143,6 +145,28 @@ entry says how.
   read the site's files. The same rule now holds wherever a file or its
   changes are shown, in the app and to an AI tool connected over MCP. If you
   run a hosted editor, update.
+- **A secrets file is never read as something else.** A list of redirects
+  can be reviewed from a file of the site, and any file could be named as
+  that list; its lines came back where they weren't redirects. The site's
+  settings can name a file as a collection of content or as a page
+  template, and a secrets file named there was read as content. The list of
+  material a brand was set up from could name one as a piece of material.
+  None of these reads a secrets file or one of the version history's own
+  now.
+- **A deploy never puts the version history's own folder online, or a
+  folder outside the site.** The folder a deploy uploads is named by the
+  site's settings or its framework's configuration. One named `.git`, or
+  one leading out of the site, was uploaded as it was asked. It has to be a
+  folder inside the site now, and not one that holds secrets or the
+  version history.
+- **The preview answers for no secrets file.** The preview is the site's own
+  dev server, which answers for the site's files by their address and
+  refuses only the secrets files its framework knows of (`.env`, and `.env.`
+  followed by something). Asked for one under another name, it answered. An
+  address that names a secrets file, or anything under `.git/`, is now
+  refused before it reaches the dev server, on a hosted editor's preview
+  too. A reference picture named for the image provider is held to the same
+  rule.
 
 ## 0.4.1 — 2026-11-25
 

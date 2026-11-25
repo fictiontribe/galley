@@ -49,7 +49,7 @@ No mode can write these, compared case-insensitively (macOS and Windows filesyst
 | --- | --- |
 | anything under `.git/` | Version-history files can't be changed from here. |
 | anything under `node_modules/` | Installed packages can't be changed from here. |
-| any file whose name starts with `.env` (`.env`, `.env.local`, `.env-production`, `.envrc`) | Environment files can hold passwords and keys, so they can't be changed from here. |
+| any file whose name starts with `.env` (`.env`, `.env.local`, `.env-production`, `.envrc`), and anything in a folder so named | Environment files can hold passwords and keys, so they can't be changed from here. |
 | lockfiles (`package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `Cargo.lock`, `go.sum`, …) | Lockfiles are managed by the package manager and can't be changed by hand. |
 | anything inside a hidden folder (`.vscode/`, `.astro/`, …) | Files inside hidden settings folders can't be changed from here. |
 | the site folder itself | The site folder itself can't be overwritten. |
