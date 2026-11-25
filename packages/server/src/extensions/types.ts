@@ -22,17 +22,23 @@ export interface ServerExtension {
   /** Lower-case letters, digits and dashes, 3 to 32, starting with a letter. Names its routes (`/api/x/<id>/…`) and its folder. */
   id: string;
   /**
-   * The environment variables it reads that are secret. They are kept from
-   * the site's own commands (its preview, its build) and scrubbed from this
-   * extension's log lines and from its error messages. One it doesn't name
-   * reaches the site's commands, whose code editors can change.
+   * The environment variables it reads that are secret, as a list of their
+   * names. On a hosted install they are kept from the site's own commands
+   * (its preview, its build), from before anything is started. Everywhere,
+   * their values are taken out of every line the server logs and of the
+   * error messages this extension's routes answer with: the value as it
+   * stands, when it is six characters or more; an encoded form of it is not
+   * recognised. One it doesn't name reaches the site's commands, whose code
+   * editors can change.
    */
   secrets?: readonly string[];
   /**
    * Called once, after the engine is put together and before the app answers
    * any request (the port is open by then and answers 503, as it does while
    * any server starts). `signal` fires when the time for starting is up or
-   * the server is stopping: stop what was started and return.
+   * the server is stopping: stop what was started and return. A listener on
+   * it must not throw: Node ends the process for one that does. If setup
+   * fails, `startServer` rejects and the program should exit.
    */
   setup(host: ExtensionHost, start: { signal: AbortSignal }): ExtensionParts | Promise<ExtensionParts>;
 }
@@ -47,14 +53,15 @@ export interface ExtensionParts {
 export interface ExtensionRoute<B = undefined> {
   /** Required. */
   access: ExtensionAccess;
-  /** Refuses the operator's access token: the route needs a person signed in. */
+  /** On an install with accounts, refuses the operator's access token: the route needs a person signed in. */
   person?: true;
   /**
    * Required on POST, PUT and PATCH, refused on GET and DELETE: turns the
    * parsed JSON (`undefined` for an empty body) into what the handler takes,
-   * or throws `invalid(…)`.
+   * or throws `invalid(…)`. It may be async. What it throws is answered as
+   * what the handler throws is.
    */
-  body?: (input: unknown) => B;
+  body?: (input: unknown) => B | Promise<B>;
   /** The most the body may be, in bytes. Default and ceiling: 1 MB. */
   bodyLimit?: number;
   /**
@@ -73,11 +80,13 @@ export interface ExtensionRequest<B> {
   caller: ExtensionCaller;
   /**
    * The open site `:siteId` names; absent when the route has no `:siteId`.
-   * `.git/` and `.env*` can't be read through it, and on GET it refuses
-   * whatever would change the site.
+   * What it answers with is a copy. `.git/` and `.env*` can't be read
+   * through it (by name, and by where a link inside the site leads), and on
+   * GET it refuses whatever would change the site, as does any site reached
+   * through `host.sites` while a GET is being handled.
    */
   site?: GuardedSite;
-  /** Fires when whoever asked gave up on the request. */
+  /** Fires when whoever asked gave up on the request. A listener on it must not throw. */
   signal: AbortSignal;
 }
 
@@ -101,7 +110,12 @@ export type GuardedSite = Omit<SiteService, "dispose">;
 export interface ExtensionPeople {
   /** The person's name as it is now; null once the account is gone or switched off. */
   name(account: string): string | null;
-  /** Whether that sign-in still counts: not signed out, its account there and switched on. One this server doesn't know (from before a restart) doesn't. */
+  /**
+   * Whether that sign-in still counts: not signed out, its account there and
+   * switched on. One this server doesn't know (from before a restart, or
+   * pushed out by thousands of newer ones) doesn't: it can turn false early,
+   * never true late.
+   */
   counts(session: SessionRef): boolean;
   /** Runs whenever either answer may have changed. Returns how to stop. The listener answers at once: a promise is refused. */
   onChange(listener: () => void): () => void;
@@ -114,12 +128,13 @@ export interface ExtensionHost {
   /**
    * Runs `run` outside any person, any publishing name and any site: the way
    * to start work that outlives a request. Work a handler merely leaves
-   * running stops being its caller's once the handler has answered.
+   * running loses its caller's access once the handler has answered, but
+   * what it records still carries that person's publishing name.
    */
   outside<T>(run: () => T): T;
   /** A folder of this extension's own under the data folder, readable by the server's user only. It is in backups, and a restore replaces it. */
   stateDir: string;
-  /** One line in the server's log, marked with the extension's id. Line breaks and the declared secrets are taken out. */
+  /** One line in the server's log, marked with the extension's id. Line breaks and the declared secrets are taken out. Does nothing once the extension has been stopped. */
   log(line: string): void;
   mode: "local" | "hosted";
 }

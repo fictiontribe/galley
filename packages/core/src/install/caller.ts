@@ -47,6 +47,13 @@ export interface Caller {
    * (accounts.ts `needsName`); absent: yes.
    */
   named?: () => boolean;
+  /**
+   * Whether the request this person made has been answered. From then on
+   * what it left running is nobody's: read whenever access is checked.
+   * Absent: the work a request starts keeps the person's access to the end
+   * (an assistant turn, a job), as it always has.
+   */
+  ended?: () => boolean;
 }
 
 /** Said when someone without BUILD_MODE_LEVEL asks for build mode, whichever way they ask. */
@@ -59,6 +66,8 @@ export const NAME_NEEDED_REFUSAL = "Choose your name first: your account has non
 /** The refusal's `detail`, so the app knows to ask for the name there and then. */
 export const NAME_NEEDED = "name-needed";
 
+/** Said when work a request left running tries what only its caller could do, after the request was answered. */
+export const OUTLIVED_REFUSAL = "That work outlived the request that started it, so it is no longer done as the person who asked. Do it while the request is being answered.";
 /** Said, on a hosted install, when guarded work runs for nobody. */
 export const NO_CALLER_REFUSAL =
   "Only someone signed in to this editor, or whoever runs it, can do that. Work that runs on its own, such as a plugin reacting to an event, can't publish, change the site's settings or change anything outside the content.";
@@ -128,6 +137,8 @@ export function callerMay(level: AccessLevel): boolean {
   if (scope.kind !== "person") return true;
   const { caller } = scope;
 
+  // Answered: what is still running is nobody's, and is held to what nobody may do.
+  if (caller.ended?.()) return !callerRequired;
   if (!roleMay(caller.role, level)) return false;
   if (!caller.current) return true;
   const now = caller.current();
@@ -142,7 +153,10 @@ export function requireLevel(level: AccessLevel, refusal: string = ROLE_REFUSAL)
 
 /** What a refusal says: `refusal` for a person; for work done for nobody (hosted), that it needs someone. */
 export function callerRefusal(refusal: string): string {
-  return storage.getStore() ? refusal : NO_CALLER_REFUSAL;
+  const scope = storage.getStore();
+
+  if (scope?.kind === "person" && scope.caller.ended?.()) return OUTLIVED_REFUSAL;
+  return scope ? refusal : NO_CALLER_REFUSAL;
 }
 
 /**

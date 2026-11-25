@@ -6,7 +6,10 @@
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { defineExtension, invalid, type ExtensionHost, type ExtensionRequest, type JsonValue } from "../../src/extensions";
+import { HTTPException } from "hono/http-exception";
+import { GalleyError } from "@galley/core";
+import { currentAccountAuthor } from "@galley/core/workspace";
+import { defineExtension, forbidden, invalid, type ExtensionHost, type ExtensionRequest, type JsonValue } from "../../src/extensions";
 
 export interface StatusProbe {
   /** The host the extension was handed. */
@@ -91,7 +94,7 @@ export function statusExtension(probe: StatusProbe, options: { setup?: (host: Ex
             body: (input) => input as { path: string; mode: "content" | "build" },
             handle: async (request) => ({ tried: await attempt(() => request.site!.writeFile(request.body.path, "changed by the status extension\n", { origin: "user", mode: request.body.mode })) }),
           },
-          // Leaves work running after it has answered: a publish, and a content save.
+          // Leaves work running after it has answered: a publish, and a content save. Says whose publishing name the work still carries.
           "POST /sites/:siteId/later": {
             access: "publish",
             body: (input) => input as { wait?: number } | undefined,
@@ -101,12 +104,54 @@ export function statusExtension(probe: StatusProbe, options: { setup?: (host: Ex
               setTimeout(() => {
                 void (async () => {
                   probe.later.push(`publish ${await attempt(() => site.publish({ message: "Later" }))}`);
-                  probe.later.push(`save ${await attempt(() => site.writeFile("src/content/pages/about.md", "---\ntitle: Later\n---\n", { origin: "user", mode: "content" }))}`);
+                  probe.later.push(`save ${await attempt(() => site.writeFile("src/content/pages/later.md", "---\ntitle: Later\n---\n", { origin: "user", mode: "content" }))}`);
+                  probe.later.push(`name ${currentAccountAuthor()?.name ?? "nobody's"}`);
+                  probe.later.push(`outside ${host.outside(() => currentAccountAuthor()?.name ?? "nobody's")}`);
                 })();
               }, request.body?.wait ?? 20);
               return { started: true };
             },
           },
+          // The same publish while the handler is still answering: the control for the route above.
+          "POST /sites/:siteId/inside": { access: "publish", body: () => undefined, handle: async (request) => ({ tried: await attempt(() => request.site!.publish({ message: "Inside" })) }) },
+          // An async body reader that refuses, and a handler that refuses before it would have looked at the body.
+          "POST /request": {
+            access: "edit",
+            body: async (input) => {
+              await Promise.resolve();
+              if (!input) throw invalid(`Say what you need. (${process.env.STATUS_API_KEY ?? ""})`);
+              return input as { need: string };
+            },
+            handle: ({ caller, body }) => {
+              if (caller.kind !== "person") throw forbidden("People only.");
+              return { need: body.need };
+            },
+          },
+          // Three ways a handler might say "not signed in", and a failure that isn't one of the editor's errors.
+          "GET /refuse/:how": {
+            access: "edit",
+            handle({ params }) {
+              if (params.how === "code") throw new GalleyError("unauthorized", "Not signed in to the status service.");
+              if (params.how === "status") throw new GalleyError("invalid", "Not signed in to the status service.", undefined, 401);
+              if (params.how === "http") throw new HTTPException(401, { message: "Not signed in to the status service." });
+              throw new Error(`the status service refused https://status.example/?key=${process.env.STATUS_API_KEY ?? ""}`);
+            },
+          },
+          // "Tidies" the site's model before answering, as careless code might.
+          "GET /sites/:siteId/tidy": {
+            access: "edit",
+            async handle(request) {
+              const model = (await request.site!.model()) as unknown as { writable: { content: string[]; build: string[] } };
+
+              model.writable.content.push("src/**", "**/*");
+              model.writable.build.length = 0;
+              return { content: model.writable.content.length };
+            },
+          },
+          // Reaches a site through the host instead of the request, from a GET.
+          "GET /any-site": { access: "edit", handle: async (request) => ({ tried: await attempt(async () => (await host.sites.get(request.query.site ?? ""))!.writeFile("src/content/pages/by-a-get.md", "x", { origin: "user", mode: "content" })) }) },
+          // An address that ends like one the editor treats specially.
+          "POST /sites/:siteId/preview/start": { access: "edit", body: () => undefined, handle: () => ({ mine: true }) },
           // Waits until the test says, then tries to publish while still inside the handler.
           "POST /sites/:siteId/slow": {
             access: "publish",

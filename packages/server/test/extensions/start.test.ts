@@ -5,9 +5,12 @@
  */
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { asOperator, callerMay } from "@galley/core/install";
+import { hostedMode } from "@galley/core/plugins";
+import { withoutHiddenVariables } from "@galley/core/workspace";
 import { startServer, type ServerOptions } from "../../src";
-import { defineExtension } from "../../src/extensions";
-import { call, sandbox } from "../hosted-helpers";
+import { defineExtension, type ExtensionHost } from "../../src/extensions";
+import { call, EDITOR, sandbox, siteRepository, startHosted, stopHosted } from "../hosted-helpers";
 import { newProbe, statusExtension } from "./status";
 
 const box = sandbox("extensions-start");
@@ -69,5 +72,64 @@ describe("starting a server with extensions", () => {
 
     await server.close({ graceMs: 0 });
     expect(lines.filter((line) => line.includes("its stop failed"))).toEqual(["[failing-stop] its stop failed: couldn't tidy", "[slow-stop] its stop failed: it took too long"]);
+  });
+
+  it("on a hosted install a failed start undoes everything, keeps the secret from what started meanwhile, and leaves the extension holding nothing", async () => {
+    const home = box.folder("hosted-home");
+    const env = {
+      GALLEY_PUBLIC_URL: EDITOR,
+      GALLEY_PASSWORD: "correct horse battery staple",
+      GALLEY_OWNER_NAME: "Sam Owner",
+      GALLEY_OWNER_EMAIL: "sam@example.com",
+      GALLEY_SITE_REPOSITORY: siteRepository(box),
+      GALLEY_SITE_ACCESS: "token",
+      GALLEY_SITE_TOKEN: "fake-access-key-for-the-repository-0000",
+      FAILING_SERVICE_TOKEN: "failing-secret-value-123",
+    };
+    const seen: { hidden?: boolean; asWhom?: boolean; host?: ExtensionHost; signal?: AbortSignal; siteDuring?: boolean } = {};
+    const lines: string[] = [];
+    const failing = defineExtension({
+      id: "failing",
+      secrets: ["FAILING_SERVICE_TOKEN"],
+      async setup(host, start) {
+        seen.host = host;
+        seen.signal = start.signal;
+        // By the time any setup runs, a command of the site's is already started without the secret.
+        seen.hidden = !("FAILING_SERVICE_TOKEN" in withoutHiddenVariables({ FAILING_SERVICE_TOKEN: "x" }));
+        // Whoever called startServer, setup is nobody: on a hosted install nobody may not publish.
+        seen.asWhom = callerMay("publish");
+        throw new Error("the service said no to failing-secret-value-123");
+      },
+    });
+
+    // Started as the operator would start it from a command of their own.
+    await expect(asOperator(() => startHosted(box, home, env, { extensions: [failing], log: (line) => void lines.push(line) }))).rejects.toThrow("Extension “failing” couldn't start: the service said no to •••");
+    expect(seen).toMatchObject({ hidden: true, asWhom: false });
+    expect(seen.signal!.aborted).toBe(true);
+    // Nothing of the server is left in the process: its mode, its guard, its hidden names.
+    expect(hostedMode()).toBe(false);
+    expect(callerMay("publish")).toBe(true);
+    expect(withoutHiddenVariables({ FAILING_SERVICE_TOKEN: "x" })).toEqual({ FAILING_SERVICE_TOKEN: "x" });
+    // What the extension was handed does nothing now.
+    seen.host!.log("after the failed start");
+    expect(await seen.host!.sites.get("any")).toBeNull();
+    expect(lines.join("\n")).not.toContain("after the failed start");
+    expect(lines.join("\n")).not.toContain("failing-secret-value-123");
+    // The data folder was let go: the same install starts on it, with a working extension, and stops.
+    const probe = newProbe();
+    const next = await startHosted(box, home, env, { extensions: [statusExtension(probe)] });
+
+    expect(next.notices.join("\n")).toMatch(/Extensions: status/);
+    await stopHosted(box, next);
+  });
+
+  it("a setup that ignores its time is left holding nothing once the start has ended", async () => {
+    let host: ExtensionHost | null = null;
+    const stubborn = defineExtension({ id: "stubborn", setup: (handed) => ((host = handed), new Promise<never>(() => {})) });
+
+    await expect(local(box.folder("home"), [stubborn], { extensionTimes: { setupMs: 40 } })).rejects.toThrow(/didn't finish starting in time/);
+    expect(await host!.sites.get("any")).toBeNull();
+    // Times that make no sense are brought within reason rather than waited on for ever, or not at all.
+    await expect(local(box.folder("home"), [stubborn], { extensionTimes: { setupMs: -5 } })).rejects.toThrow(/didn't finish starting in time/);
   });
 });

@@ -17,9 +17,16 @@
  * The handler runs as its caller. Once it has answered — or the sign-in
  * stops counting — work it left running is nobody's: on a hosted install
  * nobody may not publish, use build mode or change the site's settings.
+ * (The publishing name is another matter: it follows the work, as it does
+ * for any request, so what such work records still carries the name of the
+ * person whose request started it.)
+ *
+ * The body reader runs inside the same care as the handler: its errors are
+ * the route's, a promise from it is awaited, and nothing it throws escapes.
  */
 import type { Context, Hono, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { HTTPException } from "hono/http-exception";
 import { GalleyError, isGalleyError } from "@galley/core";
 import { asOperator, withCaller, type AccessLevel, type Account, type AccountRole } from "@galley/core/install";
 import { withSiteScope } from "@galley/core/site";
@@ -28,7 +35,7 @@ import { bearerToken, type SessionInfo } from "../auth";
 import { AuthError, errorBody, forbidden, invalid, notFound } from "../errors";
 import { NEEDS_A_PERSON } from "../who";
 import type { DeclaredRoute } from "./declare";
-import { guardSite } from "./site";
+import { duringGet, guardSite } from "./site";
 import type { StartedExtension } from "./run";
 import type { ExtensionCaller, ExtensionRequest, JsonValue, SessionRef } from "./types";
 
@@ -109,31 +116,39 @@ function handlerFor(extension: StartedExtension, declared: DeclaredRoute, deps: 
     const site = siteId === null ? null : await deps.site(siteId);
 
     if (siteId !== null && !site) throw notFound("That site isn't open here. Open it again from the Sites screen.");
-    const body = route.body ? route.body(await readBody(c)) : undefined;
+    const read = route.body ? await readBody(c) : undefined;
     const query: Record<string, string | undefined> = Object.create(null) as Record<string, string | undefined>;
 
     for (const [name, value] of Object.entries(c.req.query())) query[name] = value;
     const caller: ExtensionCaller =
       who.kind === "person" ? Object.freeze({ kind: "person", account: who.account.id, role: who.account.role, name: who.account.name, session: deps.refOf(who.session) }) : Object.freeze({ kind: who.kind });
-    const request: ExtensionRequest<unknown> = Object.freeze({
-      params: Object.freeze({ ...params }),
-      query: Object.freeze(query),
-      body,
-      caller,
-      ...(site ? { site: guardSite(site, { readOnly }) } : {}),
-      signal: c.req.raw.signal,
-    });
-    // Once the handler has answered, what it left running is nobody's (core install/caller.ts reads `current` at each check).
+    // Once the handler has answered, what it left running is nobody's (core install/caller.ts asks `ended` at each check).
     let answered = false;
-    const run = () => (siteId === null ? route.handle(request) : withSiteScope(siteId, () => route.handle(request)));
-    const asCaller = (): JsonValue | Promise<JsonValue> => {
+    const ended = () => answered;
+    /** The body's reader, then the handler: both the route's own code, both inside the caller's scope and the same handling of what they throw. */
+    const work = async (): Promise<unknown> => {
+      const request: ExtensionRequest<unknown> = Object.freeze({
+        params: Object.freeze({ ...params }),
+        query: Object.freeze(query),
+        body: route.body ? await route.body(read) : undefined,
+        caller,
+        ...(site ? { site: guardSite(site, { readOnly }) } : {}),
+        signal: c.req.raw.signal,
+      });
+
+      return route.handle(request);
+    };
+    const inSite = () => (siteId === null ? work() : withSiteScope(siteId, work));
+    // On a GET, every site the handler reaches refuses to change, however it reaches it.
+    const run = () => (readOnly ? duringGet(inSite) : inSite());
+    const asCaller = (): Promise<unknown> => {
       if (who.kind === "person") {
         const { account, session } = who;
 
-        return withCaller({ accountId: account.id, role: account.role, current: () => (answered || !deps.stillCounts(session) ? null : deps.liveRole(account.id)), named: () => deps.liveNamed(account.id) }, () => deps.withAuthor(account, run));
+        return withCaller({ accountId: account.id, role: account.role, current: () => (deps.stillCounts(session) ? deps.liveRole(account.id) : null), named: () => deps.liveNamed(account.id), ended }, () => deps.withAuthor(account, run));
       }
       // The operator's token: everything, while the handler runs. (Where there are no accounts, every request is the operator's, as it always was.)
-      if (who.kind === "operator" && deps.hosted) return withCaller({ accountId: "operator", role: "owner", current: () => (answered ? null : "owner") }, () => deps.withAuthor(null, run));
+      if (who.kind === "operator" && deps.hosted) return withCaller({ accountId: "operator", role: "owner", ended }, () => deps.withAuthor(null, run));
       return asOperator(() => deps.withAuthor(null, run));
     };
     let result: unknown;
@@ -141,9 +156,14 @@ function handlerFor(extension: StartedExtension, declared: DeclaredRoute, deps: 
     try {
       result = await asCaller();
     } catch (error) {
-      // Only the editor's own check answers "not signed in": the app sends a person to sign in when it sees one.
+      // Only the editor's own check answers "not signed in": the app sends a person to sign in when it sees a 401, whoever sent it.
       if (error instanceof AuthError) throw new GalleyError("forbidden", extension.scrub(error.message));
-      if (isGalleyError(error)) throw new GalleyError(error.code === "unauthorized" ? "forbidden" : error.code, extension.scrub(error.message), error.detail ? extension.scrub(error.detail) : undefined, error.code === "unauthorized" ? 403 : error.status);
+      if (error instanceof HTTPException && error.status === 401) throw new GalleyError("forbidden", "That isn't allowed.");
+      if (isGalleyError(error)) {
+        const notSignedIn = error.code === "unauthorized" || error.status === 401;
+
+        throw new GalleyError(notSignedIn && error.code === "unauthorized" ? "forbidden" : error.code, extension.scrub(error.message), error.detail ? extension.scrub(error.detail) : undefined, notSignedIn ? 403 : error.status);
+      }
       throw error;
     } finally {
       answered = true;

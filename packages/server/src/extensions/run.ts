@@ -15,7 +15,8 @@ import { Hono } from "hono";
 import { outsideAnyPerson } from "@galley/core/install";
 import { withoutSiteScope } from "@galley/core/site";
 import { checkExtensions, declaredRoutes, ExtensionError, type DeclaredRoute } from "./declare";
-import { guardSite } from "./site";
+import type { PeopleDesk } from "./people";
+import { guardSite, insideGet } from "./site";
 import type { ExtensionHost, ExtensionParts, ExtensionPeople, GuardedSite, ServerExtension } from "./types";
 import type { SiteService } from "@galley/core/types";
 
@@ -23,19 +24,24 @@ import type { SiteService } from "@galley/core/types";
 export const EXTENSION_SETUP_MS = 30_000;
 /** How long an extension's stop may take. */
 export const EXTENSION_STOP_MS = 10_000;
+/** The most either may be set to. */
+const MOST_MS = 10 * 60_000;
+const within = (ms: number | undefined, otherwise: number) => (typeof ms === "number" && Number.isFinite(ms) ? Math.min(MOST_MS, Math.max(1, Math.round(ms))) : otherwise);
 
 export interface StartedExtension {
   id: string;
   routes: DeclaredRoute[];
   /** Takes the declared secrets' values out of a line. */
   scrub(text: string): string;
+  /** One line in the server's log, marked with the extension's id, on one line, its secrets taken out. */
+  say(line: string): void;
 }
 
 export interface StartedExtensions {
   list: StartedExtension[];
   /** Every environment variable the extensions named as secret. */
   secretEnv: string[];
-  /** Stops them all, each given its few seconds. Safe to call twice. */
+  /** Stops them all, each given its few seconds, and leaves what each was handed doing nothing. Safe to call twice. */
   stop(): Promise<void>;
 }
 
@@ -44,7 +50,8 @@ export interface StartOptions {
   mode: "local" | "hosted";
   env: NodeJS.ProcessEnv;
   log(line: string): void;
-  people: ExtensionPeople | null;
+  /** Null where there are no accounts. */
+  desk: PeopleDesk | null;
   site(siteId: string): Promise<SiteService | null>;
   setupMs?: number;
   stopMs?: number;
@@ -60,12 +67,17 @@ const thenable = (value: unknown): value is PromiseLike<unknown> => typeof (valu
 /** Line breaks and other control characters can't be used to make one line look like two. */
 export function oneLine(text: string): string {
   // eslint-disable-next-line no-control-regex
-  return String(text).replace(/[\x00-\x1f\x7f\u2028\u2029]+/g, " ");
+  return String(text).replace(/[\x00-\x1f\x7f-\x9f\u2028\u2029]+/g, " ");
 }
 
-/** What takes a secret's value out of a line: every declared variable that is set and long enough to be told from ordinary words. */
-export function scrubberFor(names: readonly string[], env: NodeJS.ProcessEnv): (text: string) => string {
-  const values = [...new Set(names.map((name) => env[name] ?? "").filter((value) => value.length >= 6))].sort((a, b) => b.length - a.length);
+/**
+ * What takes a secret's value out of a line: every declared variable that is
+ * set, in the environment the server was started with and in the process's
+ * own, and long enough to be told from ordinary words (six characters). The
+ * value as it stands is taken out; an encoded form of it is not.
+ */
+export function scrubberFor(names: readonly string[], ...envs: NodeJS.ProcessEnv[]): (text: string) => string {
+  const values = [...new Set(names.flatMap((name) => envs.map((env) => env[name]?.trim() ?? "")).filter((value) => value.length >= 6))].sort((a, b) => b.length - a.length);
 
   return (text) => values.reduce((out, value) => out.split(value).join("•••"), text);
 }
@@ -73,20 +85,21 @@ export function scrubberFor(names: readonly string[], env: NodeJS.ProcessEnv): (
 /**
  * Calls something an extension handed over that must answer at once. Never
  * throws. A promise is refused: it is watched so it can't reject unhandled,
- * and the call counts as having answered nothing.
+ * and the call counts as having answered nothing. `say` is the extension's
+ * own line in the log, so a failure carries its id and none of its secrets.
  */
-export function callNow<T>(log: (line: string) => void, id: string, what: string, call: () => T): { ok: true; value: T } | { ok: false } {
+export function callNow<T>(say: (line: string) => void, what: string, call: () => T): { ok: true; value: T } | { ok: false } {
   try {
     const value = outside(call);
 
     if (thenable(value)) {
-      Promise.resolve(value).catch((error: unknown) => log(`[${id}] ${what} failed later: ${oneLine(error instanceof Error ? error.message : String(error))}`));
-      log(`[${id}] ${what} answered with a promise. It has to answer at once, so its answer was not used.`);
+      Promise.resolve(value).catch((error: unknown) => say(`${what} failed later: ${error instanceof Error ? error.message : String(error)}`));
+      say(`${what} answered with a promise. It has to answer at once, so its answer was not used.`);
       return { ok: false };
     }
     return { ok: true, value };
   } catch (error) {
-    log(`[${id}] ${what} failed: ${oneLine(error instanceof Error ? error.message : String(error))}`);
+    say(`${what} failed: ${error instanceof Error ? error.message : String(error)}`);
     return { ok: false };
   }
 }
@@ -136,57 +149,87 @@ export async function assertRouter(): Promise<void> {
 export async function startExtensions(extensions: readonly ServerExtension[], options: StartOptions): Promise<StartedExtensions> {
   checkExtensions(extensions);
   await assertRouter();
-  const started: Array<StartedExtension & { parts: ExtensionParts; abort: AbortController }> = [];
+  const started: Array<StartedExtension & { parts: ExtensionParts; end(): void }> = [];
   let stopped = false;
 
   const stop = async () => {
     if (stopped) return;
     stopped = true;
     for (const extension of [...started].reverse()) {
-      extension.abort.abort();
-      if (typeof extension.parts.stop !== "function") continue;
-      try {
-        await timeLimit(Promise.resolve(outside(() => extension.parts.stop!())), options.stopMs ?? EXTENSION_STOP_MS, () => new Error("it took too long"));
-      } catch (error) {
-        options.log(`[${extension.id}] its stop failed: ${oneLine(error instanceof Error ? error.message : String(error))}`);
+      if (typeof extension.parts.stop === "function") {
+        try {
+          await timeLimit(Promise.resolve(outside(() => extension.parts.stop!())), within(options.stopMs, EXTENSION_STOP_MS), () => new Error("it took too long"));
+        } catch (error) {
+          extension.say(`its stop failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
+      // From here on what it was handed does nothing: the data folder may be another server's the next moment.
+      extension.end();
     }
   };
 
   try {
     for (const extension of extensions) {
       const { id } = extension;
-      const scrub = scrubberFor(extension.secrets ?? [], options.env);
+      const scrub = scrubberFor(extension.secrets ?? [], options.env, process.env);
       const stateDir = join(options.home, "extensions", id);
       const abort = new AbortController();
+      const listening: Array<() => void> = [];
+      let live = true;
+      const say = (line: string) => {
+        if (live) options.log(`[${id}] ${scrub(oneLine(line))}`);
+      };
+      const end = () => {
+        live = false;
+        abort.abort();
+        for (const unlisten of listening.splice(0)) unlisten();
+      };
+      const desk = options.desk;
+      const people: ExtensionPeople | null = desk
+        ? Object.freeze({
+            name: (account: string) => (live ? desk.name(account) : null),
+            counts: (session: Parameters<ExtensionPeople["counts"]>[0]) => live && desk.counts(session),
+            onChange(listener: () => void) {
+              if (!live) return () => undefined;
+              const unlisten = desk.onChanged(() => void callNow(say, "a people listener", listener));
+
+              listening.push(unlisten);
+              return unlisten;
+            },
+          })
+        : null;
 
       await mkdir(stateDir, { recursive: true, mode: 0o700 });
       await chmod(stateDir, 0o700);
       const host: ExtensionHost = Object.freeze({
-        people: options.people,
+        people,
         sites: Object.freeze({
           async get(siteId: string): Promise<GuardedSite | null> {
-            const site = typeof siteId === "string" ? await options.site(siteId) : null;
+            const site = live && typeof siteId === "string" ? await options.site(siteId) : null;
 
-            return site ? guardSite(site, { readOnly: false }) : null;
+            // Asked from inside a GET's handler, the site is as read-only as the one the handler was handed.
+            return site && live ? guardSite(site, { readOnly: insideGet() }) : null;
           },
         }),
         outside,
         stateDir,
-        log: (line: string) => options.log(`[${id}] ${scrub(oneLine(line))}`),
+        log: say,
         mode: options.mode,
       });
       let parts: ExtensionParts;
 
       try {
-        parts = await timeLimit(Promise.resolve(outside(() => extension.setup(host, { signal: abort.signal }))), options.setupMs ?? EXTENSION_SETUP_MS, () => new Error("it didn't finish starting in time"));
+        parts = await timeLimit(Promise.resolve(outside(() => extension.setup(host, { signal: abort.signal }))), within(options.setupMs, EXTENSION_SETUP_MS), () => new Error("it didn't finish starting in time"));
       } catch (error) {
-        abort.abort();
+        end();
         if (error instanceof ExtensionError) throw error;
         throw new ExtensionError(`Extension “${id}” couldn't start: ${scrub(oneLine(error instanceof Error ? error.message : String(error)))}`);
       }
-      if (typeof parts !== "object" || parts === null) throw new ExtensionError(`Extension “${id}” couldn't start: its setup returned nothing.`);
-      started.push({ id, routes: declaredRoutes(id, parts), scrub, parts, abort });
+      if (typeof parts !== "object" || parts === null) {
+        end();
+        throw new ExtensionError(`Extension “${id}” couldn't start: its setup returned nothing.`);
+      }
+      started.push({ id, routes: declaredRoutes(id, parts), scrub, say, parts, end });
     }
   } catch (error) {
     await stop();

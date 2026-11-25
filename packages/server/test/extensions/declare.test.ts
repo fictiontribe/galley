@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { checkExtensions, declaredRoutes, defineExtension, EXTENSION_BODY_LIMIT, ExtensionError } from "../../src/extensions/declare";
 import { isJson } from "../../src/extensions/mount";
 import { assertRouter, callNow, oneLine, scrubberFor } from "../../src/extensions/run";
-import { guardSite, unreadable } from "../../src/extensions/site";
+import { copyOf, duringGet, guardSite, unreadable } from "../../src/extensions/site";
 import type { ExtensionRoute, ServerExtension } from "../../src/extensions";
 import { ROUTE_ACCESS } from "@galley/core/install";
 import type { SiteService } from "@galley/core/types";
@@ -27,6 +27,8 @@ describe("what an extension declares", () => {
     expect(() => checkExtensions([{ id: "status" } as unknown as ServerExtension])).toThrow("Extension “status” couldn't start: it has no setup.");
     expect(() => checkExtensions([defineExtension({ id: "status", secrets: ["STATUS_API_KEY", "not a name"], setup })])).toThrow("Extension “status”: “not a name” isn't the name of an environment variable.");
     expect(() => checkExtensions([defineExtension({ id: "status", secrets: ["STATUS_API_KEY"], setup }), defineExtension({ id: "a-2nd-one", setup })])).not.toThrow();
+    // A name on its own, not in a list, would be read letter by letter and hide nothing.
+    expect(() => checkExtensions([{ id: "status", secrets: "STATUS_API_KEY", setup } as unknown as ServerExtension])).toThrow("Extension “status”: its secrets are a list of the names of environment variables.");
   });
 
   it("names each route by a method and a path of its own, and can name no other address", () => {
@@ -64,8 +66,15 @@ describe("what an extension declares", () => {
     expect(routes({ "POST /note": { ...post, person: false } })).toThrow(/person is true or left out/);
   });
 
-  it("no route of the editor's own is under the prefix added routes live in", () => {
+  it("nothing the editor itself serves is under the prefix added routes live in", () => {
     expect(Object.keys(ROUTE_ACCESS).filter((key) => key.split(" ")[1]!.startsWith("/api/x/") || key.split(" ")[1] === "/api/x")).toEqual([]);
+    // Every address the app really has, the ones outside that table included, in both modes.
+    for (const mode of ["local", "hosted"] as const) {
+      const paths = testApp({ site: fakeSite() }, mode === "hosted" ? { mode } : {}).app.routes.map((route) => route.path);
+
+      expect(paths.length).toBeGreaterThan(100);
+      expect(paths.filter((path) => path.toLowerCase().startsWith("/api/x")), mode).toEqual([]);
+    }
   });
 
   it("is refused where a hosted server has no accounts: every level would be anyone signed in", () => {
@@ -93,41 +102,49 @@ describe("what the server does around an extension", () => {
   });
 
   it("keeps a log line to one line and takes declared secrets out of it", () => {
-    expect(oneLine("first\nGET /api/people 200\r\nthird fourth\tfifth\u0000")).toBe("first GET /api/people 200 third fourth fifth ");
+    expect(oneLine("first\nGET /api/people 200\r\nthird\u2028fourth\tfifth\u0000")).toBe("first GET /api/people 200 third fourth fifth ");
+    // The other set of control characters too: a "next line", and the one that starts a terminal's commands.
+    expect(oneLine("one\u0085two\u009b31mthree")).toBe("one two 31mthree");
     const scrub = scrubberFor(["STATUS_API_KEY", "STATUS_OTHER", "STATUS_UNSET", "STATUS_SHORT"], { STATUS_API_KEY: "key-0123456789", STATUS_OTHER: "key-0123456789-longer", STATUS_SHORT: "abc" });
 
     expect(scrub("a key-0123456789-longer b key-0123456789 c abc")).toBe("a ••• b ••• c abc");
     expect(scrubberFor([], {})("unchanged")).toBe("unchanged");
+    // Where the server was handed an environment of its own, the process's is read as well: that is where an extension reads.
+    expect(scrubberFor(["STATUS_API_KEY"], {}, { STATUS_API_KEY: "from-the-process" })("x from-the-process y")).toBe("x ••• y");
+    expect(scrubberFor(["STATUS_API_KEY"], { STATUS_API_KEY: "handed-to-the-server" }, { STATUS_API_KEY: "from-the-process" })("handed-to-the-server from-the-process")).toBe("••• •••");
+    // Its limits, as the docs give them: under six characters, and any encoded form, are left.
+    expect(scrubberFor(["STATUS_API_KEY"], { STATUS_API_KEY: "a b/c+d" })(`a b/c+d ${encodeURIComponent("a b/c+d")}`)).toBe("••• a%20b%2Fc%2Bd");
   });
 
   it("refuses a promise where an answer is expected at once, and a failure never escapes", async () => {
     const lines: string[] = [];
-    const log = (line: string) => void lines.push(line);
+    // The extension's own line: its id in front, one line, its secrets out (run.ts makes one for each extension).
+    const say = (line: string) => void lines.push(`[status] ${scrubberFor(["STATUS_API_KEY"], { STATUS_API_KEY: "key-0123456789" })(oneLine(line))}`);
     const unhandled: unknown[] = [];
     const onUnhandled = (reason: unknown) => void unhandled.push(reason);
 
     process.on("unhandledRejection", onUnhandled);
     try {
-      expect(callNow(log, "status", "a listener", () => 7)).toEqual({ ok: true, value: 7 });
-      expect(callNow(log, "status", "a listener", () => { throw new Error("broke\nGET /api/people 200"); })).toEqual({ ok: false });
-      expect(callNow(log, "status", "a listener", async () => 7)).toEqual({ ok: false });
-      expect(callNow(log, "status", "a listener", async () => { throw new Error("later"); })).toEqual({ ok: false });
+      expect(callNow(say, "a listener", () => 7)).toEqual({ ok: true, value: 7 });
+      expect(callNow(say, "a listener", () => { throw new Error("broke\nGET /api/people 200 key-0123456789"); })).toEqual({ ok: false });
+      expect(callNow(say, "a listener", async () => 7)).toEqual({ ok: false });
+      expect(callNow(say, "a listener", async () => { throw new Error("later key-0123456789"); })).toEqual({ ok: false });
       await new Promise((resolve) => setTimeout(resolve, 20));
     } finally {
       process.off("unhandledRejection", onUnhandled);
     }
     expect(unhandled).toEqual([]);
     expect(lines).toEqual([
-      "[status] a listener failed: broke GET /api/people 200",
+      "[status] a listener failed: broke GET /api/people 200 •••",
       "[status] a listener answered with a promise. It has to answer at once, so its answer was not used.",
       "[status] a listener answered with a promise. It has to answer at once, so its answer was not used.",
-      "[status] a listener failed later: later",
+      "[status] a listener failed later: later •••",
     ]);
   });
 
   it("guards a site by lists, not by trust: what isn't on one isn't handed", () => {
     const calls: string[] = [];
-    const real = { id: "s1", readFile: (path: string) => (calls.push(`read ${path}`), "content"), writeFile: (path: string) => (calls.push(`write ${path}`), undefined), dispose: () => void calls.push("dispose"), somethingNew: () => void calls.push("new"), preview: { start: () => "started" } } as unknown as SiteService;
+    const real = { id: "s1", root: "/nowhere", resolvePath: (path: string) => `/nowhere/${path}`, readFile: (path: string) => (calls.push(`read ${path}`), "content"), writeFile: (path: string) => (calls.push(`write ${path}`), undefined), dispose: () => void calls.push("dispose"), somethingNew: () => void calls.push("new"), preview: { start: () => "started" } } as unknown as SiteService;
     const whole = guardSite(real, { readOnly: false }) as unknown as Record<string, (...args: unknown[]) => unknown> & { id: string; preview: { start(): string } };
     const reading = guardSite(real, { readOnly: true }) as unknown as typeof whole;
 
@@ -139,9 +156,51 @@ describe("what the server does around an extension", () => {
     expect(() => reading.writeFile!("a.md")).toThrow(/A GET route can't change a site/);
     expect(() => reading.preview).toThrow(/A GET route can't change a site/);
     expect(() => whole.readFile!(".env")).toThrow("That file can't be shown here.");
+    // A site handed out earlier refuses too while a GET is being handled, and whatever that GET started.
+    expect(() => duringGet(() => whole.writeFile!("b.md"))).toThrow(/A GET route can't change a site/);
     expect(calls).toEqual(["read a.md", "write a.md"]);
     expect(Object.isFrozen(whole)).toBe(true);
     for (const path of [".env", ".ENV", "a/.env.production", ".git", ".git/config", "a\\.git\\HEAD", "A/.GIT/x"]) expect(unreadable(path), path).toBe(true);
     for (const path of ["env", "a.env", ".environment", ".github/workflows/ci.yml", "src/git/.keep", ".gitignore", 7, undefined]) expect(unreadable(path), String(path)).toBe(false);
   });
+
+  it("refuses every read that names a file, leaves unreadable files out of a search, and answers each read with a copy", async () => {
+    const model = { writable: { content: ["src/content/**"] }, adapter: { name: "x", detect: () => true } };
+    const hits = [{ path: "src/a.md", line: 1, text: "ok" }, { path: ".env", line: 1, text: "KEY=1" }, { path: "sub/.git/config", line: 2, text: "x" }];
+    const bytes = new Uint8Array([1, 2, 3]);
+    const real = {
+      id: "s1",
+      root: "/nowhere",
+      resolvePath: (path: string) => `/nowhere/${path}`,
+      model: async () => model,
+      readBase: async () => bytes,
+      diff: async (path: string) => ({ path }),
+      readEntry: async (path: string) => ({ path }),
+      readFile: async (path: string) => ({ content: path }),
+      grepText: async () => hits,
+      listFiles: async () => ["a.md"],
+    } as unknown as SiteService;
+    const guarded = guardSite(real, { readOnly: false }) as unknown as { [name: string]: (...args: unknown[]) => Promise<any> };
+
+    for (const name of ["readFile", "readBase", "diff", "readEntry", "resolvePath"]) {
+      for (const path of [".env", "a/.env.local", ".git/HEAD"]) expect(() => guarded[name]!(path), `${name} ${path}`).toThrow("That file can't be shown here.");
+    }
+    expect(await guarded.grepText!("KEY")).toEqual([hits[0]]);
+    // Copies: nothing done to an answer reaches the engine's own, not even where the answer holds a function.
+    const copy = (await guarded.model!()) as typeof model;
+
+    copy.writable.content.push("**/*");
+    copy.adapter.name = "changed";
+    expect(model.writable.content).toEqual(["src/content/**"]);
+    expect(model.adapter.name).toBe("x");
+    expect(copy.adapter.detect).toBe(model.adapter.detect);
+    const base = (await guarded.readBase!("a.md")) as Uint8Array;
+
+    base[0] = 9;
+    expect([...bytes]).toEqual([1, 2, 3]);
+    expect((await guarded.grepText!("ok"))[0]).not.toBe(hits[0]);
+    expect(copyOf("text")).toBe("text");
+    expect(copyOf(null)).toBeNull();
+  });
+
 });

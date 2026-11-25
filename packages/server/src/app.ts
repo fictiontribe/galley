@@ -401,6 +401,8 @@ export function createApp(services: Services, options: AppOptions): Hono {
     const { list, desk } = options.extensions;
 
     if (options.mode === "hosted" && !install) throw new ExtensionError("Extensions need accounts in hosted mode: without them every signed-in browser would have every level.");
+    // With accounts there is no asking whether a sign-in still counts without the desk that knows.
+    if (install && !desk) throw new ExtensionError("Extensions on an install with accounts need its people desk (createPeopleDesk): start them with startServer.");
     mountExtensions(app, list, {
       hosted: options.mode === "hosted",
       requireLevel,
@@ -412,7 +414,7 @@ export function createApp(services: Services, options: AppOptions): Hono {
       },
       site: (siteId) => services.registry.get(siteId),
       refOf: (stamp) => desk!.refOf(stamp),
-      stillCounts: (stamp) => desk?.stillCounts(stamp) ?? true,
+      stillCounts: (stamp) => desk!.stillCounts(stamp),
       liveRole,
       liveNamed,
       withAuthor: (person, run) => withAccountAuthor(person, run),

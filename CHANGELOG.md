@@ -20,13 +20,16 @@ entry says how.
   handler sees it, and two more: with a cookie the browser must say the
   request is the editor's own page's, on GET too, and a part of the address
   can't carry a path. A handler is handed a narrowed request (never the
-  cookie or the headers) and the site with `.git/` and `.env*` unreadable; on
-  GET the site refuses whatever would change it. Work a handler leaves running
-  is nobody's once it has answered. An extension names its secret environment
-  variables, which are kept from the site's commands, its log lines and its
-  error messages. It is not a sandbox: an extension is its author's code with
-  the server's permissions. A server with extensions must be the only server
-  in its process. The shapes may change in any 0.x release. The docs page
+  cookie or the headers) and the site with `.git/` and `.env*` unreadable by
+  name; what the site answers with is a copy, and on GET it refuses whatever
+  would change it. Work a handler leaves running loses its caller's access
+  once it has answered, though what it records still carries that person's
+  publishing name. An extension names its secret environment variables: on a
+  hosted install they are kept from the site's commands, and everywhere their
+  values are taken out of the server's log and of the extension's error
+  messages. It is not a sandbox: an extension is its author's code with the
+  server's permissions. A server with extensions must be the only server in
+  its process, and should be restarted after a backup is put back. The shapes may change in any 0.x release. The docs page
   is *Running Galley › Embedding the editor*.
 
 ### Changed

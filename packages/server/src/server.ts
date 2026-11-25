@@ -45,9 +45,9 @@ import { createMcpMount } from "./mcp";
 import { createStreamRegistry } from "./events";
 import { createInstallOps, type InstallOps, type ServerPhase } from "./ops";
 import { createKeepUp, DEFAULT_SYNC_MINUTES, type KeepUp } from "./keep-up";
-import { ExtensionError } from "./extensions/declare";
+import { checkExtensions, declaredSecrets, ExtensionError } from "./extensions/declare";
 import { createPeopleDesk, type PeopleDesk } from "./extensions/people";
-import { callNow, startExtensions, type StartedExtensions } from "./extensions/run";
+import { startExtensions, type StartedExtensions } from "./extensions/run";
 import { defaultHome, defaultStartersDir, defaultWebDir } from "./paths";
 import type { RunningServer, ServerMode, ServerOptions, Services } from "./types";
 
@@ -506,6 +506,17 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   const config = resolveConfig(options);
   const hosted = config.mode === "hosted";
   const env = options.env ?? process.env;
+  const withExtensions = Boolean(options.extensions?.length);
+
+  // What an embedding program added is checked before anything is read, taken or changed (extensions/declare.ts).
+  try {
+    checkExtensions(options.extensions ?? []);
+  } catch (error) {
+    throw error instanceof ExtensionError ? new StartupError(error.message) : error;
+  }
+  if (inProcess.withExtensions || (withExtensions && inProcess.servers > 0)) throw new StartupError(ALONE);
+  /** The environment variables the extensions named as secret: known from the start, so nothing started later is handed them. */
+  const extensionSecretEnv = declaredSecrets(options.extensions ?? []);
   /** Secrets the environment and the starting values hold: cut out of every line the server writes. */
   const pluginSecretEnv = new Set<string>();
   const startingSecrets = [config.password, config.token, config.starting?.setupToken, config.starting?.site?.token, ...Object.values(config.starting?.keys ?? {})];
@@ -517,6 +528,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     secrets: () => [
       ...startingSecrets.filter((value): value is string => typeof value === "string"),
       ...[...APP_SECRET_ENV_NAMES, ...pluginSecretEnv].filter((name) => name !== "GALLEY_INSTALL_CONFIG").map((name) => env[name]?.trim() ?? ""),
+      // An extension reads the process's own environment, whatever this server was handed as its own.
+      ...extensionSecretEnv.flatMap((name) => [env[name]?.trim() ?? "", process.env[name]?.trim() ?? ""]),
     ],
   });
   const notice = out.notice;
@@ -535,9 +548,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         stopDisplaced();
       })
     : null;
-  // A server with extensions has the process to itself (see `inProcess`). Claimed once the data folder is this server's.
-  const withExtensions = Boolean(options.extensions?.length);
-
+  // A server with extensions has the process to itself (see `inProcess`). Refused above before anything was touched;
+  // counted here, once the data folder is this server's (another start may have got in between).
   if (inProcess.withExtensions || (withExtensions && inProcess.servers > 0)) {
     await hold?.release();
     throw new StartupError(ALONE);
@@ -570,8 +582,6 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     await release();
     throw error;
   });
-  // What an embedding program's extensions named as secret (extensions/run.ts), once they have started.
-  let extensionSecretEnv: string[] = [];
   const hideSecrets = () => hideFromSiteCommands([...APP_SECRET_ENV_NAMES, ...pluginSecretEnv, ...extensionSecretEnv]);
 
   // A shared server only runs a site's own plugins when the operator allows it (GALLEY_ALLOW_SITE_PLUGINS=1).
@@ -652,9 +662,11 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   // The install's own jobs (connecting the site, a restore), found through the registry like every other job.
   const installJobs = () => (install ? (id: string) => install!.job(id) ?? ops?.job(id) ?? null : null);
   let extensions: StartedExtensions | null = null;
-  const stop = async () => {
+  /** Undoes a start that failed. `beforeLettingGo`: what else must end while the data folder is still this server's. */
+  const stop = async (beforeLettingGo: () => Promise<void> = async () => undefined) => {
     await extensions?.stop();
     await install?.dispose().catch(() => undefined);
+    await beforeLettingGo();
     await new Promise<void>((done) => server.close(() => done()));
     await release();
     undo();
@@ -794,21 +806,26 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   if (options.extensions?.length) {
     try {
       if (hosted && !install) throw new ExtensionError("Extensions need accounts in hosted mode: without them every signed-in browser would have every level.");
-      desk = install ? createPeopleDesk(install, revocations ?? { has: () => false }, (what, listener) => void callNow(out.log, "extensions", what, listener)) : null;
+      desk = install ? createPeopleDesk(install, revocations ?? { has: () => false }) : null;
       extensions = await startExtensions(options.extensions, {
         home: config.home,
         mode: config.mode,
         env,
         log: out.log,
-        people: desk?.people ?? null,
+        desk,
         site: (siteId) => services.registry.get(siteId),
         ...(options.extensionTimes ?? {}),
       });
-      extensionSecretEnv = extensions.secretEnv;
-      if (hosted) hideSecrets();
       notice(`Extensions: ${extensions.list.map((extension) => `${extension.id} (${extension.routes.length} ${extension.routes.length === 1 ? "route" : "routes"})`).join(", ")}`);
     } catch (error) {
-      await stop();
+      // By now the install has started: its site may be open, its jobs subscribed to. All of it is undone, as a stop undoes it.
+      unsubscribeJobs();
+      await mcp?.close().catch(() => undefined);
+      ops?.dispose();
+      await stop(async () => {
+        await services.registry.dispose().catch(() => undefined);
+      });
+      setHostedMode(false);
       throw error instanceof ExtensionError ? new StartupError(error.message) : error;
     }
   }
@@ -951,23 +968,27 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         clearInterval(sweep);
         clearTimeout(force);
         unsubscribeJobs();
-        await Promise.race([install?.dispose() ?? Promise.resolve(), delay(Math.max(1000, deadline - Date.now()))]);
-        ops?.dispose();
-        tickets?.dispose();
-        gateway?.close();
-        // What an embedding program added stops while the data folder is still this server's.
-        await extensions?.stop();
-        // The preview and its whole process group go with the sites.
-        await services.registry.dispose();
-        // Anything still being written to the state file is written before the process lets go of the folder.
-        if (displacedBy === null) await store?.update(() => undefined).catch(() => undefined);
-        await release();
-        leaveProcess();
-        setHostedMode(false);
-        if (hosted) {
-          hideFromSiteCommands([]);
-          limitSiteCommandMemory(null);
-          requireCallerForGuardedWork(false);
+        try {
+          await Promise.race([install?.dispose() ?? Promise.resolve(), delay(Math.max(1000, deadline - Date.now()))]);
+          ops?.dispose();
+          tickets?.dispose();
+          gateway?.close();
+          // What an embedding program added stops while the data folder is still this server's.
+          await extensions?.stop();
+          // The preview and its whole process group go with the sites.
+          await services.registry.dispose();
+          // Anything still being written to the state file is written before the process lets go of the folder.
+          if (displacedBy === null) await store?.update(() => undefined).catch(() => undefined);
+        } finally {
+          // Whatever failed above, the folder is let go and this is no longer one of the process's servers: the next start must not be refused for it.
+          await release().catch(() => undefined);
+          leaveProcess();
+          setHostedMode(false);
+          if (hosted) {
+            hideFromSiteCommands([]);
+            limitSiteCommandMemory(null);
+            requireCallerForGuardedWork(false);
+          }
         }
       })();
       return closing;

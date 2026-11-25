@@ -38,6 +38,11 @@ export function defineExtension<T extends ServerExtension>(extension: T): T {
   return extension;
 }
 
+/** Every environment variable the extensions name as secret. Call after `checkExtensions`. */
+export function declaredSecrets(extensions: readonly ServerExtension[]): string[] {
+  return [...new Set(extensions.flatMap((extension) => [...(extension.secrets ?? [])]))];
+}
+
 /** Ids well formed and each used once; secrets named as environment variables are. */
 export function checkExtensions(extensions: readonly ServerExtension[]): void {
   const seen = new Set<string>();
@@ -49,7 +54,11 @@ export function checkExtensions(extensions: readonly ServerExtension[]): void {
     if (seen.has(id)) throw new ExtensionError(`The extension id “${id}” isn't usable: two extensions have it.`);
     seen.add(id);
     if (typeof extension.setup !== "function") throw new ExtensionError(`Extension “${id}” couldn't start: it has no setup.`);
-    for (const name of extension.secrets ?? []) {
+    const secrets: unknown = extension.secrets ?? [];
+
+    // A name given on its own, not in a list, would be read letter by letter.
+    if (!Array.isArray(secrets)) throw new ExtensionError(`Extension “${id}”: its secrets are a list of the names of environment variables.`);
+    for (const name of secrets) {
       if (typeof name !== "string" || !ENV_NAME.test(name)) throw new ExtensionError(`Extension “${id}”: “${String(name)}” isn't the name of an environment variable.`);
     }
   }

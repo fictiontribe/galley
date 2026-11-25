@@ -8,24 +8,33 @@
  * from it and it is no use for making a cookie. It is a stable name for one
  * sign-in while the server runs, so `counts` also tells an extension when
  * someone else signs out: that is what it is for.
+ *
+ * Only so many sign-ins are remembered. Past that the oldest are forgotten,
+ * so `counts` can turn false for a sign-in that is still good: it fails
+ * closed, never open.
  */
 import { createHmac, randomBytes } from "node:crypto";
 import type { Install } from "@galley/core/install";
 import { SESSION_MAX_AGE_S, type RevocationList, type SessionInfo } from "../auth";
-import type { ExtensionPeople, SessionRef } from "./types";
+import type { SessionRef } from "./types";
 
 /** The most sign-ins remembered at once. Past it, the ones that no longer count go first, then the oldest. */
 export const MAX_SESSION_REFS = 4096;
 
 export interface PeopleDesk {
-  people: ExtensionPeople;
+  /** The person's name as it is now; null once the account is gone or switched off. */
+  name(account: string): string | null;
+  /** Whether the sign-in an extension knows by this name still counts. */
+  counts(ref: SessionRef): boolean;
+  /** Calls back when either answer may have changed. Returns how to stop. */
+  onChanged(listener: () => void): () => void;
   /** The name an extension knows this sign-in by. */
   refOf(session: SessionInfo): SessionRef;
   /** Whether a sign-in counts now, by the same test a request and an open stream are held to. */
   stillCounts(session: SessionInfo, now?: number): boolean;
 }
 
-export function createPeopleDesk(install: Install, revoked: Pick<RevocationList, "has">, run: (what: string, listener: () => unknown) => void): PeopleDesk {
+export function createPeopleDesk(install: Install, revoked: Pick<RevocationList, "has">): PeopleDesk {
   const key = randomBytes(32);
   const known = new Map<string, SessionInfo>();
 
@@ -39,7 +48,7 @@ export function createPeopleDesk(install: Install, revoked: Pick<RevocationList,
 
   function prune(): void {
     for (const [ref, stamp] of known) if (!stillCounts(stamp)) known.delete(ref);
-    // Still too many (thousands of live sign-ins): the oldest are forgotten, and simply stop counting for extensions.
+    // Still too many (thousands of live sign-ins): the oldest are forgotten, and stop counting for extensions before their time.
     for (const ref of known.keys()) {
       if (known.size <= MAX_SESSION_REFS) break;
       known.delete(ref);
@@ -58,20 +67,16 @@ export function createPeopleDesk(install: Install, revoked: Pick<RevocationList,
       }
       return ref as SessionRef;
     },
-    people: Object.freeze({
-      name(account: string) {
-        const found = typeof account === "string" ? install.store.account(account) : null;
+    name(account) {
+      const found = typeof account === "string" ? install.store.account(account) : null;
 
-        return found && !found.disabled ? found.name : null;
-      },
-      counts(ref: SessionRef) {
-        const stamp = typeof ref === "string" ? known.get(ref) : undefined;
+      return found && !found.disabled ? found.name : null;
+    },
+    counts(ref) {
+      const stamp = typeof ref === "string" ? known.get(ref) : undefined;
 
-        return stamp !== undefined && stillCounts(stamp);
-      },
-      onChange(listener: () => void) {
-        return install.store.onSessionsChanged(() => run("a people listener", listener));
-      },
-    }),
+      return stamp !== undefined && stillCounts(stamp);
+    },
+    onChanged: (listener) => install.store.onSessionsChanged(listener),
   };
 }

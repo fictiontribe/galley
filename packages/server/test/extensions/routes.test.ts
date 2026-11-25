@@ -4,17 +4,17 @@
  * could try to break: an added route is behind every guard a built-in one
  * has, is handed only what it should be, and is nobody's once it has answered.
  */
-import { mkdirSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { BUILD_MODE_REFUSAL, ROLE_REFUSAL } from "@galley/core/install";
+import { BUILD_MODE_REFUSAL, NO_CALLER_REFUSAL, OUTLIVED_REFUSAL, ROLE_REFUSAL } from "@galley/core/install";
 import type { SiteService } from "@galley/core/types";
-import { withoutHiddenVariables } from "@galley/core/workspace";
+import { deniedReason, withoutHiddenVariables } from "@galley/core/workspace";
 import { startServer } from "../../src";
 import { GET_CHANGES_NOTHING, SITE_CHANGES, SITE_INTERNAL, SITE_READS, SITE_WITHHELD, UNREADABLE } from "../../src/extensions/site";
 import { NOT_FROM_THE_EDITOR } from "../../src/extensions/mount";
 import { NEEDS_A_PERSON } from "../../src/who";
-import { call, EDITOR, sandbox, siteRepository, startHosted, stopHosted, until, type CallInit } from "../hosted-helpers";
+import { call, EDITOR, git, sandbox, siteRepository, startHosted, stopHosted, until, type CallInit } from "../hosted-helpers";
 import { newProbe, statusExtension } from "./status";
 
 const box = sandbox("extensions-routes");
@@ -31,6 +31,8 @@ const people: Record<"owner" | "editor" | "contributor", { id: string; cookie: s
 
 const OWN_PAGE = { "sec-fetch-site": "same-origin" };
 /** A call to the extension as the editor's own page makes it. */
+/** A page of the site with something new on it, so there is something to publish. */
+const touch = (name: string) => writeFileSync(join(folder, "src/content/pages", `${name}.md`), `---\ntitle: ${name}\n---\n${Date.now()} ${Math.random()}\n`);
 const x = (method: string, path: string, init: CallInit = {}) => call(port, method, `/api/x/status${path}`, { ...init, headers: { ...OWN_PAGE, ...init.headers } });
 const site = (rest = "") => `/sites/${siteId}${rest}`;
 
@@ -78,8 +80,21 @@ beforeAll(async () => {
               probe.calls.changed = (probe.calls.changed ?? 0) + 1;
               void host.sites.get(siteId).then(async (open) => probe.later.push(`listener publish ${await open!.publish({ message: "From a listener" }).then(() => "done", (error: Error) => `refused: ${error.message}`)}`));
             });
+            host.people!.onChange(() => {
+              throw new Error(`a listener broke with ${SECRET}`);
+            });
+            host.people!.onChange((async () => {
+              throw new Error(`a listener broke later with ${SECRET}`);
+            }) as unknown as () => void);
           },
-          stop: () => void (probe.calls.stop = (probe.calls.stop ?? 0) + 1),
+          // Tries to publish as it stops, then fails with a secret in its words.
+          async stop() {
+            probe.calls.stop = (probe.calls.stop ?? 0) + 1;
+            const open = await probe.host!.sites.get(siteId);
+
+            probe.later.push(`stop publish ${await open!.publish({ message: "While stopping" }).then(() => "done", (error: Error) => `refused: ${error.message}`)}`);
+            throw new Error(`couldn't tidy up with ${SECRET}`);
+          },
         }),
       ],
     }
@@ -112,7 +127,7 @@ describe("routes an embedding program adds", () => {
     expect((await x("POST", site("/note"), { cookie: people.editor.cookie, body: { text: "  Ready for Monday  " } })).body).toEqual({ ok: true });
     expect((await x("GET", site(), { cookie: people.contributor.cookie })).body).toEqual({ waiting: 1, note: "Ready for Monday" });
     expect((await x("POST", site("/note"), { cookie: people.editor.cookie, body: { text: "" } })).body.error).toMatchObject({ code: "invalid", message: "A note is 1 to 200 characters." });
-    expect(started.notices.join("\n")).toContain("Extensions: status (12 routes)");
+    expect(started.notices.join("\n")).toMatch(/Extensions: status \(\d+ routes\)/);
   });
 
   it("is behind the guards a built-in route of the same level is behind, with the same answers", async () => {
@@ -156,6 +171,33 @@ describe("routes an embedding program adds", () => {
         }
       }
     }
+    // A cookie that was signed out, and one whose account was switched off, are nobody's on both.
+    const gone = await join_("gone@example.com", "editor", "Gone Editor");
+    const off = await join_("off@example.com", "editor", "Off Editor");
+
+    expect((await call(port, "POST", "/api/auth/logout", { cookie: gone.cookie })).status).toBe(200);
+    expect((await call(port, "PATCH", `/api/people/${off.id}`, { cookie: people.owner.cookie, body: { disabled: true } })).status).toBe(200);
+    for (const pair of pairs) {
+      for (const cookie of [gone.cookie, off.cookie]) {
+        const ended = await both(pair, { cookie });
+
+        expect(ended.added, `${pair.added} after the sign-in ended`).toEqual(ended.builtIn);
+        expect(ended.added, pair.added).toEqual([401, "unauthorized"]);
+      }
+    }
+    // More than the route takes: refused before the reader or the handler sees any of it.
+    const notes = probe.calls.note ?? 0;
+    const tooMuch = await x("POST", site("/note"), { cookie: people.editor.cookie, body: { text: "x".repeat(8000) } });
+
+    expect([tooMuch.status, tooMuch.body.error.code]).toEqual([413, "invalid"]);
+    expect(probe.calls.note ?? 0).toBe(notes);
+    // The address spelt with an encoded letter is the same address, behind the same guards.
+    expect((await call(port, "GET", "/%61pi/x/status/about", { cookie: people.owner.cookie, headers: OWN_PAGE })).body).toEqual({ mode: "hosted" });
+    expect((await call(port, "GET", "/%61pi/x/status/about", { headers: OWN_PAGE })).status).toBe(401);
+    expect((await call(port, "GET", "/%61pi/x/status/about", { cookie: people.contributor.cookie, headers: OWN_PAGE })).status).toBe(403);
+    expect((await call(port, "GET", "/%61pi/x/status/about", { cookie: people.owner.cookie, headers: { "sec-fetch-site": "same-site" } })).status).toBe(403);
+    // An address that ends like one the editor treats specially is still the extension's.
+    expect((await x("POST", site("/preview/start"), { cookie: people.contributor.cookie, body: {} })).body).toEqual({ mine: true });
     // The operator's token reaches an added route as it reaches a built-in one, with no word from a browser.
     expect((await call(port, "GET", "/api/x/status/about", { bearer: OPERATOR })).body).toEqual({ mode: "hosted" });
     expect((await call(port, "GET", `/api/sites/${siteId}/media`, { bearer: OPERATOR })).status).toBe(200);
@@ -265,6 +307,11 @@ describe("routes an embedding program adds", () => {
       expect([answer.status, answer.body.error.message], path).toEqual([403, UNREADABLE]);
     }
     expect((await x("GET", site(`/file?path=${encodeURIComponent("src/content/pages/waiting.md")}`), { cookie: people.contributor.cookie })).body.content).toContain("title: Waiting");
+    // A link inside the site that leads to one of them is that file, whatever the link is called.
+    symlinkSync("../../../.env", join(folder, "src/content/pages/notes.txt"));
+    const linked = await x("GET", site(`/file?path=${encodeURIComponent("src/content/pages/notes.txt")}`), { cookie: people.contributor.cookie });
+
+    expect([linked.status, linked.body.error.message]).toEqual([403, UNREADABLE]);
     // The same through the host, outside a request.
     const open = (await probe.host!.sites.get(siteId))!;
 
@@ -282,51 +329,137 @@ describe("routes an embedding program adds", () => {
     expect(SITE_READS.filter((name) => (SITE_CHANGES as readonly string[]).includes(name))).toEqual([]);
   });
 
-  it("a GET is handed nothing that changes a site; other routes change it only as far as the caller may", async () => {
+  it("a GET is handed nothing that changes a site, however the site is reached", async () => {
     expect((await x("GET", site("/write"), { cookie: people.owner.cookie })).body).toEqual({ tried: `refused: ${GET_CHANGES_NOTHING}` });
+    // Through the host instead of the request: the same.
+    expect((await x("GET", `/any-site?site=${siteId}`, { cookie: people.owner.cookie })).body).toEqual({ tried: `refused: ${GET_CHANGES_NOTHING}` });
+    expect((await call(port, "HEAD", `/api/x/status${site("/write")}`, { cookie: people.owner.cookie, headers: OWN_PAGE })).status).toBe(200);
+    expect(git(folder, "status", "--porcelain", "--", "src/content/pages/about.md", "src/content/pages/by-a-get.md")).toBe("");
+  });
+
+  it("what a read answers with is a copy: changing it changes nothing of the site's own rules", async () => {
+    const real = (await started.server.services.registry.get(siteId)) as SiteService;
+    const before = JSON.stringify((await real.model()).writable);
+
+    expect((await x("GET", site("/tidy"), { cookie: people.contributor.cookie })).body).toEqual({ content: JSON.parse(before).content.length + 2 });
+    expect(JSON.stringify((await real.model()).writable)).toBe(before);
+    // Content mode is as narrow as it was: a contributor still can't save the site's code as content.
+    const tried = (await x("POST", site("/save"), { cookie: people.contributor.cookie, body: { path: "src/layouts/Tidy.astro", mode: "content" } })).body.tried;
+
+    expect(tried).toBe("refused: Only content and media can be changed in content mode. Switch to build mode to change the site's code.");
+    // Every read answers with something that can be copied, and never the engine's own object.
+    const guarded = (await probe.host!.sites.get(siteId))!;
+
+    expect(await guarded.model()).toEqual(await real.model());
+    expect(await guarded.model()).not.toBe(await real.model());
+    expect((await guarded.changes()).files).not.toBe((await real.changes()).files);
+    expect(typeof guarded.id === "string" && guarded.root === real.root).toBe(true);
+  });
+
+  it("changes a site only as far as the caller may, by the engine's own rules", async () => {
     const save = (who: keyof typeof people, path: string, mode: "content" | "build") => x("POST", site("/save"), { cookie: people[who].cookie, body: { path, mode } }).then((answer) => String(answer.body.tried));
 
     expect(await save("contributor", "src/layouts/Base.astro", "build")).toBe(`refused: ${BUILD_MODE_REFUSAL}`);
-    expect(await save("contributor", ".git/config", "content")).toMatch(/^refused: /);
-    expect(await save("contributor", "../outside.md", "content")).toMatch(/^refused: /);
-    expect(await save("contributor", ".env", "content")).toMatch(/^refused: /);
+    // Control: the same save by someone who may use build mode goes through.
+    expect(await save("editor", "src/layouts/Base.astro", "build")).toBe("done");
+    // What nobody may write, an editor in build mode included: each refused by the rule for that kind of file.
+    for (const mode of ["content", "build"] as const) {
+      expect(await save("editor", ".git/config", mode), mode).toBe(`refused: ${deniedReason(".git/config", mode)}`);
+      expect(await save("editor", ".env", mode), mode).toBe(`refused: ${deniedReason(".env", mode)}`);
+      expect(await save("editor", "../outside.md", mode), mode).toBe("refused: That file is outside the site folder, so it can't be opened or changed here.");
+    }
+    expect(deniedReason(".git/config", "build")).toBe("Version-history files can't be changed from here.");
     expect(await save("contributor", "src/content/pages/by-a-contributor.md", "content")).toBe("done");
   });
 
-  it("work a handler leaves running is nobody's once it has answered", async () => {
-    for (const init of [{ cookie: people.owner.cookie }, { bearer: OPERATOR }] as CallInit[]) {
+  it("work a handler leaves running is nobody's once it has answered: it can't publish, though the handler itself could", async () => {
+    for (const [init, name] of [[{ cookie: people.owner.cookie }, "Sam Owner"], [{ bearer: OPERATOR }, "nobody's"]] as Array<[CallInit, string]>) {
+      // Control: the same publish, inside the handler, as the same caller, goes through.
+      touch("published-inside");
+      expect((await x("POST", site("/inside"), { ...init, body: {} })).body, JSON.stringify(init)).toEqual({ tried: "done" });
+      expect(git(folder, "log", "-1", "--format=%s")).toBe("Inside");
+      // Left running, with something there to publish: refused, in the words for work that outlived its request.
+      touch("published-later");
       probe.later.length = 0;
       expect((await x("POST", site("/later"), { ...init, body: { wait: 30 } })).body).toEqual({ started: true });
-      await until(() => probe.later.length === 2);
-      // It may not publish. It may still save content, as work for nobody may on a hosted install.
-      expect(probe.later[0], JSON.stringify(init)).toMatch(/^publish refused: /);
-      expect(probe.later[1], JSON.stringify(init)).toBe("save done");
+      await until(() => probe.later.length === 4);
+      expect(probe.later[0], JSON.stringify(init)).toBe(`publish refused: ${OUTLIVED_REFUSAL}`);
+      expect(git(folder, "log", "-1", "--format=%s")).toBe("Inside");
+      // It may still save content, as work for nobody may on a hosted install…
+      expect(probe.later[1]).toBe("save done");
+      // …and what it records still carries the publishing name of the person whose request started it. `host.outside` carries none.
+      expect(probe.later[2]).toBe(`name ${name}`);
+      expect(probe.later[3]).toBe("outside nobody's");
     }
   });
 
-  it("and is nobody's at once when the sign-in stops counting", async () => {
+  it("and loses its caller's access at once when the sign-in stops counting", async () => {
     const guest = await join_("guest@example.com", "editor", "Guest Editor");
-    let open!: () => void;
+    const slowly = async (signOut: boolean) => {
+      let open!: () => void;
 
-    probe.gate = new Promise<void>((resolve) => (open = resolve));
-    const slow = x("POST", site("/slow"), { cookie: guest.cookie, body: {} });
+      probe.gate = new Promise<void>((resolve) => (open = resolve));
+      touch("published-slowly");
+      const slow = x("POST", site("/slow"), { cookie: guest.cookie, body: {} });
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    expect((await call(port, "POST", "/api/auth/logout", { cookie: guest.cookie })).status).toBe(200);
-    open();
-    expect(String((await slow).body.tried)).toMatch(/^refused: /);
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      if (signOut) expect((await call(port, "POST", "/api/auth/logout", { cookie: guest.cookie })).status).toBe(200);
+      open();
+      return String((await slow).body.tried);
+    };
+
+    // Control: the same slow handler, the sign-in still good, publishes.
+    expect(await slowly(false)).toBe("done");
+    expect(git(folder, "log", "-1", "--format=%s")).toBe("Slow");
+    const head = git(folder, "rev-parse", "HEAD");
+
+    expect(await slowly(true)).toBe(`refused: ${ROLE_REFUSAL}`);
+    expect(git(folder, "rev-parse", "HEAD")).toBe(head);
     delete probe.gate;
   });
 
-  it("keeps a declared secret from the site's commands, the log and an error shown to a person", async () => {
+  it("a body reader is the route's own code: it may be async, and what it throws is answered, never left to end the process", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => void unhandled.push(reason);
+
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      // The reader refuses an empty body; the handler would have refused the operator's token without looking at it.
+      const empty = await call(port, "POST", "/api/x/status/request", { bearer: OPERATOR });
+
+      expect([empty.status, empty.body.error.code, empty.body.error.message]).toEqual([400, "invalid", "Say what you need. (•••)"]);
+      expect((await call(port, "POST", "/api/x/status/request", { bearer: OPERATOR, body: { need: "a page" } })).body.error).toMatchObject({ code: "forbidden", message: "People only." });
+      expect((await x("POST", "/request", { cookie: people.contributor.cookie, body: { need: "a page" } })).body).toEqual({ need: "a page" });
+      expect((await x("POST", "/request", { cookie: people.contributor.cookie, raw: "{not json", headers: { "content-type": "application/json" } })).body.error.message).toBe("The request body isn't valid JSON.");
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+    expect(unhandled).toEqual([]);
+  });
+
+  it("only the editor's own check says 'not signed in': whatever a handler throws, the app is never sent to sign in", async () => {
+    for (const how of ["code", "status", "http"]) {
+      const answer = await x("GET", `/refuse/${how}`, { cookie: people.owner.cookie });
+
+      expect(answer.status, how).toBe(403);
+      expect(answer.body.error.code, how).toBe(how === "status" ? "invalid" : "forbidden");
+    }
+  });
+
+  it("keeps a declared secret from the site's commands, every line of the log and an error shown to a person", async () => {
     expect(withoutHiddenVariables({ STATUS_API_KEY: SECRET, PATH: "/bin", OTHER: "kept" })).toEqual({ PATH: "/bin", OTHER: "kept" });
     const answer = await x("GET", "/leak", { cookie: people.owner.cookie });
 
     expect(answer.body.error).toMatchObject({ code: "invalid", message: "The service refused the key •••." });
     expect(answer.text).not.toContain(SECRET);
-    const line = logs.find((entry) => entry.includes("[status] asked with"))!;
+    expect(logs.find((entry) => entry.includes("[status] asked with"))).toBe("[status] asked with ••• GET /api/people 200 forged");
+    // A failure that isn't one of the editor's errors is written to the server's own log, stack and all: without the value.
+    const crash = await x("GET", "/refuse/crash", { cookie: people.owner.cookie });
 
-    expect(line).toBe("[status] asked with ••• GET /api/people 200 forged");
+    expect([crash.status, crash.body.error.code]).toEqual([500, "internal"]);
+    expect(crash.text).not.toContain(SECRET);
+    expect(logs.some((entry) => entry.includes("/api/x/status/refuse/crash failed") && entry.includes("the status service refused"))).toBe(true);
     expect(logs.join("\n")).not.toContain(SECRET);
   });
 
@@ -354,7 +487,32 @@ describe("routes an embedding program adds", () => {
     expect(probe.calls.changed ?? 0).toBeGreaterThan(changedBefore);
     // The listener ran inside the owner's request, and was nobody all the same: it could not publish.
     await until(() => probe.later.some((line) => line.startsWith("listener publish")));
-    expect(probe.later.filter((line) => line.startsWith("listener publish")).every((line) => /^listener publish refused: /.test(line))).toBe(true);
+    expect([...new Set(probe.later.filter((line) => line.startsWith("listener publish")))]).toEqual([`listener publish refused: ${NO_CALLER_REFUSAL}`]);
+    // The listeners that failed did so under the extension's own name, on one line, without its secret.
+    expect(logs).toContain("[status] a people listener failed: a listener broke with •••");
+    expect(logs).toContain("[status] a people listener answered with a promise. It has to answer at once, so its answer was not used.");
+    await until(() => logs.includes("[status] a people listener failed later: a listener broke later with •••"));
+    expect(logs.join("\n")).not.toContain(SECRET);
+    // Every other way a sign-in ends stops it counting too.
+    const refOf = async (cookie: string) => {
+      await x("GET", site(), { cookie });
+      return (probe.requests.at(-1)!.caller as unknown as { session: never }).session;
+    };
+    const endings: Array<[string, (person: { id: string; cookie: string }) => Promise<unknown>]> = [
+      ["signs out", (person) => call(port, "POST", "/api/auth/logout", { cookie: person.cookie })],
+      ["is signed out by an owner", (person) => call(port, "POST", `/api/people/${person.id}/sign-out`, { cookie: people.owner.cookie })],
+      ["chooses a new password", (person) => call(port, "POST", "/api/account/password", { cookie: person.cookie, body: { current: PASSWORD, next: "another long password 123" } })],
+      ["is removed", (person) => call(port, "DELETE", `/api/people/${person.id}`, { cookie: people.owner.cookie })],
+    ];
+
+    for (const [how, end] of endings) {
+      const person = await join_(`${how.replace(/\W+/g, "-")}@example.com`, "contributor", `Someone who ${how}`);
+      const ref = await refOf(person.cookie);
+
+      expect(desk.counts(ref), how).toBe(true);
+      await end(person);
+      expect(desk.counts(ref), how).toBe(false);
+    }
     // A change of name is a change to what `name` answers: listeners are told.
     const renamedBefore = probe.calls.changed ?? 0;
 
@@ -375,8 +533,22 @@ describe("routes an embedding program adds", () => {
     expect((await x("GET", "/about", { cookie: people.owner.cookie })).body).toEqual({ mode: "hosted" });
     expect(withoutHiddenVariables({ STATUS_API_KEY: SECRET })).toEqual({});
     expect(probe.calls.stop ?? 0).toBe(0);
+    touch("published-while-stopping");
+    probe.later.length = 0;
     await stopHosted(box, started);
     expect(probe.calls.stop).toBe(1);
+    // Its stop ran as nobody, and its failure is one line under its own name without its secret.
+    expect(probe.later.filter((line) => line.startsWith("stop publish"))).toEqual([`stop publish refused: ${NO_CALLER_REFUSAL}`]);
+    expect(logs).toContain("[status] its stop failed: couldn't tidy up with •••");
+    // What it was handed does nothing now: the data folder may be another server's.
+    const lines = logs.length;
+
+    expect(await probe.host!.sites.get(siteId)).toBeNull();
+    probe.host!.log("after the stop");
+    expect(probe.host!.people!.counts("s-anything" as never)).toBe(false);
+    expect(probe.host!.people!.name(people.owner.id)).toBeNull();
+    expect(logs.length).toBe(lines);
+    expect(withoutHiddenVariables({ STATUS_API_KEY: SECRET })).toEqual({ STATUS_API_KEY: SECRET });
     // With it gone, a server starts; and beside that one, a server with extensions doesn't.
     const plain = await second();
 
