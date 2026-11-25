@@ -224,6 +224,31 @@ tier"); Fiction Tribe's Portland/2011 facts (the /fiction-tribe/ page is cut).
 `/features/`, `/adapters/` and `/fiction-tribe/` redirect (301) to `/`,
 `/docs/adapters/` and `/team/` through Galley's own redirects list.
 
+## Comparison pages (/compare/, added 2026-11-25)
+
+Statements about other products are in `claims/<page>.md`, one file per
+article, each with its source and the date it was read ([`claims/README.md`](claims/README.md)).
+The statements below are the ones the comparison pages make about Galley.
+
+| Statement | Where | Support |
+| --- | --- | --- |
+| Free, Apache-2.0, one edition, no paid tier today | /compare/cloudcannon/, /compare/types-of-cms/ | `docs/project/faq.md` "What does it cost?"; `SUPPORT.md` ("no feature is held back for a paid plan"); `LICENSE` |
+| The assistant runs on Anthropic's Claude with your own key, billed to the key's owner; everything except chat and image generation works without one | /compare/cloudcannon/ | `docs/editing/assistant.md`; `docs/project/faq.md` |
+| Reads the framework, collections and fields from the site's schemas and files without running its code; `galley.config.json` only corrects what it found | /compare/cloudcannon/, /compare/types-of-cms/ | README "No set-up."; `docs/project/faq.md` "Do I have to change my site?"; `docs/concepts/detection.md` |
+| Galley adds no dependency, integration or build plugin; editing on the page needs no markup; it asks which one you meant when words come from two places | /compare/cloudcannon/ | `docs/project/faq.md`; `docs/editing/on-the-page.md` |
+| Forms and the consent banner come from the site kit, added as changes to check | /compare/cloudcannon/ | `docs/editing/forms.md` ("Set it up for me") |
+| The assistant reads before it edits, asks one short question when unsure, quotes the new words, touches only content and media in content mode, has no shell or network tool, and never publishes | /compare/cloudcannon/ | `brand/positioning.md`; `docs/editing/assistant.md`; `docs/concepts/modes.md` |
+| The MCP server gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site | /compare/cloudcannon/ | status `mcp` (built); `docs/mcp.md` |
+| Proof beside the live site; publish is a commit, or a branch and a pull request; undo is a new commit; history never rewritten | /compare/cloudcannon/, /compare/types-of-cms/ | status `proof`, `publish` (built); README "How it works" |
+| Puts a site online on Cloudflare, verified on the real service; attaching a new domain there tested only against stand-ins; Vercel deploys built, still in progress | /compare/cloudcannon/ | status `deploy-cloudflare` (built), `deploy-vercel` (in progress); `docs/running/deploy.md` status note ("attaching a fresh address … is tested against stand-ins only") |
+| Forms to HubSpot, Marketo, Salesforce, Pardot, a webhook or Galley's inbox, which takes a live site's answers only when the editor runs on a public server; redirects keep the host's file in step | /compare/cloudcannon/ | status `forms`, `redirects` (built); `docs/editing/inbox.md` |
+| Runs on your own computer, or on your own server with the hosted editor (new, in final checks) | /compare/cloudcannon/ | status `hosted-install` (new); `apps.md` |
+| On your own computer there are no accounts; a hosted editor (new, in final checks) has owner, editor and contributor, and each publish carries its author; single sign-on later; no presence; one shared copy of the site, each publish attributed, a second save of a page just changed refused rather than written over | /compare/cloudcannon/ | `docs/editing/signing-in.md`; status `hosted-install`, `hosted-accounts` (new), `hosted-sso` (later); `docs/running/security.md` "Not covered yet"; `docs/project/faq.md` "Can several people edit at once?" |
+| Page builder in preview | /compare/cloudcannon/ | status `builder` (preview) |
+| Version 0.4.2, first released November 2026 | /compare/cloudcannon/, /compare/types-of-cms/ | `CHANGELOG.md`; `npm view galley-cms time` (0.1.0 on 2026-11-23) |
+| Help comes through the project's issues on GitHub | /compare/cloudcannon/ | `SUPPORT.md` |
+| "We think" the Git-based kind is the modern one, and why | /compare/types-of-cms/ | Opinion, marked as Fiction Tribe's own on the page |
+
 ## Known problems found while checking
 
 - **The starters' vendored kit** (`starters/*/src/galley/visibility/integration.js`)

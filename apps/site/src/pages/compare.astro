@@ -1,0 +1,57 @@
+---
+// /compare/ — the comparison hub: the guides that explain the kinds of CMS,
+// then Galley beside each product (articles in src/content/compare/, plus the
+// pages listed under `also` in src/content/pages/compare.md, such as
+// /wordpress/), then how the comparisons are written.
+import Site from "../layouts/Site.astro";
+import "../styles/compare.css";
+import PageHead from "../components/PageHead.astro";
+import { getPage } from "../lib/pages";
+import { inline } from "../lib/markdown";
+import { compareHref, getComparisons, type CompareLink } from "../lib/compare";
+
+const { data: p } = await getPage("compare");
+const all = await getComparisons();
+const card = (e: (typeof all)[number]): CompareLink => ({ title: e.data.name ?? e.data.heading, text: e.data.lead, href: compareHref(e.id) });
+const guides = all.filter((e) => e.data.kind === "guide").map(card);
+const products = [...all.filter((e) => e.data.kind === "versus").map(card), ...((p.also ?? []) as CompareLink[])];
+const groups = [
+  { id: "guides", heading: p.guidesHeading as string, items: guides },
+  { id: "products", heading: p.productsHeading as string, items: products },
+].filter((g) => g.items.length > 0);
+---
+
+<Site title={p.title} description={p.description} noindex={p.noindex}>
+  <div class="wrap compare-hub" data-galley-agent="main">
+    <PageHead heading={p.heading} lead={p.lead} />
+    {
+      groups.map((g) => (
+        <section class="compare-hub__group" aria-labelledby={`${g.id}-h`}>
+          <h2 class="h2 head" id={`${g.id}-h`} set:html={inline(g.heading)} />
+          <ul class="cards">
+            {g.items.map((c) => (
+              <li style="display:grid">
+                <a class="card" href={c.href}>
+                  <h3 class="card__t" set:html={inline(c.title)} />
+                  <span class="body" set:html={inline(c.text)} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+    {
+      p.how && (
+        <section class="compare-hub__how" aria-labelledby="how-h">
+          <h2 class="h2" id="how-h" set:html={inline(p.how.heading)} />
+          <ul class="prose">
+            {(p.how.points as string[]).map((point) => (
+              <li set:html={inline(point)} />
+            ))}
+          </ul>
+        </section>
+      )
+    }
+  </div>
+</Site>

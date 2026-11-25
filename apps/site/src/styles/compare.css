@@ -1,0 +1,28 @@
+/* The comparison hub (/compare/) and its articles (/compare/<slug>/). Only the
+   site's own tokens and parts (page-head, prose, cards, the comparison table,
+   the questions), so a new look for the site carries over. */
+
+.compare-article__up { font-size: var(--t-small); color: var(--ink-3); }
+.compare-article__meta { font-size: var(--t-small); color: var(--ink-3); max-width: 40rem; }
+
+.compare-short { max-width: 46rem; padding: var(--s5) var(--s6); border-radius: var(--r-lg); background: var(--raised); border: 1px solid var(--line); }
+.compare-short__h { font: 600 var(--t-ui)/1.35 var(--font-text); color: var(--ink); }
+.compare-short ul { display: grid; gap: var(--s3); margin-top: var(--s4); padding-left: 1.25em; list-style: disc; color: var(--ink-2); }
+.compare-short li::marker { color: var(--ink-3); }
+
+.compare-article__body { padding-top: var(--s8); }
+.compare-article__body .prose { font-size: var(--t-body); }
+.compare-article__body .prose table { margin-block: var(--s5); }
+
+.compare-sources ol { display: grid; gap: var(--s2); margin-top: var(--s5); padding-left: 1.5em; list-style: decimal; max-width: 46rem; color: var(--ink-2); }
+.compare-sources ol li::marker { color: var(--ink-3); }
+.compare-sources__line { margin-top: var(--s4); max-width: 44rem; color: var(--ink-2); }
+
+.compare-hub__group { margin-top: var(--s8); }
+.compare-hub__group:first-of-type { margin-top: 0; }
+.compare-hub__how { margin-top: var(--section); max-width: 46rem; }
+.compare-hub__how .prose { margin-top: var(--s5); padding-left: 1.25em; }
+
+@media (max-width: 1023px) {
+  .compare-short { padding: var(--s4) var(--s5); }
+}
