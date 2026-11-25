@@ -1,0 +1,11 @@
+/* Other people's words in an addition (additions/SafeText.tsx). Its own rules, so it reads the same on every screen. */
+.app-safe-text, .app-safe-md { overflow-wrap: anywhere; min-inline-size: 0; }
+.app-safe-md { display: grid; gap: var(--space-1); }
+.app-safe-md > * { margin: 0; }
+.app-safe-md ul, .app-safe-md ol { padding-inline-start: var(--space-5); }
+.app-safe-md a { color: var(--accent-text); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 0.2em; }
+.app-safe-md a:hover { text-decoration-color: currentColor; }
+.app-safe-md code { font-family: var(--font-mono); font-size: 0.88em; padding: 0 0.25em; border-radius: var(--radius-xs); background: var(--surface-sunken); }
+.app-safe-md pre { overflow-x: auto; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-sunken); font-size: var(--text-xs); }
+.app-safe-md pre code { padding: 0; background: none; }
+.app-safe-md blockquote { padding-inline-start: var(--space-3); border-inline-start: var(--border-thick) solid var(--border-strong); color: var(--ink-secondary); }

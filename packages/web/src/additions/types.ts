@@ -8,7 +8,7 @@
  * no global, address, message or stored value adds one. It is not
  * sandboxed: it can import any module of the app, and a mistake in it is
  * its author's. What the app does for it: a place that crashes while it
- * draws shows nothing there and leaves the screen as it was.
+ * draws, or waits, shows nothing there and leaves the screen as it was.
  */
 import type { ComponentType } from "react";
 
@@ -23,7 +23,12 @@ export interface Addition {
   root?: ComponentType;
   /** At the right of the top bar, before the account menu. Small. */
   topBar?: ComponentType;
-  /** After the title in a row of a collection's list. Small, and drawn once for every row on screen. */
+  /**
+   * After the title in a row of a collection's list. Small, and drawn once
+   * for every row on screen, again as the list scrolls: one request for the
+   * list, shared between rows, not one a row. It can be clicked; the list
+   * has one tab stop, so prefer what doesn't take focus.
+   */
   listRow?: ComponentType<{ siteId: string; path: string }>;
 }
 

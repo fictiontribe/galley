@@ -8,6 +8,8 @@
  *
  *   const status: Addition = { id: "status", topBar: Waiting };
  *   createRoot(root).render(<App additions={[status]} />);
+ *
+ * The page it is rendered into starts from the app's own `index.html`.
  */
 export type { Addition, AdditionPlace } from "./types";
 export { extensionApi, extensionUrl, type ExtensionApi, type ExtensionQuery } from "./client";

@@ -26,6 +26,7 @@ export const INPUTS = [
   "packages/web/demo",
   "packages/web/public",
   "packages/web/vite.config.ts",
+  "packages/web/vite.preset.mjs",
   "packages/web/vite.demo.config.ts",
   "packages/web/package.json",
   "packages/core/src",

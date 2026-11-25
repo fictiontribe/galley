@@ -2,7 +2,7 @@
  * Where additions are drawn. With no additions every place renders nothing,
  * not even an empty element: the app is as it is without them.
  */
-import { Component, createContext, useContext, useMemo, type ComponentType, type ReactNode } from "react";
+import { Component, createContext, Suspense, useContext, useState, type ComponentType, type ReactNode } from "react";
 import { accountOf } from "@/lib/may";
 import { useMeta } from "@/lib/stores/meta";
 import type { Addition, AdditionPlace } from "./types";
@@ -12,6 +12,14 @@ const PLACES: readonly AdditionPlace[] = ["root", "topBar", "listRow"];
 const NONE: readonly Addition[] = Object.freeze([]);
 
 const AdditionsContext = createContext<readonly Addition[]>(NONE);
+
+/** What memo, forwardRef and lazy return: objects React draws as components. An element (`<Badge />`) is an object too, and is not one. */
+const COMPONENT_OBJECTS = new Set([Symbol.for("react.memo"), Symbol.for("react.forward_ref"), Symbol.for("react.lazy")]);
+
+function isComponent(value: unknown): boolean {
+  if (typeof value === "function") return true;
+  return typeof value === "object" && value !== null && COMPONENT_OBJECTS.has((value as { $$typeof?: symbol }).$$typeof as symbol);
+}
 
 /** The additions as the app keeps them: checked once, copied, and not to be changed afterwards. */
 export function checkedAdditions(additions: readonly Addition[] | undefined): readonly Addition[] {
@@ -24,7 +32,7 @@ export function checkedAdditions(additions: readonly Addition[] | undefined): re
       if (seen.has(addition.id)) throw new Error(`The addition id “${addition.id}” isn't usable: two additions have it.`);
       seen.add(addition.id);
       for (const place of PLACES) {
-        if (addition[place] !== undefined && typeof addition[place] !== "function" && typeof addition[place] !== "object") throw new Error(`The addition “${addition.id}” gives something for ${place} that isn't a component.`);
+        if (addition[place] !== undefined && !isComponent(addition[place])) throw new Error(`The addition “${addition.id}” gives something for ${place} that isn't a component. A component is a function, or what memo, forwardRef or lazy return; an element such as <Badge /> is not one.`);
       }
       return Object.freeze({ id: addition.id, ...(addition.root ? { root: addition.root } : {}), ...(addition.topBar ? { topBar: addition.topBar } : {}), ...(addition.listRow ? { listRow: addition.listRow } : {}) });
     }),
@@ -32,9 +40,8 @@ export function checkedAdditions(additions: readonly Addition[] | undefined): re
 }
 
 export function AdditionsProvider({ additions, children }: { additions: readonly Addition[] | undefined; children: ReactNode }) {
-  // Set once, when the app starts: what is passed on a later render is not looked at.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const checked = useMemo(() => checkedAdditions(additions), []);
+  // Set once, when the app starts: what is passed on a later render is not looked at. (State, not a memo: a memo may be worked out again.)
+  const [checked] = useState(() => checkedAdditions(additions));
 
   return <AdditionsContext.Provider value={checked}>{children}</AdditionsContext.Provider>;
 }
@@ -48,7 +55,12 @@ interface BoundaryProps {
   children: ReactNode;
 }
 
-/** An addition that crashes while it draws shows nothing in that place. The screen around it stays. */
+/**
+ * An addition that crashes while it draws shows nothing in that place. The
+ * screen around it stays. This names the addition once for each place; React
+ * logs every error a boundary catches as well, unless the program that made
+ * the root gave it an `onCaughtError`.
+ */
 class AdditionBoundary extends Component<BoundaryProps, { failed: boolean }> {
   override state = { failed: false };
 
@@ -76,7 +88,10 @@ function drawn<P extends object>(additions: readonly Addition[], place: Addition
     return Part
       ? [
           <AdditionBoundary key={`${addition.id}${keyed}`} id={addition.id} place={place}>
-            <Part {...props} />
+            {/* One that waits (a lazy component, a promise it reads) shows nothing meanwhile, here: without this, its waiting would replace the whole screen. */}
+            <Suspense fallback={null}>
+              <Part {...props} />
+            </Suspense>
           </AdditionBoundary>,
         ]
       : [];

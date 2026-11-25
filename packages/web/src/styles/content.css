@@ -280,7 +280,8 @@
 /* Only where an edition of the editor draws something of its own after a row's title (src/additions). */
 .app-row__with-additions { display: flex; align-items: center; gap: var(--space-2); min-inline-size: 0; }
 .app-row__with-additions > .app-row__main { flex: 0 1 auto; }
-.app-row__additions { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
+/* Raised over the row's link, which is stretched across the whole row: what an addition draws here can be pointed at and clicked. */
+.app-row__additions { position: relative; z-index: var(--z-raised); display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
 .app-row__link::after { content: ""; position: absolute; inset: 0; }
 .app-row__link:focus-visible { outline: none; }
 .app-row:has(.app-row__link:focus-visible) { box-shadow: inset 0 0 0 2px var(--focus-ring); }

@@ -219,11 +219,13 @@ Three, in this version:
 
 - `root`: mounted once inside the signed-in app, and again when someone else signs in. For what the addition keeps going (a subscription, the stream's value). It should draw nothing, or little.
 - `topBar`: at the right of the top bar, before the account menu. Small.
-- `listRow`: after the title in each row of a collection's list, handed `siteId` and the page's `path`. It is drawn once for every row on screen, so keep it cheap: one request for the whole list, not one a row.
+- `listRow`: after the title in each row of a collection's list, handed `siteId` and the page's `path`. It is drawn once for every row on screen, and again as the list scrolls, so keep it cheap: one request for the whole list, not one a row (share it between rows, outside the component). What it draws can be clicked. The list is moved through with the arrow keys and has one tab stop; anything of yours that takes focus adds a tab stop for every row, so prefer what doesn't, or give it `tabIndex={-1}`.
 
 With no additions each place renders nothing, and the app is as it ships. There are no places yet beside a field, on the page in the preview or in Arrange.
 
-An addition's `id` is its extension's: lower-case letters, digits and dashes, 3 to 32, starting with a letter. A wrong id, the same id twice or something that isn't a component stops the app as it starts, in a sentence that names the addition. The list is read once; changing it later changes nothing.
+An addition's `id` is its extension's: lower-case letters, digits and dashes, 3 to 32, starting with a letter. A wrong id, the same id twice or something that isn't a component stops the app as it starts, in a sentence that names the addition. A component is a function, or what `memo`, `forwardRef` or `lazy` return; an element (`<Badge />` where `Badge` was meant) is refused. The list is read once; changing it later changes nothing.
+
+An addition that waits while it draws (a `lazy` component, a promise it reads with `use`) shows nothing in its place until it is ready. The screen doesn't wait for it.
 
 ### What an addition leans on
 
@@ -231,16 +233,22 @@ An addition's `id` is its extension's: lower-case letters, digits and dashes, 3 
 
 - **`extensionApi(id)`**: a client for your own routes. An address is given as its parts, `status.get(["sites", siteId, "note"])`, and each part is encoded, so a value that came from somewhere else can't become a path. A refusal is thrown with the server's own words in `error.message`; "not signed in" sends the person to sign in, as it does for the app's own calls.
 - **`subscribeExtension(id, name, handler)`**: your extension's events, by name. **`onReconnect(listener)`** runs after the stream came back from a drop: fetch again what you show, because events sent meanwhile are gone. Do the same on `subscribeExtension(id, "stream.missed", …)`: the server's word that this window was not sent some of your events while it was behind ([above](#events)).
-- **`setStreamValue(id, () => value)`**: the value this window's stream carries for your extension ([above](#knowing-a-window-is-there)). It is asked for each time the stream opens, may be a promise, and has two seconds: past that, or if what it gives isn't a value, the stream opens without it. Set while your `root` mounts, it is on the stream from the first time it opens. Set or changed later, the stream is opened again with it, without anything being shown, and at most once in five seconds however often you ask. When the server refuses the value, `subscribeExtension(id, "stream.refused", …)` hears it.
+- **`setStreamValue(id, () => value)`**: the value this window's stream carries for your extension ([above](#knowing-a-window-is-there)). It is asked for each time the stream opens, may be a promise, and has two seconds: past that, or if what it gives isn't a value, the stream opens without it. When the server refuses the value, `subscribeExtension(id, "stream.refused", …)` hears it.
+  - **Set it while your `root` mounts** and it is on the stream from the first time it opens. If the value takes a request to work out, hand over a function that returns the promise; setting it later, once you have it, opens the stream a second time on every page load.
+  - **Changed later, the stream is opened again with it**, at most once in five seconds however often you ask. Setting the same value again does nothing, so it is safe in an effect that runs often.
+  - **What opening it again costs.** It counts as the stream coming back: events sent in the gap are missed, every `onReconnect` listener runs, and the app fetches afresh what is on screen. Nothing is shown to the person. So a value should change rarely: a name for the window, not something that follows what the person does.
 - **`useSiteId()`**, **`useAccount()`** (the person's name and role; null where there are no accounts) and **`useRoleMay(level)`**. They are for showing the right thing. The server decides again at every request.
-- **`SafeText`** and **`SafeMarkdown`**: for words someone else wrote. An addition often shows a contributor's text to an owner; these are the ways to put it on the page, and `dangerouslySetInnerHTML` is not. The Markdown is small: raw HTML is shown as the text it was typed as, a picture as its description, and only links to web and mail addresses stay links.
+- **`SafeText`** and **`SafeMarkdown`**: for words someone else wrote. An addition often shows a contributor's text to an owner; these are the ways to put it on the page, and `dangerouslySetInnerHTML` is not. The Markdown is small: raw HTML is shown as the text it was typed as, a picture as its description, and only links to web and mail addresses stay links. Both wrap long words. How much to show is yours to decide: clamp a note to a line in a bar or a row, because someone can write five thousand characters.
 
 `@galley/web/ui` is the app's own interface kit (buttons, badges, dialogs, fields) with the theme's tokens.
 
 ### What this is not
 
-- **Not a sandbox.** An addition is part of the one bundle. It can import any module of the app, cover a screen, block the page by being slow, or fail in a click handler. Two things the app does for it: an addition that fails *while it draws* shows nothing in that place, is said once in the console, and the screen around it stays; and one event handler that fails doesn't keep an event from the others.
-- The content security policy is unchanged (`script-src 'self'`, `connect-src 'self'`), so an addition can't call another service from the browser. It asks its own route, and the route asks the service.
+- **Not a sandbox.** An addition is part of the one bundle. It can import any module of the app (everything the app knows about the person, not only what `useAccount` hands over), cover a screen, block the page by being slow, or fail in a click handler. Three things the app does for it:
+  - An addition that fails *while it draws* shows nothing in that place, and the screen around it stays. The app names the failing addition and the place once in the console. React also logs every error it catches there, once for each row a `listRow` fails in; an edition that wants that quieter gives its root an `onCaughtError` (`createRoot(el, { onCaughtError })`).
+  - A handler for an event, or a listener for the stream coming back, that fails doesn't keep the event from the others. The failure is reported as an uncaught error, once for each handler and failure.
+  - An addition that waits shows nothing meanwhile (above).
+- The content security policy is unchanged (`script-src 'self'`, `connect-src 'self'`). It blocks requests from the page to other origins, so call your own route and let the route call the service. **This is not containment**: an addition is your code, and can still send the page, or a new window, to another address.
 - Don't listen for `message` events: the preview's frame is another origin and can post to the app.
 - Everything in the web app that is not exported from `@galley/web/app`, `@galley/web/additions` and `@galley/web/ui` may change at any time.
 
@@ -255,6 +263,11 @@ An addition's `id` is its extension's: lower-case letters, digits and dashes, 3 
 
 For the app, three things more:
 
-- Add the preset to your Vite config, beside the React plugin: `import { galleyWeb } from "@galley/web/vite"`, then `plugins: [react(), galleyWeb()]`. It sets the two aliases the app's source is written with, `@` and `@brand`, and nothing else. Your own source can't use either name for something else.
+- **Start your page from the app's own**, `packages/web/index.html`, and change only the entry file it loads. The attributes on its `<html>` and `<body>` (`data-surfaces="app"`, `data-theme`, `class="g-root"`) are what the app's base styles and surfaces hang on, and `/theme.js` paints the saved theme before the page loads. A bare `<div id="root">` gives an app without its fonts, colours or box sizing.
+- Add the preset to your Vite config, beside the React plugin: `import { galleyWeb } from "@galley/web/vite"`, then `plugins: [react(), galleyWeb()]`. It sets:
+  - the two aliases the app's source is written with, `@` and `@brand`. Your own source can't use either name for something else.
+  - one copy of `react`, `react-dom` and `react-router-dom` in the page, whatever versions sit beside the app's. With two copies a hook called from your addition throws. Keep your versions at the app's all the same.
+  - the app's public folder (it holds `theme.js`, which the server serves from what you build) and the app's build target (`es2023`), unless your config names its own. If you have a public folder of your own, copy `packages/web/public/theme.js` into it.
+- Don't set `resolve.preserveSymlinks`: the app's modules would be loaded twice, and there would be two streams.
 - TypeScript checks the app's source together with yours, by your rules. Your `tsconfig.json` needs the same two `paths` (`@/*` to the web package's `src/*`, `@brand/*` to the repository's `brand/*`), `"jsx": "react-jsx"` and the `vite/client` types; extending the repository's `tsconfig.base.json` keeps the rest in step.
 - Import `@galley/web/styles` once, in your entry file. Serve what you build as the server's `webDir`.

@@ -20,10 +20,12 @@ entry says how.
   name, the value its window's stream carries, the open site, the signed-in
   person's name and role, and two components for showing other people's
   words safely. An addition that fails while it draws shows nothing in that
-  place and leaves the screen. It is not a sandbox: an addition is part of
-  the one bundle. The web package now has entry points (`./app`,
-  `./additions`, `./ui`, `./styles`) and a small Vite preset (`./vite`) with
-  the two aliases its source is written with.
+  place and leaves the screen, and so does one that waits. It is not a
+  sandbox: an addition is part of the one bundle. The web package now has
+  entry points (`./app`, `./additions`, `./ui`, `./styles`) and a small Vite
+  preset (`./vite`): the two aliases its source is written with, one copy of
+  React and the router, and the app's public folder and build target. An
+  edition starts its page from the app's own `index.html`.
 
 ### Changed
 
@@ -31,8 +33,10 @@ entry says how.
   others theirs.** The app has one live connection to the server, and each
   screen listens on it. When one listener failed on an update, the listeners
   after it never heard that update, so another screen could stay stale until
-  it was reloaded. Each listener now runs on its own, and a failure is said
-  once in the browser's console.
+  it was reloaded. The same held for what each screen does when the
+  connection comes back after a drop. Each listener now runs on its own, and
+  a failure is reported as an uncaught error, once for each listener and
+  failure.
 
 ### Fixed
 

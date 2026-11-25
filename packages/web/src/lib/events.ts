@@ -67,21 +67,36 @@ export function backoffDelay(n: number, random: () => number = Math.random): num
   return Math.round(base * (0.8 + random() * 0.4));
 }
 
-/** Handlers that have failed once: each is said once, not at every event. */
-const failedHandlers = new WeakSet<AnyHandler>();
+/** What each handler or listener last failed with: a failure is reported when it is new, not at every event. */
+const lastFailure = new WeakMap<object, string>();
+
+/**
+ * Runs something a screen or an addition handed over, on its own: what it
+ * throws does not reach whoever is next in line. The failure is reported the
+ * way the browser reports an uncaught error (it shows in the console, and a
+ * debugger that pauses on uncaught errors still sees it), once for each
+ * handler and each different failure.
+ */
+function onItsOwn(what: string, key: object, run: () => void): void {
+  try {
+    run();
+  } catch (error) {
+    const words = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+
+    if (lastFailure.get(key) === words) return;
+    lastFailure.set(key, words);
+    const report = (globalThis as { reportError?: (error: unknown) => void }).reportError;
+
+    if (typeof report === "function") report(error);
+    else console.error(what, error);
+  }
+}
 
 function dispatch(event: ServerEvent): void {
   const set = handlers.get(event.type);
   if (!set) return;
-  for (const handler of [...set]) {
-    try {
-      handler(event);
-    } catch (error) {
-      // One handler that fails must not keep the event from the others.
-      if (!failedHandlers.has(handler)) console.error(`A handler for “${event.type}” events failed`, error);
-      failedHandlers.add(handler);
-    }
-  }
+  // One handler that fails must not keep the event from the others.
+  for (const handler of [...set]) onItsOwn(`A handler for “${event.type}” events failed`, handler, () => handler(event));
 }
 
 /**
@@ -103,6 +118,11 @@ let opening = false;
 let generation = 0;
 let reopenTimer: ReturnType<typeof setTimeout> | null = null;
 let reopenedAt = -Infinity;
+/** The address the open stream was opened at. */
+let streamUrl: string | null = null;
+/** The values are being worked out to see whether the address would differ; and whether that was asked for again meanwhile. */
+let checking = false;
+let checkAgain = false;
 
 async function valueOf(id: string, value: StreamValue): Promise<string | null> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -128,29 +148,65 @@ async function eventsUrl(): Promise<string> {
 }
 
 /**
- * The stream is open and what it should carry has changed: it is closed and
- * opened again, soon, and not more often than every few seconds however
- * often that is asked. Nothing is shown; what was missed meanwhile is
- * fetched as after any drop.
+ * What the stream should carry may have changed while it is open. Soon, the
+ * values are worked out again, and **only if the address would differ** is
+ * the stream closed and opened again: at most once every few seconds,
+ * however often this is asked. Setting the same value again does nothing.
+ *
+ * Opening it again costs what any drop costs: events sent in the gap are
+ * missed, so everything listening for the stream coming back runs and
+ * fetches afresh. Nothing is shown.
  */
 function reopenSoon(): void {
-  if (reopenTimer || (!source && !opening)) return;
+  if (!source && !opening) return;
+  if (checking) {
+    checkAgain = true;
+    return;
+  }
+  if (reopenTimer) return;
   reopenTimer = setTimeout(() => {
     reopenTimer = null;
-    if (!source && !opening) return;
-    reopenedAt = Date.now();
+    void reopenIfChanged();
+  }, Math.max(0, reopenedAt + STREAM_REOPEN_MS - Date.now()));
+}
+
+async function reopenIfChanged(): Promise<void> {
+  if (opening) {
+    // Not open yet: the values are worked out from the start, with what is set now.
     generation += 1;
     opening = false;
-    source?.close();
-    source = null;
     open(true);
-  }, Math.max(0, reopenedAt + STREAM_REOPEN_MS - Date.now()));
+    return;
+  }
+  if (!source) return;
+  const mine = generation;
+  let url: string;
+
+  checking = true;
+  try {
+    url = await eventsUrl();
+  } finally {
+    checking = false;
+  }
+  const again = checkAgain;
+
+  checkAgain = false;
+  // Still the same stream (not closed, dropped or signed out meanwhile), and it would be opened at another address.
+  if (mine === generation && source && url !== streamUrl) {
+    reopenedAt = Date.now();
+    generation += 1;
+    source.close();
+    source = null;
+    openAt(url);
+  }
+  if (again) reopenSoon();
 }
 
 /**
  * Has the stream carry a value for the extension `id`, worked out each time
  * the stream opens (null: none this time). Returns how to take it off again.
- * Setting one while the stream is open opens the stream again with it.
+ * When the value an open stream carries would change, the stream is opened
+ * again with it (`reopenSoon`); setting the same value again changes nothing.
  */
 export function setStreamValue(id: string, value: StreamValue): () => void {
   if (!ADDITION_ID.test(id)) throw new Error(`“${id}” isn't an extension's id.`);
@@ -260,13 +316,15 @@ function open(quiet = false): void {
 function openAt(url: string): void {
   const es = new EventSource(url, { withCredentials: true });
   source = es;
+  streamUrl = url;
 
   const opened = () => {
     const wasReconnect = hasOpened;
     hasOpened = true;
     attempt = 0;
     useConnection.setState({ state: "open", openedAt: Date.now(), retryIn: null, problem: null });
-    if (wasReconnect) for (const listener of [...reconnectListeners]) listener();
+    // Each on its own: one that fails must not cost the others (the app's own among them) their fetching afresh.
+    if (wasReconnect) for (const listener of [...reconnectListeners]) onItsOwn("A listener for the live connection coming back failed", listener, listener);
   };
 
   es.onopen = () => {
@@ -326,8 +384,10 @@ export function disconnectEvents(): void {
   retryTimer = reopenTimer = null;
   generation += 1;
   opening = false;
+  checkAgain = false;
   source?.close();
   source = null;
+  streamUrl = null;
   hasOpened = false;
   attempt = 0;
   limited = false;

@@ -9,6 +9,9 @@ const ready: Promise<Render> = Promise.all([import("dompurify"), import("./rende
   return render;
 });
 
+/** The same renderer, for whoever else shows other people's words as Markdown (additions/SafeText.tsx): one set of rules. */
+export const markdownRenderer: Promise<(text: string) => string> = ready;
+
 /** An assistant reply, rendered from Markdown and sanitised before it touches the page. Plain text until the renderer loads. */
 export function Markdown({ text }: { text: string }) {
   const [renderer, setRenderer] = useState<Render | null>(() => render);
