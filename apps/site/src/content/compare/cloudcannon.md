@@ -72,7 +72,7 @@ table:
       better: theirs
 faq:
   - q: Is Galley an alternative to CloudCannon?
-    a: For many static sites, yes. Both edit the files in your Git repository and commit each change. Galley is free and open-source, needs no configuration or template markup for common setups, and has an assistant built in. CloudCannon adds hosting, mature team permissions, single sign-on and support that Galley does not have yet.
+    a: For many static sites, yes. Both edit the files in your Git repository and record changes as commits (CloudCannon on each save, Galley when you publish). Galley is free and open-source, needs no configuration or template markup for common setups, and has an assistant built in. CloudCannon adds hosting, mature team permissions, single sign-on and support that Galley does not have yet.
   - q: Is CloudCannon open source?
     a: The CMS itself isn't described as open source on CloudCannon's pages, and they don't offer a self-hosted version for editors. Its command-line tool can run the app against local files, for developers building the setup. CloudCannon does publish open-source tools, among them Pagefind for search, Bookshop for components and Rosey for translations. Galley is open source under Apache-2.0. It runs on your own computer, or on your own server with the hosted editor, which is new and still in final checks.
   - q: Does CloudCannon have AI features?
