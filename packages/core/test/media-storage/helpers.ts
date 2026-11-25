@@ -6,7 +6,9 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { GalleyError } from "../../src/errors";
 import type { GalleyConfig, SiteModel, SiteService } from "../../src/types";
+import { hashContent } from "../../src/workspace/index";
 
 export interface FakeSite {
   site: SiteService;
@@ -31,7 +33,10 @@ export function fakeSite(id = "lowfield", config: GalleyConfig = {}): FakeSite {
     id,
     model: async () => model(),
     readConfig: async () => structuredClone(state.config),
-    saveConfig: async (next: GalleyConfig) => {
+    // The settings file with its version, as the engine reads it before a save.
+    readFile: async () => ({ content: JSON.stringify(state.config), hash: hashContent(JSON.stringify(state.config)) }),
+    saveConfig: async (next: GalleyConfig, options: { baseHash?: string } = {}) => {
+      if (options.baseHash && options.baseHash !== hashContent(JSON.stringify(state.config))) throw new GalleyError("conflict", "The site's settings changed since they were opened.");
       state.config = structuredClone(next);
       state.saves += 1;
       return model();

@@ -37,6 +37,13 @@ entry says how.
   shows them, so what you wrote can be copied first), get the latest
   versions, then try again. With nothing newer waiting it says what it
   said.
+- **Connecting a bucket no longer sets back a setting someone else just
+  saved.** Connecting, changing or disconnecting a bucket or Cloudflare
+  Images saved the whole settings file from an earlier read of it, so a key
+  somebody else saved in between was put back to what it had been. They now
+  save over the version they read, as Site settings, putting the site
+  online and hosting the editor do: when the file changed in between, it is
+  read again and the change is made to what is there.
 
 ## 0.4.0 — 2026-11-25
 
