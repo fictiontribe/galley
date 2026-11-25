@@ -50,6 +50,14 @@ export interface DeclaredRoute {
 
 /** The name the server itself sends under, when an extension didn't take the value a stream carried for it. */
 export const STREAM_REFUSED = "stream.refused";
+/**
+ * The name of the event the server sends a window that was not sent some of
+ * an extension's events while it was behind in reading: `payload` is
+ * `{ count }`, `source` the extension. Sent once the window has room again.
+ */
+export const STREAM_MISSED = "stream.missed";
+/** Names that begin with this are the server's own: no extension can declare one. */
+const SERVER_NAMES = "stream.";
 /** The most an event's payload may be, as JSON, as it leaves for one reader. */
 export const EXTENSION_EVENT_BYTES = 64 * 1024;
 /** How many events one extension may emit in a second. Past it they are dropped and counted. */
@@ -68,7 +76,7 @@ export function declaredEvents(id: string, parts: ExtensionParts): Map<string, E
 
   if (typeof events !== "object" || events === null) throw new ExtensionError(`Extension “${id}” couldn't start: its events aren't a list of events.`);
   for (const [name, rule] of Object.entries(events)) {
-    if (!EVENT_NAME.test(name) || name.length > 64 || name === STREAM_REFUSED) throw new ExtensionError(`Extension “${id}”: the event “${name}” isn't usable. A name is lower-case words joined by dots, and “${STREAM_REFUSED}” is the server's own.`);
+    if (!EVENT_NAME.test(name) || name.length > 64 || name.startsWith(SERVER_NAMES)) throw new ExtensionError(`Extension “${id}”: the event “${name}” isn't usable. A name is lower-case words joined by dots, and names that begin with “${SERVER_NAMES}” are the server's own.`);
     if (typeof rule !== "object" || rule === null || !LEVELS.has(rule.level)) throw new ExtensionError(`Extension “${id}”: the event “${name}” has no level. It is edit, publish or manage: the least a reader's role must have to be sent it.`);
     if (rule.for !== undefined && typeof rule.for !== "function") throw new ExtensionError(`Extension “${id}”: the event “${name}” isn't usable: what shapes it for a reader is a function, or left out.`);
     // A copy: the level an event started with is the level it keeps, whatever becomes of the object it was declared in.

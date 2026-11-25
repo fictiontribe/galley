@@ -91,7 +91,10 @@ entry says how.
   window that already has half of what it may have waiting (512 KB of 1 MB)
   is not sent an extension's event. So an extension's events never fill more
   than about half of what a window may have waiting, and the editor's own
-  events always have at least half of it. A stream
+  events always have at least half of it. Such a window is told what it
+  missed once it has room again (`stream.missed`, with how many), because
+  it was never disconnected and nothing else would tell it. Names that
+  begin with `stream.` are the server's own. A stream
   opened with a value for an extension (`/api/events?x-<id>=<value>`) tells
   it that the window is there and, later, that it has gone, which replaces a
   heartbeat route. A value is taken only from the editor's own page (or with

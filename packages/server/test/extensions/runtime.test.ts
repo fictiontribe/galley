@@ -8,7 +8,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Hono } from "hono";
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import type { ServerEvent, SiteService } from "@galley/core/types";
 import { declaredEvents, declaredRoutes, defineExtension, ExtensionError, EXTENSION_EVENT_BYTES_A_SECOND } from "../../src/extensions/declare";
 import { isJson, jsonBytes } from "../../src/extensions/json";
@@ -21,6 +21,13 @@ import { cookiesOf, createBus, fakeSite, SITE_ID, testApp, TOKEN } from "../help
 import { MAX_QUEUED_BYTES } from "../../src/events";
 
 const homes: string[] = [];
+/** What a test leaves open (a stream, extensions running), closed after it whether it passed or not: a stream left open keeps the run from ending. */
+const leftOpen: Array<() => unknown> = [];
+
+afterEach(async () => {
+  vi.restoreAllMocks();
+  for (const close of leftOpen.splice(0).reverse()) await Promise.resolve(close()).catch(() => undefined);
+});
 
 afterAll(async () => {
   for (const home of homes) await rm(home, { recursive: true, force: true });
@@ -39,10 +46,13 @@ describe("what an extension declares about its events", () => {
 
   it("gives every event a name in lower-case words and a level, and at most a function that shapes it", () => {
     for (const name of ["", "Changed", "changed.", ".changed", "has space", "a..b", "1st", "kebab-case", "under_score", "a.b.c.d.e.f.g", "x".repeat(65), "note/changed", "__proto__"]) {
-      expect(events({ [name]: { level: "edit" } }), name).toThrow(`Extension “status”: the event “${name}” isn't usable. A name is lower-case words joined by dots, and “stream.refused” is the server's own.`);
+      expect(events({ [name]: { level: "edit" } }), name).toThrow(`Extension “status”: the event “${name}” isn't usable. A name is lower-case words joined by dots, and names that begin with “stream.” are the server's own.`);
     }
     // The server's own name can't be taken.
-    expect(events({ "stream.refused": { level: "edit" } })).toThrow(/“stream.refused” is the server's own/);
+    // The names the server sends itself, and any it may come to send, can't be taken.
+    for (const name of ["stream.refused", "stream.missed", "stream.anything", "stream.a.b"]) expect(events({ [name]: { level: "edit" } }), name).toThrow(/names that begin with “stream.” are the server's own/);
+    expect(events({ stream: { level: "edit" } })).not.toThrow();
+    expect(events({ "streams.changed": { level: "edit" } })).not.toThrow();
     for (const name of ["changed", "note.changed", "a1.b2", "a.b.c.d.e.f"]) expect(events({ [name]: { level: "edit" } }), name).not.toThrow();
     for (const level of [undefined, "public", "owner", "", null, true]) {
       expect(events({ changed: { level } }), String(level)).toThrow("Extension “status”: the event “changed” has no level. It is edit, publish or manage: the least a reader's role must have to be sent it.");
@@ -299,6 +309,57 @@ describe("an extension started again, and the addresses it was mounted with", ()
     await runtime.stop();
   });
 
+  it("a late setup's stop takes its turn: never in the middle of another start or stop, and one that can't even be looked at ends nothing", async () => {
+    const order: string[] = [];
+    const seen = { round: 0 };
+    let finishLate: (() => void) | null = null;
+    let letStopEnd!: () => void;
+    const held = new Promise<void>((resolve) => (letStopEnd = resolve));
+    const late = defineExtension({
+      id: "late",
+      setup: () =>
+        (seen.round += 1) === 2
+          ? new Promise((resolve) => (finishLate = () => (order.push("the late setup finished"), resolve({ stop: () => void order.push("the late stop") }))))
+          : seen.round === 3
+            ? // Its third start runs out of time too, and what it hands back late fails on being looked at.
+              new Promise((resolve) => setTimeout(() => resolve(Object.defineProperty({}, "stop", { get: () => { throw new Error("no stop to give"); } })), 80))
+            : {},
+    });
+    // Another extension whose stop takes a while: the middle of a restart.
+    const slow = defineExtension({
+      id: "slow-to-stop",
+      setup: () => ({
+        async stop() {
+          order.push("another stop began");
+          if (seen.round === 2) await held;
+          order.push("another stop ended");
+        },
+      }),
+    });
+    const given = await options({ setupMs: 40 });
+    const runtime = await startExtensions([late, slow], given);
+
+    // Started again: the first one's setup runs out of time.
+    expect(await runtime.restart()).toEqual(["late"]);
+    order.length = 0;
+    // Started again once more, and while the other extension is being stopped, the abandoned setup finishes after all.
+    const restarting = runtime.restart();
+
+    await until(() => order.includes("another stop began"));
+    finishLate!();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(order).toEqual(["another stop began", "the late setup finished"]);
+    letStopEnd();
+    expect(await restarting).toEqual(["late"]);
+    await until(() => order.includes("the late stop"));
+    // Only after the stop it would have run into had ended.
+    expect(order.indexOf("the late stop")).toBeGreaterThan(order.indexOf("another stop ended"));
+    // The one that fails on being looked at: said, and nothing else happens (no rejection left unhandled, which would end the process).
+    await until(() => given.lines.some((line) => line.includes("no stop to give")), 5000);
+    expect(given.lines.filter((line) => line.startsWith("[late]"))).toEqual(["[late] its setup finished after its time was up, and its stop then failed: no stop to give"]);
+    await runtime.stop();
+  });
+
   it("an error of the extension's own making is said on one line with its secrets taken out", async () => {
     let round = 0;
     const loud = defineExtension({
@@ -324,9 +385,11 @@ describe("how much an extension may send", () => {
     let host!: ExtensionHost;
     const quick = defineExtension({ id: "quick", setup: (given) => ((host = given), { events: { tick: { level: "edit" } } }) });
     const runtime = await startExtensions([quick], await options({ emit: (event) => void heard.push(event), siteId: () => SITE_ID }));
-    const second = Math.floor(Date.now() / 1000) * 1000 + 5000;
+    const second = Math.floor(performance.now() / 1000) * 1000 + 5000;
     let now = second + 999;
-    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+    // The wall clock is set back an hour meanwhile (by hand, by a time service, by a machine that slept): nothing here goes by it.
+    const wall = vi.spyOn(Date, "now").mockImplementation(() => 1_000_000_000_000 - (now - second) * 3_600);
     const send = (times: number) => {
       for (let sent = 0; sent < times; sent += 1) host.events.emit("tick", SITE_ID, sent);
     };
@@ -344,6 +407,7 @@ describe("how much an extension may send", () => {
       expect(heard).toHaveLength(60);
     } finally {
       clock.mockRestore();
+      wall.mockRestore();
     }
     await runtime.stop();
   });
@@ -375,8 +439,10 @@ describe("an extension's events and a reader that is behind", () => {
     const send = async (name: string, kb: number, times: number) => expect((await app.call("POST", `/api/x/busy/sites/${SITE_ID}/send`, { name, kb, times })).status).toBe(200);
     // A window that opens its stream and then reads nothing.
     const stream = await app.raw("GET", "/api/events", { headers: { authorization: `Bearer ${TOKEN}` } });
-    let now = Date.now();
-    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+
+    leftOpen.push(() => runtime.stop(), () => (stream.body!.locked ? undefined : stream.body!.cancel()));
+    let now = performance.now();
+    const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
 
     try {
       // Twenty seconds of everything it may send: four events of 60 KB in each, under its 256 KB a second.
@@ -394,6 +460,8 @@ describe("an extension's events and a reader that is behind", () => {
     }
     // Now the window reads what is waiting for it. It was not let go: the stream is there to be read.
     const reader = stream.body!.getReader();
+
+    leftOpen.push(() => reader.cancel());
     const decoder = new TextDecoder();
     let text = "";
     const read = async (enough: () => boolean) => {
@@ -405,8 +473,10 @@ describe("an extension's events and a reader that is behind", () => {
       }
     };
 
+    const sentOf = () => (text.match(/"name":"(tick|shaped)"/g) ?? []).length;
+
     await read(() => text.includes('"site.updated"'));
-    const arrived = (text.match(/"type":"extension"/g) ?? []).length;
+    const arrived = sentOf();
 
     // Half of what a reader may have waiting is 512 KB: eight events of 60 KB are under it, the ninth takes it over, and from then on they are left out.
     expect(MAX_QUEUED_BYTES).toBe(1024 * 1024);
@@ -415,9 +485,19 @@ describe("an extension's events and a reader that is behind", () => {
     // Said a second after the first of them, with how many: 81 were sent.
     await until(() => given.lines.length > 0, 5000);
     expect(given.lines).toEqual(["[busy] 72 times an event of its was not sent to a window that had fallen behind in reading."]);
-    // Once it has caught up, it is sent them again.
+    // Once it has caught up, it is sent them again. And first it is told that it missed some, and how many: it was never
+    // let go, so nothing else would have told it to ask for what it shows again.
     await send("tick", 1, 1);
-    await read(() => (text.match(/"type":"extension"/g) ?? []).length === 10);
+    await read(() => sentOf() === 10);
+    const told = `data: ${JSON.stringify({ type: "extension", source: "busy", name: "stream.missed", siteId: "", payload: { count: 72 } })}`;
+
+    expect(text.split(told)).toHaveLength(2);
+    expect(text.indexOf(told)).toBeGreaterThan(text.indexOf('"site.updated"'));
+    expect(text.indexOf(told)).toBeLessThan(text.lastIndexOf('"name":"tick"'));
+    // Told once: nothing more is owed until it misses again.
+    await send("tick", 1, 2);
+    await read(() => sentOf() === 12);
+    expect(text.split('"stream.missed"')).toHaveLength(2);
     await reader.cancel();
     await runtime.stop();
   });
@@ -492,6 +572,8 @@ describe("where there are no accounts", () => {
     const app = testApp({ site, events: bus }, { extensions: { runtime, desk: null } });
     const stream = await app.raw("GET", "/api/events?x-lone=tab-1", { headers: { authorization: `Bearer ${TOKEN}` } });
     const reader = stream.body!.getReader();
+
+    leftOpen.push(() => runtime.stop(), () => reader.cancel());
     const decoder = new TextDecoder();
     let text = "";
     const read = async (enough: () => boolean) => {
