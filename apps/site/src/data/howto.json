@@ -475,14 +475,14 @@
         {
           "image": "howto/choose-a-theme-4",
           "alt": "A new theme, made from Quiet and named Workroom: under Colors, Paper, Ink, Pencil, Plate and Table, each with a swatch and its value, the Pencil set to #0A7D8C; on the right a sample of the app in the theme, its Publish button now in that color, with Undo last change and Save.",
-          "do": "Give it a **Name**, then change a color: pick one, or type its value. Here the **Pencil**, the color of the one action and of where you are.",
+          "do": "Give it a **Name**, then change a colour: pick one, or type its value. Here the **Pencil**, the colour of the one action and of where you are.",
           "see": "The whole app shows your changes as you make them, in this browser only, until you save."
         },
         {
           "image": "howto/choose-a-theme-5",
           "alt": "The foot of the theme editor, at Readability: This theme can’t be used yet, then Your pencil color (#808080) is too close to grey, said for light and for dark, and a note that it is close to the warning color; on the right, Fix what the report says before saving, with Save greyed out.",
           "do": "Scroll down to **Readability** and read it before you save.",
-          "see": "A color that can’t work is refused in plain words — here a pencil too close to grey — and **Save** waits until it is fixed. A smaller fault is put right for you, and the report says what was changed."
+          "see": "A colour that can’t work is refused in plain words — here a pencil too close to grey — and **Save** waits until it is fixed. A smaller fault is put right for you, and the report says what was changed."
         },
         {
           "image": "howto/choose-a-theme-6",
