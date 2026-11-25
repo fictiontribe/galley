@@ -9,7 +9,8 @@ import { count, relativeTime } from "@/lib/format";
  */
 export const FRESH_MS = 10 * 60_000;
 
-export type SyncAction = "get-latest" | "send" | "retry" | null;
+/** "review": a change here is in the newer versions' way, so the way on is Proof (which shows it), not a "Get latest" that would be refused. */
+export type SyncAction = "get-latest" | "review" | "send" | "retry" | null;
 
 export interface SyncLine {
   text: string;
@@ -56,7 +57,7 @@ export function syncLine(status: GitStatus | null, options: SyncLineOptions): Sy
     const waiting = `${count(status.behind, "newer version")} ${status.behind === 1 ? "is" : "are"} waiting in the repository${checked ? ` (${checked})` : ""}.`;
     const what = status.inTheWay ? ` ${status.inTheWay.message}` : options.mayGetLatest ? "" : " An editor or owner can bring them in.";
 
-    return { text: `${waiting}${what}`, tone: "warning", action: options.mayGetLatest ? "get-latest" : null };
+    return { text: `${waiting}${what}`, tone: "warning", action: status.inTheWay ? "review" : options.mayGetLatest ? "get-latest" : null };
   }
   if (status.ahead > 0) {
     return {

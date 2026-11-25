@@ -145,10 +145,27 @@ describe("publish outcomes", () => {
     expect(outcome.body).toContain("The site’s host didn’t accept the changes.");
   });
 
-  it("paused because the live site is newer: offers to get the latest, no dead end", () => {
-    const outcome = publishOutcome({ ok: false, files: ["a.md"], pushed: false, behind: true, error: "The live site has newer changes than this copy, so publishing is paused and nothing was overwritten. Your edits are safe. Get the latest versions, then publish again." }, commit);
-    expect(outcome).toMatchObject({ kind: "behind", tone: "warning", title: "The live site has newer changes", canGetLatest: true, canRetry: false });
-    expect(outcome.body).toContain("Get the latest versions, then publish again.");
+  it("paused because the repository is newer: says so once, and offers to get the latest", () => {
+    const error = "The repository has newer versions than this copy, so nothing was published and nothing was overwritten. Your edits are safe. Get the latest versions, then publish again.";
+    const outcome = publishOutcome({ ok: false, files: ["a.md"], pushed: false, behind: true, error }, commit);
+
+    expect(outcome).toMatchObject({ kind: "behind", tone: "warning", title: "Publishing is paused", body: error, canGetLatest: true, canRetry: false });
+    expect(outcome.canReview).toBeUndefined();
+    // The heading and the first sentence don't say the same thing twice.
+    expect(outcome.body.toLowerCase()).not.toContain(outcome.title.toLowerCase());
+    // Without the engine's words, the app's own still say what is true.
+    expect(publishOutcome({ ok: false, files: ["a.md"], pushed: false, behind: true }, commit).body).toBe(error);
+  });
+
+  it("paused with a change here in the newer versions' way: offers Proof, never a Get the latest that would be refused", () => {
+    const error =
+      "The repository has newer versions that change about.md, which has unpublished changes here. Galley can't join the two, so nothing was published and nothing was overwritten. Discard the change to that file (Proof shows it, so what you wrote can be copied first), get the latest versions, then make the change again.";
+    const outcome = publishOutcome({ ok: false, files: ["a.md"], pushed: false, behind: true, inTheWay: ["src/content/pages/about.md"], error }, commit);
+
+    expect(outcome).toMatchObject({ kind: "behind", tone: "warning", title: "Publishing is paused", body: error, canReview: true, canRetry: false });
+    expect(outcome.canGetLatest).toBeUndefined();
+    // An empty list is the first case.
+    expect(publishOutcome({ ok: false, files: ["a.md"], pushed: false, behind: true, inTheWay: [], error }, commit)).toMatchObject({ canGetLatest: true });
   });
 
   it("a site with no host keeps versions here, and says so", () => {

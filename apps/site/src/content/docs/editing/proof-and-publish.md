@@ -47,5 +47,6 @@ On a site that is [online](/docs/editing/online/), **Share a preview link** puts
 
 - **"Couldn't publish."** Your changes are safe here. The window says why; **Try again** once it's fixed.
 - **"Saved, not live yet."** The new version is saved here but didn't reach the site's host. The status bar offers **Send now** when it can.
-- **"The live site has newer changes."** Someone published from elsewhere. Publishing waits so nothing is overwritten; press **Get the latest**, then publish again.
+- **"Publishing is paused."** The repository has newer versions: someone published from elsewhere. Publishing waits so nothing is overwritten; press **Get the latest**, then publish again.
+- **"Publishing is paused"**, naming a page. The newer versions change a page you have changed too, and Galley can't join the two. Getting the latest would be refused for the same reason, so the window offers **Review in Proof** instead: discard your change to that page (Proof shows it, so you can copy what you wrote first), get the latest versions, then make the change again.
 - **"Nothing to publish."** Everything already matches the live site.

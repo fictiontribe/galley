@@ -114,7 +114,7 @@ describe("the editor's own rounds", () => {
       expect(await hand.tick()).toBe("held");
       expect(await hand.tick()).toBe("held");
       expect(readFileSync(join(root, PAGE), "utf8")).toContain("Mine");
-      expect(lines.slice(4)).toEqual([expect.stringMatching(/^Repository: 1 newer version waiting, not brought in: .*index\.md.*Publish or discard/)]);
+      expect(lines.slice(4)).toEqual([expect.stringMatching(/^Repository: 1 newer version waiting, not brought in: .*index\.md.*Discard the change to that file \(Proof shows it/)]);
 
       await keepUp.stop();
       expect(hand.state.cancelled).toBe(true);

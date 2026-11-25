@@ -207,7 +207,8 @@ describe("bringing newer versions in", GIT_HEAVY, () => {
 
     expect(result).toMatchObject({ brought: 0, paths: [], status: { behind: 1, inTheWay: { kind: "changes", paths: ["src/content/a.md"] } } });
     expect(result?.status.inTheWay?.message).toContain("a.md");
-    expect(result?.status.inTheWay?.message).toMatch(/Publish or discard/);
+    // Publishing is paused while newer versions wait, so it isn't offered as a way on: discarding is, with Proof to copy from.
+    expect(result?.status.inTheWay?.message).toBe("The newer versions change a.md, which has unpublished changes here. Discard the change to that file (Proof shows it, so what you wrote can be copied first), then the newer versions can come in.");
     expect(result?.status.inTheWay?.message).not.toMatch(/merge|commit|fast-forward|branch|pull/i);
     expect(touched).toBe(false);
     expect(read(site.root, "src/content/a.md")).toBe("mine\n");
@@ -390,7 +391,8 @@ describe("bringing newer versions in", GIT_HEAVY, () => {
     const added = await ws.catchUp(hooks);
 
     expect(added).toMatchObject({ brought: 0, status: { behind: 1, inTheWay: { kind: "changes", paths: ["src/content/new.md"] } } });
-    expect(added?.status.inTheWay?.message).toMatch(/Publish or discard/);
+    expect(added?.status.inTheWay?.message).toMatch(/Discard the change to that file \(Proof shows it/);
+    expect(added?.status.inTheWay?.message).not.toMatch(/Publish or/i);
     await expect(ws.getLatest(hooks)).rejects.toMatchObject({ code: "conflict" });
     expect(touched).toBe(false);
     expect(read(site.root, "src/content/new.md")).toBe("mine\n");

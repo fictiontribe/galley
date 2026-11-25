@@ -75,7 +75,28 @@ export const NOT_A_REPO =
 const DETACHED =
   "The site is showing an older version right now, so there's nowhere to publish. Your edits are safe. Ask a developer to switch it back to the latest version, then try again.";
 const BEHIND =
-  "The live site has newer changes than this copy, so publishing is paused and nothing was overwritten. Your edits are safe. Get the latest versions, then publish again.";
+  "The repository has newer versions than this copy, so nothing was published and nothing was overwritten. Your edits are safe. Get the latest versions, then publish again.";
+/** How Proof helps before a change is discarded: said the same wherever discarding is the way on. */
+const PROOF_SHOWS = { one: "Proof shows it, so what you wrote can be copied first", many: "Proof shows them, so what you wrote can be copied first" };
+
+/**
+ * The newer versions change files with unpublished changes here: publishing is
+ * paused, and getting the latest would be refused too. So the way on isn't
+ * "get the latest", it is to discard those changes first.
+ */
+function behindWithChangesInTheWay(paths: string[]): string {
+  const one = paths.length === 1;
+
+  return (
+    (one
+      ? `The repository has newer versions that change ${fileList(paths)}, which has unpublished changes here. `
+      : `The repository has newer versions that change ${paths.length} files with unpublished changes here (${fileList(paths)}). `) +
+    "Galley can't join the two, so nothing was published and nothing was overwritten. " +
+    (one
+      ? `Discard the change to that file (${PROOF_SHOWS.one}), get the latest versions, then make the change again.`
+      : `Discard the changes to those files (${PROOF_SHOWS.many}), get the latest versions, then make the changes again.`)
+  );
+}
 
 /** "Publishing goes to one line of work, the site is on another" — the names are for whoever fixes it. */
 function wrongLine(configured: string, current: string): PublishResult {
@@ -296,8 +317,14 @@ export async function publish(
   const sendTo = config.push ? await remoteFor(repo, config) : null;
 
   // Publishing on top of an old copy makes a version the code host refuses, which then needs a developer to
-  // combine with the newer one. Pausing first, while nothing is committed, keeps "Get the latest" a working way out.
-  if (sendTo && head && (await behindRemote(repo, sendTo, branch)) > 0) return { ...failure(files, BEHIND), behind: true };
+  // combine with the newer one. Pausing first, while nothing is committed, keeps "Get the latest" a working way out —
+  // unless the newer versions change a file that is changed here too: then getting the latest would be refused as
+  // well, and the words must not send the person there. What was just fetched says which, with no second look.
+  if (sendTo && head && (await behindRemote(repo, sendTo, branch)) > 0) {
+    const inTheWay = await changedThereToo(repo, info, `refs/remotes/${sendTo}/${branch}`, statuses);
+
+    return inTheWay.length > 0 ? { ...failure(files, behindWithChangesInTheWay(inTheWay)), behind: true, inTheWay } : { ...failure(files, BEHIND), behind: true };
+  }
 
   await stagePaths(repo, host.root, files);
   const commit = await repo.run(
@@ -656,11 +683,24 @@ function fileList(paths: string[]): string {
   return `${names.join(", ")}${paths.length > 3 ? ", …" : ""}`;
 }
 
-/** Plain words for unpublished changes to files the newer versions change too. */
+/**
+ * Plain words for unpublished changes to files the newer versions change too.
+ * Publishing isn't offered as a way on: it is paused while newer versions wait.
+ */
 function changesInTheWay(paths: string[]): string {
   return paths.length === 1
-    ? `The newer versions change ${fileList(paths)}, which has unpublished changes here. Publish or discard the change to that file, then the newer versions can come in.`
-    : `The newer versions change ${paths.length} files that have unpublished changes here (${fileList(paths)}). Publish or discard the changes to those files, then the newer versions can come in.`;
+    ? `The newer versions change ${fileList(paths)}, which has unpublished changes here. Discard the change to that file (${PROOF_SHOWS.one}), then the newer versions can come in.`
+    : `The newer versions change ${paths.length} files that have unpublished changes here (${fileList(paths)}). Discard the changes to those files (${PROOF_SHOWS.many}), then the newer versions can come in.`;
+}
+
+/** Of the files with unpublished changes here, the ones the versions at `compare` change too (site-relative, sorted). */
+async function changedThereToo(repo: Git, info: RepoInfo, compare: string, pending: Map<string, PendingStatus>): Promise<string[]> {
+  const changed = await repo.run(["diff", "--name-only", "-z", "--no-renames", "HEAD", compare], { allowFailure: true, readOnly: true });
+
+  return splitNul(changed.text)
+    .map((p) => sitePath(info, p))
+    .filter((p): p is string => p !== null && pending.has(p))
+    .sort();
 }
 
 /**
@@ -670,11 +710,7 @@ function changesInTheWay(paths: string[]): string {
  */
 async function inTheWayOf(repo: Git, info: RepoInfo, compare: string, ahead: number, pending: Map<string, PendingStatus>): Promise<GitStatus["inTheWay"]> {
   if (ahead > 0) return { kind: "separate-ways", message: SEPARATE_WAYS, paths: [] };
-  const changed = await repo.run(["diff", "--name-only", "-z", "--no-renames", "HEAD", compare], { allowFailure: true, readOnly: true });
-  const blocked = splitNul(changed.text)
-    .map((p) => sitePath(info, p))
-    .filter((p): p is string => p !== null && pending.has(p))
-    .sort();
+  const blocked = await changedThereToo(repo, info, compare, pending);
 
   return blocked.length > 0 ? { kind: "changes", message: changesInTheWay(blocked), paths: blocked } : undefined;
 }
@@ -772,7 +808,7 @@ export function classifyPullError(stderr: string, timedOut: boolean): string {
     return "Bringing the newer versions in took too long and was stopped before it finished, so some files may be newer than others. Someone who knows the repository needs to look before anything is published.";
   }
   if (REFUSED_FOR_FILES.test(stderr)) {
-    return "Some files you've changed here were also changed in the latest version. Publish or discard your changes to those files, then try again.";
+    return `Some files you've changed here were also changed in the latest version. Discard your changes to those files (${PROOF_SHOWS.many}), then try again.`;
   }
   if (REFUSED_FOR_HISTORY.test(stderr)) {
     return "This copy has versions that aren't on the code host yet, and the code host has newer ones, so they can't be combined automatically. Ask a developer to combine them.";

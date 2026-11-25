@@ -125,7 +125,10 @@ describe("publish", GIT_HEAVY, () => {
     const before = sh(root, "log", "-1", "--format=%s");
     const paused = await ws.publish({ message: "Mine" }, PUBLISH);
 
-    expect(paused).toMatchObject({ ok: false, pushed: false, behind: true, error: expect.stringContaining("The live site has newer changes than this copy") });
+    // The newer versions touch nothing changed here: the words send the person to "Get the latest", which works.
+    expect(paused).toMatchObject({ ok: false, pushed: false, behind: true });
+    expect(paused.error).toBe("The repository has newer versions than this copy, so nothing was published and nothing was overwritten. Your edits are safe. Get the latest versions, then publish again.");
+    expect(paused.inTheWay).toBeUndefined();
     expect(paused.error).not.toMatch(/branch|push|remote|commit/i);
     // Nothing was committed, so "Get the latest" can fast-forward under the pending edit, and the publish then goes through.
     expect(sh(root, "log", "-1", "--format=%s")).toBe(before);
@@ -133,6 +136,65 @@ describe("publish", GIT_HEAVY, () => {
     expect(readFileSync(join(root, "src/content/a.md"), "utf8")).toBe("mine\n");
     expect(await ws.publish({ message: "Mine" }, PUBLISH)).toMatchObject({ ok: true, pushed: true });
     expect(sh(bare, "log", "-1", "--format=%s", "main")).toBe("Mine");
+  });
+
+  it("pauses a publish when the newer versions change a file changed here too, and names the way out that works", async () => {
+    const root = makeRepo({ "src/content/about.md": "about\n", "src/content/b.md": "b\n", "src/content/c.md": "c\n" });
+    const bare = addBareRemote(root);
+    const other = tempDir("ws-other-");
+
+    sh(other, "clone", "-q", bare, ".");
+    writeTree(other, { "src/content/about.md": "theirs\n" });
+    sh(other, "add", "-A");
+    sh(other, "commit", "-q", "-m", "Their change to the same page");
+    sh(other, "push", "-q", "origin", "main");
+
+    writeFileSync(join(root, "src/content/about.md"), "mine\n");
+    writeFileSync(join(root, "src/content/c.md"), "mine too\n");
+    const ws = await workspaceFor(root);
+    const before = sh(root, "log", "-1", "--format=%s");
+    // Only the other page is chosen for publishing: the page in the way still stops "Get the latest", so it is still named.
+    const paused = await ws.publish({ message: "Mine", paths: ["src/content/c.md"] }, PUBLISH);
+
+    expect(paused).toMatchObject({ ok: false, pushed: false, behind: true, inTheWay: ["src/content/about.md"] });
+    expect(paused.error).toBe(
+      "The repository has newer versions that change about.md, which has unpublished changes here. Galley can't join the two, so nothing was published and nothing was overwritten. " +
+        "Discard the change to that file (Proof shows it, so what you wrote can be copied first), get the latest versions, then make the change again."
+    );
+    expect(paused.error).not.toMatch(/then publish again|branch|push|remote|commit|merge/i);
+    expect(sh(root, "log", "-1", "--format=%s")).toBe(before);
+    expect(readFileSync(join(root, "src/content/about.md"), "utf8")).toBe("mine\n");
+
+    // Getting the latest is refused for the same file, and doesn't send the person back to Publish.
+    const refused = await ws.pull().then(
+      () => null,
+      (error: unknown) => error as { code: string; message: string }
+    );
+
+    expect(refused).toMatchObject({ code: "conflict" });
+    expect(refused!.message).toBe("The newer versions change about.md, which has unpublished changes here. Discard the change to that file (Proof shows it, so what you wrote can be copied first), then the newer versions can come in.");
+    expect(refused!.message).not.toMatch(/Publish or|publish again|then publish/i);
+    // The way out the words give: discard that change, get the latest, and the other change publishes.
+    await ws.discard(["src/content/about.md"]);
+    await ws.pull();
+    expect(readFileSync(join(root, "src/content/about.md"), "utf8")).toBe("theirs\n");
+    expect(await ws.publish({ message: "Mine" }, PUBLISH)).toMatchObject({ ok: true, pushed: true, files: ["src/content/c.md"] });
+
+    // Several files in the way: counted, with the first few named.
+    writeTree(other, { "src/content/about.md": "theirs again\n", "src/content/b.md": "theirs\n" });
+    sh(other, "pull", "-q", "origin", "main");
+    sh(other, "add", "-A");
+    sh(other, "commit", "-q", "-m", "Their change to two pages");
+    sh(other, "push", "-q", "origin", "main");
+    writeFileSync(join(root, "src/content/about.md"), "mine again\n");
+    writeFileSync(join(root, "src/content/b.md"), "mine\n");
+    const both = await ws.publish({ message: "Mine again" }, PUBLISH);
+
+    expect(both.inTheWay).toEqual(["src/content/about.md", "src/content/b.md"]);
+    expect(both.error).toBe(
+      "The repository has newer versions that change 2 files with unpublished changes here (about.md, b.md). Galley can't join the two, so nothing was published and nothing was overwritten. " +
+        "Discard the changes to those files (Proof shows them, so what you wrote can be copied first), get the latest versions, then make the changes again."
+    );
   });
 
   it("keeps the commit and explains a push refused because someone published at the same moment", async () => {
@@ -525,7 +587,7 @@ describe("the words for a look and a bring-in that didn't work", () => {
     expect(tooLong).toMatch(/some files may be newer than others/);
     expect(tooLong).not.toMatch(/reach the code host|connection/i);
     for (const said of [tooLong, classifyPullError("error: Your local changes to the following files would be overwritten by merge:", false), classifyPullError("fatal: Not possible to fast-forward, aborting.", false), classifyPullError("error: unable to write file", false)]) {
-      // "Publish or discard your changes" is the way out of one of these; the words for a failed publish are not.
+      // "Discard your changes to those files" is the way out of one of these; the words for a failed publish are not.
       expect(said).not.toMatch(/sending it|saved on this computer|signed in to it on this computer|Send for review/i);
       expect(said).not.toMatch(gitWords);
       expect(said).toMatch(/\.$/);

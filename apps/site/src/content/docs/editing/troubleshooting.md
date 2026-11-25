@@ -27,7 +27,7 @@ The preview is your site running on this computer.
 
 - **"Couldn't publish."** Your changes are safe. The window says why; **Try again**.
 - **"Saved, not live yet."** The version is saved here but didn't reach the site's host. **Send now** in the status bar sends it when the connection is back.
-- **"The live site has newer changes."** Someone published from elsewhere. Press **Get the latest**, then publish again.
+- **"Publishing is paused."** The repository has newer versions: someone published from elsewhere, and nothing was overwritten. Press **Get the latest**, then publish again. If the newer versions change a page you have changed too, the window names it and offers **Review in Proof** instead: discard your change to that page (Proof shows it, so you can copy what you wrote first), get the latest, then make the change again.
 
 ## The app itself
 

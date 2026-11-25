@@ -187,7 +187,10 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
       setOutcome(null);
     } catch (error) {
       const shape = errorShape(error);
-      setOutcome({ kind: "failed", tone: "danger", title: "Couldn’t get the latest versions", body: `${shape.message} Your edits are safe.`, detail: shape.detail, canRetry: false });
+      // Refused for what is here (a change that came into the way since): nothing was touched, and Proof shows that change.
+      const inTheWay = shape.code === "conflict";
+
+      setOutcome({ kind: "failed", tone: "danger", title: "Couldn’t get the latest versions", body: `${shape.message} ${inTheWay ? "Nothing here was changed." : "Your edits are safe."}`, detail: shape.detail, canRetry: false, ...(inTheWay ? { canReview: true } : {}) });
     } finally {
       setGettingLatest(false);
     }
@@ -236,6 +239,17 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
             Get the latest
           </Button>
         ) : null}
+        {outcome.canReview ? (
+          <Button
+            variant="primary"
+            onClick={() => {
+              onClose();
+              navigate(`/sites/${siteId}/proof`);
+            }}
+          >
+            Review in Proof
+          </Button>
+        ) : null}
         {outcome.reviewUrl ? (
           <a className={buttonClass("secondary", "md")} href={outcome.reviewUrl} target="_blank" rel="noopener noreferrer">
             View request
@@ -252,8 +266,8 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
             See version history
           </Button>
         ) : null}
-        <Button ref={doneButton} variant={outcome.canGetLatest ? "secondary" : "primary"} onClick={onClose} data-autofocus disabled={sending || gettingLatest}>
-          {outcome.canGetLatest ? "Not now" : "Done"}
+        <Button ref={doneButton} variant={outcome.canGetLatest || outcome.canReview ? "secondary" : "primary"} onClick={onClose} data-autofocus disabled={sending || gettingLatest}>
+          {outcome.canGetLatest || outcome.canReview ? "Not now" : "Done"}
         </Button>
       </>
     );

@@ -15,7 +15,10 @@ export type PublishOutcomeKind =
   | "review-not-sent"
   | "nothing"
   | "failed"
-  /** Paused before anything was committed: the code host has newer versions. "Get the latest", then publish again. */
+  /**
+   * Paused before anything was committed: the repository has newer versions. "Get the latest", then publish again —
+   * or, when they change a file that is changed here too, discard that change first (Proof shows it).
+   */
   | "behind"
   /** "Send now" outcomes: versions published here reached the host, there was nothing waiting, or they still didn't go. */
   | "sent"
@@ -37,8 +40,10 @@ export interface PublishOutcome {
   canRetry: boolean;
   /** Whether "Try sending again" can help: versions are saved here but haven't reached the host. */
   canSend?: boolean;
-  /** Whether "Get the latest" is the way on: the code host has newer versions and nothing was published here. */
+  /** Whether "Get the latest" is the way on: the repository has newer versions, nothing was published here, and nothing here is in their way. */
   canGetLatest?: boolean;
+  /** Whether Proof is the way on: a change here has to be discarded before the newer versions can come in, and Proof shows it. */
+  canReview?: boolean;
 }
 
 const NOTHING = /nothing to publish|none of those files|match the last published/i;
@@ -51,7 +56,12 @@ export function publishOutcome(result: PublishResult, { message, mode, hosted = 
       return { kind: "nothing", tone: "neutral", title: "Nothing to publish", body: "Everything here already matches the live site.", canRetry: false };
     }
     if (result.behind) {
-      return { kind: "behind", tone: "warning", title: "The live site has newer changes", body: result.error ?? "Get the latest versions, then publish again. Your edits are safe.", detail: result.detail, canRetry: false, canGetLatest: true };
+      // The heading says what happened to the publish; the engine's words say why, and the way on.
+      const inTheWay = (result.inTheWay?.length ?? 0) > 0;
+      const body = result.error ?? "The repository has newer versions than this copy, so nothing was published and nothing was overwritten. Your edits are safe. Get the latest versions, then publish again.";
+
+      // A change here that the newer versions change too: getting the latest would be refused, so Proof is offered instead.
+      return { kind: "behind", tone: "warning", title: "Publishing is paused", body, detail: result.detail, canRetry: false, ...(inTheWay ? { canReview: true } : { canGetLatest: true }) };
     }
     return {
       kind: "failed",
