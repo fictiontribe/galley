@@ -458,7 +458,8 @@ their role has the level now, and then the event's own rule for what that
 reader is sent. They are also the only events a reader may miss: one is left
 out for a reader that already has half of what it may have waiting. So an
 extension's events never fill more than about half of that, and the
-editor's own events always have at least half of it. A stream opened
+editor's own events always have at least half of it. The reader is told how
+many it missed once it has room again (`stream.missed`). A stream opened
 with a value for an extension (`?x-<id>=<value>`) tells it that a window is
 there and when it has gone; it can refuse the value, never the stream.
 Because a restore replaces the data folder under a running server,

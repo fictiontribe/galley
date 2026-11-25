@@ -114,6 +114,13 @@ export interface StartOptions {
 
 /** What is said about one kind of failure at most this often: a rule that fails does so for every reader of every event. */
 export const SAID_EVERY_MS = 60_000;
+/**
+ * The time that limits are counted by: one that only moves forward. The
+ * wall clock can be set back (by hand, by a time service, by a machine that
+ * was asleep), and a second counted on it would then last as long as the
+ * step back.
+ */
+const clock = (): number => performance.now();
 /** The most of a refusal's words that is sent to a window. */
 const REFUSAL_CHARACTERS = 500;
 
@@ -299,7 +306,7 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
     };
     /** The same, at most once a minute for each kind of thing said. */
     const sayNowAndThen = (kind: string, line: string) => {
-      const now = Date.now();
+      const now = clock();
 
       if (now - (saidAt.get(kind) ?? -Infinity) < SAID_EVERY_MS) return;
       saidAt.set(kind, now);
@@ -312,14 +319,14 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
       const { dropped, skipped } = counted;
 
       if (dropped === 0 && skipped === 0) return;
-      countsSaidAt = Date.now();
+      countsSaidAt = clock();
       counted.dropped = counted.skipped = 0;
       if (dropped) say(`it sent more than ${EXTENSION_EVENTS_A_SECOND} events, or more than ${EXTENSION_EVENT_BYTES_A_SECOND / 1024} KB of them, in a second: ${dropped} ${dropped === 1 ? "was" : "were"} dropped.`);
       if (skipped) say(`${skipped} ${skipped === 1 ? "time an event of its" : "times an event of its"} was not sent to a window that had fallen behind in reading.`);
     };
     const countSoon = () => {
       if (countsTimer) return;
-      countsTimer = setTimeout(sayCounts, Math.max(1000, countsSaidAt + SAID_EVERY_MS - Date.now()));
+      countsTimer = setTimeout(sayCounts, Math.max(1000, countsSaidAt + SAID_EVERY_MS - clock()));
       countsTimer.unref?.();
     };
     const alive = () => live;
@@ -354,7 +361,7 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
         const copy = plainJson(payload, EXTENSION_EVENT_BYTES);
 
         if (!copy) throw new GalleyError("invalid", "An event's payload is JSON of at most 64 KB.");
-        const now = Date.now();
+        const now = clock();
 
         while (sent.length > 0 && now - sent[0]!.at >= 1000) sentBytes -= sent.shift()!.bytes;
         // In any one second, so many events and so many bytes: every window reads what every extension sends.
@@ -404,17 +411,23 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
       parts = await timeLimit(settingUp, within(options.setupMs, EXTENSION_SETUP_MS), () => ((ranOut = true), new Error("it didn't finish starting in time")));
     } catch (error) {
       end();
-      // Its time ran out and its signal said so. If it finishes after all, what it started is stopped: the server may carry on without it.
+      // Its time ran out and its signal said so. If it finishes after all, what it started is stopped: the server may carry on
+      // without it. That stop takes its turn like every other start and stop, so it never runs in the middle of one; it can
+      // still come while a newer start of the same extension is running, which is why a stop closes only what its own setup opened.
       if (ranOut) {
         void settingUp.then(
-          async (late) => {
-            if (typeof late?.stop !== "function") return;
-            try {
-              await timeLimit(Promise.resolve(outside(() => late.stop!())), within(options.stopMs, EXTENSION_STOP_MS), () => new Error("it took too long"));
-            } catch (failure) {
-              options.log(`[${id}] ${scrub(oneLine(`its setup finished after its time was up, and its stop then failed: ${failure instanceof Error ? failure.message : String(failure)}`))}`);
-            }
-          },
+          (late) =>
+            inTurn(async () => {
+              try {
+                // Read in here: an extension's object can fail on being looked at.
+                const stopLate = late?.stop;
+
+                if (typeof stopLate !== "function") return;
+                await timeLimit(Promise.resolve(outside(() => stopLate.call(late))), within(options.stopMs, EXTENSION_STOP_MS), () => new Error("it took too long"));
+              } catch (failure) {
+                options.log(`[${id}] ${scrub(oneLine(`its setup finished after its time was up, and its stop then failed: ${failure instanceof Error ? failure.message : String(failure)}`))}`);
+              }
+            }),
           () => undefined
         );
       }

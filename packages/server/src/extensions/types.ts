@@ -138,8 +138,9 @@ export interface ExtensionEvents {
    * handed; `payload` JSON of at most 64 KB. Otherwise it throws, here. In
    * any one second an extension may send 50 events and 256 KB of payload:
    * past either they are dropped and counted in the log. A window that
-   * already has half of what it may have waiting is not sent it either.
-   * Not before `setup` has returned.
+   * already has half of what it may have waiting is not sent it either; it
+   * is sent `stream.missed` with `{ count }` once it has room again. Not
+   * before `setup` has returned.
    */
   emit(name: string, siteId: string, payload: JsonValue): void;
   /**
@@ -191,6 +192,11 @@ export interface ExtensionHost {
   events: ExtensionEvents;
   /** Null where there are no accounts (local mode, the desktop app). */
   people: ExtensionPeople | null;
+  /**
+   * The site as it is open now, or null. Ask each time rather than keep one:
+   * a site nothing has used for an hour is closed, and one kept from before
+   * then works on the folder with nobody told of what it changes.
+   */
   sites: { get(siteId: string): Promise<GuardedSite | null> };
   /**
    * Runs `run` outside any person, any publishing name and any site: the way

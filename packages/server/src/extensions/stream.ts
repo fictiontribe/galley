@@ -27,13 +27,17 @@
  *   always have at least half of it. Not all of it: a reader an extension
  *   keeps half full is let go by a smaller burst of the editor's own
  *   events than one with nothing waiting.
+ * - A reader that was not sent some of an extension's events is told so
+ *   once it has room again: `stream.missed`, with how many. A window that
+ *   is slow but never let go would otherwise go without them and never
+ *   know to ask.
  */
 import type { Context } from "hono";
 import { roleMay, type Account } from "@galley/core/install";
 import type { ServerEvent } from "@galley/core/types";
 import { bearerToken, type SessionInfo } from "../auth";
 import type { StreamAccess, StreamHooks } from "../events";
-import { STREAM_REFUSED } from "./declare";
+import { STREAM_MISSED, STREAM_REFUSED } from "./declare";
 import { NOT_FROM_THE_EDITOR, type MountCaller } from "./mount";
 import type { StartedExtensions } from "./run";
 import type { ExtensionCaller, SessionRef } from "./types";
@@ -72,6 +76,8 @@ export function extensionStream(c: Context, runtime: StartedExtensions, deps: St
     return account ? { kind: "person", account: account.id, role: account.role, name: account.name, session: deps.refOf(who.session) } : null;
   };
   const refusals: ServerEvent[] = [];
+  /** How many of each extension's events this reader was not sent, since it was last told. */
+  const missed = new Map<string, number>();
 
   return {
     access: {
@@ -119,7 +125,14 @@ export function extensionStream(c: Context, runtime: StartedExtensions, deps: St
       low(event) {
         if (event.type !== "extension") return false;
         runtime.find(event.source)?.skipped();
+        missed.set(event.source, (missed.get(event.source) ?? 0) + 1);
         return true;
+      },
+      owed() {
+        const telling: ServerEvent[] = [...missed].map(([source, count]) => ({ type: "extension", source, name: STREAM_MISSED, siteId: "", payload: { count } }));
+
+        missed.clear();
+        return telling;
       },
     },
   };
