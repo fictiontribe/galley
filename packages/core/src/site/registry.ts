@@ -607,6 +607,7 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
             name,
             ...(request.look ? { look: request.look } : {}),
             author: await author(),
+            onDownload: (size) => job.update({ detail: `Downloading the starter (${size})`, progress: 0.05 }),
             // Installed before the first version is recorded, so the lock file
             // it writes is in that version and the site starts with no changes.
             beforeFirstVersion: async (root) => {

@@ -11,7 +11,8 @@
 // like a key); the size is within its limit; and galley-cms carries every
 // part it runs from and starts. Exits 1 with every problem listed.
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,8 +20,15 @@ import { fileURLToPath } from "node:url";
 const MB = 1024 * 1024;
 /** Packed size limits. Above galley-cms's, starters should be fetched from the release instead of bundled (RELEASING.md). */
 const LIMITS = { "galley-cms": Number(process.env.GALLEY_PACK_LIMIT_MB || 15) * MB, "create-galley": 64 * 1024 };
-const STARTERS = ["astro-editorial", "astro-saas", "astro-starter", "astro-storefront"];
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+/** Every starter in the repository, and whether it is downloaded when used ("download": true) instead of bundled. */
+const STARTERS = readdirSync(join(REPO, "starters"), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && existsSync(join(REPO, "starters", entry.name, "package.json")))
+  .map((entry) => entry.name)
+  .sort();
+const DOWNLOADED = new Set(STARTERS.filter((id) => JSON.parse(readFileSync(join(REPO, "starters", id, "starter.json"), "utf8")).download === true));
+/** Where build.mjs put the downloaded starters' archives, the release's assets. */
+const ASSETS = resolve(process.env.GALLEY_STARTER_ASSETS || join(REPO, "packages", "cli", "starter-assets"));
 
 const FORBIDDEN_FILES = [
   [/(^|\/)(test|tests|__tests__)\//, "a test folder"],
@@ -124,8 +132,26 @@ function verify(tarball) {
         if (!files.includes(file)) problems.push(`${file} is missing`);
       }
       for (const id of STARTERS) {
-        for (const file of ["package.json", "starter.json", "galley.config.json", "gitignore", "src/content.config.ts"]) {
+        const expected = DOWNLOADED.has(id) ? ["package.json", "starter.json", "galley.config.json", "starter-download.json"] : ["package.json", "starter.json", "galley.config.json", "gitignore", "src/content.config.ts"];
+
+        for (const file of expected) {
           if (!files.includes(`dist/starters/${id}/${file}`)) problems.push(`dist/starters/${id}/${file} is missing`);
+        }
+        if (DOWNLOADED.has(id) && files.includes(`dist/starters/${id}/starter-download.json`)) {
+          // The archive the release attaches must be the one the bundle names, byte for byte.
+          const record = JSON.parse(readFileSync(join(root, "dist/starters", id, "starter-download.json"), "utf8"));
+          const asset = join(ASSETS, String(record.asset));
+
+          if (record.asset !== `starters-${id}.tgz`) problems.push(`dist/starters/${id}/starter-download.json names ${record.asset}, not starters-${id}.tgz`);
+          else if (!existsSync(asset)) problems.push(`${record.asset}, the archive dist/starters/${id} names, isn't in ${ASSETS}`);
+          else {
+            const bytes = readFileSync(asset);
+            const hash = createHash("sha256").update(bytes).digest("hex");
+
+            if (bytes.length !== record.bytes || hash !== record.sha256) problems.push(`${record.asset} isn't the archive dist/starters/${id} records (${bytes.length} bytes, ${hash})`);
+            else notes.push(`${record.asset}: ${size(bytes.length)}, downloaded when used, sha256 ${hash.slice(0, 12)}…`);
+          }
+          if (files.some((file) => file.startsWith(`dist/starters/${id}/src/`))) problems.push(`dist/starters/${id} is downloaded when used, but its files are in the package too`);
         }
         const manifest = files.includes(`dist/starters/${id}/starter.json`) ? JSON.parse(readFileSync(join(root, "dist/starters", id, "starter.json"), "utf8")) : {};
 

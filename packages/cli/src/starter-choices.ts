@@ -6,7 +6,7 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { listStarters } from "@galley/core/site";
+import { listStarters, STARTER_DOWNLOAD } from "@galley/core/site";
 import type { StarterInfo } from "@galley/core/types";
 
 /** The starter `galley new` uses when none is chosen. */
@@ -71,13 +71,18 @@ export async function loadStarterChoices(startersDir: string): Promise<StarterCh
     const dir = join(startersDir, info.id);
     const manifest = readJson(join(dir, "starter.json"));
     const pkg = readJson(join(dir, "package.json"));
-    const sections = count(join(dir, "galley", "sections"), ".webp");
-    const templates = count(join(dir, "galley", "templates"), ".md");
+    // A starter downloaded when it is used has only what shows it here; its record says what the rest holds.
+    const download = readJson(join(dir, STARTER_DOWNLOAD));
+    const recorded = (key: string) => (typeof download[key] === "number" ? (download[key] as number) : null);
+    const sections = recorded("sections") ?? count(join(dir, "galley", "sections"), ".webp");
+    const templates = recorded("templates") ?? count(join(dir, "galley", "templates"), ".md");
     const looks = info.looks?.length ?? 0;
+    const bytes = recorded("bytes");
     const parts = [
       ...(sections ? [counted(sections, "section")] : []),
       ...(templates ? [counted(templates, "page template")] : []),
       ...(looks ? [counted(looks, "look")] : []),
+      ...(bytes ? [`downloaded when used (${(bytes / (1024 * 1024)).toFixed(1)} MB)`] : []),
     ];
     const summary = typeof manifest.summary === "string" && manifest.summary.trim() ? manifest.summary.trim() : info.description.split(/(?<=\.)\s/)[0]!.replace(/\.$/, "");
 

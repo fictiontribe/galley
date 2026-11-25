@@ -54,14 +54,32 @@ compatible within a major version.
 
 Inside `galley-cms` (`dist/starters/`), copied from git's own list of the
 starters' files, so `npm create galley` works offline once npm has the
-package. Measured for 0.1.0: the tarball is 13.0 MB (22.9 MB unpacked),
-of which the starters are 13.2 MB unpacked — mostly the Caddow photographs,
-already WebP at under 190 kB each. `verify-pack.mjs` fails the release above
-15 MB. When the starters grow past that, the plan is to fetch each one from
-the tagged GitHub release instead (a `starters-<id>.tgz` asset per starter,
-its SHA-256 recorded in the bundle and checked after download, and a plain
-sentence when the computer is offline) — not built yet, because today it
-would only add a download.
+package. Measured for 0.4.3: the tarball is 13.6 MB (24.5 MB unpacked), the
+four starters 13.5 MB of it unpacked — mostly photographs, already WebP.
+`verify-pack.mjs` fails the release above 15 MB.
+
+A starter whose `starter.json` says `"download": true` travels apart
+instead, downloaded the first time someone uses it (starters/README.md):
+
+- `build.mjs` writes its archive, `packages/cli/starter-assets/starters-<id>.tgz`
+  — a plain tar, gzipped, the same bytes for the same files on every
+  system — and leaves in `dist/starters/<id>/` only what shows it, with
+  `starter-download.json`: the archive's name, size and SHA-256.
+- `verify-pack.mjs` checks the record against the archive, byte for byte.
+- `release.yml` makes a site from each such starter with the archive served
+  from the runner, then publishes the archives on a release of their own,
+  `starters-vX.Y.Z` (a prerelease, so `…/releases/latest` keeps naming the
+  version's release), **before** it publishes `galley-cms`. Not on the
+  version's own release: that stays a draft until a person publishes it
+  (step 10), and a `galley-cms` on npm would meanwhile find nothing to
+  download. Run again, an archive already on that release is kept and must
+  be the same bytes.
+- Making a site from it (the wizard, `galley new`, a hosted editor's first
+  run, the desktop app) downloads the archive into a fresh temporary
+  folder, refuses one that isn't exactly the recorded size and hash, and
+  says in a plain sentence when it can't be downloaded — offline, or not
+  published yet. `GALLEY_STARTER_DOWNLOADS` points it at another folder
+  address (a mirror, a test).
 
 ## Before the first release (first release)
 

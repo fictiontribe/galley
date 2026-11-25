@@ -198,6 +198,15 @@ description and example, and no block type may have a count of 0.
 
 The first look is the default. Swatches are computed from the look file.
 
+`"download": true` keeps the starter out of the `galley-cms` package:
+it travels as `starters-<id>.tgz` on the release of its version's starters
+and is downloaded the first time someone uses it, checked against the
+SHA-256 the package records. The package keeps only what shows it in the
+wizard and in `galley starters`: `package.json`, `starter.json`,
+`galley.config.json` and the pictures `preview` and the looks name. Use
+it for a starter that would push the package past its size limit
+(RELEASING.md, "How the starters travel"); offline, it can't be used.
+
 ## 7. `CONTENT-GUIDE.md`
 
 The voice in a few lines; where things live, with the microcopy rule;

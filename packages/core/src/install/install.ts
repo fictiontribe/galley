@@ -491,6 +491,7 @@ export function createInstall(options: InstallOptions): Install {
       targetDir: target,
       name,
       ...(starter.look ? { look: starter.look } : {}),
+      onDownload: (size) => update(`Downloading the starter (${size})`, 0.1),
       // The owner who sent it from first run, like every other version a person records; started unattended, the install's own name.
       author: currentAccountAuthor() ?? (await savedAuthor()),
       beforeFirstVersion: async (root) => {

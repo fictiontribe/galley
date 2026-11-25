@@ -61,6 +61,17 @@ entry says how.
   turn again, and the site isn't opened again until it has. For an
   extension: ask `host.sites.get(siteId)` each time you need a site.
 
+- **A starter can travel apart from `galley-cms`, downloaded the first time
+  it is used.** A starter whose `starter.json` says `"download": true` is
+  published as `starters-<id>.tgz` on its version's starters release; the
+  package keeps what shows it in the wizard and `galley starters`, with the
+  archive's size and SHA-256. Making a site from it (the wizard, `galley new`,
+  a hosted editor's first run, the desktop app) downloads the archive,
+  refuses one that isn't exactly what was recorded, and says plainly when it
+  can't be downloaded, as when the computer is offline. The four starters
+  that ship today stay inside the package and work offline as before.
+  `GALLEY_STARTER_DOWNLOADS` points the download at a mirror.
+
 ### Fixed
 
 - **A save the previewed page asked for, when refused, no longer tells an

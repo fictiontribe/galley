@@ -4,7 +4,11 @@
 #   On a version tag (vX.Y.Z, pushed by hand: RELEASING.md): install, check
 #   the tag against the versions, typecheck, test, pack both packages, verify
 #   the tarballs, make and start a site from them in a clean folder, then
-#   publish exactly the tarballs that were checked.
+#   publish exactly the tarballs that were checked. A starter that is
+#   downloaded when used ("download": true in its starter.json) travels as an
+#   archive the bundle records by SHA-256: those archives are published first,
+#   on a release of their own, starters-vX.Y.Z (RELEASING.md, "How the
+#   starters travel").
 #
 #   By hand (Actions › Release › Run workflow): the same steps. "Dry run" is
 #   on by default: nothing is published, and the tarballs are attached to the
@@ -13,7 +17,8 @@
 #
 # Needs one repository secret, NPM_TOKEN: an npm granular access token with
 # read and write access to galley-cms and create-galley (RELEASING.md says
-# how to make it). Nothing else here can publish.
+# how to make it). The starters' release is made with the workflow's own
+# token, hence "contents: write".
 name: Release
 
 on:
@@ -27,7 +32,8 @@ on:
         default: true
 
 permissions:
-  contents: read
+  # The starters' release (starters-vX.Y.Z) and its archives.
+  contents: write
   # npm provenance: the registry checks this workflow's identity token.
   id-token: write
 
@@ -137,6 +143,31 @@ jobs:
           kill -TERM "$pid"
           wait "$pid" || true
 
+      # Each starter that is downloaded when used, made from the tarballs with its archive served from this runner:
+      # the record in the bundle and the archive the release will attach agree, and the site is made.
+      - name: Make a site from each downloaded starter
+        run: |
+          set -euo pipefail
+          assets="$GITHUB_WORKSPACE/packages/cli/starter-assets"
+          if ! ls "$assets"/starters-*.tgz > /dev/null 2>&1; then echo "No starter is downloaded when used."; exit 0; fi
+          try="$RUNNER_TEMP/try"
+          (cd "$assets" && python3 -m http.server 4799 --bind 127.0.0.1 > "$RUNNER_TEMP/assets.log" 2>&1) &
+          server=$!
+          sleep 1
+          export HOME="$try/home" GALLEY_STARTER_DOWNLOADS="http://127.0.0.1:4799"
+          for archive in "$assets"/starters-*.tgz; do
+            id="$(basename "$archive" .tgz)"; id="${id#starters-}"
+            "$try/tools/node_modules/.bin/galley" new "downloaded-$id" --starter "$id" --no-install --no-start --dir "$try"
+            test -f "$try/downloaded-$id/package.json"
+          done
+          kill "$server"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: starter-archives-${{ steps.version.outputs.version }}
+          path: packages/cli/starter-assets/*.tgz
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@v4
         with:
           name: npm-tarballs-${{ steps.version.outputs.version }}
@@ -153,6 +184,37 @@ jobs:
       # only then is create-galley published.
       # "incoming" is left where it is: the release's token may add or move a tag and may not remove one
       # (0.4.2: the removal was refused), and the next release moves it to its own version.
+      # Before the packages: a galley-cms on npm downloads these, and the version's own release stays a draft until a
+      # person publishes it (desktop.yml), so they go on a release of their own, published at once, a prerelease so
+      # that ".../releases/latest" keeps naming the version's release. Run again, an archive already there is kept
+      # (a published bundle may name it) and must be the same bytes: build.mjs writes the same archive for the same
+      # files.
+      - name: Publish the downloaded starters' archives
+        if: env.PUBLISH == 'true' && github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          assets="packages/cli/starter-assets"
+          if ! ls "$assets"/starters-*.tgz > /dev/null 2>&1; then echo "No starter is downloaded when used."; exit 0; fi
+          release="starters-v${{ steps.version.outputs.version }}"
+          if ! gh release view "$release" > /dev/null 2>&1; then
+            gh release create "$release" "$assets"/starters-*.tgz --target "$GITHUB_SHA" --prerelease \
+              --title "Starters for ${{ steps.version.outputs.version }}" \
+              --notes "The starters that galley-cms ${{ steps.version.outputs.version }} downloads the first time each is used. Each archive's SHA-256 is recorded in galley-cms and checked after download."
+            exit 0
+          fi
+          have="$RUNNER_TEMP/have"
+          mkdir -p "$have"
+          for archive in "$assets"/starters-*.tgz; do
+            name="$(basename "$archive")"
+            if gh release download "$release" --pattern "$name" --dir "$have" --clobber 2> /dev/null; then
+              if ! cmp -s "$archive" "$have/$name"; then echo "::error::$release already has a different $name. It was built from other files; the bundle would name the wrong archive."; exit 1; fi
+            else
+              gh release upload "$release" "$archive"
+            fi
+          done
+
       - name: Publish to npm
         if: env.PUBLISH == 'true' && github.ref_type == 'tag'
         env:

@@ -358,6 +358,8 @@ export async function newCommand(argv: string[], io: Io): Promise<number> {
       targetDir: target,
       name,
       ...(values.look ? { look: values.look } : {}),
+      env: io.env,
+      onDownload: (size) => io.out(`Downloading the starter (${size})`),
       // Installed before the first version is recorded, so the lock file is in it and the site starts with no changes.
       beforeFirstVersion: async (root) => {
         io.out(`✓ Copied the starter`);

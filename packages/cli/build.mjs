@@ -5,7 +5,9 @@
 //
 // GALLEY_CLI_DIST=<dir> writes the bundle somewhere else (the bundle test
 // builds into a temporary folder, so a dist/ that bin/galley.js would prefer
-// over the sources is never left behind).
+// over the sources is never left behind); the starters' archives then go
+// beside it, in <dir>-starter-assets. GALLEY_CLI_STARTERS=<dir> takes the
+// starters from another folder (a test's).
 //
 //   node build.mjs            the bundle, with the web UI if it has been built
 //   node build.mjs --release  what `npm pack` ships (prepack): builds the web UI
@@ -17,13 +19,16 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, r
 import { createRequire } from "node:module";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { filesUnder, keptFiles, sha256, STARTER_DOWNLOAD, starterArchive, starterAssetName } from "./scripts/starter-archive.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, "..", "..");
 const dist = process.env.GALLEY_CLI_DIST ? resolve(process.env.GALLEY_CLI_DIST) : join(here, "dist");
 const webPackage = join(repo, "packages", "web");
 const webDist = join(webPackage, "dist");
-const starters = join(repo, "starters");
+const starters = process.env.GALLEY_CLI_STARTERS ? resolve(process.env.GALLEY_CLI_STARTERS) : join(repo, "starters");
+/** The archives of the starters that are downloaded when first used: the release's assets, never in the npm package. */
+const assets = process.env.GALLEY_CLI_DIST ? `${dist}-starter-assets` : join(here, "starter-assets");
 const SKIP = new Set(["node_modules", ".git", "dist", ".astro", ".DS_Store"]);
 /** Never shipped inside a starter, whatever git or the folder holds. */
 const NEVER = [/(^|\/)\.env(\..*)?$/, /\.log$/, /(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$/, /\.map$/];
@@ -157,6 +162,51 @@ if (release) {
     else if (entry.name === ".gitignore") renameSync(path, join(dir, "gitignore"));
   }
 })(join(dist, "starters"));
+
+// A starter whose starter.json says "download": true doesn't travel inside the package: its archive goes to
+// starter-assets/ (attached to the release by release.yml), and the bundle keeps only what shows the starter in the
+// wizard and in `galley starters`, with a record of the archive — its name, size and SHA-256, checked after
+// download — and the counts `galley starters` would otherwise read from the files (RELEASING.md, "How the starters
+// travel").
+rmSync(assets, { recursive: true, force: true });
+// Which starter files are programs, as git records it: the same on every system, so the archive is too.
+let programs = null;
+
+try {
+  programs = new Set(
+    execFileSync("git", ["ls-files", "-s", "-z", "--", "."], { cwd: starters, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+      .split("\0")
+      .filter((line) => line.startsWith("100755 "))
+      .map((line) => line.slice(line.indexOf("\t") + 1))
+  );
+} catch {
+  programs = null;
+}
+for (const id of readdirSync(join(dist, "starters"), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name)) {
+  const dir = join(dist, "starters", id);
+  const manifestFile = join(dir, "starter.json");
+
+  if (!existsSync(manifestFile)) continue;
+  const manifest = JSON.parse(readFileSync(manifestFile, "utf8"));
+
+  if (manifest.download !== true) continue;
+  const files = filesUnder(dir);
+  const archive = starterArchive(dir, programs ? (rel) => programs.has(`${id}/${rel}`) : undefined);
+  const count = (folder, ending) => files.filter((file) => file.startsWith(`${folder}/`) && !file.slice(folder.length + 1).includes("/") && file.endsWith(ending)).length;
+  const kept = keptFiles(manifest);
+
+  mkdirSync(assets, { recursive: true });
+  writeFileSync(join(assets, starterAssetName(id)), archive);
+  for (const file of files) if (!kept.has(file)) rmSync(join(dir, ...file.split("/")));
+  (function pruneEmpty(folder) {
+    for (const entry of readdirSync(folder, { withFileTypes: true })) if (entry.isDirectory()) pruneEmpty(join(folder, entry.name));
+    if (folder !== dir && readdirSync(folder).length === 0) rmSync(folder, { recursive: true });
+  })(dir);
+  const record = { asset: starterAssetName(id), bytes: archive.length, sha256: sha256(archive), sections: count("galley/sections", ".webp"), templates: count("galley/templates", ".md") };
+
+  writeFileSync(join(dir, STARTER_DOWNLOAD), `${JSON.stringify(record, null, 2)}\n`);
+  console.log(`✓ starters/${id} travels as ${record.asset} (${(archive.length / (1024 * 1024)).toFixed(1)} MB), downloaded when it is first used`);
+}
 
 writeFileSync(join(dist, "overlay.js"), overlay);
 // Apache-2.0 travels with every copy; npm only picks up a LICENSE at the package root, which is the repository's.
