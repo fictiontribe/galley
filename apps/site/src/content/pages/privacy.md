@@ -11,7 +11,7 @@ lead: No cookies, no analytics, no tracking pixels, and nothing loaded from anyo
 - **No cookies.** The site sets none, so there is nothing to consent to.
 - **No analytics.** No page-view counters, no session recording, no advertising tags.
 - **No third parties.** No font services, no CDNs, no embedded videos or widgets. Your browser talks to this site and nothing else.
-- **Nothing kept in your browser.** No local storage, no settings saved between visits.
+- **One thing kept in your browser, and only if you ask.** Press the light or dark switch in the header and your choice is saved in your browser, so the next page looks the same. It is never sent anywhere. Nothing else is kept.
 - **Email links.** An email link opens a small choice — Gmail, Outlook, your mail app, or copying the address. Nothing is sent until you send the email yourself.
 
 The server that hosts the site may keep ordinary access logs — the address and the page requested — as every web server does. They are not used to identify or follow anyone.
