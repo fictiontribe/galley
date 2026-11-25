@@ -368,6 +368,14 @@ interface ProxyOptions {
   ports?: ProxyPorts;
   /** Called on every request and upgrade through the proxy (health checks aside): how "unused" is measured. */
   onActivity?: () => void;
+  /**
+   * Asked before a request is forwarded to the dev server: false means the port is no longer the dev server's, so
+   * this request is answered with an error rather than whatever now listens there. An upgrade already open is not
+   * asked again; it ends with the preview.
+   */
+  verifyUpstream?: () => Promise<boolean>;
+  /** Called once the error answer above has been sent, to tear the preview down (after the answer, so it isn't lost). */
+  onTakenOver?: () => void;
   /** Attributes for every page's `<html>` (see markHtmlElement), read per page. */
   pageAttributes?: () => Record<string, string>;
   /** Mount on this gateway instead of listening; `host`, `publicHost`, `publicProtocol` and `ports` are then unused. */
@@ -428,6 +436,13 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
     if (verdict !== "pass") {
       if (verdict === "refused") sendError(res, 403, "That file can't be shown here.", false);
       else sendError(res, 400, "That address can't be read.", false);
+      return;
+    }
+    // Before forwarding: make sure the port is still this preview's dev server, not a program that took it after
+    // the preview was ready. Its own answers above (health, the overlay) are the proxy's, not forwarded.
+    if (options.verifyUpstream && !(await options.verifyUpstream())) {
+      res.once("finish", () => options.onTakenOver?.());
+      sendError(res, 502, "Another program took the preview's port while it was running, so the preview was stopped. Start it again.", false);
       return;
     }
     // Only GET/HEAD responses can be HTML we would inject into; the request
@@ -674,6 +689,8 @@ export function startPreviewProxy(options: {
   ports?: ProxyPorts;
   onActivity?: () => void;
   pageAttributes?: () => Record<string, string>;
+  verifyUpstream?: () => Promise<boolean>;
+  onTakenOver?: () => void;
   /** Mount on the server's one address instead of listening on a port (see PreviewGateway). */
   gateway?: PreviewGateway;
 }): Promise<ProxyHandle> {
@@ -688,6 +705,8 @@ export function startPreviewProxy(options: {
     ...(options.publicProtocol ? { publicProtocol: options.publicProtocol } : {}),
     ...(options.ports ? { ports: options.ports } : {}),
     ...(options.onActivity ? { onActivity: options.onActivity } : {}),
+    ...(options.verifyUpstream ? { verifyUpstream: options.verifyUpstream } : {}),
+    ...(options.onTakenOver ? { onTakenOver: options.onTakenOver } : {}),
     overlayScript: options.overlayScript,
     overlayTag: OVERLAY_TAG,
     target: {

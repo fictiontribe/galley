@@ -1365,6 +1365,63 @@ http.createServer((_req, res) => { res.writeHead(200, { "content-type": "text/ht
     await controller.stop();
   });
 
+  it("stops a ready preview when another program takes its port, and serves nothing of the other", async () => {
+    const root = site();
+    let standing: PortStanding = "own";
+    // The dev server stays running and answering; after the preview is ready, the ownership check reports its port
+    // taken by another program (as happens when the server lets go of an address and a program takes it). The next
+    // request through the proxy must tear the preview down and answer with an error, not the other program's page.
+    const { controller } = controllerFor(root, { dev: { command: "node dev-server.mjs", port: null } }, { startedHere: async () => standing, recheckMs: 0 });
+    const status = await controller.start();
+
+    expect(status.state, status.log.join("\n")).toBe("ready");
+    expect(await (await fetch((status.url as string) + "/")).text(), "the real site is served first").toContain("Hello");
+    standing = "foreign";
+    const taken = await fetch((status.url as string) + "/");
+
+    expect(taken.status).toBe(502);
+    expect(await taken.text()).not.toContain("Hello");
+    await until(() => controller.status().state === "error", 3000);
+    expect(controller.status().detail).toContain("took the preview's port");
+  });
+
+  it("keeps serving a ready preview while a re-check can't tell, and tears it down after three in a row that can't", async () => {
+    const root = site();
+    let standing: PortStanding = "own";
+    const { controller } = controllerFor(root, { dev: { command: "node dev-server.mjs", port: null } }, { startedHere: async () => standing, recheckMs: 0 });
+    const status = await controller.start();
+
+    expect(status.state, status.log.join("\n")).toBe("ready");
+    standing = "unknown";
+    // The first two re-checks can't tell: the confirmed preview keeps serving the real site.
+    for (const attempt of [0, 1]) {
+      const res = await fetch((status.url as string) + "/");
+
+      expect(res.status, `request ${attempt}`).toBe(200);
+      expect(await res.text(), `request ${attempt}`).toContain("Hello");
+    }
+    // The third in a row that can't tell tears it down.
+    expect((await fetch((status.url as string) + "/")).status).toBe(502);
+    await until(() => controller.status().state === "error", 3000);
+  });
+
+  it("doesn't re-check, or stop, a preview whose port the owner trusted", async () => {
+    const root = site();
+    let asked = 0;
+    const { controller } = controllerFor(
+      root,
+      { dev: { command: "node dev-server.mjs", port: null, trustPort: true } },
+      { startedHere: async () => ((asked += 1), "foreign"), recheckMs: 0 }
+    );
+    const status = await controller.start();
+
+    expect(status.state, status.log.join("\n")).toBe("ready");
+    for (const _ of [0, 1, 2]) expect((await fetch((status.url as string) + "/")).status).toBe(200);
+    expect(asked, "a trusted port is neither checked nor re-checked").toBe(0);
+    expect(controller.status().state).toBe("ready");
+    await controller.stop();
+  });
+
   it("unwraps JSON log lines and finds an announced pid", () => {
     const line = JSON.stringify({ message: "Dev server running at http://localhost:4399 (pid 26439)\n  Stop:   astro dev stop", label: "SKIP_FORMAT", level: "info" });
 

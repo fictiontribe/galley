@@ -69,6 +69,8 @@ export interface PreviewOptions {
   readyTimeoutMs?: number;
   /** Test seam: how long another program may hold the dev server's port before the preview gives up. Default 20 s. */
   portHeldMs?: number;
+  /** Test seam: least time between re-checks that the ready preview's port is still its dev server's. Default 15 s. */
+  recheckMs?: number;
   /** Test seam: who listens on a port. Default: the listening process's working directory. */
   ownership?: (port: number, root: string) => Promise<Ownership>;
   /** Test seam: how a port stands to a dev server this preview started in process group `group` (`self`: this process). Default: asked of the system. */
@@ -125,6 +127,12 @@ const LOOPBACKS = ["127.0.0.1", "::1"];
 const PORT_RESTARTS = 2;
 /** How long another program may hold the dev server's port, with the dev server neither stopping nor moving, before the preview gives up. */
 const PORT_HELD_MS = 20_000;
+/** Least time between re-checks, while a preview is in use, that the port it settled on is still its dev server's. */
+const RECHECK_MS = 15_000;
+/** How many re-checks in a row may fail to tell before a confirmed preview is torn down anyway. */
+const RECHECK_UNKNOWN_LIMIT = 3;
+/** Shown when a program takes a ready preview's port and it is stopped. */
+const TAKEOVER_DETAIL = "Another program took the preview's port while it was running, so the preview was stopped. Start it again.";
 
 /** Thrown out of the wait for a dev server: the port it was given is shared with another program, so move off it. */
 class PortTaken extends Error {
@@ -550,6 +558,8 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
       let upstream: { host: string; port: number } | null = null;
       let adopted = false;
       let externallyOwned = false;
+      /** When set, the port the preview settled on is re-confirmed as the dev server's before serving, at most once a window. Null: adopted, trusted, or accepted without a check that could be repeated. */
+      let recheck: { group: number } | null = null;
       /** The configured port was taken by something that isn't provably this site's server. */
       let configuredTaken = false;
       /** Whether it already was before any dev server was started: such a port is no restart. */
@@ -704,6 +714,11 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
 
               if (standing === "foreign" || standing === "shared") return false;
               if (standing === "own") confirmed.add(`${host}:${port}`);
+              else if (!uncheckable.has(port)) {
+                // "unknown": nothing here can say whose the listeners are. Said once, as the foreground check does.
+                uncheckable.add(port);
+                pushLog(hosted ? `Port ${port} is answering, and the server can't check which program has it, so it is taken to be the preview's own.` : `Port ${port} is answering, and it couldn't be checked here that it is this site's own preview answering (this system can't say which program has a port), so it is taken to be.`);
+              }
               return true;
             }
             const standing = await startedHere(port, spawned.pid, options.root, process.pid);
@@ -771,10 +786,62 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
               }
             });
           }
+          // Re-check the settled port as the preview is used, but only where it was confirmed by a real check: a
+          // trusted port (dev.trustPort), or one accepted because nothing here could say whose it is, is not re-checked.
+          // (A preview adopted from a server someone was already running — only when `!adopted` is this reached — is
+          // left as it is: that server is theirs to vouch for, and adoption doesn't happen in a container.)
+          recheck =
+            settings.dev!.trustPort || spawned.pid === undefined || !confirmed.has(`${upstream.host}:${upstream.port}`)
+              ? null
+              : { group: backgrounded ? (announcedPid ?? spawned.pid) : spawned.pid };
           break;
         }
       }
       if (!upstream) return snapshot();
+      // Re-check, on use, that the port is still the dev server's: one a program took after the preview was ready is
+      // not served. At most once a window; the request that starts a re-check waits for it, others go on the last
+      // answer. A check that can't tell keeps serving, until too many in a row can't, then it is torn down too.
+      const settled = upstream;
+      let confirmedAt = Date.now();
+      let rechecking: Promise<"serve" | "stop"> | null = null;
+      let cannotTell = 0;
+      let takenOver = false;
+      // Torn down after the request that found the takeover has been answered (on the proxy's side), so that answer —
+      // the error, not the other program's page — reaches the browser before the proxy's sockets close.
+      const tearDownForTakeover = () => {
+        if (takenOver || stale()) return;
+        takenOver = true;
+        void teardown().then(() => {
+          if (!stale()) set("error", { url: null, baselineUrl: null, baselineSource: null, detail: TAKEOVER_DETAIL });
+        });
+      };
+      const verifyUpstream = recheck
+        ? async (): Promise<boolean> => {
+            if (stale() || status.state !== "ready" || takenOver || rechecking) return true;
+            if (Date.now() - confirmedAt < (options.recheckMs ?? RECHECK_MS)) return true;
+            rechecking = (async (): Promise<"serve" | "stop"> => {
+              const standing = await startedHere(settled.port, recheck!.group, options.root, process.pid);
+
+              confirmedAt = Date.now();
+              if (standing === "foreign" || standing === "shared") return "stop";
+              if (standing === "own") {
+                cannotTell = 0;
+                return "serve";
+              }
+              cannotTell += 1; // "unknown": the check couldn't tell this time; it is not confirmed again.
+              return cannotTell >= RECHECK_UNKNOWN_LIMIT ? "stop" : "serve";
+            })();
+            let verdict: "serve" | "stop";
+
+            try {
+              verdict = await rechecking;
+            } finally {
+              rechecking = null;
+            }
+            return verdict !== "stop";
+          }
+        : undefined;
+
       preview = await startPreviewProxy({
         upstreamHost: upstream.host,
         upstreamPort: upstream.port,
@@ -785,6 +852,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
         ...(ports ? { ports } : {}),
         ...(options.publicProtocol ? { publicProtocol: options.publicProtocol } : {}),
         ...(options.gateway ? { gateway: options.gateway } : {}),
+        ...(verifyUpstream ? { verifyUpstream, onTakenOver: tearDownForTakeover } : {}),
         onActivity: () => {
           lastActivityAt = Date.now();
           options.onActivity?.();
