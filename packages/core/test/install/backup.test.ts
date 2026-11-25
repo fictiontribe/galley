@@ -4,7 +4,7 @@
  * cut short, one flipped byte), hostile archives that would write outside
  * the staging folder, a newer schema, and the swap with its rollback.
  */
-import { createReadStream, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { gzipSync } from "node:zlib";
@@ -124,6 +124,30 @@ describe("what a backup carries", () => {
 });
 
 describe("a backup, restored", () => {
+  it("carries a file with names in two top-level folders under the one that isn't the site's, so the backup can be restored", async () => {
+    const home = dataFolder();
+
+    // The site's code made these: the same file as the deploy key and as a state file, under names in the checkout.
+    linkSync(join(home, "keys/deploy_key"), join(home, "site/key-copy"));
+    linkSync(join(home, "state/s1/threads/t1.json"), join(home, "site/thread-copy"));
+    // Two names inside the checkout stay a pair.
+    writeFileSync(join(home, "site/src/pages/a.md"), "# A\n");
+    linkSync(join(home, "site/src/pages/a.md"), join(home, "site/src/pages/b.md"));
+    const entries = await backupEntries(home);
+
+    expect(entries).toEqual(expect.arrayContaining(["keys/deploy_key", "state/s1/threads/t1.json", "site/src/pages/a.md", "site/src/pages/b.md"]));
+    expect(entries).not.toContain("site/key-copy");
+    expect(entries).not.toContain("site/thread-copy");
+
+    const target = tempDir("backup-target-");
+    const staged = await stageRestore({ home: target, source: createReadStream(await backupOf(home)), passphrase: PASSPHRASE });
+
+    await staged.apply();
+    expect(readFileSync(join(target, "keys/deploy_key"), "utf8")).toBe("PRIVATE KEY (fake)\n");
+    expect(existsSync(join(target, "site/key-copy"))).toBe(false);
+    expect(readFileSync(join(target, "site/src/pages/b.md"), "utf8")).toBe("# A\n");
+  });
+
   it("round-trips: the state, the keys, the inbox and the checkout with its unpublished change and history", async () => {
     const home = dataFolder();
     const file = await backupOf(home);

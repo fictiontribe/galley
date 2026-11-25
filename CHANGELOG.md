@@ -5,6 +5,16 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## Unreleased
+
+### Fixed
+
+- **A backup can always be restored when the site's files share a file with
+  the install's own.** A file with names in two of the data folder's
+  top-level folders is now carried under the names in one of them only,
+  never the site's when another holds it; before, the restore refused such
+  a backup.
+
 ## 0.4.3 — 2026-11-25
 
 **Security.** 0.4.3 is for anyone who runs a hosted editor, above all one

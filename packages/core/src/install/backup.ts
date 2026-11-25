@@ -430,12 +430,18 @@ function linkStaysInside(relPath: string, target: string): boolean {
 
 /**
  * Every path in the data folder a backup carries, relative and in POSIX
- * form, folders before what's in them. Links are kept as links (never
- * followed), and only when they point inside the data folder.
+ * form, folders before what's in them. A symbolic link is kept as a link
+ * (never followed), and only when it stays in its top-level folder. A file
+ * with several names (hard links) in more than one top-level folder is
+ * carried under the names in one of them only, never the site's when
+ * another holds it: tar stores a second name as a link to the first, and a
+ * restore refuses a link from one top-level folder to another.
  */
 export async function backupEntries(home: string, options: BackupEntriesOptions = {}): Promise<string[]> {
   const out: string[] = [];
   const siteFolder = options.siteFolder ?? options.checkout ?? "site";
+  /** Files with more than one name, by device and inode: every name of each that is carried. */
+  const linked = new Map<string, string[]>();
   const skippedOutput = new Set<string>();
 
   for (const name of SITE_BUILD_OUTPUT) {
@@ -469,12 +475,28 @@ export async function backupEntries(home: string, options: BackupEntriesOptions 
         await walk(rel);
       } else if (info.isFile()) {
         out.push(rel);
+        if (info.nlink > 1) {
+          const key = `${info.dev}:${info.ino}`;
+
+          linked.set(key, [...(linked.get(key) ?? []), rel]);
+        }
       }
     }
   }
 
   await walk("");
-  return out;
+  const siteArea = areaOf(siteFolder);
+  const leftOut = new Set<string>();
+
+  for (const names of linked.values()) {
+    const areas = [...new Set(names.map(areaOf))];
+
+    if (areas.length < 2) continue;
+    const kept = areas.find((area) => area !== siteArea) ?? areas[0];
+
+    for (const name of names) if (areaOf(name) !== kept) leftOut.add(name);
+  }
+  return leftOut.size === 0 ? out : out.filter((rel) => !leftOut.has(rel));
 }
 
 export interface CreateBackupOptions extends BackupEntriesOptions {
