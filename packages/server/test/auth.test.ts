@@ -57,6 +57,22 @@ describe("local mode", () => {
     expect((await raw("GET", "/api/sites", { headers: { cookie } })).status).toBe(200);
   });
 
+  it("never sends a ?token= hand-off to another site", async () => {
+    const { raw } = testApp({ registry: { list: async () => [] } });
+
+    // A path that starts "//" (or "/\\", which a browser reads the same way) is another site's address to a browser.
+    for (const address of ["http://localhost//evil.example/?token=x", "http://localhost///evil.example/a?x=1&token=x", "http://localhost/\\evil.example/?token=x"]) {
+      const response = await raw("GET", address);
+      const location = response.headers.get("location")!;
+
+      expect(response.status).toBe(302);
+      expect(location).toMatch(/^\/(?!\/)/);
+      expect(new URL(location, "http://localhost").origin).toBe("http://localhost");
+      expect(location).not.toContain("token=");
+    }
+    expect((await raw("GET", "http://localhost//evil.example/?token=x")).headers.get("location")).toBe("/evil.example/");
+  });
+
   it("a wrong token redirects without setting a cookie", async () => {
     const { raw } = testApp();
     const response = await raw("GET", "/?token=nope");
@@ -191,6 +207,25 @@ describe("hosted mode", () => {
     expect(out.status).toBe(200);
     expect(out.headers.getSetCookie()[0]).toMatch(/Max-Age=0/);
     expect((await app.raw("GET", "http://cms.example.com/api/sites", { headers: { cookie } })).status).toBe(401);
+  });
+
+  it("refuses what a hosted editor doesn't do, however the address is spelled", async () => {
+    const app = hosted();
+    const headers = { origin: "https://cms.example.com" };
+
+    // The router reads "/%61pi/…" as "/api/…", so the guard in front of it must too.
+    for (const [method, plain, spelled] of [
+      ["POST", "/api/sites/add", "/%61pi/sites/add"],
+      ["GET", "/api/fs/list", "/api/fs/%6Cist"],
+      ["POST", "/api/editor-hosts/fly/check", "/api/%65ditor-hosts/fly/check"],
+    ] as const) {
+      const expected = await app.raw(method, `https://cms.example.com${plain}`, { headers, ...(method === "POST" ? { body: {} } : {}) });
+      const response = await app.raw(method, `https://cms.example.com${spelled}`, { headers, ...(method === "POST" ? { body: {} } : {}) });
+
+      expect([403, 404]).toContain(expected.status);
+      expect(response.status).toBe(expected.status);
+      expect(await json(response)).toEqual(await json(expected));
+    }
   });
 
   it("ignores ?token= hand-off", async () => {

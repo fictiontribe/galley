@@ -149,7 +149,8 @@ export function createApp(services: Services, options: AppOptions): Hono {
     await next();
     c.header("x-content-type-options", "nosniff");
     c.header("referrer-policy", "no-referrer");
-    if (url.pathname.startsWith("/api/") && !c.res.headers.has("cache-control")) c.header("cache-control", "no-store");
+    // c.req.path is the path the router matched (an encoded letter decoded), so a guard and the router can't disagree.
+    if (c.req.path.startsWith("/api/") && !c.res.headers.has("cache-control")) c.header("cache-control", "no-store");
   });
 
   // 2. Body limit — except for a backup being uploaded, which is streamed to a file under its own cap.
@@ -158,12 +159,12 @@ export function createApp(services: Services, options: AppOptions): Hono {
     onError: (c) => c.json(errorBody("invalid", "That's too much to send in one go. The limit is 40 MB."), 413),
   });
 
-  app.use("/api/*", async (c, next) => (ops && c.req.method === "POST" && new URL(c.req.url).pathname === RESTORE_UPLOAD_PATH ? next() : limit(c, next)));
+  app.use("/api/*", async (c, next) => (ops && c.req.method === "POST" && c.req.path === RESTORE_UPLOAD_PATH ? next() : limit(c, next)));
 
   // 2a. While a backup is being put back, the rest of the app waits (the browser that started it still follows it).
   if (ops) {
     app.use("/api/*", async (c, next) => {
-      if (!ops.restoring() || DURING_RESTORE.test(new URL(c.req.url).pathname)) return next();
+      if (!ops.restoring() || DURING_RESTORE.test(c.req.path)) return next();
       return c.json(errorBody("busy", "A backup is being put back. Wait a moment, then sign in again."), 503);
     });
   }
@@ -236,7 +237,7 @@ export function createApp(services: Services, options: AppOptions): Hono {
     if (SAFE_METHODS.has(c.req.method)) return next();
     const bearer = bearerToken(c);
 
-    if (bearer !== null && install && (SETUP_PATH.test(new URL(c.req.url).pathname) || RESTORE_PATH.test(new URL(c.req.url).pathname))) {
+    if (bearer !== null && install && (SETUP_PATH.test(c.req.path) || RESTORE_PATH.test(c.req.path))) {
       const verdict = setupBearer(c);
 
       if (verdict === "token" || verdict === "code") return next();
@@ -408,7 +409,8 @@ export function createApp(services: Services, options: AppOptions): Hono {
       const search = url.searchParams.toString();
 
       c.header("cache-control", "no-store");
-      return c.redirect(`${url.pathname}${search ? `?${search}` : ""}`, 302);
+      // Only ever to a path of this app: a path that starts "//" would be read by a browser as another site's address.
+      return c.redirect(`/${url.pathname.replace(/^\/+/, "")}${search ? `?${search}` : ""}`, 302);
     }
     // The start-up script carries the install's default theme, so a first visit paints it from the start.
     if (url.pathname === "/theme.js" && options.webDir) {
