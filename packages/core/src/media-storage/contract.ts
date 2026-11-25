@@ -231,10 +231,17 @@ export interface MediaMovePlan {
   /** Files that can't be moved and why. */
   problems: Array<{ path: string; reason: string }>;
   /**
-   * Repository files that stay even though the copies aren't kept: their
-   * address still appears in a page in a form Galley doesn't change.
+   * Repository files that stay even though the copies aren't kept, each with
+   * every file that would still mention it: the site's code or a template
+   * (never changed by a move), or a page that holds the address in a form
+   * Galley doesn't change. Worked out by the move's own steps, so the result
+   * names the same.
    */
   stillMentioned?: Array<{ path: string; pages: string[] }>;
+  /** Of those files, the site's code and templates: a move never changes them. */
+  leftAlone?: string[];
+  /** How many of the repository's copies the move removes: the files to copy, less those that stay. 0 when the copies are kept. */
+  removes: number;
   /** Of the files to copy, how many aren't published yet: copied to a store, they are public at their addresses at once. */
   unpublished?: number;
   /** Files the destination doesn't take (Cloudflare Images: anything but pictures within its limits), left where they are. */

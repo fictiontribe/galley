@@ -21,6 +21,20 @@ entry says how.
   status bar reads "Live updates paused — move the pointer or press a key to
   reconnect".
 
+### Fixed
+
+- **Moving media to a bucket: the plan says what the move then does.** Before
+  it starts, the move said how many of the repository's files would stay
+  behind, and it counted only some of the reasons: a file used by the site's
+  code or by one of Galley's page templates (which a move never changes) was
+  not counted until the move had run. On a starter the plan could say 30 of 31
+  files would stay "still mentioned in" one file, and the result that all 31
+  had, naming eight. The plan now takes the move's own steps without changing
+  anything, so it gives the same count and names the same files as the result:
+  how many copies are removed, how many stay, and every file that still
+  mentions them. The result names every such file too, where it used to stop
+  at the first reason. `galley media move` prints the same.
+
 ## 0.4.0 — 2026-11-25
 
 ### Added

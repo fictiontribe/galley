@@ -8,30 +8,12 @@
 import { useState } from "react";
 import type { MediaMovePlan, MediaMoveRequest } from "@galley/core/media-storage/contract";
 import { api, errorShape } from "@/lib/api";
-import { bytes } from "@/lib/format";
 import { invalidate } from "@/lib/query";
 import { useJobs } from "@/lib/stores/jobs";
 import { notify } from "@/lib/stores/toasts";
 import { Button, Checkbox, ConfirmDialog, Field, Input } from "@/ui";
+import { planWords } from "./moveWords";
 import { storageKeys } from "./useMediaStorage";
-
-function describe(plan: MediaMovePlan): string {
-  if (plan.kind === "address") {
-    return `${plan.references} ${plan.references === 1 ? "place" : "places"} in ${plan.pages} ${plan.pages === 1 ? "page" : "pages"} will use ${plan.publicUrl} instead. Galley first checks the new address serves the bucket’s files; nothing changes if it doesn’t.`;
-  }
-  const where = plan.to === "repository" ? "the repository" : plan.to === "images" ? "Cloudflare Images" : "the bucket";
-  const parts = [
-    `${plan.files} ${plan.files === 1 ? "file" : "files"} (${bytes(plan.bytes)}) will be copied to ${where}${plan.done ? `, ${plan.done} of them already there from an earlier run` : ""}.`,
-    `${plan.references} ${plan.references === 1 ? "place" : "places"} in ${plan.pages} ${plan.pages === 1 ? "page" : "pages"} will point at ${plan.to === "repository" ? "the site’s own addresses" : "their full addresses"}.`,
-  ];
-  if (plan.to !== "repository") parts.push(plan.keepCopies ? "The repository keeps its copies." : "Then the repository’s copies are removed; they leave the site when you publish. A file a page Galley can’t update still uses stays where it is.");
-  else parts.push(`${plan.from === "images" ? "Cloudflare Images keeps its pictures" : "The bucket keeps its files"}; remove them once the pages are published.`);
-  if (plan.stillMentioned?.length) parts.push(`${plan.stillMentioned.length} ${plan.stillMentioned.length === 1 ? "stays" : "stay"} in the repository all the same: still mentioned in ${[...new Set(plan.stillMentioned.flatMap((item) => item.pages))].slice(0, 3).join(", ")}.`);
-  if (plan.unpublished) parts.push(`${plan.unpublished} of them ${plan.unpublished === 1 ? "isn’t" : "aren’t"} published yet: once copied, ${plan.unpublished === 1 ? "it is" : "they are"} public at ${plan.unpublished === 1 ? "its address" : "their addresses"}, and ${plan.unpublished === 1 ? "waits" : "wait"} in Proof.`);
-  if (plan.staying) parts.push(`${plan.staying.files} stay where they are: ${plan.staying.reason}`);
-  if (plan.problems.length) parts.push(`${plan.problems.length} can’t be moved: ${plan.problems.map((problem) => `${problem.path} (${problem.reason})`).join("; ")}.`);
-  return parts.join(" ");
-}
 
 export function MoveFiles({ siteId, bucket, images, onStarted }: { siteId: string; bucket: boolean; images: boolean; onStarted: () => void }) {
   const [request, setRequest] = useState<MediaMoveRequest | null>(null);
@@ -109,7 +91,7 @@ export function MoveFiles({ siteId, bucket, images, onStarted }: { siteId: strin
         body={
           plan ? (
             <>
-              <p>{describe(plan)}</p>
+              <p>{planWords(plan)}</p>
               {plan.kind === "move" && plan.from === "repository" ? <Checkbox label="Keep the repository’s copies too" checked={keepCopies} onChange={setKeepCopies} /> : null}
             </>
           ) : null

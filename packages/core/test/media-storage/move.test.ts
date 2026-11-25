@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createMediaStorageService } from "../../src/media-storage/service";
-import { cleanupAll, disposeAll, makeSite, openSite } from "../site/helpers";
+import { cleanupAll, disposeAll, makeSite, openSite, STARTERS, type StarterName } from "../site/helpers";
 import { startFakeS3, type FakeS3 } from "./fakes/s3";
 import { tempHome } from "./helpers";
 
@@ -28,11 +28,11 @@ afterEach(async () => {
   cleanupAll();
 });
 
-async function setUp() {
+async function setUp(starter?: StarterName) {
   fake.buckets.get("moves")!.objects.clear();
   const home = await tempHome();
   const storage = createMediaStorageService({ home: home.home, env: {}, listTtlMs: 0 });
-  const root = makeSite();
+  const root = makeSite(starter ? { starter } : {});
   const { site } = await openSite(root, { media: storage });
   const publicUrl = fake.publicUrl("moves");
   const connected = await storage.connect(site, { config: { connector: "r2", account: KEY.accessKeyId, bucket: "moves", endpoint: fake.endpoint, prefix: "lowfield", publicUrl }, ...KEY });
@@ -167,6 +167,56 @@ describe("moving media", { timeout: 240_000 }, () => {
     expect(back.summary).toContain("src/layouts/Base.astro still points at Cloudflare R2: Galley doesn't change the site's code or templates, so change it by hand. The files are still in Cloudflare R2; remove them there once the pages are published.");
     expect(read(root, "src/layouts/Base.astro")).toContain(`${publicUrl}/lowfield/team/tomas-reyes.svg`);
     expect((await storage.status(site)).lastMove).toMatchObject({ state: "done", request: { kind: "move", from: "bucket", to: "repository" }, stayedFiles: 0 });
+    await done();
+  });
+
+  it.each(STARTERS)("on %s the plan says what the move then does: the same files stay, for the same reasons", async (starter) => {
+    const { storage, site, root, done } = await setUp(starter);
+    const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+    const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
+    const byPath = (list: Array<{ path: string; pages: string[] }> | undefined) => [...(list ?? [])].map((item) => ({ path: item.path, pages: [...item.pages].sort() })).sort((a, b) => a.path.localeCompare(b.path));
+
+    expect(outcome.problems).toEqual([]);
+    // Every file the plan said would stay stayed, no other did, and each for the files the plan named.
+    expect(byPath(plan.stillMentioned)).toEqual(byPath(outcome.stillMentioned));
+    expect(plan.leftAlone ?? []).toEqual(outcome.leftAlone ?? []);
+    expect(plan.removes).toBe(outcome.removed);
+    expect(plan.files).toBe(outcome.copied);
+    expect(plan.removes + (plan.stillMentioned?.length ?? 0)).toBe(plan.files);
+    // And on disk: what stayed is there, what was removed waits in Proof as a deletion.
+    for (const item of outcome.stillMentioned ?? []) expect(read(root, item.path).length, item.path).toBeGreaterThan(0);
+    expect((await site.changes()).files.filter((file) => file.status === "deleted")).toHaveLength(outcome.removed);
+    // Run again: the plan is still the truth (nothing new to copy, the same files stay).
+    const again = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+    const second = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
+
+    expect(byPath(again.stillMentioned)).toEqual(byPath(second.stillMentioned));
+    expect(again.removes).toBe(second.removed);
+    await done();
+  });
+
+  it("foresees a file that stays for a mention the move doesn't read, in a page it does update", async () => {
+    const { storage, site, root, done } = await setUp();
+    const page = join(root, AUTHOR);
+
+    // One line holds the address twice: once as the photo (read and updated), once inside a sentence (left as it is).
+    writeFileSync(page, readFileSync(page, "utf8").replace("photo: /images/team/tomas-reyes.svg", "photo: /images/team/tomas-reyes.svg # was:/images/team/tomas-reyes.svg"));
+    const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+    const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
+
+    expect(plan.stillMentioned).toContainEqual({ path: PHOTO, pages: [AUTHOR] });
+    expect(outcome.stillMentioned).toContainEqual({ path: PHOTO, pages: [AUTHOR] });
+    expect(plan.removes).toBe(outcome.removed);
+    await done();
+  });
+
+  it("with the copies kept, the plan removes nothing and names nothing as staying", async () => {
+    const { storage, site, done } = await setUp("astro-editorial");
+    const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true });
+
+    expect(plan.removes).toBe(0);
+    expect(plan.stillMentioned).toBeUndefined();
+    expect(plan.leftAlone).toBeUndefined();
     await done();
   });
 
