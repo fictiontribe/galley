@@ -576,10 +576,15 @@ export async function revert(host: RepoHost, commit: string, config: PublishConf
 
   if (overlapping.length > 0) {
     const names = overlapping.slice(0, 3).map((p) => p.slice(p.lastIndexOf("/") + 1)).join(", ");
+    const have = `Some files this would undo have unpublished changes (${names}${overlapping.length > 3 ? ", …" : ""}).`;
 
+    // Publishing those changes is a way on only while nothing newer waits: when it does, publishing is paused,
+    // and so is an undo, which is a publish of its own. What was last seen of the code host says which.
     return failure(
       overlapping,
-      `Some files this would undo have unpublished changes (${names}${overlapping.length > 3 ? ", …" : ""}). Publish or discard those changes first, then try again.`
+      (await versionsWaiting(repo, branch))
+        ? `${have} Discard those changes first (${PROOF_SHOWS.many}), get the latest versions, then try again.`
+        : `${have} Publish or discard those changes first, then try again.`
     );
   }
   const staged = await repo.run(["diff", "--cached", "--quiet"], { allowFailure: true, readOnly: true });
@@ -667,6 +672,16 @@ async function sourceOf(repo: Git, branch: string | null): Promise<Source | null
   const fallback = remotes.includes("origin") ? "origin" : remotes[0];
 
   return fallback ? { remote: fallback, branch, ref: `refs/remotes/${fallback}/${branch}` } : null;
+}
+
+/** Whether the code host had versions this copy lacks when it was last looked at. No look is made here. */
+async function versionsWaiting(repo: Git, branch: string): Promise<boolean> {
+  const compare = await compareRef(repo, branch, await upstreamOf(repo));
+
+  if (!compare) return false;
+  const count = await repo.run(["rev-list", "--count", `HEAD..${compare}`], { allowFailure: true, readOnly: true });
+
+  return count.code === 0 && Number(count.text.trim()) > 0;
 }
 
 /** What `ahead` and `behind` count against: the upstream, else what was last seen of the source, when anything was. */

@@ -30,6 +30,13 @@ entry says how.
   history opened, and before a publish that then published nothing. A look
   runs no hook now, wherever the app makes it. Publishing still runs the
   site's own checks.
+- **Undo of a publish says only what works while newer versions wait.**
+  With unpublished changes to a file the undo would change, it said
+  "Publish or discard those changes first". While the repository has newer
+  versions, publishing is paused, so it now says to discard them (Proof
+  shows them, so what you wrote can be copied first), get the latest
+  versions, then try again. With nothing newer waiting it says what it
+  said.
 
 ## 0.4.0 — 2026-11-25
 
