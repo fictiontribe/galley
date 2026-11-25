@@ -211,14 +211,26 @@ would only add a download.
    release candidate), removes `incoming`, and only then publishes
    `create-galley`. Without that, `npx galley-cms` and
    `npm create galley@latest` both fail for everyone for as long as the
-   registry takes. The wait is 20 minutes at most. If it runs out, the
-   workflow stops with `galley-cms` on npm under `incoming` and nothing
-   else changed, which breaks nothing: run it again from the tag (*Dry run*
-   off) once the tarball answers, and it does what is left. To finish by
-   hand instead: `npm dist-tag add galley-cms@X.Y.Z latest`,
-   `npm dist-tag rm galley-cms incoming`, then publish the `create-galley`
-   tarball the run attached. The token needs nothing more for the tags than
-   it needs to publish.
+   registry takes.
+
+   Run again from the tag (*Dry run* off), the workflow does only what is
+   left, so that is the way out of each place it can stop:
+   - **The wait runs out** (20 minutes at most). `galley-cms` is on npm
+     under `incoming` and nothing else has changed, which breaks nothing.
+     Run it again once the tarball answers.
+   - **npm refuses to move the tag.** Moving a tag is a write to the
+     package, as publishing is, so the release's token should be enough;
+     that has not been seen on a real release yet. If it is refused, move it
+     by hand, signed in as an owner
+     (`npm dist-tag add galley-cms@X.Y.Z latest`), and run the workflow
+     again: it finds the tag in place and publishes `create-galley`.
+   - **A release that was finished before** (`create-galley` at that
+     version is on npm) is left alone, tags and all. A run from an older
+     release's tag can't bring `latest` back to it.
+
+   To finish wholly by hand instead: `npm dist-tag add galley-cms@X.Y.Z
+   latest`, `npm dist-tag rm galley-cms incoming`, then publish the
+   `create-galley` tarball the run attached.
 8. **The container**: build from the tag, run the health check, push with the
    version and `latest` tags.
 9. **The website**: build and deploy `apps/site` (`.github/workflows/site.yml`
