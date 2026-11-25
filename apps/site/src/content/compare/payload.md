@@ -28,7 +28,7 @@ table:
       better: even
     - label: Price
       ours: Free. Your AI key and hosting are yours
-      theirs: Free (MIT); Enterprise price not public (Nov 2026)
+      theirs: Free (MIT; self-hosted, community support); Enterprise price not public (Nov 2026)
       better: even
     - label: Setup
       ours: Reads the site as it is
@@ -48,7 +48,7 @@ table:
       better: theirs
     - label: AI in the editor
       ours: An assistant that never publishes
-      theirs: On Enterprise pages; two coming soon (Nov 2026)
+      theirs: Free MCP plugin for developers; editor AI on Enterprise pages, two coming soon (Nov 2026)
       better: ours
     - label: Checking a change
       ours: Each change in the site's words, beside the live site
@@ -196,7 +196,7 @@ As of November 2026, Payload's pricing page names two tiers:
 | Free, self-hosted | Free, MIT licence | Open source, host it yourself, community support |
 | Enterprise | No public price | Dedicated support and Enterprise features such as SSO, self-hosted or with Payload |
 
-The free card says: "Deploy it anywhere you can run a Node.js app — for free, forever." Enterprise is reached through "Get a Demo" or "Talk to Sales", and the page shows no price, user count or usage limit for either tier. Payload's own hosting, Payload Cloud, says "Although deployment of new projects is currently paused, existing Cloud projects will continue running as normal." Those details are from [Payload's pricing page](https://payloadcms.com/get-started) and its [Payload Cloud page](https://payloadcms.com/payload-has-joined-figma); check them before you decide.
+The free card says: "Deploy it anywhere you can run a Node.js app — for free, forever." Enterprise is reached through "Get a Demo" or "Talk to Sales", and the page shows no price, user count or usage limit for either tier. Payload's own hosting, Payload Cloud, says "Although deployment of new projects is currently paused, existing Cloud projects will continue running as normal." Those details are from [Payload's pricing page](https://payloadcms.com/get-started) and its [announcement of joining Figma](https://payloadcms.com/payload-has-joined-figma); check them before you decide.
 
 Galley is Apache-2.0, with one edition and no paid tier today. The assistant runs on Anthropic's Claude with your own key, and each request is billed to whoever owns that key.
 
@@ -238,7 +238,7 @@ Payload's docs list three APIs. The Local API is "Direct-to-database access with
 
 One detail matters for static sites. When Next.js generates pages statically, which is the default, and they read Payload's Local API, the build needs a database connection. The docs offer two ways round it: generate the pages later, when a connection is available, or turn static generation off, which "will disable static optimization and your site will be slower."
 
-Payload "can be deployed anywhere that Next.js can run", and one-click templates put it on Vercel or Cloudflare with a database and file storage. In Payload's website template, the admin panel and the site are one app. Payload Cloud's new-project page says "Project creation is only available for Enterprise teams."
+Payload "can be deployed anywhere that Next.js can run", and one-click templates put it on Vercel or Cloudflare with a database and file storage. In Payload's website template, the admin panel and the site are one app. Payload Cloud's new-project page tells a signed-out visitor "Project creation is only available for Enterprise teams."
 
 With Galley there's nothing to ask: the site's build reads the files. Galley doesn't host anything. It publishes to your repository, and your host builds from there. It can put a site online on Cloudflare, and that is verified on the real service; attaching a new domain of your own there has so far been tested only against stand-ins. Deploys to Vercel are built but still in progress.
 

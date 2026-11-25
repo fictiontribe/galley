@@ -146,3 +146,5 @@ Not used, because Storyblok's own pages disagree or don't say:
 Galley's side, corrected: "has none of that; single sign-on is planned for later" (status `hosted-sso`: later; nothing else listed); the hosted editor carries "(new, in final checks)"; "We think" frames "simpler for one website"; the short version says MCP tools can publish unless that is switched off.
 
 Quotation notes from the check: row 3 quotes the page's `<title>`; row 20 is from the page's HTML and scripts, not its visible text; rows 57 and 79 join two table cells; row 84 is the meta description; row 70's "an ISO 27001 certificate" is no longer on our page.
+
+After the coordinator's check (2026-11-25): "Checking a change" is even (a workflow on every plan, versions, the Visual Editor); the space regions add dedicated infrastructure in China by arrangement (https://www.storyblok.com/trust-center ; https://www.storyblok.com/cms-china).

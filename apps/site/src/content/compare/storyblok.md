@@ -45,7 +45,7 @@ table:
     - label: Checking a change
       ours: Each change marked up beside the live site
       theirs: Draft preview; version compare on Premium
-      better: ours
+      better: even
     - label: Version history
       ours: Every publish is a commit in your Git history
       theirs: Every save versioned; kept 1 day on Starter to unlimited on Elite
@@ -183,7 +183,7 @@ related: [types-of-cms, strapi, payload]
 
 In where your words live. Most of the other differences follow from that.
 
-Storyblok is a headless CMS sold as a service. Its documentation says so plainly: "As a headless CMS, Storyblok stores your content and assets and delivers them over an API. It doesn’t render or host your website." The content sits in a space, "a flexible content repository for your project", on servers in Europe, the United States, Canada or Australia. "A space's server location is permanent." Changing it means a new space and a migration. Your site fetches stories as JSON from Storyblok's Content Delivery API, a REST API cached on Amazon CloudFront; Premium and Elite add GraphQL.
+Storyblok is a headless CMS sold as a service. Its documentation says so plainly: "As a headless CMS, Storyblok stores your content and assets and delivers them over an API. It doesn’t render or host your website." The content sits in a space, "a flexible content repository for your project", on servers in Europe, the United States, Canada or Australia (and, by arrangement, dedicated infrastructure in China). "A space's server location is permanent." Changing it means a new space and a migration. Your site fetches stories as JSON from Storyblok's Content Delivery API, a REST API cached on Amazon CloudFront; Premium and Elite add GraphQL.
 
 Galley keeps no content of its own. The site's words are the files in its repository; Galley changes them, and publishing is a commit. The build reads the files, as it did before.
 

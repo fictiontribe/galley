@@ -27,12 +27,12 @@ table:
       theirs: Rows in your own SQL database
       better: even
     - label: What has to keep running
-      ours: Nothing behind the live site
-      theirs: A Node server and its database
+      ours: Nothing behind the live site; the editor runs when someone edits
+      theirs: A Node server and its database, for editing and every build
       better: ours
     - label: Price
       ours: Free. Your AI key and hosting are yours
-      theirs: Community free; Growth $45 a month (Nov 2026)
+      theirs: Community free (self-hosted, unlimited users); Growth $45 a month for 3 users (Nov 2026)
       better: even
     - label: Setup
       ours: Reads the site as it is
@@ -48,8 +48,8 @@ table:
       better: even
     - label: Checking a change
       ours: Every change marked up beside the live site
-      theirs: Drafts, and a preview in your front end
-      better: ours
+      theirs: Drafts, Preview, Live Preview and Content History
+      better: even
     - label: Scheduled publishing
       ours: None
       theirs: Releases, on Growth
@@ -199,9 +199,9 @@ For Strapi, quite a lot, and it buys a lot.
 
 A project starts with `npx create-strapi@latest`, a supported Node.js version and a database. Content types are designed in the admin panel's Content-type Builder, or with `strapi generate`. The builder is "Available in Development environment only", and Strapi's FAQ says there is "no plan to allow model creating or updating while in a production environment". So a new field is a code change, committed and deployed. Content types are private by default, so someone sets permissions or API tokens before a site can read them.
 
-Then the front end. Strapi doesn't build pages, so a developer writes the code that fetches the content, and sets up a webhook to start a rebuild. Preview needs a handler in `config/admin`, two environment variables and a front end that can show drafts. Double-click editing in Live Preview, on Growth, needs a script in the front end and works only through the REST API. Last, the server: yours, or Strapi Cloud, which deploys from a GitHub or GitLab repository.
+Then the front end. Strapi doesn't build pages, so a developer writes the code that fetches the content, and sets up a webhook to start a rebuild. Preview needs a handler in `config/admin`, the front end's address in an environment variable (and a secret for Next.js draft mode), and a front end that can show drafts. Double-click editing in Live Preview, on Growth, needs a script in the front end and works only through the REST API. Last, the server: yours, or Strapi Cloud, which deploys from a GitHub or GitLab repository.
 
-In return, Strapi is a framework as much as a CMS. Its home page says you can "Write custom controllers, services, and middleware on the backend, and reshape the admin panel on the front". Its marketplace listed 391 packages when we looked.
+In return, Strapi is a framework as much as a CMS. Its home page says you can "Write custom controllers, services, and middleware on the backend, and reshape the admin panel on the front". Its marketplace listed 391 packages when we looked, in November 2026.
 
 Galley starts by reading the site. It works out the framework, the content collections and every field's type from the site's own schemas and files, without running any of its code. Astro fits deepest: Galley reads the content config and its schemas. Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll are recognised by their conventions. A `galley.config.json` file exists only to correct what it found. Editing on the page needs no markup, because Galley maps the words in the preview back to their fields.
 
@@ -262,7 +262,7 @@ Galley has no importer for Strapi. Its only guided move is from [WordPress](/wor
 
 ## Three questions to ask before you choose
 
-**Does the content have to reach anything but this website?** If an app needs it, you want an API, and Strapi has a good one. If not, ask what the API is for.
+**Does the content have to reach anything but this website?** If an app needs it, you want an API, and Strapi has a good one. If not, you may not need one.
 
 **Who runs the server, and who patches it?** With Strapi that is a Node server and a database, or a Strapi Cloud bill. Each has somebody's name on it.
 

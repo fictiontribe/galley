@@ -136,3 +136,4 @@ Not used, because Strapi's own pages disagree or don't say:
 
 Quotation notes from the check: rows 53, 69 and 81 quote hover tooltips on badges, not visible text (the visible badges read "ENTERPRISE 5.52.0", "GROWTH AI ADD-ON" and "5.42.0"); rows 19 and 22 have a plan badge between the name and the colon on the page; row 70 describes only the default release mode.
 
+After the coordinator's check (2026-11-25): "What has to keep running" compares like with like (the editor runs when someone edits; Strapi's server serves editing and every build); the price cell names the free plan and Growth's 3 users; "Checking a change" is even (drafts, Preview, Live Preview, Content History); Preview needs the front end's address in an environment variable, and a secret for Next.js draft mode (https://docs.strapi.io/cms/features/preview); the marketplace count carries its month.
