@@ -94,15 +94,21 @@ A copy stays only while something the site is built from, and that the move can'
 - **Pages and other content** are updated.
 - **Galley's own page templates** (the files the site's settings list under `templates`) are updated too, so a page made from one later doesn't carry an address that is gone. A template is not content, so this is a build-mode change: it is made when the site allows build mode and your account may use it, and it waits in Proof like the rest. Where build mode is off, templates are left and keep the files they use.
 - **The site's code, and data it is built from that content mode doesn't write** are never changed by a move, so the files they use stay: the favicon and the share picture a layout names, say, or the pictures in a catalogue file. The plan names them. To move those too, put the new addresses there by hand or in build mode, then run the move again.
-- **Anything else** keeps nothing: a README, a record kept beside the site, a script outside its source. The built site doesn't read them. The plan lists them on a line of their own, "Also mentioned in …: not part of the site as built, so not changed", and they are left as they are.
+- **Anything else** keeps nothing: a README, a record kept beside the site, a script outside its source. The built site doesn't read them. The plan lists them on a line of their own, "Also mentioned in …. Nothing the site is built from reads them, as far as Galley can follow, so they aren't changed and keep no copy", and they are left as they are.
 
-What a site is built from comes from its framework: for Astro, the source folder, the public folder and the configuration at the root. When a site's build reads something else, name it in `galley.config.json` and it counts too:
+What a site is built from comes from its framework: for Astro, the source folder, the public folder and the configuration at the root.
+
+A file outside those counts too when a file inside reads it. A page that imports `../../data/team.json` is built from that file, so the pictures it names stay, and the plan says why: "still used by data/team.json (read by src/lib/team.ts)". Galley finds this by the path written in the file that does the reading (an import, a file the code opens, a glob), one step from the site's own folders.
+
+It can't see everything a build reads. Not followed: an alias (`@/data/…`, a path set in `tsconfig.json`), a path that starts at the site's root or is put together while the site builds, and a file reached through a second file outside those folders. When your site's build reads something that way, name it in `galley.config.json` and it counts too:
 
 ```json
-{ "build": { "sources": ["scripts/gallery/**"] } }
+{ "build": { "sources": ["data/**"] } }
 ```
 
-Nothing a built file still uses is ever removed. A copy that is removed is an ordinary deletion waiting in Proof, where it can be put back; and the bucket has the file.
+So read the "Also mentioned in" line before you move. If the build reads one of the files it lists, add that file to `build.sources` first and open the plan again.
+
+Nothing is removed that a file counted this way still uses. A copy that is removed is an ordinary deletion waiting in Proof, where it can be put back; and the bucket has the file. A file that was never published has no deletion to put back, because removing it only takes back an addition: it is in the bucket, Proof lists it among the uploads, and moving back to the repository brings it back.
 
 While a move runs, the Media screen shows how far it is. When it ends, it says there how many files were copied, how many pages and page templates changed, and how many files stayed in the repository and what still uses them. That stays on the Media screen until you dismiss it or move files again. A file that stays because the site's code uses it is the move working as meant; only what couldn't be copied, updated or removed is listed as a problem.
 

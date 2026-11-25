@@ -98,7 +98,8 @@ creates them (see the top of the script for the permissions it needs).
   every section (`--space-section`, the top of the spacing scale in
   `src/styles/tokens.css`), shared between two sections on the same ground;
   only the campaign hero fills the screen. Crops are anchored on each
-  photograph's focus point from `galley/photography/shots.json`. On a phone
+  photograph's focus point from `galley/photography/shots.json`, and stay
+  anchored when the pictures move to a bucket. On a phone
   the shop's filters fold behind one "Filter and sort" button. Everything
   holds still under reduced motion and reads complete without JavaScript.
 

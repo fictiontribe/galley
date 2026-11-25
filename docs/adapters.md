@@ -329,6 +329,12 @@ still uses it. A file outside the list keeps nothing; the plan lists it as
 "also mentioned in", and it isn't changed. Leave the field out and every file
 in the site counts, which is safe and keeps more files than it need.
 
+One exception, which an adapter gets for nothing: a file outside the list
+still counts when a file inside it reads it by a relative path written out
+there (`import team from "../../data/team.json"`). Galley finds that itself,
+one step from the list, so `builtFrom` need only name the folders the
+framework reads, not what each site's code goes on to import.
+
 Include every folder the build reads. The conformance check fails an adapter
 whose list leaves out a collection, a media folder or the routes folder. A
 site adds to the list with `build.sources` in its `galley.config.json`, for a

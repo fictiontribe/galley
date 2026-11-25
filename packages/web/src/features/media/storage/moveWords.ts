@@ -25,25 +25,40 @@ export function stayedLabel(result: Pick<MediaMoveResult, "stayedFiles">): strin
   return result.stayedFiles === 1 ? "The file that stayed" : `The ${result.stayedFiles} files that stayed`;
 }
 
-/** One file that stayed, and what still uses it. */
-export function stayedLine(item: MediaMoveResult["stayed"][number]): string {
-  return `${item.path}: still used by ${item.pages.join(", ")}`;
-}
-
 /** "a, b, c and 2 more", as the result of a move lists them. */
 function someOf(paths: string[], most = 5): string {
   return paths.length > most ? `${paths.slice(0, most).join(", ")} and ${paths.length - most} more` : paths.join(", ");
 }
 
 /**
- * The line of its own for files that name what is moving but are no part of
- * the site as built (a README, a record, a script outside its source): they
- * aren't changed and keep no file. Null when there are none.
+ * A file that keeps a copy, with what reads it when that is why it counts:
+ * one outside the folders the site is built from that a file of the site's
+ * source reads ("data/team.json (read by src/lib/team.ts)").
+ */
+function withReaders(path: string, readBy: MediaMovePlan["readBy"]): string {
+  const readers = readBy?.[path];
+
+  return readers?.length ? `${path} (read by ${someOf(readers, 2)})` : path;
+}
+
+/** One file that stayed, and what still uses it. */
+export function stayedLine(item: MediaMoveResult["stayed"][number], readBy?: MediaMoveResult["readBy"]): string {
+  return `${item.path}: still used by ${item.pages.map((path) => withReaders(path, readBy)).join(", ")}`;
+}
+
+/**
+ * The line of its own for files that name what is moving but that nothing
+ * the site is built from reads (a README, a record, a script outside its
+ * source): they aren't changed and keep no file. Galley can't follow every
+ * way a build reads a file, so the line says what to do when it missed one.
+ * Null when there are none.
  */
 export function alsoMentionedWords(plan: Pick<MediaMovePlan, "alsoMentioned">): string | null {
   const paths = plan.alsoMentioned ?? [];
+  const one = paths.length === 1;
 
-  return paths.length ? `Also mentioned in ${someOf(paths)}: not part of the site as built, so not changed.` : null;
+  if (!paths.length) return null;
+  return `Also mentioned in ${someOf(paths)}. Nothing the site is built from reads ${one ? "it" : "them"}, as far as Galley can follow, so ${one ? "it isn’t" : "they aren’t"} changed and ${one ? "keeps" : "keep"} no copy. If the build does read ${one ? "it" : "one"}, name it in build.sources first.`;
 }
 
 /**
@@ -62,7 +77,7 @@ function copiesWords(plan: MediaMovePlan): string {
   const why = alone.length
     ? ` The site is built from ${one ? "that file" : "those files"} and a move doesn’t change ${one ? "it" : "them"}. To move what ${one ? "it uses" : "they use"} too, put the new addresses there by hand or in build mode, then run the move again.`
     : "";
-  const where = `still used by ${someOf(using)}.${why}`;
+  const where = `still used by ${someOf(using.map((path) => withReaders(path, plan.readBy)))}.${why}`;
 
   if (plan.removes === 0) return `None of the repository’s copies are removed: ${stay.length === 1 ? "the file is" : `all ${stay.length} are`} ${where}`;
   return `Then ${plan.removes} of the repository’s copies ${plan.removes === 1 ? "is" : "are"} removed (${plan.removes === 1 ? "it leaves" : "they leave"} the site when you publish) and ${stay.length} ${stay.length === 1 ? "stays" : "stay"}: ${where}`;

@@ -26,6 +26,17 @@ describe("the words for how a move of the site's files ended", () => {
     expect(stayedLabel({ stayedFiles: 16 })).toBe("The 16 files that stayed");
     expect(stayedLine({ path: "public/favicon.svg", pages: ["src/layouts/Base.astro", "galley/templates/project.md"] })).toBe("public/favicon.svg: still used by src/layouts/Base.astro, galley/templates/project.md");
   });
+
+  it("says which file reads one that is outside the folders the site is built from", () => {
+    const readBy = { "data/team.json": ["src/lib/team.ts"] };
+
+    expect(stayedLine({ path: "public/images/team/lead.webp", pages: ["data/team.json", "src/layouts/Base.astro"] }, readBy)).toBe(
+      "public/images/team/lead.webp: still used by data/team.json (read by src/lib/team.ts), src/layouts/Base.astro"
+    );
+    expect(stayedLine({ path: "public/images/team/lead.webp", pages: ["data/team.json"] }, { "data/team.json": ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts"] })).toBe(
+      "public/images/team/lead.webp: still used by data/team.json (read by src/a.ts, src/b.ts and 2 more)"
+    );
+  });
 });
 
 describe("what a move says it will do, before it does anything", () => {
@@ -48,6 +59,10 @@ describe("what a move says it will do, before it does anything", () => {
     expect(words).toContain(
       "Then 29 of the repository’s copies are removed (they leave the site when you publish) and 2 stay: still used by src/layouts/Base.astro. The site is built from that file and a move doesn’t change it. To move what it uses too, put the new addresses there by hand or in build mode, then run the move again."
     );
+    // A file outside the site's folders that its source reads is named with the file that reads it.
+    expect(planWords({ ...plan, removes: 30, stillMentioned: stay(1, ["data/team.json"]), leftAlone: ["data/team.json"], readBy: { "data/team.json": ["src/lib/team.ts"] } })).toContain(
+      "and 1 stays: still used by data/team.json (read by src/lib/team.ts). The site is built from that file and a move doesn’t change it."
+    );
     const using = ["src/data/shop/catalogue.json", "src/layouts/Base.astro"];
 
     expect(planWords({ ...plan, files: 52, removes: 30, stillMentioned: stay(22, using), leftAlone: using })).toContain(
@@ -60,11 +75,13 @@ describe("what a move says it will do, before it does anything", () => {
     expect(planWords({ ...plan, removes: 1, stillMentioned: stay(1, ["src/content/pages/about.md"]) })).toContain("Then 1 of the repository’s copies is removed (it leaves the site when you publish) and 1 stays: still used by src/content/pages/about.md.");
   });
 
-  it("lists on a line of its own the files that name a picture and are no part of the site as built", () => {
+  it("lists on a line of its own the files that name a picture and that nothing the site is built from reads, and says what to do if one is read after all", () => {
     expect(alsoMentionedWords({ ...plan, alsoMentioned: ["README.md", "galley/photography/shots.json", "scripts/gallery/sections.md"] })).toBe(
-      "Also mentioned in README.md, galley/photography/shots.json, scripts/gallery/sections.md: not part of the site as built, so not changed."
+      "Also mentioned in README.md, galley/photography/shots.json, scripts/gallery/sections.md. Nothing the site is built from reads them, as far as Galley can follow, so they aren’t changed and keep no copy. If the build does read one, name it in build.sources first."
     );
-    expect(alsoMentionedWords({ ...plan, alsoMentioned: ["README.md"] })).toBe("Also mentioned in README.md: not part of the site as built, so not changed.");
+    expect(alsoMentionedWords({ ...plan, alsoMentioned: ["README.md"] })).toBe(
+      "Also mentioned in README.md. Nothing the site is built from reads it, as far as Galley can follow, so it isn’t changed and keeps no copy. If the build does read it, name it in build.sources first."
+    );
     expect(alsoMentionedWords(plan)).toBeNull();
     expect(alsoMentionedWords({ ...plan, alsoMentioned: [] })).toBeNull();
     // It is not folded into the sentences about the copies.

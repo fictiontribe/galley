@@ -76,7 +76,7 @@ export function MoveStatus({ siteId, status }: { siteId: string; status: MediaSt
             <summary>{stayedLabel(result)}</summary>
             <ul className="media-move__list">
               {result.stayed.map((item) => (
-                <li key={item.path}>{stayedLine(item)}</li>
+                <li key={item.path}>{stayedLine(item, result.readBy)}</li>
               ))}
               {result.stayedFiles > result.stayed.length ? <li>and {result.stayedFiles - result.stayed.length} more</li> : null}
             </ul>

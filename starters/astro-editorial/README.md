@@ -76,7 +76,8 @@ depends on Galley: it is an ordinary Astro project.
   every section (`--space-section`, the top of the spacing scale in
   `src/styles/tokens.css`), shared between two sections on the same ground;
   only the campaign hero fills the screen. Crops are anchored on each
-  photograph's focus point from `galley/photography/shots.json`. The hero
+  photograph's focus point from `galley/photography/shots.json`, and stay
+  anchored when the pictures move to a bucket. The hero
   enters once; a highlighted statement inks itself word by word as it is
   read (a few lines in `Statement.astro`); everything holds still under
   reduced motion and reads complete without JavaScript.

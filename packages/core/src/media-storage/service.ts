@@ -694,6 +694,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
           ...(outcome.rewrittenTemplates ? { templates: outcome.rewrittenTemplates } : {}),
           removed: outcome.removed,
           ...(outcome.alsoMentioned?.length ? { alsoMentioned: outcome.alsoMentioned.slice(0, MOVE_LIST_KEPT) } : {}),
+          ...(outcome.readBy ? { readBy: Object.fromEntries(Object.entries(outcome.readBy).map(([path, readers]) => [path, readers.slice(0, 20)])) } : {}),
           stayed: stayed.slice(0, MOVE_LIST_KEPT).map((item) => ({ path: item.path, pages: item.pages.slice(0, 20) })),
           stayedFiles: stayed.length,
           problems: outcome.problems.slice(0, MOVE_LIST_KEPT).map((problem) => ({ path: problem.path, reason: scrub(problem.reason) })),

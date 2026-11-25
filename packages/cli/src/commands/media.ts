@@ -301,9 +301,18 @@ async function move(io: DeployIo, storage: MediaStorageService, site: Parameters
                 : `Then ${plan.removes} of the repository's copies ${plan.removes === 1 ? "is" : "are"} removed (${plan.removes === 1 ? "it leaves" : "they leave"} the site when you publish) and ${stay.length} ${stay.length === 1 ? "stays" : "stay"}.`
         );
       }
-      for (const left of stay) io.err(`  ${left.path} is left in the repository: still used by ${left.pages.join(", ")}`);
+      // A file outside the folders the site is built from counts when the site's source reads it: say which file does.
+      const withReaders = (path: string) => (plan.readBy?.[path]?.length ? `${path} (read by ${plan.readBy[path]!.join(", ")})` : path);
+
+      for (const left of stay) io.err(`  ${left.path} is left in the repository: still used by ${left.pages.map(withReaders).join(", ")}`);
       if (plan.leftAlone?.length) io.err(`The site is built from ${plan.leftAlone.join(", ")} and a move doesn't change ${plan.leftAlone.length === 1 ? "it" : "them"}. To move what ${plan.leftAlone.length === 1 ? "it uses" : "they use"} too, put the new addresses there by hand or in build mode, then run the move again.`);
-      if (plan.alsoMentioned?.length) io.err(`Also mentioned in ${plan.alsoMentioned.join(", ")}: not part of the site as built, so not changed.`);
+      if (plan.alsoMentioned?.length) {
+        const one = plan.alsoMentioned.length === 1;
+
+        io.err(
+          `Also mentioned in ${plan.alsoMentioned.join(", ")}. Nothing the site is built from reads ${one ? "it" : "them"}, as far as Galley can follow, so ${one ? "it isn't" : "they aren't"} changed and ${one ? "keeps" : "keep"} no copy. If the build does read ${one ? "it" : "one"}, name it in build.sources first.`
+        );
+      }
       if (plan.unpublished) io.err(`${plan.unpublished} of them aren't published yet: once copied, they are public at their addresses.`);
       if (plan.staying) io.err(`${plan.staying.files} stay where they are: ${plan.staying.reason}`);
     }
