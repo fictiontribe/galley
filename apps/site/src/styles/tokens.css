@@ -1,5 +1,5 @@
-/* galleycms.com — the site's tokens: colour in two modes, the two
-   heading voices, type, space and shape. One file, so that anything that must
+/* galleycms.com — the site's tokens: colour in two modes, the
+   heading voice, type, space and shape. One file, so that anything that must
    match the site (Galley Cloud's pages) takes this file and nothing else.
    These are the marketing site's own; the editing app keeps brand/tokens.css.
 
@@ -75,7 +75,7 @@
   /* the logo's two inks */
   --logo-ink: var(--ink); --logo-pencil: light-dark(#2E2BFF, #A4A1FF);
 
-  /* headings: the marketing voice (see the note at the top; reading pages re-set these) */
+  /* headings: one voice on every page */
   --head-font: var(--font-text);
   --head-weight: 600;
   --h1-tracking: -0.035em; --h1-leading: 1.02;
@@ -121,20 +121,6 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .close { color-scheme: light; } }
 /* The inked plate is dark in both modes. */
 .code pre, .prose > pre, .code__copy, .term, .lightbox, .band, .plate { color-scheme: dark; }
-
-/* A reading page is set in the serif: the page-head h1, the section and prose
-   headings, at the sizes the site has always used for them. (Without :has()
-   the page keeps the marketing voice.) */
-main:has(.page-head, .prose, .howto__head, .docs__title) {
-  --head-font: var(--font-serif);
-  --head-weight: 400;
-  --h1-tracking: -0.018em; --h1-leading: 1.03;
-  --h2-tracking: -0.012em; --h2-leading: 1.08;
-  --h3-tracking: -0.01em;
-  --head-weight-sm: 400;
-  --t-h1: clamp(2.5rem, 1.75rem + 2.6vw, 4rem);
-  --t-h2: clamp(2rem, 1.55rem + 1.5vw, 2.75rem);
-}
 
 /* fallback:start */
 @supports not (color: light-dark(#000, #fff)) {

@@ -13,10 +13,9 @@
    under code and the lightbox. The tokens are in tokens.css, with the light
    values again for engines from before light-dark().
 
-   Headings. Two voices, one set of tokens (--head-*, below): the marketing
-   pages speak in Figtree 600, tight; a reading page (one with .page-head, a
-   how-to, the docs, prose) is "the page set" in Newsreader 400, as the brand
-   has it. To set every heading in the serif, give :root the reading values.
+   Headings. One voice on every page, from one set of tokens (--head-*,
+   tokens.css): Figtree 600, tight. The serif stays for the product's own
+   words where they are quoted (a proof line).
 
    System
      type    15 small · 17 body · 19→20 lead · 20→24 h3 · 32→48 h2 · 40→60 h1
