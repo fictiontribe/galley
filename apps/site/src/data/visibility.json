@@ -1,7 +1,7 @@
 {
   "site": {
     "name": "Galley",
-    "summary": "Galley is an open-source AI CMS for static sites: change a page in a form, on the page or by asking, check every change beside the live site, then publish it to your own git repository. Version 0.4.1, Apache-2.0, on npm as galley-cms."
+    "summary": "Galley is an open-source AI CMS for static sites: change a page in a form, on the page or by asking, check every change beside the live site, then publish it to your own git repository. Version 0.4.2, Apache-2.0, on npm as galley-cms."
   },
   "crawlers": {},
   "structuredData": {

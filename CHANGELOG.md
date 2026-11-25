@@ -7,7 +7,9 @@ entry says how.
 
 ## Unreleased
 
-**Security.** This release closes several ways a signed-in person on a
+## 0.4.2 — 2026-11-25
+
+**Security.** 0.4.2 closes several ways a signed-in person on a
 hosted editor, or the assistant, could see what a secrets file (`.env…`) or
 the version history holds. If you run a hosted editor, update. If the
 assistant may have read such a file before, change the keys in it and delete
@@ -64,18 +66,20 @@ those conversations: a conversation keeps what its tools returned.
 
   The plan counts only what the move updates: it used to count places in
   files it would never change. The plan's answer gains `templates`,
-  `alsoMentioned` and `readBy`; a move's result gains them too.
+  `alsoMentioned` and `readBy`; a move's result gains them too (in the
+  command line's `--json`, the count of templates is `rewrittenTemplates`).
 
 - **The site's model is read-only.** The engine keeps one description of a
   site (its collections, where media lives, what content mode may write, how
   it publishes) and hands that same object to everyone who asks: a route, the
-  assistant, a plugin, an adapter's hooks. Whoever changed what they were
+  assistant, a plugin. Whoever changed what they were
   handed changed the site's rules for everyone until the model was next
   loaded. It is now read-only all the way down. Nothing of Galley's own
   changed it. **A plugin or an adapter that did** now gets a `TypeError`
   where it makes the change ("Cannot assign to read only property…",
   "Cannot add property…, object is not extensible"); in code that doesn't
-  run in strict mode the change is silently dropped instead. Take a copy
+  run in strict mode an assignment is silently dropped instead (a method
+  that changes one of its lists, such as `push`, throws there too). Take a copy
   (`structuredClone(model)`) and change that. The same goes for an object an
   adapter gives the engine as part of the model (a collection's fields, a
   command): it is the model's from then on, so give a new object each time
@@ -83,39 +87,6 @@ those conversations: a conversation keeps what its tools returned.
 
 ### Added
 
-- **Embedding, second part: events of your own, and knowing a window is
-  there (experimental).** An extension can now send events on the editor's
-  live stream. It declares each by name with a level (edit, publish or
-  manage), and a reader is sent one only if their role has that level at
-  that event; an optional `for` says what each reader is sent, and can
-  narrow that but never widen it. A window receives `{ type: "extension",
-  source, name, siteId, payload }`: the first four are filled in by the
-  server, so an extension can't send one of the editor's own events or speak
-  as another. A payload is JSON of at most 64 KB about a site the extension
-  has been handed. In any one second an extension may send 50 events and
-  256 KB; past either its events are dropped and counted in the log. A
-  window that already has half of what it may have waiting (512 KB of 1 MB)
-  is not sent an extension's event. So an extension's events never fill more
-  than about half of what a window may have waiting, and the editor's own
-  events always have at least half of it. Such a window is told what it
-  missed once it has room again (`stream.missed`, with how many), because
-  it was never disconnected and nothing else would tell it. Names that
-  begin with `stream.` are the server's own. A stream
-  opened with a value for an extension (`/api/events?x-<id>=<value>`) tells
-  it that the window is there and, later, that it has gone, which replaces a
-  heartbeat route. A value is taken only from the editor's own page (or with
-  the operator's token); from anywhere else it is refused and the stream
-  opens without it. An extension can refuse its value too, never the
-  stream: the window is sent `stream.refused` and the stream opens as usual.
-  The editor's own app does not add a value yet.
-- **Extensions are stopped while a backup is put back, and started again.**
-  A restore replaces the data folder under a running server. An extension's
-  `stop` now runs before that and its `setup` again afterwards, with a new
-  host, so a program that embeds the server no longer has to be restarted
-  after a restore. The routes it returns must be the ones it returned when
-  the server started, because an address keeps the guards it was mounted
-  with. One that returns others, or can't start again, is left stopped: its
-  routes answer 503, and the log says why.
 - **An adapter says what a site is built from**: a new optional convention,
   `builtFrom`, globs from the site root. The Astro adapter gives the source
   folder, the public folder and the configuration at the root. An adapter
@@ -124,39 +95,112 @@ those conversations: a conversation keeps what its tools returned.
   routes folder.
 - **`build.sources`** in `galley.config.json`: further files a site's build
   reads, added to the adapter's list.
+- **Embedding, first part: routes of your own (experimental).** A program that
+  starts Galley's server can add API routes to it when it is built
+  (`startServer({ extensions })`, `@galley/server/extensions`), for an edition
+  of the editor with something of its own in it: a status page, a button that
+  files a request. Each route lives under `/api/x/<id>/`, which no address of
+  the editor's own uses, and names the level it needs (edit, publish or
+  manage); the server doesn't start with a route that has none. A request has
+  passed every check a request to the editor's own API passes before a handler
+  sees it, and two more: with a cookie the browser must say the request is the
+  editor's own page's, or that a person opened the address directly (a typed
+  address, a bookmark, a link from outside a browser), on GET too; and a part
+  of the address can't carry a path. A handler is handed a narrowed request
+  (never the cookie or the headers) and the site with `.git/` and `.env*`
+  unreadable by name; what the site answers with is copied where it is data,
+  from a change as from a read, and a thing to drive (the preview's
+  controller, a checkpoint) is handed behind the same guards; on GET it
+  refuses whatever would change it. On an install with accounts, work a
+  handler leaves running loses its caller's access once it has answered,
+  though what it records still carries that person's publishing name; without
+  accounts everything is the one person's. An extension names its secret
+  environment variables: on a hosted install they are kept from the site's
+  commands, and everywhere their values, when they are six characters or more,
+  are taken out of the server's log and of the extension's error messages.
+  Once an extension has been stopped, what it was handed does nothing: the
+  sites it holds, and the preview's controller if it took one. It is not a
+  sandbox: an extension is its author's code with the server's permissions. A
+  server with extensions must be the only server in its process. The shapes
+  may change in any 0.x release. The docs page is *Run Galley › Embedding the
+  editor*.
+- **Embedding, second part: events of your own, and knowing a window is there
+  (experimental).** An extension can now send events on the editor's live
+  stream. It declares each by name with a level (edit, publish or manage), and
+  a reader is sent one only if their role has that level at that event; an
+  optional `for` says what each reader is sent, and can narrow that but never
+  widen it. A window receives `{ type: "extension", source, name, siteId,
+  payload }`: `type` and `source` are the server's, and `name` and `siteId`
+  are checked against what the extension declared and the sites it has, so an
+  extension can't send one of the editor's own events or speak as another. A
+  payload is JSON of at most 64 KB about a site the extension has been handed
+  (on a hosted editor, its one site). In any one second an extension may send
+  50 events and 256 KB; past either its events are dropped and counted in the
+  log. A window that already has more than half of what it may have waiting
+  (512 KB of 1 MB) is not sent an extension's event. So an extension's events
+  never fill more than half of that and one event, and the rest is always the
+  editor's own. Such a window is told what it missed once it has room again
+  (`stream.missed`, with how many), because it was never disconnected and
+  nothing else would tell it. Names that begin with `stream.` are the server's
+  own. A stream opened with a value for an extension
+  (`/api/events?x-<id>=<value>`) tells it that the window is there and, later,
+  that it has gone, which replaces a heartbeat route. A value is taken only
+  from the editor's own page, from an address a person opened directly, or
+  with the operator's token; from anywhere else it is refused and the stream
+  opens without it. An extension can refuse its value too, never the stream:
+  the window is sent `stream.refused` and the stream opens as usual. The
+  editor's own app does not add a value yet. A restore replaces the data
+  folder under a running server: an extension's `stop` runs before it and its
+  `setup` again afterwards, with a new host, so a program that embeds the
+  server needn't be restarted after one. The routes it returns must be the
+  ones it returned when the server started, because an address keeps the
+  guards it was mounted with. One that returns others, or can't start again,
+  is left stopped: its routes answer 503, and the log says why.
 
 ### Fixed
 
 - **A window that has been signed out stops receiving live updates.** On an
   install with accounts, an open live connection was checked for its own
   sign-out and for its account being switched off, removed or signed out
-  everywhere, but not for everyone being signed out at once (which putting a
-  backup back does, and which happens by itself when the list of signed-out
-  browsers grows too long), and not for the sign-in's age. A window signed
-  out that way was refused on its next request, yet went on receiving the
-  assistant's replies, jobs and changes until it was reloaded. A connection
-  is now held to the test a request is held to for as long as it is open: it
-  ends the moment everyone is signed out, and within twenty seconds of a
-  sign-in passing its thirty days. The page that starts a restore closes its
-  own connection first and follows the restore by asking, so it still says
-  how the restore went.
+  everywhere, but not for everyone being signed out at once when a backup is
+  put back, and not for the sign-in's age. A window signed out that way was
+  refused on its next request, yet went on receiving the assistant's replies,
+  jobs and changes until it was reloaded. A connection is now held to the test
+  a request is held to for as long as it is open: it ends the moment everyone
+  is signed out, and at the next heartbeat (twenty seconds, unless the server
+  was started with another) after a sign-in passes its thirty days. The page
+  that starts a restore closes its own connection first and follows the
+  restore by asking, so it still says how the restore went.
 - **Crops on the two fashion starters keep their focus point when the
   pictures move.** The editorial and storefront starters anchor each crop
   on its photograph's focus point, so a head or a garment stays in frame.
   They looked the photograph up by its whole address, so once the pictures
   had moved to a bucket and the pages held the bucket's addresses, nothing
-  was found and every crop fell back to the middle. Half the photographs on
-  each starter have a focus point that isn't the middle (15 of 30, 15 of
-  31), and those were cut differently from then on. Since 0.4.0, when media
+  was found and every crop that used the photograph's own point fell back
+  to the middle (one with left or right chosen for it never used the
+  point). Half the photographs on each starter have a focus point that
+  isn't the middle (15 of 30, 15 of 31; one of them is only the share
+  picture, which isn't cropped), and the rest of those were cut differently
+  from then on. Since 0.4.0, when media
   in a bucket arrived. A photograph is now found by its path inside the
-  address, which is the same in the repository and in a bucket. The focus points are read from `src/lib/focus.json`,
-  which `npm run focus` writes from the shot list; the starters' source no
-  longer reads the shot list itself. A site made from one of these starters
-  before this release has the old code: a move's plan says so ("still used
-  by galley/photography/shots.json (read by src/lib/site.ts)") and keeps
-  what the shot list names. To change it, take `src/lib/site.ts` (the part
-  about focus points), `src/lib/focus.json` and `scripts/focus-points.mjs`
-  from the starter as it is now.
+  address, which is the same in the repository and in a bucket. The focus
+  points are read from `src/lib/focus.json`, which `npm run focus` writes
+  from the shot list; the starters' source no longer reads the shot list
+  itself. A site made from one of these starters before this release has
+  the old code: a move's plan says so ("still used by
+  galley/photography/shots.json (read by src/lib/site.ts)") and keeps what
+  the shot list names. To change it, take `src/lib/site.ts` (the part about
+  focus points), `src/lib/focus.json`, `scripts/focus-points.mjs` and the
+  `focus` line under `scripts` in `package.json` from the starter as it is
+  now.
+- **A start that fails undoes everything it had started.** When a hosted
+  install could not start (its port was already taken) or could not finish
+  starting, the process stayed in hosted mode, and a site it had opened
+  stayed open. Both are now undone, as a stop undoes them, and the error
+  the start failed with is the one reported.
+- **Stopping a server that can't let go of its data folder says so.** A stop
+  that fails to release the folder still fails, as before; the reason is now
+  also written to the log, and the rest of the stop is finished first.
 - **A secrets file is any file whose name starts with `.env`.** Galley
   never shows, changes, publishes or deploys a secrets file. It knew one by
   two names, `.env` and `.env.` followed by something, so a file called
@@ -213,43 +257,6 @@ those conversations: a conversation keeps what its tools returned.
   and are not a wall against someone who means harm.
 
 ## 0.4.1 — 2026-11-25
-
-### Added
-
-- **Embedding, first part: routes of your own (experimental).** A program
-  that starts Galley's server can add API routes to it when it is built
-  (`startServer({ extensions })`, `@galley/server/extensions`), for an edition
-  of the editor with something of its own in it: a status page, a button that
-  files a request. Each route lives under `/api/x/<id>/`, which no address of
-  the editor's own uses, and names the level it needs (edit, publish or
-  manage); the server doesn't start with a route that has none. A request has
-  passed every check a request to the editor's own API passes before a
-  handler sees it, and two more: with a cookie the browser must say the
-  request is the editor's own page's, on GET too, and a part of the address
-  can't carry a path. A handler is handed a narrowed request (never the
-  cookie or the headers) and the site with `.git/` and `.env*` unreadable by
-  name; what the site answers with is a copy, from a change as from a read,
-  and on GET it refuses whatever would change it. Work a handler leaves
-  running loses its caller's access once it has answered, though what it
-  records still carries that person's publishing name. An extension names its
-  secret environment variables: on a hosted install they are kept from the
-  site's commands, and everywhere their values are taken out of the server's
-  log and of the extension's error messages. Once an extension has been
-  stopped, what it was handed does nothing: the sites it holds, and the
-  preview's controller if it took one. It
-  is not a sandbox: an extension is its author's code with the server's
-  permissions. A server with extensions must be the only server in its
-  process, and should be restarted after a backup is put back. The shapes may
-  change in any 0.x release. The docs page is *Running Galley › Embedding the
-  editor*.
-- **Stopping a server that can't let go of its data folder says so.** A stop
-  that fails to release the folder still fails, as before; the reason is now
-  also written to the log, and the rest of the stop is finished first.
-- **A start that fails undoes everything it had started.** When a hosted
-  install could not start (its port was already taken) or could not finish
-  starting, the process stayed in hosted mode, and a site it had opened
-  stayed open. Both are now undone, as a stop undoes them, and the error
-  the start failed with is the one reported.
 
 ### Changed
 
