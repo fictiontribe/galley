@@ -113,6 +113,13 @@ entry says how.
   started in, so starting it inside a repository with an identity of its own
   gave every site that repository's author. It now reads them from the
   editor's own folder, the same way as every other git call it makes.
+- **A backup and a restore keep every link inside its own folder.** A link
+  in the site's files was carried by a backup, and accepted by a restore,
+  whenever it pointed anywhere inside the editor's data folder — the install's
+  own files next to the site's included. A link, hard links too, now has to
+  stay in the folder it is in (the site's files, the state, and so on): a
+  backup leaves out one that doesn't, and a restore refuses an archive with
+  one.
 
 ## 0.4.2 — 2026-11-25
 
