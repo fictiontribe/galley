@@ -420,6 +420,7 @@ export function createApp(services: Services, options: AppOptions): Hono {
           return account && !account.disabled ? account : null;
         },
         refOf: (stamp) => desk!.refOf(stamp),
+        stillCounts: (stamp) => desk?.stillCounts(stamp) ?? false,
       }, base);
     mountExtensions(app, runtime, {
       hosted: options.mode === "hosted",

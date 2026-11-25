@@ -71,7 +71,18 @@ export function statusExtension(probe: StatusProbe, options: { setup?: (host: Ex
       host.events.onStream((stream) => {
         probe.streams.push(stream);
         probe.inside?.("stream opened");
+        // Tries to change what it was told, as careless code might: who is at the window, and the value.
+        if (stream.value === "tamper") {
+          try {
+            Object.assign(stream.caller, { role: "owner", name: "Someone Else" });
+            (stream as { value: string }).value = "another-value";
+          } catch {
+            // It can't be changed.
+          }
+        }
         if (stream.value === "refuse-me") throw forbidden(`Not that one. (${process.env.STATUS_API_KEY ?? ""})`);
+        // A refusal in two lines, and far too long.
+        if (stream.value === "long-refusal") throw forbidden(`Not that one.\nGET /api/people 200 forged ${"x".repeat(2000)}`);
         if (stream.value === "break") throw new Error(`the listener broke with ${process.env.STATUS_API_KEY ?? ""}`);
         if (stream.value === "promise") return Promise.resolve(() => undefined) as unknown as () => void;
         return () => {
@@ -134,10 +145,26 @@ export function statusExtension(probe: StatusProbe, options: { setup?: (host: Ex
           // Sends whatever event the test asks for, as many times as it asks, and says how that went.
           "POST /sites/:siteId/emit": {
             access: "edit",
-            body: (input) => input as { name: string; payload?: JsonValue; times?: number; about?: string; odd?: "bigint" | "large" },
+            body: (input) => input as { name: string; payload?: JsonValue; times?: number; about?: string; odd?: "bigint" | "large" | "big" | "accessor" },
             async handle(request) {
               const { name, times = 1, about, odd } = request.body;
-              const payload = odd === "bigint" ? ({ n: 1n } as unknown as JsonValue) : odd === "large" ? { text: "x".repeat(70_000) } : (request.body.payload ?? null);
+              // A property that answers differently each time it is read: empty the first two times, then far too much.
+              let reads = 0;
+              const accessor = {
+                get text() {
+                  return (reads += 1) <= 2 ? "" : "x".repeat(200_000);
+                },
+              };
+              const payload =
+                odd === "bigint"
+                  ? ({ n: 1n } as unknown as JsonValue)
+                  : odd === "large"
+                    ? { text: "x".repeat(70_000) }
+                    : odd === "big"
+                      ? { text: "x".repeat(60_000) }
+                      : odd === "accessor"
+                        ? (accessor as unknown as JsonValue)
+                        : (request.body.payload ?? null);
 
               return { tried: await attempt(async () => { for (let sent = 0; sent < times; sent += 1) host.events.emit(name, about ?? request.site!.id, payload); }) };
             },

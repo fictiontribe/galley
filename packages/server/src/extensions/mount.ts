@@ -88,13 +88,16 @@ async function readBody(c: Context): Promise<unknown> {
 
 export const NOT_RUNNING = "That part of the editor isn't running just now. Try again in a moment; if it stays so, whoever runs this editor needs to restart it.";
 
-function handlerFor(runtime: StartedExtensions, id: string, key: string, deps: MountDeps): MiddlewareHandler {
+function handlerFor(runtime: StartedExtensions, id: string, mounted: DeclaredRoute, deps: MountDeps): MiddlewareHandler {
   return async (c) => {
     // The one running now: after a backup is put back, extensions are started again, and the routes are theirs.
     const extension = runtime.find(id);
-    const declared = extension?.routes.find((candidate) => candidate.key === key);
+    const declared = extension?.routes.find((candidate) => candidate.key === mounted.key);
 
     if (!extension || !declared) return c.json(errorBody("busy", NOT_RUNNING), 503);
+    // The guards in front of this handler are the ones the address was mounted with. An extension started again with others is
+    // stopped before it gets here (run.ts); should one ever get here all the same, its handler is not run behind the wrong guards.
+    if (declared.route.access !== mounted.route.access || declared.bodyLimit !== mounted.bodyLimit || (declared.route.person === true) !== (mounted.route.person === true)) return c.json(errorBody("busy", NOT_RUNNING), 503);
     const { route } = declared;
     const readOnly = declared.method === "GET";
     const who = deps.callerOf(c);
@@ -180,7 +183,7 @@ export function mountExtensions(app: Hono, runtime: StartedExtensions, deps: Mou
     for (const declared of extension.routes) {
       const limit = bodyLimit({ maxSize: declared.bodyLimit, onError: (c) => c.json(errorBody("invalid", TOO_MUCH), 413) });
 
-      register(declared.method, declared.path, fromTheEditor, deps.requireLevel(declared.route.access), limit, handlerFor(runtime, extension.id, declared.key, deps));
+      register(declared.method, declared.path, fromTheEditor, deps.requireLevel(declared.route.access), limit, handlerFor(runtime, extension.id, declared, deps));
     }
   }
 }

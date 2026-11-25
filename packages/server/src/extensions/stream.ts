@@ -8,19 +8,26 @@
  * - An event reaches a reader only if their role, as it is at that event,
  *   has the level the event's rule names. The rule may then narrow or
  *   reshape it for them; it is never asked below the level.
- * - A stream that carries a value passes the same check as an added route:
- *   with a cookie, the browser must say the request is the editor's own
- *   page's. A page on another origin could otherwise open one as the person
- *   signed in, and pass for them being there.
- * - An extension can refuse its value, never the stream. There is one
- *   stream for the whole app, and a browser can't read why one failed: it
- *   would be asked for again for ever. The window is sent `stream.refused`.
+ * - A reader is a sign-in that still counts, by the test a request is held
+ *   to. One that doesn't is sent nothing of an extension's, and its stream
+ *   ends.
+ * - A value is taken only from the editor's own page: without the operator's
+ *   token, the browser must say the request is that page's, as it must for
+ *   an added route. A page on another origin could otherwise open a stream
+ *   as the person signed in, and pass for them being there. A value from
+ *   anywhere else is refused, and its extension is never told.
+ * - Refusing a value never refuses the stream, whoever refuses it (this
+ *   check, the value's shape, the extension). There is one stream for the
+ *   whole app, and a browser can't read why one failed: it would be asked
+ *   for again for ever. The stream opens and is sent `stream.refused`.
+ * - With half of what a reader may have waiting already there, an
+ *   extension's event is left out for that reader and counted. The editor's
+ *   own events keep their room.
  */
 import type { Context } from "hono";
 import { roleMay, type Account } from "@galley/core/install";
 import type { ServerEvent } from "@galley/core/types";
 import { bearerToken, type SessionInfo } from "../auth";
-import { forbidden } from "../errors";
 import type { StreamAccess, StreamHooks } from "../events";
 import { STREAM_REFUSED } from "./declare";
 import { NOT_FROM_THE_EDITOR, type MountCaller } from "./mount";
@@ -36,6 +43,8 @@ export interface StreamDeps {
   /** The account as it is now; null once it is gone or switched off. */
   accountNow(accountId: string): Account | null;
   refOf(session: SessionInfo): SessionRef;
+  /** Whether a sign-in counts now, by the test a request is held to. */
+  stillCounts(session: SessionInfo): boolean;
 }
 
 export function extensionStream(c: Context, runtime: StartedExtensions, deps: StreamDeps, base: StreamAccess | undefined): { access: StreamAccess; hooks: StreamHooks } {
@@ -44,16 +53,16 @@ export function extensionStream(c: Context, runtime: StartedExtensions, deps: St
   // By the ids the server was started with: the rule is the same whether or not one of them is running at this moment.
   const carried = runtime.ids.map((id) => ({ id, value: query[`x-${id}`] })).filter((entry): entry is { id: string; value: string } => typeof entry.value === "string");
 
-  // Only a stream that carries a value says "this window is here" to an extension: that one must come from the editor's own page.
-  if (carried.length > 0 && bearerToken(c) === null) {
-    const from = c.req.header("sec-fetch-site");
-
-    if (from !== "same-origin" && from !== "none") throw forbidden(NOT_FROM_THE_EDITOR);
-  }
+  // A value says "this window is here" to an extension: it is taken only from the editor's own page, or with the operator's token.
+  const from = c.req.header("sec-fetch-site");
+  const fromTheEditor = bearerToken(c) !== null || from === "same-origin" || from === "none";
+  /** Whether the sign-in this stream was opened with still counts. The operator's token and the one person of an install without accounts are not sign-ins. */
+  const counts = () => who?.kind !== "person" || deps.stillCounts(who.session);
   /** The reader as they are now: a role taken away since the stream opened is taken away here too. */
   const readerNow = (): ExtensionCaller | null => {
     if (!who) return null;
     if (who.kind !== "person") return { kind: who.kind };
+    if (!deps.stillCounts(who.session)) return null;
     const account = deps.accountNow(who.account.id);
 
     return account ? { kind: "person", account: account.id, role: account.role, name: account.name, session: deps.refOf(who.session) } : null;
@@ -62,7 +71,7 @@ export function extensionStream(c: Context, runtime: StartedExtensions, deps: St
 
   return {
     access: {
-      live: () => base?.live() ?? true,
+      live: () => (base?.live() ?? true) && counts(),
       ...(base?.onChange ? { onChange: (listener: () => void) => base.onChange!(listener) } : {}),
       filter(event) {
         if (event.type !== "extension") return base ? base.filter(event) : event;
@@ -76,7 +85,8 @@ export function extensionStream(c: Context, runtime: StartedExtensions, deps: St
         if (reader.kind === "person" && !roleMay(reader.role, rule.level)) return null;
         const shaped = extension.shape(event.name, event.payload, reader);
 
-        return shaped ? { ...event, payload: shaped.payload } : null;
+        // An event with no rule of its own is the same for every reader: the one object, so it is written out once.
+        return shaped ? (shaped.asIs ? event : { ...event, payload: shaped.payload }) : null;
       },
     },
     hooks: {
@@ -86,8 +96,13 @@ export function extensionStream(c: Context, runtime: StartedExtensions, deps: St
 
         for (const { id, value } of carried) {
           if (!reader) continue;
-          // A value that isn't one is never shown to an extension.
-          const outcome = VALUE.test(value) ? runtime.streamOpened(id, { caller: reader, value }, close) : { refused: { code: "invalid", message: NOT_A_VALUE }, ended: () => undefined };
+          // A value from somewhere else, or one that isn't a value, is never shown to an extension. Each extension is told
+          // with an object of its own that can't be changed: what one does with it is not what the next is told.
+          const outcome = !fromTheEditor
+            ? { refused: { code: "forbidden", message: NOT_FROM_THE_EDITOR }, ended: () => undefined }
+            : !VALUE.test(value)
+              ? { refused: { code: "invalid", message: NOT_A_VALUE }, ended: () => undefined }
+              : runtime.streamOpened(id, Object.freeze({ caller: Object.freeze({ ...reader }), value }), close);
 
           if (outcome.refused) refusals.push({ type: "extension", source: id, name: STREAM_REFUSED, siteId: "", payload: outcome.refused });
           ends.push(outcome.ended);
@@ -97,6 +112,11 @@ export function extensionStream(c: Context, runtime: StartedExtensions, deps: St
         };
       },
       first: () => refusals.splice(0),
+      low(event) {
+        if (event.type !== "extension") return false;
+        runtime.find(event.source)?.skipped();
+        return true;
+      },
     },
   };
 }

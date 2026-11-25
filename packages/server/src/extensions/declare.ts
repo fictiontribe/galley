@@ -54,6 +54,11 @@ export const STREAM_REFUSED = "stream.refused";
 export const EXTENSION_EVENT_BYTES = 64 * 1024;
 /** How many events one extension may emit in a second. Past it they are dropped and counted. */
 export const EXTENSION_EVENTS_A_SECOND = 50;
+/**
+ * How many bytes of payload one extension may send in any one second. A
+ * window may have 1 MB waiting that it hasn't read; this is a quarter of it.
+ */
+export const EXTENSION_EVENT_BYTES_A_SECOND = 256 * 1024;
 const EVENT_NAME = /^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*){0,5}$/;
 
 /** The events an extension's setup returned, each checked: a name in lower-case words, a level, and at most a function to shape it. */

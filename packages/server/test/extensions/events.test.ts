@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { NO_CALLER_REFUSAL } from "@galley/core/install";
 import { MAX_STREAMS_PER_ACCOUNT } from "../../src/events";
-import { defineExtension, EXTENSION_EVENTS_A_SECOND, forbidden, STREAM_REFUSED, type ExtensionHost, type ExtensionStream, type JsonValue } from "../../src/extensions";
+import { defineExtension, EXTENSION_EVENT_BYTES_A_SECOND, EXTENSION_EVENTS_A_SECOND, forbidden, STREAM_REFUSED, type ExtensionHost, type ExtensionStream, type JsonValue } from "../../src/extensions";
 import { NOT_FROM_THE_EDITOR } from "../../src/extensions/mount";
 import { NOT_A_VALUE } from "../../src/extensions/stream";
 import { call, EDITOR, EDITOR_HOST, sandbox, siteRepository, startHosted, until, waitForJob, type CallInit } from "../hosted-helpers";
@@ -24,7 +24,7 @@ const SECRET = "status-secret-value-123456";
 const OWN_PAGE = { "sec-fetch-site": "same-origin" };
 const probe = newProbe();
 /** What the second extension was told. */
-const second: { streams: ExtensionStream[]; ends: string[]; host: ExtensionHost | null } = { streams: [], ends: [], host: null };
+const second: { streams: ExtensionStream[]; frozen: boolean[]; ends: string[]; host: ExtensionHost | null } = { streams: [], frozen: [], ends: [], host: null };
 /** What the status extension found in its own folder each time it started, and as it stopped. */
 const folderAt: { setup: string[]; stop: string[] } = { setup: [], stop: [] };
 let port = 0;
@@ -127,7 +127,7 @@ async function settled(...streams: Listening[]): Promise<void> {
 }
 
 /** Asks the status extension to send an event, and says how that went. */
-async function emit(body: { name: string; payload?: JsonValue; times?: number; about?: string; odd?: "bigint" | "large" }, cookie = people.owner.cookie): Promise<string> {
+async function emit(body: { name: string; payload?: JsonValue; times?: number; about?: string; odd?: "bigint" | "large" | "big" | "accessor" }, cookie = people.owner.cookie): Promise<string> {
   const answer = await x("POST", site("/emit"), { cookie, body });
 
   expect(answer.status, answer.text).toBe(200);
@@ -135,6 +135,16 @@ async function emit(body: { name: string; payload?: JsonValue; times?: number; a
 }
 
 const envelope = (name: string, payload: unknown, source = "status") => ({ type: "extension", source, name, siteId, payload });
+
+/** How many times the status extension had been set up at the moment a restore said how it ended, read on the server's own bus. */
+function setupsWhenARestoreEnds(): { at: number | null; stop(): void } {
+  const seen: { at: number | null; stop(): void } = { at: null, stop: () => undefined };
+
+  seen.stop = started.server.services.events.subscribe((event) => {
+    if (event.type === "job" && event.job.kind === "restore" && event.job.state !== "running") seen.at = probe.calls.setup ?? 0;
+  });
+  return seen;
+}
 
 beforeAll(async () => {
   process.env.STATUS_API_KEY = SECRET;
@@ -167,6 +177,7 @@ beforeAll(async () => {
             second.host = host;
             host.events.onStream((stream) => {
               second.streams.push(stream);
+              second.frozen.push(Object.isFrozen(stream) && Object.isFrozen(stream.caller));
               if (stream.value === "no") throw forbidden("Second says no.");
               return () => void second.ends.push(stream.value);
             });
@@ -286,10 +297,12 @@ describe("an extension's events", () => {
     const forged = { type: "job", source: "second", name: "ping", siteId: "elsewhere" };
 
     expect(await emit({ name: "owners.only", payload: forged })).toBe("done");
+    // A payload whose property answers differently each time it is read is copied once, and the copy is what is measured and sent.
+    expect(await emit({ name: "for.publishers", odd: "accessor" })).toBe("done");
     // The other extension's event carries its id, whatever it is called.
     expect((await x("POST", site("/ping"), { cookie: people.owner.cookie, body: { source: "status" } }, "second")).body).toEqual({ ok: true });
     await settled(stream);
-    expect(stream.events.filter((event) => event.type === "extension" && event.payload?.by !== "a mark")).toEqual([envelope("owners.only", forged), envelope("ping", { source: "status" }, "second")]);
+    expect(stream.events.filter((event) => event.type === "extension" && event.payload?.by !== "a mark")).toEqual([envelope("owners.only", forged), envelope("for.publishers", { text: "" }), envelope("ping", { source: "status" }, "second")]);
   });
 
   it("with a rule that misbehaves send that reader nothing, keep each reader's copy their own, and say so once", async () => {
@@ -319,44 +332,84 @@ describe("an extension's events", () => {
       () => ({ n: 7, text: "x".repeat(70_000) }),
       // Nothing for this reader: allowed, and not worth a line.
       () => null,
+      // Something that can't be copied as data.
+      () => new Proxy({ n: 10 }, {}),
     ];
 
     for (const [index, shape] of odd.entries()) {
       probe.shape = shape;
       expect(await emit({ name: "shaped", payload: { n: index + 2, list: [] } })).toBe("done");
     }
+    // An answer whose property reads differently each time: copied once, and the copy is what is measured and sent.
+    probe.shape = () => {
+      let reads = 0;
+
+      return {
+        n: 8,
+        get text() {
+          return (reads += 1) <= 2 ? "" : "x".repeat(200_000);
+        },
+      };
+    };
+    expect(await emit({ name: "shaped", payload: { n: 8, list: [] } })).toBe("done");
     probe.shape = undefined;
     expect(await emit({ name: "shaped", payload: { n: 9, list: [] } })).toBe("done");
     await settled(...readers);
-    for (const reader of readers) expect(reader.named("shaped").map((event) => event.payload)).toEqual([{ n: 1, list: [0, 1] }, { n: 9, list: [] }]);
-    // Seven events to three readers each, said once for each kind of failure, with the secret taken out.
+    for (const reader of readers) expect(reader.named("shaped").map((event) => event.payload)).toEqual([{ n: 1, list: [0, 1] }, { n: 8, text: "" }, { n: 9, list: [] }]);
+    // Eight events to three readers each, said once for each of the two kinds of failure, with the secret taken out.
     expect(logs.slice(from).filter((line) => line.includes("the rule for “shaped”"))).toEqual([
       "[status] the rule for “shaped” failed: the rule broke with •••",
       "[status] the rule for “shaped” answered with something that isn't JSON of at most 64 KB, so nothing was sent to that reader.",
     ]);
   });
 
-  it("past fifty a second are dropped, without an error for the sender, and the log says how many", async () => {
+  it("are for sign-ins that still count: someone signed out is sent nothing more, no rule is asked about them, and their stream ends", async () => {
+    const reader = listen("", { cookie: people.contributor.cookie });
+    const script = listen("", { bearer: OPERATOR });
+
+    await opened(reader, script);
+    // Everyone is signed out at once, as when a backup is put back: no one sign-in is ended, they all stop counting.
+    await started.server.install!.store.signOutEverywhere();
+    await until(() => reader.ended);
+    expect((await call(port, "GET", "/api/account", { cookie: people.contributor.cookie })).status).toBe(401);
+    probe.shapedFor.length = 0;
+    // A script sends an event: it reaches the script's own stream, which is no sign-in, and nobody else.
+    expect((await x("POST", site("/emit"), { bearer: OPERATOR, body: { name: "shaped", payload: { n: 1, list: [] } } })).body).toEqual({ tried: "done" });
+    await until(() => script.named("shaped").length === 1);
+    expect(reader.named("shaped")).toEqual([]);
+    expect(probe.shapedFor).toEqual([{ kind: "operator" }]);
+    expect(script.ended).toBe(false);
+    // Everyone signs in again, for the tests that follow.
+    people.owner.cookie = await signIn("sam@example.com");
+    people.editor.cookie = await signIn("ed@example.com");
+    people.contributor.cookie = await signIn("con@example.com");
+  });
+
+  it("past fifty, or 256 KB, in any one second are dropped, without an error for the sender, and the log says how many", async () => {
     const stream = listen("", { cookie: people.owner.cookie });
+    const said = (from: number) => logs.slice(from).filter((line) => line.includes("in a second"));
 
     await opened(stream);
     // A second of its own, so that what the tests before this one sent doesn't count.
     await new Promise((resolve) => setTimeout(resolve, 1100));
-    const from = logs.length;
+    let from = logs.length;
 
     expect(await emit({ name: "changed", payload: { note: "burst", by: "Sam Owner" }, times: 130 })).toBe("done");
-    await until(() => logs.slice(from).some((line) => line.includes("events in a second")), 10_000);
-    const line = logs.slice(from).find((entry) => entry.includes("events in a second"))!;
-    const dropped = Number(/: (\d+) were dropped\.$/.exec(line)?.[1]);
-
+    await until(() => said(from).length > 0, 10_000);
     await settled(stream);
-    const arrived = stream.named("changed").filter((event) => event.payload.note === "burst").length;
+    // Any one second, not each clock second: fifty arrive, however the burst falls on the clock.
+    expect(stream.named("changed").filter((event) => event.payload.note === "burst")).toHaveLength(EXTENSION_EVENTS_A_SECOND);
+    expect(said(from)).toEqual([`[status] it sent more than ${EXTENSION_EVENTS_A_SECOND} events, or more than ${EXTENSION_EVENT_BYTES_A_SECOND / 1024} KB of them, in a second: 80 were dropped.`]);
 
-    expect(line).toBe(`[status] it sent more than ${EXTENSION_EVENTS_A_SECOND} events in a second: ${dropped} were dropped.`);
-    // The burst may straddle two seconds: fifty in each at most, and every one of the 130 either arrived or was counted.
-    expect(arrived + dropped).toBe(130);
-    expect(arrived).toBeGreaterThanOrEqual(EXTENSION_EVENTS_A_SECOND);
-    expect(arrived).toBeLessThanOrEqual(2 * EXTENSION_EVENTS_A_SECOND);
+    // Few events, each large: four of 60 KB are under 256 KB, the fifth is not.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    from = logs.length;
+    expect(await emit({ name: "owners.only", odd: "big", times: 10 })).toBe("done");
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    await settled(stream);
+    expect(stream.named("owners.only")).toHaveLength(4);
+    // Said at most once a minute: the six are counted, and said with whatever is dropped next.
+    expect(said(from)).toEqual([]);
   });
 });
 
@@ -399,6 +452,18 @@ describe("a stream that carries a value for an extension", () => {
     await until(() => ["stream opened", "stream ended", "rule"].every((where) => probe.later.some((line) => line.startsWith(`${where}: `))));
     expect(probe.streamEnds.filter((value) => value === "tab-1")).toHaveLength(1);
     expect([...new Set(probe.later.filter((line) => /^(stream opened|stream ended|rule): /.test(line)))].sort()).toEqual(["rule", "stream ended", "stream opened"].map((where) => `${where}: publish refused: ${NO_CALLER_REFUSAL}`));
+
+    // A stream ended by an owner's own request (they switch the person off) is told to the extension as nobody too:
+    // what it handed back does not run as the owner, who could publish.
+    const nel = await join_("nel@example.com", "contributor", "Nel Son");
+    const theirs = listen("?x-status=tab-nel", { cookie: nel.cookie, headers: OWN_PAGE });
+
+    await opened(theirs);
+    probe.later.length = 0;
+    expect((await call(port, "PATCH", `/api/people/${nel.id}`, { cookie: people.owner.cookie, body: { disabled: true } })).status).toBe(200);
+    await until(() => probe.later.some((line) => line.startsWith("stream ended: ")));
+    expect(probe.streamEnds).toContain("tab-nel");
+    expect(probe.later.filter((line) => line.startsWith("stream ended: "))).toEqual([`stream ended: publish refused: ${NO_CALLER_REFUSAL}`]);
   });
 
   it("can have its value refused, never the stream: the window is told, and everything else goes on", async () => {
@@ -436,14 +501,38 @@ describe("a stream that carries a value for an extension", () => {
     // One that answers with a promise: its answer isn't used, and the value isn't refused.
     const promised = listen("?x-status=promise", { cookie: people.editor.cookie, headers: OWN_PAGE });
 
-    await opened(broken, promised);
-    await settled(broken, promised);
-    expect(broken.named(STREAM_REFUSED).map((event) => event.payload)).toEqual([{ code: "internal", message: "That couldn't be taken because of an unexpected problem." }]);
+    // The same again: anyone signed in can do this as often as they like, and the log has one line for it, not one each time.
+    const brokenAgain = listen("?x-status=break", { cookie: people.editor.cookie, headers: OWN_PAGE });
+    // A refusal's words go to a browser: one line of them, and not more than so many characters.
+    const wordy = listen("?x-status=long-refusal", { cookie: people.editor.cookie, headers: OWN_PAGE });
+
+    await opened(broken, promised, brokenAgain, wordy);
+    await settled(broken, promised, brokenAgain, wordy);
+    for (const stream of [broken, brokenAgain]) expect(stream.named(STREAM_REFUSED).map((event) => event.payload)).toEqual([{ code: "internal", message: "That couldn't be taken because of an unexpected problem." }]);
     expect(promised.named(STREAM_REFUSED)).toEqual([]);
+    const words = wordy.named(STREAM_REFUSED)[0]!.payload.message as string;
+
+    expect([wordy.named(STREAM_REFUSED)[0]!.payload.code, words.length, words.startsWith("Not that one. GET /api/people 200 forged xxx")]).toEqual(["forbidden", 500, true]);
     expect(logs.slice(from).filter((line) => line.includes("a stream listener"))).toEqual([
       "[status] a stream listener failed: the listener broke with •••",
       "[status] a stream listener answered with a promise. It has to answer at once, so its answer was not used.",
     ]);
+  });
+
+  it("tells each extension with an object of its own that can't be changed: what one does with it is not what the next is told", async () => {
+    // The first extension tries to make the person an owner, and the value another; the second is told after it.
+    const stream = listen("?x-status=tamper&x-second=tamper", { cookie: people.editor.cookie, headers: OWN_PAGE });
+
+    await opened(stream);
+    const [first, next] = [probe.streams.at(-1)!, second.streams.at(-1)!];
+    const editor = { kind: "person", account: people.editor.id, role: "editor", name: "Ed Editor", session: expect.any(String) };
+
+    expect(first).toEqual({ value: "tamper", caller: editor });
+    expect(next).toEqual({ value: "tamper", caller: editor });
+    expect(next).not.toBe(first);
+    expect(next.caller).not.toBe(first.caller);
+    expect([Object.isFrozen(first), Object.isFrozen(first.caller), second.frozen.at(-1)]).toEqual([true, true, true]);
+    expect(stream.named(STREAM_REFUSED)).toEqual([]);
   });
 
   it("shows the extension only what is a value: anything else is answered for it", async () => {
@@ -468,32 +557,32 @@ describe("a stream that carries a value for an extension", () => {
     }
   });
 
-  it("is opened only by the editor's own page: a page on another origin can't say a window is there", async () => {
+  it("takes a value only from the editor's own page: a page on another origin can't say a window is there, and loses nothing else by trying", async () => {
     const from = probe.streams.length;
 
+    // From a neighbouring site, from anywhere else, and from a browser that doesn't say: the stream opens as one
+    // without a value does, the window is told its value wasn't taken, and the extension hears nothing.
     for (const where of ["same-site", "cross-site", undefined]) {
-      const stream = listen("?x-status=tab-9", { cookie: people.owner.cookie, headers: where ? { "sec-fetch-site": where } : {} });
+      const stream = listen("?x-status=tab-9&x-second=tab-9", { cookie: people.owner.cookie, headers: where ? { "sec-fetch-site": where } : {} });
 
       await opened(stream);
-      expect([stream.status, JSON.parse(stream.text).error], String(where)).toEqual([403, { code: "forbidden", message: NOT_FROM_THE_EDITOR }]);
+      await until(() => stream.events.length >= 3);
+      expect(stream.status, String(where)).toBe(200);
+      expect(stream.events.slice(1, 3), String(where)).toEqual(["status", "second"].map((source) => ({ type: "extension", source, name: STREAM_REFUSED, siteId: "", payload: { code: "forbidden", message: NOT_FROM_THE_EDITOR } })));
+      // It is a stream like any other: the editor's own events and an extension's arrive.
+      await settled(stream);
     }
-    expect(probe.streams.length).toBe(from);
+    expect([probe.streams.length, second.streams.filter((stream) => stream.value === "tab-9")]).toEqual([from, []]);
     // The editor's own page, and an address typed by hand.
     for (const where of ["same-origin", "none"]) {
       const stream = listen("?x-status=tab-9", { cookie: people.owner.cookie, headers: { "sec-fetch-site": where } });
 
       await opened(stream);
-      expect(stream.status, where).toBe(200);
+      await settled(stream);
+      expect([stream.status, stream.named(STREAM_REFUSED)], where).toEqual([200, []]);
     }
     expect(probe.streams.length).toBe(from + 2);
-    // A stream without a value is as it always was, wherever it is opened from.
-    for (const where of ["same-site", "cross-site", undefined]) {
-      const stream = listen("", { cookie: people.owner.cookie, headers: where ? { "sec-fetch-site": where } : {} });
-
-      await opened(stream);
-      expect(stream.status, String(where)).toBe(200);
-    }
-    // A script's token is no browser's: it passes without the header.
+    // A script's token is no browser's: its value is taken without the header.
     const script = listen("?x-status=tab-9", { bearer: OPERATOR });
 
     await opened(script);
@@ -542,18 +631,22 @@ describe("a backup put back under a server with extensions", () => {
     writeFileSync(note, "written after the backup");
     expect((await x("POST", site("/note"), { cookie: people.owner.cookie, body: { text: "Kept in memory" } })).body).toEqual({ ok: true });
     const window = listen("?x-status=before", { cookie: people.owner.cookie, headers: OWN_PAGE });
+    // A script's stream too: its token is no sign-in, so a restore doesn't end what it stands on.
+    const script = listen("?x-status=script-before", { bearer: OPERATOR });
 
-    await opened(window);
+    await opened(window, script);
     const upload = await call(port, "POST", "/api/install/restore/upload", { cookie: people.owner.cookie, raw: backup.bytes });
 
     expect(upload.status, upload.text).toBe(200);
+    const atTheEnd = setupsWhenARestoreEnds();
     const job = await call(port, "POST", "/api/install/restore", { cookie: people.owner.cookie, body: { upload: upload.body.id, passphrase: PASSPHRASE } });
     const done = await waitForJob(port, job.body, { cookie: people.owner.cookie });
 
+    atTheEnd.stop();
     expect(done.state, done.detail).toBe("done");
-    // "Done" means everything runs: the extension had started again before the job said so.
-    expect(probe.calls.setup).toBe(2);
-    await until(() => window.ended);
+    // "Done" means everything runs: the extension had started again at the moment the job said so.
+    expect([atTheEnd.at, probe.calls.setup]).toEqual([2, 2]);
+    await until(() => window.ended && script.ended);
     // Stopped while its folder was still as it had left it; started again, once, on the folder the backup holds.
     expect(folderAt.stop).toEqual(["written after the backup"]);
     expect(folderAt.setup).toEqual(["nothing", "as it was at the backup"]);
@@ -562,10 +655,20 @@ describe("a backup put back under a server with extensions", () => {
     // What it was handed the first time does nothing any more.
     expect(() => first.events.emit("changed", siteId, { note: "from before", by: "nobody" })).toThrow("This extension has been stopped, so it can no longer send events.");
     expect(await first.sites.get(siteId)).toBeNull();
-    // The window from before: its stream was ended so that it opens another, and the stopped extension was not called about it.
-    expect(probe.streamEnds).not.toContain("before");
-    // The one who started the restore heard how it ended on that stream, before it was ended.
-    expect(window.events.some((event) => event.type === "job" && event.job?.id === job.body.id && event.job?.state === "done")).toBe(true);
+    // The streams from before were ended, and the stopped extension was not called about either.
+    expect(probe.streamEnds.filter((value) => value.endsWith("before"))).toEqual([]);
+    // A restore signs everyone out. The owner's stream ended there, with nothing sent on it after that: the browser
+    // that started the restore learnt how it ended by asking for its job, which it may for a while (as it just did).
+    const heardTheEnd = (stream: Listening) => stream.events.some((event) => event.type === "job" && event.job?.id === job.body.id && event.job?.state === "done");
+
+    expect(heardTheEnd(window)).toBe(false);
+    expect((await call(port, "GET", "/api/account", { cookie: people.owner.cookie })).status).toBe(401);
+    // The script's stream heard the job end, and only then was ended, so that it opens another and says again that it is there.
+    expect(heardTheEnd(script)).toBe(true);
+    const scriptAgain = listen("?x-status=script-after", { bearer: OPERATOR });
+
+    await opened(scriptAgain);
+    expect(probe.streams.at(-1)).toEqual({ value: "script-after", caller: { kind: "operator" } });
 
     // Everyone signs in again, and what answers is the one running now: it has no note in memory, and is told of the new window.
     const cookie = await signIn("sam@example.com");
@@ -580,5 +683,51 @@ describe("a backup put back under a server with extensions", () => {
     expect((await x("POST", site("/note"), { cookie, body: { text: "After the restore" } })).body).toEqual({ ok: true });
     await until(() => after.named("changed").length > 0);
     expect(after.named("changed")[0]).toEqual(envelope("changed", { note: "After the restore", by: "Sam Owner" }));
+    people.owner.cookie = cookie;
+  }, 120_000);
+
+  it("that fails after they were stopped starts them again on the folder as it was, before the restore says it failed", async () => {
+    const cookie = people.owner.cookie;
+    const backup = await call(port, "POST", "/api/install/backup", { cookie, body: { passphrase: PASSPHRASE } });
+
+    expect(backup.status, backup.text).toBe(200);
+    writeFileSync(join(probe.host!.stateDir, "note.txt"), "still here, because the restore failed");
+    // The backup is put in place, and then the state it holds can't be read: everything is put back as it was.
+    const install = started.server.install!;
+    const reload = install.reload.bind(install);
+    let reloads = 0;
+
+    install.reload = async () => {
+      if ((reloads += 1) === 1) throw new Error("the restored state couldn't be read");
+      return reload();
+    };
+    try {
+      const before = { setups: probe.calls.setup ?? 0, stops: folderAt.stop.length, host: probe.host };
+      const script = listen("?x-status=script-failing", { bearer: OPERATOR });
+
+      await opened(script);
+      const upload = await call(port, "POST", "/api/install/restore/upload", { cookie, raw: backup.bytes });
+      const atTheEnd = setupsWhenARestoreEnds();
+      const job = await call(port, "POST", "/api/install/restore", { cookie, body: { upload: upload.body.id, passphrase: PASSPHRASE } });
+      const ended = await waitForJob(port, job.body, { cookie });
+
+      atTheEnd.stop();
+      expect(ended.state, ended.detail).toBe("error");
+      expect(reloads).toBe(2);
+      // Stopped once and started once more, on the folder as it was left, and running at the moment the job said it had failed.
+      expect([atTheEnd.at, probe.calls.setup, folderAt.stop.length]).toEqual([before.setups + 1, before.setups + 1, before.stops + 1]);
+      expect([folderAt.stop.at(-1), folderAt.setup.at(-1)]).toEqual(["still here, because the restore failed", "still here, because the restore failed"]);
+      expect(probe.host).not.toBe(before.host);
+      // Nobody was signed out, and what answers is the extension running now.
+      await until(async () => (await x("GET", site(), { cookie })).status === 200);
+      // A window that had said it was there says so again to it.
+      await until(() => script.ended);
+      const again = listen("?x-status=script-again", { bearer: OPERATOR });
+
+      await opened(again);
+      expect(probe.streams.at(-1)).toEqual({ value: "script-again", caller: { kind: "operator" } });
+    } finally {
+      install.reload = reload;
+    }
   }, 120_000);
 });

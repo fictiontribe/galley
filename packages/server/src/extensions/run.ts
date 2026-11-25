@@ -16,7 +16,7 @@ import { outsideAnyPerson } from "@galley/core/install";
 import { withoutSiteScope } from "@galley/core/site";
 import { GalleyError, isGalleyError } from "@galley/core";
 import type { ServerEvent, SiteService } from "@galley/core/types";
-import { checkExtensions, declaredEvents, declaredRoutes, EXTENSION_EVENT_BYTES, EXTENSION_EVENTS_A_SECOND, ExtensionError, type DeclaredRoute } from "./declare";
+import { checkExtensions, declaredEvents, declaredRoutes, EXTENSION_EVENT_BYTES, EXTENSION_EVENT_BYTES_A_SECOND, EXTENSION_EVENTS_A_SECOND, ExtensionError, type DeclaredRoute } from "./declare";
 import { isJson, jsonBytes } from "./json";
 import type { PeopleDesk } from "./people";
 import { guardSite, insideGet } from "./site";
@@ -43,8 +43,14 @@ export interface StartedExtension {
   handed(siteId: string): void;
   /** The rule for one of its events; undefined for a name it didn't declare. */
   rule(name: string): ExtensionEventRule<unknown> | undefined;
-  /** What one reader is sent of an event: the payload as its rule shapes it for them, or null for nothing. */
-  shape(name: string, payload: unknown, reader: ExtensionCaller): { payload: JsonValue } | null;
+  /**
+   * What one reader is sent of an event: the payload as its rule shapes it
+   * for them, or null for nothing. `asIs`: the event has no rule of its own,
+   * so every reader with the level is sent the same thing.
+   */
+  shape(name: string, payload: unknown, reader: ExtensionCaller): { payload: JsonValue; asIs: boolean } | null;
+  /** One of its events was not sent to a window that had too much waiting already. Counted, and said in the log now and then. */
+  skipped(): void;
   /**
    * A window's stream opened carrying a value for it. `refused`: its listener
    * didn't take the value (the stream opens all the same). `ended` runs what
@@ -108,6 +114,32 @@ export interface StartOptions {
 
 /** What is said about one kind of failure at most this often: a rule that fails does so for every reader of every event. */
 export const SAID_EVERY_MS = 60_000;
+/** The most of a refusal's words that is sent to a window. */
+const REFUSAL_CHARACTERS = 500;
+
+/** A route table as it guards its addresses: what must be the same when an extension is started again. */
+const guardsOf = (routes: readonly DeclaredRoute[]) => routes.map((declared) => `${declared.key} ${declared.route.access} ${declared.bodyLimit} ${declared.route.person === true}`).sort().join("\n");
+
+/**
+ * A copy that is plain data, or undefined when the value isn't JSON of at
+ * most `limit` bytes. Looked at once, then copied, then the copy is what is
+ * measured and sent: a property that answers differently each time it is
+ * read can't pass as one thing and be sent as another.
+ */
+function plainJson(value: unknown, limit: number): { value: JsonValue; bytes: number } | undefined {
+  if (!isJson(value)) return undefined;
+  let copy: unknown;
+
+  try {
+    copy = structuredClone(value);
+  } catch {
+    return undefined;
+  }
+  if (!isJson(copy)) return undefined;
+  const bytes = jsonBytes(copy);
+
+  return bytes <= limit ? { value: copy, bytes } : undefined;
+}
 
 /** Runs `run` outside any person and any site. */
 export function outside<T>(run: () => T): T {
@@ -212,6 +244,8 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
   let turn: Promise<unknown> = Promise.resolve();
   /** How to end each open stream that carried a value for an extension. */
   const openStreams = new Set<() => void>();
+  /** What guards each extension's addresses, as they were mounted when the server started. */
+  const mounted = new Map<string, string>();
   const inTurn = <T>(work: () => Promise<T>): Promise<T> => {
     const mine = turn.then(work, work);
 
@@ -253,9 +287,13 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
     const saidAt = new Map<string, number>();
     let rules: Map<string, ExtensionEventRule<unknown>> | null = null;
     let live = true;
-    const emitted = { second: 0, count: 0, dropped: 0 };
-    let droppedTimer: ReturnType<typeof setTimeout> | null = null;
-    let droppedSaidAt = -Infinity;
+    /** What it sent in the last second, oldest first, and their bytes together. */
+    const sent: Array<{ at: number; bytes: number }> = [];
+    let sentBytes = 0;
+    /** Since this was last said: events dropped for being too many or too much, and times one was not sent to a window that was behind. */
+    const counted = { dropped: 0, skipped: 0 };
+    let countsTimer: ReturnType<typeof setTimeout> | null = null;
+    let countsSaidAt = -Infinity;
     const say = (line: string) => {
       if (live) options.log(`[${id}] ${scrub(oneLine(line))}`);
     };
@@ -267,19 +305,28 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
       saidAt.set(kind, now);
       say(line);
     };
-    /** How many events were dropped since this was last said: a second after the first of them, and at most once a minute. */
-    const sayDropped = () => {
-      droppedTimer = null;
-      if (!live || emitted.dropped === 0) return;
-      droppedSaidAt = Date.now();
-      say(`it sent more than ${EXTENSION_EVENTS_A_SECOND} events in a second: ${emitted.dropped} ${emitted.dropped === 1 ? "was" : "were"} dropped.`);
-      emitted.dropped = 0;
+    /** What was dropped and what was not sent since this was last said: a second after the first of them, and at most once a minute. */
+    const sayCounts = () => {
+      countsTimer = null;
+      if (!live) return;
+      const { dropped, skipped } = counted;
+
+      if (dropped === 0 && skipped === 0) return;
+      countsSaidAt = Date.now();
+      counted.dropped = counted.skipped = 0;
+      if (dropped) say(`it sent more than ${EXTENSION_EVENTS_A_SECOND} events, or more than ${EXTENSION_EVENT_BYTES_A_SECOND / 1024} KB of them, in a second: ${dropped} ${dropped === 1 ? "was" : "were"} dropped.`);
+      if (skipped) say(`${skipped} ${skipped === 1 ? "time an event of its" : "times an event of its"} was not sent to a window that had fallen behind in reading.`);
+    };
+    const countSoon = () => {
+      if (countsTimer) return;
+      countsTimer = setTimeout(sayCounts, Math.max(1000, countsSaidAt + SAID_EVERY_MS - Date.now()));
+      countsTimer.unref?.();
     };
     const alive = () => live;
     const end = () => {
       live = false;
       abort.abort();
-      if (droppedTimer) clearTimeout(droppedTimer);
+      if (countsTimer) clearTimeout(countsTimer);
       for (const unlisten of listening.splice(0)) unlisten();
       streamListeners.length = 0;
     };
@@ -303,24 +350,22 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
         if (rules === null) throw new GalleyError("invalid", "An event can be sent once setup has returned: that is when the server learns which events there are.");
         if (!rules.has(name)) throw new GalleyError("invalid", `“${oneLine(String(name)).slice(0, 80)}” isn't an event this extension declared.`);
         if (typeof siteId !== "string" || !(handedSites.has(siteId) || options.siteId?.() === siteId)) throw new GalleyError("invalid", "An event is about a site this extension has been handed. Ask for the site first.");
-        if (!isJson(payload) || jsonBytes(payload) > EXTENSION_EVENT_BYTES) throw new GalleyError("invalid", "An event's payload is JSON of at most 64 KB.");
-        const second = Math.floor(Date.now() / 1000);
+        // A copy, and the copy is what is measured: what the extension does to its own object afterwards changes nothing that is on its way.
+        const copy = plainJson(payload, EXTENSION_EVENT_BYTES);
 
-        if (second !== emitted.second) {
-          emitted.second = second;
-          emitted.count = 0;
-        }
-        if ((emitted.count += 1) > EXTENSION_EVENTS_A_SECOND) {
-          // Each window may hold only so much it hasn't read: an extension that is busy must not be able to empty them all.
-          emitted.dropped += 1;
-          if (!droppedTimer) {
-            droppedTimer = setTimeout(sayDropped, Math.max(1000, droppedSaidAt + SAID_EVERY_MS - Date.now()));
-            droppedTimer.unref?.();
-          }
+        if (!copy) throw new GalleyError("invalid", "An event's payload is JSON of at most 64 KB.");
+        const now = Date.now();
+
+        while (sent.length > 0 && now - sent[0]!.at >= 1000) sentBytes -= sent.shift()!.bytes;
+        // In any one second, so many events and so many bytes: every window reads what every extension sends.
+        if (sent.length >= EXTENSION_EVENTS_A_SECOND || sentBytes + copy.bytes > EXTENSION_EVENT_BYTES_A_SECOND) {
+          counted.dropped += 1;
+          countSoon();
           return;
         }
-        // A copy: what the extension does to its own object afterwards changes nothing that is on its way.
-        const event: ServerEvent = { type: "extension", source: id, name, siteId, payload: structuredClone(payload) };
+        sent.push({ at: now, bytes: copy.bytes });
+        sentBytes += copy.bytes;
+        const event: ServerEvent = { type: "extension", source: id, name, siteId, payload: copy.value };
 
         outside(() => options.emit?.(event));
       },
@@ -350,13 +395,31 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
       mode: options.mode,
     });
     let parts: ExtensionParts;
+    let ranOut = false;
+    // Always a promise: a setup that throws where it stands is one that failed.
+    const settingUp = (async () => outside(() => extension.setup(host, { signal: abort.signal })))();
 
     starting = abort;
     try {
-      parts = await timeLimit(Promise.resolve(outside(() => extension.setup(host, { signal: abort.signal }))), within(options.setupMs, EXTENSION_SETUP_MS), () => new Error("it didn't finish starting in time"));
+      parts = await timeLimit(settingUp, within(options.setupMs, EXTENSION_SETUP_MS), () => ((ranOut = true), new Error("it didn't finish starting in time")));
     } catch (error) {
       end();
-      if (error instanceof ExtensionError) throw error;
+      // Its time ran out and its signal said so. If it finishes after all, what it started is stopped: the server may carry on without it.
+      if (ranOut) {
+        void settingUp.then(
+          async (late) => {
+            if (typeof late?.stop !== "function") return;
+            try {
+              await timeLimit(Promise.resolve(outside(() => late.stop!())), within(options.stopMs, EXTENSION_STOP_MS), () => new Error("it took too long"));
+            } catch (failure) {
+              options.log(`[${id}] ${scrub(oneLine(`its setup finished after its time was up, and its stop then failed: ${failure instanceof Error ? failure.message : String(failure)}`))}`);
+            }
+          },
+          () => undefined
+        );
+      }
+      // An error of its own making is in its own words: its secrets are taken out of those too.
+      if (error instanceof ExtensionError) throw new ExtensionError(scrub(oneLine(error.message)));
       throw new ExtensionError(`Extension “${id}” couldn't start: ${scrub(oneLine(error instanceof Error ? error.message : String(error)))}`);
     } finally {
       if (starting === abort) starting = null;
@@ -373,7 +436,7 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
     } catch (error) {
       // Its setup ran: whatever that started is stopped like any other's, before what it was handed goes dead.
       await stopOne({ id, say, parts, end });
-      throw error;
+      throw error instanceof ExtensionError ? new ExtensionError(scrub(oneLine(error.message))) : error;
     }
     const declared = rules;
 
@@ -391,16 +454,24 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
         const rule = live ? declared.get(name) : undefined;
 
         if (!rule) return null;
-        if (!rule.for) return { payload: payload as JsonValue };
+        if (!rule.for) return { payload: payload as JsonValue, asIs: true };
         // This reader's own copy: what one rule does to it is not what the next reader's rule is given.
         const answer = callNow((line) => sayNowAndThen(`rule ${name}`, line), `the rule for “${name}”`, () => rule.for!(structuredClone(payload), reader));
 
         if (!answer.ok || answer.value === null) return null;
-        if (!isJson(answer.value) || jsonBytes(answer.value) > EXTENSION_EVENT_BYTES) {
+        // Copied before it is measured, and the copy is what is sent.
+        const shaped = plainJson(answer.value, EXTENSION_EVENT_BYTES);
+
+        if (!shaped) {
           sayNowAndThen(`shape ${name}`, `the rule for “${name}” answered with something that isn't JSON of at most 64 KB, so nothing was sent to that reader.`);
           return null;
         }
-        return { payload: answer.value };
+        return { payload: shaped.value, asIs: false };
+      },
+      skipped() {
+        if (!live) return;
+        counted.skipped += 1;
+        countSoon();
       },
       streamOpened(stream) {
         const ends: Array<() => void> = [];
@@ -414,15 +485,17 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
           try {
             const answer = outside(() => listener(stream));
 
+            // Anyone signed in can open and close streams as fast as they like: what a listener does wrong is said now and then, not each time.
             if (thenable(answer)) {
-              Promise.resolve(answer).catch((error: unknown) => say(`a stream listener failed later: ${error instanceof Error ? error.message : String(error)}`));
-              say("a stream listener answered with a promise. It has to answer at once, so its answer was not used.");
+              Promise.resolve(answer).catch((error: unknown) => sayNowAndThen("stream listener later", `a stream listener failed later: ${error instanceof Error ? error.message : String(error)}`));
+              sayNowAndThen("stream listener promise", "a stream listener answered with a promise. It has to answer at once, so its answer was not used.");
             } else if (typeof answer === "function") ends.push(answer);
           } catch (error) {
             // It didn't take the value. The stream itself is not its to refuse: the window is told, and nothing else changes.
             ended();
-            if (isGalleyError(error)) return { refused: { code: error.code, message: scrub(error.message) }, ended: () => undefined };
-            say(`a stream listener failed: ${error instanceof Error ? error.message : String(error)}`);
+            // Its words go to a browser: one line of them, so many characters, its secrets taken out.
+            if (isGalleyError(error)) return { refused: { code: error.code, message: scrub(oneLine(error.message)).slice(0, REFUSAL_CHARACTERS) }, ended: () => undefined };
+            sayNowAndThen("stream listener", `a stream listener failed: ${error instanceof Error ? error.message : String(error)}`);
             return { refused: { code: "internal", message: "That couldn't be taken because of an unexpected problem." }, ended: () => undefined };
           }
         }
@@ -437,6 +510,7 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
     await stop();
     throw error;
   }
+  for (const extension of started) mounted.set(extension.id, guardsOf(extension.routes));
   const find = (id: string) => started.find((extension) => extension.id === id);
 
   return {
@@ -470,7 +544,15 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
           // The server is stopping: nothing more is started.
           if (over) break;
           try {
-            started.push(await startOne(extension));
+            const again = await startOne(extension);
+
+            // An address keeps the level, the size limit and the "a person only" it was mounted with when the server started.
+            // A setup that now declares something else would be run behind the wrong guards: it is stopped instead.
+            if (mounted.get(extension.id) !== guardsOf(again.routes)) {
+              await stopOne(again);
+              throw new ExtensionError(`Extension “${extension.id}” returned other routes than it did when the server started (an address, a level, a size limit or “a person only” differs), and an address keeps the guards it was mounted with`);
+            }
+            started.push(again);
           } catch (error) {
             failed.push(extension.id);
             options.log(`${oneLine(error instanceof Error ? error.message : String(error)).replace(/[.]$/, "")}. It was stopped and couldn't be started again: its routes answer that it isn't running until the server is restarted.`);

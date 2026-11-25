@@ -86,20 +86,26 @@ entry says how.
   source, name, siteId, payload }`: the first four are filled in by the
   server, so an extension can't send one of the editor's own events or speak
   as another. A payload is JSON of at most 64 KB about a site the extension
-  has been handed, and past 50 events a second an extension's events are
-  dropped and counted in the log. A stream opened with a value for an
-  extension (`/api/events?x-<id>=<value>`) tells it that the window is there
-  and, later, that it has gone, which replaces a heartbeat route. With a
-  cookie such a stream must come from the editor's own page. An extension
-  can refuse its value, never the stream: the window is sent
-  `stream.refused` and the stream opens as usual. The editor's own app does
-  not add a value yet.
+  has been handed. In any one second an extension may send 50 events and
+  256 KB; past either its events are dropped and counted in the log. A
+  window that already has half of what it may have waiting (512 KB of 1 MB)
+  is not sent an extension's event, so an extension can't be what gets a
+  slow window let go, and the editor's own events keep their room. A stream
+  opened with a value for an extension (`/api/events?x-<id>=<value>`) tells
+  it that the window is there and, later, that it has gone, which replaces a
+  heartbeat route. A value is taken only from the editor's own page (or with
+  the operator's token); from anywhere else it is refused and the stream
+  opens without it. An extension can refuse its value too, never the
+  stream: the window is sent `stream.refused` and the stream opens as usual.
+  The editor's own app does not add a value yet.
 - **Extensions are stopped while a backup is put back, and started again.**
   A restore replaces the data folder under a running server. An extension's
   `stop` now runs before that and its `setup` again afterwards, with a new
   host, so a program that embeds the server no longer has to be restarted
-  after a restore. One that can't start again is left stopped, its routes
-  answer 503, and the log says why.
+  after a restore. The routes it returns must be the ones it returned when
+  the server started, because an address keeps the guards it was mounted
+  with. One that returns others, or can't start again, is left stopped: its
+  routes answer 503, and the log says why.
 - **An adapter says what a site is built from**: a new optional convention,
   `builtFrom`, globs from the site root. The Astro adapter gives the source
   folder, the public folder and the configuration at the root. An adapter
