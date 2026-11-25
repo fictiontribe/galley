@@ -1,11 +1,9 @@
-import { fileURLToPath } from "node:url";
 import type { IncomingMessage } from "node:http";
 import { defineConfig, type ProxyOptions } from "vite";
 import react from "@vitejs/plugin-react";
 import { galleyMock } from "./mock/plugin.ts";
+import { galleyWeb } from "./vite.preset.mjs";
 
-const src = fileURLToPath(new URL("./src", import.meta.url));
-const brand = fileURLToPath(new URL("../../brand", import.meta.url));
 const server = process.env.GALLEY_SERVER ?? "http://127.0.0.1:4400";
 const mock = process.env.GALLEY_MOCK === "1";
 
@@ -37,10 +35,8 @@ const apiProxy: ProxyOptions = {
 };
 
 export default defineConfig({
-  plugins: [react(), mock ? galleyMock() : null],
-  resolve: {
-    alias: { "@": src, "@brand": brand },
-  },
+  // The aliases the source is written with come from the same preset an edition built outside this folder uses.
+  plugins: [react(), galleyWeb(), mock ? galleyMock() : null],
   server: {
     port: 5173,
     strictPort: true,

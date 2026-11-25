@@ -466,7 +466,16 @@ Because a restore replaces the data folder under a running server,
 extensions are stopped before one and started again after it, and each
 request finds the extension that is running at that moment, behind the
 guards its address was mounted with (one that comes back with other routes
-is stopped). See
+is stopped).
+
+The browser half is an *addition* (`packages/web/src/additions/`): a list
+given to the app's root component when the program is built, drawn in three
+places (once inside the signed-in app, in the top bar, in a row of a
+collection's list), each behind a guard that shows nothing there if it
+fails while drawing. There is no registry and nothing at run time adds one.
+An addition is part of the one bundle, not sandboxed. The web package's
+entry points (`./app`, `./additions`, `./ui`, `./styles`, `./vite`) are what
+an edition built outside it may import; the rest of the app may change. See
 `packages/server/src/extensions/` and the docs page *Embedding the editor*.
 
 ### MCP (`@galley/mcp`)

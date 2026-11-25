@@ -8,6 +8,7 @@ import { notify } from "@/lib/stores/toasts";
 import { useMay } from "@/lib/may";
 import { Badge, Breadcrumbs, Button, ConfirmDialog, Count, IconButton, keyName } from "@/ui";
 import { AccountMenu } from "@/features/accounts/AccountMenu";
+import { TopBarAdditions } from "@/additions/places";
 import { useChrome } from "./chrome";
 
 // The publish dialog (and Proof's helpers it brings) loads the first time it's wanted.
@@ -36,6 +37,7 @@ export function HomeTopBar() {
       <Crumbs />
       <span className="g-toolbar__spacer" />
       <IconButton icon="search" label={`Search and jump (${keyName("mod")} K)`} onClick={() => openPalette(true)} />
+      <TopBarAdditions />
       <AccountMenu />
     </header>
   );
@@ -103,6 +105,7 @@ export function SiteTopBar({ siteId }: { siteId: string }) {
           <span className="g-sr">{NO_PUBLISH_LINE}</span>
         </span>
       )}
+      <TopBarAdditions />
       <AccountMenu />
 
       {mayPublish && (publishMounted || publishOpen) ? (

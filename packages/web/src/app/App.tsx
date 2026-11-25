@@ -7,6 +7,8 @@ import { BrandEffects } from "./BrandEffects";
 import { CommandPalette } from "./CommandPalette";
 import { CornerThemeSwitch } from "./ThemeSwitch";
 import { CompleteAccountPrompt } from "@/features/accounts/CompleteAccount";
+import { AdditionRoots, AdditionsProvider } from "@/additions/places";
+import type { Addition } from "@/additions/types";
 import { AppRoutes } from "./routes";
 
 export interface AppProps {
@@ -17,21 +19,30 @@ export interface AppProps {
    * router instead, so a reload or a shared link still opens the right screen.
    */
   router?: ComponentType<{ children?: ReactNode }>;
+  /**
+   * What a program that builds its own edition of the editor draws in the
+   * app (src/additions). Experimental. Read once, when the app starts; the
+   * app as it ships passes none, and every place then renders nothing.
+   */
+  additions?: readonly Addition[];
 }
 
-export function App({ router: Router = BrowserRouter }: AppProps = {}) {
+export function App({ router: Router = BrowserRouter, additions }: AppProps = {}) {
   return (
-    <Router>
-      <BrandEffects />
-      <Boot>
-        <AppRoutes />
-        <CommandPalette />
-        <CornerThemeSwitch />
-        <CompleteAccountPrompt />
-      </Boot>
-      <ToastViewport>
-        <ActivityTray />
-      </ToastViewport>
-    </Router>
+    <AdditionsProvider additions={additions}>
+      <Router>
+        <BrandEffects />
+        <Boot>
+          <AppRoutes />
+          <CommandPalette />
+          <CornerThemeSwitch />
+          <CompleteAccountPrompt />
+          <AdditionRoots />
+        </Boot>
+        <ToastViewport>
+          <ActivityTray />
+        </ToastViewport>
+      </Router>
+    </AdditionsProvider>
   );
 }
