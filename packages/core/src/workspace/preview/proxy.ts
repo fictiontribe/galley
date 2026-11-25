@@ -290,14 +290,51 @@ function stripCookieDomain(value: string | string[]): string[] {
   );
 }
 
-/** A request's path as the dev server will read it: percent-encoding undone, as far as it can be. */
-function decodedPath(pathname: string): string {
+/**
+ * Whether a request's address may be passed to the site's own dev server:
+ * "malformed" when its path can't be read at all, "refused" when it names a
+ * file that may not be shown.
+ *
+ * The dev server is not ours, so the path is looked at every way a server
+ * might come to read it: as it was written, and as a URL parser puts it
+ * right (dot parts taken out, a backslash for a slash), each with its
+ * percent-encoding undone, and undone again, for a server that does it twice.
+ * A path whose encoding can't be undone is not guessed at: a strict server
+ * refuses it, and a lenient one reads something this couldn't see.
+ */
+function addressVerdict(url: string): "pass" | "refused" | "malformed" {
+  const written = url.split("?")[0] ?? "/";
+  const forms = [written];
+
   try {
-    return decodeURIComponent(pathname);
+    forms.push(new URL(url, "http://preview.invalid").pathname);
   } catch {
-    return pathname;
+    return "malformed";
   }
+  for (const start of forms) {
+    let form = start;
+
+    for (let round = 0; round < 3; round += 1) {
+      if (!mayBeShown(form)) return "refused";
+      let next: string;
+
+      try {
+        next = decodeURIComponent(form);
+      } catch {
+        // The first time: the path as sent can't be read. Later: what is left is as far as any server gets.
+        if (round === 0) return "malformed";
+        break;
+      }
+      if (next === form) break;
+      form = next;
+    }
+    if (!mayBeShown(form)) return "refused";
+  }
+  return "pass";
 }
+
+/** How long the rest of an answer is waited for when the dev server answered an upgrade as a plain request. */
+const NOT_UPGRADED_LINGER_MS = 1000;
 
 function sendError(res: ServerResponse, status: number, message: string, retry: boolean, overlayTag?: string) {
   if (res.headersSent) {
@@ -384,8 +421,11 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
     // framework's to say (Vite refuses .env and .env.*, and answers for .envrc). So the question asked wherever a
     // file is shown is asked here too: an address that names a secrets file, or anything under .git, is passed to
     // nobody. The live site's proxy is another server's files, not this folder's, and is left alone.
-    if (kind === "preview" && !mayBeShown(decodedPath(pathname ?? "/"))) {
-      sendError(res, 403, "That file can't be shown here.", false);
+    const verdict = kind === "preview" ? addressVerdict(url) : "pass";
+
+    if (verdict !== "pass") {
+      if (verdict === "refused") sendError(res, 403, "That file can't be shown here.", false);
+      else sendError(res, 400, "That address can't be read.", false);
       return;
     }
     // Only GET/HEAD responses can be HTML we would inject into; the request
@@ -481,9 +521,11 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       return;
     }
     // The same question as for a plain request: a dev server with nothing listening for upgrades answers one as it
-    // would any request, and what comes back is piped straight through.
-    if (!mayBeShown(decodedPath((req.url ?? "/").split("?")[0] ?? "/"))) {
-      socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+    // would any request.
+    const verdict = addressVerdict(req.url ?? "/");
+
+    if (verdict !== "pass") {
+      socket.end(`HTTP/1.1 ${verdict === "refused" ? "403 Forbidden" : "400 Bad Request"}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
       return;
     }
     track(socket);
@@ -498,6 +540,7 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
 
     upstream.on("error", fail);
     socket.on("error", fail);
+    socket.on("close", () => upstream.destroy());
     upstream.on("connect", () => {
       const headers = requestHeaders(req, target, proxyOrigin, false);
       const lines = [`${req.method ?? "GET"} ${req.url ?? "/"} HTTP/${req.httpVersion}`];
@@ -510,9 +553,39 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
         for (const item of Array.isArray(value) ? value : [value]) lines.push(`${name}: ${String(item)}`);
       }
       upstream.write(`${lines.join("\r\n")}\r\n\r\n`);
-      if (head.length > 0) upstream.write(head);
-      upstream.pipe(socket);
-      socket.pipe(upstream);
+      // Only this one request has been looked at. So nothing else the client wrote, in the same packet (`head`) or
+      // after it, goes onward until the dev server has said what it made of the request: on "101" the socket is the
+      // dev server's own protocol from here, both ways. On anything else it answered as it would a plain request:
+      // that one answer goes back and both ends are closed, and a second request written on this socket reaches nobody.
+      let answer = Buffer.alloc(0);
+      const onAnswer = (chunk: Buffer) => {
+        answer = Buffer.concat([answer, chunk]);
+        const lineEnd = answer.indexOf("\r\n");
+
+        if (lineEnd === -1) {
+          if (answer.length > 8192) fail();
+          return;
+        }
+        upstream.off("data", onAnswer);
+        if (/^HTTP\/1\.[01] 101(?: |$)/.test(answer.subarray(0, lineEnd).toString("latin1"))) {
+          socket.write(answer);
+          if (head.length > 0) upstream.write(head);
+          upstream.pipe(socket);
+          socket.pipe(upstream);
+          return;
+        }
+        const done = () => {
+          upstream.destroy();
+          socket.end();
+        };
+
+        socket.write(answer);
+        upstream.on("data", (rest: Buffer) => socket.write(rest));
+        upstream.on("end", done);
+        upstream.setTimeout(NOT_UPGRADED_LINGER_MS, done);
+      };
+
+      upstream.on("data", onAnswer);
     });
   };
 

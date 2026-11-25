@@ -74,7 +74,7 @@ describe("the preview, asked for a file by its path", () => {
     expect(asked).toEqual([]);
   });
 
-  it.each(["/", "/about/", "/src/env.d.ts", "/@vite/env", "/environment", "/src/pages/index.astro?raw", "/.well-known/security.txt", "/node_modules/.vite/deps/chunk.js"])("passes %s on as before", async (path) => {
+  it.each(["/", "/about/", "/src/env.d.ts", "/@vite/env", "/environment", "/src/pages/index.astro?raw", "/.well-known/security.txt", "/node_modules/.vite/deps/chunk.js", "/caf%C3%A9/", "/100%25/", "/a%20b.html?x=%ZZ"])("passes %s on as before", async (path) => {
     asked.length = 0;
     const answer = await get(preview, path);
 
@@ -98,6 +98,55 @@ describe("the preview, asked for a file by its path", () => {
 
     expect(answer).not.toContain("TOKEN=");
     expect(answer).toMatch(/^HTTP\/1\.1 403 /);
+    expect(asked).toEqual([]);
+  });
+
+  it.each([
+    ["sent after the dev server's answer", false],
+    ["riding in the same packet as the upgrade", true],
+  ] as const)("passes on no second request on a socket the dev server didn't upgrade (%s)", async (_how, together) => {
+    asked.length = 0;
+    const first = "GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n";
+    const second = "GET /.envrc HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n";
+    const answer = await new Promise<string>((resolve, reject) => {
+      const socket = net.connect(Number(new URL(preview.url).port), "127.0.0.1");
+      let text = "";
+      let sentSecond = together;
+
+      socket.on("error", reject);
+      socket.on("data", (chunk) => {
+        text += chunk.toString();
+        if (!sentSecond) {
+          sentSecond = true;
+          socket.write(second);
+        }
+      });
+      socket.on("close", () => resolve(text));
+      socket.on("connect", () => socket.write(together ? first + second : first));
+      setTimeout(() => socket.destroy(), 4000).unref();
+    });
+
+    // The dev server answered the first as it would a plain request, and that answer came back; it was asked nothing more.
+    expect(answer).toMatch(/^HTTP\/1\.1 200 /);
+    expect(answer).toContain("TOKEN=served-for /");
+    expect(answer).not.toContain("served-for /.envrc");
+    expect(asked).toEqual(["/"]);
+  });
+
+  it.each(["/%ZZ/%2e%2e/%2eenvrc", "/%2eenv/%ZZ/..", "/%E0%A4%A/%2eenvrc", "/%"])("answers 400 for %s, an address it can't read, and passes it to nobody", async (path) => {
+    asked.length = 0;
+    const answer = await get(preview, path);
+
+    expect(answer.status).toBe(400);
+    expect(answer.text).not.toContain("TOKEN=");
+    expect(asked).toEqual([]);
+  });
+
+  it.each(["/%252eenvrc", "/%25252eenvrc", "/a/%2e%2e/.envrc", "/a/b/../../.env-production", "/x/..%2f.envrc", "//.envrc", "/.envrc/", "/%E0%A4%A/.envrc"])("passes %s to nobody, however the dev server would come to read it", async (path) => {
+    asked.length = 0;
+    const answer = await get(preview, path);
+
+    expect(answer.status).toBe(403);
     expect(asked).toEqual([]);
   });
 
