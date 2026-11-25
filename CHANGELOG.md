@@ -75,6 +75,17 @@ entry says how.
   preview still runs the site's own code: this keeps one site's preview from
   showing another program's pages, it is not a wall around what a site's own
   code may do.
+- **Search and the assistant read built pages only from inside the build
+  output.** When a site has been built, Search and the assistant read its
+  built pages to check links and to find where a text lives. A built page
+  that was a link pointing out of the build output was followed, so such a
+  read could reach a file outside that folder — a secrets file (`.env…`) or
+  one of the version history's own among them. Now each built page is
+  resolved before it is read, and one that leaves the build output, is a
+  secrets file, or sits in the repository's `.git` reaches nothing — the same
+  rule the editor's other reads already follow. The list of built pages drops
+  those links too. The content index and a collection's listing check each
+  file the same way as it is read, not only when it is listed.
 
 ## 0.4.2 — 2026-11-25
 

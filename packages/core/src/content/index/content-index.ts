@@ -299,10 +299,14 @@ class Index implements ContentIndex {
 
 async function readAll(root: string, paths: string[], handle: (path: string, raw: string, mtimeMs: number) => void): Promise<void> {
   const batch = 64;
+  // Resolve each file at the read, not only when it was listed: a path that is a link out of the site, or reaches a
+  // secrets file or .git, is not indexed even if it reached here unfiltered or was swapped since the listing.
+  const shown = shownWhereTheyAre(root);
 
   for (let start = 0; start < paths.length; start += batch) {
     await Promise.all(
       paths.slice(start, start + batch).map(async (path) => {
+        if (!shown(path)) return;
         try {
           const file = absolute(root, path);
           const info = statSync(file);
