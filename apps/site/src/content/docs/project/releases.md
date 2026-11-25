@@ -214,24 +214,31 @@ would only add a download.
    version`, and from an empty folder `npm create galley@latest` and
    `npx galley-cms --version`.
    The registry accepts `galley-cms` at once and then takes some minutes
-   over its tarball before anyone can install it (eight to ten, on 0.4.0 and
-   0.4.1). So the workflow publishes `galley-cms` under a tag of its own,
-   `incoming`, which nobody asks for; waits until the registry lists the
-   version and its tarball answers; then moves `latest` to it (`next`, for a
-   release candidate), removes `incoming`, and only then publishes
+   over its tarball before anyone can install it (eight to ten, on 0.4.0,
+   0.4.1 and 0.4.2). So the workflow publishes `galley-cms` under a tag of
+   its own, `incoming`, which nobody asks for; waits until the registry
+   lists the version and its tarball answers; then moves `latest` to it
+   (`next`, for a release candidate), and only then publishes
    `create-galley`. Without that, `npx galley-cms` and
    `npm create galley@latest` both fail for everyone for as long as the
-   registry takes.
+   registry takes. On 0.4.2, the first release done this way, `latest`
+   stayed on 0.4.1 for the 495 seconds the registry took, and moved when the
+   tarball answered.
+
+   `incoming` is left pointing at the release: the release's token may add
+   or move a tag and may not remove one (0.4.2: the removal was refused),
+   and the next release moves it. So `npm view galley-cms dist-tags` shows
+   `incoming` beside `latest`, both at the same version once a release is
+   done. That is as meant.
 
    Run again from the tag (*Dry run* off), the workflow does only what is
    left, so that is the way out of each place it can stop:
    - **The wait runs out** (20 minutes at most). `galley-cms` is on npm
      under `incoming` and nothing else has changed, which breaks nothing.
      Run it again once the tarball answers.
-   - **npm refuses to move the tag.** Moving a tag is a write to the
-     package, as publishing is, so the release's token should be enough;
-     that has not been seen on a real release yet. If it is refused, move it
-     by hand, signed in as an owner
+   - **npm refuses to move the tag.** It didn't on 0.4.2: moving a tag is a
+     write to the package, as publishing is. If it ever does, move it by
+     hand, signed in as an owner
      (`npm dist-tag add galley-cms@X.Y.Z latest`), and run the workflow
      again: it finds the tag in place and publishes `create-galley`.
    - **A release that was finished before** (`create-galley` at that
@@ -239,8 +246,10 @@ would only add a download.
      release's tag can't bring `latest` back to it.
 
    To finish wholly by hand instead: `npm dist-tag add galley-cms@X.Y.Z
-   latest`, `npm dist-tag rm galley-cms incoming`, then publish the
-   `create-galley` tarball the run attached.
+   latest`, then publish the `create-galley` tarball the run attached.
+   `create-galley` itself is listed a few minutes after it is published
+   (three and a half, on 0.4.2); until then `npm create galley@latest` gives
+   the release before, which still installs.
 8. **The container**: build from the tag, run the health check, push with the
    version and `latest` tags.
 9. **The website**: build and deploy `apps/site` (`.github/workflows/site.yml`
