@@ -22,6 +22,7 @@
 import { GalleyError } from "../errors";
 import type { MediaItem, SiteService } from "../types";
 import { checkUpload, mediaExtension } from "../workspace/media";
+import { writeRefusal } from "../workspace/policy";
 import type { MediaMovePlan, MediaMoveRequest, MediaStoreLocation } from "./contract";
 import { addressProblem, normalizePrefix, publicUrlOf } from "./info";
 import { md5Hex } from "./s3";
@@ -163,35 +164,74 @@ async function candidateFiles(site: SiteService, pattern: string): Promise<strin
 }
 
 /**
- * Where an address still appears as plain text, wherever it is (a form the
- * scan doesn't read, a template): file → how many times. A repository copy
- * with any left is never deleted.
+ * What a move to a store would leave in the repository, worked out without
+ * changing anything: the same steps the move takes, on the files' text in
+ * memory. A file stays when something that uses it won't be updated (the
+ * site's code and templates are never changed by a move), and when its
+ * address would still appear somewhere after the pages were updated (a form
+ * the move doesn't read, a file it doesn't touch). Each comes with every
+ * file that would still mention it, so the plan and the result name the same.
  */
-/**
- * The files whose address appears in some page more times than the scan
- * reads (and would rewrite) there: after the move those pages would still
- * point at the repository, so the file stays.
- */
-async function mentionedBeyond(site: SiteService, moves: Move[], references: Map<string, Reference[]>): Promise<Array<{ path: string; pages: string[] }>> {
-  const out: Array<{ path: string; pages: string[] }> = [];
+async function foresee(site: SiteService, moves: Move[], references: Map<string, Reference[]>): Promise<{ stillMentioned: Array<{ path: string; pages: string[] }>; leftAlone: string[] }> {
+  const writable = (await site.model()).writable;
+  const pattern = await repositoryPattern(site);
+  const byOld = new Map(moves.map((move) => [decodeSafe(move.oldUrl), move]));
+  const replace = repositoryReplace(byOld);
+  const files = new Set<string>();
+
+  for (const move of moves) for (const reference of references.get(move.oldUrl) ?? []) files.add(reference.path);
+  /** Each file the move would update, as it would read afterwards. */
+  const after = new Map<string, string>();
+  const leftAlone: string[] = [];
+
+  for (const path of files) {
+    if (writeRefusal(path, writable, "content")) {
+      leftAlone.push(path);
+      continue;
+    }
+    try {
+      after.set(path, rewrittenText((await site.readFile(path)).content, pattern, replace));
+    } catch {
+      // Can't be read now, so it wouldn't be updated: what it uses stays.
+    }
+  }
+  const stillMentioned: Array<{ path: string; pages: string[] }> = [];
 
   for (const move of moves) {
-    const read = new Map<string, number>();
+    const forms = plainForms(move.oldUrl);
+    const unchanged = (references.get(move.oldUrl) ?? []).map((reference) => reference.path).filter((path) => !after.has(path));
+    // A file the move doesn't update keeps every mention it has; one it updates is read as it would be afterwards.
+    const left = [...(await plainMentions(site, move.oldUrl)).keys()].filter((path) => {
+      const text = after.get(path);
 
-    for (const reference of references.get(move.oldUrl) ?? []) read.set(reference.path, (read.get(reference.path) ?? 0) + 1);
-    const pages = [...(await plainMentions(site, move.oldUrl))].filter(([path, count]) => count > (read.get(path) ?? 0)).map(([path]) => path);
+      return text === undefined || forms.some((form) => text.includes(form));
+    });
+    const pages = [...new Set([...unchanged, ...left])].sort();
 
-    if (pages.length) out.push({ path: move.from, pages });
+    if (pages.length) stillMentioned.push({ path: move.from, pages });
   }
-  return out;
+  return { stillMentioned, leftAlone: leftAlone.sort() };
+}
+
+/** For a move out of the repository: the new text for a reference to a file being moved, or null for any other. */
+function repositoryReplace(byOld: Map<string, Move>): (match: string) => string | null {
+  return (match) => {
+    const move = byOld.get(decodeSafe(trimFound(match).split(/[?#]/)[0] ?? ""));
+
+    return move ? swapped(match, move.oldUrl, move.newUrl, true) : null;
+  };
+}
+
+/** The ways an address may be written in a file: as it is, decoded, and each with JSON's escaped slashes. */
+function plainForms(url: string): string[] {
+  return [...new Set([url, decodeSafe(url), url.replace(/\//g, "\\/"), decodeSafe(url).replace(/\//g, "\\/")])];
 }
 
 async function plainMentions(site: SiteService, url: string): Promise<Map<string, number>> {
   if (!site.grepText) throw new GalleyError("internal", "This site's files can't be searched, so nothing was moved.");
-  const forms = [...new Set([url, decodeSafe(url), url.replace(/\//g, "\\/"), decodeSafe(url).replace(/\//g, "\\/")])];
   const counts = new Map<string, number>();
 
-  for (const hit of await site.grepText(forms.map((form) => escapePattern(form)).join("|"), { rev: "working" })) counts.set(hit.path, (counts.get(hit.path) ?? 0) + 1);
+  for (const hit of await site.grepText(plainForms(url).map((form) => escapePattern(form)).join("|"), { rev: "working" })) counts.set(hit.path, (counts.get(hit.path) ?? 0) + 1);
   return counts;
 }
 
@@ -237,6 +277,24 @@ async function storeReferences(site: SiteService, store: MediaStore): Promise<Ma
   return scanReferences(site, store.addressPattern(), (match) => store.keyOf(trimFound(match)));
 }
 
+/** A file's text with each reference `replace` gives a new text for changed, and nothing else touched. */
+function rewrittenText(content: string, pattern: string, replace: (match: string) => string | null): string {
+  let text = "";
+  let at = 0;
+
+  for (const { match, index, length, escapedSlashes } of referencesIn(content, pattern)) {
+    const replaced = replace(match);
+
+    if (replaced === null || replaced === match) continue;
+    // Written back the way it was written: JSON's escaped slashes stay escaped.
+    const next = escapedSlashes ? replaced.replace(/\//g, "\\/") : replaced;
+
+    text += content.slice(at, index) + next;
+    at = index + length;
+  }
+  return text + content.slice(at);
+}
+
 /**
  * Rewrites references file by file: each reference the scan finds is passed to
  * `replace`, and only those it returns a new text for change. Nothing else in
@@ -251,20 +309,8 @@ async function rewrite(site: SiteService, paths: Iterable<string>, pattern: stri
   for (const path of paths) {
     try {
       const file = await site.readFile(path);
-      let text = "";
-      let at = 0;
+      const text = rewrittenText(file.content, pattern, replace);
 
-      for (const { match, index, length, escapedSlashes } of referencesIn(file.content, pattern)) {
-        const replaced = replace(match);
-
-        if (replaced === null || replaced === match) continue;
-        // Written back the way it was written: JSON's escaped slashes stay escaped.
-        const next = escapedSlashes ? replaced.replace(/\//g, "\\/") : replaced;
-
-        text += file.content.slice(at, index) + next;
-        at = index + length;
-      }
-      text += file.content.slice(at);
       if (text !== file.content) await site.writeFile(path, text, { origin: "user", mode: "content", baseHash: file.hash });
       rewritten.add(path);
     } catch (error) {
@@ -403,7 +449,8 @@ export async function planMove(context: MoveContext, request: MediaMoveRequest):
       count += 1;
     }
   }
-  const stillMentioned = request.from === "repository" && !request.keepCopies ? await mentionedBeyond(context.site, moves, references) : [];
+  // The move's own steps, without changing anything: what the plan says stays is what will.
+  const { stillMentioned, leftAlone } = request.from === "repository" && !request.keepCopies ? await foresee(context.site, moves, references) : { stillMentioned: [], leftAlone: [] };
   return {
     kind: "move",
     from: request.from,
@@ -412,6 +459,8 @@ export async function planMove(context: MoveContext, request: MediaMoveRequest):
     bytes: moves.reduce((sum, move) => sum + move.size, 0),
     ...(request.from === "repository" && moves.some((move) => move.draft) ? { unpublished: moves.filter((move) => move.draft).length } : {}),
     ...(stillMentioned.length ? { stillMentioned } : {}),
+    ...(leftAlone.length ? { leftAlone } : {}),
+    removes: request.from === "repository" && !request.keepCopies ? moves.length - stillMentioned.length : 0,
     references: count,
     pages: pages.size,
     done,
@@ -437,7 +486,7 @@ async function planAddress(context: MoveContext, request: Extract<MediaMoveReque
       count += 1;
     }
   }
-  return { kind: "address", store: request.store, files: 0, bytes: 0, references: count, pages: pages.size, done: 0, problems: [], keepCopies: true, publicUrl: request.publicUrl.replace(/\/+$/, "") };
+  return { kind: "address", store: request.store, files: 0, bytes: 0, removes: 0, references: count, pages: pages.size, done: 0, problems: [], keepCopies: true, publicUrl: request.publicUrl.replace(/\/+$/, "") };
 }
 
 export interface MoveOutcome {
@@ -553,12 +602,9 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
   }
   const source = request.from === "repository" ? null : storeOf(context, request.from);
   const pattern = source ? source.addressPattern() : await repositoryPattern(context.site);
+  const fromRepository = repositoryReplace(byOld);
   const replace = (match: string): string | null => {
-    if (!source) {
-      const move = byOld.get(decodeSafe(trimFound(match).split(/[?#]/)[0] ?? ""));
-
-      return move ? swapped(match, move.oldUrl, move.newUrl, true) : null;
-    }
+    if (!source) return fromRepository(match);
     const key = source.keyOf(trimFound(match));
     const move = key === null ? undefined : byOld.get(key);
 
@@ -578,16 +624,14 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
       const from = referencedFrom.get(move.from) ?? new Set<string>();
       const unchanged = [...from].filter((path) => !rewritten.has(path));
 
-      // A file Galley didn't update still uses it (code or a template it leaves alone, or a page that couldn't be saved): it stays.
-      if (unchanged.length) {
-        stillMentioned.push({ path: move.from, pages: unchanged.sort() });
-        continue;
-      }
-      // After the rewrite, the old address must appear nowhere: a page still mentioning it keeps its file.
+      // After the rewrite, the old address must appear nowhere: a file Galley didn't update (code or a template it
+      // leaves alone, a page that couldn't be saved) or one that mentions it in a form the move doesn't read keeps
+      // the file. Every file that still mentions it is named, as the plan named them.
       const left = [...(await plainMentions(context.site, move.oldUrl)).keys()];
+      const pages = [...new Set([...unchanged, ...left])].sort();
 
-      if (left.length) {
-        stillMentioned.push({ path: move.from, pages: left });
+      if (pages.length) {
+        stillMentioned.push({ path: move.from, pages });
         continue;
       }
       try {

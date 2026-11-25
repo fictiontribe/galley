@@ -277,10 +277,10 @@ export function createMockMediaStorage(mock: MockBackend) {
     const state = of(siteId);
 
     if (!state.config) throw new MockError("unconfigured", "The site isn't connected to a bucket.");
-    if (request.kind === "address") return { kind: "address", store: request.store, files: 0, bytes: 0, references: 6, pages: 4, done: 0, problems: [], keepCopies: true, publicUrl: request.publicUrl.replace(/\/+$/, "") };
+    if (request.kind === "address") return { kind: "address", store: request.store, files: 0, bytes: 0, removes: 0, references: 6, pages: 4, done: 0, problems: [], keepCopies: true, publicUrl: request.publicUrl.replace(/\/+$/, "") };
     const files = request.from === "repository" ? mock.site(siteId).media() : state.bucket;
 
-    return { kind: "move", from: request.from, to: request.to, files: files.length, bytes: files.reduce((sum, item) => sum + item.size, 0), references: files.length * 2, pages: Math.max(1, Math.round(files.length / 2)), done: 0, problems: [], keepCopies: request.kind === "move" && request.from === "repository" ? Boolean(request.keepCopies) : true };
+    return { kind: "move", from: request.from, to: request.to, files: files.length, bytes: files.reduce((sum, item) => sum + item.size, 0), removes: request.from === "repository" && !request.keepCopies ? files.length : 0, references: files.length * 2, pages: Math.max(1, Math.round(files.length / 2)), done: 0, problems: [], keepCopies: request.kind === "move" && request.from === "repository" ? Boolean(request.keepCopies) : true };
   }
 
   function start(siteId: string, request: MediaMoveRequest): Job {
