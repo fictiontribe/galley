@@ -806,6 +806,8 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
       let rechecking: Promise<"serve" | "stop"> | null = null;
       let cannotTell = 0;
       let takenOver = false;
+      /** Set the moment a re-check says stop: from then on nothing is forwarded, so none of the window between the verdict and the proxy being gone reaches the program that took the port. */
+      let givingUp = false;
       // Torn down after the request that found the takeover has been answered (on the proxy's side), so that answer —
       // the error, not the other program's page — reaches the browser before the proxy's sockets close.
       const tearDownForTakeover = () => {
@@ -817,7 +819,10 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
       };
       const verifyUpstream = recheck
         ? async (): Promise<boolean> => {
-            if (stale() || status.state !== "ready" || takenOver || rechecking) return true;
+            if (givingUp) return false;
+            if (stale() || status.state !== "ready") return true;
+            // A re-check already running: wait for its verdict rather than serve on an older answer.
+            if (rechecking) return (await rechecking) !== "stop";
             if (Date.now() - confirmedAt < (options.recheckMs ?? RECHECK_MS)) return true;
             rechecking = (async (): Promise<"serve" | "stop"> => {
               const standing = await startedHere(settled.port, recheck!.group, options.root, process.pid);
@@ -838,6 +843,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
             } finally {
               rechecking = null;
             }
+            if (verdict === "stop") givingUp = true;
             return verdict !== "stop";
           }
         : undefined;

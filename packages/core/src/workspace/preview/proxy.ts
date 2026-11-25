@@ -532,7 +532,7 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
     pipeline(req, upstream, () => undefined);
   };
 
-  const handleUpgrade = (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+  const handleUpgrade = async (req: IncomingMessage, socket: Duplex, head: Buffer) => {
     if (kind !== "preview") {
       socket.destroy();
       return;
@@ -543,6 +543,13 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
 
     if (verdict !== "pass") {
       socket.end(`HTTP/1.1 ${verdict === "refused" ? "403 Forbidden" : "400 Bad Request"}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
+      return;
+    }
+    // A new upgrade (a live-update socket reconnecting, say) is checked like a request: if the port is no longer the
+    // dev server's, it is refused rather than connected to whatever took it. One already open is left as it is.
+    if (options.verifyUpstream && !(await options.verifyUpstream())) {
+      options.onTakenOver?.();
+      socket.destroy();
       return;
     }
     track(socket);
@@ -616,7 +623,7 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
 
   const handlers: ProxyHandlers = {
     request: (req, res) => void handleRequest(req, res),
-    upgrade: handleUpgrade,
+    upgrade: (req, socket, head) => void handleUpgrade(req, socket, head),
   };
 
   if (gateway) {
