@@ -320,7 +320,7 @@ app picks up changes when it restarts.
 
 ## `galley theme`
 
-New since 0.3.1, not in a release yet. Lists, checks, adds, chooses and exports the editing app's themes, kept in Galley's home (never in a site). `check` runs the app's own legibility check and exits 1 when the theme would be refused. [Themes for the editing app](/docs/plugins/themes/).
+New in 0.4.0. Lists, checks, adds, chooses and exports the editing app's themes, kept in Galley's home (never in a site). `check` runs the app's own legibility check and exits 1 when the theme would be refused. [Themes for the editing app](/docs/plugins/themes/).
 
 Its help (`--help`):
 
@@ -459,7 +459,7 @@ Examples
 
 ## `galley media`
 
-Keeps the site's new media in a bucket (Cloudflare R2 or Amazon S3), and pictures in Cloudflare Images, instead of its repository, as Media › Keep media outside the repository does in the app. `connect` asks only for what the chosen bucket needs, reads the key from the environment or asks for it with nothing shown, and saves only after a real check passes. `move` shows its plan and needs `--yes`. Not yet run against the live services by the people who built it. Details: [Media in a bucket](/docs/configuration/media-storage/).
+Keeps the site's new media in a bucket (Cloudflare R2 or Amazon S3), and pictures in Cloudflare Images, instead of its repository, as Media › Keep media outside the repository does in the app. `connect` asks only for what the chosen bucket needs, reads the key from the environment or asks for it with nothing shown, and saves only after a real check passes. `move` shows its plan and needs `--yes`. Cloudflare R2 has been run on the real service by the people who built it; Amazon S3, other S3-compatible stores and Cloudflare Images not yet. Details: [Media in a bucket](/docs/configuration/media-storage/).
 
 Its help (`--help`):
 
@@ -574,7 +574,7 @@ recipe: the files to run one install with Docker, for an operator
       --repository <address>  The site's repository
       --folder <path>         Where the site is inside it ("apps/site")
       --proxy <how>           caddy (default), shared-proxy or tunnel
-      --image <reference>     Default: ghcr.io/fictiontribe/galley:0.3.1
+      --image <reference>     Default: ghcr.io/fictiontribe/galley:0.4.0
       --setup-token-sha256 <hex>  The SHA-256 of a one-time setup code
       --out <folder|->        Write the files there (default -: print them)
 Keys

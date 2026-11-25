@@ -27,6 +27,11 @@ what is built; when something here ships, it moves to the
 - **0.3.1**: fixes. First run on a hosted editor keeps a site's folder; the
   Save bar, notifications and "Use this form" behave; pages are named the
   same way everywhere.
+- **0.4.0**: themes for the editing app (Quiet, Plate and Desk, or one you
+  make); pictures and files kept in a bucket or in Cloudflare Images instead
+  of the repository, run for real on Cloudflare R2 and against stand-ins
+  for the rest; a hosted editor that keeps up with its repository; a quieter
+  look, with one family of icons.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.

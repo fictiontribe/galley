@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.3.1 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.0 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // A real form post — the way Web-to-Lead and Account Engagement form
 // handlers expect browsers to send — either into a hidden frame (the visitor

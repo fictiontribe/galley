@@ -74,10 +74,10 @@ wide for the lockup. Never set "galley" in a font. Full rules:
 
 | Role | Light | Dark | Use |
 | --- | --- | --- | --- |
-| Paper | `#F6F1E7` | `#16140F` | App background |
-| Raised / sunken / overlay | `#FDFAF4` / `#EDE6D8` / `#FFFCF7` | `#201D17` / `#0F0D0A` / `#27231C` | Panes & inputs / wells & preview table / menus, dialogs |
+| Paper | `#F6F4F0` | `#16140F` | App and site background (the film, the social card and the specimen keep the warmer newsprint, `#F6F1E7`) |
+| Raised / sunken / overlay | `#FDFCFA` / `#EDEAE4` / `#FFFEFC` | `#201D17` / `#0F0D0A` / `#27231C` | Panes & inputs / wells & preview table / menus, dialogs |
 | Ink · secondary · tertiary | `#1A1712` · `#514A3F` · `#6B6356` | `#F2ECE1` · `#BDB3A3` · `#968C7C` | Text. All ≥ 4.5:1 on every surface. |
-| Border strong | `#857B69` | `#7A7162` | Input and control edges (≥ 3:1) |
+| Border strong | `#817A6F` | `#7A7162` | Input and control edges (≥ 3:1) |
 | **Accent — Blue Pencil** | `#2E2BFF` | `#2E2BFF` fill / `#A4A1FF` text | Primary action, current place, focus |
 | **Insert** | `#0B6E55` | `#5FD0AE` | Added — solid underline + caret ‸ |
 | **Delete** | `#B8361A` | `#FF8A6B` | Removed — strike-through + dele loop |
