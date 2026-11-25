@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { OVERLAY_SCRIPT_PATH, PROXY_HEALTH_PATH } from "../../src/api";
 import type { PreviewStatus } from "../../src/types";
-import { listenerStartedHere } from "../../src/workspace/preview/owner";
+import { listenerStartedHere, type PortStanding } from "../../src/workspace/preview/owner";
 import { createPortPool, parsePortRange, portIsFree } from "../../src/workspace/preview/ports";
 import { HELD_DETAIL, isWorkingPage, portArguments } from "../../src/workspace/preview/controller";
 import {
@@ -874,6 +874,49 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
     // The port wasn't this preview's alone, so the dev server was started again somewhere that is.
     expect(JSON.parse(readFileSync(join(root, "asked.json"), "utf8"))).toHaveLength(2);
     expect(status.log.join("\n")).toContain(`Port ${told} was taken by another program`);
+  });
+
+  it("re-checks the other address of a confirmed port, so a program that takes it later is not shown", async () => {
+    // The port is confirmed to carry only the dev server (on ::1). Then a foreign program binds 127.0.0.1 of that
+    // same number — the address the preview reaches first — in the settle gap. Keyed by the address confirmed, the
+    // preview re-checks the new address (it now finds the port shared) and starts again on another; keyed only by the
+    // port number it would trust the stale verdict and show the foreign page. The ownership check is stood in for so
+    // the window is hit squarely, not raced: it answers "own" until the foreign is up, then "shared" for that port.
+    if (!(await canListenOn("::1"))) return;
+    const root = site("otheraddr");
+    const port = await freeLoopbackPort();
+
+    writeTree(root, {
+      "two-addr-server.mjs": `
+import http from "node:http";
+const port = Number(process.argv[process.argv.indexOf("--port") + 1]);
+http.createServer((_req, res) => { res.writeHead(200, { "content-type": "text/html" }); res.end("<html><head></head><body><h1>the site</h1></body></html>"); }).listen(port, "::1");
+`,
+    });
+    let confirmedPort = false;
+    let foreignUp = false;
+    // Stands in for listenerStartedHere: the confirmed port reads "own" until the foreign binds it, then "shared".
+    // Keyed on the number so a restart's fresh port is clean. Setting confirmedPort lets the test wait for the first
+    // confirmation before it binds the foreign, so ::1 is cached before 127.0.0.1 is ever reached.
+    const startedHere = async (asking: number): Promise<PortStanding> => {
+      if (asking === port) confirmedPort = true;
+      return asking === port && foreignUp ? "shared" : "own";
+    };
+    const { controller } = controllerFor(root, { dev: { command: "node two-addr-server.mjs", port, portArgs: ["--port", "{port}"] } }, { startedHere });
+    const starting = controller.start();
+    const other = http.createServer((_req, res) => res.end("<html><head></head><body><h1>not this site</h1></body></html>"));
+
+    servers.push(other);
+    // Only once ::1:port is confirmed the preview's own — and so cached by that address — take 127.0.0.1 of that port.
+    await until(() => confirmedPort, 8000, 2);
+    await new Promise<void>((done) => other.listen(port, "127.0.0.1", () => ((foreignUp = true), done())));
+    const status = await starting;
+
+    expect(status.state, status.log.join("\n")).toBe("ready");
+    const page = await (await fetch((status.url as string) + "/")).text();
+
+    expect(page).not.toContain("not this site");
+    expect(page).toContain("<h1>the site</h1>");
   });
 
   it("gives up with a sentence that names the setting when every port it is given is shared with another program", async () => {

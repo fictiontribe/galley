@@ -249,21 +249,6 @@ export function detectPort(line: string): number | null {
   return port > 0 && port < 65536 ? port : null;
 }
 
-/**
- * The port a dev server says it listens on at a loopback or every-address URL
- * ("Local http://localhost:4322/"), not a network one ("Network
- * http://192.168.1.4:4322/"): a port the preview, which reaches the dev
- * server over loopback, can use.
- */
-export function detectLocalPort(line: string): number | null {
-  const match = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1?\]|\[::\]):(\d{2,5})/i.exec(stripAnsi(line));
-
-  if (!match) return null;
-  const port = Number(match[1]);
-
-  return port > 0 && port < 65536 ? port : null;
-}
-
 /** ["--port", "{port}"] → ["--port", "4322"]. */
 export function portArguments(template: string[], port: number): string[] {
   return template.map((arg) => arg.split("{port}").join(String(port)));
@@ -467,7 +452,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
       for (const raw of parts) {
         for (const line of expandOutputLine(raw)) {
           pushLog(line);
-          const detectedPort = detectLocalPort(line);
+          const detectedPort = detectPort(line);
           const detectedPid = detectPid(line);
 
           if (detectedPort) onPort(detectedPort);
@@ -485,16 +470,16 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
    * Waits for a dev server on one of `candidates()` to answer like a working
    * site twice, STABLE_MS apart. Returns where, or null when the attempt went
    * stale. `failed()` is checked each round so a dev server that dies is
-   * reported at once rather than at the timeout. `ours(port)`, when given, is
-   * asked before a port that answers is taken for the dev server's: it may
-   * say no, or throw to end the wait.
+   * reported at once rather than at the timeout. `ours(host, port)`, when
+   * given, is asked before the address that answered is taken for the dev
+   * server's: it may say no, or throw to end the wait.
    */
   async function waitUntilSettled(
     candidates: () => number[],
     stale: () => boolean,
     failed: () => void,
     deadline: number,
-    ours?: (port: number) => Promise<boolean>
+    ours?: (host: string, port: number) => Promise<boolean>
   ): Promise<{ host: string; port: number } | null> {
     let firstGood: { host: string; port: number; at: number } | null = null;
 
@@ -506,7 +491,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
         const reachable = await connectableHost(port);
 
         if (stale()) return null;
-        if (reachable && (await checkPage(reachable, port)) && (!ours || (await ours(port)))) {
+        if (reachable && (await checkPage(reachable, port)) && (!ours || (await ours(reachable, port)))) {
           good = { host: reachable, port };
           break;
         }
@@ -693,16 +678,22 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
           const given = explicitPort ?? (configuredPort && !configuredTaken ? configuredPort : null);
           /** When the dev server's own port was first found to answer for someone else, with the dev server neither stopping nor moving. */
           let heldByOtherSince: number | null = null;
-          /** Ports found to carry nothing but this dev server, so not checked again (a later arrival there is the "ready" takeover, out of this change). */
-          const confirmed = new Set<number>();
           /**
-           * Whether a port that answers is this dev server's, asked the first time it answers and each time after
-           * until it is found to carry nothing but the dev server: a program can take the port, or one of its
-           * addresses, at any moment before then. The site's settings can turn the check off (`dev.trustPort`) for
-           * a dev command that runs its server where the system can't show it as the dev server's own, a container.
+           * Addresses (`host:port`) found to carry nothing but this dev server, so not checked again. Keyed by the
+           * address that answered, not the port number: the only way another program's listener is ever reached is
+           * at an address the probe prefers over the dev server's, and that is a different address, so it is a key
+           * that hasn't been confirmed and is checked. A program taking the confirmed address itself afterwards is
+           * the "ready" takeover, out of this change.
            */
-          const ours = async (port: number): Promise<boolean> => {
-            if (spawned.pid === undefined || settings.dev!.trustPort || confirmed.has(port)) return true;
+          const confirmed = new Set<string>();
+          /**
+           * Whether the address that answered is this dev server's, asked the first time that address answers and
+           * each time after until it is found to carry nothing but the dev server: a program can take the port, or
+           * one of its addresses, at any moment before then. The site's settings can turn the check off
+           * (`dev.trustPort`) for a dev command that runs its server where the system can't show it as its own.
+           */
+          const ours = async (host: string, port: number): Promise<boolean> => {
+            if (spawned.pid === undefined || settings.dev!.trustPort || confirmed.has(`${host}:${port}`)) return true;
             if (backgrounded && port === announced) return true;
             const standing = await startedHere(port, spawned.pid, options.root, process.pid);
 
@@ -717,7 +708,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
               return false;
             }
             heldByOtherSince = null;
-            if (standing === "own") confirmed.add(port);
+            if (standing === "own") confirmed.add(`${host}:${port}`);
             else if (!uncheckable.has(port)) {
               // "unknown": nothing here can say whose the listeners are. Not remembered, so it is said once and no more.
               uncheckable.add(port);
