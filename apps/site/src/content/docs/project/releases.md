@@ -213,16 +213,22 @@ would only add a download.
 7. **Check npm**: `npm view galley-cms version`, `npm view create-galley
    version`, and from an empty folder `npm create galley@latest` and
    `npx galley-cms --version`.
-   The workflow publishes `galley-cms`, then waits until its tarball answers
-   from the registry before it publishes `create-galley`. The registry
-   accepts `galley-cms` at once and takes some minutes over the tarball
-   (eight to ten, on 0.4.0 and 0.4.1); a `create-galley` published in that
-   window asks for a `galley-cms` nobody can install yet, and
-   `npm create galley@latest` fails for everyone until it can. The wait is 20
-   minutes at most. If it runs out, the workflow stops with `galley-cms`
-   published and `create-galley` not, which breaks nothing: run it again
-   from the tag (*Dry run* off) once the tarball answers, and it publishes
-   only what is missing.
+   The registry accepts `galley-cms` at once and then takes some minutes
+   over its tarball before anyone can install it (eight to ten, on 0.4.0 and
+   0.4.1). So the workflow publishes `galley-cms` under a tag of its own,
+   `incoming`, which nobody asks for; waits until the registry lists the
+   version and its tarball answers; then moves `latest` to it (`next`, for a
+   release candidate), removes `incoming`, and only then publishes
+   `create-galley`. Without that, `npx galley-cms` and
+   `npm create galley@latest` both fail for everyone for as long as the
+   registry takes. The wait is 20 minutes at most. If it runs out, the
+   workflow stops with `galley-cms` on npm under `incoming` and nothing
+   else changed, which breaks nothing: run it again from the tag (*Dry run*
+   off) once the tarball answers, and it does what is left. To finish by
+   hand instead: `npm dist-tag add galley-cms@X.Y.Z latest`,
+   `npm dist-tag rm galley-cms incoming`, then publish the `create-galley`
+   tarball the run attached. The token needs nothing more for the tags than
+   it needs to publish.
 8. **The container**: build from the tag, run the health check, push with the
    version and `latest` tags.
 9. **The website**: build and deploy `apps/site` (`.github/workflows/site.yml`
