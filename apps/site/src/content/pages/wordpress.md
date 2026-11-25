@@ -123,6 +123,22 @@ sections:
           kind: screen
           src: proof-changes
           alt: The proof of a page, old words struck out and new ones written in.
+  - type: faq
+    id: questions
+    heading: Questions people ask.
+    items:
+      - q: What is a good alternative to WordPress?
+        a: "For a site that is mostly pages and posts, a static site with a Git-based CMS: the pages are built ahead of time and served as files, and the words live in your own repository. Galley is one, and moves the posts, pages, images and SEO details for you. If you need a shop, memberships or comments, WordPress or a dedicated platform may still be the better fit. [The three kinds of CMS](/compare/types-of-cms/)."
+      - q: Can I keep editing the site myself after I leave WordPress?
+        a: "Yes. In Galley you change a page in a form, by retyping words on the page, or by asking the assistant, and every change waits in Proof beside the live site until someone presses Publish. Publishing is a commit to your own repository, and any publish can be undone."
+      - q: What happens to my search rankings when I move?
+        a: "Nobody can promise rankings, but the move keeps what search engines read: descriptions come across, SEO titles and canonical addresses go into the site's own fields when it has them, and the report lists the old addresses that need redirects, which you review on the Redirects screen before anything goes live."
+      - q: Can I use WordPress as a headless CMS instead?
+        a: "You can. WordPress has a REST API, so a separate front end can read its content. You still run WordPress, its database and its updates behind that front end, which is the upkeep most people leaving want to be rid of. [Traditional, headless and Git-based, explained](/compare/types-of-cms/)."
+      - q: Is a static site safer than WordPress?
+        a: "There is less on the live site to attack and to patch: no database and no login page, because the pages are files built ahead of time. WordPress needs its core, theme and plugin updates kept up. A static site still needs a careful host and careful people; it is not a wall against someone determined."
+      - q: How much does the move cost?
+        a: "Galley is free and open-source, and the guided move is part of it. Static hosting is often free or cheap. Rebuilding page-builder pages with the assistant uses your own AI key, billed to you by its provider. The guided move is new and still in final checks."
   - type: close
     id: honest
     heading: Galley is new.
