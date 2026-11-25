@@ -1373,6 +1373,15 @@ export type ServerEvent =
    */
   | { type: "stream.limit"; message: string }
   /**
+   * An event of an extension's own, where a program that embeds the server
+   * added one (server extensions/). `source` is the extension's id, filled
+   * in by the server; `name` one of the names it declared, or
+   * "stream.refused" from the server itself (the extension didn't take the
+   * value this stream carried for it: `payload` is `{ code, message }`,
+   * `siteId` empty). These five keys are permanent.
+   */
+  | { type: "extension"; source: string; name: string; siteId: string; payload: unknown }
+  /**
    * The form inbox changed: a submission arrived ("added", with the
    * submission), was marked read/spam or got a forwarding result ("updated"),
    * or was deleted ("deleted").

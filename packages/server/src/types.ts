@@ -131,7 +131,7 @@ export interface AppOptions {
    * What an embedding program added (extensions/), already started: their
    * routes are mounted under `/api/x/`. Hosted mode needs accounts for it.
    */
-  extensions?: { list: import("./extensions/run").StartedExtension[]; desk: import("./extensions/people").PeopleDesk | null };
+  extensions?: { runtime: import("./extensions/run").StartedExtensions; desk: import("./extensions/people").PeopleDesk | null };
 }
 
 /** Keeps track of open event streams so shutdown can end them, and of how many each identity has open where that is limited. */

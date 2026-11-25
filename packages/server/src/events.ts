@@ -83,6 +83,18 @@ export interface StreamLimits {
   sweepEveryMs?: number;
 }
 
+/**
+ * What else one window's stream is handed: told once the stream really
+ * opens (never for one that is told its identity has too many), and what to
+ * send that window alone straight afterwards.
+ */
+export interface StreamHooks {
+  /** `close` ends this stream. What is returned runs once when the stream ends, however it ends. */
+  opened(close: () => void): () => void;
+  /** Events for this window alone, sent as they are: no filter is asked. */
+  first(): ServerEvent[];
+}
+
 const STREAM_HEADERS = {
   "content-type": "text/event-stream; charset=utf-8",
   "cache-control": "no-cache, no-transform",
@@ -109,7 +121,7 @@ function limitStream(message: string): Response {
  * reading: what is kept for one reader is bounded, and so is how many
  * streams one identity may hold open.
  */
-export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, heartbeatMs = HEARTBEAT_MS, access?: StreamAccess, limits: StreamLimits = {}): Response {
+export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, heartbeatMs = HEARTBEAT_MS, access?: StreamAccess, limits: StreamLimits = {}, hooks?: StreamHooks): Response {
   const max = limits.maxStreams ?? MAX_STREAMS_PER_ACCOUNT;
   const bound = limits.maxQueuedBytes ?? MAX_QUEUED_BYTES;
 
@@ -168,6 +180,7 @@ export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, 
       }, heartbeatMs);
       const onAbort = () => finish();
       let unregister: () => void = () => {};
+      let ended: (() => void) | undefined;
 
       function finish(): void {
         if (closed) return;
@@ -176,6 +189,7 @@ export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, 
         unsubscribe();
         unwatch();
         unregister();
+        ended?.();
         c.req.raw.signal?.removeEventListener("abort", onAbort);
         try {
           controller.close();
@@ -189,6 +203,11 @@ export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, 
       c.req.raw.signal?.addEventListener("abort", onAbort);
       // One chunk, so the very first read a client makes already holds the hello.
       send(`retry: 3000\ndata: ${JSON.stringify({ type: "hello", version: VERSION } satisfies ServerEvent)}\n\n`);
+      // The stream is open: whoever needs to know is told now (never for one that was told there are too many), and once more when it ends.
+      if (hooks && !closed) {
+        ended = hooks.opened(finish);
+        for (const event of hooks.first()) send(`data: ${JSON.stringify(event)}\n\n`);
+      }
     },
     cancel() {
       cleanup?.();

@@ -47,9 +47,13 @@ export interface ServerExtension {
 export interface ExtensionParts {
   /** By `"<METHOD> /path"`, relative to the extension: `"GET /sites/:siteId"` is served at `/api/x/<id>/sites/:siteId`. */
   routes?: Record<string, ExtensionRoute<any>>;
+  /** The events it may emit, by name (lower-case words joined by dots), each with who is sent it. */
+  events?: Record<string, ExtensionEventRule<any>>;
   /**
-   * Runs when the server stops, before the data folder is let go, and when a
-   * start ends after this extension's setup had finished. May take a few
+   * Runs when the server stops, before the data folder is let go; before a
+   * backup is put back (the data folder is replaced under the server, and
+   * `setup` is called again afterwards with a new host); and when a start
+   * ends after this extension's setup had finished. May take a few
    * seconds; not more. After it, what the extension was handed does nothing:
    * its host, every site it holds, and a controller it took from one.
    */
@@ -100,6 +104,50 @@ export interface ExtensionRequest<B> {
   signal: AbortSignal;
 }
 
+export interface ExtensionEventRule<P = JsonValue> {
+  /** The least a reader's role must have to be sent it at all. Required. */
+  level: ExtensionAccess;
+  /**
+   * What this reader is sent, or null for nothing. Called only for readers
+   * who have `level` (so it can narrow, never widen), with the reader as they
+   * are at that event and a copy of the payload that is this reader's alone.
+   * It answers at once: a promise is refused and nothing is sent. Absent:
+   * the payload as it is.
+   */
+  for?(payload: P, reader: ExtensionCaller): JsonValue | null;
+}
+
+/** A browser window's stream that named this extension when it opened. */
+export interface ExtensionStream {
+  caller: ExtensionCaller;
+  /**
+   * What the window sent for this extension: 1 to 128 of `A-Z a-z 0-9 . _ ~ -`.
+   * Untrusted: any signed-in browser chooses it, and a proxy in front writes
+   * it to its log, so it must not be a secret.
+   */
+  value: string;
+}
+
+export interface ExtensionEvents {
+  /**
+   * Sends an event to every open window whose reader its rule allows.
+   * `name` is one this extension declared; `siteId` a site it has been
+   * handed; `payload` JSON of at most 64 KB. Otherwise it throws, here. An
+   * extension may emit 50 a second: past that they are dropped and counted
+   * in the log. Not before `setup` has returned.
+   */
+  emit(name: string, siteId: string, payload: JsonValue): void;
+  /**
+   * Called when a window's stream opens carrying a value for this extension
+   * (`/api/events?x-<id>=<value>`): the sign that the window is there.
+   * What the listener returns runs once when that stream ends, however it
+   * ends; it is not called once the extension has been stopped. Throwing refuses the value, never the stream: the
+   * stream opens as usual and the window is sent `stream.refused` with the
+   * error's code and message. Both answer at once: a promise is refused.
+   */
+  onStream(listener: (stream: ExtensionStream) => (() => void) | void): void;
+}
+
 export type ExtensionCaller =
   | { kind: "person"; account: string; role: AccountRole; name: string; session: SessionRef }
   /** The operator's access token. */
@@ -132,6 +180,7 @@ export interface ExtensionPeople {
 }
 
 export interface ExtensionHost {
+  events: ExtensionEvents;
   /** Null where there are no accounts (local mode, the desktop app). */
   people: ExtensionPeople | null;
   sites: { get(siteId: string): Promise<GuardedSite | null> };

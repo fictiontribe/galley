@@ -448,8 +448,19 @@ mounted after the built-in routes behind the same guards plus two of its own
 method; no path in a part of the address). Its handler is handed a narrowed
 request and a guarded site, never the framework's request. An extension is
 its author's code with the server's permissions, not a sandbox; the built-in
-route table and its levels stay closed. See `packages/server/src/extensions/`
-and the docs page *Embedding the editor*.
+route table and its levels stay closed.
+
+An extension can also send events on the live stream. One member of
+`ServerEvent` carries them all (`{ type: "extension", source, name, siteId,
+payload }`), and they are the only events with a level: each window's
+stream asks, per event, whether its reader's role has the level now, and
+then the event's own rule for what that reader is sent. A stream opened
+with a value for an extension (`?x-<id>=<value>`) tells it that a window is
+there and when it has gone; it can refuse the value, never the stream.
+Because a restore replaces the data folder under a running server,
+extensions are stopped before one and started again after it, and each
+request finds the extension that is running at that moment. See
+`packages/server/src/extensions/` and the docs page *Embedding the editor*.
 
 ### MCP (`@galley/mcp`)
 

@@ -14,11 +14,13 @@ import { join } from "node:path";
 import { Hono } from "hono";
 import { outsideAnyPerson } from "@galley/core/install";
 import { withoutSiteScope } from "@galley/core/site";
-import { checkExtensions, declaredRoutes, ExtensionError, type DeclaredRoute } from "./declare";
+import { GalleyError, isGalleyError } from "@galley/core";
+import type { ServerEvent, SiteService } from "@galley/core/types";
+import { checkExtensions, declaredEvents, declaredRoutes, EXTENSION_EVENT_BYTES, EXTENSION_EVENTS_A_SECOND, ExtensionError, type DeclaredRoute } from "./declare";
+import { isJson, jsonBytes } from "./json";
 import type { PeopleDesk } from "./people";
 import { guardSite, insideGet } from "./site";
-import type { ExtensionHost, ExtensionParts, ExtensionPeople, GuardedSite, ServerExtension } from "./types";
-import type { SiteService } from "@galley/core/types";
+import type { ExtensionCaller, ExtensionEventRule, ExtensionEvents, ExtensionHost, ExtensionParts, ExtensionPeople, ExtensionStream, GuardedSite, JsonValue, ServerExtension } from "./types";
 
 /** How long an extension's setup may take. */
 export const EXTENSION_SETUP_MS = 30_000;
@@ -37,14 +39,55 @@ export interface StartedExtension {
   say(line: string): void;
   /** False once it has been stopped: every site it was handed refuses from then on. */
   alive(): boolean;
+  /** Notes that it has been handed this site: it may send events about it from then on. */
+  handed(siteId: string): void;
+  /** The rule for one of its events; undefined for a name it didn't declare. */
+  rule(name: string): ExtensionEventRule<unknown> | undefined;
+  /** What one reader is sent of an event: the payload as its rule shapes it for them, or null for nothing. */
+  shape(name: string, payload: unknown, reader: ExtensionCaller): { payload: JsonValue } | null;
+  /**
+   * A window's stream opened carrying a value for it. `refused`: its listener
+   * didn't take the value (the stream opens all the same). `ended` runs what
+   * its listeners handed back, once.
+   */
+  streamOpened(stream: ExtensionStream): { refused: { code: string; message: string } | null; ended(): void };
 }
 
 export interface StartedExtensions {
-  list: StartedExtension[];
+  /** The ids the server was started with, running now or not. */
+  readonly ids: readonly string[];
+  /** The ones running now. After `restart` these are new ones: ask again, don't keep one. */
+  readonly list: readonly StartedExtension[];
+  find(id: string): StartedExtension | undefined;
   /** Every environment variable the extensions named as secret. */
   secretEnv: string[];
-  /** Stops them all, each given its few seconds, and leaves what each was handed doing nothing: its host, every site it holds, a controller it took from one. Safe to call twice. */
+  /**
+   * A window's stream opened carrying a value for the extension `id`. Its
+   * listeners are told, when it is running. `close` ends that stream, for
+   * `endStreams`. `ended` is for when the stream ends.
+   */
+  streamOpened(id: string, stream: ExtensionStream, close: () => void): { refused: { code: string; message: string } | null; ended(): void };
+  /**
+   * Stops them all for good, each given its few seconds, and leaves what each
+   * was handed doing nothing: its host, every site it holds, a controller it
+   * took from one. Nothing is started after it, a `restart` still under way
+   * included. Safe to call twice.
+   */
   stop(): Promise<void>;
+  /** Stops them the same way until `restart`: for while the data folder is replaced under the server. */
+  stopForNow(): Promise<void>;
+  /**
+   * Stops whatever runs and starts them all again, each with a new host. One
+   * that can't start again is said in the log and left stopped; the others
+   * run. Resolves with the ids of those that couldn't start. The windows
+   * that were there are not known to the ones running now: `endStreams`.
+   */
+  restart(): Promise<string[]>;
+  /**
+   * Ends every open stream that carried a value for an extension. Each
+   * window opens another by itself, and the extension that runs now is told.
+   */
+  endStreams(): void;
 }
 
 export interface StartOptions {
@@ -55,9 +98,16 @@ export interface StartOptions {
   /** Null where there are no accounts. */
   desk: PeopleDesk | null;
   site(siteId: string): Promise<SiteService | null>;
+  /** Puts an event on the server's stream, for every open window's own filter to decide on. Absent: events go nowhere. */
+  emit?(event: ServerEvent): void;
+  /** A hosted install's one site, when it has one: an extension may send events about it without having asked for it first. */
+  siteId?(): string | null;
   setupMs?: number;
   stopMs?: number;
 }
+
+/** What is said about one kind of failure at most this often: a rule that fails does so for every reader of every event. */
+export const SAID_EVERY_MS = 60_000;
 
 /** Runs `run` outside any person and any site. */
 export function outside<T>(run: () => T): T {
@@ -149,10 +199,25 @@ export async function assertRouter(): Promise<void> {
 }
 
 export async function startExtensions(extensions: readonly ServerExtension[], options: StartOptions): Promise<StartedExtensions> {
+  type Running = StartedExtension & { parts: ExtensionParts; end(): void };
+
   checkExtensions(extensions);
   await assertRouter();
-  const started: Array<StartedExtension & { parts: ExtensionParts; end(): void }> = [];
-  let stopped = false;
+  let started: Running[] = [];
+  /** Stopped for good: nothing more is started. */
+  let over = false;
+  /** The setup under way, to be told when the server stops under it. */
+  let starting: AbortController | null = null;
+  /** Stopping and starting again never overlap: each waits for the one before. */
+  let turn: Promise<unknown> = Promise.resolve();
+  /** How to end each open stream that carried a value for an extension. */
+  const openStreams = new Set<() => void>();
+  const inTurn = <T>(work: () => Promise<T>): Promise<T> => {
+    const mine = turn.then(work, work);
+
+    turn = mine.catch(() => undefined);
+    return mine;
+  };
 
   const stopOne = async (extension: { id: string; say(line: string): void; parts: ExtensionParts; end(): void }) => {
     if (typeof extension.parts.stop === "function") {
@@ -165,88 +230,257 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
     // From here on what it was handed does nothing, the sites it holds included: the data folder may be another server's the next moment.
     extension.end();
   };
-  const stop = async () => {
-    if (stopped) return;
-    stopped = true;
-    for (const extension of [...started].reverse()) await stopOne(extension);
+  const stopAll = async () => {
+    const running = started;
+
+    started = [];
+    for (const extension of [...running].reverse()) await stopOne(extension);
+  };
+  const stop = () => {
+    over = true;
+    starting?.abort();
+    return inTurn(stopAll);
   };
 
-  try {
-    for (const extension of extensions) {
-      const { id } = extension;
-      const scrub = scrubberFor(extension.secrets ?? [], options.env, process.env);
-      const stateDir = join(options.home, "extensions", id);
-      const abort = new AbortController();
-      const listening: Array<() => void> = [];
-      let live = true;
-      const say = (line: string) => {
-        if (live) options.log(`[${id}] ${scrub(oneLine(line))}`);
-      };
-      const alive = () => live;
-      const end = () => {
-        live = false;
-        abort.abort();
-        for (const unlisten of listening.splice(0)) unlisten();
-      };
-      const desk = options.desk;
-      const people: ExtensionPeople | null = desk
-        ? Object.freeze({
-            name: (account: string) => (live ? desk.name(account) : null),
-            counts: (session: Parameters<ExtensionPeople["counts"]>[0]) => live && desk.counts(session),
-            onChange(listener: () => void) {
-              if (!live) return () => undefined;
-              const unlisten = desk.onChanged(() => void callNow(say, "a people listener", listener));
+  async function startOne(extension: ServerExtension): Promise<Running> {
+    const { id } = extension;
+    const scrub = scrubberFor(extension.secrets ?? [], options.env, process.env);
+    const stateDir = join(options.home, "extensions", id);
+    const abort = new AbortController();
+    const listening: Array<() => void> = [];
+    const streamListeners: Array<(stream: ExtensionStream) => (() => void) | void> = [];
+    const handedSites = new Set<string>();
+    const saidAt = new Map<string, number>();
+    let rules: Map<string, ExtensionEventRule<unknown>> | null = null;
+    let live = true;
+    const emitted = { second: 0, count: 0, dropped: 0 };
+    let droppedTimer: ReturnType<typeof setTimeout> | null = null;
+    let droppedSaidAt = -Infinity;
+    const say = (line: string) => {
+      if (live) options.log(`[${id}] ${scrub(oneLine(line))}`);
+    };
+    /** The same, at most once a minute for each kind of thing said. */
+    const sayNowAndThen = (kind: string, line: string) => {
+      const now = Date.now();
 
-              listening.push(unlisten);
-              return unlisten;
-            },
-          })
-        : null;
+      if (now - (saidAt.get(kind) ?? -Infinity) < SAID_EVERY_MS) return;
+      saidAt.set(kind, now);
+      say(line);
+    };
+    /** How many events were dropped since this was last said: a second after the first of them, and at most once a minute. */
+    const sayDropped = () => {
+      droppedTimer = null;
+      if (!live || emitted.dropped === 0) return;
+      droppedSaidAt = Date.now();
+      say(`it sent more than ${EXTENSION_EVENTS_A_SECOND} events in a second: ${emitted.dropped} ${emitted.dropped === 1 ? "was" : "were"} dropped.`);
+      emitted.dropped = 0;
+    };
+    const alive = () => live;
+    const end = () => {
+      live = false;
+      abort.abort();
+      if (droppedTimer) clearTimeout(droppedTimer);
+      for (const unlisten of listening.splice(0)) unlisten();
+      streamListeners.length = 0;
+    };
+    const desk = options.desk;
+    const people: ExtensionPeople | null = desk
+      ? Object.freeze({
+          name: (account: string) => (live ? desk.name(account) : null),
+          counts: (session: Parameters<ExtensionPeople["counts"]>[0]) => live && desk.counts(session),
+          onChange(listener: () => void) {
+            if (!live) return () => undefined;
+            const unlisten = desk.onChanged(() => void callNow(say, "a people listener", listener));
 
-      await mkdir(stateDir, { recursive: true, mode: 0o700 });
-      await chmod(stateDir, 0o700);
-      const host: ExtensionHost = Object.freeze({
-        people,
-        sites: Object.freeze({
-          async get(siteId: string): Promise<GuardedSite | null> {
-            const site = live && typeof siteId === "string" ? await options.site(siteId) : null;
-
-            // Asked from inside a GET's handler, the site is as read-only as the one the handler was handed.
-            return site && live ? guardSite(site, { readOnly: insideGet(), alive }) : null;
+            listening.push(unlisten);
+            return unlisten;
           },
-        }),
-        outside,
-        stateDir,
-        log: say,
-        mode: options.mode,
-      });
-      let parts: ExtensionParts;
+        })
+      : null;
+    const events: ExtensionEvents = Object.freeze({
+      emit(name: string, siteId: string, payload: JsonValue) {
+        if (!live) throw new GalleyError("forbidden", "This extension has been stopped, so it can no longer send events.");
+        if (rules === null) throw new GalleyError("invalid", "An event can be sent once setup has returned: that is when the server learns which events there are.");
+        if (!rules.has(name)) throw new GalleyError("invalid", `“${oneLine(String(name)).slice(0, 80)}” isn't an event this extension declared.`);
+        if (typeof siteId !== "string" || !(handedSites.has(siteId) || options.siteId?.() === siteId)) throw new GalleyError("invalid", "An event is about a site this extension has been handed. Ask for the site first.");
+        if (!isJson(payload) || jsonBytes(payload) > EXTENSION_EVENT_BYTES) throw new GalleyError("invalid", "An event's payload is JSON of at most 64 KB.");
+        const second = Math.floor(Date.now() / 1000);
 
-      try {
-        parts = await timeLimit(Promise.resolve(outside(() => extension.setup(host, { signal: abort.signal }))), within(options.setupMs, EXTENSION_SETUP_MS), () => new Error("it didn't finish starting in time"));
-      } catch (error) {
-        end();
-        if (error instanceof ExtensionError) throw error;
-        throw new ExtensionError(`Extension “${id}” couldn't start: ${scrub(oneLine(error instanceof Error ? error.message : String(error)))}`);
-      }
-      if (typeof parts !== "object" || parts === null) {
-        end();
-        throw new ExtensionError(`Extension “${id}” couldn't start: its setup returned nothing.`);
-      }
-      let routes: DeclaredRoute[];
+        if (second !== emitted.second) {
+          emitted.second = second;
+          emitted.count = 0;
+        }
+        if ((emitted.count += 1) > EXTENSION_EVENTS_A_SECOND) {
+          // Each window may hold only so much it hasn't read: an extension that is busy must not be able to empty them all.
+          emitted.dropped += 1;
+          if (!droppedTimer) {
+            droppedTimer = setTimeout(sayDropped, Math.max(1000, droppedSaidAt + SAID_EVERY_MS - Date.now()));
+            droppedTimer.unref?.();
+          }
+          return;
+        }
+        // A copy: what the extension does to its own object afterwards changes nothing that is on its way.
+        const event: ServerEvent = { type: "extension", source: id, name, siteId, payload: structuredClone(payload) };
 
-      try {
-        routes = declaredRoutes(id, parts);
-      } catch (error) {
-        // Its setup ran: whatever that started is stopped like any other's, before what it was handed goes dead.
-        await stopOne({ id, say, parts, end });
-        throw error;
-      }
-      started.push({ id, routes, scrub, say, alive, parts, end });
+        outside(() => options.emit?.(event));
+      },
+      onStream(listener: (stream: ExtensionStream) => (() => void) | void) {
+        if (live && typeof listener === "function") streamListeners.push(listener);
+      },
+    });
+
+    await mkdir(stateDir, { recursive: true, mode: 0o700 });
+    await chmod(stateDir, 0o700);
+    const host: ExtensionHost = Object.freeze({
+      events,
+      people,
+      sites: Object.freeze({
+        async get(siteId: string): Promise<GuardedSite | null> {
+          const site = live && typeof siteId === "string" ? await options.site(siteId) : null;
+
+          if (!site || !live) return null;
+          handedSites.add(site.id);
+          // Asked from inside a GET's handler, the site is as read-only as the one the handler was handed.
+          return guardSite(site, { readOnly: insideGet(), alive });
+        },
+      }),
+      outside,
+      stateDir,
+      log: say,
+      mode: options.mode,
+    });
+    let parts: ExtensionParts;
+
+    starting = abort;
+    try {
+      parts = await timeLimit(Promise.resolve(outside(() => extension.setup(host, { signal: abort.signal }))), within(options.setupMs, EXTENSION_SETUP_MS), () => new Error("it didn't finish starting in time"));
+    } catch (error) {
+      end();
+      if (error instanceof ExtensionError) throw error;
+      throw new ExtensionError(`Extension “${id}” couldn't start: ${scrub(oneLine(error instanceof Error ? error.message : String(error)))}`);
+    } finally {
+      if (starting === abort) starting = null;
     }
+    if (typeof parts !== "object" || parts === null) {
+      end();
+      throw new ExtensionError(`Extension “${id}” couldn't start: its setup returned nothing.`);
+    }
+    let routes: DeclaredRoute[];
+
+    try {
+      routes = declaredRoutes(id, parts);
+      rules = declaredEvents(id, parts);
+    } catch (error) {
+      // Its setup ran: whatever that started is stopped like any other's, before what it was handed goes dead.
+      await stopOne({ id, say, parts, end });
+      throw error;
+    }
+    const declared = rules;
+
+    return {
+      id,
+      routes,
+      scrub,
+      say,
+      alive,
+      parts,
+      end,
+      handed: (siteId) => void handedSites.add(siteId),
+      rule: (name) => (live ? declared.get(name) : undefined),
+      shape(name, payload, reader) {
+        const rule = live ? declared.get(name) : undefined;
+
+        if (!rule) return null;
+        if (!rule.for) return { payload: payload as JsonValue };
+        // This reader's own copy: what one rule does to it is not what the next reader's rule is given.
+        const answer = callNow((line) => sayNowAndThen(`rule ${name}`, line), `the rule for “${name}”`, () => rule.for!(structuredClone(payload), reader));
+
+        if (!answer.ok || answer.value === null) return null;
+        if (!isJson(answer.value) || jsonBytes(answer.value) > EXTENSION_EVENT_BYTES) {
+          sayNowAndThen(`shape ${name}`, `the rule for “${name}” answered with something that isn't JSON of at most 64 KB, so nothing was sent to that reader.`);
+          return null;
+        }
+        return { payload: answer.value };
+      },
+      streamOpened(stream) {
+        const ends: Array<() => void> = [];
+        const ended = () => {
+          // Stopped since: its stop was the end of everything it kept, and nothing of it is called after that.
+          if (!live) return void ends.splice(0);
+          for (const end_ of ends.splice(0)) void callNow(say, "what a stream listener handed back", end_);
+        };
+
+        for (const listener of [...streamListeners]) {
+          try {
+            const answer = outside(() => listener(stream));
+
+            if (thenable(answer)) {
+              Promise.resolve(answer).catch((error: unknown) => say(`a stream listener failed later: ${error instanceof Error ? error.message : String(error)}`));
+              say("a stream listener answered with a promise. It has to answer at once, so its answer was not used.");
+            } else if (typeof answer === "function") ends.push(answer);
+          } catch (error) {
+            // It didn't take the value. The stream itself is not its to refuse: the window is told, and nothing else changes.
+            ended();
+            if (isGalleyError(error)) return { refused: { code: error.code, message: scrub(error.message) }, ended: () => undefined };
+            say(`a stream listener failed: ${error instanceof Error ? error.message : String(error)}`);
+            return { refused: { code: "internal", message: "That couldn't be taken because of an unexpected problem." }, ended: () => undefined };
+          }
+        }
+        return { refused: null, ended };
+      },
+    };
+  }
+
+  try {
+    for (const extension of extensions) started.push(await startOne(extension));
   } catch (error) {
     await stop();
     throw error;
   }
-  return { list: started, secretEnv: [...new Set(extensions.flatMap((extension) => [...(extension.secrets ?? [])]))], stop };
+  const find = (id: string) => started.find((extension) => extension.id === id);
+
+  return {
+    ids: extensions.map((extension) => extension.id),
+    get list() {
+      return started;
+    },
+    find,
+    secretEnv: [...new Set(extensions.flatMap((extension) => [...(extension.secrets ?? [])]))],
+    streamOpened(id, stream, close) {
+      // Kept whether or not it is running or took the value: the one started next is told when the window's new stream opens.
+      openStreams.add(close);
+      const outcome = find(id)?.streamOpened(stream) ?? { refused: null, ended: () => undefined };
+
+      return {
+        refused: outcome.refused,
+        ended() {
+          openStreams.delete(close);
+          outcome.ended();
+        },
+      };
+    },
+    stop,
+    stopForNow: () => inTurn(stopAll),
+    restart: () =>
+      inTurn(async () => {
+        const failed: string[] = [];
+
+        await stopAll();
+        for (const extension of extensions) {
+          // The server is stopping: nothing more is started.
+          if (over) break;
+          try {
+            started.push(await startOne(extension));
+          } catch (error) {
+            failed.push(extension.id);
+            options.log(`${oneLine(error instanceof Error ? error.message : String(error)).replace(/[.]$/, "")}. It was stopped and couldn't be started again: its routes answer that it isn't running until the server is restarted.`);
+          }
+        }
+        return failed;
+      }),
+    endStreams() {
+      for (const close of [...openStreams]) close();
+      openStreams.clear();
+    },
+  };
 }
