@@ -58,7 +58,7 @@ galley import wordpress https://old.example.com ./site --posts-into journal --wr
   starters: `The starters \`galley new --starter\` accepts, with their looks.`,
   mcp: `Lets an AI tool work on a site with the same tools as Galley's own assistant. The tool starts \`galley mcp\` itself; \`galley mcp config --client <name>\` prints what to paste into its settings. Every tool and setup per client: [Galley over MCP](/docs/integrations/mcp/).`,
   plugin: `Adds and switches plugins for every site this Galley opens. Adding one runs \`npm\` with \`--ignore-scripts\` into Galley's home. [Plugins](/docs/plugins/).`,
-  theme: `New since 0.3.1, not in a release yet. Lists, checks, adds, chooses and exports the editing app's themes, kept in Galley's home (never in a site). \`check\` runs the app's own legibility check and exits 1 when the theme would be refused. [Themes for the editing app](/docs/plugins/themes/).`,
+  theme: `New in 0.4.0. Lists, checks, adds, chooses and exports the editing app's themes, kept in Galley's home (never in a site). \`check\` runs the app's own legibility check and exits 1 when the theme would be refused. [Themes for the editing app](/docs/plugins/themes/).`,
   schema: `Prints the JSON Schema that \`galley.config.json\` is checked against. The address it names is where the schema will be published; until the site serves it, point \`$schema\` at a local copy (\`galley schema > galley.schema.json\`).`,
   version: `\`galley --version\` and \`galley -v\` print the same.
 

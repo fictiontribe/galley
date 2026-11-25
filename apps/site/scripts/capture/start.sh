@@ -16,7 +16,7 @@
 #   start.sh stop                stop everything this script started (by PID)
 #
 # CAPTURE_DIR (default /tmp/galley-capture) holds home/, galley-home/, hosted-home/, logs/ and pids/.
-# GALLEY_VERSION (default 0.3.1) is the galley-cms release to run.
+# GALLEY_VERSION (default 0.4.0) is the galley-cms release to run.
 # GALLEY_CLI, when set, is a built CLI to run instead of a release: the galley.mjs made by
 #   GALLEY_CLI_DIST=<folder> node packages/cli/build.mjs   (README.md, "Pictures of what isn't released yet")
 # The assistant: set ANTHROPIC_API_KEY in your own shell before "start.sh galley";
@@ -26,7 +26,7 @@ set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../../../.." && pwd)
 C=${CAPTURE_DIR:-/tmp/galley-capture}
-V=${GALLEY_VERSION:-0.3.1}
+V=${GALLEY_VERSION:-0.4.0}
 # The command that runs the app. Split into words where it is used, on purpose.
 if [ -n "$GALLEY_CLI" ]; then G="node $GALLEY_CLI"; else G="npx --yes galley-cms@$V"; fi
 H="$C/home"

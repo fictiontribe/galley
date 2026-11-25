@@ -5,7 +5,7 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
-## Unreleased
+## 0.4.0 — 2026-11-25
 
 ### Added
 
@@ -20,9 +20,11 @@ entry says how.
   bucket is refused while any page, published or not, uses it. Files move to
   the bucket and back, and to a new public address, safely and repeatably
   (`galley media move`). New configuration key `media.storage`; new routes
-  under `/api/sites/:siteId/media/storage` and `/api/media-storage`;
-  `GET /api/sites/:siteId/media` may also answer `storeProblems`. Not yet run
-  against the live services.
+  under `/api/sites/:siteId/media/storage` and `/api/media-storage`, and
+  `GET /api/sites/:siteId/media/usage`; `GET /api/sites/:siteId/media` may
+  also answer `storeProblems`, and `GET /api/sites/:siteId/changes`
+  `storeUploads` and `storeUploadsProblem`. Not yet run against the live
+  services.
 - **Pictures in Cloudflare Images.** Beside a bucket or the repository, a
   site's pictures can go to Cloudflare Images, which resizes them and sends
   each browser WebP or AVIF (Media › Keep media outside the repository ›
@@ -43,7 +45,7 @@ entry says how.
   and changes the app only, never a site. The light/dark control is now
   called the *appearance*, and the theme picker sits beside it wherever it
   appears (the sidebar's foot, the sign-in and first-run screens), each
-  theme drawn as a swatch. **Settings › Themes** makes a theme from any
+  theme drawn as a swatch. **App settings › Themes** makes a theme from any
   other: five colours with a colour picker and a text field, dark colours
   made from them or set by hand, the four switches drawn small, the whole app
   re-themed live in that browser until it is saved, undo, and a readability
@@ -172,8 +174,8 @@ entry says how.
   dialogs float. Pills are for buttons; chips, tags and counts are small
   rectangles and stamps. Blue Pencil marks the action, the current place and
   the fields where the assistant writes. Labels are words in sentence case
-  instead of small capitals. The page preview sits on the same tan table as
-  the captures on the site. Nothing moved: layout, wording and behaviour are
+  instead of small capitals. The page preview sits on a tan table, like the
+  captures on the site. Nothing moved: layout, wording and behaviour are
   as they were.
 - **One drawn icon family**, shared by the app and the site
   (`brand/icons.ts`). Site details, Navigation, Scripts, Forms, Brand,
@@ -186,7 +188,7 @@ entry says how.
 - **A lighter, less yellow paper in the app.** The canvas, cards, wells and
   borders are a cooler bond paper, and every card on the canvas has the same
   edge and the lightest shadow, so panels lift off the page. The dark theme
-  and the marketing site are as they were.
+  is as it was.
 - **One page frame.** Every list and settings screen sits in the same column
   with its title at the same left edge and height; the page's main action
   sits level with the title. Side panels switch between beside and below by
@@ -315,6 +317,17 @@ entry says how.
   versions in that took too long no longer blames the connection, and the
   words for a site with no repository or code host no longer speak of
   fetching.
+- **Publish and Get latest no longer send you to each other.** When the
+  repository had newer versions that changed a file with unpublished
+  changes here, Publish said to get the latest and Get latest said to
+  publish. A refused Publish now names the file and the way out that works:
+  discard that change (Proof shows it, so what you wrote can be copied
+  first), get the latest, then make the change again. It offers **Review in
+  Proof** in place of a **Get the latest** that would be refused, and so
+  does Version history; Get latest and a hosted editor's log no longer
+  offer publishing as a way on. The refusal is headed "Publishing is
+  paused" and speaks of the repository, where it said "The live site has
+  newer changes". `PublishResult` gains `inTheWay`.
 - **Technical details never carry what signs in to an address.** The part
   of an address that signs in is removed wherever the address appears in a
   message, not only at its start, and from every failed git command's

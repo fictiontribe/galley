@@ -8,7 +8,7 @@ order: 2
 
 This page is for whoever runs Galley on a server so a site can be edited from any browser. A **hosted install** is the same server and app as on a laptop, for **one site**, for the people its owner invites — each with their own e-mail and password — with everything it keeps in one data folder. Ten sites are ten installs that share nothing. The desktop app keeps its list of many sites; a hosted install has no Sites screen.
 
-> **Status.** New in 0.2.0. **The image isn't published to a registry yet**, so you build it yourself (below). Run for real on 2026-11-24, as this page describes it: built from source on a small Google Cloud VM and running this project's own website's editor behind Caddy on a real domain; a whole first run, preview, Proof, Publish, restart, upgrade, backup and restore on the real image. Not yet run: on Fly.io or with a Cloudflare tunnel, behind Cloudflare Access, with a deploy key accepted by GitHub, GitLab or Bitbucket end to end, or `scripts/create-install.sh` beyond its dry run. **Accounts and roles are newer than 0.2.0 and that run**, and not in a release yet: covered by automated tests, by a rehearsal over HTTP against the real server on one computer (`scripts/rehearse-accounts.mjs`) and by a pass in a real browser (first run, signing in, People, an invitation, joining from its link, a contributor's screens and switching someone off), not yet tried on the real image or with a real mail server. The full account: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#what-has-been-run).
+> **Status.** New in 0.2.0. **The image isn't published to a registry yet**, so you build it yourself (below). Run for real on 2026-11-24, as this page describes it: built from source on a small Google Cloud VM and running this project's own website's editor behind Caddy on a real domain; a whole first run, preview, Proof, Publish, restart, upgrade, backup and restore on the real image. Not yet run: on Fly.io or with a Cloudflare tunnel, behind Cloudflare Access, with a deploy key accepted by GitHub, GitLab or Bitbucket end to end, or `scripts/create-install.sh` beyond its dry run. **Accounts and roles came in 0.3.0, after that run**: covered by automated tests, by a rehearsal over HTTP against the real server on one computer (`scripts/rehearse-accounts.mjs`) and by a pass in a real browser (first run, signing in, People, an invitation, joining from its link, a contributor's screens and switching someone off), not yet tried on the real image or with a real mail server. The full account: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#what-has-been-run).
 
 ## Start one
 
@@ -52,7 +52,7 @@ Copy the folder to the server. Then, in that folder there:
 `scripts/create-install.sh` makes one install per run — its own project, its own volume, its own folder — behind one Caddy all of them share, and prints the setup link once at the end. `--dry-run` says what it would do:
 
 ```sh
-sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.3.1 --dry-run
+sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.4.0 --dry-run
 ```
 
 ```output

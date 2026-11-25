@@ -22,7 +22,7 @@ import { registerFormProvider, registeredProvider } from "./registry.js";
 /** @typedef {import("../kit").FormDestination} FormDestination */
 /** @typedef {{ [id: string]: string | string[] }} Values */
 
-export const KIT_VERSION = "0.3.1";
+export const KIT_VERSION = "0.4.0";
 
 /** Built-in providers, each its own chunk. */
 const BUILT_IN = /** @type {Record<string, () => Promise<{ submit: Submitter }>>} */ ({

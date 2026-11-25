@@ -320,7 +320,7 @@ app picks up changes when it restarts.
 
 ## `galley theme`
 
-New since 0.3.1, not in a release yet. Lists, checks, adds, chooses and exports the editing app's themes, kept in Galley's home (never in a site). `check` runs the app's own legibility check and exits 1 when the theme would be refused. [Themes for the editing app](/docs/plugins/themes/).
+New in 0.4.0. Lists, checks, adds, chooses and exports the editing app's themes, kept in Galley's home (never in a site). `check` runs the app's own legibility check and exits 1 when the theme would be refused. [Themes for the editing app](/docs/plugins/themes/).
 
 Its help (`--help`):
 
@@ -574,7 +574,7 @@ recipe: the files to run one install with Docker, for an operator
       --repository <address>  The site's repository
       --folder <path>         Where the site is inside it ("apps/site")
       --proxy <how>           caddy (default), shared-proxy or tunnel
-      --image <reference>     Default: ghcr.io/fictiontribe/galley:0.3.1
+      --image <reference>     Default: ghcr.io/fictiontribe/galley:0.4.0
       --setup-token-sha256 <hex>  The SHA-256 of a one-time setup code
       --out <folder|->        Write the files there (default -: print them)
 Keys

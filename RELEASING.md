@@ -117,8 +117,9 @@ would only add a download.
      `examples/` (the desktop app's `tauri.conf.json` reads
      `apps/desktop/package.json`);
    - `version` in `apps/desktop/src-tauri/Cargo.toml`;
-   - the starters and `examples/plugin-example` keep their own versions,
-     changed only when they change;
+   - the starters, `examples/plugin-example` and the plugins under
+     `packages/plugins/` keep their own versions, changed only when they
+     change;
    - `KIT_VERSION` in `packages/astro/src/client/forms.js`, then copy the kit
      into the starters and the website again
      (`node packages/astro/scripts/vendor.mjs <folder>` for each of
@@ -128,6 +129,43 @@ would only add a download.
      running `packages/core/test/hosting/compose-example.test.ts` with the
      update switch its header names, in `packages/core` (without it, the same
      test fails while they disagree with the recipe).
+   - the desktop app's own entry in `apps/desktop/src-tauri/Cargo.lock`: the
+     `version` line under `name = "galley-desktop"`. Other crates in that
+     file can carry the same number; leave them.
+   - the website's data: `version` and `released` in
+     `apps/site/src/data/downloads.json`, and "Version X.Y.Z" in the summary
+     in `apps/site/src/data/visibility.json`;
+   - the image's tag (`ghcr.io/…/galley:X.Y.Z`) wherever it is written out:
+     `docs/cloud-install.md` and
+     `apps/site/src/content/docs/running/hosted.md`;
+   - in `apps/site/scripts/reference-cli.mjs`, a note that calls a command
+     "not in a release yet" becomes "New in X.Y.Z"; then
+     `pnpm --filter @galley/site sync-docs`, which writes the command-line
+     reference again (it carries the image's default tag) and the
+     documentation's copy of this file;
+   - the release the picture capture runs by default: the `V=` line in
+     `apps/site/scripts/capture/start.sh` and the comment above it, and the
+     same number in `apps/site/scripts/capture/README.md`;
+   - a line under *Shipped so far* in `ROADMAP.md`;
+   - "captured" in `apps/site/screens.json`, when the pictures were taken
+     again for this release;
+   - the website's demo, `apps/site/public/demo/`, last of all, when nothing
+     else in the commit will change. It is a build of the app, and it is
+     stale as soon as the version is:
+     ```sh
+     pnpm --filter @galley/web build:demo
+     pnpm --filter @galley/web demo:publish
+     pnpm --filter @galley/web demo:check
+     ```
+     `demo:check` passes when the committed demo was built from the files as
+     they are now. Then build the site, open `/demo/` and walk its tour once.
+
+   To find a place this list doesn't name, search for the old number:
+   ```sh
+   git grep -n -F "A.B.C" -- . ':!CHANGELOG.md' ':!pnpm-lock.yaml' ':!apps/site/public/demo'
+   ```
+   What may remain: other crates in `Cargo.lock`, and the old release's own
+   line in `ROADMAP.md`.
 
    The release workflow refuses to publish when the tag, the two packages and
    `brand.ts` disagree.
