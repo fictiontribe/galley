@@ -148,8 +148,6 @@ sources:
     href: https://docs.netlify.com/manage/security/secure-access-to-sites/git-gateway/
   - label: "Netlify blog, changes to Netlify Identity (update of 19 February 2026)"
     href: https://www.netlify.com/blog/auth0-extension-identity-changes/
-  - label: "Sveltia CMS, home page"
-    href: https://sveltiacms.app/
   - label: "Galley, the FAQ for developers"
     href: /docs/project/faq/
   - label: "Galley, the tour: what is built and what isn't yet"

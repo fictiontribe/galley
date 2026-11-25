@@ -81,7 +81,7 @@ and `src/data/status.json`.
 | 72 | To leave Decap, take out the `admin` folder and whatever sign-in it used, such as an OAuth handler or Git Gateway | Inferred from the install and backend docs: the install is the `admin` folder (row 12) plus a backend's auth (rows 23, 28) — https://decapcms.org/docs/install-decap-cms/ ; not stated as a leaving guide | 2026-11-25 |
 | 73 | Notes stay in an issue on your repository host | "Notes live in an issue on your repository host, not in your content files." — https://decapcms.org/docs/notes/ | 2026-11-25 |
 | 74 | Decap's comparison page calls Sveltia CMS "the closest alternative to Decap", a rewrite that "reads the same config.yml" | "Sveltia CMS is the closest alternative to Decap: a rewrite of Netlify CMS in Svelte that reads the same config.yml, so most sites can switch with small changes." — https://decapcms.org/compare/git-based-cms/ | 2026-11-25 |
-| 75 | Sveltia calls itself "The successor to Netlify CMS and Decap CMS" (attributed to Sveltia, "That's its claim, not ours") | Home page banner — https://sveltiacms.app/ | 2026-11-25 |
+| 75 | (removed from the page) Sveltia's description of itself as "The successor to Netlify CMS and Decap CMS" | Home page banner — https://sveltiacms.app/ ; the page now quotes only Decap's own words about Sveltia | 2026-11-25 |
 
 Left out, because Decap's own pages disagree, don't say, or the point needed
 more room than it was worth: Sveltia's own view that Decap "has largely
