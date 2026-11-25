@@ -182,7 +182,7 @@ function referencesIn(text: string, pattern: string): Found[] {
  * What a site is built from is the adapter's to say (and the settings'
  * `build.sources`); with no word from the adapter every file counts. A file
  * outside that list still counts as built when a file inside it reads it
- * (see `readersOf`): a page that imports a data file kept beside the source
+ * (see `readsFromInside`): a page that imports a data file kept beside the source
  * folder is built from that file too, whatever the list says.
  */
 type Standing = "content" | "template" | "built" | "beside";
@@ -345,8 +345,16 @@ async function foresee(site: SiteService, moves: Move[], references: Map<string,
 
       if (text !== undefined) {
         if (forms.some((form) => text.includes(form))) keeping.add(path);
-      } else if ((await standings.of(path)) !== "beside") keeping.add(path);
-      else alsoMentioned.add(path);
+        continue;
+      }
+      const standing = await standings.of(path);
+
+      if (standing === "beside") alsoMentioned.add(path);
+      else {
+        keeping.add(path);
+        // Named in a form that isn't a reference (a path from the site root, say): still a file the move doesn't change.
+        if (standing !== "content") leftAlone.add(path);
+      }
     }
     if (keeping.size) stillMentioned.push({ path: move.from, pages: [...keeping].sort() });
   }
@@ -847,8 +855,13 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
       // built (a README, a record, a script outside its source) keeps nothing. Every file that keeps one is named,
       // as the plan named them.
       for (const path of (await plainMentions(context.site, move.oldUrl)).keys()) {
-        if (rewritten.has(path) || (await standings.of(path)) !== "beside") keeping.add(path);
-        else beside.add(path);
+        const standing = rewritten.has(path) ? "content" : await standings.of(path);
+
+        if (standing === "beside") beside.add(path);
+        else {
+          keeping.add(path);
+          if (standing !== "content") leftAlone.add(path);
+        }
       }
       if (keeping.size) {
         stillMentioned.push({ path: move.from, pages: [...keeping].sort() });
@@ -883,7 +896,7 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
       : unchanging > 1
         ? ". The site is built from those files and a move doesn't change them, so what they use stays where it is"
         : "") +
-    (also.length ? `. Also mentioned in ${someOf(also)}: not part of the site as built, so not changed` : "") +
+    (also.length ? `. Also mentioned in ${someOf(also)}: nothing the site is built from reads ${also.length === 1 ? "it" : "them"}, so not changed` : "") +
     (request.from !== "repository" && alone.length ? `. ${someOf(alone)} still ${alone.length === 1 ? "points" : "point"} at ${storeOf(context, request.from).name}: a move doesn't change the site's code, so change ${alone.length === 1 ? "it" : "them"} by hand` : "") +
     (request.from !== "repository" ? `. The files are still in ${storeOf(context, request.from).name}; remove them there once the pages are published` : "") +
     (plan.staying ? `. ${plan.staying.files} ${plan.staying.files === 1 ? "stayed where it was" : "stayed where they were"}: ${plan.staying.reason.replace(/\.$/, "")}` : "") +

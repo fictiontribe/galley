@@ -94,7 +94,7 @@ A copy stays only while something the site is built from, and that the move can'
 - **Pages and other content** are updated.
 - **Galley's own page templates** (the files the site's settings list under `templates`) are updated too, so a page made from one later doesn't carry an address that is gone. A template is not content, so this is a build-mode change: it is made when the site allows build mode and your account may use it, and it waits in Proof like the rest. Where build mode is off, templates are left and keep the files they use.
 - **The site's code, and data it is built from that content mode doesn't write** are never changed by a move, so the files they use stay: the favicon and the share picture a layout names, say, or the pictures in a catalogue file. The plan names them. To move those too, put the new addresses there by hand or in build mode, then run the move again.
-- **Anything else** keeps nothing: a README, a record kept beside the site, a script outside its source. The built site doesn't read them. The plan lists them on a line of their own, "Also mentioned in …: not part of the site as built, so not changed", and they are left as they are.
+- **Anything else** keeps nothing: a README, a record kept beside the site, a script outside its source. The built site doesn't read them. The plan lists them on a line of their own, "Also mentioned in …. Nothing the site is built from reads them, as far as Galley can follow, so they aren't changed and keep no copy", and they are left as they are.
 
 What a site is built from comes from its framework: for Astro, the source folder, the public folder and the configuration at the root.
 

@@ -47,14 +47,18 @@ export function stayedLine(item: MediaMoveResult["stayed"][number], readBy?: Med
 }
 
 /**
- * The line of its own for files that name what is moving but are no part of
- * the site as built (a README, a record, a script outside its source): they
- * aren't changed and keep no file. Null when there are none.
+ * The line of its own for files that name what is moving but that nothing
+ * the site is built from reads (a README, a record, a script outside its
+ * source): they aren't changed and keep no file. Galley can't follow every
+ * way a build reads a file, so the line says what to do when it missed one.
+ * Null when there are none.
  */
 export function alsoMentionedWords(plan: Pick<MediaMovePlan, "alsoMentioned">): string | null {
   const paths = plan.alsoMentioned ?? [];
+  const one = paths.length === 1;
 
-  return paths.length ? `Also mentioned in ${someOf(paths)}: not part of the site as built, so not changed.` : null;
+  if (!paths.length) return null;
+  return `Also mentioned in ${someOf(paths)}. Nothing the site is built from reads ${one ? "it" : "them"}, as far as Galley can follow, so ${one ? "it isn’t" : "they aren’t"} changed and ${one ? "keeps" : "keep"} no copy. If the build does read ${one ? "it" : "one"}, name it in build.sources first.`;
 }
 
 /**

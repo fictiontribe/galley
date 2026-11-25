@@ -155,7 +155,7 @@ describe("moving media", { timeout: 240_000 }, () => {
       `${plan.files} files copied to Cloudflare R2, ${result.pages} pages and 3 page templates updated, ${result.removed} removed from the repository. ` +
         "2 left in the repository: still used by src/layouts/Base.astro. " +
         "The site is built from that file and a move doesn't change it, so what it uses stays where it is. " +
-        "Also mentioned in scripts/gallery/sections.md: not part of the site as built, so not changed. Publish to make it live."
+        "Also mentioned in scripts/gallery/sections.md: nothing the site is built from reads it, so not changed. Publish to make it live."
     );
     // Every file that stayed is still there, and a page that uses it still has its own address.
     for (const item of result.stayed) expect(read(root, item.path).length, item.path).toBeGreaterThan(0);
@@ -386,6 +386,24 @@ describe("moving media", { timeout: 240_000 }, () => {
       expect(plan.alsoMentioned, path).toContain(path);
       expect(keptBy(plan.stillMentioned)[path], path).toBeUndefined();
     }
+    await done();
+  });
+
+  // The two fashion starters' source read the shot list until 0.4.2, and a site made from one earlier still does.
+  it.each([
+    ["astro-editorial", 0],
+    ["astro-storefront", 20],
+  ] as const)("on %s as it was, with its source reading the shot list, every photograph the list names stays", async (starter, removes) => {
+    const SHOTS = "galley/photography/shots.json";
+    const { storage, site, done } = await setUp(starter, undefined, { "src/lib/shots.ts": 'import shotList from "../../galley/photography/shots.json";\n\nexport default shotList;\n' });
+    const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+
+    expect(plan.removes).toBe(removes);
+    expect(plan.readBy).toEqual({ [SHOTS]: ["src/lib/shots.ts"] });
+    expect(plan.leftAlone).toContain(SHOTS);
+    expect(plan.alsoMentioned ?? []).not.toContain(SHOTS);
+    // The shot list names all but one of the pictures; nothing it names leaves.
+    expect(keptBy(plan.stillMentioned)[SHOTS]).toBeGreaterThanOrEqual(30);
     await done();
   });
 

@@ -44,11 +44,12 @@ entry says how.
     file outside those folders: name those in `build.sources`.
   - **Other mentions no longer keep a file**, on a site whose framework says
     what it is built from: Astro, today. The plan lists them on a line of
-    their own before anything happens ("Also mentioned in …: not part of
-    the site as built, so not changed"), and they are left as they are. Read
+    their own before anything happens ("Also mentioned in …. Nothing the
+    site is built from reads them, as far as Galley can follow, so they
+    aren't changed and keep no copy"), and they are left as they are. Read
     that line before moving: if the site's build reads one of those files
-    in a way Galley can't follow, add it to `build.sources` first. On any
-    other framework every file still counts, as before.
+    in a way Galley can't follow, add it to `build.sources` first, as the
+    line says. On any other framework every file still counts, as before.
   - **What is never removed**: a copy that a file counted as above still
     uses. A removed copy is an ordinary deletion in Proof that can be put
     back, and the bucket has the file. One that was never published has no

@@ -22,7 +22,7 @@ const shown = (extra: Partial<MediaStorageStatus>) =>
 describe("a move of the site's files on the Media screen", () => {
   it("shows a move that left files in the repository as done, with what stayed and no list of problems", () => {
     const summary =
-      "27 files copied to Cloudflare R2, 14 pages and 3 page templates updated, 25 removed from the repository. 2 left in the repository: still used by src/layouts/Base.astro. The site is built from that file and a move doesn't change it, so what it uses stays where it is. Also mentioned in scripts/gallery/sections.md: not part of the site as built, so not changed. Publish to make it live.";
+      "27 files copied to Cloudflare R2, 14 pages and 3 page templates updated, 25 removed from the repository. 2 left in the repository: still used by src/layouts/Base.astro. The site is built from that file and a move doesn't change it, so what it uses stays where it is. Also mentioned in scripts/gallery/sections.md: nothing the site is built from reads it, so not changed. Publish to make it live.";
     const text = shown({ lastMove: { ...base, summary, stayedFiles: 2, stayed: [{ path: "public/favicon.svg", pages: ["src/layouts/Base.astro"] }] } });
 
     expect(text).toContain("The files were moved to the bucket");

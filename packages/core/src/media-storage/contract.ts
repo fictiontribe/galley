@@ -258,8 +258,8 @@ export interface MediaMovePlan {
   /**
    * Why a file outside what the site says it is built from keeps one all the
    * same: the files inside it that read it, by a relative path written out
-   * in them (an import, a file the code opens, a glob). Keyed by the file in
-   * `leftAlone`. An alias, a path put together at run time or a file reached
+   * in them (an import, a file the code opens, a glob). Keyed by the file
+   * that keeps one (it is in `leftAlone`). An alias, a path put together at run time or a file reached
    * through a second file outside the list isn't followed: `build.sources`
    * in the settings is where a site says so.
    */

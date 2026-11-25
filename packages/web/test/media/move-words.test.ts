@@ -75,11 +75,13 @@ describe("what a move says it will do, before it does anything", () => {
     expect(planWords({ ...plan, removes: 1, stillMentioned: stay(1, ["src/content/pages/about.md"]) })).toContain("Then 1 of the repository’s copies is removed (it leaves the site when you publish) and 1 stays: still used by src/content/pages/about.md.");
   });
 
-  it("lists on a line of its own the files that name a picture and are no part of the site as built", () => {
+  it("lists on a line of its own the files that name a picture and that nothing the site is built from reads, and says what to do if one is read after all", () => {
     expect(alsoMentionedWords({ ...plan, alsoMentioned: ["README.md", "galley/photography/shots.json", "scripts/gallery/sections.md"] })).toBe(
-      "Also mentioned in README.md, galley/photography/shots.json, scripts/gallery/sections.md: not part of the site as built, so not changed."
+      "Also mentioned in README.md, galley/photography/shots.json, scripts/gallery/sections.md. Nothing the site is built from reads them, as far as Galley can follow, so they aren’t changed and keep no copy. If the build does read one, name it in build.sources first."
     );
-    expect(alsoMentionedWords({ ...plan, alsoMentioned: ["README.md"] })).toBe("Also mentioned in README.md: not part of the site as built, so not changed.");
+    expect(alsoMentionedWords({ ...plan, alsoMentioned: ["README.md"] })).toBe(
+      "Also mentioned in README.md. Nothing the site is built from reads it, as far as Galley can follow, so it isn’t changed and keeps no copy. If the build does read it, name it in build.sources first."
+    );
     expect(alsoMentionedWords(plan)).toBeNull();
     expect(alsoMentionedWords({ ...plan, alsoMentioned: [] })).toBeNull();
     // It is not folded into the sentences about the copies.
