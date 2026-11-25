@@ -172,6 +172,39 @@ describe("the server's Unix socket (GALLEY_SOCKET)", { timeout: 60_000 }, () => 
     expect(preview.body).not.toContain(NOT_OURS);
   });
 
+  it("refuses a request target it can't put in origin form, and takes http:// in any case as an address", async () => {
+    const { server } = await start();
+    const to = { port: server.port };
+
+    // Another scheme names nothing the server goes by: refused before the gateway or the app reads it.
+    for (const target of ["ws://cms-preview.example.com/", "ftp://cms.example.com/api/meta"]) {
+      expect(await ask(to, "GET", target, { host: "cms-preview.example.com" })).toMatchObject({ status: 400, body: "Bad request\n" });
+    }
+    // HTTP:// in capitals is an address like any other: made origin form, and the Host header decides.
+    expect((await ask(to, "GET", "HTTP://cms.example.com/api/meta", { host: "cms.example.com" })).status).toBe(200);
+    expect((await ask(to, "GET", "HTTP://cms.example.com/api/meta", { host: "elsewhere.example" })).status).toBe(403);
+  });
+
+  it("treats an upgrade's target the same way: a full address goes by the Host header, another scheme gets 400", async () => {
+    const { server } = await start();
+    const upgrade = (target: string, host: string) =>
+      new Promise<string>((resolve) => {
+        const socket = net.connect({ host: "127.0.0.1", port: server.port });
+        let buffer = "";
+
+        socket.on("data", (chunk) => (buffer += chunk.toString()));
+        socket.on("close", () => resolve(buffer));
+        socket.on("error", () => resolve(buffer));
+        socket.write(`GET ${target} HTTP/1.1\r\nHost: ${host}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n`);
+      });
+
+    // The line names the editor, the Host header the preview: the gateway takes it, and turns it away without a viewer's cookie.
+    expect(await upgrade("http://cms.example.com/hmr", "cms-preview.example.com")).toMatch(/^HTTP\/1\.1 401/);
+    expect(await upgrade("HTTP://cms-preview.example.com/hmr", "cms-preview.example.com")).toMatch(/^HTTP\/1\.1 401/);
+    // Another scheme: 400, and the gateway never sees it.
+    expect(await upgrade("ws://cms-preview.example.com/hmr", "cms-preview.example.com")).toMatch(/^HTTP\/1\.1 400/);
+  });
+
   it("takes upgrades on the socket: one for the preview's address reaches the gateway", async () => {
     const socketPath = join(folder(), "galley.sock");
 

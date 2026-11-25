@@ -499,20 +499,32 @@ type FetchHandler = (request: Request, env: unknown) => Response | Promise<Respo
  * A request line in absolute form (`GET http://other.example/path HTTP/1.1`) made origin form (`/path?query`), before
  * anything reads it. The gateway routes by the Host header; Hono would build the app's URL from the request line's
  * address instead, so the app's allowed-hosts check (and the app's own origin, and its protocol) could go by a host
- * the gateway never saw. Made origin form, every part goes by the one Host header. A request line that isn't a valid
- * address is left as it is, for the app to refuse.
+ * the gateway never saw. Made origin form, every part goes by the one Host header. False for a target that can't be
+ * made so — another scheme (`ws://…`), or not an address at all — which the listener answers with 400 before anything
+ * reads it; `*` (OPTIONS for the whole server) is left for the app.
  */
-function toOriginForm(req: IncomingMessage): void {
+function toOriginForm(req: IncomingMessage): boolean {
   const target = req.url ?? "";
 
-  if (target.startsWith("/") || !/^https?:\/\//i.test(target)) return;
+  // `*` is OPTIONS asking about the server as a whole: left for the app to answer.
+  if (target.startsWith("/") || target === "*") return true;
+  if (!/^https?:\/\//i.test(target)) return false;
   try {
     const url = new URL(target);
 
     req.url = `${url.pathname}${url.search}`;
+    return true;
   } catch {
-    // Not an address: Hono answers 400.
+    return false;
   }
+}
+
+/** What a request whose target can't be put in origin form gets (another scheme, `ws://…`; not an address at all): nothing reads it. */
+const BAD_TARGET = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 12\r\n\r\nBad request\n";
+
+function refuseTarget(res: ServerResponse): void {
+  res.writeHead(400, { "content-type": "text/plain; charset=utf-8", connection: "close" });
+  res.end("Bad request\n");
 }
 
 function createListener(options: {
@@ -535,19 +547,22 @@ function createListener(options: {
     const server = createServer(
       onSocket
         ? (req, res) => {
-            toOriginForm(req);
+            if (!toOriginForm(req)) return refuseTarget(res);
             markArrivedOnSocket(req);
             options.onSocketRequest?.(req);
             listener.request(req, res);
           }
         : (req, res) => {
-            toOriginForm(req);
+            if (!toOriginForm(req)) return refuseTarget(res);
             listener.request(req, res);
           }
     );
 
     server.on("upgrade", (req: IncomingMessage, socket: Duplex, head: Buffer) => {
-      toOriginForm(req);
+      if (!toOriginForm(req)) {
+        socket.end(BAD_TARGET);
+        return;
+      }
       if (onSocket) {
         markArrivedOnSocket(req);
         options.onSocketRequest?.(req);
