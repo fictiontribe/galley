@@ -9,7 +9,8 @@ import { readRepoFile, site } from "../lib/site";
 
 const { data: p } = await getPage("changelog");
 const source = readRepoFile("CHANGELOG.md");
-const html = source ? renderMarkdown(source.replace(/^# .*\n/, ""), { anchors: false }).html : "";
+// Straight after a release "Unreleased" is a heading with nothing under it: left out here until something is.
+const html = source ? renderMarkdown(source.replace(/^# .*\n/, "").replace(/^## Unreleased[ \t]*\n\s*(?=## )/m, ""), { anchors: false }).html : "";
 ---
 
 <Site title={p.title} description={p.description}>
