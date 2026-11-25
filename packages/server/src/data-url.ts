@@ -18,7 +18,7 @@ export function decodeMediaDataUrl(value: string, limit = MAX_MEDIA_BYTES): { mi
   if (!match) throw invalid("That upload couldn't be read. Choose the file again.");
   const mime = (match[1] || "text/plain").trim().toLowerCase();
 
-  if (!(mime in UPLOAD_TYPES)) {
+  if (!Object.hasOwn(UPLOAD_TYPES, mime)) {
     throw invalid("Only images, MP4 videos, and PDFs can be added to media.", `Received ${mime}.`);
   }
   const payload = value.slice(match[0].length);

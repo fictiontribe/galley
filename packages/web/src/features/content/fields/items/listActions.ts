@@ -122,9 +122,16 @@ function run({ store, path }: ListActionOptions, plan: ListPlan | null, say: Say
   store.actions.apply(...plan.ops);
   let after: string | null = null;
   const undo = async () => {
+    // Asked by a message from the previewed page (Arrange's undo), all of it is the page's: the exact restore goes marked
+    // as it is asked, and the reverse ops, applied after the wait, are applied in the page's name too (form store fromPage).
+    const page = store.actions.inPage();
     if (exact && after !== null && (await store.actions.restore(exact.raw, after))) return;
-    emit(store, path, plan.undoChange);
-    store.actions.apply(...plan.undo);
+    const reverse = () => {
+      emit(store, path, plan.undoChange);
+      store.actions.apply(...plan.undo);
+    };
+    if (page) store.actions.fromPage(reverse);
+    else reverse();
   };
   lastUndo.set(store, undo);
   setLastAction(store, { what, at: Date.now(), path, index: plan.change.kind === "insert" ? plan.change.index : null });

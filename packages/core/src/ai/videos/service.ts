@@ -133,7 +133,8 @@ export function createVideoService(options: VideoServiceOptions): GalleyVideoSer
 
   async function firstFrame(site: SiteService, path: string | undefined) {
     if (!path) return undefined;
-    const mime = FRAME_MIME[path.split(".").pop()?.toLowerCase() ?? ""];
+    const ext = path.split(".").pop()?.toLowerCase() ?? "";
+    const mime = Object.hasOwn(FRAME_MIME, ext) ? FRAME_MIME[ext] : undefined;
 
     if (!mime) throw new GalleyError("invalid", "The starting picture must be a PNG, JPG or WebP file.", path);
     // What is read here is sent to the video provider: never a secrets file or one of the version history's own, whatever its name ends in.

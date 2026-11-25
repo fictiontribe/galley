@@ -73,7 +73,8 @@ export function fileNameFor(url: string, contentType: string): string {
     // keep it as written
   }
   const ext = extensionOf(leaf);
-  const typed = EXT_BY_TYPE[contentType.split(";")[0]!.trim().toLowerCase()];
+  const type = contentType.split(";")[0]!.trim().toLowerCase();
+  const typed = Object.hasOwn(EXT_BY_TYPE, type) ? EXT_BY_TYPE[type] : undefined;
 
   if (!ext && typed) return `${leaf}.${typed}`;
   return leaf;

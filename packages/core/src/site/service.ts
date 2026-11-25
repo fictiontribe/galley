@@ -10,7 +10,7 @@
  * depend on the index wait for that pipeline, so a search right after an edit
  * sees the edit.
  */
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { PRODUCT } from "../brand";
 import {
@@ -73,6 +73,7 @@ import {
   runBuild,
   runGit,
   saveMedia,
+  sanitizeMediaName,
   type PreviewControllerHandle,
   type Workspace,
 } from "../workspace/index";
@@ -80,8 +81,10 @@ import type { PortPool } from "../workspace/preview/ports";
 import type { PreviewGateway } from "../workspace/preview/proxy";
 import type { AuthorLayers } from "../workspace/author";
 import type { AroundBringIn } from "../workspace/publish";
-import { formCodeRefusal } from "../site-kit/guard";
-import { contentWriteRefusal, layoutRefusal } from "./content-code";
+import { formCodeRefusal, isScriptsFile, scriptCodeRefusal } from "../site-kit/guard";
+import { brandLocation, DEFAULT_BRAND_DIR } from "../sitebrand/files";
+import { astroMarkdownRefusal, contentWriteRefusal, heldBelowBuild, isAgentInstructionName, isMarkdownPath, renderedAsPageRefusal, showsBuildTool, type ContentWrite, type GuardContext } from "./content-code";
+import { ASSISTANT_INSTRUCTION_FILES } from "../content/detect/detect";
 import { isSiteSettingsPath, outsideAnyPerson, requireBuildMode, requireLevel, requireName, requireSiteSettings } from "../install/caller";
 import { levelFor, SITE_METHOD_ACCESS, SITE_SETTINGS_RECORDS, siteMethodLevel, type GuardedSiteMethod } from "../install/route-access";
 import { applyRecord, RECORD_SETTINGS, type SettingsRecord } from "./settings-records";
@@ -238,6 +241,13 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
   let model: SiteModel;
   let facts: PublishFacts;
   let hasConfig = false;
+  // Where the brand's files are kept (siteBrand.dir, not part of the model): they go into the assistant's instructions,
+  // so a write held below build level may not touch them (content-code.ts).
+  let brandDir = DEFAULT_BRAND_DIR;
+  // What else the guard knows (content-code.ts GuardContext): whether the folder shows a build tool's own files, and the
+  // links named like a coding assistant's instructions (AGENTS.md → docs/guide.md), whose targets are instructions too.
+  let buildTools = true;
+  let agentLinks: string[] = [];
   let disposed = false;
   const openedAt = Date.now();
 
@@ -262,9 +272,34 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
   });
   const root = workspace.root;
 
-  async function loadModel(): Promise<SiteModel> {
-    const [detected, config] = await Promise.all([loadSiteModel(root), readConfigQuietly(root)]);
+  /** The files named like a coding assistant's instructions that are links: where they lead is an instruction file too. */
+  async function agentInstructionLinks(): Promise<string[]> {
+    try {
+      const named = (await workspace.listFiles({ glob: "**/*.md" })).filter(isAgentInstructionName);
 
+      return named.filter((path) => lstatSync(join(root, ...path.split("/")), { throwIfNoEntry: false })?.isSymbolicLink() === true);
+    } catch {
+      return [];
+    }
+  }
+
+  /** Whether the site's folder shows a build tool's own files (content-code.ts showsBuildTool); unreadable counts as yes. */
+  function readBuildTools(): boolean {
+    try {
+      const pkg = join(root, "package.json");
+
+      return showsBuildTool((path) => existsSync(join(root, ...path.split("/"))), existsSync(pkg) ? readFileSync(pkg, "utf8") : null);
+    } catch {
+      return true;
+    }
+  }
+
+  async function loadModel(): Promise<SiteModel> {
+    const [detected, config, links] = await Promise.all([loadSiteModel(root), readConfigQuietly(root), agentInstructionLinks()]);
+
+    brandDir = brandLocation(config).dir;
+    agentLinks = links;
+    buildTools = readBuildTools();
     facts = await resolvePublishConfig(root, config, detected.publish);
     hasConfig = existsSync(join(root, PRODUCT.configFile));
     const given = config?.urls?.production ? null : (deps.liveUrl?.() ?? null);
@@ -605,13 +640,107 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
    * and never written because the file happens to match again by the time
    * of the write.
    */
-  /** Whether `path` resolves (through any link) to the site's settings file, which the workspace gates at the settings level. */
-  function settingsFilePath(path: string): boolean {
+  /** The repo-relative path the bytes of a write to `path` reach, through any link; the name itself when the workspace refuses it (it says why at the write). */
+  function realOf(path: string): string {
     try {
-      return realpathSync(workspace.resolvePath(path)) === realpathSync(workspace.resolvePath(PRODUCT.configFile));
+      return workspace.realPathOf(path);
+    } catch {
+      return path;
+    }
+  }
+
+  /**
+   * What the content guard knows beyond the model, for a held write: the brand
+   * folder, where each instruction file's name really leads (a link named
+   * STYLE.md or AGENTS.md makes its target an instruction file too), and
+   * whether the folder shows a build tool.
+   */
+  function guardContext(): GuardContext {
+    const names = [...ASSISTANT_INSTRUCTION_FILES, ...(model.ai?.instructions ?? []), brandDir, ...agentLinks];
+    const instructionTargets = names.flatMap((name) => {
+      try {
+        const normal = normalizeRepoPath(name);
+        const real = realOf(normal);
+
+        return real !== normal ? [real] : [];
+      } catch {
+        return [];
+      }
+    });
+
+    return { brandDir, instructionTargets, buildTools };
+  }
+
+  /** Whether `path` names a file that is in the site, through any link (a picture a page names from the site's root). */
+  function inSite(path: string): boolean {
+    try {
+      return statSync(workspace.resolvePath(path)).isFile();
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Every rule a write or a delete answers to when it is held below build-mode
+   * level (content-code.ts; a form's code and the scripts file in
+   * site-kit/guard.ts), judged on the name it was given and on the real path its
+   * bytes reach — each with its own collection — so a link in the site can't
+   * carry a write where the name wouldn't be allowed. `after` is null for a
+   * delete, which may remove only what it could write; for a write no rule
+   * reads whole (`readsText`) it is the start of the new text. The settings
+   * file is left to the workspace's settings-level check for a person (its own
+   * refusal says more); a save from the page, or the assistant in a content
+   * conversation, is refused here.
+   */
+  function heldWriteRefusal(input: { path: string; collection: Collection | null; before: string | null; after: string | null; write: ContentWrite }): string | null {
+    const named = input.path;
+    const real = realOf(named);
+    const held = heldBelowBuild(input.write);
+
+    if ((isSiteSettingsPath(named) || isSiteSettingsPath(real)) && held !== "page" && held !== "assistant") return null;
+    const context = held ? guardContext() : undefined;
+    const paths = [...new Set([named, real])];
+
+    for (const path of paths) {
+      const refusal = contentWriteRefusal(path, model, input.write, context);
+
+      if (refusal) return refusal;
+    }
+    if (input.after === null) return null;
+    for (const path of paths) {
+      const refusal = renderedAsPageRefusal(path, input.after.slice(0, 512), model, input.write);
+
+      if (refusal) return refusal;
+    }
+    const realCollection = real === named ? input.collection : collectionForPath(model, real);
+    const who = { origin: input.write.origin ?? "user", ...(input.write.mode ? { mode: input.write.mode } : {}), allowBuild: model.ai.allowBuild };
+
+    if (input.collection?.kit === "forms" || realCollection?.kit === "forms") return formCodeRefusal(input.before, input.after, who);
+    if (isScriptsFile(named, input.collection) || isScriptsFile(real, realCollection)) return scriptCodeRefusal(input.before, input.after, who);
+    if (model.framework.id !== "astro") return null;
+    const pages: Array<[string, Collection | null]> = real === named ? [[named, input.collection]] : [[named, input.collection], [real, realCollection]];
+
+    for (const [path, collection] of pages) {
+      if (!isMarkdownPath(path)) continue;
+      const refusal = astroMarkdownRefusal(path, input.before, input.after, collection, input.write, model, inSite);
+
+      if (refusal) return refusal;
+    }
+    return null;
+  }
+
+  /** Whether a write of `path` answers to a rule that reads its whole text: a form, the scripts file, an Astro Markdown page — by its name or its real path. */
+  function readsText(path: string, collection: Collection | null): boolean {
+    const real = realOf(path);
+    const realCollection = real === path ? collection : collectionForPath(model, real);
+
+    return (
+      collection?.kit === "forms" ||
+      realCollection?.kit === "forms" ||
+      isScriptsFile(path, collection) ||
+      isScriptsFile(real, realCollection) ||
+      (model.framework.id === "astro" && (isMarkdownPath(path) || isMarkdownPath(real)))
+    );
   }
 
   async function writeAsRead(path: string, content: string, read: Uint8Array, options: { origin?: ChangeOrigin; baseHash?: string }): Promise<void> {
@@ -914,14 +1043,8 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         if (result.applied === 0 || result.content === raw) {
           return { entry: await entryFromText(target.path, raw), applied: 0, refused };
         }
-        // A form's custom code keeps its three-part gate (site-kit/guard.ts); other content is guarded by the account's
-        // level alone when the format runs as code or the framework is one the engine can't vouch for (content-code.ts).
-        const who = { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}), allowBuild: model.ai.allowBuild };
-        // On Astro a Markdown entry's `layout` becomes an import, so below build level it may not be added or changed (content-code.ts).
-        const reason =
-          target.collection.kit === "forms"
-            ? formCodeRefusal(raw, result.content, who)
-            : (contentWriteRefusal(target.path, model) ?? (model.framework.id === "astro" && target.collection.kind === "entries" ? layoutRefusal(raw, result.content, format) : null));
+        // Every rule a write answers to when it is held below build level, on the name and the real path (heldWriteRefusal).
+        const reason = heldWriteRefusal({ path: target.path, collection: target.collection, before: raw, after: result.content, write: { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}) } });
 
         if (reason) {
           return { entry: await entryFromText(target.path, raw), applied: 0, refused: [...refused, ...kept.filter((item) => !refused.some((r) => r.index === item.index)).map((item) => ({ ...item, reason }))].sort((a, b) => a.index - b.index) };
@@ -963,11 +1086,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         throw new GalleyError("invalid", `That address can't be used for a ${collection.singular}. Use plain words without slashes.`, path);
       }
       const text = input.template !== undefined ? await fromTemplate(collection, path, input) : serializeEntry(collection, input.data ?? {}, input.body);
-      const whoCreate = { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}), allowBuild: model.ai.allowBuild };
-      const codeRefusal =
-        collection.kit === "forms"
-          ? formCodeRefusal(null, text, whoCreate)
-          : (contentWriteRefusal(path, model) ?? (model.framework.id === "astro" && collection.kind === "entries" ? layoutRefusal(null, text, collection.format) : null));
+      const codeRefusal = heldWriteRefusal({ path, collection, before: null, after: text, write: { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}) } });
 
       if (codeRefusal) throw new GalleyError("forbidden", codeRefusal, path);
       const taken = new GalleyError("conflict", `A ${collection.singular} with that address already exists. Choose a different name.`, path);
@@ -990,6 +1109,10 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       if (target.collection.kind === "data") {
         throw new GalleyError("forbidden", `${target.collection.label} can be edited but not deleted.`, target.path);
       }
+      // A delete held below build level may remove only what it could write.
+      const held = heldWriteRefusal({ path: target.path, collection: target.collection, before: null, after: null, write: { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}) } });
+
+      if (held) throw new GalleyError("forbidden", held, target.path);
       await pathLock(target.path, async () => {
         if (!(await workspace.exists(target.path))) throw new GalleyError("not-found", GONE, target.path);
         await workspace.deleteFile(target.path, { origin: options.origin ?? "user", mode: "content", ...(options.baseHash ? { baseHash: options.baseHash } : {}) });
@@ -1058,32 +1181,18 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       // Asked for, not assumed: a request for build mode is refused, never quietly made a content-mode one.
       if (options.mode === "build") requireBuildMode();
       if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF, normalized);
-      const who = { origin: options.origin, mode: options.mode, allowBuild: model.ai.allowBuild };
-      // A form's custom code keeps its three-part gate; every other write is checked by the account's level against the
-      // allowlist (content-code.ts), which — unlike a glob — covers a path outside every collection too, the site's own
-      // source and config files included. An account at build level keeps the ordinary content-mode surface below.
+      // Held below build level (the account, a save from the page, the assistant in a content conversation), a write
+      // answers to the allowlist and the rules that read its text, on its name and on the real path its bytes reach
+      // (heldWriteRefusal) — unlike a glob, that covers a path outside every collection too. Otherwise the ordinary
+      // content-mode surface below decides.
       const collection = collectionForPath(model, normalized);
-      // The settings file, by its name or through a link to it, is gated at the settings level by the workspace below
-      // (requireSiteSettings), not here: it needs more than build mode, so its own refusal must win.
-      const targetsSettings = isSiteSettingsPath(normalized) || settingsFilePath(normalized);
+      const textRules = readsText(normalized, collection);
+      // A rule that reads the text gets it whole; otherwise the start is enough (does it begin like a page's settings?).
+      const after = typeof content === "string" ? (textRules ? content : content.slice(0, 512)) : Buffer.from(textRules ? content : content.subarray(0, 512)).toString("utf8");
+      const before = textRules && (await workspace.exists(normalized)) ? await workspace.readText(normalized).catch(() => null) : null;
+      const refusal = heldWriteRefusal({ path: normalized, collection, before, after, write: { origin: options.origin, mode: options.mode } });
 
-      if (collection?.kit === "forms") {
-        const before = (await workspace.exists(normalized)) ? await workspace.readText(normalized).catch(() => null) : null;
-        const after = typeof content === "string" ? content : Buffer.from(content).toString("utf8");
-        const codeRefusal = formCodeRefusal(before, after, who);
-
-        if (codeRefusal) throw new GalleyError("forbidden", codeRefusal, normalized);
-      } else if (!targetsSettings) {
-        let refusal = contentWriteRefusal(normalized, model);
-        // On Astro a Markdown entry's `layout` becomes an import, so below build level it may not be added or changed.
-        if (!refusal && model.framework.id === "astro" && collection?.kind === "entries") {
-          const before = (await workspace.exists(normalized)) ? await workspace.readText(normalized).catch(() => null) : null;
-          const after = typeof content === "string" ? content : Buffer.from(content).toString("utf8");
-
-          refusal = layoutRefusal(before, after, collection.format);
-        }
-        if (refusal) throw new GalleyError("forbidden", refusal, normalized);
-      }
+      if (refusal) throw new GalleyError("forbidden", refusal, normalized);
       // Only the public options pass through: engine-internal flags (system,
       // createOnly) must not be reachable from a request body.
       await pathLock(normalized, () =>
@@ -1100,6 +1209,10 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
 
       if (options.mode === "build") requireBuildMode();
       if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF, normalized);
+      // A delete held below build level may remove only what it could write, judged on the name and the real path.
+      const held = heldWriteRefusal({ path: normalized, collection: collectionForPath(model, normalized), before: null, after: null, write: { origin: options.origin, mode: options.mode } });
+
+      if (held) throw new GalleyError("forbidden", held, normalized);
       await pathLock(normalized, () =>
         workspace.deleteFile(normalized, {
           origin: options.origin,
@@ -1118,7 +1231,17 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     },
 
     saveMedia(input, options) {
-      const toRepository = () => saveMedia(workspace, model.media, input, options);
+      const toRepository = () => {
+        // An upload kept in the repository lands where a held write could put it (a media root that isn't the repository's
+        // root, or beside an Astro collection's entries), judged on its name and its real place, like any other write.
+        const directory = normalizeRepoPath(input.directory ?? model.media.dir);
+        const { base, ext } = sanitizeMediaName(input.filename);
+        const path = directory ? `${directory}/${base}.${ext}` : `${base}.${ext}`;
+        const head = Buffer.from(input.data.subarray(0, 512)).toString("utf8");
+        const refusal = heldWriteRefusal({ path, collection: null, before: null, after: head, write: { origin: options?.origin ?? "user" } });
+
+        return refusal ? Promise.reject(new GalleyError("forbidden", refusal, path)) : saveMedia(workspace, model.media, input, options);
+      };
 
       return deps.media ? deps.media.save(service, input, toRepository) : toRepository();
     },

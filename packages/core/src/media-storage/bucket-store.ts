@@ -39,8 +39,9 @@ const EXTENSION_TYPES: Record<string, string> = {
 
 export function typeOfKey(key: string): string | null {
   const dot = key.lastIndexOf(".");
+  const ext = key.slice(dot + 1).toLowerCase();
 
-  return dot > 0 ? (EXTENSION_TYPES[key.slice(dot + 1).toLowerCase()] ?? null) : null;
+  return dot > 0 && Object.hasOwn(EXTENSION_TYPES, ext) ? (EXTENSION_TYPES[ext] ?? null) : null;
 }
 
 export interface BucketStoreOptions {

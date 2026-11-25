@@ -105,6 +105,15 @@ export function requireCallerForGuardedWork(on: boolean): void {
   callerRequired = on;
 }
 
+/**
+ * Whether this is a hosted install (guarded work needs someone). Local mode and
+ * the desktop app answer false: there, nobody else's words reach the assistant
+ * through the content, and one person runs everything.
+ */
+export function guardedWorkNeedsCaller(): boolean {
+  return callerRequired;
+}
+
 /** Runs `run` as this person (null: nobody). Follows the asynchronous work `run` starts. */
 export function withCaller<T>(caller: Caller | null, run: () => T): T {
   return storage.run(caller ? { kind: "person", caller } : null, run);

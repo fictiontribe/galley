@@ -28,12 +28,13 @@ import { scriptWarnings } from "./logic/duplicates";
 import { scriptName } from "./logic/entries";
 import { ScriptRow } from "./ScriptRow";
 import { WhatLoadsWhere } from "./WhatLoadsWhere";
-import { useWhoPublishes } from "@/lib/may";
+import { BUILD_MODE_LEVEL } from "@galley/core/install/route-access";
+import { useMayBuild, useWhoPublishes, whoMayFirst } from "@/lib/may";
 
 const PATH = ["scripts"];
 const EXAMPLES = ["Add GA4 with ID G-ABC123 and only load it after consent", "Turn on the built-in consent banner with Consent Mode", "Load the chat widget only on /support/**"];
 
-function Installed({ open, setOpen, onAdd, warned }: { open: ReadonlySet<number>; setOpen: (next: ReadonlySet<number>) => void; onAdd: () => void; warned: ReadonlySet<number> }) {
+function Installed({ open, setOpen, onAdd, warned }: { open: ReadonlySet<number>; setOpen: (next: ReadonlySet<number>) => void; onAdd: (() => void) | null; warned: ReadonlySet<number> }) {
   const edits = useEdits();
   const publishes = useWhoPublishes();
   const raw = useFormValue(PATH);
@@ -76,9 +77,11 @@ function Installed({ open, setOpen, onAdd, warned }: { open: ReadonlySet<number>
           body={`Add analytics, a tag manager, ad tracking or a chat widget. Nothing loads until ${publishes}.`}
           mark="caret"
           actions={
-            <Button variant="primary" icon="plus" onClick={onAdd}>
-              Add a script
-            </Button>
+            onAdd ? (
+              <Button variant="primary" icon="plus" onClick={onAdd}>
+                Add a script
+              </Button>
+            ) : undefined
           }
         />
       </div>
@@ -105,6 +108,8 @@ function ScriptsBody({ siteId, entry }: { siteId: string; entry: Entry }) {
   const edits = useEdits();
   const allowBuild = useAllowBuild();
   const buildByOthers = useBuildByOthers();
+  // A script runs in every visitor's browser: adding one or turning one on is build-mode work (site-kit/guard.ts).
+  const mayBuild = useMayBuild();
   const model = useSite((s) => s.detail?.model);
   const outside = useFormState((state) => state.outside);
   const [adding, setAdding] = useState(false);
@@ -130,14 +135,20 @@ function ScriptsBody({ siteId, entry }: { siteId: string; entry: Entry }) {
           description={`Analytics, tags and widgets the site loads. Adding or changing one is powerful, so every change waits in Proof like any other until ${publishes}.`}
           actions={
             // While the list is empty, its own empty state offers this.
-            config.scripts.length > 0 ? (
+            config.scripts.length > 0 && mayBuild ? (
               <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>
                 Add a script
               </Button>
             ) : null
           }
         />
-        <AskBox layout="line" subject="scripts" context={`About the scripts setup in ${entry.path}:`} examples={EXAMPLES} placeholder="Add GA4 with ID G-… and only load it after consent" />
+        <AskBox layout="line" needsBuild subject="scripts" context={`About the scripts setup in ${entry.path}:`} examples={EXAMPLES} placeholder="Add GA4 with ID G-… and only load it after consent" />
+        {mayBuild ? null : (
+          <p className="g-margin-note kit-note" role="status">
+            <ProofMark kind="pilcrow" />
+            <span>{`${whoMayFirst(BUILD_MODE_LEVEL)} can add a script or turn one on, because it runs in every visitor's browser. You can turn one off, remove it, or change where it loads.`}</span>
+          </p>
+        )}
         <SetupLeftNotice step="layout" />
         <ConflictNotice fields={entry.fields} noun={fileNoun(model, entry.collection)} />
         <SaveErrorNotice />
@@ -160,7 +171,7 @@ function ScriptsBody({ siteId, entry }: { siteId: string; entry: Entry }) {
             <h2 id="installed-title" className="kit-tab-head__title">
               Installed
             </h2>
-            <Installed open={open} setOpen={setOpen} onAdd={() => setAdding(true)} warned={warned} />
+            <Installed open={open} setOpen={setOpen} onAdd={mayBuild ? () => setAdding(true) : null} warned={warned} />
           </section>
           <div className="kit-scripts-layout__side">
             <ConsentCard config={config} trackingWithoutConsent={trackingWithoutConsent} />

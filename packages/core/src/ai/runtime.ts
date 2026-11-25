@@ -212,7 +212,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
       if (!attachment.dataUrl) throw new GalleyError("invalid", "An attached file arrived empty. Attach it again.");
       const parsed = parseDataUrl(attachment.dataUrl);
 
-      if (!parsed || !MEDIA_EXT[parsed.mime]) throw new GalleyError("invalid", "Only images can be attached (PNG, JPG, WebP, GIF, AVIF or SVG).", attachment.name);
+      if (!parsed || !Object.hasOwn(MEDIA_EXT, parsed.mime)) throw new GalleyError("invalid", "Only images can be attached (PNG, JPG, WebP, GIF, AVIF or SVG).", attachment.name);
     }
   }
 
@@ -224,10 +224,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
       const parsed = parseDataUrl(attachment.dataUrl ?? "");
 
       if (!parsed) continue;
-      const ext = MEDIA_EXT[parsed.mime] ?? "png";
+      const ext = (Object.hasOwn(MEDIA_EXT, parsed.mime) ? MEDIA_EXT[parsed.mime] : undefined) ?? "png";
       const base = attachment.name.replace(/\.[a-z0-9]{2,5}$/i, "") || "attachment";
       const item = await site.saveMedia({ filename: `${base}.${ext}`, data: parsed.data }, { origin: "user" });
-      const viewable = Boolean(VISION_MIME[parsed.mime]) && parsed.data.length <= VIEWABLE_BYTES;
+      const viewable = Object.hasOwn(VISION_MIME, parsed.mime) && parsed.data.length <= VIEWABLE_BYTES;
       const file = viewable ? await store.storeAttachment(siteId, threadId, parsed.data, ext) : null;
 
       staged.push({ shown: { name: attachment.name, mime: parsed.mime, path: item.path, url: item.url }, path: item.path, url: item.url, viewable, mime: parsed.mime, data: parsed.data, file });

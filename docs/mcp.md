@@ -292,6 +292,10 @@ What each mode means, and where it is enforced:
   every write passes its mode to `SiteService`, which refuses a source file in
   content mode however the call arrived (there is a test that calls the
   `write_file` handler directly with a content-mode context and is refused).
+  On a hosted install content mode is narrower still: like the built-in
+  assistant in a content conversation, an MCP client may change only what an
+  account below build-mode level could, whatever its token (the operator's
+  included) — words in the content can steer it.
 - **Build mode** adds `list_files`, `read_file`, `write_file`, `edit_file`,
   `run_build` and `save_site_config`. It applies only where the site's own
   settings allow it (`ai.allowBuild` in `galley.config.json`); elsewhere those

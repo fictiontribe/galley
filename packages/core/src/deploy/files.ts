@@ -80,7 +80,9 @@ const TYPES: Record<string, string> = {
 };
 
 export function contentTypeFor(path: string): string {
-  return TYPES[extname(path).slice(1).toLowerCase()] ?? "application/octet-stream";
+  const ext = extname(path).slice(1).toLowerCase();
+
+  return (Object.hasOwn(TYPES, ext) ? TYPES[ext] : undefined) ?? "application/octet-stream";
 }
 
 /** Cloudflare's 32-character asset hash of some bytes at a path (see DeployFile.cfHash). */

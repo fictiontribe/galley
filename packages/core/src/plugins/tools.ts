@@ -87,9 +87,21 @@ export function scopedSite(site: SiteService, scope: { readOnly: boolean; mode: 
       if (property === "writeFile" || property === "deleteFile") {
         return (path: string, ...rest: unknown[]) => {
           const options = (property === "writeFile" ? rest[1] : rest[0]) as WriteOptions | undefined;
-          const forced: WriteOptions = { ...(options ?? { origin: "agent" }), mode: scope.mode, origin: options?.origin ?? "agent" };
+          const forced: WriteOptions = { ...(options ?? { origin: "agent" }), mode: scope.mode, origin: "agent" };
 
           return property === "writeFile" ? target.writeFile(path, rest[0] as string | Uint8Array, forced) : target.deleteFile(path, forced);
+        };
+      }
+      if (property === "updateEntry" || property === "createEntry" || property === "deleteEntry") {
+        // The assistant's, whatever the plugin says: in a content conversation its writes are held below build level
+        // (site/content-code.ts), and a plugin can't step out of that by calling itself the person.
+        return (first: unknown, ...rest: unknown[]) => {
+          const at = property === "updateEntry" ? 1 : 0;
+          const options = { ...((rest[at] as Record<string, unknown> | undefined) ?? {}), origin: "agent", mode: scope.mode };
+          const args = [...rest];
+
+          args[at] = options;
+          return (target[property] as (...args: unknown[]) => unknown).call(target, first, ...args);
         };
       }
       if (property === "saveConfig") {

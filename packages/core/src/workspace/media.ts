@@ -36,8 +36,17 @@ export function mediaExtension(name: string): string {
   return dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
 }
 
+/**
+ * The media type for a lower-cased extension, or undefined. MIME is a plain
+ * object, so an `in` test or a plain index would also answer for the names
+ * every object inherits ("constructor", "__proto__"); only its own keys count.
+ */
+export function mimeOf(ext: string): string | undefined {
+  return Object.hasOwn(MIME, ext) ? MIME[ext] : undefined;
+}
+
 export function isMediaFile(name: string): boolean {
-  return mediaExtension(name) in MIME;
+  return mimeOf(mediaExtension(name)) !== undefined;
 }
 
 /**
@@ -46,7 +55,7 @@ export function isMediaFile(name: string): boolean {
  */
 export function imageFacts(path: string, bytes: Uint8Array): { type: string; size: number; width?: number; height?: number } | null {
   const ext = mediaExtension(path);
-  const type = MIME[ext];
+  const type = mimeOf(ext);
 
   if (!type || !type.startsWith("image/")) return null;
   const facts: { type: string; size: number; width?: number; height?: number } = { type, size: bytes.byteLength };
@@ -178,7 +187,7 @@ export async function listMedia(workspace: Workspace, media: MediaConfig): Promi
           url: joinUrl(root.publicPath, childRelative),
           name: entry.name,
           size: stat.size,
-          type: MIME[ext] ?? "application/octet-stream",
+          type: mimeOf(ext) ?? "application/octet-stream",
           ...(dims.width ? { width: dims.width } : {}),
           ...(dims.height ? { height: dims.height } : {}),
           modifiedAt: stat.mtimeMs,
@@ -221,7 +230,7 @@ export interface CheckedUpload {
 export function checkUpload(input: { filename: string; data: Uint8Array }): CheckedUpload {
   const { base, ext } = sanitizeMediaName(input.filename);
 
-  if (!(ext in MIME)) {
+  if (mimeOf(ext) === undefined) {
     throw new GalleyError(
       "invalid",
       "That kind of file can't be added to the media library. Use an image (PNG, JPG, WebP, AVIF, GIF or SVG), a PDF or an MP4 video.",
@@ -253,7 +262,7 @@ export function checkUpload(input: { filename: string; data: Uint8Array }): Chec
       dims = {};
     }
   }
-  return { base, ext, type: MIME[ext] ?? "application/octet-stream", ...dims };
+  return { base, ext, type: mimeOf(ext) ?? "application/octet-stream", ...dims };
 }
 
 /** The folder under the media root a file is asked for ("team/"), or "" for the root itself. Refuses folders outside the media roots. */
@@ -312,7 +321,7 @@ export async function saveMedia(
       url: joinUrl(root.publicPath, within),
       name,
       size: input.data.length,
-      type: MIME[ext] ?? "application/octet-stream",
+      type: mimeOf(ext) ?? "application/octet-stream",
       ...size,
       modifiedAt: stat?.mtimeMs ?? Date.now(),
       status: workspace.statusOf(path),

@@ -18,12 +18,16 @@ import { safeDetail } from "../ai/errors";
 import { costFor } from "../ai/models";
 import type { EditOp, Entry, EventBus, JsonValue, MediaItem, SiteService } from "../types";
 import { createJobTracker } from "../site/jobs";
+import { contentWriteRefusal, heldBelowBuild } from "../site/content-code";
 import { readContentPage, type ContentPage } from "./content";
 import { auditSite, lastFindings } from "./audit";
 import { collapse, cut, DISPLAY, textWidth } from "./text";
 import type { WriteBatchStatus, WriteItemResult, WriteKind, WritePlan, WritePlanItem } from "./types";
 
 export const WRITE_MAX_BATCH = 200;
+/** Why a writing batch leaves a page alone on a hosted install: it works outside build mode, held like the assistant in a content conversation. */
+export const WRITE_BATCH_HELD =
+  "The writing batch works outside build mode, so it leaves alone a page an account without build mode couldn't change (MDX, or another framework's templates). Change this one yourself in the form, or ask the assistant in build mode.";
 const PAGE_TEXT_CHARS = 6_000;
 const SVG_CHARS = 20_000;
 const VIEWABLE_BYTES = 3_700_000;
@@ -311,7 +315,14 @@ export function createWriteBatches(deps: WriterDeps): WriteBatches {
             if (!collection) throw new Error("not a content entry");
             const page = readContentPage(entry, collection);
 
-            if (!stillNeeded(kind, entry, item)) {
+            // Asked before the model is paid for: a page this write may not change (outside build mode, the assistant may
+            // change only what an account without build mode could, on a hosted install) is skipped, with the reason.
+            const held = contentWriteRefusal(item.path, await site.model(), { origin: "agent" });
+
+            if (held) {
+              item.state = "skipped";
+              item.reason = heldBelowBuild({ origin: "agent" }) === "assistant" ? WRITE_BATCH_HELD : held;
+            } else if (!stillNeeded(kind, entry, item)) {
               item.state = "skipped";
               item.reason = "It was changed since it was checked.";
             } else {

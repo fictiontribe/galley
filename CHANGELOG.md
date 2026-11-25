@@ -43,20 +43,34 @@ entry says how.
 - **Changing content a framework runs needs build mode.** The preview and the
   build run the site's own code for everyone, and some content is part of that
   code: MDX runs its `import` lines, its `{ … }` expressions and its
-  `<Component>` elements, and frameworks like Docusaurus, Eleventy and Jekyll
-  run a template language in their content. Changing such content was a
-  content-mode change, so a contributor on a hosted install could, and the
-  preview then runs it. It is now a build-mode change, decided by the account's
-  level. An account below that level may still, in content mode: edit and add
-  Markdown on an Astro site (and on a plain Markdown site that runs no build);
-  add media; edit a data file (JSON, YAML, TOML) in a collection; and edit the
-  redirects list. It may not change MDX, or any content on a framework the
-  engine runs or doesn't recognise, until that framework's adapter is reviewed,
-  nor write anything else — a page, a script, a template, the site's settings.
-  **If you run a hosted editor with contributors, update.** This does not wall
-  the roles off: the preview runs the site's own code for every role, and code
-  already in the content still runs — it closes one way for an account below
-  build-mode level to put code where the build would run it.
+  `<Component>` elements; frameworks like Docusaurus, Eleventy and Jekyll run a
+  template language in their content; and Astro loads the layout and the
+  images a Markdown page names. On a hosted install an account below
+  build-mode level could change such content in content mode, and the preview
+  then ran it. Below that level content mode is now a short list. Such an
+  account may edit and add Markdown on an Astro site, on a Markdown site where
+  the editor sees no build tool, and in a collection the owner marks `plain`;
+  add pictures, PDFs and videos in the media folder (on Astro, also beside a
+  collection's entries); edit a data file in a collection (on Astro, JSON
+  only; never a build tool's or a host's settings file); and edit the
+  redirects. On Astro it may not add or change a page's layout, or add an
+  image that isn't a picture, PDF or video in the site. It may not change MDX,
+  other frameworks' content, the site's settings or source, or the files
+  assistants read as their instructions (STYLE.md, the brand folder, AGENTS.md
+  and the like). It may not turn a script on, or change one that is on beyond
+  where it loads and how consent is asked; it may turn one off or remove it.
+  It may delete only what it may write. The same list holds, whoever is signed
+  in, for a save the previewed page asks for (click to edit, Arrange) and, on a
+  hosted install, for the assistant outside build mode: a content
+  conversation, a writing batch, and an AI client over MCP in content mode,
+  the operator's own token included. Turning a script on or changing one that
+  is on is build-mode work for the assistant locally too, as a form's custom code
+  already was; the Scripts screen's Ask line now starts such a request in
+  build mode. **If you run a hosted editor with contributors,
+  update.** This does not wall the roles off: the preview runs the site's own
+  code for every role, content can still make it run code that is already in
+  the site, and HTML written into Markdown runs in the browser of whoever views
+  the page.
 
 - **Undo no longer says it undid something when it could not.** The editor
   closes a site that nobody has used for an hour (one whose preview isn't

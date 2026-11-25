@@ -182,7 +182,7 @@ export function createImageService(options: ImageServiceOptions): GalleyImageSer
 
     for (const path of paths.slice(0, 4)) {
       const ext = path.split(".").pop()?.toLowerCase() ?? "";
-      const mime = REFERENCE_MIME[ext];
+      const mime = Object.hasOwn(REFERENCE_MIME, ext) ? REFERENCE_MIME[ext] : undefined;
 
       if (!mime) throw new GalleyError("invalid", "Reference images must be PNG, JPG, WebP or GIF files.", path);
       // What is read here is sent to the image provider: never a secrets file or one of the version history's own, whatever its name ends in.

@@ -64,6 +64,12 @@ export interface WorkspaceWriteOptions extends WriteOptions {
 export interface Workspace {
   readonly root: string;
   resolvePath(path: string): string;
+  /**
+   * The repo-relative path the bytes of a write to `path` would reach, through
+   * any link on the way (for a file not there yet, its folder's real place).
+   * Throws, as a write would, for a path that leaves the site.
+   */
+  realPathOf(path: string): string;
   exists(path: string): Promise<boolean>;
   readText(path: string): Promise<string>;
   readBytes(path: string): Promise<Uint8Array>;
@@ -580,6 +586,10 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
 
     resolvePath(path) {
       return resolveRead(path).absolute;
+    },
+
+    realPathOf(path) {
+      return resolve(path).realPath;
     },
 
     async exists(path) {

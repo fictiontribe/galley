@@ -225,7 +225,7 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
       const ext = face.file.split(".").pop()?.toLowerCase() ?? "";
 
       // Named by the site's stylesheets, and served as it is.
-      if (!FONT_TYPES[ext] || !mayBeShown(face.file)) continue;
+      if (!Object.hasOwn(FONT_TYPES, ext) || !mayBeShown(face.file)) continue;
       let path: string | null = null;
 
       if (face.file.startsWith("pkg:")) {

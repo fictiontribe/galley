@@ -159,7 +159,7 @@ function buildSource(dir: string, builtAt: number, newestContent: number, base: 
           const body = await readFile(absolute, "utf8");
           const ext = candidate.split(".").pop()?.toLowerCase() ?? "";
 
-          return { status: 200, body, type: TYPES[ext] ?? "application/octet-stream", finalPath: stripBase(urlPath, base) };
+          return { status: 200, body, type: (Object.hasOwn(TYPES, ext) ? TYPES[ext] : undefined) ?? "application/octet-stream", finalPath: stripBase(urlPath, base) };
         } catch {
           // Try the next shape.
         }

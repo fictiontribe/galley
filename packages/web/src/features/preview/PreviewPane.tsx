@@ -240,6 +240,7 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
         if (role === "proposed" && editing) void handlers.current.onSelectImage(message);
         return;
       case "edit":
+        // Click to edit saves on its own, marked (useClickToEdit), and changes nothing in the form meanwhile.
         if (role === "proposed") void handlers.current.onEdit(message);
         return;
       case "edit-cancelled":
@@ -260,6 +261,10 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
   };
   const handleRef = useRef(handle);
   handleRef.current = handle;
+  // The entry's form, when the editor hands it over: a message from a page is the page's request, not the person's, so
+  // any change it makes to the form taints the form until its next save, which goes marked (content/form/store.ts).
+  const pageStoreRef = useRef(builder?.store ?? null);
+  pageStoreRef.current = builder?.store ?? null;
 
   // Only messages from the frames this pane loaded, at the origins it loaded them from.
   useEffect(() => {
@@ -271,7 +276,13 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
         return;
       }
       const message = parseOverlayMessage(event.data);
-      if (message) handleRef.current(role, localizeMessage(message, basePaths[role]));
+      if (!message) return;
+      // Every change the message makes to the form while it is handled is the page's. (Undo, which finishes after a wait,
+      // carries that on itself: listActions.)
+      const run = () => handleRef.current(role, localizeMessage(message, basePaths[role]));
+      const form = pageStoreRef.current;
+      if (form) form.actions.fromPage(run);
+      else run();
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);

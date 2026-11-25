@@ -1,207 +1,417 @@
 /**
- * The content-code guard (src/site/content-code.ts) as a decision table. Each
- * row is (framework + collections, path) and what an account below build-mode
- * level — a contributor — may do. The judge is gone: a file is inert or it is
- * not, by framework and lower-cased extension, and the guard is an allowlist,
- * so a path outside every collection (the site's own config and source) is
- * refused too.
+ * The content-code guard (src/site/content-code.ts, site-kit/guard.ts) as a
+ * table driven through the real write surface: each row opens a fresh site of
+ * one framework and makes one change — a write, an entry edit, a new entry or a
+ * delete — as one kind of writer, and says whether it lands or what refuses it.
  *
- * The account's level is the only question: an owner or editor, and nobody
- * (local and desktop, where there is no caller), may write every row. The
- * table asserts that at the end.
+ * Who: a contributor, an editor and an owner in the app; nobody (local); an
+ * owner whose save came from the previewed page (marked); the assistant in a
+ * content conversation on a hosted install, working for an owner; and the
+ * assistant locally, where nothing changes.
  */
-import { describe, expect, it } from "vitest";
-import { withCaller } from "../../src/install/caller";
-import { contentWriteRefusal, layoutRefusal } from "../../src/site/content-code";
-import type { Collection, SiteModel } from "../../src/types";
+import { mkdirSync, symlinkSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { GalleyError } from "../../src/errors";
+import { requireCallerForGuardedWork, withCaller } from "../../src/install/caller";
+import { asGeneratedRedirects } from "../../src/redirects/generated";
+import type { EditOp } from "../../src/types";
+import { cleanupAll, disposeAll, openSite, sh, tempDir, writeTree } from "./helpers";
 
-const collection = (over: Partial<Collection>): Collection =>
-  ({ id: "c", label: "C", singular: "c", kind: "entries", path: "src/content/c", format: "markdown", body: true, url: null, fields: [], create: true, count: 0, source: "inferred", ...over }) as Collection;
-
-const model = (over: Partial<SiteModel>): SiteModel =>
-  ({
-    framework: { id: "astro", name: "Astro" },
-    dev: { command: "" },
-    build: null,
-    media: { dir: "public", publicPath: "/", roots: [{ dir: "public", publicPath: "/" }] },
-    collections: [],
-    redirects: null,
-    templates: [],
-    ...over,
-  }) as unknown as SiteModel;
-
-/** An Astro site with a Markdown and an MDX collection, a data collection, and the default media root. */
-const astro = model({
-  collections: [
-    collection({ id: "pages", path: "src/content/pages", format: "markdown", pattern: "**/*.md" }),
-    collection({ id: "docs", path: "src/content/docs", format: "mdx", pattern: "**/*.mdx" }),
-    collection({ id: "both", path: "src/content/both", format: "markdown", pattern: "**/*.{md,mdx}" }),
-    collection({ id: "loose", path: "src/content/loose", format: "markdown" }), // no pattern: default admits md, mdx, markdown
-    collection({ id: "site", kind: "data", path: "src/data/site.json", format: "json" }),
-  ],
-  redirects: { file: "src/data/redirects.json" } as SiteModel["redirects"],
+afterEach(async () => {
+  requireCallerForGuardedWork(false);
+  await disposeAll();
+  cleanupAll();
 });
 
-const hugo = model({ framework: { id: "hugo", name: "Hugo" }, collections: [collection({ id: "posts", path: "content/posts", pattern: "**/*.{md,mdx,markdown}" })] });
+// ── the sites
 
-const genericStatic = model({ framework: { id: "generic", name: "Static site" }, dev: { command: "" } as SiteModel["dev"], build: null, collections: [collection({ id: "root", path: ".", pattern: "**/*.{md,mdx,markdown}" })] });
+const md = (title: string, body = "Words.", extra = "") => `---\ntitle: ${title}\n${extra}---\n\n${body}\n`;
+const LAYOUT = "layout: ../../layouts/Base.astro\n";
 
-const genericBuilt = model({ framework: { id: "generic", name: "Static site" }, build: { command: "node build.mjs", outDir: "dist" }, collections: [collection({ id: "root", path: ".", pattern: "**/*.{md,mdx,markdown}" })] });
+type SiteKind =
+  | "astro"
+  | "astro-claims"
+  | "eleventy-root"
+  | "eleventy-src"
+  | "eleventy-src-plain"
+  | "jekyll"
+  | "jekyll-root-media"
+  | "generic-root"
+  | "generic-links"
+  | "generic-dots"
+  | "generic-vitepress"
+  | "generic-mkdocs";
 
-const asContributor = (run: () => unknown) => withCaller({ accountId: "c", role: "contributor" }, run);
+const SITES: Record<SiteKind, { config: object; files: Record<string, string>; links?: Array<[string, string]> }> = {
+  astro: {
+    config: {
+      name: "Probe",
+      framework: "astro",
+      ai: { allowBuild: true },
+      redirects: { host: "netlify" },
+      templates: [{ id: "with-layout", label: "With a layout", collection: "pages", file: "src/templates/with-layout.md" }],
+      collections: [
+        { id: "pages", path: "src/content/pages", format: "markdown", pattern: "**/*.md" },
+        { id: "docs", path: "src/content/docs", format: "mdx", pattern: "**/*.mdx" },
+        { id: "kb", path: "src/content/kb", format: "markdown", pattern: "**/*.{md,mdoc}" },
+        { id: "nav", kind: "data", path: "src/data/nav.yaml", format: "yaml" },
+        { id: "site", kind: "data", path: "src/data/site.json", format: "json" },
+        { id: "scripts", kind: "data", path: "src/data/scripts.json", format: "json" },
+      ],
+    },
+    files: {
+      "src/content/pages/about.md": md("About"),
+      "src/content/pages/framed.md": md("Framed", "Framed page.", LAYOUT),
+      "src/content/pages/bom.md": `\uFEFF${md("Bom")}`,
+      "src/content/pages/linked-page.md": md("Linked", "See [the about page](../about/)."),
+      // Links a later save could try to turn into images: plain, with code in its text after an image, and by reference.
+      "src/content/pages/module-link.md": md("Module link", "[a](../../lib/marker.mjs?x.png)"),
+      "src/content/pages/code-link.md": md("Code link", "![p](./photo.png) **[`x`](../../lib/marker.mjs)**"),
+      "src/content/pages/ref-link.md": md("Ref link", "![p](./photo.png)\n\nSee [a][m].\n\n[m]: ../../lib/marker.mjs"),
+      "src/content/pages/agents.md": md("Our agents"),
+      "src/lib/marker.mjs": "export default 1;\n",
+      "public/og-default.png": "png",
+      "src/content/docs/intro.mdx": md("Intro"),
+      "src/content/kb/a.md": md("A"),
+      "src/data/nav.yaml": "items: []\n",
+      "src/data/site.json": "{}\n",
+      "src/data/scripts.json": `${JSON.stringify({ consent: { mode: "none" }, scripts: [{ id: "chat", kind: "custom", label: "Chat", enabled: false, settings: { inline: "console.log(1)" } }] }, null, 2)}\n`,
+      "src/data/redirects.json": '{ "redirects": [] }\n',
+      "src/layouts/Base.astro": "---\n---\n<slot />\n",
+      "src/templates/with-layout.md": md("New", "Body.", LAYOUT),
+      "public/images/a.png": "png",
+      "package.json": '{ "name": "probe", "type": "module" }\n',
+    },
+    // A folder link inside a collection, to the site's layouts: the name is a page, the bytes would land in src/layouts.
+    links: [["../../layouts", "src/content/pages/linked"]],
+  },
+  // Collections an owner pointed at the site's own settings files, and a data file that is a link to the scripts file.
+  "astro-claims": {
+    config: {
+      name: "Claims",
+      framework: "astro",
+      ai: { allowBuild: true },
+      collections: [
+        { id: "pages", path: "src/content/pages", format: "markdown", pattern: "**/*.md" },
+        { id: "pkg", kind: "data", path: "package.json", format: "json" },
+        { id: "host", kind: "data", path: "vercel.json", format: "json" },
+        { id: "astroConfig", kind: "data", path: "astro.config.mjs", format: "json" },
+        { id: "site", kind: "data", path: "src/data/site.json", format: "json" },
+        { id: "scripts", kind: "data", path: "src/data/scripts.json", format: "json" },
+      ],
+    },
+    files: {
+      "src/content/pages/about.md": md("About"),
+      "package.json": '{ "name": "claims", "type": "module" }\n',
+      "vercel.json": "{}\n",
+      "astro.config.mjs": "export default {};\n",
+      "src/data/scripts.json": `${JSON.stringify({ consent: { mode: "none" }, scripts: [{ id: "chat", kind: "custom", label: "Chat", enabled: false, settings: { inline: "console.log(1)" } }] }, null, 2)}\n`,
+    },
+    links: [["scripts.json", "src/data/site.json"]],
+  },
+  "eleventy-root": {
+    config: { name: "E", framework: "eleventy", ai: { allowBuild: true }, collections: [{ id: "root", path: ".", format: "markdown", pattern: "**/*.md" }] },
+    files: { "index.md": md("Home"), "_includes/base.njk": "{{ content }}\n" },
+  },
+  "eleventy-src": {
+    config: { name: "E", framework: "eleventy", ai: { allowBuild: true }, collections: [{ id: "pages", path: "src", format: "markdown", pattern: "**/*.md" }] },
+    files: { "src/index.md": md("Home"), "src/_includes/base.njk": "{{ content }}\n" },
+  },
+  "eleventy-src-plain": {
+    config: { name: "E", framework: "eleventy", ai: { allowBuild: true }, collections: [{ id: "pages", path: "src", format: "markdown", pattern: "**/*.md", plain: true }] },
+    files: { "src/index.md": md("Home"), "src/_includes/base.njk": "{{ content }}\n" },
+  },
+  jekyll: {
+    config: { name: "J", framework: "jekyll", ai: { allowBuild: true }, collections: [{ id: "posts", path: "_posts", format: "markdown", pattern: "**/*.md" }] },
+    files: { "_posts/2024-01-01-hello.md": md("Hello"), "_includes/head.html": "<meta>\n", "assets/images/a.png": "png", "_data/nav.yml": "items: []\n" },
+  },
+  // The same, with the settings making the repository's root a media root: an upload could then go anywhere.
+  "jekyll-root-media": {
+    config: { name: "J", framework: "jekyll", ai: { allowBuild: true }, media: { dir: ".", publicPath: "/", roots: [{ dir: ".", publicPath: "/" }] }, collections: [{ id: "posts", path: "_posts", format: "markdown", pattern: "**/*.md" }] },
+    files: { "_posts/2024-01-01-hello.md": md("Hello"), "_includes/head.html": "<meta>\n" },
+  },
+  "generic-root": {
+    config: { name: "G", ai: { allowBuild: true }, collections: [{ id: "root", path: ".", format: "markdown", pattern: "**/*.md" }] },
+    files: { "index.md": md("Home"), "package.json": '{ "name": "g" }\n', "public/.keep": "" },
+  },
+  // Instruction files that are links to ordinary pages, and a brand folder that is a link.
+  "generic-links": {
+    config: { name: "G", ai: { allowBuild: true }, collections: [{ id: "root", path: ".", format: "markdown", pattern: "**/*.md" }] },
+    files: { "index.md": md("Home"), "docs/house-style.md": md("House style"), "docs/agent-guide.md": md("Agent guide"), "docs/brand/guide.md": md("Brand"), "docs/other.md": md("Other") },
+    links: [
+      ["docs/house-style.md", "STYLE.md"],
+      ["agent-guide.md", "docs/AGENTS.md"],
+      ["../docs/brand", "galley/brand"],
+    ],
+  },
+  // Instruction paths written with a '.' segment.
+  "generic-dots": {
+    config: { name: "G", ai: { allowBuild: true, instructions: ["docs/./voice.md"] }, siteBrand: { dir: "galley/./brand" }, collections: [{ id: "root", path: ".", format: "markdown", pattern: "**/*.md" }] },
+    files: { "index.md": md("Home"), "docs/voice.md": md("Voice"), "galley/brand/guide.md": md("Brand") },
+  },
+  // Generic sites a tool builds: VitePress (scripts named docs:*), MkDocs (no package.json at all).
+  "generic-vitepress": {
+    config: { name: "G", ai: { allowBuild: true }, collections: [{ id: "docs", path: "docs", format: "markdown", pattern: "**/*.md" }] },
+    files: { "docs/index.md": md("Home"), "package.json": '{ "name": "v", "scripts": { "docs:dev": "vitepress dev docs", "docs:build": "vitepress build docs" } }\n', "docs/.vitepress/config.mts": "export default {};\n" },
+  },
+  "generic-mkdocs": {
+    config: { name: "G", ai: { allowBuild: true }, collections: [{ id: "docs", path: "docs", format: "markdown", pattern: "**/*.md" }] },
+    files: { "docs/index.md": md("Home"), "mkdocs.yml": "site_name: M\n" },
+  },
+};
+
+function makeSite(kind: SiteKind): string {
+  const root = tempDir(`content-code-${kind}-`);
+  const site = SITES[kind];
+
+  writeTree(root, { "galley.config.json": `${JSON.stringify(site.config, null, 2)}\n`, ...site.files });
+  for (const [target, at] of site.links ?? []) {
+    mkdirSync(join(root, at, ".."), { recursive: true });
+    symlinkSync(target, join(root, at));
+  }
+  sh(root, "init", "-q", "-b", "main");
+  sh(root, "add", "-A");
+  sh(root, "commit", "-q", "-m", "First version");
+  return root;
+}
+
+// ── who, and what they do
+
+type Who = "contributor" | "editor" | "owner" | "nobody" | "page-owner" | "assistant-owner" | "assistant-local";
+
+type Change =
+  | { write: string; text: string; mode?: "content" | "build" }
+  | { update: string; ops: EditOp[] }
+  | { create: string; slug: string; template?: string; body?: string }
+  | { deleteFile: string }
+  | { deleteEntry: string }
+  | { upload: string; directory: string; text?: string }
+  | { generatedRedirects: string; text: string };
+
+const agentOf = (who: Who) => who === "assistant-owner" || who === "assistant-local";
+
+async function asWho<T>(who: Who, run: () => Promise<T>): Promise<T> {
+  if (who === "nobody" || who === "assistant-local") return run();
+  if (who === "assistant-owner") {
+    // A hosted install: the assistant works for an owner in a content conversation.
+    requireCallerForGuardedWork(true);
+    return withCaller({ accountId: "o", role: "owner" }, run);
+  }
+  if (who === "page-owner") return withCaller({ accountId: "o", role: "owner", viaPreview: true }, run);
+  return withCaller({ accountId: who, role: who }, run);
+}
+
+/** What the change came to: "ok" when it landed, else the refusal's words. */
+async function outcome(kind: SiteKind, who: Who, change: Change): Promise<string> {
+  const { site } = await openSite(makeSite(kind));
+  const origin = agentOf(who) ? ("agent" as const) : ("user" as const);
+  const run = async (): Promise<string> => {
+    if ("write" in change) {
+      await site.writeFile(change.write, change.text, { origin, mode: change.mode ?? "content" });
+    } else if ("update" in change) {
+      const result = await site.updateEntry(change.update, change.ops, { origin, ...(agentOf(who) ? { mode: "content" as const } : {}) });
+
+      if (result.applied === 0) return result.refused[0]?.reason ?? "nothing applied";
+    } else if ("create" in change) {
+      await site.createEntry(
+        { collection: change.create, slug: change.slug, ...(change.template ? { template: change.template, data: {} } : { data: { title: "New" }, body: change.body ?? "Words." }) },
+        { origin, ...(agentOf(who) ? { mode: "content" as const } : {}) }
+      );
+    } else if ("deleteFile" in change) {
+      await site.deleteFile(change.deleteFile, { origin, mode: "content" });
+    } else if ("deleteEntry" in change) {
+      await site.deleteEntry(change.deleteEntry, { origin, ...(agentOf(who) ? { mode: "content" as const } : {}) });
+    } else if ("upload" in change) {
+      await site.saveMedia({ filename: change.upload, directory: change.directory, data: new TextEncoder().encode(change.text ?? "<svg xmlns=\"http://www.w3.org/2000/svg\"/>") }, { origin });
+    } else {
+      const { generatedRedirects: path, text } = change;
+
+      await asGeneratedRedirects(path, () => site.writeFile(path, text, { origin, mode: "content" }));
+    }
+    return "ok";
+  };
+
+  try {
+    return await asWho(who, run);
+  } catch (error) {
+    if (error instanceof GalleyError && (error.code === "forbidden" || error.code === "invalid")) return error.message;
+    throw error;
+  }
+}
+
+// ── the words each refusal is known by
+
+const LEVEL = /not its code and templates \(build mode\)/;
+const PAGE = /asked for by the page in the preview/;
+const ASSISTANT = /Outside build mode, the assistant may change only/;
+const LAYOUT_WORDS = /layout names code the site runs.*template/;
+const FRONT = /settings at the top/;
+const IMAGE = /An image on this page/;
+const SCRIPT = /script on the site's pages/;
+const GLOBS = /Only content and media/;
+const INSTRUCTIONS = /read a file with this name as their instructions/;
+const RENDERED = /starts with --- like a page's settings/;
 
 interface Row {
   name: string;
-  site: SiteModel;
-  path: string;
-  allowed: boolean;
+  site: SiteKind;
+  who: Who;
+  change: Change;
+  expect: "ok" | RegExp;
 }
 
 const TABLE: Row[] = [
-  // Astro: Markdown inert, MDX guarded, decided per file even in a mixed or pattern-less collection.
-  { name: "astro .md entry", site: astro, path: "src/content/pages/post.md", allowed: true },
-  { name: "astro .mdx entry", site: astro, path: "src/content/docs/post.mdx", allowed: false },
-  { name: "astro .md in a {md,mdx} collection", site: astro, path: "src/content/both/post.md", allowed: true },
-  { name: "astro .mdx in a {md,mdx} collection", site: astro, path: "src/content/both/post.mdx", allowed: false },
-  { name: "astro .mdx in a pattern-less markdown collection", site: astro, path: "src/content/loose/post.mdx", allowed: false },
-  { name: "astro .md in a pattern-less markdown collection", site: astro, path: "src/content/loose/post.md", allowed: true },
-  { name: "astro data file", site: astro, path: "src/data/site.json", allowed: true },
-  { name: "astro media beside an entry", site: astro, path: "src/content/pages/photo.png", allowed: true },
-  { name: "astro media under the media root", site: astro, path: "public/hero.jpg", allowed: true },
-  { name: "astro non-media under the media root", site: astro, path: "public/evil.js", allowed: false },
-  { name: "astro the redirects list", site: astro, path: "src/data/redirects.json", allowed: true },
-  { name: "astro a layout (site source)", site: astro, path: "src/layouts/Base.astro", allowed: false },
-  { name: "astro an upper-case extension", site: astro, path: "src/content/pages/README.MD", allowed: false },
-  { name: "astro a name the pattern excludes", site: astro, path: "src/content/pages/data.txt", allowed: false },
-  // Hugo and every other detected framework: content guarded whole, whatever the pattern admits.
-  { name: "hugo .md entry", site: hugo, path: "content/posts/post.md", allowed: false },
-  { name: "hugo .mdx entry", site: hugo, path: "content/posts/post.mdx", allowed: false },
-  { name: "hugo media beside an entry", site: hugo, path: "content/posts/photo.png", allowed: true },
-  // generic: Markdown inert only when nothing runs over it.
-  { name: "generic .md at the root, no command", site: genericStatic, path: "index.md", allowed: true },
-  { name: "generic .md at the root, with a build command", site: genericBuilt, path: "index.md", allowed: false },
-  { name: "generic a config file at the root (the ** hole)", site: genericStatic, path: "galley.config.json", allowed: false },
-  { name: "generic package.json at the root", site: genericStatic, path: "package.json", allowed: false },
-  { name: "generic a script at the root", site: genericStatic, path: "build.mjs", allowed: false },
-  { name: "generic media at the root", site: genericStatic, path: "logo.svg", allowed: true },
+  // Astro: Markdown inert, MDX and source guarded, decided per file.
+  { name: "astro .md entry", site: "astro", who: "contributor", change: { write: "src/content/pages/new.md", text: md("New") }, expect: "ok" },
+  { name: "astro .mdx entry", site: "astro", who: "contributor", change: { write: "src/content/docs/new.mdx", text: md("New") }, expect: LEVEL },
+  { name: "astro .mdoc in a collection that admits it", site: "astro", who: "contributor", change: { write: "src/content/kb/b.mdoc", text: md("B") }, expect: LEVEL },
+  { name: "astro a layout file (site source)", site: "astro", who: "contributor", change: { write: "src/layouts/Base.astro", text: "x" }, expect: LEVEL },
+  { name: "astro package.json", site: "astro", who: "contributor", change: { write: "package.json", text: "{}" }, expect: LEVEL },
+  { name: "astro YAML data (runs as a module)", site: "astro", who: "contributor", change: { write: "src/data/nav.yaml", text: "items: []\n" }, expect: LEVEL },
+  { name: "astro JSON data", site: "astro", who: "contributor", change: { write: "src/data/site.json", text: '{ "a": 1 }\n' }, expect: "ok" },
+  { name: "astro the 'constructor' extension under a media root", site: "astro", who: "contributor", change: { write: "public/images/x.constructor", text: "console.log(1)" }, expect: LEVEL },
+  { name: "astro the '__proto__' extension beside an entry", site: "astro", who: "contributor", change: { write: "src/content/pages/x.__proto__", text: "console.log(1)" }, expect: LEVEL },
+  { name: "astro a picture under the media root", site: "astro", who: "contributor", change: { write: "public/images/b.png", text: "png" }, expect: "ok" },
+  { name: "astro a picture beside an entry", site: "astro", who: "contributor", change: { write: "src/content/pages/photo.png", text: "png" }, expect: "ok" },
+  { name: "astro a picture uploaded to the media library", site: "astro", who: "contributor", change: { upload: "logo.svg", directory: "public/images" }, expect: "ok" },
+  { name: "astro a page through a folder link to the layouts", site: "astro", who: "contributor", change: { write: "src/content/pages/linked/x.md", text: md("X") }, expect: LEVEL },
+  // Astro Markdown: layout, the front matter's shape, image targets.
+  { name: "astro adding a layout", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "About us.", LAYOUT) }, expect: LAYOUT_WORDS },
+  { name: "astro keeping a layout while editing prose", site: "astro", who: "contributor", change: { write: "src/content/pages/framed.md", text: md("Framed", "Reworded.", LAYOUT) }, expect: "ok" },
+  { name: "astro a layout behind '--- # note'", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: `--- # note\ntitle: About\n${LAYOUT}---\n\nAbout.\n` }, expect: FRONT },
+  { name: "astro a layout behind a leading blank line", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: `\n---\ntitle: About\n${LAYOUT}---\n\nAbout.\n` }, expect: FRONT },
+  { name: "astro a layout through a merge key", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: "---\ntitle: About\nbase: &b\n  layout: ../../layouts/Base.astro\n<<: *b\n---\n\nAbout.\n" }, expect: FRONT },
+  { name: "astro an image path to a module", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "![x](./evil.mjs)") }, expect: IMAGE },
+  { name: "astro an image path with a query", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "![x](./a.svg?raw)") }, expect: IMAGE },
+  { name: "astro an image by reference to a module", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "![x][m]\n\n[m]: ./evil.mjs") }, expect: IMAGE },
+  { name: "astro a front-matter image path to a module", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "Words.", "cover: ./evil.mjs\n") }, expect: IMAGE },
+  { name: "astro a picture image", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "![x](./photo.png)") }, expect: "ok" },
+  { name: "astro an image path hidden behind an entity", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "![x](../../layouts/Base.astro&quest;.png)") }, expect: IMAGE },
+  { name: "astro an image after an escaped backslash", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "Text \\\\![a](../../layouts/Base.astro)") }, expect: IMAGE },
+  { name: "astro an image whose alt holds a code span", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "![a `]` b](../lib/evil.mjs)") }, expect: IMAGE },
+  { name: "astro an image whose alt holds HTML", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", '![a <span title="]">x</span>](../lib/evil.mjs)') }, expect: IMAGE },
+  { name: "astro an image destination after a line ending", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: "---\r\ntitle: About\r\n---\r\n![a](\r\n../lib/evil.mjs)\r\n" }, expect: IMAGE },
+  { name: "astro an image destination with a no-break space in it", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "![a](./ok.png\u00a0/../../lib/evil.mjs)") }, expect: IMAGE },
+  { name: "astro an image by reference defined in a quote", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "![x]\n\n> [x]: ./evil.js") }, expect: IMAGE },
+  { name: "astro a front-matter picture from outside the site", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "Words.", "cover: /tmp/elsewhere/secret.png\n") }, expect: IMAGE },
+  { name: "astro a relative link added beside an image", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "![x](./photo.png) and [more](../more/)") }, expect: "ok" },
+  { name: "astro a link whose text could hide an image's start, beside an image (judged like an image)", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "![x](./photo.png) and **[`more`](../more/)**") }, expect: IMAGE },
+  { name: "astro a link to a module turned into an image (a second save)", site: "astro", who: "contributor", change: { write: "src/content/pages/module-link.md", text: md("Module link", "![a](../../lib/marker.mjs?x.png)") }, expect: IMAGE },
+  { name: "astro a link with code in its text turned into an image", site: "astro", who: "contributor", change: { write: "src/content/pages/code-link.md", text: md("Code link", "![p](./photo.png) **![`x`](../../lib/marker.mjs)**") }, expect: IMAGE },
+  { name: "astro a reference link turned into an image", site: "astro", who: "contributor", change: { write: "src/content/pages/ref-link.md", text: md("Ref link", "![p](./photo.png)\n\nSee ![a][m].\n\n[m]: ../../lib/marker.mjs") }, expect: IMAGE },
+  { name: "astro editing the settings of a page that has a link to a module", site: "astro", who: "contributor", change: { update: "src/content/pages/ref-link.md", ops: [{ op: "set", path: ["title"], value: "Changed" }] }, expect: "ok" },
+  { name: "astro editing a paragraph next to a module link on a page with an image", site: "astro", who: "contributor", change: { write: "src/content/pages/ref-link.md", text: md("Ref link", "![p](./photo.png)\n\nSee [a][m], reworded.\n\n[m]: ../../lib/marker.mjs") }, expect: "ok" },
+  { name: "astro a page of unclosed images (read in one pass)", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "![a](".repeat(20000)) }, expect: IMAGE },
+  { name: "astro a relative link on a page with no images", site: "astro", who: "contributor", change: { write: "src/content/pages/linked-page.md", text: md("Linked", "See [the about page](../about/) and [more](../more/).") }, expect: "ok" },
+  { name: "astro an image added to a page that already has relative links", site: "astro", who: "contributor", change: { write: "src/content/pages/linked-page.md", text: md("Linked", "See [the about page](../about/).\n\n![x](./photo.png)") }, expect: "ok" },
+  { name: "astro editing a page saved with a byte-order mark", site: "astro", who: "contributor", change: { update: "src/content/pages/bom.md", ops: [{ op: "set", path: ["title"], value: "Changed" }] }, expect: "ok" },
+  { name: "astro a picture from the site's media folder (the media picker's path)", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "Words.", "cover: /images/a.png\n") }, expect: "ok" },
+  { name: "astro a picture at the top of the public folder", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "Words.", "cover: /og-default.png\n") }, expect: "ok" },
+  { name: "astro a picture from the site's root that isn't there", site: "astro", who: "contributor", change: { write: "src/content/pages/about.md", text: md("About", "Words.", "cover: /images/missing.png\n") }, expect: IMAGE },
+  { name: "astro a page named like an assistant's instructions (agents.md)", site: "astro", who: "contributor", change: { update: "src/content/pages/agents.md", ops: [{ op: "set", path: ["title"], value: "Our team" }] }, expect: INSTRUCTIONS },
+  { name: "astro an entry from a template that sets a layout", site: "astro", who: "contributor", change: { create: "pages", slug: "from-template", template: "with-layout" }, expect: LAYOUT_WORDS },
+  { name: "astro an entry edit through the form", site: "astro", who: "contributor", change: { update: "src/content/pages/about.md", ops: [{ op: "set", path: ["title"], value: "Changed" }] }, expect: "ok" },
+  { name: "astro an MDX entry edit through the form", site: "astro", who: "contributor", change: { update: "src/content/docs/intro.mdx", ops: [{ op: "set", path: ["title"], value: "Changed" }] }, expect: LEVEL },
+  { name: "astro a new Markdown entry", site: "astro", who: "contributor", change: { create: "pages", slug: "fresh" }, expect: "ok" },
+  { name: "astro a new MDX entry", site: "astro", who: "contributor", change: { create: "docs", slug: "fresh" }, expect: LEVEL },
+  // Deletes: only what the writer could write.
+  { name: "astro deleting an MDX entry", site: "astro", who: "contributor", change: { deleteEntry: "src/content/docs/intro.mdx" }, expect: LEVEL },
+  { name: "astro deleting a Markdown entry", site: "astro", who: "contributor", change: { deleteEntry: "src/content/pages/about.md" }, expect: "ok" },
+  { name: "astro deleting a picture", site: "astro", who: "contributor", change: { deleteFile: "public/images/a.png" }, expect: "ok" },
+  { name: "astro deleting the layout", site: "astro", who: "contributor", change: { deleteFile: "src/layouts/Base.astro" }, expect: LEVEL },
+  // The redirects list, and the host's file only as the redirects code writes it.
+  { name: "astro the redirects list", site: "astro", who: "contributor", change: { write: "src/data/redirects.json", text: '{ "redirects": [] }\n' }, expect: "ok" },
+  { name: "astro the host's redirects file by hand", site: "astro", who: "contributor", change: { write: "public/_redirects", text: "/a /b 200\n" }, expect: LEVEL },
+  { name: "astro the host's redirects file as the redirects code writes it", site: "astro", who: "contributor", change: { generatedRedirects: "public/_redirects", text: "/a /b 301\n" }, expect: "ok" },
+  // The scripts kit: turning a script on or changing one is build mode; its label is content.
+  { name: "astro turning a script on through a data file that is a link to the scripts file", site: "astro-claims", who: "contributor", change: { write: "src/data/site.json", text: JSON.stringify({ consent: { mode: "none" }, scripts: [{ id: "chat", kind: "custom", label: "Chat", enabled: true, settings: { inline: "console.log(1)" } }] }) }, expect: SCRIPT },
+  { name: "astro package.json claimed by a data collection", site: "astro-claims", who: "contributor", change: { write: "package.json", text: '{ "scripts": { "build": "astro build" } }' }, expect: LEVEL },
+  { name: "astro vercel.json claimed by a data collection", site: "astro-claims", who: "contributor", change: { write: "vercel.json", text: '{ "buildCommand": "x" }' }, expect: LEVEL },
+  { name: "astro astro.config.mjs claimed by a data collection", site: "astro-claims", who: "contributor", change: { write: "astro.config.mjs", text: "export default {};" }, expect: LEVEL },
+  { name: "astro turning a script on, written as a file", site: "astro", who: "contributor", change: { write: "src/data/scripts.json", text: JSON.stringify({ consent: { mode: "none" }, scripts: [{ id: "chat", kind: "custom", label: "Chat", enabled: true, settings: { inline: "console.log(1)" } }] }) }, expect: SCRIPT },
+  { name: "astro turning a script on through the Scripts screen (an entry edit)", site: "astro", who: "contributor", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 0, "enabled"], value: true }] }, expect: LEVEL },
+  { name: "astro turning a script on through the Scripts screen, as an owner", site: "astro", who: "owner", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 0, "enabled"], value: true }] }, expect: "ok" },
+  { name: "astro a page-marked owner save turns a script on", site: "astro", who: "page-owner", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 0, "enabled"], value: true }] }, expect: PAGE },
+  { name: "astro turning a script on, as an owner writing it as a file in content mode", site: "astro", who: "owner", change: { write: "src/data/scripts.json", text: JSON.stringify({ consent: { mode: "none" }, scripts: [{ id: "chat", kind: "custom", label: "Chat", enabled: true, settings: { inline: "console.log(1)" } }] }) }, expect: SCRIPT },
+  { name: "astro relabelling a script that is off", site: "astro", who: "contributor", change: { write: "src/data/scripts.json", text: JSON.stringify({ consent: { mode: "none" }, scripts: [{ id: "chat", kind: "custom", label: "Live chat", enabled: false, settings: { inline: "console.log(1)" } }] }) }, expect: "ok" },
+  // Who: the level, the page's mark, the assistant.
+  { name: "astro an owner writes MDX code", site: "astro", who: "owner", change: { write: "src/content/docs/new.mdx", text: md("New", "{code()}") }, expect: "ok" },
+  { name: "astro an editor writes MDX code", site: "astro", who: "editor", change: { write: "src/content/docs/new.mdx", text: md("New", "{code()}") }, expect: "ok" },
+  { name: "astro nobody (local) writes MDX code", site: "astro", who: "nobody", change: { write: "src/content/docs/new.mdx", text: md("New", "{code()}") }, expect: "ok" },
+  { name: "astro a page-marked owner save adds a layout", site: "astro", who: "page-owner", change: { write: "src/content/pages/about.md", text: md("About", "About us.", LAYOUT) }, expect: PAGE },
+  { name: "astro a page-marked owner save writes MDX", site: "astro", who: "page-owner", change: { write: "src/content/docs/new.mdx", text: md("New") }, expect: PAGE },
+  { name: "astro a page-marked owner save edits Markdown", site: "astro", who: "page-owner", change: { write: "src/content/pages/about.md", text: md("About", "Reworded.") }, expect: "ok" },
+  { name: "astro the assistant in an owner's content conversation writes MDX code", site: "astro", who: "assistant-owner", change: { write: "src/content/docs/new.mdx", text: md("New", "{code()}") }, expect: ASSISTANT },
+  { name: "astro the assistant in an owner's content conversation adds a layout", site: "astro", who: "assistant-owner", change: { update: "src/content/pages/about.md", ops: [{ op: "set", path: ["layout"], value: "../../layouts/Base.astro" }] }, expect: ASSISTANT },
+  { name: "astro the assistant in an owner's content conversation deletes an MDX entry", site: "astro", who: "assistant-owner", change: { deleteEntry: "src/content/docs/intro.mdx" }, expect: ASSISTANT },
+  { name: "astro the assistant in an owner's content conversation edits Markdown", site: "astro", who: "assistant-owner", change: { write: "src/content/pages/about.md", text: md("About", "Reworded.") }, expect: "ok" },
+  { name: "astro the assistant locally writes MDX code", site: "astro", who: "assistant-local", change: { write: "src/content/docs/new.mdx", text: md("New", "{code()}") }, expect: "ok" },
+  // Eleventy: content guarded whole; media only under a media root, never beside an entry.
+  { name: "eleventy (root collection) a page", site: "eleventy-root", who: "contributor", change: { write: "index.md", text: md("Home", "Reworded.") }, expect: LEVEL },
+  { name: "eleventy (root collection) an SVG in _includes", site: "eleventy-root", who: "contributor", change: { write: "_includes/x.svg", text: "<svg/>" }, expect: LEVEL },
+  { name: "eleventy (src collection) an SVG in src/_includes", site: "eleventy-src", who: "contributor", change: { write: "src/_includes/x.svg", text: "<svg/>" }, expect: LEVEL },
+  { name: "eleventy (src collection) a page", site: "eleventy-src", who: "contributor", change: { write: "src/index.md", text: md("Home", "Reworded.") }, expect: LEVEL },
+  { name: "eleventy (src collection, declared plain) a page", site: "eleventy-src-plain", who: "contributor", change: { write: "src/index.md", text: md("Home", "Reworded.") }, expect: "ok" },
+  { name: "eleventy (src collection, declared plain) an SVG in src/_includes", site: "eleventy-src-plain", who: "contributor", change: { write: "src/_includes/x.svg", text: "<svg/>" }, expect: LEVEL },
+  { name: "eleventy an owner edits a page", site: "eleventy-src", who: "owner", change: { write: "src/index.md", text: md("Home", "Reworded.") }, expect: "ok" },
+  // Jekyll: the same.
+  { name: "jekyll a post", site: "jekyll", who: "contributor", change: { write: "_posts/2024-01-01-hello.md", text: md("Hello", "Reworded.") }, expect: LEVEL },
+  { name: "jekyll an SVG in _includes", site: "jekyll", who: "contributor", change: { write: "_includes/x.svg", text: "<svg/>" }, expect: LEVEL },
+  { name: "jekyll (the root a media root) an SVG uploaded to _includes", site: "jekyll-root-media", who: "contributor", change: { upload: "x.svg", directory: "_includes" }, expect: LEVEL },
+  { name: "jekyll (the root a media root) an SVG uploaded to _includes, by an owner", site: "jekyll-root-media", who: "owner", change: { upload: "x.svg", directory: "_includes" }, expect: "ok" },
+  { name: "jekyll an SVG in _includes, as an owner in content mode (the ordinary content globs decide)", site: "jekyll", who: "owner", change: { write: "_includes/x.svg", text: "<svg/>" }, expect: GLOBS },
+  { name: "jekyll a picture under the media root", site: "jekyll", who: "contributor", change: { write: "assets/images/b.svg", text: "<svg/>" }, expect: "ok" },
+  { name: "jekyll a picture that starts with front matter", site: "jekyll", who: "contributor", change: { write: "assets/images/b.svg", text: "---\npermalink: /index.html\n---\n<svg/>" }, expect: RENDERED },
+  { name: "jekyll an upload that starts with front matter", site: "jekyll", who: "contributor", change: { upload: "b.svg", directory: "assets/images", text: "---\npermalink: /index.html\n---\n<svg/>" }, expect: RENDERED },
+  { name: "jekyll the redirects list starting with front matter", site: "jekyll", who: "contributor", change: { write: "src/data/redirects.json", text: "---\npermalink: /\n---\n{}" }, expect: RENDERED },
+  { name: "jekyll a picture that starts with front matter, by an owner", site: "jekyll", who: "owner", change: { write: "assets/images/b.svg", text: "---\ntitle: x\n---\n<svg/>" }, expect: "ok" },
+  // A plain Markdown site with a collection at the root: its Markdown is inert, the files around it aren't.
+  { name: "generic (root) a page", site: "generic-root", who: "contributor", change: { write: "index.md", text: md("Home", "Reworded.") }, expect: "ok" },
+  { name: "generic (root) STYLE.md, which the assistant reads as instructions", site: "generic-root", who: "contributor", change: { write: "STYLE.md", text: md("Style") }, expect: INSTRUCTIONS },
+  { name: "generic (root) style.md in another case", site: "generic-root", who: "contributor", change: { write: "style.md", text: md("Style") }, expect: INSTRUCTIONS },
+  { name: "generic (root) AGENTS.md", site: "generic-root", who: "contributor", change: { write: "docs/AGENTS.md", text: md("Agents") }, expect: INSTRUCTIONS },
+  { name: "generic (root) AGENTS.override.md", site: "generic-root", who: "contributor", change: { write: "AGENTS.override.md", text: md("Agents") }, expect: INSTRUCTIONS },
+  { name: "generic (root) CLAUDE.local.md", site: "generic-root", who: "contributor", change: { write: "CLAUDE.local.md", text: md("Claude") }, expect: INSTRUCTIONS },
+  { name: "generic (root) AGENT.md", site: "generic-root", who: "contributor", change: { write: "AGENT.md", text: md("Agent") }, expect: INSTRUCTIONS },
+  { name: "generic (root) a file in a dot folder (.github)", site: "generic-root", who: "contributor", change: { write: ".github/copilot-instructions.md", text: md("Copilot") }, expect: LEVEL },
+  { name: "generic (root) the brand guide", site: "generic-root", who: "contributor", change: { write: "galley/brand/guide.md", text: md("Guide") }, expect: INSTRUCTIONS },
+  { name: "generic (links) the page STYLE.md is a link to", site: "generic-links", who: "contributor", change: { write: "docs/house-style.md", text: md("House style", "Reworded.") }, expect: INSTRUCTIONS },
+  { name: "generic (links) the page an AGENTS.md link leads to", site: "generic-links", who: "contributor", change: { write: "docs/agent-guide.md", text: md("Agent guide", "Reworded.") }, expect: INSTRUCTIONS },
+  { name: "generic (links) the folder the brand folder is a link to", site: "generic-links", who: "contributor", change: { write: "docs/brand/guide.md", text: md("Brand", "Reworded.") }, expect: INSTRUCTIONS },
+  { name: "generic (links) an ordinary page beside them", site: "generic-links", who: "contributor", change: { write: "docs/other.md", text: md("Other", "Reworded.") }, expect: "ok" },
+  { name: "generic (dots) ai.instructions written with a '.' segment", site: "generic-dots", who: "contributor", change: { write: "docs/voice.md", text: md("Voice", "Reworded.") }, expect: INSTRUCTIONS },
+  { name: "generic (dots) the brand folder written with a '.' segment", site: "generic-dots", who: "contributor", change: { write: "galley/brand/guide.md", text: md("Brand", "Reworded.") }, expect: INSTRUCTIONS },
+  { name: "generic (VitePress) a page", site: "generic-vitepress", who: "contributor", change: { write: "docs/index.md", text: md("Home", "Reworded.") }, expect: LEVEL },
+  { name: "generic (MkDocs) a page", site: "generic-mkdocs", who: "contributor", change: { write: "docs/index.md", text: md("Home", "Reworded.") }, expect: LEVEL },
+  { name: "generic (MkDocs) a page, by an owner", site: "generic-mkdocs", who: "owner", change: { write: "docs/index.md", text: md("Home", "Reworded.") }, expect: "ok" },
+  { name: "generic (root) package.json", site: "generic-root", who: "contributor", change: { write: "package.json", text: "{}" }, expect: LEVEL },
+  { name: "generic (root) a picture at the root (no media beside a root collection)", site: "generic-root", who: "contributor", change: { write: "logo.svg", text: "<svg/>" }, expect: LEVEL },
+  { name: "generic (root) a picture in the public folder", site: "generic-root", who: "contributor", change: { write: "public/logo.svg", text: "<svg/>" }, expect: "ok" },
+  { name: "generic (root) deleting package.json", site: "generic-root", who: "contributor", change: { deleteFile: "package.json" }, expect: LEVEL },
 ];
 
-describe("the content-code allowlist, for an account below build level", () => {
+describe("the content guard, through the write surface", { timeout: 300_000 }, () => {
   for (const row of TABLE) {
-    it(`${row.allowed ? "lets a contributor write" : "refuses a contributor"}: ${row.name}`, () => {
-      const refusal = asContributor(() => contentWriteRefusal(row.path, row.site));
+    it(`${row.expect === "ok" ? "lets" : "refuses"} ${row.who}: ${row.name}`, async () => {
+      const result = await outcome(row.site, row.who, row.change);
 
-      if (row.allowed) expect(refusal, row.name).toBeNull();
-      else expect(refusal, row.name).toMatch(/build mode/);
+      if (row.expect === "ok") expect(result, row.name).toBe("ok");
+      else expect(result, row.name).toMatch(row.expect);
     });
   }
 });
 
-describe("the content-code guard, by level only", () => {
-  it("lets an owner, an editor and nobody write every row — the one question is the account's level", () => {
-    for (const row of TABLE) {
-      expect(withCaller({ accountId: "o", role: "owner" }, () => contentWriteRefusal(row.path, row.site)), `owner ${row.name}`).toBeNull();
-      expect(withCaller({ accountId: "e", role: "editor" }, () => contentWriteRefusal(row.path, row.site)), `editor ${row.name}`).toBeNull();
-      // Nobody: local and desktop, where there is no caller, are unaffected.
-      expect(contentWriteRefusal(row.path, row.site), `nobody ${row.name}`).toBeNull();
-    }
-  });
+describe("reading a large Markdown page", () => {
+  it("reads a page of 200 KB of unclosed images in one pass", async () => {
+    const { astroMarkdownRefusal } = await import("../../src/site/content-code");
+    const body = "![a](".repeat(40_000);
+    const started = performance.now();
+    const refusal = await withCaller({ accountId: "c", role: "contributor" }, async () =>
+      astroMarkdownRefusal("src/content/pages/a.md", md("A"), md("A", body), null, { origin: "user" }, { media: { dir: "public", publicPath: "/", roots: [{ dir: "public", publicPath: "/" }] } as never })
+    );
 
-  it("does not look at the conversation's mode or whether the site allows build mode", () => {
-    // A guarded entry on a site with build mode off: an owner (build level) still may; a contributor still may not.
-    const buildOff = model({ ...astro, ai: { allowBuild: false } as SiteModel["ai"] });
-
-    expect(withCaller({ accountId: "o", role: "owner" }, () => contentWriteRefusal("src/content/docs/post.mdx", buildOff))).toBeNull();
-    expect(asContributor(() => contentWriteRefusal("src/content/docs/post.mdx", buildOff))).toMatch(/build mode/);
-  });
-});
-
-describe("a write marked as the previewed page's (an overlay message) is held to the allowlist, whoever is signed in", () => {
-  // The page shares the overlay's origin, so a script a contributor put in the content could ask the app to save as an
-  // owner who is editing on the preview. Such a save (click to edit, Arrange) is marked; the server holds it to the
-  // allowlist whoever is signed in, build level included, and the result still waits in Proof.
-  const markedOwner = (path: string, site: SiteModel) => withCaller({ accountId: "o", role: "owner", viaPreview: true }, () => contentWriteRefusal(path, site));
-
-  it("lets a marked save write only what a contributor could, even for an owner", () => {
-    // Astro Markdown: allowed, as for a contributor.
-    expect(markedOwner("src/content/pages/post.md", astro)).toBeNull();
-    // MDX: refused, though the owner could write it from the app's own interface.
-    expect(markedOwner("src/content/docs/post.mdx", astro)).toMatch(/build mode/);
-    // A detected framework's content (a template collection): refused.
-    expect(markedOwner("content/posts/post.md", hugo)).toMatch(/build mode/);
-    // The site's own source: refused.
-    expect(markedOwner("src/layouts/Base.astro", astro)).toMatch(/build mode/);
-  });
-
-  it("leaves an unmarked owner save at the owner's level", () => {
-    expect(withCaller({ accountId: "o", role: "owner" }, () => contentWriteRefusal("src/content/docs/post.mdx", astro))).toBeNull();
-  });
-});
-
-describe("an owner's `plain` declaration makes a collection's Markdown inert on any framework", () => {
-  const hugoPlain = model({ framework: { id: "hugo", name: "Hugo" }, collections: [collection({ id: "posts", path: "content/posts", pattern: "**/*.{md,mdx,markdown}", plain: true })] });
-  // A generic site that runs a build command (the fallback, guarded by default), with and without the declaration.
-  const builtGuarded = model({ framework: { id: "generic", name: "Static site" }, build: { command: "node build.mjs", outDir: "dist" }, collections: [collection({ id: "root", path: ".", pattern: "**/*.{md,mdx,markdown}" })] });
-  const builtPlain = model({ framework: { id: "generic", name: "Static site" }, build: { command: "node build.mjs", outDir: "dist" }, collections: [collection({ id: "root", path: ".", pattern: "**/*.{md,mdx,markdown}", plain: true })] });
-
-  it("lets a contributor write the collection's Markdown, but never its MDX", () => {
-    expect(asContributor(() => contentWriteRefusal("content/posts/post.md", hugoPlain))).toBeNull();
-    expect(asContributor(() => contentWriteRefusal("content/posts/post.mdx", hugoPlain))).toMatch(/build mode/);
-  });
-
-  it("flips a guarded generic+command collection: declared plain, its Markdown is writable; undeclared, it is refused", () => {
-    expect(asContributor(() => contentWriteRefusal("index.md", builtPlain))).toBeNull();
-    expect(asContributor(() => contentWriteRefusal("index.md", builtGuarded))).toMatch(/build mode/);
-  });
-});
-
-describe("a .mdoc (Markdoc) entry is guarded, though the document parser reads it as Markdown", () => {
-  // The parser reads .mdoc as Markdown, but the extension is not one of the inert Markdown extensions, and Markdoc runs
-  // its own tags — so below build level it is guarded, even in a collection whose pattern admits it.
-  const astroMarkdoc = model({ collections: [collection({ id: "kb", path: "src/content/kb", format: "markdown", pattern: "**/*.{md,mdoc}" })] });
-
-  it("refuses a contributor a .mdoc on Astro, but allows the same collection's .md", () => {
-    expect(asContributor(() => contentWriteRefusal("src/content/kb/page.md", astroMarkdoc))).toBeNull();
-    expect(asContributor(() => contentWriteRefusal("src/content/kb/page.mdoc", astroMarkdoc))).toMatch(/build mode/);
-  });
-
-  it("stays guarded even when the collection is declared plain (plain is Markdown only)", () => {
-    const plainMarkdoc = model({ framework: { id: "hugo", name: "Hugo" }, collections: [collection({ id: "kb", path: "content/kb", format: "markdown", pattern: "**/*.{md,mdoc}", plain: true })] });
-
-    expect(asContributor(() => contentWriteRefusal("content/kb/page.md", plainMarkdoc))).toBeNull();
-    expect(asContributor(() => contentWriteRefusal("content/kb/page.mdoc", plainMarkdoc))).toMatch(/build mode/);
-  });
-});
-
-describe("a file the build runs as a module is build level on Astro", () => {
-  const astroYaml = model({ collections: [collection({ id: "nav", kind: "data", path: "src/data/nav.yaml", format: "yaml" })] });
-  const astroNoExt = model({ collections: [collection({ id: "nav", kind: "data", path: "src/data/nav", format: "yaml" })] });
-  const hugoYaml = model({ framework: { id: "hugo", name: "Hugo" }, collections: [collection({ id: "nav", kind: "data", path: "data/nav.yaml", format: "yaml" })] });
-
-  it("refuses a contributor a yaml/toml/extensionless file on Astro (Vite runs it), but a framework that reads it as data does not", () => {
-    expect(asContributor(() => contentWriteRefusal("src/data/nav.yaml", astroYaml))).toMatch(/build mode/);
-    expect(asContributor(() => contentWriteRefusal("src/data/nav", astroNoExt))).toMatch(/build mode/);
-    expect(asContributor(() => contentWriteRefusal("data/nav.yaml", hugoYaml))).toBeNull();
-    // JSON stays writable on Astro — it is parsed as JSON, not run.
-    expect(asContributor(() => contentWriteRefusal("src/data/site.json", astro))).toBeNull();
-  });
-});
-
-describe("the layout guard on Astro (ruling 4ii)", () => {
-  const withLayout = "---\ntitle: T\nlayout: ../../layouts/Base.astro\n---\nBody.\n";
-  const noLayout = "---\ntitle: T\n---\nBody.\n";
-  const other = "---\ntitle: T\nlayout: ../../layouts/Other.astro\n---\nBody.\n";
-
-  it("refuses a contributor adding or changing a Markdown entry's layout, and lets them keep or remove it", () => {
-    expect(asContributor(() => layoutRefusal(noLayout, withLayout, "markdown"))).toMatch(/build mode/);
-    expect(asContributor(() => layoutRefusal(withLayout, other, "markdown"))).toMatch(/build mode/);
-    // Editing prose while keeping the layout, or removing it, is fine.
-    expect(asContributor(() => layoutRefusal(withLayout, withLayout.replace("Body.", "New body."), "markdown"))).toBeNull();
-    expect(asContributor(() => layoutRefusal(withLayout, noLayout, "markdown"))).toBeNull();
-  });
-
-  it("does not restrict an owner, or nobody (local)", () => {
-    expect(withCaller({ accountId: "o", role: "owner" }, () => layoutRefusal(noLayout, withLayout, "markdown"))).toBeNull();
-    expect(layoutRefusal(noLayout, withLayout, "markdown")).toBeNull();
+    expect(refusal).toMatch(IMAGE);
+    expect(performance.now() - started).toBeLessThan(2_000);
   });
 });

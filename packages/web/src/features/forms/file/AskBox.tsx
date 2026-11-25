@@ -1,7 +1,7 @@
 import { useId, useRef, useState, type FormEvent } from "react";
 import { Button, ProofMark } from "@/ui";
 import { cx } from "@/ui/cx";
-import { useAssistantPanel, useAssistantReady } from "./assistant";
+import { useAllowBuild, useAssistantPanel, useAssistantReady } from "./assistant";
 
 export interface AskBoxProps {
   /** What the request is about, for the box's label ("this form"). */
@@ -12,20 +12,23 @@ export interface AskBoxProps {
   placeholder: string;
   /** "line": a screen's own ask line, one field with the button inside it (Scripts). Default: compact, for a tab bar. */
   layout?: "line";
+  /** What is asked here usually needs build mode (turning a script on): where this person may use it, the request goes in as a build-mode draft. */
+  needsBuild?: boolean;
 }
 
 /** A compact "Ask" line: the request opens the assistant beside the screen and is sent with this file as its context. */
-export function AskBox({ subject, context, examples, placeholder, layout }: AskBoxProps) {
+export function AskBox({ subject, context, examples, placeholder, layout, needsBuild = false }: AskBoxProps) {
   const [text, setText] = useState("");
   const show = useAssistantPanel((s) => s.show);
   const ready = useAssistantReady();
+  const allowBuild = useAllowBuild();
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
 
   const ask = (request: string) => {
     const words = request.trim();
     if (!words) return;
-    show({ send: `${context} ${words}` });
+    show(needsBuild && allowBuild ? { draft: `${context} ${words}`, mode: "build" } : { send: `${context} ${words}` });
     setText("");
   };
   const submit = (event: FormEvent) => {
