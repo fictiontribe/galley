@@ -12,6 +12,8 @@
 //
 // CAPTURE_OUT=<folder> writes everything under that folder instead of into
 // the site (same layout), for a trial that leaves the committed pictures alone.
+// CAPTURE_BUILD="built from <commit>, before <release>" is added to howto.json's
+// "captured" when the app is a build of the repository and not a release.
 //
 // scripts/capture/README.md says how to start everything it talks to: the
 // released Galley on throwaway copies of two starters (Caddow, Lowfield), with
@@ -48,6 +50,9 @@ const DOCS = join(SITE_OUT, "public/docs");
 const HOWTO = join(SITE_OUT, "public/howto");
 const HOWTO_JSON = join(SITE_OUT, "src/data/howto.json");
 const HOWTO_JSON_COMMITTED = join(here, "../src/data/howto.json");
+// A few words about the build, for a run from the repository instead of a release ("built from 1a2b3c4, before 0.5.0"):
+// they follow the version in howto.json's "captured", which is otherwise the last release's.
+const BUILD_NOTE = process.env.CAPTURE_BUILD?.trim();
 const ORIGIN = process.env.GALLEY_ORIGIN ?? "http://127.0.0.1:4790";
 const TOKEN = process.env.GALLEY_TOKEN;
 const SITE = process.env.GALLEY_SITE;
@@ -288,7 +293,7 @@ function writeHowto() {
   mkdirSync(dirname(HOWTO_JSON), { recursive: true });
   writeFileSync(HOWTO_JSON, `${JSON.stringify({
     about: "How-to sequences captured from the running app. Written by scripts/capture-screens.mjs; the wording of do/see may be polished by hand, the facts may not.",
-    captured: `${new Date().toLocaleDateString("sv")}, Galley ${appVersion}`,
+    captured: `${new Date().toLocaleDateString("sv")}, Galley ${appVersion}${BUILD_NOTE ? ` (${BUILD_NOTE})` : ""}`,
     guides: list,
   }, null, 2)}\n`);
   console.log(`  howto.json: ${list.length} guides`);
@@ -669,7 +674,7 @@ async function run(step) {
     await row.scrollIntoViewIfNeeded();
     await page.evaluate(() => scrollTo(0, 0));
     await page.waitForTimeout(800);
-    await howto(page, "add-analytics", 3, { x: 260, y: 296, width: 1140, height: 578 }, {
+    await howto(page, "add-analytics", 3, { x: 260, y: 248, width: 1140, height: 578 }, {
       alt: "Google Analytics 4 under Installed, switched on and marked New, with Every page, Straight away and Consent: Analytics chosen; beside it the Consent panel with Ask visitors first set to Built-in banner.",
       do: "Check it under **Installed**: it's switched on, and its **Consent** is **Analytics**. Under **Consent**, **Ask visitors first** is **Built-in banner**, so it loads only after a visitor agrees.",
     });
@@ -769,14 +774,14 @@ async function run(step) {
     await page.getByLabel("Help", { exact: true }).fill("We ring between ten and five, Thursday to Saturday.");
     await page.evaluate(() => document.activeElement?.blur());
     await page.waitForTimeout(1500);
-    await howto(page, "add-a-form", 2, { x: 420, y: 206, width: 1020, height: 669 }, {
+    await howto(page, "add-a-form", 2, { x: 420, y: 146, width: 1020, height: 669 }, {
       alt: "The form builder on Write to the workroom: a new Phone field under Your message, labelled “A phone number, if you’d rather we rang” and marked New; on the right its Label, Placeholder, Help, Required and Width.",
       do: "Click a field type on the left — **Phone** here — to add it below the selected field, then give it a **Label** and **Help** on the right.",
       see: "The change is saved as you go, and waits in Proof like any other.",
     });
     await page.getByRole("tab", { name: /Where it goes/ }).click();
     await page.waitForTimeout(1800);
-    await howto(page, "add-a-form", 3, exact(372, 214, 912, 570), {
+    await howto(page, "add-a-form", 3, exact(372, 154, 912, 570), {
       alt: "The Where it goes tab: Inbox as the main destination, the capture address, Submissions appear in this app's inbox for the site with See submissions, and a note that submissions can only arrive when the app runs on a server visitors can reach.",
       do: "Open **Where it goes**. **Inbox** is the first destination; **Add a destination** sends the answers to HubSpot, Marketo, Salesforce, Pardot, a webhook or the visitor's e-mail program as well.",
     });
@@ -788,6 +793,8 @@ async function run(step) {
     await page.waitForTimeout(3500);
     await page.getByRole("button", { name: /^Test visitor/ }).click();
     await page.waitForTimeout(2000);
+    // "Test submission received" would still be in the corner of both pictures.
+    await dismissToasts(page);
     await docShot(page, "inbox", 266, 78);
     await howto(page, "add-a-form", 4, exact(266, 78, 1125, 750), {
       alt: "The Inbox: the forms on the left, one submission from Test visitor marked Test in the middle, and on the right every answer — name, email address, what it is about, message, phone number and consent — with Mark unread, Spam and Delete.",
@@ -824,7 +831,7 @@ async function run(step) {
     await page.getByRole("button", { name: "Check again" }).click();
     await page.waitForTimeout(3000);
     await checksDone(page);
-    await docShot(page, "search-and-ai", 270, 225);
+    await docShot(page, "search-and-ai", 270, 201);
     await howto(page, "search-and-ai", 1, FULL, {
       alt: "Search & AI for Caddow: 2 must fix, 1 should fix and 2 ideas; a note that the rendered checks used the running preview; the groups Titles & descriptions, Headings & content, Images, Links and more, each marked; and on the right How AI systems see this site, with the AI crawlers.",
       do: "Open **Search & AI** in the sidebar. The checks run straight away; with the preview running they also check the pages as visitors get them. **Check again** runs them after a change.",
@@ -870,6 +877,15 @@ async function run(step) {
     const WP_SITE = process.env.WP_SITE, WP_URL = process.env.WP_URL;
     if (!WP_SITE || !WP_URL) throw new Error("Set WP_SITE and WP_URL for the wordpress step.");
     await api(`/api/sites/${WP_SITE}/discard`, { method: "POST", body: JSON.stringify({}) });
+    // The picture of the import part-way. The screen asks the server how the run is doing every 450 ms, and on
+    // a fast computer the posts come across between two of its looks. So this script asks too, much more
+    // often, and when the server answers with the posts part-way, that very answer is what the screen is
+    // given (again and again) until the picture is taken. Then the screen catches up with the real run.
+    const partWay = { body: null, done: false };
+    await page.route(/\/api\/sites\/[^/]+\/import\/runs\/[^/?]+$/, async (route) => {
+      if (route.request().method() !== "GET" || partWay.done || !partWay.body) return route.continue();
+      return route.fulfill({ status: 200, contentType: "application/json", body: partWay.body });
+    });
     // The wizard remembers its last report; start it over.
     const column = { x: 328, y: 60, width: 1000, height: 815 };
     await go(page, `/sites/${WP_SITE}`, 2500);
@@ -880,8 +896,11 @@ async function run(step) {
     });
     await page.getByRole("link", { name: "Bring your WordPress site" }).click();
     await page.waitForTimeout(2500);
-    // (After an earlier run the wizard opens on its old report.)
-    if (await page.getByRole("button", { name: "Import again" }).count()) { await page.getByRole("button", { name: "Import again" }).click(); await page.waitForTimeout(1500); }
+    // (After an earlier run the wizard opens on its old report, or says the import was discarded.)
+    for (const name of ["Import again", "Start again"]) {
+      const again = page.getByRole("button", { name }).first();
+      if (await again.count()) { await again.click(); await page.waitForTimeout(1500); break; }
+    }
     await page.getByRole("textbox", { name: "The site’s address" }).fill(WP_URL);
     await until(page, "the address check", async () => (await page.getByText(/A WordPress site at/).count()) > 0, 60_000);
     await page.evaluate(() => document.activeElement?.blur());
@@ -901,11 +920,20 @@ async function run(step) {
       alt: "Step 2, What comes across: one thing to decide — who Journal entries should be credited to, with Ines Ferreira marked Suggested — then Search rankings (16 search descriptions come across, 12 old addresses will redirect), What stays behind, and the button Bring over 18 entries.",
       do: "Check **What comes across**: where posts and pages go, anything to decide, your search rankings and what stays behind. Then press **Bring over 18 entries** (the number is yours).",
     });
+    const started = page.waitForResponse((response) => /\/import\/run$/.test(new URL(response.url()).pathname) && response.request().method() === "POST");
     await page.getByRole("button", { name: /^Bring over/ }).click();
+    const runId = (await (await started).json()).id;
     // Bringing it over: catch it part-way, while the posts come across.
+    for (let i = 0; i < 3000 && !partWay.body; i++) {
+      const status = await api(`/api/sites/${WP_SITE}/import/runs/${runId}`);
+      const posts = (status.steps ?? []).find((s) => /^Bringing over posts/.test(s.label ?? ""));
+      if (posts && posts.total && posts.done >= 3 && posts.done < posts.total && status.state === "running") partWay.body = JSON.stringify(status);
+      else if (status.state !== "running") break;
+    }
     let caught = false;
-    for (let i = 0; i < 400 && !caught; i++) {
+    for (let i = 0; i < 100 && partWay.body && !caught; i++) {
       if ((await page.getByText(/Bringing over posts —/).count()) && !(await page.getByText(/It’s all here/).count())) {
+        await page.waitForTimeout(400);
         await shoot(page, "wordpress-progress", column);
         await howto(page, "move-from-wordpress", 4, column, {
           alt: "Step 3, Bringing it over…: Reading the old site and Downloading images (18 of 18) done, Bringing over posts under way with its progress bar, then Bringing over pages and Writing the report still to come; Stop the import below.",
@@ -914,8 +942,10 @@ async function run(step) {
         });
         caught = true;
       }
-      await page.waitForTimeout(150);
+      await page.waitForTimeout(100);
     }
+    if (!caught) console.log("  (the import's part-way picture was not caught: wordpress-progress and how-to step 4 are as they were)");
+    partWay.done = true;
     await until(page, "the import", async () => (await page.getByText(/It’s all here/).count()) > 0, 600_000);
     await page.getByRole("button", { name: "See the report" }).click();
     await until(page, "the report", async () => (await page.getByText(/Your WordPress site is here/).count()) > 0, 60_000);
@@ -1072,7 +1102,7 @@ async function run(step) {
     await shoot(page, "site-home", FULL);
     await go(page, "/", 3000);
     await shoot(page, "sites", FULL);
-    await docShot(page, "sites", 270, 140);
+    await docShot(page, "sites", 270, 122);
     await go(page, `/sites/${SITE}/media`, 3000);
     await shoot(page, "media", FULL);
     await mediaGenerateDoc(page);
