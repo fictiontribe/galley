@@ -229,7 +229,7 @@ tier"); Fiction Tribe's Portland/2011 facts (the /fiction-tribe/ page is cut).
 
 Statements about other products are in `claims/<page>.md`, one file per
 article, each with its source and the date it was read ([`claims/README.md`](claims/README.md)).
-The statements below are the ones the comparison pages make about Galley.
+The statements below are the ones the comparison pages make about Galley. They hold on every page under /compare/, the guides /compare/ai-cms/ and /compare/git-based-cms/ included; the guides add the quotations from Galley's own docs listed in their claims files ("It never publishes.", "instructions to a model, not guarantees").
 
 | Statement | Where | Support |
 | --- | --- | --- |

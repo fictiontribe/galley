@@ -107,6 +107,19 @@ entry says how.
   pages. A check that can't tell keeps the preview as it is, and only after
   several in a row that can't does it stop. A port an owner set `dev.trustPort`
   for is not re-checked, as it isn't checked to begin with.
+- **The default author is the computer's git identity, not a repository's.**
+  When no author is set, the app falls back to the name and email in this
+  computer's git settings. It read them from whatever folder the editor was
+  started in, so starting it inside a repository with an identity of its own
+  gave every site that repository's author. It now reads them from the
+  editor's own folder, the same way as every other git call it makes.
+- **A backup and a restore keep every link inside its own folder.** A link
+  in the site's files was carried by a backup, and accepted by a restore,
+  whenever it pointed anywhere inside the editor's data folder — the install's
+  own files next to the site's included. A link, hard links too, now has to
+  stay in the folder it is in (the site's files, the state, and so on): a
+  backup leaves out one that doesn't, and a restore refuses an archive with
+  one.
 - **Stopping a preview signals only what the editor itself started.** A dev
   command that moves its server to the background and prints a process number
   ("pid 1234") had that number signalled when the preview stopped — a number
