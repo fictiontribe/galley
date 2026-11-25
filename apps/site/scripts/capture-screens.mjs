@@ -1522,9 +1522,9 @@ async function run(step) {
       await until(view, "the move's plan", async () => (await view.getByText("Move the files to the bucket?").count()) > 0, 60_000);
       await view.waitForTimeout(1500);
       await howto(view, "media-in-a-bucket", 6, FULL, {
-        alt: "The Move the files to the bucket? window over Storage settings: how many files will be copied to the bucket, how many places in how many pages will point at their full addresses, which files stay in the repository and why, the choice Keep the repository’s copies too, and the buttons Not now and Move them.",
+        alt: "The Move the files to the bucket? window over Storage settings: how many files will be copied to the bucket, how many places in how many pages and page templates will point at their full addresses, how many of the repository’s copies are then removed and how many stay, the file that still uses those and why a move doesn’t change it, a second paragraph naming the other files that mention them and aren’t changed, the choice Keep the repository’s copies too, and the buttons Not now and Move them.",
         do: "To move the files already in the repository, open **Storage settings** and press **Move the repository’s files to the bucket…**. Read the plan, then press **Move them**.",
-        see: "The plan says how many files are copied and how many places on how many pages will point at their new addresses.",
+        see: "The plan says what leaves, what stays and why. Pages and page templates will point at the new addresses, and the repository’s copies are removed. A copy stays only while a file the site is built from still uses it and a move doesn’t change that file: the plan names the file and says how to move the rest. Other files that mention a picture, a README for one, are listed under **Also mentioned in** and left as they are. If your site’s build does read one of them, name it in the site’s settings first, as that line says.",
       });
       await window().getByRole("button", { name: "Move them" }).click();
       await until(view, "the end of the move", async () => (await view.getByText("The files were moved to the bucket").count()) > 0, 300_000);
@@ -1532,9 +1532,9 @@ async function run(step) {
       if (await done.count()) await done.first().click();
       await view.waitForTimeout(2500);
       await howto(view, "media-in-a-bucket", 7, FULL, {
-        alt: "Media after the move: The files were moved to the bucket, just now, with how many files were copied and how many pages updated, which files stayed in the repository because the site's code or templates still mention them, a list of the files that stayed, and Review in Proof.",
+        alt: "Media after the move: The files were moved to the bucket, just now, with how many files were copied, how many pages and page templates were updated, how many copies were removed from the repository and how many were left, the file that still uses those and why they stay, the other files that mention them and were not changed, a list of the files that stayed, and Review in Proof.",
         do: "When it has finished, press **Review in Proof**.",
-        see: "The pages point at the bucket now, as changes waiting in Proof: publish to make it live. Files the site's code or templates still mention stay in the repository, and the message lists them.",
+        see: "The pages and page templates point at the bucket now and the repository’s copies are gone, all as changes waiting in Proof: publish to make it live. The message says again what stayed and why, and the list under it names each file that stayed with what still uses it.",
       });
     } finally {
       await own.close();
