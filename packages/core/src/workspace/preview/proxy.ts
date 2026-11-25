@@ -480,6 +480,12 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       socket.destroy();
       return;
     }
+    // The same question as for a plain request: a dev server with nothing listening for upgrades answers one as it
+    // would any request, and what comes back is piped straight through.
+    if (!mayBeShown(decodedPath((req.url ?? "/").split("?")[0] ?? "/"))) {
+      socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+      return;
+    }
     track(socket);
     options.onActivity?.();
     const upstream = net.connect({ host: target.hostname, port: target.port });

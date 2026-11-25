@@ -6,7 +6,7 @@
  * question as every other way a file is shown, and passes no such address on.
  */
 import http from "node:http";
-import type { AddressInfo } from "node:net";
+import net, { type AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { startBaselineProxy, startPreviewProxy, type ProxyHandle } from "../../src/workspace/preview/proxy";
 
@@ -80,6 +80,25 @@ describe("the preview, asked for a file by its path", () => {
 
     expect(answer.status).toBe(200);
     expect(asked).toEqual([path]);
+  });
+
+  it.each(["/.envrc", "/.env-production?raw", "/%2Eenvrc", "/.git/config"])("passes an upgrade for %s to nobody either", async (path) => {
+    asked.length = 0;
+    // A dev server with nothing listening for upgrades answers one as it would a plain request.
+    const answer = await new Promise<string>((resolve, reject) => {
+      const socket = net.connect(Number(new URL(preview.url).port), "127.0.0.1");
+      let text = "";
+
+      socket.on("error", reject);
+      socket.on("data", (chunk) => (text += chunk.toString()));
+      socket.on("close", () => resolve(text));
+      socket.on("connect", () => socket.write(`GET ${path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n`));
+      setTimeout(() => socket.destroy(), 1500).unref();
+    });
+
+    expect(answer).not.toContain("TOKEN=");
+    expect(answer).toMatch(/^HTTP\/1\.1 403 /);
+    expect(asked).toEqual([]);
   });
 
   it("leaves the live site's proxy alone: that is another server's files, not this folder's", async () => {
