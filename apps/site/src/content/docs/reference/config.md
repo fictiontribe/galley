@@ -57,7 +57,7 @@ How the file merges over detection: [galley.config.json](/docs/configuration/#ho
 | `publish.remote` | string or `null` | The remote to push to. `null`: never push. *Default:* `origin`, else the first remote, else `null`. |
 | `publish.push` | boolean | Push after committing. *Default:* `true` when there is a remote. |
 | `ai` | object | [Assistant instructions and build mode](/docs/configuration/assistant/). *Default:* detected. |
-| `ai.instructions` | string[] | Files whose text is added to the assistant's instructions. Replaces the default. *Default:* whichever of `STYLE.md`, `STYLEGUIDE.md`, `STYLE_GUIDE.md`, `style-guide.md`, `docs/style-guide.md`, `brand/voice.md`, `VOICE.md`, `BRAND.md` exist. |
+| `ai.instructions` | string[] | Files whose text is added to the assistant's instructions. Replaces the default. A secrets file (a name that starts with `.env`) or a file under `.git/` named here is skipped. *Default:* whichever of `STYLE.md`, `STYLEGUIDE.md`, `STYLE_GUIDE.md`, `style-guide.md`, `docs/style-guide.md`, `brand/voice.md`, `VOICE.md`, `BRAND.md` exist. |
 | `ai.allowBuild` | boolean | Whether the assistant's build mode is offered on this site. *Default:* `true`. |
 | `writable` | object | The write surface, as globs relative to the site root. *Default:* detected. |
 | `writable.content` | string[] | What content mode may write. Replaces the default entirely. *Default:* each collection's folder (`…/**`) or data file, `<media.dir>/**`, and media files in the other detected roots. |

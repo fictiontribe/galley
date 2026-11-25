@@ -122,8 +122,14 @@ entry says how.
   having meant it. No tool reads a secrets file or anything under `.git/`
   now, in any mode: asked for one, the assistant is told it isn't read here
   and to ask the person for what it needs. A secrets file named in the
-  settings as guidance for the assistant is left out too. The same rule
-  holds wherever a file's changes are shown.
+  settings as guidance for the assistant (`ai.instructions`) is left out
+  too.
+- **A secrets file's changes are not shown.** The routes that show a file
+  refused a secrets file; the one that shows what changed in a file did not,
+  so on a hosted editor its lines could be read there by anyone allowed to
+  read the site's files. The same rule now holds wherever a file or its
+  changes are shown, in the app and to an AI tool connected over MCP. If you
+  run a hosted editor, update.
 
 ## 0.4.1 — 2026-11-25
 
