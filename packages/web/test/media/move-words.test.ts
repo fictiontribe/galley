@@ -26,6 +26,17 @@ describe("the words for how a move of the site's files ended", () => {
     expect(stayedLabel({ stayedFiles: 16 })).toBe("The 16 files that stayed");
     expect(stayedLine({ path: "public/favicon.svg", pages: ["src/layouts/Base.astro", "galley/templates/project.md"] })).toBe("public/favicon.svg: still used by src/layouts/Base.astro, galley/templates/project.md");
   });
+
+  it("says which file reads one that is outside the folders the site is built from", () => {
+    const readBy = { "data/team.json": ["src/lib/team.ts"] };
+
+    expect(stayedLine({ path: "public/images/team/lead.webp", pages: ["data/team.json", "src/layouts/Base.astro"] }, readBy)).toBe(
+      "public/images/team/lead.webp: still used by data/team.json (read by src/lib/team.ts), src/layouts/Base.astro"
+    );
+    expect(stayedLine({ path: "public/images/team/lead.webp", pages: ["data/team.json"] }, { "data/team.json": ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts"] })).toBe(
+      "public/images/team/lead.webp: still used by data/team.json (read by src/a.ts, src/b.ts and 2 more)"
+    );
+  });
 });
 
 describe("what a move says it will do, before it does anything", () => {
@@ -47,6 +58,10 @@ describe("what a move says it will do, before it does anything", () => {
 
     expect(words).toContain(
       "Then 29 of the repository’s copies are removed (they leave the site when you publish) and 2 stay: still used by src/layouts/Base.astro. The site is built from that file and a move doesn’t change it. To move what it uses too, put the new addresses there by hand or in build mode, then run the move again."
+    );
+    // A file outside the site's folders that its source reads is named with the file that reads it.
+    expect(planWords({ ...plan, removes: 30, stillMentioned: stay(1, ["data/team.json"]), leftAlone: ["data/team.json"], readBy: { "data/team.json": ["src/lib/team.ts"] } })).toContain(
+      "and 1 stays: still used by data/team.json (read by src/lib/team.ts). The site is built from that file and a move doesn’t change it."
     );
     const using = ["src/data/shop/catalogue.json", "src/layouts/Base.astro"];
 

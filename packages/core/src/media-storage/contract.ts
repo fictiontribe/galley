@@ -210,6 +210,8 @@ export interface MediaMoveResult {
   removed: number;
   /** Files beside the site as built that name a moved file: not changed (the first few hundred). */
   alsoMentioned?: string[];
+  /** As in the plan: for a file in `stayed` that is outside what the site says it is built from, the files that read it. */
+  readBy?: Record<string, string[]>;
   /** Repository files that stayed because something still uses them, each with the files that do (the first few hundred). */
   stayed: Array<{ path: string; pages: string[] }>;
   /** How many stayed in all. */
@@ -253,6 +255,15 @@ export interface MediaMovePlan {
   stillMentioned?: Array<{ path: string; pages: string[] }>;
   /** Of the files that keep one, those a move doesn't change. */
   leftAlone?: string[];
+  /**
+   * Why a file outside what the site says it is built from keeps one all the
+   * same: the files inside it that read it, by a relative path written out
+   * in them (an import, a file the code opens, a glob). Keyed by the file in
+   * `leftAlone`. An alias, a path put together at run time or a file reached
+   * through a second file outside the list isn't followed: `build.sources`
+   * in the settings is where a site says so.
+   */
+  readBy?: Record<string, string[]>;
   /**
    * Files that name something being moved but are no part of the site as
    * built (a README, a record kept beside the site, a script outside its

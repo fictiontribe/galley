@@ -4,8 +4,8 @@
  * safe to repeat, never overwrites, and every page change is an ordinary
  * pending change.
  */
-import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createMediaStorageService } from "../../src/media-storage/service";
 import type { GalleyConfig } from "../../src/types";
@@ -30,7 +30,7 @@ afterEach(async () => {
   cleanupAll();
 });
 
-async function setUp(starter?: StarterName, settings?: (config: GalleyConfig) => GalleyConfig) {
+async function setUp(starter?: StarterName, settings?: (config: GalleyConfig) => GalleyConfig, files?: Record<string, string>) {
   fake.buckets.get("moves")!.objects.clear();
   const home = await tempHome();
   const storage = createMediaStorageService({ home: home.home, env: {}, listTtlMs: 0 });
@@ -41,6 +41,14 @@ async function setUp(starter?: StarterName, settings?: (config: GalleyConfig) =>
 
     writeFileSync(file, `${JSON.stringify(settings(JSON.parse(readFileSync(file, "utf8")) as GalleyConfig), null, 2)}\n`);
     sh(root, "commit", "-q", "-am", "Settings");
+  }
+  if (files) {
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(root, ...path.split("/"))), { recursive: true });
+      writeFileSync(join(root, ...path.split("/")), text);
+    }
+    sh(root, "add", "-A");
+    sh(root, "commit", "-q", "-m", "Files");
   }
   const { site } = await openSite(root, { media: storage });
   const publicUrl = fake.publicUrl("moves");
@@ -299,6 +307,121 @@ describe("moving media", { timeout: 240_000 }, () => {
     await done();
   });
 
+  it("keeps what a file outside the site's folders names when the site's source reads that file, and says which file reads it", async () => {
+    const { storage, site, root, done } = await setUp(undefined, undefined, {
+      "data/team.json": `${JSON.stringify({ lead: "/images/team/tomas-reyes.svg" })}\n`,
+      "src/lib/team.ts": 'import team from "../../data/team.json";\n\nexport const lead = team.lead;\n',
+      "notes/team.md": "The lead's portrait is /images/team/tomas-reyes.svg.\n",
+    });
+    const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+    const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
+
+    expect(outcome.problems).toEqual([]);
+    // The page's code reads data/team.json, so the picture it names stays; the note nobody reads keeps nothing.
+    expect(keptBy(plan.stillMentioned)["data/team.json"]).toBe(1);
+    expect(plan.leftAlone).toContain("data/team.json");
+    expect(plan.readBy).toEqual({ "data/team.json": ["src/lib/team.ts"] });
+    expect(plan.alsoMentioned).toContain("notes/team.md");
+    expect(plan.alsoMentioned).not.toContain("data/team.json");
+    expect(keptBy(outcome.stillMentioned)).toEqual(keptBy(plan.stillMentioned));
+    expect(outcome.readBy).toEqual(plan.readBy);
+    expect(outcome.summary).toContain("data/team.json (read by src/lib/team.ts)");
+    expect(read(root, PHOTO)).toContain("<svg");
+    expect(read(root, "data/team.json")).toContain("/images/team/tomas-reyes.svg");
+    expect((await site.changes()).files.map((file) => file.path)).not.toContain("data/team.json");
+    await done();
+  });
+
+  it("follows a path written out from the file it is in, one step, and nothing else", async () => {
+    const first = await setUp();
+    // Pictures a plain move removes, one for each file below to name.
+    const media = await first.site.listMedia();
+    const stays = new Set((await first.storage.planMove(first.site, { kind: "move", from: "repository", to: "bucket" })).stillMentioned?.map((item) => item.path) ?? []);
+    const free = media.filter((item) => !item.path.includes(":") && !stays.has(item.path)).map((item) => item.url);
+
+    await first.done();
+    await disposeAll();
+    expect(free.length).toBeGreaterThanOrEqual(12);
+    const naming = (at: number) => `${JSON.stringify({ picture: free[at] })}\n`;
+    const { storage, site, done } = await setUp(undefined, undefined, {
+      // Followed: each is a path from the file that holds it to the file it reads.
+      "data/import.json": naming(0),
+      "data/module.ts": `export const picture = ${JSON.stringify(free[1])};\n`,
+      "data/renamed.ts": `export const picture = ${JSON.stringify(free[2])};\n`,
+      "catalogue/index.ts": `export const picture = ${JSON.stringify(free[3])};\n`,
+      "data/opened.json": naming(4),
+      "data/raw.md": `![](${free[5]})\n`,
+      "notes/2026/spring.md": `![](${free[6]})\n`,
+      "data/required.json": naming(7),
+      // Not followed: an alias, a path from the site root, a path put together when the site is built, and a file
+      // reached through another file outside the list.
+      "data/alias.json": naming(8),
+      "data/rooted.json": naming(9),
+      "data/joined.json": naming(10),
+      "data/second.json": naming(11),
+      "scripts/second.mjs": 'import second from "../data/second.json";\n\nexport default second;\n',
+      "src/lib/reads.ts": [
+        'import a from "../../data/import.json";',
+        'import { picture as b } from "../../data/module";',
+        'import { picture as c } from "../../data/renamed.js";',
+        'import { picture as d } from "../../catalogue";',
+        'const e = new URL("../../data/opened.json", import.meta.url);',
+        "import f from '../../data/raw.md?raw';",
+        "const g = import.meta.glob(`../../notes/**/*.md`);",
+        'const h = require("../../data/required.json");',
+        'import i from "@root/data/alias.json";',
+        'const j = readFileSync("data/rooted.json");',
+        'const k = readFileSync(join("..", "..", "data", `${"joined"}.json`));',
+        'import l from "../../scripts/second.mjs";',
+        "export default [a, b, c, d, e, f, g, h, i, j, k, l];",
+        "",
+      ].join("\n"),
+    });
+    const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+    const followed = ["catalogue/index.ts", "data/import.json", "data/module.ts", "data/opened.json", "data/raw.md", "data/renamed.ts", "data/required.json", "notes/2026/spring.md"];
+
+    expect(plan.readBy).toEqual(Object.fromEntries(followed.map((path) => [path, ["src/lib/reads.ts"]])));
+    for (const path of followed) expect(keptBy(plan.stillMentioned)[path], path).toBe(1);
+    for (const path of ["data/alias.json", "data/joined.json", "data/rooted.json", "data/second.json"]) {
+      expect(plan.alsoMentioned, path).toContain(path);
+      expect(keptBy(plan.stillMentioned)[path], path).toBeUndefined();
+    }
+    await done();
+  });
+
+  it.each(STARTERS)("on %s, reading a file from the site's source can only keep more", async (starter) => {
+    const kept = (plan: { stillMentioned?: Array<{ path: string }> }) => (plan.stillMentioned ?? []).map((item) => item.path).sort();
+    const plain = await setUp(starter);
+    const before = await plain.storage.planMove(plain.site, { kind: "move", from: "repository", to: "bucket" });
+
+    await plain.done();
+    await disposeAll();
+    // No starter's source reads a file outside what the site is built from, so the rule changes nothing on them:
+    // the counts are the ones the table has.
+    expect(before.readBy).toBeUndefined();
+    expect(before.removes).toBe(ON_STARTERS[starter].removes);
+    const beside = before.alsoMentioned ?? [];
+
+    expect(beside.length).toBeGreaterThan(0);
+    // The same site, with one file of its source reading every file that was beside it.
+    const { storage, site, done } = await setUp(starter, undefined, {
+      "src/lib/reads.ts": `${beside.map((path, at) => `import file${at} from ${JSON.stringify(`../../${path}?raw`)};`).join("\n")}\n\nexport default [${beside.map((_, at) => `file${at}`).join(", ")}];\n`,
+    });
+    const after = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+
+    expect(after.files).toBe(before.files);
+    // Every copy that stayed still stays, so nothing is removed that wasn't before; and some more stay now.
+    expect(kept(before).filter((path) => !kept(after).includes(path))).toEqual([]);
+    expect(after.removes).toBeLessThan(before.removes);
+    expect(after.alsoMentioned).toBeUndefined();
+    expect(after.readBy).toEqual(Object.fromEntries(beside.map((path) => [path, ["src/lib/reads.ts"]])));
+    // Each copy that stays now and didn't before stays for a file the source reads.
+    for (const item of after.stillMentioned ?? []) {
+      if (!kept(before).includes(item.path)) expect(item.pages.some((page) => beside.includes(page)), item.path).toBe(true);
+    }
+    await done();
+  });
+
   it("foresees a file that stays for a mention the move doesn't read, in a page it does update", async () => {
     const { storage, site, root, done } = await setUp();
     const page = join(root, AUTHOR);
@@ -425,6 +548,22 @@ describe("moving media", { timeout: 240_000 }, () => {
     const pending = (await site.changes()).storeUploads ?? [];
 
     expect(pending.map((item) => item.key)).toEqual(["lowfield/draft.svg"]);
+    await done();
+  });
+
+  it("removing a copy that was never published leaves no deletion in Proof: the bucket has the file, and Proof lists the upload", async () => {
+    const { storage, site, root, done } = await setUp();
+
+    await site.writeFile("public/images/draft.svg", '<svg xmlns="http://www.w3.org/2000/svg" width="3" height="3"/>', { origin: "user", mode: "content" });
+    const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
+    const changes = await site.changes();
+
+    expect(outcome.problems).toEqual([]);
+    expect(existsSync(join(root, "public/images/draft.svg"))).toBe(false);
+    // Taking back an addition is no change at all, so there is nothing in Proof to put back.
+    expect(changes.files.find((file) => file.path === "public/images/draft.svg")).toBeUndefined();
+    expect((changes.storeUploads ?? []).map((item) => item.key)).toEqual(["lowfield/draft.svg"]);
+    expect(fake.buckets.get("moves")!.objects.get("lowfield/draft.svg")!.body.toString()).toContain("<svg");
     await done();
   });
 

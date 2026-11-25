@@ -137,7 +137,7 @@ rewrite and the removal all ask it:
 | --- | --- | --- |
 | content | what content mode may write | updates it, as a content write |
 | template | the files the settings list under `templates` | updates it as a build-mode write when the site's `ai.allowBuild` is on and the caller may use build mode; otherwise leaves it, and it keeps what it uses |
-| built | anything else the site is built from | never changes it; it keeps what it uses (`leftAlone`, `stillMentioned`) |
+| built | anything else the site is built from, and a file outside that which one inside reads | never changes it; it keeps what it uses (`leftAlone`, `stillMentioned`; `readBy` names the files that read one from outside) |
 | beside | everything else: a README, a record, a script outside the source | never changes it; it keeps nothing, and is listed (`alsoMentioned`) |
 
 What a site is built from is the model's `builtFrom`: the adapter's
@@ -145,6 +145,26 @@ convention of that name (globs from the site root; Astro's are its source
 folder, its public folder and the configuration at the root) and the
 settings' `build.sources`. With no list from the adapter every file counts,
 which is what every file did before 0.4.2.
+
+The list can't know what a site's own code reads from elsewhere, so a file
+outside it is looked at once more before it is called "beside" (`readBy` in
+`move.ts`): it counts as built when a file inside the list holds a quoted
+relative path that leads to it. That is how an import, `new URL("…",
+import.meta.url)`, a file the code opens and `import.meta.glob` are written.
+The path may leave off the extension, name a module by another module
+extension (`./team.js` for `team.ts`), name the folder of an index file, or
+be a glob; a `?raw` or `?url` after it is ignored. The search is one
+`git grep` for each file outside the list that names a picture being moved,
+and one more for the globs.
+
+It is one step, and only a path written out from the file it is in. Not
+followed: an alias (`@/data/…`, tsconfig `paths`), a path from the site root
+or put together at run time, and a file reached through another file outside
+the list. Reading tsconfig `paths` exactly means its comments, `extends` and
+`baseUrl`, and still misses aliases set in the build's own configuration, so
+it isn't attempted: a site that builds from such a file says so in
+`build.sources`. The rule can only add to what counts, so it never removes a
+copy that would otherwise have stayed.
 
 The template write is `site.writeFile(path, text, { mode: "build" })`, so it
 passes the one guard every write passes (`workspace.ts`): the build-mode
