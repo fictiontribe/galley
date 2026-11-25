@@ -1,6 +1,6 @@
 {
   "about": "How-to sequences captured from the running app. Written by scripts/capture-screens.mjs; the wording of do/see may be polished by hand, the facts may not.",
-  "captured": "2026-11-24, Galley 0.2.0",
+  "captured": "2026-11-24, Galley 0.3.1 (built from ed3e13b, before 0.4.0). ask-the-assistant, set-up-brand, proof-and-publish and step 2 of add-analytics are still the Galley 0.2.0 pictures: they wait for a session with the assistant connected.",
   "guides": [
     {
       "slug": "change-a-page",
