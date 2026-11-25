@@ -216,7 +216,7 @@ Options
 
 Copies a starter into a new folder named after the site, installs its dependencies, records a first version with git, and opens it — the step-by-step version is [Create a new site](/docs/getting-started/new-site/). In a terminal it asks for a missing name or starter. The options a first site doesn't need:
 
-- `--starter <name>` — `caddow`, `ferrow`, `lowfield` (the default) or `storefront`; `galley starters` describes them. [Starters](/docs/astro/starters/).
+- `--starter <name>` — `caddow`, `ferrow`, `lowfield` (the default), `sarking` or `storefront`; `galley starters` describes them. [Starters](/docs/astro/starters/).
 - `--look <id>` — one of the starter's looks (default: its first).
 - `--dir <folder>` — where the site's folder goes (default: the current folder). It is made if it doesn't exist.
 - `--use <manager>` — install with npm, pnpm, yarn or bun.
@@ -254,6 +254,10 @@ Starters
     A marketing site for a software company
     29 sections · 7 page templates · looks: signal (default), meridian, night-shift
     npm create galley@latest my-site -- --starter ferrow
+  sarking: Sarking — blog
+    A blog for long-form writing with charts, tables and evidence
+    18 sections · 4 page templates · looks: ledger (default), fieldbook, almanac
+    npm create galley@latest my-site -- --starter sarking
   storefront: Caddow — storefront
     A shop for a small fashion label, with products from Shopify
     24 sections · 8 page templates · looks: chalk (default), paper, night

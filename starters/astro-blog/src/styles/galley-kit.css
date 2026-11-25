@@ -1,0 +1,95 @@
+/*
+ * The site kit's forms, consent banner and email-link chooser (src/galley/),
+ * mapped onto this site's tokens. Every value is a token or a --tone-* role,
+ * so a form on an inverse or accent section follows that section, and every
+ * look, light and dark, applies with no further change.
+ */
+
+.galley-form {
+  --galley-form-gap: var(--space-s);
+  --galley-field-bg: var(--tone-surface);
+  --galley-field-text: var(--tone-text);
+  --galley-field-border: var(--tone-line-strong);
+  --galley-field-radius: var(--radius-m);
+  --galley-field-height: 2.9rem;
+  --galley-field-padding: 0.65em 0.9em;
+  --galley-field-focus: var(--tone-accent);
+  --galley-form-error: var(--color-bad);
+  --galley-form-muted: var(--tone-muted);
+  --galley-label-weight: var(--weight-ui-medium);
+  --galley-button-bg: var(--tone-text);
+  --galley-button-text: var(--tone-bg);
+  --galley-button-radius: var(--radius-button);
+  font-family: var(--font-ui);
+}
+
+.galley-form__field:not([data-type="consent"], [data-type="checkbox"]) > .galley-form__label,
+.galley-form legend {
+  font-size: var(--step--1);
+}
+
+.galley-form__help,
+.galley-form__error,
+.galley-form__status {
+  font-size: var(--step--1);
+}
+
+.galley-form .galley-form__success-title {
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  font-weight: var(--weight-display);
+  line-height: 1.15;
+}
+
+.galley-consent {
+  --galley-consent-bg: var(--color-inverse-background);
+  --galley-consent-text: var(--color-inverse-text);
+  --galley-consent-border: var(--color-inverse-border);
+  --galley-consent-radius: var(--radius-l);
+  --galley-consent-shadow: var(--shadow-raised);
+  --galley-consent-width: 40rem;
+  --galley-button-bg: var(--color-inverse-text);
+  --galley-button-text: var(--color-inverse-background);
+  --galley-button-radius: var(--radius-button);
+  --galley-field-focus: var(--color-inverse-accent);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+}
+
+.galley-consent__title {
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  font-weight: var(--weight-display);
+}
+
+.galley-mailto {
+  --galley-mailto-bg: var(--color-surface);
+  --galley-mailto-text: var(--color-text);
+  --galley-mailto-border: var(--color-border-strong);
+  --galley-mailto-radius: var(--radius-l);
+  --galley-mailto-shadow: var(--shadow-raised);
+  --galley-mailto-hover: var(--color-surface-muted);
+  --galley-field-focus: var(--color-accent);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+}
+
+.galley-mailto__address {
+  font-family: var(--font-mono);
+}
+
+/* One button height everywhere: an inline sign-up's button keeps its own
+   height beside the field instead of stretching to the label above it. */
+.galley-form .galley-form__actions {
+  align-self: end;
+}
+
+.galley-form .galley-form__submit.button {
+  block-size: auto;
+}
+
+/* The thank-you takes focus when it appears; show where focus went. */
+.galley-form .galley-form__success:focus {
+  outline: 2px solid var(--tone-accent);
+  outline-offset: 4px;
+}

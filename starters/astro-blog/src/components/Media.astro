@@ -1,0 +1,38 @@
+---
+// An image that reserves its space before it loads. The box is sized by
+// `ratio` and the file is cropped to fit (object-fit); pictures that
+// `npm run photos` placed also offer a smaller file to small screens.
+import { imageAttributes } from "../lib/site";
+
+interface Props {
+  src: string;
+  alt: string;
+  /** Width / height of the box: "3/2", "4/5", "21/9". */
+  ratio?: string;
+  /** How wide the picture shows, for the browser's choice of file: "(min-width: 64rem) 50vw, 100vw". */
+  sizes?: string;
+  /** Load straight away (the first picture on a page) instead of lazily. */
+  eager?: boolean;
+  class?: string;
+}
+
+const { src, alt, ratio = "3/2", sizes = "100vw", eager = false, class: className } = Astro.props;
+const [w, h] = ratio.split("/").map((part) => Number(part.trim()));
+const info = imageAttributes(src, sizes);
+const width = info.width ?? 1600;
+const height = info.height ?? Math.round((width * h!) / w!);
+---
+
+<img
+  class:list={["media", className]}
+  src={info.src}
+  srcset={info.srcset}
+  sizes={info.srcset ? info.sizes : undefined}
+  alt={alt}
+  width={width}
+  height={height}
+  loading={eager ? "eager" : "lazy"}
+  decoding={eager ? "sync" : "async"}
+  fetchpriority={eager ? "high" : undefined}
+  style={`--ratio: ${w} / ${h}`}
+/>

@@ -1,0 +1,890 @@
+/*
+ * Site-wide styles: the reset, the colour schemes, tones, type, the reading
+ * column and everything Markdown can produce. Components carry their own
+ * styles; every value here comes from tokens.css.
+ */
+
+/* ── Light and dark ─────────────────────────────────────────────────────── */
+/* The page follows the system; the header's switch pins one (Base.astro sets
+   data-theme before the first paint, so nothing flashes). */
+:root {
+  color-scheme: light dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* ── Reset ──────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-block-start: var(--space-l);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  min-block-size: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: var(--step-0);
+  font-weight: var(--weight-ui);
+  line-height: var(--leading-ui);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+main {
+  flex: 1;
+}
+
+main:focus {
+  outline: none;
+}
+
+img,
+svg,
+video,
+picture {
+  display: block;
+  max-inline-size: 100%;
+}
+
+img {
+  block-size: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  font-variation-settings: "opsz" var(--opsz-display);
+  font-style: var(--display-style);
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-snug);
+  text-wrap: balance;
+}
+
+p,
+li,
+dd,
+figcaption {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: from-font;
+  text-underline-offset: 0.18em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-s);
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Tones ──────────────────────────────────────────────────────────────── */
+/* Components colour themselves with these roles, so a section reads on any of
+   the four grounds. */
+.tone-default {
+  --tone-bg: var(--color-background);
+  --tone-surface: var(--color-surface);
+  --tone-text: var(--color-text);
+  --tone-muted: var(--color-text-muted);
+  --tone-line: var(--color-border);
+  --tone-line-strong: var(--color-border-strong);
+  --tone-accent: var(--color-accent);
+  --tone-accent-soft: var(--color-accent-soft);
+  --tone-on-accent: var(--color-accent-contrast);
+}
+
+.tone-muted {
+  --tone-bg: var(--color-surface-muted);
+  --tone-surface: var(--color-surface);
+  --tone-text: var(--color-text);
+  --tone-muted: var(--color-text-muted);
+  --tone-line: var(--color-border);
+  --tone-line-strong: var(--color-border-strong);
+  --tone-accent: var(--color-accent);
+  --tone-accent-soft: var(--color-accent-soft);
+  --tone-on-accent: var(--color-accent-contrast);
+}
+
+.tone-inverse {
+  --tone-bg: var(--color-inverse-background);
+  --tone-surface: var(--color-inverse-surface);
+  --tone-text: var(--color-inverse-text);
+  --tone-muted: var(--color-inverse-muted);
+  --tone-line: var(--color-inverse-border);
+  --tone-line-strong: var(--color-inverse-muted);
+  --tone-accent: var(--color-inverse-accent);
+  --tone-accent-soft: var(--color-inverse-surface);
+  --tone-on-accent: var(--color-inverse-background);
+}
+
+.tone-accent {
+  --tone-bg: var(--color-accent);
+  --tone-surface: var(--color-accent-strong);
+  --tone-text: var(--color-accent-contrast);
+  --tone-muted: var(--color-accent-contrast);
+  --tone-line: color-mix(in oklch, var(--color-accent-contrast) 35%, transparent);
+  --tone-line-strong: var(--color-accent-contrast);
+  --tone-accent: var(--color-accent-contrast);
+  --tone-accent-soft: var(--color-accent-strong);
+  --tone-on-accent: var(--color-accent);
+}
+
+.tone-default,
+.tone-muted,
+.tone-inverse,
+.tone-accent {
+  background: var(--tone-bg);
+  color: var(--tone-text);
+}
+
+body {
+  --tone-bg: var(--color-background);
+  --tone-surface: var(--color-surface);
+  --tone-text: var(--color-text);
+  --tone-muted: var(--color-text-muted);
+  --tone-line: var(--color-border);
+  --tone-line-strong: var(--color-border-strong);
+  --tone-accent: var(--color-accent);
+  --tone-accent-soft: var(--color-accent-soft);
+  --tone-on-accent: var(--color-accent-contrast);
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.container {
+  inline-size: 100%;
+  max-inline-size: calc(var(--container) + 2 * var(--page-margin));
+  margin-inline: auto;
+  padding-inline: var(--page-margin);
+}
+
+.section {
+  position: relative;
+  padding-block: var(--space-section);
+}
+
+/* Two sections on the same ground share one step of air. */
+.section.tone-default + .section.tone-default,
+.section.tone-muted + .section.tone-muted {
+  padding-block-start: 0;
+}
+
+/*
+ * The reading grid: posts and Markdown pages. Children sit in the reading
+ * column; .is-wide breaks out to --measure-wide, .is-full to the edges.
+ */
+.flow-grid {
+  --side: max(0px, (min(100vw, var(--container) + 2 * var(--page-margin)) - 2 * var(--page-margin) - var(--measure)) / 2);
+  --wide-gap: max(0px, min(var(--side), (var(--measure-wide) - var(--measure)) / 2));
+  display: grid;
+  grid-template-columns:
+    [full-start] minmax(var(--page-margin), 1fr)
+    [wide-start] minmax(0, var(--wide-gap))
+    [text-start] minmax(0, var(--measure))
+    [text-end] minmax(0, var(--wide-gap))
+    [wide-end] minmax(var(--page-margin), 1fr)
+    [full-end];
+}
+
+.flow-grid > * {
+  grid-column: text;
+  min-inline-size: 0;
+}
+
+.flow-grid > .is-wide {
+  grid-column: wide;
+}
+
+.flow-grid > .is-full {
+  grid-column: full;
+}
+
+/* ── Interface type ─────────────────────────────────────────────────────── */
+.kicker {
+  font-family: var(--font-ui);
+  font-size: var(--step--2);
+  font-weight: var(--weight-ui-strong);
+  letter-spacing: var(--tracking-caps);
+  line-height: var(--leading-ui);
+  text-transform: uppercase;
+  color: var(--tone-accent);
+}
+
+.meta {
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+  color: var(--tone-muted);
+}
+
+.lede {
+  font-family: var(--font-text);
+  font-variation-settings: "opsz" var(--opsz-text);
+  font-size: var(--step-2);
+  line-height: 1.38;
+  color: var(--tone-muted);
+}
+
+.section-heading {
+  font-size: var(--step-4);
+  line-height: var(--leading-tight);
+}
+
+.section-heading em,
+.headline em {
+  font-style: italic;
+  color: var(--tone-accent);
+}
+
+/* ── Buttons and links ──────────────────────────────────────────────────── */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-block-size: 2.75rem;
+  padding: 0.55em 1.2em;
+  border: var(--border-width) solid var(--tone-text);
+  border-radius: var(--radius-button);
+  background: var(--tone-text);
+  color: var(--tone-bg);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  font-weight: var(--weight-ui-medium);
+  line-height: 1.1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.button:hover {
+  background: var(--tone-accent);
+  border-color: var(--tone-accent);
+  color: var(--tone-on-accent);
+}
+
+.button--ghost {
+  background: transparent;
+  color: var(--tone-text);
+  border-color: var(--tone-line-strong);
+}
+
+.button--ghost:hover {
+  background: transparent;
+  color: var(--tone-accent);
+  border-color: var(--tone-accent);
+}
+
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  font-weight: var(--weight-ui-medium);
+  color: var(--tone-text);
+  text-decoration: underline;
+  text-decoration-color: var(--tone-line-strong);
+}
+
+.text-link:hover {
+  color: var(--tone-accent);
+  text-decoration-color: currentColor;
+}
+
+.skip-link {
+  position: absolute;
+  inset-inline-start: var(--page-margin);
+  inset-block-start: var(--space-2xs);
+  z-index: 100;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* ── Prose: everything Markdown can produce ─────────────────────────────── */
+.prose {
+  font-family: var(--font-text);
+  font-variation-settings: "opsz" var(--opsz-text);
+  font-size: var(--text-size);
+  font-weight: var(--weight-text);
+  line-height: var(--leading-text);
+  color: var(--tone-text);
+  hanging-punctuation: first;
+}
+
+.prose > * + * {
+  margin-block-start: 1.05em;
+}
+
+.prose :where(h2, h3, h4) {
+  scroll-margin-block-start: var(--space-l);
+}
+
+.prose h2 {
+  margin-block-start: 2.1em;
+  font-size: var(--step-3);
+  font-weight: var(--weight-display);
+  line-height: 1.12;
+}
+
+.prose h3 {
+  margin-block-start: 1.9em;
+  font-family: var(--font-ui);
+  font-variation-settings: normal;
+  font-size: var(--step-1);
+  font-weight: var(--weight-ui-strong);
+  font-style: normal;
+  letter-spacing: var(--tracking-ui);
+  line-height: 1.3;
+}
+
+.prose h4 {
+  margin-block-start: 1.6em;
+  font-family: var(--font-ui);
+  font-variation-settings: normal;
+  font-size: var(--step-0);
+  font-weight: var(--weight-ui-strong);
+  font-style: normal;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.prose :where(h2, h3, h4) + * {
+  margin-block-start: 0.6em;
+}
+
+/* Heading anchors: the heading itself links to its place. */
+.prose :where(h2, h3) a.heading-anchor {
+  color: inherit;
+  text-decoration: none;
+}
+
+.prose a {
+  color: var(--tone-text);
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in oklch, var(--tone-accent) 70%, transparent);
+  text-decoration-thickness: 0.07em;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.prose a:hover {
+  color: var(--tone-accent);
+  text-decoration-color: currentColor;
+}
+
+.prose strong {
+  font-weight: var(--weight-text-strong);
+}
+
+.prose :where(ul, ol) {
+  padding-inline-start: 1.3em;
+}
+
+.prose li + li {
+  margin-block-start: 0.4em;
+}
+
+.prose li::marker {
+  color: var(--tone-muted);
+  font-family: var(--font-ui);
+  font-size: 0.85em;
+}
+
+.prose ul > li::marker {
+  content: "—  ";
+}
+
+.prose li > :where(ul, ol) {
+  margin-block-start: 0.4em;
+}
+
+/* Task lists */
+.prose li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-inline-start: -1.3em;
+}
+
+.prose input[type="checkbox"] {
+  accent-color: var(--tone-accent);
+  margin-inline-end: 0.5em;
+}
+
+.prose blockquote {
+  padding-inline-start: 1.1em;
+  border-inline-start: var(--rule-width) solid var(--tone-text);
+  font-style: italic;
+}
+
+.prose blockquote > * + * {
+  margin-block-start: 0.8em;
+}
+
+.prose hr {
+  inline-size: 100%;
+  block-size: auto;
+  margin-block: 2.4em;
+  border: 0;
+  text-align: center;
+  color: var(--tone-muted);
+}
+
+.prose hr::after {
+  content: "· · ·";
+  letter-spacing: 0.6em;
+}
+
+.prose :where(code, kbd, samp) {
+  font-family: var(--font-mono);
+  font-size: 0.84em;
+  font-variation-settings: normal;
+}
+
+.prose :not(pre) > code {
+  padding: 0.1em 0.32em;
+  border-radius: var(--radius-s);
+  background: var(--astro-code-background);
+  overflow-wrap: anywhere;
+}
+
+.prose kbd {
+  padding: 0.05em 0.4em;
+  border: var(--border-width) solid var(--tone-line-strong);
+  border-block-end-width: 2px;
+  border-radius: var(--radius-s);
+  font-size: 0.78em;
+}
+
+.prose mark {
+  background: var(--tone-accent-soft);
+  color: inherit;
+  padding: 0 0.12em;
+}
+
+.prose abbr[title] {
+  text-decoration: underline dotted;
+  cursor: help;
+}
+
+.prose sup {
+  line-height: 0;
+}
+
+/* Code blocks */
+.prose pre,
+.code-figure {
+  position: relative;
+}
+
+.prose pre {
+  padding: 1.1em 1.25em;
+  border-radius: var(--radius-m);
+  background: var(--astro-code-background) !important;
+  color: var(--astro-code-foreground);
+  font-size: var(--step--1);
+  line-height: 1.65;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+.prose pre code {
+  font-size: 1em;
+}
+
+.code-figure {
+  margin-block-start: 1.05em;
+}
+
+.code-figure__title {
+  padding: 0.6em 1.25em;
+  border-radius: var(--radius-m) var(--radius-m) 0 0;
+  background: var(--astro-code-background);
+  border-block-end: var(--border-width) solid var(--tone-line);
+  color: var(--tone-muted);
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+}
+
+.code-figure__title + pre {
+  margin-block-start: 0 !important;
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+}
+
+.copy-code {
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-end: 0.5rem;
+  padding: 0.3em 0.7em;
+  border: var(--border-width) solid var(--tone-line);
+  border-radius: var(--radius-button);
+  background: var(--color-surface);
+  color: var(--tone-muted);
+  font-family: var(--font-ui);
+  font-size: var(--step--2);
+  font-weight: var(--weight-ui-medium);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.code-wrap:hover .copy-code,
+.copy-code:focus-visible,
+.copy-code[data-copied] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .copy-code {
+    opacity: 1;
+  }
+}
+
+/* Tables */
+.table-scroll {
+  position: relative;
+  overflow-x: auto;
+  border-block: var(--border-width) solid var(--tone-text);
+}
+
+.prose table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: 1.4;
+}
+
+.prose :where(th, td) {
+  padding: 0.6em 0.9em 0.6em 0;
+  border-block-end: var(--border-width) solid var(--tone-line);
+  text-align: start;
+  vertical-align: top;
+}
+
+.prose tr:last-child td {
+  border-block-end: 0;
+}
+
+.prose th {
+  font-weight: var(--weight-ui-strong);
+  border-block-end-color: var(--tone-line-strong);
+}
+
+/* Figures */
+.prose-figure img {
+  inline-size: 100%;
+  border-radius: var(--radius-image);
+}
+
+.prose-figure figcaption,
+.caption {
+  margin-block-start: 0.7em;
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+  color: var(--tone-muted);
+}
+
+/* Callouts: > [!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION] */
+.callout {
+  --callout: var(--color-callout-note);
+  padding: 1em 1.2em;
+  border-radius: var(--radius-m);
+  background: color-mix(in oklch, var(--callout) 9%, var(--tone-bg));
+  border: var(--border-width) solid color-mix(in oklch, var(--callout) 30%, transparent);
+  font-family: var(--font-ui);
+  font-size: var(--step-0);
+  line-height: 1.55;
+}
+
+.callout--tip {
+  --callout: var(--color-callout-tip);
+}
+
+.callout--important {
+  --callout: var(--color-callout-important);
+}
+
+.callout--warning {
+  --callout: var(--color-callout-warning);
+}
+
+.callout--caution {
+  --callout: var(--color-callout-caution);
+}
+
+.callout__title {
+  margin-block-end: 0.35em;
+  color: var(--callout);
+  font-weight: var(--weight-ui-strong);
+}
+
+.callout__body > * + * {
+  margin-block-start: 0.6em;
+}
+
+.callout a {
+  color: inherit;
+}
+
+/* Footnotes: GFM [^1] */
+.prose .footnotes,
+.prose section[data-footnotes] {
+  margin-block-start: 3em;
+  padding-block-start: 1.2em;
+  border-block-start: var(--border-width) solid var(--tone-line);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: 1.55;
+  color: var(--tone-muted);
+}
+
+.prose section[data-footnotes] h2 {
+  margin: 0 0 0.8em;
+  font-family: var(--font-ui);
+  font-size: var(--step--2);
+  font-weight: var(--weight-ui-strong);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--tone-text);
+}
+
+.prose section[data-footnotes] ol {
+  padding-inline-start: 1.4em;
+}
+
+.prose [data-footnote-ref] {
+  padding-inline: 0.1em;
+  font-family: var(--font-ui);
+  font-size: 0.72em;
+  font-weight: var(--weight-ui-strong);
+  text-decoration: none;
+  color: var(--tone-accent);
+}
+
+.prose [data-footnote-backref] {
+  text-decoration: none;
+}
+
+/* ── Embeds: the shared parts of charts, tables and the rest ────────────── */
+.embed__title {
+  font-family: var(--font-ui);
+  font-size: var(--step-0);
+  font-weight: var(--weight-ui-strong);
+  line-height: 1.35;
+  color: var(--tone-text);
+}
+
+.embed__text {
+  max-inline-size: 42em;
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: 1.5;
+  color: var(--tone-muted);
+}
+
+.embed__source {
+  font-family: var(--font-ui);
+  font-size: var(--step--2);
+  line-height: 1.45;
+  color: var(--tone-muted);
+}
+
+.prose > .embed,
+.prose > .callout,
+.prose > .prose-figure,
+.prose > .code-figure,
+.prose > .table-scroll {
+  margin-block: 2em;
+}
+
+.prose > .embed.is-wide,
+.prose > .prose-figure:has(img) {
+  margin-block: 2.6em;
+}
+
+.prose > .embed + .embed {
+  margin-block-start: 0;
+}
+
+.embed-invalid {
+  padding: 1em 1.2em;
+  border: 2px dashed var(--color-bad);
+  border-radius: var(--radius-m);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+}
+
+.embed-invalid pre {
+  margin-block-start: 0.8em;
+  font-size: var(--step--2);
+  white-space: pre-wrap;
+}
+
+/* ── Things every list of posts shares ──────────────────────────────────── */
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+  padding: 0;
+  list-style: none;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-block-size: 2rem;
+  padding: 0.25em 0.8em;
+  border: var(--border-width) solid var(--tone-line);
+  border-radius: var(--radius-button);
+  color: var(--tone-text);
+  font-family: var(--font-ui);
+  font-size: var(--step--2);
+  font-weight: var(--weight-ui-medium);
+  text-decoration: none;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+a.tag:hover,
+.tag[aria-current="page"] {
+  border-color: var(--tone-accent);
+  color: var(--tone-accent);
+}
+
+.tag__count {
+  color: var(--tone-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.media {
+  inline-size: 100%;
+  aspect-ratio: var(--ratio, 3 / 2);
+  object-fit: cover;
+  border-radius: var(--radius-image);
+  background: var(--color-surface-muted);
+}
+
+/* ── Page headers for lists (blog, tags, series, archive, search) ───────── */
+.page-head {
+  padding-block: var(--space-xl) var(--space-l);
+}
+
+.page-head__inner {
+  display: grid;
+  gap: var(--space-s);
+  max-inline-size: 48rem;
+}
+
+.page-head__title {
+  font-size: var(--step-6);
+  line-height: var(--leading-tight);
+}
+
+.page-head .lede {
+  max-inline-size: 36em;
+}
+
+/* ── Entrance ───────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise var(--duration-slow) var(--ease-out) both;
+  }
+
+  .rise-2 {
+    animation-delay: 80ms;
+  }
+
+  .rise-3 {
+    animation-delay: 160ms;
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(0.6rem);
+    }
+  }
+}
+
+/* View transitions between pages, where the browser has them. */
+@view-transition {
+  navigation: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}

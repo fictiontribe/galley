@@ -1,0 +1,147 @@
+---
+// One series: its title and line, then its parts in order, numbered.
+import { getCollection, render, type CollectionEntry } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import Media from "../../components/Media.astro";
+import { isPublished, postUrl, postsInSeries, type Post } from "../../lib/blog";
+import { fill, formatDate, isoDate, labels, withBase } from "../../lib/site";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog", isPublished);
+  const series = await getCollection("series");
+  return series
+    .map((entry) => ({ params: { id: entry.id }, props: { series: entry, posts: postsInSeries(posts, entry.id) } }))
+    .filter((path) => path.props.posts.length > 0);
+}
+
+interface Props {
+  series: CollectionEntry<"series">;
+  posts: Post[];
+}
+
+const { series, posts } = Astro.props;
+const { Content } = await render(series);
+const status = series.data.ongoing ? labels.series.ongoing : labels.series.complete;
+---
+
+<Base title={series.data.title} description={series.data.description} image={series.data.image ?? posts[0]?.data.image}>
+  <header class="page-head container">
+    <div class="page-head__inner">
+      <p class="kicker"><a href={withBase("/series/")}>{labels.series.allSeries}</a></p>
+      <h1 class="page-head__title">{series.data.title}</h1>
+      <p class="lede">{series.data.description}</p>
+      <p class="meta">{fill(labels.series.parts, { count: posts.length })} · {status}</p>
+    </div>
+  </header>
+  {
+    series.body?.trim() && (
+      <div class="flow-grid prose series-body">
+        <Content />
+      </div>
+    )
+  }
+  <ol role="list" class="container series-parts">
+    {
+      posts.map((post, i) => (
+        <li class="series-part">
+          <span class="series-part__number" aria-hidden="true">
+            {String(post.data.seriesPart ?? i + 1).padStart(2, "0")}
+          </span>
+          <div class="series-part__body">
+            <h2 class="series-part__title">
+              <a href={postUrl(post)}>
+                <span class="visually-hidden">{fill(labels.post.seriesPart, { part: post.data.seriesPart ?? i + 1 })}: </span>
+                {post.data.title}
+              </a>
+            </h2>
+            <p class="series-part__text">{post.data.description}</p>
+            <p class="meta">
+              <time datetime={isoDate(post.data.date)}>{formatDate(post.data.date)}</time>
+            </p>
+          </div>
+          <a class="series-part__image" href={postUrl(post)} tabindex="-1" aria-hidden="true">
+            <Media src={post.data.image} alt="" ratio="4/3" sizes="(min-width: 48rem) 14rem, 100vw" eager={i === 0} />
+          </a>
+        </li>
+      ))
+    }
+  </ol>
+</Base>
+
+<style>
+  .kicker a {
+    color: inherit;
+  }
+
+  .series-body {
+    padding-block-end: var(--space-l);
+  }
+
+  .series-parts {
+    padding-block: 0;
+    list-style: none;
+  }
+
+  .series-part {
+    display: grid;
+    grid-template-columns: 3rem 1fr;
+    gap: var(--space-s) var(--space-m);
+    padding-block: var(--space-m);
+    border-block-start: var(--border-width) solid var(--color-border);
+  }
+
+  .series-part:first-child {
+    border-block-start: var(--rule-width) solid var(--color-text);
+  }
+
+  .series-part__number {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" var(--opsz-display);
+    font-size: var(--step-4);
+    font-style: var(--display-style);
+    line-height: 1;
+    color: var(--color-accent);
+    font-variant-numeric: lining-nums;
+  }
+
+  .series-part__body {
+    display: grid;
+    gap: var(--space-2xs);
+    align-content: start;
+  }
+
+  .series-part__title {
+    font-size: var(--step-3);
+    line-height: 1.08;
+  }
+
+  .series-part__title a {
+    text-decoration: none;
+  }
+
+  .series-part__title a:hover {
+    color: var(--color-accent);
+  }
+
+  .series-part__text {
+    max-inline-size: 36em;
+    color: var(--color-text-muted);
+    font-family: var(--font-text);
+    font-size: var(--step-0);
+    line-height: 1.5;
+  }
+
+  .series-part__image {
+    grid-column: 2;
+  }
+
+  @media (min-width: 48rem) {
+    .series-part {
+      grid-template-columns: 5rem 1fr 14rem;
+    }
+
+    .series-part__image {
+      grid-column: 3;
+    }
+  }
+</style>

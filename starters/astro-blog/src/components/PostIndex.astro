@@ -1,0 +1,99 @@
+---
+// Titles and dates, grouped by year: the archive, and the `index` layout of
+// the posts section.
+import { postUrl, postsByYear, type Post } from "../lib/blog";
+import { formatShortDate, isoDate } from "../lib/site";
+
+interface Props {
+  posts: Post[];
+  level?: 2 | 3;
+}
+
+const { posts, level = 2 } = Astro.props;
+const Year = `h${level}` as "h2" | "h3";
+const years = postsByYear(posts);
+---
+
+<div class="post-index">
+  {
+    years.map(({ year, posts: list }) => (
+      <section class="post-index__year" aria-labelledby={`year-${year}`}>
+        <Year class="post-index__heading" id={`year-${year}`}>
+          {year}
+        </Year>
+        <ol role="list" class="post-index__list">
+          {list.map((post) => (
+            <li>
+              <a href={postUrl(post)}>
+                <span class="post-index__title">{post.data.title}</span>
+                <time class="meta" datetime={isoDate(post.data.date)}>
+                  {formatShortDate(post.data.date)}
+                </time>
+              </a>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ))
+  }
+</div>
+
+<style>
+  .post-index {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  .post-index__year {
+    display: grid;
+    gap: var(--space-s);
+    border-block-start: var(--rule-width) solid var(--tone-text);
+    padding-block-start: var(--space-s);
+  }
+
+  .post-index__heading {
+    font-size: var(--step-3);
+    line-height: 1;
+    font-variant-numeric: lining-nums;
+  }
+
+  .post-index__list {
+    padding: 0;
+    list-style: none;
+  }
+
+  .post-index__list a {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-m);
+    padding-block: var(--space-xs);
+    border-block-end: var(--border-width) solid var(--tone-line);
+    text-decoration: none;
+  }
+
+  .post-index__title {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" var(--opsz-display);
+    font-size: var(--step-1);
+    font-style: var(--display-style);
+    letter-spacing: var(--tracking-display);
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  .post-index__list a:hover .post-index__title {
+    color: var(--tone-accent);
+  }
+
+  .post-index__list time {
+    flex: none;
+  }
+
+  @media (min-width: 56rem) {
+    .post-index__year {
+      grid-template-columns: 12rem 1fr;
+      gap: var(--gutter);
+    }
+  }
+</style>

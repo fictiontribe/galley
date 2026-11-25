@@ -1,0 +1,565 @@
+---
+// One post: kicker, headline, standfirst and byline; the cover; "In short";
+// the body with its contents beside it; then the record — topics, sources,
+// how it was written, what changed — the author, the series, and what to
+// read next.
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import Media from "../../components/Media.astro";
+import PostBody from "../../components/PostBody.astro";
+import Toc from "../../components/Toc.astro";
+import PostTools from "../../components/PostTools.astro";
+import AuthorCard from "../../components/AuthorCard.astro";
+import PostCard from "../../components/PostCard.astro";
+import Takeaways from "../../components/embeds/Takeaways.astro";
+import NewsletterBand from "../../components/NewsletterBand.astro";
+import { authorOf, authorUrl, byDate, isPublished, postUrl, postsInSeries, relatedPosts, seriesOf, seriesUrl, tagUrl, type Post } from "../../lib/blog";
+import { splitBody } from "../../lib/embeds";
+import { fill, formatDate, isoDate, labels, readingMinutes, site } from "../../lib/site";
+
+export async function getStaticPaths() {
+  // getCollection() here (not a helper) so tools that read routes statically,
+  // Galley among them, can see that this page shows the blog collection.
+  const posts = (await getCollection("blog", isPublished)).sort(byDate);
+  return posts.map((post, i) => ({
+    params: { slug: post.id },
+    props: { post, newer: posts[i - 1], older: posts[i + 1], posts },
+  }));
+}
+
+interface Props {
+  post: Post;
+  newer?: Post;
+  older?: Post;
+  posts: Post[];
+}
+
+const { post, newer, older, posts } = Astro.props;
+const data = post.data;
+const author = await authorOf(data.author);
+if (!author) throw new Error(`${post.id}: there is no author called “${typeof data.author === "string" ? data.author : data.author.id}” in src/content/authors/.`);
+const series = await seriesOf(data.series);
+const seriesList = series ? postsInSeries(posts, series.id) : [];
+const related = relatedPosts(post, posts, site.blog.relatedPosts);
+const parts = splitBody(post.rendered?.html ?? "", `src/content/blog/${post.id}.md`);
+const headings = (post.rendered?.metadata?.headings ?? []) as Array<{ depth: number; slug: string; text: string }>;
+const showToc = data.toc && headings.filter((heading) => heading.depth === 2).length >= 3;
+const minutes = readingMinutes(post.body);
+const modified = data.updated ?? data.revisions.at(-1)?.date;
+const kicker = series ? series.data.title : data.tags[0];
+const kickerHref = series ? seriesUrl(series.id) : data.tags[0] ? tagUrl(data.tags[0]) : undefined;
+---
+
+<Base
+  title={data.title}
+  description={data.description}
+  image={data.image}
+  imageAlt={data.imageAlt}
+  type="article"
+  publishedTime={data.date}
+  modifiedTime={modified}
+  author={author.data.name}
+  tags={data.tags}
+  canonical={data.canonical}
+  noindex={data.noindex}
+>
+  <article class="post" data-galley-agent="main">
+    <header class="post-head container">
+      <div class="post-head__inner">
+        {
+          kicker && (
+            <p class="kicker rise">
+              {series && data.seriesPart && <span>{fill(labels.post.seriesPart, { part: data.seriesPart })} · </span>}
+              <a href={kickerHref}>{kicker}</a>
+            </p>
+          )
+        }
+        <h1 class="post-head__title rise rise-2">{data.title}</h1>
+        <p class="post-head__standfirst rise rise-2">{data.description}</p>
+        <div class="post-head__byline rise rise-3">
+          <Media src={author.data.photo} alt="" ratio="1/1" sizes="3rem" class="post-head__avatar" eager />
+          <p class="meta">
+            <span class="post-head__author">
+              {labels.post.by} <a href={authorUrl(author.id)}>{author.data.name}</a>
+            </span>
+            <span class="post-head__dates">
+              <span class="visually-hidden">{labels.post.published}</span>
+              <time datetime={isoDate(data.date)}>{formatDate(data.date)}</time>
+              {
+                data.updated && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                      {labels.post.updated} <time datetime={isoDate(data.updated)}>{formatDate(data.updated)}</time>
+                    </span>
+                  </>
+                )
+              }
+              <span aria-hidden="true">·</span>
+              <span>{fill(labels.post.readingTime, { minutes })}</span>
+            </span>
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <figure class="post-cover container rise rise-3">
+      <Media src={data.image} alt={data.imageAlt} ratio="3/2" sizes="(min-width: 84rem) 80rem, 100vw" eager />
+      {data.imageCaption && <figcaption class="caption">{data.imageCaption}</figcaption>}
+    </figure>
+
+    <div class:list={["post-main", { "has-toc": showToc }]}>
+      {
+        showToc && (
+          <div class="post-main__toc">
+            <Toc headings={headings} variant="side" />
+          </div>
+        )
+      }
+      <div class="post-body prose flow-grid">
+        {data.takeaways && data.takeaways.length > 0 && <Takeaways items={data.takeaways} />}
+        {showToc && <Toc headings={headings} variant="inline" />}
+        <PostBody parts={parts} />
+      </div>
+    </div>
+
+    <footer class="post-foot flow-grid">
+      <div class="post-foot__inner">
+        {
+          data.tags.length > 0 && (
+            <div class="post-foot__row">
+              <p class="post-foot__label">{labels.post.tags}</p>
+              <ul role="list" class="tag-list">
+                {data.tags.map((tag) => (
+                  <li>
+                    <a class="tag" href={tagUrl(tag)}>
+                      {tag}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        <PostTools pathname={Astro.url.pathname} />
+
+        {
+          data.sources.length > 0 && (
+            <section class="post-foot__section" aria-labelledby="sources">
+              <h2 class="post-foot__heading" id="sources">
+                {labels.post.sources}
+              </h2>
+              <ol class="post-foot__sources">
+                {data.sources.map((source) => (
+                  <li>
+                    {source.href ? <a href={source.href}>{source.title}</a> : source.title}
+                    {source.note && <span class="post-foot__note"> — {source.note}</span>}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )
+        }
+
+        {
+          (data.ai || data.revisions.length > 0 || data.canonical) && (
+            <section class="post-foot__section" aria-labelledby="how-made">
+              <h2 class="post-foot__heading" id="how-made">
+                {labels.post.howMade}
+              </h2>
+              {data.ai && <p class="post-foot__text">{labels.post.ai[data.ai]}</p>}
+              {data.canonical && (
+                <p class="post-foot__text">
+                  <a href={data.canonical}>{fill(labels.post.originallyPublished, { site: new URL(data.canonical).hostname })}</a>
+                </p>
+              )}
+              {data.revisions.length > 0 && (
+                <>
+                  <p class="post-foot__sublabel">{labels.post.revisions}</p>
+                  <ul role="list" class="post-foot__revisions">
+                    {data.revisions.map((revision) => (
+                      <li>
+                        <time datetime={isoDate(revision.date)}>{formatDate(revision.date)}</time>
+                        <span>{revision.note}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </section>
+          )
+        }
+
+        <AuthorCard author={author} heading={labels.post.aboutAuthor} />
+
+        {
+          series && seriesList.length > 1 && (
+            <nav class="series-nav tone-muted" aria-label={labels.post.seriesNav} data-galley-agent="skip">
+              <p class="post-foot__label">
+                {fill(labels.post.series, { part: data.seriesPart ?? seriesList.indexOf(post) + 1, total: seriesList.length })}{" "}
+                <a href={seriesUrl(series.id)}>{series.data.title}</a>
+              </p>
+              <ol role="list">
+                {seriesList.map((item, i) => (
+                  <li>
+                    {item.id === post.id ? (
+                      <span aria-current="page">
+                        <span class="series-nav__number">{item.data.seriesPart ?? i + 1}</span>
+                        {item.data.title}
+                      </span>
+                    ) : (
+                      <a href={postUrl(item)}>
+                        <span class="series-nav__number">{item.data.seriesPart ?? i + 1}</span>
+                        {item.data.title}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          )
+        }
+      </div>
+    </footer>
+  </article>
+
+  {
+    related.length > 0 && (
+      <aside class="read-next container" aria-labelledby="read-next" data-galley-agent="skip">
+        <h2 class="read-next__heading" id="read-next">
+          {labels.post.related}
+        </h2>
+        <div class="read-next__grid">
+          {related.map((item) => (
+            <PostCard post={item} variant="card" level={3} />
+          ))}
+        </div>
+        {(newer || older) && (
+          <nav class="read-next__pager" aria-label={labels.blog.pagination}>
+            {newer ? (
+              <a href={postUrl(newer)} rel="prev">
+                <span class="meta">← {labels.post.newer}</span>
+                <span class="read-next__pager-title">{newer.data.title}</span>
+              </a>
+            ) : (
+              <span />
+            )}
+            {older && (
+              <a href={postUrl(older)} rel="next" class="read-next__older">
+                <span class="meta">{labels.post.older} →</span>
+                <span class="read-next__pager-title">{older.data.title}</span>
+              </a>
+            )}
+          </nav>
+        )}
+      </aside>
+    )
+  }
+
+  <NewsletterBand />
+</Base>
+
+<style>
+  .post-head {
+    padding-block: var(--space-xl) var(--space-l);
+  }
+
+  .post-head__inner {
+    display: grid;
+    gap: var(--space-s);
+    max-inline-size: 58rem;
+    margin-inline: auto;
+    text-align: center;
+    justify-items: center;
+  }
+
+  .post-head .kicker a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .post-head .kicker a:hover {
+    text-decoration: underline;
+  }
+
+  .post-head__title {
+    font-size: var(--step-6);
+    line-height: var(--leading-tight);
+  }
+
+  .post-head__standfirst {
+    max-inline-size: 34em;
+    font-family: var(--font-text);
+    font-variation-settings: "opsz" var(--opsz-text);
+    font-size: var(--step-2);
+    line-height: 1.36;
+    color: var(--color-text-muted);
+  }
+
+  .post-head__byline {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-block-start: var(--space-xs);
+    text-align: start;
+  }
+
+  .post-head__byline :global(.post-head__avatar) {
+    flex: none;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    border-radius: 50%;
+  }
+
+  .post-head__byline .meta {
+    display: grid;
+    gap: 0.1em;
+  }
+
+  .post-head__author {
+    color: var(--color-text);
+    font-weight: var(--weight-ui-medium);
+  }
+
+  .post-head__author a {
+    text-decoration: none;
+  }
+
+  .post-head__author a:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+
+  .post-head__dates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.45em;
+  }
+
+  .post-cover {
+    max-inline-size: calc(var(--container) + 2 * var(--page-margin));
+  }
+
+  .post-cover .caption {
+    max-inline-size: var(--measure);
+    margin-inline: auto;
+  }
+
+  /* The body, with the contents in the left margin on wide screens. */
+  .post-main {
+    position: relative;
+    padding-block-start: var(--space-xl);
+  }
+
+  .post-main__toc {
+    display: none;
+  }
+
+  .post-body > :global(.toc--inline) {
+    margin-block-end: 0.5em;
+  }
+
+  @media (min-width: 82rem) {
+    .post-main__toc {
+      position: absolute;
+      inset-block: var(--space-xl) 0;
+      inset-inline-start: max(var(--page-margin), (100vw - var(--container)) / 2);
+      display: block;
+      inline-size: calc((100vw - var(--measure-wide)) / 2 - var(--page-margin) - var(--space-l));
+      max-inline-size: 15rem;
+    }
+
+    .post-main__toc :global(.toc) {
+      position: sticky;
+      inset-block-start: var(--space-l);
+      max-block-size: calc(100dvh - 2 * var(--space-l));
+      overflow-y: auto;
+    }
+
+    .post-body > :global(.toc--inline) {
+      display: none;
+    }
+  }
+
+  /* The record under the post. */
+  .post-foot {
+    margin-block-start: var(--space-xl);
+  }
+
+  .post-foot__inner {
+    display: grid;
+    gap: var(--space-l);
+    padding-block-start: var(--space-l);
+    border-block-start: var(--rule-width) solid var(--color-text);
+  }
+
+  .post-foot__row {
+    display: grid;
+    gap: var(--space-xs);
+  }
+
+  .post-foot__label,
+  .post-foot__heading,
+  .post-foot__sublabel {
+    font-family: var(--font-ui);
+    font-variation-settings: normal;
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui-strong);
+    font-style: normal;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .post-foot__label a {
+    color: var(--color-text);
+  }
+
+  .post-foot__section {
+    display: grid;
+    gap: var(--space-xs);
+    font-size: var(--step--1);
+    line-height: 1.55;
+  }
+
+  .post-foot__sublabel {
+    margin-block-start: var(--space-2xs);
+  }
+
+  .post-foot__sources {
+    display: grid;
+    gap: var(--space-2xs);
+    padding-inline-start: 1.4em;
+  }
+
+  .post-foot__sources a {
+    color: var(--color-text);
+    text-decoration-color: var(--color-border-strong);
+  }
+
+  .post-foot__note {
+    color: var(--color-text-muted);
+  }
+
+  .post-foot__revisions {
+    display: grid;
+    gap: var(--space-2xs);
+    padding: 0;
+    list-style: none;
+  }
+
+  .post-foot__revisions li {
+    display: grid;
+    gap: 0.1em var(--space-s);
+  }
+
+  .post-foot__revisions time {
+    color: var(--color-text-muted);
+  }
+
+  @media (min-width: 36rem) {
+    .post-foot__revisions li {
+      grid-template-columns: 9rem 1fr;
+    }
+  }
+
+  .series-nav {
+    display: grid;
+    gap: var(--space-s);
+    padding: var(--space-m);
+    border-radius: var(--radius-l);
+    font-size: var(--step--1);
+  }
+
+  .series-nav ol {
+    display: grid;
+    gap: var(--space-2xs);
+    padding: 0;
+    list-style: none;
+  }
+
+  .series-nav :where(a, span[aria-current]) {
+    display: grid;
+    grid-template-columns: 1.8rem 1fr;
+    gap: var(--space-2xs);
+    color: var(--tone-text);
+    text-decoration: none;
+  }
+
+  .series-nav a:hover {
+    color: var(--tone-accent);
+  }
+
+  .series-nav span[aria-current] {
+    font-weight: var(--weight-ui-strong);
+  }
+
+  .series-nav__number {
+    color: var(--tone-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  span[aria-current] .series-nav__number {
+    color: var(--tone-accent);
+  }
+
+  /* Read next */
+  .read-next {
+    display: grid;
+    gap: var(--space-l);
+    margin-block-start: var(--space-2xl);
+    padding-block-start: var(--space-l);
+  }
+
+  .read-next__heading {
+    font-size: var(--step-4);
+    line-height: 1;
+  }
+
+  .read-next__grid {
+    display: grid;
+    gap: var(--space-l) var(--gutter);
+  }
+
+  @media (min-width: 48rem) {
+    .read-next__grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .read-next__pager {
+    display: grid;
+    gap: var(--space-m);
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--color-border);
+  }
+
+  .read-next__pager a {
+    display: grid;
+    gap: var(--space-3xs);
+    text-decoration: none;
+  }
+
+  .read-next__pager-title {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" var(--opsz-display);
+    font-size: var(--step-1);
+    font-style: var(--display-style);
+    line-height: 1.2;
+  }
+
+  .read-next__pager a:hover .read-next__pager-title {
+    color: var(--color-accent);
+  }
+
+  @media (min-width: 48rem) {
+    .read-next__pager {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .read-next__older {
+      text-align: end;
+    }
+  }
+</style>

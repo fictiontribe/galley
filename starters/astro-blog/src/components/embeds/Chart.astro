@@ -1,0 +1,704 @@
+---
+// A chart, drawn on the server: lines and areas as SVG, columns and bars as
+// plain boxes, every label as real text. Nothing runs in the browser; hovering
+// a month shows its values with CSS alone. The numbers are always in a table
+// under the chart too, for screen readers, for anyone who wants the figures,
+// and for the Markdown copy of the page that AI agents read.
+//
+// Fields: src/content.config.ts → chartFields. Colours: --color-chart-1…5
+// in tokens.css; with `highlight`, the named series takes the first colour
+// and the rest go quiet (--color-chart-muted).
+import { fill, labels, site } from "../../lib/site";
+
+interface Series {
+  name: string;
+  values: Array<number | null>;
+}
+
+interface Props {
+  chart?: "line" | "area" | "column" | "bar" | "stacked";
+  title?: string;
+  text?: string;
+  labels: string[];
+  series: Series[];
+  unit?: string;
+  prefix?: string;
+  highlight?: string;
+  min?: number;
+  max?: number;
+  notes?: Array<{ at: string; label: string }>;
+  source?: string;
+}
+
+const { chart = "line", title, text, labels: categories, series, unit = "", prefix = "", highlight, min, max, notes = [], source } = Astro.props;
+
+const number = new Intl.NumberFormat(site.locale, { maximumFractionDigits: 1 });
+const format = (value: number | null | undefined) => {
+  if (value === null || value === undefined) return "–";
+  const spaced = unit && !/^[%°]/.test(unit) ? `\u2009${unit}` : unit;
+  return `${value < 0 ? "−" : ""}${prefix}${number.format(Math.abs(value))}${spaced}`;
+};
+
+// Colours: in order, or the highlighted series first and the rest quiet.
+const colour = (index: number) => {
+  if (highlight) return series[index]!.name === highlight ? "var(--color-chart-1)" : "var(--color-chart-muted)";
+  return `var(--color-chart-${(index % 5) + 1})`;
+};
+const isQuiet = (index: number) => Boolean(highlight) && series[index]!.name !== highlight;
+
+// The value axis: round numbers, from zero (or `min`) to just above the top.
+const values = series.flatMap((s) => s.values).filter((v): v is number => typeof v === "number");
+const stackTotals = categories.map((_, i) => series.reduce((sum, s) => sum + Math.max(0, s.values[i] ?? 0), 0));
+const top = chart === "stacked" ? Math.max(...stackTotals, 0) : Math.max(...values, 0);
+const bottom = chart === "line" && typeof min === "number" ? min : Math.min(0, ...values);
+
+function niceStep(range: number, count: number): number {
+  const raw = range / count;
+  const power = 10 ** Math.floor(Math.log10(raw || 1));
+  const fraction = raw / power;
+  return (fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 2.5 ? 2.5 : fraction <= 5 ? 5 : 10) * power;
+}
+
+const step = niceStep((max ?? top) - bottom, 4);
+const axisMin = Math.floor(bottom / step) * step;
+const axisMax = typeof max === "number" ? max : Math.ceil(top / step) * step || step;
+const ticks: number[] = [];
+for (let tick = axisMin; tick <= axisMax + step / 1000; tick += step) ticks.push(Number(tick.toFixed(6)));
+const span = axisMax - axisMin || 1;
+/** A tick on the value axis: the number alone (30k past ten thousand); the unit is written once, above the axis. */
+const compact = new Intl.NumberFormat(site.locale, { notation: "compact", maximumFractionDigits: 1 });
+const tickLabel = (value: number) => `${value < 0 ? "−" : ""}${prefix}${(Math.abs(axisMax) >= 10000 ? compact : number).format(Math.abs(value))}`;
+/** A value's height from the bottom of the plot, 0–100. */
+const pct = (value: number) => ((value - axisMin) / span) * 100;
+
+// Lines and areas: the SVG is 1000 × 400 units, stretched to the plot.
+const W = 1000;
+const H = 400;
+const xAt = (i: number) => (categories.length === 1 ? W / 2 : (i / (categories.length - 1)) * W);
+const yAt = (value: number) => H - (pct(value) / 100) * H;
+
+function linePath(s: Series): string {
+  let d = "";
+  let pen = false;
+  s.values.forEach((value, i) => {
+    if (typeof value !== "number") {
+      pen = false;
+      return;
+    }
+    d += `${pen ? "L" : "M"}${xAt(i).toFixed(1)} ${yAt(value).toFixed(1)}`;
+    pen = true;
+  });
+  return d;
+}
+
+function areaPath(s: Series): string {
+  const points = s.values.map((value, i) => (typeof value === "number" ? [xAt(i), yAt(value)] : null)).filter((p): p is number[] => p !== null);
+  if (points.length === 0) return "";
+  const base = yAt(Math.max(axisMin, 0));
+  return `M${points[0]![0]} ${base}${points.map(([x, y]) => `L${x!.toFixed(1)} ${y!.toFixed(1)}`).join("")}L${points.at(-1)![0]} ${base}Z`;
+}
+
+// Draw the quiet series first, so the highlighted one sits on top.
+const order = series.map((_, i) => i).sort((a, b) => Number(isQuiet(b)) - Number(isQuiet(a)));
+const lastIndex = (s: Series) => s.values.findLastIndex((v) => typeof v === "number");
+const notesAt = new Map(notes.map((note) => [note.at, note.label]));
+const plotLabel = title ? fill(labels.embeds.chartLabel, { title }) : undefined;
+const svgCharts = chart === "line" || chart === "area";
+const longLabels = categories.some((label) => label.length > 4) && categories.length > 6;
+---
+
+<figure class:list={["chart", `chart--${chart}`]} aria-label={plotLabel}>
+  {
+    (title || text || series.length > 1) && (
+      <div class="chart__head">
+        {title && <p class="embed__title">{title}</p>}
+        {text && <p class="embed__text">{text}</p>}
+        {series.length > 1 && (
+          <ul class="chart__legend" role="list" aria-hidden="true">
+            {series.map((s, i) => (
+              <li class:list={{ "is-quiet": isQuiet(i) }} style={`--c: ${colour(i)}`}>
+                <span class="chart__swatch" />
+                {s.name}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
+
+  {
+    chart === "bar" ? (
+      <div class="chart__bars" aria-hidden="true">
+        {categories.map((label, i) => (
+          <div class="chart__bar-row">
+            <span class="chart__bar-label">{label}</span>
+            <span class="chart__bar-group">
+              {series.map((s, j) => (
+                <span class="chart__bar-line">
+                  <span class="chart__bar" style={`--c: ${colour(j)}; --w: ${Math.max(0, pct(s.values[i] ?? 0))}%`} />
+                  <span class:list={["chart__bar-value", { "is-quiet": isQuiet(j) }]}>{format(s.values[i])}</span>
+                </span>
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div class:list={["chart__frame", { "chart__frame--points": svgCharts }]} aria-hidden="true">
+        <div class="chart__plot">
+          {unit && <span class="chart__unit">{unit}</span>}
+          <div class="chart__grid">
+            {ticks.map((tick) => (
+              <span class:list={["chart__tick", { "is-zero": tick === 0 }]} style={`--y: ${pct(tick)}%`}>
+                <span class="chart__tick-label">{tickLabel(tick)}</span>
+              </span>
+            ))}
+          </div>
+
+          {svgCharts ? (
+            <>
+              <svg class="chart__svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+                {chart === "area" &&
+                  order.map((i) => <path class="chart__area" d={areaPath(series[i]!)} style={`--c: ${colour(i)}`} />)}
+                {order.map((i) => (
+                  <path class:list={["chart__line", { "is-quiet": isQuiet(i) }]} d={linePath(series[i]!)} style={`--c: ${colour(i)}`} />
+                ))}
+              </svg>
+              {order.map((i) => {
+                const s = series[i]!;
+                const last = lastIndex(s);
+                return last < 0 ? null : (
+                  <span
+                    class:list={["chart__end", { "is-quiet": isQuiet(i) }]}
+                    style={`--c: ${colour(i)}; --x: ${(xAt(last) / W) * 100}%; --y: ${pct(s.values[last]!)}%`}
+                  >
+                    <span class="chart__end-label">{format(s.values[last])}</span>
+                  </span>
+                );
+              })}
+              <div class="chart__columns chart__columns--points" style={`--n: ${Math.max(2, categories.length)}`}>
+                {categories.map((label, i) => (
+                  <div class:list={["chart__col", { "has-note": notesAt.has(label) }]}>
+                    {notesAt.has(label) && <span class="chart__note">{notesAt.get(label)}</span>}
+                    <span class="chart__tip">
+                      <strong>{label}</strong>
+                      {series.map((s, j) => (
+                        <span style={`--c: ${colour(j)}`}>
+                          <span class="chart__swatch" />
+                          {series.length > 1 && `${s.name} `}
+                          {format(s.values[i])}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div class="chart__columns">
+              {categories.map((label, i) => (
+                <div class:list={["chart__col", { "has-note": notesAt.has(label) }]}>
+                  {notesAt.has(label) && <span class="chart__note">{notesAt.get(label)}</span>}
+                  {chart === "stacked" ? (
+                    <span class="chart__stack" style={`--h: ${pct(stackTotals[i]!)}%`}>
+                      {series.map((s, j) => (
+                        <span class="chart__segment" style={`--c: ${colour(j)}; --share: ${Math.max(0, s.values[i] ?? 0)}`} />
+                      ))}
+                    </span>
+                  ) : (
+                    <span class="chart__group">
+                      {series.map((s, j) => (
+                        <span class="chart__column" style={`--c: ${colour(j)}; --h: ${pct(s.values[i] ?? 0) - pct(Math.max(axisMin, 0))}%; --base: ${pct(Math.max(axisMin, 0))}%`} />
+                      ))}
+                    </span>
+                  )}
+                  <span class="chart__tip">
+                    <strong>{label}</strong>
+                    {series.map((s, j) => (
+                      <span style={`--c: ${colour(j)}`}>
+                        <span class="chart__swatch" />
+                        {series.length > 1 && `${s.name} `}
+                        {format(s.values[i])}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div class:list={["chart__x", { "chart__x--points": svgCharts, "chart__x--long": longLabels }]}>
+          {categories.map((label) => (
+            <span>{label}</span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  <details class="chart__data">
+    <summary>{labels.embeds.showData}</summary>
+    <div class="table-scroll" tabindex="0">
+      <table aria-label={title}>
+        <thead>
+          <tr>
+            <th scope="col"><span class="visually-hidden">{unit}</span></th>
+            {series.map((s) => <th scope="col">{s.name}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {
+            categories.map((label, i) => (
+              <tr>
+                <th scope="row">{label}</th>
+                {series.map((s) => (
+                  <td>{format(s.values[i])}</td>
+                ))}
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  {source && <figcaption class="embed__source">{labels.embeds.source}: {source}</figcaption>}
+</figure>
+
+<style>
+  .chart {
+    container-type: inline-size;
+    display: grid;
+    gap: var(--space-s);
+    font-family: var(--font-ui);
+    font-size: var(--step--1);
+    line-height: var(--leading-ui);
+    color: var(--tone-text);
+    min-inline-size: 0;
+    overflow-x: clip;
+  }
+
+  .chart__unit {
+    position: absolute;
+    inset-block-end: calc(100% + 0.35rem);
+    inset-inline-end: calc(100% + 0.6rem);
+    color: var(--tone-muted);
+    font-size: var(--step--2);
+    white-space: nowrap;
+  }
+
+  .chart__head {
+    display: grid;
+    gap: var(--space-3xs);
+  }
+
+  .chart__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3xs) var(--space-m);
+    margin-block-start: var(--space-2xs);
+    padding: 0;
+    list-style: none;
+    color: var(--tone-text);
+    font-weight: var(--weight-ui-medium);
+  }
+
+  .chart__legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+  }
+
+  .chart__legend .is-quiet {
+    color: var(--tone-muted);
+    font-weight: var(--weight-ui);
+  }
+
+  .chart__swatch {
+    display: inline-block;
+    flex: none;
+    inline-size: 0.75em;
+    block-size: 0.75em;
+    border-radius: 2px;
+    background: var(--c);
+  }
+
+  /* ── The frame: y labels on the left, the plot, x labels below ─────── */
+  .chart__frame {
+    --axis: 3rem;
+    display: grid;
+    grid-template-columns: var(--axis) 1fr;
+    padding-block-start: var(--space-m);
+  }
+
+  .chart__frame--points {
+    padding-inline-end: 1.1rem;
+  }
+
+  .chart__plot {
+    position: relative;
+    grid-column: 2;
+    block-size: clamp(11rem, 42cqi, 20rem);
+  }
+
+  .chart__grid {
+    position: absolute;
+    inset: 0;
+  }
+
+  .chart__tick {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: var(--y);
+    border-block-end: var(--border-width) solid var(--color-chart-grid);
+  }
+
+  .chart__tick.is-zero {
+    border-block-end-color: var(--tone-line-strong);
+  }
+
+  .chart__tick-label {
+    position: absolute;
+    inset-inline-end: calc(100% + 0.6rem);
+    transform: translateY(-50%);
+    color: var(--tone-muted);
+    font-size: var(--step--2);
+    white-space: nowrap;
+  }
+
+  .chart__svg {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    overflow: visible;
+  }
+
+  .chart__line {
+    fill: none;
+    stroke: var(--c);
+    stroke-width: 2.75;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .chart__line.is-quiet {
+    stroke-width: 1.75;
+  }
+
+  .chart__area {
+    fill: color-mix(in oklch, var(--c) 16%, transparent);
+    stroke: none;
+  }
+
+  /* The last point of each line: a dot in the series colour, its value in text colour beside it. */
+  .chart__end {
+    position: absolute;
+    inset-inline-start: var(--x);
+    inset-block-end: var(--y);
+    inline-size: 0.6rem;
+    block-size: 0.6rem;
+    margin: 0 0 -0.3rem -0.3rem;
+  }
+
+  .chart__end::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--c);
+    box-shadow: 0 0 0 2px var(--tone-bg);
+  }
+
+  .chart__end-label {
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-end: 0.9rem;
+    color: var(--tone-text);
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui-strong);
+    white-space: nowrap;
+  }
+
+  .chart__end.is-quiet .chart__end-label {
+    color: var(--tone-muted);
+    inset-block-end: auto;
+    inset-block-start: 0.9rem;
+  }
+
+  /* ── Columns: one hover band per category ──────────────────────────── */
+  .chart__columns {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+
+  /* For points, each band is centred on its point: half a band of overhang
+     at each end. */
+  .chart__columns--points {
+    inset-inline: calc(-50% / (var(--n, 12) - 1));
+  }
+
+  .chart__col {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    block-size: 100%;
+  }
+
+  .chart__group {
+    position: absolute;
+    inset-block: 0;
+    inset-inline: 18%;
+    display: flex;
+    gap: 2px;
+  }
+
+  .chart__column {
+    position: relative;
+    flex: 1;
+    block-size: 100%;
+  }
+
+  .chart__column::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: var(--base);
+    block-size: var(--h);
+    border-radius: 2px 2px 0 0;
+    background: var(--c);
+  }
+
+  .chart__stack {
+    position: absolute;
+    inset-inline: 22%;
+    inset-block-end: 0;
+    display: flex;
+    flex-direction: column-reverse;
+    block-size: var(--h);
+    border-radius: 2px 2px 0 0;
+    overflow: hidden;
+  }
+
+  .chart__segment {
+    flex: var(--share) 1 0;
+    background: var(--c);
+    box-shadow: 0 1px 0 var(--tone-bg);
+  }
+
+  .chart__note {
+    position: absolute;
+    inset-block: -1rem 0;
+    inset-inline-start: 50%;
+    z-index: 1;
+    border-inline-start: var(--border-width) dashed var(--tone-line-strong);
+    padding-inline-start: 0.4rem;
+    color: var(--tone-muted);
+    font-size: var(--step--2);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .chart__col:nth-last-child(-n + 3) .chart__note {
+    inset-inline-start: auto;
+    inset-inline-end: 50%;
+    padding-inline: 0 0.4rem;
+    border-inline-start: 0;
+    border-inline-end: var(--border-width) dashed var(--tone-line-strong);
+    text-align: end;
+  }
+
+  .chart__tip {
+    position: absolute;
+    inset-block-end: calc(100% + 0.5rem);
+    inset-inline-start: 50%;
+    z-index: 2;
+    display: grid;
+    gap: 0.15em;
+    min-inline-size: 7rem;
+    padding: 0.5em 0.7em;
+    border-radius: var(--radius-m);
+    background: var(--color-inverse-background);
+    color: var(--color-inverse-text);
+    font-size: var(--step--2);
+    white-space: nowrap;
+    box-shadow: var(--shadow-raised);
+    opacity: 0;
+    transform: translate(-50%, 0.3rem);
+    transition:
+      opacity var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
+    pointer-events: none;
+  }
+
+  .chart__tip span {
+    display: flex;
+    align-items: center;
+    gap: 0.45em;
+  }
+
+  /* Near the edges the tip opens inwards, so it never leaves the chart. */
+  .chart__col:nth-child(-n + 2) .chart__tip {
+    inset-inline-start: 0;
+    transform: translate(0, 0.3rem);
+  }
+
+  .chart__col:nth-last-child(-n + 2) .chart__tip {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    transform: translate(0, 0.3rem);
+  }
+
+  .chart__col:hover {
+    background: color-mix(in oklch, var(--tone-text) 4%, transparent);
+  }
+
+  .chart__col:hover .chart__tip {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  .chart__col:nth-child(-n + 2):hover .chart__tip,
+  .chart__col:nth-last-child(-n + 2):hover .chart__tip {
+    transform: none;
+  }
+
+  .chart__x {
+    grid-column: 2;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    padding-block-start: 0.5rem;
+    color: var(--tone-muted);
+    font-size: var(--step--2);
+    text-align: center;
+  }
+
+  .chart__x span {
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .chart__x--points {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .chart__x--points span {
+    flex: 0 0 0;
+    display: flex;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  /* Narrow: show every other label when they would crowd. */
+  @container (max-width: 34rem) {
+    .chart__x--long span:nth-child(even),
+    .chart__x--points span:nth-child(even) {
+      visibility: hidden;
+    }
+
+    .chart__frame {
+      --axis: 2.5rem;
+    }
+  }
+
+  /* ── Horizontal bars ───────────────────────────────────────────────── */
+  .chart__bars {
+    display: grid;
+    gap: var(--space-xs);
+  }
+
+  .chart__bar-row {
+    display: grid;
+    gap: var(--space-3xs) var(--space-s);
+  }
+
+  .chart__bar-label {
+    font-weight: var(--weight-ui-medium);
+  }
+
+  .chart__bar-group {
+    display: grid;
+    gap: 3px;
+  }
+
+  .chart__bar-line {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2xs);
+  }
+
+  .chart__bar {
+    flex: none;
+    inline-size: calc(var(--w) * 0.82);
+    min-inline-size: 2px;
+    block-size: 1.1rem;
+    border-radius: 0 2px 2px 0;
+    background: var(--c);
+  }
+
+  .chart__bar-value {
+    font-weight: var(--weight-ui-strong);
+    white-space: nowrap;
+  }
+
+  .chart__bar-value.is-quiet {
+    color: var(--tone-muted);
+    font-weight: var(--weight-ui);
+  }
+
+  @container (min-width: 36rem) {
+    .chart__bar-row {
+      grid-template-columns: 11rem 1fr;
+      align-items: center;
+    }
+
+    .chart__bar-label {
+      text-align: end;
+    }
+  }
+
+  /* ── The numbers ───────────────────────────────────────────────────── */
+  .chart__data summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    color: var(--tone-muted);
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui-medium);
+    cursor: pointer;
+  }
+
+  .chart__data summary:hover {
+    color: var(--tone-text);
+  }
+
+  .chart__data[open] summary {
+    margin-block-end: var(--space-xs);
+  }
+
+  .chart__data table {
+    inline-size: 100%;
+    border-collapse: collapse;
+    font-size: var(--step--2);
+  }
+
+  .chart__data :where(th, td) {
+    padding: 0.35em 0.8em 0.35em 0;
+    border-block-end: var(--border-width) solid var(--tone-line);
+    text-align: end;
+    white-space: nowrap;
+  }
+
+  .chart__data :where(th:first-child) {
+    text-align: start;
+  }
+</style>

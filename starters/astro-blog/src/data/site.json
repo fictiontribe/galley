@@ -1,0 +1,170 @@
+{
+  "name": "Sarking",
+  "tagline": "Notes from making a draughty 1930s house use a third of the energy.",
+  "description": "Sarking is one person's notebook on making an old brick house warm, cheap to run and quiet on the planet: meter readings, costs, what worked and what didn't.",
+  "url": "https://www.example.com",
+  "lang": "en",
+  "locale": "en-GB",
+  "email": "hello@example.com",
+  "titleTemplate": "{title} · {site}",
+  "shareImage": "/images/share.jpg",
+  "shareImageAlt": "Sarking — notes from making a draughty 1930s house use a third of the energy",
+  "social": [
+    {
+      "label": "Mastodon",
+      "href": "https://mastodon.social/"
+    },
+    {
+      "label": "Bluesky",
+      "href": "https://bsky.app/"
+    },
+    {
+      "label": "GitHub",
+      "href": "https://github.com/"
+    }
+  ],
+  "footerText": "Sarking is a made-up blog. Its people, house and numbers are invented for this template.",
+  "blog": {
+    "pageSize": 10,
+    "feedItems": 20,
+    "relatedPosts": 3
+  },
+  "labels": {
+    "skipLink": "Skip to content",
+    "home": "Sarking home page",
+    "nav": {
+      "main": "Main",
+      "footer": "Footer",
+      "menu": "Menu",
+      "close": "Close",
+      "search": "Search",
+      "feed": "RSS feed",
+      "social": "Elsewhere",
+      "privacyChoices": "Privacy choices"
+    },
+    "theme": {
+      "label": "Colour scheme",
+      "toLight": "Switch to light",
+      "toDark": "Switch to dark"
+    },
+    "post": {
+      "by": "By",
+      "and": "and",
+      "published": "Published",
+      "updated": "Updated",
+      "readingTime": "{minutes} min read",
+      "inShort": "In short",
+      "contents": "Contents",
+      "onThisPage": "On this page",
+      "backToTop": "Back to top",
+      "tags": "Filed under",
+      "series": "Part {part} of {total} in",
+      "seriesNav": "The series",
+      "seriesPart": "Part {part}",
+      "youAreHere": "You are reading this",
+      "sources": "Sources",
+      "howMade": "How this was written",
+      "ai": {
+        "none": "Written without AI. Every word and number is the author's.",
+        "research": "AI helped find and check sources. The writing and the numbers are the author's.",
+        "editing": "Written by the author; AI suggested edits for clarity, which the author read and chose from.",
+        "drafting": "AI wrote a first draft from the author's notes and readings; the author rewrote and checked it."
+      },
+      "revisions": "Changes since it was published",
+      "originallyPublished": "First published at {site}.",
+      "aboutAuthor": "About the author",
+      "moreBy": "More by {name}",
+      "related": "Read next",
+      "newer": "Newer",
+      "older": "Older",
+      "copyMarkdown": "Copy as Markdown",
+      "copied": "Copied",
+      "markdownVersion": "Markdown version",
+      "copyLink": "Copy link",
+      "linkCopied": "Link copied",
+      "share": "Share",
+      "copyCode": "Copy",
+      "codeCopied": "Copied"
+    },
+    "blog": {
+      "title": "Writing",
+      "description": "Every post on Sarking, newest first.",
+      "allPosts": "All posts",
+      "pageOf": "Page {current} of {total}",
+      "pagination": "More posts",
+      "newerPage": "Newer posts",
+      "olderPage": "Older posts",
+      "empty": "Nothing here yet. The first post is on its way.",
+      "readMore": "Read",
+      "posts": "{count} posts",
+      "post": "1 post"
+    },
+    "tags": {
+      "title": "Topics",
+      "description": "Every topic Sarking writes about, and how often.",
+      "tagTitle": "{tag}",
+      "tagDescription": "Every post on Sarking filed under “{tag}”.",
+      "allTopics": "All topics"
+    },
+    "series": {
+      "title": "Series",
+      "description": "Posts that are best read in order.",
+      "parts": "{count} parts",
+      "ongoing": "Still being written",
+      "complete": "Complete",
+      "start": "Start with part 1",
+      "allSeries": "All series"
+    },
+    "authors": {
+      "postsBy": "Posts by {name}",
+      "links": "Elsewhere"
+    },
+    "archive": {
+      "title": "Archive",
+      "description": "Everything on Sarking, by year.",
+      "count": "{count} posts since {year}"
+    },
+    "search": {
+      "title": "Search",
+      "description": "Search every post on Sarking.",
+      "label": "Search posts",
+      "placeholder": "Heat pump, loft, solar…",
+      "button": "Search",
+      "results": "{count} posts match “{query}”",
+      "oneResult": "1 post matches “{query}”",
+      "none": "Nothing matches “{query}”. Try a shorter word, or browse the topics.",
+      "hint": "Searches titles, summaries, topics and headings.",
+      "noScript": "Search needs JavaScript. Every post is also listed in the archive."
+    },
+    "embeds": {
+      "showData": "The numbers",
+      "source": "Source",
+      "yes": "Yes",
+      "no": "No",
+      "partly": "Partly",
+      "pros": "Good",
+      "cons": "Not so good",
+      "bestFor": "Best for",
+      "score": "{score} out of {outOf}",
+      "play": "Watch",
+      "opensElsewhere": "opens on another site",
+      "chartLabel": "Chart: {title}",
+      "invalid": "This block couldn't be shown"
+    },
+    "callouts": {
+      "note": "Note",
+      "tip": "Tip",
+      "important": "Important",
+      "warning": "Warning",
+      "caution": "Take care"
+    },
+    "notFound": {
+      "home": "Go to the home page"
+    },
+    "dev": {
+      "unknownSection": "This section type has no component yet",
+      "chooseForm": "Choose a form for this section.",
+      "unknownForm": "There is no form called “{id}”. Choose one from the forms."
+    }
+  }
+}

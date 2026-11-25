@@ -1,0 +1,42 @@
+---
+// One photograph: in the reading column, across the page, or edge to edge.
+import Section from "../Section.astro";
+import Media from "../Media.astro";
+import type { Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  image: string;
+  imageAlt: string;
+  caption?: string;
+  size?: "text" | "wide" | "full";
+  ratio?: "landscape" | "wide" | "panorama";
+  index?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone = "default", image, imageAlt, caption, size = "wide", ratio = "wide", index = 0, block } = Astro.props;
+const ratios = { landscape: "3/2", wide: "16/9", panorama: "21/9" };
+---
+
+<Section type="image" id={id} tone={tone} label={imageAlt} block={block} bare>
+  <figure class:list={["image-section", `image-section--${size}`, { container: size !== "full" }]}>
+    <Media src={image} alt={imageAlt} ratio={ratios[ratio]} sizes={size === "text" ? "(min-width: 40rem) 37rem, 100vw" : "100vw"} eager={index === 0} />
+    {caption && <figcaption class="caption">{caption}</figcaption>}
+  </figure>
+</Section>
+
+<style>
+  .image-section--text {
+    max-inline-size: calc(var(--measure) + 2 * var(--page-margin));
+  }
+
+  .image-section--full :global(img) {
+    border-radius: 0;
+  }
+
+  .image-section--full .caption {
+    padding-inline: var(--page-margin);
+  }
+</style>

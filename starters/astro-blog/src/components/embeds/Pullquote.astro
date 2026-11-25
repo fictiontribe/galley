@@ -1,0 +1,71 @@
+---
+// A line set large to slow the reader down. Fields: src/content.config.ts → pullquoteFields.
+import { inline } from "../../lib/site";
+
+interface Props {
+  quote: string;
+  name?: string;
+  role?: string;
+}
+
+const { quote, name, role } = Astro.props;
+---
+
+<figure class="pullquote">
+  <blockquote class="pullquote__quote">
+    <p set:html={inline(quote)} />
+  </blockquote>
+  {
+    name && (
+      <figcaption class="pullquote__by">
+        <span class="pullquote__name">{name}</span>
+        {role && <span class="pullquote__role">{role}</span>}
+      </figcaption>
+    )
+  }
+</figure>
+
+<style>
+  .pullquote {
+    display: grid;
+    gap: var(--space-s);
+    padding-block: var(--space-s);
+  }
+
+  .pullquote__quote {
+    position: relative;
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" var(--opsz-display);
+    font-size: var(--step-3);
+    font-weight: var(--weight-display);
+    font-style: italic;
+    letter-spacing: var(--tracking-display);
+    line-height: 1.18;
+    text-wrap: balance;
+  }
+
+  .pullquote__quote::before {
+    content: "“";
+    display: block;
+    block-size: 0.5em;
+    color: var(--tone-accent);
+    font-size: 2.2em;
+    line-height: 0.9;
+  }
+
+  .pullquote__by {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2em 0.6em;
+    font-family: var(--font-ui);
+    font-size: var(--step--1);
+  }
+
+  .pullquote__name {
+    font-weight: var(--weight-ui-strong);
+  }
+
+  .pullquote__role {
+    color: var(--tone-muted);
+  }
+</style>

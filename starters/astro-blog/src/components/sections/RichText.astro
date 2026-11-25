@@ -1,0 +1,64 @@
+---
+// Writing in Markdown, in the reading column or with its heading in the margin.
+import Section from "../Section.astro";
+import { inline, markdown, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text: string;
+  layout?: "column" | "margin";
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone = "default", eyebrow, heading, text, layout = "column", index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const Heading = level === 1 ? "h1" : "h2";
+---
+
+<Section type="rich-text" id={id} tone={tone} labelledby={heading ? headingId : undefined} label={heading ? undefined : eyebrow} block={block}>
+  <div class:list={["rich-text", `rich-text--${layout}`]}>
+    {
+      (eyebrow || heading) && (
+        <div class="rich-text__head">
+          {eyebrow && <p class="kicker">{eyebrow}</p>}
+          {heading && <Heading class="section-heading" id={headingId} set:html={inline(heading)} />}
+        </div>
+      )
+    }
+    <div class="prose rich-text__body" set:html={markdown(text)} />
+  </div>
+</Section>
+
+<style>
+  .rich-text {
+    display: grid;
+    gap: var(--space-m) var(--gutter);
+    max-inline-size: var(--measure);
+    margin-inline: auto;
+  }
+
+  .rich-text__head {
+    display: grid;
+    gap: var(--space-xs);
+  }
+
+  @media (min-width: 64rem) {
+    .rich-text--margin {
+      grid-template-columns: 1fr var(--measure);
+      max-inline-size: none;
+    }
+
+    .rich-text--margin .rich-text__head {
+      align-self: start;
+    }
+
+    .rich-text--margin .section-heading {
+      font-size: var(--step-3);
+    }
+  }
+</style>

@@ -42,7 +42,7 @@ galley host recipe --name acme --address cms.example.com --out -
   domain: `New in 0.1.1. Uses your own address for a site that is already online: it shows what will change, attaches the address on yes, waits until it answers over HTTPS, and makes it the site's live address. It never replaces a DNS record, and it detaches only an address it attached itself. On Cloudflare the domain has to be in the same account as the site. Details: [Deploying, for developers](/docs/running/deploy/).`,
   new: `Copies a starter into a new folder named after the site, installs its dependencies, records a first version with git, and opens it — the step-by-step version is [Create a new site](/docs/getting-started/new-site/). In a terminal it asks for a missing name or starter. The options a first site doesn't need:
 
-- \`--starter <name>\` — \`caddow\`, \`ferrow\`, \`lowfield\` (the default) or \`storefront\`; \`galley starters\` describes them. [Starters](/docs/astro/starters/).
+- \`--starter <name>\` — \`caddow\`, \`ferrow\`, \`lowfield\` (the default), \`sarking\` or \`storefront\`; \`galley starters\` describes them. [Starters](/docs/astro/starters/).
 - \`--look <id>\` — one of the starter's looks (default: its first).
 - \`--dir <folder>\` — where the site's folder goes (default: the current folder). It is made if it doesn't exist.
 - \`--use <manager>\` — install with npm, pnpm, yarn or bun.

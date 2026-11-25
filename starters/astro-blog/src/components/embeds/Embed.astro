@@ -1,0 +1,50 @@
+---
+// One embed, by kind: the components behind ```chart, ```compare and the
+// rest, in a post or a page section. `width` sets how far it may spread in a
+// post's reading column (wide breaks out of it).
+import Chart from "./Chart.astro";
+import Compare from "./Compare.astro";
+import Stats from "./Stats.astro";
+import Verdict from "./Verdict.astro";
+import ProsCons from "./ProsCons.astro";
+import Timeline from "./Timeline.astro";
+import Steps from "./Steps.astro";
+import Faq from "./Faq.astro";
+import Gallery from "./Gallery.astro";
+import Pullquote from "./Pullquote.astro";
+import Video from "./Video.astro";
+import Takeaways from "./Takeaways.astro";
+
+const components: Record<string, (props: any) => any> = {
+  chart: Chart,
+  compare: Compare,
+  stats: Stats,
+  verdict: Verdict,
+  proscons: ProsCons,
+  timeline: Timeline,
+  steps: Steps,
+  faq: Faq,
+  gallery: Gallery,
+  pullquote: Pullquote,
+  video: Video,
+  takeaways: Takeaways,
+};
+
+interface Props {
+  type: string;
+  data: Record<string, unknown>;
+  class?: string;
+}
+
+const { type, data, class: className } = Astro.props;
+const Component = components[type];
+const wide = data.width === "wide";
+---
+
+{
+  Component && (
+    <div class:list={["embed", `embed--${type}`, { "is-wide": wide }, className]} data-embed-kind={type}>
+      <Component {...data} />
+    </div>
+  )
+}

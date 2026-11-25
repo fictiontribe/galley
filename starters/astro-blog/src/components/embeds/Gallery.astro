@@ -1,0 +1,57 @@
+---
+// Photographs in a grid, each with an optional caption.
+// Fields: src/content.config.ts → galleryFields.
+import Media from "../Media.astro";
+
+interface Props {
+  title?: string;
+  items: Array<{ image: string; imageAlt: string; caption?: string }>;
+  columns?: number;
+}
+
+const { title, items, columns = 2 } = Astro.props;
+---
+
+<figure class="gallery">
+  {title && <p class="embed__title">{title}</p>}
+  <ul role="list" class="gallery__grid" style={`--columns: ${columns}`}>
+    {
+      items.map((item) => (
+        <li>
+          <figure>
+            <Media src={item.image} alt={item.imageAlt} ratio="3/2" sizes={`(min-width: 64rem) ${Math.round(60 / columns)}rem, 100vw`} />
+            {item.caption && <figcaption class="caption">{item.caption}</figcaption>}
+          </figure>
+        </li>
+      ))
+    }
+  </ul>
+</figure>
+
+<style>
+  .gallery {
+    container-type: inline-size;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-s);
+  }
+
+  .gallery__grid {
+    display: grid;
+    gap: var(--space-m) var(--space-s);
+    padding: 0;
+    list-style: none;
+  }
+
+  @container (min-width: 30rem) {
+    .gallery__grid {
+      grid-template-columns: repeat(min(var(--columns), 2), minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 50rem) {
+    .gallery__grid {
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    }
+  }
+</style>

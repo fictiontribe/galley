@@ -1,0 +1,79 @@
+---
+// A post's body: its HTML and its embeds, in order (src/lib/embeds.ts cuts
+// them apart). Code blocks get a copy button; a block that doesn't fit its
+// schema shows what is wrong (in development only — a build fails instead).
+import Embed from "./embeds/Embed.astro";
+import { labels } from "../lib/site";
+import type { Part } from "../lib/embeds";
+
+interface Props {
+  parts: Part[];
+}
+
+const { parts } = Astro.props;
+---
+
+{
+  parts.map((part) =>
+    part.kind === "html" ? (
+      <Fragment set:html={part.html} />
+    ) : part.kind === "embed" ? (
+      <Embed type={part.type} data={part.data} />
+    ) : (
+      <div class="embed-invalid" role="note">
+        <strong>
+          {labels.embeds.invalid}: <code>{part.type}</code>
+        </strong>
+        <p>{part.problem}</p>
+        <pre>{part.source}</pre>
+      </div>
+    ),
+  )
+}
+
+<script is:inline define:vars={{ copyLabel: labels.post.copyCode, copiedLabel: labels.post.codeCopied }}>
+  // A copy button on every code block.
+  document.querySelectorAll(".prose pre").forEach((pre) => {
+    if (pre.parentElement?.classList.contains("code-wrap")) return;
+    const wrap = document.createElement("div");
+    wrap.className = "code-wrap";
+    pre.replaceWith(wrap);
+    wrap.append(pre);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "copy-code";
+    button.textContent = copyLabel;
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(pre.innerText);
+        button.textContent = copiedLabel;
+        button.dataset.copied = "";
+        setTimeout(() => {
+          button.textContent = copyLabel;
+          delete button.dataset.copied;
+        }, 1600);
+      } catch {}
+    });
+    wrap.append(button);
+  });
+</script>
+
+<style is:global>
+  .code-wrap {
+    position: relative;
+  }
+
+  .prose > .code-wrap,
+  .code-figure > .code-wrap {
+    margin-block: 2em;
+  }
+
+  .code-figure > .code-wrap {
+    margin-block: 0;
+  }
+
+  .code-figure > .code-wrap > pre {
+    border-start-start-radius: 0;
+    border-start-end-radius: 0;
+  }
+</style>

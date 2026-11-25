@@ -1,0 +1,67 @@
+---
+// The light/dark switch. The page starts in the reader's system setting; the
+// switch pins the other one and remembers it (localStorage), and Base.astro
+// applies it before the first paint. Without JavaScript the switch stays
+// hidden and the system setting rules.
+import Icon from "./Icon.astro";
+import { labels } from "../lib/site";
+---
+
+<button
+  class="icon-button theme-toggle"
+  type="button"
+  data-theme-toggle
+  data-label-light={labels.theme.toLight}
+  data-label-dark={labels.theme.toDark}
+  aria-label={labels.theme.toDark}
+  hidden
+>
+  <Icon name="moon" class="theme-toggle__moon" />
+  <Icon name="sun" class="theme-toggle__sun" />
+</button>
+
+<script is:inline>
+  (() => {
+    const root = document.documentElement;
+    const system = matchMedia("(prefers-color-scheme: dark)");
+    const current = () => root.dataset.theme || (system.matches ? "dark" : "light");
+    document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+      const sync = () => {
+        const dark = current() === "dark";
+        button.dataset.current = dark ? "dark" : "light";
+        button.setAttribute("aria-label", dark ? button.dataset.labelLight : button.dataset.labelDark);
+      };
+      button.hidden = false;
+      sync();
+      system.addEventListener("change", sync);
+      button.addEventListener("click", () => {
+        const next = current() === "dark" ? "light" : "dark";
+        root.dataset.theme = next;
+        try {
+          localStorage.setItem("theme", next);
+        } catch {}
+        sync();
+      });
+    });
+  })();
+</script>
+
+<style>
+  .theme-toggle :global(svg) {
+    grid-area: 1 / 1;
+    transition:
+      opacity var(--duration) var(--ease-out),
+      transform var(--duration) var(--ease-out);
+  }
+
+  .theme-toggle :global(.theme-toggle__sun),
+  .theme-toggle[data-current="dark"] :global(.theme-toggle__moon) {
+    opacity: 0;
+    transform: rotate(-40deg) scale(0.7);
+  }
+
+  .theme-toggle[data-current="dark"] :global(.theme-toggle__sun) {
+    opacity: 1;
+    transform: none;
+  }
+</style>

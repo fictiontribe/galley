@@ -1,0 +1,100 @@
+---
+// One series in a list: picture, title, line, how many parts, and the parts.
+import Media from "./Media.astro";
+import { postUrl, seriesUrl, type Post, type Series } from "../lib/blog";
+import { fill, labels } from "../lib/site";
+
+interface Props {
+  series: Series;
+  posts: Post[];
+  level?: 2 | 3;
+}
+
+const { series, posts, level = 2 } = Astro.props;
+const Heading = `h${level}` as "h2" | "h3";
+const { title, description, image, imageAlt, ongoing } = series.data;
+const cover = image ?? posts[0]?.data.image;
+const coverAlt = image ? (imageAlt ?? "") : (posts[0]?.data.imageAlt ?? "");
+---
+
+<article class="series-card">
+  {
+    cover && (
+      <a href={seriesUrl(series.id)} tabindex="-1" aria-hidden="true" class="series-card__image">
+        <Media src={cover} alt={coverAlt} ratio="21/9" sizes="(min-width: 48rem) 40rem, 100vw" />
+      </a>
+    )
+  }
+  <p class="kicker">
+    {fill(labels.series.parts, { count: posts.length })} · {ongoing ? labels.series.ongoing : labels.series.complete}
+  </p>
+  <Heading class="series-card__title"><a href={seriesUrl(series.id)}>{title}</a></Heading>
+  <p class="series-card__text">{description}</p>
+  <ol class="series-card__parts">
+    {
+      posts.map((post) => (
+        <li>
+          <a href={postUrl(post)}>{post.data.title}</a>
+        </li>
+      ))
+    }
+  </ol>
+</article>
+
+<style>
+  .series-card {
+    display: grid;
+    gap: var(--space-2xs);
+    align-content: start;
+  }
+
+  .series-card__image {
+    display: block;
+    margin-block-end: var(--space-xs);
+  }
+
+  .series-card__title {
+    font-size: var(--step-3);
+    line-height: 1.08;
+  }
+
+  .series-card__title a {
+    text-decoration: none;
+  }
+
+  .series-card__title a:hover {
+    color: var(--tone-accent);
+  }
+
+  .series-card__text {
+    color: var(--tone-muted);
+    font-family: var(--font-text);
+    font-variation-settings: "opsz" var(--opsz-text);
+    font-size: var(--step-0);
+    line-height: 1.5;
+  }
+
+  .series-card__parts {
+    margin-block-start: var(--space-xs);
+    padding-inline-start: 1.4em;
+    font-size: var(--step--1);
+    line-height: 1.45;
+  }
+
+  .series-card__parts li + li {
+    margin-block-start: var(--space-3xs);
+  }
+
+  .series-card__parts li::marker {
+    color: var(--tone-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .series-card__parts a {
+    text-decoration-color: var(--tone-line-strong);
+  }
+
+  .series-card__parts a:hover {
+    color: var(--tone-accent);
+  }
+</style>

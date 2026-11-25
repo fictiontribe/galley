@@ -67,7 +67,7 @@ sections:
     id: starters
     layout: stage
     heading: Start from a finished site.
-    text: Three starters, three looks each.
+    text: Four starters, three looks each.
     link:
       label: Browse the starters
       href: /starters/

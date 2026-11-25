@@ -1,0 +1,36 @@
+---
+// Every series, each with its parts.
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import SeriesCard from "../../components/SeriesCard.astro";
+import { isPublished, postsInSeries } from "../../lib/blog";
+import { labels } from "../../lib/site";
+
+const posts = await getCollection("blog", isPublished);
+const series = (await getCollection("series")).map((entry) => ({ entry, posts: postsInSeries(posts, entry.id) })).filter((item) => item.posts.length > 0);
+---
+
+<Base title={labels.series.title} description={labels.series.description}>
+  <header class="page-head container">
+    <div class="page-head__inner">
+      <h1 class="page-head__title">{labels.series.title}</h1>
+      <p class="lede">{labels.series.description}</p>
+    </div>
+  </header>
+  <div class="container series-grid">
+    {series.map((item) => <SeriesCard series={item.entry} posts={item.posts} />)}
+  </div>
+</Base>
+
+<style>
+  .series-grid {
+    display: grid;
+    gap: var(--space-2xl) var(--gutter);
+  }
+
+  @media (min-width: 48rem) {
+    .series-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>

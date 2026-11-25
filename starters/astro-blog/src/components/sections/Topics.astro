@@ -1,0 +1,68 @@
+---
+// Every topic, with how many posts it has. From the tags the posts use, so
+// there is nothing to set up.
+import { getCollection } from "astro:content";
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import { isPublished, postsByTag, tagUrl } from "../../lib/blog";
+import type { Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  counts?: boolean;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone = "default", eyebrow, heading, text, counts = true, index = 0, level = 2, block } = Astro.props;
+const tags = postsByTag(await getCollection("blog", isPublished));
+const headingId = `${id ?? `section-${index}`}-heading`;
+---
+
+<Section type="topics" id={id} tone={tone} labelledby={heading ? headingId : undefined} label={heading ? undefined : eyebrow} block={block}>
+  <div class="topics">
+    <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+    <ul role="list" class="tag-list topics__list">
+      {
+        tags.map((entry) => (
+          <li>
+            <a class="tag" href={tagUrl(entry.tag)}>
+              {entry.tag}
+              {counts && <span class="tag__count">{entry.posts.length}</span>}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Section>
+
+<style>
+  .topics {
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  .topics__list {
+    gap: var(--space-xs);
+  }
+
+  .topics__list :global(.tag) {
+    min-block-size: 2.6rem;
+    padding-inline: 1.1em;
+    font-size: var(--step--1);
+  }
+
+  @media (min-width: 64rem) {
+    .topics {
+      grid-template-columns: 5fr 7fr;
+      align-items: start;
+      gap: var(--gutter);
+    }
+  }
+</style>

@@ -1,0 +1,103 @@
+---
+// Every topic, with its count and its three newest posts.
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import { byDate, isPublished, postUrl, postsByTag, tagUrl } from "../../lib/blog";
+import { fill, labels } from "../../lib/site";
+
+const posts = (await getCollection("blog", isPublished)).sort(byDate);
+const tags = postsByTag(posts).sort((a, b) => b.posts.length - a.posts.length || a.tag.localeCompare(b.tag));
+const count = (n: number) => (n === 1 ? labels.blog.post : fill(labels.blog.posts, { count: n }));
+---
+
+<Base title={labels.tags.title} description={labels.tags.description}>
+  <header class="page-head container">
+    <div class="page-head__inner">
+      <h1 class="page-head__title">{labels.tags.title}</h1>
+      <p class="lede">{labels.tags.description}</p>
+    </div>
+  </header>
+  <div class="container">
+    <ul role="list" class="topics-index">
+      {
+        tags.map((entry) => (
+          <li class="topics-index__item">
+            <h2 class="topics-index__name">
+              <a href={tagUrl(entry.tag)}>{entry.tag}</a>
+            </h2>
+            <p class="meta">{count(entry.posts.length)}</p>
+            <ul role="list" class="topics-index__posts">
+              {entry.posts.slice(0, 3).map((post) => (
+                <li>
+                  <a href={postUrl(post)}>{post.data.title}</a>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Base>
+
+<style>
+  .topics-index {
+    display: grid;
+    gap: 0 var(--gutter);
+    padding: 0;
+    list-style: none;
+    border-block-start: var(--rule-width) solid var(--color-text);
+  }
+
+  .topics-index__item {
+    display: grid;
+    gap: var(--space-2xs);
+    align-content: start;
+    padding-block: var(--space-m);
+    border-block-end: var(--border-width) solid var(--color-border);
+  }
+
+  .topics-index__name {
+    font-size: var(--step-3);
+    line-height: 1.05;
+  }
+
+  .topics-index__name a {
+    text-decoration: none;
+  }
+
+  .topics-index__name a:hover {
+    color: var(--color-accent);
+  }
+
+  .topics-index__posts {
+    display: grid;
+    gap: var(--space-3xs);
+    margin-block-start: var(--space-2xs);
+    padding: 0;
+    list-style: none;
+    font-size: var(--step--1);
+  }
+
+  .topics-index__posts a {
+    color: var(--color-text-muted);
+    text-decoration: none;
+  }
+
+  .topics-index__posts a:hover {
+    color: var(--color-text);
+    text-decoration: underline;
+  }
+
+  @media (min-width: 48rem) {
+    .topics-index {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 72rem) {
+    .topics-index {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

@@ -1,0 +1,23 @@
+---
+// Everything, by year: titles and dates only.
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+import PostIndex from "../components/PostIndex.astro";
+import { byDate, isPublished } from "../lib/blog";
+import { fill, labels } from "../lib/site";
+
+const posts = (await getCollection("blog", isPublished)).sort(byDate);
+const firstYear = posts.at(-1)?.data.date.getUTCFullYear();
+---
+
+<Base title={labels.archive.title} description={labels.archive.description}>
+  <header class="page-head container">
+    <div class="page-head__inner">
+      <h1 class="page-head__title">{labels.archive.title}</h1>
+      {firstYear && <p class="lede">{fill(labels.archive.count, { count: posts.length, year: firstYear })}</p>}
+    </div>
+  </header>
+  <div class="container">
+    <PostIndex posts={posts} />
+  </div>
+</Base>

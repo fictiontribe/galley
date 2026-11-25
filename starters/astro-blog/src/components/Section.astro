@@ -1,0 +1,45 @@
+---
+// The outer box of every section: anchor id, tone, the air above and below
+// and the block markers. `block` comes from Sections.astro and becomes
+// data-galley-block="sections.<index>" and data-galley-block-type="<type>" on
+// the root element, so a visual editor can map what is on screen back to the
+// entry's list. Plain sites ignore them.
+import type { Tone } from "../lib/site";
+
+interface Props {
+  type: string;
+  id?: string;
+  tone?: Tone;
+  /** id of the heading that names this section, for aria-labelledby. */
+  labelledby?: string;
+  /** Names the section when it has no visible heading. */
+  label?: string;
+  block?: { key: string; type: string };
+  class?: string;
+  /** Extra classes on the inner container. */
+  wrapClass?: string;
+  /** Leave out the container (for sections that lay out their own width). */
+  bare?: boolean;
+}
+
+const { type, id, tone = "default", labelledby, label, block, class: className, wrapClass, bare = false } = Astro.props;
+---
+
+<section
+  id={id}
+  class:list={["section", `section--${type}`, `tone-${tone}`, className]}
+  aria-labelledby={labelledby}
+  aria-label={labelledby ? undefined : label}
+  data-galley-block={block?.key}
+  data-galley-block-type={block?.type}
+>
+  {
+    bare ? (
+      <slot />
+    ) : (
+      <div class:list={["container", wrapClass]}>
+        <slot />
+      </div>
+    )
+  }
+</section>

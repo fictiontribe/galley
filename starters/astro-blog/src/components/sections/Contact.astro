@@ -1,0 +1,89 @@
+---
+// Ways to get in touch beside a form from src/content/forms/ (default
+// "contact"), rendered by the site kit.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import { Form } from "../../galley/components/index.js";
+import { withBase, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  form?: string | { id: string };
+  items?: Array<{ label: string; value: string; href?: string }>;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone = "default", eyebrow, heading, text, form = "contact", items = [], index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const formId = typeof form === "string" ? form : form.id;
+---
+
+<Section type="contact" id={id} tone={tone} labelledby={headingId} block={block}>
+  <div class="contact">
+    <div class="contact__intro">
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+      {
+        items.length > 0 && (
+          <dl class="contact__items">
+            {items.map((item) => (
+              <div>
+                <dt>{item.label}</dt>
+                <dd>{item.href ? <a href={withBase(item.href)}>{item.value}</a> : item.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )
+      }
+    </div>
+    <div class="contact__form">
+      <Form id={formId} submitClass="button" />
+    </div>
+  </div>
+</Section>
+
+<style>
+  .contact {
+    display: grid;
+    gap: var(--space-xl) var(--gutter);
+  }
+
+  .contact__intro {
+    display: grid;
+    gap: var(--space-l);
+    align-content: start;
+  }
+
+  .contact__items {
+    display: grid;
+    gap: var(--space-s);
+    font-size: var(--step--1);
+  }
+
+  .contact__items dt {
+    color: var(--tone-muted);
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui-strong);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+  }
+
+  .contact__items a {
+    color: var(--tone-text);
+  }
+
+  .contact__form {
+    max-inline-size: 36rem;
+  }
+
+  @media (min-width: 56rem) {
+    .contact {
+      grid-template-columns: 5fr 7fr;
+    }
+  }
+</style>

@@ -1,0 +1,44 @@
+---
+// An embed (chart, comparison, figures, timeline, questions, quote, gallery)
+// as a page section: the same component and fields as the fenced block in a
+// post. `width: text` keeps it to the reading column; `wide` lets it spread.
+import Section from "../Section.astro";
+import Embed from "../embeds/Embed.astro";
+import type { Tone } from "../../lib/site";
+
+interface Props {
+  type: string;
+  id?: string;
+  tone?: Tone;
+  width?: "text" | "wide";
+  title?: string;
+  heading?: string;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+  [key: string]: unknown;
+}
+
+const { type, id, tone = "default", block, index: _index, level: _level, ...data } = Astro.props;
+const width = data.width ?? (type === "chart" || type === "compare" || type === "gallery" ? "wide" : "text");
+---
+
+<Section type={type} id={id} tone={tone} label={typeof data.title === "string" ? data.title : undefined} block={block}>
+  <div class:list={["embed-section", `embed-section--${width}`]}>
+    <Embed type={type} data={data} />
+  </div>
+</Section>
+
+<style>
+  .embed-section {
+    margin-inline: auto;
+  }
+
+  .embed-section--text {
+    max-inline-size: var(--measure);
+  }
+
+  .embed-section--wide {
+    max-inline-size: var(--measure-wide);
+  }
+</style>

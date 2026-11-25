@@ -1,6 +1,6 @@
 ---
 title: Create a new site
-description: One command copies a starter — Caddow, Ferrow or Lowfield Studio — into a folder of its own and opens it in Galley, ready to edit.
+description: One command copies a starter — Caddow, Ferrow, Lowfield Studio or Sarking — into a folder of its own and opens it in Galley, ready to edit.
 group: getting-started
 order: 2
 ---
@@ -41,6 +41,7 @@ Your browser opens on the new site. Leave the terminal open: Galley runs until y
 - **Caddow** (`caddow`) — a fashion label: full-screen photographs, lookbooks, a journal.
 - **Ferrow** (`ferrow`) — a software company: product pages, pricing, customer stories, a blog.
 - **Lowfield Studio** (`lowfield`) — a small studio or local business: services, about, contact, a journal.
+- **Sarking** (`sarking`) — a blog for long-form writing with charts, comparison tables, verdicts and timelines in plain Markdown.
 
 Put its short name after `--starter`. Without one, it asks (Lowfield is the default).
 

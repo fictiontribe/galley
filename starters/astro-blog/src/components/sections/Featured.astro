@@ -1,0 +1,95 @@
+---
+// The lead post, large, with the next few beside it. The lead is the post
+// named in `post`, else the newest post marked `featured`, else the newest.
+import { getCollection } from "astro:content";
+import Section from "../Section.astro";
+import PostCard from "../PostCard.astro";
+import { byDate, isPublished, refId } from "../../lib/blog";
+import { inline, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  heading?: string;
+  post?: string | { id: string };
+  more?: number;
+  layout?: "lead" | "split";
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone = "default", heading, post, more = 3, layout = "lead", index = 0, level = 2, block } = Astro.props;
+const posts = (await getCollection("blog", isPublished)).sort(byDate);
+const chosen = refId(post);
+const lead = posts.find((item) => item.id === chosen) ?? posts.find((item) => item.data.featured) ?? posts[0];
+const rest = posts.filter((item) => item !== lead);
+const second = layout === "split" ? rest[0] : undefined;
+const others = rest.slice(second ? 1 : 0, (second ? 1 : 0) + more);
+const headingId = `${id ?? `section-${index}`}-heading`;
+const Heading = level === 1 ? "h1" : "h2";
+---
+
+{
+  lead && (
+    <Section type="featured" id={id} tone={tone} labelledby={heading ? headingId : undefined} label={heading ? undefined : lead.data.title} block={block}>
+      {heading && <Heading class="featured__heading kicker" id={headingId} set:html={inline(heading)} />}
+      <div class:list={["featured", `featured--${layout}`]}>
+        <div class="featured__lead">
+          <PostCard post={lead} variant={layout === "split" ? "card" : "lead"} level={heading ? 3 : 2} eager={index < 2} />
+        </div>
+        {second && (
+          <div class="featured__second">
+            <PostCard post={second} variant="card" level={heading ? 3 : 2} eager={index < 2} />
+          </div>
+        )}
+        {others.length > 0 && (
+          <div class="featured__more">
+            {others.map((item) => (
+              <PostCard post={item} variant="brief" level={heading ? 3 : 2} />
+            ))}
+          </div>
+        )}
+      </div>
+    </Section>
+  )
+}
+
+<style>
+  .featured__heading {
+    margin-block-end: var(--space-m);
+  }
+
+  .featured {
+    display: grid;
+    gap: var(--space-xl) var(--gutter);
+  }
+
+  .featured__more {
+    border-block-start: var(--rule-width) solid var(--tone-text);
+  }
+
+  @media (min-width: 64rem) {
+    .featured--lead .featured__more {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0 var(--gutter);
+    }
+
+    .featured--split {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .featured--split .featured__lead {
+      grid-column: span 5;
+    }
+
+    .featured--split .featured__second {
+      grid-column: span 4;
+    }
+
+    .featured--split .featured__more {
+      grid-column: span 3;
+    }
+  }
+</style>

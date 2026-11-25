@@ -98,11 +98,12 @@ describe("starters by name", () => {
   it("each real starter declares a short name and a one-line summary", async () => {
     const choices = await loadStarterChoices(REPO_STARTERS);
 
-    expect(choices.map((choice) => choice.short)).toEqual(["lowfield", "caddow", "ferrow", "storefront"]);
+    expect(choices.map((choice) => choice.short)).toEqual(["lowfield", "caddow", "ferrow", "sarking", "storefront"]);
     expect(Object.fromEntries(choices.map((choice) => [choice.short, choice.id]))).toEqual({
       lowfield: "astro-starter",
       caddow: "astro-editorial",
       ferrow: "astro-saas",
+      sarking: "astro-blog",
       storefront: "astro-storefront",
     });
     for (const choice of choices) {
@@ -117,8 +118,9 @@ describe("starters by name", () => {
 
     expect(findStarter(choices, "Caddow")?.id).toBe("astro-editorial");
     expect(findStarter(choices, "astro-editorial")?.short).toBe("caddow");
+    expect(findStarter(choices, "Sarking")?.id).toBe("astro-blog");
     expect(findStarter(choices, "fashion")).toBeNull();
-    expect(shortList(choices)).toBe("caddow, ferrow, lowfield or storefront");
+    expect(shortList(choices)).toBe("caddow, ferrow, lowfield, sarking or storefront");
   });
 
   it("reads the lowest Node version a starter accepts", () => {

@@ -48,6 +48,7 @@ you ran it with.
 | `lowfield` (the default) | A site for a small studio or local business |
 | `caddow` | A photography-led site for a small fashion label |
 | `ferrow` | A marketing site for a software company |
+| `sarking` | A blog for long-form writing with charts, tables and evidence |
 | `storefront` | A shop for a small fashion label, with products from Shopify (in progress) |
 
 <p align="center">

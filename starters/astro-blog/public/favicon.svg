@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style>
+    .g { fill: #f7f3ec; }
+    .s { fill: #22201c; }
+    .a { fill: #b04a2c; }
+    @media (prefers-color-scheme: dark) {
+      .g { fill: #22201c; }
+      .s { fill: #f1ece2; }
+      .a { fill: #e08a66; }
+    }
+  </style>
+  <rect class="g" width="64" height="64" rx="14"/>
+  <path class="s" d="M14 30 32 14l18 16v2H14z"/>
+  <rect class="a" x="14" y="36" width="36" height="4"/>
+  <rect class="s" x="14" y="44" width="36" height="4"/>
+</svg>

@@ -107,9 +107,9 @@ keeps one list of them. Anything not marked is built.
   changes as pull requests.
 - **Your own AI tool.** An MCP server gives Claude Desktop, Claude Code,
   Cursor, VS Code or any MCP client the same tools as the assistant.
-- **Starters.** Caddow (fashion), Ferrow (B2B software) and Lowfield Studio
-  (small business), three looks each. A Shopify storefront is *in
-  progress*.
+- **Starters.** Caddow (fashion), Ferrow (B2B software), Lowfield Studio
+  (small business) and Sarking (long-form blog with charts and tables), three
+  looks each. A Shopify storefront is *in progress*.
 - **Move from WordPress.** *New, in final checks.* Posts, pages, images and
   search details in four steps, as changes you check before anything goes
   live.
@@ -236,7 +236,7 @@ option or setting it names has to exist.
 | [`packages/plugins`](packages/plugins) | The plugins built into `galley-cms` |
 | [`apps/desktop`](apps/desktop) | The desktop app (Tauri 2) |
 | [`apps/site`](apps/site) | The website and documentation — a site Galley edits |
-| [`starters`](starters) | The four starters `galley new` copies |
+| [`starters`](starters) | The five starters `galley new` copies |
 | [`examples`](examples) | A worked adapter and a worked plugin |
 | [`brand`](brand) | The brand guide, voice, tokens and logo |
 
@@ -278,7 +278,7 @@ has the setup, the checks a pull request must pass and the copy conventions.
 Every commit is signed off under the [DCO](DCO) (`git commit -s`); there is
 no CLA. Good places to start:
 
-- **Starters**: a new site for a kind of business the four don't cover.
+- **Starters**: a new site for a kind of business the starters don't cover.
 - **Adapters**: a full adapter for a framework Galley only recognises by
   convention ([how](docs/adapters.md)).
 - **Plugins**: a form destination, a script, an image service, a host
