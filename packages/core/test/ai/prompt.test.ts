@@ -5,11 +5,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SYSTEM_PROMPT, briefToPrompt, buildSiteCard, deterministicSummary } from "../../src/ai/index";
 import { describeChangeSet, pageNameOf } from "../../src/ai/describe";
-import { INSTRUCTIONS_FILE_CHARS } from "../../src/ai/site-card";
+import { INSTRUCTIONS_FILE_CHARS, loadInstructionFiles } from "../../src/ai/site-card";
 import { PRODUCT } from "../../src/brand";
 import { loadSiteModel } from "../../src/content/config/config";
 import type { ChangeSet, FileChange, SiteModel } from "../../src/types";
-import { fakeModel } from "./helpers/fake-site";
+import { createFakeSite, fakeModel } from "./helpers/fake-site";
 import { jsonResponse, scriptedFetch, testClient } from "./helpers/scripted-fetch";
 
 const STARTER = join(dirname(fileURLToPath(import.meta.url)), "../../../../starters/astro-starter");
@@ -32,6 +32,22 @@ describe("site card", () => {
     expect(a).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:/);
     // Item counts change with every new post; they'd break the cache.
     expect(a.slice(0, a.indexOf("<instructions"))).not.toMatch(/\b\d+ (items?|posts?|pages?|entries)\b/);
+  });
+
+  it("never takes a secrets file for the site's guidance, whatever the settings name", async () => {
+    const site = createFakeSite();
+    const asked: string[] = [];
+    const readFile = site.readFile.bind(site);
+
+    site.files.set(".env", "TOKEN=not-for-the-card\n");
+    site.files.set(".git/config", "[core]\n");
+    site.readFile = async (path) => (asked.push(path), readFile(path));
+    const model = { ...fakeModel(), ai: { instructions: ["CONTENT-GUIDE.md", ".env", ".envrc", ".git/config"], allowBuild: true } } as SiteModel;
+    const files = await loadInstructionFiles(site, model);
+
+    expect(files.map((file) => [file.path, file.content === null])).toEqual([["CONTENT-GUIDE.md", false], [".env", true], [".envrc", true], [".git/config", true]]);
+    expect(asked).toEqual(["CONTENT-GUIDE.md"]);
+    expect(buildSiteCard(model, files)).not.toContain("not-for-the-card");
   });
 
   it("caps a long instructions file and says so", () => {

@@ -46,6 +46,33 @@ export function isSecretsFile(path: string): boolean {
 }
 
 /**
+ * Whether a file of the site may be shown, by its path: not a secrets file
+ * (`isSecretsFile`), and not one of the version history's own (anything
+ * under a `.git` folder, in any letter case and at any depth).
+ *
+ * Asked at every way a file's text, lines or changes leave the engine: the
+ * server's file and diff routes, the guard an extension reads through, the
+ * assistant's tools and the MCP server's. The engine's own `readFile` and
+ * `diff` don't ask it, because the engine reads for itself too; so each way
+ * out does, and they all ask here so that they can't come to disagree.
+ */
+export function mayBeShown(path: string): boolean {
+  return !path.replace(/\\/g, "/").toLowerCase().split("/").includes(".git") && !isSecretsFile(path);
+}
+
+export const SECRETS_NOT_READ = "That is a secrets file, so it isn't read here. Ask the person for what you need from it.";
+export const HISTORY_NOT_READ = "That is one of the version history's own files, so it isn't read here. Ask for the site's history instead.";
+
+/**
+ * Why a file isn't read for the assistant or for a client of its tools, in a
+ * sentence it can act on; null when the file may be shown.
+ */
+export function notReadReason(path: string): string | null {
+  if (isSecretsFile(path)) return SECRETS_NOT_READ;
+  return mayBeShown(path) ? null : HISTORY_NOT_READ;
+}
+
+/**
  * The hard deny-list. Compared case-insensitively because macOS and Windows
  * filesystems are: `.GIT/config` is `.git/config` there.
  */

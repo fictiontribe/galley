@@ -115,6 +115,15 @@ entry says how.
   what a publish commits and what a deploy uploads. It errs on the side of
   refusing, so a harmless file that starts the same way (`.envoy.yaml`) is
   refused too.
+- **The assistant never reads a secrets file.** In build mode the
+  assistant's file tools read any file of the site by its path, and so did
+  an MCP client, which is given the same tools. So what a secrets file holds
+  could go to the model's provider and into the conversation without anyone
+  having meant it. No tool reads a secrets file or anything under `.git/`
+  now, in any mode: asked for one, the assistant is told it isn't read here
+  and to ask the person for what it needs. A secrets file named in the
+  settings as guidance for the assistant is left out too. The same rule
+  holds wherever a file's changes are shown.
 
 ## 0.4.1 — 2026-11-25
 

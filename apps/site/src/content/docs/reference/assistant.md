@@ -51,6 +51,7 @@ Source: [`packages/core/src/ai/tools/`]({repository}/tree/main/packages/core/src
 ## What it can't do
 
 - **No shell.** There is no tool that runs a command other than the site's configured build in build mode, and no built-in tool fetches a URL. Plugins can add tools that do (the Shopify plugin's reach the store).
+- **No secrets.** No tool reads a secrets file (any file whose name starts with `.env`) or anything under `.git/`, in any mode. Asked for one, the assistant is told it isn't read here and to ask you for what it needs. So what such a file holds isn't sent to the model's provider or kept in the conversation.
 - **Nothing outside the write surface.** Content mode can change content and media only. No mode can write `.git/`, `node_modules/`, `.env*`, lockfiles or hidden settings folders, or anything outside the site folder. The mode is enforced by the engine, not by the prompt.
 - **No publishing.** The assistant's changes wait in the proof like anyone else's; publishing is the person's button.
 - **No invented facts.** The system prompt tells it not to make up statistics, quotes, names, prices, links or image paths, and to say a change happened only when a tool reported it. That is an instruction to the model, so proof what it wrote.

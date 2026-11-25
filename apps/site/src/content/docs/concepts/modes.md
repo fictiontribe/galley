@@ -60,7 +60,7 @@ One exception: in build mode, `.github/` at the top of the site is writable, bec
 
 Before any policy check, a path is normalised strictly: absolute paths, `~`, backslashes, NUL bytes and any `..` segment are refused outright (not resolved), with *That file is outside the site folder, so it can't be opened or changed here.* The path is then re-checked against its real location on disk, so a symlink inside the site that points elsewhere can't be used to escape; a dangling symlink is not followed. Writes are atomic: a temporary file, then a rename.
 
-The same rules apply to what is served: the server never sends `.git/` or `.env*` files (a file is taken for one by how its name starts, so a harmless `.envoy.yaml` is refused too), and serves a site's HTML, JavaScript and XML as plain text from its own origin.
+The same rules apply to what is shown: the server never sends `.git/` or `.env*` files or their changes, and the assistant's tools never read them (a file is taken for a secrets file by how its name starts, so a harmless `.envoy.yaml` is refused too). The server sends a site's HTML, JavaScript and XML as plain text from its own origin.
 
 ## What the assistant does not have
 
