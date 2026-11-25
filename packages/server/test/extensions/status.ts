@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { HTTPException } from "hono/http-exception";
 import { GalleyError } from "@galley/core";
 import { currentAccountAuthor } from "@galley/core/workspace";
-import { defineExtension, forbidden, invalid, type ExtensionHost, type ExtensionRequest, type GuardedSite, type JsonValue } from "../../src/extensions";
+import { defineExtension, forbidden, invalid, type ExtensionCaller, type ExtensionHost, type ExtensionRequest, type GuardedSite, type JsonValue } from "../../src/extensions";
 
 export interface StatusProbe {
   /** The host the extension was handed. */
@@ -30,10 +30,20 @@ export interface StatusProbe {
   keptPreview?: ReturnType<GuardedSite["preview"]>;
   /** A checkpoint that recorded one new page, taken by a POST and kept. */
   keptCheckpoint?: ReturnType<GuardedSite["checkpoint"]>;
+  /** Every stream that opened carrying a value for the extension, and every one of those that ended. */
+  streams: Array<{ caller: ExtensionCaller; value: string }>;
+  streamEnds: string[];
+  /** What the "shaped" event's rule answers a reader with, when a test wants something odd; and every reader it was asked for. */
+  shape?: (payload: { n: number; list: number[] }, reader: ExtensionCaller) => unknown;
+  shapedFor: ExtensionCaller[];
+  /** What sending an event before setup had returned was answered with. */
+  early?: string;
+  /** Called from inside the stream listener, what it hands back, and a rule: for trying what such a call may do. */
+  inside?: (where: string) => void;
 }
 
 export function newProbe(): StatusProbe {
-  return { host: null, requests: [], later: [], calls: {} };
+  return { host: null, requests: [], later: [], calls: {}, streams: [], streamEnds: [], shapedFor: [] };
 }
 
 /** Tries a guarded piece of work and says how it went, in a word. */
@@ -56,9 +66,52 @@ export function statusExtension(probe: StatusProbe, options: { setup?: (host: Ex
       const seen = <B>(request: ExtensionRequest<B>) => void probe.requests.push(request as ExtensionRequest<unknown>);
 
       probe.host = host;
+      count("setup");
+      // A window that says it is here: noted, and its leaving noted. Two values are not taken, each in its own way.
+      host.events.onStream((stream) => {
+        probe.streams.push(stream);
+        probe.inside?.("stream opened");
+        // Tries to change what it was told, as careless code might: who is at the window, and the value.
+        if (stream.value === "tamper") {
+          try {
+            Object.assign(stream.caller, { role: "owner", name: "Someone Else" });
+            (stream as { value: string }).value = "another-value";
+          } catch {
+            // It can't be changed.
+          }
+        }
+        if (stream.value === "refuse-me") throw forbidden(`Not that one. (${process.env.STATUS_API_KEY ?? ""})`);
+        // A refusal in two lines, and far too long.
+        if (stream.value === "long-refusal") throw forbidden(`Not that one.\nGET /api/people 200 forged ${"x".repeat(2000)}`);
+        if (stream.value === "break") throw new Error(`the listener broke with ${process.env.STATUS_API_KEY ?? ""}`);
+        if (stream.value === "promise") return Promise.resolve(() => undefined) as unknown as () => void;
+        return () => {
+          probe.streamEnds.push(stream.value);
+          probe.inside?.("stream ended");
+        };
+      });
+      // Too early: the server doesn't know the events yet.
+      probe.early = await attempt(async () => host.events.emit("changed", "any", { note: "early", by: "nobody" }));
       await options.setup?.(host, signal);
       return {
         ...(options.stop ? { stop: options.stop } : {}),
+        events: {
+          // Who wrote the note is for those who may publish; a contributor is sent the note alone.
+          changed: { level: "edit", for: (payload: { note: string; by: string }, reader) => (reader.kind === "person" && reader.role === "contributor" ? { note: payload.note } : payload) },
+          // For owners only, as it is.
+          "owners.only": { level: "manage" },
+          // For those who may publish; says who it was asked for.
+          "for.publishers": { level: "publish", for: (payload: JsonValue, reader) => (probe.shapedFor.push(reader), payload) },
+          // Shaped by whatever the test asks for.
+          shaped: {
+            level: "edit",
+            for(payload: { n: number; list: number[] }, reader) {
+              probe.shapedFor.push(reader);
+              probe.inside?.("rule");
+              return (probe.shape ? probe.shape(payload, reader) : payload) as JsonValue;
+            },
+          },
+        },
         routes: {
           "GET /sites/:siteId": {
             access: "edit",
@@ -82,8 +135,38 @@ export function statusExtension(probe: StatusProbe, options: { setup?: (host: Ex
             async handle(request) {
               seen(request);
               count("note");
-              notes.set(request.site!.id, { text: request.body.text, by: request.caller.kind === "person" ? request.caller.name : "The operator" });
+              const by = request.caller.kind === "person" ? request.caller.name : "The operator";
+
+              notes.set(request.site!.id, { text: request.body.text, by });
+              host.events.emit("changed", request.site!.id, { note: request.body.text, by });
               return { ok: true };
+            },
+          },
+          // Sends whatever event the test asks for, as many times as it asks, and says how that went.
+          "POST /sites/:siteId/emit": {
+            access: "edit",
+            body: (input) => input as { name: string; payload?: JsonValue; times?: number; about?: string; odd?: "bigint" | "large" | "big" | "accessor" },
+            async handle(request) {
+              const { name, times = 1, about, odd } = request.body;
+              // A property that answers differently each time it is read: empty the first two times, then far too much.
+              let reads = 0;
+              const accessor = {
+                get text() {
+                  return (reads += 1) <= 2 ? "" : "x".repeat(200_000);
+                },
+              };
+              const payload =
+                odd === "bigint"
+                  ? ({ n: 1n } as unknown as JsonValue)
+                  : odd === "large"
+                    ? { text: "x".repeat(70_000) }
+                    : odd === "big"
+                      ? { text: "x".repeat(60_000) }
+                      : odd === "accessor"
+                        ? (accessor as unknown as JsonValue)
+                        : (request.body.payload ?? null);
+
+              return { tried: await attempt(async () => { for (let sent = 0; sent < times; sent += 1) host.events.emit(name, about ?? request.site!.id, payload); }) };
             },
           },
           // Needs a person: the operator's token is refused.

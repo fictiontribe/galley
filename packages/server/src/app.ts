@@ -37,7 +37,8 @@ import { asOperator, needsName, ROLE_REFUSAL as CORE_ROLE_REFUSAL, ROUTE_ACCESS,
 import type { PreviewStatus } from "@galley/core/types";
 import { withAccountAuthor } from "@galley/core/workspace";
 import { ExtensionError } from "./extensions/declare";
-import { mountExtensions } from "./extensions/mount";
+import { mountExtensions, type MountCaller } from "./extensions/mount";
+import { extensionStream } from "./extensions/stream";
 import { bearerToken, clientAddress, clientKeyOf, isAuthenticated, loopbackHostnames, normalizeHostname, requestProtocol, requestSession, safeEqual, signSession, LoginLimiter, type RevocationList, type SessionCheck } from "./auth";
 import { hostedRefusals } from "./hosted-refusals";
 import { withoutKeyHints } from "./key-hints";
@@ -398,20 +399,33 @@ export function createApp(services: Services, options: AppOptions): Hono {
   }
   // What an embedding program added (extensions/mount.ts): after the editor's own routes, so none of them can be shadowed.
   if (options.extensions) {
-    const { list, desk } = options.extensions;
+    const { runtime, desk } = options.extensions;
 
     if (options.mode === "hosted" && !install) throw new ExtensionError("Extensions need accounts in hosted mode: without them every signed-in browser would have every level.");
     // With accounts there is no asking whether a sign-in still counts without the desk that knows.
     if (install && !desk) throw new ExtensionError("Extensions on an install with accounts need its people desk (createPeopleDesk): start them with startServer.");
-    mountExtensions(app, list, {
+    const callerNow = (c: Context): MountCaller | null => {
+      if (!install) return isAuthenticated(c, session) ? { kind: "local" } : null;
+      const caller = callerOf(c, ctx);
+
+      return !caller ? null : caller.kind === "token" ? { kind: "operator" } : { kind: "person", account: caller.account, session: caller.session };
+    };
+
+    ctx.extensionStream = (c, base) =>
+      extensionStream(c, runtime, {
+        callerOf: callerNow,
+        accountNow(accountId) {
+          const account = install?.people.get(accountId) ?? null;
+
+          return account && !account.disabled ? account : null;
+        },
+        refOf: (stamp) => desk!.refOf(stamp),
+        stillCounts: (stamp) => desk?.stillCounts(stamp) ?? false,
+      }, base);
+    mountExtensions(app, runtime, {
       hosted: options.mode === "hosted",
       requireLevel,
-      callerOf(c) {
-        if (!install) return isAuthenticated(c, session) ? { kind: "local" } : null;
-        const caller = callerOf(c, ctx);
-
-        return !caller ? null : caller.kind === "token" ? { kind: "operator" } : { kind: "person", account: caller.account, session: caller.session };
-      },
+      callerOf: callerNow,
       site: (siteId) => services.registry.get(siteId),
       refOf: (stamp) => desk!.refOf(stamp),
       stillCounts: (stamp) => desk!.stillCounts(stamp),

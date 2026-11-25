@@ -50,6 +50,8 @@ export interface RouteContext {
   session: SessionCheck;
   limiter: LoginLimiter;
   streams: StreamRegistry;
+  /** Set where an embedding program added extensions: what one window's stream is handed for them. */
+  extensionStream?: (c: Context, base: import("./events").StreamAccess | undefined) => { access: import("./events").StreamAccess; hooks: import("./events").StreamHooks };
 }
 
 type Handler<K extends ApiRouteKey> = (c: Context, ctx: RouteContext) => Promise<RouteResponse<K> | Response>;
@@ -258,7 +260,12 @@ export const routes: RouteTable = {
     deleteCookie(c, ctx.session.cookieName, { path: "/", ...(ctx.session.secure ? { secure: true } : {}) });
     return ok;
   },
-  "GET /api/events": async (c, ctx) => eventStream(c, ctx.services.events, ctx.streams, ctx.options.heartbeatMs, eventAccess(c, ctx), streamLimits(c, ctx)),
+  "GET /api/events": async (c, ctx) => {
+    // What an embedding program added (extensions/stream.ts): its events filtered for this reader, and told that the window is here.
+    const added = ctx.extensionStream?.(c, eventAccess(c, ctx));
+
+    return eventStream(c, ctx.services.events, ctx.streams, ctx.options.heartbeatMs, added ? added.access : eventAccess(c, ctx), streamLimits(c, ctx), added?.hooks);
+  },
 
   // ── settings ───────────────────────────────────────────────────────────
   "GET /api/settings": async (_c, ctx) => publicSettings(await ctx.services.settings.get()),

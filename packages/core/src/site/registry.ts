@@ -275,7 +275,8 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
   const unsubscribe = options.events.subscribe((event) => {
     if (disposed) return;
     // Anything a site does counts as use: an assistant turn streaming, a file changing, a preview answering.
-    if ("siteId" in event && typeof event.siteId === "string" && services.has(event.siteId)) lastUsed.set(event.siteId, Date.now());
+    // An event an embedding program sends about a site is not the site doing anything: one that reports on a site now and then must not keep it open for good.
+    if (event.type !== "extension" && "siteId" in event && typeof event.siteId === "string" && services.has(event.siteId)) lastUsed.set(event.siteId, Date.now());
     if (event.type === "job" && event.job.siteId) {
       if (event.job.state === "running") runningJobs.set(event.job.id, event.job.siteId);
       else runningJobs.delete(event.job.id);
