@@ -63,6 +63,8 @@ function dataFolder(): string {
   writeFileSync(join(site, "src/pages/index.md"), "# Home, changed and not published\n");
   symlinkSync("src/pages/index.md", join(site, "inside-link"));
   symlinkSync("/etc/hosts", join(site, "outside-link"));
+  // Inside the data folder, but out of the checkout and at a key: not the site's to carry.
+  symlinkSync("../keys/deploy_key", join(site, "key-link"));
   return home;
 }
 
@@ -95,7 +97,7 @@ describe("what a backup carries", () => {
     const entries = await backupEntries(home);
 
     expect(entries).toEqual(expect.arrayContaining(["install.json", "settings.json", "secrets.json", "session.key", "keys/deploy_key", "state/s1/submissions/one.json", "plugins/plugins.json", "site/.git/HEAD", "site/src/pages/index.md", "site/inside-link"]));
-    for (const entry of entries) expect(entry).not.toMatch(/node_modules|^home\/|^tmp\/|^backups(\/|$)|^site\/dist|^site\/\.astro|^\.restore-|^server\.lock$|outside-link/);
+    for (const entry of entries) expect(entry).not.toMatch(/node_modules|^home\/|^tmp\/|^backups(\/|$)|^site\/dist|^site\/\.astro|^\.restore-|^server\.lock$|outside-link|key-link/);
   });
 
   it("a backup written into the data folder's backups/ folder is restored from there, and every backup in it stays", async () => {
@@ -261,6 +263,15 @@ describe("hostile archives", () => {
     ["a link pointing out", [{ name: "site/", type: "5" as const }, { name: "site/out", type: "2" as const, link: "../../../etc" }]],
     ["an absolute link", [{ name: "out", type: "2" as const, link: "/etc/passwd" }]],
     ["a hard link to a path outside", [{ name: "hard", type: "1" as const, link: "../outside" }]],
+    [
+      "a link from the site's checkout to a key beside it",
+      [{ name: "keys/", type: "5" as const }, { name: "keys/deploy_key", body: "key" }, { name: "site/", type: "5" as const }, { name: "site/key", type: "2" as const, link: "../keys/deploy_key" }],
+    ],
+    [
+      "a hard link from the site's checkout to a key",
+      [{ name: "keys/", type: "5" as const }, { name: "keys/deploy_key", body: "key" }, { name: "site/", type: "5" as const }, { name: "site/key", type: "1" as const, link: "keys/deploy_key" }],
+    ],
+    ["a link at the top of the data folder", [{ name: "out", type: "2" as const, link: "install.json" }]],
   ])("%s is refused and nothing is written anywhere", async (_name, entries) => {
     const parent = tempDir("backup-parent-");
     const target = join(parent, "data");

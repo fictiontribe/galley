@@ -43,7 +43,7 @@ import { spawn } from "node:child_process";
 import { createReadStream, createWriteStream } from "node:fs";
 import { lstat, mkdir, readdir, readlink, rename, rm, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
-import { isAbsolute, join, posix, relative, resolve } from "node:path";
+import { isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { PassThrough, Transform, type Readable, type TransformCallback } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createGunzip, createGzip } from "node:zlib";
@@ -405,12 +405,27 @@ export interface BackupEntriesOptions {
   tracked?: (dir: string) => Promise<boolean>;
 }
 
-/** Whether a link's target stays inside the data folder. A backup with one that doesn't could never be restored. */
+/** The top-level folder of the data folder a relative POSIX path is in: its first segment ("site", "keys", "state", ...). */
+function areaOf(relPath: string): string {
+  return relPath.split("/")[0] ?? "";
+}
+
+/**
+ * Whether a link at `linkPath` to `targetPath` (both relative to the data folder, POSIX, normalised) stays in the
+ * top-level folder the link is in. Inside the data folder is not enough: a link in the site's checkout that points at
+ * the keys, the state or the install's own files beside it would hand them to whatever reads the checkout. Galley
+ * keeps no links at the very top of the data folder, so none is accepted there.
+ */
+function staysInArea(linkPath: string, targetPath: string): boolean {
+  if (!linkPath.includes("/")) return false;
+  if (targetPath === ".." || targetPath.startsWith("../") || posix.isAbsolute(targetPath)) return false;
+  return areaOf(targetPath) === areaOf(linkPath);
+}
+
+/** Whether a symbolic link's target stays in its top-level folder (see staysInArea). A backup with one that doesn't could never be restored. */
 function linkStaysInside(relPath: string, target: string): boolean {
   if (isAbsolute(target) || target.startsWith("/")) return false;
-  const resolved = posix.normalize(posix.join(posix.dirname(relPath), target));
-
-  return resolved !== ".." && !resolved.startsWith("../") && !posix.isAbsolute(resolved);
+  return staysInArea(relPath, posix.normalize(posix.join(posix.dirname(relPath), target)));
 }
 
 /**
@@ -678,7 +693,8 @@ export function checkEntries(entries: ArchiveEntry[]): void {
   for (const entry of entries) {
     if (entry.type === "other" || !safeArchivePath(entry.path)) fail("unsafe");
     if (entry.type === "symlink" && (entry.link === null || !linkStaysInside(entry.path.replace(/\/+$/, ""), entry.link))) fail("unsafe");
-    if (entry.type === "hardlink" && (entry.link === null || !safeArchivePath(entry.link))) fail("unsafe");
+    // A hard link names another entry of the archive: it too stays in the top-level folder it is in.
+    if (entry.type === "hardlink" && (entry.link === null || !safeArchivePath(entry.link) || !staysInArea(entry.path.replace(/\/+$/, ""), posix.normalize(entry.link)))) fail("unsafe");
   }
 }
 
@@ -845,8 +861,10 @@ export async function stageRestore(options: { home: string; source: Readable; pa
   }
 }
 
-/** After extraction: every link in `root` points inside it. */
+/** After extraction: every link in `root` points inside the top-level folder it is in (see staysInArea). */
 async function assertInside(root: string): Promise<void> {
+  const posixOf = (path: string) => path.split(sep).join("/");
+
   async function walk(dir: string): Promise<void> {
     for (const name of await readdir(dir)) {
       const path = join(dir, name);
@@ -854,9 +872,8 @@ async function assertInside(root: string): Promise<void> {
 
       if (info.isSymbolicLink()) {
         const target = await readlink(path);
-        const rel = relative(root, resolve(dir, target));
 
-        if (isAbsolute(target) || rel.startsWith("..") || isAbsolute(rel)) fail("unsafe");
+        if (isAbsolute(target) || !staysInArea(posixOf(relative(root, path)), posixOf(relative(root, resolve(dir, target))))) fail("unsafe");
       } else if (info.isDirectory()) await walk(path);
     }
   }
