@@ -39,7 +39,7 @@ When the site lives in a repository that other people publish to too, Version hi
 - **Couldn't check the repository** — it says why (no connection, the key was refused) and when it last knew. Press **Try again**.
 - **This copy and the repository have gone separate ways** — versions were published both here and there. Someone who knows the repository needs to bring them together; your edits are safe.
 
-On an editor that runs online, newer versions are brought in by themselves every few minutes, and the app says so once: "3 newer versions from the repository were brought in." The pages you have open refresh, and the preview restarts on the new versions. If a page you have unpublished changes to was changed there too, they wait: the bar at the bottom says **Newer versions are waiting**, and Version history says which page. Publish or discard your change to it, and they come in.
+On an editor that runs online, newer versions are brought in by themselves every few minutes, and the app says so once: "3 newer versions from the repository were brought in." The pages you have open refresh, and the preview restarts on the new versions. If a page you have unpublished changes to was changed there too, they wait: the bar at the bottom says **Newer versions are waiting**, and Version history says which page and offers **Review in Proof**. Discard your change to it (Proof shows it, so you can copy what you wrote first), and they come in; publishing is paused until they have.
 - **Put this site online** / **Put live** — for sites put online from Galley: the published version isn't live yet.
 
 ## If something's different

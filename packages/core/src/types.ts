@@ -748,9 +748,17 @@ export interface PublishResult {
   warnings?: PublishWarning[];
   /**
    * Nothing was published because the code host has newer versions than this
-   * copy: getting them (POST …/pull) first lets the publish go through.
+   * copy: getting them (POST …/pull) first lets the publish go through —
+   * unless `inTheWay` says otherwise.
    */
   behind?: boolean;
+  /**
+   * With `behind`: files with unpublished changes here that the newer versions
+   * change too (site-relative). Getting the latest is refused while they are
+   * changed here, so the way on is to discard those changes first, and `error`
+   * says so. Absent when getting the latest will work.
+   */
+  inTheWay?: string[];
 }
 
 /** One plugin's warning about a publish: shown in Proof and the Publish dialog, never a stop. */

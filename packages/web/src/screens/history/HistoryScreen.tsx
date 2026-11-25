@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import type { HistoryEntry, PublishResult } from "@galley/core/types";
 import { useTopBar } from "@/app/chrome";
 import { versionNote } from "./note";
@@ -20,6 +20,7 @@ import { useMay } from "@/lib/may";
 const PAGE = 50;
 
 function SyncStatus({ siteId }: { siteId: string }) {
+  const navigate = useNavigate();
   const git = useQuery(keys.git(siteId), () => api("GET /api/sites/:siteId/git", { params: { siteId } }));
   // Opening the page is asking: the line waits for a fresh look rather than trusting the last one.
   const [look, setLook] = useState<{ checking: boolean; failed: string | null }>({ checking: true, failed: null });
@@ -53,7 +54,8 @@ function SyncStatus({ siteId }: { siteId: string }) {
       notify({ tone: "success", title: "Up to date", body: "This copy now has the newest published versions." });
     } catch (error) {
       const shape = errorShape(error);
-      notify({ tone: "danger", title: "Couldn’t get the latest versions", body: `${shape.message} Your edits are safe.`, detail: shape.detail });
+      // Refused for what is here (a change in the way): nothing was touched, and the words say what to do, which may be to discard.
+      notify({ tone: "danger", title: "Couldn’t get the latest versions", body: `${shape.message} ${shape.code === "conflict" ? "Nothing here was changed." : "Your edits are safe."}`, detail: shape.detail });
     } finally {
       setPulling(false);
     }
@@ -94,6 +96,11 @@ function SyncStatus({ siteId }: { siteId: string }) {
       {line.action === "get-latest" ? (
         <Button size="sm" variant="secondary" icon="download" busy={pulling} busyLabel="Getting latest" onClick={() => void pull()}>
           Get latest
+        </Button>
+      ) : null}
+      {line.action === "review" ? (
+        <Button size="sm" variant="secondary" onClick={() => navigate(`/sites/${siteId}/proof`)}>
+          Review in Proof
         </Button>
       ) : null}
       {line.action === "retry" ? (
