@@ -179,19 +179,6 @@ export interface EntryTemplate {
 
 export type EntryFormat = "markdown" | "mdx" | "json" | "yaml" | "toml";
 
-/**
- * What a content collection's format means for a writer below the build-mode
- * level (src/site/content-code.ts). Set by the framework's adapter. **Absent
- * is guarded, not inert**: a format no adapter has declared safe is treated
- * as build-mode, so a framework that runs code in content (Docusaurus, which
- * compiles Markdown as MDX; Eleventy; mdsvex) is closed by default.
- *
- *  - "inert": the format carries no code the site runs (Astro Markdown).
- *  - "mdx": the MDX family — its code is judged textually.
- *  - "template": a template language the engine can't bound; the whole
- *    collection is build-mode for a sub-build writer.
- */
-export type ContentCode = "inert" | "mdx" | "template";
 
 export interface Collection {
   id: string;
@@ -211,11 +198,17 @@ export interface Collection {
   pattern?: string;
   format: EntryFormat;
   /**
-   * What this collection's format means for a writer below the build-mode
-   * level (ContentCode). Absent is guarded, not inert: only a format an
-   * adapter positively declares safe may be changed in content mode.
+   * The owner's declaration (galley.config.json) that the site shows this
+   * collection's Markdown as written and runs no code in it, so an account
+   * below the build-mode level may change its Markdown on any framework
+   * (src/site/content-code.ts). Never applies to `.mdx`, and the allowlist
+   * still decides which paths. Absent is guarded, not inert: by default a
+   * collection's content is build-mode for a writer below that level unless
+   * the engine itself knows the format is static (Astro Markdown, the generic
+   * model's Markdown when nothing runs over it). Whoever can edit a `plain`
+   * collection can run code if the site does run code in that content.
    */
-  code?: ContentCode;
+  plain?: boolean;
   /** Whether items carry a markdown body below the front matter. */
   body: boolean;
   /** Public URL pattern with {slug}, e.g. "/blog/{slug}/". null = no page of its own. */
@@ -500,6 +493,8 @@ export interface CollectionConfig {
   draftField?: string;
   create?: boolean;
   hidden?: boolean;
+  /** The site shows this collection's Markdown as written and runs no code in it; its Markdown is then editable below build-mode level on any framework (never `.mdx`). */
+  plain?: boolean;
   fields?: FieldConfig[];
 }
 

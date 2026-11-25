@@ -168,7 +168,10 @@ describe("the engine's bookkeeping in the settings file", () => {
 });
 
 describe("saving the site's brand", () => {
-  it("is content where the brand folder is content; elsewhere it is build mode, refused without its level and with nothing half-saved", async () => {
+  it("needs the build-mode level on this site that runs a build, in the content folder and outside it, with nothing half-saved", async () => {
+    // This is a generic site with a build command, so its Markdown is content the build runs: a brand note in the
+    // content folder is guarded like the brand folder outside it, and both need the build-mode level. An account at that
+    // level writes either; a contributor writes neither; a refusal leaves nothing half-saved.
     for (const who of ["owner", "editor", "contributor", null] as Who[]) {
       const root = tinySite();
 
@@ -178,9 +181,10 @@ describe("saving the site's brand", () => {
       const { site } = await openSite(root);
       const inContent = await as(who, () => refusalOf(writeBrandFiles(site, [{ path: "content/brand-notes.md", content: "---\ntitle: Brand\n---\n" }])));
       const outside = await as(who, () => refusalOf(writeBrandFiles(site, [{ path: "content/also.md", content: "---\ntitle: Also\n---\n" }, { path: "galley/brand/brand.json", content: "{}\n" }])));
+      const expected = who === null || roleMay(who, "publish") ? null : BUILD_MODE_REFUSAL;
 
-      expect(inContent, String(who)).toBeNull();
-      expect(outside, String(who)).toBe(who === null || roleMay(who, "publish") ? null : BUILD_MODE_REFUSAL);
+      expect(inContent, String(who)).toBe(expected);
+      expect(outside, String(who)).toBe(expected);
       if (outside) expect(await site.listFiles({ glob: "content/also.md" })).toEqual([]);
     }
   });

@@ -205,40 +205,47 @@ export function useArrange({ source, on, post, frame, page = null }: ArrangeOpti
         case "arrange-action": {
           const entry = actionsFor.get(message.field);
           if (!entry) return;
-          const { actions } = entry;
-          const list = data[message.field];
-          const length = Array.isArray(list) ? list.length : 0;
-          switch (message.action) {
-            case "move":
-              if (editable && actions.move(message.index, message.to)) select(sectionKey(message.field, message.to), true);
-              return;
-            case "step": {
-              // The page may not show the last step yet; the app's selection is where the section is now.
-              const at = parseSectionKey(selected);
-              const index = at && at.field === message.field ? at.index : message.index;
-              if (editable && actions.step(index, message.delta)) select(sectionKey(message.field, index + message.delta), true);
-              return;
+          // Arrange drives the store through overlay messages from the previewed page, so every save it makes is marked
+          // for the server (core content-code.ts): a script the page runs could otherwise reorder content as an owner.
+          store?.actions.markPage(true);
+          try {
+            const { actions } = entry;
+            const list = data[message.field];
+            const length = Array.isArray(list) ? list.length : 0;
+            switch (message.action) {
+              case "move":
+                if (editable && actions.move(message.index, message.to)) select(sectionKey(message.field, message.to), true);
+                return;
+              case "step": {
+                // The page may not show the last step yet; the app's selection is where the section is now.
+                const at = parseSectionKey(selected);
+                const index = at && at.field === message.field ? at.index : message.index;
+                if (editable && actions.step(index, message.delta)) select(sectionKey(message.field, index + message.delta), true);
+                return;
+              }
+              case "duplicate":
+                if (editable && actions.duplicate(message.index)) select(sectionKey(message.field, message.index + 1), true);
+                return;
+              case "remove":
+                if (!editable || !actions.remove(message.index)) return;
+                select(length > 1 ? sectionKey(message.field, Math.min(message.index, length - 2)) : null, true);
+                return;
+              case "undo":
+                if (store) undoLastListAction(store);
+                return;
+              case "edit":
+                source?.onEditSection(message.field, message.index);
+                return;
+              case "options":
+                select(sectionKey(message.field, message.index));
+                setOptionsToken(Date.now());
+                return;
+              case "add":
+                setTarget({ field: message.field, index: message.index });
+                return;
             }
-            case "duplicate":
-              if (editable && actions.duplicate(message.index)) select(sectionKey(message.field, message.index + 1), true);
-              return;
-            case "remove":
-              if (!editable || !actions.remove(message.index)) return;
-              select(length > 1 ? sectionKey(message.field, Math.min(message.index, length - 2)) : null, true);
-              return;
-            case "undo":
-              if (store) undoLastListAction(store);
-              return;
-            case "edit":
-              source?.onEditSection(message.field, message.index);
-              return;
-            case "options":
-              select(sectionKey(message.field, message.index));
-              setOptionsToken(Date.now());
-              return;
-            case "add":
-              setTarget({ field: message.field, index: message.index });
-              return;
+          } finally {
+            store?.actions.markPage(false);
           }
           return;
         }
@@ -248,7 +255,12 @@ export function useArrange({ source, on, post, frame, page = null }: ArrangeOpti
         case "place": {
           const placed = placingRef.current ?? dropping.current;
           dropping.current = null;
-          if (placed) insertAt(placed.block, message.field, message.index);
+          store?.actions.markPage(true);
+          try {
+            if (placed) insertAt(placed.block, message.field, message.index);
+          } finally {
+            store?.actions.markPage(false);
+          }
           stopPlacing();
           return;
         }

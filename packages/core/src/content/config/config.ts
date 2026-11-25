@@ -98,7 +98,7 @@ export function applyFieldConfigs(fields: Field[], configs: FieldConfig[]): Fiel
   return out;
 }
 
-const SIMPLE_KEYS = ["label", "singular", "description", "kind", "path", "pattern", "format", "body", "url", "titleField", "dateField", "imageField", "draftField", "create", "hidden"] as const;
+const SIMPLE_KEYS = ["label", "singular", "description", "kind", "path", "pattern", "format", "body", "url", "titleField", "dateField", "imageField", "draftField", "create", "hidden", "plain"] as const;
 
 function applyCollectionConfig(collection: Collection | undefined, config: CollectionConfig): Collection | null {
   if (!collection && !config.path) return null;

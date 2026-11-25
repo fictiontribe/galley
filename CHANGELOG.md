@@ -40,24 +40,23 @@ entry says how.
 
 ### Fixed
 
-- **Adding code to content needs build mode.** Some content formats are run
-  by the site's own build or preview: MDX runs its `import` lines, its
-  `{ … }` expressions and its `<Component>` elements, and other frameworks
-  run a template language in their content (Docusaurus compiles Markdown as
-  MDX; Eleventy, Jekyll and mdsvex run templates). Adding or changing that
-  code was a content-mode change, so a contributor on a hosted install could
-  add it, and the site runs what it is built from. It is now a build-mode
-  change, like custom code in a form: a contributor can still edit the prose
-  of such a page and remove code, but not add or change code in it, nor add a
-  new executable or template file (a `.js`, `.astro`, `.svelte`, `.11ty.js`)
-  under a content folder. Markdown on Astro, and on a plain Markdown site with
-  no framework, runs no code and is unchanged; content on a framework that
-  runs it as code, or on one the engine doesn't recognise, is guarded this way
-  as a whole until that framework's adapter is written. **If you run a hosted editor with
-  contributors and a site whose content can carry code, update.** This does
-  not wall the roles off — the preview and build run the site's own code for
-  every role (see the security model) — it closes one way for someone below
-  build-mode level to *add* that code.
+- **Changing content a framework runs needs build mode.** The preview and the
+  build run the site's own code for everyone, and some content is part of that
+  code: MDX runs its `import` lines, its `{ … }` expressions and its
+  `<Component>` elements, and frameworks like Docusaurus, Eleventy and Jekyll
+  run a template language in their content. Changing such content was a
+  content-mode change, so a contributor on a hosted install could, and the
+  preview then runs it. It is now a build-mode change, decided by the account's
+  level. An account below that level may still, in content mode: edit and add
+  Markdown on an Astro site (and on a plain Markdown site that runs no build);
+  add media; edit a data file (JSON, YAML, TOML) in a collection; and edit the
+  redirects list. It may not change MDX, or any content on a framework the
+  engine runs or doesn't recognise, until that framework's adapter is reviewed,
+  nor write anything else — a page, a script, a template, the site's settings.
+  **If you run a hosted editor with contributors, update.** This does not wall
+  the roles off: the preview runs the site's own code for every role, and code
+  already in the content still runs — it closes one way for an account below
+  build-mode level to put code where the build would run it.
 
 - **Undo no longer says it undid something when it could not.** The editor
   closes a site that nobody has used for an hour (one whose preview isn't

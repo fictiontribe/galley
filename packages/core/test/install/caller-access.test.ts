@@ -113,8 +113,12 @@ describe("the site's settings file, whichever way it is written", () => {
         expect(refused, `${who} ${path}`).toBe(may(who, SITE_SETTINGS_LEVEL) ? null : SITE_SETTINGS_REFUSAL);
       }
     }
-    // Every other top-level JSON file is still the contributor's to change.
-    expect(await as("contributor", () => refusalOf(site.writeFile("notes.json", "{}\n", { origin: "user", mode: "content" })))).toBeNull();
+    // writable.content no longer widens what an account below build level may write: a top-level JSON file an owner
+    // marked content is not recognised content (no collection, not media), so for a contributor it is refused — the
+    // content guard is an allowlist, not writable.content minus the dangerous extensions.
+    expect(await as("contributor", () => refusalOf(site.writeFile("notes.json", "{}\n", { origin: "user", mode: "content" })))).toBe(BUILD_MODE_REFUSAL);
+    // An account at build level keeps the ordinary content-mode surface: writable.content still lets an owner write it.
+    expect(await as("owner", () => refusalOf(site.writeFile("notes.json", "{}\n", { origin: "user", mode: "content" })))).toBeNull();
   });
 
   it("discarding a pending change to it, and undoing a turn that changed it", async () => {

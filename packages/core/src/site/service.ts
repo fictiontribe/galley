@@ -10,7 +10,7 @@
  * depend on the index wait for that pipeline, so a search right after an edit
  * sees the edit.
  */
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { PRODUCT } from "../brand";
 import {
@@ -81,8 +81,8 @@ import type { PreviewGateway } from "../workspace/preview/proxy";
 import type { AuthorLayers } from "../workspace/author";
 import type { AroundBringIn } from "../workspace/publish";
 import { formCodeRefusal } from "../site-kit/guard";
-import { contentCodeFor, contentCodeRefusal, contentTypeRefusal } from "./content-code";
-import { outsideAnyPerson, requireBuildMode, requireLevel, requireName, requireSiteSettings } from "../install/caller";
+import { contentWriteRefusal, layoutRefusal } from "./content-code";
+import { isSiteSettingsPath, outsideAnyPerson, requireBuildMode, requireLevel, requireName, requireSiteSettings } from "../install/caller";
 import { levelFor, SITE_METHOD_ACCESS, SITE_SETTINGS_RECORDS, siteMethodLevel, type GuardedSiteMethod } from "../install/route-access";
 import { applyRecord, RECORD_SETTINGS, type SettingsRecord } from "./settings-records";
 import { readOnly } from "./read-only";
@@ -605,6 +605,15 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
    * and never written because the file happens to match again by the time
    * of the write.
    */
+  /** Whether `path` resolves (through any link) to the site's settings file, which the workspace gates at the settings level. */
+  function settingsFilePath(path: string): boolean {
+    try {
+      return realpathSync(workspace.resolvePath(path)) === realpathSync(workspace.resolvePath(PRODUCT.configFile));
+    } catch {
+      return false;
+    }
+  }
+
   async function writeAsRead(path: string, content: string, read: Uint8Array, options: { origin?: ChangeOrigin; baseHash?: string }): Promise<void> {
     const readHash = hashContent(read);
 
@@ -905,12 +914,17 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         if (result.applied === 0 || result.content === raw) {
           return { entry: await entryFromText(target.path, raw), applied: 0, refused };
         }
-        // A form's custom code, and code in a content format the site runs (MDX, a template language), are build-mode-only, whoever asks (site-kit/guard.ts, content-code.ts).
+        // A form's custom code keeps its three-part gate (site-kit/guard.ts); other content is guarded by the account's
+        // level alone when the format runs as code or the framework is one the engine can't vouch for (content-code.ts).
         const who = { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}), allowBuild: model.ai.allowBuild };
-        const codeRefusal = target.collection.kit === "forms" ? formCodeRefusal(raw, result.content, who) : contentCodeRefusal(contentCodeFor(model.framework.id, target.collection), raw, result.content, who);
+        // On Astro a Markdown entry's `layout` becomes an import, so below build level it may not be added or changed (content-code.ts).
+        const reason =
+          target.collection.kit === "forms"
+            ? formCodeRefusal(raw, result.content, who)
+            : (contentWriteRefusal(target.path, model) ?? (model.framework.id === "astro" && target.collection.kind === "entries" ? layoutRefusal(raw, result.content, format) : null));
 
-        if (codeRefusal) {
-          return { entry: await entryFromText(target.path, raw), applied: 0, refused: [...refused, ...kept.filter((item) => !refused.some((r) => r.index === item.index)).map((item) => ({ ...item, reason: codeRefusal }))].sort((a, b) => a.index - b.index) };
+        if (reason) {
+          return { entry: await entryFromText(target.path, raw), applied: 0, refused: [...refused, ...kept.filter((item) => !refused.some((r) => r.index === item.index)).map((item) => ({ ...item, reason }))].sort((a, b) => a.index - b.index) };
         }
         // A structural edit that leaves a readable file unreadable is a bug
         // somewhere below us; never let it reach the disk.
@@ -950,7 +964,10 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       }
       const text = input.template !== undefined ? await fromTemplate(collection, path, input) : serializeEntry(collection, input.data ?? {}, input.body);
       const whoCreate = { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}), allowBuild: model.ai.allowBuild };
-      const codeRefusal = collection.kit === "forms" ? formCodeRefusal(null, text, whoCreate) : contentCodeRefusal(contentCodeFor(model.framework.id, collection), null, text, whoCreate);
+      const codeRefusal =
+        collection.kit === "forms"
+          ? formCodeRefusal(null, text, whoCreate)
+          : (contentWriteRefusal(path, model) ?? (model.framework.id === "astro" && collection.kind === "entries" ? layoutRefusal(null, text, collection.format) : null));
 
       if (codeRefusal) throw new GalleyError("forbidden", codeRefusal, path);
       const taken = new GalleyError("conflict", `A ${collection.singular} with that address already exists. Choose a different name.`, path);
@@ -1042,19 +1059,30 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       if (options.mode === "build") requireBuildMode();
       if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF, normalized);
       const who = { origin: options.origin, mode: options.mode, allowBuild: model.ai.allowBuild };
-      // The file's type: a content-mode write may add only a collection's own content formats, or media; never a new
-      // executable or template file under a content glob (the glob admits any extension; this does not).
-      const typeRefusal = contentTypeRefusal(normalized, model, who);
-
-      if (typeRefusal) throw new GalleyError("forbidden", typeRefusal, normalized);
+      // A form's custom code keeps its three-part gate; every other write is checked by the account's level against the
+      // allowlist (content-code.ts), which — unlike a glob — covers a path outside every collection too, the site's own
+      // source and config files included. An account at build level keeps the ordinary content-mode surface below.
       const collection = collectionForPath(model, normalized);
+      // The settings file, by its name or through a link to it, is gated at the settings level by the workspace below
+      // (requireSiteSettings), not here: it needs more than build mode, so its own refusal must win.
+      const targetsSettings = isSiteSettingsPath(normalized) || settingsFilePath(normalized);
 
-      if (collection) {
+      if (collection?.kit === "forms") {
         const before = (await workspace.exists(normalized)) ? await workspace.readText(normalized).catch(() => null) : null;
         const after = typeof content === "string" ? content : Buffer.from(content).toString("utf8");
-        const codeRefusal = collection.kit === "forms" ? formCodeRefusal(before, after, who) : contentCodeRefusal(contentCodeFor(model.framework.id, collection), before, after, who);
+        const codeRefusal = formCodeRefusal(before, after, who);
 
         if (codeRefusal) throw new GalleyError("forbidden", codeRefusal, normalized);
+      } else if (!targetsSettings) {
+        let refusal = contentWriteRefusal(normalized, model);
+        // On Astro a Markdown entry's `layout` becomes an import, so below build level it may not be added or changed.
+        if (!refusal && model.framework.id === "astro" && collection?.kind === "entries") {
+          const before = (await workspace.exists(normalized)) ? await workspace.readText(normalized).catch(() => null) : null;
+          const after = typeof content === "string" ? content : Buffer.from(content).toString("utf8");
+
+          refusal = layoutRefusal(before, after, collection.format);
+        }
+        if (refusal) throw new GalleyError("forbidden", refusal, normalized);
       }
       // Only the public options pass through: engine-internal flags (system,
       // createOnly) must not be reachable from a request body.

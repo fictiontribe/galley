@@ -1,293 +1,184 @@
 /**
- * The write surface's rule for code in content (Principle 6, as for a form's
- * custom code in `site-kit/guard.ts`). Some content formats are executed by
- * the site's own build or dev server: MDX runs its `import`/`export` lines
- * and its `{ … }` expressions and `<Jsx/>` elements; a template format (an
- * Eleventy or Jekyll page, an mdsvex file) runs its template language. Adding
- * or changing that code is a build-mode change, refused in content mode, on a
- * site that doesn't allow build mode, or for an account that can't use build
- * mode.
+ * The write surface's guard for an account below build-mode level (Principle 6,
+ * as for a form's custom code in `site-kit/guard.ts`).
  *
- * It fails closed. A recognised content collection is build-mode-guarded for a
- * sub-build writer **unless its adapter positively declares the format inert**
- * (`code: "inert"`). An adapter that forgets a format, and every convention or
- * unknown framework, is guarded, not opened: over-refusing a safe markdown
- * body is acceptable (that site allows build mode, or its adapter is written
- * and reviewed later); under-refusing is the escalation this closes.
+ * The preview and the build run the site's own code for everyone, and some
+ * content is part of that code. MDX runs its `import`/`export` lines, its
+ * `{ … }` expressions and its `<Jsx/>` elements; other frameworks run a
+ * template language in their content; and Astro, for a Markdown page, imports
+ * whatever its `layout` and its image paths name — so writing such content, or
+ * a file the build runs or imports, is a build-mode change. For an account
+ * below build-mode level it is refused.
  *
- * Two things are guarded, because the content-mode check is by glob:
- *  - the code *inside* a content file (this module, for the MDX family), and
- *    whether the collection's whole format is a template we can't bound;
- *  - the *type* of file written under a content glob — only the collection's
- *    own content formats and known media, never a new executable or template
- *    file (`paths`/`writeRefusal` callers hand the format in).
+ * It is an **allowlist**, not a denylist. The content globs are not a safe base
+ * to subtract from: a collection whose folder is the repo root takes the glob
+ * `**`, so a denylist leaves the site's own config and package files writable.
+ * Below build level the guard says what MAY be written — an inert entry, a data
+ * file, media, the redirects list — and refuses everything else, whatever
+ * `writable.content` says. An account at build level keeps the ordinary
+ * content-mode surface (the workspace's own writable check decides).
  *
- * Invoking code that already exists (an Eleventy filter, a Hugo or Jekyll
- * shortcode, a form's existing script) is not blocked: that is the site's own
- * code running, the documented posture, and adding a new one is already
- * build-mode.
- */
-
-/**
- * What a collection's content format means for a sub-build writer, set by the
- * framework's adapter. Absent is **not** "inert": absent is guarded, the same
- * as `"template"`.
+ * The one question for a guarded write is the account's **level**, through
+ * `callerMay(BUILD_MODE_LEVEL)` — not the conversation's mode, not whether the
+ * site allows build mode. So nobody (local and desktop), the operator and the
+ * engine are unaffected, and an owner or editor may edit in a content
+ * conversation. The form-code rule keeps its own three-part gate.
  *
- *  - `"inert"`: the format carries no code the site runs (Astro Markdown).
- *  - `"mdx"`: the MDX family — judged textually here (over-refusing).
- *  - `"template"`: a template language we cannot bound (Eleventy, Jekyll,
- *    mdsvex). The whole collection is build-mode for a sub-build writer.
+ * Failing closed by framework: only Astro Markdown, and the generic model's
+ * Markdown on a site that runs no command over it, are inert. Every other
+ * framework's content, and MDX everywhere, is guarded until an adapter
+ * positively declares a format inert (`collection.code`).
  */
 import { BUILD_MODE_LEVEL } from "../install/route-access";
-import { BUILD_MODE_REFUSAL, callerMay, callerRefusal } from "../install/caller";
-import type { AgentMode, ChangeOrigin, Collection, ContentCode, EntryFormat } from "../types";
+import { BUILD_MODE_REFUSAL, callerMay, callerRefusal, callerViaPreview } from "../install/caller";
+import { collectionForPath, normalizePath, patternOf } from "../content/entries/paths";
+import { parseDocument } from "../content/document/parse";
+import { listFileOf } from "../redirects/locate";
+import { isMediaFile } from "../workspace/media";
+import { mayBeShown } from "../workspace/policy";
+import type { Collection, EntryFormat, SiteModel } from "../types";
 
-/**
- * A collection's effective ContentCode, failing closed. An adapter may set
- * `code` on the collection itself; otherwise it is resolved from the framework
- * and the format:
- *
- *  - data (json/yaml/toml) is declarative, so inert — the file-*type* guard is
- *    what stops a `.js` data file;
- *  - under a framework whose markdown the engine has read and knows is static
- *    — Astro, and Galley's own `generic` ("Markdown") model, where a collection
- *    declared `format: "markdown"` is front-matter and prose the engine renders
- *    — a collection that admits `.mdx` is the MDX family, a markdown-only one is
- *    inert. (A `generic` site that truly runs its markdown as code should
- *    declare the collection `format: "mdx"`, which is then judged.)
- *  - under a *detected* framework that runs content as code — Docusaurus
- *    compiles Markdown as MDX, Eleventy and Jekyll run a template language,
- *    mdsvex runs Svelte — and under any framework the engine doesn't recognise
- *    (an unknown id, or none), a markdown or mdx collection is `"template"` —
- *    build-mode as a whole — until that framework's adapter is written and
- *    reviewed. None of these can be trusted from the format label.
- */
-const TRUSTED_MARKDOWN = new Set(["astro", "generic"]);
+/** A file's extension, lower-cased, or "" — for the per-file label. */
+const extensionOf = (path: string): string => /\.([^./]+)$/.exec(path)?.[1]?.toLowerCase() ?? "";
 
-export function contentCodeFor(frameworkId: string, collection: { format: EntryFormat; pattern?: string; kind: "entries" | "data"; code?: ContentCode }): ContentCode {
-  if (collection.code) return collection.code;
-  if (collection.kind === "data" || collection.format === "json" || collection.format === "yaml" || collection.format === "toml") return "inert";
-  const admitsMdx = collection.format === "mdx" || /\bmdx\b/.test(collection.pattern ?? "");
+/** Whether `path` is inside the collection folder `base`, counting the repo root (`.` or ""). */
+function underFolder(path: string, base: string): boolean {
+  const dir = normalizePath(base);
 
-  if (TRUSTED_MARKDOWN.has(frameworkId)) return admitsMdx ? "mdx" : "inert";
-  return admitsMdx ? "mdx" : "template";
+  return dir === "" || dir === "." || path === dir || path.startsWith(`${dir}/`);
 }
 
-/** Whether a collection's content may be changed by a sub-build writer without the code guard: only a format positively declared inert. */
-export function isInertContent(code: ContentCode | undefined): boolean {
-  return code === "inert";
-}
-
-const FENCE = /^(\s*)(`{3,}|~{3,})/;
-
-/**
- * The MDX constructs in `body` that the compiler would run, as a list of
- * normalised tokens — one per `import`/`export` statement, `{ … }` expression
- * and `<Jsx` element, outside fenced code blocks and inline code spans. It
- * over-refuses on purpose: in MDX an unescaped `{` or `<tag` outside code is
- * live, so a literal one in prose counts too (authors escape them as `\{` and
- * `&lt;`). A front-matter block (`---` … `---`) at the very top is data the
- * loader parses as YAML, not MDX, so it is skipped.
- */
-export function mdxCodeTokens(body: string): string[] {
-  const tokens: string[] = [];
-  let text = body;
-
-  // Skip a leading YAML/TOML front-matter block: it is not MDX.
-  const front = /^﻿?(?:---|\+\+\+)[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\+\+\+)[ \t]*(?:\r?\n|$)/.exec(text);
-
-  if (front) text = text.slice(front[0].length);
-
-  const lines = text.split(/\r?\n/);
-  let fence: string | null = null;
-
-  for (const line of lines) {
-    const fenceMatch = FENCE.exec(line);
-
-    if (fenceMatch) {
-      const marker = fenceMatch[2]!;
-
-      if (fence === null) fence = marker[0]!; // opening fence: remember ` or ~
-      else if (marker[0] === fence) fence = null; // closing fence of the same kind
-      continue;
-    }
-    if (fence !== null) continue; // inside a code block: literal
-
-    // Strip inline code spans so their braces and angle brackets don't count. An unbalanced backtick leaves the rest live.
-    const live = line.replace(/`[^`]*`/g, (span) => " ".repeat(span.length));
-    const trimmed = live.trim();
-
-    // ESM: an import/export at the line's start (MDX requires them flush-left; indentation would make it a code block).
-    if (/^(import|export)\b/.test(trimmed) && !/^\s/.test(line)) tokens.push(`esm:${trimmed}`);
-    collectBracketsAndTags(live, tokens);
-  }
-  return tokens;
-}
-
-/** Collects `{ … }` expressions and `<tag …` elements from a line already cleared of inline code. */
-function collectBracketsAndTags(line: string, tokens: string[]): void {
-  for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i]!;
-
-    if (ch === "\\") {
-      i += 1; // an escaped character (\{, \<) is literal
-      continue;
-    }
-    if (ch === "{") {
-      // Capture to the matching close brace; an unbalanced one runs to the end (still a token: over-refuse).
-      let depth = 1;
-      let j = i + 1;
-
-      for (; j < line.length && depth > 0; j += 1) {
-        if (line[j] === "\\") j += 1;
-        else if (line[j] === "{") depth += 1;
-        else if (line[j] === "}") depth -= 1;
-      }
-      tokens.push(`expr:${line.slice(i, j).trim()}`);
-      i = j - 1;
-    } else if (ch === "<" && /[A-Za-z/]/.test(line[i + 1] ?? "")) {
-      // A JSX element open or close. Capture the tag name; the attributes may hold their own braces, caught on their own.
-      const tag = /^<\/?[A-Za-z][\w.-]*/.exec(line.slice(i));
-
-      if (tag) {
-        tokens.push(`jsx:${tag[0]}`);
-        i += tag[0].length - 1;
-      }
-    }
-  }
-}
-
-/** The multiset of code tokens in `after` that are not in `before`: what a write adds or changes. Editing prose, or removing code, adds nothing. */
-export function addedMdxCode(before: string | null, after: string): string[] {
-  const left = before === null ? [] : mdxCodeTokens(before);
-
-  return mdxCodeTokens(after).filter((token) => {
-    const at = left.indexOf(token);
-
-    if (at === -1) return true;
-    left.splice(at, 1);
-    return false;
-  });
-}
-
-/** Who is writing, and whether the site allows build mode — the same inputs as the form-code guard. */
-export interface ContentWriter {
-  origin: ChangeOrigin;
-  mode?: AgentMode;
-  allowBuild: boolean;
-}
-
-/** The common gate: a build-mode change refused in content mode, below the build level, or where the site doesn't allow build mode. Null when it may go ahead. */
-function buildModeGate(who: ContentWriter, said: string): string | null {
-  const mode = who.mode ?? (who.origin === "agent" ? "content" : undefined);
-
-  if (mode === "content") return `${said} Nothing was changed.`;
-  // In the app this counts as a build-mode change, so the account must be allowed build mode, and the site must allow it.
-  if (!callerMay(BUILD_MODE_LEVEL)) return callerRefusal(BUILD_MODE_REFUSAL);
-  if (!who.allowBuild) return `${said} Nothing was changed.`;
-  return null;
-}
-
-/**
- * Why this write of a content file may not go ahead without build mode, or
- * null when it may. `code` is the collection's content format as its adapter
- * declared it; absent (an adapter that didn't say, or a convention or unknown
- * framework) is guarded, not inert.
- *
- *  - inert: no code the site runs — nothing to guard here.
- *  - mdx: refuse only when this write adds or changes an `import`/`export` or
- *    a `{ … }`/`<Jsx` (so a contributor can still reword the prose).
- *  - template, or absent: the whole collection is run by the site's build, so
- *    any change to one of its files is a build-mode change.
- */
-export function contentCodeRefusal(code: ContentCode | undefined, before: string | null, after: string, who: ContentWriter): string | null {
-  if (isInertContent(code)) return null;
-  if (code === "mdx") {
-    if (addedMdxCode(before, after).length === 0) return null;
-    return buildModeGate(who, "This page runs an import or a { } expression when the site is built, so adding or changing that code needs build mode.");
-  }
-  // "template", or an adapter that didn't declare the format: the whole collection is build-mode for a sub-build writer.
-  return buildModeGate(who, "This collection's files are run by the site's build, so changing one needs build mode.");
-}
-
-const extensionOf = (path: string): string => /\.([A-Za-z0-9]+)$/.exec(path)?.[1]?.toLowerCase() ?? "";
-const isUnder = (path: string, dir: string): boolean => path === dir || path.startsWith(`${dir.replace(/\/$/, "")}/`);
-
-/** The file extensions a markdown/mdx/data format admits, when a collection has no explicit pattern. */
-function extensionsForFormat(format: EntryFormat): Set<string> {
-  switch (format) {
-    case "markdown":
-      return new Set(["md", "markdown", "mdx"]);
-    case "mdx":
-      return new Set(["mdx"]);
-    case "yaml":
-      return new Set(["yaml", "yml"]);
-    case "toml":
-      return new Set(["toml"]);
-    default:
-      return new Set(["json"]);
-  }
-}
-
-/** The extensions a collection's entries may have: from its glob pattern (`**\/*.{md,mdx}` → md, mdx), or its format's defaults. */
-function collectionExtensions(collection: Pick<Collection, "pattern" | "format">): Set<string> {
-  const pattern = collection.pattern;
-
-  if (!pattern) return extensionsForFormat(collection.format);
+/** The extensions a collection's entries may have, from its glob (`**\/*.{md,mdx}` → md, mdx), lower-cased. */
+function collectionExtensions(collection: Collection): Set<string> {
   const exts = new Set<string>();
+  const pattern = patternOf(collection);
 
   for (const group of pattern.matchAll(/\.\{([^}]+)\}/g)) for (const ext of group[1]!.split(",")) exts.add(ext.trim().toLowerCase());
   for (const single of pattern.matchAll(/\.([A-Za-z0-9]+)(?![A-Za-z0-9{])/g)) exts.add(single[1]!.toLowerCase());
-  return exts.size > 0 ? exts : extensionsForFormat(collection.format);
+  return exts;
+}
+
+/** Whether the site runs its own commands over the content, so even Markdown there may be built as code. */
+function runsOwnCommands(model: Pick<SiteModel, "dev" | "build">): boolean {
+  return (model.dev?.command ?? "").trim() !== "" || (model.build?.command ?? "").trim() !== "";
 }
 
 /**
- * File extensions the site's build or dev server runs or imports — a script,
- * a framework page, a template. A content-mode write never adds one of these
- * under a content glob. (A compound name like `x.11ty.js` or `x.config.js`
- * has extension `js`; a dotfile has none and is caught by the deny-list the
- * workspace already applies.)
+ * A file type the build runs as a module, so its text — even in a `.yaml` or a
+ * data file — would run if the build imported it. On Astro, Vite hands anything
+ * that is not a known asset, JSON or CSS to the JavaScript pipeline, so YAML,
+ * TOML and an extensionless file run (proven on the real build); JSON is parsed
+ * as JSON, and images, PDFs and text are assets. An account below build level
+ * may write none of these on Astro — nothing it writes may be a module the
+ * build could import (a Markdown `layout` or image path turns a path into an
+ * import). Other frameworks have their own pipelines; their content is guarded
+ * whole, so this rule is Astro's.
  */
-const EXECUTABLE_EXTENSIONS = new Set([
-  "js", "cjs", "mjs", "jsx", "ts", "cts", "mts", "tsx", "astro", "svelte", "vue", "svx", "mdsvex",
-  "njk", "nunjucks", "liquid", "hbs", "handlebars", "ejs", "pug", "jade", "haml", "slim", "mustache", "eta", "twig",
-  "rb", "erb", "py", "php", "pl", "sh", "bash", "lua", "go",
-]);
+function runsAsModule(frameworkId: string, ext: string): boolean {
+  return frameworkId === "astro" && (ext === "yaml" || ext === "yml" || ext === "toml" || ext === "");
+}
 
 /**
- * Why a content-mode write to `path` may not go ahead because of the file's
- * *type*, or null when the type is fine. The content-mode check is by glob,
- * and a collection's directory glob (`src/content/posts/**`) admits any
- * extension, so without this a sub-build writer could add
- * `src/content/posts/evil.11ty.js`, a `.astro`/`.svelte` page, or a `.js`
- * data file under a content glob — source the site runs or imports, not
- * content. Two rules:
+ * Whether a content file is inert — carries no code the site's build or preview
+ * runs — decided per file by its lower-cased extension, failing closed by
+ * framework. `plain` is the owner's declaration for the collection.
  *
- *  - inside a content collection's own directory, only that collection's own
- *    content formats (its glob's extensions) — a `.js` in a Markdown
- *    collection is source, not content;
- *  - inside a media root (`public/`, an assets folder), any static file the
- *    site serves is fine, but never an executable or template one. (A
- *    `_redirects`, a `robots.txt`, a data `.json` are served as-is; a `.js` or
- *    `.astro` under `public/` is run by the build or the browser.)
- *
- * A path that is neither — ordinary site source like `src/layouts/Base.astro`
- * — is not this guard's concern: content mode can't write there at all, and the
- * write surface refuses it in its own words.
+ *  - `.mdx` is never inert — the MDX family;
+ *  - a collection the owner declared `plain` shows its Markdown as written: its
+ *    Markdown is inert on any framework (never its `.mdx`);
+ *  - data (json/yaml/toml) is declarative (on Astro the module-type rule above
+ *    has already sent yaml/toml to build level);
+ *  - Astro Markdown (`.md`/`.markdown`) is static;
+ *  - the generic ("Static site") model's Markdown is inert only when the site
+ *    runs no command over it;
+ *  - under any other framework nothing is inert until the owner declares it.
  */
-export function contentTypeRefusal(path: string, model: { collections: readonly Collection[]; media: { roots: readonly { dir: string }[] } }, who: ContentWriter): string | null {
-  const ext = extensionOf(path);
-  const dirs = model.collections.filter((collection) => collection.kind === "entries" && isUnder(path, collection.path));
+function isInertContent(model: SiteModel, ext: string, plain: boolean): boolean {
+  if (ext === "mdx") return false;
+  if (ext === "md" || ext === "markdown") {
+    if (plain) return true;
+    const framework = model.framework.id;
 
-  if (dirs.length > 0) {
-    if (!dirs.some((collection) => collectionExtensions(collection).has(ext))) {
-      return buildModeGate(who, "A file of this type isn't content; it is part of what the site is built from, so it can only be added in build mode.");
-    }
-    return null;
+    if (framework === "astro") return true;
+    if (framework === "generic") return !runsOwnCommands(model);
+    return false;
   }
-  // Under a media root: a static file the site serves is fine; a script or framework page the build or browser runs is not.
-  if (model.media.roots.some((root) => isUnder(path, root.dir)) && EXECUTABLE_EXTENSIONS.has(ext)) {
-    return buildModeGate(who, "A file of this type is run by the site's build, so it can only be added in build mode.");
+  return ext === "json" || ext === "yaml" || ext === "yml" || ext === "toml"; // declarative data
+}
+
+/**
+ * Whether an account below build-mode level may write `path`. An allowlist:
+ *
+ *  - never a type the build runs as a module (`runsAsModule`);
+ *  - media (the extensions `saveMedia` accepts) under a media root or beside an
+ *    entry, in a collection's folder;
+ *  - a data collection's own file;
+ *  - an entry: a path a collection's own pattern matches (`collectionForPath`,
+ *    which counts the repo root and skips names the pattern excludes, secrets,
+ *    history and templates), whose extension the collection admits and whose
+ *    format is inert (the owner's `plain` included);
+ *  - the redirects list, which the Redirects screen writes at edit level.
+ */
+function allowedBelowBuild(path: string, model: SiteModel): boolean {
+  if (!mayBeShown(path)) return false;
+  const ext = extensionOf(path);
+
+  if (runsAsModule(model.framework.id, ext)) return false;
+  const media = isMediaFile(path);
+
+  if (media && (model.media.roots.some((root) => underFolder(path, root.dir)) || model.collections.some((c) => c.kind === "entries" && underFolder(path, c.path)))) {
+    return true;
   }
-  return null;
+  const owning = collectionForPath(model, path);
+
+  if (owning) {
+    if (owning.kind === "data") return true;
+    return collectionExtensions(owning).has(ext) && isInertContent(model, ext, owning.plain === true);
+  }
+  return normalizePath(path) === normalizePath(listFileOf(model));
+}
+
+/**
+ * Why a write of `path` may not go ahead, or null when it may. For an account
+ * at build level (and for nobody, the operator and the engine) it is the
+ * ordinary content-mode surface — this returns null and the workspace's own
+ * writable check decides. For an account below build level it is the allowlist.
+ *
+ * A write marked as coming from the previewed page (`callerViaPreview`) is held
+ * to the allowlist whoever is signed in, build level included: the page shares
+ * the overlay's origin, so a script in the content could otherwise ask the app
+ * to save as an owner. The page can only reach this through the app (it can't
+ * call the API itself), so the app's mark is enough, and the result still waits
+ * in Proof.
+ */
+export function contentWriteRefusal(path: string, model: SiteModel): string | null {
+  if (!callerViaPreview() && callerMay(BUILD_MODE_LEVEL)) return null;
+  return allowedBelowBuild(normalizePath(path), model) ? null : callerRefusal(BUILD_MODE_REFUSAL);
+}
+
+/** Said when an account below build level would add or change a Markdown entry's `layout` on Astro, where the layout names code the build imports. */
+export const LAYOUT_REFUSAL = "Changing a page's layout needs build mode: the layout names code the site runs. Keep this page's layout, or ask an owner or an editor of this editor.";
+
+/**
+ * Why adding or changing an Astro Markdown entry's front-matter `layout` may not
+ * go ahead below build level, or null when it may. Astro turns `layout` into an
+ * `import`, so a writer below build level may not point it at new code — only
+ * keep or remove it. (`layout` is read as the parsed front matter, not judged as
+ * text; a value unchanged from `before`, or absent, is fine.) An account at
+ * build level, the operator, the engine and nobody (local) pass.
+ *
+ * This is Astro's: only there does `layout` become an import. The reuse an owner
+ * might want — switching a page to a layout another entry already uses — is not
+ * allowed here yet; it needs reading the collection's entries, and is a noted
+ * follow-up.
+ */
+export function layoutRefusal(before: string | null, after: string, format: EntryFormat): string | null {
+  if (callerMay(BUILD_MODE_LEVEL)) return null;
+  const afterLayout = parseDocument(after, format).data.layout;
+
+  if (afterLayout === undefined || afterLayout === null) return null; // no layout, or removed
+  const beforeLayout = before === null ? undefined : parseDocument(before, format).data.layout;
+
+  if (JSON.stringify(afterLayout) === JSON.stringify(beforeLayout)) return null; // unchanged
+  return callerRefusal(LAYOUT_REFUSAL);
 }

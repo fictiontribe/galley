@@ -82,6 +82,7 @@ const collectionConfig = z
     draftField: z.string().optional(),
     create: z.boolean().optional(),
     hidden: z.boolean().optional(),
+    plain: z.boolean().optional().describe("The site shows this collection's Markdown as written and runs no code in it, so its Markdown (never .mdx) may be changed below build-mode level on any framework. If the site does run code in this content, anyone who can edit it can run code."),
     fields: z.array(fieldConfig).optional(),
   })
   .strict();

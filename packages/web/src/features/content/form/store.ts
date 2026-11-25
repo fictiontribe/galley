@@ -56,10 +56,12 @@ export interface FormState {
 interface Batch {
   ops: EditOp[];
   keys: string[];
+  /** Set when the ops came of a message from the previewed page (Arrange), so the save is marked for the server. */
+  viaPreview?: boolean;
 }
 
 export interface FormDeps {
-  send: (ops: EditOp[], baseHash: string) => Promise<EditResult>;
+  send: (ops: EditOp[], baseHash: string, viaPreview?: boolean) => Promise<EditResult>;
   reload: () => Promise<Entry>;
   /** Called with each entry the engine returns, to keep the shared cache current. */
   onEntry: (entry: Entry) => void;
@@ -74,6 +76,13 @@ export interface FormActions {
   commitBody: () => void;
   /** An op that changes shape (insert / move / remove) or puts a value back. Drafts are sent first. */
   apply: (...ops: DataOp[]) => void;
+  /**
+   * Mark the ops enqueued while this is on as coming from the previewed page
+   * (Arrange drives the store through overlay messages). Their save is held to
+   * the lowest level by the server, whoever is signed in (core content-code.ts):
+   * the page shares the overlay's origin and could otherwise save as an owner.
+   */
+  markPage: (on: boolean) => void;
   /** Send every draft now. Resolves when the queue is empty. */
   flush: () => Promise<void>;
   /** A fresh copy of the entry arrived from outside the form; `origin` when it should be announced. */
@@ -145,6 +154,8 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
   let bodyDraft: { value: string; timer: ReturnType<typeof setTimeout> | null } | null = null;
   let queue: Batch[] = [];
   let inflight: Batch | null = null;
+  // On while an overlay message from the previewed page (Arrange) drives the store, so the ops it enqueues are marked.
+  let pageAction = false;
   let idleWaiters: Array<() => void> = [];
   /** When the copy the form is built on was written (file mtime), to order copies that cross. */
   let lastModified = entry.modifiedAt;
@@ -199,7 +210,7 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
 
   function enqueue(ops: EditOp[], keys: string[]): void {
     if (ops.length === 0) return;
-    queue.push({ ops, keys });
+    queue.push({ ops, keys, viaPreview: pageAction });
     setSaveState(keys, "saving");
     const refusals = { ...store.getState().refusals };
     for (const key of keys) delete refusals[key];
@@ -244,12 +255,12 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       settleWaiters(Boolean(store.getState().saveError));
       return;
     }
-    const batch: Batch = { ops: queue.flatMap((item) => item.ops), keys: [...new Set(queue.flatMap((item) => item.keys))] };
+    const batch: Batch = { ops: queue.flatMap((item) => item.ops), keys: [...new Set(queue.flatMap((item) => item.keys))], viaPreview: queue.some((item) => item.viaPreview) };
     queue = [];
     inflight = batch;
     store.setState({ busy: true });
     try {
-      const result = await deps.send(batch.ops, store.getState().hash);
+      const result = await deps.send(batch.ops, store.getState().hash, batch.viaPreview);
       inflight = null;
       received(result, batch);
     } catch (error) {
@@ -398,6 +409,9 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       enqueue(ops, [...new Set(ops.map(keyOfOp))]);
       recompute();
       void pump();
+    },
+    markPage(on) {
+      pageAction = on;
     },
     flush() {
       flushAll();

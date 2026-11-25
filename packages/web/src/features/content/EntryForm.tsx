@@ -102,7 +102,7 @@ const FormRoot = memo(function FormRoot({ siteId, entry, collection, media, setS
 
   const [store] = useState(() =>
     createFormStore(entry, {
-      send: (ops, baseHash) => api("PATCH /api/sites/:siteId/entry", { params: { siteId }, query: { path: entryPath }, body: { ops, baseHash } }),
+      send: (ops, baseHash, viaPreview) => api("PATCH /api/sites/:siteId/entry", { params: { siteId }, query: { path: entryPath }, body: { ops, baseHash }, viaPreview }),
       reload: () => api("GET /api/sites/:siteId/entry", { params: { siteId }, query: { path: entryPath } }),
       onEntry: (fresh) => storeWrittenEntry(siteId, fresh),
     }),

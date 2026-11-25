@@ -57,6 +57,17 @@ export interface Caller {
    * always has.
    */
   lapsed?: () => string | null;
+  /**
+   * Whether this request reached the server because of a message from the
+   * previewed page, not an action in the app's own interface (server app.ts,
+   * from the overlay-initiated header; web features/preview). The previewed
+   * page shares the overlay's origin, so a script a contributor put in the
+   * content could ask the app to save as whoever is in edit mode; a save so
+   * marked is held to the lowest level, the same allowlist as an account
+   * below build level, whoever is signed in (site/content-code.ts). Absent:
+   * the person's own action, held to their level.
+   */
+  viaPreview?: boolean;
 }
 
 /** Said when someone without BUILD_MODE_LEVEL asks for build mode, whichever way they ask. */
@@ -149,6 +160,13 @@ export function callerMay(level: AccessLevel): boolean {
   const now = caller.current();
 
   return now !== null && roleMay(now, level);
+}
+
+/** Whether this request reached the server because of a message from the previewed page (server app.ts), so a write is held to the lowest level. */
+export function callerViaPreview(): boolean {
+  const scope = storage.getStore();
+
+  return scope?.kind === "person" && scope.caller.viaPreview === true;
 }
 
 /** Refuses, in one plain sentence, what the person whose work this is may not do. */

@@ -54,12 +54,17 @@ export function useClickToEdit({ siteId, currentPath, send, onSelection }: Click
   }, []);
   useEffect(() => () => void (noticeTimer.current && clearTimeout(noticeTimer.current)), []);
 
-  /** Write a value where the resolver said it lives. Returns why it was refused, or null. */
+  /**
+   * Write a value where the resolver said it lives. Returns why it was refused, or null.
+   * `viaPreview` marks a save the previewed page asked for (click to edit), so the server
+   * holds it to the lowest level whoever is signed in (core install/caller.ts): the page
+   * shares the overlay's origin and could otherwise ask the app to save as an owner.
+   */
   const save = useCallback(
-    async (path: string, ops: EditOp[]): Promise<string | null> => {
+    async (path: string, ops: EditOp[], viaPreview = false): Promise<string | null> => {
       say({ tone: "working", text: "Saving…" });
       try {
-        const result = await api("PATCH /api/sites/:siteId/entry", { params: { siteId }, query: { path }, body: { ops } });
+        const result = await api("PATCH /api/sites/:siteId/entry", { params: { siteId }, query: { path }, body: { ops }, viaPreview });
         const refusal = result.refused[0];
         if (refusal) {
           say({ tone: "problem", text: `Couldn’t change it. ${refusal.reason}` });
@@ -156,7 +161,8 @@ export function useClickToEdit({ siteId, currentPath, send, onSelection }: Click
       if (message.newText === message.text) return;
       const edit = editFor(match, message.newText);
       if (!edit) return;
-      const refused = await save(edit.path, edit.ops);
+      // This save comes of an overlay message from the previewed page: mark it, so the server holds it to the lowest level.
+      const refused = await save(edit.path, edit.ops, true);
       // The page still shows the retyped text; put back what's really stored.
       if (refused) send(toOverlay({ type: "restore-text", text: message.text, newText: message.newText, occurrence: message.occurrence }));
     },

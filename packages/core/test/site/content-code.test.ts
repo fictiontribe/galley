@@ -1,152 +1,207 @@
 /**
- * The content-code guard (src/site/content-code.ts). The MDX judge is checked
- * against the real MDX compiler (@mdx-js/mdx, a dev dependency): everything the
- * compiler would run — every ESM statement, `{ … }` expression and `<Jsx`
- * element — in a corpus of hostile inputs is refused. Over-refusing is fine;
- * under-refusing is the escalation this closes, so the test fails on one.
+ * The content-code guard (src/site/content-code.ts) as a decision table. Each
+ * row is (framework + collections, path) and what an account below build-mode
+ * level — a contributor — may do. The judge is gone: a file is inert or it is
+ * not, by framework and lower-cased extension, and the guard is an allowlist,
+ * so a path outside every collection (the site's own config and source) is
+ * refused too.
+ *
+ * The account's level is the only question: an owner or editor, and nobody
+ * (local and desktop, where there is no caller), may write every row. The
+ * table asserts that at the end.
  */
-import { createProcessor } from "@mdx-js/mdx";
 import { describe, expect, it } from "vitest";
 import { withCaller } from "../../src/install/caller";
-import { addedMdxCode, contentCodeFor, contentCodeRefusal, contentTypeRefusal, mdxCodeTokens } from "../../src/site/content-code";
-import type { Collection } from "../../src/types";
-
-const processor = createProcessor({});
-
-/** Whether the real MDX compiler marks any part of `input` as code (its mdx* node types). */
-function compilerSeesCode(input: string): boolean {
-  let found = false;
-  const walk = (node: unknown): void => {
-    if (!node || typeof node !== "object") return;
-    const n = node as { type?: unknown; children?: unknown };
-
-    if (typeof n.type === "string" && /^mdx/i.test(n.type)) found = true;
-    if (Array.isArray(n.children)) for (const child of n.children) walk(child);
-  };
-
-  walk(processor.parse(input));
-  return found;
-}
-
-describe("the MDX judge against the real compiler", () => {
-  const corpus = [
-    "import X from 'y';\n\ntext\n",
-    "import { a, b } from 'y';\n",
-    "import 'side-effect';\n",
-    "export const z = 1;\n",
-    "export default function () {}\n",
-    "{1 + 1}\n",
-    "Prose with an inline {expr} in it.\n",
-    "{\n  multiline.expression()\n}\n",
-    "{ { nested: 1 } }\n",
-    "<Foo />\n",
-    "<Foo>child</Foo>\n",
-    "Inline <Bar/> element.\n",
-    '<div class="x">lowercase html is jsx in mdx</div>\n',
-    "<Foo bar={1} baz={readFileSync('/x')} />\n",
-    "A paragraph, then\n\n{dangerous()}\n",
-    "---\ntitle: t\n---\nimport fs from 'node:fs'\n\n{fs.readFileSync('/x')}\n",
-    "Only prose. Nothing special at all here.\n",
-    "A fence hides it:\n\n```\n{notcode}\n<NotJsx/>\nimport nope\n```\n",
-    "Inline code `{notcode}` and `<NotJsx/>` spans.\n",
-    "Escaped \\{ and \\< are literal.\n",
-    "Math: a < b when spaced.\n",
-    "A list:\n- one\n- two\n",
-  ];
-
-  it("refuses everything the compiler would run (no under-refusals)", () => {
-    const underRefusals = corpus.filter((input) => compilerSeesCode(input) && addedMdxCode("", input).length === 0);
-
-    expect(underRefusals).toEqual([]);
-  });
-
-  it("lets prose be edited around code, and refuses changing the code", () => {
-    const base = "Intro.\n\nimport X from 'y'\n\n{X()}\n";
-
-    expect(addedMdxCode(base, "Intro, reworded.\n\nimport X from 'y'\n\n{X()}\n")).toEqual([]);
-    expect(addedMdxCode(base, "Intro.\n\nimport X from 'y'\n\n{X() /* changed */}\n")).not.toEqual([]);
-    // Removing the code adds nothing.
-    expect(addedMdxCode(base, "Intro.\n")).toEqual([]);
-  });
-
-  it("does not count braces or tags inside code fences or inline code, or escaped ones, or a spaced <", () => {
-    for (const inert of ["```\n{x}\n<Y/>\n```\n", "Inline `{x}` `<Y/>`.\n", "Escaped \\{x\\} and \\<Y\\>.\n", "Compare a < b and c > d.\n"]) {
-      expect(mdxCodeTokens(inert), inert).toEqual([]);
-    }
-  });
-});
+import { contentWriteRefusal, layoutRefusal } from "../../src/site/content-code";
+import type { Collection, SiteModel } from "../../src/types";
 
 const collection = (over: Partial<Collection>): Collection =>
   ({ id: "c", label: "C", singular: "c", kind: "entries", path: "src/content/c", format: "markdown", body: true, url: null, fields: [], create: true, count: 0, source: "inferred", ...over }) as Collection;
 
-describe("the fail-closed code resolver", () => {
-  it("trusts Astro and the generic model's Markdown as inert; every detected or unknown framework's content is guarded", () => {
-    expect(contentCodeFor("astro", collection({ format: "markdown", pattern: "**/*.md" }))).toBe("inert");
-    expect(contentCodeFor("astro", collection({ format: "mdx", pattern: "**/*.mdx" }))).toBe("mdx");
-    // A {md,mdx} collection admits mdx: judged, not inert.
-    expect(contentCodeFor("astro", collection({ format: "markdown", pattern: "**/*.{md,mdx}" }))).toBe("mdx");
-    // Galley's own "generic" (Markdown) model renders a markdown collection statically: inert, like Astro. Its mdx is still judged.
-    expect(contentCodeFor("generic", collection({ format: "markdown", pattern: "**/*.md" }))).toBe("inert");
-    expect(contentCodeFor("generic", collection({ format: "mdx", pattern: "**/*.mdx" }))).toBe("mdx");
-    // Docusaurus runs .md as MDX; Eleventy and the rest run templates; an unknown id ("", "something-new") is not trusted: all guarded whole-collection.
-    for (const framework of ["docusaurus", "eleventy", "jekyll", "sveltekit", "nuxt", "next", "hugo", "", "something-new"]) {
-      expect(contentCodeFor(framework, collection({ format: "markdown", pattern: "**/*.md" })), framework).toBe("template");
-      expect(contentCodeFor(framework, collection({ format: "mdx", pattern: "**/*.mdx" })), framework).toBe("mdx");
+const model = (over: Partial<SiteModel>): SiteModel =>
+  ({
+    framework: { id: "astro", name: "Astro" },
+    dev: { command: "" },
+    build: null,
+    media: { dir: "public", publicPath: "/", roots: [{ dir: "public", publicPath: "/" }] },
+    collections: [],
+    redirects: null,
+    templates: [],
+    ...over,
+  }) as unknown as SiteModel;
+
+/** An Astro site with a Markdown and an MDX collection, a data collection, and the default media root. */
+const astro = model({
+  collections: [
+    collection({ id: "pages", path: "src/content/pages", format: "markdown", pattern: "**/*.md" }),
+    collection({ id: "docs", path: "src/content/docs", format: "mdx", pattern: "**/*.mdx" }),
+    collection({ id: "both", path: "src/content/both", format: "markdown", pattern: "**/*.{md,mdx}" }),
+    collection({ id: "loose", path: "src/content/loose", format: "markdown" }), // no pattern: default admits md, mdx, markdown
+    collection({ id: "site", kind: "data", path: "src/data/site.json", format: "json" }),
+  ],
+  redirects: { file: "src/data/redirects.json" } as SiteModel["redirects"],
+});
+
+const hugo = model({ framework: { id: "hugo", name: "Hugo" }, collections: [collection({ id: "posts", path: "content/posts", pattern: "**/*.{md,mdx,markdown}" })] });
+
+const genericStatic = model({ framework: { id: "generic", name: "Static site" }, dev: { command: "" } as SiteModel["dev"], build: null, collections: [collection({ id: "root", path: ".", pattern: "**/*.{md,mdx,markdown}" })] });
+
+const genericBuilt = model({ framework: { id: "generic", name: "Static site" }, build: { command: "node build.mjs", outDir: "dist" }, collections: [collection({ id: "root", path: ".", pattern: "**/*.{md,mdx,markdown}" })] });
+
+const asContributor = (run: () => unknown) => withCaller({ accountId: "c", role: "contributor" }, run);
+
+interface Row {
+  name: string;
+  site: SiteModel;
+  path: string;
+  allowed: boolean;
+}
+
+const TABLE: Row[] = [
+  // Astro: Markdown inert, MDX guarded, decided per file even in a mixed or pattern-less collection.
+  { name: "astro .md entry", site: astro, path: "src/content/pages/post.md", allowed: true },
+  { name: "astro .mdx entry", site: astro, path: "src/content/docs/post.mdx", allowed: false },
+  { name: "astro .md in a {md,mdx} collection", site: astro, path: "src/content/both/post.md", allowed: true },
+  { name: "astro .mdx in a {md,mdx} collection", site: astro, path: "src/content/both/post.mdx", allowed: false },
+  { name: "astro .mdx in a pattern-less markdown collection", site: astro, path: "src/content/loose/post.mdx", allowed: false },
+  { name: "astro .md in a pattern-less markdown collection", site: astro, path: "src/content/loose/post.md", allowed: true },
+  { name: "astro data file", site: astro, path: "src/data/site.json", allowed: true },
+  { name: "astro media beside an entry", site: astro, path: "src/content/pages/photo.png", allowed: true },
+  { name: "astro media under the media root", site: astro, path: "public/hero.jpg", allowed: true },
+  { name: "astro non-media under the media root", site: astro, path: "public/evil.js", allowed: false },
+  { name: "astro the redirects list", site: astro, path: "src/data/redirects.json", allowed: true },
+  { name: "astro a layout (site source)", site: astro, path: "src/layouts/Base.astro", allowed: false },
+  { name: "astro an upper-case extension", site: astro, path: "src/content/pages/README.MD", allowed: false },
+  { name: "astro a name the pattern excludes", site: astro, path: "src/content/pages/data.txt", allowed: false },
+  // Hugo and every other detected framework: content guarded whole, whatever the pattern admits.
+  { name: "hugo .md entry", site: hugo, path: "content/posts/post.md", allowed: false },
+  { name: "hugo .mdx entry", site: hugo, path: "content/posts/post.mdx", allowed: false },
+  { name: "hugo media beside an entry", site: hugo, path: "content/posts/photo.png", allowed: true },
+  // generic: Markdown inert only when nothing runs over it.
+  { name: "generic .md at the root, no command", site: genericStatic, path: "index.md", allowed: true },
+  { name: "generic .md at the root, with a build command", site: genericBuilt, path: "index.md", allowed: false },
+  { name: "generic a config file at the root (the ** hole)", site: genericStatic, path: "galley.config.json", allowed: false },
+  { name: "generic package.json at the root", site: genericStatic, path: "package.json", allowed: false },
+  { name: "generic a script at the root", site: genericStatic, path: "build.mjs", allowed: false },
+  { name: "generic media at the root", site: genericStatic, path: "logo.svg", allowed: true },
+];
+
+describe("the content-code allowlist, for an account below build level", () => {
+  for (const row of TABLE) {
+    it(`${row.allowed ? "lets a contributor write" : "refuses a contributor"}: ${row.name}`, () => {
+      const refusal = asContributor(() => contentWriteRefusal(row.path, row.site));
+
+      if (row.allowed) expect(refusal, row.name).toBeNull();
+      else expect(refusal, row.name).toMatch(/build mode/);
+    });
+  }
+});
+
+describe("the content-code guard, by level only", () => {
+  it("lets an owner, an editor and nobody write every row — the one question is the account's level", () => {
+    for (const row of TABLE) {
+      expect(withCaller({ accountId: "o", role: "owner" }, () => contentWriteRefusal(row.path, row.site)), `owner ${row.name}`).toBeNull();
+      expect(withCaller({ accountId: "e", role: "editor" }, () => contentWriteRefusal(row.path, row.site)), `editor ${row.name}`).toBeNull();
+      // Nobody: local and desktop, where there is no caller, are unaffected.
+      expect(contentWriteRefusal(row.path, row.site), `nobody ${row.name}`).toBeNull();
     }
-    // Data is declarative everywhere.
-    for (const framework of ["astro", "eleventy"]) expect(contentCodeFor(framework, collection({ kind: "data", format: "json", path: "src/data/x.json" }))).toBe("inert");
-    // An adapter may override with an explicit declaration.
-    expect(contentCodeFor("eleventy", collection({ format: "markdown", code: "inert" }))).toBe("inert");
+  });
+
+  it("does not look at the conversation's mode or whether the site allows build mode", () => {
+    // A guarded entry on a site with build mode off: an owner (build level) still may; a contributor still may not.
+    const buildOff = model({ ...astro, ai: { allowBuild: false } as SiteModel["ai"] });
+
+    expect(withCaller({ accountId: "o", role: "owner" }, () => contentWriteRefusal("src/content/docs/post.mdx", buildOff))).toBeNull();
+    expect(asContributor(() => contentWriteRefusal("src/content/docs/post.mdx", buildOff))).toMatch(/build mode/);
   });
 });
 
-describe("the code refusal, in content mode", () => {
-  const who = { origin: "user" as const, mode: "content" as const, allowBuild: true };
+describe("a write marked as the previewed page's (an overlay message) is held to the allowlist, whoever is signed in", () => {
+  // The page shares the overlay's origin, so a script a contributor put in the content could ask the app to save as an
+  // owner who is editing on the preview. Such a save (click to edit, Arrange) is marked; the server holds it to the
+  // allowlist whoever is signed in, build level included, and the result still waits in Proof.
+  const markedOwner = (path: string, site: SiteModel) => withCaller({ accountId: "o", role: "owner", viaPreview: true }, () => contentWriteRefusal(path, site));
 
-  it("lets inert content through, judges mdx, and guards a template collection whole", () => {
-    expect(contentCodeRefusal("inert", null, "{x}\nimport y\n", who)).toBeNull();
-    expect(contentCodeRefusal("mdx", null, "Just prose.\n", who)).toBeNull();
-    expect(contentCodeRefusal("mdx", null, "{dangerous()}\n", who)).toMatch(/build mode/);
-    expect(contentCodeRefusal("mdx", "{a}\n", "{a}\n reworded prose\n", who)).toBeNull();
-    // A template collection: even prose is build-mode.
-    expect(contentCodeRefusal("template", null, "Just prose.\n", who)).toMatch(/build mode/);
-    // An absent marker is guarded like a template (fail closed).
-    expect(contentCodeRefusal(undefined, null, "Just prose.\n", who)).toMatch(/build mode/);
+  it("lets a marked save write only what a contributor could, even for an owner", () => {
+    // Astro Markdown: allowed, as for a contributor.
+    expect(markedOwner("src/content/pages/post.md", astro)).toBeNull();
+    // MDX: refused, though the owner could write it from the app's own interface.
+    expect(markedOwner("src/content/docs/post.mdx", astro)).toMatch(/build mode/);
+    // A detected framework's content (a template collection): refused.
+    expect(markedOwner("content/posts/post.md", hugo)).toMatch(/build mode/);
+    // The site's own source: refused.
+    expect(markedOwner("src/layouts/Base.astro", astro)).toMatch(/build mode/);
   });
 
-  it("is build-mode even for the agent, and lets a build-mode write with the level through", () => {
-    expect(contentCodeRefusal("mdx", null, "{x}\n", { origin: "agent", allowBuild: true })).toMatch(/build mode/);
-    // A build-mode write needs the build level; an owner (manage) has it.
-    const owner = { origin: "user" as const, mode: "build" as const, allowBuild: true };
-
-    expect(withCaller({ accountId: "o", role: "owner", current: () => "owner", named: () => true }, () => contentCodeRefusal("mdx", null, "{x}\n", owner))).toBeNull();
-    // A contributor in build mode is refused for the level.
-    expect(withCaller({ accountId: "c", role: "contributor", current: () => "contributor", named: () => true }, () => contentCodeRefusal("mdx", null, "{x}\n", owner))).toMatch(/content.*not its code|build mode/i);
+  it("leaves an unmarked owner save at the owner's level", () => {
+    expect(withCaller({ accountId: "o", role: "owner" }, () => contentWriteRefusal("src/content/docs/post.mdx", astro))).toBeNull();
   });
 });
 
-describe("the file-type guard", () => {
-  const model = {
-    collections: [collection({ id: "posts", path: "src/content/posts", format: "mdx", pattern: "**/*.mdx" }), collection({ id: "blog", path: "src/content/blog", format: "markdown", pattern: "**/*.{md,mdx}" })],
-    media: { roots: [{ dir: "public" }] },
-  };
-  const who = { origin: "user" as const, mode: "content" as const, allowBuild: true };
+describe("an owner's `plain` declaration makes a collection's Markdown inert on any framework", () => {
+  const hugoPlain = model({ framework: { id: "hugo", name: "Hugo" }, collections: [collection({ id: "posts", path: "content/posts", pattern: "**/*.{md,mdx,markdown}", plain: true })] });
+  // A generic site that runs a build command (the fallback, guarded by default), with and without the declaration.
+  const builtGuarded = model({ framework: { id: "generic", name: "Static site" }, build: { command: "node build.mjs", outDir: "dist" }, collections: [collection({ id: "root", path: ".", pattern: "**/*.{md,mdx,markdown}" })] });
+  const builtPlain = model({ framework: { id: "generic", name: "Static site" }, build: { command: "node build.mjs", outDir: "dist" }, collections: [collection({ id: "root", path: ".", pattern: "**/*.{md,mdx,markdown}", plain: true })] });
 
-  it("admits only the collection's own formats and media, and refuses an executable or template file under a content glob", () => {
-    expect(contentTypeRefusal("src/content/posts/a.mdx", model, who)).toBeNull();
-    expect(contentTypeRefusal("src/content/blog/a.md", model, who)).toBeNull();
-    expect(contentTypeRefusal("public/images/photo.png", model, who)).toBeNull();
-    // A static file the site serves (not a collection file, not executable) is fine.
-    expect(contentTypeRefusal("public/_redirects", model, who)).toBeNull();
-    expect(contentTypeRefusal("public/data/list.json", model, who)).toBeNull();
-    // The holes this closes:
-    for (const path of ["src/content/posts/evil.js", "src/content/posts/evil.11ty.js", "src/content/blog/page.astro", "src/content/blog/x.svelte", "src/content/posts/data.json"]) {
-      expect(contentTypeRefusal(path, model, who), path).toMatch(/build mode/);
-    }
-    // An executable file anywhere a content write reaches (even the public folder, served to browsers) is refused.
-    expect(contentTypeRefusal("public/images/x.js", model, who)).toMatch(/build mode/);
-    expect(contentTypeRefusal("public/app.astro", model, who)).toMatch(/build mode/);
-    // A path under no collection or media directory is not the file-type concern here.
-    expect(contentTypeRefusal("src/data/redirects.json", model, who)).toBeNull();
+  it("lets a contributor write the collection's Markdown, but never its MDX", () => {
+    expect(asContributor(() => contentWriteRefusal("content/posts/post.md", hugoPlain))).toBeNull();
+    expect(asContributor(() => contentWriteRefusal("content/posts/post.mdx", hugoPlain))).toMatch(/build mode/);
+  });
+
+  it("flips a guarded generic+command collection: declared plain, its Markdown is writable; undeclared, it is refused", () => {
+    expect(asContributor(() => contentWriteRefusal("index.md", builtPlain))).toBeNull();
+    expect(asContributor(() => contentWriteRefusal("index.md", builtGuarded))).toMatch(/build mode/);
+  });
+});
+
+describe("a .mdoc (Markdoc) entry is guarded, though the document parser reads it as Markdown", () => {
+  // The parser reads .mdoc as Markdown, but the extension is not one of the inert Markdown extensions, and Markdoc runs
+  // its own tags — so below build level it is guarded, even in a collection whose pattern admits it.
+  const astroMarkdoc = model({ collections: [collection({ id: "kb", path: "src/content/kb", format: "markdown", pattern: "**/*.{md,mdoc}" })] });
+
+  it("refuses a contributor a .mdoc on Astro, but allows the same collection's .md", () => {
+    expect(asContributor(() => contentWriteRefusal("src/content/kb/page.md", astroMarkdoc))).toBeNull();
+    expect(asContributor(() => contentWriteRefusal("src/content/kb/page.mdoc", astroMarkdoc))).toMatch(/build mode/);
+  });
+
+  it("stays guarded even when the collection is declared plain (plain is Markdown only)", () => {
+    const plainMarkdoc = model({ framework: { id: "hugo", name: "Hugo" }, collections: [collection({ id: "kb", path: "content/kb", format: "markdown", pattern: "**/*.{md,mdoc}", plain: true })] });
+
+    expect(asContributor(() => contentWriteRefusal("content/kb/page.md", plainMarkdoc))).toBeNull();
+    expect(asContributor(() => contentWriteRefusal("content/kb/page.mdoc", plainMarkdoc))).toMatch(/build mode/);
+  });
+});
+
+describe("a file the build runs as a module is build level on Astro", () => {
+  const astroYaml = model({ collections: [collection({ id: "nav", kind: "data", path: "src/data/nav.yaml", format: "yaml" })] });
+  const astroNoExt = model({ collections: [collection({ id: "nav", kind: "data", path: "src/data/nav", format: "yaml" })] });
+  const hugoYaml = model({ framework: { id: "hugo", name: "Hugo" }, collections: [collection({ id: "nav", kind: "data", path: "data/nav.yaml", format: "yaml" })] });
+
+  it("refuses a contributor a yaml/toml/extensionless file on Astro (Vite runs it), but a framework that reads it as data does not", () => {
+    expect(asContributor(() => contentWriteRefusal("src/data/nav.yaml", astroYaml))).toMatch(/build mode/);
+    expect(asContributor(() => contentWriteRefusal("src/data/nav", astroNoExt))).toMatch(/build mode/);
+    expect(asContributor(() => contentWriteRefusal("data/nav.yaml", hugoYaml))).toBeNull();
+    // JSON stays writable on Astro — it is parsed as JSON, not run.
+    expect(asContributor(() => contentWriteRefusal("src/data/site.json", astro))).toBeNull();
+  });
+});
+
+describe("the layout guard on Astro (ruling 4ii)", () => {
+  const withLayout = "---\ntitle: T\nlayout: ../../layouts/Base.astro\n---\nBody.\n";
+  const noLayout = "---\ntitle: T\n---\nBody.\n";
+  const other = "---\ntitle: T\nlayout: ../../layouts/Other.astro\n---\nBody.\n";
+
+  it("refuses a contributor adding or changing a Markdown entry's layout, and lets them keep or remove it", () => {
+    expect(asContributor(() => layoutRefusal(noLayout, withLayout, "markdown"))).toMatch(/build mode/);
+    expect(asContributor(() => layoutRefusal(withLayout, other, "markdown"))).toMatch(/build mode/);
+    // Editing prose while keeping the layout, or removing it, is fine.
+    expect(asContributor(() => layoutRefusal(withLayout, withLayout.replace("Body.", "New body."), "markdown"))).toBeNull();
+    expect(asContributor(() => layoutRefusal(withLayout, noLayout, "markdown"))).toBeNull();
+  });
+
+  it("does not restrict an owner, or nobody (local)", () => {
+    expect(withCaller({ accountId: "o", role: "owner" }, () => layoutRefusal(noLayout, withLayout, "markdown"))).toBeNull();
+    expect(layoutRefusal(noLayout, withLayout, "markdown")).toBeNull();
   });
 });

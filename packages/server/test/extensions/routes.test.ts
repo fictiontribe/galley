@@ -76,8 +76,19 @@ beforeAll(async () => {
       GALLEY_OWNER_NAME: "Sam Owner",
       GALLEY_OWNER_EMAIL: "sam@example.com",
       GALLEY_TOKEN: OPERATOR,
-      // A site whose pages content mode may change and whose other source build mode may.
-      GALLEY_SITE_REPOSITORY: siteRepository(box, { extra: { "galley.config.json": JSON.stringify({ name: "Harbour Notes", dev: { command: "node server.mjs" }, writable: { content: ["src/content/**"], build: ["src/**"] } }) } }),
+      // A site whose pages content mode may change and whose other source build mode may. It runs a dev command, so its
+      // Markdown is content the build could run; the owner declares the pages collection `plain` to say it doesn't, which
+      // is what keeps it editable below build level (core content-code.ts).
+      GALLEY_SITE_REPOSITORY: siteRepository(box, {
+        extra: {
+          "galley.config.json": JSON.stringify({
+            name: "Harbour Notes",
+            dev: { command: "node server.mjs" },
+            collections: [{ id: "pages", path: "src/content/pages", format: "markdown", plain: true }],
+            writable: { content: ["src/content/**"], build: ["src/**"] },
+          }),
+        },
+      }),
       GALLEY_SITE_ACCESS: "token",
       GALLEY_SITE_TOKEN: "fake-access-key-for-the-repository-0000",
       GALLEY_AUTHOR_NAME: "Site Publisher",
@@ -387,10 +398,11 @@ describe("routes an embedding program adds", () => {
     // A change answers with the model too (`refresh`): the same tidying of that answer, from a POST, changes nothing either.
     expect((await x("POST", site("/tidy"), { cookie: people.contributor.cookie, body: {} })).body).toMatchObject({ content: JSON.parse(before).content.length + 2 });
     expect(JSON.stringify((await real.model()).writable)).toBe(before);
-    // Content mode is as narrow as it was: a contributor still can't save the site's code as content.
+    // A contributor still can't save the site's code as content: below build level the content guard is an allowlist, and
+    // a layout file is not on it.
     const tried = (await x("POST", site("/save"), { cookie: people.contributor.cookie, body: { path: "src/layouts/Tidy.astro", mode: "content" } })).body.tried;
 
-    expect(tried).toBe("refused: Only content and media can be changed in content mode. Switch to build mode to change the site's code.");
+    expect(tried).toBe(`refused: ${BUILD_MODE_REFUSAL}`);
     // Every read answers with something that can be copied, and never the engine's own object.
     const guarded = (await probe.host!.sites.get(siteId))!;
 

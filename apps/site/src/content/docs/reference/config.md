@@ -89,6 +89,7 @@ How the file merges over detection: [galley.config.json](/docs/configuration/#ho
 | `collections[].draftField` | string | The field that marks an entry as a draft. *Default:* `draft`, `unpublished`, `hidden` or `private`, when present. |
 | `collections[].create` | boolean | Whether new entries may be created from the app. *Default:* `true` for entries, `false` for data. |
 | `collections[].hidden` | boolean | Leave the collection out of the navigation. *Default:* `false`. |
+| `collections[].plain` | boolean | The site shows this collection's Markdown as written and runs no code in it, so an account below build-mode level may change its Markdown (never `.mdx`) on any framework. If the site *does* run code in this content, anyone who can edit it can run code. *Default:* `false`. |
 | `collections[].fields` | object[] | Field overrides and additions, merged by `key`. |
 
 ## Fields
