@@ -88,6 +88,19 @@ entry says how.
 
 ### Fixed
 
+- **A window that has been signed out stops receiving live updates.** On an
+  install with accounts, an open live connection was checked for its own
+  sign-out and for its account being switched off, removed or signed out
+  everywhere, but not for everyone being signed out at once (which putting a
+  backup back does, and which happens by itself when the list of signed-out
+  browsers grows too long), and not for the sign-in's age. A window signed
+  out that way was refused on its next request, yet went on receiving the
+  assistant's replies, jobs and changes until it was reloaded. A connection
+  is now held to the test a request is held to for as long as it is open: it
+  ends the moment everyone is signed out, and within twenty seconds of a
+  sign-in passing its thirty days. The page that starts a restore closes its
+  own connection first and follows the restore by asking, so it still says
+  how the restore went.
 - **Crops on the two fashion starters keep their focus point when the
   pictures move.** The editorial and storefront starters anchor each crop
   on its photograph's focus point, so a head or a garment stays in frame.

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Job } from "@galley/core/types";
 import type { DeployKeyInfo, RestoreUpload } from "@galley/core/install/types";
 import { api, errorShape } from "@/lib/api";
+import { connectEvents, disconnectEvents } from "@/lib/events";
 import { bytes } from "@/lib/format";
 import { useMeta } from "@/lib/stores/meta";
 import { Button, ErrorState, Field, Icon, Input, ProofMark, Spinner, buttonClass } from "@/ui";
@@ -114,6 +115,14 @@ export function RestoreFlow({ onDone, onBusy }: { onDone: () => void; onBusy?: (
     if (stage.at !== "working" || !job || job.state === "running") return;
     setStage(job.state === "done" ? { at: "done" } : { at: "failed", job });
   }, [job, stage.at]);
+
+  // Putting a backup back signs everyone out, this browser too, and the server ends every live connection there.
+  // The app would take that for a lost sign-in and leave this screen before it has said how the restore went.
+  // So the connection is closed here first, and the job is followed by asking. A restore that changed nothing opens it again.
+  useEffect(() => {
+    if (stage.at === "working") disconnectEvents();
+    else if (stage.at === "failed" && useMeta.getState().meta?.authenticated) connectEvents();
+  }, [stage.at]);
 
   // The server lost track of the job: it is back when it answers again, no longer mid-restore.
   useEffect(() => {

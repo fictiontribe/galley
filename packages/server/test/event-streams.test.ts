@@ -4,8 +4,9 @@
  * connection whose other end stops reading.
  */
 import { connect, type Socket } from "node:net";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { TOO_MANY_TOKEN_STREAMS, TOO_MANY_WINDOWS } from "../src/accounts-routes";
+import { SESSION_MAX_AGE_S } from "../src/auth";
 import { MAX_STREAMS_PER_ACCOUNT } from "../src/events";
 import { call, EDITOR, sandbox, startHosted, until, type Started } from "./hosted-helpers";
 
@@ -22,9 +23,14 @@ async function signIn(port: number, email: string): Promise<string> {
   return answer.cookies[0]!;
 }
 
+/** Resolves with `work`, or fails with `what` when that takes longer than `ms`. */
+function within<T>(ms: number, what: string, work: Promise<T>): Promise<T> {
+  return Promise.race([work, new Promise<never>((_, reject) => setTimeout(() => reject(new Error(what)), ms).unref())]);
+}
+
 /** An install with an owner and an editor, both signed in. */
-async function withTwoPeople(): Promise<Started & { owner: string; editor: string }> {
-  const started = await startHosted(box, box.folder("home"), { GALLEY_PUBLIC_URL: EDITOR, GALLEY_PASSWORD: PASSWORD, GALLEY_OWNER_NAME: "Sam Owner", GALLEY_OWNER_EMAIL: "sam@example.com", GALLEY_TOKEN: OPERATOR });
+async function withTwoPeople(options: Parameters<typeof startHosted>[3] = {}): Promise<Started & { owner: string; editor: string }> {
+  const started = await startHosted(box, box.folder("home"), { GALLEY_PUBLIC_URL: EDITOR, GALLEY_PASSWORD: PASSWORD, GALLEY_OWNER_NAME: "Sam Owner", GALLEY_OWNER_EMAIL: "sam@example.com", GALLEY_TOKEN: OPERATOR }, options);
   const owner = await signIn(started.port, "sam@example.com");
   const invited = await call(started.port, "POST", "/api/people/invitations", { cookie: owner, body: { email: "ed@example.com", role: "editor" } });
 
@@ -197,4 +203,38 @@ describe("event streams on a hosted install", () => {
     await pump;
     stalled.destroy();
   }, 120_000);
+});
+
+describe("an open stream and the sign-in it was opened with", () => {
+  it("ends the moment everyone is signed out at once, as a request with the same cookie is refused from then on", async () => {
+    const { port, owner, editor, server } = await withTwoPeople();
+    const people = [await open(port, { cookie: owner }), await open(port, { cookie: editor })];
+    const script = await open(port, { bearer: OPERATOR });
+
+    expect([...people, script].map((stream) => stream.let)).toEqual([true, true, true]);
+    // What putting a backup back does to every sign-in, and what happens when the list of signed-out browsers grows too long.
+    await server.install!.store.signOutEverywhere();
+    await within(5000, "the streams of people who were signed out stayed open", Promise.all(people.map((stream) => stream.ended)));
+    for (const cookie of [owner, editor]) expect((await call(port, "GET", "/api/account", { cookie })).status).toBe(401);
+    // A script's token is not a sign-in: its stream is not ended by signing people out.
+    expect(await Promise.race([script.ended.then(() => "ended"), new Promise((resolve) => setTimeout(() => resolve("open"), 300))])).toBe("open");
+    script.close();
+  }, 60_000);
+
+  it("ends within a heartbeat once the sign-in has passed its age, though nothing is sent and nobody is told", async () => {
+    const { port, owner } = await withTwoPeople({ heartbeatMs: 40 });
+    const stream = await open(port, { cookie: owner });
+
+    expect(stream.let).toBe(true);
+    // Thirty days and a minute later. Only the clock moves: no event, no sign-out.
+    const real = Date.now;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => real() + (SESSION_MAX_AGE_S + 60) * 1000);
+
+    try {
+      await within(5000, "the stream of a sign-in past its age stayed open", stream.ended);
+      expect((await call(port, "GET", "/api/account", { cookie: owner })).status).toBe(401);
+    } finally {
+      clock.mockRestore();
+    }
+  }, 60_000);
 });

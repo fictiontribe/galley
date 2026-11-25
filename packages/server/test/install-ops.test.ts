@@ -310,9 +310,14 @@ describe("backups", () => {
       expect(alive(pid)).toBe(true);
       expect((await call(port, "GET", "/api/sites", { cookie: other })).status).toBe(200);
 
-      // The browser that starts it has the event stream open: the job's last event must still reach it.
+      // The browser that starts it has the event stream open. A restore signs everyone out, this browser too:
+      // its stream ends there, like every other, and it learns how the restore ended by asking for its job.
       let events = "";
-      const stream = http.request({ host: "127.0.0.1", port, path: "/api/events", headers: { host: "cms.localhost", cookie: first.cookie }, agent: false }, (res) => res.on("data", (chunk: Buffer) => (events += chunk.toString())));
+      let streamEnded = false;
+      const stream = http.request({ host: "127.0.0.1", port, path: "/api/events", headers: { host: "cms.localhost", cookie: first.cookie }, agent: false }, (res) => {
+        res.on("data", (chunk: Buffer) => (events += chunk.toString()));
+        res.on("end", () => (streamEnded = true));
+      });
 
       stream.on("error", () => undefined);
       stream.end();
@@ -321,7 +326,10 @@ describe("backups", () => {
       const done = await waitForJob(port, job.body, { cookie: first.cookie });
 
       expect(done.state, done.detail).toBe("done");
-      await until(() => events.includes(`"id":"${job.body.id}"`) && /"kind":"restore"[^}]*"state":"done"|"state":"done"[^}]*"kind":"restore"/.test(events));
+      await until(() => streamEnded);
+      // It heard the restore begin; nothing was sent on it once its sign-in no longer counted.
+      expect(events).toContain(`"id":"${job.body.id}"`);
+      expect(events).not.toMatch(/"state":"done"/);
       stream.destroy();
       await until(() => !alive(pid), 10_000);
       expect(existsSync(join(server.install!.siteFolder(), "after-the-backup.md"))).toBe(false);

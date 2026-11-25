@@ -397,10 +397,12 @@ export async function signOutEverywhere(c: Context, ctx: RouteContext): Promise<
  * GET /api/events for a signed-in person: what visitors sent through the
  * site's forms rides on "forms.submission" — for someone who may not read
  * the inbox only the fact that the inbox changed is passed on, never the
- * submission itself. The stream ends when the person is signed out
- * (that browser, or everywhere), switched off or removed. It isn't ended by
- * a restore's install-wide sign-out: the browser that started the restore
- * must still hear how it ended (its next request asks it to sign in again).
+ * submission itself. The stream is held to the test a request is held to,
+ * for as long as it is open: it ends when the person is signed out (that
+ * browser, everywhere, or everyone at once, as putting a backup back does),
+ * switched off or removed, and when the sign-in passes its age. The browser
+ * that started a restore follows its job by asking (`GET /api/jobs/:jobId`,
+ * which it may for a while after being signed out), not on this stream.
  * Nothing else on the bus carries a submission's content or a key.
  */
 export function eventAccess(c: Context, ctx: RouteContext): StreamAccess | undefined {
@@ -411,6 +413,8 @@ export function eventAccess(c: Context, ctx: RouteContext): StreamAccess | undef
   const { session } = caller;
   const current = () => {
     if (ctx.session.revoked.has(session.id)) return null;
+    // As a request's cookie is read: not past its age, and not from before everyone was last signed out at once.
+    if (Date.now() - session.issuedAt > SESSION_MAX_AGE_S * 1000 || !install.store.sessionValid(session)) return null;
     const account = install.store.account(caller.account.id);
 
     return account && !account.disabled && session.issuedAt > account.sessionsValidAfter ? account : null;
