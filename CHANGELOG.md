@@ -37,6 +37,13 @@ entry says how.
   shows them, so what you wrote can be copied first), get the latest
   versions, then try again. With nothing newer waiting it says what it
   said.
+- **An undo made while newer versions wait no longer sends this copy and
+  the repository separate ways.** An undo is a version of its own. Made on
+  top of an older copy, the code host refused it, and the two then had to be
+  brought together by a developer. Undo now looks first, as Publish does,
+  and pauses while nothing has changed: "The repository has newer versions
+  than this copy, so the undo is paused. Get the latest versions, then try
+  again." The answer carries `behind`, as a paused publish's does.
 - **Connecting a bucket no longer sets back a setting someone else just
   saved.** Connecting, changing or disconnecting a bucket or Cloudflare
   Images saved the whole settings file from an earlier read of it, so a key

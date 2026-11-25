@@ -46,3 +46,5 @@ On an editor that runs online, newer versions are brought in by themselves every
 
 - **"That version can't be undone automatically, because later changes edited the same lines."** Nothing was changed. Undo the later version first, or change the page back by hand.
 - **"That version combined two lines of work, so it can't be undone automatically."** Ask the site's developer to undo it.
+- **"Some files this would undo have unpublished changes."** Nothing was changed. Publish or discard those changes, then undo. While newer versions are waiting in the repository, publishing is paused: discard them (Proof shows them, so what you wrote can be copied first), press **Get latest**, then undo.
+- **"The repository has newer versions than this copy, so the undo is paused."** Someone published elsewhere since this copy last looked. Nothing was changed. Press **Get latest**, then undo.

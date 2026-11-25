@@ -82,6 +82,7 @@ const DETACHED =
   "The site is showing an older version right now, so there's nowhere to publish. Your edits are safe. Ask a developer to switch it back to the latest version, then try again.";
 const BEHIND =
   "The repository has newer versions than this copy, so nothing was published and nothing was overwritten. Your edits are safe. Get the latest versions, then publish again.";
+const UNDO_BEHIND = "The repository has newer versions than this copy, so the undo is paused. Get the latest versions, then try again.";
 /** How Proof helps before a change is discarded: said the same wherever discarding is the way on. */
 const PROOF_SHOWS = { one: "Proof shows it, so what you wrote can be copied first", many: "Proof shows them, so what you wrote can be copied first" };
 
@@ -573,16 +574,20 @@ export async function revert(host: RepoHost, commit: string, config: PublishConf
   if (touched.some(isSiteSettingsPath)) requireSiteSettings();
   const statuses = await host.statuses();
   const overlapping = touched.filter((p) => statuses.has(p));
+  // An undo is a publish of its own. Made on top of an older copy it is a version the code host refuses, and this
+  // copy and the repository have then gone separate ways, which takes a developer to bring together. So it looks
+  // first, as a publish does, and pauses while nothing is committed and "Get the latest" still works.
+  const sendTo = config.push ? await remoteFor(repo, config) : null;
+  const waiting = sendTo ? (await behindRemote(repo, sendTo, branch)) > 0 : false;
 
   if (overlapping.length > 0) {
     const names = overlapping.slice(0, 3).map((p) => p.slice(p.lastIndexOf("/") + 1)).join(", ");
     const have = `Some files this would undo have unpublished changes (${names}${overlapping.length > 3 ? ", …" : ""}).`;
 
-    // Publishing those changes is a way on only while nothing newer waits: when it does, publishing is paused,
-    // and so is an undo, which is a publish of its own. What was last seen of the code host says which.
+    // Publishing those changes is a way on only while nothing newer waits: when it does, publishing is paused.
     return failure(
       overlapping,
-      (await versionsWaiting(repo, branch))
+      waiting
         ? `${have} Discard those changes first (${PROOF_SHOWS.many}), get the latest versions, then try again.`
         : `${have} Publish or discard those changes first, then try again.`
     );
@@ -592,6 +597,7 @@ export async function revert(host: RepoHost, commit: string, config: PublishConf
   if (staged.code !== 0) {
     return failure([], "Some changes were prepared for publishing outside the app. Publish or discard them first, then try again.");
   }
+  if (waiting) return { ...failure(touched, UNDO_BEHIND), behind: true };
   const subject = (await repo.run(["log", "-1", "--format=%s", full], { readOnly: true })).text.trim();
   const applied = await repo.run(["revert", "--no-commit", full], { allowFailure: true });
 
@@ -622,10 +628,8 @@ export async function revert(host: RepoHost, commit: string, config: PublishConf
   const sha = (await repo.head()) ?? undefined;
 
   await host.changed(touched, "publish");
-  const remote = await remoteFor(repo, config);
-
-  if (!config.push || !remote) return { ok: true, commit: sha, branch, files: touched, pushed: false };
-  return { ok: true, commit: sha, branch, files: touched, ...(await push(repo, remote, "HEAD", branch)) };
+  if (!sendTo) return { ok: true, commit: sha, branch, files: touched, pushed: false };
+  return { ok: true, commit: sha, branch, files: touched, ...(await push(repo, sendTo, "HEAD", branch)) };
 }
 
 // ─────────────────────────────────────────────────────────────── status, looking & bringing in
@@ -672,16 +676,6 @@ async function sourceOf(repo: Git, branch: string | null): Promise<Source | null
   const fallback = remotes.includes("origin") ? "origin" : remotes[0];
 
   return fallback ? { remote: fallback, branch, ref: `refs/remotes/${fallback}/${branch}` } : null;
-}
-
-/** Whether the code host had versions this copy lacks when it was last looked at. No look is made here. */
-async function versionsWaiting(repo: Git, branch: string): Promise<boolean> {
-  const compare = await compareRef(repo, branch, await upstreamOf(repo));
-
-  if (!compare) return false;
-  const count = await repo.run(["rev-list", "--count", `HEAD..${compare}`], { allowFailure: true, readOnly: true });
-
-  return count.code === 0 && Number(count.text.trim()) > 0;
 }
 
 /** What `ahead` and `behind` count against: the upstream, else what was last seen of the source, when anything was. */
