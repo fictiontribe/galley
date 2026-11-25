@@ -29,6 +29,10 @@ This page is for developers. Galley's messages are written to say what happened 
 | `Port 4400 is already in use on 0.0.0.0. Stop whatever is using it, or choose another with --port or GALLEY_PORT.` | Hosted mode and the desktop command don't move to another port. |
 | `This user isn't allowed to listen on port 80. Choose a port above 1024.` | Privileged port. Put a reverse proxy in front instead. |
 | `This computer has no network address 10.0.0.9 to listen on.` | `--host` / `GALLEY_HOST` isn't an address of this machine. |
+| `The folder for GALLEY_SOCKET (…) doesn't exist. …` | The socket's folder must exist before the server starts; create it (the proxy and the server need to reach it), or choose another path. |
+| `GALLEY_SOCKET names …, which is something other than a socket. …` | A file or folder is at the socket's path. Move it, or choose another path. |
+| `Another server is already listening on … (GALLEY_SOCKET). …` | A running server answers on that socket — another editor, or this one not yet stopped. Stop it, or give each its own path. |
+| `This user can't make a socket at … (GALLEY_SOCKET). …` | The server's user can't write to the socket's folder. Give it a folder it can write to. |
 | *Local mode only listens on this computer (127.0.0.1), not on 0.0.0.0. To serve other computers, use* `galley serve`. | `GALLEY_HOST` set to a non-loopback address for `galley [path]`. |
 | `GALLEY_PASSWORD is too short. It needs at least 12 characters, …` | |
 | `GALLEY_TOKEN must be at least 16 characters long.` | |

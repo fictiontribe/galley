@@ -17,6 +17,8 @@ folder (GALLEY_HOME).
 Options
       --host <address>      Interface to listen on (default GALLEY_HOST, then 0.0.0.0)
   -p, --port <port>         Port to listen on (default GALLEY_PORT, then 4400)
+      --socket <path>       Listen on this Unix socket as well (default GALLEY_SOCKET), for a
+                            front on the same machine; see GALLEY_SOCKET below
       --reset-password      Get an owner back in: print a one-time link for the owner to
                             choose a new password (it works once, for ${PASSWORD_LINK_MINUTES} minutes), then
                             serve as usual until stopped. Nobody else's account changes,
@@ -32,7 +34,12 @@ First run
 
 Recommended
   GALLEY_PUBLIC_URL         The address people use, e.g. https://cms.example.com
-  GALLEY_TRUST_PROXY=1      When a reverse proxy terminates HTTPS in front of this server
+  GALLEY_TRUST_PROXY=1      When a reverse proxy terminates HTTPS in front of this server.
+                            It believes X-Forwarded-For and -Proto from every connection, the
+                            proxy's or anyone else's that can reach the port
+  GALLEY_SOCKET             A Unix socket for the proxy to connect to instead (in a folder
+                            only it and this server can open): forwarded headers are then
+                            believed for requests on the socket alone, never on the port
 
 Previews (served through this server's one port, by hostname; point both names at it)
   GALLEY_PREVIEW_URL        Where the site's preview is shown. Default: worked out from
@@ -107,7 +114,7 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
   const { values } = parse(
     "serve",
     argv,
-    { host: { type: "string" }, port: { type: "string", short: "p" }, "sites-dir": { type: "string" }, "reset-password": { type: "boolean" }, email: { type: "string" } },
+    { host: { type: "string" }, port: { type: "string", short: "p" }, socket: { type: "string" }, "sites-dir": { type: "string" }, "reset-password": { type: "boolean" }, email: { type: "string" } },
     0
   );
 
@@ -126,6 +133,7 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
       mode: "hosted",
       host,
       port: portOption(values.port),
+      ...(values.socket !== undefined ? { socket: resolve(io.cwd, values.socket) } : {}),
       sitesDir,
       env: io.env,
       // Every line the server writes is already scrubbed of secrets; here it gets its time.
@@ -148,7 +156,7 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
   const site = (await server.install?.site().catch(() => null)) ?? null;
   const passwordSet = server.install ? server.install.store.hasOwner() : true;
 
-  io.out(`${PRODUCT.name} is serving on ${describeHost(host)}, port ${server.port}.`);
+  io.out(`${PRODUCT.name} is serving on ${describeHost(host)}, port ${server.port}${server.socket ? `, and on the socket ${server.socket}` : ""}.`);
   io.out(`Address:   ${publicUrl ?? `${server.url} (set GALLEY_PUBLIC_URL to the address people use)`}`);
   if (!passwordSet) {
     io.out(
@@ -184,7 +192,7 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
     }`
   );
   io.out(
-    `Sessions:  signed HttpOnly SameSite=Strict cookie, 30 days; ${publicUrl?.startsWith("https://") ? "Secure, and a __Host- cookie on this https:// address" : `Secure over HTTPS${trustProxy ? " (X-Forwarded-Proto is trusted)" : " (X-Forwarded-Proto is ignored; set GALLEY_TRUST_PROXY=1 behind a proxy)"}`}`
+    `Sessions:  signed HttpOnly SameSite=Strict cookie, 30 days; ${publicUrl?.startsWith("https://") ? "Secure, and a __Host- cookie on this https:// address" : `Secure over HTTPS${server.socket ? " (X-Forwarded-Proto is believed on the socket only)" : trustProxy ? " (X-Forwarded-Proto is trusted, from every connection)" : " (X-Forwarded-Proto is ignored; set GALLEY_SOCKET, or GALLEY_TRUST_PROXY=1, behind a proxy)"}`}`
   );
   io.out(
     publicUrl

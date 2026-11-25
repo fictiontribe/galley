@@ -4,11 +4,12 @@
  * compose the engine and serve the app. Signal handling belongs to the CLI.
  */
 import { randomBytes } from "node:crypto";
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { connect } from "node:net";
+import { dirname, join, resolve } from "node:path";
 import { getRequestListener } from "@hono/node-server";
 import { GalleyError, isGalleyError } from "@galley/core";
 import { PRODUCT, VERSION } from "@galley/core/brand";
@@ -35,7 +36,7 @@ import {
 } from "@galley/core/install";
 import type { BrandConfig, Job } from "@galley/core/types";
 import { createApp, installRevocations } from "./app";
-import { isLoopbackHost, mintToken } from "./auth";
+import { isLoopbackHost, markArrivedOnSocket, mintToken } from "./auth";
 import { brandWarnings, loadBrand } from "./brand";
 import { createGatewayTickets, type GatewayTickets } from "./gateway-auth";
 import { createPreviewGateway, defaultGatewayOrigins, hostnameOf, withGateway, type ServerGateway } from "./gateway";
@@ -91,6 +92,8 @@ export interface ResolvedConfig {
   webDir: string;
   brand: BrandConfig;
   trustProxy: boolean;
+  /** A Unix socket to listen on as well (GALLEY_SOCKET): forwarded headers are believed for requests on it alone. Null: none. */
+  socket: string | null;
   desktop: boolean;
   /** The MCP endpoint at /mcp. */
   mcp: { enabled: boolean; build: boolean; publish: boolean };
@@ -309,6 +312,12 @@ export function resolveConfig(options: ServerOptions = {}): ResolvedConfig {
   const restoreMaxMb = mode === "hosted" ? (wholeNumber(env.GALLEY_RESTORE_MAX_MB, "GALLEY_RESTORE_MAX_MB", 1, 1_048_576) ?? DEFAULT_RESTORE_MAX_MB) : DEFAULT_RESTORE_MAX_MB;
   const previewMemoryMb = mode === "hosted" ? wholeNumber(env.GALLEY_PREVIEW_MEMORY_MB, "GALLEY_PREVIEW_MEMORY_MB", 64, 1_048_576) : null;
   const syncMinutes = mode === "hosted" ? (wholeNumber(env.GALLEY_SYNC_MINUTES, "GALLEY_SYNC_MINUTES", 0, 1440) ?? DEFAULT_SYNC_MINUTES) : null;
+  const socketPath = (options.socket ?? env.GALLEY_SOCKET)?.trim() || null;
+  const socket = socketPath ? resolve(socketPath) : null;
+
+  if (socket && (options.trustProxy ?? flag(env.GALLEY_TRUST_PROXY))) {
+    warnings.push("GALLEY_TRUST_PROXY is set as well as GALLEY_SOCKET: forwarded headers are believed only for requests that come in on the socket, never for those on the port.");
+  }
   const fixed: InstallFixed[] = [];
 
   if (mode === "hosted" && publicUrl) fixed.push("address");
@@ -329,6 +338,7 @@ export function resolveConfig(options: ServerOptions = {}): ResolvedConfig {
     webDir: resolve(options.webDir ?? env.GALLEY_WEB_DIR?.trim() ?? defaultWebDir()),
     brand,
     trustProxy: options.trustProxy ?? flag(env.GALLEY_TRUST_PROXY),
+    socket,
     desktop: options.desktop ?? flag(env.GALLEY_DESKTOP),
     mcp: {
       enabled: options.mcp?.enabled ?? !off(env.GALLEY_MCP),
@@ -475,21 +485,89 @@ type FetchHandler = (request: Request, env: unknown) => Response | Promise<Respo
  * progress) and returns true when it did; everything else goes to `fetch()`,
  * read per request so whatever sits in front of the app can replace it.
  */
-function createListener(options: { host: string; gateway: ServerGateway | null; fetch: () => FetchHandler; front: (req: IncomingMessage, res: ServerResponse) => boolean }): { server: Server; upgraded: Set<Duplex> } {
+function createListener(options: {
+  host: string;
+  gateway: ServerGateway | null;
+  fetch: () => FetchHandler;
+  front: (req: IncomingMessage, res: ServerResponse) => boolean;
+}): { server: Server; upgraded: Set<Duplex>; forSocket: () => Server } {
   const app = getRequestListener((request, env) => options.fetch()(request, env), { hostname: options.host });
   const listener = withGateway((req, res) => {
     if (!options.front(req, res)) void app(req, res);
   }, options.gateway);
-  const server = createServer(listener.request);
   // An upgraded socket (the preview's hot reload) is no longer the HTTP server's to close, yet keeps it from closing: tracked here.
   const upgraded = new Set<Duplex>();
+  // One server for the port and, when GALLEY_SOCKET is set, one for the Unix socket: the same handlers behind both
+  // (health, the gateway, the app, upgrades), with every request and upgrade on the socket marked as having come that way.
+  const make = (onSocket: boolean): Server => {
+    const server = createServer(
+      onSocket
+        ? (req, res) => {
+            markArrivedOnSocket(req);
+            listener.request(req, res);
+          }
+        : listener.request
+    );
 
-  server.on("upgrade", (req: IncomingMessage, socket: Duplex, head: Buffer) => {
-    upgraded.add(socket);
-    socket.once("close", () => upgraded.delete(socket));
-    listener.upgrade(req, socket, head);
+    server.on("upgrade", (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+      if (onSocket) markArrivedOnSocket(req);
+      upgraded.add(socket);
+      socket.once("close", () => upgraded.delete(socket));
+      listener.upgrade(req, socket, head);
+    });
+    return server;
+  };
+
+  return { server: make(false), upgraded, forSocket: () => make(true) };
+}
+
+/** Whether something answers on the Unix socket at `path`: a server still running there, not a file one left behind. */
+function socketAnswers(path: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const probe = connect({ path });
+
+    probe.once("connect", () => {
+      probe.destroy();
+      resolve(true);
+    });
+    probe.once("error", () => resolve(false));
   });
-  return { server, upgraded };
+}
+
+/**
+ * Listens on the Unix socket at `path` (GALLEY_SOCKET). A socket file a server that stopped without cleaning up left
+ * behind is removed first; anything else at that path, or a server still answering on it, stops the start in plain
+ * words. Who may open the socket is the folder's to say: the operator puts it in one only the front can reach.
+ */
+async function bindSocket(server: Server, path: string): Promise<void> {
+  // Asked first: systems disagree on the error for a socket in a folder that isn't there (macOS says EACCES).
+  if (!(await lstat(dirname(path)).catch(() => null))?.isDirectory()) {
+    throw new StartupError(`The folder for GALLEY_SOCKET (${dirname(path)}) doesn't exist. Create it, or choose another path.`);
+  }
+  const there = await lstat(path).catch(() => null);
+
+  if (there) {
+    if (!there.isSocket()) throw new StartupError(`GALLEY_SOCKET names ${path}, which is something other than a socket. Move it out of the way, or choose another path.`);
+    if (await socketAnswers(path)) throw new StartupError(`Another server is already listening on ${path} (GALLEY_SOCKET). Stop it, or choose another path.`);
+    await unlink(path);
+  }
+  await new Promise<void>((done, fail) => {
+    const onError = (error: Error) => {
+      server.off("listening", onListening);
+      fail(error);
+    };
+    const onListening = () => {
+      server.off("error", onError);
+      done();
+    };
+
+    server.once("error", onError);
+    server.once("listening", onListening);
+    server.listen(path);
+  }).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "EACCES") throw new StartupError(`This user can't make a socket at ${path} (GALLEY_SOCKET). Choose a folder it can write to.`);
+    throw error;
+  });
 }
 
 /** A preview gateway that has nowhere to show anything: a hosted install without an address for the preview never opens a port instead. */
@@ -621,7 +699,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
       status: 503,
       headers: { "content-type": "application/json", "cache-control": "no-store" },
     });
-  const { server, upgraded } = createListener({
+  const { server, upgraded, forSocket } = createListener({
     host: config.host,
     gateway,
     fetch: () => handler,
@@ -656,10 +734,19 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     }
   };
 
+  /** The server on the Unix socket (GALLEY_SOCKET), when one is set. */
+  let socketServer: Server | null = null;
+
   try {
     port = await bind(server, config, notice);
+    if (config.socket) {
+      socketServer = forSocket();
+      await bindSocket(socketServer, config.socket);
+    }
   } catch (error) {
     // The commonest way a start fails (the port is taken). The port's error is the one reported, whatever letting go does.
+    // A socket that couldn't be had lets go of the port it was taken with.
+    if (server.listening) await new Promise<void>((done) => server.close(() => done()));
     await letGo();
     undo();
     throw error;
@@ -882,7 +969,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
           ? [config.publicUrl.hostname, ...(isWildcard(config.host) ? [] : [config.host])]
           : null,
     publicOrigin: config.publicUrl?.origin,
-    trustProxy: config.trustProxy,
+    // With a socket set, forwarded headers are believed only for requests that come in on it (see auth.ts).
+    trustProxy: config.trustProxy && config.socket === null,
     webDir: config.webDir,
     brand: config.brand,
     version: VERSION,
@@ -955,6 +1043,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     url,
     port,
     host: config.host,
+    socket: config.socket,
     mode: config.mode,
     token: config.token,
     services,
@@ -986,7 +1075,10 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         void ops?.stopMeasuring();
         // No new round; one in progress gets the grace like a request does.
         const keptUp = keepUp?.stop() ?? Promise.resolve();
-        const stopped = new Promise<void>((done) => server.close(() => done()));
+        const stopped = Promise.all([
+          new Promise<void>((done) => server.close(() => done())),
+          socketServer ? new Promise<void>((done) => socketServer!.close(() => done())) : Promise.resolve(),
+        ]);
 
         streams.closeAll();
         await mcp?.close();
@@ -995,12 +1087,21 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         // A connect in progress (copying the site) gets what is left of the grace, then is left behind.
         await Promise.race([install?.idle() ?? Promise.resolve(), delay(Math.max(0, deadline - Date.now()))]);
         // Ended streams leave keep-alive sockets idle a moment later; sweep until they are gone.
-        const sweep = setInterval(() => server.closeIdleConnections?.(), 25);
-        const force = setTimeout(() => server.closeAllConnections?.(), 2000);
+        const sweep = setInterval(() => {
+          server.closeIdleConnections?.();
+          socketServer?.closeIdleConnections?.();
+        }, 25);
+        const force = setTimeout(() => {
+          server.closeAllConnections?.();
+          socketServer?.closeAllConnections?.();
+        }, 2000);
 
         server.closeIdleConnections?.();
+        socketServer?.closeIdleConnections?.();
         for (const socket of upgraded) socket.destroy();
         await stopped;
+        // A Unix socket's file outlives its server: removed, so the next start finds the path free.
+        if (config.socket) await unlink(config.socket).catch(() => undefined);
         clearInterval(sweep);
         clearTimeout(force);
         unsubscribeJobs();

@@ -9,6 +9,7 @@
  * MAC, so it can't be swapped), signed with a server key, so it can be
  * checked without server-side session state.
  */
+import type { IncomingMessage } from "node:http";
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
@@ -215,8 +216,35 @@ function firstHeaderValue(value: string | undefined): string | undefined {
   return value?.split(",")[0]?.trim().toLowerCase() || undefined;
 }
 
+/**
+ * Requests that arrived on the server's Unix socket (GALLEY_SOCKET). Only the front the operator put there can
+ * open it, so what it says it saw — X-Forwarded-For and X-Forwarded-Proto — is believed for these requests.
+ */
+const arrivedOnSocket = new WeakSet<IncomingMessage>();
+
+/** Marks a request (or an upgrade) as having arrived on the server's Unix socket. */
+export function markArrivedOnSocket(req: IncomingMessage): void {
+  arrivedOnSocket.add(req);
+}
+
+/** Whether this request came in on the server's Unix socket. */
+export function cameThroughSocket(c: Context): boolean {
+  const incoming = (c.env as { incoming?: IncomingMessage } | undefined)?.incoming;
+
+  return incoming !== undefined && arrivedOnSocket.has(incoming);
+}
+
+/**
+ * Whether the forwarded headers of this request are believed: always for one that came through the server's Unix
+ * socket; otherwise only when GALLEY_TRUST_PROXY is on (`trustProxy`), which believes them from any connection —
+ * and which the server passes as off once a socket is set, so that only the socket is believed.
+ */
+function forwardedTrusted(c: Context, trustProxy: boolean): boolean {
+  return trustProxy || cameThroughSocket(c);
+}
+
 export function requestProtocol(c: Context, trustProxy: boolean): "http" | "https" {
-  if (trustProxy) {
+  if (forwardedTrusted(c, trustProxy)) {
     const forwarded = firstHeaderValue(c.req.header("x-forwarded-proto"));
 
     if (forwarded === "https" || forwarded === "http") return forwarded;
@@ -226,7 +254,7 @@ export function requestProtocol(c: Context, trustProxy: boolean): "http" | "http
 
 /** The client's address, for rate limiting. Behind a trusted proxy, the address the proxy saw. */
 export function clientAddress(c: Context, trustProxy: boolean): string {
-  if (trustProxy) {
+  if (forwardedTrusted(c, trustProxy)) {
     const forwarded = c.req.header("x-forwarded-for")?.split(",").map((part) => part.trim()).filter(Boolean);
     // The last hop is the one our own proxy appended; anything before it the client could have written.
     const last = forwarded?.[forwarded.length - 1];

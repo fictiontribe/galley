@@ -607,7 +607,13 @@ the site's dev server.
   read 2026-11-23).
 - **Terminate HTTPS for all three names**, and set `X-Forwarded-Proto`; then
   `GALLEY_TRUST_PROXY=1` lets the server believe it (and `X-Forwarded-For`,
-  for the per-address sign-in limit). Only behind a proxy you control.
+  for the per-address sign-in limit). Only behind a proxy you control: it
+  believes them from every connection that reaches the port, the proxy's or a
+  program's on the same machine. With the proxy on the same machine,
+  `GALLEY_SOCKET` is narrower: the server also listens on that Unix socket,
+  the proxy connects to it instead of the port, and forwarded headers are
+  believed for requests on the socket alone — never for those on the port.
+  Put the socket in a folder only the proxy and the server can open.
 - **Pass WebSockets** (hot reload) and **stream** `GET /api/events`
   (Server-Sent Events, a heartbeat every 20 seconds). Caddy does both by
   default; `stream_close_delay 5m` in the generated Caddyfile keeps them open
@@ -930,6 +936,7 @@ server, and the setting has to match it:**
 | In front of the server | `GALLEY_TRUST_PROXY` | The client is |
 | --- | --- | --- |
 | One reverse proxy you run, receiving visitors directly (the compose recipe's Caddy) | `1` | the address that proxy saw: each visitor their own |
+| A reverse proxy on the same machine, connecting to the server's Unix socket (`GALLEY_SOCKET`) | either | the address that proxy saw, for requests on the socket; on the port, the connecting address, whatever a request claims |
 | Nothing: the server's port is reached directly | unset | the connecting address |
 | A reverse proxy, with the setting left unset | — | **the proxy, for everyone**: all people share one client's limits, so one person's wrong guesses hold everyone up. Set it. |
 | The setting on, with no proxy in front | — | **whatever the request claims**: the limits per client mean nothing. Unset it. |
