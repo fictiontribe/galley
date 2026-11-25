@@ -213,6 +213,16 @@ would only add a download.
 7. **Check npm**: `npm view galley-cms version`, `npm view create-galley
    version`, and from an empty folder `npm create galley@latest` and
    `npx galley-cms --version`.
+   The workflow publishes `galley-cms`, then waits until its tarball answers
+   from the registry before it publishes `create-galley`. The registry
+   accepts `galley-cms` at once and takes some minutes over the tarball
+   (eight to ten, on 0.4.0 and 0.4.1); a `create-galley` published in that
+   window asks for a `galley-cms` nobody can install yet, and
+   `npm create galley@latest` fails for everyone until it can. The wait is 20
+   minutes at most. If it runs out, the workflow stops with `galley-cms`
+   published and `create-galley` not, which breaks nothing: run it again
+   from the tag (*Dry run* off) once the tarball answers, and it publishes
+   only what is missing.
 8. **The container**: build from the tag, run the health check, push with the
    version and `latest` tags.
 9. **The website**: build and deploy `apps/site` (`.github/workflows/site.yml`
