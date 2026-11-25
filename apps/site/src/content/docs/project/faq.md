@@ -42,7 +42,7 @@ It doesn't touch it. Publishing is `git commit` and `git push` (or a branch and 
 
 ## Can several people edit at once?
 
-Each Galley works on one checkout per site, and everyone using that Galley shares its working tree: there are no per-person drafts. Galley notices outside edits and refuses an edit made against a stale copy of a file rather than merging it. Locally, each person runs their own Galley on their own checkout and git handles the rest. On a hosted install — one site per install — everyone who signs in shares the checkout, the settings and the author identity on publishes. [Run a hosted install](/docs/running/hosted/).
+Each Galley works on one checkout per site, and everyone using that Galley shares its working tree: there are no per-person drafts. Galley notices outside edits and refuses an edit made against a stale copy of a file rather than merging it. Locally, each person runs their own Galley on their own checkout and git handles the rest. On a hosted install — one site per install — everyone who signs in shares the one checkout and its settings, but each publish carries the name of whoever made it. [Run a hosted install](/docs/running/hosted/).
 
 ## Can an editor break the site?
 
