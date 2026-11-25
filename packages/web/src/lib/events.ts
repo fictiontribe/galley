@@ -2,6 +2,12 @@
  * One EventSource for the whole app. Screens subscribe by event type; when
  * the stream comes back after a drop, reconnect listeners run so stores can
  * refetch whatever they missed.
+ *
+ * A dropped stream is asked for again only while someone is at the window.
+ * A while after it was last touched (or put behind another), the asking
+ * stops, and starts again the moment the person is back: a window left open
+ * doesn't keep a laptop's network awake for a server it can't reach, and a
+ * server that restarted isn't knocked on by every window nobody is looking at.
  */
 import { useEffect, useRef } from "react";
 import { create } from "zustand";
@@ -10,8 +16,11 @@ import { EVENTS_URL, buildUrl, reportUnauthorized } from "./api";
 
 export type EventType = ServerEvent["type"];
 export type EventOf<T extends EventType> = Extract<ServerEvent, { type: T }>;
-/** "limited": the server answered, and said this account has every stream it may have open (too many windows). */
-export type ConnectionState = "idle" | "connecting" | "open" | "down" | "limited";
+/**
+ * "limited": the server answered, and said this account has every stream it may have open (too many windows).
+ * "resting": the stream dropped and nobody has been at this window for a while, so it isn't being asked for until they are back.
+ */
+export type ConnectionState = "idle" | "connecting" | "open" | "down" | "limited" | "resting";
 
 interface ConnectionStore {
   state: ConnectionState;
@@ -40,6 +49,17 @@ const MAX_BACKOFF_MS = 15_000;
 export const LIMITED_RETRY_MS = 30_000;
 /** The last stream was refused for the account's limit: asking again is quiet until one is let in. */
 let limited = false;
+/**
+ * How long after the window was last touched a dropped stream is still asked
+ * for. Long enough that a restart heals unnoticed in front of someone reading
+ * without touching anything; short enough that a window left open asks a
+ * couple of dozen times and then not at all.
+ */
+export const REST_AFTER_MS = 5 * 60_000;
+/** When someone was last at this window: it was loaded, pressed, clicked, scrolled, pointed at or brought to the front. */
+let lastHere = Date.now();
+/** The stream is down and isn't being asked for: nobody is at the window. */
+let resting = false;
 
 /** Delay before reconnect attempt n (0-based): 1 s, 2 s, 4 s … capped at 15 s, with jitter. */
 export function backoffDelay(n: number, random: () => number = Math.random): number {
@@ -66,6 +86,7 @@ function scheduleRetry(): void {
  */
 async function probe(): Promise<void> {
   retryTimer = null;
+  if (rests()) return;
   let authenticated: boolean;
   try {
     const response = await fetch(buildUrl("GET /api/meta"), { credentials: "same-origin", headers: { accept: "application/json" } });
@@ -85,18 +106,50 @@ async function probe(): Promise<void> {
   open();
 }
 
+/**
+ * Nobody has been at this window for a while: the stream isn't asked for
+ * again until they are back. True when it rests. A window told there are too
+ * many open keeps saying so; any other says it is resting.
+ */
+function rests(): boolean {
+  if (Date.now() - lastHere < REST_AFTER_MS) return false;
+  resting = true;
+  if (!limited) useConnection.setState({ state: "resting", retryIn: null });
+  return true;
+}
+
+/** Someone is at the window. If the stream was resting, it is asked for now, from the shortest wait again. */
+function here(): void {
+  lastHere = Date.now();
+  if (!resting) return;
+  resting = false;
+  attempt = 0;
+  if (!limited) useConnection.setState({ state: "down", retryIn: null });
+  void probe();
+}
+
 /** Coming back to the window, or the network returning: try now instead of waiting out the backoff. */
 function retryNow(): void {
   if (!retryTimer) return;
   clearTimeout(retryTimer);
   void probe();
 }
-const host = globalThis as { addEventListener?: (type: string, listener: () => void) => void };
+
+type Listen = (type: string, listener: () => void, options?: { passive?: boolean; capture?: boolean }) => void;
+const host = globalThis as { addEventListener?: Listen; document?: { addEventListener?: Listen; visibilityState?: string } };
+/** What a person at the window does. Each only notes the time, and wakes a resting stream. */
+export const SIGNS_OF_SOMEONE = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "focus", "pageshow"] as const;
+for (const type of SIGNS_OF_SOMEONE) host.addEventListener?.(type, here, { passive: true, capture: true });
+// Brought back in front of another tab or window. Going behind one is not a sign of anyone.
+host.document?.addEventListener?.("visibilitychange", () => {
+  if (host.document?.visibilityState === "visible") here();
+});
 host.addEventListener?.("focus", retryNow);
 host.addEventListener?.("online", retryNow);
 
 function open(): void {
   retryTimer = null;
+  resting = false;
   // Asking again after being told there are too many windows changes nothing on the screen until the server lets this one in.
   if (!limited) useConnection.setState({ state: hasOpened ? "down" : "connecting" });
   const es = new EventSource(EVENTS_URL, { withCredentials: true });
@@ -153,9 +206,10 @@ function open(): void {
   };
 }
 
-/** Open the stream. Safe to call more than once. */
+/** Open the stream. Safe to call more than once. Asking for it counts as someone being here. */
 export function connectEvents(): void {
   if (source || retryTimer) return;
+  lastHere = Date.now();
   open();
 }
 
@@ -168,6 +222,7 @@ export function disconnectEvents(): void {
   hasOpened = false;
   attempt = 0;
   limited = false;
+  resting = false;
   useConnection.setState({ state: "idle", retryIn: null, problem: null });
 }
 

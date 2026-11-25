@@ -33,6 +33,7 @@ The preview is your site running on this computer.
 
 - **"Can't reach the app's server."** The part of the app that does the work stopped. Start it again (or ask whoever runs it), then **Try again**.
 - **Live updates paused — reconnecting.** The connection dropped for a moment and comes back by itself.
+- **Live updates paused — move the pointer or press a key to reconnect.** The connection dropped while nobody had touched the window for five minutes, so the app stopped asking for it. It asks again as soon as you are back.
 - **"Sign in to continue."** On a hosted editor, sign in again with your e-mail and password ([Sign in to a hosted editor](/docs/editing/signing-in/)). On your own computer: **"Open the link printed when the app started to continue."**
 
 ## Still stuck

@@ -5,6 +5,22 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## Unreleased
+
+### Changed
+
+- **A window nobody is at stops asking for its connection.** When the app
+  loses its live connection to the server, it asks again every few seconds, as
+  before, while someone is at the window. Five minutes after the window was
+  last touched, it stops asking, and asks again the moment the window is
+  clicked, typed in, scrolled, pointed at or brought back to the front. A
+  laptop left with the editor open no longer wakes its network every fifteen
+  seconds for a server it can't reach, and a server that was restarted, or is
+  switched off, is no longer knocked on by every window that was left open. A
+  connection that is working is never closed by this. While it waits, the
+  status bar reads "Live updates paused — move the pointer or press a key to
+  reconnect".
+
 ## 0.4.0 — 2026-11-25
 
 ### Added
