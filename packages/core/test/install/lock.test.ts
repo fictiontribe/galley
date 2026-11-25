@@ -32,6 +32,23 @@ async function hold(home: string, log: string[] = [], port: number | null = null
 const read = (home: string): ServerLock => JSON.parse(readFileSync(lockFile(home), "utf8")) as ServerLock;
 const write = (home: string, lock: Partial<ServerLock>) => writeFileSync(lockFile(home), `${JSON.stringify({ port: 4400, startedAt: new Date().toISOString(), ...lock })}\n`);
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** The hold as it reads right now; null while it is missing, damaged or half-way through being written. */
+const whole = (home: string): ServerLock | null => {
+  try {
+    const lock = JSON.parse(readFileSync(lockFile(home), "utf8")) as ServerLock;
+
+    return typeof lock?.id === "string" ? lock : null;
+  } catch {
+    return null;
+  }
+};
+/** Waits for `check` to come true, however long a loaded machine takes over it (up to `ms`), and not a moment longer. */
+async function until(what: string, check: () => boolean, ms = 20_000): Promise<void> {
+  for (const deadline = Date.now() + ms; !check(); ) {
+    if (Date.now() > deadline) throw new Error(`It never happened: ${what}`);
+    await pause(5);
+  }
+}
 const refusal = (work: Promise<unknown>) => work.then(() => { throw new Error("it was taken"); }, (error: { code?: string; message: string }) => error);
 
 /** A process that is certainly alive and certainly not an editor. */
@@ -252,17 +269,33 @@ describe("a server's hold on its data folder", () => {
     const taken = await hold(home, log, 4400, (by) => lost.push(by));
     const id = read(home).id;
 
-    // What a write that failed part-way leaves behind (a full disk, a volume that hiccuped).
-    writeFileSync(lockFile(home), damaged);
-    await pause(BEAT * 5);
-    expect(lost).toEqual([]);
-    expect(log.filter((line) => /Another server has taken/.test(line))).toEqual([]);
+    const saidDamaged = () => log.filter((line) => /the hold file was damaged \(a write to it didn't finish\)\. It has been written again\./.test(line));
+
+    // What a write that failed part-way leaves behind (a full disk, a volume that hiccuped). A refresh that had already
+    // read the hold writes it whole again over this without ever seeing it, so it is put there until a refresh has read
+    // it: the server says so when one does. Waiting a number of beats instead proved nothing on a machine too busy to beat.
+    await until("a refresh read the damaged hold", () => {
+      if (saidDamaged().length > 0) return true;
+      writeFileSync(lockFile(home), damaged);
+      return false;
+    });
     // Whole again, and still this server's own.
+    await until("the hold was written whole again", () => whole(home)?.id === id);
+    // Damaged a few times more, each right after the server has written it back, so that later refreshes find it
+    // damaged too: it is said once all the same. (A refresh may still miss one of these; the line can't be said twice by missing.)
+    for (let again = 0; again < 3; again += 1) {
+      writeFileSync(lockFile(home), damaged);
+      await until("the hold was written whole once more", () => whole(home)?.id === id);
+    }
     expect(read(home)).toMatchObject({ pid: process.pid, id, port: 4400 });
     const beat = read(home).beat!;
 
-    await pause(BEAT * 4);
-    expect(read(home).beat!).toBeGreaterThan(beat);
+    // And it goes on beating: the hold it wrote back is refreshed like any other.
+    await until("the beat moved on", () => (whole(home)?.beat ?? -1) > beat);
+    // All that time, it was nobody else's: the server was never told it lost the folder, and said what it found once.
+    expect(lost).toEqual([]);
+    expect(log.filter((line) => /Another server has taken/.test(line))).toEqual([]);
+    expect(saidDamaged()).toHaveLength(1);
     await taken.release();
     expect(existsSync(lockFile(home))).toBe(false);
   });
