@@ -6,15 +6,17 @@
  * server's real gateway is tested in packages/server.
  */
 import crypto from "node:crypto";
+import { existsSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
+import { join } from "node:path";
 import type { Duplex } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OVERLAY_SCRIPT_PATH, PROXY_HEALTH_PATH } from "../../src/api";
 import { PRODUCT } from "../../src/brand";
 import { createPreviewController, isAppCookie, viewerCookieName, withoutAppCookies, type PreviewControllerHandle, type PreviewGateway, type ProxyHandlers } from "../../src/workspace/index";
 import { startBaselineProxy, startPreviewProxy } from "../../src/workspace/preview/proxy";
-import { cleanupAll, tempDir, writeTree } from "./helpers";
+import { cleanupAll, tempDir, until, writeTree } from "./helpers";
 
 const slug = PRODUCT.slug;
 const servers: http.Server[] = [];
@@ -303,5 +305,66 @@ server.listen(0, "127.0.0.1", () => console.log("Local http://localhost:" + serv
     await controller.stop();
     expect(mounted).toEqual({ preview: null, baseline: null });
     expect(controller.status()).toMatchObject({ state: "stopped", url: null, baselineUrl: null });
+  });
+
+  it("passes on its own dev server and never another program's, when that program took the dev server's port first", async () => {
+    // On a hosted editor the preview is passed on to signed-in people through the gateway: what answers behind it
+    // must be the site's own dev server, not whatever else on the server got the port.
+    const { gateway } = await fakeGateway();
+    const root = tempDir("ws-gateway-taken-");
+
+    writeTree(root, {
+      "strict-server.mjs": `
+import http from "node:http";
+import { writeFileSync } from "node:fs";
+const port = Number(process.argv[process.argv.indexOf("--port") + 1]);
+writeFileSync("asked-" + port + ".txt", "");
+await new Promise((done) => setTimeout(done, 400));
+const server = http.createServer((req, res) => { res.writeHead(200, { "content-type": "text/html" }); res.end("<html><head></head><body>the site's own</body></html>"); });
+server.once("error", () => process.exit(1));
+server.listen(port, "127.0.0.1", () => console.log("Local http://localhost:" + port + "/"));
+`,
+    });
+    const port = await new Promise<number>((resolve) => {
+      const probe = net.createServer();
+
+      probe.listen(0, "127.0.0.1", () => {
+        const free = (probe.address() as net.AddressInfo).port;
+
+        probe.close(() => resolve(free));
+      });
+    });
+    const controller = createPreviewController({
+      root,
+      settings: () => ({ dev: { command: "node strict-server.mjs", port, portArgs: ["--port", "{port}"] }, packageManager: null, installed: true, urls: {} }),
+      overlayScript: () => "window.__overlay = true;",
+      gateway,
+    });
+
+    controllers.push(controller);
+    const starting = controller.start();
+    const other = http.createServer((_req, res) => {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end("<html><head></head><body>another program on the server</body></html>");
+    });
+
+    await until(() => existsSync(join(root, `asked-${port}.txt`)), 5000, 10);
+    await new Promise<void>((done) => other.listen(port, "127.0.0.1", done));
+    try {
+      const status = await starting;
+
+      expect(status.state, status.log.join("\n")).toBe("ready");
+      const shown = await (await fetch(`${status.url}/`)).text();
+
+      expect(shown).toContain("the site's own");
+      expect(shown).not.toContain("another program on the server");
+      // On a hosted install the log names no port and doesn't ask the reader to stop a program: what else listens
+      // on the server is the operator's.
+      expect(status.log.join("\n")).toContain("The preview's port was taken by another program on the server");
+      expect(status.log.join("\n")).not.toContain(`Port ${port}`);
+    } finally {
+      await controller.stop();
+      await new Promise((done) => other.close(done));
+    }
   });
 });

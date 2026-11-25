@@ -51,6 +51,30 @@ entry says how.
   discard. Most likely on your own computer, after an hour away from the
   window; a hosted editor keeps its site open while it keeps up with the
   repository.
+- **The preview checks that what answers on its port is the site's own dev
+  server.** When a preview starts, Galley chooses a free port for the site's
+  dev server. If another program got that port in the moment before the dev
+  server asked for it, the preview could come up showing that program's
+  pages as the site's — on a hosted editor too, where the preview is passed
+  on to the people signed in — or it stopped with "The preview stopped
+  before it was ready". Now, before a page that answers on the port is used,
+  Galley checks that every program listening on that port, on whichever
+  address, is the dev server it started (by process, or by running in the
+  site's folder). If something else has it, the dev server is started again
+  on another port, up to twice; if the dev server moved to a port of its own
+  and said so, it is followed there; if it stopped, it isn't started again.
+  When another program holds the port and the dev server neither stops nor
+  moves, the preview gives up with a sentence that says what to do. A
+  listener this computer can see but can't attribute (another user's, on a
+  shared server) is not taken for the dev server's. Where the computer can't
+  say which program has a port at all — Windows, or a Mac without `lsof` or
+  `ps` — the answer is taken as before, and the log says so; Linux needs
+  neither tool. A dev command that runs its server where it can't be seen as
+  the site's own, such as in a container, needs `dev.trustPort` in the
+  site's settings, which an owner sets to take the port on trust. The
+  preview still runs the site's own code: this keeps one site's preview from
+  showing another program's pages, it is not a wall around what a site's own
+  code may do.
 
 ## 0.4.2 — 2026-11-25
 

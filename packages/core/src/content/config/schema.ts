@@ -199,7 +199,19 @@ export const galleyConfigSchema = z
       .describe(FRAMEWORK_DESCRIPTION),
     adapters: z.array(z.string().min(1)).optional().describe(ADAPTERS_DESCRIPTION),
     plugins: z.array(z.string().min(1)).optional().describe(PLUGINS_DESCRIPTION),
-    dev: z.object({ command: z.string().optional(), port: z.number().int().positive().optional() }).strict().optional(),
+    dev: z
+      .object({
+        command: z.string().optional(),
+        port: z.number().int().positive().optional(),
+        trustPort: z
+          .boolean()
+          .optional()
+          .describe(
+            "Take whatever answers on the dev server's port for the dev server, without checking which program on the computer has it. For a dev command that runs its server where Galley can't see it as its own, such as a container. Only an owner can set it (it switches a safety check off)."
+          ),
+      })
+      .strict()
+      .optional(),
     build: z.object({ command: z.string().optional(), outDir: z.string().optional(), sources: z.array(z.string()).optional() }).strict().optional(),
     urls: z.object({ production: z.string().url().optional(), staging: z.string().url().optional() }).strict().optional(),
     media: z.object({ dir: z.string().optional(), publicPath: z.string().optional(), roots: z.array(mediaRoot).optional(), storage: mediaStorage.optional(), images: mediaImages.optional() }).strict().optional(),

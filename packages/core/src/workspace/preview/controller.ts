@@ -29,12 +29,12 @@ import type { PackageManager, PreviewController, PreviewPause, PreviewState, Pre
 import { installDependencies } from "../build";
 import { resolveCommand } from "../command";
 import { IS_WINDOWS, killTree, stripAnsi } from "../exec";
-import { portOwnership, type Ownership } from "./owner";
-import { freePort, type PortPool } from "./ports";
+import { listenerStartedHere, portOwnership, type Ownership, type PortStanding } from "./owner";
+import { freePort, portIsFree, type PortPool } from "./ports";
 import { probe, startBaselineProxy, startPreviewProxy, type PreviewGateway, type ProxyHandle, type ProxyPorts } from "./proxy";
 
 export interface PreviewSettings {
-  dev: { command: string; port: number | null; portArgs?: string[] } | null;
+  dev: { command: string; port: number | null; portArgs?: string[]; trustPort?: boolean } | null;
   packageManager: PackageManager | null;
   installed: boolean;
   urls: { staging?: string; production?: string };
@@ -67,8 +67,12 @@ export interface PreviewOptions {
   onStatus?: (status: PreviewStatus) => void;
   /** How long to wait for the dev server to answer. Default 120 s. */
   readyTimeoutMs?: number;
+  /** Test seam: how long another program may hold the dev server's port before the preview gives up. Default 20 s. */
+  portHeldMs?: number;
   /** Test seam: who listens on a port. Default: the listening process's working directory. */
   ownership?: (port: number, root: string) => Promise<Ownership>;
+  /** Test seam: how a port stands to a dev server this preview started in process group `group` (`self`: this process). Default: asked of the system. */
+  startedHere?: (port: number, group: number, root: string, self: number) => Promise<PortStanding>;
   /** A request or upgrade reached the preview proxy (the multi-site preview policy measures "unused" with it). */
   onActivity?: () => void;
   /** False: installing the site's dependencies never adds a lockfile the site doesn't have (see InstallDependenciesOptions). Default true. */
@@ -117,6 +121,25 @@ export interface PreviewControllerHandle extends PreviewController {
 const LOG_LINES = 200;
 const DEFAULT_READY_TIMEOUT_MS = 120_000;
 const LOOPBACKS = ["127.0.0.1", "::1"];
+/** How many times a dev server is started again on another port because the one chosen for it was taken meanwhile. */
+const PORT_RESTARTS = 2;
+/** How long another program may hold the dev server's port, with the dev server neither stopping nor moving, before the preview gives up. */
+const PORT_HELD_MS = 20_000;
+
+/** Thrown out of the wait for a dev server: the port it was given is shared with another program, so move off it. */
+class PortTaken extends Error {
+  constructor(readonly port: number) {
+    super(`port ${port} was taken`);
+  }
+}
+
+/** Thrown out of the wait: another program has held the dev server's port the whole time, and it hasn't stopped or moved. */
+class ForeignHeld extends Error {
+  constructor(readonly port: number) {
+    super(`port ${port} held by another program`);
+  }
+}
+
 /** Two good answers this far apart mean the dev server has settled. */
 export const STABLE_MS = 300;
 /** How often a dev server that isn't listening yet is looked at. */
@@ -306,6 +329,9 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
   const host = options.host ?? "127.0.0.1";
   const publicHost = options.publicHost ?? (host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host);
   const ownership = options.ownership ?? portOwnership;
+  const startedHere = options.startedHere ?? listenerStartedHere;
+  /** Ports it has already been said of, in the log, that their listener couldn't be checked. */
+  const uncheckable = new Set<number>();
   /** This preview's claim on the operator's port range: its two proxies share it. */
   const ports: ProxyPorts | undefined = options.ports ? { pool: options.ports, owner: {} } : undefined;
   let status: PreviewStatus = { state: "idle", url: null, baselineUrl: null, baselineSource: null, log: [] };
@@ -344,6 +370,20 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
     if (log.length > LOG_LINES) log.splice(0, log.length - LOG_LINES);
   };
 
+  /** Stops the dev server this preview started, and whatever it started, and waits until it is gone. */
+  async function stopChild() {
+    if (!child) return;
+    const current = child;
+
+    child = null;
+    killTree(current, "SIGTERM");
+    const exited = childExited;
+    const forced = delay(3000).then(() => killTree(current, "SIGKILL"));
+
+    await Promise.race([exited, forced]);
+    await exited.catch(() => undefined);
+  }
+
   async function teardown() {
     const closing: Array<Promise<void>> = [];
 
@@ -353,17 +393,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
     if (baseline) closing.push(baseline.close());
     preview = null;
     baseline = null;
-    if (child) {
-      const current = child;
-
-      child = null;
-      killTree(current, "SIGTERM");
-      const exited = childExited;
-      const forced = delay(3000).then(() => killTree(current, "SIGKILL"));
-
-      await Promise.race([exited, forced]);
-      await exited.catch(() => undefined);
-    }
+    await stopChild();
     if (detached) {
       const { pid, port } = detached;
 
@@ -440,13 +470,16 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
    * Waits for a dev server on one of `candidates()` to answer like a working
    * site twice, STABLE_MS apart. Returns where, or null when the attempt went
    * stale. `failed()` is checked each round so a dev server that dies is
-   * reported at once rather than at the timeout.
+   * reported at once rather than at the timeout. `ours(host, port)`, when
+   * given, is asked before the address that answered is taken for the dev
+   * server's: it may say no, or throw to end the wait.
    */
   async function waitUntilSettled(
     candidates: () => number[],
     stale: () => boolean,
     failed: () => void,
-    deadline: number
+    deadline: number,
+    ours?: (host: string, port: number) => Promise<boolean>
   ): Promise<{ host: string; port: number } | null> {
     let firstGood: { host: string; port: number; at: number } | null = null;
 
@@ -458,7 +491,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
         const reachable = await connectableHost(port);
 
         if (stale()) return null;
-        if (reachable && (await checkPage(reachable, port))) {
+        if (reachable && (await checkPage(reachable, port)) && (!ours || (await ours(reachable, port)))) {
           good = { host: reachable, port };
           break;
         }
@@ -491,6 +524,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
 
     pausedBy = null;
     log.length = 0;
+    uncheckable.clear();
     status = { state: "idle", url: null, baselineUrl: null, baselineSource: null, log: [] };
     if (!settings.dev) {
       set("error", { detail: "This site has no preview command yet. Add one in the site settings (for example “npm run dev”)." });
@@ -518,6 +552,8 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
       let externallyOwned = false;
       /** The configured port was taken by something that isn't provably this site's server. */
       let configuredTaken = false;
+      /** Whether it already was before any dev server was started: such a port is no restart. */
+      let startedWithTaken = 0;
 
       if (configuredPort) {
         const answering = await answeringHost(configuredPort, 800);
@@ -541,97 +577,190 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
           }
         }
       }
+      startedWithTaken = configuredTaken ? 1 : 0;
+      // On a hosted install the preview is passed on to signed-in people, so what else listens on the server is the
+      // operator's, not theirs to stop: its messages name no port and point to the operator.
+      const hosted = options.gateway !== undefined;
+      const portGivenUpMessage = (port: number): string =>
+        hosted
+          ? "The preview couldn't get a port of its own: another program on the server keeps taking it. Whoever runs the server should check what else is listening, or set dev.trustPort in the site settings if the dev command runs its server in a container."
+          : `Port ${port} keeps being taken by another program before the preview can use it. Stop whatever is using the ports around ${configuredPort ?? port}, set another port for the preview in the site settings, or — if the dev command runs its server in a container or elsewhere this computer can't see it as the dev server's own — set dev.trustPort there. Then start it again.`;
       if (!adopted) {
-        // Choose a free port when the adapter can pass one, or when the
-        // configured port is already taken (so PORT steers servers without
-        // portArgs away from the foreign listener); the server's own announced
-        // port still wins if it differs.
-        const explicitPort =
-          settings.dev.portArgs || (configuredTaken && configuredPort)
-            ? await reservePort(configuredPort, configuredTaken && configuredPort ? [configuredPort] : [])
-            : null;
+        /** Ports this start chose for the dev server and then found to be another program's: not chosen again. */
+        const lost: number[] = [];
 
-        if (explicitPort !== null) {
-          // Recorded before the stale check, so a stop() that landed meanwhile still releases it.
-          if (reserved !== null) reservedPorts.delete(reserved);
-          reserved = explicitPort;
-        }
-        if (stale()) {
-          if (explicitPort !== null && reserved === explicitPort) {
-            reservedPorts.delete(explicitPort);
-            reserved = null;
-          }
-          return snapshot();
-        }
-        let announced: number | null = null;
-        let announcedPid: number | null = null;
-        // PORT too, for dev servers that read it. The adapter's variables come
-        // last: they are set on purpose and may name a port of their own.
-        const portEnv: NodeJS.ProcessEnv = explicitPort
-          ? { PORT: String(explicitPort) }
-          : configuredPort && !configuredTaken
-            ? { PORT: process.env.PORT ?? String(configuredPort) }
-            : {};
-        const env: NodeJS.ProcessEnv = { ...portEnv, ...settings.environment };
-        const spawned = spawnDevServer(
-          settings.dev.command,
-          env,
-          explicitPort && settings.dev.portArgs ? portArguments(settings.dev.portArgs, explicitPort) : [],
-          (port) => {
-            if (configuredTaken && port === configuredPort) return;
-            announced ??= port;
-          },
-          (pid) => {
-            announcedPid ??= pid;
-          }
-        );
-        let exited = false;
-        let backgrounded = false;
+        // Usually once. Again, on another port, when the port the dev server was given was taken by another
+        // program before the dev server could have it: there is a moment between choosing a free port and the
+        // dev server asking for it, and what then answers there is not this site.
+        for (;;) {
+          // Choose a free port when the adapter can pass one, or when the
+          // configured port is already taken (so PORT steers servers without
+          // portArgs away from the foreign listener); the server's own announced
+          // port still wins if it differs.
+          const explicitPort =
+            settings.dev.portArgs || (configuredTaken && configuredPort) || lost.length
+              ? await reservePort(configuredPort, [...(configuredTaken && configuredPort ? [configuredPort] : []), ...lost])
+              : null;
 
-        void childExited.then(() => {
-          exited = true;
-        });
-        const failed = () => {
-          if (!exited || backgrounded) return;
-          // Some dev servers detach and exit 0 after announcing where they
-          // run. That is a start, not a failure: follow the announced URL.
-          if (childExitCode === 0 && announced !== null) {
-            backgrounded = true;
-            // The launcher is gone; its process group is not ours to signal any more.
-            child = null;
-            if (announcedPid !== null && announcedPid !== spawned.pid && pidAlive(announcedPid)) {
-              detached = { pid: announcedPid, port: announced };
-              liveDetached.add(announcedPid);
-              installExitHook();
-              pushLog(`The preview server moved to the background (process ${announcedPid}); stopping the preview will stop it.`);
-            } else {
-              externallyOwned = true;
-              pushLog("The preview server moved to the background without saying which process it is, so it will be left running when the preview stops.");
+          if (explicitPort !== null) {
+            // Recorded before the stale check, so a stop() that landed meanwhile still releases it.
+            if (reserved !== null) reservedPorts.delete(reserved);
+            reserved = explicitPort;
+          }
+          if (stale()) {
+            if (explicitPort !== null && reserved === explicitPort) {
+              reservedPorts.delete(explicitPort);
+              reserved = null;
             }
-            return;
+            return snapshot();
           }
-          throw new GalleyError("preview", "The preview stopped before it was ready. The log below says why.", log.slice(-20).join("\n"));
-        };
-        // Only ports this server is known to use: the one it announced, the one
-        // it was told to use, or the configured one when nothing else held it.
-        const candidates = () =>
-          [announced, explicitPort, configuredTaken || explicitPort ? null : configuredPort].filter(
-            (port): port is number => port !== null && !(configuredTaken && port === configuredPort)
+          let announced: number | null = null;
+          let announcedPid: number | null = null;
+          // PORT too, for dev servers that read it. The adapter's variables come
+          // last: they are set on purpose and may name a port of their own.
+          const portEnv: NodeJS.ProcessEnv = explicitPort
+            ? { PORT: String(explicitPort) }
+            : configuredPort && !configuredTaken
+              ? { PORT: process.env.PORT ?? String(configuredPort) }
+              : {};
+          const env: NodeJS.ProcessEnv = { ...portEnv, ...settings.environment };
+          const spawned = spawnDevServer(
+            settings.dev.command,
+            env,
+            explicitPort && settings.dev.portArgs ? portArguments(settings.dev.portArgs, explicitPort) : [],
+            (port) => {
+              if ((configuredTaken && port === configuredPort) || lost.includes(port)) return;
+              // The latest, not the first: a dev server that moved on (it restarted, or the port it was told was
+              // taken) says its new port after its old one, and that is the one the preview should follow.
+              announced = port;
+            },
+            (pid) => {
+              announcedPid ??= pid;
+            }
           );
+          let exited = false;
+          let backgrounded = false;
+          /** Set when the dev server stopped before it was ready: the error that says so, unless the stop turns out to be for its port. */
+          let stoppedEarly: GalleyError | null = null;
 
-        upstream = await waitUntilSettled(candidates, stale, failed, Date.now() + (options.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS));
-        if (stale() || !upstream) return snapshot();
-        // A dev server that dies after becoming ready takes the preview down
-        // with it. (A backgrounded one has already "exited"; it is not watched.)
-        if (!backgrounded) {
           void childExited.then(() => {
-            if (child === spawned && !stale()) {
-              child = null;
-              void teardown().then(() => {
-                if (!stale()) set("error", { url: null, baselineUrl: null, baselineSource: null, detail: "The preview stopped unexpectedly. Restart it to try again." });
-              });
-            }
+            exited = true;
           });
+          const failed = () => {
+            if (!exited || backgrounded) return;
+            // Some dev servers detach and exit 0 after announcing where they
+            // run. That is a start, not a failure: follow the announced URL.
+            if (childExitCode === 0 && announced !== null) {
+              backgrounded = true;
+              // The launcher is gone; its process group is not ours to signal any more.
+              child = null;
+              if (announcedPid !== null && announcedPid !== spawned.pid && pidAlive(announcedPid)) {
+                detached = { pid: announcedPid, port: announced };
+                liveDetached.add(announcedPid);
+                installExitHook();
+                pushLog(`The preview server moved to the background (process ${announcedPid}); stopping the preview will stop it.`);
+              } else {
+                externallyOwned = true;
+                pushLog("The preview server moved to the background without saying which process it is, so it will be left running when the preview stops.");
+              }
+              return;
+            }
+            stoppedEarly = new GalleyError("preview", "The preview stopped before it was ready. The log below says why.", log.slice(-20).join("\n"));
+            throw stoppedEarly;
+          };
+          // Only ports this server is known to use: the one it announced, the one
+          // it was told to use, or the configured one when nothing else held it.
+          const candidates = () =>
+            [announced, explicitPort, configuredTaken || explicitPort ? null : configuredPort].filter(
+              (port): port is number => port !== null && !(configuredTaken && port === configuredPort)
+            );
+          /** The port the dev server was given, by argument or by PORT: the one another program can take in the meantime. */
+          const given = explicitPort ?? (configuredPort && !configuredTaken ? configuredPort : null);
+          /** When the dev server's own port was first found to answer for someone else, with the dev server neither stopping nor moving. */
+          let heldByOtherSince: number | null = null;
+          /**
+           * Addresses (`host:port`) found to carry nothing but this dev server, so not checked again. Keyed by the
+           * address that answered, not the port number: the only way another program's listener is ever reached is
+           * at an address the probe prefers over the dev server's, and that is a different address, so it is a key
+           * that hasn't been confirmed and is checked. A program taking the confirmed address itself afterwards is
+           * the "ready" takeover, out of this change.
+           */
+          const confirmed = new Set<string>();
+          /**
+           * Whether the address that answered is this dev server's, asked the first time that address answers and
+           * each time after until it is found to carry nothing but the dev server: a program can take the port, or
+           * one of its addresses, at any moment before then. The site's settings can turn the check off
+           * (`dev.trustPort`) for a dev command that runs its server where the system can't show it as its own.
+           */
+          const ours = async (host: string, port: number): Promise<boolean> => {
+            if (spawned.pid === undefined || settings.dev!.trustPort || confirmed.has(`${host}:${port}`)) return true;
+            if (backgrounded && port === announced) return true;
+            const standing = await startedHere(port, spawned.pid, options.root, process.pid);
+
+            if (standing === "shared") throw new PortTaken(port);
+            if (standing === "foreign") {
+              // Not this dev server. It hasn't taken the port: it will stop (the port stays taken, and a restart
+              // follows below), or move to one of its own (announced, and followed). Given a while to do neither.
+              if (port === given) {
+                heldByOtherSince ??= Date.now();
+                if (Date.now() - heldByOtherSince >= (options.portHeldMs ?? PORT_HELD_MS)) throw new ForeignHeld(port);
+              }
+              return false;
+            }
+            heldByOtherSince = null;
+            if (standing === "own") confirmed.add(`${host}:${port}`);
+            else if (!uncheckable.has(port)) {
+              // "unknown": nothing here can say whose the listeners are. Not remembered, so it is said once and no more.
+              uncheckable.add(port);
+              pushLog(hosted ? `Port ${port} is answering, and the server can't check which program has it, so it is taken to be the preview's own.` : `Port ${port} is answering, and it couldn't be checked here that it is this site's own preview answering (this system can't say which program has a port), so it is taken to be.`);
+            }
+            return true;
+          };
+
+          try {
+            upstream = await waitUntilSettled(candidates, stale, failed, Date.now() + (options.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS), ours);
+          } catch (error) {
+            // A listener no part of which is this preview's held the dev server's port for the whole wait, and the
+            // dev server neither stopped nor moved: another port would be as invisible. End, naming the setting.
+            if (error instanceof ForeignHeld) {
+              await stopChild();
+              throw new GalleyError("preview", portGivenUpMessage(error.port), log.slice(-20).join("\n"));
+            }
+            // A port the dev server was given turned out to be another program's: it answered there alongside this
+            // dev server (`PortTaken`), or the dev server stopped and left the port held by a program that isn't
+            // its own. A dev server that stopped with its port free, or still held by its own child, stopped for a
+            // reason of its own, and is not started again.
+            let taken: number | null = error instanceof PortTaken ? error.port : null;
+
+            if (taken === null && error === stoppedEarly && given !== null && !stale() && !(await portIsFree(given)) && (await startedHere(given, spawned.pid ?? -1, options.root, process.pid)) !== "own") {
+              taken = given;
+            }
+            if (taken === null || lost.length + (configuredTaken ? 1 : 0) - startedWithTaken >= PORT_RESTARTS || stale()) {
+              if (error instanceof PortTaken) {
+                throw new GalleyError("preview", portGivenUpMessage(error.port), log.slice(-20).join("\n"));
+              }
+              throw error;
+            }
+            pushLog(hosted ? "The preview's port was taken by another program on the server before the preview could use it, so the preview is starting again on another port." : `Port ${taken} was taken by another program before the preview could use it, so the preview is starting again on another port.`);
+            await stopChild();
+            if (taken === configuredPort) configuredTaken = true;
+            else lost.push(taken);
+            continue;
+          }
+          if (stale() || !upstream) return snapshot();
+          // A dev server that dies after becoming ready takes the preview down
+          // with it. (A backgrounded one has already "exited"; it is not watched.)
+          if (!backgrounded) {
+            void childExited.then(() => {
+              if (child === spawned && !stale()) {
+                child = null;
+                void teardown().then(() => {
+                  if (!stale()) set("error", { url: null, baselineUrl: null, baselineSource: null, detail: "The preview stopped unexpectedly. Restart it to try again." });
+                });
+              }
+            });
+          }
+          break;
         }
       }
       if (!upstream) return snapshot();

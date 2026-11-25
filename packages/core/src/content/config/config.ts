@@ -165,6 +165,7 @@ export function mergeConfig(detected: SiteModel, config: GalleyConfig | null): S
           command: config.dev?.command ?? detected.dev!.command,
           port: config.dev?.port ?? detected.dev?.port ?? null,
           ...(!config.dev?.command && detected.dev?.portArgs ? { portArgs: detected.dev.portArgs } : {}),
+          ...(config.dev?.trustPort ? { trustPort: true } : {}),
         }
       : null;
   const build = config.build?.command || detected.build ? { command: config.build?.command ?? detected.build!.command, outDir: config.build?.outDir ?? detected.build?.outDir ?? "dist" } : null;
