@@ -61,13 +61,19 @@ const BRING_IN_TIMEOUT_MS = 60 * 60_000;
  */
 const NO_BACKGROUND_WORK = ["maintenance.auto=false", "gc.auto=0"];
 /**
- * For bringing versions in, on top of that: the repository's own hooks are
- * not run. A hook after a merge (installing packages, say) would run with
- * the save lock held, for as long as it liked; and what a hosted editor's
- * own round brings in, nobody asked for, so nothing of the site's runs for
- * it. The preview installs what newer versions need (site/service.ts).
+ * For looking at the code host and for bringing its versions in, on top of
+ * that: the repository's own hooks are not run. A hook after a merge
+ * (installing packages, say) would run with the save lock held, for as long
+ * as it liked; and what a hosted editor's own round brings in, nobody asked
+ * for, so nothing of the site's runs for it. The preview installs what newer
+ * versions need (site/service.ts). A look changes no file, but git has a
+ * hook for it too (reference-transaction, when the ref that remembers the
+ * code host moves), and a look is made every few minutes, by whoever opens
+ * Version history, and before a publish that then publishes nothing: none
+ * of those is a moment for the site's own programs. Publishing itself still
+ * runs the site's checks.
  */
-const BRING_IN_CONFIG = [...NO_BACKGROUND_WORK, "core.hooksPath=/dev/null"];
+const NO_HOOKS = [...NO_BACKGROUND_WORK, "core.hooksPath=/dev/null"];
 const CHUNK = 200;
 
 export const NOT_A_REPO =
@@ -260,7 +266,7 @@ async function push(repo: Git, remote: string, source: string, target: string): 
  */
 async function behindRemote(repo: Git, remote: string, branch: string): Promise<number> {
   const fetched = await repo.run(["fetch", "--quiet", "--no-tags", remote, `+refs/heads/${branch}:refs/remotes/${remote}/${branch}`], {
-    config: NO_BACKGROUND_WORK,
+    config: NO_HOOKS,
     allowFailure: true,
     timeoutMs: GIT_NETWORK_TIMEOUT_MS,
   });
@@ -839,7 +845,7 @@ export async function look(host: RepoHost): Promise<Look | null> {
 
   if (!source) return null;
   const fetched = await repo.run(["fetch", "--quiet", "--no-tags", source.remote, `+refs/heads/${source.branch}:${source.ref}`], {
-    config: NO_BACKGROUND_WORK,
+    config: NO_HOOKS,
     allowFailure: true,
     timeoutMs: GIT_NETWORK_TIMEOUT_MS,
   });
@@ -877,7 +883,7 @@ async function fastForward(host: RepoHost, info: RepoInfo, target: string, aroun
   try {
     // Inside the try: when stopping the preview throws, `after` still runs and starts it again.
     await around?.before();
-    const merged = await repo.run(["merge", "--ff-only", "--no-edit", "--no-autostash", "--quiet", target], { config: BRING_IN_CONFIG, allowFailure: true, timeoutMs: BRING_IN_TIMEOUT_MS });
+    const merged = await repo.run(["merge", "--ff-only", "--no-edit", "--no-autostash", "--quiet", target], { config: NO_HOOKS, allowFailure: true, timeoutMs: BRING_IN_TIMEOUT_MS });
 
     if (merged.code !== 0) {
       outcome = { ok: false, stderr: merged.stderr, timedOut: merged.timedOut };

@@ -21,6 +21,16 @@ entry says how.
   status bar reads "Live updates paused — move the pointer or press a key to
   reconnect".
 
+### Fixed
+
+- **Looking at the code host runs none of the repository's own hooks.**
+  Bringing newer versions in already ran none. The look before it did: git
+  has one hook for it (`reference-transaction`), and a repository that has
+  one saw it run every few minutes on a hosted editor, whenever Version
+  history opened, and before a publish that then published nothing. A look
+  runs no hook now, wherever the app makes it. Publishing still runs the
+  site's own checks.
+
 ## 0.4.0 — 2026-11-25
 
 ### Added
