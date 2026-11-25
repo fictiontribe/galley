@@ -1,6 +1,6 @@
 {
   "name": "galley-cms",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "type": "module",
   "description": "Galley, the open-source AI CMS for static sites: change a page, check it in Proof, publish it to your own git repository. Run `npx galley-cms` in a site's folder.",
   "keywords": [

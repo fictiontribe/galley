@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.2 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.3 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // Salesforce Web-to-Lead. A form post to the Web-to-Lead servlet with the
 // org's `oid`, standard lead fields by their Salesforce names (first_name,
