@@ -63,7 +63,8 @@ export GALLEY_CLI=$CAPTURE_DIR/cli/galley.mjs
 
 The bundle is a copy: later edits to the repository don't change a run in progress. The words
 "captured … Galley X.Y.Z" in `howto.json` are the version that build reports, which is the last
-release's until the version is raised.
+release's until the version is raised. Say what the build was with `CAPTURE_BUILD` when you run
+the capture (`CAPTURE_BUILD="built from 1a2b3c4, before 0.5.0"`): the words follow the version.
 
 To keep later edits to the repository from changing a run, copy
 `packages/core/test/deploy/fakes/` and `packages/import-wordpress/test/{serve-fake-site,fake-site,png}.ts`

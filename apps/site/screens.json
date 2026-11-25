@@ -1,18 +1,19 @@
 {
-  "about": "Real captures used on the marketing site: the Galley app (public/screens/ showcase, public/docs/ the docs pages' pictures, public/howto/ the how-to steps) and the Caddow example site itself (public/sites/). Every one comes from scripts/capture-screens.mjs, run against the released Galley (galley-cms 0.2.0 from npm) with a throwaway home, throwaway copies of the fashion starter (Caddow) and the small-business starter (Lowfield, the target of the WordPress move), a stand-in Cloudflare and a stand-in WordPress site. 1440 × 900 window at 2× device scale, light theme, WebP only, with a 1× copy (<name>@1x.webp). Showcase and how-to pictures are kept under about 160 KB (quality is lowered before anything is shrunk); docs pictures keep the exact size their page declares and stay under 120 KB.",
+  "about": "Real captures used on the marketing site: the Galley app (public/screens/ showcase, public/docs/ the docs pages' pictures, public/howto/ the how-to steps) and the Caddow example site itself (public/sites/). Every one comes from scripts/capture-screens.mjs, run against Galley built from this repository (a bundle of the CLI, given to scripts/capture/start.sh as GALLEY_CLI) with a throwaway home, throwaway copies of the fashion starter (Caddow) and the small-business starter (Lowfield, the target of the WordPress move), a stand-in Cloudflare and a stand-in WordPress site. 1440 × 900 window at 2× device scale, light appearance, the Quiet theme, no scroll bars, WebP only, with a 1× copy (<name>@1x.webp). Showcase and how-to pictures are kept under about 160 KB (quality is lowered before anything is shrunk); docs pictures keep the exact size their page declares and stay under 120 KB.",
   "setup": [
-    "Everything is in scripts/capture/: README.md has the exact steps; start.sh starts each part with a clean environment and a throwaway home (sites, host, wordpress, hosting, galley, hosted, stop); serve-host.mts is the stand-in Cloudflare for putting the site online.",
-    "sh scripts/capture/start.sh sites — the two throwaway sites, made with the released CLI; versions are published as Tobiah Rusk <tobiah@caddow.example>, an invented person from the starter.",
+    "Everything is in scripts/capture/: README.md has the exact steps; start.sh starts each part with a clean environment and a throwaway home (sites, host, wordpress, hosting, galley, hosted, people, stop); serve-host.mts is the stand-in Cloudflare for putting the site online.",
+    "This set shows what no release has yet, so it is taken from the repository: build the app and a bundle of the CLI (README, “Pictures of what isn't released yet”) and export GALLEY_CLI=<the bundle>. Every part below then runs the bundle; without GALLEY_CLI they run the released package.",
+    "sh scripts/capture/start.sh sites — the two throwaway sites, made with that CLI; versions are published as Tobiah Rusk <tobiah@caddow.example>, an invented person from the starter.",
     "sh scripts/capture/start.sh host — the stand-in Cloudflare on 4791 (made-up account, caddow.example-studio.workers.dev, the zone caddow.example); prints the key it accepts.",
     "sh scripts/capture/start.sh wordpress — the importer's stand-in WordPress site on 4792 (Fernhill Garden Studio: 12 posts, 6 pages, 2 built with Elementor).",
-    "sh scripts/capture/start.sh hosting — the stand-in Fly.io and Cloudflare for \"Host the editor online\" (scripts/rehearse-hosting.mjs on 4793/4794, a fake install on 4796); writes the variables the app needs to hosting.env.",
-    "ANTHROPIC_API_KEY=… sh scripts/capture/start.sh galley — the released Galley on 4790, open on Caddow, pointed at the stand-ins; the key comes from the shell of whoever runs it and goes to that process only.",
+    "sh scripts/capture/start.sh hosting — the stand-in Fly.io and Cloudflare for \"Host the editor online\" (scripts/rehearse-hosting.mjs on 4793/4794, a fake install on 4796, a stand-in Google Cloud on 4544); writes the variables the app needs to hosting.env.",
+    "ANTHROPIC_API_KEY=… sh scripts/capture/start.sh galley — that Galley on 4790, open on Caddow, pointed at the stand-ins; the key comes from the shell of whoever runs it and goes to that process only.",
     "HOSTED_PASSWORD=… sh scripts/capture/start.sh hosted — a hosted install (galley serve, no site) at http://cms.localhost:4797, for its sign-in and first run.",
     "Accounts (the people step): a second hosted install with Caddow and nobody signed up — scripts/capture/README.md, “Accounts”: sh scripts/capture/start.sh people, then PEOPLE_SETUP=<its one-time Setup: link>.",
     "Open Lowfield too (POST /api/sites/open), read both ids (GET /api/sites); the token is in the Open: line of the Galley log."
   ],
-  "command": "GALLEY_ORIGIN=http://127.0.0.1:4790 GALLEY_TOKEN=<token> GALLEY_SITE=<Caddow id> SITE_DIR=<capture dir>/home/sites/caddow WP_SITE=<Lowfield id> WP_URL=http://127.0.0.1:4792 CF_KEY=<stand-in key> HOSTED_URL=http://cms.localhost:4797 HOSTED_PASSWORD=<the throwaway password> PLAYWRIGHT_MODULES=<node_modules with playwright-core> node scripts/capture-screens.mjs   (no step names = the whole session in order, about an hour)",
-  "captured": "2026-11-24, Galley 0.2.0 (the published package), the whole set in one session following scripts/capture/README.md. Assistant spend: $0.48 as the app reports it (the brand read, two edits, the Publish window's note). people, invite, contributor-home, dark-editor and dark-proof: 2026-11-24 from galley-cms 0.3.0 (the dark step's assistant request cost $0.15).",
+  "command": "GALLEY_ORIGIN=http://127.0.0.1:4790 GALLEY_TOKEN=<token> GALLEY_SITE=<Caddow id> SITE_DIR=<capture dir>/home/sites/caddow WP_SITE=<Lowfield id> WP_URL=http://127.0.0.1:4792 CF_KEY=<stand-in key> HOSTED_URL=http://cms.localhost:4797 HOSTED_PASSWORD=<the throwaway password> PLAYWRIGHT_MODULES=<node_modules with playwright-core> CAPTURE_BUILD=\"built from <commit>, before <release>\" node scripts/capture-screens.mjs   (no step names = the whole session in order, about an hour; with the three assistant steps left out, under ten minutes on a recent Mac)",
+  "captured": "2026-11-24, from a bundle built from this repository at ed3e13b, before 0.4.0 (the app still reports 0.3.1), in Chromium 159.0.8154.6, following scripts/capture/README.md: every picture that shows neither the assistant nor anything it changed (26 in screens/ and the recording, 12 in docs/, 39 in howto/). The session ran without the three assistant steps (brand, ask-journal, ask), so nothing was spent. Waiting for a session with the assistant connected, and until then as they were (Galley 0.2.0; dark-editor and dark-proof 0.3.0): screens/ assistant, brand-material, brand-proposal, brand-type, brand-voice, dark-editor, dark-proof, form, history, proof-changes, proof-source, publish, scripts, site-home; docs/ assistant-reply, brand, editor-overview, form-builder, history, media-generate, publish-dialog, sites, undo-publish-dialog; howto/ add-analytics-2, ask-the-assistant-1 to 3, proof-and-publish-1 to 5, set-up-brand-1 to 5. screens/media (0.2.0) is retaken with the pictures of media in a bucket.",
   "screens": [
     {
       "file": "public/screens/site-home.webp",
@@ -186,17 +187,17 @@
     {
       "file": "public/screens/people.webp",
       "step": "people",
-      "shows": "Galley 0.3.0, a hosted editor's Install page at People, signed in as the owner (Tobiah Rusk): Tobiah Rusk (Owner, You), Ines Marrow (Editor) and Corin Vale (Contributor) with when each last signed in, and the Invite someone form (e-mail, Owner / Editor / Contributor, Invite)."
+      "shows": "A hosted editor's Install page at People, signed in as the owner (Tobiah Rusk): Tobiah Rusk (Owner, You), Ines Marrow (Editor) and Corin Vale (Contributor) with when each last signed in, and the Invite someone form (e-mail, Owner / Editor / Contributor, Invite)."
     },
     {
       "file": "public/screens/invite.webp",
       "step": "people",
-      "shows": "Galley 0.3.0: the window for a new invitation (hesper@caddow.example, contributor) with its one-time /join link, Copy link, and that it works once and stops working in 7 days. The install it belongs to was deleted after the capture."
+      "shows": "The window for a new invitation (hesper@caddow.example, contributor) with its one-time /join link, Copy link, and that it works once and stops working in 7 days. The install it belongs to was deleted after the capture."
     },
     {
       "file": "public/screens/contributor-home.webp",
       "step": "people",
-      "shows": "Galley 0.3.0: Site home as the contributor (Corin Vale) sees it: no Publish button, “An editor or owner publishes.” in the top bar, and “nothing changes until an editor or owner publishes”."
+      "shows": "Site home as the contributor (Corin Vale) sees it: no Publish button, “An editor or owner publishes.” in the top bar, and “nothing changes until an editor or owner publishes”."
     },
     {
       "file": "public/screens/dark-editor.webp",
@@ -236,6 +237,11 @@
       ]
     },
     {
+      "file": "public/screens/desktop-mac-home.webp, desktop-mac-sites.webp",
+      "step": "none: not from capture-screens.mjs",
+      "shows": "The desktop app's own window on macOS (Site home on Caddow; Your sites): pictures of the window itself, for the download page and the tour. Left as they are; they show the look before 0.4.0's."
+    },
+    {
       "file": "public/docs/*.webp (21 pictures)",
       "step": "analytics, bulk-redirects, add-form, brand, search-ai, wordpress, arrange, change-page, click (+ click-doc, which-one), search-ai (+ crawler-bar for how-to step 4), ask-journal (+ assistant-reply), showcase (+ media-generate), publish (+ publish-doc, undo-doc), online",
       "shows": "The docs pages' pictures, each at the exact size its page declares."
@@ -254,9 +260,10 @@
   "notes": [
     "The session: GA4, redirects, a form field, the brand and two Search & AI fixes are each published as Tobiah Rusk, so Version history reads as one session; then three changes wait in Proof (the atelier heading in the form, the Pieces heading on the page, the campaign hero and the journal heading by the assistant) for every showcase capture; then they are published, and the site goes online on the stand-in host. Then \"Host the editor online\" is walked to its plan against the stand-in Fly.io (nothing created), and a hosted install started on this computer is signed in to its first run (no site connected: a hosted install only takes a repository on a code host).",
     "search-ai first publishes a journal post that still links to /about-us/ (now redirected), so Search & AI has a certain fix to offer. Its first run of the checks usually finds the preview's pages still compiling, so it runs them twice.",
+    "The import's part-way picture (wordpress-progress, move-from-wordpress-4): the stand-in site comes over in about a second and the screen asks how far it is every 450 ms, so the screen alone rarely shows it part-way. The step reads the import's state itself and, from the first answer with posts part-way, gives the screen that same answer until the picture is taken. What the picture shows is a real answer of that import, held.",
     "Inbox: the two visitors (Ines Marrow, Corin Vale) and the newsletter sign-up are invented, and posted to the capture address from another local address (http://localhost:8080), as a page served some other way would: from the app's own address the inbox marks a submission Test.",
     "Where a docs page's declared frame is a little smaller than the window it shows (arrange, media-generate, publish-dialog, undo-publish-dialog, proof-what-changed), a slightly larger area of the same shape is cut and brought to the declared size. The docs' assistant reply is taken in a 746 px window so the assistant pane is as wide as the picture.",
-    "The dev server's toolbar is hidden in every capture, including the recording.",
+    "The dev server's toolbar is hidden in every capture, including the recording, and so are the app's passing messages (docs/inbox and add-a-form-4 are taken after “Test submission received” is closed).",
     "Agent files are not captures: the /ai-first/ page shows this site's own files, read at build time."
   ]
 }
