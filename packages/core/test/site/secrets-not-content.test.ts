@@ -9,6 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { findRenderSource } from "../../src/seo/render";
 import { cleanupAll, disposeAll, makeSite, openSite, sh } from "./helpers";
 
 const SECRET = "TOKEN=never-content-4f1c";
@@ -82,6 +83,47 @@ describe("a secrets file among a collection's files", { timeout: 120_000 }, () =
 
     expect(changes.files.map((file) => file.path)).toContain("src/content/pages/waiting-notes.md");
     expect(JSON.stringify(changes)).not.toContain("never-content-4f1c");
+  });
+
+  it("is not read out of the build output either: a rendered page that is a link out of it reaches nothing", async () => {
+    const root = makeSite({});
+
+    // A secret outside the build output, and a secrets file named inside it.
+    writeFileSync(join(root, ".env"), `${SECRET}\n`);
+    const { site } = await openSite(root);
+    const model = await site.model();
+    const outDir = model.build?.outDir ?? "dist";
+
+    // Written the way a static build would, by hand (no framework install): a home page, pages that are links
+    // pointing out of the output folder at the secret, and a secrets file sitting inside the output.
+    mkdirSync(join(root, outDir, "away"), { recursive: true });
+    writeFileSync(join(root, outDir, "index.html"), "<!doctype html><title>Home</title><body>ordinary words only</body>");
+    writeFileSync(join(root, outDir, ".env"), `${SECRET}\n`);
+    symlinkSync("../.env", join(root, outDir, "leak.html"));
+    symlinkSync("../../.env", join(root, outDir, "away/index.html"));
+
+    // The Search and AI render read built pages through this source (the preview isn't running in the test).
+    const source = await findRenderSource(site, model, Date.now());
+
+    if (!source) throw new Error("expected the build output to be the render source");
+    expect(source.kind).toBe("build");
+    // The ordinary home still renders — the test is not passing only because nothing is served.
+    const home = await source.get("/");
+
+    expect(home?.status).toBe(200);
+    expect(home?.body).toContain("ordinary words only");
+    // A link out of the output folder, or a secrets file in it, reaches nothing.
+    for (const urlPath of ["/leak", "/leak/", "/away/", "/.env"]) {
+      const got = await source.get(urlPath);
+
+      expect(got?.status, urlPath).toBe(404);
+      expect(got?.body ?? "", urlPath).not.toContain("never-content-4f1c");
+    }
+    // And the page listing offers neither link.
+    const pages = (await source.pages()) ?? [];
+
+    expect(pages).toContain("/");
+    expect(pages.filter((page) => /leak|away/.test(page)), "links out are not listed as pages").toEqual([]);
   });
 
   it("is no entry when the settings name it as a collection, a collection's pattern takes it in, or a template is one", async () => {

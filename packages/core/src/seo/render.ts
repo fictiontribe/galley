@@ -12,7 +12,7 @@ import { glob } from "tinyglobby";
 import { OVERLAY_SCRIPT_PATH } from "../api";
 import { stripBase } from "./html";
 import type { SiteModel, SiteService } from "../types";
-import { normalizeRepoPath } from "../workspace/paths";
+import { normalizeRepoPath, shownWhereTheyAre } from "../workspace/paths";
 import { mayBeShown } from "../workspace/policy";
 
 export interface Fetched {
@@ -139,6 +139,10 @@ function buildSource(dir: string, builtAt: number, newestContent: number, base: 
     return [`${rel}/index.html`, `${rel}.html`];
   };
   const stale = newestContent > builtAt + 1000;
+  // Resolve every page before it is read, like every other exit: a page that is a link, or lies under one, is this
+  // build's only where its real place is inside the output folder and may be shown — never a link out of it, a
+  // secrets file, or the version history's own. The string check the read used before followed such a link.
+  const shown = shownWhereTheyAre(dir);
 
   return {
     kind: "build",
@@ -148,15 +152,15 @@ function buildSource(dir: string, builtAt: number, newestContent: number, base: 
     async pages() {
       const files = await glob("**/*.html", { cwd: dir, onlyFiles: true });
 
-      return files.map((file) => (file === "index.html" ? "/" : file.endsWith("/index.html") ? `/${file.slice(0, -"index.html".length)}` : `/${file.replace(/\.html$/, "")}`));
+      return files
+        .filter((file) => shown(file))
+        .map((file) => (file === "index.html" ? "/" : file.endsWith("/index.html") ? `/${file.slice(0, -"index.html".length)}` : `/${file.replace(/\.html$/, "")}`));
     },
     async get(urlPath) {
       for (const candidate of fileFor(urlPath)) {
-        const absolute = join(dir, ...candidate.split("/"));
-
-        if (!absolute.startsWith(dir)) continue;
+        if (!shown(candidate)) continue;
         try {
-          const body = await readFile(absolute, "utf8");
+          const body = await readFile(join(dir, ...candidate.split("/")), "utf8");
           const ext = candidate.split(".").pop()?.toLowerCase() ?? "";
 
           return { status: 200, body, type: TYPES[ext] ?? "application/octet-stream", finalPath: stripBase(urlPath, base) };
@@ -169,7 +173,7 @@ function buildSource(dir: string, builtAt: number, newestContent: number, base: 
     async size(urlPath) {
       const [candidate] = fileFor(urlPath);
 
-      if (!candidate) return null;
+      if (!candidate || !shown(candidate)) return null;
       const info = await stat(join(dir, ...candidate.split("/"))).catch(() => null);
 
       return info?.isFile() ? info.size : null;

@@ -83,6 +83,13 @@ export function summarizeParsed(parsed: ParsedDocument, format: EntryFormat, mti
 /** Parsed data for a file, from the cache when the file has not changed. */
 export async function readCached(root: string, path: string, format: EntryFormat): Promise<CachedDocument | null> {
   const file = absolute(root, path);
+
+  // Resolve at the read, not only when the collection was listed: a file that is a link out of the site, or reaches
+  // a secrets file or .git, is not the collection's even if it reached here without the listing's own check.
+  if (!shownWhereTheyAre(root)(normalizePath(path))) {
+    cache.delete(file);
+    return null;
+  }
   let info;
 
   try {
