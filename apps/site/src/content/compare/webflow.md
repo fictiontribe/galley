@@ -5,7 +5,7 @@ kind: versus
 product: Webflow
 heading: Webflow is the whole website in one product. Galley edits a site that lives in your own repository.
 name: Galley and Webflow
-lead: "In Webflow, designers build on a visual canvas, and the design, the content and the hosting stay on Webflow's platform. Galley is a Webflow alternative of another shape: free and open-source, it edits a static site's files in your own Git repository, and the site's code stays your developers'."
+lead: "In Webflow, designers build on a visual canvas, and the design, the content and the hosting live on Webflow's platform. Galley is a Webflow alternative of another shape: free and open-source, it edits a static site's files in your own Git repository, and the site's code stays your developers'."
 published: "2026-11-25"
 checked: November 2026
 order: 10
@@ -28,7 +28,7 @@ table:
       better: ours
     - label: Price
       ours: Free. Your AI key and hosting are yours
-      theirs: Starter free (webflow.io, 2 pages); Premium $25 a month yearly (Nov 2026)
+      theirs: Starter free (webflow.io, 2 pages); Premium $25 a month yearly + seats (Nov 2026)
       better: even
     - label: Designing pages
       ours: Not a design tool; arranges sections (preview)
@@ -163,7 +163,7 @@ related: [/wordpress/, types-of-cms, cloudcannon]
 
 For some teams. They are different kinds of product, so the answer depends on what you need from a website.
 
-Webflow is a hosted visual site builder with a CMS built in. A designer builds the site on Webflow's canvas without code; in Webflow's words, "You design, we generate the code". Content with a shared structure, such as blog posts, lives in Webflow's CMS, which its documentation calls "a structured database", and paid Site plans include hosting. Design, content and hosting are one product, on Webflow's platform. Webflow started in 2013 and counts 300,000 organisations using it.
+Webflow is a hosted visual site builder with a CMS built in. A designer builds the site on Webflow's canvas without code; in Webflow's words, "You design, we generate the code". Content with a shared structure, such as blog posts, lives in Webflow's CMS, which its documentation calls "a structured database", and paid Site plans include hosting. Design, content and hosting are one product, on Webflow's platform. Webflow started in 2013 and counts 300,000 organisations using it (November 2026).
 
 Galley edits a static site that developers have built in a framework such as Astro and keep in a Git repository. The words are Markdown, JSON and YAML files beside the code. Everyone else changes them in a form, on the page or by asking an assistant, and each publish is a commit to your repository. The code stays your developers', on the host you choose.
 
@@ -183,7 +183,7 @@ As of November 2026, Webflow charges for each site and for the team separately. 
 | Team | $2,500 a month | Not offered | A Platform plan: a site, 5 full and 5 limited seats, 100 Collections |
 | Enterprise | Priced on request | Priced on request | Custom roles, single sign-on, EU hosting |
 
-Premium is new: from 13 May 2026 it replaced the CMS and Business plans for new sites, and existing sites moved to it at renewal between June and November. The team is billed on a Workspace plan: for in-house teams, Starter is free, Core is $19 a month paid yearly ($28 monthly) and Growth $49 ($60); for freelancers and agencies, Freelancer is $16 ($24) and Agency $35 ($42). Seats beyond the owner's cost extra: $39 a month paid yearly ($45 monthly) for a full seat, which designs, and $15 ($19) for a limited seat, which edits content. Reviewers are free. Those figures are from [Webflow's pricing page](https://webflow.com/pricing), read on both its yearly and its monthly setting. Check it before you decide, because plans change.
+Premium is new: from 13 May 2026 it replaced the CMS and Business plans for new sites, and existing sites move to it at their first renewal from 29 June 2026, or from November for some accounts. The team is billed on a Workspace plan: for in-house teams, Starter is free, Core is $19 a month paid yearly ($28 monthly) and Growth $49 ($60); for freelancers and agencies, Freelancer is $16 ($24) and Agency $35 ($42). Seats beyond the owner's cost extra: $39 a month paid yearly ($45 monthly) for a full seat, which designs, and $15 ($19) for a limited seat, which edits content. Reviewers are free. Those figures are from [Webflow's pricing page](https://webflow.com/pricing), read on both its yearly and its monthly setting. Check it before you decide, because plans change.
 
 Galley costs nothing: Apache-2.0, one edition, no paid tier. The assistant runs on Anthropic's Claude with your own key, billed to whoever owns it, and hosting is yours to arrange: static files cost little to host, and Cloudflare Pages, for one, serves static assets free on every plan.
 
@@ -265,6 +265,6 @@ From Galley to Webflow, the content is already files in your repository. But Web
 
 **Who will make the site, and who will change it after launch?** If designers do both, Webflow. If developers make it and marketers change it, ask how each tool keeps the design safe.
 
-**When the AI makes a change, who sees it before it is live, and in what form?** A canvas shows the new page. Ask whether a reviewer can also see exactly what moved.
+**When the AI makes a change, who sees it before it is live, and in what form?** A canvas shows the new page; on Team and Enterprise, a branch merge shows a summary. Ask what a reviewer sees on your plan.
 
 **What do you take with you if you leave?** From Webflow, a static export and a CSV file per Collection. From Galley, the repository. Know the answer before you need it.

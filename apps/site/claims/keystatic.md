@@ -117,3 +117,5 @@ Left out, because Keystatic's own pages disagree or don't say:
 
 Galley's side, added: "Galley has no scheduled publishing either" (docs/project/faq.md). The checker counted 49 distinct docs pages, not 51.
 
+After the coordinator's check (2026-11-25): TinaCMS's visual editing is on React and Astro sites (https://tina.io/docs/integration/frameworks; our /compare/tinacms/); keystatic.com has no llms.txt (https://keystatic.com/llms.txt answers 404); the currency remark is replaced by "The page gives no yearly price"; the README's "Things are experimental at the moment." is no longer quoted; the release cell carries its month; moving from Keystatic warns that Markdoc (.mdoc) isn't among the formats Galley's documentation lists (`docs/configuration/collections.md`); a hosted Galley editor on a public server has its own sign-in page (`docs/editing/signing-in.md`).
+

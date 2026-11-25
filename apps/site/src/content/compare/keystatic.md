@@ -5,7 +5,7 @@ kind: versus
 product: Keystatic
 heading: Keystatic and Galley agree that content is files. Keystatic has you describe them in TypeScript; Galley reads them.
 name: Galley and Keystatic
-lead: Both are free and open source, and both edit the Markdown, YAML and JSON in your codebase. Keystatic, a Thinkmill project, has developers describe the content in TypeScript, and its pages describe no AI features. Galley is new, needs no config file to start, and builds in an assistant and a check before anything goes live.
+lead: Both are free and open source, and both edit the Markdown, YAML and JSON in your codebase. Keystatic, a Thinkmill project, has developers describe the content in TypeScript, and its pages describe no AI features (November 2026). Galley is new, needs no config file to start, and builds in an assistant and a check before anything goes live.
 published: "2026-11-25"
 checked: November 2026
 order: 9
@@ -68,13 +68,13 @@ table:
       better: theirs
     - label: Maturity
       ours: First released November 2026
-      theirs: Public since 2023; still 0.x
+      theirs: Public since 2023; release 0.6.10 (Nov 2026)
       better: theirs
 faq:
   - q: Is Galley an alternative to Keystatic?
     a: For many static sites, yes. Both are free and open source, keep content as files in your repository and need no database. Galley reads the site without a config file, lets people edit on the page, and has an assistant and a proof built in. Keystatic gives developers a typed content model in TypeScript, rich-text components and, through Keystatic Cloud, sign-in for editors without GitHub accounts.
   - q: Is Keystatic free?
-    a: "Yes. Keystatic itself is MIT-licensed and costs nothing. Keystatic Cloud, an optional service for signing in (and, on Pro, images), is free for up to three users per team. As of November 2026 its docs say Pro \"starts at $10/month\", and each user beyond three costs $5 a month. They name no currency and no yearly price. Galley is free too; its assistant uses your own Anthropic key."
+    a: "Yes. Keystatic itself is MIT-licensed and costs nothing. Keystatic Cloud, an optional service for signing in (and, on Pro, images), is free for up to three users per team. As of November 2026 its docs say Pro \"starts at $10/month\", and each user beyond three costs $5 a month. The page gives no yearly price; check it before you decide. Galley is free too; its assistant uses your own Anthropic key."
   - q: Does Keystatic need a server?
     a: To edit on the deployed site, yes. The Admin UI at /keystatic and its API at /api/keystatic are server code, so the host must run Node.js, and an Astro site needs an adapter. In local mode you can edit on your computer and keep those routes off the live site. Galley adds no dependency or integration to the site; its editor runs on your computer or your own server (new).
   - q: Does Keystatic have AI features?
@@ -82,7 +82,7 @@ faq:
   - q: Can two people edit the same page at once?
     a: "In Keystatic, on Keystatic Cloud's paid Pro plan, whose docs list \"Multi-player editing (experimental)\" to \"collaborate with other editors in real-time on the same document.\" Galley has no real-time editing together. Everyone on one hosted editor works on one shared copy of the site, each publish carries the name of whoever pressed Publish, and a second save of a page someone has just changed is refused."
   - q: How is Keystatic different from TinaCMS?
-    a: "Both are open source, keep content as files in your repository and model it in a config file in code (`keystatic.config.ts`, `tina/config.ts`). TinaCMS calls itself \"Git-backed headless\": it gives the site \"a queryable content API\", and offers visual editing on React sites. A Keystatic site reads the files through its server-side Reader API or the framework's own loader. Galley differs from both: there's no config file to write first."
+    a: "Both are open source, keep content as files in your repository and model it in a config file in code (`keystatic.config.ts`, `tina/config.ts`). TinaCMS calls itself \"Git-backed headless\": it gives the site \"a queryable content API\", and offers visual editing on React and Astro sites. A Keystatic site reads the files through its server-side Reader API or the framework's own loader. Galley differs from both: there's no config file to write first."
 sources:
   - label: "Keystatic, home page"
     href: https://keystatic.com/
@@ -136,7 +136,7 @@ sources:
     href: /docs/running/hosted/
   - label: "Galley, the tour: what is built and what isn't yet"
     href: /tour/
-related: [cloudcannon, types-of-cms, /ai-first/]
+related: [cloudcannon, types-of-cms, tinacms]
 ---
 
 ## What do Galley and Keystatic have in common?
@@ -158,7 +158,7 @@ Keystatic is free and MIT-licensed, and its local mode needs no account at all. 
 | Free | Free | Up to 3 | Sign-in handled by Keystatic Cloud |
 | Pro | From $10 a month | More than 3, at $5 a month for each one beyond 3 | Multi-player editing (experimental), Cloud Images |
 
-The figures are from the [Keystatic Cloud page of its documentation](https://keystatic.com/docs/cloud); neither keystatic.com nor keystatic.cloud has a pricing page. The page names no currency, only a dollar sign, and doesn't say whether the $10 covers the first three users or whether there's a yearly price. A Pro plan applies to one team. Check the page before you decide.
+The figures are from the [Keystatic Cloud page of its documentation](https://keystatic.com/docs/cloud); neither keystatic.com nor keystatic.cloud has a pricing page. A Pro plan applies to one team. The page gives no yearly price; check it before you decide.
 
 Galley is free too: Apache-2.0, one edition, no paid tier today. The assistant runs on Anthropic's Claude with your own key, and each request is billed to whoever owns that key. Hosting is yours to arrange, and here the two differ: a Keystatic site that people edit online needs a host that runs Node.js, while a Galley site can stay plain built files.
 
@@ -184,7 +184,7 @@ Keystatic gives editors more where rich text is full of components. In MDX, Gall
 
 ## How does each one use AI?
 
-As of November 2026 we found no AI feature and no MCP server in Keystatic. We looked at its home page, its documentation, its blog (one post, from June 2023) and its GitHub README, and keystatic.com/llms.txt gives a "Page not found" error. That doesn't stop you using AI: a coding agent can change plain files like any other file in the repository. Keystatic just doesn't build anything for it.
+As of November 2026 we found no AI feature and no MCP server in Keystatic. We looked at its home page, documentation, blog and GitHub README, and keystatic.com has no llms.txt. That doesn't stop you using AI: a coding agent can change plain files like any other file in the repository. Keystatic doesn't build anything for it.
 
 Galley puts the assistant inside the editor, beside the page. You ask in plain words, it reads the site before it edits, it asks one short question when a request is ambiguous, and it quotes the new words back. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change it makes waits in the proof, and a person presses Publish. For people who'd rather use their own AI tool, Galley's [MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
 
@@ -204,7 +204,7 @@ Keystatic offers a reader of its own. "The Reader API is a Node.js API that lets
 
 The editor lives inside your site, at `/keystatic`, with its API at `/api/keystatic`, and that is server code. The Astro guide says "Because Keystatic needs to run serverside code and use Node.js APIs, you will need to add an Astro adapter to deploy your project", and the Next.js guide asks for a host that supports Node.js. In local mode you can keep the admin off the live site, as two recipes from its community show, and edit on a developer's computer.
 
-Galley adds nothing to the site to edit it: no dependency, integration or build plugin. Publishing is a commit, and your host builds from there. The editor runs on your computer, or as a [hosted editor](/docs/running/hosted/) on your own server with Docker, which is new and still in final checks. The live site stays built files, with no login on it.
+Galley adds nothing to the site to edit it: no dependency, integration or build plugin. Publishing is a commit, and your host builds from there. The editor runs on your computer, or as a [hosted editor](/docs/running/hosted/) on your own server with Docker, which is new and still in final checks. The live site stays built files, with no login on it; a hosted editor on a public server has its own sign-in page, at its own address.
 
 ## Which one suits a team?
 
@@ -214,7 +214,7 @@ Galley has roles where Keystatic's docs describe none, but they are new, and Gal
 
 ## Where does Galley fall short?
 
-- **It's young.** Version {version} of software first released in November 2026. Keystatic has been public since 2023, and its latest release, 0.6.10, came out on 17 November 2026. It is still at 0.x, and its README says "Things are experimental at the moment."
+- **It's young.** Version {version} of software first released in November 2026. Keystatic has been public since 2023, and its latest release, 0.6.10, came out on 17 November 2026.
 - **No editing together in real time.** Keystatic Cloud Pro offers it, marked experimental.
 - **Rich text with components.** Keystatic edits Markdoc and MDX components in its editor. Galley treats the props of MDX components as code, and doesn't list Markdoc among its formats.
 - **Editing online is new.** Keystatic's admin goes online with the site, on a host that runs Node.js. Galley's hosted editor needs Docker on a server you run.
@@ -229,7 +229,7 @@ Galley fits when the people who change the site aren't developers, and you want 
 
 ## Can you move from one to the other?
 
-Yes, and easily, because the content never leaves the repository. To try Galley on a Keystatic site, run `npx galley-cms` in the site's folder, or open the repository in the desktop app. Keystatic's config and routes can stay while you try. Galley has no importer for Keystatic, and needs none. Its only guided move is from [WordPress](/wordpress/), and that is new and still in final checks.
+Yes, because the content never leaves the repository. But if long text is in .mdoc files, as Keystatic's markdoc field stores it, note that Markdoc isn't among the formats Galley's documentation lists: try Galley on a copy first. To try Galley on a Keystatic site, run `npx galley-cms` in the site's folder, or open the repository in the desktop app. Keystatic's config and routes can stay while you try. Galley has no importer for Keystatic, and needs none. Its only guided move is from [WordPress](/wordpress/), and that is new and still in final checks.
 
 If you then leave Keystatic, remove its integration or route files and its config. Replace any Reader API calls with your framework's own way of reading files, as the Astro guide already does. If you used Cloud Images, that field "stores a reference to the image in the cloud", so bring those images into the repository first.
 

@@ -130,3 +130,5 @@ Left out, because Webflow's own pages disagree or don't say:
 
 Galley's side, corrected: "every change it makes waits in a proof"; "the content stays in your repository, as files" (the assistant does send requests to Anthropic); other AI tools over MCP can publish unless that is switched off.
 
+After the coordinator's check (2026-11-25): existing sites move to Premium "at their first renewal from 29 June 2026, or from November for some accounts" (Help Center, "Updated pricing… May 2026"); 300,000 organisations carries its month; the price cell adds "+ seats"; the review question says a branch merge shows a summary on Team and Enterprise (Help Center, page branching).
+
