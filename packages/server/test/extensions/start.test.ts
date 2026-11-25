@@ -163,6 +163,8 @@ describe("starting a server with extensions", () => {
     // The port is open already; the app is not there to answer yet.
     await until(async () => (await call(port, "GET", "/api/meta", { host: `127.0.0.1:${port}` }).catch(() => ({ status: 0 }))).status === 503);
     expect((await call(port, "GET", "/api/x/slow-start/ready", { host: `127.0.0.1:${port}`, headers: { "sec-fetch-site": "same-origin" } })).status).toBe(503);
+    // The port answers before any setup is called: wait for this one to have begun.
+    await until(() => typeof finish === "function");
     finish();
     const server = await starting;
 

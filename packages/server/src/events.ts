@@ -161,7 +161,11 @@ export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, 
       const unwatch = access?.onChange?.(() => {
         if (!access.live()) finish();
       }) ?? (() => {});
-      const heartbeat = setInterval(() => send(": heartbeat\n\n"), heartbeatMs);
+      const heartbeat = setInterval(() => {
+        // A listener can stop counting with nothing sent and nobody told (a sign-in passes its age): looked at with every heartbeat.
+        if (access && !access.live()) finish();
+        else send(": heartbeat\n\n");
+      }, heartbeatMs);
       const onAbort = () => finish();
       let unregister: () => void = () => {};
 
