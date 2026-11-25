@@ -5,7 +5,7 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
-## Unreleased
+## 0.4.1 — 2026-11-25
 
 ### Changed
 

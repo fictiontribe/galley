@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.0 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.1 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // scripts.json → what one page gets, and the HTML for each place it goes.
 // Used by the integration's middleware (no template changes), by <Scripts />

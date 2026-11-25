@@ -574,7 +574,7 @@ recipe: the files to run one install with Docker, for an operator
       --repository <address>  The site's repository
       --folder <path>         Where the site is inside it ("apps/site")
       --proxy <how>           caddy (default), shared-proxy or tunnel
-      --image <reference>     Default: ghcr.io/fictiontribe/galley:0.4.0
+      --image <reference>     Default: ghcr.io/fictiontribe/galley:0.4.1
       --setup-token-sha256 <hex>  The SHA-256 of a one-time setup code
       --out <folder|->        Write the files there (default -: print them)
 Keys

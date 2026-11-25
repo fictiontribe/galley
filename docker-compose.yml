@@ -3,7 +3,7 @@
 name: galley-editor
 services:
   editor:
-    image: "ghcr.io/fictiontribe/galley:0.4.0"
+    image: "ghcr.io/fictiontribe/galley:0.4.1"
     restart: unless-stopped
     env_file: .env
     # Hardened: an ordinary user, nothing written outside /data and /tmp, no extra powers.
