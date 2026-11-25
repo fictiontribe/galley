@@ -1,0 +1,127 @@
+---
+// /compare/<slug>/ — one comparison article, src/content/compare/<slug>.md:
+// the heading and its one line, the short version, the table (a versus page:
+// the site's comparison section), the article, questions people ask, the
+// sources with the month they were checked, and where to read next. The
+// words every article shares are src/content/pages/compare.md → ui.
+import Site from "../../layouts/Site.astro";
+import "../../styles/compare.css";
+import Comparison from "../../components/sections/Comparison.astro";
+import Faq from "../../components/sections/Faq.astro";
+import { inline, renderMarkdown, toPlain } from "../../lib/markdown";
+import { absoluteUrl, site } from "../../lib/site";
+import { getPage } from "../../lib/pages";
+import { compareHref, getComparisons, linkFor, type Comparison as Entry, type CompareLink } from "../../lib/compare";
+
+export async function getStaticPaths() {
+  const all = await getComparisons();
+  return all.map((entry) => ({ params: { slug: entry.id }, props: { entry, all } }));
+}
+
+interface Props {
+  entry: Entry;
+  all: Entry[];
+}
+const { entry, all } = Astro.props;
+const a = entry.data;
+const { data: hub } = await getPage("compare");
+const ui = hub.ui as Record<string, string>;
+const also = (hub.also ?? []) as CompareLink[];
+const { html } = renderMarkdown(entry.body ?? "");
+const say = (text: string) => text.replaceAll("{month}", a.checked).replaceAll("{product}", a.product ?? "");
+
+// Where to read next: as listed, or else the guides and two other products.
+const listed = a.related.map((ref) => linkFor(ref, all, also)).filter((l): l is CompareLink => !!l);
+const next = (listed.length ? listed : all.filter((e) => e.id !== entry.id).slice(0, 3).map((e) => linkFor(e.id, all, also)!)).slice(0, 3);
+
+const url = absoluteUrl(compareHref(entry.id));
+const maker = { "@type": "Organization", name: site.maker.name, url: site.maker.url };
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      headline: toPlain(a.heading),
+      description: a.description,
+      url,
+      mainEntityOfPage: url,
+      datePublished: a.published,
+      dateModified: a.updated ?? a.published,
+      author: maker,
+      publisher: maker,
+      ...(a.product ? { about: [{ "@type": "SoftwareApplication", name: site.name }, { "@type": "SoftwareApplication", name: a.product }] } : {}),
+    },
+    ...(a.faq.length
+      ? [{ "@type": "FAQPage", mainEntity: a.faq.map((q) => ({ "@type": "Question", name: q.q, acceptedAnswer: { "@type": "Answer", text: toPlain(q.a) } })) }]
+      : []),
+  ],
+};
+---
+
+<Site title={a.title} description={a.description} type="article" jsonLd={jsonLd} published={a.published} modified={a.updated}>
+  <article class="compare-article" aria-labelledby="compare-h" data-galley-agent="main">
+    <div class="wrap">
+      <header class="page-head compare-article__head">
+        <p class="compare-article__up"><a class="link" href="/compare/">{ui.up}</a></p>
+        <h1 class="h1" id="compare-h" set:html={inline(a.heading)} />
+        <p class="lead" set:html={inline(a.lead)} />
+        <p class="compare-article__meta">{say(a.product ? ui.byline : ui.bylineGuide)}</p>
+      </header>
+
+      {
+        a.short.length > 0 && (
+          <section class="compare-short" aria-labelledby="short-h">
+            <h2 class="compare-short__h" id="short-h">{ui.short}</h2>
+            <ul>
+              {a.short.map((line) => (
+                <li set:html={inline(line)} />
+              ))}
+            </ul>
+          </section>
+        )
+      }
+    </div>
+
+    {a.table && <Comparison s={{ id: "side-by-side", ...a.table, note: a.table.note ?? say(ui.tableNote) }} block={{ key: "table", type: "comparison" }} />}
+
+    <div class="wrap section compare-article__body">
+      <div class="prose" set:html={html} />
+    </div>
+
+    {a.faq.length > 0 && <Faq s={{ id: "questions", heading: ui.questions, items: a.faq }} block={{ key: "faq", type: "faq" }} />}
+
+    {
+      a.sources.length > 0 && (
+        <section class="wrap section compare-sources" aria-labelledby="sources-h">
+          <h2 class="h2" id="sources-h">{ui.sources}</h2>
+          <p class="compare-sources__line">{say(a.product ? ui.sourcesLine : ui.sourcesLineGuide)}</p>
+          <ol>
+            {a.sources.map((s) => (
+              <li>
+                <a class="link" href={s.href} rel="external">{s.label}</a>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )
+    }
+  </article>
+
+  {
+    next.length > 0 && (
+      <section class="section wrap" aria-labelledby="next-h" data-galley-agent="skip">
+        <h2 class="h2 head" id="next-h">{ui.next}</h2>
+        <ul class="cards">
+          {next.map((c) => (
+            <li style="display:grid">
+              <a class="card" href={c.href}>
+                <h3 class="card__t" set:html={inline(c.title)} />
+                <span class="body">{c.text}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+</Site>

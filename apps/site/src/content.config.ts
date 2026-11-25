@@ -411,4 +411,55 @@ const docs = defineCollection({
   }),
 });
 
-export const collections = { pages, docs };
+/**
+ * Comparison articles: one file per page at /compare/<file name>/. A guide
+ * explains a kind of tool; a versus page sets Galley beside one product. Every
+ * statement about another product has its source in claims/<file name>.md,
+ * with the date it was checked. The words all articles share, and the hub's,
+ * are src/content/pages/compare.md.
+ */
+const compare = defineCollection({
+  loader: glob({ base: "./src/content/compare", pattern: "*.md" }),
+  schema: z.object({
+    /** The page's title in search results. */
+    title: z.string(),
+    description: z.string(),
+    kind: z.enum(["guide", "versus"]),
+    /** The other product's name as it writes it (versus pages). */
+    product: z.string().optional(),
+    heading: z.string(),
+    /** One line under the heading. */
+    lead: z.string(),
+    /** A short name for the hub's card and "Read next" ("Galley and CloudCannon"); the heading when absent. */
+    name: z.string().optional(),
+    /** Dates as YYYY-MM-DD. */
+    published: z.string(),
+    updated: z.string().optional(),
+    /** The month the facts about other products were last checked against their own pages, e.g. "November 2026". */
+    checked: z.string(),
+    /** Position on the hub, lowest first, within its kind. */
+    order: z.number().default(100),
+    /** "The short version": three to five lines for someone who reads nothing else. */
+    short: z.array(z.string()).default([]),
+    /** Versus pages: Galley beside the product, row by row (the site's comparison section). */
+    table: z
+      .object({
+        heading: z.string(),
+        text: z.string(),
+        caption: z.string(),
+        columns: z.array(z.string()),
+        rows: z.array(z.object({ label: z.string(), ours: z.string(), theirs: z.string(), better: z.enum(["ours", "theirs", "even"]).optional(), more: z.string().optional() })),
+        note: z.string().optional(),
+      })
+      .optional(),
+    faq: z.array(z.object({ q: z.string(), a: z.string() })).default([]),
+    /** The pages the facts come from, as listed under the article. */
+    sources: z.array(z.object({ label: z.string(), href: z.string() })).default([]),
+    /** Where to read next: other articles by file name, or a page's address. */
+    related: z.array(z.string()).default([]),
+    /** Left out of the built site; shown while developing. */
+    draft: z.boolean().default(false),
+  }),
+});
+
+export const collections = { pages, docs, compare };

@@ -32,6 +32,11 @@
 //      every picture in public/docs is used.
 //  12. A quoted sub-command help ("Usage: galley import wordpress") matches
 //      that sub-command's own --help.
+//  13. The comparison articles (src/content/compare/): every link in them, and
+//      every page their `related` list names, is a page of this site or a
+//      full address; each has its claims file (claims/<name>.md, the sources
+//      of what it says about other products) and the month its facts were
+//      checked (`checked: November 2026`).
 //
 // Problems print as file:line: message, and the exit code is 1.
 
@@ -184,6 +189,11 @@ for (const name of readdirSync(join(siteRoot, "src/pages"))) {
   if (name.endsWith(".astro")) siteRoutes.add(`/${name.replace(/\.astro$/, "")}/`);
   else if (name.endsWith(".ts")) siteRoutes.add(`/${name.replace(/\.ts$/, "")}`);
 }
+const compareRoot = join(siteRoot, "src/content/compare");
+const compareFiles = existsSync(compareRoot) ? readdirSync(compareRoot).filter((n) => n.endsWith(".md")).map((n) => join(compareRoot, n)) : [];
+for (const file of compareFiles) siteRoutes.add(`/compare/${relative(compareRoot, file).replace(/\.md$/, "")}/`);
+const howtoData = JSON.parse(readFileSync(join(siteRoot, "src/data/howto.json"), "utf8"));
+for (const guide of howtoData.guides ?? []) if (guide?.slug) siteRoutes.add(`/how-to/${guide.slug}/`);
 
 // ─────────────────────────────────────────────────────────────── pages
 
@@ -614,6 +624,28 @@ const repoFiles = ["README.md", "CONTRIBUTING.md", "SECURITY.md", "SUPPORT.md", 
   .filter((path) => existsSync(path));
 
 for (const file of repoFiles) checkFile(file, { inDocs: false });
+
+// ── the comparison articles: links in the front matter and the body, and `related`
+const MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December";
+for (const file of compareFiles) {
+  const name = relative(compareRoot, file).replace(/\.md$/, "");
+  const claims = join(siteRoot, "claims", `${name}.md`);
+  if (!existsSync(claims)) report(file, 1, `no claims file: claims/${name}.md must list every statement this article makes about another product, with its source and the date read.`);
+  const checked = /^checked:\s*["']?(.*?)["']?\s*$/m.exec(readFileSync(file, "utf8").split(/^---$/m)[1] ?? "");
+  if (!checked) report(file, 1, "front matter needs `checked:`, the month its facts were last checked against their sources (e.g. checked: November 2026).");
+  else if (!new RegExp(`^(${MONTHS}) \\d{4}$`).test(checked[1])) report(file, 1, `checked: “${checked[1]}” should be a month and a year, e.g. November 2026.`);
+  readFileSync(file, "utf8").split("\n").forEach((text, i) => {
+    for (const m of text.replace(INLINE_CODE, "").matchAll(LINK)) {
+      counts.links += 1;
+      checkLink(file, i + 1, m[1], { inDocs: true });
+    }
+    const related = /^related:\s*\[(.*)\]\s*$/.exec(text);
+    for (const ref of related ? related[1].split(",").map((r) => r.trim().replace(/^["']|["']$/g, "")).filter(Boolean) : []) {
+      if (ref.startsWith("/")) checkLink(file, i + 1, ref, { inDocs: true });
+      else if (!siteRoutes.has(`/compare/${ref}/`)) report(file, i + 1, `related: “${ref}” is not an article in src/content/compare/.`);
+    }
+  });
+}
 
 // ── reference pages against the code they document
 function tableKeys(file) {
