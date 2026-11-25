@@ -81,6 +81,7 @@ import type { PreviewGateway } from "../workspace/preview/proxy";
 import type { AuthorLayers } from "../workspace/author";
 import type { AroundBringIn } from "../workspace/publish";
 import { formCodeRefusal } from "../site-kit/guard";
+import { contentCodeFor, contentCodeRefusal, contentTypeRefusal } from "./content-code";
 import { outsideAnyPerson, requireBuildMode, requireLevel, requireName, requireSiteSettings } from "../install/caller";
 import { levelFor, SITE_METHOD_ACCESS, SITE_SETTINGS_RECORDS, siteMethodLevel, type GuardedSiteMethod } from "../install/route-access";
 import { applyRecord, RECORD_SETTINGS, type SettingsRecord } from "./settings-records";
@@ -904,8 +905,9 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         if (result.applied === 0 || result.content === raw) {
           return { entry: await entryFromText(target.path, raw), applied: 0, refused };
         }
-        // A form's custom code is build-mode-only, whoever asks (site-kit/guard.ts).
-        const codeRefusal = target.collection.kit === "forms" ? formCodeRefusal(raw, result.content, { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}), allowBuild: model.ai.allowBuild }) : null;
+        // A form's custom code, and code in a content format the site runs (MDX, a template language), are build-mode-only, whoever asks (site-kit/guard.ts, content-code.ts).
+        const who = { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}), allowBuild: model.ai.allowBuild };
+        const codeRefusal = target.collection.kit === "forms" ? formCodeRefusal(raw, result.content, who) : contentCodeRefusal(contentCodeFor(model.framework.id, target.collection), raw, result.content, who);
 
         if (codeRefusal) {
           return { entry: await entryFromText(target.path, raw), applied: 0, refused: [...refused, ...kept.filter((item) => !refused.some((r) => r.index === item.index)).map((item) => ({ ...item, reason: codeRefusal }))].sort((a, b) => a.index - b.index) };
@@ -947,7 +949,8 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         throw new GalleyError("invalid", `That address can't be used for a ${collection.singular}. Use plain words without slashes.`, path);
       }
       const text = input.template !== undefined ? await fromTemplate(collection, path, input) : serializeEntry(collection, input.data ?? {}, input.body);
-      const codeRefusal = collection.kit === "forms" ? formCodeRefusal(null, text, { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}), allowBuild: model.ai.allowBuild }) : null;
+      const whoCreate = { origin: options.origin ?? "user", ...(options.mode ? { mode: options.mode } : {}), allowBuild: model.ai.allowBuild };
+      const codeRefusal = collection.kit === "forms" ? formCodeRefusal(null, text, whoCreate) : contentCodeRefusal(contentCodeFor(model.framework.id, collection), null, text, whoCreate);
 
       if (codeRefusal) throw new GalleyError("forbidden", codeRefusal, path);
       const taken = new GalleyError("conflict", `A ${collection.singular} with that address already exists. Choose a different name.`, path);
@@ -1038,10 +1041,18 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       // Asked for, not assumed: a request for build mode is refused, never quietly made a content-mode one.
       if (options.mode === "build") requireBuildMode();
       if (options.mode === "build" && !model.ai.allowBuild) throw new GalleyError("forbidden", BUILD_OFF, normalized);
-      if (collectionForPath(model, normalized)?.kit === "forms") {
+      const who = { origin: options.origin, mode: options.mode, allowBuild: model.ai.allowBuild };
+      // The file's type: a content-mode write may add only a collection's own content formats, or media; never a new
+      // executable or template file under a content glob (the glob admits any extension; this does not).
+      const typeRefusal = contentTypeRefusal(normalized, model, who);
+
+      if (typeRefusal) throw new GalleyError("forbidden", typeRefusal, normalized);
+      const collection = collectionForPath(model, normalized);
+
+      if (collection) {
         const before = (await workspace.exists(normalized)) ? await workspace.readText(normalized).catch(() => null) : null;
         const after = typeof content === "string" ? content : Buffer.from(content).toString("utf8");
-        const codeRefusal = formCodeRefusal(before, after, { origin: options.origin, mode: options.mode, allowBuild: model.ai.allowBuild });
+        const codeRefusal = collection.kit === "forms" ? formCodeRefusal(before, after, who) : contentCodeRefusal(contentCodeFor(model.framework.id, collection), before, after, who);
 
         if (codeRefusal) throw new GalleyError("forbidden", codeRefusal, normalized);
       }

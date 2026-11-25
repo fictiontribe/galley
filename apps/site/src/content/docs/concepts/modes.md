@@ -28,6 +28,8 @@ public/**/*.{png,jpg,jpeg,gif,webp,avif,svg,ico,mp4,webm,pdf}
 
 A collection added in `galley.config.json` adds its folder; `writable.content` in the config replaces the list outright. See [Assistant instructions and build mode](/docs/configuration/assistant/).
 
+Content mode also draws a line **inside** the content folders, for whoever is below build-mode level. Some content formats are run by the site's build or preview — MDX (and, in a framework other than Astro, a template language in the content). Adding or changing the code in such a file (an `import`, a `{ }` expression, a `<Component>`, a template tag) is a build-mode change, so it is refused in content mode; editing the prose and removing code are not. And a content-mode write may only add the collection's own content formats, or media — never a new executable or template file (a `.js`, `.astro`, `.svelte`, `.11ty.js`) under a content folder, even though the folder's glob would match it. Markdown on Astro, and on a plain Markdown site with no framework, runs no code and is unaffected; content on a framework that runs it as code (or one the engine doesn't recognise) is guarded this way until that framework's adapter is written.
+
 In content mode, a write anywhere else is refused:
 
 ```json

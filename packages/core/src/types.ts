@@ -179,6 +179,20 @@ export interface EntryTemplate {
 
 export type EntryFormat = "markdown" | "mdx" | "json" | "yaml" | "toml";
 
+/**
+ * What a content collection's format means for a writer below the build-mode
+ * level (src/site/content-code.ts). Set by the framework's adapter. **Absent
+ * is guarded, not inert**: a format no adapter has declared safe is treated
+ * as build-mode, so a framework that runs code in content (Docusaurus, which
+ * compiles Markdown as MDX; Eleventy; mdsvex) is closed by default.
+ *
+ *  - "inert": the format carries no code the site runs (Astro Markdown).
+ *  - "mdx": the MDX family — its code is judged textually.
+ *  - "template": a template language the engine can't bound; the whole
+ *    collection is build-mode for a sub-build writer.
+ */
+export type ContentCode = "inert" | "mdx" | "template";
+
 export interface Collection {
   id: string;
   /** Plural, e.g. "Blog posts". */
@@ -196,6 +210,12 @@ export interface Collection {
   /** entries: glob relative to `path`, e.g. "**\/*.{md,mdx}". */
   pattern?: string;
   format: EntryFormat;
+  /**
+   * What this collection's format means for a writer below the build-mode
+   * level (ContentCode). Absent is guarded, not inert: only a format an
+   * adapter positively declares safe may be changed in content mode.
+   */
+  code?: ContentCode;
   /** Whether items carry a markdown body below the front matter. */
   body: boolean;
   /** Public URL pattern with {slug}, e.g. "/blog/{slug}/". null = no page of its own. */
