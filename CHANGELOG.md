@@ -60,26 +60,24 @@ entry says how.
 
   The plan counts only what the move updates: it used to count places in
   files it would never change. The plan's answer gains `templates`,
-  `alsoMentioned` and `readBy`; a move's result gains them too.
+  `alsoMentioned` and `readBy`; a move's result gains them too (in the
+  command line's `--json`, the count of templates is `rewrittenTemplates`).
 
 - **The site's model is read-only.** The engine keeps one description of a
   site (its collections, where media lives, what content mode may write, how
   it publishes) and hands that same object to everyone who asks: a route, the
-  assistant, a plugin, an adapter's hooks. Whoever changed what they were
+  assistant, a plugin. Whoever changed what they were
   handed changed the site's rules for everyone until the model was next
   loaded. It is now read-only all the way down. Nothing of Galley's own
   changed it. **A plugin or an adapter that did** now gets a `TypeError`
   where it makes the change ("Cannot assign to read only property…",
   "Cannot add property…, object is not extensible"); in code that doesn't
-  run in strict mode the change is silently dropped instead. Take a copy
+  run in strict mode an assignment is silently dropped instead (a method
+  that changes one of its lists, such as `push`, throws there too). Take a copy
   (`structuredClone(model)`) and change that. The same goes for an object an
   adapter gives the engine as part of the model (a collection's fields, a
   command): it is the model's from then on, so give a new object each time
   rather than keeping one and changing it later.
-
-- **Stopping a server that can't let go of its data folder says so.** A stop
-  that fails to release the folder still fails, as before; the reason is now
-  also written to the log, and the rest of the stop is finished first.
 
 ### Added
 
@@ -91,30 +89,30 @@ entry says how.
   routes folder.
 - **`build.sources`** in `galley.config.json`: further files a site's build
   reads, added to the adapter's list.
-- **Embedding, first part: routes of your own (experimental).** A program
-  that starts Galley's server can add API routes to it when it is built
+- **Embedding, first part: routes of your own (experimental).** A program that
+  starts Galley's server can add API routes to it when it is built
   (`startServer({ extensions })`, `@galley/server/extensions`), for an edition
   of the editor with something of its own in it: a status page, a button that
   files a request. Each route lives under `/api/x/<id>/`, which no address of
   the editor's own uses, and names the level it needs (edit, publish or
   manage); the server doesn't start with a route that has none. A request has
-  passed every check a request to the editor's own API passes before a
-  handler sees it, and two more: with a cookie the browser must say the
-  request is the editor's own page's, on GET too, and a part of the address
-  can't carry a path. A handler is handed a narrowed request (never the
-  cookie or the headers) and the site with `.git/` and `.env*` unreadable by
-  name; what the site answers with is a copy, from a change as from a read,
-  and on GET it refuses whatever would change it. Work a handler leaves
-  running loses its caller's access once it has answered, though what it
-  records still carries that person's publishing name. An extension names its
-  secret environment variables: on a hosted install they are kept from the
-  site's commands, and everywhere their values are taken out of the server's
-  log and of the extension's error messages. Once an extension has been
-  stopped, what it was handed does nothing: the sites it holds, and the
-  preview's controller if it took one. It is not a sandbox: an extension is
-  its author's code with the server's permissions. A server with extensions must be the only server in its
-  process, and should be restarted after a backup is put back. The shapes may
-  change in any 0.x release. The docs page is *Running Galley › Embedding the
+  passed every check a request to the editor's own API passes before a handler
+  sees it, and two more: with a cookie the browser must say the request is the
+  editor's own page's, on GET too, and a part of the address can't carry a
+  path. A handler is handed a narrowed request (never the cookie or the
+  headers) and the site with `.git/` and `.env*` unreadable by name; what the
+  site answers with is a copy, from a change as from a read, and on GET it
+  refuses whatever would change it. Work a handler leaves running loses its
+  caller's access once it has answered, though what it records still carries
+  that person's publishing name. An extension names its secret environment
+  variables: on a hosted install they are kept from the site's commands, and
+  everywhere their values are taken out of the server's log and of the
+  extension's error messages. Once an extension has been stopped, what it was
+  handed does nothing: the sites it holds, and the preview's controller if it
+  took one. It is not a sandbox: an extension is its author's code with the
+  server's permissions. A server with extensions must be the only server in
+  its process, and should be restarted after a backup is put back. The shapes
+  may change in any 0.x release. The docs page is *Run Galley › Embedding the
   editor*.
 
 ### Fixed
@@ -124,9 +122,12 @@ entry says how.
   on its photograph's focus point, so a head or a garment stays in frame.
   They looked the photograph up by its whole address, so once the pictures
   had moved to a bucket and the pages held the bucket's addresses, nothing
-  was found and every crop fell back to the middle. Half the photographs on
-  each starter have a focus point that isn't the middle (15 of 30, 15 of
-  31), and those were cut differently from then on. Since 0.4.0, when media
+  was found and every crop that used the photograph's own point fell back
+  to the middle (one with left or right chosen for it never used the
+  point). Half the photographs on each starter have a focus point that
+  isn't the middle (15 of 30, 15 of 31; one of them is only the share
+  picture, which isn't cropped), and the rest of those were cut differently
+  from then on. Since 0.4.0, when media
   in a bucket arrived. A photograph is now found by its path inside the
   address, which is the same in the repository and in a bucket. The focus
   points are read from `src/lib/focus.json`, which `npm run focus` writes
@@ -135,13 +136,17 @@ entry says how.
   the old code: a move's plan says so ("still used by
   galley/photography/shots.json (read by src/lib/site.ts)") and keeps what
   the shot list names. To change it, take `src/lib/site.ts` (the part about
-  focus points), `src/lib/focus.json` and `scripts/focus-points.mjs` from
-  the starter as it is now.
+  focus points), `src/lib/focus.json`, `scripts/focus-points.mjs` and the
+  `focus` line under `scripts` in `package.json` from the starter as it is
+  now.
 - **A start that fails undoes everything it had started.** When a hosted
   install could not start (its port was already taken) or could not finish
   starting, the process stayed in hosted mode, and a site it had opened
   stayed open. Both are now undone, as a stop undoes them, and the error
   the start failed with is the one reported.
+- **Stopping a server that can't let go of its data folder says so.** A stop
+  that fails to release the folder still fails, as before; the reason is now
+  also written to the log, and the rest of the stop is finished first.
 
 ## 0.4.1 — 2026-11-25
 
