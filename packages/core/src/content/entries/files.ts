@@ -26,7 +26,8 @@ export function absolute(root: string, path: string): string {
 export async function listCollectionFiles(root: string, model: Pick<SiteModel, "collections" | "templates">, collection: Collection): Promise<string[]> {
   const base = normalizePath(collection.path);
 
-  if (collection.kind === "data") return existsSync(absolute(root, base)) ? [base] : [];
+  // A data collection is one file, named by the settings: it is the collection's only when a path is (see collectionForPath).
+  if (collection.kind === "data") return existsSync(absolute(root, base)) && collectionForPath(model, base)?.id === collection.id ? [base] : [];
   const cwd = base === "" || base === "." ? root : absolute(root, base);
 
   if (!existsSync(cwd)) return [];

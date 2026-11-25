@@ -6,7 +6,7 @@
  * file routes' headers.
  */
 import { execFileSync } from "node:child_process";
-import { appendFileSync, cpSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { appendFileSync, cpSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -182,6 +182,37 @@ describe("the site's brand over HTTP", () => {
 
     expect(check.status).toBe(200);
     expect(Array.isArray(check.body.items)).toBe(true);
+  });
+
+  it("never serves or packs a secrets file as brand material, whatever the saved list of material names", async () => {
+    const manifestFile = join(site, "galley/brand/sources/manifest.json");
+    const before = readFileSync(manifestFile, "utf8");
+    const manifest = JSON.parse(before) as { sources: Array<Record<string, unknown>> };
+    const picture = manifest.sources.find((source) => typeof source.file === "string")!;
+    const headers = { authorization: `Bearer ${server.token}` };
+
+    writeFileSync(join(site, ".env"), "TOKEN=not-brand-material\n");
+    // The same kind of entry, naming a secrets file (and one of the version history's own) where its picture was.
+    const named = [".env", ".git/config"].map((file, at) => ({ ...picture, id: `named-${at}`, name: `named-${at}.txt`, file, mime: "text/plain" }));
+
+    writeFileSync(manifestFile, `${JSON.stringify({ ...manifest, sources: [...manifest.sources, ...named] }, null, 2)}\n`);
+    try {
+      for (const source of named) {
+        const file = await fetch(`${server.url}${S()}/sources/${source.id}/file?kind=original`, { headers });
+
+        expect(file.status, source.file).toBe(404);
+        expect(await file.text(), source.file).not.toMatch(/not-brand-material|repositoryformatversion/);
+      }
+      // The picture saved beside them is served as before.
+      expect((await fetch(`${server.url}${S()}/sources/${String(picture.id)}/file?kind=original`, { headers })).status).toBe(200);
+      const bundle = await (await fetch(`${server.url}${S()}/export?format=brand`, { headers })).text();
+
+      expect(bundle).not.toContain(Buffer.from("TOKEN=not-brand-material\n").toString("base64"));
+      expect(bundle).not.toContain("not-brand-material");
+    } finally {
+      writeFileSync(manifestFile, before);
+      rmSync(join(site, ".env"), { force: true });
+    }
   });
 
   it("checks drift, exports both formats, imports a bundle, and refuses unknown fonts", async () => {
