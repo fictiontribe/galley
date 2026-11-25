@@ -5,7 +5,7 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
-## Unreleased
+## 0.4.1 — 2026-11-25
 
 ### Changed
 
@@ -14,10 +14,12 @@ entry says how.
   before, while someone is at the window. Five minutes after the window was
   last touched, it stops asking, and asks again the moment the window is
   clicked, typed in, scrolled, pointed at or brought back to the front. A
-  laptop left with the editor open no longer wakes its network every fifteen
-  seconds for a server it can't reach, and a server that was restarted, or is
-  switched off, is no longer knocked on by every window that was left open. A
-  connection that is working is never closed by this. While it waits, the
+  laptop left with the editor open no longer asks every fifteen seconds for
+  a live connection to a server it can't reach, and a server that was
+  restarted, or is switched off, is no longer asked for one by every window
+  that was left open. (A window in view on a site still tells the server
+  every half-minute that the site is open in it, as before.) A connection
+  that is working is never closed by this. While it waits, the
   status bar reads "Live updates paused — move the pointer or press a key to
   reconnect".
 
@@ -43,9 +45,10 @@ entry says how.
   files would stay "still mentioned in" one file, and the result that all 31
   had, naming eight. The plan now takes the move's own steps without changing
   anything, so it gives the same count and names the same files as the result:
-  how many copies are removed, how many stay, and every file that still
-  mentions them. The result names every such file too, where it used to stop
-  at the first reason. `galley media move` prints the same.
+  how many copies are removed, how many stay, and the files that still
+  mention them (the window names five and counts the rest; `galley media
+  move` prints them all). The result names them too, where it used to stop
+  at the first reason.
 - **Looking at the code host runs none of the repository's own hooks.**
   Bringing newer versions in already ran none. The look before it did: git
   has one hook for it (`reference-transaction`), and a repository that has
@@ -53,7 +56,8 @@ entry says how.
   history opened, and before a publish that then published nothing. A look
   runs no hook now, wherever the app makes it. Publishing still runs the
   site's own checks.
-- **Undo of a publish says only what works while newer versions wait.**
+- **Undo of a publish no longer offers publishing while newer versions
+  wait.**
   With unpublished changes to a file the undo would change, it said
   "Publish or discard those changes first". While the repository has newer
   versions, publishing is paused, so it now says to discard them (Proof
@@ -66,7 +70,7 @@ entry says how.
   brought together by a developer. Undo now looks first, as Publish does,
   and pauses while nothing has changed: "The repository has newer versions
   than this copy, so the undo is paused. Get the latest versions, then try
-  again." The answer carries `behind`, as a paused publish's does.
+  again." The paused answer carries `behind`, as a paused publish's does.
 - **Connecting a bucket no longer sets back a setting someone else just
   saved.** Connecting, changing or disconnecting a bucket or Cloudflare
   Images saved the whole settings file from an earlier read of it, so a key
