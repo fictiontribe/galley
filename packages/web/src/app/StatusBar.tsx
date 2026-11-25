@@ -50,6 +50,15 @@ function ConnectionItem() {
       </span>
     );
   }
+  // Nobody was at the window, so it stopped asking: the first sign of someone reconnects, and this says which signs.
+  if (state === "resting") {
+    return (
+      <span className="g-statusbar__item app-status--offline" role="status">
+        <ProofMark kind="bang" />
+        Live updates paused — move the pointer or press a key to reconnect
+      </span>
+    );
+  }
   if (state !== "down") return null;
   return (
     <span className="g-statusbar__item app-status--offline" role="status">
