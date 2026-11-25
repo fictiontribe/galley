@@ -5,14 +5,14 @@ kind: versus
 product: TinaCMS
 heading: TinaCMS and Galley both keep your words in Git. TinaCMS asks a developer to describe them first.
 name: Galley and TinaCMS
-lead: Both edit the Markdown and data files in your repository, and every change ends as a commit. TinaCMS, in development since 2019, adds a schema in code, a GraphQL API and visual editing for React and Astro, with its AI marked coming soon. Galley is free, open-source and new, reads the site as it is and has its assistant built in.
+lead: Both edit the Markdown and data files in your repository and record changes as commits, TinaCMS when you save and Galley when you publish. TinaCMS, in development since 2019, adds a schema in code, a GraphQL API and visual editing for React and Astro, with its AI marked coming soon. Galley is free, open-source and new, reads the site as it is and has its assistant built in.
 published: "2026-11-25"
 checked: November 2026
 order: 4
-draft: true
+draft: false
 short:
   - Both are Git-based. Your content stays as Markdown and data files in your own repository, and leaving either one needs no content migration. In TinaCMS every save is a commit. In Galley changes wait in a proof, and publishing is the commit.
-  - TinaCMS has a free plan for two users. Its Team plan is $29 a month per project, or $290 a year (as of November 2026), and its hosted backend, TinaCloud, works with GitHub only. Galley is free and Apache-2.0. You pay for your own AI key and your own hosting.
+  - TinaCMS has a free plan for two users. Its Team plan is $29 a month per project, or $290 a year (as of November 2026), and its hosted backend, TinaCloud, currently works with GitHub only. Galley is free and Apache-2.0. You pay for your own AI key and your own hosting.
   - TinaCMS asks a developer for a schema in `tina/config`, a build step and, for visual editing, code in each page, in React or Astro. Other frameworks get forms. Galley reads the site's framework, collections and fields as they already are.
   - TinaCMS lists AI features as "coming soon", and its roadmap has an MCP server under "Coming Soon" (November 2026). Galley has an assistant in the editor that never publishes, a proof of every change, and an MCP server for other AI tools.
   - Choose TinaCMS for a React or Next.js site whose editors want the page to change as they type, for an editorial workflow of branches and pull requests (Team plan and up), for single sign-on (Enterprise), or for years of use behind it. Galley was first released in November 2026 and has little of that yet.
@@ -41,7 +41,7 @@ table:
     - label: Editing on the page
       ours: In the preview, with no markup
       theirs: Live as you type, in React and Astro
-      better: even
+      better: theirs
     - label: Page building
       ours: The site's own sections (preview)
       theirs: Pages from blocks you define
@@ -52,7 +52,7 @@ table:
       better: ours
     - label: Checking a change
       ours: Each change in the site's words, beside the live site
-      theirs: Live preview; pull requests on Team
+      theirs: Live preview; pull requests on Team and up
       better: ours
     - label: Content API
       ours: None; the site reads its files
@@ -80,9 +80,9 @@ faq:
   - q: Does TinaCMS have AI features?
     a: Not built in, as of November 2026. Its pricing page lists "AI features (coming soon)" on the Team plan, and its roadmap has an MCP server under "Coming Soon". It publishes a guide to coding with AI assistants and an llms.txt index of its docs, and argues that Markdown suits AI. Galley has an assistant in the editor and an MCP server today.
   - q: Does TinaCMS need a database?
-    a: Yes, behind its API, though not as the home of your content. TinaCMS's GraphQL API is served from a "Data Layer" database, which it calls "an ephemeral cache" of your Markdown and JSON files, there for search, pagination and references. TinaCloud runs that database for you. If you host the backend yourself, you bring one; TinaCMS has adapters for MongoDB and Vercel KV. Galley has no database.
+    a: Yes, behind its API, though not as the home of your content. TinaCMS's GraphQL API is served from a "Data Layer" database, which its docs say you can think of as "more of an ephemeral cache" of your Markdown and JSON files, there for search, pagination and references. TinaCloud runs that database for you. If you host the backend yourself, you bring one; TinaCMS has adapters for MongoDB and Vercel KV. Galley has no database.
   - q: Which frameworks does TinaCMS support?
-    a: Its setup guides cover Astro, Next.js, Hugo, Gatsby, Jekyll, Eleventy, Remix and SvelteKit, and Astro is its default starter. Visual editing, where the page updates as you type, works in React-based frameworks and in Astro. Elsewhere editors get its "basic editor", which is forms. Vue support "is currently in our backlog". Galley fits Astro deepest and recognises Next.js, Hugo, Jekyll and others by their conventions.
+    a: Its setup guides cover Astro, Next.js, Hugo, Gatsby, Jekyll, Eleventy, Remix and SvelteKit, and Astro is its default starter. Visual editing, where the page updates as you type, works in React-based frameworks and in Astro. Elsewhere editors get its "basic editor", which is forms. Visual editing for Vue "is currently in our backlog"; Vue sites get the basic editor. Galley fits Astro deepest and recognises Next.js, Hugo, Jekyll and others by their conventions.
 sources:
   - label: "TinaCMS, home page"
     href: https://tina.io/
@@ -186,7 +186,7 @@ Neither product hosts your site, so unlike [CloudCannon](/compare/cloudcannon/),
 
 TinaCMS is frank about it: "Anyone can start using TinaCMS right away but it is designed for developers to setup and customize." On an existing site, a developer runs `tinacms init`, then models the content in `tina/config`, as collections of typed fields, each collection mapped to a folder. The generated `tina-lock.json` "must be checked into source control", and the build runs `tinacms build` before the site's own build. The schema pays something back: TinaCMS generates a typed client from it, so developers query content with types.
 
-Visual editing, where the page updates beside the form as you type, takes more code. In React and Next.js, each page uses the `useTina` hook, and must be "using TinaCMS's data-fetching" and "compatible with client side rendering". In Astro, you install `@tinacms/astro` and an SSR adapter ("You need an SSR adapter"), then add a data loader, an island and `tinaField()` marks for each editable part. Other frameworks, Hugo, Jekyll and Eleventy among them, get what TinaCMS calls the "basic editor", which is forms. Once wired, it works well: click a headline and its field opens in the sidebar. And on Astro, production HTML is "byte-identical to a TinaCMS-free Astro app", apart from a one-line bootstrap on pages with its islands.
+Visual editing, where the page updates beside the form as you type, takes more code. In React and Next.js, each page uses the `useTina` hook, and must be "using TinaCMS's data-fetching" and "compatible with client side rendering". In Astro, you install `@tinacms/astro` and an SSR adapter ("You need an SSR adapter"), then add a data loader, an island and `tinaField()` marks for each editable part. Other frameworks, Hugo, Jekyll and Eleventy among them, get what TinaCMS calls the "basic editor", which is forms. Once it is wired up, its Astro guide says clicking the headline should "open a form in the sidebar to edit live". And on Astro, production HTML is "byte-identical to a TinaCMS-free Astro app", apart from a one-line bootstrap on pages with its islands.
 
 Galley starts by reading the site. It works out the framework, the content collections and every field's type from the site's own schemas and files, without running any of its code. Astro fits deepest; Next.js, Hugo, Jekyll, Eleventy and others are recognised by their conventions. A `galley.config.json` file exists only to correct what it found. Editing on the page needs no markup, because Galley maps the words in the preview back to their fields.
 
@@ -194,7 +194,7 @@ The caveat on our side: detection is only as good as the site is tidy. Words kep
 
 ## How does each one use AI?
 
-As of November 2026, we found no AI feature in the TinaCMS editor. Its pricing page lists "AI features (coming soon)" on the Team plan, and an "AI Assist" row marked "Coming soon" on the paid plans. Its [roadmap](https://tina.io/roadmap) lists "MCP Server" under "Coming Soon". Under "Working on it now" is ContentHawk, a GitHub Action for querying and editing content; one use TinaCMS gives for it is having AI find content on a schedule. Meanwhile it makes the case for Markdown: "LLMs think in it. GEO runs on it. Your CMS should too." Its docs have a guide to building with AI coding assistants, and an example GitHub Action that translates content through an outside model, with the honest warning "Content generated by LLMs cannot be considered fully reliable."
+As of November 2026, we found no AI feature in the TinaCMS editor. (Its TinaGPT chatbot answers questions about TinaCMS on tina.io; it isn't part of the editor.) Its pricing page lists "AI features (coming soon)" on the Team plan, and an "AI Assist" row marked "Coming soon" on the paid plans. Its [roadmap](https://tina.io/roadmap) lists "MCP Server" under "Coming Soon". Under "Working on it now" is ContentHawk, a GitHub Action for querying and editing content; one use TinaCMS gives for it is having AI find content on a schedule. Meanwhile it makes the case for Markdown: "LLMs think in it. GEO runs on it. Your CMS should too." Its docs have a guide to building with AI coding assistants, and an example GitHub Action that translates content through an outside model, with the honest warning "Content generated by LLMs cannot be considered fully reliable."
 
 Galley puts the assistant inside the editor, beside the page. You ask in plain words; it reads the site before it edits, asks one short question when a request is ambiguous, and quotes the new words back. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change waits in the proof, and a person presses Publish. For people with their own AI tool, [Galley's MCP server](/docs/integrations/mcp/) gives Claude, Cursor or any other MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
 
@@ -204,7 +204,7 @@ We think TinaCMS is right about Markdown in Git; Galley rests on the same bet. I
 
 In TinaCMS, a React or Astro site with visual editing shows the page changing beside the form. After that, the check is Git. Saving is the commit, and by default it goes straight to the branch. On Team and above, Editorial Workflow changes that: saves go to a new branch with a pull request, "as a draft or ready for review, your choice", and publishing means merging it "via GitHub". Media goes through the same review, and a developer can add preview links per branch.
 
-In Galley every change, whether typed in the form, retyped on the page or made by the assistant, lands in [Proof](/how-to/proof-and-publish/): the change in the site's own words, old text struck out and new text written in, beside the live site. Any single change can be put back. Publishing is a commit, or a branch and a pull request on GitHub, GitLab or Bitbucket if the site is set up for review. Undo is a new commit, and history is never rewritten.
+In Galley every change, whether typed in the form, retyped on the page or made by the assistant, lands in [Proof](/how-to/proof-and-publish/): the change in the site's own words, old text struck out and new text written in, beside the live site. Any single change can be put back. Publishing is a commit, or a branch and a pull request (opened for you on GitHub, or a link to open one on GitLab or Bitbucket) if the site is set up for review. Undo is a new commit, and history is never rewritten.
 
 The difference is what the reviewer reads. In TinaCMS, a pull request and, if someone set one up, a preview of the branch. In Galley, what changed on the page, in words, before anything is committed.
 
@@ -236,13 +236,13 @@ Beyond teams, in a few places.
 
 ## When is TinaCMS the better choice?
 
-When the site is React or Next.js and editors want to see the page change as they type. When you want each editor's work on its own branch, with its own pull request and preview, which Editorial Workflow gives you from the Team plan. When single sign-on, GitHub Enterprise or an uptime promise, all on Enterprise, is a requirement this quarter. When developers want a typed GraphQL API over the content, or search (on TinaCloud). When you're coming from Forestry.io: TinaCMS calls itself "the successor to Forestry.io, now maintained by SSW". And when you'd rather adopt a tool in development since 2019, now "actively developed by SSW", an Australian software consultancy, with a paid team to call.
+When the site is React or Next.js and editors want to see the page change as they type. When you want each editor's work on its own branch, with its own pull request and preview, which Editorial Workflow gives you from the Team plan. When single sign-on, GitHub Enterprise or an uptime promise, all on Enterprise, is a requirement this quarter. When developers want a typed GraphQL API over the content, or search (on TinaCloud). When you're coming from Forestry.io: TinaCMS calls itself "the successor to Forestry.io, now maintained by SSW". And when you'd rather adopt a tool in development since 2019, "now maintained by SSW", in its Forestry page's words, an Australian software consultancy, with a paid team to call.
 
 Galley fits when the people who change the site aren't developers and you want them to ask for a change, see exactly what changed and publish it, on a site that needs no schema or page code first. It also fits when you want no backend between your files and your site, and no subscription.
 
 ## Can you move from one to the other?
 
-Yes, and more easily than most CMS moves, because the content never leaves the repository. Galley has no importer for TinaCMS, and needs none. To try it, run `npx galley-cms` in the site's folder. Galley doesn't read `tina/config`; it works the fields out from the files, and `galley.config.json` can point it at a folder it missed. TinaCMS stores each block's type under a `_template` key, which Galley's detection reads as page sections (the page builder is in preview). In MDX, Galley edits the Markdown between components and leaves imports and components alone. The `tina` folder and `tinacms build` can stay while you try.
+Yes, and more easily than most CMS moves, because the content never leaves the repository. Galley has no importer for TinaCMS, and needs none. To try it, run `npx galley-cms` in the site's folder. Galley doesn't read `tina/config`; it works the fields out from the files, and `galley.config.json` can point it at a folder it missed. By default TinaCMS stores each block's type under a `_template` key, which Galley's detection reads as page sections (the page builder is in preview). In MDX, Galley edits the Markdown between components and leaves imports and components alone. The `tina` folder and `tinacms build` can stay while you try.
 
 If you leave TinaCMS, look at how the site reads its content. Pages wired for visual editing fetch it through TinaCMS's API, so they need that API, from TinaCloud or your own backend, until a developer changes them to read the files. A Hugo or Jekyll site on the basic editor reads them already. Going the other way means writing a schema for what Galley worked out by itself. The only guided move Galley offers is from [WordPress](/wordpress/), and that one is new, in final checks.
 

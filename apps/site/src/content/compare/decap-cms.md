@@ -9,9 +9,9 @@ lead: Both are free, open-source editors for the files in your repository. Decap
 published: "2026-11-25"
 checked: November 2026
 order: 5
-draft: true
+draft: false
 short:
-  - Both are Git-based and free. Your content stays as Markdown, YAML or JSON files in your own repository, and each change ends as a commit. Decap commits every save; Galley commits when you publish. Decap is MIT-licensed, Galley Apache-2.0. Leaving either needs no export.
+  - Both are Git-based and free. Your content stays as Markdown, YAML or JSON files in your own repository, and changes are recorded as commits: Decap commits every save; Galley commits when you publish. Decap is MIT-licensed, Galley Apache-2.0. Leaving either needs no export.
   - Decap is an app at /admin on your site. A developer writes a config.yml that lists every collection and field, and sets up how editors sign in. Galley reads the site's framework, collections and fields as they are, and runs on your computer or your own server (new).
   - Decap has no AI features built in. A command-line tool for Decap Turbo, with an MCP server, is on its roadmap (Nov 2026). Galley has an assistant in the editor that never publishes, a proof of every change beside the live site, and an MCP server.
   - Decap Turbo, an optional hosted service from Decap's maintainers, adds hosted sign-in, roles and an activity log. It has a free plan, and Pro is €19 a month (as of November 2026). Galley has no paid tier.

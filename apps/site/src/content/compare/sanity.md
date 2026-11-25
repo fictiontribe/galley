@@ -9,7 +9,7 @@ lead: Sanity CMS serves structured content from a hosted database to any site or
 published: "2026-11-25"
 checked: November 2026
 order: 2
-draft: true
+draft: false
 short:
   - Sanity CMS keeps your content as JSON documents in its hosted Content Lake, and your site fetches it with GROQ or GraphQL. Its editor, Sanity Studio, is open-source (MIT) code you configure. Galley keeps content as files in your own Git repository, with no database.
   - Sanity's Free plan is $0 for up to 20 seats, Growth is $15 a seat a month, and Enterprise is priced on request (as of November 2026). Galley is free and Apache-2.0. You pay for your own AI key and your own hosting.

@@ -34,10 +34,10 @@ details new in this article are listed at the end with their docs pages.
 | 25 | Setup guides cover Astro, Next.js, Hugo, Gatsby, Jekyll, Eleventy, Remix and SvelteKit; Astro is its default starter (FAQ) | Docs sidebar: /docs/frameworks/astro, next, hugo, gatsby, jekyll, 11ty, remix, sveltekit, other — https://tina.io/docs ; "Astro is our default starter." — https://tina.io/docs/integration/frameworks | 2026-11-25 |
 | 26 | TinaCloud, the hosted backend, sold by the project; the paid plans buy TinaCloud | "Out of the box, we provide an easy-to-use hosted version of the backend, called TinaCloud." — https://tina.io/docs ; Billing unit: "Per project" (Free, Team, Business), "Entire organization" (Enterprise); sign-up buttons go to app.tina.io — https://tina.io/pricing | 2026-11-25 |
 | 27 | Free: $0, two users, the limit; free plan for two users (short, table, FAQ, price table) | Free "$0", "Forever", "2 users"; Included Users 2; User Limit 2 — https://tina.io/pricing | 2026-11-25 |
-| 28 | Team: $29 a month per project or $290 a year; 3 users included, up to 10 | Plan data "monthlyPrice": 29, "yearlyPrice": 290; Monthly Billing "$29/project/month"; Annual Billing "$290/year"; Included Users 3; User Limit 10 — https://tina.io/pricing | 2026-11-25 |
-| 29 | Business: $299 a month or $2,990 a year; 20 users included, no limit | "monthlyPrice": 299, "yearlyPrice": 2990; "$299/project/month"; "$2,990/year"; Included Users 20; User Limit "Unlimited" — https://tina.io/pricing | 2026-11-25 |
+| 28 | Team: $29 a month per project or $290 a year; 3 users included, up to 10 | Plan data "monthlyPrice": 29, "yearlyPrice": 290; Monthly Billing "$29/month" (Monthly Billing row; "$29/project/month" is the column heading); Annual Billing "$290/year"; Included Users 3; User Limit 10 — https://tina.io/pricing | 2026-11-25 |
+| 29 | Business: $299 a month or $2,990 a year; 20 users included, no limit | "monthlyPrice": 299, "yearlyPrice": 2990; "$299/month" (Monthly Billing row; "$299/project/month" is the column heading); "$2,990/year"; Included Users 20; User Limit "Unlimited" — https://tina.io/pricing | 2026-11-25 |
 | 30 | Enterprise priced on request, users agreed with you; covers the whole organisation; quote "covers every project in your organization" | "Custom", "Contact Sales"; Included Users "Custom"; "Team and Business plans are bought per project. Enterprise covers every project in your organization." — https://tina.io/pricing | 2026-11-25 |
-| 31 | The pricing page opens on yearly billing; its large figures, $24 and $249 a month, are the yearly prices spread over twelve months | Card prices in the default view "$24 / project / month", "$290 billed annually (save $58)"; "$249 / project / month", "$2,990 billed annually (save $598)"; columnByLineAnnual "$24/project/month", "$249/project/month" against columnByLine "$29/project/month", "$299/project/month" — https://tina.io/pricing | 2026-11-25 |
+| 31 | The pricing page opens on yearly billing; its large figures, $24 and $249 a month, are the yearly prices spread over twelve months | Card prices in the default view "$24 / project / month", "$290 billed annually (save $58)"; "$249 / project / month", "$2,990 billed annually (save $598)"; columnByLineAnnual "$24/project/month", "$249/project/month" against columnByLine "$29/month" (Monthly Billing row; "$29/project/month" is the column heading), "$299/month" (Monthly Billing row; "$299/project/month" is the column heading) — https://tina.io/pricing | 2026-11-25 |
 | 32 | Extra users $9 a month on Team, $18 on Business | Additional Users: Team "$9/user", Business "$18/user"; yearly view "$90/additional seat per year", "$180/additional seat per year" — https://tina.io/pricing | 2026-11-25 |
 | 33 | Bandwidth 100 GB a month on Free, 500 GB on Team, unlimited above | Bandwidth / month: "100 GB", "500 GB", "Unlimited", "Unlimited" — https://tina.io/pricing | 2026-11-25 |
 | 34 | You can host the backend yourself and pay TinaCloud nothing, at the cost of some features; the pricing page doesn't mention it | "This allows you to run your own TinaCMS Backend, with the flexibility to provide your own database, authentication, and Git integration, independent of TinaCloud." — https://tina.io/docs/self-hosted/overview ; no self-hosting on https://tina.io/pricing ; losses — row 52 | 2026-11-25 |
@@ -121,3 +121,20 @@ blocks (`/docs/astro/editable-sites/`); pull requests open on GitHub, or as a
 compare link for GitLab or Bitbucket, and a site can commit with no remote
 (`/docs/configuration/publishing/`); publishing over MCP can be switched off
 (`/docs/integrations/mcp/`, "Modes and safety switches").
+
+## After the independent check (2026-11-25)
+
+61 statements confirmed; four said more than their source, one opinion read as first-hand use, and two prices in this file were quoted with words from a column heading. All corrected. On the page now:
+
+| # | On the page now | Source | Read |
+| --- | --- | --- | --- |
+| C1 | The Data Layer database, which its docs say you can think of as "more of an ephemeral cache" | "You can think of the database as more of an ephemeral cache, since the single source of truth for your content is really your Markdown/JSON files." — https://tina.io/docs/reference/content-api/data-layer | 2026-11-25 |
+| C2 | Visual editing for Vue "is currently in our backlog"; Vue sites get the basic editor | "Supporting Vue is currently in our backlog. In the meantime, you can use the basic editor…" — https://tina.io/docs/contextual-editing/vue | 2026-11-25 |
+| C3 | By default, a block's type is under a `_template` key | "You can customise this with the templatesKey property" — https://tina.io/docs/reference/types/object | 2026-11-25 |
+| C4 | Its Astro guide says clicking the headline should "open a form in the sidebar to edit live" | https://tina.io/docs/frameworks/astro | 2026-11-25 |
+| C5 | "now maintained by SSW", in its Forestry page's words | "TinaCMS is the successor to Forestry.io, now maintained by SSW." — https://tina.io/forestry/ (elsewhere SSW is a logo, not text) | 2026-11-25 |
+| C6 | TinaCloud currently works with GitHub only | FAQ: "Currently yes… Other Git providers may be available in the future." — https://tina.io/docs/introduction/faq | 2026-11-25 |
+| C7 | Its TinaGPT chatbot answers questions on tina.io, not in the editor | https://tina.io/blog/Introducing-TinaGPT-Chatbot- (6 Jun 2024) | 2026-11-25 |
+| C8 | Editing on the page: theirs (live as you type, in React and Astro) | https://tina.io/docs/contextual-editing/react ; https://tina.io/docs/contextual-editing/astro | 2026-11-25 |
+
+Galley's side, corrected: a review site's pull request is opened for you on GitHub, or Galley gives a link to open one on GitLab or Bitbucket (`docs/configuration/publishing.md`).

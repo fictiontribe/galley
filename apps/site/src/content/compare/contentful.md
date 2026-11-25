@@ -9,7 +9,7 @@ lead: Contentful is a hosted, API-first platform that serves one body of content
 published: "2026-11-25"
 checked: November 2026
 order: 3
-draft: true
+draft: false
 short:
   - Contentful is a hosted, API-first headless CMS. Your content lives in its cloud, on Amazon Web Services, and sites fetch it through its APIs. Asked whether you can host it yourself, its help centre answers "No." Galley's content is files in your own Git repository, and every publish is a commit.
   - As of November 2026, Contentful's Free plan costs nothing but may not be used for commercial work, Lite is $300 a month, and Enterprise is priced on request. Studio, AI Actions and Personalization are added to Enterprise. Galley is free and Apache-2.0. You pay for your own AI key and your own hosting.
@@ -48,12 +48,12 @@ table:
       better: theirs
     - label: AI in the editor
       ours: An assistant that never publishes
-      theirs: AI Actions (Enterprise); an agent that asks first
+      theirs: AI Actions (Enterprise); an agent that asks before publishing
       better: even
     - label: Checking a change
       ours: Each change in the site's words, beside the live site
-      theirs: Live preview, and tasks to finish first
-      better: ours
+      theirs: Live preview; compare versions, restore one change
+      better: even
     - label: Teams
       ours: Three roles on a hosted editor (new)
       theirs: Custom roles, Teams and SCIM on Enterprise
@@ -179,7 +179,7 @@ Contentful's platform page calls it "A headless CMS at the core of Contentful's 
 
 Galley keeps the content where a static site already keeps it: Markdown, JSON, YAML or TOML files in the site's own Git repository. There is no database. An unpublished change is a changed file, and publishing is a commit.
 
-Two things follow. Contentful is built for one body of content that feeds many places; Galley edits the one website in the repository, with no API for anything else. And with Contentful your content lives in a vendor's system, on its plans, while with Galley it never leaves your repository.
+Two things follow. Contentful is built for one body of content that feeds many places; Galley edits the one website in the repository, with no content API for apps or other channels. And with Contentful your content lives in a vendor's system, on its plans, while with Galley it stays in your repository.
 
 One more fact from Contentful's own pages. On 1 June 2026 its blog said Contentful "has signed a definitive agreement to be acquired by Salesforce", and the footer of its site now reads "© Copyright 2026 Salesforce, Inc."
 
@@ -216,12 +216,12 @@ The honest caveat on our side: detection is only as good as the site is tidy. A 
 Contentful's headline is "Built for humans. Ready for agents." It has built a good deal to back that up.
 
 - **AI Actions** run set prompts on an entry or a single field, such as translation, image alt text or SEO metadata, with a model you pick or one you bring (OpenAI, AWS Bedrock, Google Gemini, Azure or any OpenAI-compatible endpoint). The pricing page says "AI Actions is available on any Enterprise plan", with credits included and pay-as-you-go beyond them.
-- **The Content Operations Agent**, generally available since 9 November 2026, takes a request in plain language, and "the agent creates pages, audits content, applies metadata, and runs AI Actions across many entries at once." It asks first: "the agent never publishes, archives, or changes a content type without your explicit approval first." It is free to use through January 2027, within usage limits. From 9 January 2027 each operation uses 0.25 AI Consumption Units. Ask Contentful which plans include it.
+- **The Content Operations Agent**, generally available since 9 November 2026, takes a request in plain language, and "the agent creates pages, audits content, applies metadata, and runs AI Actions across many entries at once." It asks first: "the agent never publishes, archives, or changes a content type without your explicit approval first." Its content operations are free until 8 January 2027, within fair-usage limits, though AI Actions it runs still use units; after that, each operation uses 0.25 AI Consumption Units. Ask Contentful which plans include it.
 - **An official MCP server**, hosted by Contentful: "The MCP server is available to all customers without charge." Cursor, VS Code, Claude Code, ChatGPT and Windsurf sign in to it with OAuth, and an admin installs its app in each space and environment and allows groups of tools, read-only or read/write. The tools include publishing entries. A local, open-source server exists too.
 
-Galley puts one assistant inside the editor, beside the page. You ask in plain words. It reads the site before it edits, asks one short question when a request could mean two places, and says what it changed, quoting the new words. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change it makes waits in the proof, and a person presses Publish. Galley's [MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off. Publishing over MCP can be switched off, so that every publish happens in the app.
+Galley puts one assistant inside the editor, beside the page. You ask in plain words. It reads the site before it edits, asks one short question when a request could mean two places, and says what it changed, quoting the new words. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change it makes waits in the proof, and a person presses Publish. Galley's [MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
 
-Both products keep a person in front of the button that makes a change live, and we think that is right. Where we think Galley does better is what that person sees: the change in the site's own words beside the live page, and a record that is a commit in your own repository. That's our view. A team running content across many markets may care more about bulk work and approval steps, and there Contentful is ahead.
+Both products' built-in AI waits for a person before anything goes live, and we think that is right. Where we think Galley does better is what that person sees: the change in the site's own words beside the live page, and a record that is a commit in your own repository. That's our view. A team running content across many markets may care more about bulk work and approval steps, and there Contentful is ahead.
 
 ## How do you check a change before it goes live?
 
@@ -229,7 +229,7 @@ In Contentful, live preview is on every plan, beside the entry editor: "As chang
 
 In Galley every change, whether typed in the form, retyped on the page or made by the assistant, lands in [Proof](/how-to/proof-and-publish/): the change in the site's own words, old text struck out and new text written in, beside the live site. Any single change can be put back. Publishing is a commit to your repository, or a branch and a pull request if the site is set up for review. Undo is a new commit, and history is never rewritten.
 
-The difference is in what the reviewer sees, and where the record lives. Contentful shows the new page and gives the team a process for approving it. Galley shows what changed, word by word, and the record is your Git log. Contentful's help centre adds: "If you accidentally deleted a specific content entry from a space, we do not offer the ability to restore it." In Galley, undoing the publish that deleted a page brings it back.
+The difference is in what the reviewer sees, and where the record lives. Contentful shows the new page and gives the team a process for approving it, and on the master environment its version history can compare an entry with its current version, show only the differences, and restore all changes or just one. Galley shows every change waiting across the site, in the page's own words beside the live page, and the record is your Git log. Contentful's help centre adds: "If you accidentally deleted a specific content entry from a space, we do not offer the ability to restore it." In Galley, undoing the publish that deleted a page brings it back.
 
 ## How does the site get its content?
 
@@ -239,7 +239,7 @@ With Galley, the build reads files. Galley publishes to your repository, and you
 
 ## Which one suits a team?
 
-For a large team today, Contentful. Free has two roles (Admin and Editor) and Lite adds Author. Enterprise adds custom roles, tag-based permissions, Teams, SCIM provisioning and near real-time audit logs. Comments and tasks are on every plan, and a presence indicator that shows "users who are actively working on an entry in real time" starts at Lite. Locales number two on Free, three on Lite and a custom number on Enterprise, up to 500 per environment, and what the pricing page calls "Localized workflows" are on Enterprise. Launch, from Lite, groups entries into releases and publishes them "either immediately or on a desired date in future", and single entries can be scheduled too. Contentful is "Certified to SOC 2 Type 2 and ISO 27001", and Enterprise adds 24/7 support and an uptime agreement of up to 99.99%.
+For a large team today, Contentful. Free has two roles (Admin and Editor) and Lite adds Author. Enterprise adds custom roles, tag-based permissions, Teams, SCIM provisioning and near real-time audit logs. The pricing table ticks comments on entries and the Tasks app on every plan (comments on fields start at Lite), and a presence indicator that shows "users who are actively working on an entry in real time" starts at Lite. Locales number two on Free, three on Lite and a custom number on Enterprise, up to 500 per environment, and what the pricing page calls "Localized workflows" are on Enterprise. Launch, from Lite, groups entries into releases and publishes them "either immediately or on a desired date in future", and single entries can be scheduled too. Contentful is "Certified to SOC 2 Type 2 and ISO 27001", and Enterprise adds 24/7 support and an uptime agreement of up to 99.99%.
 
 Galley is behind here, and we'd rather say so than let you find out. Used on your own computer, it has no accounts: anyone who can open the app can publish, so the gate is pull-request mode and your code host's branch protection. A [hosted editor](/docs/running/hosted/), one site per install on a server you run, adds accounts with three roles (owner, editor and contributor), and each publish carries its author's name. The roles keep people out of each other's way; they aren't a security boundary. That hosted editor is new and still in final checks. Single sign-on is planned for later. Everyone on one hosted editor works on one shared copy of the site; a second save of a page someone has just changed is refused, not written over it. There is no live presence, no scheduled publishing, no editorial workflow across locales, and no approval chain beyond a pull request.
 
