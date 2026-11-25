@@ -43,12 +43,12 @@ describe("whose a port is, from /proc alone", () => {
   it("finds the processes holding the socket that listens on a port, and a process's group", async () => {
     const proc = standInProc();
 
-    expect(await listenersFromProc(4321, proc)).toEqual([41]);
-    expect(await listenersFromProc(8080, proc)).toEqual([77]);
+    expect(await listenersFromProc(4321, proc)).toEqual({ pids: [41], unseen: false });
+    expect(await listenersFromProc(8080, proc)).toEqual({ pids: [77], unseen: false });
     // Nothing listens there (a connection from that port is no listener).
-    expect(await listenersFromProc(4322, proc)).toEqual([]);
+    expect(await listenersFromProc(4322, proc)).toEqual({ pids: [], unseen: false });
     // Something listens, held by nobody this process may look into.
-    expect(await listenersFromProc(40000, proc)).toBeNull();
+    expect(await listenersFromProc(40000, proc)).toEqual({ pids: [], unseen: true });
     expect(await listenersFromProc(4321, join(proc, "nowhere"))).toBeNull();
     expect(await groupFromProc(41, proc)).toBe(40);
     expect(await groupFromProc(77, proc)).toBe(77);
@@ -61,7 +61,7 @@ describe("whose a port is, from /proc alone", () => {
     children.push(child);
     const port = await new Promise<number>((resolve) => child.stdout!.once("data", (chunk: Buffer) => resolve(Number(chunk.toString().trim()))));
 
-    expect(await listenersFromProc(port)).toEqual([child.pid]);
+    expect(await listenersFromProc(port)).toEqual({ pids: [child.pid], unseen: false });
     expect(await groupFromProc(child.pid!)).toBe(child.pid);
     expect(await listenerStartedHere(port, child.pid!, tempDir("elsewhere-"))).toBe("own");
     // A listener of this process's own is not that dev server's.
@@ -71,7 +71,7 @@ describe("whose a port is, from /proc alone", () => {
     try {
       const minePort = (mine.address() as net.AddressInfo).port;
 
-      expect(await listenersFromProc(minePort)).toContain(process.pid);
+      expect((await listenersFromProc(minePort))?.pids).toContain(process.pid);
       expect(await listenerStartedHere(minePort, child.pid!, tempDir("elsewhere-"))).toBe("foreign");
     } finally {
       await new Promise((done) => mine.close(done));

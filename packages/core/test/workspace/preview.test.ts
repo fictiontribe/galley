@@ -148,6 +148,7 @@ const STRICT_SERVER = `
 import http from "node:http";
 import { readFileSync, writeFileSync } from "node:fs";
 const port = Number(process.argv[process.argv.indexOf("--port") + 1]);
+const host = process.env.LISTEN_ON || "127.0.0.1";
 let asked = [];
 try { asked = JSON.parse(readFileSync("asked.json", "utf8")); } catch {}
 writeFileSync("asked.json", JSON.stringify([...asked, port]));
@@ -156,7 +157,8 @@ const server = http.createServer((req, res) => {
   res.writeHead(200, { "content-type": "text/html" });
   res.end("<html><head></head><body><h1>strict</h1></body></html>");
 });
-server.listen(port, "127.0.0.1", () => console.log("  Local   http://localhost:" + port + "/"));
+// Says where it is only when asked to: one that doesn't leaves the port it was given as all there is to go by.
+server.listen(port, host, () => { writeFileSync("listening.txt", String(port)); if (!process.env.SAY_NOTHING) console.log("  Local   http://localhost:" + port + "/"); });
 `;
 
 /**
@@ -265,6 +267,16 @@ async function canSayWhoseAPortIs(): Promise<boolean> {
   } finally {
     await new Promise((done) => probe.close(done));
   }
+}
+
+/** Whether this machine lets a program listen on an address (a runner without IPv6 has no ::1). */
+function canListenOn(host: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const probe = net.createServer();
+
+    probe.once("error", () => resolve(false));
+    probe.listen(0, host, () => probe.close(() => resolve(true)));
+  });
 }
 
 /** A free port on 127.0.0.1, to configure as a site's dev port. */
@@ -830,6 +842,36 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
     expect(status.log.join("\n")).toContain(`Port ${told} was taken by another program`);
   });
 
+  it.each([
+    ["the other program on 127.0.0.1, the dev server on ::1", "127.0.0.1", "::1"],
+    ["the other program on ::1, the dev server on 127.0.0.1", "::1", "127.0.0.1"],
+  ] as const)("never shows another program's pages when the two share a port number on different addresses (%s)", async (_which, otherOn, devOn) => {
+    // One port number can have two listeners at once, each on its own address. The preview asks both addresses and
+    // uses whichever answers first, so "a listener on this port is ours" is not enough: every one of them has to be.
+    if (!(await canListenOn("::1"))) return;
+    const root = site("strict");
+    const port = await freeLoopbackPort();
+    const { controller, statuses } = controllerFor(root, { dev: { command: "node strict-server.mjs", port, portArgs: ["--port", "{port}"] }, environment: { LISTEN_ON: devOn, SAY_NOTHING: "1" } });
+    const starting = controller.start();
+
+    // The other program arrives the moment the dev server has its address, so both are listening when the preview
+    // looks: whichever address the preview asks first, it must not settle on the other program's.
+    await until(() => existsSync(join(root, "listening.txt")), 5000, 2);
+    const told = Number(readFileSync(join(root, "listening.txt"), "utf8"));
+    const other = http.createServer((_req, res) => res.end("<html><head></head><body><h1>not this site</h1></body></html>"));
+
+    servers.push(other);
+    await new Promise<void>((done) => other.listen(told, otherOn, done));
+    const status = await starting;
+
+    expect(status.state, status.log.join("\n")).toBe("ready");
+    expect(await (await fetch((status.url as string) + "/")).text()).toContain("<h1>strict</h1>");
+    expect(statuses.filter((each) => each.state === "ready")).toHaveLength(1);
+    // The port wasn't this preview's alone, so the dev server was started again somewhere that is.
+    expect(JSON.parse(readFileSync(join(root, "asked.json"), "utf8"))).toHaveLength(2);
+    expect(status.log.join("\n")).toContain(`Port ${told} was taken by another program`);
+  });
+
   it("gives up with a sentence that says what to do when the port keeps being taken", async () => {
     const root = site("strict");
     const port = await freeLoopbackPort();
@@ -868,8 +910,10 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
     const status = await controller.start();
 
     expect(status.state).toBe("ready");
-    expect(asked).toEqual([port]);
-    expect(status.log.join("\n")).toContain(`Port ${port} is answering, and it couldn't be checked here that it is this site's own preview answering`);
+    // Asked each time the port answered (twice, to settle), about that port and no other; and said once.
+    expect([...new Set(asked)]).toEqual([port]);
+    expect(asked.length).toBeGreaterThanOrEqual(2);
+    expect(status.log.filter((line) => line.includes("couldn't be checked here"))).toEqual([expect.stringContaining(`Port ${port} is answering, and it couldn't be checked here that it is this site's own preview answering`)]);
     // With a system that can say, the same server is found to be this preview's own, and nothing is said.
     await controller.stop();
     const real = controllerFor(root, { dev: { command: "node quiet-server.mjs", port, portArgs: ["--port", "{port}"] } });

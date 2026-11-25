@@ -656,14 +656,15 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
             );
           /** The port the dev server was given, by argument or by PORT: the one another program can take in the meantime. */
           const given = explicitPort ?? (configuredPort && !configuredTaken ? configuredPort : null);
-          const checked = new Set<number>();
           /**
            * Whether a port that answers is this dev server's. A port the dev server itself said it listens on is; so
-           * is one it moved to in the background. Any other is asked about once: the port it was given answers for
-           * whoever has it, and that can be another program that took it first.
+           * is one it moved to in the background. Any other is asked about each time it answers, never once and
+           * remembered: the port it was given answers for whoever has it, another program can take it (or one of
+           * its addresses) at any moment before the preview has settled, and the address that answers one look may
+           * not be the one that answers the next.
            */
           const ours = async (port: number): Promise<boolean> => {
-            if (port === announced || backgrounded || checked.has(port) || spawned.pid === undefined) return true;
+            if (port === announced || backgrounded || spawned.pid === undefined) return true;
             const verdict = await startedHere(port, spawned.pid, options.root);
 
             if (verdict === "foreign") throw new PortTaken(port);
@@ -671,7 +672,6 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
               uncheckable.add(port);
               pushLog(`Port ${port} is answering, and it couldn't be checked here that it is this site's own preview answering (this system can't say which program has a port), so it is taken to be.`);
             }
-            checked.add(port);
             return true;
           };
 

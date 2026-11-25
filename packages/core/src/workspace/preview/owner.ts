@@ -28,11 +28,11 @@ function run(file: string, args: string[], timeoutMs: number): Promise<{ code: n
 
 /**
  * Linux, with nothing but /proc (a slim container has neither lsof nor ps):
- * the processes that hold the socket listening on a TCP port. Empty when
- * nothing listens there; null when it can't be read, or the socket is held
- * by processes this one may not look into (another user's).
+ * the processes that hold the sockets listening on a TCP port, on any
+ * address, and whether one of those sockets is held by nobody this process
+ * may look into (another user's). Null when it can't be read at all.
  */
-export async function listenersFromProc(port: number, proc = "/proc"): Promise<number[] | null> {
+export async function listenersFromProc(port: number, proc = "/proc"): Promise<Listeners | null> {
   const wanted = `:${port.toString(16).toUpperCase().padStart(4, "0")}`;
   const sockets = new Set<string>();
   let read = false;
@@ -50,8 +50,9 @@ export async function listenersFromProc(port: number, proc = "/proc"): Promise<n
     }
   }
   if (!read) return null;
-  if (sockets.size === 0) return [];
-  const holders: number[] = [];
+  if (sockets.size === 0) return { pids: [], unseen: false };
+  const holders = new Set<number>();
+  const held = new Set<string>();
 
   for (const entry of await readdir(proc).catch(() => [] as string[])) {
     if (!/^\d+$/.test(entry)) continue;
@@ -60,12 +61,12 @@ export async function listenersFromProc(port: number, proc = "/proc"): Promise<n
       const socket = /^socket:\[(\d+)\]$/.exec(link)?.[1];
 
       if (socket && sockets.has(socket)) {
-        holders.push(Number(entry));
-        break;
+        holders.add(Number(entry));
+        held.add(socket);
       }
     }
   }
-  return holders.length ? holders : null;
+  return { pids: [...holders], unseen: held.size < sockets.size };
 }
 
 /** Linux: the process group a process is in, read from /proc; null when it can't be read. */
@@ -77,12 +78,26 @@ export async function groupFromProc(pid: number, proc = "/proc"): Promise<number
   return Number.isInteger(group) && group > 0 ? group : null;
 }
 
+/** The processes listening on a TCP port number, on whichever addresses. */
+export interface Listeners {
+  pids: number[];
+  /** A listener is there that this process may not look into (another user's). Known on Linux; elsewhere such a listener simply isn't seen. */
+  unseen: boolean;
+}
+
+async function listening(port: number, timeoutMs: number): Promise<Listeners | null> {
+  const pids = await listeningPids(port, timeoutMs);
+
+  if (pids !== null) return { pids, unseen: false };
+  // No lsof here: on Linux /proc says the same.
+  return process.platform === "linux" ? listenersFromProc(port) : null;
+}
+
 /** pids listening on a TCP port (any address), or null when that can't be found out. */
 async function listeningPids(port: number, timeoutMs: number): Promise<number[] | null> {
   const result = await run("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"], timeoutMs);
 
-  // No lsof here: on Linux /proc says the same.
-  if (!result) return process.platform === "linux" ? listenersFromProc(port) : null;
+  if (!result) return null;
   // lsof exits 1 when nothing matched.
   if (result.code !== 0 && result.stdout.trim() === "") return [];
   return [...new Set(result.stdout.split(/\s+/).map(Number).filter((pid) => Number.isInteger(pid) && pid > 0))];
@@ -124,14 +139,14 @@ export type Ownership = "own" | "foreign" | "unknown";
  */
 export async function portOwnership(port: number, root: string, timeoutMs = LOOKUP_TIMEOUT_MS): Promise<Ownership> {
   if (process.platform !== "darwin" && process.platform !== "linux") return "unknown";
-  const pids = await listeningPids(port, timeoutMs);
+  const found = await listening(port, timeoutMs);
 
-  if (!pids || pids.length === 0) return "unknown";
+  if (!found || found.pids.length === 0) return "unknown";
   const siteRoot = real(root);
-  const dirs = await Promise.all(pids.map((pid) => cwdOf(pid, timeoutMs)));
+  const dirs = await Promise.all(found.pids.map((pid) => cwdOf(pid, timeoutMs)));
 
   if (dirs.some((dir) => dir !== null && !within(siteRoot, real(dir)))) return "foreign";
-  if (dirs.some((dir) => dir === null)) return "unknown";
+  if (found.unseen || dirs.some((dir) => dir === null)) return "unknown";
   return "own";
 }
 
@@ -149,34 +164,52 @@ async function groupOf(pid: number, timeoutMs: number): Promise<number | null> {
 }
 
 /**
- * Whether what listens on `port` is a dev server this preview started: by
- * process, not by folder. The controller starts each dev server in a process
- * group of its own, so its server, and whatever that started, is in `group`.
+ * Whether a port number is this preview's own: every listener on it, on
+ * whichever address, is a dev server this preview started. By process, not
+ * by folder alone: the controller starts each dev server in a process group
+ * of its own, so its server, and whatever that started, is in `group`.
  *
- *   own      a listener is in that group;
- *   foreign  every listener is known and none is in it, and (`root` given)
- *            none runs in the site's folder either. A dev command may hand
- *            its server to a tool that regroups it; a server running in the
- *            site's folder is still this site's.
- *   unknown  the listeners can't be identified (Windows; a Mac without lsof
- *            or ps; another user's process; a lookup that took too long).
- *            Linux needs neither tool: /proc says the same.
+ *   own      every listener is in that group, or runs in the site's folder
+ *            (a dev command may hand its server to a tool that regroups it;
+ *            a server running in the site's folder is still this site's);
+ *   foreign  a listener is neither; or one of ours shares the number with a
+ *            listener that can't be identified;
+ *   unknown  none of the listeners can be identified (Windows; a Mac without
+ *            lsof or ps; another user's process; a lookup that took too
+ *            long). Linux needs neither tool: /proc says the same.
  *
- * Asked when a port the controller chose starts answering before the dev
- * server has said it listens there: between choosing a free port and the
- * dev server asking for it, another program can take it.
+ * Every listener, not any: one port number can have several listeners at
+ * once (one on 127.0.0.1 and one on ::1, one on every address, two sharing
+ * the port), and which of them a connection reaches is the system's to say.
+ * Both loopback addresses were free when the port was chosen, so a listener
+ * there that isn't this preview's arrived since: the port is not this
+ * preview's alone, and it moves to one that is.
+ *
+ * Asked when a port the controller chose answers before the dev server has
+ * said it listens there: between choosing a free port and the dev server
+ * asking for it, another program can take it.
  */
 export async function listenerStartedHere(port: number, group: number, root: string, timeoutMs = LOOKUP_TIMEOUT_MS): Promise<Ownership> {
   if (process.platform !== "darwin" && process.platform !== "linux") return "unknown";
-  const pids = await listeningPids(port, timeoutMs);
+  const found = await listening(port, timeoutMs);
 
-  if (!pids || pids.length === 0) return "unknown";
-  const groups = await Promise.all(pids.map((pid) => (pid === group ? group : groupOf(pid, timeoutMs))));
+  if (!found || (found.pids.length === 0 && !found.unseen)) return "unknown";
+  const siteRoot = real(root);
+  let own = 0;
+  let foreign = 0;
+  let unknown = found.unseen ? 1 : 0;
 
-  if (groups.some((found) => found === group)) return "own";
-  if (groups.some((found) => found === null)) return "unknown";
-  // None of them was started by this preview. Somebody else's, unless it runs in the site's own folder.
-  const byFolder = await portOwnership(port, root, timeoutMs);
+  for (const pid of found.pids) {
+    if (pid === group || (await groupOf(pid, timeoutMs)) === group) {
+      own += 1;
+      continue;
+    }
+    const dir = await cwdOf(pid, timeoutMs);
 
-  return byFolder === "foreign" ? "foreign" : byFolder;
+    if (dir === null) unknown += 1;
+    else if (within(siteRoot, real(dir))) own += 1;
+    else foreign += 1;
+  }
+  if (foreign > 0 || (own > 0 && unknown > 0)) return "foreign";
+  return own > 0 ? "own" : "unknown";
 }
