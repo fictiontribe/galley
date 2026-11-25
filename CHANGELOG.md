@@ -23,6 +23,18 @@ entry says how.
 
 ### Fixed
 
+- **A link to the editor can't send a browser to another site.** A link that
+  carries `?token=` is answered with a redirect to the same address without
+  the token. An address written to begin with two slashes made that redirect
+  point at another site, so a link on the editor's own address could land
+  someone somewhere else. The redirect now only ever goes to a path of the
+  editor itself. No token or session was given away by it.
+- **A hosted editor refuses what it doesn't do however the address is
+  spelled.** The check in front of the routes a hosted editor leaves out
+  (other sites, hosting the editor online) read the address as it was typed,
+  while the router read it decoded, so a percent-encoded letter took a
+  request past the check to a route that then asked for an owner as usual.
+  Every such check now reads the address the router matched.
 - **Looking at the code host runs none of the repository's own hooks.**
   Bringing newer versions in already ran none. The look before it did: git
   has one hook for it (`reference-transaction`), and a repository that has

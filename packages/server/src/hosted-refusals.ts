@@ -67,7 +67,8 @@ export function isEditorHostRoute(path: string): boolean {
 /** The guard createApp puts in front of every route in hosted mode. */
 export function hostedRefusals(): MiddlewareHandler {
   return async (c, next) => {
-    const path = new URL(c.req.url).pathname;
+    // The path the router matched, not the address as it was typed: "/%61pi/…" is routed as "/api/…".
+    const path = c.req.path;
 
     if (isEditorHostRoute(path)) return c.json(errorBody("not-found", "Hosting the editor online isn't available on a hosted editor. Use the desktop app for that."), 404);
     if (isMultiSiteRoute(c.req.method, path)) return c.json(errorBody("forbidden", ONE_SITE_MESSAGE), 403);
