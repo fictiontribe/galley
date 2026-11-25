@@ -127,6 +127,11 @@ export interface AppOptions {
   mailer?: MailTransport | null;
   /** Hosted mode: the clock the sign-in limits run on (sign-in-gate.ts). Tests give one that never really waits; absent: the real one. */
   signInClock?: SignInClock;
+  /**
+   * What an embedding program added (extensions/), already started: their
+   * routes are mounted under `/api/x/`. Hosted mode needs accounts for it.
+   */
+  extensions?: { list: import("./extensions/run").StartedExtension[]; desk: import("./extensions/people").PeopleDesk | null };
 }
 
 /** Keeps track of open event streams so shutdown can end them, and of how many each identity has open where that is limited. */
@@ -142,6 +147,14 @@ export interface StreamRegistry {
 }
 
 export interface ServerOptions {
+  /**
+   * Embedding: what the program starting this server adds to it (extensions/index.ts).
+   * Fixed here, in the program's own source: nothing read at run time adds one.
+   * A server with extensions must be the only server running in its process.
+   */
+  extensions?: import("./extensions/types").ServerExtension[];
+  /** How long an extension's setup and stop may take (ms). Tests shorten them. */
+  extensionTimes?: { setupMs?: number; stopMs?: number };
   /** Default: GALLEY_PORT, then 4400. */
   port?: number;
   /** Default: GALLEY_HOST, then 127.0.0.1. */

@@ -107,6 +107,43 @@ entry says how.
 
 ## 0.4.1 — 2026-11-25
 
+### Added
+
+- **Embedding, first part: routes of your own (experimental).** A program
+  that starts Galley's server can add API routes to it when it is built
+  (`startServer({ extensions })`, `@galley/server/extensions`), for an edition
+  of the editor with something of its own in it: a status page, a button that
+  files a request. Each route lives under `/api/x/<id>/`, which no address of
+  the editor's own uses, and names the level it needs (edit, publish or
+  manage); the server doesn't start with a route that has none. A request has
+  passed every check a request to the editor's own API passes before a
+  handler sees it, and two more: with a cookie the browser must say the
+  request is the editor's own page's, on GET too, and a part of the address
+  can't carry a path. A handler is handed a narrowed request (never the
+  cookie or the headers) and the site with `.git/` and `.env*` unreadable by
+  name; what the site answers with is a copy, from a change as from a read,
+  and on GET it refuses whatever would change it. Work a handler leaves
+  running loses its caller's access once it has answered, though what it
+  records still carries that person's publishing name. An extension names its
+  secret environment variables: on a hosted install they are kept from the
+  site's commands, and everywhere their values are taken out of the server's
+  log and of the extension's error messages. Once an extension has been
+  stopped, what it was handed does nothing: the sites it holds, and the
+  preview's controller if it took one. It
+  is not a sandbox: an extension is its author's code with the server's
+  permissions. A server with extensions must be the only server in its
+  process, and should be restarted after a backup is put back. The shapes may
+  change in any 0.x release. The docs page is *Running Galley › Embedding the
+  editor*.
+- **Stopping a server that can't let go of its data folder says so.** A stop
+  that fails to release the folder still fails, as before; the reason is now
+  also written to the log, and the rest of the stop is finished first.
+- **A start that fails undoes everything it had started.** When a hosted
+  install could not start (its port was already taken) or could not finish
+  starting, the process stayed in hosted mode, and a site it had opened
+  stayed open. Both are now undone, as a stop undoes them, and the error
+  the start failed with is the one reported.
+
 ### Changed
 
 - **A window nobody is at stops asking for its connection.** When the app
