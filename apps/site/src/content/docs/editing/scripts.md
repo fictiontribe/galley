@@ -37,6 +37,7 @@ A script can be switched off without removing it, moved up or down (the order th
 
 ## If something's different
 
+- **There's no Add a script.** The site's settings keep build mode off (an owner turns on “Allow build mode” in Site settings › Assistant), or your account isn't an editor's or an owner's. You can still turn a script off, remove it, or change where it loads.
 - **The site has no Scripts screen yet, or it offers "Set it up for me".** The site doesn't have Galley's site kit; the button adds it as pending changes for the site's developer to check. [Scripts, for developers](/docs/scripts/).
 - **Analytics shows no visits from the editor.** On purpose: scripts don't run in the editor's preview, so your own editing isn't counted.
 - **No visits at all after publishing.** The banner may be waiting for visitors to agree, or the ID is wrong. The docs haven't checked a live Google Analytics property.

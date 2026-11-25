@@ -235,7 +235,7 @@ function SettingsForm({ siteId, model, config, hash, foot }: { siteId: string; m
           checked={draft.ai?.allowBuild ?? model.ai.allowBuild}
           onChange={(checked) => set(["ai", "allowBuild"], checked === model.ai.allowBuild && draft.ai?.allowBuild === undefined ? undefined : checked)}
           label="Allow build mode"
-          description="Lets the assistant change the site’s design and code — layouts, components, styles — not just pages and images. Leave off for editors."
+          description="Lets the assistant change the site’s design and code — layouts, components, styles — not just pages and images. Off, nobody can turn a script on or add custom code to a form, owners included."
         />
       </Group>
 

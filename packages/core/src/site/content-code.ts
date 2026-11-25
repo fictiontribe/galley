@@ -214,6 +214,22 @@ function isBuildSettingsFile(path: string, model: SiteModel): boolean {
   return model.framework.id === "hugo" && parts[0] === "config";
 }
 
+/**
+ * Folders a framework reads templates from — layouts, includes, partials,
+ * Hugo's archetypes — where any file, JSON included, may be rendered as one.
+ * A held write never lands in one, whatever collection or setting points
+ * there.
+ */
+const TEMPLATE_FOLDERS = new Set(["_includes", "_layouts", "layouts", "_partials", "partials", "archetypes"]);
+
+function inTemplateFolder(path: string): boolean {
+  return path
+    .toLowerCase()
+    .split("/")
+    .slice(0, -1)
+    .some((part) => TEMPLATE_FOLDERS.has(part));
+}
+
 /** A path as the readers open it (`docs/./voice.md` is docs/voice.md), lower-cased; null when no reader would open it. */
 function readerPath(path: string): string | null {
   try {
@@ -292,20 +308,23 @@ function isMediaPlace(path: string, model: SiteModel): boolean {
 
 /**
  * Whether a held write may touch `path` (already normalised). An allowlist:
- * never a file an assistant takes as instructions; the redirects list, and the
- * host's redirects file when the redirects code itself writes it; never a
- * build tool's or a host's settings; never a type the build runs as a module;
- * media where media belongs; a data collection's own file in a data format;
- * an entry a collection's own pattern matches, whose extension the collection
- * admits and whose format is inert.
+ * never a file an assistant takes as instructions (asked first, by the
+ * caller); the host's redirects file when the redirects code itself writes it
+ * (it may be vercel.json, or an extensionless `_redirects`); never a build
+ * tool's or a host's settings, or a framework's template folder; never a type the build runs as a module — the
+ * redirects list included, wherever the settings point it; then the
+ * redirects list; media where media belongs; a data collection's own file in
+ * a data format; an entry a collection's own pattern matches, whose extension
+ * the collection admits and whose format is inert.
  */
 function allowedBelowBuild(path: string, model: SiteModel, context: GuardContext): boolean {
   if (!mayBeShown(path)) return false;
-  if (path === normalizePath(listFileOf(model)) || isGeneratedRedirectsWrite(path, model)) return true;
-  if (isBuildSettingsFile(path, model)) return false;
+  if (isGeneratedRedirectsWrite(path, model)) return true;
+  if (isBuildSettingsFile(path, model) || inTemplateFolder(path)) return false;
   const ext = extensionOf(path);
 
   if (runsAsModule(model.framework.id, ext)) return false;
+  if (path === normalizePath(listFileOf(model))) return true;
   if (isMediaPlace(path, model)) return true;
   const owning = collectionForPath(model, path);
 

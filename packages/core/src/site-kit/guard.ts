@@ -128,10 +128,21 @@ export function isScriptsFile(path: string, collection: Collection | null): bool
 export function scriptCodeRefusal(before: string | null, after: string, who: { origin: ChangeOrigin; mode?: AgentMode; allowBuild: boolean }): string | null {
   if (addedScripts(before, after).length === 0) return null;
   if (callerViaPreview()) return callerRefusal(PAGE_SAVE_REFUSAL);
+  // Each sentence says why and what the person can do instead. Where the site keeps build mode off nobody may, so that
+  // comes first (asking someone with build mode wouldn't help); then the account's level; then the mode.
+  if (!who.allowBuild) return SCRIPT_BUILD_OFF_REFUSAL;
+  if (!callerMay(BUILD_MODE_LEVEL)) return callerRefusal(SCRIPT_LEVEL_REFUSAL);
   const mode = who.mode ?? (who.origin === "agent" ? "content" : undefined);
 
-  if (mode === "content") return "A script on the site's pages runs in every visitor's browser, so it can only be turned on or changed in build mode. Nothing was changed.";
-  if (!callerMay(BUILD_MODE_LEVEL)) return callerRefusal(BUILD_MODE_REFUSAL);
-  if (!who.allowBuild) return "A script on the site's pages can only be turned on or changed on sites that allow build mode. Nothing was changed.";
-  return null;
+  return mode === "content" ? SCRIPT_CONTENT_MODE_REFUSAL : null;
 }
+
+/** Said when an account below build-mode level would turn a script on or change one that is on. */
+export const SCRIPT_LEVEL_REFUSAL =
+  "A script on the site's pages runs in every visitor's browser, so only an account with build mode may turn one on or change one. You can turn one off, remove it, or change where it loads. Ask an owner or an editor of this editor.";
+/** Said when the site's settings keep build mode off. */
+export const SCRIPT_BUILD_OFF_REFUSAL =
+  "A script on the site's pages runs in every visitor's browser, and this site's settings keep build mode off, so scripts can't be turned on or changed. An owner can turn on “Allow build mode” in Site settings › Assistant. Nothing was changed.";
+/** Said in content mode: the assistant in a content conversation, or a write of the file that isn't in build mode. */
+export const SCRIPT_CONTENT_MODE_REFUSAL =
+  "A script on the site's pages runs in every visitor's browser, so it can only be turned on or changed in build mode: on the Scripts screen, or by the assistant in a build-mode conversation. Nothing was changed.";

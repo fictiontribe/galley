@@ -32,6 +32,10 @@ const LAYOUT = "layout: ../../layouts/Base.astro\n";
 type SiteKind =
   | "astro"
   | "astro-claims"
+  | "astro-build-off"
+  | "astro-vercel"
+  | "hugo-claims"
+  | "jekyll-claims"
   | "eleventy-root"
   | "eleventy-src"
   | "eleventy-src-plain"
@@ -109,6 +113,66 @@ const SITES: Record<SiteKind, { config: object; files: Record<string, string>; l
       "src/data/scripts.json": `${JSON.stringify({ consent: { mode: "none" }, scripts: [{ id: "chat", kind: "custom", label: "Chat", enabled: false, settings: { inline: "console.log(1)" } }] }, null, 2)}\n`,
     },
     links: [["scripts.json", "src/data/site.json"]],
+  },
+  // Build mode off in the site's settings, and the redirects list pointed at a build tool's settings file.
+  "astro-build-off": {
+    config: {
+      name: "Off",
+      framework: "astro",
+      ai: { allowBuild: false },
+      redirects: { host: "netlify", file: "package.json" },
+      collections: [
+        { id: "pages", path: "src/content/pages", format: "markdown", pattern: "**/*.md" },
+        { id: "scripts", kind: "data", path: "src/data/scripts.json", format: "json" },
+      ],
+    },
+    files: {
+      "src/content/pages/about.md": md("About"),
+      "package.json": '{ "name": "off", "type": "module" }\n',
+      "src/data/scripts.json": `${JSON.stringify({ consent: { mode: "none" }, scripts: [{ id: "chat", kind: "custom", label: "Chat", enabled: false, settings: { inline: "console.log(1)" } }, { id: "ga", kind: "ga4", label: "Analytics", enabled: true, settings: { measurementId: "G-ABC123" } }] }, null, 2)}\n`,
+    },
+  },
+  // The redirects code writes vercel.json, a host's settings file, for the Vercel host.
+  "astro-vercel": {
+    config: {
+      name: "V",
+      framework: "astro",
+      ai: { allowBuild: true },
+      redirects: { host: "vercel" },
+      collections: [
+        { id: "pages", path: "src/content/pages", format: "markdown", pattern: "**/*.md" },
+        { id: "site", kind: "data", path: "src/data/site.json", format: "json" },
+      ],
+    },
+    files: { "src/content/pages/about.md": md("About"), "src/data/site.json": "{}\n", "vercel.json": "{}\n" },
+  },
+  // Settings pointing a data collection and the redirects list into a framework's template folders.
+  "hugo-claims": {
+    config: {
+      name: "H",
+      framework: "hugo",
+      ai: { allowBuild: true },
+      redirects: { file: "layouts/partials/r.json" },
+      collections: [
+        { id: "posts", path: "content/posts", format: "markdown", pattern: "**/*.md" },
+        { id: "home", kind: "data", path: "layouts/index.json", format: "json" },
+        { id: "menu", kind: "data", path: "data/menu.json", format: "json" },
+      ],
+    },
+    files: { "content/posts/a.md": md("A"), "layouts/index.json": "{}\n", "data/menu.json": "{}\n" },
+  },
+  "jekyll-claims": {
+    config: {
+      name: "J",
+      framework: "jekyll",
+      ai: { allowBuild: true },
+      redirects: { file: "_includes/r.json" },
+      collections: [
+        { id: "posts", path: "_posts", format: "markdown", pattern: "**/*.md" },
+        { id: "frame", kind: "data", path: "_layouts/d.json", format: "json" },
+      ],
+    },
+    files: { "_posts/2024-01-01-hello.md": md("Hello"), "_layouts/d.json": "{}\n" },
   },
   "eleventy-root": {
     config: { name: "E", framework: "eleventy", ai: { allowBuild: true }, collections: [{ id: "root", path: ".", format: "markdown", pattern: "**/*.md" }] },
@@ -249,6 +313,7 @@ const LAYOUT_WORDS = /layout names code the site runs.*template/;
 const FRONT = /settings at the top/;
 const IMAGE = /An image on this page/;
 const SCRIPT = /script on the site's pages/;
+const BUILD_OFF = /settings keep build mode off/;
 const GLOBS = /Only content and media/;
 const INSTRUCTIONS = /read a file with this name as their instructions/;
 const RENDERED = /starts with --- like a page's settings/;
@@ -324,13 +389,26 @@ const TABLE: Row[] = [
   { name: "astro the redirects list", site: "astro", who: "contributor", change: { write: "src/data/redirects.json", text: '{ "redirects": [] }\n' }, expect: "ok" },
   { name: "astro the host's redirects file by hand", site: "astro", who: "contributor", change: { write: "public/_redirects", text: "/a /b 200\n" }, expect: LEVEL },
   { name: "astro the host's redirects file as the redirects code writes it", site: "astro", who: "contributor", change: { generatedRedirects: "public/_redirects", text: "/a /b 301\n" }, expect: "ok" },
+  { name: "astro (Vercel) vercel.json as the redirects code writes it", site: "astro-vercel", who: "contributor", change: { generatedRedirects: "vercel.json", text: '{ "redirects": [] }\n' }, expect: "ok" },
+  { name: "astro (Vercel) vercel.json by hand", site: "astro-vercel", who: "contributor", change: { write: "vercel.json", text: '{ "buildCommand": "x" }\n' }, expect: LEVEL },
+  { name: "hugo a data collection in the layouts folder", site: "hugo-claims", who: "contributor", change: { write: "layouts/index.json", text: "{}" }, expect: LEVEL },
+  { name: "hugo the redirects list pointed into the layouts folder", site: "hugo-claims", who: "contributor", change: { write: "layouts/partials/r.json", text: '{ "redirects": [] }' }, expect: LEVEL },
+  { name: "hugo a data file in the data folder", site: "hugo-claims", who: "contributor", change: { write: "data/menu.json", text: '{ "items": [] }' }, expect: "ok" },
+  { name: "jekyll the redirects list pointed into _includes", site: "jekyll-claims", who: "contributor", change: { write: "_includes/r.json", text: '{ "redirects": [] }' }, expect: LEVEL },
+  { name: "jekyll a data collection in _layouts", site: "jekyll-claims", who: "contributor", change: { write: "_layouts/d.json", text: "{}" }, expect: LEVEL },
   // The scripts kit: turning a script on or changing one is build mode; its label is content.
   { name: "astro turning a script on through a data file that is a link to the scripts file", site: "astro-claims", who: "contributor", change: { write: "src/data/site.json", text: JSON.stringify({ consent: { mode: "none" }, scripts: [{ id: "chat", kind: "custom", label: "Chat", enabled: true, settings: { inline: "console.log(1)" } }] }) }, expect: SCRIPT },
   { name: "astro package.json claimed by a data collection", site: "astro-claims", who: "contributor", change: { write: "package.json", text: '{ "scripts": { "build": "astro build" } }' }, expect: LEVEL },
   { name: "astro vercel.json claimed by a data collection", site: "astro-claims", who: "contributor", change: { write: "vercel.json", text: '{ "buildCommand": "x" }' }, expect: LEVEL },
   { name: "astro astro.config.mjs claimed by a data collection", site: "astro-claims", who: "contributor", change: { write: "astro.config.mjs", text: "export default {};" }, expect: LEVEL },
   { name: "astro turning a script on, written as a file", site: "astro", who: "contributor", change: { write: "src/data/scripts.json", text: JSON.stringify({ consent: { mode: "none" }, scripts: [{ id: "chat", kind: "custom", label: "Chat", enabled: true, settings: { inline: "console.log(1)" } }] }) }, expect: SCRIPT },
-  { name: "astro turning a script on through the Scripts screen (an entry edit)", site: "astro", who: "contributor", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 0, "enabled"], value: true }] }, expect: LEVEL },
+  { name: "astro turning a script on through the Scripts screen (an entry edit)", site: "astro", who: "contributor", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 0, "enabled"], value: true }] }, expect: SCRIPT },
+  { name: "astro (build mode off) an owner turning a script on through the Scripts screen", site: "astro-build-off", who: "owner", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 0, "enabled"], value: true }] }, expect: BUILD_OFF },
+  { name: "astro (build mode off) an owner changing a script that is on", site: "astro-build-off", who: "owner", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 1, "settings", "measurementId"], value: "G-XYZ789" }] }, expect: BUILD_OFF },
+  { name: "astro (build mode off) an owner turning a script off", site: "astro-build-off", who: "owner", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 1, "enabled"], value: false }] }, expect: "ok" },
+  { name: "astro (build mode off) a contributor turning a script on", site: "astro-build-off", who: "contributor", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 0, "enabled"], value: true }] }, expect: BUILD_OFF },
+  { name: "astro (build mode off) nobody (local) turning a script on", site: "astro-build-off", who: "nobody", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 0, "enabled"], value: true }] }, expect: BUILD_OFF },
+  { name: "astro (redirects list pointed at package.json) the list file", site: "astro-build-off", who: "contributor", change: { write: "package.json", text: '{ "redirects": [] }' }, expect: LEVEL },
   { name: "astro turning a script on through the Scripts screen, as an owner", site: "astro", who: "owner", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 0, "enabled"], value: true }] }, expect: "ok" },
   { name: "astro a page-marked owner save turns a script on", site: "astro", who: "page-owner", change: { update: "src/data/scripts.json", ops: [{ op: "set", path: ["scripts", 0, "enabled"], value: true }] }, expect: PAGE },
   { name: "astro turning a script on, as an owner writing it as a file in content mode", site: "astro", who: "owner", change: { write: "src/data/scripts.json", text: JSON.stringify({ consent: { mode: "none" }, scripts: [{ id: "chat", kind: "custom", label: "Chat", enabled: true, settings: { inline: "console.log(1)" } }] }) }, expect: SCRIPT },
