@@ -144,3 +144,29 @@ it("an Undo asked while the site is closing says the site was closed, and puts n
   await closing;
   expect(readFileSync(join(root, HOME), "utf8")).toContain("the reply's own");
 }, 120_000);
+
+it("what every object has answers as always on a closed site", async () => {
+  const { site } = await openSite(makeSite());
+
+  await site.dispose();
+  expect(typeof site.toString()).toBe("string");
+  expect(Object.prototype.hasOwnProperty.call(site, "readFile")).toBe(true);
+  expect(site.hasOwnProperty("id")).toBe(true);
+}, 120_000);
+
+it("saves waiting their turn when the site closes don't land after it has closed", async () => {
+  const root = makeSite();
+  const { site } = await openSite(root);
+  const text = (await site.readFile(HOME)).content;
+  // Several saves at once: one runs, the rest wait for the save lock.
+  const saves = Array.from({ length: 6 }, (_, i) => site.writeFile(HOME, `${text}\nsave ${i}\n`, { origin: "user", mode: "content" }).then(() => "saved", (error: unknown) => error));
+
+  await site.dispose();
+  const after = readFileSync(join(root, HOME), "utf8");
+  const outcomes = await Promise.all(saves);
+
+  // Nothing lands once the close has finished, and what didn't land was refused in the sentence.
+  expect(readFileSync(join(root, HOME), "utf8")).toBe(after);
+  for (const outcome of outcomes) if (outcome !== "saved") expect(outcome).toMatchObject(CLOSED);
+  expect(outcomes.some((outcome) => outcome !== "saved")).toBe(true);
+}, 120_000);

@@ -305,3 +305,50 @@ describe("the site a plugin is handed", () => {
     expect(registry.tools(root).map((tool) => tool.name)).toEqual(["local_hello"]);
   }, 120_000);
 });
+
+describe("more of what a plugin is handed", () => {
+  it("a preview of its four public members, which a plugin that only reads can't start, stop or restart", async () => {
+    const { site } = await openSite(makeSite());
+    const reading = scopedSite(site, { readOnly: true, mode: "content", name: "a hook" }).preview() as unknown as Record<string, unknown>;
+    const writing = scopedSite(site, { readOnly: false, mode: "content", name: "a tool" }).preview() as unknown as Record<string, unknown>;
+
+    for (const preview of [reading, writing]) {
+      expect(Object.keys(preview).sort()).toEqual(["restart", "start", "status", "stop"]);
+      expect("dispose" in preview).toBe(false);
+      expect("pause" in preview).toBe(false);
+    }
+    expect((reading.status as () => { state: string }).call(null).state).toBeTruthy();
+    for (const change of ["start", "stop", "restart"]) await expect((reading[change] as () => Promise<unknown>)(), change).rejects.toMatchObject({ code: "forbidden" });
+    // The site's own preview is the same four members too: nothing hands the controller out.
+    expect(Object.keys(site.preview()).sort()).toEqual(["restart", "start", "status", "stop"]);
+  }, 120_000);
+
+  it("no member keyed by a symbol, however it is looked for", async () => {
+    const { site } = await openSite(makeSite());
+    const scoped = scopedSite(site, { readOnly: false, mode: "content", name: "a tool" });
+
+    expect(Object.getOwnPropertySymbols(scoped)).toEqual([]);
+    for (const symbol of Object.getOwnPropertySymbols(site)) {
+      expect((scoped as unknown as Record<symbol, unknown>)[symbol]).toBeUndefined();
+      expect(symbol in scoped).toBe(false);
+    }
+  }, 120_000);
+
+  it("two loads of a site's plugins at once load them once", async () => {
+    const root = makeSite();
+
+    siteWithPlugin(root);
+    writeFileSync(join(root, "galley.config.json"), JSON.stringify({ plugins: ["./tools/plugin.mjs"] }));
+    const { site } = await openSite(root);
+    const registry = createPluginRegistry();
+
+    activate(registry);
+    await ensureSitePlugins(registry, site, {});
+    writeFileSync(join(root, "galley.config.json"), JSON.stringify({ plugins: ["./tools/plugin.mjs"], name: "Again" }));
+    await Promise.all([ensureSitePlugins(registry, site, {}), ensureSitePlugins(registry, site, {})]);
+    const list = await registry.list(root);
+
+    expect(registry.tools(root).map((tool) => tool.name)).toEqual(["local_hello"]);
+    expect(list.flatMap((item) => item.problems ?? [])).toEqual([]);
+  }, 120_000);
+});

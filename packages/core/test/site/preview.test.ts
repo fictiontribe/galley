@@ -10,7 +10,8 @@ import net from "node:net";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, expect, it } from "vitest";
 import { OVERLAY_SCRIPT_PATH } from "../../src/api";
-import { OVERLAY_TAG, type PreviewControllerHandle } from "../../src/workspace/index";
+import type { OpenSite } from "../../src/site/service";
+import { OVERLAY_TAG } from "../../src/workspace/index";
 import { cleanupAll, disposeAll, HOME, makeSite, openSite, until } from "./helpers";
 
 // Astro switches off its page handler when it sees vitest's markers (every
@@ -103,7 +104,7 @@ it("shows the real site, never another program's pages, when that program takes 
   let other: import("node:http").Server | null = null;
   const { createServer } = await import("node:http");
 
-  await until(() => (site.preview() as PreviewControllerHandle).pid !== undefined, 20_000, 5);
+  await until(() => (site as OpenSite).previewHandle()!.pid !== undefined, 20_000, 5);
   other = createServer((_req, res) => {
     res.writeHead(200, { "content-type": "text/html" });
     res.end("<html><head></head><body><h1>Another program's page</h1></body></html>");
@@ -222,7 +223,7 @@ it("previews the real site, shows an edit through hot reload, and cleans up afte
   await until(async () => (await page(`${status.url}/`)).includes("Proof that the preview <em>follows edits</em>."), 60_000, 250);
   const visibleMs = Date.now() - editedAt;
   const proxyPort = Number(new URL(status.url!).port);
-  const pid = (site.preview() as PreviewControllerHandle).pid;
+  const pid = (site as OpenSite).previewHandle()!.pid;
 
   console.info(`preview: cold start to ready ${readyMs} ms, to first full render ${renderedMs} ms, edit to visible ${visibleMs} ms`);
   expect(await answers(devPort)).toBe(true);

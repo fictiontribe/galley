@@ -141,3 +141,25 @@ it("two undos of one reply at once: one puts it back, the other is told so, and 
   // Nothing is offered any more: the site closes after an hour without use.
   expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([site.id]);
 }, 120_000);
+
+it("deleting the conversation lets its site close", async () => {
+  const { registry, site, runtime, threadId, retitle } = await setup();
+
+  await retitle("Who we are");
+  expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([]);
+  await runtime.deleteThread(site.id, threadId);
+  expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([site.id]);
+}, 120_000);
+
+it("a reply pushed out by twenty newer ones no longer keeps its site open", async () => {
+  const { registry, site, runtime, threadId, retitle } = await setup();
+
+  for (let i = 0; i < 21; i += 1) await retitle(`Title ${i}`);
+  // Twenty are still offered: the site stays open. Undo them all, and the one pushed out keeps nothing.
+  expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([]);
+  const thread = (await runtime.getThread(site.id, threadId))!;
+  const turns = [...new Set(thread.messages.filter((message) => message.role === "assistant" && message.turnId).map((message) => message.turnId!))];
+
+  for (const turnId of turns.slice(-20).reverse()) await runtime.undoTurn(site.id, threadId, turnId);
+  expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([site.id]);
+}, 300_000);

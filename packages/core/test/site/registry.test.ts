@@ -396,3 +396,22 @@ describe("a site closed under the registry", () => {
     expect((await registry.list()).map((summary) => summary.id)).not.toContain(site.id);
   }, 120_000);
 });
+
+describe("checkpoints nobody offers", () => {
+  it("are let go by the sweep once closed longer than the site's idle time, offered ones never", async () => {
+    const { registry } = await setup();
+    const site = await registry.open({ path: makeSite() });
+    const text = (await site.readFile(HOME)).content;
+    const theirs = site.checkpoint("an extension's") as ReturnType<typeof site.checkpoint> & { released: boolean };
+    const offered = site.checkpoint("an Undo") as ReturnType<typeof site.checkpoint> & { released: boolean; offer(): void };
+
+    await theirs.run(() => site.writeFile(HOME, `${text}\ntheirs\n`, { origin: "agent", mode: "content" }));
+    await offered.run(() => site.writeFile(HOME, `${text}\noffered\n`, { origin: "agent", mode: "content" }));
+    theirs.close();
+    offered.close();
+    offered.offer();
+    await (registry as unknown as { releaseIdle(now?: number): Promise<string[]> }).releaseIdle(Date.now() + 61 * 60_000);
+    expect(theirs.released).toBe(true);
+    expect(offered.released).toBe(false);
+  }, 120_000);
+});

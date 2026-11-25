@@ -133,11 +133,12 @@ export interface WorkspaceCheckpoint extends Checkpoint {
   /** Free the recorded pre-images (and any temp files). Restore is no longer possible afterwards. */
   release(): Promise<void>;
   /**
-   * Its holder offers it as an Undo (the assistant's last replies, a batch of
-   * search fixes) and will release it. While it is offered, has recorded
+   * Its holder offers it as an Undo for a long while (the assistant's last
+   * replies) and will release it. While it is offered, has recorded
    * something and hasn't been put back, its site is not closed for lack of
-   * use. Only the engine's Undo holders call it; what extensions and plugins
-   * are handed of a checkpoint doesn't have it.
+   * use. Only the assistant calls it (a batch of search fixes, offered for a
+   * few seconds, doesn't); what extensions and plugins are handed of a
+   * checkpoint doesn't have it.
    */
   offer(): void;
 }
@@ -164,6 +165,8 @@ class CheckpointImpl implements WorkspaceCheckpoint {
   restored = false;
   /** Bytes of its pre-images held in memory, counted against the site's budget. */
   inMemory = 0;
+  /** When it was closed (ms), or null while it records. */
+  closedAt: number | null = null;
   private spillDir: string | null = null;
   private leftBehind: string[] = [];
   /** Paths its own work wrote after it was closed. */
@@ -188,6 +191,7 @@ class CheckpointImpl implements WorkspaceCheckpoint {
 
   close(): void {
     // No more pre-images are taken; the ones held stay so the turn can still be undone later.
+    if (this.open) this.closedAt = Date.now();
     this.open = false;
   }
 
@@ -446,6 +450,17 @@ export class CheckpointManager {
 
     for (const checkpoint of this.all) total += checkpoint.inMemory;
     return total;
+  }
+
+  /**
+   * Lets go of what checkpoints nobody offers as an Undo still keep, once they
+   * were closed longer ago than `maxAgeMs`: an extension's or a plugin's that
+   * was never released would otherwise be kept as long as the site stays open.
+   */
+  async letGoOfStale(maxAgeMs: number, now = Date.now()): Promise<void> {
+    for (const checkpoint of [...this.all]) {
+      if (!checkpoint.offered && checkpoint.closedAt !== null && now - checkpoint.closedAt >= maxAgeMs) await checkpoint.release();
+    }
   }
 
   /** Whether any checkpoint here is an Undo its holder still offers (`offer`), so the site shouldn't be closed for lack of use. */

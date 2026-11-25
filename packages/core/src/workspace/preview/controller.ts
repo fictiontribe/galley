@@ -107,7 +107,7 @@ export const HELD_DETAIL = "Newer versions are coming in. The preview starts as 
 const HELD_POLL_MS = 100;
 
 export interface PreviewControllerHandle extends PreviewController {
-  /** Stop everything; identical to stop(), named for symmetry with Workspace. */
+  /** Stops everything for good: its site was closed, and it never starts again (SITE_CLOSED). */
   dispose(): Promise<void>;
   /** The process group the preview will stop (its leader's pid): the dev command it spawned, or the group a server that moved to the background stayed in. Undefined when adopted, left running, or not running. */
   readonly pid: number | undefined;

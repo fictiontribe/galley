@@ -122,6 +122,8 @@ export interface Workspace {
   checkpoint(label: string): WorkspaceCheckpoint;
   /** Whether a checkpoint here is an Undo its holder still offers, so the site isn't closed for lack of use (checkpoint.ts `offer`). */
   undoOffered(): boolean;
+  /** Lets go of checkpoints nobody offers as an Undo, closed longer ago than `maxAgeMs`. */
+  letGoOfStaleCheckpoints(maxAgeMs: number, now?: number): Promise<void>;
   onChange(listener: (paths: string[], origin: ChangeOrigin) => void): () => void;
   /**
    * Closes it for writing at once (SITE_CLOSED): no file write of its own
@@ -885,6 +887,10 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
 
     undoOffered() {
       return !closedForWrites && checkpoints.undoOffered();
+    },
+
+    letGoOfStaleCheckpoints(maxAgeMs, now) {
+      return checkpoints.letGoOfStale(maxAgeMs, now);
     },
 
     close() {

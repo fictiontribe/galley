@@ -160,13 +160,12 @@ memory — plus two small proxies. Galley keeps that in check:
 - Sites that are only listed cost nothing: no process, no file watcher, no
   index until you open one. A site you opened but haven't touched for an hour
   is closed again (its watcher and index released) and reopens when you
-  return, unless an Undo is still offered on it (one of the assistant's last
-  replies that changed something, a batch of search fixes): Undo an hour
-  later is when you want it. There is no time limit: a reply's Undo is
-  offered until it is undone, its conversation is deleted, or 20 newer
-  replies in that conversation push it out, and a batch of fixes until it is
-  undone or 20 newer batches push it out. So a site the assistant has changed
-  usually stays open, with its file watcher, until the app stops. Each site
+  return, unless one of the assistant's last replies that changed something
+  still offers its Undo: Undo an hour later is when you want it. There is no
+  time limit: a reply's Undo is offered until it is undone, its conversation
+  is deleted, or 20 newer replies in that conversation push it out. So a site
+  the assistant has changed usually stays open, with its file watcher, until
+  the app stops. Each site
   kept open beyond the first costs about 1.3 MB of memory, plus what its Undo
   keeps: about 15 KB for a typical reply. A site's Undo keeps at most 32 MB of
   earlier copies of files in memory; past that they go to temporary files.

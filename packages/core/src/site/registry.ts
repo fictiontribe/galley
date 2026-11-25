@@ -460,11 +460,13 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
     const busySites = new Set(runningJobs.values());
 
     for (const [id, service] of [...services]) {
+      // What an extension or a plugin recorded and never let go of isn't kept for as long as the site stays open.
+      await service.letGoOfStaleCheckpoints(releaseAfterMs, now).catch(() => undefined);
       const state = service.previewHandle()?.status().state;
 
       if (state === "ready" || state === "starting" || state === "installing") continue;
       if (busySites.has(id) || opening.has(id)) continue;
-      // An Undo still offered (an assistant's reply, a batch of search fixes) keeps the site open: an hour later is
+      // An assistant's reply whose Undo is still offered keeps the site open: an hour later is
       // exactly when someone wants it, and closing the site would let it go.
       if (service.undoOffered()) continue;
       if (now - Math.max(lastUsed.get(id) ?? 0, policy?.lastUsed(id) ?? 0) < releaseAfterMs) continue;

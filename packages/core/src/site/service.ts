@@ -177,10 +177,12 @@ export interface OpenSite extends SiteService {
   previewHandle(): PreviewControllerHandle | null;
   /** The live address the site's settings name, for the list. */
   liveUrl(): string | undefined;
-  /** Whether an Undo is still offered on this site (an assistant's reply, a batch of search fixes), so it isn't closed for lack of use. */
+  /** Whether an assistant's reply still offers its Undo on this site, so it isn't closed for lack of use. */
   undoOffered(): boolean;
   /** Whether it has been closed, by whoever closed it: the registry then opens the site afresh rather than hand this one out. */
   isClosed(): boolean;
+  /** Lets go of checkpoints nobody offers as an Undo that were closed longer ago than `maxAgeMs` (an extension's, a plugin's, never released). */
+  letGoOfStaleCheckpoints(maxAgeMs: number, now?: number): Promise<void>;
 }
 
 /** What an open site still answers once it is closed: what it is, closing it again, and the registry's own reads from memory. */
@@ -261,6 +263,8 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
   let disposed = false;
   /** Closed: set at the first moment of `dispose`, before anything is let go (`closable`). */
   let closed = false;
+  /** What `preview()` hands out: the controller's four public members. */
+  let handedPreview: PreviewController | null = null;
   let closing: Promise<void> | null = null;
   const openedAt = Date.now();
 
@@ -931,6 +935,10 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       return closed;
     },
 
+    async letGoOfStaleCheckpoints(maxAgeMs, now) {
+      await workspace.letGoOfStaleCheckpoints(maxAgeMs, now);
+    },
+
     snapshot() {
       return {
         name: model.name,
@@ -1435,7 +1443,17 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
           if (!disposed) deps.events.emit({ type: "preview.status", siteId: deps.id, status });
         },
       }));
-      return preview;
+      const controller = preview;
+
+      // Handed out as its four public members, never the controller itself: pausing it and closing it for good are the
+      // registry's (`previewHandle`).
+      handedPreview ??= Object.freeze({
+        status: () => controller.status(),
+        start: () => controller.start(),
+        stop: () => controller.stop(),
+        restart: () => controller.restart(),
+      });
+      return handedPreview;
     },
 
     async build(options = {}) {
@@ -1521,7 +1539,8 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
 function closable(service: OpenSite, closedNow: () => boolean): OpenSite {
   const refusing = new WeakMap<(...args: unknown[]) => unknown, (...args: unknown[]) => unknown>();
   const guarded = (property: PropertyKey, value: unknown): unknown => {
-    if (typeof value !== "function" || KEPT_WHEN_CLOSED.has(property)) return value;
+    // Only the site's own members: what every object inherits (toString, hasOwnProperty) answers as it always does.
+    if (typeof value !== "function" || KEPT_WHEN_CLOSED.has(property) || !Object.hasOwn(service, property)) return value;
     const member = value as (...args: unknown[]) => unknown;
     let wrapped = refusing.get(member);
 

@@ -8,7 +8,7 @@ import { z } from "zod";
 import { GalleyError } from "../errors";
 import type { AssistantTool, ToolContext, ToolOutcome } from "../ai/tools/types";
 import { json } from "../ai/tools/types";
-import type { AgentMode, Checkpoint, SiteService, WriteOptions } from "../types";
+import type { AgentMode, Checkpoint, PreviewController, SiteService, WriteOptions } from "../types";
 import type { PluginContext, SiteToolContribution, ToolCallContext, ToolInputProperty, ToolInputSchema } from "./types";
 
 function propertySchema(property: ToolInputProperty): z.ZodType {
@@ -76,7 +76,7 @@ const WRITES = new Set(["updateEntry", "createEntry", "deleteEntry", "writeFile"
  * the tool asks for — SiteService enforces the mode again underneath.
  */
 /** What a plugin's site never has: closing it (the app closes sites), and what the open site carries for the registry. */
-const WITHHELD_FROM_PLUGINS = new Set<string>(["dispose", "snapshot", "previewHandle", "liveUrl", "undoOffered", "isClosed"]);
+const WITHHELD_FROM_PLUGINS = new Set<string>(["dispose", "snapshot", "previewHandle", "liveUrl", "undoOffered", "isClosed", "letGoOfStaleCheckpoints"]);
 
 /**
  * A checkpoint as a plugin is handed it: its public members only, each going
@@ -95,11 +95,24 @@ function publicCheckpoint(checkpoint: Checkpoint): Checkpoint {
   });
 }
 
+/** The site's preview as a plugin is handed it: its four public members; one that only reads can't start, stop or restart it. */
+function scopedPreview(preview: PreviewController, scope: { readOnly: boolean; name: string; refusal?: string }): PreviewController {
+  const refuse = () => Promise.reject(new GalleyError("forbidden", scope.refusal ?? `The tool “${scope.name}” said it only reads, so it can't change the site.`));
+
+  return Object.freeze({
+    status: () => preview.status(),
+    start: scope.readOnly ? refuse : () => preview.start(),
+    stop: scope.readOnly ? refuse : () => preview.stop(),
+    restart: scope.readOnly ? refuse : () => preview.restart(),
+  });
+}
+
 export function scopedSite(site: SiteService, scope: { readOnly: boolean; mode: AgentMode; name: string; refusal?: string }): SiteService {
   /** A member as the plugin may use it: refused, scoped, or the site's own bound to it. */
   const member = (target: SiteService, property: PropertyKey, value: unknown): unknown => {
-      if (typeof property === "string" && WITHHELD_FROM_PLUGINS.has(property)) return undefined;
-      if (typeof property !== "string" || typeof value !== "function") return value;
+      // The engine's own members (keyed by a symbol) are not a plugin's, whatever its scope.
+      if (typeof property !== "string" || WITHHELD_FROM_PLUGINS.has(property)) return undefined;
+      if (typeof value !== "function") return value;
       if (scope.readOnly && WRITES.has(property)) {
         return () => Promise.reject(new GalleyError("forbidden", scope.refusal ?? `The tool “${scope.name}” said it only reads, so it can't change the site.`));
       }
@@ -129,6 +142,7 @@ export function scopedSite(site: SiteService, scope: { readOnly: boolean; mode: 
       }
       if (property === "build") return () => target.build({ mode: scope.mode });
       if (property === "checkpoint") return (label: string) => publicCheckpoint(target.checkpoint(label));
+      if (property === "preview") return () => scopedPreview(target.preview(), scope);
       return (value as (...args: unknown[]) => unknown).bind(target);
   };
 
@@ -141,7 +155,8 @@ export function scopedSite(site: SiteService, scope: { readOnly: boolean; mode: 
       if (!described || !("value" in described)) return described;
       return { ...described, value: member(target, property, described.value) };
     },
-    has: (target, property) => (typeof property === "string" && WITHHELD_FROM_PLUGINS.has(property) ? false : Reflect.has(target, property)),
+    has: (target, property) => (typeof property !== "string" || WITHHELD_FROM_PLUGINS.has(property) ? false : Reflect.has(target, property)),
+    ownKeys: (target) => Reflect.ownKeys(target).filter((key) => typeof key === "string" && !WITHHELD_FROM_PLUGINS.has(key)),
     set: () => false,
     defineProperty: () => false,
     deleteProperty: () => false,

@@ -21,10 +21,6 @@ function release(checkpoint: Checkpoint): void {
   void (checkpoint as Checkpoint & { release?: () => Promise<void> }).release?.().catch(() => undefined);
 }
 
-/** Marks a held batch's checkpoint as an Undo still offered, so its site isn't closed for lack of use (checkpoint.ts `offer`). */
-function offer(checkpoint: Checkpoint): void {
-  (checkpoint as Checkpoint & { offer?: () => void }).offer?.();
-}
 
 /**
  * Why a fix may not be applied at all, or null. A second guard behind the
@@ -93,7 +89,7 @@ export async function applyFixes(site: SiteService, ids: string[]): Promise<FixR
   if (checkpoint.paths().length) {
     const undoId = randomUUID();
 
-    offer(checkpoint);
+    // Not offered as an Undo that keeps the site open: the editor offers a batch's Undo for a few seconds, not an hour.
     undo.set(undoId, { root: site.root, checkpoint });
     // The oldest batches past the last few are no longer offered: what they kept is let go with them.
     while (undo.size > UNDO_KEEP) {

@@ -15,6 +15,8 @@ import { copyOf, duringGet, guardSite, LINKS_AT_ONCE, STOPPED, unreadable } from
 import { undoEach } from "../../src/teardown";
 import type { ExtensionHost, ExtensionRoute, ServerExtension } from "../../src/extensions";
 import { ROUTE_ACCESS } from "@galley/core/install";
+import { createEventBus, createSiteService } from "@galley/core/site";
+import { SITE_CLOSED } from "@galley/core/workspace";
 import type { SiteService } from "@galley/core/types";
 import { fakeSite, testApp } from "../helpers";
 
@@ -359,6 +361,26 @@ describe("what the server does around an extension", () => {
     expect(Object.getOwnPropertyNames(handed).sort()).toEqual(["close", "id", "left", "paths", "release", "restore", "run"]);
     for (const name of ["manager", "label", "records", "offer"]) expect(name in handed, name).toBe(false);
     expect(handed.id).toBe("c1");
+  });
+
+  it("a site an extension kept refuses once the site has closed, its preview and checkpoint too", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kept-guarded-"));
+    const { execFileSync } = await import("node:child_process");
+
+    await writeFile(join(root, "index.md"), "---\ntitle: Home\n---\n\nWords.\n");
+    execFileSync("git", ["init", "-q"], { cwd: root });
+    execFileSync("git", ["-c", "user.name=T", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "start"], { cwd: root });
+    const site = await createSiteService(root, { id: "kept", events: createEventBus(), overlayScript: () => "", author: () => ({ name: "T", email: "t@example.com" }), watch: false });
+    const guarded = guardSite(site, { readOnly: false, alive: () => true });
+    const preview = guarded.preview();
+    const checkpoint = guarded.checkpoint("kept");
+
+    await site.dispose();
+    await expect(guarded.readFile("index.md")).rejects.toMatchObject({ message: SITE_CLOSED });
+    await expect(guarded.writeFile("index.md", "x", { origin: "user", mode: "content" })).rejects.toMatchObject({ message: SITE_CLOSED });
+    await expect(preview.start()).rejects.toMatchObject({ message: SITE_CLOSED });
+    await expect(checkpoint.restore()).rejects.toMatchObject({ code: "not-found" });
+    await rm(root, { recursive: true, force: true });
   });
 
   it("what a handed controller answers is a copy, never an object the engine goes on using", async () => {
