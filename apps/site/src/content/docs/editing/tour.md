@@ -14,7 +14,7 @@ Open **Pages** (or any other collection) and choose a page. The editor shows thr
 <figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/editor-overview@1x.webp" srcset="/docs/editor-overview@1x.webp 1x, /docs/editor-overview.webp 2x" alt="The editor on the Caddow site's Journal page: the page's fields on the left, the page itself in the middle, and on the right the assistant's reply to a request to change the heading, with the buttons Review in Proof and Undo this change." width="1440" height="900" loading="lazy" decoding="async"></figure>
 
 - **The form** (left): every field of the page, in the site's own words. **Form** and **Source** switch between the fields and the file itself.
-- **The page** (middle): your site with your changes. **Proposed**, **Live site** and **Side by side** choose what you see; **Click to edit**, **Arrange** and **Browse** choose what a click does.
+- **The page** (middle): your site with your changes. **Proposed**, **Live site** and **Side by side** choose what you see; **Click to edit**, **Arrange** and **Browse** choose what a click does (three small icons when the pane is narrow, as in the picture).
 - **The assistant** (right): ask for a change in words.
 
 **Hide form**, **Hide preview** and **Hide assistant** make room when you need it.

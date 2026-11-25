@@ -108,9 +108,9 @@ sections:
         guide: /docs/editing/history/
         visual:
           src: history
-          x: -345
+          x: -300
           y: -100
-          alt: Version history for Caddow, newest first — the latest version, marked Latest and Published here, with Put this site online and Undo this publish, and the earlier ones below it (an old link fixed, care notes, the brand written down, a phone number on the workroom form), each with who published it, when, and its own Undo this publish.
+          alt: Version history for Caddow, newest first — the latest version, marked Latest and Published here, with Put this site online and Undo this publish, and the earlier ones below it (an old link fixed, care notes, the brand written down, a phone number on the workroom form), each of those with who published it, when, and its own Undo this publish.
   - type: tour
     id: build
     label: Build pages
@@ -221,10 +221,10 @@ sections:
           alt: The brand proposal for Caddow, read from the site — Nothing is saved yet with Save the brand, Worth a look notes on near-identical greys and text contrast, and the first colours, Lime-wash, Chalk white, Plaster and Ink, each marked Measured or Declared, some with where in the styles they were found.
         inset:
           src: brand-voice
-          x: -505
-          y: -178
-          w: 470
-          h: 232
+          x: -476
+          y: -146
+          w: 500
+          h: 240
           alt: "The Voice part of the proposal — rules drawn from the site’s own words, each quoting the page it came from, with a line to avoid struck out and the site’s way written in beside it."
       - id: search
         layout: flip
@@ -259,10 +259,10 @@ sections:
           alt: Use your own domain, over the Online screen — the address www.caddow.example, and the note that Cloudflare will answer it with this site and set up its certificate, while nothing else on caddow.example changes; behind it, the site live at caddow.example-studio.workers.dev.
         inset:
           src: online-live
-          x: -390
-          y: -209
+          x: -272
+          y: -238
           w: 470
-          h: 218
+          h: 176
           alt: The Online screen afterwards — www.caddow.example with its Copy button, Live and updated just now, on Cloudflare in the project caddow, marked as your own address.
       - id: editor-online
         layout: flip
@@ -279,10 +279,10 @@ sections:
           alt: Host the editor online, at its plan — what would be created on Fly.io (the editor’s app, two addresses, a 3 GB disk, a computer with 2 GB of memory that sleeps while nobody uses it, three certificates for cms.caddow.example and its preview and live names), and What it costs, up to about $13 a month and usually much less, with each line and where the prices were read; then Back and Create the editor.
         inset:
           src: editor-online
-          x: -390
-          y: -520
+          x: -266
+          y: -516
           w: 470
-          h: 142
+          h: 152
           alt: The Online screen’s Editor online section — edit this site from any browser, not just this computer; the editor runs on your own account with a host, with its own sign-in — and the button Host the editor online.
       - id: hosted
         layout: wide
@@ -328,9 +328,9 @@ sections:
         inset:
           src: site-home
           x: -266
-          y: -366
+          y: -342
           w: 480
-          h: 238
+          h: 240
           alt: Site home for Caddow, Waiting to publish — three pages edited since the last publish, the home page, Journal and The atelier, with Review changes.
       - id: desktop
         layout: wide

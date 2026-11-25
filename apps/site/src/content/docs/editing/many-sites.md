@@ -25,7 +25,7 @@ Groups, pins and notes are kept on this computer, not in any site.
 
 ## See what each is waiting on
 
-Each card shows chips, most urgent first: **N changes** waiting in Proof, **N unread** form submissions, versions not sent or not live, **Folder missing**, **Preview running**. A site with nothing waiting says **Up to date**. **Needs attention** shows only the sites with something waiting; search finds sites by name, client, note or address.
+Each card shows chips, most urgent first: **Folder missing**, versions not sent or not live, **N unread** form submissions, **N changes** waiting in Proof, **Preview running**. A site with nothing waiting says **Up to date**. **Needs attention** shows only the sites with something waiting; search finds sites by name, client, note or address.
 
 ## Switch between sites
 

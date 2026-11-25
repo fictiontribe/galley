@@ -174,7 +174,9 @@ function toWebp(png, name, { dir = OUT, max = 160_000, exact = false, half = tru
   if (!half) return console.log(`  ${name}.webp ${(statSync(out).size / 1024).toFixed(0)} KB`);
   // A 1× copy for 1× screens; the page picks by width (srcset … 1000w, … 2000w).
   const one = join(dir, `${name}@1x.webp`);
-  cwebp(png, one, 80, Math.round(webpWidth(out) / 2));
+  // Half of the size it was brought to, exactly: a width alone would follow the cut's own shape, a pixel off.
+  if (size) execFileSync("cwebp", ["-quiet", "-q", "80", "-m", "6", "-resize", String(Math.round(size[0] / 2)), String(Math.round(size[1] / 2)), png, "-o", one]);
+  else cwebp(png, one, 80, Math.round(webpWidth(out) / 2));
   console.log(`  ${name}.webp ${webpWidth(out)} px ${(statSync(out).size / 1024).toFixed(0)} KB (+ @1x ${(statSync(one).size / 1024).toFixed(0)} KB)`);
 }
 
@@ -1364,7 +1366,7 @@ async function run(step) {
       await view.goto(`${ORIGIN}/settings/themes`, { waitUntil: "networkidle" });
       await view.waitForTimeout(1500);
       await howto(view, "choose-a-theme", 3, FULL, {
-        alt: "App settings › Themes: Every theme lists Quiet (in use), Plate, Desk and Harbour, each drawn as a swatch, with Use, Make a theme from this one and Export beside it; Import… at the top right.",
+        alt: "App settings › Themes: Every theme lists Quiet (in use), Plate, Desk and Harbour, each drawn as a swatch, with Make a theme from this one and Export beside it, and Use beside the three not in use; Import… at the top right.",
         do: "To make your own, open **App settings** › **Themes** and press **Make a theme from this one** beside the theme to start from — **Quiet** here.",
         see: "**Make a theme…** in the picker starts one from the theme you are using.",
       });
@@ -1378,17 +1380,17 @@ async function run(step) {
       await view.getByRole("heading", { name: "Themes", exact: true }).first().scrollIntoViewIfNeeded();
       await view.waitForTimeout(600);
       await howto(view, "choose-a-theme", 4, FULL, {
-        alt: "A new theme, made from Quiet and named Workroom: under Colors, Paper, Ink, Pencil, Plate and Table, each with a swatch and its value, the Pencil set to #0A7D8C; on the right a sample of the app in the theme, its Publish button now in that color, with Undo last change and Save.",
-        do: "Give it a **Name**, then change a color: pick one, or type its value. Here the **Pencil**, the color of the one action and of where you are.",
+        alt: "A new theme, made from Quiet and named Workroom: under Colors, Paper, Ink, Pencil, Plate and Table, each with a swatch and its value, the Pencil set to #0A7D8C; on the right a sample of the app in the theme, its Publish button now in that colour, with Undo last change and Save.",
+        do: "Give it a **Name**, then change a colour: pick one, or type its value. Here the **Pencil**, the colour of the one action and of where you are.",
         see: "The whole app shows your changes as you make them, in this browser only, until you save.",
       });
       await set("#808080");
       await view.getByText("Technical details", { exact: true }).scrollIntoViewIfNeeded();
       await view.waitForTimeout(800);
       await howto(view, "choose-a-theme", 5, FULL, {
-        alt: "The foot of the theme editor, at Readability: This theme can’t be used yet, then Your pencil color (#808080) is too close to grey, said for light and for dark, and a note that it is close to the warning color; on the right, Fix what the report says before saving, with Save greyed out.",
+        alt: "The foot of the theme editor, at Readability: This theme can’t be used yet, then Your pencil color (#808080) is too close to grey, said for light and for dark, and a note that it is close to the warning colour; on the right, Fix what the report says before saving, with Save greyed out.",
         do: "Scroll down to **Readability** and read it before you save.",
-        see: "A color that can’t work is refused in plain words — here a pencil too close to grey — and **Save** waits until it is fixed. A smaller fault is put right for you, and the report says what was changed.",
+        see: "A colour that can’t work is refused in plain words — here a pencil too close to grey — and **Save** waits until it is fixed. A smaller fault is put right for you, and the report says what was changed.",
       });
       await set(PENCIL);
       await view.getByRole("button", { name: "Save", exact: true }).click();
@@ -1402,7 +1404,7 @@ async function run(step) {
       await view.waitForTimeout(800);
       await dismissToasts(view);
       await howto(view, "choose-a-theme", 6, FULL, {
-        alt: "Themes after saving: Workroom in the list of every theme, marked In use, with Edit, Duplicate, Export and Delete…; the app's own buttons and marks are now in its color.",
+        alt: "Themes after saving: Workroom in the list of every theme, marked In use, with Edit, Duplicate, Export and Delete…; the app's own marks are now in its colour.",
         do: "Press **Save**, then **Done**. To take the theme somewhere else, press **Export** beside it.",
         see: "The theme is in use straight away, and kept with this app’s settings, never in a site. **Export** saves it as a small file, here workroom.json.",
       });
@@ -1417,7 +1419,7 @@ async function run(step) {
         await other.locator('input[type="file"]').first().setInputFiles(file);
         await other.waitForTimeout(2000);
         await howto(other, "choose-a-theme", 7, FULL, {
-          alt: "Another Galley's Themes screen after Import…: A new theme, From workroom.json. Check it, then save it., with the name Workroom, its colors, the sample beside them and Save.",
+          alt: "Another Galley's Themes screen after Import…: A new theme, From workroom.json. Check it, then save it., with the name Workroom, its colours, the sample beside them and Save.",
           do: "In the other Galley, open **App settings** › **Themes**, press **Import…** and choose the file. Check it, then press **Save**.",
           see: "The same check runs there before anything is added.",
         });
