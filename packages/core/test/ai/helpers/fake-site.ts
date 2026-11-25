@@ -368,6 +368,11 @@ export function createFakeSite(options: { id?: string; files?: Record<string, st
           }
           return [...record.records.keys()].sort();
         },
+        release: async () => {
+          record.open = false;
+          record.records.clear();
+          openCheckpoints.delete(record);
+        },
       };
     },
     preview() {

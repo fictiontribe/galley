@@ -19,6 +19,8 @@ import { loadSiteAdapters, resolveSpecifier } from "../adapter/load";
 import type { GalleyAdapter } from "../adapter/types";
 import { BUILTIN_ADAPTERS } from "../adapters/index";
 import { PRODUCT } from "../brand";
+import { GalleyError } from "../errors";
+import { SITE_CLOSED } from "../workspace/closed";
 import type { GalleyConfig } from "../types";
 import { activePlugins, hostedMode } from "./active";
 import { PLUGIN_API_VERSION } from "./define";
@@ -140,10 +142,28 @@ export async function ensureSitePlugins(
   const current = perSite.get(site.root);
 
   if (current && current.stamp === stamp) return current;
-  const load = (async () => {
+  // Made and noted at once, with nothing awaited in between, so two callers never load the same plugins side by side.
+  let load!: Promise<void> & { stamp?: string };
+
+  load = (async () => {
     await current?.catch(() => undefined);
+    // Read before anything is let go: a site that was closed refuses (SITE_CLOSED), and that is not the settings naming no
+    // plugins. Nothing is changed then, and the load before is put back, so the site opened next loads them itself.
+    let config: GalleyConfig | null;
+
+    try {
+      config = await site.readConfig();
+    } catch (error) {
+      if (error instanceof GalleyError && error.message === SITE_CLOSED) {
+        if (perSite.get(site.root) === load) {
+          if (current) perSite.set(site.root, current);
+          else perSite.delete(site.root);
+        }
+        return;
+      }
+      config = null;
+    }
     await registry.removeSite(site.root);
-    const config = await site.readConfig().catch(() => null);
     const named = { adapters: config?.adapters ?? [], plugins: config?.plugins ?? [] };
 
     if (named.adapters.length === 0 && named.plugins.length === 0) return;
@@ -170,7 +190,6 @@ export async function ensureSitePlugins(
     }
     await registry.start();
   })() as Promise<void> & { stamp?: string };
-
   load.stamp = stamp;
   perSite.set(site.root, load);
   return load;

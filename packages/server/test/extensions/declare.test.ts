@@ -15,6 +15,8 @@ import { copyOf, duringGet, guardSite, LINKS_AT_ONCE, STOPPED, unreadable } from
 import { undoEach } from "../../src/teardown";
 import type { ExtensionHost, ExtensionRoute, ServerExtension } from "../../src/extensions";
 import { ROUTE_ACCESS } from "@galley/core/install";
+import { createEventBus, createSiteService } from "@galley/core/site";
+import { SITE_CLOSED } from "@galley/core/workspace";
 import type { SiteService } from "@galley/core/types";
 import { fakeSite, testApp } from "../helpers";
 
@@ -336,6 +338,63 @@ describe("what the server does around an extension", () => {
     expect(own.status()).toEqual({ state: "idle" });
     // Nothing else of the engine's object is on it.
     expect("constructor" in handed && (handed as { constructor: unknown }).constructor).toBe(Object);
+  });
+
+  it("a handed checkpoint has its public members and nothing else of the engine's object, whatever that carries", () => {
+    // The engine's checkpoint carries more for its own use than an extension is handed.
+    const own = {
+      id: "c1",
+      label: "a turn",
+      manager: {},
+      records: new Map(),
+      paths: () => ["a.md"],
+      run: <T,>(work: () => T) => work(),
+      close: () => undefined,
+      restore: async () => [] as string[],
+      left: () => [] as string[],
+      release: async () => undefined,
+      offer: () => undefined,
+    };
+    const real = { id: "s1", root: "/nowhere", resolvePath: (path: string) => `/nowhere/${path}`, checkpoint: () => own } as unknown as SiteService;
+    const handed = (guardSite(real, { readOnly: false, alive: () => true }) as unknown as { checkpoint(label: string): Record<string, unknown> }).checkpoint("a turn");
+
+    expect(Object.getOwnPropertyNames(handed).sort()).toEqual(["close", "id", "left", "paths", "release", "restore", "run"]);
+    for (const name of ["manager", "label", "records", "offer"]) expect(name in handed, name).toBe(false);
+    expect(handed.id).toBe("c1");
+  });
+
+  it("a site an extension kept refuses once the site has closed, its preview and checkpoint too", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kept-guarded-"));
+    const { execFileSync } = await import("node:child_process");
+
+    await writeFile(join(root, "index.md"), "---\ntitle: Home\n---\n\nWords.\n");
+    execFileSync("git", ["init", "-q"], { cwd: root });
+    execFileSync("git", ["-c", "user.name=T", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "start"], { cwd: root });
+    const site = await createSiteService(root, { id: "kept", events: createEventBus(), overlayScript: () => "", author: () => ({ name: "T", email: "t@example.com" }), watch: false });
+    const guarded = guardSite(site, { readOnly: false, alive: () => true });
+    const preview = guarded.preview();
+    const checkpoint = guarded.checkpoint("kept");
+
+    await site.dispose();
+    await expect(guarded.readFile("index.md")).rejects.toMatchObject({ message: SITE_CLOSED });
+    await expect(guarded.writeFile("index.md", "x", { origin: "user", mode: "content" })).rejects.toMatchObject({ message: SITE_CLOSED });
+    await expect(preview.start()).rejects.toMatchObject({ message: SITE_CLOSED });
+    await expect(checkpoint.restore()).rejects.toMatchObject({ code: "not-found" });
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("what a handed controller answers is a copy, never an object the engine goes on using", async () => {
+    const shared = { state: "ready" };
+    const started = Promise.resolve(shared);
+    const own = { status: () => shared, start: () => started, stop: async () => undefined, restart: () => started };
+    const real = { id: "s1", root: "/nowhere", resolvePath: (path: string) => `/nowhere/${path}`, preview: () => own } as unknown as SiteService;
+    const handed = (guardSite(real, { readOnly: false, alive: () => true }) as unknown as { preview(): typeof own }).preview();
+    const answer = handed.start();
+
+    expect(answer).not.toBe(started);
+    expect(await answer).toEqual(shared);
+    expect(await answer).not.toBe(shared);
+    expect(handed.status()).not.toBe(shared);
   });
 
   it("looks at a search's files for links a few at a time, and still leaves out every one that leads to a secret", async () => {

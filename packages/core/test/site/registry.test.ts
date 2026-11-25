@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { GalleyError } from "../../src/errors";
 import { createEventBus, createSiteRegistry, siteIdFor } from "../../src/site/index";
 import type { Job, ServerEvent, Settings, SiteRegistry } from "../../src/types";
+import { UNDO_LOST } from "../../src/workspace";
 import { addBareRemote, AUTHOR, cleanupAll, copyStarter, HOME, makeSite, sh, tempDir, until } from "./helpers";
 
 const STARTERS = fileURLToPath(new URL("../../../../starters", import.meta.url));
@@ -371,4 +372,49 @@ describe("cloning", () => {
     expect(existsSync(join(sitesDir, "no-repo-here"))).toBe(false);
     expect(await registry.list()).toEqual([]);
   });
+});
+
+describe("a site closed under the registry", () => {
+  it("is opened afresh when anything else closed it, never handed out closed", async () => {
+    const { registry } = await setup();
+    const site = await registry.open({ path: makeSite() });
+
+    await site.dispose();
+    const again = await registry.get(site.id);
+
+    expect(again).not.toBe(site);
+    expect((await again!.readFile(HOME)).content).toBeTruthy();
+  }, 120_000);
+
+  it("stays removed when it is asked for while it closes", async () => {
+    const { registry } = await setup();
+    const site = await registry.open({ path: makeSite() });
+    const removing = registry.remove(site.id);
+
+    expect(await registry.get(site.id)).toBeNull();
+    await removing;
+    expect(await registry.get(site.id)).toBeNull();
+    expect((await registry.list()).map((summary) => summary.id)).not.toContain(site.id);
+  }, 120_000);
+});
+
+describe("checkpoints nobody offers", () => {
+  it("are let go by the sweep once closed longer than the site's idle time, offered ones never", async () => {
+    const { registry } = await setup();
+    const site = await registry.open({ path: makeSite() });
+    const text = (await site.readFile(HOME)).content;
+    const theirs = site.checkpoint("an extension's") as ReturnType<typeof site.checkpoint> & { released: boolean };
+    const offered = site.checkpoint("an Undo") as ReturnType<typeof site.checkpoint> & { released: boolean; offer(): void };
+
+    await theirs.run(() => site.writeFile(HOME, `${text}\ntheirs\n`, { origin: "agent", mode: "content" }));
+    await offered.run(() => site.writeFile(HOME, `${text}\noffered\n`, { origin: "agent", mode: "content" }));
+    theirs.close();
+    offered.close();
+    offered.offer();
+    await (registry as unknown as { releaseIdle(now?: number): Promise<string[]> }).releaseIdle(Date.now() + 61 * 60_000);
+    expect(theirs.released).toBe(true);
+    expect(offered.released).toBe(false);
+    // An undo asked of the one let go says so, rather than answer as if it had been done.
+    await expect(theirs.restore()).rejects.toMatchObject({ code: "not-found", message: UNDO_LOST });
+  }, 120_000);
 });

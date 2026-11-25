@@ -74,6 +74,7 @@ import {
   runGit,
   saveMedia,
   sanitizeMediaName,
+  SITE_CLOSED,
   type PreviewControllerHandle,
   type Workspace,
 } from "../workspace/index";
@@ -176,7 +177,18 @@ export interface OpenSite extends SiteService {
   previewHandle(): PreviewControllerHandle | null;
   /** The live address the site's settings name, for the list. */
   liveUrl(): string | undefined;
+  /** Whether an assistant's reply still offers its Undo on this site, so it isn't closed for lack of use. */
+  undoOffered(): boolean;
+  /** Whether it has been closed, by whoever closed it: the registry then opens the site afresh rather than hand this one out. */
+  isClosed(): boolean;
+  /** Lets go of checkpoints nobody offers as an Undo that were closed longer ago than `maxAgeMs` (an extension's, a plugin's, never released). */
+  letGoOfStaleCheckpoints(maxAgeMs: number, now?: number): Promise<void>;
 }
+
+/** What an open site still answers once it is closed: what it is, closing it again, and the registry's own reads from memory. */
+const KEPT_WHEN_CLOSED = new Set<PropertyKey>(["id", "root", "dispose", "snapshot", "previewHandle", "liveUrl", "undoOffered", "isClosed"]);
+/** Members that answer at once rather than with a promise: once the site is closed they throw, where the rest reject. */
+const SYNC_WHEN_CLOSED = new Set<PropertyKey>(["resolvePath", "pendingPaths", "checkpoint", "preview"]);
 
 /** External bursts (a terminal `git pull`) are gathered this long into one refresh. */
 const EXTERNAL_COALESCE_MS = 120;
@@ -249,6 +261,11 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
   let buildTools = true;
   let agentLinks: string[] = [];
   let disposed = false;
+  /** Closed: set at the first moment of `dispose`, before anything is let go (`closable`). */
+  let closed = false;
+  /** What `preview()` hands out: the controller's four public members. */
+  let handedPreview: PreviewController | null = null;
+  let closing: Promise<void> | null = null;
   const openedAt = Date.now();
 
   const refreshAuthor = async () => {
@@ -910,6 +927,18 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       return model.deploy?.productionUrl ?? model.urls.production;
     },
 
+    undoOffered() {
+      return !closed && workspace.undoOffered();
+    },
+
+    isClosed() {
+      return closed;
+    },
+
+    async letGoOfStaleCheckpoints(maxAgeMs, now) {
+      await workspace.letGoOfStaleCheckpoints(maxAgeMs, now);
+    },
+
     snapshot() {
       return {
         name: model.name,
@@ -958,7 +987,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     async refresh() {
       await enqueue(async () => {
         await remodel();
-        deps.events.emit({ type: "site.updated", siteId: deps.id });
+        if (!disposed) deps.events.emit({ type: "site.updated", siteId: deps.id });
       });
       return model;
     },
@@ -1414,7 +1443,17 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
           if (!disposed) deps.events.emit({ type: "preview.status", siteId: deps.id, status });
         },
       }));
-      return preview;
+      const controller = preview;
+
+      // Handed out as its four public members, never the controller itself: pausing it and closing it for good are the
+      // registry's (`previewHandle`).
+      handedPreview ??= Object.freeze({
+        status: () => controller.status(),
+        start: () => controller.start(),
+        stop: () => controller.stop(),
+        restart: () => controller.restart(),
+      });
+      return handedPreview;
     },
 
     async build(options = {}) {
@@ -1426,16 +1465,22 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       return runBuild(root, model.build.command, model.environment ? { env: model.environment } : {});
     },
 
-    async dispose() {
-      if (disposed) return;
-      // The preview goes first so its final "stopped" status still reaches the UI.
-      await preview?.dispose();
-      disposed = true;
-      unsubscribe();
-      if (externalTimer) clearTimeout(externalTimer);
-      externalTimer = null;
-      await workspace.dispose();
-      await queue;
+    dispose() {
+      // Closed from the first moment, for every caller (kept or not); one closing, however many ask for it.
+      closing ??= (async () => {
+        closed = true;
+        // Closed for writing at once, before the preview is waited for (it may take seconds to stop).
+        workspace.close();
+        // The preview goes first so its final "stopped" status still reaches the UI.
+        await preview?.dispose();
+        disposed = true;
+        unsubscribe();
+        if (externalTimer) clearTimeout(externalTimer);
+        externalTimer = null;
+        await workspace.dispose();
+        await queue;
+      })();
+      return closing;
     },
   };
 
@@ -1477,7 +1522,49 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       return unguarded.apply(service, args);
     };
   }
-  return service;
+  return closable(service, () => closed);
+}
+
+/**
+ * The site as it is handed out: once closed, every member refuses in a
+ * sentence (SITE_CLOSED), for whoever kept it (an extension, a plugin, work
+ * that started before), however it reaches the member: the check is made when
+ * a member is called, not when it is read, so a member taken before the close
+ * refuses too. A member that answers at once throws; the rest reject. What
+ * the site is, closing it again and the registry's reads from memory still
+ * answer. The engine's own calls inside the site use the site itself, so work
+ * that started before the close ends the way it began; a file write it would
+ * make after the close, or git work it would start, the workspace refuses.
+ */
+function closable(service: OpenSite, closedNow: () => boolean): OpenSite {
+  const refusing = new WeakMap<(...args: unknown[]) => unknown, (...args: unknown[]) => unknown>();
+  const guarded = (property: PropertyKey, value: unknown): unknown => {
+    // Only the site's own members: what every object inherits (toString, hasOwnProperty) answers as it always does.
+    if (typeof value !== "function" || KEPT_WHEN_CLOSED.has(property) || !Object.hasOwn(service, property)) return value;
+    const member = value as (...args: unknown[]) => unknown;
+    let wrapped = refusing.get(member);
+
+    if (!wrapped) {
+      wrapped = SYNC_WHEN_CLOSED.has(property)
+        ? (...args: unknown[]) => {
+            if (closedNow()) throw new GalleyError("forbidden", SITE_CLOSED);
+            return member.apply(service, args);
+          }
+        : (...args: unknown[]) => (closedNow() ? Promise.reject(new GalleyError("forbidden", SITE_CLOSED)) : member.apply(service, args));
+      refusing.set(member, wrapped);
+    }
+    return wrapped;
+  };
+
+  return new Proxy(service, {
+    get: (target, property, receiver) => guarded(property, Reflect.get(target, property, receiver)),
+    // However a member is looked at, it is the refusing one: a descriptor never hands out the site's own function.
+    getOwnPropertyDescriptor(target, property) {
+      const described = Reflect.getOwnPropertyDescriptor(target, property);
+
+      return described && "value" in described ? { ...described, value: guarded(property, described.value) } : described;
+    },
+  });
 }
 
 export async function createSiteService(root: string, deps: SiteDeps): Promise<SiteService> {

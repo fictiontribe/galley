@@ -1,9 +1,12 @@
 /**
- * Undo of an assistant's reply once the site has been closed. The registry
- * closes a site nobody has used for an hour, and what a reply's checkpoint
- * kept is let go with it. Undo then has nothing to put back: it must say so,
- * and must not mark the reply as undone. A real registry, a real site in a
- * real repository; only the model's answers are scripted.
+ * Undo of an assistant's reply an hour later, and once its site has been
+ * closed. A site whose Undo is still offered is not closed for lack of use:
+ * an hour later is exactly when someone wants it. Once nothing is offered any
+ * more, the registry closes it as before. A site closed anyway (removed, a
+ * backup put back) lets go of what Undo kept: Undo then has
+ * nothing to put back, says so, and doesn't mark the reply as undone. A real
+ * registry, a real site in a real repository; only the model's answers are
+ * scripted.
  */
 import { execFileSync } from "node:child_process";
 import { cpSync, readFileSync } from "node:fs";
@@ -29,7 +32,8 @@ afterAll(async () => {
   for (const close of closing) await close();
 });
 
-it("says it can't be undone any more, leaves the reply as it was, and Proof can still discard the change", async () => {
+/** A real registry and site, an assistant whose answers are scripted, and one thread. */
+async function setup() {
   const root = tempDir("undo-closed-site-");
 
   cpSync(STARTER, root, { recursive: true, filter: (source) => !["node_modules", "dist", ".astro"].includes(relative(STARTER, source).split("/")[0] ?? "") });
@@ -57,6 +61,21 @@ it("says it can't be undone any more, leaves the reply as it was, and Proof can 
   };
   const undone = async (turnId: string) => (await runtime.getThread(site.id, threadId))!.messages.find((message) => message.turnId === turnId && message.role === "assistant")?.undone ?? false;
 
+  /** One reply that changes nothing. */
+  const answer = async (text: string): Promise<string> => {
+    script.push(stream(say(text)));
+    const { turnId } = await runtime.send(site.id, threadId, { text: "Is the about page fine?" });
+
+    await bus.waitFor((event: ServerEvent) => event.type === "chat.done" && event.turnId === turnId, 20_000);
+    return turnId;
+  };
+
+  return { root, registry, site, runtime, threadId, before, retitle, answer, undone };
+}
+
+it("keeps a site whose Undo is offered open past the hour; once the site is closed anyway, says it can't be undone, leaves the reply as it was, and Proof can still discard the change", async () => {
+  const { root, registry, site, runtime, threadId, before, retitle, undone } = await setup();
+
   // The control: with the site open, Undo puts the page back and marks the reply.
   const first = await retitle("Who we are");
 
@@ -66,27 +85,81 @@ it("says it can't be undone any more, leaves the reply as it was, and Proof can 
   expect(readFileSync(join(root, ABOUT), "utf8")).toBe(before);
   expect(await undone(first)).toBe(true);
 
-  // Another reply, and then an hour and a minute with nobody at the window: the registry closes the site.
+  // Another reply, and then an hour and a minute with nobody at the window: its Undo is offered, so the site stays open.
   const second = await retitle("The people behind the work");
-  const changed = readFileSync(join(root, ABOUT), "utf8");
 
-  expect(changed).not.toBe(before);
-  expect(changed).toContain("title: The people behind the work");
+  expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([]);
+  expect(await registry.get(site.id)).toBe(site);
+  // An hour later Undo still puts the page back, and marks the reply.
+  expect(await runtime.undoTurn(site.id, threadId, second)).toEqual({ restored: [ABOUT], left: [] });
+  expect(readFileSync(join(root, ABOUT), "utf8")).toBe(before);
+  expect(await undone(second)).toBe(true);
+  // With nothing offered any more, an hour without use closes the site as before.
   expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([site.id]);
 
+  // A reply on the site as it is opened again, and then the site is closed anyway (removed from the list).
+  const third = await retitle("Our studio");
+  const changed = readFileSync(join(root, ABOUT), "utf8");
+
+  expect(changed).toContain("title: Our studio");
+  await registry.remove(site.id);
+
   // Undo has nothing left to put back. It says so; it does not answer as if it had been done.
-  await expect(runtime.undoTurn(site.id, threadId, second)).rejects.toMatchObject({ code: "not-found", message: UNDO_LOST });
+  await expect(runtime.undoTurn(site.id, threadId, third)).rejects.toMatchObject({ code: "not-found", message: UNDO_LOST });
   expect(readFileSync(join(root, ABOUT), "utf8")).toBe(changed);
-  expect(await undone(second)).toBe(false);
+  expect(await undone(third)).toBe(false);
   // Asked again, it says the same, and still marks nothing.
-  await expect(runtime.undoTurn(site.id, threadId, second)).rejects.toMatchObject({ code: "not-found", message: UNDO_LOST });
-  expect(await undone(second)).toBe(false);
+  await expect(runtime.undoTurn(site.id, threadId, third)).rejects.toMatchObject({ code: "not-found", message: UNDO_LOST });
+  expect(await undone(third)).toBe(false);
 
   // What the sentence promises: the change is still in Proof, and can be discarded there.
-  const open = (await registry.get(site.id))!;
+  const open = await registry.open({ path: root });
 
   expect(open).not.toBe(site);
   expect((await open.changes()).files.map((file) => file.path)).toEqual([ABOUT]);
   await open.discard([ABOUT]);
   expect(readFileSync(join(root, ABOUT), "utf8")).toBe(before);
 }, 120_000);
+
+it("a reply that changed nothing offers no Undo, and doesn't keep its site open", async () => {
+  const { registry, site, answer } = await setup();
+
+  await answer("It reads well. I didn't change anything.");
+  expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([site.id]);
+}, 120_000);
+
+it("two undos of one reply at once: one puts it back, the other is told so, and the next reply's Undo still works and is then let go", async () => {
+  const { root, registry, site, runtime, threadId, before, retitle } = await setup();
+  const first = await retitle("Who we are");
+  const second = await retitle("The people behind the work");
+  const outcomes = await Promise.allSettled([runtime.undoTurn(site.id, threadId, second), runtime.undoTurn(site.id, threadId, second)]);
+
+  expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
+  expect(outcomes.find((outcome) => outcome.status === "rejected")).toMatchObject({ reason: { code: "busy" } });
+  expect(await runtime.undoTurn(site.id, threadId, first)).toEqual({ restored: [ABOUT], left: [] });
+  expect(readFileSync(join(root, ABOUT), "utf8")).toBe(before);
+  // Nothing is offered any more: the site closes after an hour without use.
+  expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([site.id]);
+}, 120_000);
+
+it("deleting the conversation lets its site close", async () => {
+  const { registry, site, runtime, threadId, retitle } = await setup();
+
+  await retitle("Who we are");
+  expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([]);
+  await runtime.deleteThread(site.id, threadId);
+  expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([site.id]);
+}, 120_000);
+
+it("a reply pushed out by twenty newer ones no longer keeps its site open", async () => {
+  const { registry, site, runtime, threadId, retitle } = await setup();
+
+  for (let i = 0; i < 21; i += 1) await retitle(`Title ${i}`);
+  // Twenty are still offered: the site stays open. Undo them all, and the one pushed out keeps nothing.
+  expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([]);
+  const thread = (await runtime.getThread(site.id, threadId))!;
+  const turns = [...new Set(thread.messages.filter((message) => message.role === "assistant" && message.turnId).map((message) => message.turnId!))];
+
+  for (const turnId of turns.slice(-20).reverse()) await runtime.undoTurn(site.id, threadId, turnId);
+  expect(await registry.releaseIdle(Date.now() + 61 * 60_000)).toEqual([site.id]);
+}, 300_000);

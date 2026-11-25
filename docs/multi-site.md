@@ -160,7 +160,18 @@ memory — plus two small proxies. Galley keeps that in check:
 - Sites that are only listed cost nothing: no process, no file watcher, no
   index until you open one. A site you opened but haven't touched for an hour
   is closed again (its watcher and index released) and reopens when you
-  return.
+  return, unless one of the assistant's last replies that changed something
+  still offers its Undo: Undo an hour later is when you want it. There is no
+  time limit: a reply's Undo is offered until it is undone, its conversation
+  is deleted, or 20 newer replies in that conversation push it out. So a site
+  the assistant has changed usually stays open, with its file watcher, until
+  the app stops. Each site
+  kept open beyond the first costs about 1.3 MB of memory, plus what its Undo
+  keeps: about 15 KB for a typical reply. A site's Undo keeps at most 32 MB of
+  earlier copies of files in memory; past that they go to temporary files.
+  Measured on the Astro starter (24 entries: 8 pages, 4 posts, authors, team,
+  a form and data files); a larger site's index costs more. A site that has
+  been closed refuses whatever kept it from before.
 
 Measured on a laptop with ten sites in the list: the server alone uses about
 170–210 MB; each running Astro preview adds two processes and about

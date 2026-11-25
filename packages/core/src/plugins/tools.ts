@@ -8,7 +8,7 @@ import { z } from "zod";
 import { GalleyError } from "../errors";
 import type { AssistantTool, ToolContext, ToolOutcome } from "../ai/tools/types";
 import { json } from "../ai/tools/types";
-import type { AgentMode, SiteService, WriteOptions } from "../types";
+import type { AgentMode, Checkpoint, PreviewController, SiteService, WriteOptions } from "../types";
 import type { PluginContext, SiteToolContribution, ToolCallContext, ToolInputProperty, ToolInputSchema } from "./types";
 
 function propertySchema(property: ToolInputProperty): z.ZodType {
@@ -75,12 +75,46 @@ const WRITES = new Set(["updateEntry", "createEntry", "deleteEntry", "writeFile"
  * write; any other tool's file writes are made in the call's mode, whatever
  * the tool asks for — SiteService enforces the mode again underneath.
  */
-export function scopedSite(site: SiteService, scope: { readOnly: boolean; mode: AgentMode; name: string; refusal?: string }): SiteService {
-  return new Proxy(site, {
-    get(target, property, receiver) {
-      const value = Reflect.get(target, property, receiver) as unknown;
+/** What a plugin's site never has: closing it (the app closes sites), and what the open site carries for the registry. */
+const WITHHELD_FROM_PLUGINS = new Set<string>(["dispose", "snapshot", "previewHandle", "liveUrl", "undoOffered", "isClosed", "letGoOfStaleCheckpoints"]);
 
-      if (typeof property !== "string" || typeof value !== "function") return value;
+/**
+ * A checkpoint as a plugin is handed it: its public members only, each going
+ * to the engine's own. What the engine's object carries for its own use is not
+ * on it (offering it as an Undo that keeps the site open is the engine's).
+ */
+function publicCheckpoint(checkpoint: Checkpoint): Checkpoint {
+  // What each member answers is the plugin's own copy, never an object the engine goes on using.
+  return Object.freeze({
+    id: checkpoint.id,
+    paths: () => [...checkpoint.paths()],
+    run: <T>(work: () => T) => checkpoint.run(work),
+    close: () => checkpoint.close(),
+    restore: () => checkpoint.restore().then((paths) => [...paths]),
+    left: () => [...checkpoint.left()],
+    release: () => checkpoint.release().then(() => undefined),
+  });
+}
+
+/** The site's preview as a plugin is handed it: its four public members; one that only reads can't start, stop or restart it. */
+function scopedPreview(preview: PreviewController, scope: { readOnly: boolean; name: string; refusal?: string }): PreviewController {
+  const refuse = () => Promise.reject(new GalleyError("forbidden", scope.refusal ?? `The tool “${scope.name}” said it only reads, so it can't change the site.`));
+
+  // Answers are the plugin's own copies: a status, or a new promise, never the engine's own.
+  return Object.freeze({
+    status: () => structuredClone(preview.status()),
+    start: scope.readOnly ? refuse : () => preview.start().then((status) => structuredClone(status)),
+    stop: scope.readOnly ? refuse : () => preview.stop().then(() => undefined),
+    restart: scope.readOnly ? refuse : () => preview.restart().then((status) => structuredClone(status)),
+  });
+}
+
+export function scopedSite(site: SiteService, scope: { readOnly: boolean; mode: AgentMode; name: string; refusal?: string }): SiteService {
+  /** A member as the plugin may use it: refused, scoped, or the site's own bound to it. */
+  const member = (target: SiteService, property: PropertyKey, value: unknown): unknown => {
+      // The engine's own members (keyed by a symbol) are not a plugin's, whatever its scope.
+      if (typeof property !== "string" || WITHHELD_FROM_PLUGINS.has(property)) return undefined;
+      if (typeof value !== "function") return value;
       if (scope.readOnly && WRITES.has(property)) {
         return () => Promise.reject(new GalleyError("forbidden", scope.refusal ?? `The tool “${scope.name}” said it only reads, so it can't change the site.`));
       }
@@ -109,8 +143,27 @@ export function scopedSite(site: SiteService, scope: { readOnly: boolean; mode: 
         return (config: Parameters<SiteService["saveConfig"]>[0], options?: { baseHash?: string }) => target.saveConfig(config, { ...(options?.baseHash ? { baseHash: options.baseHash } : {}), mode: scope.mode });
       }
       if (property === "build") return () => target.build({ mode: scope.mode });
+      if (property === "checkpoint") return (label: string) => publicCheckpoint(target.checkpoint(label));
+      if (property === "preview") return () => scopedPreview(target.preview(), scope);
       return (value as (...args: unknown[]) => unknown).bind(target);
+  };
+
+  return new Proxy(site, {
+    get: (target, property, receiver) => member(target, property, Reflect.get(target, property, receiver)),
+    // Looked at another way, a member is the same scoped one; and the site itself can't be changed through it.
+    getOwnPropertyDescriptor(target, property) {
+      const described = Reflect.getOwnPropertyDescriptor(target, property);
+
+      if (!described || !("value" in described)) return described;
+      return { ...described, value: member(target, property, described.value) };
     },
+    has: (target, property) => (typeof property !== "string" || WITHHELD_FROM_PLUGINS.has(property) ? false : Reflect.has(target, property)),
+    ownKeys: (target) => Reflect.ownKeys(target).filter((key) => typeof key === "string" && !WITHHELD_FROM_PLUGINS.has(key)),
+    set: () => false,
+    defineProperty: () => false,
+    deleteProperty: () => false,
+    setPrototypeOf: () => false,
+    preventExtensions: () => false,
   });
 }
 

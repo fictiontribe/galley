@@ -25,6 +25,7 @@ import http from "node:http";
 import net from "node:net";
 import { join } from "node:path";
 import { GalleyError } from "../../errors";
+import { SITE_CLOSED } from "../closed";
 import type { PackageManager, PreviewController, PreviewPause, PreviewState, PreviewStatus } from "../../types";
 import { installDependencies } from "../build";
 import { resolveCommand } from "../command";
@@ -106,7 +107,7 @@ export const HELD_DETAIL = "Newer versions are coming in. The preview starts as 
 const HELD_POLL_MS = 100;
 
 export interface PreviewControllerHandle extends PreviewController {
-  /** Stop everything; identical to stop(), named for symmetry with Workspace. */
+  /** Stops everything for good: its site was closed, and it never starts again (SITE_CLOSED). */
   dispose(): Promise<void>;
   /** The process group the preview will stop (its leader's pid): the dev command it spawned, or the group a server that moved to the background stayed in. Undefined when adopted, left running, or not running. */
   readonly pid: number | undefined;
@@ -336,6 +337,8 @@ function checkPage(host: string, port: number, timeoutMs = PAGE_CHECK_TIMEOUT_MS
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function createPreviewController(options: PreviewOptions): PreviewControllerHandle {
+  /** Its site was closed: kept by someone, it stops and never starts again (an orphan no registry knows would outlive everything). */
+  let disposed = false;
   const host = options.host ?? "127.0.0.1";
   const publicHost = options.publicHost ?? (host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host);
   const ownership = options.ownership ?? portOwnership;
@@ -955,6 +958,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
     },
     status: snapshot,
     start() {
+      if (disposed) return Promise.reject(new GalleyError("forbidden", SITE_CLOSED));
       if (status.state === "ready") return Promise.resolve(snapshot());
       if (starting) return starting;
       const mine = ++generation;
@@ -999,6 +1003,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
       return stopped;
     },
     async restart() {
+      if (disposed) throw new GalleyError("forbidden", SITE_CLOSED);
       await controller.stop();
       return controller.start();
     },
@@ -1015,6 +1020,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
       return stopped;
     },
     dispose() {
+      disposed = true;
       return controller.stop();
     },
   };

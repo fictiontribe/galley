@@ -23,6 +23,7 @@ import type {
   WriteOptions,
 } from "../types";
 import { buildChangeSet, buildDiff, readBaseBlob, readStatus, type ChangeContext, type ChangeEnricher, type PendingStatus } from "./changes";
+import { SITE_CLOSED } from "./closed";
 import { CheckpointManager, type WorkspaceCheckpoint } from "./checkpoint";
 import { atomicWrite, bytesEqual, hashContent, isTempFile, listWithoutGit, readIfExists, toBytes } from "./files";
 import { git as createGit, splitNul, type Git, type RepoInfo } from "./git";
@@ -119,7 +120,21 @@ export interface Workspace {
    */
   catchUp(around?: publishing.AroundBringIn): Promise<CatchUpResult | null>;
   checkpoint(label: string): WorkspaceCheckpoint;
+  /** Whether a checkpoint here is an Undo its holder still offers, so the site isn't closed for lack of use (checkpoint.ts `offer`). */
+  undoOffered(): boolean;
+  /** Lets go of checkpoints nobody offers as an Undo, closed longer ago than `maxAgeMs`. */
+  letGoOfStaleCheckpoints(maxAgeMs: number, now?: number): Promise<void>;
   onChange(listener: (paths: string[], origin: ChangeOrigin) => void): () => void;
+  /**
+   * Closes it for writing at once (SITE_CLOSED): no file write of its own
+   * reaches the disk from now on, no checkpoint is opened or put back, and
+   * work still waiting for the save lock or its turn among git work doesn't
+   * start. Git work already running ends (`dispose` waits for it).
+   * Synchronous, so a site can close it before anything else it awaits while
+   * closing.
+   */
+  close(): void;
+  /** Closes it (`close`), waits for the work already running to end, then lets go of its watcher and checkpoints. */
   dispose(): Promise<void>;
 }
 
@@ -166,7 +181,13 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
   const statusCache = new Map<string, PendingStatus>();
   const listeners = new Set<(paths: string[], origin: ChangeOrigin) => void>();
   const selfWrites = new Map<string, { hash: string | null; at: number }>();
-  const lock = createLock();
+  const saveLock = createLock();
+  /** Closed for writing (`close`): set at the first moment of closing, before anything is awaited. */
+  let closedForWrites = false;
+  /** Work that was waiting its turn when the site closed doesn't start: the site open now is another, with its own locks. */
+  const refusingOnceClosed = (inner: ReturnType<typeof createLock>) =>
+    Object.assign(<T>(task: () => Promise<T>): Promise<T> => inner(() => (closedForWrites ? Promise.reject(new GalleyError("forbidden", SITE_CLOSED)) : task())), { busy: inner.busy });
+  const lock = refusingOnceClosed(saveLock);
   /**
    * Everything that talks to the code host or moves this copy between
    * versions, one at a time: a look, a publish, an undo, a send, Get latest,
@@ -179,7 +200,8 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
    * most), because what is published and what is still pending have to
    * change together.
    */
-  const turn = createLock();
+  const turnLock = createLock();
+  const turn = refusingOnceClosed(turnLock);
   /** Publishing, undoing, sending and Get latest that are in progress or waiting for their turn: a round never runs beside them. */
   let wanted = 0;
   /** The look in progress, shared by everyone who asks while it is going. */
@@ -366,6 +388,9 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
    * writes atomically (or deletes), marks the write as ours for the watcher.
    */
   async function applyWrite(resolved: ResolvedPath, bytes: Uint8Array | null, flags: { createOnly?: boolean }) {
+    // A write still on its way when the site closed (or asked of one somebody kept) lands nowhere: the site open next is
+    // another, with its own locks, and two writers of one file would each answer "saved" while one edit disappeared.
+    if (closedForWrites) throw new GalleyError("forbidden", SITE_CLOSED, resolved.path);
     const target = join(realRoot, ...resolved.realPath.split("/"));
     const current = await readIfExists(target).catch((error: NodeJS.ErrnoException) => {
       if (error.code === "EISDIR") throw new GalleyError("invalid", "That's a folder, not a file.", resolved.path);
@@ -375,6 +400,8 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     if (bytes !== null && current && bytesEqual(current, bytes)) return false;
     if (bytes === null && !current) return false;
     await checkpoints.record(resolved.path, current, bytes);
+    // Asked again with the bytes in hand: the site may have closed while this write read the file.
+    if (closedForWrites) throw new GalleyError("forbidden", SITE_CLOSED, resolved.path);
     if (bytes === null) {
       await unlink(resolved.absolute);
     } else {
@@ -854,7 +881,22 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     },
 
     checkpoint(label) {
+      if (closedForWrites) throw new GalleyError("forbidden", SITE_CLOSED);
       return checkpoints.open(label);
+    },
+
+    undoOffered() {
+      return !closedForWrites && checkpoints.undoOffered();
+    },
+
+    letGoOfStaleCheckpoints(maxAgeMs, now) {
+      return checkpoints.letGoOfStale(maxAgeMs, now);
+    },
+
+    close() {
+      closedForWrites = true;
+      // Undo refuses from this moment, as it will once the site has gone: nothing it would put back could land now.
+      checkpoints.close();
     },
 
     onChange(listener) {
@@ -863,6 +905,9 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     },
 
     async dispose() {
+      closedForWrites = true;
+      // What was already running ends first (what was waiting is refused): once this resolves, nothing more lands.
+      await Promise.all([saveLock(async () => undefined), turnLock(async () => undefined)]);
       disposed = true;
       watcher?.close();
       watcher = null;

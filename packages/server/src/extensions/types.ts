@@ -92,13 +92,15 @@ export interface ExtensionRequest<B> {
   /**
    * The open site `:siteId` names; absent when the route has no `:siteId`.
    * What it answers with is a copy, from a change as from a read: plain
-   * data copied, a thing to drive (the preview's controller) handed behind
-   * the same guards as the site. `.git/` and `.env*` can't be read through
+   * data copied, a thing to drive (the preview's controller, a checkpoint)
+   * handed as a plain object with its public members only, behind the same
+   * guards as the site. `.git/` and `.env*` can't be read through
    * it (by name; and, for reads that name a file and for searches, by where
    * a link inside the site leads). On GET it refuses whatever would change
    * the site, as does any site reached through `host.sites` while a GET is
    * being handled, and whatever that GET starts. Once the extension has been
-   * stopped, every member of it refuses.
+   * stopped, every member of it refuses; so it does once the site has been
+   * closed (SITE_CLOSED).
    */
   site?: GuardedSite;
   /** Fires when whoever asked gave up on the request. A listener on it must not throw. */
@@ -194,8 +196,10 @@ export interface ExtensionHost {
   people: ExtensionPeople | null;
   /**
    * The site as it is open now, or null. Ask each time rather than keep one:
-   * a site nothing has used for an hour is closed, and one kept from before
-   * then works on the folder with nobody told of what it changes.
+   * a site is closed after an hour without use (unless its preview is
+   * running, a job is, or an Undo is still offered on it), when it is removed,
+   * when a backup is put back and when the server stops, and one kept from
+   * before then refuses every call (SITE_CLOSED).
    */
   sites: { get(siteId: string): Promise<GuardedSite | null> };
   /**
