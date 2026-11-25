@@ -12,6 +12,7 @@ import { glob } from "tinyglobby";
 import { OVERLAY_SCRIPT_PATH } from "../api";
 import { stripBase } from "./html";
 import type { SiteModel, SiteService } from "../types";
+import { normalizeRepoPath } from "../workspace/paths";
 import { mayBeShown } from "../workspace/policy";
 
 export interface Fetched {
@@ -118,7 +119,10 @@ const TYPES: Record<string, string> = { html: "text/html", xml: "application/xml
  * pages (links, twins, canonicals) carry the base, so it is taken off first.
  */
 function buildSource(dir: string, builtAt: number, newestContent: number, base: string): RenderSource {
-  const fileFor = (urlPath: string): string[] => {
+  // What is read out of the folder is shown, and which file is read is a page's to say (the address asked for, the
+  // markdown version a page names): never a secrets file or one of the version history's own that sits in it.
+  const fileFor = (urlPath: string): string[] => candidatesFor(urlPath).filter((candidate) => mayBeShown(candidate));
+  const candidatesFor = (urlPath: string): string[] => {
     let path = stripBase(urlPath.split(/[?#]/)[0] ?? "/", base);
 
     try {
@@ -210,12 +214,16 @@ export async function findRenderSource(site: SiteService, model: SiteModel, newe
   const status = site.preview().status();
 
   if (status.state === "ready" && status.url) return previewSource(status.url, await configBase(site));
-  // What is read from here is shown: never out of the version history's own folder or one that holds secrets.
-  if (!model.build?.outDir || !mayBeShown(model.build.outDir)) return null;
+  // What is read from here is shown. The folder is one inside the site that a build writes: never the site itself
+  // (every file of the site would be a page of it), the version history's own, or one that holds secrets.
+  if (!model.build?.outDir) return null;
   let dir: string;
 
   try {
-    dir = site.resolvePath(model.build.outDir);
+    const inside = normalizeRepoPath(model.build.outDir);
+
+    if (inside === "" || !mayBeShown(inside)) return null;
+    dir = site.resolvePath(inside);
   } catch {
     return null;
   }
