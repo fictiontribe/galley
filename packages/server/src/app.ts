@@ -36,6 +36,8 @@ import { getCookie } from "hono/cookie";
 import { asOperator, needsName, ROLE_REFUSAL as CORE_ROLE_REFUSAL, ROUTE_ACCESS, roleMay, withCaller, type AccessLevel, type AccountRole, type InstallStore } from "@galley/core/install";
 import type { PreviewStatus } from "@galley/core/types";
 import { withAccountAuthor } from "@galley/core/workspace";
+import { ExtensionError } from "./extensions/declare";
+import { mountExtensions } from "./extensions/mount";
 import { bearerToken, clientAddress, clientKeyOf, isAuthenticated, loopbackHostnames, normalizeHostname, requestProtocol, requestSession, safeEqual, signSession, LoginLimiter, type RevocationList, type SessionCheck } from "./auth";
 import { hostedRefusals } from "./hosted-refusals";
 import { withoutKeyHints } from "./key-hints";
@@ -393,6 +395,30 @@ export function createApp(services: Services, options: AppOptions): Hono {
     else if (access === "setup") register(...handlers, requireSetupAccess, respond);
     else if (access === "restore") register(install ? requireRestoreAccess : requireOwner, respond);
     else register(...handlers, requireLevel(access), respond);
+  }
+  // What an embedding program added (extensions/mount.ts): after the editor's own routes, so none of them can be shadowed.
+  if (options.extensions) {
+    const { list, desk } = options.extensions;
+
+    if (options.mode === "hosted" && !install) throw new ExtensionError("Extensions need accounts in hosted mode: without them every signed-in browser would have every level.");
+    // With accounts there is no asking whether a sign-in still counts without the desk that knows.
+    if (install && !desk) throw new ExtensionError("Extensions on an install with accounts need its people desk (createPeopleDesk): start them with startServer.");
+    mountExtensions(app, list, {
+      hosted: options.mode === "hosted",
+      requireLevel,
+      callerOf(c) {
+        if (!install) return isAuthenticated(c, session) ? { kind: "local" } : null;
+        const caller = callerOf(c, ctx);
+
+        return !caller ? null : caller.kind === "token" ? { kind: "operator" } : { kind: "person", account: caller.account, session: caller.session };
+      },
+      site: (siteId) => services.registry.get(siteId),
+      refOf: (stamp) => desk!.refOf(stamp),
+      stillCounts: (stamp) => desk!.stillCounts(stamp),
+      liveRole,
+      liveNamed,
+      withAuthor: (person, run) => withAccountAuthor(person, run),
+    });
   }
   app.all("/api/*", (c) => c.json(errorBody("not-found", "There's nothing at this address."), 404));
 

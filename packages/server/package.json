@@ -11,7 +11,8 @@
     "directory": "packages/server"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./extensions": "./src/extensions/index.ts"
   },
   "scripts": {
     "dev": "tsx watch src/dev.ts",

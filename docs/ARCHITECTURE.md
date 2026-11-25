@@ -438,6 +438,19 @@ starts the server through an unlisted `galley desktop` command.
 
 ---
 
+### Embedding (`@galley/server/extensions`, experimental)
+
+A program that starts the server can add API routes to it when it is built
+(`startServer({ extensions })`). An added route lives under `/api/x/<id>/`,
+where no route of the editor's own is, declares its access level, and is
+mounted after the built-in routes behind the same guards plus two of its own
+(the browser's word that the request is the editor's own page's, on every
+method; no path in a part of the address). Its handler is handed a narrowed
+request and a guarded site, never the framework's request. An extension is
+its author's code with the server's permissions, not a sandbox; the built-in
+route table and its levels stay closed. See `packages/server/src/extensions/`
+and the docs page *Embedding the editor*.
+
 ### MCP (`@galley/mcp`)
 
 The engine's tools over the Model Context Protocol, for people who would
