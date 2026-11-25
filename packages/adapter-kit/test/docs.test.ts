@@ -186,6 +186,6 @@ describe("docs/adapters.md", () => {
     const output = execFileSync(process.execPath, [join(KIT, kit.bin["galley-adapter-check"]!), join(SAMPLES, adapterFile), join(FIXTURES, fixture)], { encoding: "utf8" });
 
     expect(output).toMatch(/^Lume adapter — /);
-    expect(output).toMatch(/All 16 checks passed\.\n$/);
+    expect(output).toMatch(/All 17 checks passed\.\n$/);
   });
 });

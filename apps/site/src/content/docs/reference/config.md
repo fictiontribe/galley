@@ -25,6 +25,7 @@ How the file merges over detection: [galley.config.json](/docs/configuration/#ho
 | `build` | object | How build mode checks the site. *Default:* detected. |
 | `build.command` | string | The build command `run_build` runs. *Default:* the `build` script, run with the package manager. |
 | `build.outDir` | string | Where the build writes. *Default:* the framework's (Astro: `dist`). |
+| `build.sources` | string[] | Further files the build reads, as globs from the site root (`scripts/gallery/**`), beside what the framework's adapter names as what the site is built from. Moving media to a bucket keeps a repository file only while one of these still uses it ([Media in a bucket](/docs/configuration/media-storage/#what-stays-in-the-repository-and-why)). *Default:* none. |
 | `urls` | object | The deployed site. *Default:* detected. |
 | `urls.production` | string, a URL | The live site. *Default:* Astro `site` (placeholders ignored), a `CNAME` file, or `package.json` `homepage`. |
 | `urls.staging` | string, a URL | A staging deployment; preferred over `production` for the side-by-side view. |

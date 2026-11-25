@@ -283,7 +283,7 @@ async function move(io: DeployIo, storage: MediaStorageService, site: Parameters
   const plan = await storage.planMove(site, request);
 
   if (!json) {
-    const places = `${plan.references} ${plan.references === 1 ? "place" : "places"} in ${plan.pages} ${plan.pages === 1 ? "page" : "pages"}`;
+    const places = `${plan.references} ${plan.references === 1 ? "place" : "places"} in ${plan.pages} ${plan.pages === 1 ? "page" : "pages"}${plan.templates ? ` and ${plan.templates} page ${plan.templates === 1 ? "template" : "templates"}` : ""}`;
 
     if (plan.kind === "address") io.err(`${places} will use ${plan.publicUrl}.`);
     else {
@@ -297,12 +297,13 @@ async function move(io: DeployIo, storage: MediaStorageService, site: Parameters
             : !stay.length
               ? "Then the repository's copies are removed (they leave the site when you publish)."
               : plan.removes === 0
-                ? `None of the repository's copies are removed: ${stay.length === 1 ? "the file is" : `all ${stay.length} are`} still mentioned elsewhere.`
+                ? `None of the repository's copies are removed: ${stay.length === 1 ? "the file is" : `all ${stay.length} are`} still used by what the site is built from.`
                 : `Then ${plan.removes} of the repository's copies ${plan.removes === 1 ? "is" : "are"} removed (${plan.removes === 1 ? "it leaves" : "they leave"} the site when you publish) and ${stay.length} ${stay.length === 1 ? "stays" : "stay"}.`
         );
       }
-      for (const left of stay) io.err(`  ${left.path} is left in the repository: still mentioned in ${left.pages.join(", ")}`);
-      if (plan.leftAlone?.length) io.err("Galley doesn't change the site's code or templates, so the files they use stay where they are.");
+      for (const left of stay) io.err(`  ${left.path} is left in the repository: still used by ${left.pages.join(", ")}`);
+      if (plan.leftAlone?.length) io.err(`The site is built from ${plan.leftAlone.join(", ")} and a move doesn't change ${plan.leftAlone.length === 1 ? "it" : "them"}. To move what ${plan.leftAlone.length === 1 ? "it uses" : "they use"} too, put the new addresses there by hand or in build mode, then run the move again.`);
+      if (plan.alsoMentioned?.length) io.err(`Also mentioned in ${plan.alsoMentioned.join(", ")}: not part of the site as built, so not changed.`);
       if (plan.unpublished) io.err(`${plan.unpublished} of them aren't published yet: once copied, they are public at their addresses.`);
       if (plan.staying) io.err(`${plan.staying.files} stay where they are: ${plan.staying.reason}`);
     }

@@ -191,8 +191,8 @@ export type MediaMoveRequest =
 
 /**
  * How a move of files (or a change of address) ended. A file that stays in
- * the repository because the site's code or a template still uses it is how a
- * move is meant to go, so it is told in `stayed`, not as a problem.
+ * the repository because something the site is built from still uses it is
+ * how a move is meant to go, so it is told in `stayed`, not as a problem.
  */
 export interface MediaMoveResult {
   /** When it ended, ms. */
@@ -205,8 +205,12 @@ export interface MediaMoveResult {
   summary: string;
   copied: number;
   pages: number;
+  /** Galley's page templates the move updated. */
+  templates?: number;
   removed: number;
-  /** Repository files that stayed because something still mentions them, each with the files that do (the first few hundred). */
+  /** Files beside the site as built that name a moved file: not changed (the first few hundred). */
+  alsoMentioned?: string[];
+  /** Repository files that stayed because something still uses them, each with the files that do (the first few hundred). */
   stayed: Array<{ path: string; pages: string[] }>;
   /** How many stayed in all. */
   stayedFiles: number;
@@ -223,23 +227,39 @@ export interface MediaMovePlan {
   /** Files to copy. */
   files: number;
   bytes: number;
-  /** Places in the content that will be rewritten, and in how many files. */
+  /** Places that will be rewritten, and in how many pages. Only what the move updates is counted. */
   references: number;
   pages: number;
+  /**
+   * Of Galley's own page templates (the files the site's settings name),
+   * how many the move updates too, so a page made from one later doesn't
+   * carry an address that is gone. They are written in build mode, so only
+   * when the site allows it and the person whose move this is may use it;
+   * otherwise they are left and listed in `leftAlone`.
+   */
+  templates?: number;
   /** Files already there from an earlier run (skipped, not copied again). */
   done: number;
   /** Files that can't be moved and why. */
   problems: Array<{ path: string; reason: string }>;
   /**
    * Repository files that stay even though the copies aren't kept, each with
-   * every file that would still mention it: the site's code or a template
-   * (never changed by a move), or a page that holds the address in a form
-   * Galley doesn't change. Worked out by the move's own steps, so the result
-   * names the same.
+   * every file that would still use it: something the site is built from
+   * that a move doesn't change (its code, a data file content mode may not
+   * write, a page template when build mode isn't allowed), or a page that
+   * holds the address in a form Galley doesn't change. Worked out by the
+   * move's own steps, so the result names the same.
    */
   stillMentioned?: Array<{ path: string; pages: string[] }>;
-  /** Of those files, the site's code and templates: a move never changes them. */
+  /** Of the files that keep one, those a move doesn't change. */
   leftAlone?: string[];
+  /**
+   * Files that name something being moved but are no part of the site as
+   * built (a README, a record kept beside the site, a script outside its
+   * source): not changed, and they keep no file. What a site is built from
+   * is its adapter's to say, with `build.sources` in the settings adding to it.
+   */
+  alsoMentioned?: string[];
   /** How many of the repository's copies the move removes: the files to copy, less those that stay. 0 when the copies are kept. */
   removes: number;
   /** Of the files to copy, how many aren't published yet: copied to a store, they are public at their addresses at once. */

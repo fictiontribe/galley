@@ -28,4 +28,5 @@ export { adapterFromModule, loadSiteAdapters, validateAdapter, type AdapterCheck
 
 // The engine side, for tools that test adapters (the conformance kit) or list them.
 export { runDetection as detectWithAdapters, type DetectionCandidate, type DetectionRun, type DetectOptions } from "../content/detect/detect";
+export { outsideBuiltFrom } from "../content/detect/built-from";
 export { BUILTIN_ADAPTERS, astroAdapter, docusaurusAdapter, eleventyAdapter, genericAdapter, hugoAdapter, jekyllAdapter, nextAdapter, nuxtAdapter, sveltekitAdapter } from "../adapters/index";

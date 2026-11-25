@@ -22,14 +22,14 @@ const shown = (extra: Partial<MediaStorageStatus>) =>
 describe("a move of the site's files on the Media screen", () => {
   it("shows a move that left files in the repository as done, with what stayed and no list of problems", () => {
     const summary =
-      "28 files copied to Cloudflare R2, 14 pages updated, 12 removed from the repository. 16 left in the repository: still mentioned in src/layouts/Base.astro. Galley doesn't change the site's code or templates, so the files they use stay where they are. Publish to make it live.";
-    const text = shown({ lastMove: { ...base, summary, stayedFiles: 16, stayed: [{ path: "public/favicon.svg", pages: ["src/layouts/Base.astro"] }] } });
+      "27 files copied to Cloudflare R2, 14 pages and 3 page templates updated, 25 removed from the repository. 2 left in the repository: still used by src/layouts/Base.astro. The site is built from that file and a move doesn't change it, so what it uses stays where it is. Also mentioned in scripts/gallery/sections.md: not part of the site as built, so not changed. Publish to make it live.";
+    const text = shown({ lastMove: { ...base, summary, stayedFiles: 2, stayed: [{ path: "public/favicon.svg", pages: ["src/layouts/Base.astro"] }] } });
 
     expect(text).toContain("The files were moved to the bucket");
     expect(text).toContain(summary);
-    expect(text).toContain("The 16 files that stayed");
-    expect(text).toContain("public/favicon.svg: still mentioned in src/layouts/Base.astro");
-    expect(text).toContain("and 15 more");
+    expect(text).toContain("The 2 files that stayed");
+    expect(text).toContain("public/favicon.svg: still used by src/layouts/Base.astro");
+    expect(text).toContain("and 1 more");
     expect(text).toContain("Review in Proof");
     expect(text).not.toMatch(/problem|went wrong/i);
   });
