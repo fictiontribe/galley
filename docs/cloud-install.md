@@ -91,7 +91,7 @@ in the image and the one volume a compose file mounts.
 | Path | What |
 | --- | --- |
 | `install.json` | The install's state, versioned (mode 0600): the accounts (each person's name, e-mail, role, password hash, when they last signed in, whether they are switched off, when they were last signed out), the open invitations and new-password links (only the SHA-256 of each link's code), the setup code's hash while there is one (and that a used one is dead), the site's repository, folder and how it is reached, the site's live address, which starting values were used, sign-outs. |
-| `install.json.schema-<n>.bak` | The state file as it was before the last upgrade of its layout, kept in case the new version has to be rolled back (0600). After the upgrade to accounts it is `install.json.schema-1.bak`, and it holds the old shared password's hash. |
+| `install.json.schema-<n>.bak` | The state file as it was before the last upgrade of its layout, kept in case the new version has to be rolled back (0600); the one from the upgrade before is removed. After the upgrade to accounts it is `install.json.schema-1.bak`, and it holds the old shared password's hash; after the upgrade to layout 3 it is `install.json.schema-2.bak`. |
 | `session.key` | The key session cookies are signed with (0600). |
 | `settings.json`, `secrets.json` | Settings, and the stored service keys (the assistant's key and others), owner-only. |
 | `keys/` | The install's own deploy key pair, an access token when one is used, and `known_hosts`. |
@@ -120,6 +120,10 @@ before single-site installs — a hosted server that kept any number of sites:
 
 Layout 1 had one shared password; layout 2 has accounts. What the upgrade
 from 1 to 2 does is in [Upgrading to accounts](#upgrading-to-accounts).
+Layout 3 makes room for accounts that sign in through an identity provider,
+which a later version adds; the upgrade from 2 to 3 changes nothing anyone
+sees: every account keeps its password, and open invitations and links keep
+working.
 
 ---
 

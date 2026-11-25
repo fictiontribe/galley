@@ -238,7 +238,7 @@ Two rules hold in People: the last owner who can still sign in stays an owner an
 
 ### What is kept where
 
-All of it is in the data folder (`/data` in the image, one volume): `install.json` (the install's state: the accounts with their password hashes, open invitations and links as hashes of their codes, the site's repository and live address), `install.json.schema-1.bak` (after the upgrade to accounts: the state file as it was before), `session.key`, `settings.json` and `secrets.json`, `keys/` (the deploy key, an access token, `known_hosts`), `site/` (the repository's copy, with unpublished changes), `state/<siteId>/` (the inbox, conversations, brand material), `plugins/`, `home/` (package caches, rebuilt when needed), and `backups/` (backups you keep on the volume; never part of a backup).
+All of it is in the data folder (`/data` in the image, one volume): `install.json` (the install's state: the accounts with their password hashes, open invitations and links as hashes of their codes, the site's repository and live address), `install.json.schema-<n>.bak` (after an upgrade of its layout: the state file as it was before, until the next upgrade), `session.key`, `settings.json` and `secrets.json`, `keys/` (the deploy key, an access token, `known_hosts`), `site/` (the repository's copy, with unpublished changes), `state/<siteId>/` (the inbox, conversations, brand material), `plugins/`, `home/` (package caches, rebuilt when needed), and `backups/` (backups you keep on the volume; never part of a backup).
 
 ## Back it up
 

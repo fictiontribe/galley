@@ -17,7 +17,7 @@ import { GalleyError } from "../errors";
 import { ACCOUNT_ROLES, INVITATION_DAYS, PASSWORD_LINK_MINUTES, ROLE_ACCESS, type Account, type AccountRole, type AccountSession, type Invitation, type LinkPreview } from "./accounts";
 import { nameKey, tidyName } from "./names";
 import { hashPassword, passwordProblem, verifyPassword } from "./password";
-import { hasOwner, sha256Hex, spendSetupCode, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink } from "./state";
+import { hasOwner, sha256Hex, signsInWithPassword, spendSetupCode, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink } from "./state";
 
 /** One refusal for every code that can't be used — unknown, used, taken back, expired — so a guesser learns nothing. */
 export const LINK_REFUSED = "This link doesn't work any more: it was used already, taken back, or it ran out. Ask an owner of this editor for a new one.";
@@ -28,6 +28,10 @@ export const NAME_LIMIT = 100;
 export const WRONG_CURRENT_PASSWORD = "That isn't your current password.";
 /** Someone who isn't an owner asks to change the e-mail they sign in with. */
 export const OWN_EMAIL_REFUSAL = "Only an owner can change the e-mail you sign in with. Ask an owner of this editor to change it for you.";
+/** An account with no password (it signs in through a provider) asked to change it. */
+export const NO_PASSWORD_TO_CHANGE = "This account signs in without a password, so it has none to change.";
+/** An account with no password asked to change its own e-mail, which needs the current password. */
+export const NO_PASSWORD_FOR_EMAIL = "This account signs in without a password, so its e-mail can't be changed in the editor.";
 /** The longest e-mail address there can be (RFC 5321's path limit). */
 export const EMAIL_LIMIT = 254;
 
@@ -36,7 +40,7 @@ const ID = /^[A-Za-z0-9_-]{1,64}$/;
 const EMAIL = /^[^@\s,;:<>"()[\]\\]+@[^@\s,;:<>"()[\]\\]+\.[^@\s,;:<>"()[\]\\]+$/;
 
 /** What a sign-in attempt came to. The reason is for the log only: the person is told the same thing whatever it is. */
-export type SignInResult = { ok: true; account: Account } | { ok: false; reason: "unknown" | "wrong" | "disabled"; account: Account | null };
+export type SignInResult = { ok: true; account: Account } | { ok: false; reason: "unknown" | "wrong" | "disabled" | "no-password"; account: Account | null };
 
 /** A one-time link just made: its code goes into the link, once, and nowhere else. */
 export interface MadeLink {
@@ -51,19 +55,21 @@ export interface PeopleService {
   get(id: string): Account | null;
   /** The signed-in person as GET /api/meta tells the app: their account and what their role may do. */
   session(id: string): AccountSession | null;
-  /** What the sign-in page asks for: the password alone only while the one person here is an owner with no e-mail yet. */
+  /** What the sign-in page asks for: the password alone only while everyone here who signs in with a password is an owner with no e-mail yet. */
   signInWith(): "email" | "password";
 
   /**
    * Checks an e-mail and password. Without an e-mail, the password is tried
    * against the account that has none yet (an owner carried over from the
-   * single password). Takes as long for an unknown e-mail as for a wrong
-   * password: a stand-in hash is checked when there is no such account.
+   * single password; never an account with no password or with an identity
+   * at a provider). An account with no password is refused ("no-password").
+   * Takes as long for an unknown e-mail as for a wrong password: a stand-in
+   * hash is checked when there is no such account or no password.
    */
   verify(email: string | null, password: string): Promise<SignInResult>;
   /** Writes down when this person signed in. */
   noteSignIn(id: string): Promise<void>;
-  /** Whether `password` is the password of one of the owners (GALLEY_PASSWORD, at start-up). */
+  /** Whether `password` is the password of one of the owners who has one (GALLEY_PASSWORD, at start-up). */
   ownerPasswordIs(password: string): Promise<boolean>;
 
   /** First run: the owner. Spends the setup code. Without a name or an e-mail the owner is `incomplete`. */
@@ -238,15 +244,35 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
     return { stored, made: { id: stored.id, code, expiresAt: stored.expiresAt } };
   };
-  const passwordLinkFor = (draft: InstallStateFile, target: StoredAccount, by: StoredAccount | null) => {
+  /** `server`: made by `serve --reset-password`, and marked so; "forgot my password" links are not. */
+  const passwordLinkFor = (draft: InstallStateFile, target: StoredAccount, by: StoredAccount | null, server = false) => {
     dropPasswordLinks(draft, target.id);
     const { stored, made } = mintLink(
-      { kind: "password", email: target.email, role: null, accountId: target.id, createdBy: by?.id ?? null, createdByName: by?.name ?? "" },
+      { kind: "password", email: target.email, role: null, accountId: target.id, createdBy: by?.id ?? null, ...(server ? { madeBy: "server" as const } : {}), createdByName: by?.name ?? "" },
       PASSWORD_LINK_MINUTES * 60_000
     );
 
     draft.links.push(stored);
     return made;
+  };
+  /** A new-password link for `accountId`, made by `byId` (null: nobody in the app); `server` marks it as `serve --reset-password`'s. */
+  const makePasswordLink = async (byId: string | null, accountId: string, server: boolean) => {
+    let result: { account: Account; link: MadeLink } | null = null;
+
+    await store.update((draft) => {
+      prune(draft);
+      const target = accountOf(draft, accountId);
+      const by = byId === null ? null : accountOf(draft, byId);
+
+      if (!target) throw notHere();
+      if (byId !== null && !by) throw notHere();
+      if (target.disabled) {
+        if (byId !== null) throw new GalleyError("conflict", "This account is switched off, so it can't sign in. Switch it on first.");
+        target.disabled = false;
+      }
+      result = { account: publicAccount(target), link: passwordLinkFor(draft, target, by ?? null, server) };
+    });
+    return result!;
   };
 
   const people: PeopleService = {
@@ -276,16 +302,16 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
     },
 
     signInWith() {
-      const enabled = store.read().accounts.filter((account) => !account.disabled);
+      const withPasswords = store.read().accounts.filter((account) => !account.disabled && signsInWithPassword(account));
 
-      return enabled.length > 0 && enabled.every((account) => account.email === "") ? "password" : "email";
+      return withPasswords.length > 0 && withPasswords.every((account) => account.email === "") ? "password" : "email";
     },
 
     async verify(email, password) {
       const state = store.read();
       let account: StoredAccount | undefined;
 
-      if (email === null) account = state.accounts.find((candidate) => candidate.email === "");
+      if (email === null) account = state.accounts.find((candidate) => candidate.email === "" && signsInWithPassword(candidate));
       else {
         const wanted = typeof email === "string" ? email.trim().toLowerCase() : "";
 
@@ -294,6 +320,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       const matches = await verifyPassword(password, account?.passwordHash ?? (await standInHash()));
 
       if (!account) return { ok: false, reason: "unknown", account: null };
+      if (account.passwordHash === null) return { ok: false, reason: "no-password", account: publicAccount(account) };
       if (!matches) return { ok: false, reason: "wrong", account: publicAccount(account) };
       if (account.disabled) return { ok: false, reason: "disabled", account: publicAccount(account) };
       return { ok: true, account: publicAccount(account) };
@@ -309,7 +336,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
     async ownerPasswordIs(password) {
       for (const owner of store.read().accounts.filter((account) => account.role === "owner")) {
-        if (await verifyPassword(password, owner.passwordHash)) return true;
+        if (owner.passwordHash !== null && (await verifyPassword(password, owner.passwordHash))) return true;
       }
       return false;
     },
@@ -463,23 +490,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       return removed!;
     },
 
-    async passwordLink(byId, accountId) {
-      let result: { account: Account; link: MadeLink } | null = null;
-
-      await store.update((draft) => {
-        prune(draft);
-        const target = accountOf(draft, accountId);
-        const by = byId === null ? null : accountOf(draft, byId);
-
-        if (!target) throw notHere();
-        if (byId !== null && !by) throw notHere();
-        if (target.disabled) {
-          if (byId !== null) throw new GalleyError("conflict", "This account is switched off, so it can't sign in. Switch it on first.");
-          target.disabled = false;
-        }
-        result = { account: publicAccount(target), link: passwordLinkFor(draft, target, by ?? null) };
-      });
-      return result!;
+    passwordLink(byId, accountId) {
+      return makePasswordLink(byId, accountId, false);
     },
 
     async forgot(raw) {
@@ -571,6 +583,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       const account = accountOf(store.read(), accountId);
 
       if (!account) throw notHere();
+      if (account.passwordHash === null) throw new GalleyError("invalid", NO_PASSWORD_TO_CHANGE);
       if (!(await verifyPassword(current, account.passwordHash))) return false;
       const problem = passwordProblem(next);
 
@@ -581,6 +594,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         const target = accountOf(draft, accountId);
 
         if (!target) throw notHere();
+        // Checked again: it may have lost its password while the new one was being hashed.
+        if (target.passwordHash === null) throw new GalleyError("invalid", NO_PASSWORD_TO_CHANGE);
         target.passwordHash = hash;
         target.passwordChangedAt = iso(now());
         endSessions(target);
@@ -598,9 +613,10 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       const email = input.email === undefined ? undefined : normalizeEmail(input.email);
 
       if (email !== undefined && email !== current.email) {
-        // Only an owner manages who signs in as whom; an account with no e-mail yet (the owner from before accounts) adds its own.
-        if (current.email !== "" && current.role !== "owner") throw new GalleyError("forbidden", OWN_EMAIL_REFUSAL);
-        // The e-mail is where a new-password link goes: a browser left signed in mustn't be enough to change it.
+        // Only an owner manages who signs in as whom; an account with no e-mail yet (the owner from before accounts, who signs in with a password) adds its own.
+        if ((current.email !== "" || !signsInWithPassword(current)) && current.role !== "owner") throw new GalleyError("forbidden", OWN_EMAIL_REFUSAL);
+        // The e-mail is where a new-password link goes: a browser left signed in mustn't be enough to change it. An account with no password has none to type.
+        if (current.passwordHash === null) throw new GalleyError("invalid", NO_PASSWORD_FOR_EMAIL);
         if (typeof input.password !== "string" || input.password.length === 0) throw new GalleyError("invalid", "Type your current password to change your e-mail.");
         if (!(await verifyPassword(input.password, current.passwordHash))) throw new GalleyError("invalid", WRONG_CURRENT_PASSWORD);
       }
@@ -621,7 +637,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
           renamed = name !== target.name;
           target.name = name;
         }
-        target.incomplete = !target.name || !target.email;
+        // For an account with an identity, only a name is missing: its e-mail comes from the provider or not at all.
+        target.incomplete = !target.name || (!target.email && target.identity === undefined);
         updated = publicAccount(target);
       });
       // Whatever shows this person's name looks again.
@@ -659,7 +676,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         if (!target) throw new GalleyError("invalid", "No owner of this editor signs in with that e-mail. Check it, or leave --email out when there is only one owner.");
       } else if (owners.length === 1) target = owners[0];
       else throw new GalleyError("invalid", `This editor has ${owners.length} owners. Say whose password to reset with --email <their e-mail>.`);
-      return people.passwordLink(null, target!.id);
+      return makePasswordLink(null, target!.id, true);
     },
   };
 

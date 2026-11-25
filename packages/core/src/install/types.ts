@@ -14,7 +14,7 @@ import type { Job, SecretName } from "../types";
  * The version of the data folder's layout. Bumped with every change a new
  * image has to migrate; `install.json` records the one the folder is at.
  */
-export const INSTALL_SCHEMA_VERSION = 2;
+export const INSTALL_SCHEMA_VERSION = 3;
 
 /** Fewest characters a sign-in password may have. */
 export const MIN_INSTALL_PASSWORD_LENGTH = 12;

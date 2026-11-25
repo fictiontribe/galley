@@ -7,7 +7,8 @@
  * MIGRATIONS[n] takes a folder at layout n to layout n + 1. Layout 0 is a
  * data folder from before installs had a state file: a hosted server that
  * kept any number of sites in `<home>/sites.json`. Layout 1 had one shared
- * password; layout 2 has accounts.
+ * password; layout 2 has accounts; layout 3 can hold accounts that sign in
+ * through an identity provider.
  */
 import { randomBytes } from "node:crypto";
 import { realpathSync } from "node:fs";
@@ -192,7 +193,22 @@ const toVersion2: Migration = async (state, { now }) => {
   return { ...rest, schema: 2, accounts, links: [], sessions };
 };
 
-export const MIGRATIONS: Migration[] = [toVersion1, toVersion2];
+/**
+ * Layout 3: what signing in through an identity provider needs, with nothing
+ * changed for an install that has none. An account's password may be absent
+ * and it may carry an identity (both absent on every account so far); the
+ * links `serve --reset-password` makes are told apart from the rest (none so
+ * far: an open link stays as it was); and the state gains the removed
+ * provider accounts, the recent logouts of subjects with no account, and when
+ * passwords were first turned off (none yet).
+ */
+const toVersion3: Migration = async (state) => {
+  const rest = state as Record<string, unknown>;
+
+  return { ...rest, schema: 3, tombstones: [], providerLogouts: [], oidcOnlySince: null };
+};
+
+export const MIGRATIONS: Migration[] = [toVersion1, toVersion2, toVersion3];
 
 /** Runs every migration from `from` up to this version's layout. */
 export async function migrate(state: unknown, from: number, context: MigrationContext): Promise<unknown> {
