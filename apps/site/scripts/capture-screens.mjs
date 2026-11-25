@@ -1433,7 +1433,7 @@ async function run(step) {
 
   if (step === "media-bucket") {
     // How-to: connect a bucket, upload to it, see where a picture is used, a refused delete, and the move
-    // of the repository's files. Also the tour's two pictures. Against the stand-in bucket (start.sh media,
+    // of the repository's files. Also the tour's picture. Against the stand-in bucket (start.sh media,
     // run before start.sh galley); MEDIA_KEY_ID and MEDIA_SECRET are the key it prints. A context of its own.
     const KEY_ID = process.env.MEDIA_KEY_ID, SECRET = process.env.MEDIA_SECRET;
     if (!KEY_ID || !SECRET) { console.log("  (no MEDIA_KEY_ID and MEDIA_SECRET: the media-in-a-bucket pictures are not taken)"); return; }
@@ -1464,7 +1464,7 @@ async function run(step) {
       });
       for (const [label, value] of [[/Account ID/, ACCOUNT], [/^Bucket name/, BUCKET], [/^Public address/, ADDRESS], [/Access Key ID/, KEY_ID], [/Secret Access Key/, SECRET]]) await window().getByLabel(label).first().fill(value);
       await view.evaluate(() => document.activeElement?.blur());
-      await window().getByLabel(/^Public address/).first().evaluate((e) => e.scrollIntoView({ block: "center" }));
+      await window().getByLabel(/Secret Access Key/).first().evaluate((e) => e.scrollIntoView({ block: "end" }));
       await view.waitForTimeout(800);
       await howto(view, "media-in-a-bucket", 2, FULL, {
         alt: "The same window further down, filled in: the Account ID, the Bucket name caddow-media, the Public address https://media.example.com, an Access Key ID and a Secret Access Key shown as dots, above Check and connect.",
@@ -1474,7 +1474,6 @@ async function run(step) {
       await window().getByRole("button", { name: "Check and connect" }).click();
       await until(view, "the bucket connected", async () => (await view.getByText("New files go to the bucket.").count()) > 0, 120_000);
       await view.waitForTimeout(800);
-      await shoot(view, "media-bucket-connected", FULL);
       await window().getByRole("button", { name: "Done" }).click();
       await view.waitForTimeout(1000);
 
@@ -1535,7 +1534,6 @@ async function run(step) {
         do: "When it has finished, press **Review in Proof**.",
         see: "The pages point at the bucket now, as changes waiting in Proof: publish to make it live. Files the site's code or templates still mention stay in the repository, and the message lists them.",
       });
-      await shoot(view, "media-bucket-moved", FULL);
     } finally {
       await own.close();
     }
