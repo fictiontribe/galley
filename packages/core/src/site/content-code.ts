@@ -76,9 +76,17 @@ export interface GuardContext {
 
 const DEFAULT_CONTEXT: GuardContext = { brandDir: DEFAULT_BRAND_DIR };
 
-/** Said when a save the previewed page asked for is refused. */
+/** Said when a save the previewed page asked for is refused, to an account below build-mode level: it says who can help. */
 export const PAGE_SAVE_REFUSAL =
   "This change was asked for by the page in the preview, not made in the editor, so it may change only what an account without build mode could. Make the change in the form, or ask an owner or an editor of this editor.";
+/** The same, to someone at build-mode level: they can make the change themselves, so only that is said. */
+export const PAGE_SAVE_REFUSAL_AT_BUILD_LEVEL =
+  "This change was asked for by the page in the preview, not made in the editor, so it may change only what an account without build mode could. Make the change in the form.";
+
+/** The refusal for a save the previewed page asked for, in the words for whoever is signed in. */
+export function pageSaveRefusal(): string {
+  return callerRefusal(callerMay(BUILD_MODE_LEVEL) ? PAGE_SAVE_REFUSAL_AT_BUILD_LEVEL : PAGE_SAVE_REFUSAL);
+}
 /** Said when the assistant, outside build mode (a content conversation, a writing batch, an AI client over MCP in content mode), would change what only build mode may. */
 export const ASSISTANT_CONTENT_REFUSAL =
   "Outside build mode, the assistant may change only what an account without build mode could. Make this change in build mode, or yourself in the form.";
@@ -113,7 +121,7 @@ export function heldBelowBuild(write: ContentWrite): HeldBy | null {
 
 /** The refusal for a held write: the page's and the assistant's own words, else the level's (`levelSentence`). */
 function refusalFor(held: HeldBy, levelSentence: string): string {
-  if (held === "page") return callerRefusal(PAGE_SAVE_REFUSAL);
+  if (held === "page") return pageSaveRefusal();
   if (held === "assistant") return callerRefusal(ASSISTANT_CONTENT_REFUSAL);
   return callerRefusal(levelSentence);
 }

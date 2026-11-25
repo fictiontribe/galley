@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { GalleyError } from "../../src/errors";
 import { requireCallerForGuardedWork, withCaller } from "../../src/install/caller";
 import { asGeneratedRedirects } from "../../src/redirects/generated";
+import { PAGE_SAVE_REFUSAL, PAGE_SAVE_REFUSAL_AT_BUILD_LEVEL } from "../../src/site/content-code";
 import type { EditOp } from "../../src/types";
 import { cleanupAll, disposeAll, openSite, sh, tempDir, writeTree } from "./helpers";
 
@@ -242,7 +243,7 @@ function makeSite(kind: SiteKind): string {
 
 // ── who, and what they do
 
-type Who = "contributor" | "editor" | "owner" | "nobody" | "page-owner" | "assistant-owner" | "assistant-local";
+type Who = "contributor" | "editor" | "owner" | "nobody" | "page-owner" | "page-contributor" | "assistant-owner" | "assistant-local";
 
 type Change =
   | { write: string; text: string; mode?: "content" | "build" }
@@ -263,6 +264,7 @@ async function asWho<T>(who: Who, run: () => Promise<T>): Promise<T> {
     return withCaller({ accountId: "o", role: "owner" }, run);
   }
   if (who === "page-owner") return withCaller({ accountId: "o", role: "owner", viaPreview: true }, run);
+  if (who === "page-contributor") return withCaller({ accountId: "c", role: "contributor", viaPreview: true }, run);
   return withCaller({ accountId: who, role: who }, run);
 }
 
@@ -491,5 +493,14 @@ describe("reading a large Markdown page", () => {
 
     expect(refusal).toMatch(IMAGE);
     expect(performance.now() - started).toBeLessThan(2_000);
+  });
+});
+
+describe("the page's refusal says what the person can do", { timeout: 120_000 }, () => {
+  it("someone at build level is told to make the change in the form; an account below it, who can help", async () => {
+    const change = { write: "src/content/docs/new.mdx", text: md("New") };
+
+    expect(await outcome("astro", "page-owner", change)).toBe(PAGE_SAVE_REFUSAL_AT_BUILD_LEVEL);
+    expect(await outcome("astro", "page-contributor", change)).toBe(PAGE_SAVE_REFUSAL);
   });
 });

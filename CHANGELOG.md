@@ -53,6 +53,11 @@ entry says how.
 
 ### Fixed
 
+- **A save the previewed page asked for, when refused, no longer tells an
+  owner or an editor to ask an owner or an editor.** Someone at build-mode
+  level is told only what they can do: make the change in the form. An
+  account below that level is still told who can help.
+
 - **A request whose target the server can't read as one of its own
   addresses is refused.** A request line naming another scheme (`ws://…`,
   say) now gets 400 before the preview or the app sees it, as one that isn't

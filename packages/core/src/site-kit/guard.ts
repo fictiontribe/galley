@@ -11,7 +11,7 @@
 import { BUILD_MODE_LEVEL } from "../install/route-access";
 import { BUILD_MODE_REFUSAL, callerMay, callerRefusal, callerViaPreview } from "../install/caller";
 import { normalizePath } from "../content/entries/paths";
-import { PAGE_SAVE_REFUSAL } from "../site/content-code";
+import { pageSaveRefusal } from "../site/content-code";
 import type { AgentMode, ChangeOrigin, Collection } from "../types";
 import { SCRIPTS_FILE } from "./detect";
 
@@ -48,7 +48,7 @@ export function addedFormCode(before: string | null, after: string): string[] {
 export function formCodeRefusal(before: string | null, after: string, who: { origin: ChangeOrigin; mode?: AgentMode; allowBuild: boolean }): string | null {
   if (addedFormCode(before, after).length === 0) return null;
   // A save the previewed page asked for is the page's, not the person's: held to the lowest level whoever is signed in.
-  if (callerViaPreview()) return callerRefusal(PAGE_SAVE_REFUSAL);
+  if (callerViaPreview()) return pageSaveRefusal();
   const mode = who.mode ?? (who.origin === "agent" ? "content" : undefined);
 
   if (mode === "content") return "Custom code in a form runs in every visitor's browser, so it can only be added in build mode. Nothing was changed.";
@@ -127,7 +127,7 @@ export function isScriptsFile(path: string, collection: Collection | null): bool
  */
 export function scriptCodeRefusal(before: string | null, after: string, who: { origin: ChangeOrigin; mode?: AgentMode; allowBuild: boolean }): string | null {
   if (addedScripts(before, after).length === 0) return null;
-  if (callerViaPreview()) return callerRefusal(PAGE_SAVE_REFUSAL);
+  if (callerViaPreview()) return pageSaveRefusal();
   // Each sentence says why and what the person can do instead. Where the site keeps build mode off nobody may, so that
   // comes first (asking someone with build mode wouldn't help); then the account's level; then the mode.
   if (!who.allowBuild) return SCRIPT_BUILD_OFF_REFUSAL;
