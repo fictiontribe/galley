@@ -2,8 +2,8 @@
 // An image that reserves its space before it loads: the box is sized by
 // `ratio` (CSS aspect-ratio) and the file is cropped to fit with object-fit,
 // anchored on `focus` (left, right) or else on the photograph's own focus
-// point in galley/photography/shots.json, so the subject stays in frame at
-// every ratio.
+// point (src/lib/focus.json, from the shot list), so the subject stays in
+// frame at every ratio.
 import { focusFor, ratios, withBase, type Focus, type RatioName } from "../lib/site";
 
 interface Props {

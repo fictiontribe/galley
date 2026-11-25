@@ -251,7 +251,9 @@ size, where it is used and its alt text; the shoot brief is
   `galley/photography/shots.json` has a `focus` point (x and y, 0–1); wherever
   a slot crops a picture, the crop is anchored on it, so heads and garments
   stay in frame at every ratio. `imageFocus: left` or `right` on a
-  `campaign-hero` overrides it. Give a new photograph its own entry and focus.
+  `campaign-hero` overrides it. Give a new photograph its own entry and focus,
+  then run `npm run focus`: it copies the focus points to `src/lib/focus.json`,
+  which is what the site reads.
 
 - **No captions** under, over or beside a photograph: say it in the alt
   text, or in the section's own words.

@@ -33,6 +33,7 @@
     "sizes": "node scripts/make-sizes.mjs",
     "placeholders": "node scripts/make-placeholders.mjs",
     "photos": "node scripts/ingest-photos.mjs",
+    "focus": "node scripts/focus-points.mjs",
     "thumbnails": "node scripts/make-thumbnails.mjs",
     "check:type": "node scripts/check-type.mjs"
   },

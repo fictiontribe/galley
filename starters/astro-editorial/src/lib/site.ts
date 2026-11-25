@@ -5,7 +5,7 @@ import { Marked } from "marked";
 import siteData from "../data/site.json";
 import navigationData from "../data/navigation.json";
 import stockistsData from "../data/stockists.json";
-import shotList from "../../galley/photography/shots.json";
+import focusPoints from "./focus.json";
 
 export const site = siteData;
 export const navigation = navigationData;
@@ -47,16 +47,29 @@ export type RatioName = keyof typeof ratios;
 export const focusPositions = { left: "28% 50%", center: "50% 50%", right: "72% 50%" } as const;
 export type Focus = keyof typeof focusPositions;
 
-/** Each photograph's focus point from galley/photography/shots.json, by its public path. */
-const shotFocus = new Map(shotList.shots.map((shot) => [shot.file.replace(/^public/, ""), `${Math.round(shot.focus.x * 100)}% ${Math.round(shot.focus.y * 100)}%`]));
+/**
+ * Each photograph's focus point, by its path under public/images, longest
+ * first. From src/lib/focus.json, which `npm run focus` writes from the shot
+ * list (galley/photography/shots.json): the site reads the copy here, so the
+ * shot list stays a record beside the site.
+ */
+const shotFocus = Object.entries(focusPoints.points).sort(([a], [b]) => b.length - a.length);
 
 /**
  * Where a crop is anchored: the side an editor chose (left, right), or else
  * the photograph's own focus point from the shot list, so heads and garments
  * stay in frame at every ratio; the middle for a picture not in the list.
+ *
+ * A photograph is found by how its address ends, not by the whole address:
+ * /images/pieces/coat.webp and https://media.example.com/pieces/coat.webp
+ * are the same picture, so it keeps its focus point when the pictures move
+ * to a bucket.
  */
 export function focusFor(src: string, focus: Focus = "center"): string {
-  return focus !== "center" ? focusPositions[focus] : (shotFocus.get(src) ?? focusPositions.center);
+  if (focus !== "center") return focusPositions[focus];
+  const address = src.replace(/[?#].*$/, "");
+
+  return shotFocus.find(([path]) => address.endsWith(`/${path}`))?.[1] ?? focusPositions.center;
 }
 
 /** Whether a link leaves the site (opens elsewhere). */
