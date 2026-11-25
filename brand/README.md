@@ -184,11 +184,9 @@ scroll, the way a lit screen draws the eye in a room.
   motion are the same in both; only colour changes. The visitor's system
   chooses; the switch in the header overrides it and is remembered. Each mode
   ends on a block of the other's paper.
-- **Two heading voices.** A page that shows the product (home, the tour, the
-  apps, the starters) speaks in Figtree 600, set tight. A page that is read
-  (documentation, how-to guides, comparisons, the changelog) is the page set:
-  Newsreader 400, as everywhere else in the brand. The product's own words,
-  quoted on any page, stay in the serif.
+- **One heading voice.** Every page of the site, the documentation and the
+  guides included, sets its headings in Figtree 600, tight. The product's own
+  words, quoted on any page, stay in the serif.
 - **Captures are framed, and real.** The warm tan panel on paper, a warm deep
   frame on the plate. A light capture on the dark page reads as a lit screen.
   Never drawn interface.
