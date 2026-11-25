@@ -43,7 +43,7 @@ export interface StartedExtensions {
   list: StartedExtension[];
   /** Every environment variable the extensions named as secret. */
   secretEnv: string[];
-  /** Stops them all, each given its few seconds, and leaves what each was handed doing nothing: its host, and every site it holds. Safe to call twice. */
+  /** Stops them all, each given its few seconds, and leaves what each was handed doing nothing: its host, every site it holds, a controller it took from one. Safe to call twice. */
   stop(): Promise<void>;
 }
 

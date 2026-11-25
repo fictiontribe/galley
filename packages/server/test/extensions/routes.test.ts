@@ -338,6 +338,14 @@ describe("routes an embedding program adds", () => {
     expect((await x("POST", site("/keep"), { cookie: people.owner.cookie, body: {} })).body).toEqual({ kept: true });
     expect((await x("GET", "/kept-write", { cookie: people.owner.cookie })).body).toEqual({ tried: `refused: ${GET_CHANGES_NOTHING}` });
     expect(git(folder, "status", "--porcelain", "--", "src/content/pages/about.md", "src/content/pages/by-a-get.md", "src/content/pages/by-a-kept-site.md")).toBe("");
+    // And the preview's controller, taken by a POST and kept: inside a GET its status can be read, and it can't be started, stopped or restarted.
+    expect((await x("POST", site("/keep-preview"), { cookie: people.owner.cookie, body: {} })).body).toEqual({ state: "idle" });
+    expect((await x("GET", "/kept-preview", { cookie: people.owner.cookie })).body).toEqual({
+      state: "idle",
+      started: `refused: ${GET_CHANGES_NOTHING}`,
+      stopped: `refused: ${GET_CHANGES_NOTHING}`,
+      restarted: `refused: ${GET_CHANGES_NOTHING}`,
+    });
   });
 
   it("what a read answers with is a copy: changing it changes nothing of the site's own rules", async () => {
@@ -546,6 +554,9 @@ describe("routes an embedding program adds", () => {
     expect((await x("POST", site("/later"), { cookie: people.owner.cookie, body: { wait: 1200 } })).body).toEqual({ started: true });
     const heldFromARequest = probe.requests.find((request) => request.site)!.site!;
     const kept = probe.kept!;
+    const keptPreview = probe.keptPreview!;
+
+    expect(keptPreview.status().state).toBe("idle");
 
     expect(kept.id).toBe(siteId);
     await stopHosted(box, started);
@@ -571,6 +582,11 @@ describe("routes an embedding program adds", () => {
       expect(() => held.writeFile("src/content/pages/after.md", "x", { origin: "user", mode: "content" })).toThrow(STOPPED);
       expect(() => held.id).toThrow(STOPPED);
     }
+    // Nor does a controller it took from one: the site's own dev server is not started in a folder that may be someone else's now.
+    expect(() => keptPreview.status()).toThrow(STOPPED);
+    expect(() => keptPreview.start()).toThrow(STOPPED);
+    expect(() => keptPreview.restart()).toThrow(STOPPED);
+    expect(() => keptPreview.stop()).toThrow(STOPPED);
     // The work left running wakes now, with the server's guards already dropped: still refused, by the site it holds.
     await until(() => probe.later.some((line) => line.startsWith("save ")));
     expect(probe.later.filter((line) => /^(publish|save) /.test(line))).toEqual([`publish refused: ${STOPPED}`, `save refused: ${STOPPED}`]);

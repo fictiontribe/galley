@@ -3,6 +3,7 @@
  * server's start and leaves nothing running; where there are no accounts
  * the one person on their own computer is the caller.
  */
+import { createServer } from "node:net";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { asOperator, callerMay } from "@galley/core/install";
@@ -131,5 +132,23 @@ describe("starting a server with extensions", () => {
     expect(await host!.sites.get("any")).toBeNull();
     // Times that make no sense are brought within reason rather than waited on for ever, or not at all.
     await expect(local(box.folder("home"), [stubborn], { extensionTimes: { setupMs: -5 } })).rejects.toThrow(/didn't finish starting in time/);
+  });
+
+  it("a hosted start that can't have its port leaves the process as it found it", async () => {
+    // The commonest way a start fails: something else is already listening there.
+    const taken = createServer();
+    const port = await new Promise<number>((resolve) => taken.listen(0, "127.0.0.1", () => resolve((taken.address() as { port: number }).port)));
+
+    try {
+      await expect(
+        startHosted(box, box.folder("taken-home"), { GALLEY_PUBLIC_URL: EDITOR, GALLEY_PASSWORD: "correct horse battery staple", GALLEY_TOKEN: "an-operator-token-for-scripts-0000" }, { port, findFreePort: false })
+      ).rejects.toThrow();
+      // Hosted mode, the guard on work for nobody and the names hidden from a site's commands are all the process's: none is left on.
+      expect(hostedMode()).toBe(false);
+      expect(callerMay("publish")).toBe(true);
+      expect(withoutHiddenVariables({ GALLEY_TOKEN: "x" })).toEqual({ GALLEY_TOKEN: "x" });
+    } finally {
+      await new Promise<void>((resolve) => taken.close(() => resolve()));
+    }
   });
 });

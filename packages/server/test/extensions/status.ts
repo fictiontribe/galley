@@ -26,6 +26,8 @@ export interface StatusProbe {
   gate?: Promise<void>;
   /** A site asked for through the host by a POST, and kept. */
   kept?: GuardedSite | null;
+  /** The preview's controller, taken by a POST and kept. */
+  keptPreview?: ReturnType<GuardedSite["preview"]>;
 }
 
 export function newProbe(): StatusProbe {
@@ -165,6 +167,9 @@ export function statusExtension(probe: StatusProbe, options: { setup?: (host: Ex
           // Asks the host for a site outside any GET and keeps it; then a GET uses the kept one.
           "POST /sites/:siteId/keep": { access: "edit", body: () => undefined, handle: async (request) => ((probe.kept = await host.sites.get(request.params.siteId!)), { kept: probe.kept !== null }) },
           "GET /kept-write": { access: "edit", handle: async () => ({ tried: await attempt(() => probe.kept!.writeFile("src/content/pages/by-a-kept-site.md", "x", { origin: "user", mode: "content" })) }) },
+          // Takes the preview's controller in a POST and keeps it; then a GET reads its status and tries to start it.
+          "POST /sites/:siteId/keep-preview": { access: "edit", body: () => undefined, handle: (request) => ((probe.keptPreview = request.site!.preview()), { state: probe.keptPreview.status().state }) },
+          "GET /kept-preview": { access: "edit", handle: async () => ({ state: probe.keptPreview!.status().state, started: await attempt(() => probe.keptPreview!.start()), stopped: await attempt(() => probe.keptPreview!.stop()), restarted: await attempt(() => probe.keptPreview!.restart()) }) },
           // Reaches a site through the host instead of the request, from a GET.
           "GET /any-site": { access: "edit", handle: async (request) => ({ tried: await attempt(async () => (await host.sites.get(request.query.site ?? ""))!.writeFile("src/content/pages/by-a-get.md", "x", { origin: "user", mode: "content" })) }) },
           // An address that ends like one the editor treats specially.

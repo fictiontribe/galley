@@ -640,6 +640,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     leaveProcess();
     tickets?.dispose();
     gateway?.close();
+    // Switched on above, before the port is asked for: off again on every way a start is undone, a port already taken included.
+    setHostedMode(false);
     if (hosted) {
       hideFromSiteCommands([]);
       limitSiteCommandMemory(null);
@@ -692,7 +694,6 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
       }
     }
     undo();
-    setHostedMode(false);
   };
 
   try {

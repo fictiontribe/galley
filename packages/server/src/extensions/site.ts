@@ -7,11 +7,14 @@
  *   of the site and reads its own rules from it (what content mode may
  *   write, how it publishes), so an extension that tidied the object it was
  *   given would otherwise change those rules for everyone. Plain data is
- *   copied; a thing with behaviour of its own (the preview's controller) is
- *   handed as it is.
+ *   copied; a thing to drive (the preview's controller, an assistant turn's
+ *   undo) is the engine's own, behind the same two guards as the site.
  * - It stops with the extension. Once the extension has been stopped, every
- *   member of every site it was handed refuses: the data folder may be
- *   another server's the next moment.
+ *   member of every site it was handed refuses, and so does every method of
+ *   a controller it took from one: the data folder may be another server's
+ *   the next moment.
+ * - A controller kept from earlier is no way round the GET rule either:
+ *   starting, stopping and restarting the preview refuse inside a GET.
  * - Secrets and the version history's own files can't be read through it:
  *   by name, as the editor's file routes refuse them, and by where a link
  *   inside the site leads. The engine itself reads any path inside the site,
@@ -48,8 +51,44 @@ export const SITE_WITHHELD = ["dispose"] as const satisfies ReadonlyArray<keyof 
 /** What an open site carries for the engine's own use, beyond the site service. Never handed either. */
 export const SITE_INTERNAL = ["snapshot", "previewHandle", "liveUrl"] as const;
 
-/** Changes that answer with a thing to drive (the preview, an assistant turn's undo), not with data: handed as they are. */
-const CONTROLLERS = new Set<string>(["preview", "checkpoint"]);
+/**
+ * Changes that answer with a thing to drive, not with data, and which of its
+ * methods change something. The thing is handed guarded (`guardController`):
+ * it can be kept, and must not outlive the rules of the site it came from.
+ */
+const CONTROLLERS: Record<string, ReadonlySet<string>> = {
+  // Its status is a read; the rest starts or stops the site's own dev server.
+  preview: new Set(["start", "stop", "restart"]),
+  // An assistant turn's record: what it does to the site, it does through the site.
+  checkpoint: new Set(),
+};
+
+/**
+ * A controller as an extension is handed it: the engine's own object behind
+ * the site's guards. Every method asks first whether the extension is still
+ * alive; one that changes something asks the GET rule too.
+ */
+function guardController<T extends object>(controller: T, changes: ReadonlySet<string>, live: () => void, mayChange: () => void): T {
+  return new Proxy(controller, {
+    get(target, key) {
+      const value = Reflect.get(target, key, target) as unknown;
+
+      if (typeof value !== "function") {
+        live();
+        return value;
+      }
+      return (...args: unknown[]) => {
+        if (typeof key === "string" && changes.has(key)) mayChange();
+        else live();
+        return (value as (...a: unknown[]) => unknown).apply(target, args);
+      };
+    },
+    // Read-only from outside: what it is belongs to the engine.
+    set: () => false,
+    defineProperty: () => false,
+    deleteProperty: () => false,
+  });
+}
 
 /** Reads that name a file by their first argument. */
 const BY_PATH = new Set<string>(["readFile", "readBase", "resolvePath", "diff", "readEntry"]);
@@ -246,8 +285,11 @@ export function guardSite(site: SiteService, options: { readOnly: boolean; alive
       mayChange();
       const result = (value as (...a: unknown[]) => unknown).apply(site, args);
 
-      // What a change answers with is the engine's own too (`refresh` and `saveConfig` answer with the model).
-      return CONTROLLERS.has(name) ? result : copied(result);
+      const controls = CONTROLLERS[name];
+
+      // What a change answers with is the engine's own too (`refresh` and `saveConfig` answer with the model): data is copied,
+      // a thing to drive is handed behind the same guards as the site.
+      return controls && result !== null && typeof result === "object" ? guardController(result, controls, live, mayChange) : copied(result);
     };
   }
   return Object.freeze(guarded) as unknown as GuardedSite;

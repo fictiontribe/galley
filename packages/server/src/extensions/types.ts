@@ -51,7 +51,7 @@ export interface ExtensionParts {
    * Runs when the server stops, before the data folder is let go, and when a
    * start ends after this extension's setup had finished. May take a few
    * seconds; not more. After it, what the extension was handed does nothing:
-   * its host, and every site it holds.
+   * its host, every site it holds, and a controller it took from one.
    */
   stop?(): void | Promise<void>;
 }
@@ -87,8 +87,8 @@ export interface ExtensionRequest<B> {
   /**
    * The open site `:siteId` names; absent when the route has no `:siteId`.
    * What it answers with is a copy, from a change as from a read: plain
-   * data copied, a thing with behaviour of its own (the preview's
-   * controller) handed as it is. `.git/` and `.env*` can't be read through
+   * data copied, a thing to drive (the preview's controller) handed behind
+   * the same guards as the site. `.git/` and `.env*` can't be read through
    * it (by name; and, for reads that name a file and for searches, by where
    * a link inside the site leads). On GET it refuses whatever would change
    * the site, as does any site reached through `host.sites` while a GET is

@@ -226,9 +226,15 @@ describe("what the server does around an extension", () => {
       answered.writable.content.push("**/*");
     }
     expect(model.writable.content).toEqual(["src/content/**"]);
-    // A thing to drive, not data: the same object, working.
-    expect(guarded.preview!()).toBe(controller);
-    expect(guarded.checkpoint!()).toBe(controller);
+    // A thing to drive, not data: the engine's own, working, behind the site's guards.
+    const preview = guarded.preview!() as typeof controller;
+
+    expect(preview).not.toBe(controller);
+    expect(preview.start()).toBe("started");
+    expect(preview.status).toEqual({ state: "stopped" });
+    // What it is can't be changed from outside.
+    expect(() => void ((preview as { start: unknown }).start = () => "mine")).toThrow(TypeError);
+    expect(controller.start()).toBe("started");
     // A file's bytes: still a Buffer (it reads as text), only the bytes that were handed, and not the engine's own memory.
     const bytes = (await guarded.readBase!("a.md")) as Buffer;
 
@@ -240,6 +246,37 @@ describe("what the server does around an extension", () => {
     const view = new Uint16Array(new ArrayBuffer(64), 8, 4);
 
     expect(copyOf(view).buffer.byteLength).toBe(8);
+  });
+
+  it("a controller taken from a site keeps the site's rules, however long it is kept: dead once the extension is stopped, and no way round a GET", async () => {
+    let live = true;
+    const calls: string[] = [];
+    const previewController = { status: () => (calls.push("status"), { state: "stopped" }), start: async () => (calls.push("start"), { state: "ready" }), stop: async () => void calls.push("stop"), restart: async () => (calls.push("restart"), { state: "ready" }) };
+    const checkpoint = { id: "c1", paths: () => ["a.md"], run: <T>(work: () => T) => work(), close: () => void calls.push("close") };
+    const real = { id: "s1", root: "/nowhere", resolvePath: (path: string) => `/nowhere/${path}`, preview: () => previewController, checkpoint: () => checkpoint } as unknown as SiteService;
+    const guarded = guardSite(real, { readOnly: false, alive: () => live }) as unknown as { preview(): typeof previewController; checkpoint(label: string): typeof checkpoint };
+    const preview = guarded.preview();
+    const turn = guarded.checkpoint("a turn");
+
+    // Outside a GET, alive: it drives the engine's own.
+    expect(preview.status()).toEqual({ state: "stopped" });
+    expect(await preview.start()).toEqual({ state: "ready" });
+    expect(turn.id).toBe("c1");
+    expect(turn.run(() => 7)).toBe(7);
+    // Inside a GET, kept from before: its status is a read; starting, stopping and restarting are not.
+    duringGet(() => {
+      expect(preview.status()).toEqual({ state: "stopped" });
+      for (const change of ["start", "stop", "restart"] as const) expect(() => preview[change](), change).toThrow(/A GET route can't change a site/);
+      expect(turn.paths()).toEqual(["a.md"]);
+    });
+    expect(calls).toEqual(["status", "start", "status"]);
+    // Once the extension has been stopped: every method refuses, and so does its name.
+    live = false;
+    for (const method of ["status", "start", "stop", "restart"] as const) expect(() => preview[method](), method).toThrow(STOPPED);
+    for (const method of ["paths", "close"] as const) expect(() => turn[method](), method).toThrow(STOPPED);
+    expect(() => turn.run(() => 7)).toThrow(STOPPED);
+    expect(() => turn.id).toThrow(STOPPED);
+    expect(calls).toEqual(["status", "start", "status"]);
   });
 
   it("stops with the extension it was handed to: every member of the site refuses, its name included", () => {

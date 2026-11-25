@@ -72,7 +72,8 @@ entry says how.
   secret environment variables: on a hosted install they are kept from the
   site's commands, and everywhere their values are taken out of the server's
   log and of the extension's error messages. Once an extension has been
-  stopped, what it was handed does nothing, the sites it holds included. It
+  stopped, what it was handed does nothing: the sites it holds, and the
+  preview's controller if it took one. It
   is not a sandbox: an extension is its author's code with the server's
   permissions. A server with extensions must be the only server in its
   process, and should be restarted after a backup is put back. The shapes may
@@ -82,9 +83,10 @@ entry says how.
   that fails to release the folder still fails, as before; the reason is now
   also written to the log, and the rest of the stop is finished first.
 - **A start that fails undoes everything it had started.** When a hosted
-  install could not finish starting, the site it had opened stayed open and
-  the process stayed in hosted mode. Both are now undone, as a stop undoes
-  them, and the error the start failed with is the one reported.
+  install could not start (its port was already taken) or could not finish
+  starting, the process stayed in hosted mode, and a site it had opened
+  stayed open. Both are now undone, as a stop undoes them, and the error
+  the start failed with is the one reported.
 
 ### Changed
 
