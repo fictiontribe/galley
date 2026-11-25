@@ -20,6 +20,20 @@ entry says how.
   discard. Most likely on your own computer, after an hour away from the
   window; a hosted editor keeps its site open while it keeps up with the
   repository.
+- **The preview never shows another program's pages.** When a preview
+  starts, Galley chooses a free port for the site's own dev server. If
+  another program got that port in the moment before the dev server asked
+  for it, the preview could come up showing that program's pages as the
+  site's, on a hosted editor too, where the preview is passed on to the
+  people signed in; or it stopped with "The preview stopped before it was
+  ready". An answer on the port now counts only when it comes from the dev
+  server Galley started. When the port has gone to another program, the
+  dev server is started again on another port, twice at most, and the log
+  says so; one that moved to another port by itself is followed there. A
+  dev server that stops for a reason of its own is not started again. On
+  Windows, and on a Mac without `lsof` or `ps`, Galley can't ask which
+  program has a port: the log says so, with the port, and the answer is
+  taken for the dev server's as before. Linux needs neither tool.
 
 ## 0.4.2 — 2026-11-25
 
