@@ -14,10 +14,8 @@ in any text editor, or visually with [Galley](https://github.com/fictiontribe/ga
 the open-source AI CMS for static sites that this starter is built for.
 Nothing here depends on Galley: it is an ordinary Astro project.
 
-**Demo:** https://fictiontribe.github.io/galley-astro-saas/
-
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley-astro-saas)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley-astro-saas)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley/tree/main/starters/astro-saas)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley%2Ftree%2Fmain%2Fstarters%2Fastro-saas&project-name=galley-astro-saas&repository-name=galley-astro-saas)
 
 ![Every section type in the library, rendered on its own](galley/previews/sections.webp)
 
@@ -81,10 +79,10 @@ npm create galley@latest my-site -- --starter ferrow --look meridian
 **As a plain Astro project:**
 
 ```sh
-npm create astro@latest -- --template fictiontribe/galley-astro-saas
+npm create astro@latest -- --template fictiontribe/galley/starters/astro-saas
 ```
 
-With pnpm: `pnpm create astro@latest --template fictiontribe/galley-astro-saas`.
+With pnpm: `pnpm create astro@latest --template fictiontribe/galley/starters/astro-saas`.
 On GitHub you can also press **Use this template**. Then:
 
 ```sh
@@ -330,11 +328,11 @@ shared installs), the layout in which dev used to refuse the font files.
 the not-found page. A host can supply the address without editing
 `site.json`: `npm run build -- --site https://you.github.io --base /my-site`.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley-astro-saas)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley-astro-saas)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley/tree/main/starters/astro-saas)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley%2Ftree%2Fmain%2Fstarters%2Fastro-saas&project-name=galley-astro-saas&repository-name=galley-astro-saas)
 
-The buttons copy the repository into your own GitHub account and build it
-there on every push.
+The buttons copy this starter into a new repository in your own GitHub
+account and build it there on every push.
 
 - **Netlify** — `netlify.toml` is included. Import the repository.
 - **Vercel** — import the repository; set `url` in `site.json`.

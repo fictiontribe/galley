@@ -21,6 +21,11 @@ editor, or with [Galley](https://github.com/fictiontribe/galley), the
 open-source AI CMS for static sites this starter is written for. Nothing here
 depends on Galley: it is an ordinary Astro project.
 
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley/tree/main/starters/astro-editorial)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley%2Ftree%2Fmain%2Fstarters%2Fastro-editorial&project-name=galley-astro-editorial&repository-name=galley-astro-editorial)
+
+![Every section type in the library, rendered on its own](galley/previews/sections.webp)
+
 ## What you get
 
 - **Eleven kinds of page** — home (a campaign), collections, a lookbook per
@@ -87,16 +92,20 @@ depends on Galley: it is an ordinary Astro project.
   at the root of a domain or under a sub-path such as a GitHub Pages project
   site.
 
+| Chalk | Paper | Night |
+| --- | --- | --- |
+| ![Chalk](galley/previews/chalk.webp) | ![Paper](galley/previews/paper.webp) | ![Night](galley/previews/night.webp) |
+
 ## Start a project
 
 Requires Node 22.23.4 or newer (Astro 7's minimum).
 
 ```sh
-npm create astro@latest -- --template fictiontribe/galley-astro-editorial
+npm create astro@latest -- --template fictiontribe/galley/starters/astro-editorial
 ```
 
-With pnpm: `pnpm create astro@latest --template fictiontribe/galley-astro-editorial`.
-With Yarn: `yarn create astro --template fictiontribe/galley-astro-editorial`.
+With pnpm: `pnpm create astro@latest --template fictiontribe/galley/starters/astro-editorial`.
+With Yarn: `yarn create astro --template fictiontribe/galley/starters/astro-editorial`.
 
 ```sh
 npm install
@@ -342,10 +351,17 @@ can serve; `dist/404.html` is the not-found page. `--site` (the origin) and
 `--base` (a sub-path) let a host supply the address without editing
 `site.json`, for example `npm run build -- --site https://you.github.io --base /my-site`.
 
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley/tree/main/starters/astro-editorial)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley%2Ftree%2Fmain%2Fstarters%2Fastro-editorial&project-name=galley-astro-editorial&repository-name=galley-astro-editorial)
+
+The buttons copy this starter into a new repository in your own GitHub
+account and build it there on every push.
+
 - **Netlify** — `netlify.toml` is included. Import the repository.
 - **Vercel** — import the repository; the Astro preset fills in the settings.
   Set `url` in `site.json`.
-- **Cloudflare Pages** — build `npm run build`, output `dist`.
+- **Cloudflare** — `wrangler.jsonc` is included: the button above, or
+  `npx wrangler deploy` after `npm run build`.
 - **GitHub Pages** — build with `--site` and `--base` from
   `actions/configure-pages` and upload `dist/`.
 - **Anything else** — upload `dist/` with `index.html` as the index document

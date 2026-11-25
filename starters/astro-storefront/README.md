@@ -15,8 +15,10 @@ checkout.
 The sample label is **Caddow**, an invented coat and knitwear maker — every
 person, shop, product and town here is made up. Replace it with your own.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley-astro-storefront)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley-astro-storefront)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley/tree/main/starters/astro-storefront)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley%2Ftree%2Fmain%2Fstarters%2Fastro-storefront&project-name=galley-astro-storefront&repository-name=galley-astro-storefront)
+
+![Every section type in the library, rendered on its own](galley/previews/sections.webp)
 
 Every word lives in Markdown and JSON, so you can edit it in any text editor,
 or with [Galley](https://github.com/fictiontribe/galley), the open-source AI
@@ -28,7 +30,7 @@ Galley: it is an ordinary Astro project.
 **Without a store** (the demo shop):
 
 ```sh
-npm create astro@latest -- --template fictiontribe/galley-astro-storefront
+npm create astro@latest -- --template fictiontribe/galley/starters/astro-storefront
 cd <your-project>
 npm run dev
 ```
@@ -102,6 +104,10 @@ creates them (see the top of the script for the permissions it needs).
   anchored when the pictures move to a bucket. On a phone
   the shop's filters fold behind one "Filter and sort" button. Everything
   holds still under reduced motion and reads complete without JavaScript.
+
+| Chalk | Paper | Night |
+| --- | --- | --- |
+| ![Chalk](galley/previews/chalk.webp) | ![Paper](galley/previews/paper.webp) | ![Night](galley/previews/night.webp) |
 
 ## Where things live
 
@@ -188,8 +194,11 @@ else (pages, stories, the look) waits in Proof until you publish.
 
 ## Deploy
 
-`npm run build` writes a plain static site to `dist/`. The buttons above copy
-this repository to your account and deploy it (Cloudflare uses
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley/tree/main/starters/astro-storefront)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley%2Ftree%2Fmain%2Fstarters%2Fastro-storefront&project-name=galley-astro-storefront&repository-name=galley-astro-storefront)
+
+`npm run build` writes a plain static site to `dist/`. The buttons copy
+this starter to a repository of your own and deploy it (Cloudflare uses
 `wrangler.jsonc`; Vercel needs nothing). `netlify.toml` covers Netlify. Pass
 `--site https://your-domain` (and `--base /path` for a sub-path) to the
 build so canonical links and the sitemap are right. Set the store variables

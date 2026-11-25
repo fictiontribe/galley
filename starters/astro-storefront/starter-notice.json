@@ -3,7 +3,7 @@
   "text": "This is the Galley + Astro storefront starter, a free Astro template shown with sample content for a made-up fashion label. The shop is a demo: nothing is charged. Connect a store, and change any word in src/content and src/data, by hand or with Galley.",
   "link": {
     "label": "How to use it",
-    "href": "https://github.com/fictiontribe/galley-astro-storefront#readme"
+    "href": "https://github.com/fictiontribe/galley/tree/main/starters/astro-storefront#readme"
   },
   "dismiss": "Hide this notice"
 }

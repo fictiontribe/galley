@@ -3,7 +3,7 @@
   "text": "This is a free Astro template for a B2B software company, shown with sample content for a made-up one. Every page is built from sections you can reorder and edit.",
   "link": {
     "label": "How to use it",
-    "href": "https://github.com/fictiontribe/galley-astro-saas#readme"
+    "href": "https://github.com/fictiontribe/galley/tree/main/starters/astro-saas#readme"
   },
   "dismiss": "Hide this notice"
 }
