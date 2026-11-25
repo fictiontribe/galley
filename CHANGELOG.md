@@ -46,6 +46,34 @@ entry says how.
   how many copies are removed, how many stay, and every file that still
   mentions them. The result names every such file too, where it used to stop
   at the first reason. `galley media move` prints the same.
+- **Looking at the code host runs none of the repository's own hooks.**
+  Bringing newer versions in already ran none. The look before it did: git
+  has one hook for it (`reference-transaction`), and a repository that has
+  one saw it run every few minutes on a hosted editor, whenever Version
+  history opened, and before a publish that then published nothing. A look
+  runs no hook now, wherever the app makes it. Publishing still runs the
+  site's own checks.
+- **Undo of a publish says only what works while newer versions wait.**
+  With unpublished changes to a file the undo would change, it said
+  "Publish or discard those changes first". While the repository has newer
+  versions, publishing is paused, so it now says to discard them (Proof
+  shows them, so what you wrote can be copied first), get the latest
+  versions, then try again. With nothing newer waiting it says what it
+  said.
+- **An undo made while newer versions wait no longer sends this copy and
+  the repository separate ways.** An undo is a version of its own. Made on
+  top of an older copy, the code host refused it, and the two then had to be
+  brought together by a developer. Undo now looks first, as Publish does,
+  and pauses while nothing has changed: "The repository has newer versions
+  than this copy, so the undo is paused. Get the latest versions, then try
+  again." The answer carries `behind`, as a paused publish's does.
+- **Connecting a bucket no longer sets back a setting someone else just
+  saved.** Connecting, changing or disconnecting a bucket or Cloudflare
+  Images saved the whole settings file from an earlier read of it, so a key
+  somebody else saved in between was put back to what it had been. They now
+  save over the version they read, as Site settings, putting the site
+  online and hosting the editor do: when the file changed in between, it is
+  read again and the change is made to what is there.
 
 ## 0.4.0 — 2026-11-25
 

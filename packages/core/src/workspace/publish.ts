@@ -61,13 +61,19 @@ const BRING_IN_TIMEOUT_MS = 60 * 60_000;
  */
 const NO_BACKGROUND_WORK = ["maintenance.auto=false", "gc.auto=0"];
 /**
- * For bringing versions in, on top of that: the repository's own hooks are
- * not run. A hook after a merge (installing packages, say) would run with
- * the save lock held, for as long as it liked; and what a hosted editor's
- * own round brings in, nobody asked for, so nothing of the site's runs for
- * it. The preview installs what newer versions need (site/service.ts).
+ * For looking at the code host and for bringing its versions in, on top of
+ * that: the repository's own hooks are not run. A hook after a merge
+ * (installing packages, say) would run with the save lock held, for as long
+ * as it liked; and what a hosted editor's own round brings in, nobody asked
+ * for, so nothing of the site's runs for it. The preview installs what newer
+ * versions need (site/service.ts). A look changes no file, but git has a
+ * hook for it too (reference-transaction, when the ref that remembers the
+ * code host moves), and a look is made every few minutes, by whoever opens
+ * Version history, and before a publish that then publishes nothing: none
+ * of those is a moment for the site's own programs. Publishing itself still
+ * runs the site's checks.
  */
-const BRING_IN_CONFIG = [...NO_BACKGROUND_WORK, "core.hooksPath=/dev/null"];
+const NO_HOOKS = [...NO_BACKGROUND_WORK, "core.hooksPath=/dev/null"];
 const CHUNK = 200;
 
 export const NOT_A_REPO =
@@ -76,6 +82,7 @@ const DETACHED =
   "The site is showing an older version right now, so there's nowhere to publish. Your edits are safe. Ask a developer to switch it back to the latest version, then try again.";
 const BEHIND =
   "The repository has newer versions than this copy, so nothing was published and nothing was overwritten. Your edits are safe. Get the latest versions, then publish again.";
+const UNDO_BEHIND = "The repository has newer versions than this copy, so the undo is paused. Get the latest versions, then try again.";
 /** How Proof helps before a change is discarded: said the same wherever discarding is the way on. */
 const PROOF_SHOWS = { one: "Proof shows it, so what you wrote can be copied first", many: "Proof shows them, so what you wrote can be copied first" };
 
@@ -260,7 +267,7 @@ async function push(repo: Git, remote: string, source: string, target: string): 
  */
 async function behindRemote(repo: Git, remote: string, branch: string): Promise<number> {
   const fetched = await repo.run(["fetch", "--quiet", "--no-tags", remote, `+refs/heads/${branch}:refs/remotes/${remote}/${branch}`], {
-    config: NO_BACKGROUND_WORK,
+    config: NO_HOOKS,
     allowFailure: true,
     timeoutMs: GIT_NETWORK_TIMEOUT_MS,
   });
@@ -567,13 +574,22 @@ export async function revert(host: RepoHost, commit: string, config: PublishConf
   if (touched.some(isSiteSettingsPath)) requireSiteSettings();
   const statuses = await host.statuses();
   const overlapping = touched.filter((p) => statuses.has(p));
+  // An undo is a publish of its own. Made on top of an older copy it is a version the code host refuses, and this
+  // copy and the repository have then gone separate ways, which takes a developer to bring together. So it looks
+  // first, as a publish does, and pauses while nothing is committed and "Get the latest" still works.
+  const sendTo = config.push ? await remoteFor(repo, config) : null;
+  const waiting = sendTo ? (await behindRemote(repo, sendTo, branch)) > 0 : false;
 
   if (overlapping.length > 0) {
     const names = overlapping.slice(0, 3).map((p) => p.slice(p.lastIndexOf("/") + 1)).join(", ");
+    const have = `Some files this would undo have unpublished changes (${names}${overlapping.length > 3 ? ", …" : ""}).`;
 
+    // Publishing those changes is a way on only while nothing newer waits: when it does, publishing is paused.
     return failure(
       overlapping,
-      `Some files this would undo have unpublished changes (${names}${overlapping.length > 3 ? ", …" : ""}). Publish or discard those changes first, then try again.`
+      waiting
+        ? `${have} Discard those changes first (${PROOF_SHOWS.many}), get the latest versions, then try again.`
+        : `${have} Publish or discard those changes first, then try again.`
     );
   }
   const staged = await repo.run(["diff", "--cached", "--quiet"], { allowFailure: true, readOnly: true });
@@ -581,6 +597,7 @@ export async function revert(host: RepoHost, commit: string, config: PublishConf
   if (staged.code !== 0) {
     return failure([], "Some changes were prepared for publishing outside the app. Publish or discard them first, then try again.");
   }
+  if (waiting) return { ...failure(touched, UNDO_BEHIND), behind: true };
   const subject = (await repo.run(["log", "-1", "--format=%s", full], { readOnly: true })).text.trim();
   const applied = await repo.run(["revert", "--no-commit", full], { allowFailure: true });
 
@@ -611,10 +628,8 @@ export async function revert(host: RepoHost, commit: string, config: PublishConf
   const sha = (await repo.head()) ?? undefined;
 
   await host.changed(touched, "publish");
-  const remote = await remoteFor(repo, config);
-
-  if (!config.push || !remote) return { ok: true, commit: sha, branch, files: touched, pushed: false };
-  return { ok: true, commit: sha, branch, files: touched, ...(await push(repo, remote, "HEAD", branch)) };
+  if (!sendTo) return { ok: true, commit: sha, branch, files: touched, pushed: false };
+  return { ok: true, commit: sha, branch, files: touched, ...(await push(repo, sendTo, "HEAD", branch)) };
 }
 
 // ─────────────────────────────────────────────────────────────── status, looking & bringing in
@@ -839,7 +854,7 @@ export async function look(host: RepoHost): Promise<Look | null> {
 
   if (!source) return null;
   const fetched = await repo.run(["fetch", "--quiet", "--no-tags", source.remote, `+refs/heads/${source.branch}:${source.ref}`], {
-    config: NO_BACKGROUND_WORK,
+    config: NO_HOOKS,
     allowFailure: true,
     timeoutMs: GIT_NETWORK_TIMEOUT_MS,
   });
@@ -877,7 +892,7 @@ async function fastForward(host: RepoHost, info: RepoInfo, target: string, aroun
   try {
     // Inside the try: when stopping the preview throws, `after` still runs and starts it again.
     await around?.before();
-    const merged = await repo.run(["merge", "--ff-only", "--no-edit", "--no-autostash", "--quiet", target], { config: BRING_IN_CONFIG, allowFailure: true, timeoutMs: BRING_IN_TIMEOUT_MS });
+    const merged = await repo.run(["merge", "--ff-only", "--no-edit", "--no-autostash", "--quiet", target], { config: NO_HOOKS, allowFailure: true, timeoutMs: BRING_IN_TIMEOUT_MS });
 
     if (merged.code !== 0) {
       outcome = { ok: false, stderr: merged.stderr, timedOut: merged.timedOut };
