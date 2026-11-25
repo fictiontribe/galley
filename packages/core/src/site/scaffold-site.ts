@@ -5,12 +5,13 @@
  * version — so the new site opens with its own name and no pending changes.
  */
 import { copyFile, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { PRODUCT } from "../brand";
 import { applyEdits, formatForPath, updateConfigText } from "../content/index";
 import { GalleyError } from "../errors";
 import type { GalleyConfig } from "../types";
 import { scaffoldFromStarter } from "../workspace/index";
+import { withFullStarter } from "./starter-download";
 import { readStarterManifest, STARTER_MANIFEST, type StarterManifest } from "./starters";
 
 /**
@@ -94,6 +95,10 @@ export interface ScaffoldSiteInput {
   author?: { name: string; email: string } | null;
   /** Runs on the named copy before its first version is recorded — dependency installation goes here. */
   beforeFirstVersion?: (root: string) => Promise<void>;
+  /** Told when the starter is one that is downloaded when used, before the download starts (its size: "3.5 MB"). */
+  onDownload?: (size: string) => void;
+  /** Where GALLEY_STARTER_DOWNLOADS is read from; the process's environment by default. */
+  env?: NodeJS.ProcessEnv;
 }
 
 /** Checks the look before anything is copied, so a mistyped look never leaves a half-made folder. */
@@ -108,8 +113,11 @@ export async function scaffoldSite(input: ScaffoldSiteInput): Promise<void> {
   if (look && (!look.file || !manifest.tokens)) {
     throw new GalleyError("invalid", `The look “${look.label}” can't be applied: the starter doesn't say which file holds its colours.`, look.id);
   }
-  await scaffoldFromStarter({
-    starterDir: input.starterDir,
+  // "Ferrow — B2B software" is "the Ferrow starter" in a sentence.
+  const name = (manifest.name ?? basename(input.starterDir)).split(" — ")[0]!.trim();
+
+  await withFullStarter(input.starterDir, { name, ...(input.env ? { env: input.env } : {}), ...(input.onDownload ? { onDownload: input.onDownload } : {}) }, (starterDir) => scaffoldFromStarter({
+    starterDir,
     targetDir: input.targetDir,
     name: input.name,
     ...(input.author !== undefined ? { author: input.author } : {}),
@@ -127,5 +135,5 @@ export async function scaffoldSite(input: ScaffoldSiteInput): Promise<void> {
       await nameSite(root, input.name.trim());
       await input.beforeFirstVersion?.(root);
     },
-  });
+  }));
 }

@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The archives of starters downloaded when first used (packages/cli/build.mjs): release assets.
+packages/cli/starter-assets/
 # The example plugin ships its built output: it is installed as is (docs/plugins.md).
 !examples/plugin-example/dist/
 out/

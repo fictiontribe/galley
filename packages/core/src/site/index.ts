@@ -15,3 +15,4 @@ export { siteIdFor } from "./util";
 export { changeSettings, readSettings } from "./settings-records";
 export { checkLook, lookFor, nameSite, scaffoldSite, SITE_NAME_FILES, type ScaffoldSiteInput } from "./scaffold-site";
 export { listStarters, readStarterManifest, starterPreviewFile, STARTER_MANIFEST } from "./starters";
+export { readStarterDownload, starterDownloadUrl, STARTER_DOWNLOAD, withFullStarter, type StarterDownload } from "./starter-download";
