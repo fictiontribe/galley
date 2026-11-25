@@ -38,6 +38,21 @@ entry says how.
   files it would never change. The plan's answer gains `templates` and
   `alsoMentioned`; a move's result gains them too.
 
+- **The site's model is read-only.** The engine keeps one description of a
+  site (its collections, where media lives, what content mode may write, how
+  it publishes) and hands that same object to everyone who asks: a route, the
+  assistant, a plugin, an adapter's hooks. Whoever changed what they were
+  handed changed the site's rules for everyone until the model was next
+  loaded. It is now read-only all the way down. Nothing of Galley's own
+  changed it. **A plugin or an adapter that did** now gets a `TypeError`
+  where it makes the change ("Cannot assign to read only property…",
+  "Cannot add property…, object is not extensible"); in code that doesn't
+  run in strict mode the change is silently dropped instead. Take a copy
+  (`structuredClone(model)`) and change that. The same goes for an object an
+  adapter gives the engine as part of the model (a collection's fields, a
+  command): it is the model's from then on, so give a new object each time
+  rather than keeping one and changing it later.
+
 ### Added
 
 - **An adapter says what a site is built from**: a new optional convention,
