@@ -30,11 +30,16 @@ entry says how.
   (`GALLEY_SOCKET`, `galley serve --socket`).** With a reverse proxy on the
   same machine, `GALLEY_TRUST_PROXY=1` believes the `X-Forwarded-For` and
   `X-Forwarded-Proto` of every connection that reaches the port — the proxy's,
-  or another program's on that machine, which can claim any address and slip
-  past the per-address sign-in limits. With `GALLEY_SOCKET` set, the server
-  also listens on that socket, the proxy connects to it, and forwarded headers
+  or anything else that can reach it (another user's program on that machine,
+  another container, a neighbour on the network), which can then claim any
+  client address and slip past the per-address sign-in limits. With
+  `GALLEY_SOCKET` set, a hosted editor also listens on that socket, made for
+  its own user and group only; the proxy connects to it, and forwarded headers
   are believed for requests on the socket alone, never for those on the port.
-  The same app answers on both, `/healthz`, `/readyz` and the preview's
+  That keeps out other users, other containers and the network. It doesn't
+  keep out code that runs as the server's own user — which, until the editor
+  runs the site's code as a user of its own, includes the site's preview and
+  build. The same app answers on both, `/healthz`, `/readyz` and the preview's
   WebSocket upgrades included. Existing installs are unchanged: without a
   socket, `GALLEY_TRUST_PROXY` works as it did.
 
@@ -118,7 +123,6 @@ entry says how.
   pages. A check that can't tell keeps the preview as it is, and only after
   several in a row that can't does it stop. A port an owner set `dev.trustPort`
   for is not re-checked, as it isn't checked to begin with.
-
 
 ## 0.4.2 — 2026-11-25
 

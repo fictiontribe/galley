@@ -6,7 +6,7 @@
  * socket, GALLEY_TRUST_PROXY works as it always has.
  */
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import { tmpdir } from "node:os";
@@ -36,9 +36,10 @@ function folder(): string {
   return dir;
 }
 
-async function start(options: Partial<ServerOptions> = {}, env: Record<string, string> = {}): Promise<{ server: RunningServer; notices: string[] }> {
+async function start(options: Partial<ServerOptions> = {}, env: Record<string, string> = {}): Promise<{ server: RunningServer; notices: string[]; logs: string[] }> {
   const box = folder();
   const notices: string[] = [];
+  const logs: string[] = [];
   const server = await startServer({
     port: 0,
     host: "127.0.0.1",
@@ -47,13 +48,13 @@ async function start(options: Partial<ServerOptions> = {}, env: Record<string, s
     webDir: join(box, "no-ui"),
     env: { PATH: process.env.PATH ?? "", HOME: box, GALLEY_MCP: "off", GALLEY_PUBLIC_URL: "http://cms.example.com", ...env },
     notice: (line) => notices.push(line),
-    log: () => undefined,
+    log: (line) => logs.push(line),
     siteInstall: async () => {},
     ...options,
   });
 
   running.push(server);
-  return { server, notices };
+  return { server, notices, logs };
 }
 
 interface Answer {
@@ -182,4 +183,112 @@ describe("the server's Unix socket (GALLEY_SOCKET)", { timeout: 60_000 }, () => 
 
     await expect(start({ socket: missing })).rejects.toThrow(/doesn't exist/);
   });
+
+  it("counts each client the proxy names on the socket, and everyone on the port as the address it really comes from", async () => {
+    const socketPath = join(folder(), "galley.sock");
+    const { server, logs } = await start({ socket: socketPath }, { GALLEY_TRUST_PROXY: "1" });
+    // A different e-mail each time, so only the per-client limit (five failures a minute) can refuse.
+    const signIn = (to: { port: number } | { socketPath: string }, n: number, forwardedFor: string) =>
+      ask(to, "POST", "/api/auth/login", { host: "cms.example.com", origin: "http://cms.example.com", "x-forwarded-for": forwardedFor, "content-type": "application/json" }, JSON.stringify({ email: `person${n}@example.com`, password: "not it" }));
+
+    // On the socket, the proxy's word for each client is believed: seven failures from seven clients, none refused for too many.
+    for (let n = 0; n < 7; n += 1) expect((await signIn({ socketPath }, n, `203.0.113.${n + 1}`)).status, `socket ${n}`).not.toBe(429);
+    // On the port the header is anyone's to write: seven "clients" are the one address they come from, refused after five failures.
+    const onPort: number[] = [];
+
+    for (let n = 0; n < 7; n += 1) onPort.push((await signIn({ port: server.port }, 100 + n, `198.51.100.${n + 1}`)).status);
+    expect(onPort).toContain(429);
+    expect(logs.join("\n")).toMatch(/A sign-in from (::ffff:)?127\.0\.0\.1 was refused: too many attempts/);
+    expect(logs.join("\n")).not.toMatch(/198\.51\.100\./);
+  });
+
+  it("says once when a request on the socket has no X-Forwarded-For, health checks aside", async () => {
+    const socketPath = join(folder(), "galley.sock");
+    const { notices } = await start({ socket: socketPath });
+    const told = () => notices.filter((line) => line.includes("without X-Forwarded-For")).length;
+
+    await ask({ socketPath }, "GET", "/healthz");
+    expect(told()).toBe(0);
+    await ask({ socketPath }, "GET", "/api/meta", { host: "cms.example.com" });
+    await ask({ socketPath }, "GET", "/api/meta", { host: "cms.example.com" });
+    expect(told()).toBe(1);
+  });
+
+  it("makes the socket readable and writable by the server's user and group only", async () => {
+    const socketPath = join(folder(), "galley.sock");
+
+    await start({ socket: socketPath });
+    const made = statSync(socketPath);
+
+    expect(made.mode & 0o777).toBe(0o660);
+    expect(made.uid).toBe(process.getuid!());
+    expect(made.gid).toBe(process.getgid!());
+  });
+
+  it("closes the socket and removes it when a start fails after it was made", async () => {
+    const socketPath = join(folder(), "galley.sock");
+    const breaks = { id: "breaks-at-start", setup: () => { throw new Error("it fails on purpose"); } };
+
+    await expect(start({ socket: socketPath, extensions: [breaks as never] })).rejects.toThrow(/couldn't start/);
+    expect(existsSync(socketPath)).toBe(false);
+    // The path is free again: the next start has it.
+    await start({ socket: socketPath });
+    expect((await ask({ socketPath }, "GET", "/healthz")).status).toBe(200);
+  });
+
+  it("takes a socket folder that is a link to a good one, and refuses a folder others can write to", async () => {
+    const real = folder();
+    const linked = join(folder(), "linked");
+
+    symlinkSync(real, linked);
+    await start({ socket: join(linked, "galley.sock") });
+    expect(existsSync(join(real, "galley.sock"))).toBe(true);
+    const open = folder();
+
+    chmodSync(open, 0o777);
+    await expect(start({ socket: join(open, "galley.sock") })).rejects.toThrow(/can be written to by other users/);
+    // With the sticky bit only owners can remove what's in it, as in /tmp: that's taken.
+    chmodSync(open, 0o1777);
+    await start({ socket: join(open, "galley.sock") });
+  });
+
+  it("refuses a link at the socket's path, a path too long for a socket, and a socket that may still be in use", async () => {
+    const dir = folder();
+    const link = join(dir, "galley.sock");
+
+    symlinkSync(join(dir, "elsewhere"), link);
+    await expect(start({ socket: link })).rejects.toThrow(/something other than a socket/);
+    await expect(start({ socket: join(folder(), "x".repeat(150), "galley.sock") })).rejects.toThrow(/bytes long/);
+    // A live socket this user can't connect to (another user's, say) can't be told from a leftover: it is left alone.
+    const held = join(folder(), "galley.sock");
+    const holder = net.createServer();
+
+    holders.push(holder);
+    await new Promise<void>((done) => holder.listen(held, () => done()));
+    chmodSync(held, 0o000);
+    await expect(start({ socket: held })).rejects.toThrow(/may still be in use/);
+    expect(existsSync(held)).toBe(true);
+  });
+
+  it("is a hosted editor's only: a local one ignores GALLEY_SOCKET and says so", async () => {
+    const socketPath = join(folder(), "galley.sock");
+    const box = folder();
+    const notices: string[] = [];
+    const server = await startServer({
+      port: 0,
+      host: "127.0.0.1",
+      mode: "local",
+      home: join(box, "data"),
+      webDir: join(box, "no-ui"),
+      env: { PATH: process.env.PATH ?? "", HOME: box, GALLEY_MCP: "off", GALLEY_SOCKET: socketPath },
+      notice: (line) => notices.push(line),
+      log: () => undefined,
+    });
+
+    running.push(server);
+    expect(server.socket).toBeNull();
+    expect(existsSync(socketPath)).toBe(false);
+    expect(notices.join("\n")).toContain("only a hosted editor");
+  });
 });
+

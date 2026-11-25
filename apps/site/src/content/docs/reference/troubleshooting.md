@@ -33,6 +33,10 @@ This page is for developers. Galley's messages are written to say what happened 
 | `GALLEY_SOCKET names …, which is something other than a socket. …` | A file or folder is at the socket's path. Move it, or choose another path. |
 | `Another server is already listening on … (GALLEY_SOCKET). …` | A running server answers on that socket — another editor, or this one not yet stopped. Stop it, or give each its own path. |
 | `This user can't make a socket at … (GALLEY_SOCKET). …` | The server's user can't write to the socket's folder. Give it a folder it can write to. |
+| `The folder for GALLEY_SOCKET (…) belongs to another user. …` / `… can be written to by other users …` | Someone else could put a socket of their own in its place. Use a folder the server's user (or root) owns and only it can write to (or one with the sticky bit, like `/tmp`). |
+| `GALLEY_SOCKET's path is N bytes long, and this system takes at most … for a socket. …` | Systems limit a socket's path (about 100 bytes). Choose a shorter one, such as `/run/galley/galley.sock`. |
+| `A socket is at … (GALLEY_SOCKET) that may still be in use by another program. …` | Something is at the path that couldn't be told apart from a running server (another user's, say), so it was left alone. Remove it if nothing uses it. |
+| `GALLEY_SOCKET isn't available on Windows. …` | Use the port, with `GALLEY_TRUST_PROXY=1` behind your proxy. |
 | *Local mode only listens on this computer (127.0.0.1), not on 0.0.0.0. To serve other computers, use* `galley serve`. | `GALLEY_HOST` set to a non-loopback address for `galley [path]`. |
 | `GALLEY_PASSWORD is too short. It needs at least 12 characters, …` | |
 | `GALLEY_TOKEN must be at least 16 characters long.` | |

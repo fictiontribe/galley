@@ -612,12 +612,41 @@ the site's dev server.
   program's on the same machine. With the proxy on the same machine,
   `GALLEY_SOCKET` is narrower: the server also listens on that Unix socket,
   the proxy connects to it instead of the port, and forwarded headers are
-  believed for requests on the socket alone — never for those on the port.
-  Put the socket in a folder only the proxy and the server can open.
+  believed for requests on the socket alone — never for those on the port
+  (see [Putting the proxy on the socket](#putting-the-proxy-on-the-socket)).
 - **Pass WebSockets** (hot reload) and **stream** `GET /api/events`
   (Server-Sent Events, a heartbeat every 20 seconds). Caddy does both by
   default; `stream_close_delay 5m` in the generated Caddyfile keeps them open
   through a reload.
+
+### Putting the proxy on the socket
+
+With `GALLEY_SOCKET` set (`galley serve` only; not on Windows), the server
+listens on that Unix socket as well as its port, and believes
+`X-Forwarded-For` and `X-Forwarded-Proto` only for requests that come in on
+the socket.
+
+- **The socket** is made readable and writable by the server's user and its
+  group only (`0660`). In the image that is user and group `node`, gid 1000:
+  a proxy that runs as another user joins that group. Its folder must belong
+  to the server's user (or root) and must not be writable by other users
+  unless it has the sticky bit, or the server refuses to start.
+- **Caddy:** `reverse_proxy unix//run/galley/galley.sock` in place of the
+  `host:port`. Caddy appends `X-Forwarded-For` and sets `X-Forwarded-Proto`
+  by default. Whatever the proxy, it must set or append `X-Forwarded-For`:
+  without it everyone coming through the socket is one client to the sign-in
+  limits, the log says `unknown`, and the server says so once.
+- **The compose recipe**, where Caddy is another container: give the socket's
+  folder a volume of its own, mounted in both containers (for instance at
+  `/run/galley`), and run Caddy with the socket's group
+  (`group_add: ["1000"]`).
+- **The port stays open** on `GALLEY_HOST`. With the proxy on the socket,
+  bind it to `127.0.0.1` (and don't publish it), so nothing else reaches it.
+- **What it keeps out:** other users on the machine, other containers and the
+  network. Not code that runs as the server's own user — and until the editor
+  runs the site's code as a user of its own, the site's preview and build run
+  as that user. `GALLEY_SOCKET` is kept from the site's commands, but that is
+  no wall.
 
 ---
 
