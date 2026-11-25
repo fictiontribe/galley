@@ -40,6 +40,10 @@ An adapter is a **plain object**. There is no base class and no required
 dependency; the helpers you need arrive through the context object every hook
 receives. A whole adapter can be one dependency-free `.mjs` file.
 
+What a hook returns becomes part of the site's model, and the model is
+read-only all the way down: return a new object each time, and don't keep
+one to change later. A change to it would be an error where it is made.
+
 ## A complete adapter in 25 lines
 
 This adapter teaches Galley about [Lume](https://lume.land), a static site

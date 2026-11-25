@@ -84,6 +84,7 @@ import { formCodeRefusal } from "../site-kit/guard";
 import { outsideAnyPerson, requireBuildMode, requireLevel, requireName, requireSiteSettings } from "../install/caller";
 import { levelFor, SITE_METHOD_ACCESS, SITE_SETTINGS_RECORDS, siteMethodLevel, type GuardedSiteMethod } from "../install/route-access";
 import { applyRecord, RECORD_SETTINGS, type SettingsRecord } from "./settings-records";
+import { readOnly } from "./read-only";
 import { createEnricher, describeChanges, sortChanges } from "./enrich";
 import { shapesModel } from "./model-files";
 import { resolvePublishConfig, type PublishFacts } from "./publish-config";
@@ -231,6 +232,7 @@ function rawRefusal(value: string, format: Entry["format"]): string | null {
 export async function openSiteService(rootInput: string, deps: SiteDeps): Promise<OpenSite> {
   let author: Author = null;
   let layers: AuthorLayers | null = null;
+  /** The one model of the site, read-only all the way down (read-only.ts): everyone who asks is handed this same object. */
   let model: SiteModel;
   let facts: PublishFacts;
   let hasConfig = false;
@@ -267,7 +269,8 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     // Every reader of the live address (Proof's side by side, the preview's baseline, the inbox's allowed origins) reads it from here.
     const urls = given ? { ...detected.urls, production: given } : detected.urls;
 
-    return { ...detected, urls, name: siteName(root, detected, config), publish: facts.config };
+    // Read-only from the moment it is made: every way a model comes to be (opening, a reload) passes through here.
+    return readOnly({ ...detected, urls, name: siteName(root, detected, config), publish: facts.config });
   }
 
   try {
@@ -405,7 +408,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
       })
     );
 
-    if (changed) model = { ...model, collections };
+    if (changed) model = readOnly({ ...model, collections });
     return changed;
   }
 
@@ -413,7 +416,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     const before = JSON.stringify([facts.config, facts.branch, facts.remoteUrl]);
 
     facts = await resolvePublishConfig(root, await readConfigQuietly(root), model.publish);
-    model = { ...model, publish: facts.config };
+    model = readOnly({ ...model, publish: facts.config });
     return JSON.stringify([facts.config, facts.branch, facts.remoteUrl]) !== before;
   }
 
