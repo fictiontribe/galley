@@ -70,7 +70,7 @@ FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 # use. (setpriv, which the entrypoint drops root with, is part of the base image.)
 # /run/galley: a folder for GALLEY_SOCKET, the server's own (a named volume
 # mounted there takes this over), which the proxy's container reaches as group
-# node.
+# node — see GALLEY_SOCKET_MODE below.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git openssh-client ca-certificates tini \
  && rm -rf /var/lib/apt/lists/* \
@@ -85,10 +85,16 @@ RUN apt-get update \
 # package caches included — lands on the one volume, or in /tmp: the root
 # filesystem can then be mounted read-only with a tmpfs at /tmp
 # (docker-compose.yml does, like every compose file `galley host recipe` writes).
+#
+# GALLEY_SOCKET_MODE=0660: a socket, when GALLEY_SOCKET is set, lets group node
+# in as well as user node, so that a proxy in another container can connect by
+# running with that group (gid 1000). In this image node is the only account in
+# that group. Outside it the server can't know that, so its default is 0600.
 ENV GALLEY_HOME=/data \
     HOME=/data/home \
     GALLEY_HOST=0.0.0.0 \
     GALLEY_PORT=4400 \
+    GALLEY_SOCKET_MODE=0660 \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     NPM_CONFIG_UPDATE_NOTIFIER=false
 

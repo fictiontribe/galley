@@ -626,13 +626,13 @@ listens on that Unix socket as well as its port, and believes
 `X-Forwarded-For` and `X-Forwarded-Proto` only for requests that come in on
 the socket.
 
-- **The socket** is made readable and writable by the server's user, and by
-  its group when that group is the server's own (`0660`). In the image that
-  is user and group `node`, gid 1000, a group of its own: a proxy that runs
-  as another user joins that group. Where the server's group is shared with
-  other accounts (macOS's `staff`, a `users` group), `0660` would let every
-  member connect, so the socket is made `0600` (the server's user alone) and
-  the server says so; `GALLEY_SOCKET_MODE=0660` or `0600` chooses either way.
+- **The socket** is made readable and writable by the server's user alone
+  (`0600`), unless `GALLEY_SOCKET_MODE=0660` lets its group in as well: that
+  is how a proxy that runs as another user gets in, by joining the group,
+  and every account in the group can then connect. Choose it where the group
+  is the server's own; the server can't tell that for itself (groups may
+  come from a directory service) and never guesses. The image sets `0660`:
+  its group is `node`, gid 1000, with no other account in it.
 - **Its folder**, and every folder and link on the way to it, must belong to
   the server's user (or root), and no folder on the way may be writable by
   other users unless it has the sticky bit, or the server refuses to start.
@@ -642,19 +642,26 @@ the socket.
   by default. Whatever the proxy, it must set or append `X-Forwarded-For`:
   without it everyone coming through the socket is one client to the sign-in
   limits, the log says `unknown`, and the server says so once.
-- **The compose recipe**, where Caddy is another container: give the socket's
-  folder a named volume of its own, mounted at `/run/galley` in both
-  containers, and run Caddy with the socket's group (`group_add: ["1000"]`).
-  A new named volume takes over the image's folder there (user `node`,
-  `0750`); a folder from the host instead must be made so by hand
-  (`chown 1000:1000`, `chmod 750`), as a fresh one is root's and the server
-  can't make the socket in it.
+- **The compose recipe**, where Caddy is another container:
+  - give the socket's folder a named volume of its own, mounted at
+    `/run/galley` in both containers. A new named volume takes over the
+    image's folder there (user `node`, `0750`); a folder from the host
+    instead must be made so by hand (`chown 1000:1000`, `chmod 750`), as a
+    fresh one is root's and the server can't make the socket in it;
+  - set `GALLEY_SOCKET: /run/galley/galley.sock` and
+    `GALLEY_SOCKET_MODE: "0660"` in the editor's `environment`. The image
+    sets `0660` already; saying it in the file keeps the reason in sight:
+    the socket lets in group `node` (gid 1000), which has no other account
+    in it, so the only one let in besides the editor is the front you put
+    there;
+  - run Caddy with that group (`group_add: ["1000"]`), so it can reach the
+    folder and the socket.
 - **The port stays open** on `GALLEY_HOST`. With the proxy on the socket,
   bind it to `127.0.0.1` (and don't publish it), so nothing else reaches it.
 - **What it keeps out:** other users on the machine (with `0660`, all but the
-  members of the server's group), other containers and the network. Not code that runs as the server's own user — and until the editor
-  runs the site's code as a user of its own, the site's preview and build run
-  as that user. `GALLEY_SOCKET` is kept from the site's commands, but that is
+  members of the server's group), other containers and the network. Not code
+  that runs as the server's own user — and until the editor runs the site's
+  code as a user of its own, the site's preview and build run as that user. `GALLEY_SOCKET` is kept from the site's commands, but that is
   no wall.
 
 ---

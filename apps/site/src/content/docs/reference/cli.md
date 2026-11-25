@@ -99,13 +99,13 @@ Recommended
                             proxy's or anyone else's that can reach the port
   GALLEY_SOCKET             A Unix socket for the proxy to connect to instead: forwarded
                             headers are then believed for requests on the socket alone, never
-                            on the port. Made for this server's user, and its group when the
-                            group is its own (0660; else 0600). The proxy must set or append
+                            on the port. Made for this server's user alone (0600; see
+                            GALLEY_SOCKET_MODE). The proxy must set or append
                             X-Forwarded-For. It keeps out other users, containers and the
                             network, not code that runs as this server's user (the site's
                             preview and build, for now)
-  GALLEY_SOCKET_MODE        0660 (the server's user and group may connect) or 0600 (its user
-                            alone). Default: 0660 when the server's group is its own
+  GALLEY_SOCKET_MODE        0600 (default: the server's user alone) or 0660 (its group too, for
+                            a proxy run in it; every account in the group can connect)
 Previews (served through this server's one port, by hostname; point both names at it)
   GALLEY_PREVIEW_URL        Where the site's preview is shown. Default: worked out from
                             GALLEY_PUBLIC_URL (cms.example.com → cms-preview.example.com)

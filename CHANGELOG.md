@@ -34,11 +34,11 @@ entry says how.
   another container, a neighbour on the network), which can then claim any
   client address and slip past the per-address sign-in limits. With
   `GALLEY_SOCKET` set, a hosted editor also listens on that socket, made for
-  its own user, and its group when that group is its own
-  (`GALLEY_SOCKET_MODE` chooses); the proxy connects to it, and forwarded
-  headers are believed for requests on the socket alone, never for those on
-  the port. That keeps out other users (but for its group's members, where
-  they may connect), other containers and the network. It doesn't
+  its own user alone, or for its group too with `GALLEY_SOCKET_MODE=0660`
+  (as the image sets, for a proxy in another container); the proxy connects
+  to it, and forwarded headers are believed for requests on the socket
+  alone, never for those on the port. That keeps out other users (with
+  `0660`, all but the group's members), other containers and the network. It doesn't
   keep out code that runs as the server's own user — which, until the editor
   runs the site's code as a user of its own, includes the site's preview and
   build. The same app answers on both, `/healthz`, `/readyz` and the preview's

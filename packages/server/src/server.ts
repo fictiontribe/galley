@@ -4,11 +4,10 @@
  * compose the engine and serve the app. Signal handling belongs to the CLI.
  */
 import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { chmod, chown, lstat, mkdir, readFile, readlink, unlink, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
-import { homedir, userInfo } from "node:os";
+import { homedir } from "node:os";
 import { connect } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { getRequestListener } from "@hono/node-server";
@@ -95,7 +94,7 @@ export interface ResolvedConfig {
   trustProxy: boolean;
   /** A Unix socket to listen on as well (GALLEY_SOCKET): forwarded headers are believed for requests on it alone. Null: none. */
   socket: string | null;
-  /** The socket's mode: 0o660 (the server's user and group) or 0o600 (its user alone). See `socketModeOf`. */
+  /** The socket's mode: 0o600 (the server's user alone), or 0o660 (its group too) by the operator's choice. See `socketModeOf`. */
   socketMode: number;
   desktop: boolean;
   /** The MCP endpoint at /mcp. */
@@ -556,52 +555,21 @@ function socketStanding(path: string): Promise<"live" | "left" | "unknown"> {
 }
 
 /**
- * Whether group `gid` is the server's own: no other account is in it, by /etc/group's members and /etc/passwd's
- * primary groups. Anything that can't be told (no such group there, the files unreadable, no name for this user) is
- * "not its own". The files are parameters for the tests.
- */
-export function groupIsOwn(
-  ids: { uid: number; gid: number; name: string | null },
-  files: { group: string; passwd: string } = { group: "/etc/group", passwd: "/etc/passwd" }
-): boolean {
-  try {
-    const rows = (file: string) => readFileSync(file, "utf8").split("\n").filter((line) => line && !line.startsWith("#")).map((line) => line.split(":"));
-    const group = rows(files.group).find((fields) => fields.length >= 4 && Number(fields[2]) === ids.gid);
-
-    if (!group || ids.name === null) return false;
-    const members = (group[3] ?? "").split(",").map((member) => member.trim()).filter(Boolean);
-
-    if (members.some((member) => member !== ids.name)) return false;
-    return !rows(files.passwd).some((fields) => fields.length >= 4 && Number(fields[3]) === ids.gid && Number(fields[2]) !== ids.uid);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * The socket's mode (GALLEY_SOCKET_MODE): 0660 lets the server's group connect as well as its user — how a proxy that
- * runs as another user gets in — and 0600 its user alone. Unset, 0660 only when that group is the server's own: where
- * it is shared (macOS's staff, a "users" group), 0660 would let every member in, so it is 0600, and the start says so.
+ * The socket's mode (GALLEY_SOCKET_MODE): 0600, the server's user alone, unless the operator chooses 0660 — the
+ * server's group too, how a proxy that runs as another user gets in, and every other account in that group with it.
+ * No guess at whether the group is the server's own: groups may come from a directory (LDAP, SSSD, NIS), not only
+ * /etc/group, so only the operator can say. Unset, the start says how to let a proxy in.
  */
 function socketModeOf(setting: string | undefined, warnings: string[]): number {
   const value = setting?.trim() ?? "";
 
+  if (/^0?660$/.test(value)) return 0o660;
+  if (/^0?600$/.test(value)) return 0o600;
   if (value !== "") {
-    if (/^0?660$/.test(value)) return 0o660;
-    if (/^0?600$/.test(value)) return 0o600;
     throw new StartupError(`GALLEY_SOCKET_MODE must be 0660 (the server's user and group may connect) or 0600 (its user alone), not “${value}”.`);
   }
-  const gid = process.getgid!();
-  let name: string | null = null;
-
-  try {
-    name = userInfo().username;
-  } catch {
-    // No name for this user (an id with no account): the group can't be told to be its own.
-  }
-  if (groupIsOwn({ uid: process.getuid!(), gid, name })) return 0o660;
   warnings.push(
-    `GALLEY_SOCKET is made for this server's user alone (0600): its group (${gid}) has other accounts in it, or can't be told not to. A proxy that runs as another user can't connect to it; set GALLEY_SOCKET_MODE=0660 to let the group in as well.`
+    "GALLEY_SOCKET is made for this server's user alone (0600). A proxy that runs as another user can't connect to it: set GALLEY_SOCKET_MODE=0660 to let the server's group in as well — every account in that group, so give the server a group of its own for it."
   );
   return 0o600;
 }
@@ -716,7 +684,7 @@ async function bindSocket(server: Server, path: string, mode: number): Promise<v
     if (error.code === "EACCES") throw new StartupError(`This user can't make a socket at ${path} (GALLEY_SOCKET). Choose a folder it can write to.`);
     throw error;
   });
-  // Readable and writable by this server's user, and its group with 0660 (a proxy that runs as another user is put in
+  // Readable and writable by this server's user, and with 0660 its group (a proxy that runs as another user is put in
   // that group); no one else's.
   await chown(path, process.getuid!(), process.getgid!());
   await chmod(path, mode);

@@ -9,10 +9,10 @@ import { spawn } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
-import { tmpdir, userInfo } from "node:os";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import { groupIsOwn, startServer } from "../src/server";
+import { startServer } from "../src/server";
 import type { RunningServer, ServerOptions } from "../src/types";
 
 const made: string[] = [];
@@ -228,35 +228,16 @@ describe("the server's Unix socket (GALLEY_SOCKET)", { timeout: 60_000 }, () => 
     await expect(start({ socket: join(folder(), "galley.sock") }, { GALLEY_SOCKET_MODE: "0666" })).rejects.toThrow(/GALLEY_SOCKET_MODE must be 0660/);
   });
 
-  it("without GALLEY_SOCKET_MODE, lets the group in only when it is the server's own, and says so when it doesn't", async () => {
+  it("without GALLEY_SOCKET_MODE, makes the socket its user's alone (0600), and says how to let a proxy in", async () => {
     const socketPath = join(folder(), "galley.sock");
     const { notices } = await start({ socket: socketPath });
-    const own = groupIsOwn({ uid: process.getuid!(), gid: process.getgid!(), name: userInfo().username });
 
-    expect(statSync(socketPath).mode & 0o777).toBe(own ? 0o660 : 0o600);
-    expect(notices.join("\n").includes("GALLEY_SOCKET is made for this server's user alone (0600)")).toBe(!own);
-  });
+    expect(statSync(socketPath).mode & 0o777).toBe(0o600);
+    expect(notices.join("\n")).toContain("GALLEY_SOCKET is made for this server's user alone (0600)");
+    // Chosen either way, nothing to say.
+    const chosen = await start({ socket: join(folder(), "galley.sock") }, { GALLEY_SOCKET_MODE: "0660" });
 
-  it("tells a group of the server's own from one that other accounts share", () => {
-    const dir = folder();
-    const files = (group: string, passwd: string) => {
-      writeFileSync(join(dir, "group"), group);
-      writeFileSync(join(dir, "passwd"), passwd);
-      return { group: join(dir, "group"), passwd: join(dir, "passwd") };
-    };
-    const me = { uid: 1000, gid: 1000, name: "node" };
-    const passwd = "root:x:0:0:root:/root:/bin/sh\nnode:x:1000:1000::/home/node:/bin/sh\n";
-
-    // The image's: a group named for the user, nobody else in it.
-    expect(groupIsOwn(me, files("root:x:0:\nnode:x:1000:\n", passwd))).toBe(true);
-    expect(groupIsOwn(me, files("node:x:1000:node\n", passwd))).toBe(true);
-    // Another account listed in it, or with it as its own primary group: shared.
-    expect(groupIsOwn(me, files("users:x:1000:node,sam\n", passwd))).toBe(false);
-    expect(groupIsOwn(me, files("users:x:1000:\n", `${passwd}sam:x:1001:1000::/home/sam:/bin/sh\n`))).toBe(false);
-    // Nothing to go by: not its own.
-    expect(groupIsOwn(me, files("root:x:0:\n", passwd))).toBe(false);
-    expect(groupIsOwn({ ...me, name: null }, files("node:x:1000:\n", passwd))).toBe(false);
-    expect(groupIsOwn(me, { group: join(dir, "none"), passwd: join(dir, "none") })).toBe(false);
+    expect(chosen.notices.join("\n")).not.toContain("GALLEY_SOCKET is made");
   });
 
   it("closes the socket and removes it when a start fails after it was made", async () => {
