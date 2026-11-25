@@ -3,7 +3,8 @@
  * same app behind both (health, the gateway, upgrades), and believes the
  * forwarded headers (X-Forwarded-For, X-Forwarded-Proto) of requests that came
  * in on the socket — and, once a socket is set, of no others. Without a
- * socket, GALLEY_TRUST_PROXY works as it always has.
+ * socket, GALLEY_TRUST_PROXY works as it always has. And what a request line in absolute form
+ * (`POST https://other.example/path`) names decides neither the protocol nor the host the app goes by.
  */
 import { spawn } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
@@ -130,6 +131,45 @@ describe("the server's Unix socket (GALLEY_SOCKET)", { timeout: 60_000 }, () => 
 
     expect(server.socket).toBeNull();
     expect((await fromHttpsPage({ port: server.port })).body).not.toContain(OUTSIDE);
+  });
+
+  it("takes a request's protocol from its connection, never from an https:// address in the request line", async () => {
+    const socketPath = join(folder(), "galley.sock");
+    const { server } = await start({ socket: socketPath });
+    const { server: plain } = await start();
+    // `POST https://cms.example.com/api/auth/login HTTP/1.1`: the absolute form of the request line, no forwarded headers.
+    const absolute = (to: { port: number } | { socketPath: string }) =>
+      ask(to, "POST", "https://cms.example.com/api/auth/login", { host: "cms.example.com", origin: "https://cms.example.com", "content-type": "application/json" }, JSON.stringify({ password: "not it" }));
+
+    // Plain HTTP on the port, with or without a socket set: the https:// origin isn't the app's, and the request is refused.
+    for (const port of [server.port, plain.port]) {
+      const answer = await absolute({ port });
+
+      expect(answer).toMatchObject({ status: 403 });
+      expect(answer.body).toContain(OUTSIDE);
+    }
+    // On the socket only the proxy's X-Forwarded-Proto says HTTPS; without it, the request line doesn't.
+    expect((await absolute({ socketPath })).body).toContain(OUTSIDE);
+    expect((await fromHttpsPage({ socketPath })).body).not.toContain(OUTSIDE);
+  });
+
+  it("checks the host a request names in its Host header, the one the gateway routes by, never one in the request line", async () => {
+    const { server } = await start();
+    const to = { port: server.port };
+    const NOT_OURS = "isn't one this app answers to";
+
+    // The request line names the editor, the Host header a name the app doesn't answer to: refused.
+    const elsewhere = await ask(to, "GET", "http://cms.example.com/api/meta", { host: "elsewhere.example" });
+
+    expect(elsewhere).toMatchObject({ status: 403 });
+    expect(elsewhere.body).toContain(NOT_OURS);
+    // The other way round: the Host header names the editor, and the app answers.
+    expect(await ask(to, "GET", "http://elsewhere.example/api/meta", { host: "cms.example.com" })).toMatchObject({ status: 200 });
+    // The Host header names the preview: the gateway takes it, whatever the request line names, and the app never sees it.
+    const preview = await ask(to, "GET", "http://cms.example.com/api/meta", { host: "cms-preview.example.com" });
+
+    expect(preview.status).not.toBe(200);
+    expect(preview.body).not.toContain(NOT_OURS);
   });
 
   it("takes upgrades on the socket: one for the preview's address reaches the gateway", async () => {

@@ -495,6 +495,26 @@ type FetchHandler = (request: Request, env: unknown) => Response | Promise<Respo
  * progress) and returns true when it did; everything else goes to `fetch()`,
  * read per request so whatever sits in front of the app can replace it.
  */
+/**
+ * A request line in absolute form (`GET http://other.example/path HTTP/1.1`) made origin form (`/path?query`), before
+ * anything reads it. The gateway routes by the Host header; Hono would build the app's URL from the request line's
+ * address instead, so the app's allowed-hosts check (and the app's own origin, and its protocol) could go by a host
+ * the gateway never saw. Made origin form, every part goes by the one Host header. A request line that isn't a valid
+ * address is left as it is, for the app to refuse.
+ */
+function toOriginForm(req: IncomingMessage): void {
+  const target = req.url ?? "";
+
+  if (target.startsWith("/") || !/^https?:\/\//i.test(target)) return;
+  try {
+    const url = new URL(target);
+
+    req.url = `${url.pathname}${url.search}`;
+  } catch {
+    // Not an address: Hono answers 400.
+  }
+}
+
 function createListener(options: {
   host: string;
   gateway: ServerGateway | null;
@@ -515,14 +535,19 @@ function createListener(options: {
     const server = createServer(
       onSocket
         ? (req, res) => {
+            toOriginForm(req);
             markArrivedOnSocket(req);
             options.onSocketRequest?.(req);
             listener.request(req, res);
           }
-        : listener.request
+        : (req, res) => {
+            toOriginForm(req);
+            listener.request(req, res);
+          }
     );
 
     server.on("upgrade", (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+      toOriginForm(req);
       if (onSocket) {
         markArrivedOnSocket(req);
         options.onSocketRequest?.(req);

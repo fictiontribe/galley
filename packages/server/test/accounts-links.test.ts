@@ -1,7 +1,9 @@
 /**
  * One-time links on a hosted install are built only from the editor's
  * configured public address, whatever a request says about where it came
- * in: its Host header, its Origin, or a full address as the request target.
+ * in: its Host header or its Origin. A full address as the request target
+ * names nothing the app goes by: the app goes by the Host header, as the
+ * gateway does, so a request with another one is refused at the door.
  * Without a public address nothing is ever e-mailed, and only a trial on one
  * computer (a loopback name) is shown a link at all. A new-password link for
  * someone else that went out by e-mail isn't handed to the owner who asked.
@@ -129,16 +131,23 @@ describe("without the editor's public address", () => {
       // A Host header and an Origin that agree with each other, naming another address.
       await invite(started, "kim@example.com", foreign),
       await call(started.port, "POST", `/api/people/${edId}/password-link`, { ...foreign, cookie: started.owner }),
-      // A full address as the request target, naming this computer, with another Host header.
-      await invite(started, "kim@example.com", { host: FOREIGN, origin: `http://${started.localhost}`, path: `http://${started.localhost}/api/people/invitations` }),
-      await call(started.port, "POST", `http://${started.localhost}/api/people/${edId}/password-link`, { host: FOREIGN, origin: `http://${started.localhost}`, cookie: started.owner }),
       // A name that isn't a loopback one, without any trickery: still no address to build a link from.
       await invite(started, "kim@example.com", { host: `cms.example.com:${started.port}`, origin: `http://cms.example.com:${started.port}` }),
+    ];
+    // A full address as the request target, naming this computer, with another Host header: the app goes by the Host
+    // header, so an Origin naming this computer isn't the app's own, and the request is refused before any link is made.
+    const pastTheDoor = [
+      await invite(started, "kim@example.com", { host: FOREIGN, origin: `http://${started.localhost}`, path: `http://${started.localhost}/api/people/invitations` }),
+      await call(started.port, "POST", `http://${started.localhost}/api/people/${edId}/password-link`, { host: FOREIGN, origin: `http://${started.localhost}`, cookie: started.owner }),
     ];
 
     for (const answer of attempts) {
       expect(answer.status, answer.text).toBe(400);
       expect(answer.body.error.message).toBe(NEEDS_PUBLIC_ADDRESS);
+      expect(answer.text).not.toMatch(/#[A-Za-z0-9_-]{43}/);
+    }
+    for (const answer of pastTheDoor) {
+      expect(answer.status, answer.text).toBe(403);
       expect(answer.text).not.toMatch(/#[A-Za-z0-9_-]{43}/);
     }
     const people = await call(started.port, "GET", "/api/people", { ...here, cookie: started.owner });
@@ -153,18 +162,18 @@ describe("with the editor's public address", () => {
   it("every link is built from it, whatever Host, Origin or request target a request has", async () => {
     const mail = fakeMail();
     const started = await install(EDITOR, mail);
-    // The editor answers only to its own name (and loopback ones); a full address as the target is how another Host gets past that.
-    const target = (path: string) => ({ host: FOREIGN, origin: `http://${started.localhost}`, path: `http://${started.localhost}${path}` });
-    const invited = await invite(started, "ed@example.com", target("/api/people/invitations"));
+    // The editor answers only to its own name and loopback ones: a request on a loopback name, not the public address.
+    const here = { host: started.localhost, origin: `http://${started.localhost}` };
+    const invited = await invite(started, "ed@example.com", here);
 
     expect(invited.status, invited.text).toBe(200);
     expect(originOf(invited.body.link.url)).toBe(EDITOR);
     const accepted = await call(started.port, "POST", "/api/auth/link", { body: { code: String(invited.body.link.url).split("#")[1], password: PASSWORD, name: "Ed Editor" } });
     const edId = (await call<AccountSession>(started.port, "GET", "/api/account", { cookie: accepted.cookies[0]! })).body.id;
-    const forgot = await call(started.port, "POST", `http://${started.localhost}/api/auth/forgot`, { host: FOREIGN, origin: `http://${started.localhost}`, body: { email: "sam@example.com" } });
+    const forgot = await call(started.port, "POST", "/api/auth/forgot", { ...here, body: { email: "sam@example.com" } });
 
     expect(forgot.body).toEqual({ ok: true, emailAvailable: true });
-    const made = await call(started.port, "POST", `http://${started.localhost}/api/people/${edId}/password-link`, { host: FOREIGN, origin: `http://${started.localhost}`, cookie: started.owner });
+    const made = await call(started.port, "POST", `/api/people/${edId}/password-link`, { ...here, cookie: started.owner });
 
     expect(made.status, made.text).toBe(200);
     await settle();
@@ -172,8 +181,14 @@ describe("with the editor's public address", () => {
     expect(linkOrigins(mail)).toEqual([EDITOR, EDITOR, EDITOR]);
     // The address in the e-mail's own words is the configured one too.
     for (const message of mail.sent) expect(message.text).not.toContain("localhost:");
-    // A request with another Host header and an ordinary target isn't answered at all.
+    // A request with another Host header isn't answered at all, whatever its target names (once, a full address there got it past).
     expect((await call(started.port, "POST", "/api/auth/forgot", { ...foreign, body: { email: "sam@example.com" } })).status).toBe(403);
+    const named = await call(started.port, "POST", `http://${started.localhost}/api/auth/forgot`, { host: FOREIGN, origin: `http://${started.localhost}`, body: { email: "sam@example.com" } });
+
+    expect(named.status, named.text).toBe(403);
+    expect(named.body.error.message).toBe("This address isn't one this app answers to.");
+    await settle();
+    expect(mail.sent).toHaveLength(3);
   });
 
   it("a new-password link that was e-mailed isn't shown to the owner; one that couldn't be is, and the log says who made it for whom", async () => {
@@ -205,7 +220,7 @@ describe("with the editor's public address", () => {
 
   it("without outgoing e-mail, links are shown, built from the public address, and “forgot” sends nothing", async () => {
     const started = await install(EDITOR, null);
-    const invited = await invite(started, "ed@example.com", { host: FOREIGN, origin: `http://${started.localhost}`, path: `http://${started.localhost}/api/people/invitations` });
+    const invited = await invite(started, "ed@example.com", { host: started.localhost, origin: `http://${started.localhost}` });
 
     expect(invited.status, invited.text).toBe(200);
     expect(invited.body.link).toMatchObject({ emailed: false });

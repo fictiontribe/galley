@@ -146,6 +146,15 @@ entry says how.
   a background server that stayed in it is stopped with the preview; one that
   moved to a group of its own is left running, and the preview says so (stop it
   the way its dev tool says).
+- **A request is taken to have come over HTTPS only when it did, and to the
+  name in its Host header only.** The protocol a request arrived over now
+  comes from its connection, or from the proxy in front where its word is
+  believed, never from how the request itself was written. And the app checks
+  the name a request is for in its Host header alone — the one the preview's
+  addresses are told apart by — so the two can't disagree about where a
+  request is going. The protocol and the name decide which page addresses
+  count as the app's own for a change, and whether a session cookie is marked
+  secure.
 
 ## 0.4.2 — 2026-11-25
 

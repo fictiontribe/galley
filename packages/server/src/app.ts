@@ -144,6 +144,8 @@ export function createApp(services: Services, options: AppOptions): Hono {
 
   // 1. Host + headers
   app.use("*", async (c, next) => {
+    // Over a connection, this host is the Host header's — the one the gateway routes by: the listener puts a request
+    // line naming an address of its own in origin form first (`toOriginForm` in server.ts), so the two never disagree.
     const url = new URL(c.req.url);
 
     if (allowedHosts && !allowedHosts.has(normalizeHostname(url.hostname))) {
