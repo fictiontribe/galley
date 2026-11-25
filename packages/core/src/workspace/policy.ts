@@ -26,13 +26,18 @@ const LOCKFILES = new Set([
 export type DenyReason = string | null;
 
 /**
- * Whether a file is a secrets file, by its name: one whose name starts with
- * ".env", in any letter case and in any folder. So `.env`, `.env.local`,
- * `.env-production`, `.env_local`, `.envrc` and `.ENV` all are; `env.d.ts`
+ * Whether a path is a secrets file's: any part of it, the file's name or a
+ * folder's, starts with ".env", in any letter case. So `.env`, `.env.local`,
+ * `.env-production`, `.env_local`, `.envrc` and `.ENV` all are, and so is
+ * anything kept in a folder named like one (`.envs/production`); `env.d.ts`
  * and `my.env.md` are not.
  *
  * The app never shows, writes, commits or deploys such a file, and every
  * place that decides one of those asks here, so they can't come to disagree.
+ *
+ * Every part is looked at, not the last alone, because a path can be written
+ * in more ways than one: the engine reads `.env/` and `.env/.` as `.env`, so
+ * a test of the last part would wave both through.
  *
  * It errs on the side of refusing. A name can't say what a file holds, so a
  * harmless file that happens to start the same way (`.envoy.yaml`) is taken
@@ -40,9 +45,11 @@ export type DenyReason = string | null;
  * and showing one that did can't be taken back.
  */
 export function isSecretsFile(path: string): boolean {
-  const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
-
-  return name.toLowerCase().startsWith(".env");
+  return path
+    .replace(/\\/g, "/")
+    .toLowerCase()
+    .split("/")
+    .some((part) => part.startsWith(".env"));
 }
 
 /**
@@ -83,7 +90,7 @@ export function deniedReason(path: string, mode: AgentMode): DenyReason {
   if (path === "") return "The site folder itself can't be overwritten.";
   if (segments.includes(".git")) return "Version-history files can't be changed from here.";
   if (segments.includes("node_modules")) return "Installed packages can't be changed from here.";
-  if (isSecretsFile(name)) {
+  if (isSecretsFile(path)) {
     return "Environment files can hold passwords and keys, so they can't be changed from here.";
   }
   if (LOCKFILES.has(name)) return "Lockfiles are managed by the package manager and can't be changed by hand.";

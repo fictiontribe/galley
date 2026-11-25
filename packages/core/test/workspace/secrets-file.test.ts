@@ -17,7 +17,20 @@ describe("a secrets file, by its name", () => {
   });
 
   it("is no file that only has env somewhere in its name", () => {
-    for (const path of ["env", "env.d.ts", "src/env.d.ts", "environment.md", "docs/my.env.md", "a.env", "dotenv.js", ".eslintrc", "src/.envs/readme.md"]) expect(isSecretsFile(path), path).toBe(false);
+    for (const path of ["env", "env.d.ts", "src/env.d.ts", "environment.md", "docs/my.env.md", "a.env", "dotenv.js", ".eslintrc", "src/envs/.keep"]) expect(isSecretsFile(path), path).toBe(false);
+  });
+
+  it("is still one however the path to it is written: the engine reads `.env/` and `.env/.` as `.env`", () => {
+    for (const path of [".env/", ".env/.", ".env//", ".env/./", "./.env", "config/.envrc/", "config/.envrc/.", ".ENV/"]) {
+      expect(isSecretsFile(path), path).toBe(true);
+      expect(mayBeShown(path), path).toBe(false);
+      expect(notReadReason(path), path).toBe(SECRETS_NOT_READ);
+    }
+    for (const path of [".git/", ".git/.", "sub/.git//"]) expect(mayBeShown(path), path).toBe(false);
+  });
+
+  it("is anything in a folder named like one", () => {
+    for (const path of [".envs/production/django", ".env.d/keys", "config/.ENVS/a.txt"]) expect(isSecretsFile(path), path).toBe(true);
   });
 
   it("errs on the side of refusing: a harmless name that starts the same way is taken for one", () => {

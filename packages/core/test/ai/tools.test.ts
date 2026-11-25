@@ -232,7 +232,7 @@ describe("build tools and the mode guard", () => {
   it("never reads a secrets file or one of the version history's own, and says so in words the assistant can act on", async () => {
     const site = createFakeSite();
     const ctx = context(site, "build", { read: new Map() });
-    const secrets = [".env", ".envrc", "config/.env-production", ".ENV.local"];
+    const secrets = [".env", ".envrc", "config/.env-production", ".ENV.local", ".env/", ".env/.", ".envrc//"];
     const reads: string[] = [];
     const readFile = site.readFile.bind(site);
 
