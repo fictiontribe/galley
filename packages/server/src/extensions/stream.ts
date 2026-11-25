@@ -21,8 +21,12 @@
  *   whole app, and a browser can't read why one failed: it would be asked
  *   for again for ever. The stream opens and is sent `stream.refused`.
  * - With half of what a reader may have waiting already there, an
- *   extension's event is left out for that reader and counted. The editor's
- *   own events keep their room.
+ *   extension's event is left out for that reader and counted. So an
+ *   extension's events never fill more than about half of what a reader
+ *   may have waiting (half, and one event), and the editor's own events
+ *   always have at least half of it. Not all of it: a reader an extension
+ *   keeps half full is let go by a smaller burst of the editor's own
+ *   events than one with nothing waiting.
  */
 import type { Context } from "hono";
 import { roleMay, type Account } from "@galley/core/install";

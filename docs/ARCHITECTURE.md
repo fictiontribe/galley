@@ -456,8 +456,9 @@ payload }`), and they are the only events filtered by a declared level:
 each window's stream asks, per event, whether its reader still counts and
 their role has the level now, and then the event's own rule for what that
 reader is sent. They are also the only events a reader may miss: one is left
-out for a reader that already has half of what it may have waiting, so the
-editor's own events keep their room. A stream opened
+out for a reader that already has half of what it may have waiting. So an
+extension's events never fill more than about half of that, and the
+editor's own events always have at least half of it. A stream opened
 with a value for an extension (`?x-<id>=<value>`) tells it that a window is
 there and when it has gone; it can refuse the value, never the stream.
 Because a restore replaces the data folder under a running server,

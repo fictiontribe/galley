@@ -96,7 +96,8 @@ export interface StreamHooks {
   /**
    * Asked when this reader already has half of what it may have waiting:
    * true leaves the event out for this reader. For events that may be
-   * missed, so that they are never what gets a slow reader let go.
+   * missed: they then never fill more than about half of what a reader may
+   * have waiting, and every other event always has at least half of it.
    */
   low?(event: ServerEvent): boolean;
 }

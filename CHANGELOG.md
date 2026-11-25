@@ -89,8 +89,9 @@ entry says how.
   has been handed. In any one second an extension may send 50 events and
   256 KB; past either its events are dropped and counted in the log. A
   window that already has half of what it may have waiting (512 KB of 1 MB)
-  is not sent an extension's event, so an extension can't be what gets a
-  slow window let go, and the editor's own events keep their room. A stream
+  is not sent an extension's event. So an extension's events never fill more
+  than about half of what a window may have waiting, and the editor's own
+  events always have at least half of it. A stream
   opened with a value for an extension (`/api/events?x-<id>=<value>`) tells
   it that the window is there and, later, that it has gone, which replaces a
   heartbeat route. A value is taken only from the editor's own page (or with
