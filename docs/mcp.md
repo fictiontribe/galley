@@ -296,10 +296,13 @@ What each mode means, and where it is enforced:
   `run_build` and `save_site_config`. It applies only where the site's own
   settings allow it (`ai.allowBuild` in `galley.config.json`); elsewhere those
   tools say build mode is turned off for that site.
-- **Nothing**, in any mode, reads a secrets file (any file whose name starts
-  with `.env`) or anything under `.git/`: not `read_file`, not `get_diff`,
-  and a search says nothing of what one holds. A tool asked for one says so,
-  in a sentence the client can act on.
+- **No tool**, in any mode, reads a secrets file (any file whose name starts
+  with `.env`, `.env.example` included) or anything under `.git/`: not
+  `read_file`, not `get_diff`, not `check_redirects`, and a search says
+  nothing of what one holds. A tool asked for one says so, in a sentence the
+  client can act on. Build mode's `run_build` returns the end of the site's
+  own build output, which is the site's code speaking, not a tool reading a
+  file.
 - **Nothing**, in any mode, writes `.git/`, `node_modules/`, `.env*` or
   lockfiles, or reaches outside the site's folder. There is no shell tool and
   no network tool (except `generate_image`, which calls the image provider

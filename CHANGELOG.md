@@ -7,6 +7,12 @@ entry says how.
 
 ## Unreleased
 
+**Security.** This release closes several ways a signed-in person on a
+hosted editor, or the assistant, could see what a secrets file (`.env…`) or
+the version history holds. If you run a hosted editor, update. If the
+assistant may have read such a file before, change the keys in it and delete
+those conversations: a conversation keeps what its tools returned.
+
 ### Changed
 
 - **Moving media to a bucket moves it.** A move kept a repository file while
@@ -124,49 +130,54 @@ entry says how.
   `.envrc`, `.env-production` or `.env_local` was treated as an ordinary
   file of the site. Any file whose name starts with `.env` now counts, in
   any letter case and in any folder, and so does anything kept in a folder
-  so named, however the path to it is written. One rule decides it
-  everywhere: the
-  editor's file routes, what an extension may read, what may be written,
-  what a publish commits and what a deploy uploads. It errs on the side of
-  refusing, so a harmless file that starts the same way (`.envoy.yaml`) is
-  refused too.
+  so named, however the path to it is written or whatever a link to it is
+  called. One rule decides it everywhere. It errs on the side of refusing,
+  so a harmless file that starts the same way (`.envoy.yaml`) is refused
+  too. A folder whose name starts with `.env` is refused everywhere as
+  well, Publish included: a change made by hand inside one stays among the
+  waiting changes and is never published. It is a rule about names: a
+  secret kept under another name (`.npmrc`, `.dev.vars`, a `.pem` or `.key`
+  file) is not covered by it.
 - **The assistant never reads a secrets file.** In build mode the
   assistant's file tools read any file of the site by its path, and so did
   an MCP client, which is given the same tools. So what a secrets file holds
   could go to the model's provider and into the conversation without anyone
   having meant it. No tool reads a secrets file or anything under `.git/`
   now, in any mode: asked for one, the assistant is told it isn't read here
-  and to ask the person for what it needs. A secrets file named in the
-  settings as guidance for the assistant (`ai.instructions`) is left out
-  too.
-- **A secrets file's changes are not shown.** The routes that show a file
-  refused a secrets file; the one that shows what changed in a file did not,
-  so on a hosted editor its lines could be read there by anyone allowed to
-  read the site's files. The same rule now holds wherever a file or its
-  changes are shown, in the app and to an AI tool connected over MCP. If you
-  run a hosted editor, update.
-- **A secrets file is never read as something else.** A list of redirects
-  can be reviewed from a file of the site, and any file could be named as
-  that list; its lines came back where they weren't redirects. The site's
-  settings can name a file as a collection of content or as a page
-  template, and a secrets file named there was read as content. The list of
-  material a brand was set up from could name one as a piece of material.
-  None of these reads a secrets file or one of the version history's own
-  now.
-- **A deploy never puts the version history's own folder online, or a
-  folder outside the site.** The folder a deploy uploads is named by the
-  site's settings or its framework's configuration. One named `.git`, or
-  one leading out of the site, was uploaded as it was asked. It has to be a
-  folder inside the site now, and not one that holds secrets or the
-  version history.
-- **The preview answers for no secrets file.** The preview is the site's own
-  dev server, which answers for the site's files by their address and
-  refuses only the secrets files its framework knows of (`.env`, and `.env.`
-  followed by something). Asked for one under another name, it answered. An
-  address that names a secrets file, or anything under `.git/`, is now
-  refused before it reaches the dev server, on a hosted editor's preview
-  too. A reference picture named for the image provider is held to the same
-  rule.
+  and to ask the person for what it needs. That includes `.env.example`:
+  tell the assistant the names of the variables it should use. A secrets
+  file named in the settings as guidance for the assistant
+  (`ai.instructions`) is left out too, and a picture named for the image or
+  video provider to work from is held to the same rule.
+- **A secrets file's changes are not shown.** On a hosted editor, a
+  signed-in person could see the lines of a secrets file where the site's
+  changes are shown. Wherever a file or its changes are shown, in the app
+  and to an AI tool connected over MCP, the rule now holds.
+- **A secrets file is never read as something else.** A file can be named,
+  in a request or in the site's settings, to be read as a list of
+  redirects, a collection of content, a page template, a built page or a
+  piece of brand material. A secrets file named so was read, which on a
+  hosted editor let a signed-in person see what it holds. None of these
+  reads a secrets file now, or one of the version history's own.
+- **A deploy's output folder is a folder inside the site.** The folder a
+  deploy puts online is named by the site's settings or its framework's
+  configuration, and nothing looked at which folder that was: someone
+  allowed to change the settings and deploy could put the version history's
+  own folder online, or one outside the site. It has to be a folder inside
+  the site now, and not the site folder itself, the version history's or
+  one that holds secrets; a deploy that names another is refused with a
+  sentence that says so. If your build writes outside the site (a monorepo
+  whose framework is set to `../dist`), have it write to a folder inside
+  the site.
+- **The preview refuses an address that names a secrets file.** The preview
+  is the site's own dev server, and a dev server answers for files of the
+  site. On a hosted editor, a signed-in person could be shown a secrets
+  file that the dev server itself would have answered for. An address that
+  names a secrets file, or anything under `.git/`, is now refused before it
+  reaches the dev server, on a hosted editor's preview too. The preview
+  still runs the site's own code, so what a page shows is the site's to
+  decide: the levels people are given keep them out of each other's way,
+  and are not a wall against someone who means harm.
 
 ## 0.4.1 — 2026-11-25
 

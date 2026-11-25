@@ -86,7 +86,7 @@ function requireBuild(model: SiteModel): { command: string; outDir: string } {
     inside = null;
   }
   if (inside === null || inside === "" || !mayBeShown(inside)) {
-    throw new DeployError("not-set-up", `The output folder in the site settings (“${model.build.outDir}”) can't be put online: it has to be a folder inside the site that the build writes, like “dist”.`, model.build.outDir);
+    throw new DeployError("not-set-up", `The output folder in the site settings (“${model.build.outDir}”) can't be put online: it has to be a folder inside the site that the build writes, like “dist”. If the build writes somewhere else, set it to write inside the site.`, model.build.outDir);
   }
   return model.build;
 }

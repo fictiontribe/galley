@@ -60,7 +60,9 @@ One exception: in build mode, `.github/` at the top of the site is writable, bec
 
 Before any policy check, a path is normalised strictly: absolute paths, `~`, backslashes, NUL bytes and any `..` segment are refused outright (not resolved), with *That file is outside the site folder, so it can't be opened or changed here.* The path is then re-checked against its real location on disk, so a symlink inside the site that points elsewhere can't be used to escape; a dangling symlink is not followed. Writes are atomic: a temporary file, then a rename.
 
-The same rules apply to what is shown: the server never sends `.git/` or `.env*` files or their changes, and the assistant's tools never read them (a file is taken for a secrets file by how its name starts, so a harmless `.envoy.yaml` is refused too). The server sends a site's HTML, JavaScript and XML as plain text from its own origin.
+The same rule applies to what is shown. The editor's own routes refuse a secrets file, anything under `.git/`, and their changes; the assistant's tools don't read them; the preview refuses an address that names one. A file is taken for a secrets file by how its name starts, so a harmless `.envoy.yaml` is refused too, and so is anything in a folder named that way. It is a rule about names: a secret kept under another name (`.npmrc`, `.dev.vars`, a `.pem` or `.key` file) is not covered by it, so keep those out of the repository. And the preview runs the site's own code, so what a page shows is the site's to decide; [the levels](/docs/running/hosted/) keep people out of each other's way and are not a wall against someone who means harm.
+
+The server sends a site's HTML, JavaScript and XML as plain text from its own origin.
 
 ## What the assistant does not have
 
