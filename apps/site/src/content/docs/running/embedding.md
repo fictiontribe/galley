@@ -72,7 +72,7 @@ Before your handler runs, the request has passed everything a request to the edi
   - A browser that doesn't send `Sec-Fetch-Site` at all is refused, on the editor's own page too. Every current browser sends it; some older ones don't.
 - **What a part of the address may be.** A `:name` in your path never holds a `/`, a `\` or a NUL, and is never `.` or `..`: such a request is answered 400. Take a file's path in the query or the body, and **treat it as unchecked**: a value there can hold `../` and arrives fully decoded. Never join one onto `host.stateDir` or any path you open yourself. Hand it only to `site`, which keeps it inside the site.
 
-**GET changes nothing.** That is the rule for every route of the editor: a GET is called again by browsers and proxies without anyone asking, and `HEAD` runs your GET handler too. On GET, every site your handler reaches (the one it is handed, and any it asks `host.sites` for) refuses whatever would change it. Your own state is yours to keep to the rule.
+**GET changes nothing.** That is the rule for every route of the editor: a GET is called again by browsers and proxies without anyone asking, and `HEAD` runs your GET handler too. On GET, every site your handler reaches (the one it is handed, any it asks `host.sites` for, one it kept from earlier) refuses whatever would change it. That holds for the GET and for everything the GET starts, `host.outside` included: a job first started from inside a GET stays read-only for as long as it runs. Work started somewhere else (in `setup`, by another route) is not read-only, whatever later asks it to do something. So start long-running work in `setup`. Your own state is yours to keep to the rule.
 
 ### What a handler is handed
 
@@ -81,13 +81,20 @@ Six things: `params`, `query`, `body` (what your `body` reader returned; the rea
 A parsed body is what `JSON.parse` made of it: a key called `__proto__` is an ordinary key there, and becomes something else if you merge the object into another. Read the fields you expect and leave the rest.
 
 - `caller` is `{ kind: "person", account, role, name, session }`, `{ kind: "operator" }` for the operator's token, or `{ kind: "local" }` where there are no accounts. Account ids are shown to owners only in the editor's own interface: don't send them to everyone's browser.
-- `site` is the same site the editor's own routes use, with four differences. It can't be closed. What it answers with is a copy, so nothing you do to an answer changes the site's own rules. `.git/` and `.env*` can't be read through it: by name, as the editor's own file routes refuse them, and by where a link inside the site leads (not by other spellings a file system may accept). And on GET it refuses to change anything. What it changes, it changes as the caller: build mode needs an editor, the site's settings an owner, publishing a name.
+- `site` is the same site the editor's own routes use, with five differences.
+  - It can't be closed.
+  - What it answers with is a copy, from a change as from a read, so nothing you do to an answer changes the site's own rules. Plain data is copied (a file's content, a listing, the model), which costs what copying costs: don't read a large file in a loop. A thing with behaviour of its own, such as the preview's controller, is handed as it is.
+  - `.git/` and `.env*` can't be read through it: by name, as the editor's own file routes refuse them, and, for reads that name a file and for what a search finds, by where a link inside the site leads. Other spellings a file system may accept, and hard links, are not caught.
+  - On GET it refuses to change anything.
+  - It stops with your extension: once the extension has been stopped, every member of every site it was handed refuses.
+
+  What it changes, it changes as the caller: build mode needs an editor, the site's settings an owner, publishing a name.
 - An error you throw with `invalid(…)`, `notFound(…)` or `forbidden(…)`, from the handler or from the body reader, is shown to the person in those words. Only the editor's own check answers "not signed in" (401), because the app sends people to sign in when it sees one: whatever of yours says 401 is answered 403.
 - `signal` fires when whoever asked gave up. A listener you put on it (or on `setup`'s) must not throw: Node ends the process for one that does.
 
 ### Whose work it is
 
-While your handler runs, it works as its caller. **Once it has answered, anything it left running has lost its caller's access**, and at once when the caller's sign-in stops counting. On a hosted install such work may not publish, use build mode or change the site's settings; it may still save content. One thing stays: the publishing name follows the work, as it does for any request, so what such work records still carries the name of the person whose request started it. To start work that outlives a request and is nobody's in name as well, use `host.outside(() => …)`.
+While your handler runs, it works as its caller. **Once it has answered, anything it left running has lost its caller's access**, and at once when the caller's sign-in stops counting (each is refused in a sentence that says which). On a hosted install such work may not publish, use build mode or change the site's settings; it may still save content. One thing stays: the publishing name follows the work, as it does for any request, so what such work records still carries the name of the person whose request started it. To start work that outlives a request and is nobody's in name as well, use `host.outside(() => …)`.
 
 Everything else of yours that the server calls (`setup`, `stop`, a listener) is called as nobody.
 
@@ -99,10 +106,10 @@ On an install with accounts, `host.people` answers two questions: `name(account)
 
 ## Secrets, files, and one server to a process
 
-- **Secrets.** Name the environment variables your extension reads that are secret in `secrets`, as a list. On a hosted install they are kept from the site's own commands, from before anything is started (its preview and build run the site's code, which editors can change). On your own computer a site's commands get your shell's environment as they always have. Everywhere, their values are taken out of every line the server logs and of the error messages your routes answer with. Know the limits: a value under six characters is never taken out, an encoded form of a value (in a URL, in base64) is not recognised, and a variable you don't name is not covered at all.
+- **Secrets.** Name the environment variables your extension reads that are secret in `secrets`, as a list. A variable every program needs (`PATH`, `HOME`, `NODE_OPTIONS` and the like) can't be named: the server won't start. On a hosted install they are kept from the site's own commands, from before anything is started (its preview and build run the site's code, which editors can change). On your own computer a site's commands get your shell's environment as they always have. Everywhere, their values are taken out of every line the server logs and of the error messages your routes answer with. Know the limits: a value under six characters is never taken out, an encoded form of a value (in a URL, in base64) is not recognised, and a variable you don't name is not covered at all.
 - **Files.** `host.stateDir` is a folder of your extension's own under the data folder. It is in backups, and a restore replaces it under a running server: **restart your program after a backup is put back**.
 - **One server.** A server with extensions must be the only server running in its process. Some of the editor's settings belong to the process, and a second server would change them under the first.
-- **Starting and stopping.** `setup` has 30 seconds and is handed a signal that fires when they are up. If it fails, the server doesn't start: `startServer` rejects, everything it had started is undone, what your extension was handed stops working, and **your program should exit**. `stop` is called when the server stops, while the data folder is still its own; after it, what the extension was handed does nothing.
+- **Starting and stopping.** `setup` has 30 seconds and is handed a signal that fires when they are up. If it fails, or what it returned turns out wrong, the server doesn't start: `startServer` rejects with that error, your `stop` is called if your setup had finished, everything the server had started is undone, and **your program should exit**. `stop` is called when the server stops, while the data folder is still its own. After it, what the extension was handed does nothing: its host, and every site it holds, whenever it got them.
 
 ## Getting the code
 

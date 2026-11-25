@@ -21,16 +21,26 @@ entry says how.
   request is the editor's own page's, on GET too, and a part of the address
   can't carry a path. A handler is handed a narrowed request (never the
   cookie or the headers) and the site with `.git/` and `.env*` unreadable by
-  name; what the site answers with is a copy, and on GET it refuses whatever
-  would change it. Work a handler leaves running loses its caller's access
-  once it has answered, though what it records still carries that person's
-  publishing name. An extension names its secret environment variables: on a
-  hosted install they are kept from the site's commands, and everywhere their
-  values are taken out of the server's log and of the extension's error
-  messages. It is not a sandbox: an extension is its author's code with the
-  server's permissions. A server with extensions must be the only server in
-  its process, and should be restarted after a backup is put back. The shapes may change in any 0.x release. The docs page
-  is *Running Galley › Embedding the editor*.
+  name; what the site answers with is a copy, from a change as from a read,
+  and on GET it refuses whatever would change it. Work a handler leaves
+  running loses its caller's access once it has answered, though what it
+  records still carries that person's publishing name. An extension names its
+  secret environment variables: on a hosted install they are kept from the
+  site's commands, and everywhere their values are taken out of the server's
+  log and of the extension's error messages. Once an extension has been
+  stopped, what it was handed does nothing, the sites it holds included. It
+  is not a sandbox: an extension is its author's code with the server's
+  permissions. A server with extensions must be the only server in its
+  process, and should be restarted after a backup is put back. The shapes may
+  change in any 0.x release. The docs page is *Running Galley › Embedding the
+  editor*.
+- **Stopping a server that can't let go of its data folder says so.** A stop
+  that fails to release the folder still fails, as before; the reason is now
+  also written to the log, and the rest of the stop is finished first.
+- **A start that fails undoes everything it had started.** When a hosted
+  install could not finish starting, the site it had opened stayed open and
+  the process stayed in hosted mode. Both are now undone, as a stop undoes
+  them, and the error the start failed with is the one reported.
 
 ### Changed
 

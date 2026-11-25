@@ -35,13 +35,15 @@ export interface StartedExtension {
   scrub(text: string): string;
   /** One line in the server's log, marked with the extension's id, on one line, its secrets taken out. */
   say(line: string): void;
+  /** False once it has been stopped: every site it was handed refuses from then on. */
+  alive(): boolean;
 }
 
 export interface StartedExtensions {
   list: StartedExtension[];
   /** Every environment variable the extensions named as secret. */
   secretEnv: string[];
-  /** Stops them all, each given its few seconds, and leaves what each was handed doing nothing. Safe to call twice. */
+  /** Stops them all, each given its few seconds, and leaves what each was handed doing nothing: its host, and every site it holds. Safe to call twice. */
   stop(): Promise<void>;
 }
 
@@ -152,20 +154,21 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
   const started: Array<StartedExtension & { parts: ExtensionParts; end(): void }> = [];
   let stopped = false;
 
+  const stopOne = async (extension: { id: string; say(line: string): void; parts: ExtensionParts; end(): void }) => {
+    if (typeof extension.parts.stop === "function") {
+      try {
+        await timeLimit(Promise.resolve(outside(() => extension.parts.stop!())), within(options.stopMs, EXTENSION_STOP_MS), () => new Error("it took too long"));
+      } catch (error) {
+        extension.say(`its stop failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    // From here on what it was handed does nothing, the sites it holds included: the data folder may be another server's the next moment.
+    extension.end();
+  };
   const stop = async () => {
     if (stopped) return;
     stopped = true;
-    for (const extension of [...started].reverse()) {
-      if (typeof extension.parts.stop === "function") {
-        try {
-          await timeLimit(Promise.resolve(outside(() => extension.parts.stop!())), within(options.stopMs, EXTENSION_STOP_MS), () => new Error("it took too long"));
-        } catch (error) {
-          extension.say(`its stop failed: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
-      // From here on what it was handed does nothing: the data folder may be another server's the next moment.
-      extension.end();
-    }
+    for (const extension of [...started].reverse()) await stopOne(extension);
   };
 
   try {
@@ -179,6 +182,7 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
       const say = (line: string) => {
         if (live) options.log(`[${id}] ${scrub(oneLine(line))}`);
       };
+      const alive = () => live;
       const end = () => {
         live = false;
         abort.abort();
@@ -208,7 +212,7 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
             const site = live && typeof siteId === "string" ? await options.site(siteId) : null;
 
             // Asked from inside a GET's handler, the site is as read-only as the one the handler was handed.
-            return site && live ? guardSite(site, { readOnly: insideGet() }) : null;
+            return site && live ? guardSite(site, { readOnly: insideGet(), alive }) : null;
           },
         }),
         outside,
@@ -229,7 +233,16 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
         end();
         throw new ExtensionError(`Extension “${id}” couldn't start: its setup returned nothing.`);
       }
-      started.push({ id, routes: declaredRoutes(id, parts), scrub, say, parts, end });
+      let routes: DeclaredRoute[];
+
+      try {
+        routes = declaredRoutes(id, parts);
+      } catch (error) {
+        // Its setup ran: whatever that started is stopped like any other's, before what it was handed goes dead.
+        await stopOne({ id, say, parts, end });
+        throw error;
+      }
+      started.push({ id, routes, scrub, say, alive, parts, end });
     }
   } catch (error) {
     await stop();

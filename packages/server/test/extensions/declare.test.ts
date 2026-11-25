@@ -3,12 +3,16 @@
  * sentence that names the extension; nothing is left for the first person
  * who calls the route to find.
  */
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { checkExtensions, declaredRoutes, defineExtension, EXTENSION_BODY_LIMIT, ExtensionError } from "../../src/extensions/declare";
 import { isJson } from "../../src/extensions/mount";
-import { assertRouter, callNow, oneLine, scrubberFor } from "../../src/extensions/run";
-import { copyOf, duringGet, guardSite, unreadable } from "../../src/extensions/site";
-import type { ExtensionRoute, ServerExtension } from "../../src/extensions";
+import { assertRouter, callNow, oneLine, scrubberFor, startExtensions } from "../../src/extensions/run";
+import type { PeopleDesk } from "../../src/extensions/people";
+import { copyOf, duringGet, guardSite, STOPPED, unreadable } from "../../src/extensions/site";
+import type { ExtensionHost, ExtensionRoute, ServerExtension } from "../../src/extensions";
 import { ROUTE_ACCESS } from "@galley/core/install";
 import type { SiteService } from "@galley/core/types";
 import { fakeSite, testApp } from "../helpers";
@@ -27,6 +31,10 @@ describe("what an extension declares", () => {
     expect(() => checkExtensions([{ id: "status" } as unknown as ServerExtension])).toThrow("Extension “status” couldn't start: it has no setup.");
     expect(() => checkExtensions([defineExtension({ id: "status", secrets: ["STATUS_API_KEY", "not a name"], setup })])).toThrow("Extension “status”: “not a name” isn't the name of an environment variable.");
     expect(() => checkExtensions([defineExtension({ id: "status", secrets: ["STATUS_API_KEY"], setup }), defineExtension({ id: "a-2nd-one", setup })])).not.toThrow();
+    // A variable every program needs is no secret: hidden, the site's preview wouldn't start, and its value would be struck out of every log line.
+    for (const name of ["PATH", "HOME", "NODE_OPTIONS", "path", "Tmpdir"]) {
+      expect(() => checkExtensions([defineExtension({ id: "status", secrets: [name], setup })]), name).toThrow(`Extension “status”: ${name} can't be named as a secret.`);
+    }
     // A name on its own, not in a list, would be read letter by letter and hide nothing.
     expect(() => checkExtensions([{ id: "status", secrets: "STATUS_API_KEY", setup } as unknown as ServerExtension])).toThrow("Extension “status”: its secrets are a list of the names of environment variables.");
   });
@@ -203,4 +211,77 @@ describe("what the server does around an extension", () => {
     expect(copyOf(null)).toBeNull();
   });
 
+
+  it("copies what a change answers with too, hands a controller as it is, and keeps a file's bytes a file's bytes", async () => {
+    const model = { writable: { content: ["src/content/**"] } };
+    const controller = { start: () => "started", status: { state: "stopped" } };
+    const whole = Buffer.from("hello, this is a larger buffer than the part handed out");
+    const real = { id: "s1", root: "/nowhere", resolvePath: (path: string) => `/nowhere/${path}`, refresh: async () => model, saveConfig: async () => model, preview: () => controller, checkpoint: () => controller, readBase: async () => whole.subarray(0, 5) } as unknown as SiteService;
+    const guarded = guardSite(real, { readOnly: false }) as unknown as { [name: string]: (...args: unknown[]) => any };
+
+    for (const change of ["refresh", "saveConfig"]) {
+      const answered = (await guarded[change]!()) as typeof model;
+
+      expect(answered).toEqual(model);
+      answered.writable.content.push("**/*");
+    }
+    expect(model.writable.content).toEqual(["src/content/**"]);
+    // A thing to drive, not data: the same object, working.
+    expect(guarded.preview!()).toBe(controller);
+    expect(guarded.checkpoint!()).toBe(controller);
+    // A file's bytes: still a Buffer (it reads as text), only the bytes that were handed, and not the engine's own memory.
+    const bytes = (await guarded.readBase!("a.md")) as Buffer;
+
+    expect(Buffer.isBuffer(bytes)).toBe(true);
+    expect(bytes.toString()).toBe("hello");
+    expect(bytes.buffer.byteLength).toBeLessThan(whole.buffer.byteLength + 1);
+    bytes[0] = 0x48;
+    expect(whole.toString().startsWith("hello")).toBe(true);
+    const view = new Uint16Array(new ArrayBuffer(64), 8, 4);
+
+    expect(copyOf(view).buffer.byteLength).toBe(8);
+  });
+
+  it("stops with the extension it was handed to: every member of the site refuses, its name included", () => {
+    let live = true;
+    const real = { id: "s1", root: "/nowhere", resolvePath: (path: string) => `/nowhere/${path}`, readFile: () => "content", changes: async () => ({ files: [] }), writeFile: () => undefined, preview: () => ({}), grepText: async () => [] } as unknown as SiteService;
+    const guarded = guardSite(real, { readOnly: false, alive: () => live }) as unknown as { [name: string]: (...args: unknown[]) => unknown } & { id: string };
+
+    expect(guarded.id).toBe("s1");
+    expect(guarded.readFile!("a.md")).toBe("content");
+    live = false;
+    for (const name of ["readFile", "changes", "writeFile", "preview"]) expect(() => guarded[name]!("a.md"), name).toThrow(STOPPED);
+    expect(() => guarded.id).toThrow(STOPPED);
+    return expect(guarded.grepText!("x")).rejects.toThrow(STOPPED);
+  });
+
+  it("a declaration that turns out wrong after the setup ran stops that extension like any other: its stop is called, its listeners are gone, what it was handed is dead", async () => {
+    const listeners = new Set<() => void>();
+    const desk = { name: () => "Someone", counts: () => true, onChanged: (listener: () => void) => (listeners.add(listener), () => void listeners.delete(listener)), refOf: () => "s-ref", stillCounts: () => true } as unknown as PeopleDesk;
+    const seen: { host?: ExtensionHost; signal?: AbortSignal; stops: number; ticks: number } = { stops: 0, ticks: 0 };
+    const lines: string[] = [];
+    const earlier = defineExtension({ id: "earlier", setup: () => ({ stop: () => void (seen.stops += 10) }) });
+    const wrong = defineExtension({
+      id: "wrong",
+      setup(host, start) {
+        seen.host = host;
+        seen.signal = start.signal;
+        host.people!.onChange(() => void (seen.ticks += 1));
+        // A capital letter: not a route. Found only after this setup has run.
+        return { routes: { "GET /Status": { access: "edit", handle: () => null } }, stop: () => void (seen.stops += 1) };
+      },
+    });
+    const options = { home: await mkdtemp(join(tmpdir(), "extensions-")), mode: "hosted" as const, env: {}, log: (line: string) => void lines.push(line), desk, site: async () => ({ id: "s1" }) as unknown as SiteService };
+
+    await expect(startExtensions([earlier, wrong], options)).rejects.toThrow("Extension “wrong”: the route “GET /Status” isn't a route.");
+    // Its own stop ran, then the one before it was stopped as well.
+    expect(seen.stops).toBe(11);
+    expect(seen.signal!.aborted).toBe(true);
+    expect(listeners.size).toBe(0);
+    expect(await seen.host!.sites.get("s1")).toBeNull();
+    seen.host!.log("after");
+    expect(seen.host!.people!.counts("s-ref" as never)).toBe(false);
+    expect(lines).toEqual([]);
+    await rm(options.home, { recursive: true, force: true });
+  });
 });

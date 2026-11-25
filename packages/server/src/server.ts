@@ -564,9 +564,12 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     if (withExtensions) inProcess.withExtensions = false;
   };
   const release = async () => {
-    await hold?.release();
-    // A server that has let its data folder go is no longer one of the servers in this process.
-    leaveProcess();
+    try {
+      await hold?.release();
+    } finally {
+      // Whether or not that worked, this is no longer one of the servers in this process: the next start must not be refused for it.
+      leaveProcess();
+    }
   };
   // Hosted: the install's state, migrated before anything else reads the data folder.
   const store = hosted
@@ -662,14 +665,34 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   // The install's own jobs (connecting the site, a restore), found through the registry like every other job.
   const installJobs = () => (install ? (id: string) => install!.job(id) ?? ops?.job(id) ?? null : null);
   let extensions: StartedExtensions | null = null;
-  /** Undoes a start that failed. `beforeLettingGo`: what else must end while the data folder is still this server's. */
-  const stop = async (beforeLettingGo: () => Promise<void> = async () => undefined) => {
-    await extensions?.stop();
-    await install?.dispose().catch(() => undefined);
-    await beforeLettingGo();
-    await new Promise<void>((done) => server.close(() => done()));
-    await release();
+  /** What else a failed start must end, added as each is started (the jobs subscription, MCP, the install's own operations). */
+  const alsoStarted: Array<() => unknown> = [];
+  /**
+   * Undoes a start that failed, wherever it failed: the same things a stop
+   * ends, in the same order, while the data folder is still this server's.
+   * Each step is tried whatever the one before did, and none of their
+   * failures replaces the error the start failed with.
+   */
+  const stop = async () => {
+    const steps: Array<() => unknown> = [
+      () => extensions?.stop(),
+      ...alsoStarted.reverse(),
+      () => install?.dispose(),
+      // The site the install opened, its watcher, a preview a setup started.
+      () => (services as Services | undefined)?.registry.dispose(),
+      () => new Promise<void>((done) => server.close(() => done())),
+      release,
+    ];
+
+    for (const step of steps) {
+      try {
+        await step();
+      } catch (error) {
+        out.log(`While undoing a start that failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
     undo();
+    setHostedMode(false);
   };
 
   try {
@@ -758,6 +781,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         log: out.log,
       })
     : null;
+
+  alsoStarted.push(() => mcp?.close());
   // On an https:// address the cookie is a __Host- cookie: Secure, Path=/, no Domain, so a page on a
   // sibling hostname (the preview's) can neither set nor shadow it. One install, one address: no port in the name.
   const hostCookie = hosted && config.publicUrl?.protocol === "https:";
@@ -772,6 +797,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     }
   });
 
+  alsoStarted.push(unsubscribeJobs);
   // Hosted: invitations and new-password links are also e-mailed when the server has outgoing mail.
   let mailer: MailTransport | null = null;
 
@@ -819,13 +845,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
       notice(`Extensions: ${extensions.list.map((extension) => `${extension.id} (${extension.routes.length} ${extension.routes.length === 1 ? "route" : "routes"})`).join(", ")}`);
     } catch (error) {
       // By now the install has started: its site may be open, its jobs subscribed to. All of it is undone, as a stop undoes it.
-      unsubscribeJobs();
-      await mcp?.close().catch(() => undefined);
-      ops?.dispose();
-      await stop(async () => {
-        await services.registry.dispose().catch(() => undefined);
-      });
-      setHostedMode(false);
+      alsoStarted.push(() => ops?.dispose());
+      await stop();
       throw error instanceof ExtensionError ? new StartupError(error.message) : error;
     }
   }
@@ -968,6 +989,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         clearInterval(sweep);
         clearTimeout(force);
         unsubscribeJobs();
+        let notLetGo: unknown;
+
         try {
           await Promise.race([install?.dispose() ?? Promise.resolve(), delay(Math.max(1000, deadline - Date.now()))]);
           ops?.dispose();
@@ -981,8 +1004,12 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
           if (displacedBy === null) await store?.update(() => undefined).catch(() => undefined);
         } finally {
           // Whatever failed above, the folder is let go and this is no longer one of the process's servers: the next start must not be refused for it.
-          await release().catch(() => undefined);
-          leaveProcess();
+          try {
+            await release();
+          } catch (error) {
+            notLetGo = error;
+            out.log(`The data folder couldn't be let go of cleanly: ${error instanceof Error ? error.message : String(error)}`);
+          }
           setHostedMode(false);
           if (hosted) {
             hideFromSiteCommands([]);
@@ -990,6 +1017,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
             requireCallerForGuardedWork(false);
           }
         }
+        // As before: a stop that couldn't let the folder go has not finished cleanly, and says so to whoever asked for it.
+        if (notLetGo !== undefined) throw notLetGo;
       })();
       return closing;
     },

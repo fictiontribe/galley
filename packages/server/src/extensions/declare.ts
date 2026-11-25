@@ -15,6 +15,14 @@ export const EXTENSION_BODY_LIMIT = 1024 * 1024;
 
 const ID = /^[a-z][a-z0-9-]{1,30}[a-z0-9]$/;
 const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+/**
+ * Variables every program is started with. Named as a secret by mistake, one
+ * of them would be kept from the site's commands (a preview without PATH
+ * doesn't start) and its value struck out of every line of the log.
+ */
+const NOT_SECRETS = new Set(
+  ["PATH", "HOME", "USER", "LOGNAME", "SHELL", "PWD", "OLDPWD", "TMPDIR", "TMP", "TEMP", "LANG", "LANGUAGE", "LC_ALL", "LC_CTYPE", "TERM", "TZ", "HOSTNAME", "PORT", "CI", "EDITOR", "NODE_ENV", "NODE_OPTIONS", "NODE_PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "APPDATA", "LOCALAPPDATA", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "USERNAME", "PROGRAMFILES"]
+);
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 const WITH_BODY = new Set<string>(["POST", "PUT", "PATCH"]);
 const LEVELS = new Set<unknown>(["edit", "publish", "manage"]);
@@ -60,6 +68,7 @@ export function checkExtensions(extensions: readonly ServerExtension[]): void {
     if (!Array.isArray(secrets)) throw new ExtensionError(`Extension “${id}”: its secrets are a list of the names of environment variables.`);
     for (const name of secrets) {
       if (typeof name !== "string" || !ENV_NAME.test(name)) throw new ExtensionError(`Extension “${id}”: “${String(name)}” isn't the name of an environment variable.`);
+      if (NOT_SECRETS.has(name.toUpperCase())) throw new ExtensionError(`Extension “${id}”: ${name} can't be named as a secret. The site's own commands need it, and its value would be struck out of every line of the log.`);
     }
   }
 }

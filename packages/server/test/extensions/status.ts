@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { HTTPException } from "hono/http-exception";
 import { GalleyError } from "@galley/core";
 import { currentAccountAuthor } from "@galley/core/workspace";
-import { defineExtension, forbidden, invalid, type ExtensionHost, type ExtensionRequest, type JsonValue } from "../../src/extensions";
+import { defineExtension, forbidden, invalid, type ExtensionHost, type ExtensionRequest, type GuardedSite, type JsonValue } from "../../src/extensions";
 
 export interface StatusProbe {
   /** The host the extension was handed. */
@@ -24,6 +24,8 @@ export interface StatusProbe {
   answer?: () => unknown;
   /** Holds the slow route until the test lets it go. */
   gate?: Promise<void>;
+  /** A site asked for through the host by a POST, and kept. */
+  kept?: GuardedSite | null;
 }
 
 export function newProbe(): StatusProbe {
@@ -148,6 +150,21 @@ export function statusExtension(probe: StatusProbe, options: { setup?: (host: Ex
               return { content: model.writable.content.length };
             },
           },
+          // The same tidying of what a change answers with: `refresh` hands back the model too.
+          "POST /sites/:siteId/tidy": {
+            access: "edit",
+            body: () => undefined,
+            async handle(request) {
+              const model = (await request.site!.refresh()) as unknown as { writable: { content: string[]; build: string[] } };
+
+              model.writable.content.push("src/**", "**/*");
+              model.writable.build.length = 0;
+              return { content: model.writable.content.length, preview: typeof request.site!.preview };
+            },
+          },
+          // Asks the host for a site outside any GET and keeps it; then a GET uses the kept one.
+          "POST /sites/:siteId/keep": { access: "edit", body: () => undefined, handle: async (request) => ((probe.kept = await host.sites.get(request.params.siteId!)), { kept: probe.kept !== null }) },
+          "GET /kept-write": { access: "edit", handle: async () => ({ tried: await attempt(() => probe.kept!.writeFile("src/content/pages/by-a-kept-site.md", "x", { origin: "user", mode: "content" })) }) },
           // Reaches a site through the host instead of the request, from a GET.
           "GET /any-site": { access: "edit", handle: async (request) => ({ tried: await attempt(async () => (await host.sites.get(request.query.site ?? ""))!.writeFile("src/content/pages/by-a-get.md", "x", { origin: "user", mode: "content" })) }) },
           // An address that ends like one the editor treats specially.

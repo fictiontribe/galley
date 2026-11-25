@@ -7,11 +7,11 @@
 import { mkdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { BUILD_MODE_REFUSAL, NO_CALLER_REFUSAL, OUTLIVED_REFUSAL, ROLE_REFUSAL } from "@galley/core/install";
+import { BUILD_MODE_REFUSAL, NO_CALLER_REFUSAL, OUTLIVED_REFUSAL, ROLE_REFUSAL, SIGN_IN_ENDED_REFUSAL } from "@galley/core/install";
 import type { SiteService } from "@galley/core/types";
 import { deniedReason, withoutHiddenVariables } from "@galley/core/workspace";
 import { startServer } from "../../src";
-import { GET_CHANGES_NOTHING, SITE_CHANGES, SITE_INTERNAL, SITE_READS, SITE_WITHHELD, UNREADABLE } from "../../src/extensions/site";
+import { GET_CHANGES_NOTHING, SITE_CHANGES, SITE_INTERNAL, SITE_READS, SITE_WITHHELD, STOPPED, UNREADABLE } from "../../src/extensions/site";
 import { NOT_FROM_THE_EDITOR } from "../../src/extensions/mount";
 import { NEEDS_A_PERSON } from "../../src/who";
 import { call, EDITOR, git, sandbox, siteRepository, startHosted, stopHosted, until, type CallInit } from "../hosted-helpers";
@@ -334,7 +334,10 @@ describe("routes an embedding program adds", () => {
     // Through the host instead of the request: the same.
     expect((await x("GET", `/any-site?site=${siteId}`, { cookie: people.owner.cookie })).body).toEqual({ tried: `refused: ${GET_CHANGES_NOTHING}` });
     expect((await call(port, "HEAD", `/api/x/status${site("/write")}`, { cookie: people.owner.cookie, headers: OWN_PAGE })).status).toBe(200);
-    expect(git(folder, "status", "--porcelain", "--", "src/content/pages/about.md", "src/content/pages/by-a-get.md")).toBe("");
+    // And a site asked for earlier, outside any GET, and kept: used inside a GET it refuses too.
+    expect((await x("POST", site("/keep"), { cookie: people.owner.cookie, body: {} })).body).toEqual({ kept: true });
+    expect((await x("GET", "/kept-write", { cookie: people.owner.cookie })).body).toEqual({ tried: `refused: ${GET_CHANGES_NOTHING}` });
+    expect(git(folder, "status", "--porcelain", "--", "src/content/pages/about.md", "src/content/pages/by-a-get.md", "src/content/pages/by-a-kept-site.md")).toBe("");
   });
 
   it("what a read answers with is a copy: changing it changes nothing of the site's own rules", async () => {
@@ -342,6 +345,9 @@ describe("routes an embedding program adds", () => {
     const before = JSON.stringify((await real.model()).writable);
 
     expect((await x("GET", site("/tidy"), { cookie: people.contributor.cookie })).body).toEqual({ content: JSON.parse(before).content.length + 2 });
+    expect(JSON.stringify((await real.model()).writable)).toBe(before);
+    // A change answers with the model too (`refresh`): the same tidying of that answer, from a POST, changes nothing either.
+    expect((await x("POST", site("/tidy"), { cookie: people.contributor.cookie, body: {} })).body).toMatchObject({ content: JSON.parse(before).content.length + 2 });
     expect(JSON.stringify((await real.model()).writable)).toBe(before);
     // Content mode is as narrow as it was: a contributor still can't save the site's code as content.
     const tried = (await x("POST", site("/save"), { cookie: people.contributor.cookie, body: { path: "src/layouts/Tidy.astro", mode: "content" } })).body.tried;
@@ -413,7 +419,8 @@ describe("routes an embedding program adds", () => {
     expect(git(folder, "log", "-1", "--format=%s")).toBe("Slow");
     const head = git(folder, "rev-parse", "HEAD");
 
-    expect(await slowly(true)).toBe(`refused: ${ROLE_REFUSAL}`);
+    // In words of its own: it isn't that the account may not, it is that the sign-in is over.
+    expect(await slowly(true)).toBe(`refused: ${SIGN_IN_ENDED_REFUSAL}`);
     expect(git(folder, "rev-parse", "HEAD")).toBe(head);
     delete probe.gate;
   });
@@ -535,6 +542,12 @@ describe("routes an embedding program adds", () => {
     expect(probe.calls.stop ?? 0).toBe(0);
     touch("published-while-stopping");
     probe.later.length = 0;
+    // Work a handler leaves running that will only wake after the server has stopped.
+    expect((await x("POST", site("/later"), { cookie: people.owner.cookie, body: { wait: 1200 } })).body).toEqual({ started: true });
+    const heldFromARequest = probe.requests.find((request) => request.site)!.site!;
+    const kept = probe.kept!;
+
+    expect(kept.id).toBe(siteId);
     await stopHosted(box, started);
     expect(probe.calls.stop).toBe(1);
     // Its stop ran as nobody, and its failure is one line under its own name without its secret.
@@ -549,6 +562,19 @@ describe("routes an embedding program adds", () => {
     expect(probe.host!.people!.name(people.owner.id)).toBeNull();
     expect(logs.length).toBe(lines);
     expect(withoutHiddenVariables({ STATUS_API_KEY: SECRET })).toEqual({ STATUS_API_KEY: SECRET });
+    // Nor does a site it already held: one it asked the host for, and one a request was handed. Reads, changes, even its name.
+    for (const held of [kept, heldFromARequest]) {
+      expect(() => held.readFile("src/content/pages/index.md")).toThrow(STOPPED);
+      expect(() => held.changes()).toThrow(STOPPED);
+      expect(() => held.model()).toThrow(STOPPED);
+      expect(() => held.publish({ message: "After the stop" })).toThrow(STOPPED);
+      expect(() => held.writeFile("src/content/pages/after.md", "x", { origin: "user", mode: "content" })).toThrow(STOPPED);
+      expect(() => held.id).toThrow(STOPPED);
+    }
+    // The work left running wakes now, with the server's guards already dropped: still refused, by the site it holds.
+    await until(() => probe.later.some((line) => line.startsWith("save ")));
+    expect(probe.later.filter((line) => /^(publish|save) /.test(line))).toEqual([`publish refused: ${STOPPED}`, `save refused: ${STOPPED}`]);
+    expect(git(folder, "log", "-1", "--format=%s")).not.toBe("Later");
     // With it gone, a server starts; and beside that one, a server with extensions doesn't.
     const plain = await second();
 

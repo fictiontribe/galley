@@ -28,7 +28,7 @@ import type { Context, Hono, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { GalleyError, isGalleyError } from "@galley/core";
-import { asOperator, withCaller, type AccessLevel, type Account, type AccountRole } from "@galley/core/install";
+import { asOperator, OUTLIVED_REFUSAL, SIGN_IN_ENDED_REFUSAL, withCaller, type AccessLevel, type Account, type AccountRole } from "@galley/core/install";
 import { withSiteScope } from "@galley/core/site";
 import type { SiteService } from "@galley/core/types";
 import { bearerToken, type SessionInfo } from "../auth";
@@ -122,9 +122,8 @@ function handlerFor(extension: StartedExtension, declared: DeclaredRoute, deps: 
     for (const [name, value] of Object.entries(c.req.query())) query[name] = value;
     const caller: ExtensionCaller =
       who.kind === "person" ? Object.freeze({ kind: "person", account: who.account.id, role: who.account.role, name: who.account.name, session: deps.refOf(who.session) }) : Object.freeze({ kind: who.kind });
-    // Once the handler has answered, what it left running is nobody's (core install/caller.ts asks `ended` at each check).
+    // Once the handler has answered, what it left running is no longer its caller's (core install/caller.ts asks `lapsed` at each check).
     let answered = false;
-    const ended = () => answered;
     /** The body's reader, then the handler: both the route's own code, both inside the caller's scope and the same handling of what they throw. */
     const work = async (): Promise<unknown> => {
       const request: ExtensionRequest<unknown> = Object.freeze({
@@ -132,7 +131,7 @@ function handlerFor(extension: StartedExtension, declared: DeclaredRoute, deps: 
         query: Object.freeze(query),
         body: route.body ? await route.body(read) : undefined,
         caller,
-        ...(site ? { site: guardSite(site, { readOnly }) } : {}),
+        ...(site ? { site: guardSite(site, { readOnly, alive: extension.alive }) } : {}),
         signal: c.req.raw.signal,
       });
 
@@ -145,10 +144,12 @@ function handlerFor(extension: StartedExtension, declared: DeclaredRoute, deps: 
       if (who.kind === "person") {
         const { account, session } = who;
 
-        return withCaller({ accountId: account.id, role: account.role, current: () => (deps.stillCounts(session) ? deps.liveRole(account.id) : null), named: () => deps.liveNamed(account.id), ended }, () => deps.withAuthor(account, run));
+        const lapsed = () => (answered ? OUTLIVED_REFUSAL : deps.stillCounts(session) ? null : SIGN_IN_ENDED_REFUSAL);
+
+        return withCaller({ accountId: account.id, role: account.role, current: () => deps.liveRole(account.id), named: () => deps.liveNamed(account.id), lapsed }, () => deps.withAuthor(account, run));
       }
       // The operator's token: everything, while the handler runs. (Where there are no accounts, every request is the operator's, as it always was.)
-      if (who.kind === "operator" && deps.hosted) return withCaller({ accountId: "operator", role: "owner", ended }, () => deps.withAuthor(null, run));
+      if (who.kind === "operator" && deps.hosted) return withCaller({ accountId: "operator", role: "owner", lapsed: () => (answered ? OUTLIVED_REFUSAL : null) }, () => deps.withAuthor(null, run));
       return asOperator(() => deps.withAuthor(null, run));
     };
     let result: unknown;
