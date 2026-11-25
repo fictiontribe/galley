@@ -1,4 +1,4 @@
-// Content model for galley.fictiontribe.com.
+// Content model for galleycms.com.
 //
 // Every word on the site lives in these collections or in src/data/*.json, so
 // the site is itself a Galley site. Marketing pages are lists of sections
