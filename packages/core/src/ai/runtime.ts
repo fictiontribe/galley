@@ -595,6 +595,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
       }
       // Putting a build-mode reply's files back is changing the site's code: the same level as making the change.
       if (entry.mode === "build") requireLevel(BUILD_MODE_LEVEL, UNDO_BUILD_REFUSAL);
+      // A checkpoint whose site was closed meanwhile has nothing left to put back and refuses here, in a sentence (workspace
+      // UNDO_LOST). Nothing below runs then: the reply is not marked as undone, because it wasn't, and asking again says the same.
       const restored = await entry.checkpoint.restore();
       const left = entry.checkpoint.left();
 

@@ -9,7 +9,7 @@ export type { Workspace, WorkspaceOptions, WorkspaceWriteOptions } from "./works
 export type { ChangeEnricher, PendingStatus } from "./changes";
 export { classifyKind, computeHunks, defaultSummary, parsePorcelain, MAX_DIFF_BYTES } from "./changes";
 export type { WorkspaceCheckpoint } from "./checkpoint";
-export { SPILL_BYTES } from "./checkpoint";
+export { SPILL_BYTES, UNDO_LOST } from "./checkpoint";
 
 export { createPreviewController, detectPid, detectPort, expandOutputLine, HELD_DETAIL } from "./preview/controller";
 export type { PreviewOptions, PreviewSettings, PreviewControllerHandle } from "./preview/controller";

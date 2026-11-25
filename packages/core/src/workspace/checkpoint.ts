@@ -25,6 +25,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { PRODUCT } from "../brand";
+import { GalleyError } from "../errors";
 import type { Checkpoint } from "../types";
 import { bytesEqual, hashContent, isBinary } from "./files";
 
@@ -111,11 +112,22 @@ export interface WorkspaceCheckpoint extends Checkpoint {
   release(): Promise<void>;
 }
 
+/**
+ * Said when something is asked to undo with a checkpoint whose site was
+ * closed under it. What a checkpoint keeps is let go when its site is closed
+ * (one nobody has used for a while, or one that was removed), so there is
+ * nothing left to put back: answering "nothing was restored" as if the undo
+ * had been done would be untrue.
+ */
+export const UNDO_LOST = "That can't be undone from here any more: the site was closed after a while without use, and what Undo keeps was let go with it. You can still discard the changes in Proof.";
+
 class CheckpointImpl implements WorkspaceCheckpoint {
   readonly id = randomUUID();
   readonly records = new Map<string, Recorded>();
   open = true;
   released = false;
+  /** Its site was closed under it: what it kept is gone, though whoever holds it never let it go. */
+  lost = false;
   private spillDir: string | null = null;
   private leftBehind: string[] = [];
   /** Paths its own work wrote after it was closed. */
@@ -210,6 +222,7 @@ class CheckpointImpl implements WorkspaceCheckpoint {
   }
 
   async restore(): Promise<string[]> {
+    if (this.lost) throw new GalleyError("not-found", UNDO_LOST);
     if (this.released) return [];
     this.close();
     const restored: string[] = [];
@@ -339,6 +352,10 @@ export class CheckpointManager {
   }
 
   async dispose(): Promise<void> {
-    for (const checkpoint of [...this.all]) await checkpoint.release();
+    for (const checkpoint of [...this.all]) {
+      // Let go by the site closing, not by whoever holds it: an undo asked of it later says so.
+      checkpoint.lost = true;
+      await checkpoint.release();
+    }
   }
 }
