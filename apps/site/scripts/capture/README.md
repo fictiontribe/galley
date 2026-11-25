@@ -25,8 +25,10 @@ sh apps/site/scripts/capture/start.sh sites
 sh apps/site/scripts/capture/start.sh host
 sh apps/site/scripts/capture/start.sh wordpress
 sh apps/site/scripts/capture/start.sh hosting
+sh apps/site/scripts/capture/start.sh media
 ANTHROPIC_API_KEY=… sh apps/site/scripts/capture/start.sh galley
 sh apps/site/scripts/capture/start.sh hosted
+sh apps/site/scripts/capture/start.sh second
 ```
 
 - `sites` makes the two throwaway sites with the released CLI (`galley-cms new`, Caddow and
@@ -41,10 +43,14 @@ sh apps/site/scripts/capture/start.sh hosted
   that "Host the editor online" talks to (`scripts/rehearse-hosting.mjs`), and writes the variables `galley` needs to
   `$CAPTURE_DIR/hosting.env` (the stand-ins' addresses and the stand-in Fly.io's made-up key). Run
   it before `galley`.
+- `media` starts the stand-in bucket for the `media-bucket` step (below, "Media in a bucket"). Run
+  it before `galley`.
 - `galley` starts the released app (`npx galley-cms@0.4.0`, or `GALLEY_VERSION`) on port 4790, open
   on Caddow, pointed at the stand-ins. The key is taken from your shell's `ANTHROPIC_API_KEY` and
   given to that process only; the script reads no key file. Its log
   (`$CAPTURE_DIR/logs/galley.log`) has the `Open:` line with the token.
+- `second` starts a second Galley on port 4802, with a home of its own, on a copy of Lowfield: the
+  other computer a theme is brought into (below, "Themes").
 - `hosted` starts a hosted install (`galley serve`, no site connected) at
   `http://cms.localhost:4797`, with `HOSTED_PASSWORD` as its password, for its sign-in and first-run
   pictures. It listens on this computer only.
@@ -125,8 +131,48 @@ stop it (`start.sh stop`) and delete `$CAPTURE_DIR/people` afterwards. Run it on
 each time: the Setup: link works once.
 
 The `dark` step (`dark-editor`, `dark-proof`) uses the ordinary local app, with changes waiting in
-Proof (the `ask` step leaves some); it switches to dark with the switch at the foot of the sidebar
-and back to light when it's done.
+Proof (the `ask` step leaves some), so the whole session runs it before `publish`; it switches to
+dark with the switch at the foot of the sidebar and back to light when it's done.
+
+## Themes (the `themes` step)
+
+The step chooses Plate, switches to dark and back, makes a theme from Quiet (named Workroom), shows
+the readability check refusing a pencil too close to grey, saves the theme and exports it. The last
+picture brings the exported file into another Galley, so start one more, with a home of its own, on
+a copy of Lowfield:
+
+```sh
+sh apps/site/scripts/capture/start.sh second
+```
+
+Its log (`$CAPTURE_DIR/logs/second.log`) has an `Open:` line with its token; give it to the capture
+as `SECOND_TOKEN`. Without it the step takes every picture but that one and says so. When it ends,
+the first Galley is on Quiet and light again and Workroom is deleted from it; the second never
+saves it.
+
+## Media in a bucket (the `media-bucket` step)
+
+The step connects a bucket, uploads a picture to it, shows where the picture is used and a delete
+that is refused, and moves the repository's files to the bucket. It runs against a stand-in bucket:
+the engine's own test fake, which checks every request's signature as R2 and S3 do. Start it
+**before** `galley`:
+
+```sh
+sh apps/site/scripts/capture/start.sh media
+```
+
+It prints the key it accepts (fixed test values, not a credential); give them to the capture as
+`MEDIA_KEY_ID` and `MEDIA_SECRET`. Without them the step takes nothing and says so.
+
+The pictures show the bucket as a person would have it: Cloudflare R2, the account
+`0123456789abcdef0123456789abcdef`, the public address `https://media.example.com`. Neither name
+leads anywhere real. `start.sh media` writes `$CAPTURE_DIR/media.env`, and `start.sh galley` reads
+it, so that one Galley process is started with `media-names.mjs`: a request it makes to either name
+goes to the stand-in on this computer instead. Galley itself is unchanged, and nothing leaves this
+computer. The capture's browser is given the same rule for `https://media.example.com`.
+
+Run it last: it leaves Caddow with a bucket connected and its files moved there, which every
+picture of the Media screen after it would show.
 
 ## 4. Stop
 

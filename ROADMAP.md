@@ -33,7 +33,7 @@ what is built; when something here ships, it moves to the
   for the rest; a hosted editor that keeps up with its repository; a quieter
   look, with one family of icons.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
-  and [twelve how-to guides](https://galley.fictiontribe.com/how-to/), with
+  and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.
 
 ## Now

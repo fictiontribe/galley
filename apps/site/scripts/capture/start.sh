@@ -13,6 +13,10 @@
 #                                site, for its sign-in and first run; needs HOSTED_PASSWORD (12+ characters)
 #   start.sh people              a hosted install with Caddow and nobody signed up, on http://cms.localhost:4801
 #                                (README.md, "Accounts"); prints a one-time Setup: link
+#   start.sh media               the stand-in bucket on 4805 (its public files on 4806), for the media-bucket step;
+#                                run it before "galley", which then reaches it as https://media.example.com
+#   start.sh second              a second Galley with a home of its own, on a copy of Lowfield, on 4802
+#                                (the themes step brings a theme into it)
 #   start.sh stop                stop everything this script started (by PID)
 #
 # CAPTURE_DIR (default /tmp/galley-capture) holds home/, galley-home/, hosted-home/, logs/ and pids/.
@@ -64,13 +68,20 @@ case "$1" in
     # too, and the stand-in Cloudflare on 4791 (the "host" above) takes its own key.
     sed -nE "s/^  ((GALLEY_HOSTING_[A-Z_]*|FLY_API_TOKEN)=.*)$/export \1/p" "$C/logs/hosting.log" > "$C/hosting.env"
     sed -n '1,4p' "$C/logs/hosting.log" ;;
+  media)
+    cd "$REPO"
+    bg media MEDIA_FAKES="${MEDIA_FAKES:-$REPO/packages/core/test/media-storage/fakes}" node --import tsx "$HERE/serve-media.mts" 4805 4806
+    sleep 4
+    # What "start.sh galley" needs so the made-up names in the pictures reach the stand-in (media-names.mjs).
+    printf 'export NODE_OPTIONS="--import=%s"\nexport CAPTURE_NAMES="media.example.com=4806/caddow-media,0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com=4805"\n' "$HERE/media-names.mjs" > "$C/media.env"
+    cat "$C/logs/media.log" ;;
   galley)
     cd "$H"
     bg galley ${ANTHROPIC_API_KEY:+ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"} \
       GALLEY_DEPLOY_CLOUDFLARE_API="http://127.0.0.1:4791/client/v4" \
       GALLEY_DEPLOY_PROBE="http://127.0.0.1:4791/__probe?host={host}" \
-      HOSTING_ENV="$C/hosting.env" \
-      sh -c 'if [ -f "$HOSTING_ENV" ]; then . "$HOSTING_ENV"; fi; exec $0 "$1" --no-open --port 4790' "$G" "$H/sites/caddow"
+      HOSTING_ENV="$C/hosting.env" MEDIA_ENV="$C/media.env" \
+      sh -c 'if [ -f "$HOSTING_ENV" ]; then . "$HOSTING_ENV"; fi; if [ -f "$MEDIA_ENV" ]; then . "$MEDIA_ENV"; fi; exec $0 "$1" --no-open --port 4790' "$G" "$H/sites/caddow"
     echo "Galley starting (log: $C/logs/galley.log; its Open: line carries the token)" ;;
   hosted)
     [ "${#HOSTED_PASSWORD}" -ge 12 ] || { echo "Set HOSTED_PASSWORD (12 characters or more) to a throwaway password."; exit 1; }
@@ -85,6 +96,14 @@ case "$1" in
     bg people GALLEY_HOME="$C/people" GALLEY_PUBLIC_URL="http://cms.localhost:4801" \
       $G serve --host 127.0.0.1 --port 4801
     sleep 15; grep -c "^Setup:" "$C/logs/people.log" >/dev/null && echo "People install up (its Setup: link is in $C/logs/people.log)" ;;
+  second)
+    # Another Galley with a home of its own, open on a copy of Lowfield: "the other computer" a theme is
+    # brought into. Run "sites" first.
+    mkdir -p "$C/second-home/sites"
+    [ -d "$C/second-home/sites/lowfield" ] || git clone -q "$H/sites/lowfield" "$C/second-home/sites/lowfield"
+    cd "$C/second-home"
+    bg second GALLEY_HOME="$C/second-home" $G "$C/second-home/sites/lowfield" --no-open --port 4802
+    echo "Second Galley starting (log: $C/logs/second.log; its Open: line carries the token)" ;;
   stop)
     for f in "$C"/pids/*.pid; do
       [ -f "$f" ] || continue

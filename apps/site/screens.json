@@ -7,13 +7,15 @@
     "sh scripts/capture/start.sh host — the stand-in Cloudflare on 4791 (made-up account, caddow.example-studio.workers.dev, the zone caddow.example); prints the key it accepts.",
     "sh scripts/capture/start.sh wordpress — the importer's stand-in WordPress site on 4792 (Fernhill Garden Studio: 12 posts, 6 pages, 2 built with Elementor).",
     "sh scripts/capture/start.sh hosting — the stand-in Fly.io and Cloudflare for \"Host the editor online\" (scripts/rehearse-hosting.mjs on 4793/4794, a fake install on 4796, a stand-in Google Cloud on 4544); writes the variables the app needs to hosting.env.",
+    "sh scripts/capture/start.sh media — the stand-in bucket on 4805 (its public files on 4806) for the media-bucket step: the engine's own test fake, which checks every request's signature as R2 and S3 do. Run it before galley; it prints the key it accepts, which goes to the capture as MEDIA_KEY_ID and MEDIA_SECRET.",
     "ANTHROPIC_API_KEY=… sh scripts/capture/start.sh galley — that Galley on 4790, open on Caddow, pointed at the stand-ins; the key comes from the shell of whoever runs it and goes to that process only.",
     "HOSTED_PASSWORD=… sh scripts/capture/start.sh hosted — a hosted install (galley serve, no site) at http://cms.localhost:4797, for its sign-in and first run.",
+    "sh scripts/capture/start.sh second — a second Galley with a home of its own, on a copy of Lowfield, on 4802: the other computer the themes step brings a theme into; its token goes to the capture as SECOND_TOKEN.",
     "Accounts (the people step): a second hosted install with Caddow and nobody signed up — scripts/capture/README.md, “Accounts”: sh scripts/capture/start.sh people, then PEOPLE_SETUP=<its one-time Setup: link>.",
     "Open Lowfield too (POST /api/sites/open), read both ids (GET /api/sites); the token is in the Open: line of the Galley log."
   ],
-  "command": "GALLEY_ORIGIN=http://127.0.0.1:4790 GALLEY_TOKEN=<token> GALLEY_SITE=<Caddow id> SITE_DIR=<capture dir>/home/sites/caddow WP_SITE=<Lowfield id> WP_URL=http://127.0.0.1:4792 CF_KEY=<stand-in key> HOSTED_URL=http://cms.localhost:4797 HOSTED_PASSWORD=<the throwaway password> PLAYWRIGHT_MODULES=<node_modules with playwright-core> CAPTURE_BUILD=\"built from <commit>, before <release>\" node scripts/capture-screens.mjs   (no step names = the whole session in order, about an hour; with the three assistant steps left out, under ten minutes on a recent Mac)",
-  "captured": "2026-11-24, from a bundle built from this repository at ed3e13b, before 0.4.0 (the app still reports 0.3.1), in Chromium 159.0.8154.6, following scripts/capture/README.md: every picture that shows neither the assistant nor anything it changed (26 in screens/ and the recording, 12 in docs/, 39 in howto/). The session ran without the three assistant steps (brand, ask-journal, ask), so nothing was spent. Waiting for a session with the assistant connected, and until then as they were (Galley 0.2.0; dark-editor and dark-proof 0.3.0): screens/ assistant, brand-material, brand-proposal, brand-type, brand-voice, dark-editor, dark-proof, form, history, proof-changes, proof-source, publish, scripts, site-home; docs/ assistant-reply, brand, editor-overview, form-builder, history, media-generate, publish-dialog, sites, undo-publish-dialog; howto/ add-analytics-2, ask-the-assistant-1 to 3, proof-and-publish-1 to 5, set-up-brand-1 to 5. screens/media (0.2.0) is retaken with the pictures of media in a bucket.",
+  "command": "GALLEY_ORIGIN=http://127.0.0.1:4790 GALLEY_TOKEN=<token> GALLEY_SITE=<Caddow id> SITE_DIR=<capture dir>/home/sites/caddow WP_SITE=<Lowfield id> WP_URL=http://127.0.0.1:4792 CF_KEY=<stand-in key> HOSTED_URL=http://cms.localhost:4797 HOSTED_PASSWORD=<the throwaway password> SECOND_TOKEN=<the second Galley's token> MEDIA_KEY_ID=<the stand-in bucket's key id> MEDIA_SECRET=<its secret> PLAYWRIGHT_MODULES=<node_modules with playwright-core> CAPTURE_BUILD=\"built from <commit>, before <release>\" node scripts/capture-screens.mjs   (no step names = the whole session in order, about an hour; with the three assistant steps left out, under ten minutes on a recent Mac)",
+  "captured": "2026-11-24, Galley 0.4.0, from bundles built from this repository, in Chromium 159.0.8154.6, following scripts/capture/README.md. Two sessions. One, built at ed3e13b and run without the three assistant steps, gave the pictures that show neither the assistant nor anything it changed (24 in screens/ and the recording, 11 in docs/, 38 in howto/). The other, built from the release commit and run whole with the assistant connected, gave the rest: every picture that shows the assistant or a change it made, the Media and Sites screens, the inbox, and the themes (17 in screens/, 10 in docs/, 22 in howto/). Assistant spend in that session: $0.48 as the app reports it (the brand read, $0.28, and three requests to the assistant). The media-in-a-bucket pictures (one in screens/, seven in howto/) are from a third session, on a fresh copy of Caddow with the stand-in bucket, from the same build.",
   "screens": [
     {
       "file": "public/screens/site-home.webp",
@@ -172,7 +174,7 @@
     {
       "file": "public/screens/editor-online-plan.webp",
       "step": "editor-online",
-      "shows": "Host the editor online, step 5 of 5, Check the plan, against the stand-in Fly.io: what will be created (app, addresses, disk, computer, three certificates) and What it costs (up to about $13 a month; it sleeps while nobody is using it). Nothing is created."
+      "shows": "Host the editor online, the plan, scrolled to What it costs, against the stand-in Fly.io: what will be created (app, addresses, disk, computer, three certificates) and What it costs (up to about $13 a month; it sleeps while nobody is using it). Nothing is created."
     },
     {
       "file": "public/screens/hosted-sign-in.webp",
@@ -202,12 +204,22 @@
     {
       "file": "public/screens/dark-editor.webp",
       "step": "dark",
-      "shows": "Galley 0.3.0 in the dark theme: the editor on Caddow's home page — the form, the page and the assistant's reply — with the theme switch at the foot of the sidebar."
+      "shows": "In the dark appearance: the editor on Caddow's home page — the form, the page and the assistant's reply — with the switch between light and dark at the foot of the sidebar."
     },
     {
       "file": "public/screens/dark-proof.webp",
       "step": "dark",
-      "shows": "Galley 0.3.0 in the dark theme: Proof › What changed for the home page, the old words struck through and the new ones marked."
+      "shows": "In the dark appearance: Proof › What changed for the home page, the old words struck through and the new ones marked."
+    },
+    {
+      "file": "public/screens/theme-plate.webp",
+      "step": "themes",
+      "shows": "Site home for Caddow in the Plate theme, the sidebar an inked plate, with the theme picker open at its foot: Quiet, Plate and Desk as swatches, Browse community themes, Make a theme…."
+    },
+    {
+      "file": "public/screens/media-bucket.webp",
+      "step": "media-bucket",
+      "shows": "Media for Caddow with a bucket connected (New files go to Cloudflare R2 (caddow-media) and are loaded from media.example.com), and an uploaded picture chosen: Kept in The bucket (Cloudflare R2), Used on The atelier, Delete for good."
     },
     {
       "file": "public/screens/wordpress-where.webp, wordpress-plan.webp, wordpress-progress.webp, wordpress-report.webp",
@@ -247,7 +259,7 @@
       "shows": "The docs pages' pictures, each at the exact size its page declares."
     },
     {
-      "file": "public/howto/<slug>-<n>.webp (53 pictures, 12 guides)",
+      "file": "public/howto/<slug>-<n>.webp (67 pictures, 14 guides)",
       "step": "the step named in each guide's comment in capture-screens.mjs",
       "shows": "The how-to steps; their words, labels and alt text are in src/data/howto.json, written by the same steps."
     },
@@ -262,8 +274,10 @@
     "search-ai first publishes a journal post that still links to /about-us/ (now redirected), so Search & AI has a certain fix to offer. Its first run of the checks usually finds the preview's pages still compiling, so it runs them twice.",
     "The import's part-way picture (wordpress-progress, move-from-wordpress-4): the stand-in site comes over in about a second and the screen asks how far it is every 450 ms, so the screen alone rarely shows it part-way. The step reads the import's state itself and, from the first answer with posts part-way, gives the screen that same answer until the picture is taken. What the picture shows is a real answer of that import, held.",
     "Inbox: the two visitors (Ines Marrow, Corin Vale) and the newsletter sign-up are invented, and posted to the capture address from another local address (http://localhost:8080), as a page served some other way would: from the app's own address the inbox marks a submission Test.",
-    "Where a docs page's declared frame is a little smaller than the window it shows (arrange, media-generate, publish-dialog, undo-publish-dialog, proof-what-changed), a slightly larger area of the same shape is cut and brought to the declared size. The docs' assistant reply is taken in a 746 px window so the assistant pane is as wide as the picture.",
+    "Where what a docs picture shows is not the size of the frame its page declares (arrange, media-generate, publish-dialog, undo-publish-dialog, proof-what-changed, and history and brand, whose columns are wider than their frames), an area of the same shape is cut and brought to the declared size. The docs' assistant reply is taken in a narrower window, narrowed until the conversation is as wide as the picture less a little room.",
     "The dev server's toolbar is hidden in every capture, including the recording, and so are the app's passing messages (docs/inbox and add-a-form-4 are taken after “Test submission received” is closed).",
-    "Agent files are not captures: the /ai-first/ page shows this site's own files, read at build time."
+    "Agent files are not captures: the /ai-first/ page shows this site's own files, read at build time.",
+    "Themes: the themes step makes a theme called Workroom from Quiet, exports it and brings the file into a second Galley; when it ends the first Galley is on Quiet and light again and Workroom is deleted. The grey pencil (#808080) in step 5 of the guide is typed to show the refusal, and is never saved.",
+    "Media in a bucket: nothing in those pictures is a real account. The bucket is the engine's stand-in on this computer; the account 0123456789abcdef0123456789abcdef, the key and https://media.example.com are made up. The capture's own Galley is started with scripts/capture/media-names.mjs, which sends its requests for those two names to the stand-in, so the screens read as they would with a real bucket. Galley itself is unchanged. The picture uploaded, spring-lookbook-cover.webp, is one of the starter's own photographs under another name. The move leaves the starter's files in the repository as well as copying them, because the starter's README and templates mention them, and the picture says so."
   ]
 }

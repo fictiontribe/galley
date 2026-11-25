@@ -22,7 +22,7 @@ sections:
         guide: /docs/editing/form/
         visual:
           src: form
-          alt: The editor on Caddow’s home page — the page’s form on the left with the Campaign hero section open and its Heading, “Coats for low sun.”, marked Edited beside a Put back button, and the page itself on the right, scrolled to a photograph of the workroom above the Journal heading, Marrowby notes.
+          alt: The editor on Caddow’s home page — the page’s form on the left with the Campaign hero section open and its Heading, “Coats for low sun.”, marked Edited beside a Put back button, and the page itself on the right, at its top, the campaign photograph under the heading Coats for low sun.
         inset:
           src: form
           x: -16
@@ -39,7 +39,7 @@ sections:
         visual:
           src: click
           y: -180
-          alt: The Caddow home page in the editor with Click to edit chosen — the heading over four knitwear photographs retyped in place to “Coats and knits to start with”, outlined in blue.
+          alt: The Caddow home page in the editor with Click to edit chosen — the heading over four photographs of pieces retyped in place to “Coats and knits to start with”, outlined in blue.
       - id: assistant
         layout: half
         heading: By asking
@@ -50,7 +50,7 @@ sections:
           src: assistant
           x: -700
           y: -90
-          alt: The assistant beside the Caddow home page — the request to change the campaign heading and its first button, the lines Read the home page and Edited the home page, the reply saying what changed, that the button still goes to the same lookbook and that the changes wait in Proof, a note about the italics, and the buttons Review in Proof and Undo this change.
+          alt: The assistant beside the Caddow home page — the request to change the campaign heading and its first button, the lines Read the home page and Edited the home page, the reply saying what it changed, and the buttons Review in Proof and Undo this change.
       - id: dark
         layout: wide
         whenPictured: true
@@ -59,7 +59,19 @@ sections:
         visual:
           src: dark-editor
           y: -380
-          alt: The editor in the dark theme on Caddow’s home page — the page’s form on the left with Campaign hero showing 2 edits, the page in the middle with the new heading Coats for low sun., and on the right the assistant’s reply saying what it changed, with Review in Proof and Undo this change; the theme switch sits at the foot of the sidebar.
+          alt: The editor in its dark appearance on Caddow’s home page — the page’s form on the left, the page in the middle with the new heading Coats for low sun., and on the right the assistant’s reply saying what it changed, with Review in Proof and Undo this change; the switch between light and dark sits at the foot of the sidebar.
+      - id: themes
+        layout: wide
+        whenPictured: true
+        heading: Themes
+        text: Quiet, Plate and Desk come with the app, each in light and dark, and you can make one of your own. Every theme is checked for readability before it is used.
+        status: themes
+        howto: choose-a-theme
+        guide: /docs/plugins/themes/
+        visual:
+          src: theme-plate
+          y: -355
+          alt: Site home for Caddow in the Plate theme — the sidebar an inked plate with light words — with the theme picker open at its foot, Quiet, Plate and Desk drawn as small swatches, then Browse community themes and Make a theme….
   - type: tour
     id: check
     label: Check and publish
@@ -163,6 +175,19 @@ sections:
           x: -290
           y: -60
           alt: Media for Caddow — the site’s photographs with their sizes, filters for images, videos and documents, and the buttons Upload, Generate a video and Generate an image.
+      - id: media-bucket
+        layout: wide
+        whenPictured: true
+        heading: Media in a bucket
+        text: New pictures, PDFs and videos can go to a Cloudflare R2 or Amazon S3 bucket of your own instead of the repository. Each file says which pages use it, and a file a page still uses is never deleted.
+        status: media-bucket
+        howto: media-in-a-bucket
+        guide: /docs/configuration/media-storage/
+        visual:
+          src: media-bucket
+          x: -700
+          y: -370
+          alt: Media for Caddow with a bucket connected — New files go to Cloudflare R2 (caddow-media) and are loaded from media.example.com — and spring-lookbook-cover.webp chosen, its details beside the photographs, Kept in The bucket (Cloudflare R2) and Used on The atelier, with Open full size and Delete for good.
       - id: redirects
         layout: flip
         heading: Redirects
@@ -200,7 +225,7 @@ sections:
           y: -178
           w: 470
           h: 232
-          alt: "The Voice part of the proposal — rules drawn from the site’s own words, each quoting the page it came from, with a line to avoid struck out and the site’s way written in: “Our coats are made in exclusive limited runs” becomes “Forty of each, cut by one cutter in a month.”"
+          alt: "The Voice part of the proposal — rules drawn from the site’s own words, each quoting the page it came from, with a line to avoid struck out and the site’s way written in beside it."
       - id: search
         layout: flip
         heading: Search and AI checks
@@ -251,14 +276,14 @@ sections:
           src: editor-online-plan
           x: -350
           y: -230
-          alt: Host the editor online, step 5 of 5, Check the plan — what would be created on Fly.io (the editor’s app, two addresses, a 3 GB disk, a computer with 2 GB of memory that sleeps while nobody uses it, three certificates for cms.caddow.example and its preview and live names), and What it costs, up to about $13 a month and usually much less, with each line and where the prices were read; then Back and Create the editor.
+          alt: Host the editor online, at its plan — what would be created on Fly.io (the editor’s app, two addresses, a 3 GB disk, a computer with 2 GB of memory that sleeps while nobody uses it, three certificates for cms.caddow.example and its preview and live names), and What it costs, up to about $13 a month and usually much less, with each line and where the prices were read; then Back and Create the editor.
         inset:
           src: editor-online
           x: -390
           y: -520
           w: 470
           h: 142
-          alt: The Online screen’s Editor online section — edit this site from any browser, not just this computer; the editor runs on your own account with a host, with its own password — and the button Host the editor online.
+          alt: The Online screen’s Editor online section — edit this site from any browser, not just this computer; the editor runs on your own account with a host, with its own sign-in — and the button Host the editor online.
       - id: hosted
         layout: wide
         heading: One editor per site, on your own server

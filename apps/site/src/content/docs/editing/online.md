@@ -12,7 +12,7 @@ What's live is what you've published: putting the site online builds the last pu
 ## Set it up
 
 1. Press **Put this site online** (on **Site home**, **Online**, or the status bar).
-2. **Where the site lives**: choose **Cloudflare** (recommended) or **Vercel**, then **Continue**.
+2. Choose where it lives: **Cloudflare** (recommended) or **Vercel**, then **Continue**.
 
 <figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/online-setup@1x.webp" srcset="/docs/online-setup@1x.webp 1x, /docs/online-setup.webp 2x" alt="Step 1 of 4 of Put this site online: Cloudflare, marked Recommended, and Vercel, each with a line about what it suits and a link to its prices, and the buttons Not now and Continue." width="680" height="347" loading="lazy" decoding="async"></figure>
 

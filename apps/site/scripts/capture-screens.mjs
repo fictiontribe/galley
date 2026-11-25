@@ -80,12 +80,18 @@ const ALL = [
   // the assistant), the journal (the assistant).
   "change-page", "click", "ask-journal", "ask",
   "showcase", "form", "proof", "source",
+  // The dark appearance, while those changes still wait in Proof (after publishing, Proof holds only the
+  // site's settings, and the form shows no edits).
+  "dark",
   // Then publishing (and the undo window), and going online on the stand-in host.
   "publish", "online",
   // The hosted editor: "Host the editor online" against the stand-in Fly.io, and a hosted install's first screens.
   "editor-online", "hosted",
-  // Dark theme (the local app).
-  "dark",
+  // Themes (the local app, and a second one to bring a theme into).
+  "themes",
+  // Media in a bucket, against the stand-in bucket. The last thing done to Caddow: it leaves the site with
+  // a bucket connected and its files moved there.
+  "media-bucket",
   // Accounts: a second hosted install, with Caddow, and its people (see scripts/capture/README.md).
   "people",
 ];
@@ -263,6 +269,8 @@ const GUIDES = [
   ["search-and-ai", "Check how search and AI see the site", "Find what search engines and AI assistants trip over, fix it, and choose which AI crawlers may visit.", "/docs/editing/search-and-ai/"],
   ["put-online", "Put the site online", "Give the site a real address on Cloudflare, then your own domain.", "/docs/editing/online/", "A Cloudflare account and an access key from it."],
   ["move-from-wordpress", "Bring a site over from WordPress", "Move a WordPress site's posts, pages and images into this site, checked before anything goes live.", "/docs/editing/wordpress/"],
+  ["media-in-a-bucket", "Keep media in a bucket", "Keep new pictures, PDFs and videos in a bucket of your own instead of the site's repository, and move the ones already there.", "/docs/configuration/media-storage/", "A Cloudflare R2 or Amazon S3 bucket with a public address, and a key for it."],
+  ["choose-a-theme", "Choose a theme, or make your own", "Change how the app looks, in light and dark, and take a theme of your own to another computer.", "/docs/plugins/themes/"],
 ];
 const guides = new Map(GUIDES.map(([slug, title, summary, guide, needs]) => [slug, { slug, title, summary, guide, ...(needs ? { needs } : {}), steps: [] }]));
 const touched = new Set();
@@ -386,7 +394,7 @@ async function clickToEditDoc(page) {
 
 /**
  * The docs' assistant reply: the journal conversation reopened from Chats in a narrower window with the
- * preview hidden, so the pane is about as wide as the docs picture (590 px).
+ * preview hidden, so the conversation is as wide as the docs picture (590 px) less a little room.
  */
 async function assistantReplyDoc(page) {
   await openEditor(page, { path: JOURNAL, form: false, assistant: true });
@@ -397,7 +405,13 @@ async function assistantReplyDoc(page) {
   await page.waitForTimeout(1000);
   await page.getByText(/journal page's heading/).first().click();
   await page.waitForTimeout(2500);
-  const c = await box(page, ".g-chat");
+  // The window is narrowed until the conversation is 570 px wide: the picture's 590, less 10 px of room each side.
+  let c = await box(page, ".g-chat");
+  if (Math.abs(c.width - 570) > 2) {
+    await page.setViewportSize({ width: Math.round(746 - (c.width - 570)), height: VIEW.height });
+    await page.waitForTimeout(800);
+    c = await box(page, ".g-chat");
+  }
   await shoot(page, "assistant-reply", { x: Math.round(c.x - 10), y: Math.round(c.y - 8), width: 590, height: 310 }, { dir: DOCS, max: 120_000, exact: true });
   await page.setViewportSize(VIEW);
   const showPreview = page.getByRole("button", { name: /^Show preview/i }).first();
@@ -737,7 +751,7 @@ async function run(step) {
     await howto(page, "bulk-redirects", 4, FULL, {
       alt: "The Redirects screen with 8 redirects listed by old address, new address and kind; /winter-sale/ → /sale/ marked with a warning sign. On the right, Where they take effect: Cloudflare, the file public/_redirects In step with the list, 7 of 2,000 exact addresses and 1 of 100 wildcards.",
       do: "Check the list. A warning sign marks a redirect that leads nowhere yet; **Health** lists it too.",
-      see: "The whole list is one change in Proof, with the host's own redirects file kept in step beside it.",
+      see: "The whole list waits in Proof, with the host's own redirects file kept in step beside it.",
     });
     await page.getByRole("textbox", { name: "An old address" }).fill("/about-us/");
     await page.getByRole("button", { name: "Try", exact: true }).click();
@@ -795,8 +809,8 @@ async function run(step) {
     await page.waitForTimeout(2000);
     // "Test submission received" would still be in the corner of both pictures.
     await dismissToasts(page);
-    await docShot(page, "inbox", 266, 78);
-    await howto(page, "add-a-form", 4, exact(266, 78, 1125, 750), {
+    await docShot(page, "inbox", 274, 78);
+    await howto(page, "add-a-form", 4, exact(274, 78, 1125, 750), {
       alt: "The Inbox: the forms on the left, one submission from Test visitor marked Test in the middle, and on the right every answer — name, email address, what it is about, message, phone number and consent — with Mark unread, Spam and Delete.",
       do: "Open **Inbox** (or **See submissions**), choose the form and press **Send a test submission**.",
       see: "It goes through the same checks as a visitor's and arrives at the top, marked Test. Choose it to read every answer.",
@@ -891,7 +905,7 @@ async function run(step) {
     await go(page, `/sites/${WP_SITE}`, 2500);
     const card = page.locator("main section, main div").filter({ has: page.locator("h2", { hasText: "Moving from WordPress?" }) }).last();
     await howto(page, "move-from-wordpress", 1, await focus(page, [card], { min: 700 }), {
-      alt: "Site home for Lowfield: under Moving from WordPress?, a line saying its posts, pages, images and SEO details come across as changes you check, and the button Bring your WordPress site.",
+      alt: "Site home: under Moving from WordPress?, a line saying its posts, pages, images and SEO details come across as changes you check, and the button Bring your WordPress site.",
       do: "On **Site home**, under **Moving from WordPress?**, press **Bring your WordPress site**.",
     });
     await page.getByRole("link", { name: "Bring your WordPress site" }).click();
@@ -1101,8 +1115,12 @@ async function run(step) {
     await go(page, `/sites/${SITE}`, 3000);
     await shoot(page, "site-home", FULL);
     await go(page, "/", 3000);
+    // A card's chips come from counts the app takes again once they are five minutes old, so they can be
+    // behind what was just sent to the inbox. Wait for the unread chip, for up to six minutes.
+    for (let i = 0; i < 36 && !(await page.getByText(/^\d+ unread$/).count()); i++) await go(page, "/", 10_000);
     await shoot(page, "sites", FULL);
-    await docShot(page, "sites", 270, 122);
+    // From the title's row (New group and Add sites sit level with it) to the second group's heading.
+    await docShot(page, "sites", 236, 70, 1200);
     await go(page, `/sites/${SITE}/media`, 3000);
     await shoot(page, "media", FULL);
     await mediaGenerateDoc(page);
@@ -1181,9 +1199,10 @@ async function run(step) {
     await dismissToasts(page);
     await go(page, `/sites/${SITE}/history`, 3000);
     await shoot(page, "history", FULL);
-    await docShot(page, "history", 346, 196);
-    await howto(page, "proof-and-publish", 4, exact(346, 196, 964, 600), {
-      alt: "Version history: the newest version, with the note written in the Publish window, marked Latest and Published here, by Tobiah Rusk a moment ago, with Put this site online and Undo this publish; the earlier versions below it.",
+    // The list is wider than the docs page's frame: the whole column is cut and brought to its size.
+    await docShot(page, "history", 266, 190, 1140);
+    await howto(page, "proof-and-publish", 4, exact(266, 190, 1140, 680), {
+      alt: "Version history: the newest version, with the note written in the Publish window, marked Latest and Published here, by Tobiah Rusk just now, with Put this site online and Undo this publish; the earlier versions below it.",
       do: "Every publish is a new version in **Version history**, with who published it and when. To take one back, press **Undo this publish** beside it.",
     });
     await page.getByRole("button", { name: "Undo this publish" }).first().click();
@@ -1293,6 +1312,231 @@ async function run(step) {
     await shoot(page, "editor-online-plan", FULL);
     await page.keyboard.press("Escape");
     await page.waitForTimeout(800);
+  }
+
+  if (step === "themes") {
+    // How-to: choose a theme, light and dark, make one of your own (the check refusing a pencil too close
+    // to grey), export it and bring it into another Galley (start.sh second, SECOND_TOKEN). Also the tour's
+    // picture of a theme. A context of its own. Whatever happens, the app ends as it began: Quiet,
+    // light, and the theme it made deleted from both.
+    const SECOND = process.env.SECOND_ORIGIN ?? "http://127.0.0.1:4802";
+    const SECOND_TOKEN = process.env.SECOND_TOKEN;
+    const PENCIL = "#0A7D8C";
+    const own = await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE, colorScheme: "light", acceptDownloads: true });
+    const view = await own.newPage();
+    const picker = () => view.getByRole("button", { name: /^Choose a theme/ });
+    const choices = () => view.getByRole("dialog", { name: "Theme" });
+    // A press or a key leaves a focus ring or a tooltip behind; neither belongs in a picture.
+    const rest = async () => { await view.evaluate(() => document.activeElement?.blur()); await view.mouse.move(VIEW.width - 2, VIEW.height - 40); await view.waitForTimeout(700); };
+    const choose = async (name, keepOpen = false) => {
+      if (!(await choices().count())) await picker().click();
+      await choices().getByRole("button", { name, exact: true }).click();
+      await view.waitForTimeout(1500);
+      if (keepOpen && !(await choices().count())) await picker().click();
+      if (!keepOpen && (await choices().count())) await view.keyboard.press("Escape");
+      await view.waitForTimeout(600);
+    };
+    try {
+      await view.goto(`${ORIGIN}/?token=${TOKEN}`, { waitUntil: "networkidle" });
+      await view.goto(`${ORIGIN}/sites/${SITE}`, { waitUntil: "networkidle" });
+      await view.waitForTimeout(2500);
+      await choose("Plate", true);
+      await howto(view, "choose-a-theme", 1, FULL, {
+        alt: "Site home for Caddow in the Plate theme, the sidebar an inked plate with light words, and the theme picker open at its foot: Quiet, Plate (chosen) and Desk drawn as small swatches, Browse community themes (1), the line Light or dark is the switch beside this one, and Make a theme….",
+        do: "Press the small swatch at the foot of the sidebar and choose a theme — **Plate** here.",
+        see: "The whole app changes at once. A theme changes this app only, never a site.",
+      });
+      await shoot(view, "theme-plate", FULL);
+      await view.keyboard.press("Escape");
+      await rest();
+      await view.getByRole("button", { name: "Switch to dark appearance" }).first().click();
+      await view.waitForTimeout(2000);
+      await rest();
+      await howto(view, "choose-a-theme", 2, FULL, {
+        alt: "The same screen in Plate's dark appearance: dark paper with light words, and the sidebar darker still.",
+        do: "Press the moon beside the swatch for dark; the sun brings light back.",
+        see: "Every theme has both. Light or dark stays as you set it, whichever theme you choose.",
+      });
+      await view.getByRole("button", { name: "Switch to light appearance" }).first().click();
+      await view.waitForTimeout(1000);
+      await choose("Quiet");
+
+      await view.goto(`${ORIGIN}/settings/themes`, { waitUntil: "networkidle" });
+      await view.waitForTimeout(1500);
+      await howto(view, "choose-a-theme", 3, FULL, {
+        alt: "App settings › Themes: Every theme lists Quiet (in use), Plate, Desk and Harbour, each drawn as a swatch, with Use, Make a theme from this one and Export beside it; Import… at the top right.",
+        do: "To make your own, open **App settings** › **Themes** and press **Make a theme from this one** beside the theme to start from — **Quiet** here.",
+        see: "**Make a theme…** in the picker starts one from the theme you are using.",
+      });
+      await view.getByRole("button", { name: "Make a theme from Quiet" }).click();
+      await view.waitForTimeout(1200);
+      await view.getByLabel("Name", { exact: true }).fill("Workroom");
+      const pencil = view.getByLabel("Pencil, as a color value", { exact: true });
+      const set = async (color) => { await pencil.fill(color); await pencil.blur(); await view.waitForTimeout(1800); };
+      await set(PENCIL);
+      await view.evaluate(() => document.querySelector("main")?.scrollTo?.(0, 0));
+      await view.getByRole("heading", { name: "Themes", exact: true }).first().scrollIntoViewIfNeeded();
+      await view.waitForTimeout(600);
+      await howto(view, "choose-a-theme", 4, FULL, {
+        alt: "A new theme, made from Quiet and named Workroom: under Colors, Paper, Ink, Pencil, Plate and Table, each with a swatch and its value, the Pencil set to #0A7D8C; on the right a sample of the app in the theme, its Publish button now in that color, with Undo last change and Save.",
+        do: "Give it a **Name**, then change a color: pick one, or type its value. Here the **Pencil**, the color of the one action and of where you are.",
+        see: "The whole app shows your changes as you make them, in this browser only, until you save.",
+      });
+      await set("#808080");
+      await view.getByText("Technical details", { exact: true }).scrollIntoViewIfNeeded();
+      await view.waitForTimeout(800);
+      await howto(view, "choose-a-theme", 5, FULL, {
+        alt: "The foot of the theme editor, at Readability: This theme can’t be used yet, then Your pencil color (#808080) is too close to grey, said for light and for dark, and a note that it is close to the warning color; on the right, Fix what the report says before saving, with Save greyed out.",
+        do: "Scroll down to **Readability** and read it before you save.",
+        see: "A color that can’t work is refused in plain words — here a pencil too close to grey — and **Save** waits until it is fixed. A smaller fault is put right for you, and the report says what was changed.",
+      });
+      await set(PENCIL);
+      await view.getByRole("button", { name: "Save", exact: true }).click();
+      await view.waitForTimeout(2000);
+      await dismissToasts(view);
+      await view.getByRole("button", { name: "Done", exact: true }).click();
+      await view.waitForTimeout(1200);
+      const file = join(WORK, "workroom.json");
+      const [download] = await Promise.all([view.waitForEvent("download"), view.getByRole("button", { name: "Export Workroom" }).click()]);
+      await download.saveAs(file);
+      await view.waitForTimeout(800);
+      await dismissToasts(view);
+      await howto(view, "choose-a-theme", 6, FULL, {
+        alt: "Themes after saving: Workroom in the list of every theme, marked In use, with Edit, Duplicate, Export and Delete…; the app's own buttons and marks are now in its color.",
+        do: "Press **Save**, then **Done**. To take the theme somewhere else, press **Export** beside it.",
+        see: "The theme is in use straight away, and kept with this app’s settings, never in a site. **Export** saves it as a small file, here workroom.json.",
+      });
+
+      if (!SECOND_TOKEN) console.log("  (no SECOND_TOKEN: the picture of the theme brought into another Galley is not taken)");
+      else {
+        const there = await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE, colorScheme: "light" });
+        const other = await there.newPage();
+        await other.goto(`${SECOND}/?token=${SECOND_TOKEN}`, { waitUntil: "networkidle" });
+        await other.goto(`${SECOND}/settings/themes`, { waitUntil: "networkidle" });
+        await other.waitForTimeout(1500);
+        await other.locator('input[type="file"]').first().setInputFiles(file);
+        await other.waitForTimeout(2000);
+        await howto(other, "choose-a-theme", 7, FULL, {
+          alt: "Another Galley's Themes screen after Import…: A new theme, From workroom.json. Check it, then save it., with the name Workroom, its colors, the sample beside them and Save.",
+          do: "In the other Galley, open **App settings** › **Themes**, press **Import…** and choose the file. Check it, then press **Save**.",
+          see: "The same check runs there before anything is added.",
+        });
+        await there.close();
+      }
+    } finally {
+      // As it began, here and there.
+      await api("/api/themes/workroom", { method: "DELETE" }).catch(() => {});
+      await api("/api/settings", { method: "PATCH", body: JSON.stringify({ appearance: { theme: "light", look: "quiet" } }) }).catch(() => {});
+      await own.close();
+    }
+  }
+
+  if (step === "media-bucket") {
+    // How-to: connect a bucket, upload to it, see where a picture is used, a refused delete, and the move
+    // of the repository's files. Also the tour's picture. Against the stand-in bucket (start.sh media,
+    // run before start.sh galley); MEDIA_KEY_ID and MEDIA_SECRET are the key it prints. A context of its own.
+    const KEY_ID = process.env.MEDIA_KEY_ID, SECRET = process.env.MEDIA_SECRET;
+    if (!KEY_ID || !SECRET) { console.log("  (no MEDIA_KEY_ID and MEDIA_SECRET: the media-in-a-bucket pictures are not taken)"); return; }
+    const ACCOUNT = "0123456789abcdef0123456789abcdef", BUCKET = "caddow-media", ADDRESS = "https://media.example.com";
+    const PUBLIC = process.env.MEDIA_PUBLIC ?? `http://127.0.0.1:4806/${BUCKET}`;
+    const NAME = "spring-lookbook-cover.webp";
+    // One of the site's own photographs under a new name, as the file to upload.
+    const file = join(WORK, NAME);
+    writeFileSync(file, readFileSync(join(SITE_DIR, "public/images/atelier/hands.webp")));
+    const own = await browser.newContext({ viewport: VIEW, deviceScaleFactor: SCALE, colorScheme: "light" });
+    // The browser reaches the made-up address as Galley does: from the stand-in.
+    await own.route(`${ADDRESS}/**`, async (route) => route.fulfill({ response: await route.fetch({ url: route.request().url().replace(ADDRESS, PUBLIC) }) }));
+    const view = await own.newPage();
+    const window = () => view.locator("dialog[open]").last();
+    const toast = async (words) => { await until(view, `“${words}”`, async () => (await view.getByText(words).count()) > 0, 60_000); await view.waitForTimeout(600); };
+    try {
+      await view.goto(`${ORIGIN}/?token=${TOKEN}`, { waitUntil: "networkidle" });
+      await view.goto(`${ORIGIN}/sites/${SITE}/media`, { waitUntil: "networkidle" });
+      await view.waitForTimeout(2500);
+      await view.getByRole("button", { name: "Keep media outside the repository" }).click();
+      await view.waitForTimeout(1000);
+      await view.getByRole("radio", { name: /^Cloudflare R2/ }).check();
+      await view.waitForTimeout(1200);
+      await howto(view, "media-in-a-bucket", 1, FULL, {
+        alt: "The Keep media in a bucket window over the Media screen: Which kind of bucket, with Cloudflare R2 (Recommended) chosen above Amazon S3, Another S3-compatible store and Cloudflare Images, and under them the first of R2's steps, Make the bucket.",
+        do: "Open **Media** and press **Keep media outside the repository**. Choose the kind of bucket — **Cloudflare R2** here.",
+        see: "The window lists what to do at the provider: make the bucket, give it a public address, make a key.",
+      });
+      for (const [label, value] of [[/Account ID/, ACCOUNT], [/^Bucket name/, BUCKET], [/^Public address/, ADDRESS], [/Access Key ID/, KEY_ID], [/Secret Access Key/, SECRET]]) await window().getByLabel(label).first().fill(value);
+      await view.evaluate(() => document.activeElement?.blur());
+      await window().getByLabel(/Secret Access Key/).first().evaluate((e) => e.scrollIntoView({ block: "end" }));
+      await view.waitForTimeout(800);
+      await howto(view, "media-in-a-bucket", 2, FULL, {
+        alt: "The same window further down, filled in: the Account ID, the Bucket name caddow-media, the Public address https://media.example.com, an Access Key ID and a Secret Access Key shown as dots, above Check and connect.",
+        do: "Fill in the **Account ID**, the **Bucket name**, its **Public address** and the key you made, then press **Check and connect**.",
+        see: "Galley checks for real before it saves: it puts a small test picture in the bucket, reads it back, loads it from the public address and removes it. When a step fails, it says what to change.",
+      });
+      await window().getByRole("button", { name: "Check and connect" }).click();
+      await until(view, "the bucket connected", async () => (await view.getByText("New files go to the bucket.").count()) > 0, 120_000);
+      await view.waitForTimeout(800);
+      await window().getByRole("button", { name: "Done" }).click();
+      await view.waitForTimeout(1000);
+
+      const [chooser] = await Promise.all([view.waitForEvent("filechooser"), view.getByRole("button", { name: "Upload" }).click()]);
+      await chooser.setFiles(file);
+      await toast(`${NAME} is in the bucket.`);
+      await howto(view, "media-in-a-bucket", 3, FULL, {
+        alt: "Media with a bucket connected: New files go to Cloudflare R2 (caddow-media) and are loaded from media.example.com, with Storage settings; spring-lookbook-cover.webp first among the photographs, marked New, and the message that it is in the bucket.",
+        do: "Press **Upload**, or drop a file anywhere on the screen.",
+        see: "The file goes to the bucket, not the repository, and the message says so. A page that uses it stores its full address.",
+      });
+      await dismissToasts(view);
+
+      // The picture is used on a page: the third picture of the atelier's gallery.
+      const ATELIER_PATH = `/api/sites/${SITE}/entry?path=${encodeURIComponent(ATELIER)}`;
+      const sections = (await api(ATELIER_PATH)).data.sections;
+      const gallery = sections.findIndex((section) => section.type === "gallery");
+      await api(ATELIER_PATH, { method: "PATCH", body: JSON.stringify({ ops: [{ op: "set", path: ["sections", gallery, "items", 2, "image"], value: `${ADDRESS}/${NAME}` }] }) });
+      await view.reload({ waitUntil: "networkidle" });
+      await view.waitForTimeout(2500);
+      await view.getByRole("option", { name: new RegExp(NAME.replace(".", "\\.")) }).first().click();
+      await until(view, "where the picture is used", async () => (await view.getByText("Used on").count()) > 0 && (await view.getByText("The atelier").count()) > 0, 60_000);
+      await view.waitForTimeout(1200);
+      await howto(view, "media-in-a-bucket", 4, FULL, {
+        alt: "Media with spring-lookbook-cover.webp chosen: beside the photographs, its details — its size, Kept in The bucket (Cloudflare R2), Status, and Used on The atelier — with Open full size and Delete for good.",
+        do: "Use the picture on a page as you would any other, then choose it in **Media**.",
+        see: "**Kept in** says where the file is. **Used on** lists every page that uses it, published or not.",
+      });
+      await shoot(view, "media-bucket", FULL);
+      await view.getByRole("button", { name: "Delete for good" }).click();
+      await view.waitForTimeout(1000);
+      await window().getByRole("button", { name: "Delete file" }).click();
+      await toast(`${NAME} wasn’t deleted`);
+      await howto(view, "media-in-a-bucket", 5, FULL, {
+        alt: "The same screen after trying to delete the picture: the message spring-lookbook-cover.webp wasn’t deleted — a page still uses it, src/content/pages/atelier.md; take it out of that page and publish first.",
+        do: "To take a file out of the bucket, press **Delete for good**, then **Delete file**.",
+        see: "A file a page still uses is not deleted, and the message names the page. Take it out of the page and publish first.",
+      });
+      await dismissToasts(view);
+
+      await view.getByRole("button", { name: "Storage settings" }).click();
+      await view.waitForTimeout(1000);
+      await view.getByRole("button", { name: /^Move the repository’s files to the bucket/ }).click();
+      await until(view, "the move's plan", async () => (await view.getByText("Move the files to the bucket?").count()) > 0, 60_000);
+      await view.waitForTimeout(1500);
+      await howto(view, "media-in-a-bucket", 6, FULL, {
+        alt: "The Move the files to the bucket? window over Storage settings: how many files will be copied to the bucket, how many places in how many pages will point at their full addresses, which files stay in the repository and why, the choice Keep the repository’s copies too, and the buttons Not now and Move them.",
+        do: "To move the files already in the repository, open **Storage settings** and press **Move the repository’s files to the bucket…**. Read the plan, then press **Move them**.",
+        see: "The plan says how many files are copied and how many places on how many pages will point at their new addresses.",
+      });
+      await window().getByRole("button", { name: "Move them" }).click();
+      await until(view, "the end of the move", async () => (await view.getByText("The files were moved to the bucket").count()) > 0, 300_000);
+      const done = view.locator("dialog[open]").getByRole("button", { name: "Done" });
+      if (await done.count()) await done.first().click();
+      await view.waitForTimeout(2500);
+      await howto(view, "media-in-a-bucket", 7, FULL, {
+        alt: "Media after the move: The files were moved to the bucket, just now, with how many files were copied and how many pages updated, which files stayed in the repository because the site's code or templates still mention them, a list of the files that stayed, and Review in Proof.",
+        do: "When it has finished, press **Review in Proof**.",
+        see: "The pages point at the bucket now, as changes waiting in Proof: publish to make it live. Files the site's code or templates still mention stay in the repository, and the message lists them.",
+      });
+    } finally {
+      await own.close();
+    }
   }
 
   if (step === "dark") {
@@ -1413,10 +1657,10 @@ async function run(step) {
       await until(page, "the brand proposal", async () => Boolean((await api(`/api/sites/${SITE}/brand`)).proposal), 600_000);
     }
     await go(page, `/sites/${SITE}/brand`, 3500);
-    await docShot(page, "brand", 272, 190);
+    await docShot(page, "brand", 266, 160, 1140);
     await shoot(page, "brand-proposal", FULL);
-    await howto(page, "set-up-brand", 2, exact(260, 370, 1140, 505), {
-      alt: "The proposal read from Caddow: Worth a look notes (11 greys in use, three nearly the same; body text contrast on the home page; no logo found), and the first colours — Lime-wash, Chalk white, Plaster and Ink — each with its role, value, where it was found and Measured or Declared.",
+    await howto(page, "set-up-brand", 2, exact(266, 315, 1140, 540), {
+      alt: "The proposal read from Caddow: Worth a look notes (greys that are nearly the same, body text contrast on the home page, the logo), and the first colours — Lime-wash, Chalk white, Plaster and Ink — each with its role, value, where it was found and Measured or Declared.",
       do: "Check the proposal. Each colour, font and size says where it came from and whether it was **Measured** on the pages or **Declared** in the styles; **Worth a look** lists anything odd. Click any name, value or colour to change it.",
     });
     const toHeading = async (h) => {
@@ -1428,7 +1672,7 @@ async function run(step) {
     await toHeading("Voice");
     await shoot(page, "brand-voice", FULL);
     await howto(page, "set-up-brand", 3, exact(260, 104, 1140, 712), {
-      alt: "The Voice part of the proposal: the words plain, concrete, unhurried, quietly confident and honest, then numbered rules such as “Use real numbers and specifics instead of claims about quality.”, each with a line quoted from the site and a struck-through example of what not to write beside the better one.",
+      alt: "The Voice part of the proposal: a few words for the voice, then numbered rules, each with a line quoted from the site, and most with a struck-through example of what not to write beside the better one.",
       do: "Read the **Voice**: written by the assistant from the site's own words, with real lines from the pages as examples.",
     });
     await toHeading("Material");
@@ -1440,7 +1684,7 @@ async function run(step) {
     await page.waitForTimeout(5000);
     await toHeading("Material");
     await shoot(page, "brand-material", FULL);
-    await howto(page, "set-up-brand", 4, exact(268, 175, 1120, 700), {
+    await howto(page, "set-up-brand", 4, exact(274, 175, 1126, 700), {
       alt: "The Material part of the brand: caddow-brand-notes.pdf (2 pages, the fonts and colours inside it), caddow-wordmark.png (its colours by area) and window-notes.md (a note to read with the rest), each saying it goes into the site (galley/brand/sources/) when you save, with its note in quotes and Leave out and Remove; below, the drop area and Choose files….",
       do: "Under **Material**, drop brand guidelines, logos, screenshots or notes — or press **Choose files…** — add a note to each, and press **Add 3 files**.",
       see: "Each file says what it can be read for. **Read them** (at the top) has the assistant read them for the look and the voice.",
@@ -1608,11 +1852,16 @@ async function run(step) {
     // on the home page's campaign hero. Also the showcase "assistant". Left waiting in Proof.
     await askAssistant(page, HOME_PAGE, ASK, {
       form: false,
-      before: () => howto(page, "ask-the-assistant", 1, FULL, {
-        alt: "The editor on the Caddow home page with the assistant pane on the right: under Looking at /, the request “Change the campaign heading to “Coats for low sun.” and its first button to “See the eight looks”.” typed into the box, with Content chosen.",
-        do: "Open the page in the editor. In the assistant pane on the right, type what you want in **Ask for a change…** and press **Enter**.",
-        see: "**Looking at** shows the page you're on, so “this page” means it.",
-      }),
+      before: async () => {
+        // The page may be where an earlier step left it; the request is about the heading at its top.
+        await previewFrame(page)?.evaluate(() => scrollTo(0, 0)).catch(() => {});
+        await page.waitForTimeout(1200);
+        await howto(page, "ask-the-assistant", 1, FULL, {
+          alt: "The editor on the Caddow home page with the assistant pane on the right: under Looking at /, the request “Change the campaign heading to “Coats for low sun.” and its first button to “See the eight looks”.” typed into the box, with Content chosen.",
+          do: "Open the page in the editor. In the assistant pane on the right, type what you want in **Ask for a change…** and press **Enter**.",
+          see: "**Looking at** shows the page you're on, so “this page” means it.",
+        });
+      },
     });
     await chatShot(page);
     await page.getByRole("button", { name: "Review in Proof" }).last().click();

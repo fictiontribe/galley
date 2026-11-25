@@ -15,7 +15,7 @@ For people who look after a site. The brand is the site's colours, fonts and siz
 
 <figure class="frame" style="padding: clamp(12px, 3vw, 28px); margin-block: 0 1.15em"><img src="/docs/brand@1x.webp" srcset="/docs/brand@1x.webp 1x, /docs/brand.webp 2x" alt="The brand proposal for Caddow: Nothing is saved yet with a Save the brand button, Worth a look notes about greys and text contrast, and the first colour swatches — Background, Surface, Muted surface and Text — each marked Measured or Declared with where it was found." width="1114" height="685" loading="lazy" decoding="async"></figure>
 
-Each item says where it came from (*tokens.css:48 and measured on /*) and how sure the app is: **Measured** (seen in use), **Declared** (written down in the styles or your material) or **Inferred** (worked out — check it). **Worth a look** lists anything odd, such as near-identical greys or text that is hard to read.
+Each item says where it came from (*tokens.css:48 and measured on the home page*) and how sure the app is: **Measured** (seen in use), **Declared** (written down in the styles or your material) or **Inferred** (worked out — check it). **Worth a look** lists anything odd, such as near-identical greys or text that is hard to read.
 
 ## Or set it up from your material
 

@@ -1,6 +1,6 @@
 {
   "about": "How-to sequences captured from the running app. Written by scripts/capture-screens.mjs; the wording of do/see may be polished by hand, the facts may not.",
-  "captured": "2026-11-24, Galley 0.3.1 (built from ed3e13b, before 0.4.0). ask-the-assistant, set-up-brand, proof-and-publish and step 2 of add-analytics are still the Galley 0.2.0 pictures: they wait for a session with the assistant connected.",
+  "captured": "2026-11-24, Galley 0.4.0 (built from the repository at the release commit). ask-the-assistant, set-up-brand, proof-and-publish, choose-a-theme, step 2 of add-analytics and step 4 of add-a-form are from a session with the assistant connected; the rest from an earlier one without, built at ed3e13b. media-in-a-bucket is from a session of its own, on a fresh copy of Caddow with the stand-in bucket.",
   "guides": [
     {
       "slug": "change-a-page",
@@ -114,7 +114,7 @@
         },
         {
           "image": "howto/proof-and-publish-4",
-          "alt": "Version history: the newest version, with the note written in the Publish window, marked Latest and Published here, by Tobiah Rusk a moment ago, with Put this site online and Undo this publish; the earlier versions below it.",
+          "alt": "Version history: the newest version, with the note written in the Publish window, marked Latest and Published here, by Tobiah Rusk just now, with Put this site online and Undo this publish; the earlier versions below it.",
           "do": "Every publish is a new version in **Version history**, with who published it and when. To take one back, press **Undo this publish** beside it."
         },
         {
@@ -230,12 +230,12 @@
         },
         {
           "image": "howto/set-up-brand-2",
-          "alt": "The proposal read from Caddow: Worth a look notes (11 greys in use, three nearly the same; body text contrast on the home page; no logo found), and the first colours — Lime-wash, Chalk white, Plaster and Ink — each with its role, value, where it was found and Measured or Declared.",
+          "alt": "The proposal read from Caddow: Worth a look notes (greys that are nearly the same, body text contrast on the home page, the logo), and the first colours — Lime-wash, Chalk white, Plaster and Ink — each with its role, value, where it was found and Measured or Declared.",
           "do": "Check the proposal. Each colour, font and size says where it came from and whether it was **Measured** on the pages or **Declared** in the styles; **Worth a look** lists anything odd. Click any name, value or colour to change it."
         },
         {
           "image": "howto/set-up-brand-3",
-          "alt": "The Voice part of the proposal: the words plain, concrete, unhurried, quietly confident and honest, then numbered rules such as “Use real numbers and specifics instead of claims about quality.”, each with a line quoted from the site and a struck-through example of what not to write beside the better one.",
+          "alt": "The Voice part of the proposal: a few words for the voice, then numbered rules, each with a line quoted from the site, and most with a struck-through example of what not to write beside the better one.",
           "do": "Read the **Voice**: written by the assistant from the site's own words, with real lines from the pages as examples."
         },
         {
@@ -278,7 +278,7 @@
           "image": "howto/bulk-redirects-4",
           "alt": "The Redirects screen with 8 redirects listed by old address, new address and kind; /winter-sale/ → /sale/ marked with a warning sign. On the right, Where they take effect: Cloudflare, the file public/_redirects In step with the list, 7 of 2,000 exact addresses and 1 of 100 wildcards.",
           "do": "Check the list. A warning sign marks a redirect that leads nowhere yet; **Health** lists it too.",
-          "see": "The whole list is one change in Proof, with the host's own redirects file kept in step beside it."
+          "see": "The whole list waits in Proof, with the host's own redirects file kept in step beside it."
         },
         {
           "image": "howto/bulk-redirects-5",
@@ -319,8 +319,8 @@
         {
           "image": "howto/search-and-ai-5",
           "alt": "The AI crawlers panel after the change: Blocks AI training (GPTBot), kept in src/data/visibility.json; OpenAI's training crawler is blocked, the rest allowed. Proof in the top bar shows 2.",
-          "do": "Check the panel's summary, then open **Proof** and **Publish**.",
-          "see": "The choice waits in Proof with the fix; the site writes it into robots.txt when you publish."
+          "see": "The choice waits in Proof with the fix; the site writes it into robots.txt when you publish.",
+          "do": "Check the panel's summary, then open **Proof** and **Publish**."
         }
       ]
     },
@@ -370,7 +370,7 @@
       "steps": [
         {
           "image": "howto/move-from-wordpress-1",
-          "alt": "Site home for Lowfield: under Moving from WordPress?, a line saying its posts, pages, images and SEO details come across as changes you check, and the button Bring your WordPress site.",
+          "alt": "Site home: under Moving from WordPress?, a line saying its posts, pages, images and SEO details come across as changes you check, and the button Bring your WordPress site.",
           "do": "On **Site home**, under **Moving from WordPress?**, press **Bring your WordPress site**."
         },
         {
@@ -394,6 +394,107 @@
           "alt": "Step 4, Your WordPress site is here: five next steps — Review it in Proof (Open Proof), Rebuild the page-builder pages (Rebuild all…), Set the redirects (Review redirects), Put the site online, Switch the domain — and What arrived: 12 posts, 5 pages, 18 images.",
           "do": "Read the report, then work down its list: **Open Proof** to review everything, **Rebuild all…** for page-builder pages, **Review redirects** so old links keep working.",
           "see": "Nothing is live until you publish; keep WordPress running until the new site looks right online."
+        }
+      ]
+    },
+    {
+      "slug": "media-in-a-bucket",
+      "title": "Keep media in a bucket",
+      "summary": "Keep new pictures, PDFs and videos in a bucket of your own instead of the site's repository, and move the ones already there.",
+      "guide": "/docs/configuration/media-storage/",
+      "needs": "A Cloudflare R2 or Amazon S3 bucket with a public address, and a key for it.",
+      "steps": [
+        {
+          "image": "howto/media-in-a-bucket-1",
+          "alt": "The Keep media in a bucket window over the Media screen: Which kind of bucket, with Cloudflare R2 (Recommended) chosen above Amazon S3, Another S3-compatible store and Cloudflare Images, and under them the first of R2's steps, Make the bucket.",
+          "do": "Open **Media** and press **Keep media outside the repository**. Choose the kind of bucket — **Cloudflare R2** here.",
+          "see": "The window lists what to do at the provider: make the bucket, give it a public address, make a key."
+        },
+        {
+          "image": "howto/media-in-a-bucket-2",
+          "alt": "The same window further down, filled in: the Account ID, the Bucket name caddow-media, the Public address https://media.example.com, an Access Key ID and a Secret Access Key shown as dots, above Check and connect.",
+          "do": "Fill in the **Account ID**, the **Bucket name**, its **Public address** and the key you made, then press **Check and connect**.",
+          "see": "Galley checks for real before it saves: it puts a small test picture in the bucket, reads it back, loads it from the public address and removes it. When a step fails, it says what to change."
+        },
+        {
+          "image": "howto/media-in-a-bucket-3",
+          "alt": "Media with a bucket connected: New files go to Cloudflare R2 (caddow-media) and are loaded from media.example.com, with Storage settings; spring-lookbook-cover.webp first among the photographs, marked New, and the message that it is in the bucket.",
+          "do": "Press **Upload**, or drop a file anywhere on the screen.",
+          "see": "The file goes to the bucket, not the repository, and the message says so. A page that uses it stores its full address."
+        },
+        {
+          "image": "howto/media-in-a-bucket-4",
+          "alt": "Media with spring-lookbook-cover.webp chosen: beside the photographs, its details — its size, Kept in The bucket (Cloudflare R2), Status, and Used on The atelier — with Open full size and Delete for good.",
+          "do": "Use the picture on a page as you would any other, then choose it in **Media**.",
+          "see": "**Kept in** says where the file is. **Used on** lists every page that uses it, published or not."
+        },
+        {
+          "image": "howto/media-in-a-bucket-5",
+          "alt": "The same screen after trying to delete the picture: the message spring-lookbook-cover.webp wasn’t deleted — a page still uses it, src/content/pages/atelier.md; take it out of that page and publish first.",
+          "do": "To take a file out of the bucket, press **Delete for good**, then **Delete file**.",
+          "see": "A file a page still uses is not deleted, and the message names the page. Take it out of the page and publish first."
+        },
+        {
+          "image": "howto/media-in-a-bucket-6",
+          "alt": "The Move the files to the bucket? window over Storage settings: how many files will be copied to the bucket, how many places in how many pages will point at their full addresses, which files stay in the repository and why, the choice Keep the repository’s copies too, and the buttons Not now and Move them.",
+          "do": "To move the files already in the repository, open **Storage settings** and press **Move the repository’s files to the bucket…**. Read the plan, then press **Move them**.",
+          "see": "The plan says how many files are copied and how many places on how many pages will point at their new addresses."
+        },
+        {
+          "image": "howto/media-in-a-bucket-7",
+          "alt": "Media after the move: The files were moved to the bucket, just now, with how many files were copied and how many pages updated, which files stayed in the repository because the site's code or templates still mention them, a list of the files that stayed, and Review in Proof.",
+          "do": "When it has finished, press **Review in Proof**.",
+          "see": "The pages point at the bucket now, as changes waiting in Proof: publish to make it live. Files the site's code or templates still mention stay in the repository, and the message lists them."
+        }
+      ]
+    },
+    {
+      "slug": "choose-a-theme",
+      "title": "Choose a theme, or make your own",
+      "summary": "Change how the app looks, in light and dark, and take a theme of your own to another computer.",
+      "guide": "/docs/plugins/themes/",
+      "steps": [
+        {
+          "image": "howto/choose-a-theme-1",
+          "alt": "Site home for Caddow in the Plate theme, the sidebar an inked plate with light words, and the theme picker open at its foot: Quiet, Plate (chosen) and Desk drawn as small swatches, Browse community themes (1), the line Light or dark is the switch beside this one, and Make a theme….",
+          "do": "Press the small swatch at the foot of the sidebar and choose a theme — **Plate** here.",
+          "see": "The whole app changes at once. A theme changes this app only, never a site."
+        },
+        {
+          "image": "howto/choose-a-theme-2",
+          "alt": "The same screen in Plate's dark appearance: dark paper with light words, and the sidebar darker still.",
+          "do": "Press the moon beside the swatch for dark; the sun brings light back.",
+          "see": "Every theme has both. Light or dark stays as you set it, whichever theme you choose."
+        },
+        {
+          "image": "howto/choose-a-theme-3",
+          "alt": "App settings › Themes: Every theme lists Quiet (in use), Plate, Desk and Harbour, each drawn as a swatch, with Use, Make a theme from this one and Export beside it; Import… at the top right.",
+          "do": "To make your own, open **App settings** › **Themes** and press **Make a theme from this one** beside the theme to start from — **Quiet** here.",
+          "see": "**Make a theme…** in the picker starts one from the theme you are using."
+        },
+        {
+          "image": "howto/choose-a-theme-4",
+          "alt": "A new theme, made from Quiet and named Workroom: under Colors, Paper, Ink, Pencil, Plate and Table, each with a swatch and its value, the Pencil set to #0A7D8C; on the right a sample of the app in the theme, its Publish button now in that color, with Undo last change and Save.",
+          "do": "Give it a **Name**, then change a color: pick one, or type its value. Here the **Pencil**, the color of the one action and of where you are.",
+          "see": "The whole app shows your changes as you make them, in this browser only, until you save."
+        },
+        {
+          "image": "howto/choose-a-theme-5",
+          "alt": "The foot of the theme editor, at Readability: This theme can’t be used yet, then Your pencil color (#808080) is too close to grey, said for light and for dark, and a note that it is close to the warning color; on the right, Fix what the report says before saving, with Save greyed out.",
+          "do": "Scroll down to **Readability** and read it before you save.",
+          "see": "A color that can’t work is refused in plain words — here a pencil too close to grey — and **Save** waits until it is fixed. A smaller fault is put right for you, and the report says what was changed."
+        },
+        {
+          "image": "howto/choose-a-theme-6",
+          "alt": "Themes after saving: Workroom in the list of every theme, marked In use, with Edit, Duplicate, Export and Delete…; the app's own buttons and marks are now in its color.",
+          "do": "Press **Save**, then **Done**. To take the theme somewhere else, press **Export** beside it.",
+          "see": "The theme is in use straight away, and kept with this app’s settings, never in a site. **Export** saves it as a small file, here workroom.json."
+        },
+        {
+          "image": "howto/choose-a-theme-7",
+          "alt": "Another Galley's Themes screen after Import…: A new theme, From workroom.json. Check it, then save it., with the name Workroom, its colors, the sample beside them and Save.",
+          "do": "In the other Galley, open **App settings** › **Themes**, press **Import…** and choose the file. Check it, then press **Save**.",
+          "see": "The same check runs there before anything is added."
         }
       ]
     }
