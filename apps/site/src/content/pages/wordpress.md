@@ -40,7 +40,7 @@ sections:
         points:
           - Plugin and theme updates
           - The database
-          - A login on your live site
+          - WordPress's login on your site
           - Security patches
       - title: Doesn’t come
         mark: stet
@@ -134,9 +134,9 @@ sections:
       - q: What happens to my search rankings when I move?
         a: "Nobody can promise rankings. The guided move (new, in final checks) carries across the search details it can: descriptions, and SEO titles and canonical addresses where the site has fields for them. Its report lists the old addresses that change, which you review on the Redirects screen before you publish; archive pages need redirect rules of your own."
       - q: Can I use WordPress as a headless CMS instead?
-        a: "You can. WordPress has a REST API that lets a separate front end read its content. Someone still runs WordPress, its database and its updates behind that front end, which is often the upkeep people leave WordPress to be rid of. [Traditional, headless and Git-based, explained](/compare/types-of-cms/)."
+        a: "You can. WordPress has a REST API that lets a separate front end read its content. Someone still runs WordPress, its database and its updates behind that front end: the same upkeep as before. [Traditional, headless and Git-based, explained](/compare/types-of-cms/)."
       - q: Is a static site safer than WordPress?
-        a: "There is less on the live site to attack and to patch: no database and no login page, because the pages are files built ahead of time. WordPress needs its core, theme and plugin updates kept up, though it can apply many of them automatically. If you run Galley's editor on a server (new), that server is yours to look after too. Neither is a wall against someone determined."
+        a: "A static site has less on the live site to attack and to patch: its pages are files built ahead of time, with no database or login page behind them. WordPress needs its core, theme and plugin updates kept up, though it can apply many of them automatically. If you run Galley's editor on a public server (new), that puts a sign-in page online, and that server is yours to look after too. Neither is a wall against someone determined."
       - q: How much does the move cost?
         a: "Galley is free and open-source, and the guided move is part of it. Static hosting is often free or cheap. Rebuilding page-builder pages with the assistant uses your own AI key, billed to you by its provider, and the page builder is in preview. The guided move is new and still in final checks."
   - type: close

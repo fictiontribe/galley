@@ -14,7 +14,7 @@ details new in this article are listed at the end with their docs pages.
 | 5 | Quote: "doesn't lock you into a proprietary database"; leaving needs no content migration | "TinaCMS doesn't lock you into a proprietary database (e.g. WordPress, Contentful, Sanity, etc)." — https://tina.io/docs ; "team members can choose to edit directly in Markdown files in the repository or through the TinaCMS interface." — https://tina.io/cms-for-teams | 2026-11-25 |
 | 6 | Quote: "an open-source, Git-backed headless content management system" | "TinaCMS is an open-source, Git-backed headless content management system (CMS)." — https://tina.io/docs (Last Edited February 5, 2026) | 2026-11-25 |
 | 7 | A GraphQL API between files and site, served from a "Data Layer", a database that indexes the files | "The TinaCMS Data Layer provides a GraphQL API that serves Markdown and JSON files backed by a database." — https://tina.io/docs/reference/content-api/data-layer | 2026-11-25 |
-| 8 | Quotes: "more of an ephemeral cache, since the single source of truth for your content is really your Markdown/JSON files."; "an ephemeral cache" (FAQ) | https://tina.io/docs/reference/content-api/data-layer (Last Edited February 10, 2026) | 2026-11-25 |
+| 8 | Quotes: "more of an ephemeral cache, since the single source of truth for your content is really your Markdown/JSON files."; "an ephemeral cache" (both on the Data Layer page, not the FAQ) | https://tina.io/docs/reference/content-api/data-layer (Last Edited February 10, 2026) | 2026-11-25 |
 | 9 | The database is there for search, pagination and references; TinaCMS needs a database behind its API | "the database acts as a cache to enable advanced features like search, pagination, and cross-referencing between files"; "A database is essential when using markdown with TinaCMS" — https://tina.io/docs/introduction/faq (Q8) | 2026-11-25 |
 | 10 | Schema in code, in `tina/config`, as collections of typed fields mapped to folders (lead, short, table: setup, body) | "Your content is modeled in the tina/config.{ts,js,tsx} in your repo using defineConfig." / "A "collection" maps a content type to a directory in your repo." — https://tina.io/docs/schema | 2026-11-25 |
 | 11 | Heading: TinaCMS asks a developer to describe the content first | Rows 10 and 13 ; "schema" is "REQUIRED" — https://tina.io/docs/reference/config | 2026-11-25 |
@@ -134,7 +134,10 @@ compare link for GitLab or Bitbucket, and a site can commit with no remote
 | C4 | Its Astro guide says clicking the headline should "open a form in the sidebar to edit live" | https://tina.io/docs/frameworks/astro | 2026-11-25 |
 | C5 | "now maintained by SSW", in its Forestry page's words | "TinaCMS is the successor to Forestry.io, now maintained by SSW." — https://tina.io/forestry/ (elsewhere SSW is a logo, not text) | 2026-11-25 |
 | C6 | TinaCloud currently works with GitHub only | FAQ: "Currently yes… Other Git providers may be available in the future." — https://tina.io/docs/introduction/faq | 2026-11-25 |
-| C7 | Its TinaGPT chatbot answers questions on tina.io, not in the editor | https://tina.io/blog/Introducing-TinaGPT-Chatbot- (6 Jun 2024) | 2026-11-25 |
+| C7 | (removed from the page) a sentence on the TinaGPT chatbot | Its only source was a 2024 blog post; whether it still exists is not known | 2026-11-25 |
 | C8 | Editing on the page: theirs (live as you type, in React and Astro) | https://tina.io/docs/contextual-editing/react ; https://tina.io/docs/contextual-editing/astro | 2026-11-25 |
 
 Galley's side, corrected: a review site's pull request is opened for you on GitHub, or Galley gives a link to open one on GitLab or Bitbucket (`docs/configuration/publishing.md`).
+
+After the coordinator's checks (2026-11-25): the price row is even (TinaCloud's price buys a hosted backend with accounts; Galley's hosted editor, new, runs on a server you pay for); "frank" and "honest" dropped; the pull-request wording names the GitHub CLI; the backend "has to answer when the site is built, or, for pages rendered on request, when they are requested"; "maintained by SSW" without quotation marks; "coming soon" carries its month.
+

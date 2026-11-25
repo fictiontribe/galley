@@ -5,7 +5,7 @@ kind: versus
 product: Decap CMS
 heading: Decap CMS and Galley agree on Git and on price. They part ways on setup and AI.
 name: Galley and Decap CMS
-lead: Both are free, open-source editors for the files in your repository. Decap CMS, created in 2016, is a page on your site, set up by a developer in YAML, with no AI of its own. Galley reads the site as it is and builds an assistant and a check into the editor, and it is new.
+lead: Both are free, open-source editors for the files in your repository. Decap CMS, created in 2016, is a page on your site, set up by a developer in YAML, with no AI of its own (November 2026). Galley reads the site as it is and builds an assistant and a check into the editor, and it is new.
 published: "2026-11-25"
 checked: November 2026
 order: 5
@@ -13,7 +13,7 @@ draft: false
 short:
   - "Both are Git-based and free. Your content stays as Markdown, YAML or JSON files in your own repository, and changes are recorded as commits: Decap commits every save; Galley commits when you publish. Decap is MIT-licensed, Galley Apache-2.0. Leaving either needs no export."
   - Decap is an app at /admin on your site. A developer writes a config.yml that lists every collection and field, and sets up how editors sign in. Galley reads the site's framework, collections and fields as they are, and runs on your computer or your own server (new).
-  - Decap has no AI features built in. A command-line tool for Decap Turbo, with an MCP server, is on its roadmap (Nov 2026). Galley has an assistant in the editor that never publishes, a proof of every change beside the live site, and an MCP server.
+  - Decap has no AI features built in. A command-line tool for Decap Turbo, with an MCP server, is on its roadmap (Nov 2026). Galley has an assistant in the editor that never publishes, a proof of every change it makes beside the live site, and an MCP server, through which other AI tools can publish unless that is switched off.
   - Decap Turbo, an optional hosted service from Decap's maintainers, adds hosted sign-in, roles and an activity log. It has a free plan, and Pro is €19 a month (as of November 2026). Galley has no paid tier.
   - Choose Decap if editors should reach the CMS from any browser with no server of its own, or if you need review statuses, comments on entries, several languages, or a tool that dates from 2016. Galley was first released in November 2026.
 table:
@@ -28,7 +28,7 @@ table:
       better: even
     - label: Price
       ours: Free, Apache-2.0; your AI key and hosting
-      theirs: Free, MIT; Turbo Pro €19 a month (Nov 2026)
+      theirs: Free, MIT; Turbo free for 1 site, Pro €19 a month (Nov 2026)
       better: even
     - label: Where the editor runs
       ours: Your computer, or your own server (new)
@@ -36,7 +36,7 @@ table:
       better: theirs
     - label: Setup
       ours: Reads the site as it is
-      theirs: A config.yml of collections, and a sign-in
+      theirs: A config.yml (AI agents can write it), and a sign-in
       better: ours
     - label: Editing
       ours: A form, the page itself, or the assistant
@@ -51,7 +51,7 @@ table:
       theirs: The preview; pull requests in the workflow
       better: ours
     - label: AI in the editor
-      ours: An assistant that never publishes, and MCP
+      ours: An assistant that never publishes; MCP for other AI tools
       theirs: None built in; MCP on Turbo's roadmap
       better: ours
     - label: Review and comments
@@ -63,16 +63,16 @@ table:
       theirs: Side by side, in three file layouts
       better: theirs
     - label: Teams
-      ours: Three roles on a hosted editor (new)
+      ours: Three roles on a hosted editor (new); they organise work, not security
       theirs: Git host access; Turbo adds roles
       better: theirs
     - label: Maturity
       ours: First released November 2026
-      theirs: Since 2016; about 19,500 GitHub stars
+      theirs: Since 2016; about 19,500 GitHub stars (Nov 2026)
       better: theirs
 faq:
   - q: Is Galley an alternative to Decap CMS?
-    a: For many static sites, yes. Both edit the files in your Git repository, commit each change and cost nothing. Galley needs no config file for common setups, previews the real site and has an assistant built in. Decap, called Netlify CMS until 2023, opens from any browser as a page on your site, with an editorial workflow, comments on entries, several languages and a far longer record.
+    a: For many static sites, yes. Both edit the files in your Git repository and record changes as commits (Decap on each save, Galley when you publish), and both cost nothing. Galley needs no config file for common setups, previews the real site and has an assistant built in. Decap, called Netlify CMS until 2023, opens from any browser as a page on your site, with an editorial workflow, comments on entries, several languages and a far longer record.
   - q: How much does Decap CMS cost?
     a: Decap CMS is free under the MIT licence. Its optional hosted service, Decap Turbo, has a free plan for one site and one seat. As of November 2026, Pro is €19 a month for one site and five seats, then €10 a site and €6 a seat a month, and Enterprise is priced on request. Galley is free too; its assistant uses your own Anthropic key.
   - q: Does Decap CMS have AI features?
@@ -189,11 +189,11 @@ Galley is free and Apache-2.0, with one edition and no paid tier. The assistant 
 
 This is where they differ most.
 
-Decap's install is two files in an `admin` folder: an `index.html` that loads the app, and a `config.yml` the docs call "the heart of your Decap CMS installation". In it a developer lists every collection and each of its fields, with a widget for each: a string, an image, a date, a list, a relation. It's explicit, and the developer decides exactly what editors see. It's also a second description of the content, to keep in step with the site.
+Decap's install is two files in an `admin` folder: an `index.html` that loads the app, and a `config.yml` the docs call "the heart of your Decap CMS installation". In it a developer lists every collection and each of its fields, with a widget for each: a string, an image, a date, a list, a relation. It's explicit, and the developer decides exactly what editors see. In our view it's also a second description of the content, to keep in step with the site.
 
-Sign-in takes the most thought. Decap ships backends for GitHub, GitLab, Gitea, Forgejo, Bitbucket and Azure, plus Git Gateway and the hosted Turbo, each with its own way in. "Because GitHub requires a server for authentication", GitHub needs an OAuth service: Netlify's, or your own, and the docs list 21 community projects for it. GitLab can use PKCE, which needs none. For repositories on GitHub or GitLab, Turbo replaces all of it with accounts of its own.
+In our view, sign-in takes the most thought. Decap ships backends for GitHub, GitLab, Gitea, Forgejo, Bitbucket and Azure, plus Git Gateway and the hosted Turbo, each with its own way in. "Because GitHub requires a server for authentication", GitHub needs an OAuth service: Netlify's, or your own, and the docs list 21 community projects for it. GitLab can use PKCE, which needs none. For repositories on GitHub or GitLab, Turbo replaces all of it with accounts of its own.
 
-Git Gateway needs a note. Decap's tutorial uses it: "We're using Netlify for our hosting and authentication in this tutorial." Netlify, which makes Git Gateway, says on its own documentation page (last updated 17 September 2026) that "Git Gateway is deprecated". It still works where it is enabled, but "new Git Gateway configurations are not recommended". Decap's Git Gateway page doesn't mention this. Netlify Identity, which Git Gateway needs, "will continue as a supported authentication option on Netlify", according to Netlify's update of 19 February 2026. Choose a backend with both in mind.
+Git Gateway needs a note. Decap's tutorial uses it: "We're using Netlify for our hosting and authentication in this tutorial." Netlify, which makes Git Gateway, says on its own documentation page (last updated 17 September 2026) that "Git Gateway is deprecated". It still works where it is enabled, but "new Git Gateway configurations are not recommended". Netlify Identity, which Git Gateway needs, "will continue as a supported authentication option on Netlify", according to Netlify's update of 19 February 2026. Choose a backend with both in mind.
 
 To make Decap's preview look like your site, you write preview templates. Its features page says "You can write them in React and CSS."
 
@@ -207,7 +207,7 @@ Today, Decap doesn't. We found no AI feature in the CMS or in Turbo, on its home
 
 The plan is on Decap's features page, marked "On the roadmap" for Turbo: a command-line tool "for everything you do in the Turbo dashboard, such as creating sites and inviting members, with a built-in MCP server so AI agents like Claude, Cursor or Codex can do the same", and agents that "will also be able to fill in fields in the entry you have open in the CMS", after which "you review the change and click Save." It is "Not built yet, and not available on any plan, including Enterprise."
 
-Galley puts the assistant in the editor, beside the page. You [ask in plain words](/how-to/ask-the-assistant/); it reads the site before it edits, asks one short question when a request is ambiguous, and quotes the new words back. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change waits in the proof until a person presses Publish. Galley's [MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
+Galley puts the assistant in the editor, beside the page. You [ask in plain words](/how-to/ask-the-assistant/); it reads the site before it edits, asks one short question when a request is ambiguous, and quotes the new words back. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change it makes waits in the proof until a person presses Publish. Galley's [MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
 
 We think Decap's roadmap points the right way: the agent fills in the fields, and a person checks and saves. That's close to how Galley works now. The difference, in November 2026, is that ours is built and theirs is a plan. We'd judge theirs when it ships.
 
@@ -235,7 +235,7 @@ In plain Decap, "Your Git host is the gatekeeper": with the Git-host backends, e
 
 Turbo invites editors by email to a Turbo account. Owner and member roles are free on every plan, roles per collection are a Pro add-on enforced on the server, and an activity log shows who saved which entry. Single sign-on, and seeing who else has an entry open, are both "Under consideration". We found no scheduled publishing in Decap's documentation, and Galley has none either.
 
-Galley is behind here. On your own computer it has no accounts: anyone who can open the app can publish, so the gate is pull-request mode and your code host's branch protection. A [hosted editor](/docs/running/hosted/), one site per install on a server you run, adds accounts with three roles (owner, editor and contributor), and each publish carries its author's name. It is new and still in final checks. Everyone on it works on one shared copy of the site, and a second save of a page someone has just changed is refused rather than written over it. There are no comments on entries, no review statuses beyond pull requests, no presence, and no single sign-on yet.
+Galley is behind here. On your own computer it has no accounts: anyone who can open the app can publish, so the gate is pull-request mode and your code host's branch protection. A [hosted editor](/docs/running/hosted/), one site per install on a server you run, adds accounts with three roles (owner, editor and contributor), and each publish carries its author's name. The roles keep people out of each other's way; they aren't a security boundary. It is new and still in final checks. Everyone on it works on one shared copy of the site, and a second save of a page someone has just changed is refused rather than written over it. There are no comments on entries, no review statuses beyond pull requests, no presence, and no single sign-on yet.
 
 ## Where does Galley fall short?
 
@@ -250,7 +250,7 @@ Beyond teams, in a few places.
 
 ## When is Decap CMS the better choice?
 
-When you want a free CMS that ships as part of the site, with "No server or database of its own", which editors open from any browser, on GitHub, GitLab, Bitbucket, Gitea, Forgejo or Azure. When your team needs review statuses, Notes or several languages, without paying for them. When outside contributors should propose changes without access to the repository. When you'd pay a monthly fee for hosted sign-in and roles per collection. And when a long record matters: Decap has been in use since 2016, has about 19,500 stars on GitHub, and has a company behind it.
+When you want a free CMS that ships as part of the site, with "No server or database of its own", which editors open from any browser, on GitHub, GitLab, Bitbucket, Gitea, Forgejo or Azure. When your team needs review statuses, Notes or several languages, without paying for them. When outside contributors should propose changes without access to the repository. When you'd pay a monthly fee for hosted sign-in and roles per collection. And when a long record matters: Decap has been in use since 2016, has about 19,500 stars on GitHub (Nov 2026), and has a company behind it.
 
 Galley fits when the people who change the site aren't developers, and you want them to ask for a change in words, see exactly what changed beside the live page and publish it, on a site that needs no CMS configuration to start. And when you want the assistant in the editor today, not on a roadmap. See [what Galley does today](/tour/).
 
@@ -260,7 +260,7 @@ Yes, and there's little to move. The content is already files in your repository
 
 To leave Decap, take out the `admin` folder and whatever sign-in it used, such as an OAuth handler or Git Gateway. Notes stay where Decap kept them, in an issue on your repository host.
 
-For Decap's model with a different editor, Decap's own comparison page calls Sveltia CMS "the closest alternative to Decap", a rewrite that "reads the same config.yml". Sveltia calls itself "The successor to Netlify CMS and Decap CMS". That's its claim, not ours.
+For Decap's model with a different editor, Decap's own comparison page calls Sveltia CMS "the closest alternative to Decap", a rewrite that "reads the same config.yml".
 
 ## Three questions to ask before you choose
 

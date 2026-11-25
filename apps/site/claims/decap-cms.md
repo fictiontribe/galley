@@ -105,9 +105,12 @@ which is the source used.
 | --- | --- | --- | --- |
 | C1 | 151 merged pull requests, "from 43 people and automated dependency updates" | "151 merged pull requests came from 43 people and from automated dependency updates" — https://decapcms.org/state-of-decap/ | 2026-11-25 |
 | C2 | The command-line tool with an MCP server is on Decap Turbo's roadmap, for "everything you do in the Turbo dashboard" | The Decap Turbo item, "On the roadmap": "A decap command-line tool for everything you do in the Turbo dashboard, such as creating sites and inviting members, with a built-in MCP server so AI agents like Claude, Cursor or Codex can do the same." — https://decapcms.org/features/ | 2026-11-25 |
-| C3 | With the Git-host backends, editors sign in with their Git host account | "Your Git host is the gatekeeper" — https://decapcms.org/state-of-decap/ ; Git Gateway lets editors in "without requiring them to have an account with your Git host" — https://decapcms.org/docs/git-gateway-backend/ | 2026-11-25 |
+| C3 | With the Git-host backends, editors sign in with their Git host account | "Your Git host is the gatekeeper" — https://decapcms.org/state-of-decap/ ; Git Gateway lets editors in "Netlify's Identity and Git Gateway services allow you to manage CMS admin users for your site without requiring them to have an account with your Git host or commit access on your repo." — https://decapcms.org/docs/choosing-a-backend/ | 2026-11-25 |
 | C4 | For repositories on GitHub or GitLab, Turbo replaces the sign-in | Backends `turbo-github` and `turbo-gitlab` only — https://decapcms.org/docs/backends-overview/ | 2026-11-25 |
 | C5 | GitHub and Bitbucket sign-in use Netlify's OAuth service unless you run your own | https://decapcms.org/docs/github-backend/ ; https://decapcms.org/docs/backends-overview/ | 2026-11-25 |
 | C6 | Git Gateway, which Netlify has deprecated | "Git Gateway is deprecated" — https://docs.netlify.com/manage/security/secure-access-to-sites/git-gateway/ (last updated 17 Sep 2026) | 2026-11-25 |
 | C7 | Enterprise: unlimited sites and seats (fair use) | "Unlimited (fair use)" — https://decapcms.org/turbo/ | 2026-11-25 |
 | C8 | Galley doesn't read the `admin` folder, so we expect it can stay while you try | Our expectation, not tested on a Decap site: nothing in Galley's packages or docs reads `admin/config.yml` | 2026-11-25 |
+
+After the coordinator's checks (2026-11-25): the two Sveltia sentences and "Decap's Git Gateway page doesn't mention this" are removed; stars and "no AI of its own" carry their month; the roles caveat is added; "In our view" frames the two judgements on the config file and sign-in.
+

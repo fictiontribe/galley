@@ -13,8 +13,8 @@ draft: false
 short:
   - Sanity CMS keeps your content as JSON documents in its hosted Content Lake, and your site fetches it with GROQ or GraphQL. Its editor, Sanity Studio, is open-source (MIT) code you configure. Galley keeps content as files in your own Git repository, with no database.
   - Sanity's Free plan is $0 for up to 20 seats, Growth is $15 a seat a month, and Enterprise is priced on request (as of November 2026). Galley is free and Apache-2.0. You pay for your own AI key and your own hosting.
-  - Sanity asks a developer for a schema in code and queries in the site, and on Astro its visual editing needs server rendering. Galley reads the site as it is, and the live site stays static.
-  - Sanity has a broad set of AI features, among them AI Assist, Agent Actions, Content Agent and Canvas, and a hosted MCP server. Galley has one assistant in the editor that never publishes, a proof of every change, and its own MCP server.
+  - Sanity asks a developer for a schema in code and queries in the site, and on Astro its visual editing needs server rendering for the pages it edits. Galley reads the site as it is, and its editing on the page needs no server rendering.
+  - Sanity has a broad set of AI features, among them AI Assist, Agent Actions, Content Agent and Canvas, and a hosted MCP server. Galley has one assistant in the editor that never publishes, a proof of every change it makes, and its own MCP server, through which other AI tools can publish unless that is switched off.
   - Choose Sanity when content feeds more than one website, when people edit the same document together, or when you need scheduled releases, custom roles and single sign-on. Galley was first released in November 2026 and has no content API, real-time editing, scheduling or single sign-on.
 table:
   heading: Galley and Sanity, side by side.
@@ -28,11 +28,11 @@ table:
       better: even
     - label: Price
       ours: Free. Your AI key and hosting are yours
-      theirs: Free plan; Growth $15 a seat a month (Nov 2026)
-      better: ours
+      theirs: Free plan (20 seats, public datasets only); Growth $15 a seat a month (Nov 2026)
+      better: even
     - label: Setup
       ours: Reads the site as it is
-      theirs: A schema in code, and queries in the site
+      theirs: A schema in code (a coding agent can write it), and queries in the site
       better: ours
     - label: Editing on the page
       ours: Retype words in the preview; no markup
@@ -59,7 +59,7 @@ table:
       theirs: Scheduled drafts (Growth); releases (Enterprise add-on)
       better: theirs
     - label: Teams
-      ours: Three roles on a hosted editor (new)
+      ours: Three roles on a hosted editor (new); they organise work, not security
       theirs: 5 roles on Growth; custom roles, SSO on Enterprise
       better: theirs
     - label: Content for apps
@@ -189,9 +189,9 @@ related: [types-of-cms, contentful, cloudcannon]
 
 Sanity calls itself "The AI Content Operating System". It has three parts. Sanity Studio is the editing app: open source under the MIT licence, built with React and configured in code. The Content Lake is the database, which Sanity hosts on Google Cloud. On top sit the APIs a site or an app uses to ask for content, in Sanity's own query language, GROQ, or in GraphQL.
 
-The words live in the Content Lake, as "structured JSON documents with referential integrity." Their shape is code: "Content Lake stores any valid JSON document, with schemas living in your Sanity Studio configuration, not as database constraints." So the content model can sit in your Git repository and go through pull requests, as [Sanity's Studio page](https://www.sanity.io/studio) says, while the content stays in Sanity's database. Rich text comes back from the API as Portable Text, "rich text as an array of blocks, where each block is an array of child spans", which Sanity's docs say "isn't designed for direct human authoring or reading, but instead should be parsed by software."
+The words live in the Content Lake, as "structured JSON documents with referential integrity." Their shape is code: "Content Lake stores any valid JSON document, with schemas living in your Sanity Studio configuration, not as database constraints." So the content model can sit in your Git repository and go through pull requests, as [Sanity's Studio page](https://www.sanity.io/studio) says, while the content stays in Sanity's database. Rich text comes back from the API as Portable Text, "rich text as an array of blocks, where each block is an array of child spans", which Sanity's docs say, of the stored format, "isn't designed for direct human authoring or reading, but instead should be parsed by software."
 
-Galley keeps the words where a static site already keeps them: Markdown, YAML, JSON or TOML files in the site's own repository. There is no database. A change waiting to be published is a change in those files, and publishing is a commit.
+Galley keeps the words where a static site already keeps them: Markdown, YAML or JSON files (TOML it reads but doesn't change) in the site's own repository. There is no database. A change waiting to be published is a change in those files, and publishing is a commit.
 
 Most of what follows comes from that. Sanity is built for one body of content that feeds a website, an app and anything else that can call an API. Galley is built for the website the files belong to. Our [guide to the kinds of CMS](/compare/types-of-cms/) sets the two shapes side by side.
 
@@ -234,7 +234,7 @@ Sanity has a large set of named AI features, and they reach well beyond the edit
 - **Sanity Context** gives your own AI agents knowledge bases built from your content, over MCP. One is free; on Growth, up to five cost $299 a month.
 - **An official MCP server**, hosted at `mcp.sanity.io` and generally available since December 2025, lets Claude Code, Cursor, VS Code and other clients query, create, patch and publish documents, and create and list releases and manage schemas.
 
-Galley has one assistant, inside the editor, beside the page. You [ask in plain words](/how-to/ask-the-assistant/); it reads the site before it edits, asks one short question when two places could be meant, and quotes the new words back. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change waits in the proof until a person presses Publish. [Galley's MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
+Galley has one assistant, inside the editor, beside the page. You [ask in plain words](/how-to/ask-the-assistant/); it reads the site before it edits, asks one short question when two places could be meant, and quotes the new words back. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change it makes waits in the proof until a person presses Publish. [Galley's MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
 
 Sanity's AI reaches further than ours: across thousands of documents, into Slack, out to your own agents. For a large content operation that is the point. We think a website edited by people who aren't developers needs something narrower first: one assistant that can only touch content, and a check in the page's own words. Content Agent asks for approval too, so the difference is where you look at the change. That's our view; plenty of teams will want Sanity's reach.
 
