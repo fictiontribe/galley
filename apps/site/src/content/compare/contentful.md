@@ -60,7 +60,7 @@ table:
       better: theirs
     - label: Languages and scheduling
       ours: No multi-locale workflows or scheduling
-      theirs: Locales; dated releases with Launch, from Lite
+      theirs: Locales; dated releases with Launch
       better: theirs
     - label: Leaving
       ours: No content to export
@@ -237,7 +237,7 @@ With Galley, the build reads files. Galley publishes to your repository, and you
 
 ## Which one suits a team?
 
-For a large team today, Contentful. Free has two roles (Admin and Editor) and Lite adds Author. Enterprise adds custom roles, tag-based permissions, Teams, SCIM provisioning and near real-time audit logs. The pricing table ticks comments on entries and the Tasks app on every plan (comments on fields start at Lite), and a presence indicator that shows "users who are actively working on an entry in real time" starts at Lite. Locales number two on Free, three on Lite and a custom number on Enterprise, up to 500 per environment, and what the pricing page calls "Localized workflows" are on Enterprise. Launch, from Lite, groups entries into releases and publishes them "either immediately or on a desired date in future", and single entries can be scheduled too. Contentful is "Certified to SOC 2 Type 2 and ISO 27001", and Enterprise adds 24/7 support and an uptime agreement of up to 99.99%.
+For a large team today, Contentful. Free has two roles (Admin and Editor) and Lite adds Author. Enterprise adds custom roles, tag-based permissions, Teams, SCIM provisioning and near real-time audit logs. The pricing table ticks comments on entries and the Tasks app on every plan (comments on fields start at Lite), and a presence indicator that shows "users who are actively working on an entry in real time" starts at Lite. Locales number two on Free, three on Lite and a custom number on Enterprise, up to 500 per environment, and what the pricing page calls "Localized workflows" are on Enterprise. Launch groups entries into releases and publishes them "either immediately or on a desired date in future", and single entries can be scheduled too. Contentful is "Certified to SOC 2 Type 2 and ISO 27001", and Enterprise adds 24/7 support and an uptime agreement of up to 99.99%.
 
 Galley is behind here, and we'd rather say so than let you find out. Used on your own computer, it has no accounts: anyone who can open the app can publish, so the gate is pull-request mode and your code host's branch protection. A [hosted editor](/docs/running/hosted/), one site per install on a server you run, adds accounts with three roles (owner, editor and contributor), and each publish carries its author's name. The roles keep people out of each other's way; they aren't a security boundary. That hosted editor is new and still in final checks. Single sign-on is planned for later. Everyone on one hosted editor works on one shared copy of the site; a second save of a page someone has just changed is refused, not written over it. There is no live presence, no scheduled publishing, no editorial workflow across locales, and no approval chain beyond a pull request.
 

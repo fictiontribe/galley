@@ -149,3 +149,4 @@ The plan rows above were read from https://www.contentful.com/pricing/ in a real
 
 Removed from the page: the paragraph on Salesforce (true on the day, but not part of a comparison). Its rows above no longer support anything on the page.
 
+After the coordinator's second check (2026-11-25): "from Lite" is removed from the two statements about Launch. The plan table read in a browser shows the Launch app ticked on Lite and Enterprise, but the coordinator's checker could not confirm that mark, and the Launch help page names no plan, so the page names none.
