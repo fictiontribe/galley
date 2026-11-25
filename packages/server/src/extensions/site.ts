@@ -14,7 +14,8 @@
  *   a controller it took from one: the data folder may be another server's
  *   the next moment.
  * - A controller kept from earlier is no way round the GET rule either:
- *   starting, stopping and restarting the preview refuse inside a GET.
+ *   starting, stopping and restarting the preview refuse inside a GET, and
+ *   so does a checkpoint's putting back of what it recorded.
  * - Secrets and the version history's own files can't be read through it:
  *   by name, as the editor's file routes refuse them, and by where a link
  *   inside the site leads. The engine itself reads any path inside the site,
@@ -31,6 +32,7 @@ import { realpath } from "node:fs/promises";
 import { relative } from "node:path";
 import { GalleyError } from "@galley/core";
 import type { SiteService } from "@galley/core/types";
+import { isSecretsFile } from "@galley/core/workspace";
 import type { GuardedSite } from "./types";
 
 /** Members that only read. */
@@ -59,8 +61,9 @@ export const SITE_INTERNAL = ["snapshot", "previewHandle", "liveUrl"] as const;
 const CONTROLLERS: Record<string, ReadonlySet<string>> = {
   // Its status is a read; the rest starts or stops the site's own dev server.
   preview: new Set(["start", "stop", "restart"]),
-  // An assistant turn's record: what it does to the site, it does through the site.
-  checkpoint: new Set(),
+  // A record of some work's own writes. Recording changes nothing: `run` does the extension's own work, which reaches the
+  // site through the guarded site, and `close` only stops the recording. Putting the recorded files back writes to the site.
+  checkpoint: new Set(["restore"]),
 };
 
 /**
@@ -122,10 +125,7 @@ export function insideGet(): boolean {
 /** Secrets and version-history internals by name, in any letter case and at any depth. */
 export function unreadable(path: unknown): boolean {
   if (typeof path !== "string") return false;
-  const parts = path.replace(/\\/g, "/").toLowerCase().split("/");
-  const name = parts[parts.length - 1] ?? "";
-
-  return parts.includes(".git") || name === ".env" || name.startsWith(".env.");
+  return path.replace(/\\/g, "/").toLowerCase().split("/").includes(".git") || isSecretsFile(path);
 }
 
 /**

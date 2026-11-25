@@ -171,8 +171,10 @@ describe("what the server does around an extension", () => {
     expect(() => duringGet(() => whole.writeFile!("b.md"))).toThrow(/A GET route can't change a site/);
     expect(calls).toEqual(["read a.md", "write a.md"]);
     expect(Object.isFrozen(whole)).toBe(true);
-    for (const path of [".env", ".ENV", "a/.env.production", ".git", ".git/config", "a\\.git\\HEAD", "A/.GIT/x"]) expect(unreadable(path), path).toBe(true);
-    for (const path of ["env", "a.env", ".environment", ".github/workflows/ci.yml", "src/git/.keep", ".gitignore", 7, undefined]) expect(unreadable(path), String(path)).toBe(false);
+    for (const path of [".env", ".ENV", "a/.env.production", ".envrc", "a/.env-production", ".env_local", "a\\.Envrc", ".git", ".git/config", "a\\.git\\HEAD", "A/.GIT/x"]) expect(unreadable(path), path).toBe(true);
+    // A name that starts with ".env" is taken for a secrets file even when it is something else: the side to err on.
+    for (const path of [".environment", ".envoy.yaml"]) expect(unreadable(path), path).toBe(true);
+    for (const path of ["env", "a.env", "src/env.d.ts", "docs/my.env.md", ".github/workflows/ci.yml", "src/git/.keep", ".gitignore", 7, undefined]) expect(unreadable(path), String(path)).toBe(false);
   });
 
   it("refuses every read that names a file, leaves unreadable files out of a search, and answers each read with a copy", async () => {
@@ -194,7 +196,9 @@ describe("what the server does around an extension", () => {
     const guarded = guardSite(real, { readOnly: false }) as unknown as { [name: string]: (...args: unknown[]) => Promise<any> };
 
     for (const name of ["readFile", "readBase", "diff", "readEntry", "resolvePath"]) {
-      for (const path of [".env", "a/.env.local", ".git/HEAD"]) expect(() => guarded[name]!(path), `${name} ${path}`).toThrow("That file can't be shown here.");
+      for (const path of [".env", "a/.env.local", ".envrc", "a/.env-production", ".env_local", ".ENV", ".git/HEAD"]) expect(() => guarded[name]!(path), `${name} ${path}`).toThrow("That file can't be shown here.");
+      // A name that only has "env" in it is an ordinary file.
+      for (const path of ["src/env.d.ts", "environment.md", "docs/my.env.md"]) expect(() => guarded[name]!(path), `${name} ${path}`).not.toThrow();
     }
     expect(await guarded.grepText!("KEY")).toEqual([hits[0]]);
     // Copies: nothing done to an answer reaches the engine's own, not even where the answer holds a function.

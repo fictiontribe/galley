@@ -69,6 +69,21 @@ describe("publish", GIT_HEAVY, () => {
     expect(events).toEqual([[["src/content/a.md", "src/content/gone.md", "src/content/new.md"], "publish"]]);
   });
 
+  it("never commits a secrets file, whatever follows .env in its name", async () => {
+    const root = makeRepo({ "src/content/a.md": "a\n" });
+    const secrets = [".env", ".env.local", ".envrc", ".env-production", ".ENV_local", "src/.Envrc"];
+
+    writeFileSync(join(root, "src/content/a.md"), "a2\n");
+    writeTree(root, { ...Object.fromEntries(secrets.map((path) => [path, "TOKEN=1\n"])), "src/env.d.ts": "// types\n" });
+    const ws = await workspaceFor(root);
+    // Everything that is waiting, and then the secrets asked for by name.
+    const all = await ws.publish({ message: "Everything" }, PUBLISH);
+
+    expect(all).toMatchObject({ ok: true, files: ["src/content/a.md", "src/env.d.ts"] });
+    expect(await ws.publish({ message: "By name", paths: secrets }, PUBLISH)).toMatchObject({ ok: false, files: [] });
+    expect(sh(root, "ls-files").split("\n").filter((path) => /(^|\/)\.env/i.test(path))).toEqual([]);
+  });
+
   it("uses describe(), then a default, for the message; falls back to git config and a neutral author", async () => {
     const root = makeRepo({ "src/content/a.md": "a\n" });
 

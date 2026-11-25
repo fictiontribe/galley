@@ -4,7 +4,7 @@
  * could try to break: an added route is behind every guard a built-in one
  * has, is handed only what it should be, and is nobody's once it has answered.
  */
-import { mkdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { BUILD_MODE_REFUSAL, NO_CALLER_REFUSAL, OUTLIVED_REFUSAL, ROUTE_ACCESS, ROLE_REFUSAL, SIGN_IN_ENDED_REFUSAL } from "@galley/core/install";
@@ -314,7 +314,7 @@ describe("routes an embedding program adds", () => {
   it("can't read secrets or the version history's own files through the site it is handed", async () => {
     writeFileSync(join(folder, ".env"), "TOKEN=in-the-site\n");
     mkdirSync(join(folder, "src/content/pages"), { recursive: true });
-    for (const path of [".env", ".ENV", ".env.local", ".git/config", ".GIT/HEAD", "sub/.git/HEAD"]) {
+    for (const path of [".env", ".ENV", ".env.local", ".envrc", ".env-production", ".env_local", "sub/.Envrc", ".git/config", ".GIT/HEAD", "sub/.git/HEAD"]) {
       const answer = await x("GET", site(`/file?path=${encodeURIComponent(path)}`), { cookie: people.contributor.cookie });
 
       expect([answer.status, answer.body.error.message], path).toEqual([403, UNREADABLE]);
@@ -359,6 +359,16 @@ describe("routes an embedding program adds", () => {
       stopped: `refused: ${GET_CHANGES_NOTHING}`,
       restarted: `refused: ${GET_CHANGES_NOTHING}`,
     });
+    // And a checkpoint, taken by a POST and kept: inside a GET it can be read, and it can't put back what it recorded.
+    const page = "src/content/pages/by-a-checkpoint.md";
+
+    expect((await x("POST", site("/keep-checkpoint"), { cookie: people.owner.cookie, body: {} })).body).toEqual({ paths: [page] });
+    expect(existsSync(join(folder, page))).toBe(true);
+    expect((await x("GET", "/kept-checkpoint", { cookie: people.owner.cookie })).body).toEqual({ id: "string", paths: [page], restored: `refused: ${GET_CHANGES_NOTHING}`, left: [] });
+    expect(existsSync(join(folder, page))).toBe(true);
+    // Outside a GET it does what a checkpoint does.
+    expect((await x("POST", "/kept-checkpoint/restore", { cookie: people.owner.cookie, body: {} })).body).toEqual({ restored: [page] });
+    expect(existsSync(join(folder, page))).toBe(false);
   });
 
   it("what a read answers with is a copy: changing it changes nothing of the site's own rules", async () => {

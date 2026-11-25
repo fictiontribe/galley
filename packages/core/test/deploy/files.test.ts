@@ -34,12 +34,12 @@ describe("collectFiles", () => {
     const outside = tempDir("deploy-outside-");
 
     writeTree(outside, { "secret.txt": "not the site's" });
-    writeTree(dir, { "index.html": "ok", ".git/config": "x", "node_modules/pkg/index.js": "x", ".env": "TOKEN=1", ".env.local": "TOKEN=2", "nested/.env.production": "TOKEN=3" });
+    writeTree(dir, { "index.html": "ok", ".git/config": "x", "node_modules/pkg/index.js": "x", ".env": "TOKEN=1", ".env.local": "TOKEN=2", "nested/.env.production": "TOKEN=3", ".envrc": "export TOKEN=4", "nested/.env-production": "TOKEN=5", ".ENV_local": "TOKEN=6", "env.js": "ok" });
     symlinkSync(join(outside, "secret.txt"), join(dir, "linked.txt"));
     symlinkSync(outside, join(dir, "linked-dir"), "dir");
     const files = await collectFiles(dir, LIMITS, "Host", "dist");
 
-    expect(files.map((file) => file.path)).toEqual(["index.html"]);
+    expect(files.map((file) => file.path)).toEqual(["env.js", "index.html"]);
   });
 
   it("refuses a missing or empty output folder in plain words", async () => {
