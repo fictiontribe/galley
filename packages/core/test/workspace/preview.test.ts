@@ -107,14 +107,18 @@ if (mode === "foreground") {
   const server = http.createServer((req, res) => { res.writeHead(200, { "content-type": "text/html" }); res.end("<html><head></head><body>fg</body></html>"); });
   server.listen(0, "127.0.0.1", () => console.log("ready  Local http://localhost:" + server.address().port + "/"));
 } else {
-  spawn(process.execPath, ["bg-server.mjs"], { detached: true, stdio: "ignore" }).unref();
+  // "in-group": the server stays in the launcher's process group; every other mode starts it in one of its own.
+  spawn(process.execPath, ["bg-server.mjs"], { detached: mode !== "in-group", stdio: "ignore" }).unref();
+  // "points-elsewhere": the pid it names is another program's (a decoy), not the server's.
+  if (mode === "points-elsewhere") spawn(process.execPath, ["-e", "const fs = require('fs'); fs.writeFileSync('decoy.json.tmp', String(process.pid)); fs.renameSync('decoy.json.tmp', 'decoy.json'); setInterval(() => {}, 1000)"], { detached: true, stdio: "ignore" }).unref();
   const wait = setInterval(() => {
-    if (!existsSync("bg.json")) return;
+    if (!existsSync("bg.json") || (mode === "points-elsewhere" && !existsSync("decoy.json"))) return;
     clearInterval(wait);
     const { port, pid } = JSON.parse(readFileSync("bg.json", "utf8"));
-    const message = mode === "with-pid"
-      ? "Dev server running at http://localhost:" + port + " (pid " + pid + ")\\n  Stop:   x dev stop\\n  Logs:   x dev logs"
-      : "Dev server running at http://localhost:" + port;
+    const named = mode === "points-elsewhere" ? Number(readFileSync("decoy.json", "utf8")) : pid;
+    const message = mode === "no-pid"
+      ? "Dev server running at http://localhost:" + port
+      : "Dev server running at http://localhost:" + port + " (pid " + named + ")\\n  Stop:   x dev stop\\n  Logs:   x dev logs";
     console.log(JSON.stringify({ message, label: "SKIP_FORMAT", level: "info" }));
     process.exit(0);
   }, 20);
@@ -1342,21 +1346,53 @@ http.createServer((_req, res) => { res.writeHead(200, { "content-type": "text/ht
     }
   });
 
-  it("follows a dev command that backgrounds itself and names its pid, and stops that process", async () => {
+  it("follows a dev command that moves its server to a process group of its own, and leaves it running rather than signal the pid it names", async () => {
     const root = site();
     const { controller } = controllerFor(root, { dev: { command: "FIXTURE_MODE=with-pid node launcher.mjs", port: null } });
     const status = await controller.start();
     const bg = JSON.parse(readFileSync(join(root, "bg.json"), "utf8")) as { port: number; pid: number };
 
     stray.push(bg.pid);
-    expect(status.state).toBe("ready");
+    expect(status).toMatchObject({ state: "ready", detail: expect.stringContaining("keeps running after the preview stops") });
     expect(status.log).toContain(`Dev server running at http://localhost:${bg.port} (pid ${bg.pid})`);
-    expect(status.log).toContain("  Stop:   x dev stop");
-    expect(controller.pid).toBe(bg.pid);
+    expect(status.log.join("\n")).toContain(`as a process of its own (process ${bg.pid})`);
+    expect(controller.pid).toBeUndefined();
     expect(await (await fetch((status.url as string) + "/")).text()).toContain(OVERLAY_SCRIPT_PATH);
     await controller.stop();
-    expect(await refused(bg.port)).toBe(true);
+    expect(alive(bg.pid)).toBe(true);
+    expect(await refused(bg.port)).toBe(false);
+  });
+
+  it("stops a server that moved to the background but stayed in the process group the preview started", async () => {
+    const root = site();
+    const { controller } = controllerFor(root, { dev: { command: "FIXTURE_MODE=in-group node launcher.mjs", port: null } });
+    const status = await controller.start();
+    const bg = JSON.parse(readFileSync(join(root, "bg.json"), "utf8")) as { port: number; pid: number };
+
+    stray.push(bg.pid);
+    expect(status.state, status.log.join("\n")).toBe("ready");
+    expect(status.log.join("\n")).toContain("stopping the preview will stop it");
+    expect(controller.pid).toBeGreaterThan(0);
+    expect(controller.pid).not.toBe(bg.pid);
+    await controller.stop();
     await until(() => !alive(bg.pid), 5000);
+    expect(await refused(bg.port)).toBe(true);
+  });
+
+  it("never signals a pid a dev server names: naming another program's leaves that program running", async () => {
+    const root = site();
+    const { controller } = controllerFor(root, { dev: { command: "FIXTURE_MODE=points-elsewhere node launcher.mjs", port: null } });
+    const status = await controller.start();
+    const bg = JSON.parse(readFileSync(join(root, "bg.json"), "utf8")) as { port: number; pid: number };
+    const decoy = Number(readFileSync(join(root, "decoy.json"), "utf8"));
+
+    stray.push(bg.pid, decoy);
+    expect(status.state, status.log.join("\n")).toBe("ready");
+    expect(status.log.join("\n")).toContain(`(pid ${decoy})`);
+    await controller.stop();
+    // Before, stopping signalled the named pid (and its group): here, a program that isn't the server at all.
+    await new Promise((done) => setTimeout(done, 300));
+    expect(alive(decoy), "the program the dev server named is left alone").toBe(true);
   });
 
   it("adopts a backgrounded server that names no pid as someone else's, and leaves it running", async () => {
