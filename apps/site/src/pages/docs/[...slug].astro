@@ -32,7 +32,7 @@ const ui = docsData.ui;
 const howtos = howtosForDoc(docHref(doc.id));
 ---
 
-<Site title={doc.id === "index" ? doc.data.title : `${doc.data.title} · ${ui.docs}`} description={doc.data.description} type="article">
+<Site title={doc.id === "index" ? doc.data.title : `${doc.data.title} · ${ui.docs}`} description={doc.data.description} type="article" class="page-read">
   <div class="wrap docs">
     <DocsNav groups={groups} current={docHref(doc.id)} />
 

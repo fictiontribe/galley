@@ -3,53 +3,122 @@
 // then Galley beside each product (articles in src/content/compare/, plus the
 // pages listed under `also` in src/content/pages/compare.md, such as
 // /wordpress/), then how the comparisons are written.
+//
+// Composed as an index in the product's voice: the headline over the full
+// width; the guide as one wide card; the products as a grid of cards that
+// fills its rows whether there are two or a dozen, each with the count of its
+// table's rows in the table's own marks (who is stronger, how often); then the
+// rules, numbered beside their heading.
 import Site from "../layouts/Site.astro";
 import "../styles/compare.css";
-import PageHead from "../components/PageHead.astro";
+import Verdict from "../components/Verdict.astro";
 import { getPage } from "../lib/pages";
 import { inline } from "../lib/markdown";
+import { site } from "../lib/site";
 import { compareHref, getComparisons, type CompareLink } from "../lib/compare";
+
+type Better = "ours" | "theirs" | "even";
+type Table = { columns?: string[]; rows?: { better?: Better }[] };
+interface Card extends CompareLink {
+  tally: { kind: "win" | "even"; label: string; n: number }[];
+}
 
 const { data: p } = await getPage("compare");
 const all = await getComparisons();
-const card = (e: (typeof all)[number]): CompareLink => ({ title: e.data.name ?? e.data.heading, text: e.data.lead, href: compareHref(e.id) });
+const t = site.ui;
+
+// A table's verdicts, counted the way the table's own key counts them (Comparison.astro).
+const tallyOf = (table: Table | undefined): Card["tally"] => {
+  if (!table?.rows?.length || !table.columns) return [];
+  const [, us, them] = table.columns;
+  const n = (b: Better) => table.rows!.filter((r) => r.better === b).length;
+  return [
+    { kind: "win" as const, label: t.stronger.replace("{name}", us), n: n("ours") },
+    { kind: "win" as const, label: t.stronger.replace("{name}", them), n: n("theirs") },
+    { kind: "even" as const, label: t.even, n: n("even") },
+  ].filter((x) => x.n > 0);
+};
+// A page listed under `also` (such as /wordpress/) brings the table from its own comparison section.
+const tableOfPage = async (href: string): Promise<Table | undefined> => {
+  const id = href.replace(/^\/|\/$/g, "");
+  if (!id || id.includes("/")) return undefined;
+  try {
+    const { data } = await getPage(id);
+    return ((data.sections ?? []) as ({ type: string } & Table)[]).find((s) => s.type === "comparison");
+  } catch {
+    return undefined;
+  }
+};
+
+const card = (e: (typeof all)[number]): Card => ({ title: e.data.name ?? e.data.heading, text: e.data.lead, href: compareHref(e.id), tally: tallyOf(e.data.table as Table | undefined) });
 const guides = all.filter((e) => e.data.kind === "guide").map(card);
-const products = [...all.filter((e) => e.data.kind === "versus").map(card), ...((p.also ?? []) as CompareLink[])];
-const groups = [
-  { id: "guides", heading: p.guidesHeading as string, items: guides },
-  { id: "products", heading: p.productsHeading as string, items: products },
-].filter((g) => g.items.length > 0);
+const alsoCards = await Promise.all(((p.also ?? []) as CompareLink[]).map(async (l) => ({ ...l, tally: tallyOf(await tableOfPage(l.href)) })));
+const products: Card[] = [...all.filter((e) => e.data.kind === "versus").map(card), ...alsoCards];
 ---
 
-<Site title={p.title} description={p.description} noindex={p.noindex}>
+<Site title={p.title} description={p.description} noindex={p.noindex} class="page-compare">
   <div class="wrap compare-hub" data-galley-agent="main">
-    <PageHead heading={p.heading} lead={p.lead} />
+    <header class="compare-hub__head">
+      <h1 class="h1" set:html={inline(p.heading)} />
+      <p class="lead" set:html={inline(p.lead)} />
+    </header>
+
     {
-      groups.map((g) => (
-        <section class="compare-hub__group" aria-labelledby={`${g.id}-h`}>
-          <h2 class="h2 head" id={`${g.id}-h`} set:html={inline(g.heading)} />
-          <ul class="cards">
-            {g.items.map((c) => (
-              <li style="display:grid">
-                <a class="card" href={c.href}>
-                  <h3 class="card__t" set:html={inline(c.title)} />
-                  <span class="body" set:html={inline(c.text)} />
+      guides.length > 0 && (
+        <section class="compare-hub__group" aria-labelledby="guides-h">
+          <h2 class="h2" id="guides-h" set:html={inline(p.guidesHeading)} />
+          <ul class="compare-hub__guides">
+            {guides.map((c) => (
+              <li class="rv">
+                <a class="compare-guide" href={c.href}>
+                  <h3 class="compare-guide__t" set:html={inline(c.title)} />
+                  <span class="compare-guide__text body" set:html={inline(c.text)} />
                 </a>
               </li>
             ))}
           </ul>
         </section>
-      ))
+      )
     }
+
+    {
+      products.length > 0 && (
+        <section class="compare-hub__group" aria-labelledby="products-h">
+          <h2 class="h2" id="products-h" set:html={inline(p.productsHeading)} />
+          <ul class="compare-hub__products" data-count={products.length}>
+            {products.map((c) => (
+              <li class="rv">
+                <a class="compare-card" href={c.href}>
+                  <h3 class="compare-card__t" set:html={inline(c.title)} />
+                  <span class="compare-card__text body" set:html={inline(c.text)} />
+                  {c.tally.length > 0 && (
+                    <span class="compare-card__tally" role="list" aria-label={t.tally}>
+                      {c.tally.map((x) => (
+                        <span role="listitem">
+                          <Verdict kind={x.kind} />
+                          <span>{x.label}</span>
+                          <b>{x.n}</b>
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
     {
       p.how && (
         <section class="compare-hub__how" aria-labelledby="how-h">
           <h2 class="h2" id="how-h" set:html={inline(p.how.heading)} />
-          <ul class="prose">
+          <ol class="compare-hub__rules">
             {(p.how.points as string[]).map((point) => (
               <li set:html={inline(point)} />
             ))}
-          </ul>
+          </ol>
         </section>
       )
     }
