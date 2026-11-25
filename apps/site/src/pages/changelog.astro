@@ -6,17 +6,36 @@ import PageHead from "../components/PageHead.astro";
 import { getPage } from "../lib/pages";
 import { renderMarkdown } from "../lib/markdown";
 import { readRepoFile, site } from "../lib/site";
+import docsData from "../data/docs.json";
 
 const { data: p } = await getPage("changelog");
 const source = readRepoFile("CHANGELOG.md");
 // Straight after a release "Unreleased" is a heading with nothing under it: left out here until something is.
-const html = source ? renderMarkdown(source.replace(/^# .*\n/, "").replace(/^## Unreleased[ \t]*\n\s*(?=## )/m, ""), { anchors: false }).html : "";
+const rendered = source ? renderMarkdown(source.replace(/^# .*\n/, "").replace(/^## Unreleased[ \t]*\n\s*(?=## )/m, ""), { anchors: false }) : null;
+const html = rendered?.html ?? "";
+// A long page: its releases listed beside it, staying in view, the one being read marked (scripts/docs.ts).
+const versions = (rendered?.headings ?? []).filter((h) => h.depth === 2);
 ---
 
 <Site title={p.title} description={p.description}>
   <div class="wrap">
     <PageHead eyebrow={p.eyebrow} heading={p.heading} lead={p.lead} />
-    {source ? <div class="prose" set:html={html} /> : <p class="lead">{p.empty}</p>}
-    <p class="docs__editline"><a href={`${site.repository}/blob/${site.repositoryBranch}/CHANGELOG.md`}>{p.source}</a></p>
+    <div class:list={["reading", versions.length > 1 && "reading--aside"]}>
+      <div class="reading__main">
+        {source ? <div class="prose" set:html={html} /> : <p class="lead">{p.empty}</p>}
+        <p class="docs__editline"><a href={`${site.repository}/blob/${site.repositoryBranch}/CHANGELOG.md`}>{p.source}</a></p>
+      </div>
+      {versions.length > 1 && (
+        <aside class="docs__toc reading__toc" aria-labelledby="toc-h">
+          <h2 class="label" id="toc-h">{docsData.ui.onThisPage}</h2>
+          <ul data-toc>
+            {versions.map((h) => <li class="d2"><a href={`#${h.slug}`}>{h.text}</a></li>)}
+          </ul>
+        </aside>
+      )}
+    </div>
   </div>
+  <script>
+    import "../scripts/docs.ts";
+  </script>
 </Site>

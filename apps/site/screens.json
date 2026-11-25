@@ -220,7 +220,10 @@
     {
       "file": "public/screens/theme-plate.webp",
       "step": "themes",
-      "shows": "Site home for Caddow in the Plate theme, the sidebar an inked plate, with the theme picker open at its foot: Quiet, Plate and Desk as swatches, Browse community themes, Make a theme…."
+      "shows": "Site home for Caddow in the Plate theme, the sidebar an inked plate, with the theme picker open at its foot: Quiet, Plate and Desk as swatches, Browse community themes, Make a theme….",
+      "used": [
+        "/themes/ beside how to use one"
+      ]
     },
     {
       "file": "public/screens/media-bucket.webp",
@@ -257,7 +260,11 @@
     {
       "file": "public/screens/desktop-mac-home.webp, desktop-mac-sites.webp",
       "step": "none: not from capture-screens.mjs",
-      "shows": "The desktop app's own window on macOS (Site home on Caddow; Your sites): pictures of the window itself, for the download page and the tour. Left as they are; they show the look before 0.4.0's."
+      "shows": "The desktop app's own window on macOS (Site home on Caddow; Your sites): pictures of the window itself, for the download page and the tour. Left as they are; they show the look before 0.4.0's.",
+      "used": [
+        "/ the desktop app: two windows on the desk",
+        "/apps/ the two windows on the desk"
+      ]
     },
     {
       "file": "public/docs/*.webp (21 pictures)",

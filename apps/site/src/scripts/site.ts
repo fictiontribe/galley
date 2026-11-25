@@ -120,7 +120,7 @@ for (const box of $$("[data-rec]")) {
 for (const card of $$("[data-starter]")) {
   const buttons = $$<HTMLButtonElement>("[data-look-to]", card);
   const imgs = $$<HTMLImageElement>("[data-look]", card);
-  const fade = !still && card.closest(".starters--row, .starters--stage") !== null;
+  const fade = !still && card.closest(".starters--row, .starters--stage, .starters--gallery") !== null;
   if (fade) {
     card.classList.add("is-fading");
     imgs.forEach((img) => img.classList.toggle("is-on", !img.hidden));
@@ -300,6 +300,11 @@ if (tourIndex) {
       if (on && list && list.scrollWidth > list.clientWidth) list.scrollTo({ left: a.offsetLeft - 12, behavior: still ? "auto" : "smooth" });
     }
   };
+  // While the map of parts under the hero is in view, the bar would repeat it: it waits, and comes in as the map goes.
+  const map = document.querySelector(".tour-map");
+  if (map) {
+    new IntersectionObserver(([en]) => tourIndex.classList.toggle("is-waiting", en.isIntersecting), { rootMargin: `-${tourIndex.offsetHeight + 68}px 0px 0px 0px` }).observe(map);
+  }
   const parts = $$("[data-tour-part]");
   const inView = new Set<Element>();
   const io = new IntersectionObserver(

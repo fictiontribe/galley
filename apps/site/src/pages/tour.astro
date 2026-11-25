@@ -2,12 +2,14 @@
 // /tour/ — what the app looks like, part by part. Words and pictures are in
 // src/content/pages/tour.md (a hero, then one `tour` section per part, then a
 // close). Between the hero and the parts sits a quiet index of the parts that
-// stays in view while the page scrolls.
+// stays in view while the page scrolls. Right under the hero, the same five
+// parts as cards, each with its first picture, to jump straight in.
 import { getEntry } from "astro:content";
 import Site from "../layouts/Site.astro";
 import Sections from "../components/Sections.astro";
 import Lightbox from "../components/Lightbox.astro";
 import { site } from "../lib/site";
+import { resolveVisual } from "../lib/visual";
 
 const entry = await getEntry("pages", "tour");
 if (!entry) throw new Error("Missing page src/content/pages/tour.md");
@@ -15,10 +17,36 @@ const p = entry.data;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sections = (p.sections as any[]).filter((s) => !s.hidden);
 const parts = sections.filter((s) => s.type === "tour");
+// The five parts at a glance, under the hero: each a card with its first picture (a recording shows its poster).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const map = parts.map((part) => ({ part, r: resolveVisual(((part.items as any[]) ?? []).find((i) => i.visual && !i.whenPictured)?.visual) }));
+const MAP_SCALE = 0.42;
 ---
 
 <Site title={p.title} description={p.description} noindex={p.noindex} class="page-tour">
   <Sections sections={p.sections as any[]} to={1} />
+  <nav class="wrap tour-map" aria-label={site.ui.tourMap} data-galley-agent="skip">
+    <ol class="tour-map__list">
+      {
+        map.map(({ part, r }, i) => (
+          <li class="tour-map__cell rv">
+            <a class="tour-map__card" href={`#${part.id}`}>
+              {r && (
+                <span class="frame tour-map__frame" aria-hidden="true">
+                  <span class="stage">
+                    <span class="shot" style={[r.style && r.style.replace(/(-?\d+)px/g, (_: string, n: string) => `${Math.round(+n * MAP_SCALE)}px`), `width:${Math.round(r.pic.width * MAP_SCALE)}px`].filter(Boolean).join(";")}>
+                      <img src={r.pic.src} srcset={r.pic.srcset} sizes={`${Math.round(r.pic.width * MAP_SCALE)}px`} width={r.pic.width} height={r.pic.height} alt="" loading="lazy" decoding="async" />
+                    </span>
+                  </span>
+                </span>
+              )}
+              <span class="tour-map__label"><span class="tour-map__n" aria-hidden="true">{i + 1}</span>{part.label}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ol>
+  </nav>
   <div class="tour">
     <nav class="tour-index" aria-label={site.ui.tourIndex} data-tour-index data-galley-agent="skip">
       <div class="wrap">
