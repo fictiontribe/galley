@@ -98,22 +98,26 @@ entry says how.
   manage); the server doesn't start with a route that has none. A request has
   passed every check a request to the editor's own API passes before a handler
   sees it, and two more: with a cookie the browser must say the request is the
-  editor's own page's, on GET too, and a part of the address can't carry a
-  path. A handler is handed a narrowed request (never the cookie or the
-  headers) and the site with `.git/` and `.env*` unreadable by name; what the
-  site answers with is a copy, from a change as from a read, and on GET it
-  refuses whatever would change it. Work a handler leaves running loses its
-  caller's access once it has answered, though what it records still carries
-  that person's publishing name. An extension names its secret environment
-  variables: on a hosted install they are kept from the site's commands, and
-  everywhere their values are taken out of the server's log and of the
-  extension's error messages. Once an extension has been stopped, what it was
-  handed does nothing: the sites it holds, and the preview's controller if it
-  took one. It is not a sandbox: an extension is its author's code with the
-  server's permissions. A server with extensions must be the only server in
-  its process, and should be restarted after a backup is put back. The shapes
-  may change in any 0.x release. The docs page is *Run Galley › Embedding the
-  editor*.
+  editor's own page's, or that a person opened the address directly (a typed
+  address, a bookmark, a link from outside a browser), on GET too; and a part
+  of the address can't carry a path. A handler is handed a narrowed request
+  (never the cookie or the headers) and the site with `.git/` and `.env*`
+  unreadable by name; what the site answers with is copied where it is data,
+  from a change as from a read, and a thing to drive (the preview's
+  controller, a checkpoint) is handed behind the same guards; on GET it
+  refuses whatever would change it. On an install with accounts, work a
+  handler leaves running loses its caller's access once it has answered,
+  though what it records still carries that person's publishing name; without
+  accounts everything is the one person's. An extension names its secret
+  environment variables: on a hosted install they are kept from the site's
+  commands, and everywhere their values, when they are six characters or more,
+  are taken out of the server's log and of the extension's error messages.
+  Once an extension has been stopped, what it was handed does nothing: the
+  sites it holds, and the preview's controller if it took one. It is not a
+  sandbox: an extension is its author's code with the server's permissions. A
+  server with extensions must be the only server in its process, and should be
+  restarted after a backup is put back. The shapes may change in any 0.x
+  release. The docs page is *Run Galley › Embedding the editor*.
 
 ### Fixed
 
