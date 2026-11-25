@@ -1101,6 +1101,9 @@ async function run(step) {
     await go(page, `/sites/${SITE}`, 3000);
     await shoot(page, "site-home", FULL);
     await go(page, "/", 3000);
+    // A card's chips come from counts the app takes again once they are five minutes old, so they can be
+    // behind what was just sent to the inbox. Wait for the unread chip, for up to six minutes.
+    for (let i = 0; i < 36 && !(await page.getByText(/^\d+ unread$/).count()); i++) await go(page, "/", 10_000);
     await shoot(page, "sites", FULL);
     await docShot(page, "sites", 270, 122);
     await go(page, `/sites/${SITE}/media`, 3000);
