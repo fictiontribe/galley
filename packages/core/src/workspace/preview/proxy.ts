@@ -26,6 +26,7 @@ import { pipeline, type Duplex } from "node:stream";
 import zlib from "node:zlib";
 import { OVERLAY_SCRIPT_PATH, PROXY_HEALTH_PATH } from "../../api";
 import { PRODUCT } from "../../brand";
+import { mayBeShown } from "../policy";
 import type { PortPool } from "./ports";
 
 /** What a proxy does with a request and with an upgrade, apart from where they arrive. */
@@ -289,6 +290,15 @@ function stripCookieDomain(value: string | string[]): string[] {
   );
 }
 
+/** A request's path as the dev server will read it: percent-encoding undone, as far as it can be. */
+function decodedPath(pathname: string): string {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return pathname;
+  }
+}
+
 function sendError(res: ServerResponse, status: number, message: string, retry: boolean, overlayTag?: string) {
   if (res.headersSent) {
     res.destroy();
@@ -368,6 +378,14 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       } catch {
         sendError(res, 500, "The editing overlay couldn't be loaded.", false);
       }
+      return;
+    }
+    // The site's own dev server answers for files of the site's folder by their path, and what it refuses is its
+    // framework's to say (Vite refuses .env and .env.*, and answers for .envrc). So the question asked wherever a
+    // file is shown is asked here too: an address that names a secrets file, or anything under .git, is passed to
+    // nobody. The live site's proxy is another server's files, not this folder's, and is left alone.
+    if (kind === "preview" && !mayBeShown(decodedPath(pathname ?? "/"))) {
+      sendError(res, 403, "That file can't be shown here.", false);
       return;
     }
     // Only GET/HEAD responses can be HTML we would inject into; the request
