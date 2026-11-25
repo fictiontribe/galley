@@ -4,10 +4,11 @@
  * compose the engine and serve the app. Signal handling belongs to the CLI.
  */
 import { randomBytes } from "node:crypto";
-import { chmod, chown, lstat, mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import { chmod, chown, lstat, mkdir, readFile, readlink, unlink, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
-import { homedir } from "node:os";
+import { homedir, userInfo } from "node:os";
 import { connect } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { getRequestListener } from "@hono/node-server";
@@ -94,6 +95,8 @@ export interface ResolvedConfig {
   trustProxy: boolean;
   /** A Unix socket to listen on as well (GALLEY_SOCKET): forwarded headers are believed for requests on it alone. Null: none. */
   socket: string | null;
+  /** The socket's mode: 0o660 (the server's user and group) or 0o600 (its user alone). See `socketModeOf`. */
+  socketMode: number;
   desktop: boolean;
   /** The MCP endpoint at /mcp. */
   mcp: { enabled: boolean; build: boolean; publish: boolean };
@@ -320,6 +323,7 @@ export function resolveConfig(options: ServerOptions = {}): ResolvedConfig {
     throw new StartupError("GALLEY_SOCKET isn't available on Windows. Leave it unset, and put the proxy in front of the port with GALLEY_TRUST_PROXY=1.");
   }
   const socket = socketPath && mode === "hosted" ? resolve(socketPath) : null;
+  const socketMode = socket ? socketModeOf(env.GALLEY_SOCKET_MODE, warnings) : 0o600;
 
   if (socket && (options.trustProxy ?? flag(env.GALLEY_TRUST_PROXY))) {
     warnings.push("GALLEY_TRUST_PROXY is set as well as GALLEY_SOCKET: forwarded headers are believed only for requests that come in on the socket, never for those on the port.");
@@ -345,6 +349,7 @@ export function resolveConfig(options: ServerOptions = {}): ResolvedConfig {
     brand,
     trustProxy: options.trustProxy ?? flag(env.GALLEY_TRUST_PROXY),
     socket,
+    socketMode,
     desktop: options.desktop ?? flag(env.GALLEY_DESKTOP),
     mcp: {
       enabled: options.mcp?.enabled ?? !off(env.GALLEY_MCP),
@@ -550,6 +555,105 @@ function socketStanding(path: string): Promise<"live" | "left" | "unknown"> {
   });
 }
 
+/**
+ * Whether group `gid` is the server's own: no other account is in it, by /etc/group's members and /etc/passwd's
+ * primary groups. Anything that can't be told (no such group there, the files unreadable, no name for this user) is
+ * "not its own". The files are parameters for the tests.
+ */
+export function groupIsOwn(
+  ids: { uid: number; gid: number; name: string | null },
+  files: { group: string; passwd: string } = { group: "/etc/group", passwd: "/etc/passwd" }
+): boolean {
+  try {
+    const rows = (file: string) => readFileSync(file, "utf8").split("\n").filter((line) => line && !line.startsWith("#")).map((line) => line.split(":"));
+    const group = rows(files.group).find((fields) => fields.length >= 4 && Number(fields[2]) === ids.gid);
+
+    if (!group || ids.name === null) return false;
+    const members = (group[3] ?? "").split(",").map((member) => member.trim()).filter(Boolean);
+
+    if (members.some((member) => member !== ids.name)) return false;
+    return !rows(files.passwd).some((fields) => fields.length >= 4 && Number(fields[3]) === ids.gid && Number(fields[2]) !== ids.uid);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The socket's mode (GALLEY_SOCKET_MODE): 0660 lets the server's group connect as well as its user — how a proxy that
+ * runs as another user gets in — and 0600 its user alone. Unset, 0660 only when that group is the server's own: where
+ * it is shared (macOS's staff, a "users" group), 0660 would let every member in, so it is 0600, and the start says so.
+ */
+function socketModeOf(setting: string | undefined, warnings: string[]): number {
+  const value = setting?.trim() ?? "";
+
+  if (value !== "") {
+    if (/^0?660$/.test(value)) return 0o660;
+    if (/^0?600$/.test(value)) return 0o600;
+    throw new StartupError(`GALLEY_SOCKET_MODE must be 0660 (the server's user and group may connect) or 0600 (its user alone), not “${value}”.`);
+  }
+  const gid = process.getgid!();
+  let name: string | null = null;
+
+  try {
+    name = userInfo().username;
+  } catch {
+    // No name for this user (an id with no account): the group can't be told to be its own.
+  }
+  if (groupIsOwn({ uid: process.getuid!(), gid, name })) return 0o660;
+  warnings.push(
+    `GALLEY_SOCKET is made for this server's user alone (0600): its group (${gid}) has other accounts in it, or can't be told not to. A proxy that runs as another user can't connect to it; set GALLEY_SOCKET_MODE=0660 to let the group in as well.`
+  );
+  return 0o600;
+}
+
+/**
+ * Every part of the path to the socket's folder, links included, the way the system follows it: each must be the
+ * server's user's or root's, and a folder must not be open to others' writing unless only owners may remove what is in
+ * it (the sticky bit). Whoever could change any of them could put a socket of their own in this one's place.
+ */
+async function checkSocketFolder(folder: string): Promise<void> {
+  const uid = process.getuid!();
+  const parts = folder.split("/").filter(Boolean);
+  const otherUser = (part: string) => new StartupError(`The way to the folder for GALLEY_SOCKET (${folder}) goes through ${part}, which belongs to another user. Every folder and link on the way must be this server's user's (or root's).`);
+  const open = (part: string) => new StartupError(`The way to the folder for GALLEY_SOCKET (${folder}) goes through ${part}, which other users can write to, so one of them could put a socket of their own there. Use a folder that only this server's user can change, all the way down.`);
+  const missing = () => new StartupError(`The folder for GALLEY_SOCKET (${folder}) doesn't exist. Create it, or choose another path.`);
+  const check = (part: string, info: { uid: number; mode: number }) => {
+    if (info.uid !== uid && info.uid !== 0) throw otherUser(part);
+  };
+  const root = await lstat("/");
+
+  check("/", root);
+  if ((root.mode & 0o022) !== 0 && (root.mode & 0o1000) === 0) throw open("/");
+  let at = "/";
+  let links = 0;
+
+  while (parts.length > 0) {
+    const part = parts.shift()!;
+
+    if (part === ".") continue;
+    if (part === "..") {
+      at = dirname(at);
+      continue;
+    }
+    const next = join(at, part);
+    const info = await lstat(next).catch(() => null);
+
+    if (!info) throw missing();
+    check(next, info);
+    if (info.isSymbolicLink()) {
+      if (++links > 40) throw new StartupError(`The path to the folder for GALLEY_SOCKET (${folder}) goes through too many links. Choose a plainer path.`);
+      const target = await readlink(next);
+
+      parts.unshift(...target.split("/").filter(Boolean));
+      if (target.startsWith("/")) at = "/";
+      continue;
+    }
+    if (!info.isDirectory()) throw missing();
+    if ((info.mode & 0o022) !== 0 && (info.mode & 0o1000) === 0) throw open(next);
+    at = next;
+  }
+}
+
 /** The longest path the system takes for a Unix socket, in bytes (its sun_path, less the end byte). Node cuts a longer one short without saying so. */
 const SOCKET_PATH_LIMIT = process.platform === "linux" ? 107 : 103;
 
@@ -558,26 +662,14 @@ const SOCKET_PATH_LIMIT = process.platform === "linux" ? 107 : 103;
  * behind is removed first; anything else at that path, or a server still answering on it, stops the start in plain
  * words. Who may open the socket is the folder's to say: the operator puts it in one only the front can reach.
  */
-async function bindSocket(server: Server, path: string): Promise<void> {
+async function bindSocket(server: Server, path: string, mode: number): Promise<void> {
   const bytes = Buffer.byteLength(path);
 
   if (bytes > SOCKET_PATH_LIMIT) {
     throw new StartupError(`GALLEY_SOCKET's path is ${bytes} bytes long, and this system takes at most ${SOCKET_PATH_LIMIT} for a socket. Choose a shorter one.`);
   }
-  const folder = dirname(path);
-  // Asked first: systems disagree on the error for a socket in a folder that isn't there (macOS says EACCES). The
-  // folder itself may be a link (macOS's /tmp is one): what counts is the folder it leads to.
-  const where = await stat(folder).catch(() => null);
-
-  if (!where?.isDirectory()) throw new StartupError(`The folder for GALLEY_SOCKET (${folder}) doesn't exist. Create it, or choose another path.`);
-  // Whoever can write to the folder can put their own socket in this one's place: it must be the server's user's
-  // (or root's), and not open to others' writing unless only owners may remove what is in it (the sticky bit).
-  if (where.uid !== process.getuid!() && where.uid !== 0) {
-    throw new StartupError(`The folder for GALLEY_SOCKET (${folder}) belongs to another user. Use a folder this server's user (or root) owns.`);
-  }
-  if ((where.mode & 0o022) !== 0 && (where.mode & 0o1000) === 0) {
-    throw new StartupError(`The folder for GALLEY_SOCKET (${folder}) can be written to by other users, so one of them could put a socket of their own there. Use a folder only this server's user can write to.`);
-  }
+  // Asked first, as well: systems disagree on the error for a socket in a folder that isn't there (macOS says EACCES).
+  await checkSocketFolder(dirname(path));
   const there = await lstat(path).catch(() => null);
 
   if (there) {
@@ -587,6 +679,8 @@ async function bindSocket(server: Server, path: string): Promise<void> {
     if (standing === "live") throw new StartupError(`Another server is already listening on ${path} (GALLEY_SOCKET). Stop it, or choose another path.`);
     if (standing === "unknown") throw new StartupError(`A socket is at ${path} (GALLEY_SOCKET) that may still be in use by another program. Remove it if nothing uses it, or choose another path.`);
     await unlink(path).catch((error: NodeJS.ErrnoException) => {
+      // Gone already (another start cleared it): what was wanted.
+      if (error.code === "ENOENT") return;
       throw new StartupError(`A socket a stopped server left at ${path} (GALLEY_SOCKET) can't be removed by this user (${error.code}). Remove it, or choose another path.`);
     });
   }
@@ -603,12 +697,18 @@ async function bindSocket(server: Server, path: string): Promise<void> {
     server.once("error", onError);
     server.once("listening", onListening);
     // The socket is made in the listen call itself: with this mask it is never open to others, not even for a moment.
-    const mask = process.umask(0o117);
+    // A worker thread (an embedder's) can't set the mask: there the mode is set just after, below.
+    let mask: number | null = null;
 
+    try {
+      mask = process.umask(0o777 & ~mode);
+    } catch {
+      mask = null;
+    }
     try {
       server.listen(path);
     } finally {
-      process.umask(mask);
+      if (mask !== null) process.umask(mask);
     }
   }).catch((error: NodeJS.ErrnoException) => {
     if (error.code === "EADDRINUSE") throw new StartupError(`Another program made a socket at ${path} (GALLEY_SOCKET) just as this server started. Try again, or choose another path.`);
@@ -616,10 +716,10 @@ async function bindSocket(server: Server, path: string): Promise<void> {
     if (error.code === "EACCES") throw new StartupError(`This user can't make a socket at ${path} (GALLEY_SOCKET). Choose a folder it can write to.`);
     throw error;
   });
-  // Readable and writable by this server's user and its own group, no one else's: a proxy that runs as another user
-  // is put in that group.
+  // Readable and writable by this server's user, and its group with 0660 (a proxy that runs as another user is put in
+  // that group); no one else's.
   await chown(path, process.getuid!(), process.getgid!());
-  await chmod(path, 0o660);
+  await chmod(path, mode);
 }
 
 /** A preview gateway that has nowhere to show anything: a hosted install without an address for the preview never opens a port instead. */
@@ -805,7 +905,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     port = await bind(server, config, notice);
     if (config.socket) {
       socketServer = forSocket();
-      await bindSocket(socketServer, config.socket);
+      await bindSocket(socketServer, config.socket, config.socketMode);
     }
   } catch (error) {
     // The commonest way a start fails (the port is taken). The port's error is the one reported, whatever letting go does.

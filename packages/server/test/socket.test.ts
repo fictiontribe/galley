@@ -6,13 +6,13 @@
  * socket, GALLEY_TRUST_PROXY works as it always has.
  */
 import { spawn } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
-import { tmpdir } from "node:os";
+import { tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import { startServer } from "../src/server";
+import { groupIsOwn, startServer } from "../src/server";
 import type { RunningServer, ServerOptions } from "../src/types";
 
 const made: string[] = [];
@@ -214,15 +214,49 @@ describe("the server's Unix socket (GALLEY_SOCKET)", { timeout: 60_000 }, () => 
     expect(told()).toBe(1);
   });
 
-  it("makes the socket readable and writable by the server's user and group only", async () => {
+  it("makes the socket the server's user's and group's (0660) or its user's alone (0600), as GALLEY_SOCKET_MODE says", async () => {
+    for (const [setting, mode] of [["0660", 0o660], ["600", 0o600]] as const) {
+      const socketPath = join(folder(), "galley.sock");
+
+      await start({ socket: socketPath }, { GALLEY_SOCKET_MODE: setting });
+      const made = statSync(socketPath);
+
+      expect(made.mode & 0o777).toBe(mode);
+      expect(made.uid).toBe(process.getuid!());
+      expect(made.gid).toBe(process.getgid!());
+    }
+    await expect(start({ socket: join(folder(), "galley.sock") }, { GALLEY_SOCKET_MODE: "0666" })).rejects.toThrow(/GALLEY_SOCKET_MODE must be 0660/);
+  });
+
+  it("without GALLEY_SOCKET_MODE, lets the group in only when it is the server's own, and says so when it doesn't", async () => {
     const socketPath = join(folder(), "galley.sock");
+    const { notices } = await start({ socket: socketPath });
+    const own = groupIsOwn({ uid: process.getuid!(), gid: process.getgid!(), name: userInfo().username });
 
-    await start({ socket: socketPath });
-    const made = statSync(socketPath);
+    expect(statSync(socketPath).mode & 0o777).toBe(own ? 0o660 : 0o600);
+    expect(notices.join("\n").includes("GALLEY_SOCKET is made for this server's user alone (0600)")).toBe(!own);
+  });
 
-    expect(made.mode & 0o777).toBe(0o660);
-    expect(made.uid).toBe(process.getuid!());
-    expect(made.gid).toBe(process.getgid!());
+  it("tells a group of the server's own from one that other accounts share", () => {
+    const dir = folder();
+    const files = (group: string, passwd: string) => {
+      writeFileSync(join(dir, "group"), group);
+      writeFileSync(join(dir, "passwd"), passwd);
+      return { group: join(dir, "group"), passwd: join(dir, "passwd") };
+    };
+    const me = { uid: 1000, gid: 1000, name: "node" };
+    const passwd = "root:x:0:0:root:/root:/bin/sh\nnode:x:1000:1000::/home/node:/bin/sh\n";
+
+    // The image's: a group named for the user, nobody else in it.
+    expect(groupIsOwn(me, files("root:x:0:\nnode:x:1000:\n", passwd))).toBe(true);
+    expect(groupIsOwn(me, files("node:x:1000:node\n", passwd))).toBe(true);
+    // Another account listed in it, or with it as its own primary group: shared.
+    expect(groupIsOwn(me, files("users:x:1000:node,sam\n", passwd))).toBe(false);
+    expect(groupIsOwn(me, files("users:x:1000:\n", `${passwd}sam:x:1001:1000::/home/sam:/bin/sh\n`))).toBe(false);
+    // Nothing to go by: not its own.
+    expect(groupIsOwn(me, files("root:x:0:\n", passwd))).toBe(false);
+    expect(groupIsOwn({ ...me, name: null }, files("node:x:1000:\n", passwd))).toBe(false);
+    expect(groupIsOwn(me, { group: join(dir, "none"), passwd: join(dir, "none") })).toBe(false);
   });
 
   it("closes the socket and removes it when a start fails after it was made", async () => {
@@ -246,10 +280,32 @@ describe("the server's Unix socket (GALLEY_SOCKET)", { timeout: 60_000 }, () => 
     const open = folder();
 
     chmodSync(open, 0o777);
-    await expect(start({ socket: join(open, "galley.sock") })).rejects.toThrow(/can be written to by other users/);
+    await expect(start({ socket: join(open, "galley.sock") })).rejects.toThrow(/which other users can write to/);
     // With the sticky bit only owners can remove what's in it, as in /tmp: that's taken.
     chmodSync(open, 0o1777);
     await start({ socket: join(open, "galley.sock") });
+  });
+
+  it("checks every folder and link on the way to the socket's folder, not only the last", async () => {
+    // A good folder inside one others can write to: they could rename it away and put their own in its place.
+    const open = join(folder(), "open");
+    const inside = join(open, "inside");
+
+    mkdirSync(inside, { recursive: true, mode: 0o700 });
+    chmodSync(open, 0o777);
+    // Named as the system reaches it, past any link on the way (macOS's /var is one).
+    const named = `goes through ${realpathSync(open)}, which other users can write to`;
+
+    await expect(start({ socket: join(inside, "galley.sock") })).rejects.toThrow(named);
+    // A link of the server's own, leading through that folder: the folder it leads through counts too.
+    const link = join(folder(), "link");
+
+    symlinkSync(inside, link);
+    await expect(start({ socket: join(link, "galley.sock") })).rejects.toThrow(named);
+    // Closed again, both are taken.
+    chmodSync(open, 0o700);
+    await start({ socket: join(inside, "galley.sock") });
+    await start({ socket: join(link, "other.sock") });
   });
 
   it("refuses a link at the socket's path, a path too long for a socket, and a socket that may still be in use", async () => {
@@ -266,7 +322,8 @@ describe("the server's Unix socket (GALLEY_SOCKET)", { timeout: 60_000 }, () => 
     holders.push(holder);
     await new Promise<void>((done) => holder.listen(held, () => done()));
     chmodSync(held, 0o000);
-    await expect(start({ socket: held })).rejects.toThrow(/may still be in use/);
+    // Root connects to any socket, whatever its mode: run as root, the socket is plainly live instead.
+    await expect(start({ socket: held })).rejects.toThrow(process.getuid!() === 0 ? /already listening/ : /may still be in use/);
     expect(existsSync(held)).toBe(true);
   });
 

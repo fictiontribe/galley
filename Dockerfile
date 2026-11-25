@@ -68,11 +68,15 @@ FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 # deploy key. tini: PID 1 that forwards the stop signal and reaps the
 # preview's children. corepack: sites that pin pnpm or yarn get it on first
 # use. (setpriv, which the entrypoint drops root with, is part of the base image.)
+# /run/galley: a folder for GALLEY_SOCKET, the server's own (a named volume
+# mounted there takes this over), which the proxy's container reaches as group
+# node.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git openssh-client ca-certificates tini \
  && rm -rf /var/lib/apt/lists/* \
  && corepack enable \
- && mkdir -p /data && chown node:node /data
+ && mkdir -p /data && chown node:node /data \
+ && mkdir -p /run/galley && chown node:node /run/galley && chmod 750 /run/galley
 
 # NODE_ENV stays unset on purpose: the site's framework usually sits in its
 # devDependencies, which a "production" install would skip.
