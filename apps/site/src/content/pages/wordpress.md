@@ -65,7 +65,7 @@ sections:
         theirs: Core, theme and plugins
         better: ours
       - label: Security
-        ours: No database or login online
+        ours: No database online; no login unless you host the editor (new)
         theirs: Patches for core and plugins
         better: ours
       - label: Editing
