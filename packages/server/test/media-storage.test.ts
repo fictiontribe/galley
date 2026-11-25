@@ -138,6 +138,22 @@ describe("media storage routes", () => {
     await app.done();
   });
 
+  it("answer every one of a screenful of stored pictures asked for at once", async () => {
+    const app = await withStorage();
+    const connected = await json(await app.call("PUT", `/api/sites/${SITE_ID}/media/storage`, { config: { ...config(), prefix: "screen" }, ...KEY }));
+
+    expect(connected.check.ok).toBe(true);
+    const objects = fake.buckets.get("lowfield-media")!.objects;
+    const names = Array.from({ length: 36 }, (_, index) => `screen/picture-${index}.png`);
+
+    for (const name of names) objects.set(name, { body: Buffer.from(`the bytes of ${name}`), contentType: "image/png", cacheControl: null, metadata: {}, etag: name, lastModified: new Date() });
+    const answers = await Promise.all(names.map((name) => app.call("GET", `/api/sites/${SITE_ID}/raw?path=${encodeURIComponent(`bucket:${name}`)}`)));
+
+    expect(answers.map((answer) => answer.status)).toEqual(names.map(() => 200));
+    expect(await Promise.all(answers.map((answer) => answer.text()))).toEqual(names.map((name) => `the bytes of ${name}`));
+    await app.done();
+  });
+
   it("refuse a badly shaped key with a sentence, not the value", async () => {
     const app = await withStorage();
     const response = await app.call("POST", `/api/sites/${SITE_ID}/media/storage/check`, { config: config(), accessKeyId: KEY.accessKeyId, secretAccessKey: "has spaces in it, oops" });

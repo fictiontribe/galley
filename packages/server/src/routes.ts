@@ -512,7 +512,8 @@ export const routes: RouteTable = {
 
     // A file kept in the bucket or Cloudflare Images: read from there, so the app's own pages never load other origins.
     if (/^(bucket|images):/.test(path)) {
-      const bytes = await ctx.services.mediaStorage?.readStored(site, path);
+      // Past a few at once, a read waits its turn; one whose request was given up leaves the line.
+      const bytes = await ctx.services.mediaStorage?.readStored(site, path, { signal: c.req.raw.signal });
 
       if (!bytes) throw notFound("That file isn't in the site's media storage any more.");
       // A stored name never changes what it holds.

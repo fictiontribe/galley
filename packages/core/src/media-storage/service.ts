@@ -29,6 +29,7 @@ import type { MediaCreatedRecord, MediaCheckResult, MediaConnectRequest, MediaCo
 import { createMediaLibrary, type LibraryItem, type MediaLibrary } from "./library";
 import { BUCKET_CONNECTORS, isTrialAddress, normalizePrefix, normalizeStorageConfig, settingsProblems } from "./info";
 import { createMediaKeys, normalizeMediaKey, scrub, type MediaKeys } from "./keys";
+import { createReadLine } from "./read-line";
 import type { Credentials } from "./sigv4";
 import { ADDRESS_TAIL, escapePattern, parseStorePath, placeFile, StoreError, StoreNameTaken, storePath, trimFound, type MediaStore, type StoredItem } from "./store";
 import { keyUnder } from "./bucket-store";
@@ -59,8 +60,18 @@ function builtInConnectors(): BucketConnector[] {
 
 /** The most the app shows of a stored file through the server: the library's own upload limit. */
 export const RAW_LIMIT = 25 * 1024 * 1024;
-/** How many stored files one site may have read through the server at once. */
+/** How many stored files one site may have read through the server at once: each read may hold a whole file in memory. */
 export const RAW_AT_ONCE = 4;
+/**
+ * How many more reads may wait their turn for a site before one is refused.
+ * Waiting holds no file, only an open request, so the line is long: five
+ * browsers' worth at the hundred requests HTTP/2 usually lets one browser
+ * keep open (over plain HTTP a browser keeps six). It isn't longer because at
+ * a tenth to a third of a second a read, the last of this many is served in
+ * about a quarter to three quarters of a minute, which is as long as a proxy
+ * usually waits for an answer: a longer line would only fail later.
+ */
+export const RAW_WAITING = 512;
 const TOO_LARGE_TO_SHOW = "That file is larger than 25 MB, so the app doesn't show it. Open it at its address instead.";
 
 export interface MediaStorageServiceOptions {
@@ -145,7 +156,7 @@ export interface MediaStorageService {
   /** Deletes from a store for good — anything used by the working copy or the published version is refused. */
   deleteStored(site: SiteService, paths: string[]): Promise<MediaStoreDeleteResult>;
   /** The bytes of a stored file ("bucket:lowfield/coat.webp"), for the app's own previews; null when it isn't there. */
-  readStored(site: SiteService, path: string): Promise<Uint8Array | null>;
+  readStored(site: SiteService, path: string, options?: { signal?: AbortSignal }): Promise<Uint8Array | null>;
 
   // ── moving files, and changing a store's address
 
@@ -183,7 +194,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   const moving = new Map<string, string>();
   /** Sites whose move has been asked for and hasn't become a job yet (or runs without one). */
   const starting = new Set<string>();
-  const rawReads = new Map<string, number>();
+  const rawReads = createReadLine(RAW_AT_ONCE, RAW_WAITING);
   const claimMove = (siteId: string) => {
     const running = moving.get(siteId);
 
@@ -569,17 +580,9 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       return { url, working: titled, published };
     },
 
-    async readStored(site, path) {
-      // A few at a time per site: each read is bounded, and so is how many run at once.
-      const reading = rawReads.get(site.id) ?? 0;
-
-      if (reading >= RAW_AT_ONCE) throw new GalleyError("busy", "Too many stored files are being shown at once. Try again in a moment.");
-      rawReads.set(site.id, reading + 1);
-      try {
-        return await readOwn(site, path);
-      } finally {
-        rawReads.set(site.id, (rawReads.get(site.id) ?? 1) - 1);
-      }
+    readStored(site, path, read) {
+      // A few at a time per site: each read is bounded, and so is how many run at once. The rest wait their turn.
+      return rawReads.run(site.id, () => readOwn(site, path), read?.signal);
     },
 
     async planMove(site, request) {
