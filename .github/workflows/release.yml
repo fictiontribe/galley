@@ -151,6 +151,8 @@ jobs:
       # So galley-cms is published under a tag of its own ("incoming"), which nobody asks for; the step waits
       # until the registry lists the version and its tarball answers; only then does "latest" move to it, and
       # only then is create-galley published.
+      # "incoming" is left where it is: the release's token may add or move a tag and may not remove one
+      # (0.4.2: the removal was refused), and the next release moves it to its own version.
       - name: Publish to npm
         if: env.PUBLISH == 'true' && github.ref_type == 'tag'
         env:
@@ -203,5 +205,4 @@ jobs:
             echo "::error::galley-cms@$version can be installed, but npm refused to move \"$tag\" to it (see above), so create-galley was not published. Nobody is given the new version yet. By hand, signed in to npm as an owner: npm dist-tag add galley-cms@$version $tag. Then run this workflow again from the tag with Dry run off; it finds the tag in place and publishes create-galley."
             exit 1
           fi
-          npm dist-tag rm galley-cms incoming || true
           publish create-galley "$tag"
