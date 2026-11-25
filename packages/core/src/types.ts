@@ -179,6 +179,7 @@ export interface EntryTemplate {
 
 export type EntryFormat = "markdown" | "mdx" | "json" | "yaml" | "toml";
 
+
 export interface Collection {
   id: string;
   /** Plural, e.g. "Blog posts". */
@@ -196,6 +197,18 @@ export interface Collection {
   /** entries: glob relative to `path`, e.g. "**\/*.{md,mdx}". */
   pattern?: string;
   format: EntryFormat;
+  /**
+   * The owner's declaration (galley.config.json) that the site shows this
+   * collection's Markdown as written and runs no code in it, so an account
+   * below the build-mode level may change its Markdown on any framework
+   * (src/site/content-code.ts). Never applies to `.mdx`, and the allowlist
+   * still decides which paths. Absent is guarded, not inert: by default a
+   * collection's content is build-mode for a writer below that level unless
+   * the engine itself knows the format is static (Astro Markdown, the generic
+   * model's Markdown when nothing runs over it). Whoever can edit a `plain`
+   * collection can run code if the site does run code in that content.
+   */
+  plain?: boolean;
   /** Whether items carry a markdown body below the front matter. */
   body: boolean;
   /** Public URL pattern with {slug}, e.g. "/blog/{slug}/". null = no page of its own. */
@@ -482,6 +495,8 @@ export interface CollectionConfig {
   draftField?: string;
   create?: boolean;
   hidden?: boolean;
+  /** The site shows this collection's Markdown as written and runs no code in it; its Markdown is then editable below build-mode level on any framework (never `.mdx`). */
+  plain?: boolean;
   fields?: FieldConfig[];
 }
 
@@ -2082,7 +2097,8 @@ export interface SiteService {
    */
   createEntry(input: CreateEntryInput, options?: { origin?: ChangeOrigin; mode?: AgentMode }): Promise<Entry>;
   /** `baseHash`: the entry's hash as the caller read it; when the entry is no longer that version it is not deleted (conflict). */
-  deleteEntry(path: string, options?: { origin?: ChangeOrigin; baseHash?: string }): Promise<void>;
+  /** `mode`: the assistant's conversation mode — a delete in a content conversation is held below build level like a write (site/content-code.ts). */
+  deleteEntry(path: string, options?: { origin?: ChangeOrigin; mode?: AgentMode; baseHash?: string }): Promise<void>;
   search(query: string, options?: { collection?: string; limit?: number }): Promise<SearchHit[]>;
   /** `mode` defaults to "content", where matches in source files are not editable. */
   resolveText(request: ResolveRequest, options?: { mode?: AgentMode }): Promise<ResolveResult>;

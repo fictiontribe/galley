@@ -27,6 +27,8 @@ export interface Conflict {
   structure: StructureLoss[];
   /** Body text that didn't save, when there was some. */
   body: string | null;
+  /** The lost save was marked as the previewed page's, so putting it back is marked too. */
+  viaPreview?: boolean;
 }
 
 export interface FormState {
@@ -56,10 +58,12 @@ export interface FormState {
 interface Batch {
   ops: EditOp[];
   keys: string[];
+  /** Sent marked as the previewed page's: the store was tainted by a page message when it went (see `fromPage`). */
+  viaPreview?: boolean;
 }
 
 export interface FormDeps {
-  send: (ops: EditOp[], baseHash: string) => Promise<EditResult>;
+  send: (ops: EditOp[], baseHash: string, viaPreview?: boolean) => Promise<EditResult>;
   reload: () => Promise<Entry>;
   /** Called with each entry the engine returns, to keep the shared cache current. */
   onEntry: (entry: Entry) => void;
@@ -74,6 +78,19 @@ export interface FormActions {
   commitBody: () => void;
   /** An op that changes shape (insert / move / remove) or puts a value back. Drafts are sent first. */
   apply: (...ops: DataOp[]) => void;
+  /**
+   * Run what a message from the previewed page asks for. Any change made while
+   * it runs — and, when it returns a promise, until that settles — taints the
+   * store until its next save, and a tainted save is sent marked: the server
+   * holds it to the lowest level whoever is signed in (core content-code.ts),
+   * because the page shares the overlay's origin and could otherwise save as
+   * the person editing. Nothing lists message types: whatever a page message
+   * changes is the page's. It over-marks rather than under-marks — a person's
+   * own edit that goes in the same save is marked with it.
+   */
+  fromPage: <T>(run: () => T) => T;
+  /** Whether a message from the previewed page is being handled now (an action that finishes later can stay in its window). */
+  inPage: () => boolean;
   /** Send every draft now. Resolves when the queue is empty. */
   flush: () => Promise<void>;
   /** A fresh copy of the entry arrived from outside the form; `origin` when it should be announced. */
@@ -145,6 +162,14 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
   let bodyDraft: { value: string; timer: ReturnType<typeof setTimeout> | null } | null = null;
   let queue: Batch[] = [];
   let inflight: Batch | null = null;
+  // How many messages from the previewed page are being handled now (see fromPage), and whether a change one of them
+  // made is still waiting to be saved: the next save then goes marked.
+  let pageDepth = 0;
+  let tainted = false;
+  /** A change to what the form will send: made while a page message runs, it taints the store. */
+  const noteChange = (): void => {
+    if (pageDepth > 0) tainted = true;
+  };
   let idleWaiters: Array<() => void> = [];
   /** When the copy the form is built on was written (file mtime), to order copies that cross. */
   let lastModified = entry.modifiedAt;
@@ -236,6 +261,9 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
 
   async function pump(): Promise<void> {
     if (inflight || queue.length === 0 || store.getState().saveError) {
+      // Nothing left to send: a page change that tainted the store has gone (or never needed sending), so the taint goes.
+      // It stays through a failed save, which waits in the queue and is sent marked when retried.
+      if (!inflight && queue.length === 0 && drafts.size === 0 && !bodyDraft && !store.getState().saveError) tainted = false;
       if (!inflight && queue.length === 0 && deferred) {
         const late = deferred;
         deferred = null;
@@ -244,12 +272,13 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       settleWaiters(Boolean(store.getState().saveError));
       return;
     }
-    const batch: Batch = { ops: queue.flatMap((item) => item.ops), keys: [...new Set(queue.flatMap((item) => item.keys))] };
+    const marked = tainted || queue.some((item) => item.viaPreview);
+    const batch: Batch = { ops: queue.flatMap((item) => item.ops), keys: [...new Set(queue.flatMap((item) => item.keys))], ...(marked ? { viaPreview: true } : {}) };
     queue = [];
     inflight = batch;
     store.setState({ busy: true });
     try {
-      const result = await deps.send(batch.ops, store.getState().hash);
+      const result = await deps.send(batch.ops, store.getState().hash, batch.viaPreview);
       inflight = null;
       received(result, batch);
     } catch (error) {
@@ -302,6 +331,10 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
     bodyDraft = null;
     queue = [];
     setSaveState(Object.keys(store.getState().saveState), null);
+    // What was lost is put back (reapply) marked if it was going marked. Nothing is pending now, so the taint goes — before
+    // the reload, so a page change made while it is on its way taints the store again and isn't sent unmarked.
+    const lostMarked = Boolean(batch.viaPreview) || tainted;
+    tainted = false;
     let fresh: Entry | null = null;
     try {
       fresh = await deps.reload();
@@ -317,7 +350,7 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       walk = applyOpsLocal(walk, [op]);
     }
     store.setState({
-      conflict: { edits: typedEdits(lostData), structure, body: lostBody },
+      conflict: { edits: typedEdits(lostData), structure, body: lostBody, ...(lostMarked ? { viaPreview: true } : {}) },
       ...(fresh
         ? { hash: fresh.hash, stored: fresh.data, storedBody: fresh.body, raw: fresh.raw, issues: fresh.issues, refusals: {} }
         : {}),
@@ -354,6 +387,7 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       if (existing?.timer) clearTimeout(existing.timer);
       const slot: DraftSlot = { draft: { path, value }, required, timer: null };
       drafts.set(key, slot);
+      noteChange();
       if (store.getState().refusals[key]) actions.clearRefusal(path);
       if (immediate) {
         flushDraft(key);
@@ -377,6 +411,7 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
     },
     editBody(text) {
       if (bodyDraft?.timer) clearTimeout(bodyDraft.timer);
+      noteChange();
       bodyDraft = {
         value: text,
         timer: setTimeout(() => {
@@ -394,10 +429,32 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       void pump();
     },
     apply(...ops) {
+      noteChange();
       flushAll();
       enqueue(ops, [...new Set(ops.map(keyOfOp))]);
       recompute();
       void pump();
+    },
+    fromPage(run) {
+      pageDepth += 1;
+      let result;
+      try {
+        result = run();
+      } catch (error) {
+        pageDepth -= 1;
+        throw error;
+      }
+      const settle = () => {
+        pageDepth -= 1;
+      };
+      const pending = result as unknown;
+      if (pending !== null && typeof pending === "object" && typeof (pending as { then?: unknown }).then === "function") {
+        (pending as PromiseLike<unknown>).then(settle, settle);
+      } else settle();
+      return result;
+    },
+    inPage() {
+      return pageDepth > 0;
     },
     flush() {
       flushAll();
@@ -417,8 +474,12 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       adoptOutside(fresh, origin);
     },
     async saveRaw(text) {
+      // Decided as it is asked, before waiting for the queue: a whole-file save a page message asks for (an Undo it
+      // started) goes marked. The flush below sends any pending page change marked on its own; a person's source-view
+      // text is theirs.
+      const marked = pageDepth > 0;
       await actions.flush();
-      const result = await deps.send([{ op: "raw", value: text }], store.getState().hash);
+      const result = await deps.send([{ op: "raw", value: text }], store.getState().hash, marked || undefined);
       if (result.applied > 0 || result.refused.length === 0) {
         lastModified = result.entry.modifiedAt;
         store.setState({
@@ -445,6 +506,8 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       const conflict = store.getState().conflict;
       if (!conflict) return;
       store.setState({ conflict: null });
+      // Putting back a save that was going marked keeps the mark.
+      if (conflict.viaPreview) tainted = true;
       const ops = reapplyOps(conflict.edits, applyOpsLocal(store.getState().stored, dataOps(pendingOps())));
       enqueue(ops, [...new Set(ops.map(keyOfOp))]);
       if (conflict.body !== null && conflict.body !== store.getState().storedBody) enqueue([{ op: "body", value: conflict.body }], [BODY_KEY]);

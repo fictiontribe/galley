@@ -438,7 +438,8 @@ const deleteEntry = defineTool({
     const read = versionRead(ctx, input.path);
 
     try {
-      await ctx.site.deleteEntry(input.path, { origin: "agent", ...(read ? { baseHash: read } : {}) });
+      // With the conversation's mode: in a content conversation a delete is held below build level, as a write is.
+      await ctx.site.deleteEntry(input.path, { origin: "agent", mode: ctx.mode, ...(read ? { baseHash: read } : {}) });
     } catch (error) {
       if (!(read && error instanceof GalleyError && error.code === "conflict")) throw error;
       return refuse(`The entry ${CHANGED_AFTER_READ}, so it wasn't deleted. Read it again with read_entry, and delete it only if that is still what the person wants.`, `Couldn't delete ${name}`);

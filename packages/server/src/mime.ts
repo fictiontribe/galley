@@ -49,7 +49,9 @@ export function extensionOf(path: string): string {
 }
 
 export function contentTypeFor(path: string): string {
-  return TYPES[extensionOf(path)] ?? "application/octet-stream";
+  const ext = extensionOf(path);
+
+  return (Object.hasOwn(TYPES, ext) ? TYPES[ext] : undefined) ?? "application/octet-stream";
 }
 
 const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "avif", "svg", "ico", "bmp", "tif", "tiff"]);

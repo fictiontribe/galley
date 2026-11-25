@@ -10,6 +10,9 @@
  * one computer, everything allowed.
  *
  * The rule behind the levels (accounts.ts `AccessLevel`):
+ *
+ * (`PREVIEW_INITIATED_HEADER` lives here, not in caller.ts, so the web app can
+ * read it too: caller.ts pulls in node:async_hooks and the browser can't.)
  *   edit    — reading, and anything that only changes the draft;
  *   publish — what changes the live site or the repository, and the inbox;
  *   manage  — the install: people, keys, settings, backups, where the site is hosted.
@@ -334,6 +337,16 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
  *    written. It holds the commands this server runs and where the site goes.
  */
 export const BUILD_MODE_LEVEL: AccessLevel = "publish";
+
+/**
+ * The header the app sets on a request it makes because of a message from the
+ * previewed page (web lib/api.ts), read by the hosted server (app.ts) to mark
+ * the caller `viaPreview` (caller.ts). The page can't set it — it can't call
+ * the API at all (no CORS, SameSite=Strict, the Origin check) — so the app's
+ * own mark is enough. A so-marked write is held to the lowest level whoever is
+ * signed in (site/content-code.ts).
+ */
+export const PREVIEW_INITIATED_HEADER = "x-galley-via-preview";
 export const SITE_SETTINGS_LEVEL: AccessLevel = "manage";
 
 /**

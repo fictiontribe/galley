@@ -11,6 +11,7 @@ import { readScriptEntry } from "@/features/forms/logic/json";
 import { CONSENT_WORDS, LOAD_WORDS, consentOf, integrationOf, loadOf, markOf, primarySetting, scriptName } from "./logic/entries";
 import { inactiveKindLine } from "@/features/plugins/catalog";
 import { describePages } from "./logic/match";
+import { useAllowBuild } from "@/features/forms/file/assistant";
 import { ScriptDetail } from "./ScriptDetail";
 
 export interface ScriptRowProps {
@@ -41,6 +42,8 @@ function EditMark({ index }: { index: number }) {
 export const ScriptRow = memo(function ScriptRow({ index, total, open, warned, drag, onToggle, onMove, onRemove }: ScriptRowProps) {
   const raw = useFormValue(["scripts", index]);
   const edits = useEdits();
+  // Turning a script on takes the build-mode level and a site that allows build mode; turning one off doesn't.
+  const mayTurnOn = useAllowBuild();
   const marks = useChangeMarks();
   const card = useRef<HTMLElement>(null);
   const entry = readScriptEntry(raw);
@@ -80,7 +83,7 @@ export const ScriptRow = memo(function ScriptRow({ index, total, open, warned, d
         </span>
         <EditMark index={index} />
         <span className="kit-script__switch">
-          <Toggle checked={entry.enabled} aria-label={entry.enabled ? `${name} is on` : `${name} is off`} onChange={(next) => edits.choose(["scripts", index, "enabled"], next)} />
+          <Toggle checked={entry.enabled} disabled={!entry.enabled && !mayTurnOn} aria-label={entry.enabled ? `${name} is on` : `${name} is off`} onChange={(next) => edits.choose(["scripts", index, "enabled"], next)} />
         </span>
         <span className="kit-dest__tools">
           <ToolButton icon="arrow-up" label={`Move ${name} up`} disabled={index === 0} onClick={() => onMove(index, index - 1)} />

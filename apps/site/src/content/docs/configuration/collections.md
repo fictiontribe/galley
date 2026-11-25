@@ -25,6 +25,7 @@ A collection is either **entries** — a folder with one file per page, post or 
 | `titleField`, `dateField`, `imageField`, `draftField` | Which field the list view uses for the title, date, thumbnail and draft badge. Detected from common names (`title`, `name`, `date`, `pubDate`, `image`, `cover`, `draft`, …). |
 | `create` | Whether new entries may be created from the app. |
 | `hidden` | Leave it out of the navigation (its files stay editable). |
+| `plain` | The site shows this collection's Markdown as written and runs no code in it. With it, an account below build-mode level may change this collection's Markdown (never `.mdx`) on any framework. Your responsibility: if the site *does* run code in this content, anyone who can edit it can run code. |
 | `fields` | Field overrides and additions — below. |
 
 ```json galley.config.json

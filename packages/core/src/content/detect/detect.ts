@@ -382,6 +382,14 @@ function sanitizeConventions(value: unknown, report: (what: string) => void): Ad
  * every hook went — the engine behind detectSite, exported for the adapter
  * conformance kit.
  */
+
+/**
+ * Files the site's assistant reads as its own instructions when they exist,
+ * by their path from the site root (plus whatever `ai.instructions` names).
+ * Below build-mode level they may not be written (site/content-code.ts): they
+ * steer an owner's assistant, so they are not content.
+ */
+export const ASSISTANT_INSTRUCTION_FILES: readonly string[] = ["STYLE.md", "STYLEGUIDE.md", "STYLE_GUIDE.md", "style-guide.md", "docs/style-guide.md", "brand/voice.md", "VOICE.md", "BRAND.md"];
 export async function runDetection(root: string, options: DetectOptions = {}): Promise<DetectionRun> {
   const notes: string[] = [...(options.notes ?? [])];
   const problems: string[] = [];
@@ -624,7 +632,7 @@ export async function runDetection(root: string, options: DetectOptions = {}): P
     `${media.dir}/**`,
     ...media.roots.filter((rootDir) => rootDir.dir !== media.dir).map((rootDir) => `${rootDir.dir}/**/*.{png,jpg,jpeg,gif,webp,avif,svg,ico,mp4,webm,pdf}`),
   ];
-  const instructions = ["STYLE.md", "STYLEGUIDE.md", "STYLE_GUIDE.md", "style-guide.md", "docs/style-guide.md", "brand/voice.md", "VOICE.md", "BRAND.md"].filter((file) => existsSync(absolute(root, file)));
+  const instructions = ASSISTANT_INSTRUCTION_FILES.filter((file) => existsSync(absolute(root, file)));
   const urls: SiteModel["urls"] = {};
 
   if (production) urls.production = production;

@@ -39,7 +39,7 @@ Start here when you build a site and hand it to someone else to edit. Galley wor
 ## If something's different
 
 - **The site is for a client who pays for their own assistant.** Give the site its own key in its **Settings** › **Connections**.
-- **`allowBuild` is not access control.** Anyone who can sign in to Galley can still change source files through the API ([Security](/docs/running/security/)).
+- **`allowBuild` holds for everyone, but an owner can change it.** With it off, build mode is refused for every account and over the API too, and nobody can turn a script on or add custom code to a form; an owner can turn it back on. Who may sign in is the real control ([Security](/docs/running/security/)).
 
 ## Next
 

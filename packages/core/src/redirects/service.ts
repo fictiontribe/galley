@@ -34,6 +34,7 @@ import { readList, serializeList, type ReadList } from "./file";
 import { exportInfo, renderExport } from "./generate";
 import { CLOUDFLARE_BULK_PERMISSIONS, HOST_INFO } from "./info";
 import { derivedPath, hostOf, isGeneratedHost, listFileOf, slashStyleOf } from "./locate";
+import { asGeneratedRedirects } from "./generated";
 
 export { slashStyleOf } from "./locate";
 import { canonicalOrder } from "./match";
@@ -202,7 +203,10 @@ export function createRedirectsService(options: RedirectsServiceOptions): Redire
   async function writeDerived(site: SiteService, plan: DerivedPlan, origin: "user" | "agent"): Promise<void> {
     if (plan.next === null || plan.next === plan.current) return;
     // Rebuilt from what was read of it: written only over that, so a file that changed in between isn't replaced from the older text.
-    await site.writeFile(plan.path, plan.next, { origin, mode: "content", ...(plan.current !== null ? { baseHash: hashContent(plan.current) } : {}) });
+    // Marked as the redirects code's own write, so a Redirects save below build-mode level writes the host's file too (generated.ts).
+    const next = plan.next;
+
+    await asGeneratedRedirects(plan.path, () => site.writeFile(plan.path, next, { origin, mode: "content", ...(plan.current !== null ? { baseHash: hashContent(plan.current) } : {}) }));
     if (plan.host === "vercel" && plan.writtenHash) {
       const hash = plan.writtenHash;
 

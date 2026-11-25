@@ -74,7 +74,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 function mimeOf(url: string): string {
   const ext = /\.([a-z0-9]+)(?:\?|#|$)/i.exec(url)?.[1]?.toLowerCase() ?? "";
 
-  return MIME_BY_EXTENSION[ext] ?? "application/octet-stream";
+  return (Object.hasOwn(MIME_BY_EXTENSION, ext) ? MIME_BY_EXTENSION[ext] : undefined) ?? "application/octet-stream";
 }
 
 /** Generated sizes listed in `_wp_attachment_metadata` (PHP-serialised; only the file names are read). */
@@ -267,7 +267,7 @@ export async function readWxr(path: string, options: ReadOptions = {}): Promise<
     const id = Number(f["wp:post_id"]);
 
     typeCounts.set(type, (typeCounts.get(type) ?? 0) + 1);
-    if (FEATURE_TYPES[type]) features.add(FEATURE_TYPES[type]!);
+    if (Object.hasOwn(FEATURE_TYPES, type)) features.add(FEATURE_TYPES[type]!);
     if (type === "attachment") {
       const url = (f["wp:attachment_url"] ?? f.guid ?? "").trim();
 

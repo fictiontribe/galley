@@ -29,9 +29,9 @@ const EXTENSIONS: Record<string, EntryFormat> = {
 };
 
 export function formatForPath(path: string): EntryFormat | null {
-  const match = /\.([a-z0-9]+)$/i.exec(path);
+  const ext = /\.([a-z0-9]+)$/i.exec(path)?.[1]?.toLowerCase() ?? "";
 
-  return match ? (EXTENSIONS[match[1]!.toLowerCase()] ?? null) : null;
+  return Object.hasOwn(EXTENSIONS, ext) ? (EXTENSIONS[ext] ?? null) : null;
 }
 
 export function isBodyFormat(format: EntryFormat): boolean {

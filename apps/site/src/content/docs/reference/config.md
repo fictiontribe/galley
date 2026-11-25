@@ -59,7 +59,7 @@ How the file merges over detection: [galley.config.json](/docs/configuration/#ho
 | `publish.push` | boolean | Push after committing. *Default:* `true` when there is a remote. |
 | `ai` | object | [Assistant instructions and build mode](/docs/configuration/assistant/). *Default:* detected. |
 | `ai.instructions` | string[] | Files whose text is added to the assistant's instructions. Replaces the default. A secrets file (a name that starts with `.env`) or a file under `.git/` named here is skipped. *Default:* whichever of `STYLE.md`, `STYLEGUIDE.md`, `STYLE_GUIDE.md`, `style-guide.md`, `docs/style-guide.md`, `brand/voice.md`, `VOICE.md`, `BRAND.md` exist. |
-| `ai.allowBuild` | boolean | Whether the assistant's build mode is offered on this site. *Default:* `true`. |
+| `ai.allowBuild` | boolean | Whether build mode is offered on this site — the assistant's, and what needs it for everyone: a build-mode write, turning a script on, a form's custom code. *Default:* `true`. |
 | `writable` | object | The write surface, as globs relative to the site root. *Default:* detected. |
 | `writable.content` | string[] | What content mode may write. Replaces the default entirely. *Default:* each collection's folder (`…/**`) or data file, `<media.dir>/**`, and media files in the other detected roots. |
 | `writable.build` | string[] | What build mode may write in addition. The deny-list always applies. *Default:* `["**/*"]`. |
@@ -90,6 +90,7 @@ How the file merges over detection: [galley.config.json](/docs/configuration/#ho
 | `collections[].draftField` | string | The field that marks an entry as a draft. *Default:* `draft`, `unpublished`, `hidden` or `private`, when present. |
 | `collections[].create` | boolean | Whether new entries may be created from the app. *Default:* `true` for entries, `false` for data. |
 | `collections[].hidden` | boolean | Leave the collection out of the navigation. *Default:* `false`. |
+| `collections[].plain` | boolean | The site shows this collection's Markdown as written and runs no code in it, so an account below build-mode level may change its Markdown (never `.mdx`) on any framework. If the site *does* run code in this content, anyone who can edit it can run code. *Default:* `false`. |
 | `collections[].fields` | object[] | Field overrides and additions, merged by `key`. |
 
 ## Fields
@@ -176,7 +177,7 @@ Written by **Host the editor online** and `galley host` when the hosted editor h
 
 | Key | Type | Meaning and default |
 | --- | --- | --- |
-| `redirects.file` | string, a `.json` file inside the site | The redirects list. *Default:* beside the site's other JSON data files, else `src/data/redirects.json`. |
+| `redirects.file` | string, a `.json` file inside the site | The redirects list. *Default:* beside the site's other JSON data files, else `src/data/redirects.json`. A name like a build tool's or host's settings file, one in a framework's template folder, or one in a folder whose name starts with a dot can be changed only by an account with build mode. |
 | `redirects.host` | `cloudflare` · `netlify` · `vercel` · `other` | Which host's file is written from the list. `deploy.target` wins when set. *Default:* asked once on the Redirects screen. |
 | `redirects.cloudflare` | object | For setting the list on Cloudflare itself (Bulk Redirects). Ids only. |
 | `redirects.cloudflare.account` | string, 1–100 characters | The Cloudflare account, when `deploy` doesn't give one. |

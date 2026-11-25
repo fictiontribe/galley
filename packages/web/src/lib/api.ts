@@ -10,6 +10,7 @@ import type {
   RouteResponse,
 } from "@galley/core/api";
 import type { GalleyErrorShape } from "@galley/core/types";
+import { PREVIEW_INITIATED_HEADER } from "@galley/core/install/route-access";
 import { carriesSetupCode } from "./hosted";
 import { isUnauthorized } from "./session";
 
@@ -39,7 +40,7 @@ type BodyOption<K extends ApiRouteKey> = [RouteBody<K>] extends [undefined]
 
 export type ApiOptions<K extends ApiRouteKey> = ParamsOption<K> &
   QueryOption<K> &
-  BodyOption<K> & { signal?: AbortSignal };
+  BodyOption<K> & { signal?: AbortSignal; viaPreview?: boolean };
 
 type RequiredKeys<T> = { [P in keyof T]-?: object extends Pick<T, P> ? never : P }[keyof T];
 
@@ -233,6 +234,7 @@ export async function api<K extends JsonRoute>(route: K, ...[options]: ApiArgs<K
     query?: Record<string, QueryValue>;
     body?: unknown;
     signal?: AbortSignal;
+    viaPreview?: boolean;
   };
   const { method, path } = splitRoute(route);
   const url = fillPath(path, opts.params) + queryString(opts.query);
@@ -241,7 +243,9 @@ export async function api<K extends JsonRoute>(route: K, ...[options]: ApiArgs<K
   const init: RequestInit = {
     method,
     credentials: "same-origin",
-    headers: { ...(hasBody ? { "content-type": "application/json" } : {}), accept: "application/json", ...setupCodeHeaders(url) },
+    // A save the previewed page asked for (click to edit) is marked, so the server holds it to the lowest level whoever is
+    // signed in (core install/caller.ts): the page shares the overlay's origin and could otherwise save as an owner.
+    headers: { ...(hasBody ? { "content-type": "application/json" } : {}), accept: "application/json", ...(opts.viaPreview ? { [PREVIEW_INITIATED_HEADER]: "1" } : {}), ...setupCodeHeaders(url) },
     signal: opts.signal,
   };
   if (hasBody) init.body = JSON.stringify(opts.body ?? {});

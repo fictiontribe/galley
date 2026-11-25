@@ -58,6 +58,69 @@ entry says how.
 
 ### Fixed
 
+- **Changing content a framework runs needs build mode.** The preview and the
+  build run the site's own code for everyone, and some content is part of that
+  code: MDX runs its `import` lines, its `{ … }` expressions and its
+  `<Component>` elements; frameworks like Docusaurus, Eleventy and Jekyll run
+  a template language in their content; and Astro loads the layout and the
+  images a Markdown page names. On a hosted install an account below
+  build-mode level could change such content in content mode, and the preview
+  then ran it. Below that level content mode is now a short list. Such an
+  account may edit and add Markdown on an Astro site, on a Markdown site where
+  the editor sees no build tool, and in a collection the owner marks `plain`;
+  add pictures, PDFs and videos in the media folder (on Astro, also beside a
+  collection's entries); edit a data file in a collection (on Astro, JSON
+  only; never a build tool's or a host's settings file, or one in a
+  framework's template folder); and edit the redirects. On Astro it may not
+  add or change a page's layout, or add an image that isn't a picture, PDF or
+  video in the site. It may not change MDX, other frameworks' content, the
+  site's settings or source, or the files assistants read as their
+  instructions (STYLE.md, the brand folder, AGENTS.md and the like). It may
+  not turn a script on, or change what one that is on runs; it may turn one
+  off, remove it, or change where it loads and how consent is asked. It may
+  delete only what it may write. The same list holds, whoever is signed in,
+  for a save the previewed page asks for (click to edit, Arrange) and, on a
+  hosted install, for the assistant outside build mode: a content
+  conversation, a writing batch, and an AI client over MCP in content mode,
+  the operator's own token included. **If you run a hosted editor with
+  contributors, update.** This does not wall the roles off: the preview runs
+  the site's own code for every role, content can still make it run code that
+  is already in the site, and HTML written into Markdown runs in the browser
+  of whoever views the page.
+
+  What changes for ordinary use on a hosted install, whoever is signed in:
+  click to edit and Arrange, and the assistant outside build mode (a content
+  conversation, the writing batch, an MCP client in content mode), now change
+  only what an account below build-mode level could. They can't change MDX; on
+  Astro, anything but Markdown, JSON and media, a page's layout (a new page
+  from a template that sets one included), an image that isn't a picture, PDF
+  or video in the site, or a page whose settings at the top aren't one plain
+  block; on other frameworks, their Markdown and templates; on a site the
+  editor doesn't recognise, its Markdown once its folder shows a build tool (a
+  package.json with scripts or dependencies, a generator's or host's
+  settings, a CI workflow); or, anywhere, a page named like an assistant's
+  instructions (agents.md, claude.md, gemini.md and the like). An owner or
+  editor can still make these changes in the form, and the assistant and MCP
+  clients can in build mode, so where build mode is off only the form can. An
+  owner can declare a collection `plain` in `galley.config.json` when the site
+  runs no code in its Markdown; its Markdown can then be changed these ways
+  again (MDX never can). That is the owner's word: if the site does run code
+  there, anyone who can edit the collection can run code.
+
+  Turning a script on, or changing what one that is on runs (its settings,
+  such as an ID or custom code, or whether it runs in the preview), now asks
+  what a form's custom code asks, for everyone and locally too: the site must
+  allow build mode (where it doesn't, nobody can, owners included, until an
+  owner turns on “Allow build mode” in Site settings › Assistant), and the
+  assistant and MCP clients need build mode for it, as does a write of the
+  whole file over the HTTP API (`PUT …/file` with `"mode": "build"`); an edit
+  through the form, as on the Scripts screen, counts as build mode for someone
+  at build-mode level. Turning a script off, removing it, and changing where
+  it loads and how consent is asked stay as they were. Where the person may
+  use build mode, the Scripts screen's Ask line starts such a request in build
+  mode. The docs for `ai.allowBuild` now say that it holds for everyone, as
+  it already did.
+
 - **Undo no longer says it undid something when it could not.** The editor
   closes a site that nobody has used for an hour (one whose preview isn't
   running), and what Undo keeps for the assistant's replies and for a batch

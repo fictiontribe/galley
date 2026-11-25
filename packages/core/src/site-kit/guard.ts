@@ -9,8 +9,11 @@
  * editing.
  */
 import { BUILD_MODE_LEVEL } from "../install/route-access";
-import { BUILD_MODE_REFUSAL, callerMay, callerRefusal } from "../install/caller";
-import type { AgentMode, ChangeOrigin } from "../types";
+import { BUILD_MODE_REFUSAL, callerMay, callerRefusal, callerViaPreview } from "../install/caller";
+import { normalizePath } from "../content/entries/paths";
+import { PAGE_SAVE_REFUSAL } from "../site/content-code";
+import type { AgentMode, ChangeOrigin, Collection } from "../types";
+import { SCRIPTS_FILE } from "./detect";
 
 type Json = Record<string, unknown>;
 
@@ -44,6 +47,8 @@ export function addedFormCode(before: string | null, after: string): string[] {
 /** Why this write of a form file may not add custom code, or null when it may. */
 export function formCodeRefusal(before: string | null, after: string, who: { origin: ChangeOrigin; mode?: AgentMode; allowBuild: boolean }): string | null {
   if (addedFormCode(before, after).length === 0) return null;
+  // A save the previewed page asked for is the page's, not the person's: held to the lowest level whoever is signed in.
+  if (callerViaPreview()) return callerRefusal(PAGE_SAVE_REFUSAL);
   const mode = who.mode ?? (who.origin === "agent" ? "content" : undefined);
 
   if (mode === "content") return "Custom code in a form runs in every visitor's browser, so it can only be added in build mode. Nothing was changed.";
@@ -52,3 +57,92 @@ export function formCodeRefusal(before: string | null, after: string, who: { ori
   if (!who.allowBuild) return "Custom code in a form can only be added on sites that allow build mode. Nothing was changed.";
   return null;
 }
+
+// ── The site kit's scripts file: the scripts that run on every page
+
+/** A value as JSON with its object keys in order, so the same settings compare equal however they were written. */
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value as Json)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableJson((value as Json)[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+/**
+ * What runs from a scripts file: each script that is on, by what makes its code
+ * (its kind and settings — a custom one is written from them as it is — and
+ * whether it also runs in the preview). Null when the text isn't JSON.
+ */
+function runningScripts(text: string | null): string[] | null {
+  if (text === null) return [];
+  let data: unknown;
+
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  const scripts = data && typeof data === "object" && !Array.isArray(data) ? (data as Json).scripts : undefined;
+
+  if (!Array.isArray(scripts)) return [];
+  return scripts
+    .filter((entry): entry is Json => !!entry && typeof entry === "object" && (entry as Json).enabled === true)
+    .map((entry) => stableJson({ kind: entry.kind, settings: entry.settings, inPreview: entry.inPreview }));
+}
+
+/** The scripts a new version of the scripts file turns on or changes that the old one didn't run. A file that isn't JSON counts as a change. */
+export function addedScripts(before: string | null, after: string): string[] {
+  const now = runningScripts(after);
+
+  if (now === null) return ["(a scripts file that can't be read)"];
+  const left = [...(runningScripts(before) ?? [])];
+
+  return now.filter((code) => {
+    const at = left.indexOf(code);
+
+    if (at === -1) return true;
+    left.splice(at, 1);
+    return false;
+  });
+}
+
+/** Whether `path` is the site kit's scripts file: tagged so, at its usual place, or a data file named scripts.json. */
+export function isScriptsFile(path: string, collection: Collection | null): boolean {
+  const normal = normalizePath(path);
+
+  return collection?.kit === "scripts" || normal === SCRIPTS_FILE || (collection?.kind === "data" && /(^|\/)scripts\.json$/i.test(normal));
+}
+
+/**
+ * Why this write of the scripts file may not turn on or change a script, or
+ * null when it may. Every script on runs in every visitor's browser, so adding
+ * or changing one is a build-mode change, gated as a form's custom code is:
+ * refused for a save the previewed page asked for, in content mode, below the
+ * build-mode level, and where the site doesn't allow build mode. Turning one
+ * off, removing it, or editing its label, placement or consent is content.
+ */
+export function scriptCodeRefusal(before: string | null, after: string, who: { origin: ChangeOrigin; mode?: AgentMode; allowBuild: boolean }): string | null {
+  if (addedScripts(before, after).length === 0) return null;
+  if (callerViaPreview()) return callerRefusal(PAGE_SAVE_REFUSAL);
+  // Each sentence says why and what the person can do instead. Where the site keeps build mode off nobody may, so that
+  // comes first (asking someone with build mode wouldn't help); then the account's level; then the mode.
+  if (!who.allowBuild) return SCRIPT_BUILD_OFF_REFUSAL;
+  if (!callerMay(BUILD_MODE_LEVEL)) return callerRefusal(SCRIPT_LEVEL_REFUSAL);
+  const mode = who.mode ?? (who.origin === "agent" ? "content" : undefined);
+
+  return mode === "content" ? SCRIPT_CONTENT_MODE_REFUSAL : null;
+}
+
+/** Said when an account below build-mode level would turn a script on or change one that is on. */
+export const SCRIPT_LEVEL_REFUSAL =
+  "A script on the site's pages runs in every visitor's browser, so only an account with build mode may turn one on or change one. You can turn one off, remove it, or change where it loads. Ask an owner or an editor of this editor.";
+/** Said when the site's settings keep build mode off. */
+export const SCRIPT_BUILD_OFF_REFUSAL =
+  "A script on the site's pages runs in every visitor's browser, and this site's settings keep build mode off, so scripts can't be turned on or changed. An owner can turn on “Allow build mode” in Site settings › Assistant. Nothing was changed.";
+/** Said in content mode: the assistant in a content conversation, or a write of the file that isn't in build mode. */
+export const SCRIPT_CONTENT_MODE_REFUSAL =
+  "A script on the site's pages runs in every visitor's browser, so it can only be turned on or changed in build mode: on the Scripts screen, or by the assistant in a build-mode conversation. Nothing was changed.";

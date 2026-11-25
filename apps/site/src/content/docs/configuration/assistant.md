@@ -32,7 +32,7 @@ Files, relative to the site root, whose text is added to the assistant's instruc
 }
 ```
 
-**Default `true`.** `false` turns off the assistant's build mode for this site: a conversation can't be switched to it, and a request for it is refused with *Build mode is turned off for this site, so the assistant can change content only.* It is a switch for the assistant, not an access control — anyone who can sign in can still change source files through the HTTP API (`PUT …/file` with `"mode": "build"`). See [Modes and the write surface](/docs/concepts/modes/#who-chooses-the-mode).
+**Default `true`.** `false` turns off build mode for this site: a conversation can't be switched to it, and a request for it is refused with *Build mode is turned off for this site, so the assistant can change content only.* It holds for people too, owners included, locally too: a build-mode write over the HTTP API (`PUT …/file` with `"mode": "build"`) or MCP is refused, and nobody can turn a script on, change what one that is on runs, or add custom code to a form. An owner can turn it back on in Site settings › Assistant, so it keeps the site's code out of reach of the assistant and of mistakes; who may sign in is still the control against people. See [Modes and the write surface](/docs/concepts/modes/#who-chooses-the-mode).
 
 ## writable
 

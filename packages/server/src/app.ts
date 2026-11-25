@@ -33,7 +33,7 @@ import type { ApiRouteKey } from "@galley/core/api";
 import { withSiteScope } from "@galley/core/site";
 import { createHash } from "node:crypto";
 import { getCookie } from "hono/cookie";
-import { asOperator, needsName, ROLE_REFUSAL as CORE_ROLE_REFUSAL, ROUTE_ACCESS, roleMay, withCaller, type AccessLevel, type AccountRole, type InstallStore } from "@galley/core/install";
+import { asOperator, needsName, PREVIEW_INITIATED_HEADER, ROLE_REFUSAL as CORE_ROLE_REFUSAL, ROUTE_ACCESS, roleMay, withCaller, type AccessLevel, type AccountRole, type InstallStore } from "@galley/core/install";
 import type { PreviewStatus } from "@galley/core/types";
 import { withAccountAuthor } from "@galley/core/workspace";
 import { ExtensionError } from "./extensions/declare";
@@ -355,8 +355,11 @@ export function createApp(services: Services, options: AppOptions): Hono {
       // where whoever holds the start-up token is the one person who runs the app. Only a hosted server makes guarded work need
       // someone; the mark keeps a local app in the same process (tests, an embedding) as it always was.
       const operator = options.mode === "local" || caller?.kind === "token";
+      // A save the app made because of a message from the previewed page carries this header; the page shares the overlay's
+      // origin, so such a save is held to the lowest level whoever is signed in (core install/caller.ts, site/content-code.ts).
+      const viaPreview = c.req.header(PREVIEW_INITIATED_HEADER) === "1";
       const result = person
-        ? await withCaller({ accountId: person.id, role: person.role, current: () => liveRole(person.id), named: () => liveNamed(person.id) }, () => withAccountAuthor(person, scoped))
+        ? await withCaller({ accountId: person.id, role: person.role, viaPreview, current: () => liveRole(person.id), named: () => liveNamed(person.id) }, () => withAccountAuthor(person, scoped))
         : operator
           ? await asOperator(() => withAccountAuthor(null, scoped))
           : await withAccountAuthor(null, scoped);
