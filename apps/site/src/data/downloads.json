@@ -1,7 +1,7 @@
 {
   "about": "The desktop app's downloads, shown on /apps/ (and the home page's desktop section). The one switch is `available`: while it is false the Apps page still shows, with the desktop section saying the installers are being published and listing what is coming for each system, and the other ways to run Galley fully usable; no download button appears anywhere. Set it to true once at least one platform below has `available: true` and a real `url`; a platform that isn't available is listed as coming, never as a button. `url` is the file's direct address (a release asset); `size` is as people read it (\"92 MB\"); `requires` is the oldest system it runs on, in words. `system` is the system's name as its warning names it (\"macOS\", \"Windows\"; empty when there is no warning to get past, as with an AppImage). `signed` is per platform: true shows `signature` (e.g. \"Signed and notarised by Apple\") and the platform's `open` steps without any warning; false says plainly that this system warns the first time and shows `open` as the steps past the warning (markdown: **bold** for what to click, `code` for commands). `also` lists other files for the same platform (`label`, `file`, `url`, `size`). `screens` are captures of the app window in public/screens (<src>.webp + <src>@1x.webp, 2×): one without its file, or without alt text written after looking at it, is left out — never a stand-in. The first screen with `home: true` is the one on the home page. Statuses stay in status.json; CLAIMS.md says what supports each line.",
   "available": true,
-  "version": "0.4.2",
+  "version": "0.4.3",
   "released": "2026-11-25",
   "releasePage": "{repository}/releases/latest",
   "platforms": [

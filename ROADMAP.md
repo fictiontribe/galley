@@ -45,6 +45,16 @@ what is built; when something here ships, it moves to the
   a secrets file (any name that starts with `.env`) and the version
   history's own files are refused wherever a file, its changes or the
   preview is shown, and by the assistant's tools.
+- **0.4.3**: a security release for hosted editors. Below build mode, the
+  editor changes only content that can't run as code, in the form, on the
+  page and through the assistant. The server can listen on a Unix socket
+  for the proxy in front, and believes forwarded headers only there. The
+  preview checks that what answers on its port is the site's own dev
+  server, when it starts and while it is used. Search and the assistant
+  read built pages only from inside the build output; backups keep links
+  in their folder; stopping a preview signals only what the editor
+  started. A third, experimental part of embedding: places in the app for
+  an edition's own additions.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.

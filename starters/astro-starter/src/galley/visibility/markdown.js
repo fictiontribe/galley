@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.2 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.3 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // A rendered page → the markdown an AI agent reads: the page's main content
 // as visitors see it, however it was authored (content collections, section

@@ -5,7 +5,17 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
-## Unreleased
+## 0.4.3 — 2026-11-25
+
+**Security.** 0.4.3 is for anyone who runs a hosted editor, above all one
+with contributors or a reverse proxy on the same machine. Below build-mode
+level the editor no longer changes content that the site's framework runs as
+code — through the form, the previewed page or the assistant. A proxy on the
+same machine can reach the editor over a Unix socket, the only place
+forwarded headers are then believed. Smaller fixes keep the preview, Search,
+backups and stopping a preview to what is the site's own. If you run a hosted
+editor, update. None of this makes the roles a wall: the preview still runs
+the site's own code for whoever may change that code.
 
 ### Added
 
@@ -20,8 +30,8 @@ entry says how.
   name, the value its window's stream carries, the open site, the signed-in
   person's name and role, and two components for showing other people's
   words safely. An addition that fails while it draws shows nothing in that
-  place and leaves the screen, and so does one that waits the first time it
-  draws. It is not a sandbox: an addition is part of the one bundle. The web package now has
+  place and the rest of the screen stays, and one that waits shows nothing
+  there while it waits. It is not a sandbox: an addition is part of the one bundle. The web package now has
   entry points (`./app`, `./additions`, `./ui`, `./styles`) and a small Vite
   preset (`./vite`): the two aliases its source is written with, one copy of
   React and the router, and the app's public folder and build target. An
@@ -42,8 +52,11 @@ entry says how.
   keep out code that runs as the server's own user — which, until the editor
   runs the site's code as a user of its own, includes the site's preview and
   build. The same app answers on both, `/healthz`, `/readyz` and the preview's
-  WebSocket upgrades included. Existing installs are unchanged: without a
-  socket, `GALLEY_TRUST_PROXY` works as it did.
+  WebSocket upgrades included. It is for a hosted editor (`galley serve`)
+  and not on Windows; a local editor ignores the setting and says so. The
+  server refuses a socket in a folder other users could change. Existing
+  installs are unchanged: without a socket, `GALLEY_TRUST_PROXY` works as it
+  did.
 
 ### Changed
 
@@ -59,30 +72,30 @@ entry says how.
 ### Fixed
 
 - **Changing content a framework runs needs build mode.** The preview and the
-  build run the site's own code for everyone, and some content is part of that
-  code: MDX runs its `import` lines, its `{ … }` expressions and its
-  `<Component>` elements; frameworks like Docusaurus, Eleventy and Jekyll run
-  a template language in their content; and Astro loads the layout and the
-  images a Markdown page names. On a hosted install an account below
-  build-mode level could change such content in content mode, and the preview
-  then ran it. Below that level content mode is now a short list. Such an
+  build run the site's own code for everyone, and on many sites some content
+  is part of that code: MDX, the template languages of frameworks like
+  Docusaurus, Eleventy and Jekyll, and on Astro the layout and the images a
+  Markdown page names. On a hosted install an account below build-mode level
+  could change such content, and so run code on the editor's server through
+  the preview. Below that level content mode is now a short list. Such an
   account may edit and add Markdown on an Astro site, on a Markdown site where
   the editor sees no build tool, and in a collection the owner marks `plain`;
-  add pictures, PDFs and videos in the media folder (on Astro, also beside a
-  collection's entries); edit a data file in a collection (on Astro, JSON
+  add pictures, PDFs and MP4 videos in the media folder (on Astro, also
+  beside a collection's entries); edit a data file in a collection (on Astro, JSON
   only; never a build tool's or a host's settings file, or one in a
   framework's template folder); and edit the redirects. On Astro it may not
   add or change a page's layout, or add an image that isn't a picture, PDF or
-  video in the site. It may not change MDX, other frameworks' content, the
+  MP4 video in the site. It may not change MDX, other frameworks' content, the
   site's settings or source, or the files assistants read as their
   instructions (STYLE.md, the brand folder, AGENTS.md and the like). It may
   not turn a script on, or change what one that is on runs; it may turn one
   off, remove it, or change where it loads and how consent is asked. It may
-  delete only what it may write. The same list holds, whoever is signed in,
-  for a save the previewed page asks for (click to edit, Arrange) and, on a
-  hosted install, for the assistant outside build mode: a content
+  delete only what it may write. On a hosted install the same list holds,
+  whoever is signed in, for a save the previewed page asks for (click to
+  edit, Arrange), and for the assistant outside build mode: a content
   conversation, a writing batch, and an AI client over MCP in content mode,
-  the operator's own token included. **If you run a hosted editor with
+  the operator's own token included. A plugin's writes count as the
+  assistant's, whatever the plugin says. **If you run a hosted editor with
   contributors, update.** This does not wall the roles off: the preview runs
   the site's own code for every role, content can still make it run code that
   is already in the site, and HTML written into Markdown runs in the browser
@@ -94,14 +107,17 @@ entry says how.
   only what an account below build-mode level could. They can't change MDX; on
   Astro, anything but Markdown, JSON and media, a page's layout (a new page
   from a template that sets one included), an image that isn't a picture, PDF
-  or video in the site, or a page whose settings at the top aren't one plain
-  block; on other frameworks, their Markdown and templates; on a site the
-  editor doesn't recognise, its Markdown once its folder shows a build tool (a
-  package.json with scripts or dependencies, a generator's or host's
-  settings, a CI workflow); or, anywhere, a page named like an assistant's
-  instructions (agents.md, claude.md, gemini.md and the like). An owner or
-  editor can still make these changes in the form, and the assistant and MCP
-  clients can in build mode, so where build mode is off only the form can. An
+  or MP4 video in the site, or a page whose settings at the top aren't one
+  plain block; on other frameworks, their Markdown and templates; on a site
+  the editor doesn't recognise, its Markdown once its folder shows a build
+  tool (a package.json with scripts or dependencies, a generator's or host's
+  settings, a CI workflow) or its settings give a dev or build command; or,
+  anywhere, a page named like an assistant's instructions (agents.md,
+  claude.md, gemini.md and the like). For now the writing batch is stricter
+  still: on a site the editor doesn't recognise, it leaves the Markdown pages
+  alone. An owner or editor can still make these changes in the form or over
+  the HTTP API, and the assistant and MCP clients can in build mode; where
+  build mode is off, only the form and the HTTP API can. An
   owner can declare a collection `plain` in `galley.config.json` when the site
   runs no code in its Markdown; its Markdown can then be changed these ways
   again (MDX never can). That is the owner's word: if the site does run code
@@ -117,9 +133,12 @@ entry says how.
   through the form, as on the Scripts screen, counts as build mode for someone
   at build-mode level. Turning a script off, removing it, and changing where
   it loads and how consent is asked stay as they were. Where the person may
-  use build mode, the Scripts screen's Ask line starts such a request in build
-  mode. The docs for `ai.allowBuild` now say that it holds for everyone, as
-  it already did.
+  use build mode, a request typed in the Scripts screen's Ask line opens in
+  build mode, ready to send. For someone who may not turn a script on, the
+  Scripts screen hides Add a script and the switch that turns one on, and
+  says why a change was refused; undoing the removal of a script that was on
+  brings it back turned off. The docs for `ai.allowBuild` now say that it
+  holds for everyone, as it already did.
 
 - **Undo no longer says it undid something when it could not.** The editor
   closes a site that nobody has used for an hour (one whose preview isn't
@@ -143,13 +162,14 @@ entry says how.
   address, is the dev server it started (by process, or by running in the
   site's folder). If something else has it, the dev server is started again
   on another port, up to twice; if the dev server moved to a port of its own
-  and said so, it is followed there; if it stopped, it isn't started again.
+  and said so, it is followed there; if it stopped for a reason of its own,
+  it isn't started again.
   When another program holds the port and the dev server neither stops nor
   moves, the preview gives up with a sentence that says what to do. A
   listener this computer can see but can't attribute (another user's, on a
   shared server) is not taken for the dev server's. Where the computer can't
-  say which program has a port at all — Windows, or a Mac without `lsof` or
-  `ps` — the answer is taken as before, and the log says so; Linux needs
+  say which program has a port at all — Windows, or a Mac without `lsof` —
+  the answer is taken as before, and the log says so; Linux needs
   neither tool. A dev command that runs its server where it can't be seen as
   the site's own, such as in a container, needs `dev.trustPort` in the
   site's settings, which an owner sets to take the port on trust. The
@@ -158,25 +178,24 @@ entry says how.
   code may do.
 - **Search and the assistant read built pages only from inside the build
   output.** When a site has been built, Search and the assistant read its
-  built pages to check links and to find where a text lives. A built page
-  that was a link pointing out of the build output was followed, so such a
-  read could reach a file outside that folder — a secrets file (`.env…`) or
-  one of the version history's own among them. Now each built page is
+  built pages to check links and to find where a text lives, and could read
+  files outside the build output while doing so — a secrets file (`.env…`)
+  or one of the version history's own among them. Now each built page is
   resolved before it is read, and one that leaves the build output, is a
   secrets file, or sits in the repository's `.git` reaches nothing — the same
-  rule the editor's other reads already follow. The list of built pages drops
-  those links too. The content index and a collection's listing check each
+  rule the editor's other reads already follow. The list of built pages
+  leaves those out too. The content index and a collection's listing check each
   file the same way as it is read, not only when it is listed.
 - **A dev server that moves itself to the background is checked on its port
   like any other.** Some dev commands start their server and then exit,
   leaving it running in the background; Galley took whatever answered on the
-  port that server announced. If another program held the port's other
-  address, that program's pages could be shown as the site's. Now the
-  announced port is checked the same way as a foreground server — that what
+  port that server announced, so another program's pages could be shown as
+  the site's. Now the announced port is checked the same way as a foreground
+  server — that what
   listens there is the server Galley started (by the process it named, or by
   its running in the site's folder) — and a port another program shares is
   not shown. A background server isn't started again, so the preview reports
-  that it couldn't start rather than showing the wrong pages.
+  that it didn't start in time rather than showing the wrong pages.
 - **A preview keeps checking, while it is used, that its port is still its own
   dev server's.** The checks above happen while a preview starts. A dev server
   can also let go of its address after the preview is ready — on a restart, say
@@ -187,28 +206,28 @@ entry says how.
   preview is stopped with a plain message rather than showing that program's
   pages. A check that can't tell keeps the preview as it is, and only after
   several in a row that can't does it stop. A port an owner set `dev.trustPort`
-  for is not re-checked, as it isn't checked to begin with.
+  for is not re-checked, as it isn't checked to begin with, and neither is
+  one taken without a check (on Windows, say).
 - **The default author is the computer's git identity, not a repository's.**
   When no author is set, the app falls back to the name and email in this
   computer's git settings. It read them from whatever folder the editor was
   started in, so starting it inside a repository with an identity of its own
   gave every site that repository's author. It now reads them from the
   editor's own folder, the same way as every other git call it makes.
-- **A backup and a restore keep every link inside its own folder.** A link
-  in the site's files was carried by a backup, and accepted by a restore,
-  whenever it pointed anywhere inside the editor's data folder — the install's
-  own files next to the site's included. A link, hard links too, now has to
-  stay in the folder it is in (the site's files, the state, and so on): a
-  backup leaves out one that doesn't, and a restore refuses an archive with
-  one.
-- **Stopping a preview signals only what the editor itself started.** A dev
-  command that moves its server to the background and prints a process number
-  ("pid 1234") had that number signalled when the preview stopped — a number
-  the site's own output supplied, which could have named any process on the
-  computer. Now the editor stops the process group it started the command in:
-  a background server that stayed in it is stopped with the preview; one that
-  moved to a group of its own is left running, and the preview says so (stop it
-  the way its dev tool says).
+- **A backup and a restore keep links inside their own folder.** A backup
+  could carry, and a restore put back, a link from the site's files to the
+  install's own files beside them. Now a link has to stay in the folder it is
+  in (the site's files, the state, and so on): a backup leaves out a
+  symbolic link that doesn't, and a restore refuses an archive with any link,
+  hard links too, that doesn't.
+- **Stopping a preview signals only what the editor itself started.**
+  Stopping a preview could signal a process the editor hadn't started, on a
+  site whose dev command moves its server to the background. Now the editor
+  stops only the process group it started the command in: a background
+  server that stayed in it is stopped with the preview; one that moved to a
+  group of its own is left running, and the preview says so (stop it the way
+  its dev tool says). On Windows such a server is now always left running,
+  and the preview says so too.
 - **A request is taken to have come over HTTPS only when it did, and to the
   name in its Host header only.** The protocol a request arrived over now
   comes from its connection, or from the proxy in front where its word is
@@ -218,6 +237,14 @@ entry says how.
   request is going. The protocol and the name decide which page addresses
   count as the app's own for a change, and whether a session cookie is marked
   secure.
+- **The starters' Deploy buttons deploy the starter.** The Cloudflare and
+  Vercel buttons in each starter's README pointed at repositories that don't
+  exist; each now deploys that starter's own folder of Galley's repository,
+  and the `create astro` commands in the READMEs name the folder too. The
+  editorial starter (Caddow) gains the buttons and a `wrangler.jsonc`, so the
+  Redirects screen takes a site made from it for a Cloudflare site; delete
+  the file if the site is hosted elsewhere. Its README and the storefront's
+  show their sections and home page.
 
 ## 0.4.2 — 2026-11-25
 

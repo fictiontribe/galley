@@ -45,7 +45,7 @@ sh apps/site/scripts/capture/start.sh second
   it before `galley`.
 - `media` starts the stand-in bucket for the `media-bucket` step (below, "Media in a bucket"). Run
   it before `galley`.
-- `galley` starts the released app (`npx galley-cms@0.4.2`, or `GALLEY_VERSION`) on port 4790, open
+- `galley` starts the released app (`npx galley-cms@0.4.3`, or `GALLEY_VERSION`) on port 4790, open
   on Caddow, pointed at the stand-ins. The key is taken from your shell's `ANTHROPIC_API_KEY` and
   given to that process only; the script reads no key file. Its log
   (`$CAPTURE_DIR/logs/galley.log`) has the `Open:` line with the token.
