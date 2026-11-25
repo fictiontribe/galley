@@ -65,10 +65,13 @@ export function roleMay(role: AccountRole, level: AccessLevel): boolean {
  * its name held nothing a reader can see). Until it has one it can't
  * publish, and what it would record carries its e-mail in the name's place.
  * The owner of an install from before accounts, who has neither, is asked
- * for both in their own time and is not held up.
+ * for both in their own time and is not held up; that exception is only for
+ * an account with a password and no identity at a provider. An account that
+ * signs in through a provider is held without a name whatever its e-mail.
  */
-export function needsName(account: { name: string; email: string }): boolean {
-  return Boolean(account.email) && !account.name;
+export function needsName(account: { name: string; email: string; passwordHash?: string | null; identity?: unknown }): boolean {
+  if (account.name) return false;
+  return Boolean(account.email) || account.passwordHash === null || account.identity !== undefined;
 }
 
 /** A person who may sign in. */

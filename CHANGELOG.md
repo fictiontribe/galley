@@ -19,6 +19,16 @@ entry says how.
 
 ### Changed
 
+- **The install's data layout goes from 2 to 3** at the first start of this
+  version, to make room for accounts that sign in through an identity
+  provider, which a later version adds. Nothing changes for anyone: every
+  account keeps its password, and open invitations and links keep working.
+  As with every upgrade of the layout, an older version refuses the folder
+  afterwards; the state file from before is kept as
+  `install.json.schema-2.bak`, and the copy from the upgrade before
+  (`install.json.schema-1.bak`, from the upgrade to accounts, holding the old
+  shared password's hash) is removed, as the guide to running an install
+  always said.
 - **A site with an assistant's Undo still offered stays open.** The editor
   closes a site nobody has used for an hour, and Undo's memory went with it:
   Undo of an assistant's reply an hour later said it couldn't be done any

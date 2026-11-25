@@ -58,8 +58,8 @@ export interface StoredAccount {
   /** Lower-case, unique. Empty only for that same owner. */
   email: string;
   role: AccountRole;
-  /** scrypt (password.ts). */
-  passwordHash: string;
+  /** scrypt (password.ts). Null for an account that signs in only through an identity provider: no password checks it. */
+  passwordHash: string | null;
   passwordChangedAt: string;
   createdAt: string;
   lastSeenAt: string | null;
@@ -67,6 +67,28 @@ export interface StoredAccount {
   incomplete: boolean;
   /** This person's cookies issued at or before this moment (ms) no longer count: signed out everywhere, a new password, switched off. */
   sessionsValidAfter: number;
+  /** Who they are at the install's identity provider, when they sign in through one. Unique by issuer and subject. */
+  identity?: { issuer: string; subject: string };
+  /** The provider's time (ms) of this subject's last back-channel logout: a sign-in whose ID token is from before it is refused. */
+  providerLogoutAt?: number;
+}
+
+/** A removed account that signed in through the provider: that subject's next sign-in is refused, not made into an account again. */
+export interface StoredTombstone {
+  id: string;
+  issuer: string;
+  subject: string;
+  removedAt: string;
+  /** The account that removed it; null: the operator's token or the server. */
+  removedBy: string | null;
+}
+
+/** A back-channel logout for a subject with no account here, kept a short while so a sign-in begun before it can't finish after it. */
+export interface StoredProviderLogout {
+  issuer: string;
+  subject: string;
+  /** The provider's time of the logout (ms). */
+  at: number;
 }
 
 /** An open one-time link: an invitation, or choosing a new password. Only the code's SHA-256 is kept. */
@@ -80,8 +102,10 @@ export interface StoredLink {
   role: AccountRole | null;
   /** New-password links: whose password it sets. */
   accountId: string | null;
-  /** The account that made it; null: whoever runs the server (`serve --reset-password`). */
+  /** The account that made it; null: nobody in the app ("forgot my password", or `serve --reset-password`). */
   createdBy: string | null;
+  /** "server": made by `serve --reset-password`, the operator's way back in. "Forgot my password" links have no mark. */
+  madeBy?: "server";
   /** That person's name when they made it, so an invitation still says who sent it after they've gone. */
   createdByName: string;
   createdAt: string;
@@ -117,6 +141,12 @@ export interface InstallStateFile {
   lastBackupAt: string | null;
   /** Starting values (environment, install file) already applied once: never applied again, so a person's later change sticks. */
   seeded: string[];
+  /** Removed accounts that signed in through the identity provider (StoredTombstone). */
+  tombstones: StoredTombstone[];
+  /** Recent back-channel logouts for subjects with no account here (StoredProviderLogout). */
+  providerLogouts: StoredProviderLogout[];
+  /** When the install first started with passwords off (ms): a session from before it, other than the provider's, is never read again. */
+  oidcOnlySince: number | null;
 }
 
 const SiteRecordSchema = z.object({
@@ -129,6 +159,20 @@ const SiteRecordSchema = z.object({
   starter: z.object({ id: z.string(), look: z.string().optional(), name: z.string().optional() }).nullable().catch(null),
 });
 
+/**
+ * Whether this account signs in with a password of its own: it has one, and
+ * no identity at a provider. The rules for an account with no e-mail (the
+ * owner from before accounts) apply only to such an account.
+ */
+export function signsInWithPassword(account: Pick<StoredAccount, "passwordHash" | "identity">): boolean {
+  return account.passwordHash !== null && account.identity === undefined;
+}
+
+/** At most this many removed provider accounts are remembered; past it, a removal that would add one is refused in a sentence. */
+export const TOMBSTONES_KEPT = 10_000;
+/** At most this many recent logouts for subjects with no account are kept; each is kept fifteen minutes. */
+export const PROVIDER_LOGOUTS_KEPT = 10_000;
+
 /** How many used setup codes are remembered (one is used per first run or password reset). */
 const SPENT_CODES_KEPT = 50;
 
@@ -139,13 +183,15 @@ const AccountSchema = z.object({
   name: z.string().max(200),
   email: z.string().max(320),
   role: ROLE,
-  passwordHash: z.string().min(1),
+  passwordHash: z.string().min(1).nullable(),
   passwordChangedAt: z.string(),
   createdAt: z.string(),
   lastSeenAt: z.string().nullable(),
   disabled: z.boolean(),
   incomplete: z.boolean(),
   sessionsValidAfter: z.number(),
+  identity: z.object({ issuer: z.string().min(1).max(2048), subject: z.string().min(1).max(255) }).optional(),
+  providerLogoutAt: z.number().optional(),
 });
 const LinkSchema = z.object({
   id: ID,
@@ -155,6 +201,7 @@ const LinkSchema = z.object({
   role: ROLE.nullable(),
   accountId: ID.nullable(),
   createdBy: ID.nullable(),
+  madeBy: z.literal("server").optional(),
   createdByName: z.string().max(200),
   createdAt: z.string(),
   expiresAt: z.string(),
@@ -174,6 +221,11 @@ const StateSchema = z.object({
   pendingLiveUrl: z.string().nullable().catch(null),
   lastBackupAt: z.string().nullable(),
   seeded: z.array(z.string()).catch([]),
+  tombstones: z
+    .array(z.object({ id: ID, issuer: z.string().min(1).max(2048), subject: z.string().min(1).max(255), removedAt: z.string(), removedBy: ID.nullable() }))
+    .max(TOMBSTONES_KEPT),
+  providerLogouts: z.array(z.object({ issuer: z.string().min(1).max(2048), subject: z.string().min(1).max(255), at: z.number() })).max(PROVIDER_LOGOUTS_KEPT),
+  oidcOnlySince: z.number().nullable(),
 });
 
 function folderOf(home: string, site: InstallSiteRecord | null): string {
@@ -446,6 +498,8 @@ async function loadState(home: string, options: OpenInstallStateOptions): Promis
     // The old file stays beside the new one until the next upgrade, in case the new version has to be rolled back.
     if (found) await writeFile(join(home, `${STATE_FILE}.schema-${from}.bak`), `${JSON.stringify(found.raw, null, 2)}\n`, { mode: 0o600 });
     await writeState(home, file, state);
+    // Once the new layout is written, the copy from the upgrade before goes (the one from layout 1 holds the old shared password's hash).
+    if (found && from !== INSTALL_SCHEMA_VERSION) for (let older = 0; older < from; older += 1) await rm(join(home, `${STATE_FILE}.schema-${older}.bak`), { force: true });
   }
   return state;
 }

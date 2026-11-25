@@ -20,10 +20,12 @@ import {
   LINK_PATHS,
   LINK_REFUSED,
   MAX_INSTALL_PASSWORD_LENGTH,
+  NO_PASSWORD_TO_CHANGE,
   passwordLinkEmail,
   ROLE_NAMES,
   WRONG_CURRENT_PASSWORD,
   roleMay,
+  signsInWithPassword,
   type AccountSession,
   type Install,
   type LinkPreview,
@@ -183,18 +185,19 @@ export function signInAs(c: Context, ctx: RouteContext, accountId: string): void
  * The id of this browser's known-browser cookie when it counts for a
  * sign-in to `email` (null: the owner who has no e-mail yet): correctly
  * signed, not too old, for the account that e-mail belongs to, which is
- * still there and switched on, and issued after that person's and the
- * install's last "sign out everywhere". Anything else: null — exactly as if
- * there were no cookie, so the answer is the same for an e-mail nobody has.
+ * still there, switched on and signs in with a password, and issued after
+ * that person's and the install's last "sign out everywhere". Anything else:
+ * null — exactly as if there were no cookie, so the answer is the same for
+ * an e-mail nobody has.
  */
 function knownBrowserFor(c: Context, ctx: RouteContext, install: Install, email: string | null): string | null {
   const name = ctx.session.knownCookieName;
   const known = name ? readKnownBrowser(ctx.session.key, getCookie(c, name)) : null;
 
   if (!known) return null;
-  const account = install.people.get(known.accountId);
+  const account = install.store.account(known.accountId);
 
-  if (!account || account.disabled || account.email !== (email ?? "")) return null;
+  if (!account || account.disabled || !signsInWithPassword(account) || account.email !== (email ?? "")) return null;
   return install.store.sessionValid({ id: known.id, issuedAt: known.issuedAt, accountId: known.accountId }) ? known.id : null;
 }
 
@@ -318,9 +321,11 @@ export async function signInWithAccount(c: Context, ctx: RouteContext): Promise<
         ctx,
         result.reason === "disabled"
           ? `A sign-in to ${named(result.account!)} from ${client} was refused: the account is switched off.`
-          : result.reason === "wrong"
-            ? `A sign-in to ${named(result.account!)} from ${client} failed: wrong password.`
-            : `A sign-in from ${client} failed: no account has that e-mail.`
+          : result.reason === "no-password"
+            ? `A sign-in to ${named(result.account!)} from ${client} failed: the account has no password.`
+            : result.reason === "wrong"
+              ? `A sign-in to ${named(result.account!)} from ${client} failed: wrong password.`
+              : `A sign-in from ${client} failed: no account has that e-mail.`
       );
       throw new AuthError(address === null ? "That password isn't right. Check it and try again." : SIGN_IN_REFUSED);
     }
@@ -353,6 +358,9 @@ export async function changeOwnPassword(c: Context, ctx: RouteContext): Promise<
   const install = installOf(ctx);
   const { account } = personOf(c, ctx);
   const client = clientAddress(c, Boolean(ctx.options.trustProxy));
+
+  // No password to check, so none of the password limits are touched.
+  if (install.store.account(account.id)?.passwordHash === null) throw new GalleyError("invalid", NO_PASSWORD_TO_CHANGE);
   const ticket = reserveCheck(c, ctx, TOO_MANY_ATTEMPTS, `A password change for ${named(account)}`);
   let changed: boolean;
 
@@ -471,7 +479,8 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
     const client = clientAddress(c, Boolean(ctx.options.trustProxy));
     const body = await v.body(c, profileBody);
     // The current password typed to change an e-mail goes through the same limits and the same checking as changing the password itself.
-    const checksPassword = body.email !== undefined && body.password !== undefined;
+    // An account with no password has none to check: the change is refused without touching the limits.
+    const checksPassword = body.email !== undefined && body.password !== undefined && install.store.account(account.id)?.passwordHash !== null;
     const ticket = checksPassword ? reserveCheck(c, ctx, TOO_MANY_ATTEMPTS, `An e-mail change for ${named(account)}`) : null;
     let updated: Awaited<ReturnType<Install["people"]["updateProfile"]>>;
 

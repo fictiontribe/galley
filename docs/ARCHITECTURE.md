@@ -323,8 +323,10 @@ only way a site gets in.
 One site and its state in one data folder (`GALLEY_HOME`): the versioned
 state file and its migrations (`migrate.ts`; a folder a newer version wrote
 is refused), the accounts — people, roles, invitations and one-time links,
-kept in the state file since its layout 2 (`state.ts`, `people.ts`; the
-contract is `accounts.ts`) — with passwords as scrypt hashes and the setup
+kept in the state file since its layout 2, which layout 3 readies for
+signing in through an identity provider (an account may have no password
+and an identity; removed provider accounts; recent provider logouts)
+(`state.ts`, `people.ts`; the contract is `accounts.ts`) — with passwords as scrypt hashes and the setup
 code and link codes as SHA-256 only, sessions that each belong to a person
 and sign-out everywhere, the install's own deploy key or an access
 token for the repository (`access.ts`), connecting the one site (an existing
