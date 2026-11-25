@@ -1,6 +1,8 @@
 ---
 // A page's first screen.
-//   showcase — the live site with Galley's proof laid over it (the home page)
+//   canvas   — the words in a compact block, then one app window as wide as the page,
+//              settling flat as the visitor scrolls (the home page)
+//   showcase — the live site with Galley's proof laid over it
 //   split    — the words beside one picture
 //   text     — the words alone
 import Panel from "../Panel.astro";
@@ -11,6 +13,7 @@ import { firstCommand, published } from "../../lib/install";
 import { inline } from "../../lib/markdown";
 import { fill, site } from "../../lib/site";
 import { demo } from "../../lib/demo";
+import { screenOr, siteShot } from "../../lib/media";
 
 const { s, block, first } = Astro.props;
 const H = first ? "h1" : "h2";
@@ -21,13 +24,46 @@ const isRec = s.visual?.kind === "recording";
 // It takes the place of the quieter link (`secondary`) when both are set.
 const secondary = s.demo && demo.on ? { label: s.demo, href: demo.href, note: site.ui.demoSmall } : s.secondary;
 // Short sentences in a heading ("Prompt it. Proof it. Publish it.") wrap whole, never mid-sentence.
+// canvas: one capture of the app, as wide as the page; `visual.dark` is the one shown in dark mode.
+const canvasPic = s.layout === "canvas" && s.visual ? (s.visual.kind === "site" ? siteShot(s.visual.src) : screenOr(s.visual.src, s.visual.fallback)) : null;
+const canvasDark = canvasPic && s.visual.dark ? (s.visual.kind === "site" ? siteShot(s.visual.dark) : screenOr(s.visual.dark)) : null;
+const canvasSizes = "(max-width: 639px) 900px, (max-width: 1440px) 92vw, 1280px";
 const heading = inline(s.heading).split(/(?<=[.?])\s+(?=[A-Z])/).map((part) => `<span class="nowrap-s">${part}</span>`).join(" ");
 ---
 
 <section class:list={["hero wrap", `hero--${s.layout}`, s.align === "center" && "hero--centered"]} id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
   {s.notice && <a class="notice" href={fill(s.notice.href)}><span>{fill(s.notice.label)}</span></a>}
   {
-    s.layout === "showcase" ? (
+    s.layout === "canvas" ? (
+      <>
+        <div class="canvas-hero__copy">
+          <H class="h1" id={hid} set:html={heading} />
+          <p class="lead">{fill(s.text)}</p>
+          <div class="canvas-hero__go">
+            <Actions cta={s.cta} secondary={secondary} />
+            {note && <p class="hero__note">{fill(note)}</p>}
+            {s.command && <Command lines={[firstCommand()]} />}
+          </div>
+        </div>
+        {canvasPic && (
+          <figure class="canvas" data-canvas>
+            <div class="canvas__tilt">
+              <div class="canvas__frame">
+                <div class="canvas__win">
+                  <picture>
+                    {canvasDark && <source media="(prefers-color-scheme: dark)" srcset={canvasDark.srcset} sizes={canvasSizes} width={canvasDark.width} height={canvasDark.height} data-mode-src data-alt={s.visual.darkAlt ?? s.visual.alt} />}
+                    <img src={canvasPic.src} srcset={canvasPic.srcset} sizes={canvasSizes} width={canvasPic.width} height={canvasPic.height} alt={s.visual.alt} data-alt={s.visual.alt} loading="eager" decoding="async" fetchpriority="high" />
+                  </picture>
+                  {/* The switch's choice, if any, decides before the picture is fetched. */}
+                  {canvasDark && <script is:inline set:html={`(()=>{const t=document.documentElement.dataset.theme,p=document.currentScript.previousElementSibling,s=p&&p.querySelector("source[data-mode-src]");if(!t||!s)return;s.media=t==="dark"?"all":"not all";const i=p.querySelector("img");if(t==="dark")i.alt=s.dataset.alt})()`} />}
+                </div>
+              </div>
+            </div>
+            {s.caption && <figcaption class="caption">{fill(s.caption)}</figcaption>}
+          </figure>
+        )}
+      </>
+    ) : s.layout === "showcase" ? (
       <>
         <div class="hero__top">
           {s.eyebrow && <p class="label">{s.eyebrow}</p>}

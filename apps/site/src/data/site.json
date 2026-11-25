@@ -58,6 +58,8 @@
     "copy": "Copy",
     "copied": "Copied",
     "copyFailed": "Select and copy",
+    "themeToDark": "Switch to dark mode",
+    "themeToLight": "Switch to light mode",
     "putBack": "Put back",
     "undo": "Undo",
     "changes": "{n} changes",

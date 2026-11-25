@@ -18,26 +18,23 @@ const inGroup = (g: StatusId) => chosen.filter((i) => (i.status === "preview" ? 
 ---
 
 <section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
-  <div class="head">
+  <div class="head rv">
     <H class:list={[first ? "h1" : "h2"]} id={hid} set:html={inline(s.heading)} />
     {s.text && <p class="lead">{fill(s.text)}</p>}
   </div>
   {s.compact ? (
-    <dl class="spec-rows">
+    <div class="rel">
       {groups.filter((g) => inGroup(g).length > 0).map((g) => (
-        <div class="spec-row">
-          <dt><span class:list={["badge", `badge--${g}`]}>{MARK[g] && <Glyph name={MARK[g]} size={12} />}{statusLabels[g]}</span></dt>
-          <dd>
-            {inGroup(g).map((i, n) => (
-              <>
-                {n > 0 && <span class="spec-row__sep" aria-hidden="true"> · </span>}
-                <span class="spec-row__item">{i.label}{i.status === "preview" && <span class="badge badge--preview">{statusLabels.preview}</span>}</span>
-              </>
+        <div class:list={["rel__group", `rel__group--${g}`, "rv"]}>
+          <h3 class="rel__h"><span class:list={["badge", `badge--${g}`]}>{MARK[g] && <Glyph name={MARK[g]} size={12} />}{statusLabels[g]}</span></h3>
+          <ul class="rel__list">
+            {inGroup(g).map((i) => (
+              <li>{i.label}{i.status === "preview" && <span class="badge badge--preview">{statusLabels.preview}</span>}</li>
             ))}
-          </dd>
+          </ul>
         </div>
       ))}
-    </dl>
+    </div>
   ) : (
   <div class:list={["spec", !s.lines && "spec--labels", s.only && "spec--even"]}>
     {

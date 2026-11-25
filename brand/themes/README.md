@@ -6,8 +6,9 @@ against [theme.schema.json](theme.schema.json). It holds no selectors, no CSS,
 no sizes, so a theme can be shared as a file and can never break a layout.
 
 Built in: **[Quiet](quiet.json)** (Galley's own look, and the default),
-**[Plate](plate.json)** and **[Desk](desk.json)**. The marketing site is Quiet
-only; themes apply to the editing app.
+**[Plate](plate.json)** and **[Desk](desk.json)**. Themes apply to the editing
+app. The marketing site takes no theme: it has a look of its own, in light and
+dark ([brand/README.md](../README.md), “The marketing site”).
 
 ## The contract
 
@@ -171,7 +172,8 @@ tokens.css §6.
   or colour a whole icon.
 - **Focus and the current place.** They are always drawn, always from the
   pencil, and always checked.
-- **The marketing site.** It is Galley's own page, in Quiet.
+- **The marketing site.** It is Galley's own page, with its own look in light
+  and dark.
 
 ## Making a theme by hand
 

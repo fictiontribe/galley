@@ -13,7 +13,7 @@ const hid = `${s.id ?? "close"}-h`;
 ---
 
 <section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
-  <div class:list={["close", !s.commands && "close--solo"]}>
+  <div class:list={["close", !s.commands && "close--solo", "rv-scale"]}>
     <div class="close__text">
       <H class="h2" id={hid} set:html={inline(s.heading)} />
       <p class="body">{fill(s.text)}</p>

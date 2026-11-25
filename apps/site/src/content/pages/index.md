@@ -3,8 +3,7 @@ title: Galley — the open-source AI CMS for static sites
 description: Galley is an open-source AI CMS for static sites. Change a page in a form, on the page or by asking, check every change beside the live site, then publish it to your own git repository.
 sections:
   - type: hero
-    layout: showcase
-    align: center
+    layout: canvas
     heading: The open‑source AI CMS.
     text: Ask for a change in plain words, check it beside your live site, then publish it to your own repository.
     cta:
@@ -15,36 +14,49 @@ sections:
       href: /tour/
     demo: Try the demo
     command: true
-    labels:
-      site: Live site
-      overlay: Galley · Proof
     visual:
-      kind: site
-      src: caddow-home
-      alt: The home page of Caddow, a fashion label’s site made from a Galley starter, as it is live — a model in a rust coat against a harbour wall under the heading “Coats for the long afternoon.”
-    overlay:
-      kind: screen
-      src: proof-changes
-      alt: Galley’s proof of that page — “Coats for the long afternoon.” struck out and “Coats for low sun.” written in, the button “See the lookbook” renamed “See the eight looks”, and “begin” changed to “start” in a heading.
+      src: assistant
+      alt: The assistant beside the Caddow home page — the request to change the campaign heading and its first button, the lines Read the home page and Edited the home page, the reply saying what it changed, and the buttons Review in Proof and Undo this change.
+      dark: dark-editor
+      darkAlt: The editor in its dark appearance on Caddow’s home page — the page’s form on the left, the page in the middle with the new heading Coats for low sun., and on the right the assistant’s reply saying what it changed, with Review in Proof and Undo this change; the switch between light and dark sits at the foot of the sidebar.
   - type: film
     id: film
-    layout: wide
+    layout: story
     heading: Prompt it. Proof it. Publish it.
     text: Nothing is live until you press Publish.
     video: galley-explainer
     title: Galley in 31 seconds, with captions
     captions: English
     chaptersLabel: The three steps, and where each starts in the film
+    pinned:
+      src: assistant
+      x: -812
+      w: 360
+      h: 440
+      alt: The assistant — the request to change the campaign heading and its first button, the lines Read the home page and Edited the home page, the reply saying what it changed, and the buttons Review in Proof and Undo this change.
     chapters:
       - label: Ask
         time: 6
         text: In plain words — or type in a form, or on the page itself.
+        visual:
+          src: click
+          x: -16
+          y: -200
+          alt: The Caddow home page in the editor with Click to edit chosen — the heading over four photographs of pieces retyped in place to “Coats and knits to start with”, outlined in blue.
       - label: Check
         time: 12
         text: Each change marked up beside the live site. Put back any one.
+        visual:
+          src: proof-changes
+          alt: Proof for the Caddow home page, What changed — “Coats for the long afternoon.” struck out and “Coats for low sun.” written in, “See the lookbook” changed to “See the eight looks”, and “begin” changed to “start” in the Pieces heading, each with Put back.
       - label: Publish
         time: 19
         text: To your own repository, or for review first. Undo adds a new version.
+        visual:
+          src: publish
+          x: -176
+          y: -180
+          alt: The Publish 3 changes? window over Proof — a suggested one-line note for version history, the three pages that go, each ticked (Home page, Journal, The atelier), the name the version is recorded under, and the buttons Not yet and Publish 3 changes.
     link:
       label: See every screen on the tour
       href: /tour/
@@ -53,7 +65,7 @@ sections:
       href: /video/galley-explainer.txt
   - type: starters
     id: starters
-    layout: row
+    layout: stage
     heading: Start from a finished site.
     text: Three starters, three looks each.
     link:
@@ -61,6 +73,7 @@ sections:
       href: /starters/
     items:
       - starter: astro-editorial
+        tall: caddow-tall
         name: Caddow
         kind: Fashion
         text: 20 sections.

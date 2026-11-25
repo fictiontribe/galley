@@ -17,7 +17,7 @@ const hid = `${s.id ?? "comparison"}-h`;
 const t = site.ui;
 const [, us, them] = s.columns as string[];
 const rows = s.rows as Row[];
-const icon = mark.replace(/<svg /, '<svg class="compare__mark" aria-hidden="true" focusable="false" ').replace(/ width="[^"]+" height="[^"]+"/, "").replace(/<title[^>]*>.*?<\/title>/, "").replace(/ role="img"[^>]*?(?=>)/, "").replace(/ aria-labelledby="[^"]*"/, "");
+const icon = mark.replace(/<svg /, '<svg class="compare__mark" aria-hidden="true" focusable="false" ').replace(/ width="[^"]+" height="[^"]+"/, "").replace(/<title[^>]*>.*?<\/title>/, "").replace(/ role="img"[^>]*?(?=>)/, "").replace(/ aria-labelledby="[^"]*"/, "").replace(/(fill|stroke)="#1A1712"/g, 'class="logo-ink-$1"').replace(/fill="#2E2BFF"/g, 'class="logo-pencil"'); // inks from the tokens, as the header's
 
 /** Which mark a cell gets: the stronger side the caret, the other side the empty ring, both the bars when even. */
 const kindOf = (better: Better | undefined, side: "ours" | "theirs") => (!better ? null : better === "even" ? "even" : better === side ? "win" : "plain");

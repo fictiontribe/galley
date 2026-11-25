@@ -1,7 +1,7 @@
 ---
-// A row of small captures, each a way into the tour, under one heading and one
-// action. Below 1024 px the row scrolls sideways (snapping to each capture)
-// rather than shrinking the pictures further.
+// Small captures, each a way into the tour, under one heading and one action:
+// a bento of hairline cards in mixed sizes (two wide, then three), each
+// captioned with its name and an arrow at the right.
 import { inline } from "../../lib/markdown";
 import { fill } from "../../lib/site";
 import { resolveVisual } from "../../lib/visual";
@@ -18,18 +18,18 @@ const SCALE = 0.56;
 ---
 
 <section class="section wrap filmstrip" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
-  <div class="filmstrip__head">
+  <div class="filmstrip__head rv">
     <div class="filmstrip__words">
       <H class="h2" id={hid} set:html={inline(s.heading)} />
       <p class="lead">{fill(s.text)}</p>
     </div>
     <a class="btn btn--primary" href={fill(s.link.href)}>{s.link.label}</a>
   </div>
-  <ul class="filmstrip__list">
+  <ul class="filmstrip__list bento">
     {
       items.map((item) => (
-        <li>
-          <a class="filmstrip__item" href={fill(item.href)}>
+        <li class="bento__cell rv">
+          <a class="filmstrip__item bento__card" href={fill(item.href)}>
             <span class="frame filmstrip__frame">
               <span class="stage">
                 <span class="shot" style={[item.r.style, `width:${Math.round(item.r.pic.width * SCALE)}px`].filter(Boolean).join(";")}>

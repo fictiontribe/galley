@@ -126,7 +126,8 @@ Override `--accent` on `:root`, on an element with `[data-theme]`, or on
 All OFL-1.1. App scale is fixed: 11 mono labels · 12 meta · **13 UI base** ·
 **14 inputs and chat** · 16 · 20 and 26 display titles. Marketing display
 sizes are fluid (`--display-sm` … `--display-xl`, 28 → 112 px). Newsreader is
-set at 400–500 with italic for emphasis; Figtree at 400/500/600; mono uppercase
+set at 400–500 with italic for emphasis (the marketing site's product pages
+set their headlines in Figtree 600 instead: see The marketing site); Figtree at 400/500/600; mono uppercase
 labels track +0.08em.
 
 ## Proof marks
@@ -167,7 +168,38 @@ tokens.css §6 from the seeds. Quiet is Galley's look and the default; Plate
 and Desk are the other built-ins. People can make and share their own; a
 legibility check clamps any seed that would make text unreadable and says
 which colour it moved. Proof and status colours, shape, spacing and type are
-not themable. The marketing site is Quiet only.
+not themable. Themes are for the editing app, whose default stays Quiet; the
+marketing site takes no theme and has a look of its own (next).
+
+## The marketing site ([apps/site/src/styles/tokens.css](../apps/site/src/styles/tokens.css))
+
+The site used to be Quiet only. It now has its own look, in light and dark,
+because the two have different jobs: Quiet is a look for working in and is
+built to recede, and a site that introduces an app has to show the app first.
+So the site sets the app's real captures large and lets the page move with the
+scroll, the way a lit screen draws the eye in a room.
+
+- **Two modes, one design.** Light is the brand's paper and ink. Dark is the
+  inked plate (the dark values of tokens.css §3). Layout, type, shape and
+  motion are the same in both; only colour changes. The visitor's system
+  chooses; the switch in the header overrides it and is remembered. Each mode
+  ends on a block of the other's paper.
+- **Two heading voices.** A page that shows the product (home, the tour, the
+  apps, the starters) speaks in Figtree 600, set tight. A page that is read
+  (documentation, how-to guides, comparisons, the changelog) is the page set:
+  Newsreader 400, as everywhere else in the brand. The product's own words,
+  quoted on any page, stay in the serif.
+- **Captures are framed, and real.** The warm tan panel on paper, a warm deep
+  frame on the plate. A light capture on the dark page reads as a lit screen.
+  Never drawn interface.
+- **One glow.** The Blue Pencil's light along a window's edge, where the
+  product acts. On paper it is a thin pencil line with a soft tint. Nothing
+  else glows; the accent is still not decoration.
+- **Motion follows the scroll.** Things settle as they come into view or as
+  the page moves, in CSS first, with a small script of the site's own. None of
+  it runs under `prefers-reduced-motion`, and nothing depends on it.
+- **Its tokens are its own**, in one file. `brand/tokens.css` stays the
+  editing app's: a change to the site's colours never reaches the editor.
 
 ## Colour jobs, depth and shape (tokens.css §5)
 

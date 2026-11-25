@@ -42,7 +42,7 @@ for (const item of items) {
 ---
 
 <section class="section wrap tour-part" id={s.id} aria-labelledby={hid} data-tour-part data-galley-block={block.key} data-galley-block-type={block.type}>
-  <div class="tour-part__head">
+  <div class="tour-part__head rv">
     <H class="h2" id={hid}><span class="tour-part__n" aria-hidden="true">{part}</span>{s.heading}</H>
     {s.text && <p class="lead">{fill(s.text)}</p>}
   </div>
@@ -51,7 +51,7 @@ for (const item of items) {
       rows.map((row) => (
         <div class:list={["tour-row", row.length === 2 ? "tour-row--pair" : `tour-row--${row[0].layout}`]}>
           {row.map((item) => (
-            <div class:list={["tour-item", `tour-item--${item.layout}`]} id={item.id}>
+            <div class:list={["tour-item", `tour-item--${item.layout}`, "rv"]} id={item.id}>
               <div class="tour-item__text">
                 <h3 class="tour-item__h">
                   <span set:html={inline(item.heading)} />

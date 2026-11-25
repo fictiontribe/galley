@@ -1,14 +1,17 @@
 ---
-// The header: the logo, five links, GitHub and one action. Below 1024 px the
+// The header: the logo, five links, GitHub, the light/dark switch (shown
+// only with JavaScript; without it the system's setting rules) and one action. Below 1024 px the
 // links fold into a menu (a native disclosure: it works without JavaScript).
 import lockup from "../../../../brand/logo/lockup.svg?raw";
 import navigation from "../data/navigation.json";
 import { fill, site } from "../lib/site";
+import Glyph from "./Glyph.astro";
 
 const path = Astro.url.pathname;
 // A link is current on its own pages and on any it names in `also` (the tour's how-to guides).
 const isCurrent = (href: string, also: string[] = []) => (href === "/" ? path === "/" : [href, ...also].some((h) => path.startsWith(h)));
-const logo = lockup.replace(/ width="[^"]+" height="[^"]+"/, "").replace(' role="img" aria-labelledby="t"', ' aria-hidden="true"').replace(/<title[^>]*>.*?<\/title>/, "");
+// Its inks come from the page's tokens (site.css): the normal lockup on paper, the reverse on the plate.
+const logo = lockup.replace(/ width="[^"]+" height="[^"]+"/, "").replace(' role="img" aria-labelledby="t"', ' aria-hidden="true"').replace(/<title[^>]*>.*?<\/title>/, "").replace(/(fill|stroke)="#1A1712"/g, 'class="logo-ink-$1"').replace(/fill="#2E2BFF"/g, 'class="logo-pencil"');
 ---
 
 <header class="header" data-header>
@@ -19,6 +22,7 @@ const logo = lockup.replace(/ width="[^"]+" height="[^"]+"/, "").replace(' role=
     </nav>
     <div class="header__end">
       <a class="gh" href={fill(navigation.github.href)}>{navigation.github.label}</a>
+      <button type="button" class="mode" data-mode-switch data-galley-agent="skip" data-to-dark={site.ui.themeToDark} data-to-light={site.ui.themeToLight} aria-label={site.ui.themeToDark}><Glyph name="moon" size={20} class="mode__moon" /><Glyph name="sun" size={20} class="mode__sun" /></button>
       <a class="btn btn--primary btn--sm header__cta" href={navigation.action.href}>{navigation.action.label}</a>
       <details class="menu" data-menu>
         <summary>{site.ui.menu}</summary>
@@ -26,6 +30,7 @@ const logo = lockup.replace(/ width="[^"]+" height="[^"]+"/, "").replace(' role=
           {navigation.header.map((l) => <a href={l.href} aria-current={isCurrent(l.href, (l as { also?: string[] }).also) ? "page" : undefined}>{l.label}</a>)}
           <a href={fill(navigation.github.href)}>{navigation.github.label}</a>
           <a class="btn btn--primary" href={navigation.action.href}>{navigation.action.label}</a>
+          <div class="menu__mode"><button type="button" class="mode" data-mode-switch data-galley-agent="skip" data-to-dark={site.ui.themeToDark} data-to-light={site.ui.themeToLight} aria-label={site.ui.themeToDark}><Glyph name="moon" size={20} class="mode__moon" /><Glyph name="sun" size={20} class="mode__sun" /></button></div>
         </nav>
       </details>
     </div>
