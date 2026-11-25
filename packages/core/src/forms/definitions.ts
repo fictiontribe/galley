@@ -12,6 +12,7 @@
 import type { FormDefinition, FormField } from "../kit";
 import type { SiteService } from "../types";
 import { FORM_ID_PATTERN } from "./store";
+import { mayBeShown } from "../workspace/policy";
 
 export const FORMS_COLLECTION = "forms";
 
@@ -103,6 +104,8 @@ export async function loadForm(site: SiteService, formId: string, prefer: Defini
   if (!collection) return null;
   const path = `${collection.path.replace(/\/+$/, "")}/${formId}.json`;
 
+  // The settings name the collection's folder: a form is read out of no folder that may not be shown.
+  if (!mayBeShown(path)) return null;
   if (prefer === "published") {
     const bytes = await site.readBase(path).catch(() => null);
 

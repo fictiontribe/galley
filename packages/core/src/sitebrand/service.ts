@@ -923,7 +923,8 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
     const file = brand.tokensFile ?? location.tokensFile ?? scan.tokensFile;
 
     if (!file) throw new GalleyError("invalid", "This site has no single file of colours and fonts to apply the brand to. The brand describes the site; changing its styles is a build-mode job for the assistant.");
-    const text = await site.readFile(file).catch(() => null);
+    // Named by the brand or the settings: read like any file a setting names, never a secrets file or one of the version history's own.
+    const text = mayBeShown(file) ? await site.readFile(file).catch(() => null) : null;
 
     if (!text || text.binary) throw new GalleyError("not-found", `The site's colours file (${file}) can't be read.`);
     const installed = new Set(scan.fontFaces.map((face) => face.family));
