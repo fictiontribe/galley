@@ -63,7 +63,7 @@ describe("whose a port is, from /proc alone", () => {
 
     expect(await listenersFromProc(port)).toEqual({ pids: [child.pid], unseen: false });
     expect(await groupFromProc(child.pid!)).toBe(child.pid);
-    expect(await listenerStartedHere(port, child.pid!, tempDir("elsewhere-"))).toBe("own");
+    expect(await listenerStartedHere(port, child.pid!, tempDir("elsewhere-"), process.pid)).toBe("own");
     // A listener of this process's own is not that dev server's.
     const mine = net.createServer();
 
@@ -72,7 +72,8 @@ describe("whose a port is, from /proc alone", () => {
       const minePort = (mine.address() as net.AddressInfo).port;
 
       expect((await listenersFromProc(minePort))?.pids).toContain(process.pid);
-      expect(await listenerStartedHere(minePort, child.pid!, tempDir("elsewhere-"))).toBe("foreign");
+      // This process's own listener is not the dev server's, even from the same folder.
+      expect(await listenerStartedHere(minePort, child.pid!, tempDir("elsewhere-"), process.pid)).toBe("foreign");
     } finally {
       await new Promise((done) => mine.close(done));
     }

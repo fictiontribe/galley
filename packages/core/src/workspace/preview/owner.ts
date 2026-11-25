@@ -30,9 +30,11 @@ function run(file: string, args: string[], timeoutMs: number): Promise<{ code: n
  * Linux, with nothing but /proc (a slim container has neither lsof nor ps):
  * the processes that hold the sockets listening on a TCP port, on any
  * address, and whether one of those sockets is held by nobody this process
- * may look into (another user's). Null when it can't be read at all.
+ * may look into (another user's). Null when it can't be read at all, or the
+ * scan of the process table didn't finish within `budgetMs` (a busy host): a
+ * part answer could miss a listener, which must not be taken for "none".
  */
-export async function listenersFromProc(port: number, proc = "/proc"): Promise<Listeners | null> {
+export async function listenersFromProc(port: number, proc = "/proc", budgetMs = LOOKUP_TIMEOUT_MS): Promise<Listeners | null> {
   const wanted = `:${port.toString(16).toUpperCase().padStart(4, "0")}`;
   const sockets = new Set<string>();
   let read = false;
@@ -53,9 +55,11 @@ export async function listenersFromProc(port: number, proc = "/proc"): Promise<L
   if (sockets.size === 0) return { pids: [], unseen: false };
   const holders = new Set<number>();
   const held = new Set<string>();
+  const deadline = Date.now() + budgetMs;
 
   for (const entry of await readdir(proc).catch(() => [] as string[])) {
     if (!/^\d+$/.test(entry)) continue;
+    if (held.size < sockets.size && Date.now() > deadline) return null;
     for (const fd of await readdir(`${proc}/${entry}/fd`).catch(() => [] as string[])) {
       const link = await readlink(`${proc}/${entry}/fd/${fd}`).catch(() => "");
       const socket = /^socket:\[(\d+)\]$/.exec(link)?.[1];
@@ -86,11 +90,15 @@ export interface Listeners {
 }
 
 async function listening(port: number, timeoutMs: number): Promise<Listeners | null> {
+  // Linux first from /proc: cheaper than lsof, and it says when a listener is held by nobody this process may see.
+  if (process.platform === "linux") {
+    const viaProc = await listenersFromProc(port, "/proc", timeoutMs);
+
+    if (viaProc) return viaProc;
+  }
   const pids = await listeningPids(port, timeoutMs);
 
-  if (pids !== null) return { pids, unseen: false };
-  // No lsof here: on Linux /proc says the same.
-  return process.platform === "linux" ? listenersFromProc(port) : null;
+  return pids === null ? null : { pids, unseen: false };
 }
 
 /** pids listening on a TCP port (any address), or null when that can't be found out. */
@@ -138,15 +146,18 @@ export type Ownership = "own" | "foreign" | "unknown";
  * a lookup that took too long).
  */
 export async function portOwnership(port: number, root: string, timeoutMs = LOOKUP_TIMEOUT_MS): Promise<Ownership> {
+  // Adopting a server already running on a site's configured port: by folder, through lsof, as before. It is a
+  // convenience (someone already ran the dev server), not a guard, so it stays "unknown" where lsof can't say —
+  // Linux's /proc is for the port-taken check below, which decides whether a preview trusts what it finds.
   if (process.platform !== "darwin" && process.platform !== "linux") return "unknown";
-  const found = await listening(port, timeoutMs);
+  const pids = await listeningPids(port, timeoutMs);
 
-  if (!found || found.pids.length === 0) return "unknown";
+  if (!pids || pids.length === 0) return "unknown";
   const siteRoot = real(root);
-  const dirs = await Promise.all(found.pids.map((pid) => cwdOf(pid, timeoutMs)));
+  const dirs = await Promise.all(pids.map((pid) => cwdOf(pid, timeoutMs)));
 
   if (dirs.some((dir) => dir !== null && !within(siteRoot, real(dir)))) return "foreign";
-  if (found.unseen || dirs.some((dir) => dir === null)) return "unknown";
+  if (dirs.some((dir) => dir === null)) return "unknown";
   return "own";
 }
 
@@ -164,52 +175,56 @@ async function groupOf(pid: number, timeoutMs: number): Promise<number | null> {
 }
 
 /**
- * Whether a port number is this preview's own: every listener on it, on
- * whichever address, is a dev server this preview started. By process, not
- * by folder alone: the controller starts each dev server in a process group
- * of its own, so its server, and whatever that started, is in `group`.
+ * How a port number stands to a preview whose dev server was told to use it:
  *
- *   own      every listener is in that group, or runs in the site's folder
- *            (a dev command may hand its server to a tool that regroups it;
- *            a server running in the site's folder is still this site's);
- *   foreign  a listener is neither; or one of ours shares the number with a
- *            listener that can't be identified;
- *   unknown  none of the listeners can be identified (Windows; a Mac without
- *            lsof or ps; another user's process; a lookup that took too
- *            long). Linux needs neither tool: /proc says the same.
+ *   own      every listener on it, on whichever address, is this preview's
+ *            dev server (in `group`, the process group the controller started
+ *            it in, or a process running in the site's own folder — a dev
+ *            command may hand its server to a tool that regroups it, and a
+ *            server running in the site's folder is still this site's);
+ *   shared   this preview's dev server listens on it, and so does something
+ *            else — on another address of the same number, say. Which a
+ *            connection reaches is the system's to decide, so it is not used;
+ *   foreign  something listens on it and none of it is this preview's. Its
+ *            dev server hasn't taken the port (yet, or at all);
+ *   unknown  nothing here can say whose the listeners are (Windows; a Mac
+ *            without lsof or ps; a lookup that took too long). Linux needs
+ *            neither tool: /proc says the same.
  *
- * Every listener, not any: one port number can have several listeners at
- * once (one on 127.0.0.1 and one on ::1, one on every address, two sharing
- * the port), and which of them a connection reaches is the system's to say.
- * Both loopback addresses were free when the port was chosen, so a listener
- * there that isn't this preview's arrived since: the port is not this
- * preview's alone, and it moves to one that is.
+ * Both loopback addresses were free when the port was chosen, so any listener
+ * on it that isn't this preview's arrived since. A listener this process may
+ * see exists but can't attribute (another user's, on a hosted server) counts
+ * as not this preview's: it is refused, not trusted.
  *
  * Asked when a port the controller chose answers before the dev server has
  * said it listens there: between choosing a free port and the dev server
  * asking for it, another program can take it.
  */
-export async function listenerStartedHere(port: number, group: number, root: string, timeoutMs = LOOKUP_TIMEOUT_MS): Promise<Ownership> {
+export type PortStanding = "own" | "shared" | "foreign" | "unknown";
+
+export async function listenerStartedHere(port: number, group: number, root: string, self: number, timeoutMs = LOOKUP_TIMEOUT_MS): Promise<PortStanding> {
   if (process.platform !== "darwin" && process.platform !== "linux") return "unknown";
   const found = await listening(port, timeoutMs);
 
-  if (!found || (found.pids.length === 0 && !found.unseen)) return "unknown";
+  if (!found) return "unknown";
+  if (found.pids.length === 0 && !found.unseen) return "unknown";
   const siteRoot = real(root);
-  let own = 0;
-  let foreign = 0;
-  let unknown = found.unseen ? 1 : 0;
+  let own = false;
+  // A listener not this preview's: one provably elsewhere, one this process may not look into (another user's), or
+  // one of this process's own (a sibling preview's proxy, which can be handed the chosen port by the kernel).
+  let other = found.unseen;
 
   for (const pid of found.pids) {
-    if (pid === group || (await groupOf(pid, timeoutMs)) === group) {
-      own += 1;
-      continue;
-    }
-    const dir = await cwdOf(pid, timeoutMs);
+    if (pid === self) other = true;
+    else if (pid === group || (await groupOf(pid, timeoutMs)) === group) own = true;
+    else {
+      const dir = await cwdOf(pid, timeoutMs);
 
-    if (dir === null) unknown += 1;
-    else if (within(siteRoot, real(dir))) own += 1;
-    else foreign += 1;
+      if (dir !== null && within(siteRoot, real(dir))) own = true;
+      else other = true;
+    }
   }
-  if (foreign > 0 || (own > 0 && unknown > 0)) return "foreign";
-  return own > 0 ? "own" : "unknown";
+  if (own && other) return "shared";
+  if (other) return "foreign";
+  return own ? "own" : "unknown";
 }

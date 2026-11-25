@@ -263,7 +263,7 @@ async function canSayWhoseAPortIs(): Promise<boolean> {
 
   await new Promise<void>((done) => probe.listen(0, "127.0.0.1", done));
   try {
-    return (await listenerStartedHere((probe.address() as net.AddressInfo).port, process.pid, process.cwd())) !== "unknown";
+    return (await listenerStartedHere((probe.address() as net.AddressInfo).port, process.pid, process.cwd(), -1)) !== "unknown";
   } finally {
     await new Promise((done) => probe.close(done));
   }
@@ -825,21 +825,25 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
     expect(status.log.join("\n")).toContain(`Port ${told} was taken by another program before the preview could use it, so the preview is starting again on another port.`);
   });
 
-  it("never shows another program's pages when the dev server moves to the next port by itself and says so late", async () => {
+  it("follows the dev server to the next port when it moves there by itself and says so late", async () => {
     // What Astro and Vite do with a port that is taken: use the next one, and announce it once they are ready.
-    // By then the port they were given has long been answering, for the program that took it.
+    // By then the port they were given has long been answering, for the program that took it. The preview waits
+    // for the dev server's own port rather than settling on the other program's, and doesn't start it over.
     const root = site("moving");
     const port = await freeLoopbackPort();
     const { controller, statuses } = controllerFor(root, { dev: { command: "node moving-server.mjs", port, portArgs: ["--port", "{port}"] } });
     const starting = controller.start();
-    const told = await takeThePortFirst(root, "answering");
+
+    await takeThePortFirst(root, "answering");
     const status = await starting;
 
-    expect(status.state).toBe("ready");
+    expect(status.state, status.log.join("\n")).toBe("ready");
     expect(await (await fetch((status.url as string) + "/")).text()).toContain("<h1>moving</h1>");
-    // At no point was the preview said to be ready on the other program's port.
+    // The dev server moved itself; the controller did not start it again (one spawn) and never said it was ready
+    // on the other program's port.
+    expect(JSON.parse(readFileSync(join(root, "asked.json"), "utf8"))).toHaveLength(1);
     expect(statuses.filter((each) => each.state === "ready")).toHaveLength(1);
-    expect(status.log.join("\n")).toContain(`Port ${told} was taken by another program`);
+    expect(status.log.join("\n")).not.toContain("starting again on another port");
   });
 
   it.each([
@@ -872,29 +876,16 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
     expect(status.log.join("\n")).toContain(`Port ${told} was taken by another program`);
   });
 
-  it("gives up with a sentence that says what to do when the port keeps being taken", async () => {
+  it("gives up with a sentence that names the setting when every port it is given is shared with another program", async () => {
     const root = site("strict");
     const port = await freeLoopbackPort();
-    const takers: http.Server[] = [];
-    // Every port this preview is told, another program has first.
-    const { controller } = controllerFor(root, { dev: { command: "node strict-server.mjs", port, portArgs: ["--port", "{port}"] } }, { startedHere: async () => "foreign" });
-    const starting = controller.start();
-    let taken = 0;
-    const keepTaking = setInterval(() => {
-      const asked = existsSync(join(root, "asked.json")) ? (JSON.parse(readFileSync(join(root, "asked.json"), "utf8")) as number[]) : [];
-
-      for (; taken < asked.length; taken += 1) {
-        const taker = http.createServer((_req, res) => res.end("<html><head></head><body><h1>not this site</h1></body></html>"));
-
-        takers.push(taker);
-        servers.push(taker);
-        taker.listen(asked[taken], "127.0.0.1");
-      }
-    }, 10);
-    const status = await starting.finally(() => clearInterval(keepTaking));
+    // Every port this preview is told has its dev server and another program both: a shared port, to move off.
+    const { controller } = controllerFor(root, { dev: { command: "node strict-server.mjs", port, portArgs: ["--port", "{port}"] } }, { startedHere: async () => "shared" });
+    const status = await controller.start();
 
     expect(status.state).toBe("error");
     expect(status.detail).toMatch(/^Port \d+ keeps being taken by another program before the preview can use it\./);
+    expect(status.detail).toContain("dev.trustPort");
     // The first start and two more, and no further.
     expect(JSON.parse(readFileSync(join(root, "asked.json"), "utf8"))).toHaveLength(3);
   });
@@ -935,6 +926,60 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
     expect(status.state).toBe("error");
     expect(status.detail).toContain("stopped before it was ready");
     expect(readFileSync(join(root, "runs.txt"), "utf8")).toBe("x");
+  });
+
+  it("doesn't start a dev server again when it stopped but its own child still holds the port", async () => {
+    // A wrapper exits for its own reason while the server it started, in its process group, still listens. The
+    // port isn't free, but the listener is this preview's own, so it is not another program taking it.
+    const root = site("wrapper");
+    const port = await freeLoopbackPort();
+
+    writeTree(root, { "wrapper.mjs": 'import { appendFileSync } from "node:fs";\nappendFileSync("runs.txt", "x");\nconst held = (await import("node:net")).createServer();\nawait new Promise((d) => held.listen(Number(process.argv[process.argv.indexOf("--port") + 1]), "127.0.0.1", d));\nconsole.error("the wrapper failed");\nprocess.exit(1);\n' });
+    // The system says the held port is this preview's own (the child is in its group); only the wrapper exited.
+    const { controller } = controllerFor(root, { dev: { command: "node wrapper.mjs", port, portArgs: ["--port", "{port}"] } }, { startedHere: async () => "own" });
+    const status = await controller.start();
+
+    expect(status.state).toBe("error");
+    expect(status.detail).toContain("stopped before it was ready");
+    expect(readFileSync(join(root, "runs.txt"), "utf8")).toBe("x");
+  });
+
+  it("takes the port on trust, without checking which program has it, when the site's settings say to", async () => {
+    const root = site("strict");
+    const port = await freeLoopbackPort();
+    const asked: number[] = [];
+    // A program answers on the port before the dev server; with trustPort the preview settles on it and the check
+    // is never asked. (For a dev command that runs its server in a container, that program is the dev server.)
+    const { controller } = controllerFor(root, { dev: { command: "node strict-server.mjs", port, portArgs: ["--port", "{port}"], trustPort: true } }, { startedHere: async (asking) => (asked.push(asking), "foreign") });
+    const starting = controller.start();
+    const other = http.createServer((_req, res) => res.end("<html><head></head><body><h1>the container's dev server</h1></body></html>"));
+
+    servers.push(other);
+    await until(() => existsSync(join(root, "asked.json")), 5000, 10);
+    await new Promise<void>((done) => other.listen((JSON.parse(readFileSync(join(root, "asked.json"), "utf8")) as number[])[0], "127.0.0.1", done));
+    const status = await starting;
+
+    expect(status.state).toBe("ready");
+    expect(await (await fetch((status.url as string) + "/")).text()).toContain("the container's dev server");
+    expect(asked).toEqual([]);
+  });
+
+  it("gives up, naming the setting, when another program holds the port the whole time and the dev server neither stops nor moves", async () => {
+    const root = site("idle");
+    const port = await freeLoopbackPort();
+
+    // A dev server that writes which port it was told and then stays alive without ever listening on it.
+    writeTree(root, { "idle-server.mjs": 'import { readFileSync, writeFileSync } from "node:fs";\nlet a = [];\ntry { a = JSON.parse(readFileSync("asked.json", "utf8")); } catch {}\nwriteFileSync("asked.json", JSON.stringify([...a, Number(process.argv[process.argv.indexOf("--port") + 1])]));\nsetInterval(() => {}, 1000);\n' });
+    const { controller } = controllerFor(root, { dev: { command: "node idle-server.mjs", port, portArgs: ["--port", "{port}"] }, environment: {} }, { portHeldMs: 400 });
+    const starting = controller.start();
+
+    await takeThePortFirst(root, "answering");
+    const status = await starting;
+
+    expect(status.state).toBe("error");
+    expect(status.detail).toContain("dev.trustPort");
+    // It was not started over: another port would be as invisible.
+    expect(JSON.parse(readFileSync(join(root, "asked.json"), "utf8"))).toHaveLength(1);
   });
 
   it("gives two sites with the same configured port a preview of their own each", async () => {

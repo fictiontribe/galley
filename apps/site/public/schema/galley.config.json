@@ -56,6 +56,10 @@
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991
+        },
+        "trustPort": {
+          "description": "Take whatever answers on the dev server's port for the dev server, without checking which program on the computer has it. For a dev command that runs its server where Galley can't see it as its own, such as a container. Only an owner can set it (it switches a safety check off).",
+          "type": "boolean"
         }
       },
       "additionalProperties": false

@@ -320,8 +320,9 @@ import { writeFileSync } from "node:fs";
 const port = Number(process.argv[process.argv.indexOf("--port") + 1]);
 writeFileSync("asked-" + port + ".txt", "");
 await new Promise((done) => setTimeout(done, 400));
-http.createServer((req, res) => { res.writeHead(200, { "content-type": "text/html" }); res.end("<html><head></head><body>the site's own</body></html>"); })
-  .listen(port, "127.0.0.1", () => console.log("Local http://localhost:" + port + "/"));
+const server = http.createServer((req, res) => { res.writeHead(200, { "content-type": "text/html" }); res.end("<html><head></head><body>the site's own</body></html>"); });
+server.once("error", () => process.exit(1));
+server.listen(port, "127.0.0.1", () => console.log("Local http://localhost:" + port + "/"));
 `,
     });
     const port = await new Promise<number>((resolve) => {
@@ -357,7 +358,10 @@ http.createServer((req, res) => { res.writeHead(200, { "content-type": "text/htm
 
       expect(shown).toContain("the site's own");
       expect(shown).not.toContain("another program on the server");
-      expect(status.log.join("\n")).toContain(`Port ${port} was taken by another program`);
+      // On a hosted install the log names no port and doesn't ask the reader to stop a program: what else listens
+      // on the server is the operator's.
+      expect(status.log.join("\n")).toContain("The preview's port was taken by another program on the server");
+      expect(status.log.join("\n")).not.toContain(`Port ${port}`);
     } finally {
       await controller.stop();
       await new Promise((done) => other.close(done));

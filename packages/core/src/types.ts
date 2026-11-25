@@ -333,6 +333,8 @@ export interface SiteModel {
      * doesn't say, or the command is a custom one it can't vouch for.
      */
     portArgs?: string[];
+    /** The site's settings turn off the check that what answers on the dev server's port is the dev server's own. */
+    trustPort?: boolean;
   } | null;
   build: { command: string; outDir: string } | null;
   collections: Collection[];
@@ -409,7 +411,7 @@ export interface GalleyConfig {
    * what is listed, and never when site plugins are turned off.
    */
   plugins?: string[];
-  dev?: { command?: string; port?: number };
+  dev?: { command?: string; port?: number; trustPort?: boolean };
   /**
    * `sources`: further files the build reads, as globs from the site root
    * ("scripts/gallery/**"), beside what the framework's adapter already
