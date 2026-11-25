@@ -14,10 +14,8 @@ edit it in any text editor, or visually with
 static sites that this starter is built for. Nothing here depends on Galley:
 it is an ordinary Astro project.
 
-**Demo:** https://fictiontribe.github.io/galley-astro-starter/
-
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley-astro-starter)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley-astro-starter)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley/tree/main/starters/astro-starter)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley%2Ftree%2Fmain%2Fstarters%2Fastro-starter&project-name=galley-astro-starter&repository-name=galley-astro-starter)
 
 ![Every section type in the library, rendered on its own](galley/previews/sections.webp)
 
@@ -37,11 +35,11 @@ npm create galley@latest my-site -- --starter lowfield --look sage
 **As a plain Astro project:**
 
 ```sh
-npm create astro@latest -- --template fictiontribe/galley-astro-starter
+npm create astro@latest -- --template fictiontribe/galley/starters/astro-starter
 ```
 
-With pnpm: `pnpm create astro@latest --template fictiontribe/galley-astro-starter`.
-With Yarn: `yarn create astro --template fictiontribe/galley-astro-starter`.
+With pnpm: `pnpm create astro@latest --template fictiontribe/galley/starters/astro-starter`.
+With Yarn: `yarn create astro --template fictiontribe/galley/starters/astro-starter`.
 On GitHub you can also press **Use this template**. Then:
 
 ```sh
@@ -331,11 +329,11 @@ supply the address without editing `site.json`: `--site` (the origin, for
 canonical links and the sitemap) and `--base` (a sub-path), for example
 `npm run build -- --site https://you.github.io --base /my-site`.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley-astro-starter)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley-astro-starter)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fictiontribe/galley/tree/main/starters/astro-starter)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffictiontribe%2Fgalley%2Ftree%2Fmain%2Fstarters%2Fastro-starter&project-name=galley-astro-starter&repository-name=galley-astro-starter)
 
-The buttons copy the repository into your own GitHub account and build it
-there on every push.
+The buttons copy this starter into a new repository in your own GitHub
+account and build it there on every push.
 
 - **GitHub Pages** — `.github/workflows/deploy.yml` builds and publishes on
   every push to `main`, with `--site` and `--base` taken from GitHub. In

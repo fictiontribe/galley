@@ -5,6 +5,10 @@
 //   galley/templates/<id>.webp      every page template         640 × 800
 //   galley/previews/<look>.webp     the home page in each look  1280 × 800
 //                                   (three columns: the page from top to bottom)
+//   galley/previews/home.webp       the home page's first screen 1280 × 800
+//                                   in the default look
+//   galley/previews/sections.webp   every section picture on one sheet, for the
+//                                   README (made from galley/sections/)
 //
 // It builds the site with the section gallery switched on (SECTION_GALLERY,
 // see scripts/gallery/), once per look, serves each build locally and
@@ -17,7 +21,8 @@
 // neither: PLAYWRIGHT_MODULES names a node_modules folder that already has
 // playwright-core (any project's), and Chromium is the one Playwright has
 // cached for that version — or set PLAYWRIGHT_CHROMIUM to a browser binary.
-// Options: --only sections|templates|previews, --port 4873.
+// Options: --only sections|templates|previews|home|sheet, --port 4873.
+// `--only sheet` builds nothing: it lays out the section pictures already made.
 
 import { spawnSync } from "node:child_process";
 import { createReadStream, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -168,8 +173,9 @@ async function settle(page) {
   await page.waitForLoadState("networkidle");
 }
 
+const needsBuild = ["sections", "templates", "previews", "home"].some(want);
 try {
-  for (const look of looks) {
+  for (const look of needsBuild ? looks : []) {
     const first = look === looks[0];
     if (!first && !want("previews")) continue;
     process.stdout.write(`Building the ${look} look… `);
@@ -211,6 +217,13 @@ try {
       }
     }
 
+    if (first && want("home")) {
+      // The first screen of the home page, as a visitor lands on it.
+      const { page, context } = await open(`${base}/`);
+      write("galley/previews/home.webp", await webp(await page.screenshot(), 90 * 1024));
+      await context.close();
+    }
+
     if (want("previews")) {
       // Three columns, each 1280 × 2560 of the page scaled to 400 × 800, side
       // by side on the look's own ground: the hero, then what follows it.
@@ -239,6 +252,25 @@ try {
     }
 
     await new Promise((ok) => server.close(ok));
+  }
+
+  if (want("sections") || want("sheet")) {
+    // Every section picture at half size, four to a row, in the library's order.
+    const tile = { width: 320, height: 240, gap: 16, columns: 4 };
+    const missing = sectionTypes.filter((type) => !existsSync(join(ROOT, `galley/sections/${type}.webp`)));
+    if (missing.length) fail(`no picture yet for ${missing.join(", ")}: run it with --only sections first.`);
+    const tiles = await Promise.all(
+      sectionTypes.map(async (type, i) => ({
+        input: await sharp(join(ROOT, `galley/sections/${type}.webp`)).resize(tile.width, tile.height, { fit: "cover", position: "top" }).toBuffer(),
+        left: tile.gap + (i % tile.columns) * (tile.width + tile.gap),
+        top: tile.gap + Math.floor(i / tile.columns) * (tile.height + tile.gap),
+      })),
+    );
+    const rows = Math.ceil(sectionTypes.length / tile.columns);
+    const width = tile.gap + tile.columns * (tile.width + tile.gap);
+    const height = tile.gap + rows * (tile.height + tile.gap);
+    const sheet = await sharp({ create: { width, height, channels: 3, background: { r: 228, g: 225, b: 220 } } }).composite(tiles).png().toBuffer();
+    write("galley/previews/sections.webp", await webp(sheet, 160 * 1024));
   }
 } finally {
   await browser.close();
