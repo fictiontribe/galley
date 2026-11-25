@@ -3,7 +3,7 @@
   "tagline": "Prompt it. Proof it. Publish it.",
   "descriptor": "The open-source AI CMS",
   "description": "Galley is an open-source AI CMS for static sites. Change a page in a form, on the page or by asking, check every change beside the live site, then publish it to your own git repository.",
-  "url": "https://galley.fictiontribe.com",
+  "url": "https://galleycms.com",
   "repository": "https://github.com/fictiontribe/galley",
   "repositoryBranch": "main",
   "sitePath": "apps/site",
