@@ -96,6 +96,17 @@ entry says how.
   its running in the site's folder) — and a port another program shares is
   not shown. A background server isn't started again, so the preview reports
   that it couldn't start rather than showing the wrong pages.
+- **A preview keeps checking, while it is used, that its port is still its own
+  dev server's.** The checks above happen while a preview starts. A dev server
+  can also let go of its address after the preview is ready — on a restart, say
+  — and another program can take it, with the dev server's own process still
+  running, so nothing noticed. Now, before serving a request, the preview
+  re-confirms (at most once every fifteen seconds of use, never while idle)
+  that the port is still its dev server's; if another program has taken it, the
+  preview is stopped with a plain message rather than showing that program's
+  pages. A check that can't tell keeps the preview as it is, and only after
+  several in a row that can't does it stop. A port an owner set `dev.trustPort`
+  for is not re-checked, as it isn't checked to begin with.
 
 ## 0.4.2 — 2026-11-25
 

@@ -368,6 +368,14 @@ interface ProxyOptions {
   ports?: ProxyPorts;
   /** Called on every request and upgrade through the proxy (health checks aside): how "unused" is measured. */
   onActivity?: () => void;
+  /**
+   * Asked before a request is forwarded to the dev server: false means the port is no longer the dev server's, so
+   * this request is answered with an error rather than whatever now listens there. An upgrade already open is not
+   * asked again; it ends with the preview.
+   */
+  verifyUpstream?: () => Promise<boolean>;
+  /** Called once the error answer above has been sent, to tear the preview down (after the answer, so it isn't lost). */
+  onTakenOver?: () => void;
   /** Attributes for every page's `<html>` (see markHtmlElement), read per page. */
   pageAttributes?: () => Record<string, string>;
   /** Mount on this gateway instead of listening; `host`, `publicHost`, `publicProtocol` and `ports` are then unused. */
@@ -428,6 +436,23 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
     if (verdict !== "pass") {
       if (verdict === "refused") sendError(res, 403, "That file can't be shown here.", false);
       else sendError(res, 400, "That address can't be read.", false);
+      return;
+    }
+    // Before forwarding: make sure the port is still this preview's dev server, not a program that took it after
+    // the preview was ready. Its own answers above (health, the overlay) are the proxy's, not forwarded. A check
+    // that throws is treated as "serve" (it has already counted as a can't-tell for the preview), never a crash.
+    let serve = true;
+
+    if (options.verifyUpstream) {
+      try {
+        serve = await options.verifyUpstream();
+      } catch {
+        serve = true;
+      }
+    }
+    if (!serve) {
+      res.once("finish", () => options.onTakenOver?.());
+      sendError(res, 502, "Another program took the preview's port while it was running, so the preview was stopped. Start it again.", false);
       return;
     }
     // Only GET/HEAD responses can be HTML we would inject into; the request
@@ -517,7 +542,11 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
     pipeline(req, upstream, () => undefined);
   };
 
-  const handleUpgrade = (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+  const handleUpgrade = async (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+    // The HTTP server drops its own error listener before it emits "upgrade", and the check below is awaited, so a
+    // socket the client resets in that moment would emit "error" with nothing listening — an uncaught exception.
+    // This listener, attached before any await, catches it; the one added once an upstream is connected stays too.
+    socket.on("error", () => socket.destroy());
     if (kind !== "preview") {
       socket.destroy();
       return;
@@ -528,6 +557,23 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
 
     if (verdict !== "pass") {
       socket.end(`HTTP/1.1 ${verdict === "refused" ? "403 Forbidden" : "400 Bad Request"}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
+      return;
+    }
+    // A new upgrade (a live-update socket reconnecting, say) is checked like a request: if the port is no longer the
+    // dev server's, it is refused rather than connected to whatever took it. One already open is left as it is. A
+    // check that throws is treated as "serve" here — it has already counted as a can't-tell for the preview.
+    let serve = true;
+
+    if (options.verifyUpstream) {
+      try {
+        serve = await options.verifyUpstream();
+      } catch {
+        serve = true;
+      }
+    }
+    if (!serve) {
+      options.onTakenOver?.();
+      socket.destroy();
       return;
     }
     track(socket);
@@ -601,7 +647,7 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
 
   const handlers: ProxyHandlers = {
     request: (req, res) => void handleRequest(req, res),
-    upgrade: handleUpgrade,
+    upgrade: (req, socket, head) => void handleUpgrade(req, socket, head),
   };
 
   if (gateway) {
@@ -674,6 +720,8 @@ export function startPreviewProxy(options: {
   ports?: ProxyPorts;
   onActivity?: () => void;
   pageAttributes?: () => Record<string, string>;
+  verifyUpstream?: () => Promise<boolean>;
+  onTakenOver?: () => void;
   /** Mount on the server's one address instead of listening on a port (see PreviewGateway). */
   gateway?: PreviewGateway;
 }): Promise<ProxyHandle> {
@@ -688,6 +736,8 @@ export function startPreviewProxy(options: {
     ...(options.publicProtocol ? { publicProtocol: options.publicProtocol } : {}),
     ...(options.ports ? { ports: options.ports } : {}),
     ...(options.onActivity ? { onActivity: options.onActivity } : {}),
+    ...(options.verifyUpstream ? { verifyUpstream: options.verifyUpstream } : {}),
+    ...(options.onTakenOver ? { onTakenOver: options.onTakenOver } : {}),
     overlayScript: options.overlayScript,
     overlayTag: OVERLAY_TAG,
     target: {
