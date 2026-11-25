@@ -99,7 +99,7 @@ describe("media storage routes", () => {
       },
       planMove: async (_site, request) => {
         calls.push(["plan", request]);
-        return { kind: "move", from: "repository", to: "bucket", files: 3, bytes: 10, references: 2, pages: 1, done: 0, problems: [], keepCopies: false };
+        return { kind: "move", from: "repository", to: "bucket", files: 3, bytes: 10, removes: 3, references: 2, pages: 1, done: 0, problems: [], keepCopies: false };
       },
       startMove: async (_site, request) => {
         calls.push(["move", request]);
