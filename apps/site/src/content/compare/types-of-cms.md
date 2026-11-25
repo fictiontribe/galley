@@ -106,7 +106,7 @@ Contentful describes its Content Delivery API as "a read-only API for delivering
 
 ## What is a Git-based CMS?
 
-A Git-based CMS edits the files a site is already made of: Markdown pages, data files in JSON or YAML, images. Those files live in the site's own Git repository, beside its code. Saving a change is a commit, and the site rebuilds from the repository the same way it would after a developer's commit. Most Git-based CMSs are used with static sites, which are built ahead of time and served as files.
+A Git-based CMS edits the files a site is already made of: Markdown pages, data files in JSON or YAML, images. Those files live in the site's own Git repository, beside its code. Saving a change is a commit (in Galley, publishing one is), and the site rebuilds from the repository the same way it would after a developer's commit. Most Git-based CMSs are used with static sites, which are built ahead of time and served as files.
 
 The kind has a long list of members. CloudCannon, a commercial hosted service, says it "stores content as files in your Git repo — Markdown, JSON, YAML, or TOML — and builds your static site directly from them." TinaCMS says that "when users make a change in the CMS, a commit is made back to your Git repository." Decap CMS, which was Netlify CMS until February 2023, is open source and runs as an admin page on the site itself. Keystatic, Pages CMS and Sveltia CMS are open-source options too. And there's Galley, which is ours.
 
@@ -179,7 +179,7 @@ Galley is our open-source AI CMS for static sites, Apache-2.0 and free, first re
 - **No configuration file to write first.** Galley reads the site's framework, content collections and fields from its schemas and files, without running its code. Astro fits deepest; Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll are recognised by their conventions.
 - **Three ways to change a page.** In a form made from the site's own content model, by retyping the words on the page, or by asking the assistant. All three end in the same [proof](/how-to/proof-and-publish/), beside the live site.
 - **Publishing is a commit** to your own repository, or a branch and a pull request. Undo is a new commit.
-- **The assistant never publishes.** It runs on Anthropic's Claude with your own key. Other AI tools can connect over [MCP](/docs/integrations/mcp/). They can publish when asked, unless publishing over MCP is switched off.
+- **The assistant never publishes.** It runs on Anthropic's Claude with your own key. Other AI tools can connect over [MCP](/docs/integrations/mcp/). They can publish too (their instructions say only when you ask), unless publishing over MCP is switched off.
 
 It's young, and some of it is unfinished: the page builder is in preview, and the hosted editor, with its accounts and roles, is new and still in final checks. There's no editing together in real time. See [what it does today](/tour/), or set it beside [CloudCannon](/compare/cloudcannon/), the Git-based product closest to it.
 

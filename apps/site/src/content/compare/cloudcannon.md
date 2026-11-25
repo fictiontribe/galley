@@ -5,13 +5,13 @@ kind: versus
 product: CloudCannon
 heading: CloudCannon and Galley agree about Git. They part ways on where the AI sits.
 name: Galley and CloudCannon
-lead: Both edit the plain files in your repository and commit every change. CloudCannon is a hosted service, founded in 2013, that leaves AI to the agents you bring. Galley is free, open-source and new, with the assistant and the check built into the editor.
+lead: Both edit the plain files in your repository and record changes as commits. CloudCannon is a hosted service, founded in 2013, that leaves AI to the agents you bring. Galley is free, open-source and new, with the assistant and the check built into the editor.
 published: "2026-11-25"
 checked: November 2026
 order: 1
 draft: false
 short:
-  - Both are Git-based. Your content stays as Markdown, JSON, YAML or TOML files in your own repository, and every saved change is a commit. Leaving either one needs no content migration.
+  - Both are Git-based. Your content stays as Markdown, JSON, YAML or TOML files in your own repository, and a change becomes a commit: when you save in CloudCannon, when you publish in Galley. Leaving either one needs no content migration.
   - CloudCannon is a paid, hosted service that also builds and hosts the site. Its Standard plan is $55 a month for three users, or $49 a month paid yearly (as of November 2026). Galley is free and Apache-2.0. You pay for your own AI key and your own hosting.
   - CloudCannon asks a developer for a configuration file and, for visual editing, markup in the templates. Galley reads the site's framework, collections and fields as they already are.
   - CloudCannon's AI story is the agents you already use, such as Cursor, Claude Code or Copilot, working in the repository. Galley builds an assistant into the editor, holds every change in a proof beside the live site, and lets other AI tools in over MCP.
