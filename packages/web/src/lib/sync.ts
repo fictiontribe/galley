@@ -108,6 +108,8 @@ export function startSync(): void {
   subscribe("job", (event) => {
     useJobs.getState().upsert(event.job);
     if (event.job.state === "done") void useSites.getState().load();
+    // A move of the site's files ended (well or not): the library, and how the move ended, are read again.
+    if (event.job.kind === "media" && event.job.state !== "running" && event.job.siteId) invalidate(keys.media(event.job.siteId));
   });
 
   // A plugin was turned on or off, saved or failed: what it adds (providers, catalogues, keys) may have changed.

@@ -5,7 +5,7 @@
  * media and deleting from a store. Types only, so the web app and its
  * fixture backend import it freely.
  */
-import type { MediaImagesConfig, MediaItem, MediaLocation, MediaStorageConfig } from "../types";
+import type { Job, MediaImagesConfig, MediaItem, MediaLocation, MediaStorageConfig } from "../types";
 
 /** A place media can be kept other than the repository. */
 export type MediaStoreLocation = Exclude<MediaLocation, "repository">;
@@ -113,6 +113,10 @@ export interface MediaStorageStatus {
   counts?: Partial<Record<MediaLocation, number>>;
   /** "Make the bucket for me" on Cloudflare: possible with the site's Cloudflare key, or why not. */
   cloudflare: { keyStored: boolean };
+  /** The move of files running now: a "media" job, whose progress arrives as job events. */
+  moving?: Job;
+  /** How the last move ended. Kept until the next one, so it can still be read on coming back. */
+  lastMove?: MediaMoveResult;
 }
 
 export type MediaCheckStepId = "settings" | "reach" | "write" | "read" | "list" | "public" | "delete";
@@ -184,6 +188,31 @@ export type MediaMoveRequest =
       /** The new public address. */
       publicUrl: string;
     };
+
+/**
+ * How a move of files (or a change of address) ended. A file that stays in
+ * the repository because the site's code or a template still uses it is how a
+ * move is meant to go, so it is told in `stayed`, not as a problem.
+ */
+export interface MediaMoveResult {
+  /** When it ended, ms. */
+  at: number;
+  /** What was asked for. */
+  request: MediaMoveRequest;
+  /** "done": it worked. "error": something in `problems` went wrong, or it stopped and `summary` says why. */
+  state: "done" | "error";
+  /** What happened, in a few sentences: how many files were copied, pages updated, files removed, and what stayed where. */
+  summary: string;
+  copied: number;
+  pages: number;
+  removed: number;
+  /** Repository files that stayed because something still mentions them, each with the files that do (the first few hundred). */
+  stayed: Array<{ path: string; pages: string[] }>;
+  /** How many stayed in all. */
+  stayedFiles: number;
+  /** What couldn't be copied, updated or removed, and why (the first few hundred). */
+  problems: Array<{ path: string; reason: string }>;
+}
 
 export interface MediaMovePlan {
   kind: "move" | "address";

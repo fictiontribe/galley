@@ -38,8 +38,13 @@ async function setUp() {
   const connected = await storage.connect(site, { config: { connector: "r2", account: KEY.accessKeyId, bucket: "moves", endpoint: fake.endpoint, prefix: "lowfield", publicUrl }, ...KEY });
 
   expect(connected.check.ok).toBe(true);
+  homes.set(storage, home.home);
   return { storage, site, root, publicUrl, done: home.done };
 }
+
+/** The data folder each test's service keeps its record in. */
+const homes = new WeakMap<object, string>();
+const homeOf = (storage: object) => homes.get(storage)!;
 
 const read = (root: string, path: string) => readFileSync(join(root, ...path.split("/")), "utf8");
 
@@ -57,7 +62,7 @@ describe("moving media", { timeout: 240_000 }, () => {
 
     const first = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
 
-    expect(first.copied).toBe(plan.files - first.problems.filter((p) => !p.reason.startsWith("Couldn't update")).length);
+    expect(first.copied).toBe(plan.files);
     expect(read(root, AUTHOR)).toContain(`photo: ${publicUrl}/lowfield/team/tomas-reyes.svg`);
     expect(fake.buckets.get("moves")!.objects.get("lowfield/team/tomas-reyes.svg")!.body.toString()).toContain("<svg");
     const changes = await site.changes();
@@ -71,6 +76,97 @@ describe("moving media", { timeout: 240_000 }, () => {
     const second = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
 
     expect(second.copied).toBe(0);
+    await done();
+  });
+
+  it("ends as done when files stay because the site's code or templates use them, and says how many and where", async () => {
+    const { storage, site, root, done } = await setUp();
+    const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+    const started = await storage.startMove(site, { kind: "move", from: "repository", to: "bucket" });
+
+    expect(started).toMatchObject({ kind: "media", label: "Moving media to the bucket", state: "running" });
+    expect((await storage.status(site)).moving?.id).toBe(started.id);
+    for (let i = 0; i < 600 && storage.job(started.id)?.state === "running"; i += 1) await new Promise((resolve) => setTimeout(resolve, 100));
+    const job = storage.job(started.id)!;
+    const status = await storage.status(site);
+    const result = status.lastMove!;
+
+    // The starter's layout and its templates use some pictures, and a move never changes those files.
+    expect(result.stayedFiles).toBeGreaterThan(0);
+    expect(result.stayed).toHaveLength(result.stayedFiles);
+    const code = [...new Set(result.stayed.flatMap((item) => item.pages))].sort();
+
+    expect(code).toContain("src/layouts/Base.astro");
+    expect(code.every((path) => !path.startsWith("src/content/"))).toBe(true);
+    // It worked: done, with nothing called a problem.
+    expect(job.state).toBe("done");
+    expect(job.output).toBeUndefined();
+    expect(result).toMatchObject({ state: "done", request: { kind: "move", from: "repository", to: "bucket" }, copied: plan.files, removed: plan.files - result.stayedFiles, problems: [] });
+    expect(result.pages).toBeGreaterThan(0);
+    expect(status.moving).toBeUndefined();
+    // The words say how many were copied, how many pages changed, how many stayed and where they are still mentioned.
+    const shown = code.length > 5 ? `${code.slice(0, 5).join(", ")} and ${code.length - 5} more` : code.join(", ");
+
+    expect(job.detail).toBe(result.summary);
+    expect(result.summary).toBe(
+      `${plan.files} files copied to Cloudflare R2, ${result.pages} pages updated, ${result.removed} removed from the repository. ` +
+        `${result.stayedFiles} left in the repository: still mentioned in ${shown}. ` +
+        "Galley doesn't change the site's code or templates, so the files they use stay where they are. Publish to make it live."
+    );
+    // Every file that stayed is still there, and a page that uses it still has its own address.
+    for (const item of result.stayed) expect(read(root, item.path).length, item.path).toBeGreaterThan(0);
+    expect((await site.changes()).files.filter((file) => file.status === "deleted")).toHaveLength(result.removed);
+    // Still there for whoever comes back later, from another start of the app.
+    const later = createMediaStorageService({ home: homeOf(storage), env: {}, listTtlMs: 0 });
+
+    expect((await later.status(site)).lastMove).toEqual(result);
+    // And after the library's record is written again (an upload, a new listing of the bucket).
+    await site.saveMedia({ filename: "after-the-move.svg", data: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="3" height="3"/>') });
+    await site.listMedia();
+    expect((await storage.status(site)).lastMove).toEqual(result);
+    // Run again: nothing new to copy, the same files stay, and it is still done.
+    const again = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
+
+    expect(again.problems).toEqual([]);
+    expect(again.copied).toBe(0);
+    expect(again.stillMentioned).toHaveLength(result.stayedFiles);
+    expect(again.leftAlone).toEqual(code);
+    await done();
+  });
+
+  it("ends as an error when a file can't be moved, with the list of what went wrong", async () => {
+    const { storage, site, done } = await setUp();
+
+    fake.buckets.get("moves")!.objects.set("lowfield/team/tomas-reyes.svg", { body: Buffer.from("<svg>someone else's</svg>"), contentType: "image/svg+xml", cacheControl: null, metadata: {}, etag: "z", lastModified: new Date() });
+    const started = await storage.startMove(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true });
+
+    for (let i = 0; i < 600 && storage.job(started.id)?.state === "running"; i += 1) await new Promise((resolve) => setTimeout(resolve, 100));
+    const job = storage.job(started.id)!;
+    const result = (await storage.status(site)).lastMove!;
+
+    expect(job.state).toBe("error");
+    expect(job.output).toBe(`${PHOTO}: A different file is already in Cloudflare R2 as “lowfield/team/tomas-reyes.svg”, so this one stays in the repository.`);
+    expect(job.detail).toMatch(/\. 1 problem — see the list\. Publish to make it live\.$/);
+    expect(result.state).toBe("error");
+    expect(result.problems).toEqual([{ path: PHOTO, reason: "A different file is already in Cloudflare R2 as “lowfield/team/tomas-reyes.svg”, so this one stays in the repository." }]);
+    // What code and templates use is still not counted among the problems.
+    expect(result.problems.some((problem) => /code or templates/.test(problem.reason))).toBe(false);
+    await done();
+  });
+
+  it("says which code or template files still point at the bucket when the files come back", async () => {
+    const { storage, site, root, publicUrl, done } = await setUp();
+    const layout = join(root, "src/layouts/Base.astro");
+
+    await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
+    writeFileSync(layout, `${readFileSync(layout, "utf8")}\n<!-- ${publicUrl}/lowfield/team/tomas-reyes.svg -->\n`);
+    const back = await storage.move(site, { kind: "move", from: "bucket", to: "repository" });
+
+    expect(back.problems).toEqual([]);
+    expect(back.leftAlone).toEqual(["src/layouts/Base.astro"]);
+    expect(back.summary).toContain("src/layouts/Base.astro still points at Cloudflare R2: Galley doesn't change the site's code or templates, so change it by hand. The files are still in Cloudflare R2; remove them there once the pages are published.");
+    expect(read(root, "src/layouts/Base.astro")).toContain(`${publicUrl}/lowfield/team/tomas-reyes.svg`);
+    expect((await storage.status(site)).lastMove).toMatchObject({ state: "done", request: { kind: "move", from: "bucket", to: "repository" }, stayedFiles: 0 });
     await done();
   });
 
@@ -122,7 +218,7 @@ describe("moving media", { timeout: 240_000 }, () => {
     const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
 
     expect(outcome.stillMentioned).toContainEqual({ path: PHOTO, pages: [AUTHOR] });
-    expect(outcome.summary).toMatch(/left in the repository: still mentioned in src\/content\/authors\/tomas-reyes\.md/);
+    expect(outcome.summary).toMatch(/left in the repository: still mentioned in .*src\/content\/authors\/tomas-reyes\.md/);
     expect(read(root, PHOTO)).toContain("<svg");
     expect((await site.changes()).files.find((file) => file.path === PHOTO)).toBeUndefined();
     await done();
@@ -221,6 +317,22 @@ describe("moving media", { timeout: 240_000 }, () => {
     expect((await site.readConfig())?.media?.storage?.publicUrl).toBe(next);
     // New uploads use the new address.
     expect((await site.saveMedia({ filename: "new.svg", data: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>') })).url.startsWith(next)).toBe(true);
+    await done();
+  });
+
+  it("keeps the old address while a code or template file still uses it, and says which", async () => {
+    const { storage, site, root, publicUrl, done } = await setUp();
+    const layout = join(root, "src/layouts/Base.astro");
+
+    await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
+    writeFileSync(layout, `${readFileSync(layout, "utf8")}\n<!-- ${publicUrl}/lowfield/team/tomas-reyes.svg -->\n`);
+    const next = publicUrl.replace("127.0.0.1", "localhost");
+    const outcome = await storage.move(site, { kind: "address", store: "bucket", publicUrl: next });
+
+    expect(outcome.problems).toEqual([{ path: "src/layouts/Base.astro", reason: "Couldn't update it: it is part of the site's code or templates, not its content, so Galley leaves it as it is" }]);
+    expect(outcome.summary).toMatch(/1 couldn't be: the address in use stays the old one until they are/);
+    expect((await site.readConfig())?.media?.storage?.publicUrl).toBe(publicUrl);
+    expect((await storage.status(site)).lastMove).toMatchObject({ state: "error", request: { kind: "address" } });
     await done();
   });
 });

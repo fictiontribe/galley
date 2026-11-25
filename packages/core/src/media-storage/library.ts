@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { GalleyError } from "../errors";
 import { isSiteId } from "../site/scope";
-import type { MediaStoreLocation } from "./contract";
+import type { MediaMoveResult, MediaStoreLocation } from "./contract";
 
 export interface LibraryItem {
   location: MediaStoreLocation;
@@ -41,6 +41,8 @@ interface LibraryFile {
   listedAt?: Partial<Record<MediaStoreLocation, number>>;
   /** Public addresses each store had before (pages may still use them). */
   earlier?: Partial<Record<MediaStoreLocation, string[]>>;
+  /** How the last move of files ended. */
+  lastMove?: MediaMoveResult;
 }
 
 export interface MediaLibrary {
@@ -48,6 +50,9 @@ export interface MediaLibrary {
   listedAt(siteId: string, location: MediaStoreLocation): Promise<number | null>;
   earlierAddresses(siteId: string, location: MediaStoreLocation): Promise<string[]>;
   rememberAddress(siteId: string, location: MediaStoreLocation, address: string): Promise<void>;
+  /** How the last move of files ended, if one has. */
+  lastMove(siteId: string): Promise<MediaMoveResult | null>;
+  rememberMove(siteId: string, result: MediaMoveResult): Promise<void>;
   /** Applies a change to the record, written atomically. */
   update(siteId: string, change: (items: LibraryItem[], listedAt: Partial<Record<MediaStoreLocation, number>>) => LibraryItem[]): Promise<LibraryItem[]>;
 }
@@ -64,7 +69,7 @@ export function createMediaLibrary(home: string): MediaLibrary {
     try {
       const parsed = JSON.parse(await readFile(fileOf(siteId), "utf8")) as Partial<LibraryFile>;
 
-      return { version: 1, items: Array.isArray(parsed.items) ? parsed.items : [], listedAt: parsed.listedAt ?? {}, earlier: parsed.earlier ?? {} };
+      return { version: 1, items: Array.isArray(parsed.items) ? parsed.items : [], listedAt: parsed.listedAt ?? {}, earlier: parsed.earlier ?? {}, ...(parsed.lastMove ? { lastMove: parsed.lastMove } : {}) };
     } catch {
       return { version: 1, items: [], listedAt: {}, earlier: {} };
     }
@@ -107,13 +112,27 @@ export function createMediaLibrary(home: string): MediaLibrary {
       );
       return run;
     },
+    async lastMove(siteId) {
+      await queues.get(siteId);
+      return (await load(siteId)).lastMove ?? null;
+    },
+    rememberMove(siteId, result) {
+      const task = async () => save(siteId, { ...(await load(siteId)), lastMove: result });
+      const run = (queues.get(siteId) ?? Promise.resolve()).then(task, task);
+
+      queues.set(
+        siteId,
+        run.catch(() => undefined)
+      );
+      return run;
+    },
     update(siteId, change) {
       const task = async () => {
         const data = await load(siteId);
         const listedAt = { ...(data.listedAt ?? {}) };
         const items = change([...data.items], listedAt);
 
-        await save(siteId, { version: 1, items, listedAt, earlier: data.earlier ?? {} });
+        await save(siteId, { ...data, version: 1, items, listedAt, earlier: data.earlier ?? {} });
         return items;
       };
       const run = (queues.get(siteId) ?? Promise.resolve()).then(task, task);

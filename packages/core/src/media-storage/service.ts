@@ -25,7 +25,7 @@ import { planMove, runMove, type MoveContext, type MoveOutcome } from "./move";
 import { checkUpload, mediaSubfolder } from "../workspace/media";
 import { createBucketStore } from "./bucket-store";
 import { runCheck, settingsFailure, testNameFor } from "./check";
-import type { MediaCreatedRecord, MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaImagesStatus, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaStoreLocation, MediaUsage } from "./contract";
+import type { MediaCreatedRecord, MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaImagesStatus, MediaMovePlan, MediaMoveRequest, MediaMoveResult, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaStoreLocation, MediaUsage } from "./contract";
 import { createMediaLibrary, type LibraryItem, type MediaLibrary } from "./library";
 import { BUCKET_CONNECTORS, isTrialAddress, normalizePrefix, normalizeStorageConfig, settingsProblems } from "./info";
 import { createMediaKeys, normalizeMediaKey, scrub, type MediaKeys } from "./keys";
@@ -72,6 +72,8 @@ export const RAW_AT_ONCE = 4;
  * usually waits for an answer: a longer line would only fail later.
  */
 export const RAW_WAITING = 512;
+/** The most of each list kept with how a move ended: plenty to read, and the record never grows without end. */
+const MOVE_LIST_KEPT = 300;
 const TOO_LARGE_TO_SHOW = "That file is larger than 25 MB, so the app doesn't show it. Open it at its address instead.";
 
 export interface MediaStorageServiceOptions {
@@ -321,6 +323,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
         },
         images: await imagesStatus(site),
         cloudflare: { keyStored: Boolean(cloudflareKey) },
+        ...(await moveStatus(site.id)),
       };
     },
 
@@ -594,7 +597,11 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       guard("POST /api/sites/:siteId/media/storage/move");
       claimMove(site.id);
       try {
-        return await runMove(await moveContext(site, onProgress), request);
+        const outcome = await runMove(await moveContext(site, onProgress), request);
+
+        // A move that was refused or stopped here is told to whoever asked, at once; only one that ran is kept.
+        await rememberMove(site.id, request, outcome);
+        return outcome;
       } finally {
         starting.delete(site.id);
       }
@@ -611,14 +618,22 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
         starting.delete(site.id);
         throw error;
       }
-      const job = jobs.start("media", request.kind === "address" ? "Changing the files' address" : request.to === "repository" ? "Moving media to the repository" : "Moving media to the bucket");
+      const job = jobs.start("media", request.kind === "address" ? "Changing the files' address" : request.to === "repository" ? "Moving media to the repository" : request.to === "images" ? "Moving pictures to Cloudflare Images" : "Moving media to the bucket");
 
       job.update({ siteId: site.id, detail: "Getting ready…", progress: 0 });
       moving.set(site.id, job.id);
       starting.delete(site.id);
+      // How it ended is kept before the job says so: whoever hears the job end can read the whole of it at once.
       void runMove(await moveContext(site, (detail, progress) => job.update({ detail, progress })), request).then(
-        (outcome) => job.finish(outcome.problems.length ? "error" : "done", { progress: 1, detail: outcome.summary, ...(outcome.problems.length ? { output: outcome.problems.map((p) => `${p.path}: ${p.reason}`).join("\n") } : {}) }),
-        (error: unknown) => job.finish("error", { detail: error instanceof Error ? scrub(error.message) : String(error) })
+        async (outcome) => {
+          await rememberMove(site.id, request, outcome);
+          // Done unless something went wrong. A file that stays because code or a template uses it is the move working as meant.
+          job.finish(outcome.problems.length ? "error" : "done", { progress: 1, detail: outcome.summary, ...(outcome.problems.length ? { output: outcome.problems.map((p) => `${p.path}: ${p.reason}`).join("\n") } : {}) });
+        },
+        async (error: unknown) => {
+          await rememberMove(site.id, request, error);
+          job.finish("error", { detail: error instanceof Error ? scrub(error.message) : String(error) });
+        }
       );
       return job.snapshot();
     },
@@ -657,6 +672,37 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   };
 
   /** Reads a stored file of the site's own, refusing anything over RAW_LIMIT. */
+  /** Keeps how a move ended (its outcome, or the error that stopped it) for the site's status. Failing to keep it never fails the move. */
+  async function rememberMove(siteId: string, request: MediaMoveRequest, ended: unknown): Promise<void> {
+    const outcome = ended && typeof ended === "object" && "summary" in ended && "problems" in ended ? (ended as MoveOutcome) : null;
+    const stayed = outcome?.stillMentioned ?? [];
+    const result: MediaMoveResult = outcome
+      ? {
+          at: clock(),
+          request,
+          state: outcome.problems.length ? "error" : "done",
+          summary: outcome.summary,
+          copied: outcome.copied,
+          pages: outcome.rewrittenPages,
+          removed: outcome.removed,
+          stayed: stayed.slice(0, MOVE_LIST_KEPT).map((item) => ({ path: item.path, pages: item.pages.slice(0, 20) })),
+          stayedFiles: stayed.length,
+          problems: outcome.problems.slice(0, MOVE_LIST_KEPT).map((problem) => ({ path: problem.path, reason: scrub(problem.reason) })),
+        }
+      : { at: clock(), request, state: "error", summary: ended instanceof Error ? scrub(ended.message) : String(ended), copied: 0, pages: 0, removed: 0, stayed: [], stayedFiles: 0, problems: [] };
+
+    await library.rememberMove(siteId, result).catch(() => undefined);
+  }
+
+  /** The move running now and how the last one ended, for the site's status. */
+  async function moveStatus(siteId: string): Promise<Pick<MediaStorageStatus, "moving" | "lastMove">> {
+    const running = moving.get(siteId);
+    const job = running ? jobs.get(running) : null;
+    const lastMove = await library.lastMove(siteId).catch(() => null);
+
+    return { ...(job?.state === "running" ? { moving: job } : {}), ...(lastMove ? { lastMove } : {}) };
+  }
+
   async function readOwn(site: SiteService, path: string): Promise<Uint8Array | null> {
     const parsed = parseStorePath(path);
     const store = parsed ? (await service.stores(site)).find((candidate) => candidate.location === parsed.location) : null;
