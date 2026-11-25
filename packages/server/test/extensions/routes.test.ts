@@ -314,7 +314,7 @@ describe("routes an embedding program adds", () => {
   it("can't read secrets or the version history's own files through the site it is handed", async () => {
     writeFileSync(join(folder, ".env"), "TOKEN=in-the-site\n");
     mkdirSync(join(folder, "src/content/pages"), { recursive: true });
-    for (const path of [".env", ".ENV", ".env.local", ".git/config", ".GIT/HEAD", "sub/.git/HEAD"]) {
+    for (const path of [".env", ".ENV", ".env.local", ".envrc", ".env-production", ".env_local", "sub/.Envrc", ".git/config", ".GIT/HEAD", "sub/.git/HEAD"]) {
       const answer = await x("GET", site(`/file?path=${encodeURIComponent(path)}`), { cookie: people.contributor.cookie });
 
       expect([answer.status, answer.body.error.message], path).toEqual([403, UNREADABLE]);

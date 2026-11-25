@@ -83,6 +83,20 @@ describe("GET …/raw", () => {
     expect((await app.call("GET", `${S}/file?path=.env.production`)).status).toBe(403);
   });
 
+  it("takes any file whose name starts with .env for a secrets file, and no other", async () => {
+    const app = testApp({ site: fileSite() });
+
+    for (const path of [".envrc", ".env-production", ".env_local", ".ENV", "config/.Env.Staging", "sub/.envrc"]) {
+      expect((await app.call("GET", `${S}/raw?path=${encodeURIComponent(path)}`)).status, `raw ${path}`).toBe(403);
+      expect((await app.call("GET", `${S}/file?path=${encodeURIComponent(path)}`)).status, `file ${path}`).toBe(403);
+    }
+    // A name that only has "env" in it is an ordinary file: refused by nothing here (it isn't in this site, so 404).
+    for (const path of ["src/env.d.ts", "environment.md", "docs/my.env.md", "env"]) {
+      expect((await app.call("GET", `${S}/raw?path=${encodeURIComponent(path)}`)).status, `raw ${path}`).not.toBe(403);
+      expect((await app.call("GET", `${S}/file?path=${encodeURIComponent(path)}`)).status, `file ${path}`).not.toBe(403);
+    }
+  });
+
   it("passes the engine's containment refusal through", async () => {
     const { GalleyError } = await import("@galley/core");
     const site = fileSite({

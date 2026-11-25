@@ -11,6 +11,7 @@
 import { createHash } from "node:crypto";
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { extname, join, relative, sep } from "node:path";
+import { isSecretsFile } from "../workspace/policy";
 import { DeployError } from "./errors";
 
 export interface DeployFile {
@@ -42,7 +43,7 @@ export interface DeployLimits {
 const NEVER = new Set([".git", "node_modules"]);
 
 function never(name: string): boolean {
-  return NEVER.has(name) || name === ".env" || name.startsWith(".env.");
+  return NEVER.has(name) || isSecretsFile(name);
 }
 
 const TYPES: Record<string, string> = {
