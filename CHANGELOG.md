@@ -12,31 +12,52 @@ entry says how.
 - **Moving media to a bucket moves it.** A move kept a repository file while
   any file at all named it, so a README, a record of the photographs or a
   script beside the site kept every picture it listed: on the fashion
-  starter a move copied 31 files and removed none. A copy now stays only
-  while something the site is built from, and that the move can't update,
-  still uses it. On the four starters a move removes 25 of 27, 29 of 31, 35
-  of 37 and 30 of 52 copies, where it removed 11, 0, 16 and 20.
+  editorial starter a move copied 31 files and removed none. A copy now
+  stays only while something the site is built from, and that the move can't
+  update, still uses it. On the four starters a move removes 25 of 27, 29 of
+  31, 35 of 37 and 30 of 52 copies, where it removed 11, 0, 16 and 20. (For
+  the two fashion starters those numbers also take the change to the
+  starters under Fixed below: their own source read the shot list, which
+  names every photograph, so with the old code a move still removes 0 of 31
+  and 20 of 52.)
   - **Galley's own page templates are updated like pages**, so a page made
     from one later doesn't carry an address that is gone. A template is not
     content: the move writes it in build mode, when the site allows build
     mode and the person may use it, and the change waits in Proof. Where
     build mode is off, templates are left and keep the files they use, as
-    before.
+    before. (A template kept in a folder content mode writes is content, and
+    is updated either way.)
   - **What still stays, and what to do about it.** The site's code and data
     it is built from that content mode doesn't write are never changed by a
     move, so what they use stays: the favicon and share picture a layout
     names, the pictures in a catalogue file. The plan names those files and
     says how to move the rest.
-  - **Other mentions no longer keep a file.** The plan lists them on a line
-    of their own before anything happens ("Also mentioned in …: not part of
-    the site as built, so not changed"), and they are left as they are.
-  - **Safety is as it was.** Nothing a built file still uses is removed; a
-    removed copy is an ordinary deletion in Proof that can be put back; the
-    bucket has the file.
+  - **A file the site's source reads counts, wherever it is kept.** What a
+    site is built from is its framework's folders (see `builtFrom` under
+    Added). A page that imports `../../data/team.json` is built from that
+    file too, so the pictures it names stay, and the plan says why: "still
+    used by data/team.json (read by src/lib/team.ts)". Galley follows a
+    relative path written out in the file that does the reading (an import,
+    a file the code opens, a glob), one step from the site's own folders.
+    It can't follow an alias, a path that starts at the site's root or is
+    put together while the site builds, or a file reached through a second
+    file outside those folders: name those in `build.sources`.
+  - **Other mentions no longer keep a file**, on a site whose framework says
+    what it is built from: Astro, today. The plan lists them on a line of
+    their own before anything happens ("Also mentioned in …: not part of
+    the site as built, so not changed"), and they are left as they are. Read
+    that line before moving: if the site's build reads one of those files
+    in a way Galley can't follow, add it to `build.sources` first. On any
+    other framework every file still counts, as before.
+  - **What is never removed**: a copy that a file counted as above still
+    uses. A removed copy is an ordinary deletion in Proof that can be put
+    back, and the bucket has the file. One that was never published has no
+    deletion to put back, since removing it only takes back an addition: it
+    is in the bucket, and Proof lists it among the uploads.
 
   The plan counts only what the move updates: it used to count places in
-  files it would never change. The plan's answer gains `templates` and
-  `alsoMentioned`; a move's result gains them too.
+  files it would never change. The plan's answer gains `templates`,
+  `alsoMentioned` and `readBy`; a move's result gains them too.
 
 - **The site's model is read-only.** The engine keeps one description of a
   site (its collections, where media lives, what content mode may write, how
@@ -63,6 +84,26 @@ entry says how.
   routes folder.
 - **`build.sources`** in `galley.config.json`: further files a site's build
   reads, added to the adapter's list.
+
+### Fixed
+
+- **Crops on the two fashion starters keep their focus point when the
+  pictures move.** The editorial and storefront starters anchor each crop
+  on its photograph's focus point, so a head or a garment stays in frame.
+  They looked the photograph up by its whole address, so once the pictures
+  had moved to a bucket and the pages held the bucket's addresses, nothing
+  was found and every crop fell back to the middle. Half the photographs on
+  each starter have a focus point that isn't the middle (15 of 30, 15 of
+  31), and those were cut differently from then on. Since 0.4.0, when media
+  in a bucket arrived. A photograph is now found by its path inside the
+  address, which is the same in the repository and in a bucket. The focus points are read from `src/lib/focus.json`,
+  which `npm run focus` writes from the shot list; the starters' source no
+  longer reads the shot list itself. A site made from one of these starters
+  before this release has the old code: a move's plan says so ("still used
+  by galley/photography/shots.json (read by src/lib/site.ts)") and keeps
+  what the shot list names. To change it, take `src/lib/site.ts` (the part
+  about focus points), `src/lib/focus.json` and `scripts/focus-points.mjs`
+  from the starter as it is now.
 
 ## 0.4.1 — 2026-11-25
 
