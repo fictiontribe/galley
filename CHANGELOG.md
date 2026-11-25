@@ -9,6 +9,10 @@ entry says how.
 
 ### Fixed
 
+- **A request whose target the server can't read as one of its own
+  addresses is refused.** A request line naming another scheme (`ws://…`,
+  say) now gets 400 before the preview or the app sees it, as one that isn't
+  an address at all already did.
 - **A backup can always be restored when the site's files share a file with
   the install's own.** A file with names in two of the data folder's
   top-level folders is now carried under the names in one of them only,
