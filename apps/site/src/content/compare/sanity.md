@@ -36,8 +36,8 @@ table:
       better: ours
     - label: Editing on the page
       ours: Retype words in the preview; no markup
-      theirs: Click-to-edit; on Astro, needs server rendering
-      better: ours
+      theirs: Click-to-edit, drag and drop; on Astro, needs server rendering
+      better: even
     - label: Page building
       ours: The site's own sections (preview)
       theirs: Drag and drop in the Presentation tool
@@ -56,7 +56,7 @@ table:
       better: theirs
     - label: Scheduling
       ours: None
-      theirs: Scheduled drafts (Growth); releases (Enterprise)
+      theirs: Scheduled drafts (Growth); releases (Enterprise add-on)
       better: theirs
     - label: Teams
       ours: Three roles on a hosted editor (new)
@@ -72,11 +72,11 @@ table:
       better: ours
 faq:
   - q: What is Sanity CMS?
-    a: "Sanity calls itself \"The AI Content Operating System\". It has three parts: Sanity Studio, an open-source React editing app you configure in code; the Content Lake, Sanity's hosted database of JSON documents; and APIs that sites and apps query with GROQ or GraphQL. Its own explainer page is headed \"Why Sanity is a headless CMS, but also much more\"."
+    a: "Sanity calls itself \"The AI Content Operating System\". It has three parts: Sanity Studio, an open-source React editing app you configure in code; the Content Lake, Sanity's hosted database of JSON documents; and APIs that sites and apps query with GROQ or GraphQL. Its headless CMS guide has a section titled \"Why Sanity is a headless CMS, but also much more\"."
   - q: Is Galley an alternative to Sanity?
     a: For a static website whose content only needs to reach that site, yes. Galley edits the files in your Git repository, needs no schema or queries for common setups, and is free and open-source. It isn't an alternative where content feeds apps and other channels, or where a team needs real-time editing, scheduled releases or single sign-on. Sanity does those today.
   - q: How much does Sanity cost?
-    a: As of November 2026, Sanity's Free plan is $0 with up to 20 seats, 10,000 documents and public datasets only. Growth is $15 per seat a month for up to 50 seats, with pay-as-you-go usage above its quotas. Enterprise is priced on request. Viewers don't take a seat. Galley is free; its assistant uses your own Anthropic key, billed by Anthropic.
+    a: As of November 2026, Sanity's Free plan is $0 with up to 20 seats, 10,000 documents and public datasets only. Growth is $15 per seat a month for up to 50 seats, with pay-as-you-go API requests, bandwidth and assets above its quotas, while documents stop at 25,000 unless you buy the $299-a-month quota add-on. Enterprise is priced on request. Viewers don't take a seat. Galley is free; its assistant uses your own Anthropic key, billed by Anthropic.
   - q: Is Sanity open source?
     a: Partly. Sanity Studio, the editing app, is open source under the MIT licence, and Sanity will host it for free or you can host it yourself. The Content Lake, where the content is stored, is a service Sanity hosts, and we found no self-hosted version of it on Sanity's pages. Galley is open source under Apache-2.0 and keeps content in your own repository.
   - q: Does Sanity work with static sites and Astro?
@@ -205,7 +205,7 @@ As of November 2026, Sanity has three plans:
 | Growth | $15 per seat a month | Up to 50 | 25,000 |
 | Enterprise | Priced on request | Custom | Custom |
 
-For a small team the Free plan goes a long way: twenty seats cost nothing, and viewers don't take a seat on any plan. But its datasets are public only, which the docs explain means "anyone can query" them, and it has hard caps with no overages. On Growth, usage beyond the quotas is pay-as-you-go, and add-ons run from $299 a month for more quota to $999 a month for each extra dataset. A draft counts as a document of its own. Free and Growth include 1,000 AI credits a month; on Growth, more cost $0.05 each. These figures are from [Sanity's pricing page](https://www.sanity.io/pricing); check it before you decide, because plans change.
+For a small team the Free plan goes a long way: twenty seats cost nothing, and viewers don't take a seat on any plan. But its datasets are public only, which the docs explain means "anyone can query" them, and it has hard caps with no overages. On Growth, API requests, bandwidth and assets beyond the quotas are pay-as-you-go; documents stop at 25,000 unless you buy the $299-a-month Increased quota add-on. Add-ons run from $299 a month for more quota to $999 a month for each extra dataset. A draft counts as a document of its own. Free and Growth include 1,000 AI credits a month; on Growth, more cost $0.05 each. These figures are from [Sanity's pricing page](https://www.sanity.io/pricing); check it before you decide, because plans change.
 
 Galley costs nothing. It is open-source under Apache-2.0, with one edition and no paid tier today. Two things do cost money. The assistant runs on Anthropic's Claude with your own key, and each request is billed to whoever owns that key. And the site needs hosting, which for static files is often free or cheap, but is yours to arrange.
 
@@ -231,10 +231,10 @@ Sanity has a large set of named AI features, and they reach well beyond the edit
 - **Agent Actions**, such as Generate, Transform and Translate, process content with AI from code, on every plan, at one AI credit ($0.05) a request.
 - **Content Agent** is a chat assistant for content work "without writing code or GROQ queries", in Sanity's Dashboard, Slack, Linear and an API. It "never makes changes without your approval."
 - **Canvas** is "a collaborative writing environment built into Sanity", with AI writing help.
-- **Sanity Context** gives your own AI agents knowledge bases built from your content, over MCP. One is free; up to five cost $299 a month.
-- **An official MCP server**, hosted at `mcp.sanity.io` and generally available since December 2025, lets Claude Code, Cursor, VS Code and other clients query, create, patch and publish documents, and manage releases and schemas.
+- **Sanity Context** gives your own AI agents knowledge bases built from your content, over MCP. One is free; on Growth, up to five cost $299 a month.
+- **An official MCP server**, hosted at `mcp.sanity.io` and generally available since December 2025, lets Claude Code, Cursor, VS Code and other clients query, create, patch and publish documents, and create and list releases and manage schemas.
 
-Galley has one assistant, inside the editor, beside the page. You [ask in plain words](/how-to/ask-the-assistant/); it reads the site before it edits, asks one short question when two places could be meant, and quotes the new words back. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change waits in the proof until a person presses Publish. [Galley's MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Such a tool may also publish when you ask it to, unless publishing over MCP is switched off.
+Galley has one assistant, inside the editor, beside the page. You [ask in plain words](/how-to/ask-the-assistant/); it reads the site before it edits, asks one short question when two places could be meant, and quotes the new words back. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change waits in the proof until a person presses Publish. [Galley's MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
 
 Sanity's AI reaches further than ours: across thousands of documents, into Slack, out to your own agents. For a large content operation that is the point. We think a website edited by people who aren't developers needs something narrower first: one assistant that can only touch content, and a check in the page's own words. Content Agent asks for approval too, so the difference is where you look at the change. That's our view; plenty of teams will want Sanity's reach.
 
@@ -244,7 +244,7 @@ In Sanity an edit is a draft until someone publishes it. The Presentation tool s
 
 In Galley every change, typed in the form, retyped on the page or made by the assistant, lands in [Proof](/how-to/proof-and-publish/): the change in the site's own words, old text struck out and new text written in, beside the live site. Any single change can be put back. Publishing is a commit, or a branch and a pull request if the site is set up for review. Undo is a new commit, and history is never rewritten.
 
-The difference is the unit of review. Sanity keeps history document by document, and on Enterprise a release groups many documents to preview together. Galley lists every change waiting across the site in one place, and the record is your Git history. Sanity can do one thing here that Galley can't: on Growth, Scheduled drafts publish a document at a time you set.
+The difference is the unit of review. Sanity keeps history document by document, and on Enterprise a release groups many documents to preview together. Galley lists every change waiting across the site in one place, and the record is your Git history. Sanity can do two things here that Galley can't: comments on a field or a single word, and, on Growth, Scheduled drafts that publish a document at a time you set.
 
 ## How does the site get its content?
 
@@ -254,15 +254,15 @@ From the repository, with Galley. The build reads the files, as it did before. P
 
 ## Which one suits a team?
 
-For a team of any size today, Sanity. Real-time editing and presence are on every plan: "Same document, multiple editors, character-level sync." Free has two roles, Administrator and Viewer. Growth has five, adding Editor, Developer and Contributor, with comments and tasks. Enterprise adds custom roles, single sign-on with SAML, a full audit trail and an uptime agreement. Sanity is a SOC 2 Type 2 certified provider, public since November 2017, and says it is "Loved by 1M+ users and 60K+ teams". It doesn't charge for locales, within a plan's limit on unique attributes.
+For a team of any size today, Sanity. Real-time editing and presence are on every plan: "Same document, multiple editors, character-level sync." Free has two roles, Administrator and Viewer. Growth has five, adding Editor, Developer and Contributor, with comments and tasks. Enterprise adds custom roles, single sign-on with SAML, a full audit trail and an uptime agreement. Sanity is a SOC 2 Type 2 certified provider, launched to the public in November 2017, and says it is "Loved by 1M+ users and 60K+ teams". It doesn't charge for locales, within a plan's limit on unique attributes.
 
-Galley is behind here. On your own computer it has no accounts: anyone who can open the app can publish, so the gate is pull-request mode and your code host's branch protection. A [hosted editor](/docs/running/hosted/), one site per install on a server you run, adds accounts with three roles (owner, editor and contributor), and each publish carries its author's name. That hosted editor is new and still in final checks, and single sign-on is planned for later. Everyone on one hosted editor works on one shared copy of the site; a second save of a page someone has just changed is refused rather than written over it. There is no live presence.
+Galley is behind here. On your own computer it has no accounts: anyone who can open the app can publish, so the gate is pull-request mode and your code host's branch protection. A [hosted editor](/docs/running/hosted/), one site per install on a server you run, adds accounts with three roles (owner, editor and contributor), and each publish carries its author's name. The roles keep people out of each other's way; they aren't a security boundary. That hosted editor is new and still in final checks, and single sign-on is planned for later. Everyone on one hosted editor works on one shared copy of the site; a second save of a page someone has just changed is refused rather than written over it. There is no live presence.
 
 ## Where does Galley fall short?
 
 Beside Sanity, in several places.
 
-- **It's young.** Version 0.4.2 of software first released in November 2026.
+- **It's young.** Version {version} of software first released in November 2026.
 - **It serves one website.** There's no content API for apps or other channels.
 - **No editing together, no scheduling.** No real-time co-editing or presence, no scheduled publishing or releases, and no editorial workflows across many languages.
 - **Page building is in preview.** Sanity's drag-and-drop page building is on every plan.
@@ -271,7 +271,7 @@ Beside Sanity, in several places.
 
 ## When is Sanity the better choice?
 
-When the same content feeds a website, an app and other channels, which is what the Content Lake and its APIs are for. When several editors work in the same document at once and need to see each other there. When you need scheduled drafts, coordinated releases, custom roles, single sign-on and an audit trail. When your developers want a typed content model and custom inputs in React. When you want AI across the whole content operation, from translation to knowledge bases for your own agents. And when you'd rather adopt a product public since 2017 than a new open-source tool.
+When the same content feeds a website, an app and other channels, which is what the Content Lake and its APIs are for. When several editors work in the same document at once and need to see each other there. When you need scheduled drafts, coordinated releases, custom roles, single sign-on and an audit trail. When your developers want a typed content model and custom inputs in React. When you want AI across the whole content operation, from translation to knowledge bases for your own agents. And when you'd rather adopt a product launched in 2017 than a new open-source tool.
 
 Galley fits when the content is the website, the site is static, and the people who change it aren't developers: they ask, see exactly what changed beside the live site, and publish, with no schema to write first and no seats to pay for. See [what it does today](/tour/), or set it beside [CloudCannon](/compare/cloudcannon/), the Git-based product closest to it.
 
@@ -281,7 +281,7 @@ From Sanity to Galley takes real work, because the content has to leave the Cont
 
 The other way, the files are already plain. Sanity's import tool takes NDJSON, and its Block Tools library converts existing markup into Portable Text. You'd still design a schema and rewrite the site to fetch from Sanity.
 
-To try Galley first, run `npx galley-cms` in the site's folder. It edits only the words in the site's files, so a site that fetches everything from Sanity gives it little to edit until the content moves.
+To try Galley first, run `npx galley-cms` in the site's folder. It edits the content in the site's files, so a site that fetches everything from Sanity gives it little to edit until the content moves.
 
 ## Three questions to ask before you choose
 

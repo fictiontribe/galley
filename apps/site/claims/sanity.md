@@ -112,3 +112,20 @@ reads "Google Cloud Platform, which hosts Sanity.io, undergoes regular
 independent audits", not "Sanity.io is hosted on Google Cloud Platform", so
 the article paraphrases it. The Studio page has two wordings of the
 multiplayer line; the article quotes only the sentence both share.
+
+## After the independent check (2026-11-25)
+
+77 statements confirmed; one was wrong and four said more than their source, all corrected on the page:
+
+| # | On the page now | Source | Read |
+| --- | --- | --- | --- |
+| C1 | On Growth, API requests, bandwidth and assets beyond the quotas are pay-as-you-go; documents stop at 25,000 unless you buy the $299-a-month quota add-on | "The Free, Growth Trial, and Growth plans do not allow overages above the included document quota" and "Unlike the Document quota, the Asset quota is not hard-capped on the Growth plan" — https://www.sanity.io/docs/platform-management/plans-and-payments ; "$299 for 50k in total" — https://www.sanity.io/pricing | 2026-11-25 |
+| C2 | Sanity Context: one knowledge base free; on Growth, up to five for $299 a month | Knowledge Bases in the Growth column only; "Add-ons are available for Growth plan projects" — https://www.sanity.io/pricing | 2026-11-25 |
+| C3 | Its headless CMS guide has a section titled "Why Sanity is a headless CMS, but also much more" | A section heading on https://www.sanity.io/headless-cms (the page's H1 is "Headless CMS Explained") | 2026-11-25 |
+| C4 | Two things Galley can't: comments on a field or a single word, and Scheduled drafts on Growth | https://www.sanity.io/docs/studio/comments ; https://www.sanity.io/docs/studio/scheduled-drafts | 2026-11-25 |
+| C5 | Launched to the public in November 2017 | "launched Sanity to the public back in November 2017" — https://www.sanity.io/blog/seed-funding-announcement | 2026-11-25 |
+| C6 | The MCP server can create and list releases | The tool list on https://www.sanity.io/docs/ai/mcp-server ("Scheduling, publishing, archiving and deleting a release are not available here") | 2026-11-25 |
+| C7 | Content Releases: Enterprise add-on | "Content releases (add-on)", Enterprise column — https://www.sanity.io/pricing | 2026-11-25 |
+| C8 | Editing on the page: even (Sanity's visual editing has click-to-edit and drag and drop; on static Astro it needs server rendering) | https://www.sanity.io/docs/visual-editing/introduction-to-visual-editing ; https://www.sanity.io/docs/visual-editing/astro-visual-editing | 2026-11-25 |
+
+Correction to the note above on the security page: "Sanity.io is hosted on Google Cloud Platform" is still on https://www.sanity.io/security, beside the sentence about Google Cloud's audits.
