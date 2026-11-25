@@ -29,9 +29,9 @@ what is built; when something here ships, it moves to the
   same way everywhere.
 - **0.4.0**: themes for the editing app (Quiet, Plate and Desk, or one you
   make); pictures and files kept in a bucket or in Cloudflare Images instead
-  of the repository, not yet run against the live services; a hosted editor
-  that keeps up with its repository; a quieter look, with one family of
-  icons.
+  of the repository, run for real on Cloudflare R2 and against stand-ins
+  for the rest; a hosted editor that keeps up with its repository; a quieter
+  look, with one family of icons.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [twelve how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.

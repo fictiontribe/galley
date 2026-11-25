@@ -6,9 +6,11 @@ Images for pictures. The people-facing
 page is `apps/site/src/content/docs/configuration/media-storage.md`; this one
 is for whoever works on the code (`packages/core/src/media-storage/`).
 
-Not yet run against the live services: everything is checked against strict
-stand-ins (`packages/core/test/media-storage/fakes/`). The rehearsal script is
-for that.
+Cloudflare R2 has been run end to end on the real service, with the
+rehearsal script (`scripts/rehearse-media-storage.mjs --connector r2`,
+2026-11-25). Amazon S3, other S3-compatible stores and Cloudflare Images have
+not yet: like R2, they are checked against strict stand-ins
+(`packages/core/test/media-storage/fakes/`).
 
 ## The pieces
 

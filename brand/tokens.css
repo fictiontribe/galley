@@ -233,7 +233,8 @@
    The app sets data-surfaces="app" on <html> (packages/web/index.html; the
    desktop start-up window copies the same values). Its canvas is a lighter,
    less yellow bond paper, and cards, panes and inputs are near-white sheets
-   lying on it. The marketing site, the film, the social card and the
+   lying on it. The marketing site sets the same paper in its own stylesheet
+   (apps/site/src/styles/site.css); the film, the social card and the
    specimen keep the newsprint above.
    Same token names: only these seven values differ. Dark and system-dark
    (section 3) come later in the file and replace them as before.

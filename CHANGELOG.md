@@ -23,14 +23,16 @@ entry says how.
   under `/api/sites/:siteId/media/storage` and `/api/media-storage`, and
   `GET /api/sites/:siteId/media/usage`; `GET /api/sites/:siteId/media` may
   also answer `storeProblems`, and `GET /api/sites/:siteId/changes`
-  `storeUploads` and `storeUploadsProblem`. Not yet run against the live
-  services.
+  `storeUploads` and `storeUploadsProblem`. Cloudflare R2 has been run end
+  to end on the real service (2026-11-25, with
+  `scripts/rehearse-media-storage.mjs`); Amazon S3 and other S3-compatible
+  stores have not yet, and are checked against stand-ins.
 - **Pictures in Cloudflare Images.** Beside a bucket or the repository, a
   site's pictures can go to Cloudflare Images, which resizes them and sends
   each browser WebP or AVIF (Media › Keep media outside the repository ›
   Cloudflare Images, or `galley media connect --connector cloudflare-images`).
   Files it doesn't take — PDFs, video, anything over 10 MB — go to the bucket
-  or the repository, and each upload says where it went. It can use the
+  or the repository, and each upload in Media says where it went. It can use the
   site's Cloudflare key for putting it online when that key has Cloudflare
   Images › Edit. New configuration key `media.images`; new routes under
   `/api/sites/:siteId/media/images`. Not yet run against the live service.
@@ -38,7 +40,7 @@ entry says how.
   for putting it online (it needs Workers R2 Storage › Edit), Galley makes
   the bucket and its r2.dev address; the key for its files is still made by
   hand. Another S3-compatible store (Backblaze B2, Spaces, Wasabi, MinIO) is
-  a fourth choice.
+  one of the four choices.
 - **Themes for the editing app.** Quiet stays the default; **Plate** and
   **Desk** ship beside it, and anyone can make their own. A theme is a small
   file (five colours per mode and four switches; `brand/themes/README.md`)
@@ -84,10 +86,17 @@ entry says how.
   (`GALLEY_SYNC_MINUTES`; `0` turns it off) it asks the code host what is
   new and, when nothing here is in the way, brings newer versions in
   forward only, as **Get latest** does. It skips a round while a publish, an
-  undo, a restore, a connect or other git work is under way, and logs one
-  line when versions come in or a look fails in a new way. `galley serve`
-  prints how often it looks. The desktop app and local mode never look by
-  themselves.
+  undo, a restore, a connect or other git work is under way, and while the
+  assistant is working on the site (`AgentRuntime` gains `working(siteId)`)
+  or the preview is installing its packages. In those two cases it still
+  asks the code host what is new, so "Newer versions are waiting" stays
+  true. Looking holds no save back: it asks outside the lock every save
+  takes, and a round uses a look that is already going. It logs one line
+  when versions come in or a look fails in a new way; rounds skipped for 30
+  minutes running are logged once, with the reason, and once more when
+  they run again. A restore waits for a round in progress before it closes
+  the site. `galley serve` prints how often it looks. The desktop app and
+  local mode never look by themselves.
 - **`POST /api/sites/:siteId/git/check`**, for anyone signed in: asks the
   code host what is new without changing a file and answers the status as
   of now. `GitStatus` gains `checkedAt` (when the code host last answered),
@@ -148,8 +157,9 @@ entry says how.
   when it last checked; it no longer says "In step" on the strength of what
   was last fetched, however long ago. It says plainly when it couldn't look,
   when newer versions are waiting and who can bring them in, and when the
-  two have gone separate ways. A hosted editor's status bar says "Newer
-  versions are waiting" while they can't come in by themselves.
+  two have gone separate ways. People who open it together share one look.
+  A hosted editor's status bar says "Newer versions are waiting" while they
+  can't come in by themselves.
 - **Getting the latest restarts the preview properly.** A running preview
   is stopped before newer versions change the files, the dev server's saved
   content store is removed, and the preview starts again — a dev server that
@@ -157,7 +167,11 @@ entry says how.
   old entry, through any number of restarts. **Restart preview** removes
   that store too when the copy has moved to another version since the
   preview started. Newer versions that change `package.json` or a lockfile
-  make the next start install the site's packages first.
+  make the next start install the site's packages first. A preview that is
+  installing is left to finish: a hosted editor's round waits for it, and
+  Get latest says to try again once it has. A Start pressed while newer
+  versions are coming in waits until the files are in, and the preview says
+  so; when stopping the preview fails, it is still started again.
 - **Bringing newer versions in runs none of the repository's own hooks**,
   and starts none of git's background tidying. That is so wherever the app
   runs: a hosted editor's own round, and **Get latest** when you press it
@@ -207,14 +221,6 @@ entry says how.
 
 ### Fixed
 
-- **The app's colours no longer take a pink cast in new versions of
-  Chrome.** The steps a theme derives from its ink and paper (wells, rules,
-  the quieter inks, the words on the plate) were written so that the
-  browser handed back the hue of each mixed colour. Chrome 159 treats the
-  hue of so pale a colour as missing and painted every one of them at red.
-  They are written without a hue now (`brand/tokens.css`, section 6) and
-  paint the same in Chrome 151, 156 and 159 and in WebKit; the engine's own
-  derivation, which the legibility check uses, was right and is unchanged.
 - **One focus ring, not two, on the boxes where you ask the assistant.** On a
   site's home the text field drew its own ring inside the box's ring, and
   tabbing to the send button drew a second one there and in the editor's
@@ -255,19 +261,17 @@ entry says how.
   wrote it, and put each one back whole. It now puts back only what that
   reply itself changed, and only the pages still as the reply left them. A
   page changed again since — by you, by someone else or by another reply —
-  is left as it is, and the reply says which pages those are. The same holds
-  for **Undo** after Search and AI fixes. `POST …/threads/:threadId/undo`
+  is left as it is, and the reply says which pages those are. A page the
+  reply moved goes back as a pair or stays as a pair, never the page twice.
+  The same holds for **Undo** after Search and AI fixes. `POST …/threads/:threadId/undo`
   and `POST …/visibility/undo` answer `{ restored, left }`, and a chat
   message gains `undoLeft`.
-- **Looking at the code host no longer holds up saves.** A hosted editor's
-  round, Version history's look and Get latest asked the code host while
-  holding the lock every save takes, so a code host that was slow to answer
-  stalled saving for up to two minutes at a time. The look now runs outside
-  that lock, which is taken only for the moment newer versions change the
-  files. People who open Version history together share one look, and a
-  round uses a look that is already going. Publishing, undoing a publish
-  and sending still hold saves for as long as sending to the code host
-  takes.
+- **Get latest no longer holds up saves while it asks the code host.** It
+  asked while holding the lock every save takes, so a code host that was
+  slow to answer stalled saving for up to two minutes at a time. It now
+  asks outside that lock, which is taken only for the moment newer versions
+  change the files. Publishing, undoing a publish and sending still hold
+  saves for as long as sending to the code host takes.
 - **An edit never lands on top of text that was replaced under it.** An
   edit to an entry is written only over the text it was worked out from.
   When a discard, newer versions coming in, an undone publish, an undone
@@ -291,29 +295,14 @@ entry says how.
   the assistant is told so plainly. Its edits are never
   worked out again on newer text. What a conversation has read is
   remembered from one reply to the next, so versions that come in between
-  two replies are not written over from the first one's reading. A hosted
-  editor's round waits while the assistant is working on the site
-  (`AgentRuntime` gains `working(siteId)`).
-- **A skipped round still looks, and long skipping is said.** While it is
-  the assistant or the preview's install that keeps newer versions out, the
-  editor's round still asks the code host what is new, so "Newer versions
-  are waiting" stays true. Rounds skipped for 30 minutes running are logged
-  once, with the reason, and once more when they run again. A restore
-  waits for a round in progress before it closes the site.
-- **A preview that is installing is left to finish.** A round waits for the
-  install, and Get latest says to try again once it has finished; bringing
-  versions in used to wait for the whole install with every save held up
-  behind it. When the preview was stopped during an install, or the install
-  failed, the next start installs again even though the packages folder is
-  already there.
-- **The preview can't be started in the middle of newer versions coming
-  in.** A Start pressed then waits until the files are in, and the preview
-  says so. When stopping the preview fails, it is still started again.
-- **Get latest and a failed look speak for themselves.** A refused Get
-  latest (unpublished changes in the way, or the two having gone separate
-  ways) answers 409 `conflict` rather than 500, and one that couldn't reach
-  the code host answers 502. A look that couldn't reach
-  the code host no longer borrows the words of a failed publish, bringing
+  two replies are not written over from the first one's reading.
+- **A preview whose install was cut short installs again.** When the
+  preview was stopped during an install, or the install failed, the next
+  start installs again even though the packages folder is already there.
+- **Get latest speaks for itself.** A refused Get latest (unpublished
+  changes in the way, or the two having gone separate ways) answers 409
+  `conflict` rather than 500. One that couldn't reach the code host answers
+  502 and no longer borrows the words of a failed publish, bringing
   versions in that took too long no longer blames the connection, and the
   words for a site with no repository or code host no longer speak of
   fetching.
@@ -339,17 +328,13 @@ entry says how.
   the install's state file, left behind when the server was stopped in the
   middle of a write, is removed at the next start.
 - **Undo, in the cases that were left.** A change a reply made after it had
-  ended is no longer passed over in silence: it is left and named. A page
-  the reply moved goes back as a pair or stays as a pair, never the page
-  twice (two short pages that only share what every page starts with are
-  not taken for one). An undo that can't put a file back puts back the rest, names that
-  file and says what it put back, instead of stopping half-way. What is
-  made during a reply to serve everyone after (a site reopened, its
-  preview) is no part of the reply. Undoing a reply made in build mode
-  needs the level build mode needs: a contributor reads *Your account
-  can't undo this reply: it changed the site's code and templates (build
-  mode). Ask an owner or an editor of this editor.* in the Undo button's
-  place (a chat message gains `mode`).
+  ended is no longer passed over in silence: it is left and named. An undo
+  that can't put a file back puts back the rest, names that file and says
+  what it put back, instead of stopping half-way. Undoing a reply made in
+  build mode needs the level build mode needs: a contributor reads *Your
+  account can't undo this reply: it changed the site's code and templates
+  (build mode). Ask an owner or an editor of this editor.* in the Undo
+  button's place (a chat message gains `mode`).
 
 ## 0.3.1 — 2026-11-24
 

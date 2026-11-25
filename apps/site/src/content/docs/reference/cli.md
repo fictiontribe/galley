@@ -459,7 +459,7 @@ Examples
 
 ## `galley media`
 
-Keeps the site's new media in a bucket (Cloudflare R2 or Amazon S3), and pictures in Cloudflare Images, instead of its repository, as Media › Keep media outside the repository does in the app. `connect` asks only for what the chosen bucket needs, reads the key from the environment or asks for it with nothing shown, and saves only after a real check passes. `move` shows its plan and needs `--yes`. Not yet run against the live services by the people who built it. Details: [Media in a bucket](/docs/configuration/media-storage/).
+Keeps the site's new media in a bucket (Cloudflare R2 or Amazon S3), and pictures in Cloudflare Images, instead of its repository, as Media › Keep media outside the repository does in the app. `connect` asks only for what the chosen bucket needs, reads the key from the environment or asks for it with nothing shown, and saves only after a real check passes. `move` shows its plan and needs `--yes`. Cloudflare R2 has been run on the real service by the people who built it; Amazon S3, other S3-compatible stores and Cloudflare Images not yet. Details: [Media in a bucket](/docs/configuration/media-storage/).
 
 Its help (`--help`):
 
