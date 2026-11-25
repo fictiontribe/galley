@@ -7,6 +7,8 @@ entry says how.
 
 ## Unreleased
 
+## 0.4.2 — 2026-11-25
+
 ### Changed
 
 - **Moving media to a bucket moves it.** A move kept a repository file while
@@ -75,6 +77,10 @@ entry says how.
   command): it is the model's from then on, so give a new object each time
   rather than keeping one and changing it later.
 
+- **Stopping a server that can't let go of its data folder says so.** A stop
+  that fails to release the folder still fails, as before; the reason is now
+  also written to the log, and the rest of the stop is finished first.
+
 ### Added
 
 - **An adapter says what a site is built from**: a new optional convention,
@@ -85,31 +91,6 @@ entry says how.
   routes folder.
 - **`build.sources`** in `galley.config.json`: further files a site's build
   reads, added to the adapter's list.
-
-### Fixed
-
-- **Crops on the two fashion starters keep their focus point when the
-  pictures move.** The editorial and storefront starters anchor each crop
-  on its photograph's focus point, so a head or a garment stays in frame.
-  They looked the photograph up by its whole address, so once the pictures
-  had moved to a bucket and the pages held the bucket's addresses, nothing
-  was found and every crop fell back to the middle. Half the photographs on
-  each starter have a focus point that isn't the middle (15 of 30, 15 of
-  31), and those were cut differently from then on. Since 0.4.0, when media
-  in a bucket arrived. A photograph is now found by its path inside the
-  address, which is the same in the repository and in a bucket. The focus points are read from `src/lib/focus.json`,
-  which `npm run focus` writes from the shot list; the starters' source no
-  longer reads the shot list itself. A site made from one of these starters
-  before this release has the old code: a move's plan says so ("still used
-  by galley/photography/shots.json (read by src/lib/site.ts)") and keeps
-  what the shot list names. To change it, take `src/lib/site.ts` (the part
-  about focus points), `src/lib/focus.json` and `scripts/focus-points.mjs`
-  from the starter as it is now.
-
-## 0.4.1 — 2026-11-25
-
-### Added
-
 - **Embedding, first part: routes of your own (experimental).** A program
   that starts Galley's server can add API routes to it when it is built
   (`startServer({ extensions })`, `@galley/server/extensions`), for an edition
@@ -130,20 +111,39 @@ entry says how.
   site's commands, and everywhere their values are taken out of the server's
   log and of the extension's error messages. Once an extension has been
   stopped, what it was handed does nothing: the sites it holds, and the
-  preview's controller if it took one. It
-  is not a sandbox: an extension is its author's code with the server's
-  permissions. A server with extensions must be the only server in its
+  preview's controller if it took one. It is not a sandbox: an extension is
+  its author's code with the server's permissions. A server with extensions must be the only server in its
   process, and should be restarted after a backup is put back. The shapes may
   change in any 0.x release. The docs page is *Running Galley › Embedding the
   editor*.
-- **Stopping a server that can't let go of its data folder says so.** A stop
-  that fails to release the folder still fails, as before; the reason is now
-  also written to the log, and the rest of the stop is finished first.
+
+### Fixed
+
+- **Crops on the two fashion starters keep their focus point when the
+  pictures move.** The editorial and storefront starters anchor each crop
+  on its photograph's focus point, so a head or a garment stays in frame.
+  They looked the photograph up by its whole address, so once the pictures
+  had moved to a bucket and the pages held the bucket's addresses, nothing
+  was found and every crop fell back to the middle. Half the photographs on
+  each starter have a focus point that isn't the middle (15 of 30, 15 of
+  31), and those were cut differently from then on. Since 0.4.0, when media
+  in a bucket arrived. A photograph is now found by its path inside the
+  address, which is the same in the repository and in a bucket. The focus
+  points are read from `src/lib/focus.json`, which `npm run focus` writes
+  from the shot list; the starters' source no longer reads the shot list
+  itself. A site made from one of these starters before this release has
+  the old code: a move's plan says so ("still used by
+  galley/photography/shots.json (read by src/lib/site.ts)") and keeps what
+  the shot list names. To change it, take `src/lib/site.ts` (the part about
+  focus points), `src/lib/focus.json` and `scripts/focus-points.mjs` from
+  the starter as it is now.
 - **A start that fails undoes everything it had started.** When a hosted
   install could not start (its port was already taken) or could not finish
   starting, the process stayed in hosted mode, and a site it had opened
   stayed open. Both are now undone, as a stop undoes them, and the error
   the start failed with is the one reported.
+
+## 0.4.1 — 2026-11-25
 
 ### Changed
 

@@ -35,6 +35,13 @@ what is built; when something here ships, it moves to the
 - **0.4.1**: fixes. A link to the editor can't send a browser to another
   site; an undo pauses while newer versions wait, as a publish does; moving
   media to a bucket says beforehand what the move then does.
+- **0.4.2**: moving media to a bucket moves it. Pages and Galley's page
+  templates are given the new addresses; a copy stays in the repository
+  only for what the site is built from and a move doesn't change, and the
+  plan names those files before anything happens. The site's model is
+  read-only for the plugins and adapters it is handed to. A first,
+  experimental part of embedding: a program that starts the server can add
+  routes of its own.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.
