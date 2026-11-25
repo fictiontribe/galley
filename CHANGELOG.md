@@ -5,6 +5,15 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## Unreleased
+
+### Fixed
+
+- **A request whose target the server can't read as one of its own
+  addresses is refused.** A request line naming another scheme (`ws://…`,
+  say) now gets 400 before the preview or the app sees it, as one that isn't
+  an address at all already did.
+
 ## 0.4.3 — 2026-11-25
 
 **Security.** 0.4.3 is for anyone who runs a hosted editor, above all one
