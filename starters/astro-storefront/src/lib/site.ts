@@ -60,16 +60,23 @@ const shotFocus = Object.entries(focusPoints.points).sort(([a], [b]) => b.length
  * the photograph's own focus point from the shot list, so heads and garments
  * stay in frame at every ratio; the middle for a picture not in the list.
  *
- * A photograph is found by how its address ends, not by the whole address:
- * /images/pieces/coat.webp and https://media.example.com/pieces/coat.webp
- * are the same picture, so it keeps its focus point when the pictures move
- * to a bucket.
+ * A photograph is found by its path inside the address, not by the whole
+ * address: /images/pieces/coat.webp and
+ * https://media.example.com/pieces/coat.webp are the same picture, so it
+ * keeps its focus point when the pictures move to a bucket. (Cloudflare
+ * Images puts the path, encoded, before the variant's name; hence the
+ * decoding, and looking inside the address rather than at its end.)
  */
 export function focusFor(src: string, focus: Focus = "center"): string {
   if (focus !== "center") return focusPositions[focus];
-  const address = src.replace(/[?#].*$/, "");
+  let address = src.replace(/[?#].*$/, "");
 
-  return shotFocus.find(([path]) => address.endsWith(`/${path}`))?.[1] ?? focusPositions.center;
+  try {
+    address = decodeURIComponent(address);
+  } catch {
+    // Not an encoded address: use it as it is.
+  }
+  return shotFocus.find(([path]) => `${address}/`.includes(`/${path}/`))?.[1] ?? focusPositions.center;
 }
 
 /** Whether a link leaves the site (opens elsewhere). */
