@@ -6,7 +6,7 @@
  * with a dot. This holds them to that, with secrets files put where a
  * collection's files are.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { cleanupAll, disposeAll, makeSite, openSite, sh } from "./helpers";
@@ -42,6 +42,46 @@ describe("a secrets file among a collection's files", { timeout: 120_000 }, () =
       expect(found.matches, mode).toEqual([]);
       expect(JSON.stringify(found), mode).not.toContain("never-content-4f1c");
     }
+  });
+
+  it("is no entry behind a link either: not listed, not searched, not found by its words, and not read for the list of changes", async () => {
+    const root = makeSite({});
+
+    writeFileSync(join(root, ".env"), `---\ntitle: ${SECRET}\n---\n${SECRET}\n`);
+    mkdirSync(join(root, ".envs"), { recursive: true });
+    writeFileSync(join(root, ".envs/production.md"), `---\ntitle: ${SECRET}\n---\n${SECRET}\n`);
+    mkdirSync(join(root, "shared"), { recursive: true });
+    writeFileSync(join(root, "shared/from-a-linked-folder.md"), "---\ntitle: From a linked folder\n---\nOrdinary words-7c1e.\n");
+    // A link named like an entry that leads to a secrets file; a linked folder that is a secrets folder; a template
+    // file that is such a link; and, beside them, an ordinary linked entry and an ordinary linked folder of content.
+    symlinkSync("../../../.env", join(root, "src/content/pages/notes.md"));
+    symlinkSync("../../../.envs", join(root, "src/content/pages/keys"));
+    symlinkSync("../../.env", join(root, "src/pages/leak.astro"));
+    symlinkSync("about.md", join(root, "src/content/pages/about-again.md"));
+    symlinkSync("../../../shared", join(root, "src/content/pages/shared"));
+    sh(root, "add", "-A");
+    sh(root, "commit", "-q", "-m", "Links");
+    // And one that is a waiting change, not yet published.
+    symlinkSync("../../../.env", join(root, "src/content/pages/waiting-notes.md"));
+    const { site } = await openSite(root);
+    const pages = (await site.listEntries("pages", { limit: 500 })).items.map((item) => item.path);
+
+    expect(pages.filter((path) => /notes\.md$|\/keys\//.test(path))).toEqual([]);
+    expect(pages).toEqual(expect.arrayContaining(["src/content/pages/about-again.md", "src/content/pages/shared/from-a-linked-folder.md"]));
+    expect(JSON.stringify(await site.listEntries("pages", { limit: 500 }))).not.toContain("never-content-4f1c");
+    expect(await site.search("never-content-4f1c", { limit: 20 })).toEqual([]);
+    expect((await site.search("words-7c1e", { limit: 20 })).map((hit) => hit.path)).toEqual(["src/content/pages/shared/from-a-linked-folder.md"]);
+    for (const mode of ["content", "build"] as const) {
+      const found = await site.resolveText({ urlPath: "/", text: SECRET }, { mode });
+
+      expect(JSON.stringify(found), mode).not.toContain("never-content-4f1c");
+    }
+    for (const path of ["src/content/pages/notes.md", "src/content/pages/keys/production.md", "src/content/pages/waiting-notes.md"]) await expect(site.readEntry(path), path).rejects.toMatchObject({ code: expect.stringMatching(/forbidden|not-found/) });
+    // The waiting link is among the changes by its name, and nothing of what it leads to is.
+    const changes = await site.changes();
+
+    expect(changes.files.map((file) => file.path)).toContain("src/content/pages/waiting-notes.md");
+    expect(JSON.stringify(changes)).not.toContain("never-content-4f1c");
   });
 
   it("is no entry when the settings name it as a collection, a collection's pattern takes it in, or a template is one", async () => {
