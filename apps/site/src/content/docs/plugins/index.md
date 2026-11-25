@@ -67,7 +67,7 @@ export default {
 
 Name it in a site's config as above, and the assistant — and every MCP client connected to the site — offers `say_hello`.
 
-Every key but `name` and `apiVersion` is optional: `adapters`, `imageProviders`, `videoProviders`, `formProviders`, `scriptIntegrations`, `importers`, `deployTargets`, `tools`, `dataSources`, `hooks`, `settings`, `setup`. Each call gets a context with the plugin's own settings, a logger that scrubs secrets, `fetch` and the product's name — name the product by `ctx.brand.productName`, never "Galley", because a deployment may rename it.
+Every key but `name` and `apiVersion` is optional: `adapters`, `imageProviders`, `videoProviders`, `formProviders`, `scriptIntegrations`, `importers`, `deployTargets`, `tools`, `dataSources`, `hooks`, `settings`, `setup`. Each call gets a context with the plugin's own settings, a logger that scrubs secrets, `fetch` and the product's name — name the product by `ctx.brand.productName`, never "Galley", because a deployment may rename it. What a tool or a hook is handed of the site, its model above all (`site.model()`), is the site's own and read-only: to work on it, take a copy (`structuredClone`).
 
 `examples/plugin-example` in the repository is the template to copy: a script integration (Fathom), a publish webhook and a word-count tool, with tests using `@galley/plugin-kit`'s checks and test doubles. The docs added, listed, turned off and on, and removed it with the commands above.
 
