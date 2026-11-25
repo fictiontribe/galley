@@ -1,7 +1,8 @@
 /**
- * The words for how a move of the site's files ended. A file that stays in
- * the repository because the site's code or a template uses it is the move
- * working as meant, so only `problems` make it an error.
+ * The words for a move of the site's files: what it will do, and how it
+ * ended. A file that stays in the repository because something the site is
+ * built from still uses it is the move working as meant, so only `problems`
+ * make it an error.
  */
 import type { MediaMovePlan, MediaMoveResult } from "@galley/core/media-storage/contract";
 import { bytes, count } from "@/lib/format";
@@ -24,9 +25,9 @@ export function stayedLabel(result: Pick<MediaMoveResult, "stayedFiles">): strin
   return result.stayedFiles === 1 ? "The file that stayed" : `The ${result.stayedFiles} files that stayed`;
 }
 
-/** One file that stayed, and where it is still mentioned. */
+/** One file that stayed, and what still uses it. */
 export function stayedLine(item: MediaMoveResult["stayed"][number]): string {
-  return `${item.path}: still mentioned in ${item.pages.join(", ")}`;
+  return `${item.path}: still used by ${item.pages.join(", ")}`;
 }
 
 /** "a, b, c and 2 more", as the result of a move lists them. */
@@ -35,17 +36,33 @@ function someOf(paths: string[], most = 5): string {
 }
 
 /**
+ * The line of its own for files that name what is moving but are no part of
+ * the site as built (a README, a record, a script outside its source): they
+ * aren't changed and keep no file. Null when there are none.
+ */
+export function alsoMentionedWords(plan: Pick<MediaMovePlan, "alsoMentioned">): string | null {
+  const paths = plan.alsoMentioned ?? [];
+
+  return paths.length ? `Also mentioned in ${someOf(paths)}: not part of the site as built, so not changed.` : null;
+}
+
+/**
  * What the repository's copies will do, counted as the move itself will: how
- * many are removed, how many stay, and every file that keeps them there.
+ * many are removed, how many stay, what keeps them there, and what to do
+ * about it.
  */
 function copiesWords(plan: MediaMovePlan): string {
   const stay = plan.stillMentioned ?? [];
 
   if (plan.keepCopies) return "The repository keeps its copies.";
   if (!stay.length) return "Then the repository’s copies are removed; they leave the site when you publish.";
-  const mentioning = [...new Set(stay.flatMap((item) => item.pages))].sort();
-  const why = (plan.leftAlone ?? []).some((path) => mentioning.includes(path)) ? " Galley doesn’t change the site’s code or templates, so the files they use stay where they are." : "";
-  const where = `still mentioned in ${someOf(mentioning)}.${why}`;
+  const using = [...new Set(stay.flatMap((item) => item.pages))].sort();
+  const alone = (plan.leftAlone ?? []).filter((path) => using.includes(path));
+  const one = alone.length === 1;
+  const why = alone.length
+    ? ` The site is built from ${one ? "that file" : "those files"} and a move doesn’t change ${one ? "it" : "them"}. To move what ${one ? "it uses" : "they use"} too, put the new addresses there by hand or in build mode, then run the move again.`
+    : "";
+  const where = `still used by ${someOf(using)}.${why}`;
 
   if (plan.removes === 0) return `None of the repository’s copies are removed: ${stay.length === 1 ? "the file is" : `all ${stay.length} are`} ${where}`;
   return `Then ${plan.removes} of the repository’s copies ${plan.removes === 1 ? "is" : "are"} removed (${plan.removes === 1 ? "it leaves" : "they leave"} the site when you publish) and ${stay.length} ${stay.length === 1 ? "stays" : "stay"}: ${where}`;
@@ -59,7 +76,7 @@ export function planWords(plan: MediaMovePlan): string {
   const where = plan.to === "repository" ? "the repository" : plan.to === "images" ? "Cloudflare Images" : "the bucket";
   const parts = [
     `${plan.files} ${plan.files === 1 ? "file" : "files"} (${bytes(plan.bytes)}) will be copied to ${where}${plan.done ? `, ${plan.done} of them already there from an earlier run` : ""}.`,
-    `${plan.references} ${plan.references === 1 ? "place" : "places"} in ${plan.pages} ${plan.pages === 1 ? "page" : "pages"} will point at ${plan.to === "repository" ? "the site’s own addresses" : "their full addresses"}.`,
+    `${plan.references} ${plan.references === 1 ? "place" : "places"} in ${plan.pages} ${plan.pages === 1 ? "page" : "pages"}${plan.templates ? ` and ${plan.templates} page ${plan.templates === 1 ? "template" : "templates"}` : ""} will point at ${plan.to === "repository" ? "the site’s own addresses" : "their full addresses"}.`,
   ];
 
   if (plan.to !== "repository") parts.push(copiesWords(plan));

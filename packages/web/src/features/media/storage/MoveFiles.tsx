@@ -12,7 +12,7 @@ import { invalidate } from "@/lib/query";
 import { useJobs } from "@/lib/stores/jobs";
 import { notify } from "@/lib/stores/toasts";
 import { Button, Checkbox, ConfirmDialog, Field, Input } from "@/ui";
-import { planWords } from "./moveWords";
+import { alsoMentionedWords, planWords } from "./moveWords";
 import { storageKeys } from "./useMediaStorage";
 
 export function MoveFiles({ siteId, bucket, images, onStarted }: { siteId: string; bucket: boolean; images: boolean; onStarted: () => void }) {
@@ -92,6 +92,7 @@ export function MoveFiles({ siteId, bucket, images, onStarted }: { siteId: strin
           plan ? (
             <>
               <p>{planWords(plan)}</p>
+              {alsoMentionedWords(plan) ? <p>{alsoMentionedWords(plan)}</p> : null}
               {plan.kind === "move" && plan.from === "repository" ? <Checkbox label="Keep the repository’s copies too" checked={keepCopies} onChange={setKeepCopies} /> : null}
             </>
           ) : null

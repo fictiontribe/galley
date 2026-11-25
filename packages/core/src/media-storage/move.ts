@@ -6,9 +6,10 @@
  *                  counts as done; different bytes is a problem, never an
  *                  overwrite), then rewrite the pages' references to the full
  *                  addresses, then — unless the copies are kept — delete the
- *                  repository's files nothing can still reach. A file used by
- *                  a page Galley can't rewrite (a source template in content
- *                  mode) stays where it is, and the plan says so.
+ *                  repository's files the site no longer uses. A file stays
+ *                  only while something the site is built from, and that the
+ *                  move can't update, still uses it (see `standingsOf`), and
+ *                  the plan says so before anything happens.
  *   to the repo    download each file into the media folder (same rule for
  *                  names), rewrite references back to site addresses. The
  *                  store's files stay where they are: removing them is a
@@ -19,8 +20,11 @@
  * Every change to a page is an ordinary pending change: Proof shows it, and
  * it goes live when the person publishes.
  */
+import { builtFromMatcher } from "../content/detect/built-from";
 import { GalleyError } from "../errors";
-import type { MediaItem, SiteService } from "../types";
+import { callerMay } from "../install/caller";
+import { BUILD_MODE_LEVEL } from "../install/route-access";
+import type { AgentMode, MediaItem, SiteService } from "../types";
 import { checkUpload, mediaExtension } from "../workspace/media";
 import { writeRefusal } from "../workspace/policy";
 import type { MediaMovePlan, MediaMoveRequest, MediaStoreLocation } from "./contract";
@@ -155,6 +159,53 @@ function referencesIn(text: string, pattern: string): Found[] {
   return out;
 }
 
+/**
+ * How a file that names one of the site's pictures stands to a move:
+ *
+ *   content   the move updates it, as a content write (a page, a data file
+ *             content mode may write).
+ *   template  one of Galley's own page templates, named in the site's
+ *             settings. A page made from it later would carry the address
+ *             it holds, so the move updates it too: as a build-mode write,
+ *             made only when the site allows build mode and the person
+ *             whose move this is may use it. Otherwise it is left, and
+ *             keeps what it uses.
+ *   built     something the site is built from that the move doesn't
+ *             update: its code, a data file content mode may not write.
+ *             It keeps what it uses.
+ *   beside    anything else: a README, a record, a script outside the
+ *             site's source. The built site doesn't read it, so it keeps
+ *             nothing and isn't changed; the plan lists it.
+ *
+ * What a site is built from is the adapter's to say (and the settings'
+ * `build.sources`); with no word from the adapter every file counts.
+ */
+type Standing = "content" | "template" | "built" | "beside";
+
+interface Standings {
+  of(path: string): Standing;
+  /** The mode a write to this file takes, or null when the move doesn't change it. */
+  writes(path: string): AgentMode | null;
+}
+
+async function standingsOf(site: SiteService): Promise<Standings> {
+  const model = await site.model();
+  const templates = new Set((model.templates ?? []).map((template) => template.file));
+  const built = builtFromMatcher(model);
+  const mayBuild = model.ai.allowBuild && callerMay(BUILD_MODE_LEVEL);
+  const of = (path: string): Standing => (!writeRefusal(path, model.writable, "content") ? "content" : templates.has(path) ? "template" : built(path) ? "built" : "beside");
+
+  return {
+    of,
+    writes(path) {
+      const standing = of(path);
+
+      if (standing === "content") return "content";
+      return standing === "template" && mayBuild && !writeRefusal(path, model.writable, "build") ? "build" : null;
+    },
+  };
+}
+
 /** Files that might hold references: the plain pattern and its JSON-escaped form, searched by git grep. */
 async function candidateFiles(site: SiteService, pattern: string): Promise<string[]> {
   if (!site.grepText) throw new GalleyError("internal", "This site's files can't be searched, so nothing was moved.");
@@ -164,16 +215,16 @@ async function candidateFiles(site: SiteService, pattern: string): Promise<strin
 }
 
 /**
- * What a move to a store would leave in the repository, worked out without
- * changing anything: the same steps the move takes, on the files' text in
- * memory. A file stays when something that uses it won't be updated (the
- * site's code and templates are never changed by a move), and when its
- * address would still appear somewhere after the pages were updated (a form
- * the move doesn't read, a file it doesn't touch). Each comes with every
- * file that would still mention it, so the plan and the result name the same.
+ * What a move to a store would do to the files that name what it moves,
+ * worked out without changing anything: the same steps the move takes, on
+ * the files' text in memory. A repository file stays when something that
+ * counts (see `standingsOf`) would still name it afterwards: a file the move
+ * doesn't update, or one it updates that holds the address in a form the
+ * move doesn't read. Each comes with every such file, so the plan and the
+ * result name the same.
  */
-async function foresee(site: SiteService, moves: Move[], references: Map<string, Reference[]>): Promise<{ stillMentioned: Array<{ path: string; pages: string[] }>; leftAlone: string[] }> {
-  const writable = (await site.model()).writable;
+async function foresee(site: SiteService, moves: Move[], references: Map<string, Reference[]>): Promise<Foreseen> {
+  const standings = await standingsOf(site);
   const pattern = await repositoryPattern(site);
   const byOld = new Map(moves.map((move) => [decodeSafe(move.oldUrl), move]));
   const replace = repositoryReplace(byOld);
@@ -182,35 +233,59 @@ async function foresee(site: SiteService, moves: Move[], references: Map<string,
   for (const move of moves) for (const reference of references.get(move.oldUrl) ?? []) files.add(reference.path);
   /** Each file the move would update, as it would read afterwards. */
   const after = new Map<string, string>();
-  const leftAlone: string[] = [];
+  const leftAlone = new Set<string>();
+  const alsoMentioned = new Set<string>();
+  const updated = { pages: new Set<string>(), templates: new Set<string>(), places: 0 };
 
   for (const path of files) {
-    if (writeRefusal(path, writable, "content")) {
-      leftAlone.push(path);
+    const mode = standings.writes(path);
+
+    if (!mode) {
+      (standings.of(path) === "beside" ? alsoMentioned : leftAlone).add(path);
       continue;
     }
     try {
-      after.set(path, rewrittenText((await site.readFile(path)).content, pattern, replace));
+      const before = (await site.readFile(path)).content;
+
+      after.set(path, rewrittenText(before, pattern, replace));
+      (mode === "build" ? updated.templates : updated.pages).add(path);
+      updated.places += referencesIn(before, pattern).filter(({ match }) => replace(match) !== null).length;
     } catch {
       // Can't be read now, so it wouldn't be updated: what it uses stays.
+      leftAlone.add(path);
     }
   }
   const stillMentioned: Array<{ path: string; pages: string[] }> = [];
 
   for (const move of moves) {
     const forms = plainForms(move.oldUrl);
-    const unchanged = (references.get(move.oldUrl) ?? []).map((reference) => reference.path).filter((path) => !after.has(path));
+    const unchanged = (references.get(move.oldUrl) ?? []).map((reference) => reference.path).filter((path) => !after.has(path) && standings.of(path) !== "beside");
     // A file the move doesn't update keeps every mention it has; one it updates is read as it would be afterwards.
     const left = [...(await plainMentions(site, move.oldUrl)).keys()].filter((path) => {
       const text = after.get(path);
 
-      return text === undefined || forms.some((form) => text.includes(form));
+      if (text !== undefined) return forms.some((form) => text.includes(form));
+      if (standings.of(path) !== "beside") return true;
+      alsoMentioned.add(path);
+      return false;
     });
     const pages = [...new Set([...unchanged, ...left])].sort();
 
     if (pages.length) stillMentioned.push({ path: move.from, pages });
   }
-  return { stillMentioned, leftAlone: leftAlone.sort() };
+  return { stillMentioned, leftAlone: [...leftAlone].sort(), alsoMentioned: [...alsoMentioned].sort(), pages: updated.pages.size, templates: updated.templates.size, places: updated.places };
+}
+
+interface Foreseen {
+  stillMentioned: Array<{ path: string; pages: string[] }>;
+  /** Files that count and that the move doesn't change: they keep what they use. */
+  leftAlone: string[];
+  /** Files beside the site as built that name something being moved: not changed, and they keep nothing. */
+  alsoMentioned: string[];
+  /** What the move updates: pages, Galley's page templates, and the places in both. */
+  pages: number;
+  templates: number;
+  places: number;
 }
 
 /** For a move out of the repository: the new text for a reference to a file being moved, or null for any other. */
@@ -298,33 +373,50 @@ function rewrittenText(content: string, pattern: string, replace: (match: string
 /**
  * Rewrites references file by file: each reference the scan finds is passed to
  * `replace`, and only those it returns a new text for change. Nothing else in
- * the file is touched.
+ * the file is touched. A page is a content write; one of Galley's page
+ * templates is a build-mode write, made only when `standingsOf` allows it;
+ * no other file is written.
  */
-async function rewrite(site: SiteService, paths: Iterable<string>, pattern: string, replace: (match: string) => string | null, onFile?: (done: number) => void): Promise<{ rewritten: Set<string>; leftAlone: Set<string>; failed: Map<string, string> }> {
+async function rewrite(
+  site: SiteService,
+  paths: Iterable<string>,
+  pattern: string,
+  replace: (match: string) => string | null,
+  onFile?: (done: number) => void
+): Promise<{ rewritten: Set<string>; templates: Set<string>; leftAlone: Set<string>; beside: Set<string>; failed: Map<string, string> }> {
+  const standings = await standingsOf(site);
   const rewritten = new Set<string>();
+  const templates = new Set<string>();
   const leftAlone = new Set<string>();
+  const beside = new Set<string>();
   const failed = new Map<string, string>();
   let done = 0;
 
   for (const path of paths) {
-    try {
-      const file = await site.readFile(path);
-      const text = rewrittenText(file.content, pattern, replace);
+    const mode = standings.writes(path);
 
-      if (text !== file.content) await site.writeFile(path, text, { origin: "user", mode: "content", baseHash: file.hash });
-      rewritten.add(path);
-    } catch (error) {
-      // The site's code and templates are never changed by a move. That is by design, so it isn't a failure.
-      if (error instanceof GalleyError && error.code === "forbidden") leftAlone.add(path);
-      else failed.set(path, error instanceof Error ? error.message : String(error));
+    if (!mode) (standings.of(path) === "beside" ? beside : leftAlone).add(path);
+    else {
+      try {
+        const file = await site.readFile(path);
+        const text = rewrittenText(file.content, pattern, replace);
+
+        if (text !== file.content) await site.writeFile(path, text, { origin: "user", mode, baseHash: file.hash });
+        rewritten.add(path);
+        if (mode === "build") templates.add(path);
+      } catch (error) {
+        // Refused where the bytes go (the settings file, a level this person hasn't): left as it is. By design, so not a failure.
+        if (error instanceof GalleyError && error.code === "forbidden") leftAlone.add(path);
+        else failed.set(path, error instanceof Error ? error.message : String(error));
+      }
     }
     onFile?.((done += 1));
   }
-  return { rewritten, leftAlone, failed };
+  return { rewritten, templates, leftAlone, beside, failed };
 }
 
-/** Why a file of the site's code or templates keeps the addresses it had. */
-const LEFT_ALONE = "it is part of the site's code or templates, not its content, so Galley leaves it as it is";
+/** Why a file the site is built from keeps the addresses it had. */
+const LEFT_ALONE = "the site is built from it and a move doesn't change the site's code, so Galley leaves it as it is";
 
 /** "a, b, c and 2 more". */
 function someOf(paths: string[], most = 5): string {
@@ -440,17 +532,32 @@ export async function planMove(context: MoveContext, request: MediaMoveRequest):
 
     for (const move of moves) if (present.has(move.to)) done += 1;
   }
-  const pages = new Set<string>();
-  let count = 0;
+  // The move's own steps, without changing anything: what the plan says is updated, and what it says stays, is what will.
+  const foreseen = request.from === "repository" ? await foresee(context.site, moves, references) : null;
+  const stillMentioned = foreseen && !request.keepCopies ? foreseen.stillMentioned : [];
+  const leftAlone = foreseen && !request.keepCopies ? foreseen.leftAlone : [];
+  const alsoMentioned = foreseen && !request.keepCopies ? foreseen.alsoMentioned : [];
+  let pages = foreseen?.pages ?? 0;
+  let templates = foreseen?.templates ?? 0;
+  let count = foreseen?.places ?? 0;
 
-  for (const move of moves) {
-    for (const reference of references.get(request.from === "repository" ? move.oldUrl : move.from) ?? []) {
-      pages.add(reference.path);
-      count += 1;
+  if (!foreseen) {
+    // Back to the repository: every file that points at the store and that the move updates.
+    const standings = await standingsOf(context.site);
+    const updated = { pages: new Set<string>(), templates: new Set<string>() };
+
+    for (const move of moves) {
+      for (const reference of references.get(move.from) ?? []) {
+        const mode = standings.writes(reference.path);
+
+        if (!mode) continue;
+        (mode === "build" ? updated.templates : updated.pages).add(reference.path);
+        count += 1;
+      }
     }
+    pages = updated.pages.size;
+    templates = updated.templates.size;
   }
-  // The move's own steps, without changing anything: what the plan says stays is what will.
-  const { stillMentioned, leftAlone } = request.from === "repository" && !request.keepCopies ? await foresee(context.site, moves, references) : { stillMentioned: [], leftAlone: [] };
   return {
     kind: "move",
     from: request.from,
@@ -460,9 +567,11 @@ export async function planMove(context: MoveContext, request: MediaMoveRequest):
     ...(request.from === "repository" && moves.some((move) => move.draft) ? { unpublished: moves.filter((move) => move.draft).length } : {}),
     ...(stillMentioned.length ? { stillMentioned } : {}),
     ...(leftAlone.length ? { leftAlone } : {}),
+    ...(alsoMentioned.length ? { alsoMentioned } : {}),
     removes: request.from === "repository" && !request.keepCopies ? moves.length - stillMentioned.length : 0,
     references: count,
-    pages: pages.size,
+    pages,
+    ...(templates ? { templates } : {}),
     done,
     problems,
     ...(staying ? { staying } : {}),
@@ -501,8 +610,12 @@ export interface MoveOutcome {
   summary: string;
   /** Repository files kept although copies weren't, each with the files that still mention it. By design: not a problem. */
   stillMentioned?: Array<{ path: string; pages: string[] }>;
-  /** Files of the site's code or templates that use a moved file. Galley leaves them as they are, so they keep the address they had. By design: not a problem. */
+  /** Files the site is built from that use a moved file and that a move doesn't change (its code; a page template when build mode isn't allowed). They keep the address they had. By design: not a problem. */
   leftAlone?: string[];
+  /** Galley's page templates the move updated, as build-mode writes. */
+  rewrittenTemplates?: number;
+  /** Files beside the site as built that name a moved file: not changed, and they kept nothing. */
+  alsoMentioned?: string[];
 }
 
 export async function runMove(context: MoveContext, request: MediaMoveRequest): Promise<MoveOutcome> {
@@ -611,7 +724,7 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
     return move ? fromStore(source, match, move.newUrl) : null;
   };
   const pages = files.size;
-  const { rewritten, leftAlone, failed } = await rewrite(context.site, files, pattern, replace, (count) => progress(`Updating pages: ${count} of ${pages}`, 0.65 + 0.25 * (count / Math.max(1, pages))));
+  const { rewritten, templates, leftAlone, beside, failed } = await rewrite(context.site, files, pattern, replace, (count) => progress(`Updating pages: ${count} of ${pages}`, 0.65 + 0.25 * (count / Math.max(1, pages))));
 
   for (const [path, reason] of failed) problems.push({ path, reason: `Couldn't update it, so the files it uses stay where they are: ${reason}` });
 
@@ -620,14 +733,22 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
   const stillMentioned: Array<{ path: string; pages: string[] }> = [];
 
   if (request.from === "repository" && !request.keepCopies) {
+    const standings = await standingsOf(context.site);
+
     for (const move of copiedMoves) {
       const from = referencedFrom.get(move.from) ?? new Set<string>();
-      const unchanged = [...from].filter((path) => !rewritten.has(path));
+      const unchanged = [...from].filter((path) => !rewritten.has(path) && !beside.has(path));
 
-      // After the rewrite, the old address must appear nowhere: a file Galley didn't update (code or a template it
-      // leaves alone, a page that couldn't be saved) or one that mentions it in a form the move doesn't read keeps
-      // the file. Every file that still mentions it is named, as the plan named them.
-      const left = [...(await plainMentions(context.site, move.oldUrl)).keys()];
+      // After the rewrite, nothing that counts may still name the old address: a file the site is built from that
+      // Galley didn't update (its code, a template it left alone, a page that couldn't be saved), or one it did
+      // update that holds the address in a form the move doesn't read, keeps the file. A file beside the site as
+      // built (a README, a record, a script outside its source) keeps nothing. Every file that keeps one is named,
+      // as the plan named them.
+      const left = [...(await plainMentions(context.site, move.oldUrl)).keys()].filter((path) => {
+        if (rewritten.has(path) || standings.of(path) !== "beside") return true;
+        beside.add(path);
+        return false;
+      });
       const pages = [...new Set([...unchanged, ...left])].sort();
 
       if (pages.length) {
@@ -646,18 +767,34 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
   const where = request.to === "repository" ? "the repository" : storeOf(context, request.to as MediaStoreLocation).name;
   const mentioning = [...new Set(stillMentioned.flatMap((item) => item.pages))].sort();
   const alone = [...leftAlone].sort();
+  const also = request.from === "repository" && !request.keepCopies ? [...beside].sort() : [];
+  const pagesUpdated = rewritten.size - templates.size;
+  const count = (many: number, one: string, more = `${one}s`) => `${many} ${many === 1 ? one : more}`;
   const summary =
-    `${copied} ${copied === 1 ? "file" : "files"} copied to ${where}${skipped ? ` (${skipped} already there)` : ""}, ${rewritten.size} ${rewritten.size === 1 ? "page" : "pages"} updated` +
+    `${count(copied, "file")} copied to ${where}${skipped ? ` (${skipped} already there)` : ""}, ${count(pagesUpdated, "page")}${templates.size ? ` and ${count(templates.size, "page template")}` : ""} updated` +
     (removed ? `, ${removed} removed from the repository` : "") +
-    (stillMentioned.length ? `. ${stillMentioned.length} left in the repository: still mentioned in ${someOf(mentioning)}` : "") +
-    (stillMentioned.length && mentioning.some((path) => leftAlone.has(path)) ? ". Galley doesn't change the site's code or templates, so the files they use stay where they are" : "") +
-    (request.from !== "repository" && alone.length ? `. ${someOf(alone)} still ${alone.length === 1 ? "points" : "point"} at ${storeOf(context, request.from).name}: Galley doesn't change the site's code or templates, so change ${alone.length === 1 ? "it" : "them"} by hand` : "") +
+    (stillMentioned.length ? `. ${stillMentioned.length} left in the repository: still used by ${someOf(mentioning)}` : "") +
+    (stillMentioned.length && mentioning.some((path) => leftAlone.has(path)) ? ". The site is built from those files and a move doesn't change them, so what they use stays where it is" : "") +
+    (also.length ? `. Also mentioned in ${someOf(also)}: not part of the site as built, so not changed` : "") +
+    (request.from !== "repository" && alone.length ? `. ${someOf(alone)} still ${alone.length === 1 ? "points" : "point"} at ${storeOf(context, request.from).name}: a move doesn't change the site's code, so change ${alone.length === 1 ? "it" : "them"} by hand` : "") +
     (request.from !== "repository" ? `. The files are still in ${storeOf(context, request.from).name}; remove them there once the pages are published` : "") +
     (plan.staying ? `. ${plan.staying.files} ${plan.staying.files === 1 ? "stayed where it was" : "stayed where they were"}: ${plan.staying.reason.replace(/\.$/, "")}` : "") +
     (problems.length ? `. ${problems.length} ${problems.length === 1 ? "problem" : "problems"} — see the list` : "") +
     ". Publish to make it live.";
 
-  return { plan, copied, skipped, rewrittenPages: rewritten.size, removed, problems, summary, ...(stillMentioned.length ? { stillMentioned } : {}), ...(alone.length ? { leftAlone: alone } : {}) };
+  return {
+    plan,
+    copied,
+    skipped,
+    rewrittenPages: pagesUpdated,
+    ...(templates.size ? { rewrittenTemplates: templates.size } : {}),
+    removed,
+    problems,
+    summary,
+    ...(stillMentioned.length ? { stillMentioned } : {}),
+    ...(alone.length ? { leftAlone: alone } : {}),
+    ...(also.length ? { alsoMentioned: also } : {}),
+  };
 }
 
 async function readRepoBytes(site: SiteService, path: string): Promise<Uint8Array> {

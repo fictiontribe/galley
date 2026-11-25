@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MediaMovePlan, MediaMoveResult } from "@galley/core/media-storage/contract";
-import { moveTitle, planWords, stayedLabel, stayedLine } from "@/features/media/storage/moveWords";
+import { alsoMentionedWords, moveTitle, planWords, stayedLabel, stayedLine } from "@/features/media/storage/moveWords";
 
 const base: MediaMoveResult = { at: 0, request: { kind: "move", from: "repository", to: "bucket" }, state: "done", summary: "", copied: 28, pages: 14, removed: 12, stayed: [], stayedFiles: 0, problems: [] };
 
@@ -21,10 +21,10 @@ describe("the words for how a move of the site's files ended", () => {
     expect(moveTitle({ ...base, state: "error", request: { kind: "address", store: "bucket", publicUrl: "https://media.example.com" } })).toBe("The address wasn’t changed");
   });
 
-  it("names the files that stayed and where each is still mentioned", () => {
+  it("names the files that stayed and what still uses each", () => {
     expect(stayedLabel({ stayedFiles: 1 })).toBe("The file that stayed");
     expect(stayedLabel({ stayedFiles: 16 })).toBe("The 16 files that stayed");
-    expect(stayedLine({ path: "public/favicon.svg", pages: ["src/layouts/Base.astro", "galley/templates/project.md"] })).toBe("public/favicon.svg: still mentioned in src/layouts/Base.astro, galley/templates/project.md");
+    expect(stayedLine({ path: "public/favicon.svg", pages: ["src/layouts/Base.astro", "galley/templates/project.md"] })).toBe("public/favicon.svg: still used by src/layouts/Base.astro, galley/templates/project.md");
   });
 });
 
@@ -37,26 +37,50 @@ describe("what a move says it will do, before it does anything", () => {
     expect(planWords(plan)).toBe("31 files (2.4 MB) will be copied to the bucket. 40 places in 12 pages will point at their full addresses. Then the repository’s copies are removed; they leave the site when you publish.");
   });
 
-  it("counts what is removed and what stays, and names every file that keeps them, as the result will", () => {
-    const mentioning = ["README.md", "galley/photography/shots.json", ...templates, "scripts/gallery/sections.md", "src/layouts/Base.astro", "src/z.astro"];
-    const words = planWords({ ...plan, removes: 11, stillMentioned: stay(20, mentioning), leftAlone: [...templates, "src/layouts/Base.astro"] });
+  it("counts the page templates it updates beside the pages", () => {
+    expect(planWords({ ...plan, templates: 4 })).toContain("40 places in 12 pages and 4 page templates will point at their full addresses.");
+    expect(planWords({ ...plan, references: 1, pages: 1, templates: 1 })).toContain("1 place in 1 page and 1 page template will point at their full addresses.");
+  });
+
+  it("counts what is removed and what stays, names what keeps them, and says what to do about it", () => {
+    const words = planWords({ ...plan, removes: 29, stillMentioned: stay(2, ["src/layouts/Base.astro"]), leftAlone: ["src/layouts/Base.astro"] });
 
     expect(words).toContain(
-      "Then 11 of the repository’s copies are removed (they leave the site when you publish) and 20 stay: still mentioned in README.md, galley/photography/shots.json, galley/templates/about.md, galley/templates/story.md, scripts/gallery/sections.md and 2 more. Galley doesn’t change the site’s code or templates, so the files they use stay where they are."
+      "Then 29 of the repository’s copies are removed (they leave the site when you publish) and 2 stay: still used by src/layouts/Base.astro. The site is built from that file and a move doesn’t change it. To move what it uses too, put the new addresses there by hand or in build mode, then run the move again."
     );
-    expect(planWords({ ...plan, removes: 1, stillMentioned: stay(1, ["README.md"]) })).toContain("Then 1 of the repository’s copies is removed (it leaves the site when you publish) and 1 stays: still mentioned in README.md.");
+    const using = ["src/data/shop/catalogue.json", "src/layouts/Base.astro"];
+
+    expect(planWords({ ...plan, files: 52, removes: 30, stillMentioned: stay(22, using), leftAlone: using })).toContain(
+      "and 22 stay: still used by src/data/shop/catalogue.json, src/layouts/Base.astro. The site is built from those files and a move doesn’t change them. To move what they use too, put the new addresses there by hand or in build mode, then run the move again."
+    );
+    // Past five, the rest are counted.
+    const many = ["a.astro", "b.astro", "c.astro", "d.astro", "e.astro", "f.astro", "g.astro"].map((name) => `src/${name}`);
+
+    expect(planWords({ ...plan, removes: 11, stillMentioned: stay(20, many), leftAlone: many })).toContain("and 20 stay: still used by src/a.astro, src/b.astro, src/c.astro, src/d.astro, src/e.astro and 2 more.");
+    expect(planWords({ ...plan, removes: 1, stillMentioned: stay(1, ["src/content/pages/about.md"]) })).toContain("Then 1 of the repository’s copies is removed (it leaves the site when you publish) and 1 stays: still used by src/content/pages/about.md.");
+  });
+
+  it("lists on a line of its own the files that name a picture and are no part of the site as built", () => {
+    expect(alsoMentionedWords({ ...plan, alsoMentioned: ["README.md", "galley/photography/shots.json", "scripts/gallery/sections.md"] })).toBe(
+      "Also mentioned in README.md, galley/photography/shots.json, scripts/gallery/sections.md: not part of the site as built, so not changed."
+    );
+    expect(alsoMentionedWords({ ...plan, alsoMentioned: ["README.md"] })).toBe("Also mentioned in README.md: not part of the site as built, so not changed.");
+    expect(alsoMentionedWords(plan)).toBeNull();
+    expect(alsoMentionedWords({ ...plan, alsoMentioned: [] })).toBeNull();
+    // It is not folded into the sentences about the copies.
+    expect(planWords({ ...plan, alsoMentioned: ["README.md"] })).not.toContain("README.md");
   });
 
   it("says so plainly when none will be removed", () => {
-    const words = planWords({ ...plan, removes: 0, stillMentioned: stay(31, ["galley/templates/about.md"]), leftAlone: ["galley/templates/about.md"] });
+    const words = planWords({ ...plan, removes: 0, stillMentioned: stay(31, ["src/pages/gallery.astro"]), leftAlone: ["src/pages/gallery.astro"] });
 
-    expect(words).toContain("None of the repository’s copies are removed: all 31 are still mentioned in galley/templates/about.md. Galley doesn’t change the site’s code or templates, so the files they use stay where they are.");
+    expect(words).toContain("None of the repository’s copies are removed: all 31 are still used by src/pages/gallery.astro. The site is built from that file and a move doesn’t change it.");
     expect(words).not.toContain("Then the repository’s copies are removed");
-    expect(planWords({ ...plan, files: 1, removes: 0, stillMentioned: stay(1, ["notes.md"]) })).toContain("None of the repository’s copies are removed: the file is still mentioned in notes.md.");
+    expect(planWords({ ...plan, files: 1, removes: 0, stillMentioned: stay(1, ["src/content/pages/about.md"]) })).toContain("None of the repository’s copies are removed: the file is still used by src/content/pages/about.md.");
   });
 
-  it("gives the reason only when code or templates are among the files named", () => {
-    expect(planWords({ ...plan, removes: 30, stillMentioned: stay(1, ["src/content/pages/about.md"]) })).not.toContain("code or templates");
+  it("says what to do only when a file a move doesn't change is among those named", () => {
+    expect(planWords({ ...plan, removes: 30, stillMentioned: stay(1, ["src/content/pages/about.md"]) })).not.toContain("build mode");
   });
 
   it("keeps the other moves' words: copies kept, back to the repository, a new address", () => {

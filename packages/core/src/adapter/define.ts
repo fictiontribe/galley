@@ -18,7 +18,7 @@ export function defineAdapter<T extends GalleyAdapter>(adapter: T): T {
   return adapter;
 }
 
-const CONVENTION_KEYS = ["dev", "build", "publicDir", "media", "urls", "trailingSlash", "routesDir", "contentDirs", "pageDirs", "dataDirs", "contentUrls"] as const;
+const CONVENTION_KEYS = ["dev", "build", "publicDir", "media", "urls", "trailingSlash", "routesDir", "contentDirs", "pageDirs", "dataDirs", "contentUrls", "builtFrom"] as const;
 
 /** Later values win; the object-valued conventions (dev, build, media, urls) merge one level deep. */
 export function mergeConventions(base: AdapterConventions, extra: AdapterConventions | null | undefined): AdapterConventions {

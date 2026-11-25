@@ -5,6 +5,50 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## Unreleased
+
+### Changed
+
+- **Moving media to a bucket moves it.** A move kept a repository file while
+  any file at all named it, so a README, a record of the photographs or a
+  script beside the site kept every picture it listed: on the fashion
+  starter a move copied 31 files and removed none. A copy now stays only
+  while something the site is built from, and that the move can't update,
+  still uses it. On the four starters a move removes 25 of 27, 29 of 31, 35
+  of 37 and 30 of 52 copies, where it removed 11, 0, 16 and 20.
+  - **Galley's own page templates are updated like pages**, so a page made
+    from one later doesn't carry an address that is gone. A template is not
+    content: the move writes it in build mode, when the site allows build
+    mode and the person may use it, and the change waits in Proof. Where
+    build mode is off, templates are left and keep the files they use, as
+    before.
+  - **What still stays, and what to do about it.** The site's code and data
+    it is built from that content mode doesn't write are never changed by a
+    move, so what they use stays: the favicon and share picture a layout
+    names, the pictures in a catalogue file. The plan names those files and
+    says how to move the rest.
+  - **Other mentions no longer keep a file.** The plan lists them on a line
+    of their own before anything happens ("Also mentioned in …: not part of
+    the site as built, so not changed"), and they are left as they are.
+  - **Safety is as it was.** Nothing a built file still uses is removed; a
+    removed copy is an ordinary deletion in Proof that can be put back; the
+    bucket has the file.
+
+  The plan counts only what the move updates: it used to count places in
+  files it would never change. The plan's answer gains `templates` and
+  `alsoMentioned`; a move's result gains them too.
+
+### Added
+
+- **An adapter says what a site is built from**: a new optional convention,
+  `builtFrom`, globs from the site root. The Astro adapter gives the source
+  folder, the public folder and the configuration at the root. An adapter
+  that says nothing keeps every file counting, as before. The conformance
+  kit checks that the list holds the site's collections, media folders and
+  routes folder.
+- **`build.sources`** in `galley.config.json`: further files a site's build
+  reads, added to the adapter's list.
+
 ## 0.4.1 — 2026-11-25
 
 ### Changed

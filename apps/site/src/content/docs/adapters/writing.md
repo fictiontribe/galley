@@ -181,6 +181,7 @@ Everything is optional; leave out what the engine's defaults already get right.
 | `pageDirs` | content folders whose own files are the top-level pages | none |
 | `dataDirs` | folders whose JSON/YAML/TOML files are data collections | none |
 | `contentUrls` | `"folders"` (`content/posts` → `/posts/{slug}/`) or `"none"` | `"folders"` |
+| `builtFrom` | globs, from the site root, for what the site is built from: its source, the folder it serves as-is, the configuration its build reads | every file in the site |
 
 The Eleventy adapter reads the input and output folders from the site's own
 config, and turns passthrough-copied folders into media folders:
@@ -310,6 +311,27 @@ export default conventionAdapter({
   environment: () => ({ GATSBY_TELEMETRY_DISABLED: "1" }),
 });
 ```
+
+#### `builtFrom`: what the site is built from
+
+A file can name a picture without the built site using it: a README, a
+script, a record kept beside the site. `builtFrom` tells the two apart. It is
+a list of globs from the site root for everything the build reads: the source
+folder, the folder served as it is, the configuration at the root. The Astro
+adapter answers `src/**`, `public/**`, `*.config.*`, `package.json`,
+`tsconfig.json` and `tsconfig.*.json`, with the site's own `srcDir` and
+`publicDir` in place of the first two.
+
+Galley uses it when media moves to a bucket: a repository file stays only
+while something the site is built from, and that the move can't update,
+still uses it. A file outside the list keeps nothing; the plan lists it as
+"also mentioned in", and it isn't changed. Leave the field out and every file
+in the site counts, which is safe and keeps more files than it need.
+
+Include every folder the build reads. The conformance check fails an adapter
+whose list leaves out a collection, a media folder or the routes folder. A
+site adds to the list with `build.sources` in its `galley.config.json`, for a
+build that reads a folder the framework doesn't know about.
 
 ### `forgetPreviewSaves(ctx)` — what the dev server saved between runs
 
@@ -467,6 +489,7 @@ The checks are what "a correct adapter" means:
 | Two runs describe the site the same way | no randomness, no clock |
 | Nothing was written to the fixture | adapters only read |
 | Says how to run and build the site | or explains that previews will be unavailable |
+| What it says the site is built from holds the site's content | every collection, media folder and routes folder is inside `builtFrom`, when the adapter gives one |
 | Matches the expectations given | the collections, URLs, fields and dev command you listed |
 
 Every failure says what to change.

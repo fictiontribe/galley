@@ -36,7 +36,7 @@ describe("galley-adapter-check", () => {
 
     expect(result.code).toBe(0);
     expect(result.out).toMatch(/^Quay adapter — .*\n\nok {4}Is a well-formed adapter object/);
-    expect(result.out).toMatch(/All 16 checks passed\.\n$/);
+    expect(result.out).toMatch(/All 17 checks passed\.\n$/);
   });
 
   it("exits 1 when a check fails, saying what to fix", async () => {

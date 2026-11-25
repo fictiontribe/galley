@@ -4,7 +4,8 @@ import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import { analyzeAstroConfig, detectSite } from "../../src/content/index";
+import { builtFromGlobs, builtFromMatcher, outsideBuiltFrom } from "../../src/content/detect/built-from";
+import { analyzeAstroConfig, detectSite, loadSiteModel } from "../../src/content/index";
 import { ASTRO, HUGO, PLAIN } from "./helpers";
 
 describe("detectSite on an Astro site", async () => {
@@ -96,6 +97,54 @@ describe("detectSite on an Astro site", async () => {
   it("limits content-mode writes to content and media", () => {
     expect(model.writable.content).toEqual(expect.arrayContaining(["src/content/blog/**", "src/data/authors.json", "public/images/**"]));
     expect(model.writable.content.some((glob) => glob.startsWith("src/pages"))).toBe(false);
+  });
+
+  it("says what the site is built from: its source, its public folder and the configuration at the root", () => {
+    expect(model.builtFrom).toEqual(["src/**", "public/**", "*.config.*", "package.json", "tsconfig.json", "tsconfig.*.json"]);
+    // Everything the model names is inside it; a README, a script or a record beside the site is not.
+    expect(outsideBuiltFrom(model)).toEqual([]);
+    const built = builtFromMatcher(model);
+
+    expect(["src/layouts/Base.astro", "src/content/blog/a.md", "public/images/a.webp", "astro.config.mjs", "galley.config.json", "package.json"].filter((path) => !built(path))).toEqual([]);
+    expect(["README.md", "scripts/gallery/sections.md", "galley/templates/post.md", "galley/photography/shots.json", "docs/notes.md"].filter(built)).toEqual([]);
+  });
+});
+
+describe("what a site is built from", () => {
+  const scratch = mkdtempSync(join(tmpdir(), "content-built-from-"));
+
+  afterAll(() => rmSync(scratch, { recursive: true, force: true }));
+
+  it("follows Astro's own source and public folders, and the settings add to it", async () => {
+    const root = join(scratch, "elsewhere");
+
+    mkdirSync(join(root, "app/content/notes"), { recursive: true });
+    mkdirSync(join(root, "static/images"), { recursive: true });
+    writeFileSync(join(root, "package.json"), JSON.stringify({ dependencies: { astro: "7.0.0" } }));
+    writeFileSync(join(root, "astro.config.mjs"), 'import { defineConfig } from "astro/config";\nexport default defineConfig({ srcDir: "./app", publicDir: "./static" });\n');
+    writeFileSync(join(root, "app/content/notes/a.md"), "---\ntitle: A\n---\nA.\n");
+    expect((await detectSite(root)).builtFrom).toEqual(["app/**", "static/**", "*.config.*", "package.json", "tsconfig.json", "tsconfig.*.json"]);
+    // A build that reads a folder the framework doesn't know about names it in the settings.
+    writeFileSync(join(root, "galley.config.json"), JSON.stringify({ build: { sources: ["scripts/gallery/**", "./data/prices.csv"] } }));
+    const added = await loadSiteModel(root);
+
+    expect(added.builtFrom).toEqual(["app/**", "static/**", "*.config.*", "package.json", "tsconfig.json", "tsconfig.*.json", "scripts/gallery/**", "data/prices.csv"]);
+    // A glob that leaves the site is not used, and the notes say so; the adapter's list stands.
+    writeFileSync(join(root, "galley.config.json"), JSON.stringify({ build: { sources: ["../shared/**"] } }));
+    const refused = await loadSiteModel(root);
+
+    expect(refused.builtFrom).toEqual(["app/**", "static/**", "*.config.*", "package.json", "tsconfig.json", "tsconfig.*.json"]);
+    expect(refused.notes.join("\n")).toContain("“build.sources” in galley.config.json has to be globs inside the site; it was left out.");
+  });
+
+  it("is every file, when the adapter doesn't say", async () => {
+    const model = await detectSite(HUGO);
+
+    expect(model.builtFrom).toBeUndefined();
+    expect(outsideBuiltFrom(model)).toEqual([]);
+    expect(builtFromMatcher(model)("README.md")).toBe(true);
+    expect(builtFromGlobs(["src\\**", "./public/**", " a/b "])).toEqual(["src/**", "public/**", "a/b"]);
+    for (const bad of ["/etc/**", "C:/site/**", "src/../../x", ""]) expect(builtFromGlobs([bad]), bad).toBeNull();
   });
 });
 

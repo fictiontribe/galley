@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { detectWithAdapters, validateAdapter, type DetectionRun, type GalleyAdapter } from "@galley/core/adapter";
+import { detectWithAdapters, outsideBuiltFrom, validateAdapter, type DetectionRun, type GalleyAdapter } from "@galley/core/adapter";
 import { applyEdits, findFrontMatter, listEntries, parseDocument } from "@galley/core/content";
 import type { EditOp, FieldPath, JsonValue, SiteModel } from "@galley/core/types";
 
@@ -55,6 +55,7 @@ export const CHECKS = [
   { id: "stable", title: "Two runs describe the site the same way" },
   { id: "read-only", title: "Nothing was written to the fixture" },
   { id: "commands", title: "Says how to run and build the site" },
+  { id: "built-from", title: "What it says the site is built from holds the site's content" },
   { id: "expectations", title: "Matches the expectations given" },
 ] as const;
 
@@ -365,6 +366,19 @@ export async function checkAdapter(adapter: GalleyAdapter, fixtureDir: string, e
       "commands",
       "warn",
       `The fixture yields ${missing.join(" and ")}, so ${!model.dev ? "previews will be unavailable" : "the build check will be unavailable"} for sites like it unless their package.json has the script. Set conventions().${!model.dev ? "dev" : "build"}.command to the framework's own command.`
+    );
+  }
+
+  // ── what the site is built from
+  const outside = outsideBuiltFrom(model);
+
+  if (!model.builtFrom) set("built-from", "pass", "Not said (conventions().builtFrom), so every file in a site counts as what it is built from.");
+  else if (outside.length === 0) set("built-from", "pass", model.builtFrom.join(", "));
+  else {
+    set(
+      "built-from",
+      "fail",
+      `conventions().builtFrom is ${model.builtFrom.join(", ")}, which leaves out ${listed(outside)}: ${outside.length === 1 ? "that is" : "those are"} content, media or routes the built site reads. A file outside the list is treated as beside the site (moving media to a bucket would remove a picture only such a file names), so include every folder the build reads.`
     );
   }
 

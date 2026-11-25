@@ -8,7 +8,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createMediaStorageService } from "../../src/media-storage/service";
-import { cleanupAll, disposeAll, makeSite, openSite, STARTERS, type StarterName } from "../site/helpers";
+import type { GalleyConfig } from "../../src/types";
+import { writeRefusal } from "../../src/workspace/policy";
+import { cleanupAll, disposeAll, makeSite, openSite, sh, STARTERS, type StarterName } from "../site/helpers";
 import { startFakeS3, type FakeS3 } from "./fakes/s3";
 import { tempHome } from "./helpers";
 
@@ -28,11 +30,18 @@ afterEach(async () => {
   cleanupAll();
 });
 
-async function setUp(starter?: StarterName) {
+async function setUp(starter?: StarterName, settings?: (config: GalleyConfig) => GalleyConfig) {
   fake.buckets.get("moves")!.objects.clear();
   const home = await tempHome();
   const storage = createMediaStorageService({ home: home.home, env: {}, listTtlMs: 0 });
   const root = makeSite(starter ? { starter } : {});
+
+  if (settings) {
+    const file = join(root, "galley.config.json");
+
+    writeFileSync(file, `${JSON.stringify(settings(JSON.parse(readFileSync(file, "utf8")) as GalleyConfig), null, 2)}\n`);
+    sh(root, "commit", "-q", "-am", "Settings");
+  }
   const { site } = await openSite(root, { media: storage });
   const publicUrl = fake.publicUrl("moves");
   const connected = await storage.connect(site, { config: { connector: "r2", account: KEY.accessKeyId, bucket: "moves", endpoint: fake.endpoint, prefix: "lowfield", publicUrl }, ...KEY });
@@ -47,6 +56,32 @@ const homes = new WeakMap<object, string>();
 const homeOf = (storage: object) => homes.get(storage)!;
 
 const read = (root: string, path: string) => readFileSync(join(root, ...path.split("/")), "utf8");
+
+/**
+ * What a move to the bucket does on each starter: how many copies it makes,
+ * how many of the repository's it then removes, how many of Galley's page
+ * templates it updates, which files the site is built from keep how many
+ * pictures, and which files beside the site name some and keep none. Then the
+ * same count of copies removed when the site has build mode off (the page
+ * templates are left, and keep what they use), and when its settings say the
+ * build reads scripts/gallery too.
+ */
+const LAYOUT = "src/layouts/Base.astro";
+const GALLERY = "scripts/gallery/sections.md";
+const ON_STARTERS: Record<StarterName, { files: number; removes: number; templates: number; keeps: Record<string, number>; beside: string[]; withBuildModeOff: number; withGalleryBuilt: number }> = {
+  "astro-starter": { files: 27, removes: 25, templates: 3, keeps: { [LAYOUT]: 2 }, beside: [GALLERY], withBuildModeOff: 18, withGalleryBuilt: 15 },
+  "astro-editorial": { files: 31, removes: 29, templates: 4, keeps: { [LAYOUT]: 2 }, beside: ["README.md", "galley/photography/shots.json", GALLERY], withBuildModeOff: 14, withGalleryBuilt: 15 },
+  "astro-saas": { files: 37, removes: 35, templates: 4, keeps: { [LAYOUT]: 2 }, beside: ["README.md", GALLERY], withBuildModeOff: 22, withGalleryBuilt: 19 },
+  "astro-storefront": { files: 52, removes: 30, templates: 6, keeps: { "src/data/shop/catalogue.json": 20, [LAYOUT]: 2 }, beside: ["galley/photography/shots.json", GALLERY], withBuildModeOff: 25, withGalleryBuilt: 24 },
+};
+
+/** For each file that keeps a picture in the repository, how many it keeps. */
+function keptBy(list: Array<{ path: string; pages: string[] }> | undefined): Record<string, number> {
+  const counts: Record<string, number> = {};
+
+  for (const item of list ?? []) for (const page of item.pages) counts[page] = (counts[page] ?? 0) + 1;
+  return counts;
+}
 
 describe("moving media", { timeout: 240_000 }, () => {
   it("to the bucket: copies, points the pages at the full addresses, removes what nothing else reaches — and runs again safely", async () => {
@@ -79,7 +114,7 @@ describe("moving media", { timeout: 240_000 }, () => {
     await done();
   });
 
-  it("ends as done when files stay because the site's code or templates use them, and says how many and where", async () => {
+  it("ends as done when files stay because the site's code uses them, and says how many and where", async () => {
     const { storage, site, root, done } = await setUp();
     const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
     const started = await storage.startMove(site, { kind: "move", from: "repository", to: "bucket" });
@@ -91,27 +126,28 @@ describe("moving media", { timeout: 240_000 }, () => {
     const status = await storage.status(site);
     const result = status.lastMove!;
 
-    // The starter's layout and its templates use some pictures, and a move never changes those files.
-    expect(result.stayedFiles).toBeGreaterThan(0);
+    // The starter's layout names two pictures, and a move never changes the site's code.
+    expect(result.stayedFiles).toBe(2);
     expect(result.stayed).toHaveLength(result.stayedFiles);
     const code = [...new Set(result.stayed.flatMap((item) => item.pages))].sort();
 
-    expect(code).toContain("src/layouts/Base.astro");
-    expect(code.every((path) => !path.startsWith("src/content/"))).toBe(true);
+    expect(code).toEqual(["src/layouts/Base.astro"]);
     // It worked: done, with nothing called a problem.
     expect(job.state).toBe("done");
     expect(job.output).toBeUndefined();
     expect(result).toMatchObject({ state: "done", request: { kind: "move", from: "repository", to: "bucket" }, copied: plan.files, removed: plan.files - result.stayedFiles, problems: [] });
     expect(result.pages).toBeGreaterThan(0);
     expect(status.moving).toBeUndefined();
-    // The words say how many were copied, how many pages changed, how many stayed and where they are still mentioned.
-    const shown = code.length > 5 ? `${code.slice(0, 5).join(", ")} and ${code.length - 5} more` : code.join(", ");
-
+    // The words say how many were copied, how many pages and page templates changed, how many stayed and what still uses them,
+    // and which files beside the site name them without keeping anything.
+    expect(result.templates).toBe(3);
+    expect(result.alsoMentioned).toEqual(["scripts/gallery/sections.md"]);
     expect(job.detail).toBe(result.summary);
     expect(result.summary).toBe(
-      `${plan.files} files copied to Cloudflare R2, ${result.pages} pages updated, ${result.removed} removed from the repository. ` +
-        `${result.stayedFiles} left in the repository: still mentioned in ${shown}. ` +
-        "Galley doesn't change the site's code or templates, so the files they use stay where they are. Publish to make it live."
+      `${plan.files} files copied to Cloudflare R2, ${result.pages} pages and 3 page templates updated, ${result.removed} removed from the repository. ` +
+        "2 left in the repository: still used by src/layouts/Base.astro. " +
+        "The site is built from those files and a move doesn't change them, so what they use stays where it is. " +
+        "Also mentioned in scripts/gallery/sections.md: not part of the site as built, so not changed. Publish to make it live."
     );
     // Every file that stayed is still there, and a page that uses it still has its own address.
     for (const item of result.stayed) expect(read(root, item.path).length, item.path).toBeGreaterThan(0);
@@ -154,7 +190,7 @@ describe("moving media", { timeout: 240_000 }, () => {
     await done();
   });
 
-  it("says which code or template files still point at the bucket when the files come back", async () => {
+  it("says which files of the site's code still point at the bucket when the files come back", async () => {
     const { storage, site, root, publicUrl, done } = await setUp();
     const layout = join(root, "src/layouts/Base.astro");
 
@@ -164,19 +200,49 @@ describe("moving media", { timeout: 240_000 }, () => {
 
     expect(back.problems).toEqual([]);
     expect(back.leftAlone).toEqual(["src/layouts/Base.astro"]);
-    expect(back.summary).toContain("src/layouts/Base.astro still points at Cloudflare R2: Galley doesn't change the site's code or templates, so change it by hand. The files are still in Cloudflare R2; remove them there once the pages are published.");
+    expect(back.summary).toContain("src/layouts/Base.astro still points at Cloudflare R2: a move doesn't change the site's code, so change it by hand. The files are still in Cloudflare R2; remove them there once the pages are published.");
     expect(read(root, "src/layouts/Base.astro")).toContain(`${publicUrl}/lowfield/team/tomas-reyes.svg`);
     expect((await storage.status(site)).lastMove).toMatchObject({ state: "done", request: { kind: "move", from: "bucket", to: "repository" }, stayedFiles: 0 });
     await done();
   });
 
-  it.each(STARTERS)("on %s the plan says what the move then does: the same files stay, for the same reasons", async (starter) => {
-    const { storage, site, root, done } = await setUp(starter);
+  it.each(STARTERS)("on %s the move moves: a copy stays only for what the site is built from, and the plan says what the move then does", async (starter) => {
+    const { storage, site, root, publicUrl, done } = await setUp(starter);
+    const expected = ON_STARTERS[starter];
     const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+    const templates = ((await site.model()).templates ?? []).map((template) => template.file);
+    const before = new Map(templates.map((file) => [file, read(root, file)]));
+    // What was waiting before the move: the settings file, saved when the bucket was connected.
+    const waiting = new Set((await site.changes()).files.map((file) => file.path));
     const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
     const byPath = (list: Array<{ path: string; pages: string[] }> | undefined) => [...(list ?? [])].map((item) => ({ path: item.path, pages: [...item.pages].sort() })).sort((a, b) => a.path.localeCompare(b.path));
 
     expect(outcome.problems).toEqual([]);
+    // The counts, as the table has them.
+    expect({ files: plan.files, removes: plan.removes, templates: plan.templates ?? 0 }).toEqual({ files: expected.files, removes: expected.removes, templates: expected.templates });
+    expect(keptBy(plan.stillMentioned)).toEqual(expected.keeps);
+    expect(plan.leftAlone).toEqual(Object.keys(expected.keeps).sort());
+    expect(plan.alsoMentioned).toEqual(expected.beside);
+    expect(outcome.alsoMentioned).toEqual(expected.beside);
+    expect(outcome.rewrittenTemplates ?? 0).toBe(expected.templates);
+    expect(outcome.rewrittenPages).toBe(plan.pages);
+    // Galley's page templates that named a picture now name its address in the bucket, as changes Proof shows;
+    // a file beside the site is as it was.
+    const changed = (await site.changes()).files.filter((file) => file.status !== "deleted" && !waiting.has(file.path)).map((file) => file.path);
+    const updated = templates.filter((file) => read(root, file) !== before.get(file));
+
+    expect(updated).toHaveLength(expected.templates);
+    for (const file of updated) {
+      expect(read(root, file), file).toContain(publicUrl);
+      expect(changed, file).toContain(file);
+    }
+    for (const file of expected.beside) expect(changed, file).not.toContain(file);
+    // The write surface: every file the move wrote is one content mode may write, or one of the templates the
+    // settings name. Nothing of the site's code, and nothing beside the site.
+    const writable = (await site.model()).writable;
+
+    expect(changed.filter((path) => !templates.includes(path) && writeRefusal(path, writable, "content") !== null)).toEqual([]);
+    for (const file of Object.keys(expected.keeps)) expect(changed, file).not.toContain(file);
     // Every file the plan said would stay stayed, no other did, and each for the files the plan named.
     expect(byPath(plan.stillMentioned)).toEqual(byPath(outcome.stillMentioned));
     expect(plan.leftAlone ?? []).toEqual(outcome.leftAlone ?? []);
@@ -192,6 +258,44 @@ describe("moving media", { timeout: 240_000 }, () => {
 
     expect(byPath(again.stillMentioned)).toEqual(byPath(second.stillMentioned));
     expect(again.removes).toBe(second.removed);
+    await done();
+  });
+
+  it.each(STARTERS)("on %s with build mode off, the page templates are left and keep what they use", async (starter) => {
+    const { storage, site, root, done } = await setUp(starter, (config) => ({ ...config, ai: { ...config.ai, allowBuild: false } }));
+    const templates = ((await site.model()).templates ?? []).map((template) => template.file);
+    const before = new Map(templates.map((file) => [file, read(root, file)]));
+    const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+    const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
+
+    expect(outcome.problems).toEqual([]);
+    expect(plan.templates).toBeUndefined();
+    expect(outcome.rewrittenTemplates).toBeUndefined();
+    expect({ removes: plan.removes, removed: outcome.removed }).toEqual({ removes: ON_STARTERS[starter].withBuildModeOff, removed: ON_STARTERS[starter].withBuildModeOff });
+    // Not one template was written, and each is named among the files a move doesn't change.
+    for (const file of templates) expect(read(root, file), file).toBe(before.get(file));
+    const naming = templates.filter((file) => Object.hasOwn(keptBy(plan.stillMentioned), file));
+
+    expect(naming.length).toBe(ON_STARTERS[starter].templates);
+    expect(plan.leftAlone).toEqual([...naming, ...Object.keys(ON_STARTERS[starter].keeps)].sort());
+    expect(outcome.leftAlone).toEqual(plan.leftAlone);
+    await done();
+  });
+
+  it.each(STARTERS)("on %s, a folder the settings say the build reads counts as what the site is built from", async (starter) => {
+    const { storage, site, root, done } = await setUp(starter, (config) => ({ ...config, build: { ...config.build, sources: ["scripts/gallery/**"] } }));
+    const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
+    const gallery = read(root, GALLERY);
+    const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
+
+    expect(outcome.problems).toEqual([]);
+    expect((await site.model()).builtFrom).toContain("scripts/gallery/**");
+    expect({ removes: plan.removes, removed: outcome.removed }).toEqual({ removes: ON_STARTERS[starter].withGalleryBuilt, removed: ON_STARTERS[starter].withGalleryBuilt });
+    // The script's file keeps every picture it names, isn't changed, and is no longer listed as beside the site.
+    expect(plan.leftAlone).toContain(GALLERY);
+    expect(plan.alsoMentioned ?? []).not.toContain(GALLERY);
+    expect(read(root, GALLERY)).toBe(gallery);
+    for (const item of outcome.stillMentioned ?? []) expect(read(root, item.path).length, item.path).toBeGreaterThan(0);
     await done();
   });
 
@@ -268,7 +372,7 @@ describe("moving media", { timeout: 240_000 }, () => {
     const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
 
     expect(outcome.stillMentioned).toContainEqual({ path: PHOTO, pages: [AUTHOR] });
-    expect(outcome.summary).toMatch(/left in the repository: still mentioned in .*src\/content\/authors\/tomas-reyes\.md/);
+    expect(outcome.summary).toMatch(/left in the repository: still used by .*src\/content\/authors\/tomas-reyes\.md/);
     expect(read(root, PHOTO)).toContain("<svg");
     expect((await site.changes()).files.find((file) => file.path === PHOTO)).toBeUndefined();
     await done();
@@ -370,7 +474,7 @@ describe("moving media", { timeout: 240_000 }, () => {
     await done();
   });
 
-  it("keeps the old address while a code or template file still uses it, and says which", async () => {
+  it("keeps the old address while a file of the site's code still uses it, and says which", async () => {
     const { storage, site, root, publicUrl, done } = await setUp();
     const layout = join(root, "src/layouts/Base.astro");
 
@@ -379,7 +483,7 @@ describe("moving media", { timeout: 240_000 }, () => {
     const next = publicUrl.replace("127.0.0.1", "localhost");
     const outcome = await storage.move(site, { kind: "address", store: "bucket", publicUrl: next });
 
-    expect(outcome.problems).toEqual([{ path: "src/layouts/Base.astro", reason: "Couldn't update it: it is part of the site's code or templates, not its content, so Galley leaves it as it is" }]);
+    expect(outcome.problems).toEqual([{ path: "src/layouts/Base.astro", reason: "Couldn't update it: the site is built from it and a move doesn't change the site's code, so Galley leaves it as it is" }]);
     expect(outcome.summary).toMatch(/1 couldn't be: the address in use stays the old one until they are/);
     expect((await site.readConfig())?.media?.storage?.publicUrl).toBe(publicUrl);
     expect((await storage.status(site)).lastMove).toMatchObject({ state: "error", request: { kind: "address" } });

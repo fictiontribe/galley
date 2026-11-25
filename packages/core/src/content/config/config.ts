@@ -10,6 +10,7 @@ import { PRODUCT } from "../../brand";
 import { GalleyError } from "../../errors";
 import type { BlockType, Collection, CollectionConfig, Field, FieldConfig, GalleyConfig, SiteModel } from "../../types";
 import { siteExtensions } from "../../plugins/site";
+import { builtFromGlobs } from "../detect/built-from";
 import { adapterName, runDetection } from "../detect/detect";
 import { inspectCollection } from "../detect/inspect";
 import { formatForPath } from "../document/parse";
@@ -193,10 +194,18 @@ export function mergeConfig(detected: SiteModel, config: GalleyConfig | null): S
     if (collection.kind === "data" && collection.path === listFile && !configured.has(collection.id)) collections[index] = { ...collection, hidden: true };
   }
 
+  // What the site is built from: the adapter's list and the settings' further sources. With no list from the
+  // adapter, every file counts already.
+  const sources = config.build?.sources ? builtFromGlobs(config.build.sources) : [];
+
+  if (sources === null) notes.push(`“build.sources” in ${PRODUCT.configFile} has to be globs inside the site; it was left out.`);
+  const builtFrom = detected.builtFrom ? [...new Set([...detected.builtFrom, ...(sources ?? [])])] : undefined;
+
   if (config.framework && config.framework !== detected.framework.id) notes.push(`${PRODUCT.configFile} sets the framework to ${framework.name}.`);
   notes.push(`Applied ${PRODUCT.configFile}.`);
   return {
     ...detected,
+    ...(builtFrom ? { builtFrom } : {}),
     name: config.name ?? detected.name,
     framework,
     dev,
