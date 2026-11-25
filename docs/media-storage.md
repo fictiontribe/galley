@@ -147,15 +147,16 @@ settings' `build.sources`. With no list from the adapter every file counts,
 which is what every file did before 0.4.2.
 
 The list can't know what a site's own code reads from elsewhere, so a file
-outside it is looked at once more before it is called "beside" (`readBy` in
-`move.ts`): it counts as built when a file inside the list holds a quoted
-relative path that leads to it. That is how an import, `new URL("…",
+outside it is looked at once more before it is called "beside"
+(`readsFromInside` in `move.ts`): it counts as built when a file inside the
+list holds a quoted relative path that leads to it. That is how an import, `new URL("…",
 import.meta.url)`, a file the code opens and `import.meta.glob` are written.
 The path may leave off the extension, name a module by another module
 extension (`./team.js` for `team.ts`), name the folder of an index file, or
-be a glob; a `?raw` or `?url` after it is ignored. The search is one
-`git grep` for each file outside the list that names a picture being moved,
-and one more for the globs.
+be a glob; a `?raw` or `?url` after it is ignored. It costs one search of
+the site's files for quoted paths that start `./` or `../`, made only when a
+file outside the list names a picture being moved; on the storefront starter
+that is one search among the 55 a plan makes.
 
 It is one step, and only a path written out from the file it is in. Not
 followed: an alias (`@/data/…`, tsconfig `paths`), a path from the site root

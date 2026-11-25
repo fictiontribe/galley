@@ -203,13 +203,14 @@ async function standingsOf(site: SiteService): Promise<Standings> {
   const mayBuild = model.ai.allowBuild && callerMay(BUILD_MODE_LEVEL);
   const written = (path: string): "content" | "template" | null => (!writeRefusal(path, model.writable, "content") ? "content" : templates.has(path) ? "template" : null);
   const readers = new Map<string, string[]>();
-  let globs: Promise<Array<{ path: string; match: string }>> | null = null;
+  let reads: Promise<(path: string) => string[]> | null = null;
 
   async function readersOf(path: string): Promise<string[]> {
     const known = readers.get(path);
 
     if (known) return known;
-    const found = await readBy(site, path, built, () => (globs ??= relativeLiterals(site, "[*]")));
+    // Looked for once, and only when a file outside the list names something being moved.
+    const found = (await (reads ??= readsFromInside(site, built)))(path);
 
     readers.set(path, found);
     return found;
@@ -229,60 +230,57 @@ async function standingsOf(site: SiteService): Promise<Standings> {
   };
 }
 
-/** Quoted paths in the site's files that start at the file they are in ("./…", "../…") and hold `holding` (a pattern). */
-async function relativeLiterals(site: SiteService, holding: string): Promise<Array<{ path: string; match: string }>> {
-  if (!site.grepText) throw new GalleyError("internal", "This site's files can't be searched, so nothing was moved.");
-  return site.grepText(`["'\`]\\.\\.?/[^"'\`]*${holding}[^"'\`]*["'\`]`, { rev: "working" });
-}
-
 /** Without its last extension: "data/team.json" → "data/team". */
 const extensionless = (path: string) => path.replace(/\.[^./]+$/, "");
-/** A module, which can be asked for under another module extension (a .ts file as .js). */
-const MODULE = /\.[cm]?[jt]sx?$/;
+/** The extensions a module can be asked for by, whichever it has (a .ts file as .js). */
+const MODULE_EXTENSIONS = [".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx"];
 
 /**
- * The files inside what the site is built from that read `path`, a file
- * outside it: each holds a quoted relative path that leads to it. That is
- * how an import, `new URL("…", import.meta.url)`, a file the code opens and
+ * Which files inside what the site is built from read a file outside it:
+ * each holds a quoted relative path that leads to it. That is how an import,
+ * `new URL("…", import.meta.url)`, a file the code opens and
  * `import.meta.glob` are written, so each is found; so is a path in a
  * comment, which only keeps more. The path may leave off the extension, name
  * a module by another module extension, name the folder of an index file,
- * or be a glob.
+ * or be a glob; what follows a "?" or "#" says how to load the file, not
+ * which.
  *
  * One step only, and only a path written out from the file it is in. Not
  * followed: an alias ("@/data/…", a tsconfig path), a path from the site
  * root or put together at run time, and a file reached through another file
  * outside the list. A site that builds from one of those says so in
  * `build.sources`.
+ *
+ * One search of the site's files for quoted paths that start "./" or "../";
+ * the answer for a file is then a lookup.
  */
-async function readBy(site: SiteService, path: string, built: (path: string) => boolean, globs: () => Promise<Array<{ path: string; match: string }>>): Promise<string[]> {
-  const name = posix.basename(path);
-  const stem = extensionless(name);
-  const folder = posix.dirname(path);
-  const indexOf = stem === "index" && folder !== "." ? folder : null;
-  const found = new Set<string>();
-  /** Where a quoted path in `from` leads, from the site root; null when it leaves the site. */
-  const target = (from: string, literal: string): string | null => {
-    const led = posix.normalize(posix.join(posix.dirname(from), literal)).replace(/\/+$/, "");
+async function readsFromInside(site: SiteService, built: (path: string) => boolean): Promise<(path: string) => string[]> {
+  if (!site.grepText) throw new GalleyError("internal", "This site's files can't be searched, so nothing was moved.");
+  /** Where the paths written inside the list lead, outside it: each with the files that hold it. */
+  const led = new Map<string, Set<string>>();
+  const globs: Array<{ matches: (path: string) => boolean; reader: string }> = [];
 
-    return led === "." || led === ".." || led.startsWith("../") ? null : led;
-  };
-
-  for (const hit of await relativeLiterals(site, escapePattern(indexOf ? posix.basename(indexOf) : stem))) {
+  for (const hit of await site.grepText("[\"'`]\\.\\.?/[^\"'`]+[\"'`]", { rev: "working" })) {
     if (!built(hit.path)) continue;
-    // A query or hash says how to load the file ("?raw", "?url"), not which file.
-    const led = target(hit.path, hit.match.slice(1, -1).replace(/[?#].*$/, ""));
+    const written = hit.match.slice(1, -1);
+    const glob = written.includes("*");
+    // From the site root; a path that leaves the site, or is the site, names no file of it.
+    const to = posix.normalize(posix.join(posix.dirname(hit.path), glob ? written : written.replace(/[?#].*$/, ""))).replace(/\/+$/, "");
 
-    if (led === null) continue;
-    if (led === path || led === extensionless(path) || led === indexOf || (MODULE.test(path) && MODULE.test(led) && extensionless(led) === extensionless(path))) found.add(hit.path);
+    if (to === "." || to === ".." || to.startsWith("../")) continue;
+    if (glob) globs.push({ matches: picomatch(to, { dot: true }), reader: hit.path });
+    else if (!built(to)) led.set(to, (led.get(to) ?? new Set()).add(hit.path));
   }
-  for (const hit of await globs()) {
-    if (!built(hit.path) || found.has(hit.path)) continue;
-    const led = target(hit.path, hit.match.slice(1, -1));
+  return (path) => {
+    const stem = extensionless(path);
+    const module = MODULE_EXTENSIONS.some((extension) => path.endsWith(extension));
+    const names = [path, stem, ...(module ? MODULE_EXTENSIONS.map((extension) => `${stem}${extension}`) : []), ...(posix.basename(stem) === "index" && posix.dirname(path) !== "." ? [posix.dirname(path)] : [])];
+    const found = new Set<string>();
 
-    if (led !== null && picomatch(led, { dot: true })(path)) found.add(hit.path);
-  }
-  return [...found].sort();
+    for (const name of names) for (const reader of led.get(name) ?? []) found.add(reader);
+    for (const glob of globs) if (glob.matches(path)) found.add(glob.reader);
+    return [...found].sort();
+  };
 }
 
 /** Files that might hold references: the plain pattern and its JSON-escaped form, searched by git grep. */
