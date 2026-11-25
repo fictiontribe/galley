@@ -12,6 +12,7 @@ import { glob } from "tinyglobby";
 import { OVERLAY_SCRIPT_PATH } from "../api";
 import { stripBase } from "./html";
 import type { SiteModel, SiteService } from "../types";
+import { mayBeShown } from "../workspace/policy";
 
 export interface Fetched {
   status: number;
@@ -209,7 +210,8 @@ export async function findRenderSource(site: SiteService, model: SiteModel, newe
   const status = site.preview().status();
 
   if (status.state === "ready" && status.url) return previewSource(status.url, await configBase(site));
-  if (!model.build?.outDir) return null;
+  // What is read from here is shown: never out of the version history's own folder or one that holds secrets.
+  if (!model.build?.outDir || !mayBeShown(model.build.outDir)) return null;
   let dir: string;
 
   try {
