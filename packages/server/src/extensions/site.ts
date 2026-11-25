@@ -64,30 +64,38 @@ const CONTROLLERS: Record<string, ReadonlySet<string>> = {
 };
 
 /**
- * A controller as an extension is handed it: the engine's own object behind
- * the site's guards. Every method asks first whether the extension is still
- * alive; one that changes something asks the GET rule too.
+ * A controller as an extension is handed it: a plain, frozen object with the
+ * controller's members, each going to the engine's own behind the site's
+ * guards. Every method asks first whether the extension is still alive; one
+ * that changes something asks the GET rule too. The engine's own object and
+ * its functions are not reachable from it, however it is looked at.
  */
 function guardController<T extends object>(controller: T, changes: ReadonlySet<string>, live: () => void, mayChange: () => void): T {
-  return new Proxy(controller, {
-    get(target, key) {
-      const value = Reflect.get(target, key, target) as unknown;
+  const guarded: Record<string, unknown> = {};
+  const names = new Set<string>();
 
-      if (typeof value !== "function") {
-        live();
-        return value;
-      }
-      return (...args: unknown[]) => {
-        if (typeof key === "string" && changes.has(key)) mayChange();
+  // Its own members and what it inherits (a controller may be a class's), short of what every object has.
+  for (let from: object | null = controller; from !== null && from !== Object.prototype; from = Object.getPrototypeOf(from) as object | null) {
+    for (const name of Object.getOwnPropertyNames(from)) if (name !== "constructor") names.add(name);
+  }
+  for (const name of names) {
+    if (typeof (controller as Record<string, unknown>)[name] === "function") {
+      guarded[name] = (...args: unknown[]) => {
+        if (changes.has(name)) mayChange();
         else live();
-        return (value as (...a: unknown[]) => unknown).apply(target, args);
+        return ((controller as Record<string, unknown>)[name] as (...a: unknown[]) => unknown).apply(controller, args);
       };
-    },
-    // Read-only from outside: what it is belongs to the engine.
-    set: () => false,
-    defineProperty: () => false,
-    deleteProperty: () => false,
-  });
+      continue;
+    }
+    Object.defineProperty(guarded, name, {
+      enumerable: true,
+      get: () => {
+        live();
+        return copyOf((controller as Record<string, unknown>)[name]);
+      },
+    });
+  }
+  return Object.freeze(guarded) as T;
 }
 
 /** Reads that name a file by their first argument. */
@@ -96,6 +104,8 @@ const BY_PATH = new Set<string>(["readFile", "readBase", "resolvePath", "diff", 
 export const UNREADABLE = "That file can't be shown here.";
 export const GET_CHANGES_NOTHING = "A GET route can't change a site. Use POST, PUT, PATCH or DELETE for what changes something.";
 export const STOPPED = "This extension has been stopped, so it can no longer use the site.";
+/** How many of a search's files are looked at for links at once. */
+export const LINKS_AT_ONCE = 32;
 
 /** Set while a GET's handler runs, and for whatever that handler starts: a site asked for meanwhile is read-only too. */
 const getInProgress = new AsyncLocalStorage<true>();
@@ -155,15 +165,19 @@ function linkChecker(site: SiteService) {
       const leading = new Set<string>();
 
       if (from === null) return leading;
-      await Promise.all(
-        [...new Set(paths)].map(async (path) => {
+      const waiting = [...new Set(paths)];
+      // A few at a time: a search can find thousands of files, and each one is a walk of its path.
+      const look = async () => {
+        for (let path = waiting.pop(); path !== undefined; path = waiting.pop()) {
           try {
             if (unreadable(relative(from, await realpath(site.resolvePath(path))))) leading.add(path);
           } catch {
             // As above.
           }
-        })
-      );
+        }
+      };
+
+      await Promise.all(Array.from({ length: Math.min(LINKS_AT_ONCE, waiting.length) }, look));
       return leading;
     },
   };
@@ -180,7 +194,13 @@ const thenable = (value: unknown): value is PromiseLike<unknown> => typeof (valu
 export function copyOf<T>(value: T): T {
   if (value === null || typeof value !== "object") return value;
   // A file's bytes stay what they were (a Buffer reads as text; a plain array of bytes doesn't), and only the bytes handed are copied.
-  if (Buffer.isBuffer(value)) return Buffer.from(value) as unknown as T;
+  if (Buffer.isBuffer(value)) {
+    // Memory of its own, exactly its size: a small `Buffer.from` copy would sit in a pool shared with whatever else was read lately.
+    const own = Buffer.alloc(value.length);
+
+    own.set(value);
+    return own as unknown as T;
+  }
   if (ArrayBuffer.isView(value) && !(value instanceof DataView)) return (value as unknown as Uint8Array).slice() as unknown as T;
   try {
     return structuredClone(value);

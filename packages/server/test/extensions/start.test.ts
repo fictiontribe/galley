@@ -3,6 +3,7 @@
  * server's start and leaves nothing running; where there are no accounts
  * the one person on their own computer is the caller.
  */
+import { writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -11,7 +12,8 @@ import { hostedMode } from "@galley/core/plugins";
 import { withoutHiddenVariables } from "@galley/core/workspace";
 import { startServer, type ServerOptions } from "../../src";
 import { defineExtension, type ExtensionHost } from "../../src/extensions";
-import { call, EDITOR, sandbox, siteRepository, startHosted, stopHosted } from "../hosted-helpers";
+import { call, EDITOR, freePort, sandbox, siteRepository, startHosted, stopHosted, until } from "../hosted-helpers";
+import { buildServices } from "../helpers";
 import { newProbe, statusExtension } from "./status";
 
 const box = sandbox("extensions-start");
@@ -150,5 +152,84 @@ describe("starting a server with extensions", () => {
     } finally {
       await new Promise<void>((resolve) => taken.close(() => resolve()));
     }
+  });
+
+  it("answers 'not ready yet' to anyone who asks while a setup is still running, and serves once it has finished", async () => {
+    const port = await freePort();
+    let finish!: () => void;
+    const slow = defineExtension({ id: "slow-start", setup: () => new Promise((resolve) => (finish = () => resolve({ routes: { "GET /ready": { access: "edit", handle: () => ({ ready: true }) } } }))) });
+    const starting = local(box.folder("home"), [slow], { port, findFreePort: false });
+
+    // The port is open already; the app is not there to answer yet.
+    await until(async () => (await call(port, "GET", "/api/meta", { host: `127.0.0.1:${port}` }).catch(() => ({ status: 0 }))).status === 503);
+    expect((await call(port, "GET", "/api/x/slow-start/ready", { host: `127.0.0.1:${port}`, headers: { "sec-fetch-site": "same-origin" } })).status).toBe(503);
+    finish();
+    const server = await starting;
+
+    try {
+      expect((await call(port, "GET", "/api/meta", { host: `127.0.0.1:${port}` })).status).toBe(200);
+      expect((await call(port, "GET", "/api/x/slow-start/ready", { host: `127.0.0.1:${port}`, bearer: server.token! })).body).toEqual({ ready: true });
+    } finally {
+      await server.close({ graceMs: 0 });
+    }
+  });
+
+  it("is stopped, and left holding nothing, when another server takes the data folder", async () => {
+    const home = box.folder("displaced-home");
+    const seen: { host?: ExtensionHost; stops: number } = { stops: 0 };
+    const watching = defineExtension({ id: "watching", setup: (host) => ((seen.host = host), { stop: () => void (seen.stops += 1) }) });
+    const started = await startHosted(box, home, {}, { holdBeatMs: 25, extensions: [watching] });
+    // Another server's hold is in the folder now, and it is running: its hold changes every beat.
+    let beat = 0;
+    const write = () => writeFileSync(join(home, "server.lock"), `${JSON.stringify({ pid: 1, hostname: "another-machine", port: 4400, startedAt: new Date().toISOString(), id: "theirs", beat: (beat += 1) })}\n`);
+    const timer = setInterval(write, 25);
+
+    write();
+    try {
+      await started.server.displaced;
+      await until(() => seen.stops === 1);
+    } finally {
+      clearInterval(timer);
+      box.running.splice(box.running.indexOf(started.server), 1);
+    }
+    expect(seen.stops).toBe(1);
+    expect(await seen.host!.sites.get("any")).toBeNull();
+  });
+
+  it("two extensions' secrets are both kept from a site's commands and from the log", async () => {
+    const lines: string[] = [];
+    const first = defineExtension({ id: "first", secrets: ["FIRST_SERVICE_TOKEN"], setup: (host) => (host.log("first knows first-secret-value-1 and second-secret-value-2"), {}) });
+    const second = defineExtension({
+      id: "second",
+      secrets: ["SECOND_SERVICE_TOKEN"],
+      setup(host) {
+        host.log("second knows first-secret-value-1 and second-secret-value-2");
+        return {};
+      },
+    });
+    const started = await startHosted(box, box.folder("two-home"), { FIRST_SERVICE_TOKEN: "first-secret-value-1", SECOND_SERVICE_TOKEN: "second-secret-value-2", OTHER: "kept" }, { extensions: [first, second], log: (line) => void lines.push(line) });
+
+    try {
+      expect(withoutHiddenVariables({ FIRST_SERVICE_TOKEN: "a", SECOND_SERVICE_TOKEN: "b", OTHER: "kept" })).toEqual({ OTHER: "kept" });
+      // Each line passes its own extension's scrubber and then the server's, which knows every declared name.
+      expect(lines.filter((line) => line.includes("knows"))).toHaveLength(2);
+      expect(lines.join("\n")).not.toMatch(/first-secret-value-1|second-secret-value-2/);
+    } finally {
+      await stopHosted(box, started);
+    }
+  });
+
+  it("a failed start doesn't close a registry of sites the server was handed: that is its owner's to close", async () => {
+    let disposed = 0;
+    const services = buildServices({ registry: { dispose: async () => void (disposed += 1) } as never });
+    const failing = defineExtension({ id: "failing", setup: () => { throw new Error("no"); } });
+
+    await expect(local(box.folder("home"), [failing], { services })).rejects.toThrow("Extension “failing” couldn't start: no");
+    expect(disposed).toBe(0);
+    // A server that did start with it closes it when it stops, as it always has.
+    const server = await local(box.folder("home"), [], { services });
+
+    await server.close({ graceMs: 0 });
+    expect(disposed).toBe(1);
   });
 });

@@ -7,7 +7,7 @@
 import { mkdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { BUILD_MODE_REFUSAL, NO_CALLER_REFUSAL, OUTLIVED_REFUSAL, ROLE_REFUSAL, SIGN_IN_ENDED_REFUSAL } from "@galley/core/install";
+import { BUILD_MODE_REFUSAL, NO_CALLER_REFUSAL, OUTLIVED_REFUSAL, ROUTE_ACCESS, ROLE_REFUSAL, SIGN_IN_ENDED_REFUSAL } from "@galley/core/install";
 import type { SiteService } from "@galley/core/types";
 import { deniedReason, withoutHiddenVariables } from "@galley/core/workspace";
 import { startServer } from "../../src";
@@ -35,6 +35,19 @@ const OWN_PAGE = { "sec-fetch-site": "same-origin" };
 const touch = (name: string) => writeFileSync(join(folder, "src/content/pages", `${name}.md`), `---\ntitle: ${name}\n---\n${Date.now()} ${Math.random()}\n`);
 const x = (method: string, path: string, init: CallInit = {}) => call(port, method, `/api/x/status${path}`, { ...init, headers: { ...OWN_PAGE, ...init.headers } });
 const site = (rest = "") => `/sites/${siteId}${rest}`;
+/** What every route of the editor's own answers someone who isn't signed in, by route: its status and its error's code. */
+async function strangersAnswers(onPort: number): Promise<Record<string, string>> {
+  const answers: Record<string, string> = {};
+
+  for (const key of Object.keys(ROUTE_ACCESS)) {
+    const [method, path] = key.split(" ") as [string, string];
+    // The event stream stays open for anyone it lets in; a stranger is refused before it opens.
+    const answer = await call(onPort, method, path.replace(/:[A-Za-z]+/g, "x"), { headers: OWN_PAGE });
+
+    answers[key] = `${answer.status} ${answer.body?.error?.code ?? ""}`.trim();
+  }
+  return answers;
+}
 
 async function signIn(email: string): Promise<string> {
   const answer = await call(port, "POST", "/api/auth/login", { body: { email, password: PASSWORD } });
@@ -548,6 +561,9 @@ describe("routes an embedding program adds", () => {
     expect((await x("GET", "/about", { cookie: people.owner.cookie })).body).toEqual({ mode: "hosted" });
     expect(withoutHiddenVariables({ STATUS_API_KEY: SECRET })).toEqual({});
     expect(probe.calls.stop ?? 0).toBe(0);
+    // Before it stops: what each of the editor's own routes answers a stranger, with the extension mounted.
+    const withIt = await strangersAnswers(port);
+
     touch("published-while-stopping");
     probe.later.length = 0;
     // Work a handler leaves running that will only wake after the server has stopped.
@@ -591,6 +607,13 @@ describe("routes an embedding program adds", () => {
     await until(() => probe.later.some((line) => line.startsWith("save ")));
     expect(probe.later.filter((line) => /^(publish|save) /.test(line))).toEqual([`publish refused: ${STOPPED}`, `save refused: ${STOPPED}`]);
     expect(git(folder, "log", "-1", "--format=%s")).not.toBe("Later");
+    // The same install without the extension answers a stranger the same on every one of its routes.
+    const without = await startHosted(box, started.server.home, { GALLEY_PUBLIC_URL: EDITOR, GALLEY_PASSWORD: PASSWORD, GALLEY_OWNER_NAME: "Sam Owner", GALLEY_OWNER_EMAIL: "sam@example.com", GALLEY_TOKEN: OPERATOR });
+    const withoutIt = await strangersAnswers(without.port);
+
+    await stopHosted(box, without);
+    expect(Object.keys(withIt).length).toBeGreaterThan(200);
+    expect(withIt).toEqual(withoutIt);
     // With it gone, a server starts; and beside that one, a server with extensions doesn't.
     const plain = await second();
 
