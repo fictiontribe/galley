@@ -28,6 +28,8 @@ export interface StatusProbe {
   kept?: GuardedSite | null;
   /** The preview's controller, taken by a POST and kept. */
   keptPreview?: ReturnType<GuardedSite["preview"]>;
+  /** A checkpoint that recorded one new page, taken by a POST and kept. */
+  keptCheckpoint?: ReturnType<GuardedSite["checkpoint"]>;
 }
 
 export function newProbe(): StatusProbe {
@@ -170,6 +172,21 @@ export function statusExtension(probe: StatusProbe, options: { setup?: (host: Ex
           // Takes the preview's controller in a POST and keeps it; then a GET reads its status and tries to start it.
           "POST /sites/:siteId/keep-preview": { access: "edit", body: () => undefined, handle: (request) => ((probe.keptPreview = request.site!.preview()), { state: probe.keptPreview.status().state }) },
           "GET /kept-preview": { access: "edit", handle: async () => ({ state: probe.keptPreview!.status().state, started: await attempt(() => probe.keptPreview!.start()), stopped: await attempt(() => probe.keptPreview!.stop()), restarted: await attempt(() => probe.keptPreview!.restart()) }) },
+          // Records one new page in a checkpoint, in a POST, and keeps the checkpoint; then a GET reads it and tries to put the page back.
+          "POST /sites/:siteId/keep-checkpoint": {
+            access: "edit",
+            body: () => undefined,
+            async handle(request) {
+              const checkpoint = request.site!.checkpoint("a kept checkpoint");
+
+              await checkpoint.run(() => request.site!.writeFile("src/content/pages/by-a-checkpoint.md", "---\ntitle: By a checkpoint\n---\n", { origin: "user", mode: "content" }));
+              checkpoint.close();
+              probe.keptCheckpoint = checkpoint;
+              return { paths: checkpoint.paths() };
+            },
+          },
+          "GET /kept-checkpoint": { access: "edit", handle: async () => ({ id: typeof probe.keptCheckpoint!.id, paths: probe.keptCheckpoint!.paths(), restored: await attempt(() => probe.keptCheckpoint!.restore()), left: probe.keptCheckpoint!.left() }) },
+          "POST /kept-checkpoint/restore": { access: "edit", body: () => undefined, handle: async () => ({ restored: await probe.keptCheckpoint!.restore() }) },
           // Reaches a site through the host instead of the request, from a GET.
           "GET /any-site": { access: "edit", handle: async (request) => ({ tried: await attempt(async () => (await host.sites.get(request.query.site ?? ""))!.writeFile("src/content/pages/by-a-get.md", "x", { origin: "user", mode: "content" })) }) },
           // An address that ends like one the editor treats specially.

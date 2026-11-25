@@ -572,10 +572,16 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
       leaveProcess();
     }
   };
+  /**
+   * Lets go of the data folder for a start that failed before anything but the hold was taken. Through the same
+   * undo as a start that failed later: a failure to let go is said in the log, and never replaces the error the
+   * start failed with.
+   */
+  const letGo = () => undoEach([{ what: "letting go of the data folder", run: release }], out.log, options.undoStepMs);
   // Hosted: the install's state, migrated before anything else reads the data folder.
   const store = hosted
     ? await openState(config, notice).catch(async (error) => {
-        await release();
+        await letGo();
         throw error;
       })
     : null;
@@ -583,7 +589,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   if (!hosted) await mkdir(config.sitesDir, { recursive: true });
 
   const cookieKey = await sessionKey(config.home).catch(async (error) => {
-    await release();
+    await letGo();
     throw error;
   });
   const hideSecrets = () => hideFromSiteCommands([...APP_SECRET_ENV_NAMES, ...pluginSecretEnv, ...extensionSecretEnv]);
@@ -653,8 +659,9 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   try {
     port = await bind(server, config, notice);
   } catch (error) {
+    // The commonest way a start fails (the port is taken). The port's error is the one reported, whatever letting go does.
+    await letGo();
     undo();
-    await release();
     throw error;
   }
   // The hold says where this server listens: `backup create` and `backup restore` on the command line name it when they refuse this folder.

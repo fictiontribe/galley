@@ -18,7 +18,7 @@ import type { ChangeOrigin, GitStatus, HistoryEntry, PublishConfig, PublishReque
 import type { PendingStatus } from "./changes";
 import { GIT_NETWORK_TIMEOUT_MS, splitNul, type Git, type RepoInfo } from "./git";
 import { normalizeRepoPath } from "./paths";
-import { deniedReason } from "./policy";
+import { deniedReason, isSecretsFile } from "./policy";
 import { classifyPushError, compareUrl, createPullRequestWithGh, redactRemoteUrl } from "./remote";
 import type { AuthorSource } from "./author";
 
@@ -121,9 +121,8 @@ function failure(files: string[], error: string, detail?: string): PublishResult
 /** Paths never committed by the app, whatever the user selects: secrets and installed packages. */
 function neverPublish(path: string): boolean {
   const lower = path.toLowerCase().split("/");
-  const name = lower[lower.length - 1] ?? "";
 
-  return lower.includes(".git") || lower.includes("node_modules") || name === ".env" || name.startsWith(".env.");
+  return lower.includes(".git") || lower.includes("node_modules") || isSecretsFile(path);
 }
 
 function cleanIdentityPart(value: string): string {

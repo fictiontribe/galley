@@ -151,6 +151,16 @@ entry says how.
 - **Stopping a server that can't let go of its data folder says so.** A stop
   that fails to release the folder still fails, as before; the reason is now
   also written to the log, and the rest of the stop is finished first.
+- **A secrets file is any file whose name starts with `.env`.** Galley
+  never shows, changes, publishes or deploys a secrets file. It knew one by
+  two names, `.env` and `.env.` followed by something, so a file called
+  `.envrc`, `.env-production` or `.env_local` was treated as an ordinary
+  file of the site. Any file whose name starts with `.env` now counts, in
+  any letter case and in any folder. One rule decides it everywhere: the
+  editor's file routes, what an extension may read, what may be written,
+  what a publish commits and what a deploy uploads. It errs on the side of
+  refusing, so a harmless file that starts the same way (`.envoy.yaml`) is
+  refused too.
 
 ## 0.4.1 — 2026-11-25
 

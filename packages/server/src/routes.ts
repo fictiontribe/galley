@@ -14,6 +14,7 @@ import { GalleyError } from "@galley/core";
 import { validateConfig } from "@galley/core/content";
 import { readSettings, siteNameAt } from "@galley/core/site";
 import { checkPublish } from "@galley/core/plugins";
+import { isSecretsFile } from "@galley/core/workspace";
 import type { ChangeSet, FileDiff, MetaInfo, SecretStatus, Settings, SiteService } from "@galley/core/types";
 import { isAuthenticated, safeEqual, sessionNonce, signSession, clientAddress, SESSION_MAX_AGE_S, requestProtocol, type LoginLimiter, type SessionCheck } from "./auth";
 import { decodeMediaDataUrl } from "./data-url";
@@ -117,10 +118,7 @@ function withMediaUrls(siteId: string, diff: FileDiff): FileDiff {
 
 /** Secrets and version-history internals never leave through the file routes. */
 function assertReadable(path: string): void {
-  const segments = path.toLowerCase().split("/");
-  const name = segments[segments.length - 1] ?? "";
-
-  if (segments.includes(".git") || name === ".env" || name.startsWith(".env.")) throw forbidden("That file can't be shown here.");
+  if (path.toLowerCase().split("/").includes(".git") || isSecretsFile(path)) throw forbidden("That file can't be shown here.");
 }
 
 function bytesResponse(data: Uint8Array | ReadableStream<Uint8Array>, type: string, length: number | null, cache: string): Response {
