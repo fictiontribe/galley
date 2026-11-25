@@ -133,6 +133,48 @@ describe("the Install page", () => {
     expect(calls(server, "POST", "/api/install/restore/upload")).toHaveLength(0);
   });
 
+  it("closes its live connection while a backup is put back, follows the restore by asking, and stays to say how it went", async () => {
+    const server = await startServer({ mode: "hosted", setup: "done" });
+    server.backend.authenticated = true;
+    // Every live connection the app opens, and whether it has closed it.
+    const streams: Array<{ closed: boolean }> = [];
+    const Base = (globalThis as unknown as { EventSource: new () => { close(): void } }).EventSource;
+    vi.stubGlobal(
+      "EventSource",
+      class extends Base {
+        private readonly mine = { closed: false };
+        constructor() {
+          super();
+          streams.push(this.mine);
+        }
+        override close(): void {
+          this.mine.closed = true;
+          super.close();
+        }
+      },
+    );
+    page = await renderApp(server, "/install");
+    await until(() => expect(page?.text()).toContain("What is stored where"));
+    expect(streams.map((stream) => stream.closed)).toEqual([false]);
+
+    await click(byText(document, "button", "Restore from a backup…"));
+    await until(() => expect(dialog().querySelector('input[type="file"]')).not.toBeNull());
+    const input = dialog().querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, "files", { value: [new File([new Uint8Array(2048)], "site-backup.bin", { type: "application/octet-stream" })], configurable: true });
+    const { act } = await import("react");
+    await act(async () => {
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await until(() => expect(dialog().textContent).toContain("uploaded"));
+    await type(field(dialog(), "Passphrase"), "the passphrase it was sealed with");
+    await click(byText(dialog(), "button", "Restore"));
+    await until(() => expect(dialog().textContent).toContain("The backup is back in place."), 5000);
+    // Closed by the page itself, and not opened again: nothing took the ended connection for a lost sign-in.
+    expect(streams.map((stream) => stream.closed)).toEqual([true]);
+    expect(window.location.pathname).toBe("/install");
+    expect(server.log.some((entry) => entry.method === "GET" && entry.path.startsWith("/api/jobs/"))).toBe(true);
+  });
+
   it("isn't there in local mode", async () => {
     const server = await startServer({ mode: "local" });
     page = await renderApp(server, "/install");
