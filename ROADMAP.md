@@ -41,7 +41,10 @@ what is built; when something here ships, it moves to the
   plan names those files before anything happens. The site's model is
   read-only for the plugins and adapters it is handed to. A first,
   experimental part of embedding: a program that starts the server can add
-  routes of its own.
+  routes and events of its own. And a security release for hosted editors:
+  a secrets file (any name that starts with `.env`) and the version
+  history's own files are refused wherever a file, its changes or the
+  preview is shown, and by the assistant's tools.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.

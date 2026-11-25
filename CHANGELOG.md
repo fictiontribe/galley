@@ -121,55 +121,52 @@ those conversations: a conversation keeps what its tools returned.
   Once an extension has been stopped, what it was handed does nothing: the
   sites it holds, and the preview's controller if it took one. It is not a
   sandbox: an extension is its author's code with the server's permissions. A
-  server with extensions must be the only server in its process, and should be
-  restarted after a backup is put back. The shapes may change in any 0.x
-  release. The docs page is *Run Galley › Embedding the editor*.
-- **Embedding, second part: events of your own, and knowing a window is
-  there (experimental).** An extension can now send events on the editor's
-  live stream. It declares each by name with a level (edit, publish or
-  manage), and a reader is sent one only if their role has that level at
-  that event; an optional `for` says what each reader is sent, and can
-  narrow that but never widen it. A window receives `{ type: "extension",
-  source, name, siteId, payload }`: the first four are filled in by the
-  server, so an extension can't send one of the editor's own events or speak
-  as another. A payload is JSON of at most 64 KB about a site the extension
-  has been handed. In any one second an extension may send 50 events and
-  256 KB; past either its events are dropped and counted in the log. A
-  window that already has half of what it may have waiting (512 KB of 1 MB)
-  is not sent an extension's event. So an extension's events never fill more
-  than about half of what a window may have waiting, and the editor's own
-  events always have at least half of it. A stream
-  opened with a value for an extension (`/api/events?x-<id>=<value>`) tells
-  it that the window is there and, later, that it has gone, which replaces a
-  heartbeat route. A value is taken only from the editor's own page (or with
-  the operator's token); from anywhere else it is refused and the stream
-  opens without it. An extension can refuse its value too, never the
-  stream: the window is sent `stream.refused` and the stream opens as usual.
-  The editor's own app does not add a value yet.
-- **Extensions are stopped while a backup is put back, and started again.**
-  A restore replaces the data folder under a running server. An extension's
-  `stop` now runs before that and its `setup` again afterwards, with a new
-  host, so a program that embeds the server no longer has to be restarted
-  after a restore. The routes it returns must be the ones it returned when
-  the server started, because an address keeps the guards it was mounted
-  with. One that returns others, or can't start again, is left stopped: its
-  routes answer 503, and the log says why.
-
+  server with extensions must be the only server in its process. The shapes
+  may change in any 0.x release. The docs page is *Run Galley › Embedding the
+  editor*.
+- **Embedding, second part: events of your own, and knowing a window is there
+  (experimental).** An extension can now send events on the editor's live
+  stream. It declares each by name with a level (edit, publish or manage), and
+  a reader is sent one only if their role has that level at that event; an
+  optional `for` says what each reader is sent, and can narrow that but never
+  widen it. A window receives `{ type: "extension", source, name, siteId,
+  payload }`: `type` and `source` are the server's, and `name` and `siteId`
+  are checked against what the extension declared and the sites it has, so an
+  extension can't send one of the editor's own events or speak as another. A
+  payload is JSON of at most 64 KB about a site the extension has been handed
+  (on a hosted editor, its one site). In any one second an extension may send
+  50 events and 256 KB; past either its events are dropped and counted in the
+  log. A window that already has more than half of what it may have waiting
+  (512 KB of 1 MB) is not sent an extension's event. So an extension's events
+  never fill more than half of that and one event, and the rest is always the
+  editor's own. A stream opened with a value for an extension
+  (`/api/events?x-<id>=<value>`) tells it that the window is there and, later,
+  that it has gone, which replaces a heartbeat route. A value is taken only
+  from the editor's own page, from an address a person opened directly, or
+  with the operator's token; from anywhere else it is refused and the stream
+  opens without it. An extension can refuse its value too, never the stream:
+  the window is sent `stream.refused` and the stream opens as usual. The
+  editor's own app does not add a value yet. A restore replaces the data
+  folder under a running server: an extension's `stop` runs before it and its
+  `setup` again afterwards, with a new host, so a program that embeds the
+  server needn't be restarted after one. The routes it returns must be the
+  ones it returned when the server started, because an address keeps the
+  guards it was mounted with. One that returns others, or can't start again,
+  is left stopped: its routes answer 503, and the log says why.
 ### Fixed
 
 - **A window that has been signed out stops receiving live updates.** On an
   install with accounts, an open live connection was checked for its own
   sign-out and for its account being switched off, removed or signed out
-  everywhere, but not for everyone being signed out at once (which putting a
-  backup back does, and which happens by itself when the list of signed-out
-  browsers grows too long), and not for the sign-in's age. A window signed
-  out that way was refused on its next request, yet went on receiving the
-  assistant's replies, jobs and changes until it was reloaded. A connection
-  is now held to the test a request is held to for as long as it is open: it
-  ends the moment everyone is signed out, and within twenty seconds of a
-  sign-in passing its thirty days. The page that starts a restore closes its
-  own connection first and follows the restore by asking, so it still says
-  how the restore went.
+  everywhere, but not for everyone being signed out at once when a backup is
+  put back, and not for the sign-in's age. A window signed out that way was
+  refused on its next request, yet went on receiving the assistant's replies,
+  jobs and changes until it was reloaded. A connection is now held to the test
+  a request is held to for as long as it is open: it ends the moment everyone
+  is signed out, and at the next heartbeat (twenty seconds, unless the server
+  was started with another) after a sign-in passes its thirty days. The page
+  that starts a restore closes its own connection first and follows the
+  restore by asking, so it still says how the restore went.
 - **Crops on the two fashion starters keep their focus point when the
   pictures move.** The editorial and storefront starters anchor each crop
   on its photograph's focus point, so a head or a garment stays in frame.
