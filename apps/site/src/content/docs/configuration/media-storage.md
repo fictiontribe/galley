@@ -7,7 +7,7 @@ order: 4.5
 
 This page is for whoever looks after a site. Out of the box, Galley keeps media in the site's repository, beside its pages ([Media](/docs/configuration/media/)). That is simplest, but every picture makes the repository bigger for good. A bucket keeps the files elsewhere and serves each one at its own address; Cloudflare Images does the same for pictures and also resizes them and sends each browser WebP or AVIF. Either way pages store the full address, so the site needs no build step to find them.
 
-Not yet run against the live services by the people who built it: everything here is checked against stand-ins that answer the way R2, S3 and Cloudflare Images do.
+Cloudflare R2 has been run end to end on the real service by the people who built it (2026-11-25). Amazon S3, other S3-compatible stores and Cloudflare Images have not yet: they are checked against stand-ins that answer the way those services do.
 
 ## What changes
 
