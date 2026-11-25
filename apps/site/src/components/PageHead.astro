@@ -5,7 +5,8 @@ const { eyebrow, heading, lead } = Astro.props;
 ---
 
 <header class="page-head">
-  {eyebrow && <p class="label">{eyebrow}</p>}
   <h1 class="h1" set:html={inline(heading)} />
   {lead && <p class="lead" set:html={inline(lead)} />}
+  {/* The small label sits under the words, as a quiet line, never above the headline. */}
+  {eyebrow && <p class="head-note">{eyebrow}</p>}
 </header>

@@ -1560,6 +1560,8 @@ code { background: var(--hover-2); }
 }
 /* A hero's small label goes under its actions, as a quiet meta line, never as an eyebrow over the headline. */
 .hero__text > .label { order: 9; font: 400 var(--t-small)/1.5 var(--font-text); letter-spacing: 0; color: var(--ink-3); }
+/* The same quiet line under a page head's words (changelog, privacy, the 404). */
+.head-note { font: 400 var(--t-small)/1.5 var(--font-text); letter-spacing: 0; color: var(--ink-3); }
 
 /* ---------- reading pages: the page set, comfortable for a long read in both modes ----------
    A measure near 68 characters, generous leading, body text at the second ink
