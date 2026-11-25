@@ -248,6 +248,7 @@ The statements below are the ones the comparison pages make about Galley.
 | Page builder in preview | /compare/cloudcannon/ | status `builder` (preview) |
 | Version 0.4.2, first released November 2026 | /compare/cloudcannon/, /compare/types-of-cms/ | `CHANGELOG.md`; `npm view galley-cms time` (0.1.0 on 2026-11-23) |
 | Help comes through the project's issues on GitHub | /compare/cloudcannon/ | `SUPPORT.md` |
+| /wordpress/ table, Security: "No database online; no login unless you host the editor (new)" (was "No database or login online", untrue with an editor on a public server) | /wordpress/ | The published site is files built ahead of time, with no database (README "No database"; `docs/ARCHITECTURE.md`); a hosted editor (status `hosted-install`, new) has a sign-in at its own address, not the live site's (`docs/running/hosted.md`, `docs/editing/signing-in.md`) |
 | "We think" the Git-based kind is the modern one, and why | /compare/types-of-cms/ | Opinion, marked as Fiction Tribe's own on the page |
 
 ## Known problems found while checking
