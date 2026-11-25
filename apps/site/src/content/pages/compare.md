@@ -26,6 +26,6 @@ ui:
   sources: Sources
   sourcesLine: "{product}'s own pages and documentation, read in {month}, and Galley's own. Galley is our product, so every claim about it here is ours."
   sourcesLineGuide: "Each product's own pages and documentation, read in {month}, and Galley's own. Galley is our product, so every claim about it here is ours."
-  tableNote: "{product} is a trademark of its owner, named only to describe it. Galley is not affiliated with {product}. Facts checked in {month}."
+  tableNote: "Which side is stronger on a row is our judgement; the facts behind it are from each product's own pages, checked in {month}. {product} is a trademark of its owner, named only to describe it. Galley is not affiliated with {product}."
   next: Read next
 ---

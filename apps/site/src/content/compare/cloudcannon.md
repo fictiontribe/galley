@@ -28,11 +28,11 @@ table:
       better: even
     - label: Price
       ours: Free. Your AI key and hosting are yours
-      theirs: Standard, $55 a month for 3 users (Nov 2026)
-      better: ours
+      theirs: Standard, $55 a month for 3 users, hosting included (Nov 2026)
+      better: even
     - label: Setup
       ours: Reads the site as it is
-      theirs: A config file, and markup for editing on the page
+      theirs: A config file (its app or CLI can draft it); markup for editing on the page
       better: ours
     - label: Editing
       ours: A form, the page itself, or the assistant
@@ -44,7 +44,7 @@ table:
       better: theirs
     - label: AI in the editor
       ours: An assistant that never publishes
-      theirs: None built in; bring your own agents
+      theirs: None built in (Nov 2026); bring your own agents
       better: ours
     - label: Checking a change
       ours: Each change in the site's words, beside the live site
@@ -129,7 +129,7 @@ related: [types-of-cms, /wordpress/, /ai-first/]
 
 ## What do Galley and CloudCannon have in common?
 
-More than either has in common with WordPress or a headless CMS. Both are Git-based: the words of the site are the files in its repository, and the CMS is a way to change those files without opening a code editor. CloudCannon puts it plainly: "CloudCannon stores content as files in your Git repo — Markdown, JSON, YAML, or TOML — and builds your static site directly from them." Galley does the same with the same kinds of file.
+More than either has in common with WordPress or a headless CMS. Both are Git-based: the words of the site are the files in its repository, and the CMS is a way to change those files without opening a code editor. CloudCannon puts it plainly: "CloudCannon stores content as files in your Git repo — Markdown, JSON, YAML, or TOML — and builds your static site directly from them." Galley edits Markdown, JSON and YAML the same way; it reads TOML but doesn't change it yet.
 
 That shared starting point has two consequences worth knowing before anything else. There is no database behind the live site to run or patch. And neither tool holds your content hostage. CloudCannon's developer page says "If you ever leave CloudCannon, you leave with everything." We say the same about Galley, for the same reason.
 
@@ -171,7 +171,7 @@ CloudCannon calls itself "the CMS your AI tools can actually read". Its argument
 
 That works well for developers. We think it does less for a marketer who wants the AI to make a change without opening a terminal or reading a pull request.
 
-Galley puts the assistant inside the editor, beside the page. You ask in plain words, it reads the site before it edits, it asks one short question when a request is ambiguous, and it quotes the new words back. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change it makes waits in the proof, and a person presses Publish. For people who'd rather use their own AI tool, Galley's MCP server gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool may also publish when you ask it to, unless publishing over MCP is switched off.
+Galley puts the assistant inside the editor, beside the page. You ask in plain words, it reads the site before it edits, it asks one short question when a request is ambiguous, and it quotes the new words back. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change it makes waits in the proof, and a person presses Publish. For people who'd rather use their own AI tool, Galley's MCP server gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
 
 We think that is where AI in a CMS should sit: close to the person who knows what the page should say, with a check that a non-developer can read. That's our view, and CloudCannon's approach suits a team where developers drive.
 
@@ -193,22 +193,23 @@ Galley doesn't host anything. It edits the site and publishes to your repository
 
 For a large team today, CloudCannon. Every plan has five default roles: Owners, Developers, Technical Editors, Editors and Billing. Team and Enterprise add custom permission groups that can be narrowed to particular files. Enterprise adds single sign-on through SAML. CloudCannon holds a SOC 2 Type 2 certification. When two people open the same file, "One person can edit a file at a time, while others can view the changes in real time", and avatars show who is where.
 
-Galley is behind here, and we'd rather say so than let you find out. Used on your own computer, it has no accounts: anyone who can open the app can publish, so the gate is pull-request mode and your code host's branch protection. A hosted editor, one site per install on a server you run, adds accounts with three roles (owner, editor and contributor), and each publish carries its author's name. That hosted editor is new and still in final checks. Single sign-on is planned for later. Everyone on one hosted editor works on one shared copy of the site; a second save of a page someone has just changed is refused, not written over it. There is no live presence.
+Galley is behind here, and we'd rather say so than let you find out. Used on your own computer, it has no accounts: anyone who can open the app can publish, so the gate is pull-request mode and your code host's branch protection. A hosted editor, one site per install on a server you run, adds accounts with three roles (owner, editor and contributor), and each publish carries its author's name. The roles keep people out of each other's way; they aren't a security boundary. That hosted editor is new and still in final checks. Single sign-on is planned for later. Everyone on one hosted editor works on one shared copy of the site; a second save of a page someone has just changed is refused, not written over it. There is no live presence.
 
 ## Where does Galley fall short?
 
 Beyond teams, in a few places.
 
-- **It's young.** Version 0.4.2 of software first released in November 2026. CloudCannon has a changelog going back to 2015.
+- **It's young.** Version {version} of software first released in November 2026. CloudCannon has a changelog going back to 2015.
 - **Page building is in preview.** Galley builds pages from the site's own sections, and that part is still in preview. CloudCannon has offered component editing for years, and its newer Component Editable Regions now cover most frameworks.
 - **No hosting, no support contract.** Galley is software you run. Help comes through the project's issues on GitHub, not a dedicated channel or an uptime agreement.
+- **TOML is read-only.** Galley reads TOML files and Hugo's TOML front matter but refuses to change them, rather than risk rewriting the file. CloudCannon edits TOML.
 - **The assistant needs a key, and it's billed to you.** Everything except chat and image generation works without one.
 
 ## When is CloudCannon the better choice?
 
 When your team is large, regulated or both, and needs custom permissions, enforced two-factor sign-in, single sign-on and a SOC 2 report this quarter. When you need scheduled publishing, which CloudCannon offers (with more of it on Team) and Galley doesn't, or a site in several languages, which its open-source Rosey tool is built for. When your images live in a store such as Amazon S3, Cloudinary or Azure and the CMS should connect to it. When you want building, hosting, forms and the CMS on one bill, with someone to call. When your developers already run AI agents against the repository and want the CMS to stay out of their way. And when you'd simply rather buy a service with a long record than adopt a new open-source tool.
 
-Galley fits when the people who change the site aren't developers and you want them to be able to ask for a change, see exactly what changed and publish it, on a site that needs no setup work for the CMS. It also fits when you want no subscription, and when you want to run the editor on your own computer, or on your own server (the hosted editor is new).
+Galley fits when the people who change the site aren't developers and you want them to be able to ask for a change, see exactly what changed and publish it, on a site that needs little or no setup work for the CMS. It also fits when you want no subscription, and when you want to run the editor on your own computer, or on your own server (the hosted editor is new).
 
 ## Can you move from one to the other?
 

@@ -102,7 +102,7 @@ Contentful describes its Content Delivery API as "a read-only API for delivering
 
 **What it's good at.** One source of content for many channels, which is what it's for. Structured content that developers can query precisely. The front end is the developer's free choice. And the larger products have years of work in team features: roles, workflows, scheduled publishing and many languages, with the details varying by product and plan.
 
-**What it costs you.** Someone has to design the content model before anyone writes a word, and keep it in step with the site. The website has to fetch its content from the API, at build time or on each visit, and previews need wiring. Where the vendor hosts the database, your content lives in their system, priced their way, and leaving means exporting through the API and rebuilding the model somewhere else. With a self-hosted one such as Strapi or Payload, the database is yours.
+**What it costs you.** Someone has to design the content model before anyone writes a word, and keep it in step with the site. The website has to fetch its content from the API, at build time or on each visit, and previews need wiring. Where the vendor hosts the database, your content lives in their system, on their plans, and leaving means exporting through the API and rebuilding the model somewhere else. With a self-hosted one such as Strapi or Payload, the database is yours.
 
 ## What is a Git-based CMS?
 
@@ -112,7 +112,7 @@ The kind has a long list of members. CloudCannon, a commercial hosted service, s
 
 **What it's good at.** The content isn't in a database, and with many of these tools nothing runs behind the live site but the built pages. Content and code are versioned together, so every change has an author, a date and an exact record of what moved, and can be undone with another commit. Leaving is easy, because the content never left your repository. And several good tools are free.
 
-**What it costs you.** Most Git-based CMSs need a configuration file that lists the collections and their fields before an editor sees a form: `config.yml` for Decap, `tina/config` for TinaCMS, `keystatic.config` for Keystatic, `.pages.yml` for Pages CMS. CloudCannon starts from a small file its app can create, and infers the fields it isn't told about. Some tools also add an admin page or server code to the site: Decap and TinaCMS are reached at `/admin` on the site, and Keystatic needs server code. And the kind mostly serves the website it sits in, not apps that want an API, though TinaCMS adds a GraphQL API over the files. Each published change rebuilds the site, which takes longer on a big site. And team features vary widely: some tools offer roles and review workflows, others only what your code host's pull requests give you.
+**What it costs you.** Most Git-based CMSs need a configuration file that lists the collections and their fields before an editor sees a form: `config.yml` for Decap, `tina/config` for TinaCMS, `keystatic.config` for Keystatic, `.pages.yml` for Pages CMS. CloudCannon starts from a small file its app can create, and infers the fields it isn't told about. Some tools also add an admin page or server code to the site: Decap and TinaCMS are reached at `/admin` on the site by default, and Keystatic needs server code. And the kind mostly serves the website it sits in, not apps that want an API, though TinaCMS adds a GraphQL API over the files. Each published change rebuilds the site, which takes longer on a big site. And team features vary widely: some tools offer roles and review workflows, others only what your code host's pull requests give you.
 
 ## How do the three kinds compare?
 
@@ -154,7 +154,7 @@ This is our opinion, and we have an interest: Galley is a Git-based CMS and we m
 
 **AI tools already work on files.** Coding agents and MCP clients read and write the files in a repository today. A CMS whose content is those files gives them nothing new to learn. A CMS whose content sits behind an API has to build its own door for them, and many now have.
 
-**Nothing needs to run behind the live site.** With the tools that keep the editor off the site, Galley among them, visitors get only files that were built ahead of time. There's no database online and no login page to find, so there's no CMS on the live site to patch at two in the morning.
+**Nothing needs to run behind the live site.** With the tools that keep the editor off the site, Galley among them, visitors get only files that were built ahead of time. There's no database online and no login page to find (unless you run its editor online), so there's no CMS on the live site to patch at two in the morning.
 
 **You can leave.** The content is Markdown and data files in your own repository, readable by any editor, script or person. There's no content to export, because none was ever taken in.
 
@@ -179,7 +179,7 @@ Galley is our open-source AI CMS for static sites, Apache-2.0 and free, first re
 - **No configuration file to write first.** Galley reads the site's framework, content collections and fields from its schemas and files, without running its code. Astro fits deepest; Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll are recognised by their conventions.
 - **Three ways to change a page.** In a form made from the site's own content model, by retyping the words on the page, or by asking the assistant. All three end in the same [proof](/how-to/proof-and-publish/), beside the live site.
 - **Publishing is a commit** to your own repository, or a branch and a pull request. Undo is a new commit.
-- **The assistant never publishes.** It runs on Anthropic's Claude with your own key. Other AI tools can connect over [MCP](/docs/integrations/mcp/).
+- **The assistant never publishes.** It runs on Anthropic's Claude with your own key. Other AI tools can connect over [MCP](/docs/integrations/mcp/). They can publish when asked, unless publishing over MCP is switched off.
 
 It's young, and some of it is unfinished: the page builder is in preview, and the hosted editor, with its accounts and roles, is new and still in final checks. There's no editing together in real time. See [what it does today](/tour/), or set it beside [CloudCannon](/compare/cloudcannon/), the Git-based product closest to it.
 
@@ -189,6 +189,6 @@ It's young, and some of it is unfinished: the page builder is in preview, and th
 
 **What runs behind the live site, and who patches it?** Every database, server and login is a standing chore with somebody's name on it.
 
-**When an AI makes a change, who sees it before it's live?** Before and after, in words, beside the page. A summary written by the same model that made the change doesn't count.
+**When an AI makes a change, who sees it before it's live?** Before and after, in words, beside the page. We don't think a summary written by the same model that made the change is enough.
 
 Pick the kind for where your content has to go. Then pick the product.
