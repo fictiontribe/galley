@@ -37,8 +37,11 @@ const shareImage = absoluteUrl(site.shareImage);
     <Font cssVariable="--font-newsreader" preload={[{ style: "normal" }]} />
     <Font cssVariable="--font-figtree" preload={[{ style: "normal" }]} />
     <Font cssVariable="--font-plex-mono" />
-    <meta name="theme-color" content="#F6F1E7" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F6F4F0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#16140F" media="(prefers-color-scheme: dark)" />
+    {/* Light or dark: the visitor's system, unless the switch in the header chose (kept in localStorage "galley-theme"). Set before the first paint, so there is no flash. An engine from before light-dark() has the light colours only (tokens.css), so it is told light. */}
+    <script is:inline set:html={`(()=>{const d=document.documentElement;d.dataset.js="";try{const old=!(window.CSS&&CSS.supports("color","light-dark(#000,#fff)"));const t=old?"light":localStorage.getItem("galley-theme");if(t!=="light"&&t!=="dark")return;d.dataset.theme=t;document.querySelector('meta[name="color-scheme"]').content=t;for(const m of document.querySelectorAll('meta[name="theme-color"]'))m.content=t==="dark"?"#16140F":"#F6F4F0"}catch(e){}})()`} />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

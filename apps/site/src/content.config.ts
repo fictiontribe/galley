@@ -28,6 +28,9 @@ const visual = z.object({
   /** Move the capture inside its panel, in CSS pixels (negative pulls it up or left). On the tour, only the capture itself moves, never its stand-in. */
   x: z.number().optional(),
   y: z.number().optional(),
+  /** The capture to show instead in dark mode (same folder; about the same shape, so nothing moves when it swaps), and what it shows. Only the one in use is downloaded. Used by the home hero (layout canvas). */
+  dark: z.string().optional(),
+  darkAlt: z.string().optional(),
   /** Tour insets only: show just this much of the capture (CSS pixels from where x and y put it), as a detail. */
   w: z.number().optional(),
   h: z.number().optional(),
@@ -40,11 +43,11 @@ const common = {
   hidden: z.boolean().optional(),
 };
 
-/** A page's first screen. showcase: the live site with Galley's proof laid over it · split: text beside one picture · text: words only. */
+/** A page's first screen. showcase: the live site with Galley's proof laid over it · canvas: the words in a compact block, then one app window as wide as the page · split: text beside one picture · text: words only. */
 const heroSection = z.object({
   type: z.literal("hero"),
   ...common,
-  layout: z.enum(["showcase", "split", "text"]).default("split"),
+  layout: z.enum(["showcase", "canvas", "split", "text"]).default("split"),
   /** showcase: centre the words over the picture. */
   align: z.enum(["start", "center"]).optional(),
   notice: link.optional(),
@@ -81,11 +84,14 @@ const filmSection = z.object({
   title: z.string(),
   captions: z.string(),
   transcript: link.optional(),
-  /** wide: the film across the page, its chapters as numbered steps under it · side: the words beside it. */
-  layout: z.enum(["side", "wide"]).default("side"),
+  /** wide: the film across the page, its chapters as numbered steps under it · side: the words beside it · story: the chapters first, as steps scrolling past one picture that stays in view (`pinned`), each with its own picture, then the film. */
+  layout: z.enum(["side", "wide", "story"]).default("side"),
+  /** story only: the picture that stays in view beside the steps. */
+  pinned: visual.optional(),
   /** Points in the film to jump to, in seconds; `text` is one line under the chapter (wide). */
   /** `icon`: a glyph name from brand/icons.ts, drawn beside the step's name. */
-  chapters: z.array(z.object({ label: z.string(), icon: z.string().optional(), time: z.number(), text: z.string().optional() })).default([]),
+  /** `visual` (story): the step's own picture. */
+  chapters: z.array(z.object({ label: z.string(), icon: z.string().optional(), time: z.number(), text: z.string().optional(), visual: visual.optional() })).default([]),
   link: link.optional(),
   chaptersLabel: z.string().optional(),
 });
@@ -139,7 +145,8 @@ const bandSection = z.object({
 const startersSection = z.object({
   type: z.literal("starters"),
   ...common,
-  layout: z.enum(["feature", "gallery", "row"]).default("feature"),
+  /** feature: the first tall beside the others · gallery: two columns · row: three across · stage: the first tall, its page scrolling inside it with the visitor's scroll, the other two stacked beside it (no commands). */
+  layout: z.enum(["feature", "gallery", "row", "stage"]).default("feature"),
   heading: z.string(),
   text: z.string(),
   link: link.optional(),

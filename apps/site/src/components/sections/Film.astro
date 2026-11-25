@@ -1,7 +1,9 @@
 ---
 // The film: its poster first, nothing of the video loaded until someone
 // presses play; then it plays with controls and English captions. Chapters
-// jump to a point in it.
+// jump to a point in it. In the story layout the chapters come first, as
+// three steps scrolling past the assistant (which stays in view beside them),
+// each with its own capture; then the film.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { noteMissing, webpSize } from "../../lib/media";
@@ -9,10 +11,13 @@ import { inline } from "../../lib/markdown";
 import { fill } from "../../lib/site";
 import Glyph from "../Glyph.astro";
 import type { IconName } from "../../../../../brand/icons";
+import { resolveVisual } from "../../lib/visual";
 
 const { s, block, first } = Astro.props;
 const H = first ? "h1" : "h2";
 const hid = `${s.id ?? "film"}-h`;
+// Short sentences in a heading ("Prompt it. Proof it. Publish it.") wrap whole, never mid-sentence.
+const heading = inline(s.heading).split(/(?<=[.?])\s+(?=[A-Z])/).map((part) => `<span class="nowrap-s">${part}</span>`).join(" ");
 const base = `/video/${s.video}`;
 // A film section just added in the editor names no film yet. It then shows its
 // words, and in the preview a place where the film will go, instead of failing the page.
@@ -23,14 +28,109 @@ if (!poster) {
   else console.warn("[site] A film section names no video: it shows its words without a film.");
 }
 const empty = !poster && import.meta.env.DEV;
+// story: the picture that stays in view, and each step's own.
+const story = s.layout === "story";
+const pinned = story ? resolveVisual(s.pinned) : null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const steps = story ? (s.chapters as any[]).map((c) => ({ ...c, r: resolveVisual(c.visual) })) : [];
+// The pinned picture shows only its crop (w × h from x, y), scaled to the column: every length a share of the crop's width.
+const chat = pinned && s.pinned
+  ? (() => {
+      const cw = s.pinned.w ?? pinned.pic.width;
+      const ch = s.pinned.h ?? pinned.pic.height;
+      const pct = (n: number) => `${((n / cw) * 100).toFixed(3)}%`;
+      return {
+        box: `aspect-ratio:${cw} / ${ch}`,
+        img: `width:${pct(pinned.pic.width)};margin-left:${pct(s.pinned.x ?? 0)};margin-top:${pct(s.pinned.y ?? 0)}`,
+        sizes: `(max-width: 1023px) ${Math.round((pinned.pic.width / cw) * 100)}vw, ${Math.round((pinned.pic.width / cw) * 400)}px`,
+      };
+    })()
+  : null;
+// A capture little wider than its frame is shown whole, scaled to fit, rather than cut a few letters short.
+const FIT = 900;
+const at = (t: number) => `0:${String(t).padStart(2, "0")}`;
 ---
 
-<section class:list={["section wrap", s.layout === "wide" && "film--wide"]} id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
+<section class:list={["section wrap", s.layout === "wide" && "film--wide", story && "film--story"]} id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
   {
-    s.layout === "wide" ? (
+    story ? (
+      <div data-film>
+        <div class="head film__head rv">
+          <H class="h2" id={hid} set:html={heading} />
+          <p class="lead">{fill(s.text)}</p>
+        </div>
+        <div class="story" data-story>
+          {pinned && (
+            <div class="story__pin">
+              <div class="story__pinbox">
+                <div class="frame story__chat">
+                  <div class="story__crop" style={chat?.box}>
+                    <img src={pinned.pic.src} srcset={pinned.pic.srcset} sizes={chat?.sizes} width={pinned.pic.width} height={pinned.pic.height} alt={pinned.alt} style={chat?.img} loading="lazy" decoding="async" />
+                  </div>
+                </div>
+                <ol class="story__marks" aria-hidden="true">
+                  {steps.map((c, i) => <li data-story-mark={i}><span>{i + 1}</span>{c.label}</li>)}
+                </ol>
+              </div>
+            </div>
+          )}
+          <ol class="story__steps">
+            {steps.map((c, i) => (
+              <li class="story__step" data-story-step={i}>
+                {c.r && (
+                  <div class:list={["frame story__frame rv", c.r.pic.width <= FIT && "story__frame--fit"]}>
+                    <div class="stage">
+                      <div class="shot" style={[c.r.style, `width:${c.r.pic.width}px`].filter(Boolean).join(";")}>
+                        <img src={c.r.pic.src} srcset={c.r.pic.srcset} sizes={`${c.r.pic.width}px`} width={c.r.pic.width} height={c.r.pic.height} alt={c.r.alt} loading="lazy" decoding="async" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div class="story__cap">
+                  <h3 class="story__t"><span class="story__n" aria-hidden="true">{i + 1}</span>{c.label}</h3>
+                  {c.text && <p class="story__d">{c.text}</p>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+        {poster && (
+          <div class="film__stage rv-scale">
+            <div class="film__screen lit">
+              <video preload="none" playsinline controls poster={`${base}-poster.webp`} width={poster.width / 2} height={poster.height / 2} aria-label={s.title} data-film-video>
+                <source src={`${base}.webm`} type="video/webm" />
+                <source src={`${base}.mp4`} type="video/mp4" />
+                <track kind="captions" src={`${base}.en.vtt`} srclang="en" label={s.captions} default />
+              </video>
+            </div>
+          </div>
+        )}
+        {empty && <p class="film__screen film__empty">This section has no film yet. Add its video in the form.</p>}
+        <div class="film__bar">
+          {poster && s.chapters.length > 0 && (
+            <ol class="chapters" aria-label={s.chaptersLabel}>
+              {s.chapters.map((c: { label: string; time: number }) => (
+                <li>
+                  <button type="button" data-film-seek={c.time}>
+                    <span>{at(c.time)}</span>
+                    {c.label}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          )}
+          {(s.transcript || s.link) && (
+            <p class="film__more">
+              {s.link && <a class="link link--accent" href={fill(s.link.href)}>{s.link.label}</a>}
+              {s.transcript && <a class="link" href={fill(s.transcript.href)}>{s.transcript.label}</a>}
+            </p>
+          )}
+        </div>
+      </div>
+    ) : s.layout === "wide" ? (
       <div data-film>
         <div class="head head--row film__head">
-          <H class="h2" id={hid} set:html={inline(s.heading)} />
+          <H class="h2" id={hid} set:html={heading} />
           <p class="lead">{fill(s.text)}</p>
         </div>
         {poster ? (
@@ -68,7 +168,7 @@ const empty = !poster && import.meta.env.DEV;
     ) : (
   <div class="film__grid">
       <div class="head">
-        <H class="h2" id={hid} set:html={inline(s.heading)} />
+        <H class="h2" id={hid} set:html={heading} />
         <p class="lead">{fill(s.text)}</p>
         {s.transcript && <a class="link" href={fill(s.transcript.href)}>{s.transcript.label}</a>}
       </div>

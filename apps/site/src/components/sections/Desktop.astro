@@ -1,41 +1,51 @@
 ---
-// The desktop app, on the home page: the icon, one sentence and one capture
-// of the app window (when one exists). While downloads are off
-// (src/data/downloads.json, lib/downloads.ts) it sends people to /apps/;
-// once they're on, it offers the download for the visitor's own system and
-// "Other systems".
+// The desktop app, on the home page: the app's own icon over its name and one
+// sentence, the download for the visitor's system, then the app itself — two
+// real windows of it on the desk, as a Mac shows them (each whole; a native
+// window is never cut). While downloads are off (src/data/downloads.json,
+// lib/downloads.ts) it sends people to /apps/; once they're on, it offers the
+// download for the visitor's own system and "Other systems".
 import AppIcon from "../AppIcon.astro";
 import Downloads from "../Downloads.astro";
 import { inline } from "../../lib/markdown";
 import { fill } from "../../lib/site";
-import { homeScreen, on } from "../../lib/downloads";
+import { homeScreen, on, screens } from "../../lib/downloads";
 
 const { s, block, first } = Astro.props;
 const H = first ? "h1" : "h2";
 const hid = `${s.id ?? "desktop"}-h`;
 const shot = homeScreen;
+// A second window behind the first, when there is another capture of the app.
+const back = screens.find((w) => w !== shot);
 ---
 
 <section class="section wrap" id={s.id} aria-labelledby={hid} data-galley-block={block.key} data-galley-block-type={block.type}>
-  <div class:list={["desk", shot && "desk--shot"]}>
-    <AppIcon size={shot ? 96 : 88} class="desk__icon" id="home-icon" />
-    <div class="desk__words">
-      <H class="h2" id={hid} set:html={inline(s.heading)} />
-      <p class="lead">{fill(s.text)}</p>
-    </div>
-    <div class="desk__get">
-      {
-        on ? (
-          <Downloads variant="home" words={{ download: "", coming: "", macHint: "", systems: "", otherSystems: s.other, fallback: s.fallback, unsigned: s.unsigned }} />
-        ) : (
-          <a class="btn btn--primary" href="/apps/">{s.apps}</a>
-        )
-      }
+  <div class:list={["desk", shot && "desk--stage"]}>
+    <div class="desk__head rv">
+      <AppIcon size={112} class="desk__icon" id="home-icon" />
+      <div class="desk__words">
+        <H class="h2" id={hid} set:html={inline(s.heading)} />
+        <p class="lead">{fill(s.text)}</p>
+      </div>
+      <div class="desk__get">
+        {
+          on ? (
+            <Downloads variant="home" words={{ download: "", coming: "", macHint: "", systems: "", otherSystems: s.other, fallback: s.fallback, unsigned: s.unsigned }} />
+          ) : (
+            <a class="btn btn--primary" href="/apps/">{s.apps}</a>
+          )
+        }
+      </div>
     </div>
     {shot && (
-      <a class="frame desk__frame" href="/apps/" aria-label={s.apps}>
-        <span class="dlshot__win">
-          <img src={shot.pic.src} srcset={shot.pic.srcset} sizes="(max-width: 1023px) 100vw, 720px" width={shot.pic.width} height={shot.pic.height} alt={shot.alt} loading="lazy" decoding="async" />
+      <a class="frame desk__frame rv-scale" href="/apps/" aria-label={s.apps}>
+        {back && (
+          <span class="desk__win desk__win--back">
+            <img src={back.pic.src} srcset={back.pic.srcset} sizes="(max-width: 639px) 80vw, (max-width: 1280px) 52vw, 640px" width={back.pic.width} height={back.pic.height} alt={back.alt} loading="lazy" decoding="async" />
+          </span>
+        )}
+        <span class="desk__win desk__win--front">
+          <img src={shot.pic.src} srcset={shot.pic.srcset} sizes="(max-width: 639px) 84vw, (max-width: 1280px) 62vw, 780px" width={shot.pic.width} height={shot.pic.height} alt={shot.alt} loading="lazy" decoding="async" />
         </span>
       </a>
     )}

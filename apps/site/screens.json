@@ -102,7 +102,6 @@
       "step": "form",
       "shows": "The editor: the home page's form beside the preview, Campaign hero open with its 2 edits (Heading Edited, Put back).",
       "used": [
-        "/ tabs: Form",
         "/cloud/ hero",
         "/astro/ hero"
       ]
@@ -112,7 +111,7 @@
       "step": "click",
       "shows": "The Pieces heading retyped in place on the page (“Coats and knits to start with”).",
       "used": [
-        "/ tabs: On the page"
+        "/ the three steps: Ask"
       ]
     },
     {
@@ -120,7 +119,8 @@
       "step": "ask (chat re-makes it)",
       "shows": "The assistant's real reply after changing the campaign heading and first button, with Review in Proof and Undo this change, beside the page showing “Coats for low sun.”",
       "used": [
-        "/ tabs: Ask"
+        "/ hero (light)",
+        "/ the three steps: the assistant, kept in view"
       ]
     },
     {
@@ -128,7 +128,7 @@
       "step": "proof",
       "shows": "Proof › What changed for the home page: the campaign heading and button (by the assistant) and the Pieces heading (on the page), each with Put back.",
       "used": [
-        "/ hero",
+        "/ the three steps: Check",
         "/wordpress/ step 3",
         "/cloud/"
       ]
@@ -144,7 +144,10 @@
     {
       "file": "public/screens/publish.webp",
       "step": "publish",
-      "shows": "The Publish 3 changes? window over Proof: the suggested note, What goes (three pages), Recorded as Tobiah Rusk."
+      "shows": "The Publish 3 changes? window over Proof: the suggested note, What goes (three pages), Recorded as Tobiah Rusk.",
+      "used": [
+        "/ the three steps: Publish"
+      ]
     },
     {
       "file": "public/screens/history.webp",
@@ -204,7 +207,10 @@
     {
       "file": "public/screens/dark-editor.webp",
       "step": "dark",
-      "shows": "In the dark appearance: the editor on Caddow's home page — the form, the page and the assistant's reply — with the switch between light and dark at the foot of the sidebar."
+      "shows": "In the dark appearance: the editor on Caddow's home page — the form, the page and the assistant's reply — with the switch between light and dark at the foot of the sidebar.",
+      "used": [
+        "/ hero (dark)"
+      ]
     },
     {
       "file": "public/screens/dark-proof.webp",

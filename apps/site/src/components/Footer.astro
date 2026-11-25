@@ -5,7 +5,8 @@ import navigation from "../data/navigation.json";
 import { fill, site } from "../lib/site";
 const links = navigation.footer;
 
-const icon = mark.replace(/<svg /, '<svg aria-hidden="true" ').replace(/ width="[^"]+" height="[^"]+"/, "").replace(/<title[^>]*>.*?<\/title>/, "").replace(/ role="img"[^>]*?(?=>)/, "");
+// Its inks come from the page's tokens (site.css): the normal lockup on paper, the reverse on the plate.
+const icon = mark.replace(/<svg /, '<svg aria-hidden="true" ').replace(/ width="[^"]+" height="[^"]+"/, "").replace(/<title[^>]*>.*?<\/title>/, "").replace(/ role="img"[^>]*?(?=>)/, "").replace(/(fill|stroke)="#1A1712"/g, 'class="logo-ink-$1"').replace(/fill="#2E2BFF"/g, 'class="logo-pencil"');
 ---
 
 <footer class="footer">

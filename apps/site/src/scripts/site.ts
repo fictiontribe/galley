@@ -10,6 +10,46 @@ if (header) {
   addEventListener("scroll", onScroll, { passive: true });
 }
 
+// Light or dark. The page follows the system until the switch is pressed;
+// then the choice is kept (localStorage "galley-theme") and the head script
+// in Site.astro applies it before the next first paint. The switch says what
+// pressing it does; pictures with a dark twin (<source data-mode-src>) follow.
+{
+  const root = document.documentElement;
+  const system = matchMedia("(prefers-color-scheme: dark)");
+  const easeOff = matchMedia("(prefers-reduced-motion: reduce)");
+  const switches = [...document.querySelectorAll<HTMLButtonElement>("[data-mode-switch]")];
+  const mode = () => (root.dataset.theme === "dark" || root.dataset.theme === "light" ? root.dataset.theme : system.matches ? "dark" : "light");
+  const show = () => {
+    const now = mode();
+    for (const b of switches) b.setAttribute("aria-label", (now === "dark" ? b.dataset.toLight : b.dataset.toDark) ?? "");
+    for (const src of document.querySelectorAll<HTMLSourceElement>("source[data-mode-src]")) {
+      if (root.dataset.theme) src.media = now === "dark" ? "all" : "not all";
+      const img = src.parentElement?.querySelector("img");
+      if (img) img.alt = (now === "dark" ? src.dataset.alt : img.dataset.alt) ?? img.alt;
+    }
+  };
+  const choose = (next: "light" | "dark") => {
+    // Colours ease over 200 ms on a switch, never on load, never with less motion asked for.
+    if (!easeOff.matches) {
+      root.classList.add("mode-easing");
+      setTimeout(() => root.classList.remove("mode-easing"), 320);
+    }
+    root.dataset.theme = next;
+    try {
+      localStorage.setItem("galley-theme", next);
+    } catch {
+      /* private mode: the choice lasts for this page */
+    }
+    document.querySelector<HTMLMetaElement>('meta[name="color-scheme"]')?.setAttribute("content", next);
+    for (const m of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) m.content = next === "dark" ? "#16140F" : "#F6F4F0";
+    show();
+  };
+  for (const b of switches) b.addEventListener("click", () => choose(mode() === "dark" ? "light" : "dark"));
+  system.addEventListener("change", show);
+  show();
+}
+
 // The narrow-screen menu: Escape or a click outside closes it.
 const menu = document.querySelector<HTMLDetailsElement>("[data-menu]");
 if (menu) {
@@ -75,13 +115,31 @@ for (const box of $$("[data-rec]")) {
   }, { threshold: 0.3 }).observe(box);
 }
 
-// Starters: a look's button swaps the picture.
+// Starters: a look's button swaps the picture. With motion, the new look is
+// decoded first, then the two cross-fade (the pictures are stacked in CSS).
 for (const card of $$("[data-starter]")) {
   const buttons = $$<HTMLButtonElement>("[data-look-to]", card);
+  const imgs = $$<HTMLImageElement>("[data-look]", card);
+  const fade = !still && card.closest(".starters--row, .starters--stage") !== null;
+  if (fade) {
+    card.classList.add("is-fading");
+    imgs.forEach((img) => img.classList.toggle("is-on", !img.hidden));
+  }
+  let turn = 0;
   for (const b of buttons) {
-    b.addEventListener("click", () => {
+    b.addEventListener("click", async () => {
       for (const o of buttons) o.setAttribute("aria-pressed", String(o === b));
-      for (const img of $$<HTMLImageElement>("[data-look]", card)) img.hidden = img.dataset.look !== b.dataset.lookTo;
+      const next = imgs.find((img) => img.dataset.look === b.dataset.lookTo);
+      if (!fade || !next) {
+        for (const img of imgs) img.hidden = img !== next;
+        return;
+      }
+      const mine = ++turn;
+      next.hidden = false;
+      next.loading = "eager";
+      await next.decode().catch(() => {});
+      if (mine !== turn) return;
+      for (const img of imgs) img.classList.toggle("is-on", img === next);
     });
   }
 }
@@ -449,4 +507,52 @@ if (dlBlocks.length) {
       if (other) other.hidden = false;
     }
   });
+}
+
+// Motion tied to scroll. CSS does it where the browser has scroll timelines;
+// elsewhere this sets the same states from the scroll position, or reveals a
+// block once it enters the view. With less motion asked for: nothing moves.
+const timelines = typeof CSS !== "undefined" && CSS.supports("animation-timeline: view()");
+if (!still && !timelines) {
+  document.documentElement.classList.add("rv-js");
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const en of entries) {
+        if (!en.isIntersecting) continue;
+        en.target.classList.add("is-in");
+        io.unobserve(en.target);
+      }
+    },
+    { rootMargin: "0px 0px -8% 0px" },
+  );
+  for (const el of $$(".rv, .rv-scale")) io.observe(el);
+  // The hero's window settles flat over the first 560 px of scroll.
+  const canvas = document.querySelector<HTMLElement>("[data-canvas]");
+  if (canvas) {
+    canvas.classList.add("is-js");
+    let queued = false;
+    const set = () => {
+      queued = false;
+      canvas.style.setProperty("--p", String(Math.min(1, Math.max(0, scrollY / 560))));
+    };
+    set();
+    addEventListener("scroll", () => !queued && (queued = requestAnimationFrame(set) > 0), { passive: true });
+  }
+}
+
+// The story: the step in the middle of the view is marked beside the picture that stays.
+for (const story of $$("[data-story]")) {
+  const marks = $$("[data-story-mark]", story);
+  if (!marks.length) continue;
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const en of entries) {
+        if (!en.isIntersecting) continue;
+        const i = (en.target as HTMLElement).dataset.storyStep;
+        for (const m of marks) m.classList.toggle("is-on", m.dataset.storyMark === i);
+      }
+    },
+    { rootMargin: "-45% 0px -45% 0px" },
+  );
+  for (const step of $$("[data-story-step]", story)) io.observe(step);
 }
