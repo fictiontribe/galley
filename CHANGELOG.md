@@ -86,6 +86,16 @@ entry says how.
   rule the editor's other reads already follow. The list of built pages drops
   those links too. The content index and a collection's listing check each
   file the same way as it is read, not only when it is listed.
+- **A dev server that moves itself to the background is checked on its port
+  like any other.** Some dev commands start their server and then exit,
+  leaving it running in the background; Galley took whatever answered on the
+  port that server announced. If another program held the port's other
+  address, that program's pages could be shown as the site's. Now the
+  announced port is checked the same way as a foreground server — that what
+  listens there is the server Galley started (by the process it named, or by
+  its running in the site's folder) — and a port another program shares is
+  not shown. A background server isn't started again, so the preview reports
+  that it couldn't start rather than showing the wrong pages.
 
 ## 0.4.2 — 2026-11-25
 

@@ -1345,6 +1345,26 @@ http.createServer((_req, res) => { res.writeHead(200, { "content-type": "text/ht
     expect(await refused(bg.port)).toBe(false);
   });
 
+  it("checks a backgrounded server's announced port rather than trusting any host of it", async () => {
+    const root = site();
+    let asked = 0;
+    // The dev server backgrounds itself and names its pid; the ownership check reports its announced port as
+    // another program's (as a foreign listener on the port's other address would). Trusting the port on any host,
+    // as it did before, would serve that; now the port is checked, found not the dev server's, and not served.
+    const { controller } = controllerFor(
+      root,
+      { dev: { command: "FIXTURE_MODE=with-pid node launcher.mjs", port: null } },
+      { startedHere: async () => ((asked += 1), "foreign"), readyTimeoutMs: 3000 }
+    );
+    const status = await controller.start();
+    const bg = JSON.parse(readFileSync(join(root, "bg.json"), "utf8")) as { port: number; pid: number };
+
+    stray.push(bg.pid);
+    expect(asked, "the backgrounded port was checked, not trusted on any host").toBeGreaterThan(0);
+    expect(status.state, status.log.join("\n")).toBe("error");
+    await controller.stop();
+  });
+
   it("unwraps JSON log lines and finds an announced pid", () => {
     const line = JSON.stringify({ message: "Dev server running at http://localhost:4399 (pid 26439)\n  Stop:   astro dev stop", label: "SKIP_FORMAT", level: "info" });
 
