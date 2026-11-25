@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { OVERLAY_SCRIPT_PATH, PROXY_HEALTH_PATH } from "../../src/api";
 import type { PreviewStatus } from "../../src/types";
+import { listenerStartedHere } from "../../src/workspace/preview/owner";
 import { createPortPool, parsePortRange, portIsFree } from "../../src/workspace/preview/ports";
 import { HELD_DETAIL, isWorkingPage, portArguments } from "../../src/workspace/preview/controller";
 import {
@@ -139,6 +140,49 @@ server.listen(port, "127.0.0.1", () => console.log("  Local   http://localhost:"
 `;
 
 /**
+ * A dev server that insists on the port it is told: it says which port that
+ * is (asked.json), takes a moment as a real one does, and stops with the
+ * system's own error when the port isn't free by then.
+ */
+const STRICT_SERVER = `
+import http from "node:http";
+import { readFileSync, writeFileSync } from "node:fs";
+const port = Number(process.argv[process.argv.indexOf("--port") + 1]);
+let asked = [];
+try { asked = JSON.parse(readFileSync("asked.json", "utf8")); } catch {}
+writeFileSync("asked.json", JSON.stringify([...asked, port]));
+await new Promise((done) => setTimeout(done, 400));
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { "content-type": "text/html" });
+  res.end("<html><head></head><body><h1>strict</h1></body></html>");
+});
+server.listen(port, "127.0.0.1", () => console.log("  Local   http://localhost:" + port + "/"));
+`;
+
+/**
+ * A dev server that moves to the next port when the one it is told isn't
+ * free, as Astro and Vite do, and says where it is only once it is ready.
+ */
+const MOVING_SERVER = `
+import http from "node:http";
+import { readFileSync, writeFileSync } from "node:fs";
+const told = Number(process.argv[process.argv.indexOf("--port") + 1]);
+let asked = [];
+try { asked = JSON.parse(readFileSync("asked.json", "utf8")); } catch {}
+writeFileSync("asked.json", JSON.stringify([...asked, told]));
+await new Promise((done) => setTimeout(done, 400));
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { "content-type": "text/html" });
+  res.end("<html><head></head><body><h1>moving</h1></body></html>");
+});
+const listen = (port) => {
+  server.once("error", (error) => { if (error.code === "EADDRINUSE") listen(port + 1); else throw error; });
+  server.listen(port, "127.0.0.1", () => setTimeout(() => console.log("  Local   http://localhost:" + port + "/"), 900));
+};
+listen(told);
+`;
+
+/**
  * Behaves like a dev server that restarts itself just after its first
  * answer (Astro restarting Vite after its first content sync): the first
  * request gets a page, then the server closes, sits dark for a moment, and
@@ -203,10 +247,24 @@ function site(label = "site"): string {
     "bg-server.mjs": BG_SERVER,
     "launcher.mjs": LAUNCHER,
     "site-server.mjs": SITE_SERVER,
+    "strict-server.mjs": STRICT_SERVER,
+    "moving-server.mjs": MOVING_SERVER,
     "restarting-server.mjs": RESTARTING_SERVER,
     "label.txt": label,
   });
   return root;
+}
+
+/** Whether this system has what is needed to say which program listens on a port (lsof and ps): the checks are "unknown" without. */
+async function canSayWhoseAPortIs(): Promise<boolean> {
+  const probe = http.createServer();
+
+  await new Promise<void>((done) => probe.listen(0, "127.0.0.1", done));
+  try {
+    return (await listenerStartedHere((probe.address() as net.AddressInfo).port, process.pid, process.cwd())) !== "unknown";
+  } finally {
+    await new Promise((done) => probe.close(done));
+  }
 }
 
 /** A free port on 127.0.0.1, to configure as a site's dev port. */
@@ -688,6 +746,151 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
     expect(status.detail).toBe("The preview is ready.");
     expect(status.log.join("\n")).toContain("couldn't be confirmed to be this site's preview");
     expect(controller.pid).toBeGreaterThan(0);
+  });
+
+  it("starts the dev server on another port when the one it chose is taken before the dev server could ask for it", async () => {
+    // Between choosing a free port and the dev server asking for it, the port can go to something else: on Linux
+    // the next outgoing connection of any program may be given it. A dev server that insists on its port then stops.
+    const root = site("strict");
+    const port = await freeLoopbackPort();
+    const { controller } = controllerFor(root, { dev: { command: "node strict-server.mjs", port, portArgs: ["--port", "{port}"] } });
+    const starting = controller.start();
+    // The moment the dev server says which port it was told, and before it asks for it, something else takes it.
+    await until(() => existsSync(join(root, "asked.json")), 5000, 10);
+    const told = (JSON.parse(readFileSync(join(root, "asked.json"), "utf8")) as number[])[0]!;
+    const taker = http.createServer((_req, res) => res.end("not this site"));
+
+    servers.push(taker);
+    await new Promise<void>((done) => taker.listen(told, "127.0.0.1", done));
+    const status = await starting;
+
+    expect(status.state).toBe("ready");
+    expect(await (await fetch((status.url as string) + "/")).text()).toContain("<h1>strict</h1>");
+    const asked = JSON.parse(readFileSync(join(root, "asked.json"), "utf8")) as number[];
+
+    // Started twice, the second time somewhere else; and the log says why.
+    expect(asked).toHaveLength(2);
+    expect(asked[1]).not.toBe(asked[0]);
+    expect(status.log.join("\n")).toContain(`Port ${told} was taken by another program before the preview could use it, so the preview is starting again on another port.`);
+  });
+
+  /** Waits until the dev server in `root` has said which port it was told, and has something else take that port first. */
+  async function takeThePortFirst(root: string, how: "answering" | "silent"): Promise<number> {
+    await until(() => existsSync(join(root, "asked.json")), 5000, 10);
+    const told = (JSON.parse(readFileSync(join(root, "asked.json"), "utf8")) as number[])[0]!;
+
+    if (how === "answering") {
+      const taker = http.createServer((_req, res) => res.end("<html><head></head><body><h1>not this site</h1></body></html>"));
+
+      servers.push(taker);
+      await new Promise<void>((done) => taker.listen(told, "127.0.0.1", done));
+    } else {
+      // Has the port and says nothing on it: what a dev server finds when the system gave the port to something else.
+      const taker = net.createServer((socket) => socket.destroy());
+
+      silent.push(taker);
+      await new Promise<void>((done) => taker.listen(told, "127.0.0.1", done));
+    }
+    return told;
+  }
+  const silent: net.Server[] = [];
+
+  afterEach(async () => {
+    while (silent.length) await new Promise((done) => silent.pop()!.close(done));
+  });
+
+  it("starts the dev server again on another port when the one it chose was taken by something that says nothing", async () => {
+    const root = site("strict");
+    const port = await freeLoopbackPort();
+    const { controller } = controllerFor(root, { dev: { command: "node strict-server.mjs", port, portArgs: ["--port", "{port}"] } });
+    const starting = controller.start();
+    const told = await takeThePortFirst(root, "silent");
+    const status = await starting;
+
+    expect(status.state).toBe("ready");
+    expect(await (await fetch((status.url as string) + "/")).text()).toContain("<h1>strict</h1>");
+    expect(JSON.parse(readFileSync(join(root, "asked.json"), "utf8"))).toHaveLength(2);
+    expect(status.log.join("\n")).toContain(`Port ${told} was taken by another program before the preview could use it, so the preview is starting again on another port.`);
+  });
+
+  it("never shows another program's pages when the dev server moves to the next port by itself and says so late", async () => {
+    // What Astro and Vite do with a port that is taken: use the next one, and announce it once they are ready.
+    // By then the port they were given has long been answering, for the program that took it.
+    const root = site("moving");
+    const port = await freeLoopbackPort();
+    const { controller, statuses } = controllerFor(root, { dev: { command: "node moving-server.mjs", port, portArgs: ["--port", "{port}"] } });
+    const starting = controller.start();
+    const told = await takeThePortFirst(root, "answering");
+    const status = await starting;
+
+    expect(status.state).toBe("ready");
+    expect(await (await fetch((status.url as string) + "/")).text()).toContain("<h1>moving</h1>");
+    // At no point was the preview said to be ready on the other program's port.
+    expect(statuses.filter((each) => each.state === "ready")).toHaveLength(1);
+    expect(status.log.join("\n")).toContain(`Port ${told} was taken by another program`);
+  });
+
+  it("gives up with a sentence that says what to do when the port keeps being taken", async () => {
+    const root = site("strict");
+    const port = await freeLoopbackPort();
+    const takers: http.Server[] = [];
+    // Every port this preview is told, another program has first.
+    const { controller } = controllerFor(root, { dev: { command: "node strict-server.mjs", port, portArgs: ["--port", "{port}"] } }, { startedHere: async () => "foreign" });
+    const starting = controller.start();
+    let taken = 0;
+    const keepTaking = setInterval(() => {
+      const asked = existsSync(join(root, "asked.json")) ? (JSON.parse(readFileSync(join(root, "asked.json"), "utf8")) as number[]) : [];
+
+      for (; taken < asked.length; taken += 1) {
+        const taker = http.createServer((_req, res) => res.end("<html><head></head><body><h1>not this site</h1></body></html>"));
+
+        takers.push(taker);
+        servers.push(taker);
+        taker.listen(asked[taken], "127.0.0.1");
+      }
+    }, 10);
+    const status = await starting.finally(() => clearInterval(keepTaking));
+
+    expect(status.state).toBe("error");
+    expect(status.detail).toMatch(/^Port \d+ keeps being taken by another program before the preview can use it\./);
+    // The first start and two more, and no further.
+    expect(JSON.parse(readFileSync(join(root, "asked.json"), "utf8"))).toHaveLength(3);
+  });
+
+  it("takes an answer on its port as the dev server's where the system can't say whose it is, and says so with the port", async () => {
+    const root = site("unannounced");
+    const port = await freeLoopbackPort();
+
+    // A dev server that never says where it is, so the port it was given is all there is to go by.
+    writeTree(root, { "quiet-server.mjs": 'import http from "node:http";\nconst port = Number(process.argv[process.argv.indexOf("--port") + 1]);\nhttp.createServer((req, res) => { res.writeHead(200, { "content-type": "text/html" }); res.end("<html><head></head><body><h1>quiet</h1></body></html>"); }).listen(port, "127.0.0.1");\n' });
+    const asked: number[] = [];
+    const { controller } = controllerFor(root, { dev: { command: "node quiet-server.mjs", port, portArgs: ["--port", "{port}"] } }, { startedHere: async (asking) => (asked.push(asking), "unknown") });
+    const status = await controller.start();
+
+    expect(status.state).toBe("ready");
+    expect(asked).toEqual([port]);
+    expect(status.log.join("\n")).toContain(`Port ${port} is answering, and it couldn't be checked here that it is this site's own preview answering`);
+    // With a system that can say, the same server is found to be this preview's own, and nothing is said.
+    await controller.stop();
+    const real = controllerFor(root, { dev: { command: "node quiet-server.mjs", port, portArgs: ["--port", "{port}"] } });
+    const again = await real.controller.start();
+
+    expect(again.state).toBe("ready");
+    expect(await (await fetch((again.url as string) + "/")).text()).toContain("<h1>quiet</h1>");
+    if (await canSayWhoseAPortIs()) expect(again.log.join("\n")).not.toContain("couldn't be checked");
+  });
+
+  it("doesn't start a dev server again when it stopped for a reason of its own", async () => {
+    const root = site("broken");
+    const port = await freeLoopbackPort();
+
+    writeTree(root, { "broken-server.mjs": 'import { appendFileSync } from "node:fs";\nappendFileSync("runs.txt", "x");\nconsole.error("SyntaxError: the site is broken");\nprocess.exit(1);\n' });
+    const { controller } = controllerFor(root, { dev: { command: "node broken-server.mjs", port, portArgs: ["--port", "{port}"] } });
+    const status = await controller.start();
+
+    expect(status.state).toBe("error");
+    expect(status.detail).toContain("stopped before it was ready");
+    expect(readFileSync(join(root, "runs.txt"), "utf8")).toBe("x");
   });
 
   it("gives two sites with the same configured port a preview of their own each", async () => {

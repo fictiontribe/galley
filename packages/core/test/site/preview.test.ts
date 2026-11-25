@@ -86,6 +86,57 @@ async function page(url: string): Promise<string> {
   return response.text();
 }
 
+it("shows the real site, never another program's pages, when that program takes the port just before Astro asks for it", { timeout: 120_000 }, async () => {
+  const root = makeSite({ nodeModules: true });
+  const devPort = await freePort();
+  const config = JSON.parse(readFileSync(join(root, "galley.config.json"), "utf8")) as Record<string, unknown>;
+
+  // As a site made from the starter runs: its own dev script, the port passed as `--port` (the Astro adapter's doing),
+  // which Astro moves on from when it is taken. Only the port is set here, so a dev server someone runs on 4321 is not met.
+  writeFileSync(join(root, "galley.config.json"), JSON.stringify({ ...config, dev: { port: devPort } }));
+  const { site, of } = await openSite(root, { watch: true, overlayScript: () => "window.__overlayLoaded = true;" });
+
+  expect((await site.model()).dev).toMatchObject({ port: devPort, portArgs: ["--port", "{port}"] });
+  const starting = site.preview().start();
+  // The preview has chosen its port and started Astro, which takes a second or more to ask for it. Another
+  // program takes the port in that time, and answers on it.
+  let other: import("node:http").Server | null = null;
+  const { createServer } = await import("node:http");
+
+  await until(() => (site.preview() as PreviewControllerHandle).pid !== undefined, 20_000, 5);
+  other = createServer((_req, res) => {
+    res.writeHead(200, { "content-type": "text/html" });
+    res.end("<html><head></head><body><h1>Another program's page</h1></body></html>");
+  });
+  const took = await new Promise<boolean>((resolve) => {
+    other!.once("error", () => resolve(false));
+    other!.listen(devPort, "127.0.0.1", () => resolve(true));
+  });
+
+  try {
+    const status = await starting;
+
+    expect(took, "the other program got the port before Astro did").toBe(true);
+    expect(status.state, status.log.join("\n")).toBe("ready");
+    let html = "";
+
+    await until(async () => {
+      html = await page(`${status.url}/`);
+      return html.includes("home you already have");
+    }, 30_000, 200).catch((error: Error) => {
+      throw new Error(`${error.message}\n${html.slice(0, 300)}\n${site.preview().status().log.join("\n")}`);
+    });
+    expect(html).not.toContain("Another program's page");
+    // And it never was: no status said "ready" with the other program behind it.
+    for (const event of of("preview.status").filter((each) => each.status.state === "ready")) expect(await page(`${event.status.url}/`)).not.toContain("Another program's page");
+    console.info(`preview with its port taken: ${status.log.filter((line) => /taken|Local|local|starting again|couldn't be checked|in use/i.test(line)).join(" | ")} :: ready at ${status.url}, dev server pid ${(site.preview() as PreviewControllerHandle).pid}`);
+    expect(status.log.join("\n")).toContain(`Port ${devPort} was taken by another program`);
+  } finally {
+    await site.dispose();
+    await new Promise((done) => other!.close(done));
+  }
+});
+
 it("previews the real site, shows an edit through hot reload, and cleans up after itself", { timeout: 120_000 }, async () => {
   const root = makeSite({ nodeModules: true });
   const devPort = await freePort();
