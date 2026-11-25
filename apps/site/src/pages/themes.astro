@@ -1,10 +1,12 @@
 ---
 // /themes/: the editing app's themes — the built-ins and the community's —
 // each drawn from its own colours and switches (CSS, no screenshots), from the
-// same files the app bundles. The site itself stays Quiet.
+// same files the app bundles; then how to use one, beside a capture of the
+// app in the Plate theme with its picker open (the tour's own picture).
 import Site from "../layouts/Site.astro";
 import { fill } from "../lib/site";
 import { fullSwitches, siteThemes } from "../lib/themes";
+import { resolveVisual } from "../lib/visual";
 
 const title = "Themes for the editing app";
 const description = "Quiet, Plate, Desk and the community's themes for Galley's editing app: each a small file of colours and choices, checked to stay readable. Download one, or make your own in the app.";
@@ -18,6 +20,7 @@ const cards = siteThemes.map((entry) => {
   ].map(([name, value]) => `${name}:${value}`).join(";");
   return { ...entry, style, switches: s };
 });
+const picker = resolveVisual({ src: "theme-plate", y: -355, alt: "Site home for Caddow in the Plate theme — the sidebar an inked plate with light words — with the theme picker open at its foot, Quiet, Plate and Desk drawn as small swatches, then Browse community themes and Make a theme…." });
 const SIDEBAR: Record<string, string> = { sheet: "paper sidebar", desk: "desk sidebar", plate: "plate sidebar" };
 ---
 
@@ -60,13 +63,24 @@ const SIDEBAR: Record<string, string> = { sheet: "paper sidebar", desk: "desk si
     </ul>
   </section>
 
-  <section class="section wrap" aria-labelledby="themes-use-h">
-    <h2 class="h2 head" id="themes-use-h">Use one, make your own</h2>
-    <ol class="themes__steps body">
-      <li><strong>Choose one</strong> with the small swatch beside light and dark, at the foot of the app’s sidebar. A downloaded file goes in with <strong>Import…</strong> in Settings › Themes.</li>
-      <li><strong>Make your own</strong> from any theme: Settings › Themes › Make a theme from this one. The app checks every theme stays readable and says what it adjusted.</li>
-      <li><strong>Share it</strong>: Share with the community opens GitHub with your theme filled in, to propose for this page. More in <a href={fill("/docs/editing/themes/")}>the docs</a>.</li>
-    </ol>
+  <section class="section wrap themes-use" aria-labelledby="themes-use-h">
+    <div class="themes-use__text rv">
+      <h2 class="h2" id="themes-use-h">Use one, make your own</h2>
+      <ol class="themes__steps body">
+        <li><strong>Choose one</strong> with the small swatch beside light and dark, at the foot of the app’s sidebar. A downloaded file goes in with <strong>Import…</strong> in Settings › Themes.</li>
+        <li><strong>Make your own</strong> from any theme: Settings › Themes › Make a theme from this one. The app checks every theme stays readable and says what it adjusted.</li>
+        <li><strong>Share it</strong>: Share with the community opens GitHub with your theme filled in, to propose for this page. More in <a href={fill("/docs/editing/themes/")}>the docs</a>.</li>
+      </ol>
+    </div>
+    {picker && (
+      <div class="frame themes-use__frame rv">
+        <div class="stage">
+          <div class="shot" style={[picker.style, `width:${picker.pic.width}px`].filter(Boolean).join(";")}>
+            <img src={picker.pic.src} srcset={picker.pic.srcset} sizes={`${picker.pic.width}px`} width={picker.pic.width} height={picker.pic.height} alt={picker.alt} loading="lazy" decoding="async" />
+          </div>
+        </div>
+      </div>
+    )}
   </section>
 </Site>
 
@@ -77,7 +91,15 @@ const SIDEBAR: Record<string, string> = { sheet: "paper sidebar", desk: "desk si
   .themes__text .h3 { margin: 0; }
   .themes__desc { font-size: 0.9375rem; }
   .themes__download { margin-top: var(--s2); }
-  .themes__steps { display: grid; gap: var(--s3); max-width: 46rem; padding-left: 1.25em; margin: 0; }
+  .themes__steps { display: grid; gap: var(--s5); margin: var(--s6) 0 0; padding: 0; list-style: none; counter-reset: step; }
+  .themes__steps li { position: relative; padding: 0 0 var(--s5) 2.75rem; border-bottom: 1px solid var(--line); counter-increment: step; text-wrap: pretty; }
+  .themes__steps li:last-child { border-bottom: 0; padding-bottom: 0; }
+  .themes__steps li::before { content: counter(step); position: absolute; left: 0; top: -0.15em; font: 600 1.5rem/1 var(--font-text); color: var(--accent-text); }
+  .themes__steps a { color: var(--accent-text); text-underline-offset: 0.2em; }
+  .themes-use { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s7) var(--s8); align-items: center; }
+  .themes-use__frame { aspect-ratio: 7 / 5; }
+  @media (max-width: 1023px) { .themes-use { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 639px) { .themes-use__frame { aspect-ratio: 1 / 1; } .themes-use__frame .shot { zoom: .55; --ax-sm: 32px; --ay-sm: 32px; } }
 
   /* A theme drawn from its seeds and switches: sidebar in its material, the paper, a sheet, the assistant's field, the one button. */
   .theme-art { display: grid; grid-template-columns: 28% 1fr; aspect-ratio: 16 / 9; border-radius: var(--r-md, 8px); overflow: hidden; background: var(--sw-paper); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sw-ink) 14%, transparent); }

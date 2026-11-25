@@ -90,35 +90,61 @@ const others = [w.browser, w.server, ...(demo.on ? [w.demo] : [])];
       ))}
     </nav>
 
-    <section class="dlpage__points" aria-labelledby="dl-points-h">
-      <h2 class="sr" id="dl-points-h">{p.pointsLabel}</h2>
-      <ul>
-        {p.points.map((pt: { title: string; text: string }) => (
-          <li>
-            <h3 class="dlpage__pt">{pt.title}</h3>
-            <p class="body">{pt.text}</p>
-          </li>
-        ))}
-      </ul>
-    </section>
   </section>
 
   {
-    screens.length > 0 && (
+    screens.length > 1 ? (
       <section class="wrap dlpage__screens" aria-label={p.screensLabel}>
-        <div class:list={["dlshots", screens.length === 1 && "dlshots--one", screens.length % 2 === 0 && "dlshots--pairs"]}>
-          {screens.map((s, i) => (
-            <figure class:list={["frame", "dlshot", i === 0 && "dlshot--lead"]} data-zoom-panel>
-              <div class="dlshot__win" data-zoom-at="0" style={`max-width:${s.pic.width}px`}>
-                <img src={s.pic.src} srcset={s.pic.srcset} sizes={i === 0 && screens.length % 2 === 1 ? "(max-width: 1023px) 100vw, 1100px" : "(max-width: 1023px) 100vw, 560px"} width={s.pic.width} height={s.pic.height} alt={s.alt} loading="lazy" decoding="async" />
-              </div>
-              <Zoom items={[{ src: s.pic.src, w: s.pic.width, h: s.pic.height, alt: s.alt }]} label={zoomName(s.alt)} />
-            </figure>
-          ))}
+        {/* Two windows of the app on the desk, the home page's arrangement: the first in front, the second behind it. */}
+        <figure class="frame desk__frame dlstage rv-scale" data-zoom-panel>
+          <span class="desk__win desk__win--back" data-zoom-at="1">
+            <img src={screens[1].pic.src} srcset={screens[1].pic.srcset} sizes="(max-width: 639px) 80vw, (max-width: 1280px) 52vw, 640px" width={screens[1].pic.width} height={screens[1].pic.height} alt={screens[1].alt} loading="lazy" decoding="async" />
+          </span>
+          <span class="desk__win desk__win--front" data-zoom-at="0">
+            <img src={screens[0].pic.src} srcset={screens[0].pic.srcset} sizes="(max-width: 639px) 84vw, (max-width: 1280px) 62vw, 780px" width={screens[0].pic.width} height={screens[0].pic.height} alt={screens[0].alt} loading="lazy" decoding="async" />
+          </span>
+          <Zoom items={screens.slice(0, 2).map((s) => ({ src: s.pic.src, w: s.pic.width, h: s.pic.height, alt: s.alt }))} label={zoomName(screens[0].alt)} />
+        </figure>
+        {screens.length > 2 && (
+          <div class="dlshots dlshots--pairs dlshots--more">
+            {screens.slice(2).map((s) => (
+              <figure class="frame dlshot" data-zoom-panel>
+                <div class="dlshot__win" data-zoom-at="0" style={`max-width:${s.pic.width}px`}>
+                  <img src={s.pic.src} srcset={s.pic.srcset} sizes="(max-width: 1023px) 100vw, 560px" width={s.pic.width} height={s.pic.height} alt={s.alt} loading="lazy" decoding="async" />
+                </div>
+                <Zoom items={[{ src: s.pic.src, w: s.pic.width, h: s.pic.height, alt: s.alt }]} label={zoomName(s.alt)} />
+              </figure>
+            ))}
+          </div>
+        )}
+      </section>
+    ) : screens.length === 1 && (
+      <section class="wrap dlpage__screens" aria-label={p.screensLabel}>
+        <div class="dlshots dlshots--one">
+          <figure class="frame dlshot dlshot--lead" data-zoom-panel>
+            <div class="dlshot__win" data-zoom-at="0" style={`max-width:${screens[0].pic.width}px`}>
+              <img src={screens[0].pic.src} srcset={screens[0].pic.srcset} sizes="(max-width: 1023px) 100vw, 1100px" width={screens[0].pic.width} height={screens[0].pic.height} alt={screens[0].alt} loading="lazy" decoding="async" />
+            </div>
+            <Zoom items={[{ src: screens[0].pic.src, w: screens[0].pic.width, h: screens[0].pic.height, alt: screens[0].alt }]} label={zoomName(screens[0].alt)} />
+          </figure>
         </div>
       </section>
     )
   }
+
+  <div class="wrap">
+      <section class="dlpage__points" aria-labelledby="dl-points-h">
+        <h2 class="sr" id="dl-points-h">{p.pointsLabel}</h2>
+        <ul>
+          {p.points.map((pt: { title: string; text: string }) => (
+            <li>
+              <h3 class="dlpage__pt">{pt.title}</h3>
+              <p class="body">{pt.text}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+  </div>
 
   {
     on && groups.length > 0 && (

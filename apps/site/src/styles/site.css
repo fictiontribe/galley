@@ -1123,22 +1123,22 @@ code { background: var(--hover-2); }
 /* ---------- starters: three finished sites, glowing on the plate ---------- */
 .starters--row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s7) var(--gap); }
 :is(.starters--row, .starters--stage) .starter { gap: var(--s4); }
-:is(.starters--row, .starters--stage) .starter__frame { aspect-ratio: 4 / 5; background: var(--raised); }
-:is(.starters--row, .starters--stage) .starter__frame .stage { -webkit-mask: none; mask: none; }
-:is(.starters--row, .starters--stage) .starter__shot { position: absolute; inset: 0; width: auto; display: grid; border: 0; border-radius: inherit; background: var(--raised); box-shadow: none; translate: none; }
-:is(.starters--row, .starters--stage) .starter__shot img { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: cover; object-position: top center; transform-origin: 50% 0; }
-:is(.starters--row, .starters--stage) .starter__frame::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--line); pointer-events: none; }
+:is(.starters--row, .starters--stage, .starters--gallery) .starter__frame { aspect-ratio: 4 / 5; background: var(--raised); }
+:is(.starters--row, .starters--stage, .starters--gallery) .starter__frame .stage { -webkit-mask: none; mask: none; }
+:is(.starters--row, .starters--stage, .starters--gallery) .starter__shot { position: absolute; inset: 0; width: auto; display: grid; border: 0; border-radius: inherit; background: var(--raised); box-shadow: none; translate: none; }
+:is(.starters--row, .starters--stage, .starters--gallery) .starter__shot img { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: cover; object-position: top center; transform-origin: 50% 0; }
+:is(.starters--row, .starters--stage, .starters--gallery) .starter__frame::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--line); pointer-events: none; }
 .starter.is-fading .starter__shot img { opacity: 0; transition: opacity .5s cubic-bezier(.4, 0, .2, 1); }
 .starter.is-fading .starter__shot img.is-on { opacity: 1; }
-:is(.starters--row, .starters--stage) .starter__view .looks { position: static; margin: var(--s4) 0 0; }
+:is(.starters--row, .starters--stage, .starters--gallery) .starter__view .looks { position: static; margin: var(--s4) 0 0; }
 :is(.starters--row, .starters--stage) .starter__body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 2px var(--s4); padding: 0 var(--s1); }
 :is(.starters--row, .starters--stage) .starter__name { font-size: 1.375rem; line-height: 1.2; }
 :is(.starters--row, .starters--stage) .starter__kind { grid-column: 1; grid-row: 2; }
 :is(.starters--row, .starters--stage) .starter__kind .label { font: 400 var(--t-small)/1.5 var(--font-text); color: var(--ink-3); letter-spacing: 0; }
 :is(.starters--row, .starters--stage) .starter__meta { grid-column: 2; grid-row: 1; font-size: var(--t-small); color: var(--ink-3); }
-.look, :is(.starters--row, .starters--stage) .starter__view .look { min-height: 36px; border-color: var(--line-2); background: transparent; color: var(--ink-2); transition: background-color .14s, border-color .14s, color .14s; }
-.look:hover, :is(.starters--row, .starters--stage) .starter__view .look:hover { background: var(--hover); color: var(--ink); }
-.look[aria-pressed="true"], :is(.starters--row, .starters--stage) .starter__view .look[aria-pressed="true"] { border-color: var(--ink-2); background: var(--hover); color: var(--ink); }
+.look, :is(.starters--row, .starters--stage, .starters--gallery) .starter__view .look { min-height: 36px; border-color: var(--line-2); background: transparent; color: var(--ink-2); transition: background-color .14s, border-color .14s, color .14s; }
+.look:hover, :is(.starters--row, .starters--stage, .starters--gallery) .starter__view .look:hover { background: var(--hover); color: var(--ink); }
+.look[aria-pressed="true"], :is(.starters--row, .starters--stage, .starters--gallery) .starter__view .look[aria-pressed="true"] { border-color: var(--ink-2); background: var(--hover); color: var(--ink); }
 .look__sw { box-shadow: inset 0 0 0 1px var(--line-seam); }
 
 /* stage: Caddow tall at the left, its whole home page gliding up inside the
@@ -1239,7 +1239,7 @@ code { background: var(--hover-2); }
     .rv-scale { animation: cv-grow linear both; animation-timeline: view(); animation-range: entry 0% entry 100%; }
     :is(.starters--row, .starters--stage) .starter:nth-child(2), .bento__cell:nth-child(2), .bento__cell:nth-child(4), .rel__group:nth-child(2) { animation-range: entry min(15%, 40px) entry min(100%, 340px); }
     :is(.starters--row, .starters--stage) .starter:nth-child(3), .bento__cell:nth-child(5), .rel__group:nth-child(3) { animation-range: entry min(25%, 80px) entry min(100%, 400px); }
-    :is(.starters--row, .starters--stage) .starter:not(.starter--tall) .starter__shot img { animation: cv-zoom linear both; animation-timeline: view(); animation-range: entry 0% cover 60%; }
+    :is(.starters--row, .starters--stage, .starters--gallery) .starter:not(.starter--tall) .starter__shot img { animation: cv-zoom linear both; animation-timeline: view(); animation-range: entry 0% cover 60%; }
     /* The tall page reads itself: from its top to its foot (image 2900 high in a 4:5 frame: 44.8 % of its height to travel). */
     .starters--stage .starter--tall .starter__shot img { animation: cv-pan linear both; animation-timeline: view(); animation-range: cover 12% cover 88%; }
   }
@@ -1436,4 +1436,168 @@ code { background: var(--hover-2); }
   .desk__win--back { left: 5%; top: 6%; width: 78%; }
   .desk__win--front { right: 5%; top: 38%; width: 84%; }
   .desk--stage .dl--home, .desk--stage .dl__home { align-items: center; }
+}
+
+/* =====================================================================
+   Stage 3 — the inner pages (2026-11-25)
+   ===================================================================== */
+
+/* ---------- the tour ----------
+   Under the hero, the five parts as hairline cards, each with its first
+   picture: the page's table of contents, to scan and jump. Then the parts:
+   large captures, framed, with a light dissolve so a screen reads to its edge. */
+.page-tour .hero { padding-bottom: var(--s7); }
+.page-tour .hero--text .hero__text { max-width: 46rem; }
+.tour-map { margin-bottom: clamp(48px, 6vw, 88px); }
+.tour-map__list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gap); }
+.tour-map__cell { min-width: 0; }
+.tour-map__card { display: flex; flex-direction: column; height: 100%; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--raised); text-decoration: none; transition: border-color .2s; }
+.tour-map__card:hover { border-color: var(--line-seam); }
+.tour-map__frame { display: block; aspect-ratio: 4 / 3; border-radius: var(--r-md); }
+.tour-map__frame .stage { --fade-h: 40px; --fade-w: 24px; }
+.tour-map__frame .shot { --ax: 16px; --ay: 16px; --ax-sm: 16px; --ay-sm: 16px; display: block; border-radius: 6px; transition: translate .32s cubic-bezier(.16, 1, .3, 1); }
+.tour-map__card:hover .shot { translate: -4px -4px; }
+.tour-map__label { display: flex; align-items: baseline; gap: 10px; padding: 14px 8px 6px; font: 500 1rem/1.3 var(--font-text); }
+.tour-map__label::after { content: "→"; margin-left: auto; color: var(--ink-3); transition: transform .2s, color .2s; }
+.tour-map__card:hover .tour-map__label::after { color: var(--accent-text); transform: translateX(3px); }
+.tour-map__n { color: var(--accent-text); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .tour-map__cell:nth-child(2) { animation-range: entry min(15%, 30px) entry min(100%, 300px); }
+    .tour-map__cell:nth-child(3) { animation-range: entry min(20%, 60px) entry min(100%, 330px); }
+    .tour-map__cell:nth-child(4) { animation-range: entry min(25%, 90px) entry min(100%, 360px); }
+    .tour-map__cell:nth-child(5) { animation-range: entry min(30%, 120px) entry min(100%, 390px); }
+  }
+}
+.tour-frame .stage { --fade-h: 48px; --fade-w: 40px; }
+.tour-part__head .h2 { display: flex; align-items: baseline; gap: 0.4em; }
+.tour-part__n { min-width: 0; }
+/* A link with a few words after it (the demo's "on a computer") wraps as one line of text. */
+.link:has(.link__note) { display: inline; }
+@media (max-width: 1180px) {
+  .tour-map__list { grid-template-columns: repeat(5, minmax(200px, 1fr)); overflow-x: auto; scroll-snap-type: x mandatory; margin-inline: calc(-1 * var(--gutter)); padding: 2px var(--gutter) var(--s3); scroll-padding-inline: var(--gutter); scrollbar-width: none; }
+  .tour-map__list::-webkit-scrollbar { display: none; }
+  .tour-map__cell { scroll-snap-align: start; }
+}
+@media (max-width: 639px) {
+  .tour-map__list { grid-template-columns: repeat(5, 64vw); }
+  /* Phone: a tour capture at about half size, so the frame shows the screen's working part, not one word of it. */
+  .tour-frame .shot { zoom: .55; --ax-sm: 32px; --ay-sm: 32px; }
+  .tour-frame .stage { --fade-h: 32px; --fade-w: 24px; }
+}
+.link:has(.link__note)::after { margin-left: .3em; }
+/* The sticky index waits, faded, while the map of parts above it is in view (the script marks it). */
+.tour-index { transition: opacity .3s, visibility .3s; }
+.tour-index.is-waiting { opacity: 0; visibility: hidden; }
+
+/* ---------- /apps/: the app's face, its download, then its windows on the desk ----------
+   The other systems sit as one row of small hairline cards under the button
+   (a list on a phone), so the hero stays one screen; then the two windows,
+   large, as on the home page; then what it is, how to open it, other ways. */
+.dlpage { padding-top: clamp(48px, 6vw, 96px); }
+.dlpage__icon svg { width: clamp(112px, 12vw, 152px); filter: drop-shadow(0 1px 1px var(--shade-1)) drop-shadow(0 22px 34px var(--shade-2)); }
+.dlpage__head { gap: var(--s5); }
+.dlpage__get { max-width: 64rem; }
+.dl--page .dl__all { width: 100%; margin-top: var(--s7); }
+.dl--page.is-picked .dl__all { margin-top: var(--s7); }
+.dl--page .dl__label { text-align: center; margin-bottom: var(--s3); color: var(--ink-3); }
+.dl--page .dl__list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s3); border: 0; }
+.dl--page .dl__row { min-height: 0; padding: 14px 14px 14px 18px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--raised); text-align: left; transition: border-color .2s; }
+.dl--page .dl__row:hover { border-color: var(--line-seam); }
+.dlpage__ways { margin-top: var(--s6); }
+.dlpage__screens { margin-top: clamp(56px, 7vw, 104px); }
+.dlstage { position: relative; display: block; margin: 0; aspect-ratio: 1280 / 690; padding: 0; overflow: clip; }
+.dlstage .desk__win { cursor: zoom-in; }
+.dlstage .desk__win:hover { translate: 0 -6px; }
+.dlshots--more { margin-top: var(--gap); }
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .dlstage .desk__win--back { animation: cv-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+  }
+}
+.dlpage__points { margin-top: var(--section); }
+.dlpage__points li { border-top-color: var(--line-seam); }
+.dlpage__open .h2, .appways .h2 { margin-bottom: var(--s2); }
+.dlopen__group { padding: var(--s5); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--raised); }
+.way-card { background: var(--raised); }
+@media (max-width: 639px) {
+  .dl--page .dl__list { grid-template-columns: minmax(0, 1fr); }
+  .dlstage { aspect-ratio: 1 / 1; }
+}
+.dl--page .dl__row { flex-direction: column; align-items: flex-start; justify-content: space-between; gap: var(--s3); padding: var(--s4) var(--s4) var(--s4) var(--s5); }
+.dl--page .dl__name b { font-weight: 600; }
+.dl--page .dl__get { min-height: 36px; }
+
+/* ---------- /starters/: the same finished sites, larger, with what each is and the one command ---------- */
+.starters--gallery .starter__frame { aspect-ratio: 5 / 4; }
+.starters--gallery .starter__name { font-size: 1.75rem; }
+.starters--gallery .starter__kind .label { font: 500 var(--t-small)/1.5 var(--font-text); letter-spacing: 0; color: var(--ink-3); }
+.starters--gallery .starter__run .cmd pre { font-size: 0.8125rem; }
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .starters--gallery .starter:nth-child(even) { animation-range: entry min(15%, 40px) entry min(100%, 340px); }
+  }
+}
+.own { border-radius: 0; }
+
+/* ---------- a notice above a hero: a pressable line, set as the pill it is ---------- */
+.notice { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: var(--r-pill); font: 500 var(--t-small)/1.2 var(--font-text); letter-spacing: 0; color: var(--ink-2); transition: border-color .14s, background-color .14s, color .14s; }
+.notice:hover { color: var(--ink); border-color: var(--line-seam); background: var(--hover); }
+.notice:hover span { text-decoration: none; }
+
+/* ---------- /how-to/: the guides as hairline cards over their first screen ---------- */
+.howto-card a { padding: 8px 8px 16px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--raised); transition: border-color .2s; }
+.howto-card a:hover { border-color: var(--line-seam); }
+.howto-card a:hover .howto-card__t { text-decoration: none; }
+.howto-card__frame { border-radius: var(--r-md); margin-bottom: var(--s3); }
+.howto-card__t, .howto-card__d, .howto-card__n { padding-inline: 8px; }
+.howto-card__frame--window .stage { -webkit-mask: linear-gradient(to bottom, #000 calc(100% - 40px), transparent calc(100% - 2px)), linear-gradient(to right, transparent 2px, #000 20px, #000 calc(100% - 20px), transparent calc(100% - 2px)); -webkit-mask-composite: source-in; mask: linear-gradient(to bottom, #000 calc(100% - 40px), transparent calc(100% - 2px)), linear-gradient(to right, transparent 2px, #000 20px, #000 calc(100% - 20px), transparent calc(100% - 2px)); mask-composite: intersect; }
+.howto-card__n { color: var(--ink-3); }
+@media (max-width: 639px) {
+  .howto-card a { padding: var(--s3); border-radius: var(--r-lg); }
+  .howto-cards { gap: var(--s3); }
+  .howto-index--filtered .howto-cards { margin-top: var(--s4); }
+  .howto-card__t, .howto-card__d, .howto-card__n { padding-inline: 0; }
+}
+/* A hero's small label goes under its actions, as a quiet meta line, never as an eyebrow over the headline. */
+.hero__text > .label { order: 9; font: 400 var(--t-small)/1.5 var(--font-text); letter-spacing: 0; color: var(--ink-3); }
+
+/* ---------- reading pages: the page set, comfortable for a long read in both modes ----------
+   A measure near 68 characters, generous leading, body text at the second ink
+   (soft on the plate, never grey-on-grey), links that are plainly links, code
+   and tables on calm surfaces, light screenshots inside their frame. */
+.prose { max-width: 39rem; font-size: 1.0625rem; line-height: 1.7; }
+.prose p, .prose li { text-wrap: pretty; }
+.prose a { text-decoration-thickness: 1px; text-underline-offset: 0.22em; }
+.prose a:hover { text-decoration-thickness: 2px; }
+.prose code { padding: 1px 5px; border-radius: 4px; background: var(--hover-2); color: var(--ink); }
+.prose pre code { background: none; }
+/* On a phone the page itself never scrolls sideways: long code in a sentence breaks where it must, and a wide table scrolls inside its own frame. */
+.prose { overflow-wrap: break-word; }
+.prose :not(pre) > code { overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .prose table { display: block; width: auto; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+  .prose th, .prose td { min-width: 8rem; }
+  .prose th:last-child:not(:first-child), .prose td:last-child:not(:first-child) { min-width: 15rem; } /* the column that explains: wide enough to read */
+  .prose th code, .prose td code { overflow-wrap: normal; white-space: nowrap; }
+}
+.prose blockquote { padding: var(--s4) var(--s5); border: 1px solid var(--line); border-left: 3px solid var(--accent-text); border-radius: 0 var(--r-md) var(--r-md) 0; background: var(--raised); color: var(--ink-2); }
+.prose .table-wrap, .prose > table { margin-block: var(--s5); }
+.prose table { border: 1px solid var(--line); border-radius: var(--r-md); border-collapse: separate; border-spacing: 0; overflow: hidden; background: var(--raised); }
+.prose th, .prose td { padding: 10px 14px; }
+.prose th { background: var(--hover); border-bottom-color: var(--line-2); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose figure.frame { border-radius: var(--r-lg); }
+.prose figure.frame img { border: 1px solid var(--shot-line); border-radius: var(--r-sm); box-shadow: 0 18px 40px -24px var(--shade-2); }
+.docs__desc { max-width: 39rem; }
+.docs__foot { max-width: 39rem; }
+.page-head { max-width: 48rem; }
+.page-head .lead { max-width: 39rem; }
+/* The changelog: its releases beside it, in view. */
+.reading--aside { display: grid; grid-template-columns: minmax(0, 39rem) 220px; justify-content: start; gap: clamp(48px, 8vw, 128px); align-items: start; }
+.reading__toc { top: calc(var(--header-h) + 24px); }
+.reading__toc ul { max-height: calc(100vh - var(--header-h) - 120px); overflow-y: auto; scrollbar-width: thin; }
+@media (max-width: 1180px) {
+  .reading--aside { grid-template-columns: minmax(0, 1fr); }
+  .reading__toc { display: none; }
 }
