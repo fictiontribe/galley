@@ -694,7 +694,18 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
            */
           const ours = async (host: string, port: number): Promise<boolean> => {
             if (spawned.pid === undefined || settings.dev!.trustPort || confirmed.has(`${host}:${port}`)) return true;
-            if (backgrounded && port === announced) return true;
+            if (backgrounded && port === announced) {
+              // A dev server that detached: don't take its announced port on any address on trust — a program on
+              // the port's other address would be served as the preview. Check it the same way as the rest, by the
+              // pid it announced, or (when it named none) by its running in the site's folder. A port something
+              // foreign shares is not served; a backgrounded server isn't started again, so the wait ends by timing
+              // out rather than restarting.
+              const standing = await startedHere(port, announcedPid ?? spawned.pid, options.root, process.pid);
+
+              if (standing === "foreign" || standing === "shared") return false;
+              if (standing === "own") confirmed.add(`${host}:${port}`);
+              return true;
+            }
             const standing = await startedHere(port, spawned.pid, options.root, process.pid);
 
             if (standing === "shared") throw new PortTaken(port);
