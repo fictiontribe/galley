@@ -35,11 +35,13 @@ import { bearerToken, type SessionInfo } from "../auth";
 import { AuthError, errorBody, forbidden, invalid, notFound } from "../errors";
 import { NEEDS_A_PERSON } from "../who";
 import type { DeclaredRoute } from "./declare";
+import { isJson } from "./json";
 import { duringGet, guardSite } from "./site";
-import type { StartedExtension } from "./run";
+import type { StartedExtension, StartedExtensions } from "./run";
 import type { ExtensionCaller, ExtensionRequest, JsonValue, SessionRef } from "./types";
 
 export const NOT_FROM_THE_EDITOR = "That request didn't come from the editor's own page, so it wasn't done.";
+export { isJson } from "./json";
 export const NOT_AN_ADDRESS = "There's nothing at this address.";
 const TOO_MUCH = "That's too much to send in one go.";
 
@@ -73,22 +75,6 @@ function pathLike(value: string): boolean {
   return value === "." || value === ".." || value.includes("/") || value.includes("\\") || value.includes("\0");
 }
 
-/** Whether a value can be sent as JSON as it is: nothing `JSON.stringify` would drop, change or choke on. */
-export function isJson(value: unknown, seen: Set<object> = new Set()): value is JsonValue {
-  if (value === null || typeof value === "string" || typeof value === "boolean") return true;
-  if (typeof value === "number") return Number.isFinite(value);
-  if (typeof value !== "object") return false;
-  if (seen.has(value)) return false;
-  const proto = Object.getPrototypeOf(value) as unknown;
-
-  if (!Array.isArray(value) && proto !== Object.prototype && proto !== null) return false;
-  seen.add(value);
-  const ok = Array.isArray(value) ? value.every((item) => isJson(item, seen)) : Object.values(value).every((item) => isJson(item, seen));
-
-  seen.delete(value);
-  return ok;
-}
-
 async function readBody(c: Context): Promise<unknown> {
   const text = await c.req.text();
 
@@ -100,11 +86,20 @@ async function readBody(c: Context): Promise<unknown> {
   }
 }
 
-function handlerFor(extension: StartedExtension, declared: DeclaredRoute, deps: MountDeps): MiddlewareHandler {
-  const { route } = declared;
-  const readOnly = declared.method === "GET";
+export const NOT_RUNNING = "That part of the editor isn't running just now. Try again in a moment; if it stays so, whoever runs this editor needs to restart it.";
 
+function handlerFor(runtime: StartedExtensions, id: string, mounted: DeclaredRoute, deps: MountDeps): MiddlewareHandler {
   return async (c) => {
+    // The one running now: after a backup is put back, extensions are started again, and the routes are theirs.
+    const extension = runtime.find(id);
+    const declared = extension?.routes.find((candidate) => candidate.key === mounted.key);
+
+    if (!extension || !declared) return c.json(errorBody("busy", NOT_RUNNING), 503);
+    // The guards in front of this handler are the ones the address was mounted with. An extension started again with others is
+    // stopped before it gets here (run.ts); should one ever get here all the same, its handler is not run behind the wrong guards.
+    if (declared.route.access !== mounted.route.access || declared.bodyLimit !== mounted.bodyLimit || (declared.route.person === true) !== (mounted.route.person === true)) return c.json(errorBody("busy", NOT_RUNNING), 503);
+    const { route } = declared;
+    const readOnly = declared.method === "GET";
     const who = deps.callerOf(c);
 
     if (!who) throw new AuthError("Sign in to continue.");
@@ -116,6 +111,7 @@ function handlerFor(extension: StartedExtension, declared: DeclaredRoute, deps: 
     const site = siteId === null ? null : await deps.site(siteId);
 
     if (siteId !== null && !site) throw notFound("That site isn't open here. Open it again from the Sites screen.");
+    if (site) extension.handed(site.id);
     const read = route.body ? await readBody(c) : undefined;
     const query: Record<string, string | undefined> = Object.create(null) as Record<string, string | undefined>;
 
@@ -174,15 +170,20 @@ function handlerFor(extension: StartedExtension, declared: DeclaredRoute, deps: 
   };
 }
 
-/** Mounts every started extension's routes. Call after the editor's own routes and before its catch-all. */
-export function mountExtensions(app: Hono, extensions: readonly StartedExtension[], deps: MountDeps): void {
+/**
+ * Mounts every started extension's routes. Call after the editor's own routes
+ * and before its catch-all. The addresses are those the extensions declared
+ * when the server started; each call goes to the extension running at that
+ * moment, so one started again (after a backup is put back) is the one asked.
+ */
+export function mountExtensions(app: Hono, runtime: StartedExtensions, deps: MountDeps): void {
   const register = app.on as unknown as (method: string, path: string, ...handlers: MiddlewareHandler[]) => void;
 
-  for (const extension of extensions) {
+  for (const extension of runtime.list) {
     for (const declared of extension.routes) {
       const limit = bodyLimit({ maxSize: declared.bodyLimit, onError: (c) => c.json(errorBody("invalid", TOO_MUCH), 413) });
 
-      register(declared.method, declared.path, fromTheEditor, deps.requireLevel(declared.route.access), limit, handlerFor(extension, declared, deps));
+      register(declared.method, declared.path, fromTheEditor, deps.requireLevel(declared.route.access), limit, handlerFor(runtime, extension.id, declared, deps));
     }
   }
 }

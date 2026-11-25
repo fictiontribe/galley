@@ -89,9 +89,11 @@ describe("what an extension declares", () => {
   });
 
   it("is refused where a hosted server has no accounts: every level would be anyone signed in", () => {
-    expect(() => testApp({ site: fakeSite() }, { mode: "hosted", extensions: { list: [], desk: null } })).toThrow(ExtensionError);
-    expect(() => testApp({ site: fakeSite() }, { mode: "hosted", extensions: { list: [], desk: null } })).toThrow(/^Extensions need accounts in hosted mode/);
-    expect(() => testApp({ site: fakeSite() }, { extensions: { list: [], desk: null } })).not.toThrow();
+    const none = { runtime: { ids: [], list: [], find: () => undefined, secretEnv: [], streamOpened: () => ({ refused: null, ended: () => undefined }), stop: async () => undefined, stopForNow: async () => undefined, restart: async () => [], endStreams: () => undefined }, desk: null };
+
+    expect(() => testApp({ site: fakeSite() }, { mode: "hosted", extensions: none })).toThrow(ExtensionError);
+    expect(() => testApp({ site: fakeSite() }, { mode: "hosted", extensions: none })).toThrow(/^Extensions need accounts in hosted mode/);
+    expect(() => testApp({ site: fakeSite() }, { extensions: none })).not.toThrow();
   });
 });
 

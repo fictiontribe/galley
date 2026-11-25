@@ -10,7 +10,7 @@ import { hostname } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { StartupError, startServer } from "../src/server";
-import { call, sandbox, startHosted, stopHosted } from "./hosted-helpers";
+import { call, sandbox, startHosted, stopHosted, until } from "./hosted-helpers";
 
 const box = sandbox("hold");
 const BEAT = 25;
@@ -151,18 +151,33 @@ describe("a hosted server and its data folder", () => {
     const home = box.folder("home");
     const started = await startHosted(box, home, {}, { holdBeatMs: BEAT });
     const id = read(home).id;
+    const sawItDamaged = () => started.notices.some((line) => line.includes("the hold file was damaged (a write to it didn't finish). It has been written again."));
+    let stopped = false;
 
-    writeFileSync(lockOf(home), "");
-    const outcome = await Promise.race([started.server.displaced!.then(() => "stopped"), new Promise<string>((resolve) => setTimeout(() => resolve("running"), BEAT * 8))]);
-
-    expect(outcome).toBe("running");
-    expect((await call(started.port, "GET", "/api/meta")).status).toBe(200);
+    void started.server.displaced!.then(() => (stopped = true));
+    // A refresh that had already read the hold writes it whole again over the empty file without ever seeing it empty.
+    // So the file is emptied until a refresh has read it that way: the server says so when one does.
+    await until(() => {
+      if (sawItDamaged() || stopped) return true;
+      writeFileSync(lockOf(home), "");
+      return false;
+    });
     // Its hold is whole again, and its own.
+    await until(() => {
+      try {
+        return stopped || read(home).id === id;
+      } catch {
+        return false;
+      }
+    });
     expect(read(home)).toMatchObject({ id, pid: process.pid, port: started.port });
+    // It carried on: it wasn't told the folder is another server's, and it still answers.
+    expect(stopped).toBe(false);
+    expect((await call(started.port, "GET", "/api/meta")).status).toBe(200);
     const said = started.notices.join("\n");
 
     expect(said).not.toMatch(/Another server has taken|This server has stopped/);
-    expect(said).toContain("the hold file was damaged (a write to it didn't finish). It has been written again.");
+    expect(sawItDamaged()).toBe(true);
     await stopHosted(box, started);
     expect(existsSync(lockOf(home))).toBe(false);
   });
