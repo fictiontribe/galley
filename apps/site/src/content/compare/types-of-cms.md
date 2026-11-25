@@ -8,7 +8,7 @@ lead: A traditional CMS keeps them in its own database. A headless one serves th
 published: "2026-11-25"
 checked: November 2026
 order: 1
-draft: true
+draft: false
 short:
   - "**Traditional** (WordPress, Drupal, Joomla): the content, the templates and the editor are one system, with a database and a server. The quickest start, and the most to keep patched."
   - "**Headless, or API-based** (Contentful, Sanity, Strapi, Storyblok): the content sits in a database and reaches any front end through an API. The right shape when one body of content feeds a website, an app and more."

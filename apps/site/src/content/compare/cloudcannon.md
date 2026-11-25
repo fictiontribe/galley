@@ -9,7 +9,7 @@ lead: Both edit the plain files in your repository and commit every change. Clou
 published: "2026-11-25"
 checked: November 2026
 order: 1
-draft: true
+draft: false
 short:
   - Both are Git-based. Your content stays as Markdown, JSON, YAML or TOML files in your own repository, and every saved change is a commit. Leaving either one needs no content migration.
   - CloudCannon is a paid, hosted service that also builds and hosts the site. Its Standard plan is $55 a month for three users, or $49 a month paid yearly (as of November 2026). Galley is free and Apache-2.0. You pay for your own AI key and your own hosting.
@@ -28,8 +28,7 @@ table:
       better: even
     - label: Price
       ours: Free. Your AI key and hosting are yours
-      theirs: Standard, $55 a month for 3 users
-      more: Nov 2026
+      theirs: Standard, $55 a month for 3 users (Nov 2026)
       better: ours
     - label: Setup
       ours: Reads the site as it is
