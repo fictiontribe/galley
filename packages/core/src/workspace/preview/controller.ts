@@ -825,8 +825,13 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
             if (rechecking) return (await rechecking) !== "stop";
             if (Date.now() - confirmedAt < (options.recheckMs ?? RECHECK_MS)) return true;
             rechecking = (async (): Promise<"serve" | "stop"> => {
-              const standing = await startedHere(settled.port, recheck!.group, options.root, process.pid);
+              let standing: PortStanding;
 
+              try {
+                standing = await startedHere(settled.port, recheck!.group, options.root, process.pid);
+              } catch {
+                standing = "unknown"; // a check that threw can't tell, like one that couldn't say; it counts toward the three.
+              }
               confirmedAt = Date.now();
               if (standing === "foreign" || standing === "shared") return "stop";
               if (standing === "own") {

@@ -439,8 +439,18 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       return;
     }
     // Before forwarding: make sure the port is still this preview's dev server, not a program that took it after
-    // the preview was ready. Its own answers above (health, the overlay) are the proxy's, not forwarded.
-    if (options.verifyUpstream && !(await options.verifyUpstream())) {
+    // the preview was ready. Its own answers above (health, the overlay) are the proxy's, not forwarded. A check
+    // that throws is treated as "serve" (it has already counted as a can't-tell for the preview), never a crash.
+    let serve = true;
+
+    if (options.verifyUpstream) {
+      try {
+        serve = await options.verifyUpstream();
+      } catch {
+        serve = true;
+      }
+    }
+    if (!serve) {
       res.once("finish", () => options.onTakenOver?.());
       sendError(res, 502, "Another program took the preview's port while it was running, so the preview was stopped. Start it again.", false);
       return;
@@ -533,6 +543,10 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
   };
 
   const handleUpgrade = async (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+    // The HTTP server drops its own error listener before it emits "upgrade", and the check below is awaited, so a
+    // socket the client resets in that moment would emit "error" with nothing listening — an uncaught exception.
+    // This listener, attached before any await, catches it; the one added once an upstream is connected stays too.
+    socket.on("error", () => socket.destroy());
     if (kind !== "preview") {
       socket.destroy();
       return;
@@ -546,8 +560,18 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       return;
     }
     // A new upgrade (a live-update socket reconnecting, say) is checked like a request: if the port is no longer the
-    // dev server's, it is refused rather than connected to whatever took it. One already open is left as it is.
-    if (options.verifyUpstream && !(await options.verifyUpstream())) {
+    // dev server's, it is refused rather than connected to whatever took it. One already open is left as it is. A
+    // check that throws is treated as "serve" here — it has already counted as a can't-tell for the preview.
+    let serve = true;
+
+    if (options.verifyUpstream) {
+      try {
+        serve = await options.verifyUpstream();
+      } catch {
+        serve = true;
+      }
+    }
+    if (!serve) {
       options.onTakenOver?.();
       socket.destroy();
       return;

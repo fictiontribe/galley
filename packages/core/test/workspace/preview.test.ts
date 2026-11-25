@@ -1444,6 +1444,32 @@ http.createServer((_req, res) => { res.writeHead(200, { "content-type": "text/ht
     await until(() => controller.status().state === "error", 3000);
   });
 
+  it("stays up when an upgrade's client resets the connection while the re-check is still pending", async () => {
+    const root = site();
+    let standing: PortStanding = "own";
+    // A slow check, so the upgrade's re-check is still pending when the client resets — the moment the socket has
+    // no error listener of the HTTP server's and, without the handler's own, a reset would crash the process.
+    const { controller } = controllerFor(
+      root,
+      { dev: { command: "node dev-server.mjs", port: null } },
+      { startedHere: async () => (await new Promise((done) => setTimeout(done, 300)), standing), recheckMs: 0 }
+    );
+    const status = await controller.start();
+
+    expect(status.state, status.log.join("\n")).toBe("ready");
+    standing = "foreign";
+    const proxyPort = Number(new URL(status.url as string).port);
+    const socket = net.connect(proxyPort, "127.0.0.1");
+
+    await new Promise<void>((done) => socket.once("connect", () => done()));
+    socket.write("GET /hmr HTTP/1.1\r\nHost: 127.0.0.1\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n");
+    await new Promise((done) => setTimeout(done, 60)); // the upgrade reaches the server and the pending check starts
+    socket.resetAndDestroy(); // an abrupt reset (RST): the server's socket emits "error"
+    await new Promise((done) => setTimeout(done, 500)); // the check resolves on the now-dead socket; the process must not crash
+    await controller.stop();
+    expect(controller.status().state).toBe("stopped");
+  });
+
   it("keeps serving a ready preview while a re-check can't tell, and tears it down after three in a row that can't", async () => {
     const root = site();
     let standing: PortStanding = "own";
