@@ -50,7 +50,8 @@ function createMarked(headings: Heading[], anchors: boolean): Marked {
         if (seen > 0) slug = `${slug}-${seen}`;
         headings.push({ depth: token.depth, slug, text });
         if (!anchors || token.depth === 1) return `<h${token.depth} id="${slug}">${html}</h${token.depth}>\n`;
-        return `<h${token.depth} id="${slug}"><a class="anchor" href="#${slug}"><span class="sr">${escapeHtml((docsData.ui as Record<string, string>).anchor ?? "")} </span><span aria-hidden="true">#</span></a>${html}</h${token.depth}>\n`;
+        // The anchor is for people on the page; the markdown copy of the page (the site kit) leaves it out, or every heading there would begin "Link to this section:".
+        return `<h${token.depth} id="${slug}"><a class="anchor" href="#${slug}" data-galley-agent="skip"><span class="sr">${escapeHtml((docsData.ui as Record<string, string>).anchor ?? "")} </span><span aria-hidden="true">#</span></a>${html}</h${token.depth}>\n`;
       },
       code(token: Tokens.Code) {
         const lang = (token.lang ?? "").split(/\s+/)[0] ?? "";
