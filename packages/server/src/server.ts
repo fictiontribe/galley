@@ -830,6 +830,13 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
       phase: { get: () => phase, set: (next) => (phase = next) },
       // Made further down, once the app is: asked only when a restore runs.
       roundIdle: () => rounds?.idle() ?? Promise.resolve(),
+      // What an embedding program added keeps files of its own in the data folder: stopped before it is replaced, started again after.
+      aroundRestore: {
+        before: async () => void (await extensions?.stopForNow()),
+        after: async () => void (await extensions?.restart()),
+        // The job has said how it ended, on every stream that was open: now the windows that told an extension they were there say so again.
+        letIn: () => void extensions?.endStreams(),
+      },
     });
   }
   // What the program starting this server added to it (extensions/): started before the app answers anything.
@@ -846,6 +853,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         log: out.log,
         desk,
         site: (siteId) => services.registry.get(siteId),
+        emit: (event) => services.events.emit(event),
+        siteId: () => install?.siteId() ?? null,
         ...(options.extensionTimes ?? {}),
       });
       notice(`Extensions: ${extensions.list.map((extension) => `${extension.id} (${extension.routes.length} ${extension.routes.length === 1 ? "route" : "routes"})`).join(", ")}`);
@@ -857,7 +866,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     }
   }
   const app = createApp(services, {
-    ...(extensions ? { extensions: { list: extensions.list, desk } } : {}),
+    ...(extensions ? { extensions: { runtime: extensions, desk } } : {}),
     mode: config.mode,
     token: config.token,
     // Hosted: the install checks the stored hash; the plain value never reaches the app.

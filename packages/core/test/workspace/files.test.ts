@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { GalleyError } from "../../src/errors";
 import { createWorkspace, hashContent, normalizeRepoPath, type Workspace } from "../../src/workspace/index";
-import { cleanupAll, makeRepo, tempDir, WRITABLE, writeTree } from "./helpers";
+import { cleanupAll, makeRepo, sh, tempDir, WRITABLE, writeTree } from "./helpers";
 
 const open: Workspace[] = [];
 
@@ -99,6 +99,30 @@ describe("path containment", () => {
     // Content mode may write src/content/**, but this one really lands in src/components.
     expect(ws.canWrite("src/content/components/Hero.astro", "content")).toMatchObject({ ok: false });
     expect(ws.canWrite("src/content/components/Hero.astro", "build")).toMatchObject({ ok: true });
+  });
+
+  it("reads through no link that leads to a secrets file or into the version history's own folder, whatever the link is called", async () => {
+    const root = makeRepo({ "src/content/a.md": "a\n", "docs/plain.md": "plain\n" });
+
+    writeTree(root, { ".env": "TOKEN=behind-a-link\n", "config/.envrc": "export TOKEN=behind-a-link\n" });
+    symlinkSync("../.env", join(root, "docs/notes.md"));
+    symlinkSync(join(root, "config/.envrc"), join(root, "src/content/settings.md"));
+    symlinkSync(join(root, ".git"), join(root, "docs/history"));
+    symlinkSync("plain.md", join(root, "docs/also-plain.md"));
+    sh(root, "add", "-A");
+    sh(root, "commit", "-q", "-m", "Links");
+    const ws = await workspaceFor(root);
+
+    for (const path of ["docs/notes.md", "src/content/settings.md", "docs/history/config", "docs/history/HEAD"]) {
+      forbidden(() => ws.resolvePath(path));
+      await expect(ws.readBytes(path), path).rejects.toMatchObject({ code: "forbidden", message: "That file can't be shown here." });
+      await expect(ws.readText(path), path).rejects.toMatchObject({ code: "forbidden" });
+      await expect(ws.diff(path), path).rejects.toMatchObject({ code: "forbidden" });
+      await expect(ws.readBase(path), path).rejects.toMatchObject({ code: "forbidden" });
+    }
+    // A link to an ordinary file of the site is read as it always was.
+    expect(await ws.readText("docs/also-plain.md")).toBe("plain\n");
+    expect(ws.resolvePath("docs/also-plain.md")).toBe(join(root, "docs/also-plain.md"));
   });
 
   it("writes through an in-site symlink to its target without replacing the link", async () => {

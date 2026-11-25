@@ -21,6 +21,7 @@ import type {
   SiteService,
 } from "../../types";
 import { isProviderError } from "../../plugins/define";
+import { mayBeShown } from "../../workspace/policy";
 import { builtinImageHandles } from "../../plugins/defaults";
 import { safeDetail } from "../errors";
 import { PLACEHOLDER_PROVIDER } from "./catalog";
@@ -184,6 +185,8 @@ export function createImageService(options: ImageServiceOptions): GalleyImageSer
       const mime = REFERENCE_MIME[ext];
 
       if (!mime) throw new GalleyError("invalid", "Reference images must be PNG, JPG, WebP or GIF files.", path);
+      // What is read here is sent to the image provider: never a secrets file or one of the version history's own, whatever its name ends in.
+      if (!mayBeShown(path)) throw new GalleyError("forbidden", "That file can't be used as a reference image.", path);
       try {
         refs.push({ data: new Uint8Array(await readFile(site.resolvePath(path))), mime });
       } catch (error) {

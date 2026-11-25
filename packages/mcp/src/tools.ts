@@ -11,6 +11,7 @@ import { lstat, readFile, realpath } from "node:fs/promises";
 import { basename, extname, isAbsolute, sep } from "node:path";
 import { z } from "zod";
 import { GalleyError } from "@galley/core";
+import { notReadReason } from "@galley/core/workspace";
 import { buildSiteCard, loadInstructionFiles, READ_ONLY, type ToolEffect } from "@galley/core/ai";
 import type { AgentMode, ChangeSet, Field, FileChange, JsonValue, PublishResult, SiteModel, SiteService, SourceLocation } from "@galley/core/types";
 
@@ -471,6 +472,10 @@ const getDiff: HarnessTool = {
   }),
   effect: READ_ONLY,
   async run(input, ctx) {
+    // A file's changes are its lines: a secrets file's are never shown, nor the version history's own.
+    const notRead = notReadReason(String(input.path));
+
+    if (notRead) return refusal(notRead);
     const diff = await ctx.site.diff(String(input.path));
 
     if (diff.binary) return { text: `${diff.path} is a binary file (${diff.status}); its lines can't be shown.` };

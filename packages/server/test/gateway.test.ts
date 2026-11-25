@@ -335,6 +335,26 @@ describe("a viewer", () => {
     expect(app).not.toHaveBeenCalled();
   });
 
+  it("passes an address that names a secrets file, or anything under .git, to nobody: the site's dev server is never asked", async () => {
+    const site = await siteServer();
+    const { gateway, port, tickets } = await setup();
+
+    await mountPreview(gateway, site.port);
+    const { cookie } = await enter(port, tickets);
+    const before = site.seen.length;
+
+    for (const path of ["/.envrc", "/.envrc?raw", "/.env-production?raw", "/%2Eenv_local", "/@fs/home/site/.envrc?raw", "/.git/config", "/sub/.GIT/HEAD"]) {
+      const answer = await get(port, PREVIEW_HOST, path, { cookie });
+
+      expect(answer.status, path).toBe(403);
+      expect(answer.body, path).toContain("That file can't be shown here.");
+    }
+    expect(site.seen.length).toBe(before);
+    // A page is passed on as it always was.
+    expect((await get(port, PREVIEW_HOST, "/", { cookie })).status).toBe(200);
+    expect(site.seen.length).toBe(before + 1);
+  });
+
   it("is a stranger again once the sign-in has ended", async () => {
     const site = await siteServer();
     const { gateway, port, tickets } = await setup();

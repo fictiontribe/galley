@@ -144,6 +144,22 @@ describe("OpenAI provider (scripted)", () => {
     expect(candidate).toMatchObject({ mime: "image/png", width: 1536, height: 864, provider: "openai", model: "gpt-image-2.6-sunburst" });
   });
 
+  it("never takes a secrets file or one of the version history's own for a reference image, whatever its name ends in", async () => {
+    const dir = tempDir("ai-ref-secret-");
+    const asked: string[] = [];
+
+    writeFileSync(join(dir, ".env.png"), "TOKEN=not-a-picture\n");
+    const site = { id: "s", resolvePath: (path: string) => (asked.push(path), join(dir, path.split("/").pop()!)) } as unknown as SiteService;
+    const { images, script } = setup([() => jsonResponse(200, { data: [{ b64_json: PNG }] })], { OPENAI_API_KEY: OPENAI_KEY });
+
+    for (const path of [".env.png", "config/.ENV.local.jpg", ".git/objects/pack.png"]) {
+      await expect(images.generate({ prompt: "Like this", provider: "openai", model: "gpt-image-2.6-flare", referencePaths: [path] }, { site })).rejects.toMatchObject({ code: "forbidden", message: "That file can't be used as a reference image." });
+    }
+    // Not opened, and nothing was sent to the provider.
+    expect(asked).toEqual([]);
+    expect(script.requests).toEqual([]);
+  });
+
   it("sends reference images to images/edits as data URLs", async () => {
     const dir = tempDir("ai-ref-");
 

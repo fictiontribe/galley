@@ -5,6 +5,7 @@
 import picomatch from "picomatch";
 
 import type { Collection, EntryFormat, SiteModel } from "../../types";
+import { mayBeShown } from "../../workspace/policy";
 
 const DEFAULT_PATTERNS: Record<EntryFormat, string> = {
   markdown: "**/*.{md,mdx,markdown}",
@@ -48,6 +49,9 @@ function relativeTo(base: string, path: string): string | null {
 export function collectionForPath(model: Pick<SiteModel, "collections" | "templates">, path: string): Collection | null {
   const normalized = normalizePath(path);
 
+  // A secrets file, or one of the version history's own, is never content, whatever the settings name as a
+  // collection or let a pattern take in: an entry's text is shown, searched and sent to the assistant.
+  if (!mayBeShown(normalized)) return null;
   // A template is a starting point for entries, never an entry itself, wherever it is kept.
   if (model.templates?.some((template) => normalizePath(template.file) === normalized)) return null;
   let best: Collection | null = null;

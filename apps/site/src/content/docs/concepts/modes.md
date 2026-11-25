@@ -49,7 +49,7 @@ No mode can write these, compared case-insensitively (macOS and Windows filesyst
 | --- | --- |
 | anything under `.git/` | Version-history files can't be changed from here. |
 | anything under `node_modules/` | Installed packages can't be changed from here. |
-| any file whose name starts with `.env` (`.env`, `.env.local`, `.env-production`, `.envrc`) | Environment files can hold passwords and keys, so they can't be changed from here. |
+| any file whose name starts with `.env` (`.env`, `.env.local`, `.env-production`, `.envrc`), and anything in a folder so named | Environment files can hold passwords and keys, so they can't be changed from here. |
 | lockfiles (`package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `Cargo.lock`, `go.sum`, …) | Lockfiles are managed by the package manager and can't be changed by hand. |
 | anything inside a hidden folder (`.vscode/`, `.astro/`, …) | Files inside hidden settings folders can't be changed from here. |
 | the site folder itself | The site folder itself can't be overwritten. |
@@ -60,7 +60,9 @@ One exception: in build mode, `.github/` at the top of the site is writable, bec
 
 Before any policy check, a path is normalised strictly: absolute paths, `~`, backslashes, NUL bytes and any `..` segment are refused outright (not resolved), with *That file is outside the site folder, so it can't be opened or changed here.* The path is then re-checked against its real location on disk, so a symlink inside the site that points elsewhere can't be used to escape; a dangling symlink is not followed. Writes are atomic: a temporary file, then a rename.
 
-The same rules apply to what is served: the server never sends `.git/` or `.env*` files (a file is taken for one by how its name starts, so a harmless `.envoy.yaml` is refused too), and serves a site's HTML, JavaScript and XML as plain text from its own origin.
+The same rule applies to what is shown. The editor's own routes refuse a secrets file, anything under `.git/`, and their changes; the assistant's tools don't read them; the preview refuses an address that names one. A file is taken for a secrets file by how its name starts, so a harmless `.envoy.yaml` is refused too, and so is anything in a folder named that way. It is a rule about names: a secret kept under another name (`.npmrc`, `.dev.vars`, a `.pem` or `.key` file) is not covered by it, so keep those out of the repository. And the preview runs the site's own code, so what a page shows is the site's to decide; [the levels](/docs/running/hosted/) keep people out of each other's way and are not a wall against someone who means harm.
+
+The server sends a site's HTML, JavaScript and XML as plain text from its own origin.
 
 ## What the assistant does not have
 

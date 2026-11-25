@@ -27,7 +27,7 @@ import { CheckpointManager, type WorkspaceCheckpoint } from "./checkpoint";
 import { atomicWrite, bytesEqual, hashContent, isTempFile, listWithoutGit, readIfExists, toBytes } from "./files";
 import { git as createGit, splitNul, type Git, type RepoInfo } from "./git";
 import { resolveContained, type ResolvedPath, normalizeRepoPath } from "./paths";
-import { deniedReason, writeRefusal } from "./policy";
+import { deniedReason, mayBeShown, writeRefusal } from "./policy";
 import * as publishing from "./publish";
 import { chooseAuthor, currentAccountAuthor, type AuthorLayers, type ChosenAuthor } from "./author";
 import { isSiteSettingsPath, requireBuildMode, requireSiteSettings } from "../install/caller";
@@ -186,6 +186,18 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
   let disposed = false;
 
   const resolve = (path: string): ResolvedPath => resolveContained(root, realRoot, path);
+  /**
+   * For a read. Whether a file may be shown by its name is asked at each way out of the engine, which reads any
+   * file of the site for itself. Where a link leads can't be asked there: nobody who looks at the name asked for
+   * can see it. So it is asked here, once: a path that only reaches a secrets file, or the version history's own
+   * folder, through a link is refused, whatever the link is called.
+   */
+  const resolveRead = (path: string): ResolvedPath => {
+    const resolved = resolve(path);
+
+    if (resolved.realPath !== resolved.path && !mayBeShown(resolved.realPath)) throw new GalleyError("forbidden", "That file can't be shown here.", resolved.path);
+    return resolved;
+  };
   const absoluteOf = (path: string) => (path === "" ? root : join(root, ...path.split("/")));
 
   const emit = (paths: string[], origin: ChangeOrigin) => {
@@ -567,7 +579,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     root,
 
     resolvePath(path) {
-      return resolve(path).absolute;
+      return resolveRead(path).absolute;
     },
 
     async exists(path) {
@@ -577,7 +589,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     },
 
     async readBytes(path) {
-      const resolved = resolve(path);
+      const resolved = resolveRead(path);
 
       try {
         return new Uint8Array(await readFile(resolved.absolute));
@@ -717,7 +729,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     },
 
     async diff(path) {
-      const resolved = resolve(path);
+      const resolved = resolveRead(path);
       const repoInfo = await info();
 
       if (!repoInfo) {
@@ -727,7 +739,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
     },
 
     async readBase(path) {
-      const resolved = resolve(path);
+      const resolved = resolveRead(path);
       const repoInfo = await info();
 
       if (!repoInfo || !(await repo.head())) return null;

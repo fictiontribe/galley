@@ -3,7 +3,7 @@
  * here stops the start with one sentence that names the extension, rather
  * than being found by the first person who calls the route.
  */
-import type { ExtensionParts, ExtensionRoute, ServerExtension } from "./types";
+import type { ExtensionEventRule, ExtensionParts, ExtensionRoute, ServerExtension } from "./types";
 
 /** A wrong declaration. The message is the one sentence the start-up ends with. */
 export class ExtensionError extends Error {}
@@ -46,6 +46,35 @@ export interface DeclaredRoute {
   siteScoped: boolean;
   bodyLimit: number;
   route: ExtensionRoute<unknown>;
+}
+
+/** The name the server itself sends under, when an extension didn't take the value a stream carried for it. */
+export const STREAM_REFUSED = "stream.refused";
+/** The most an event's payload may be, as JSON, as it leaves for one reader. */
+export const EXTENSION_EVENT_BYTES = 64 * 1024;
+/** How many events one extension may emit in a second. Past it they are dropped and counted. */
+export const EXTENSION_EVENTS_A_SECOND = 50;
+/**
+ * How many bytes of payload one extension may send in any one second. A
+ * window may have 1 MB waiting that it hasn't read; this is a quarter of it.
+ */
+export const EXTENSION_EVENT_BYTES_A_SECOND = 256 * 1024;
+const EVENT_NAME = /^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*){0,5}$/;
+
+/** The events an extension's setup returned, each checked: a name in lower-case words, a level, and at most a function to shape it. */
+export function declaredEvents(id: string, parts: ExtensionParts): Map<string, ExtensionEventRule<unknown>> {
+  const out = new Map<string, ExtensionEventRule<unknown>>();
+  const events = parts.events ?? {};
+
+  if (typeof events !== "object" || events === null) throw new ExtensionError(`Extension “${id}” couldn't start: its events aren't a list of events.`);
+  for (const [name, rule] of Object.entries(events)) {
+    if (!EVENT_NAME.test(name) || name.length > 64 || name === STREAM_REFUSED) throw new ExtensionError(`Extension “${id}”: the event “${name}” isn't usable. A name is lower-case words joined by dots, and “${STREAM_REFUSED}” is the server's own.`);
+    if (typeof rule !== "object" || rule === null || !LEVELS.has(rule.level)) throw new ExtensionError(`Extension “${id}”: the event “${name}” has no level. It is edit, publish or manage: the least a reader's role must have to be sent it.`);
+    if (rule.for !== undefined && typeof rule.for !== "function") throw new ExtensionError(`Extension “${id}”: the event “${name}” isn't usable: what shapes it for a reader is a function, or left out.`);
+    // A copy: the level an event started with is the level it keeps, whatever becomes of the object it was declared in.
+    out.set(name, Object.freeze({ level: rule.level, ...(rule.for ? { for: rule.for as ExtensionEventRule<unknown>["for"] } : {}) }));
+  }
+  return out;
 }
 
 /** For typing an extension where it is written. Changes nothing. */

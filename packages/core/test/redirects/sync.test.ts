@@ -119,6 +119,24 @@ describe("derived file sync", () => {
     expect(review.counts.add).toBe(2);
   });
 
+  it("never reads a secrets file or one of the version history's own as a list to review or import", async () => {
+    const { root, site, redirects } = await rig();
+
+    writeFileSync(join(root, ".env"), "TOKEN=not-a-redirect\nOTHER=nor-this\n");
+    writeFileSync(join(root, ".envrc"), "export TOKEN=not-a-redirect\n");
+    for (const path of [".env", ".envrc", ".env/", ".git/config", "sub/.GIT/HEAD"]) {
+      for (const read of [() => redirects.review(site, { path }), () => redirects.confirm(site, { path })]) {
+        const error = await read().then(
+          (answer) => answer,
+          (thrown: unknown) => thrown
+        );
+
+        expect(error, path).toMatchObject({ code: "forbidden", message: "That file can't be read as a list of redirects." });
+        expect(JSON.stringify(error), path).not.toMatch(/not-a-redirect|repositoryformatversion/);
+      }
+    }
+  });
+
   it("keeps offering the WordPress import's redirects on a list that has others, until they are in it", async () => {
     const { root, site, redirects, commitAll } = await rig();
 

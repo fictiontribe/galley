@@ -3,7 +3,7 @@
  * VideoService and Settings: chosen like the built-ins, the key rule kept,
  * the service's own cost recorded, a video saved into a real site's media.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { createFileSecretStore, createImageService, createSettingsService, createVideoService } from "../../src/ai/index";
@@ -169,6 +169,20 @@ describe("a plugin's video provider", () => {
 
     await videos.settled(job.id);
     expect(calls.find((call) => call.what === "start")).toMatchObject({ body: { prompt: "Steam over a loaf\n\nBrand direction: Warm daylight. Palette: oat, rust." } });
+  });
+
+  it("never takes a secrets file for a video's starting picture, whatever its name ends in", async () => {
+    const { registry, videos, calls } = await engine();
+    const root = makeSite();
+    const { site } = await openSite(root);
+
+    await registry.saveSettings("galley-plugin-fake-media", { apiKey: KEY });
+    writeFileSync(join(root, ".env.png"), "TOKEN=not-a-picture\n");
+    for (const firstFramePath of [".env.png", "config/.ENV.local.jpg", ".git/objects/pack.webp"]) {
+      await expect(videos.generate(site, { prompt: "Waves", firstFramePath }), firstFramePath).rejects.toMatchObject({ code: "forbidden", message: "That file can't be used as the starting picture." });
+    }
+    // Nothing was started with the provider.
+    expect(calls.filter((call) => call.what === "start")).toEqual([]);
   });
 
   it("ends the job with a plain sentence when the provider refuses, fails, or sends a kind of file the media library can't keep", async () => {

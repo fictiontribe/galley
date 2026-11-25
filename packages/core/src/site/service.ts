@@ -90,6 +90,7 @@ import { shapesModel } from "./model-files";
 import { resolvePublishConfig, type PublishFacts } from "./publish-config";
 import { createKeyedLock, folderName, prettifyName } from "./util";
 import { isStoreAddress, type SiteMediaRouter } from "../media-storage/router";
+import { mayBeShown } from "../workspace/policy";
 
 type Author = { name: string; email: string } | null;
 
@@ -533,6 +534,8 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     }
     let raw: string;
 
+    // The settings name the file, and what it holds becomes the new entry: never a secrets file or one of the version history's own.
+    if (!mayBeShown(template.file)) throw new GalleyError("forbidden", `The template “${template.label}” names a file that can't be used as a template.`, template.file);
     try {
       raw = await workspace.readText(template.file);
     } catch (error) {

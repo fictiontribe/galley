@@ -26,13 +26,18 @@ const LOCKFILES = new Set([
 export type DenyReason = string | null;
 
 /**
- * Whether a file is a secrets file, by its name: one whose name starts with
- * ".env", in any letter case and in any folder. So `.env`, `.env.local`,
- * `.env-production`, `.env_local`, `.envrc` and `.ENV` all are; `env.d.ts`
+ * Whether a path is a secrets file's: any part of it, the file's name or a
+ * folder's, starts with ".env", in any letter case. So `.env`, `.env.local`,
+ * `.env-production`, `.env_local`, `.envrc` and `.ENV` all are, and so is
+ * anything kept in a folder named like one (`.envs/production`); `env.d.ts`
  * and `my.env.md` are not.
  *
  * The app never shows, writes, commits or deploys such a file, and every
  * place that decides one of those asks here, so they can't come to disagree.
+ *
+ * Every part is looked at, not the last alone, because a path can be written
+ * in more ways than one: the engine reads `.env/` and `.env/.` as `.env`, so
+ * a test of the last part would wave both through.
  *
  * It errs on the side of refusing. A name can't say what a file holds, so a
  * harmless file that happens to start the same way (`.envoy.yaml`) is taken
@@ -40,9 +45,38 @@ export type DenyReason = string | null;
  * and showing one that did can't be taken back.
  */
 export function isSecretsFile(path: string): boolean {
-  const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
+  return path
+    .replace(/\\/g, "/")
+    .toLowerCase()
+    .split("/")
+    .some((part) => part.startsWith(".env"));
+}
 
-  return name.toLowerCase().startsWith(".env");
+/**
+ * Whether a file of the site may be shown, by its path: not a secrets file
+ * (`isSecretsFile`), and not one of the version history's own (anything
+ * under a `.git` folder, in any letter case and at any depth).
+ *
+ * Asked at every way a file's text, lines or changes leave the engine: the
+ * server's file and diff routes, the guard an extension reads through, the
+ * assistant's tools and the MCP server's. The engine's own `readFile` and
+ * `diff` don't ask it, because the engine reads for itself too; so each way
+ * out does, and they all ask here so that they can't come to disagree.
+ */
+export function mayBeShown(path: string): boolean {
+  return !path.replace(/\\/g, "/").toLowerCase().split("/").includes(".git") && !isSecretsFile(path);
+}
+
+export const SECRETS_NOT_READ = "That is a secrets file, so it isn't read here. Ask the person for what you need from it.";
+export const HISTORY_NOT_READ = "That is one of the version history's own files, so it isn't read here. Ask for the site's history instead.";
+
+/**
+ * Why a file isn't read for the assistant or for a client of its tools, in a
+ * sentence it can act on; null when the file may be shown.
+ */
+export function notReadReason(path: string): string | null {
+  if (isSecretsFile(path)) return SECRETS_NOT_READ;
+  return mayBeShown(path) ? null : HISTORY_NOT_READ;
 }
 
 /**
@@ -56,7 +90,7 @@ export function deniedReason(path: string, mode: AgentMode): DenyReason {
   if (path === "") return "The site folder itself can't be overwritten.";
   if (segments.includes(".git")) return "Version-history files can't be changed from here.";
   if (segments.includes("node_modules")) return "Installed packages can't be changed from here.";
-  if (isSecretsFile(name)) {
+  if (isSecretsFile(path)) {
     return "Environment files can hold passwords and keys, so they can't be changed from here.";
   }
   if (LOCKFILES.has(name)) return "Lockfiles are managed by the package manager and can't be changed by hand.";

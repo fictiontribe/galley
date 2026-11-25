@@ -93,6 +93,14 @@ export interface InstallOpsOptions {
    * under it. New rounds are refused from the moment a restore begins.
    */
   roundIdle?: () => Promise<void>;
+  /**
+   * What else works in the data folder and must not have it replaced under
+   * it. `before`: once the site is quiet, before the backup is put in place.
+   * `after`: when the folder is as it will stay (the backup's, or as it was),
+   * before the job says how it ended, so that "done" means everything runs.
+   * `letIn`: when requests are answered again.
+   */
+  aroundRestore?: { before(): Promise<void>; after(): Promise<void>; letIn?(): void };
 }
 
 function slugOf(name: string | null | undefined): string {
@@ -137,6 +145,13 @@ export function createInstallOps(options: InstallOpsOptions): InstallOps {
 
   async function runRestore(job: ReturnType<typeof jobs.start>, file: string, passphrase: string): Promise<void> {
     let staged: Awaited<ReturnType<typeof stageRestore>> | null = null;
+    let stoppedForRestore = false;
+    /** Whatever was stopped for the restore starts again on the folder as it is now. Once. */
+    const startAgain = async () => {
+      if (!stoppedForRestore) return;
+      stoppedForRestore = false;
+      await options.aroundRestore?.after().catch((error: unknown) => log.log(`After the restore, something couldn't be started again: ${error instanceof Error ? error.message : String(error)}`));
+    };
 
     try {
       job.update({ detail: "Opening and checking the backup", progress: 0.05 });
@@ -147,6 +162,8 @@ export function createInstallOps(options: InstallOpsOptions): InstallOps {
       // No new round starts from here; one already bringing versions in finishes first.
       await options.roundIdle?.();
       await install.idle();
+      stoppedForRestore = true;
+      await options.aroundRestore?.before();
       await install.closeSite();
       job.update({ detail: "Putting the backup in place", progress: 0.75 });
       const applied = await staged.apply();
@@ -166,6 +183,7 @@ export function createInstallOps(options: InstallOpsOptions): InstallOps {
       }
       await rm(file, { force: true });
       log.event(`A backup was restored (it was made ${staged.manifest.createdAt}, by version ${staged.manifest.version}). Everyone was signed out.`);
+      await startAgain();
       job.finish("done", { progress: 1, detail: "The backup is back in place. Everyone signs in again, with the accounts and passwords the backup was made with." });
     } catch (error) {
       const message =
@@ -175,11 +193,14 @@ export function createInstallOps(options: InstallOpsOptions): InstallOps {
 
       if (!(error instanceof BackupError)) log.log(`A restore failed: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
       else log.event(`A restore was refused: ${error.problem}.`);
+      await startAgain();
       job.finish("error", { detail: message });
     } finally {
       await staged?.discard().catch(() => undefined);
+      await startAgain();
       restoring = false;
       options.phase.set("running");
+      options.aroundRestore?.letIn?.();
       const grant = grants.get(job.id);
 
       if (grant) grant.until = Date.now() + RESTORE_GRANT_MS;

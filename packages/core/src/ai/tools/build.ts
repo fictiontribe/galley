@@ -10,6 +10,7 @@ import { GalleyError } from "../../errors";
 import { SITE_SETTINGS_LEVEL } from "../../install/route-access";
 import type { GalleyConfig } from "../../types";
 import { hashContent } from "../../workspace/files";
+import { deniedReason, mayBeShown, notReadReason } from "../../workspace/policy";
 import { fileName, plural } from "./labels";
 import { CHANGED_AFTER_READ, NEVER_READ, rememberVersion, versionRead } from "./reads";
 import { defineTool, ok, READ_ONLY, refuse, type AssistantTool, type ToolContext } from "./types";
@@ -18,9 +19,11 @@ import { defineTool, ok, READ_ONLY, refuse, type AssistantTool, type ToolContext
  * What is at a path, for a write that was told it replaces nothing it has
  * read: nothing, a file that can be read (and so must be, first), or one
  * that can't be read as text at all (a picture, a font) and so can never be
- * replaced from a reading.
+ * replaced from a reading. A file that may not be shown is never opened to
+ * find out.
  */
 async function whatIsThere(ctx: ToolContext, path: string): Promise<"nothing" | "readable" | "unreadable"> {
+  if (!mayBeShown(path)) return "unreadable";
   try {
     return (await ctx.site.readFile(path)).binary ? "unreadable" : "readable";
   } catch (error) {
@@ -71,6 +74,11 @@ const readFile = defineTool({
   effect: READ_ONLY,
   label: (input) => `Reading ${fileName(input.path)}`,
   async run(input, ctx) {
+    // A secrets file, or one of the version history's own: what it holds would go to the model's provider and into the
+    // conversation. Refused by its name, before it is opened.
+    const notRead = notReadReason(input.path);
+
+    if (notRead) return refuse(notRead, `Didn't read ${fileName(input.path)}`);
     const file = await ctx.site.readFile(input.path);
     const done = `Read ${fileName(input.path)}`;
 
@@ -113,6 +121,8 @@ const writeFile = defineTool({
     const read = versionRead(ctx, input.path);
     const couldnt = `Couldn't write ${fileName(input.path)}`;
 
+    // Never written, whatever the mode; said here so that nothing below opens the file to see what is in the way.
+    if (!mayBeShown(input.path)) return refuse(deniedReason(input.path, ctx.mode) ?? notReadReason(input.path) ?? "That file can't be changed from here.", couldnt);
     try {
       // With the version it was written from; a file never read is sent a version nothing has, so it replaces nothing.
       await ctx.site.writeFile(input.path, input.content, { origin: "agent", mode: ctx.mode, baseHash: read ?? NEVER_READ });
@@ -152,6 +162,10 @@ const editFile = defineTool({
   label: (input) => `Editing ${fileName(input.path)}`,
   async run(input, ctx) {
     const name = fileName(input.path);
+    // Before it is opened: an edit that says whether its text was found, and how often, would be a way to ask what the file holds.
+    const notRead = notReadReason(input.path);
+
+    if (notRead) return refuse(notRead, `Couldn't edit ${name}`);
     const file = await ctx.site.readFile(input.path);
 
     if (file.binary) return refuse("That's a binary file, so it can't be edited as text.", `Couldn't edit ${name}`);

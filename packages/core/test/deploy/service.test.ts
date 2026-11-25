@@ -202,6 +202,22 @@ describe("deploying a site", () => {
     expect((await deploy.status(harness.site)).production).toBeNull();
   });
 
+  it.each([".git", "sub/.git/objects", ".envs", "..", "../elsewhere", "/tmp"])("never puts online an output folder the settings name as %s", async (outDir) => {
+    const root = makeTinySite();
+
+    writeFileSync(join(root, "galley.config.json"), CONFIG.replace('"outDir": "dist"', `"outDir": ${JSON.stringify(outDir)}`));
+    sh(root, "commit", "-q", "-am", "Another output folder");
+    const { harness, deploy } = await rig(root);
+
+    await deploy.configure(harness.site, { target: "cloudflare", account: ACCOUNT, project: "not-this" });
+    for (const kind of ["preview", "production"] as const) {
+      await expect(deploy.run(harness.site, { kind }), kind).rejects.toMatchObject({ reason: "not-set-up", message: expect.stringContaining("output folder") });
+    }
+    // Nothing was built, read or sent.
+    expect(fakeCf!.deployments).toHaveLength(0);
+    expect(fakeCf!.log.some((entry) => entry.method !== "GET")).toBe(false);
+  });
+
   it("refuses to put anything live before the first publish, and explains a failed build with its last lines", async () => {
     const empty = makeTinySite({ commit: false });
     const first = await rig(empty);

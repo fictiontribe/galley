@@ -40,6 +40,6 @@ export { git, runGit, registerGitAccess, GitCommandError } from "./git";
 export type { Git, GitResult, GitRunOptions, RepoInfo } from "./git";
 export { hashContent, isBinary } from "./files";
 export { normalizeRepoPath } from "./paths";
-export { deniedReason, isSecretsFile, writeRefusal } from "./policy";
+export { deniedReason, HISTORY_NOT_READ, isSecretsFile, mayBeShown, notReadReason, SECRETS_NOT_READ, writeRefusal } from "./policy";
 export { compareUrl, parseRemoteUrl, redactRemoteUrl, classifyPushError } from "./remote";
 export type { Identity } from "./publish";
