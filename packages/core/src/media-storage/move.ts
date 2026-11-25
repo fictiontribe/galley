@@ -769,12 +769,18 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
   const alone = [...leftAlone].sort();
   const also = request.from === "repository" && !request.keepCopies ? [...beside].sort() : [];
   const pagesUpdated = rewritten.size - templates.size;
+  /** Of the files that keep a copy, how many a move doesn't change. */
+  const unchanging = mentioning.filter((path) => leftAlone.has(path)).length;
   const count = (many: number, one: string, more = `${one}s`) => `${many} ${many === 1 ? one : more}`;
   const summary =
     `${count(copied, "file")} copied to ${where}${skipped ? ` (${skipped} already there)` : ""}, ${count(pagesUpdated, "page")}${templates.size ? ` and ${count(templates.size, "page template")}` : ""} updated` +
     (removed ? `, ${removed} removed from the repository` : "") +
     (stillMentioned.length ? `. ${stillMentioned.length} left in the repository: still used by ${someOf(mentioning)}` : "") +
-    (stillMentioned.length && mentioning.some((path) => leftAlone.has(path)) ? ". The site is built from those files and a move doesn't change them, so what they use stays where it is" : "") +
+    (unchanging === 1
+      ? ". The site is built from that file and a move doesn't change it, so what it uses stays where it is"
+      : unchanging > 1
+        ? ". The site is built from those files and a move doesn't change them, so what they use stays where it is"
+        : "") +
     (also.length ? `. Also mentioned in ${someOf(also)}: not part of the site as built, so not changed` : "") +
     (request.from !== "repository" && alone.length ? `. ${someOf(alone)} still ${alone.length === 1 ? "points" : "point"} at ${storeOf(context, request.from).name}: a move doesn't change the site's code, so change ${alone.length === 1 ? "it" : "them"} by hand` : "") +
     (request.from !== "repository" ? `. The files are still in ${storeOf(context, request.from).name}; remove them there once the pages are published` : "") +

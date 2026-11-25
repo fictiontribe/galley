@@ -146,7 +146,7 @@ describe("moving media", { timeout: 240_000 }, () => {
     expect(result.summary).toBe(
       `${plan.files} files copied to Cloudflare R2, ${result.pages} pages and 3 page templates updated, ${result.removed} removed from the repository. ` +
         "2 left in the repository: still used by src/layouts/Base.astro. " +
-        "The site is built from those files and a move doesn't change them, so what they use stays where it is. " +
+        "The site is built from that file and a move doesn't change it, so what it uses stays where it is. " +
         "Also mentioned in scripts/gallery/sections.md: not part of the site as built, so not changed. Publish to make it live."
     );
     // Every file that stayed is still there, and a page that uses it still has its own address.
