@@ -79,6 +79,8 @@ folder (GALLEY_HOME).
 Options
       --host <address>      Interface to listen on (default GALLEY_HOST, then 0.0.0.0)
   -p, --port <port>         Port to listen on (default GALLEY_PORT, then 4400)
+      --socket <path>       Listen on this Unix socket as well (default GALLEY_SOCKET), for a
+                            front on the same machine; see GALLEY_SOCKET below
       --reset-password      Get an owner back in: print a one-time link for the owner to
                             choose a new password (it works once, for 60 minutes), then
                             serve as usual until stopped. Nobody else's account changes,
@@ -92,7 +94,18 @@ First run
   straight away. The owner invites everyone else from the app.
 Recommended
   GALLEY_PUBLIC_URL         The address people use, e.g. https://cms.example.com
-  GALLEY_TRUST_PROXY=1      When a reverse proxy terminates HTTPS in front of this server
+  GALLEY_TRUST_PROXY=1      When a reverse proxy terminates HTTPS in front of this server.
+                            It believes X-Forwarded-For and -Proto from every connection, the
+                            proxy's or anyone else's that can reach the port
+  GALLEY_SOCKET             A Unix socket for the proxy to connect to instead: forwarded
+                            headers are then believed for requests on the socket alone, never
+                            on the port. Made for this server's user alone (0600; see
+                            GALLEY_SOCKET_MODE). The proxy must set or append
+                            X-Forwarded-For. It keeps out other users, containers and the
+                            network, not code that runs as this server's user (the site's
+                            preview and build, for now)
+  GALLEY_SOCKET_MODE        0600 (default: the server's user alone) or 0660 (its group too, for
+                            a proxy run in it; every account in the group can connect)
 Previews (served through this server's one port, by hostname; point both names at it)
   GALLEY_PREVIEW_URL        Where the site's preview is shown. Default: worked out from
                             GALLEY_PUBLIC_URL (cms.example.com → cms-preview.example.com)

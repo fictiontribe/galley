@@ -174,6 +174,8 @@ export interface ServerOptions {
   webDir?: string;
   brandFile?: string;
   trustProxy?: boolean;
+  /** A Unix socket to listen on as well (default GALLEY_SOCKET). Forwarded headers are believed for requests on it, and once it is set, for no others. */
+  socket?: string;
   desktop?: boolean;
   /** Read for every option left unset. Default: process.env. */
   env?: NodeJS.ProcessEnv;
@@ -227,6 +229,8 @@ export interface RunningServer {
   url: string;
   port: number;
   host: string;
+  /** The Unix socket it also listens on (GALLEY_SOCKET), or null. */
+  socket: string | null;
   mode: ServerMode;
   /** Local mode token (or the operator's hosted token). */
   token: string | null;

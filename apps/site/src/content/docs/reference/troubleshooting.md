@@ -29,6 +29,16 @@ This page is for developers. Galley's messages are written to say what happened 
 | `Port 4400 is already in use on 0.0.0.0. Stop whatever is using it, or choose another with --port or GALLEY_PORT.` | Hosted mode and the desktop command don't move to another port. |
 | `This user isn't allowed to listen on port 80. Choose a port above 1024.` | Privileged port. Put a reverse proxy in front instead. |
 | `This computer has no network address 10.0.0.9 to listen on.` | `--host` / `GALLEY_HOST` isn't an address of this machine. |
+| `The folder for GALLEY_SOCKET (…) doesn't exist. …` | The socket's folder must exist before the server starts; create it (the proxy and the server need to reach it), or choose another path. |
+| `GALLEY_SOCKET names …, which is something other than a socket. …` | A file or folder is at the socket's path. Move it, or choose another path. |
+| `Another server is already listening on … (GALLEY_SOCKET). …` | A running server answers on that socket — another editor, or this one not yet stopped. Stop it, or give each its own path. |
+| `This user can't make a socket at … (GALLEY_SOCKET). …` | The server's user can't write to the socket's folder. Give it a folder it can write to. |
+| `The way to the folder for GALLEY_SOCKET (…) goes through …, which belongs to another user. …` / `…, which other users can write to …` | Whoever can change a folder or link on the way could put a socket of their own in this one's place. Every folder and link on the way must be the server's user's (or root's), and no folder on the way open to other users' writing unless it has the sticky bit, like `/tmp`. |
+| `GALLEY_SOCKET is made for this server's user alone (0600). …` | Said at start when `GALLEY_SOCKET_MODE` isn't set. A proxy that runs as another user can't connect: run it as root or as the server's user, or give the server a group of its own, put the proxy in it and set `GALLEY_SOCKET_MODE=0660` (every account in that group can then connect). |
+| `GALLEY_SOCKET_MODE must be 0660 … or 0600 …` | Set it to one of those, or leave it unset. |
+| `GALLEY_SOCKET's path is N bytes long, and this system takes at most … for a socket. …` | Systems limit a socket's path (about 100 bytes). Choose a shorter one, such as `/run/galley/galley.sock`. |
+| `A socket is at … (GALLEY_SOCKET) that may still be in use by another program. …` | Something is at the path that couldn't be told apart from a running server (another user's, say), so it was left alone. Remove it if nothing uses it. |
+| `GALLEY_SOCKET isn't available on Windows. …` | Use the port, with `GALLEY_TRUST_PROXY=1` behind your proxy. |
 | *Local mode only listens on this computer (127.0.0.1), not on 0.0.0.0. To serve other computers, use* `galley serve`. | `GALLEY_HOST` set to a non-loopback address for `galley [path]`. |
 | `GALLEY_PASSWORD is too short. It needs at least 12 characters, …` | |
 | `GALLEY_TOKEN must be at least 16 characters long.` | |

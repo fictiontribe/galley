@@ -26,6 +26,24 @@ entry says how.
   preset (`./vite`): the two aliases its source is written with, one copy of
   React and the router, and the app's public folder and build target. An
   edition starts its page from the app's own `index.html`.
+- **The server can listen on a Unix socket for the proxy in front
+  (`GALLEY_SOCKET`, `galley serve --socket`).** With a reverse proxy on the
+  same machine, `GALLEY_TRUST_PROXY=1` believes the `X-Forwarded-For` and
+  `X-Forwarded-Proto` of every connection that reaches the port — the proxy's,
+  or anything else that can reach it (another user's program on that machine,
+  another container, a neighbour on the network), which can then claim any
+  client address and slip past the per-address sign-in limits. With
+  `GALLEY_SOCKET` set, a hosted editor also listens on that socket, made for
+  its own user alone, or for its group too with `GALLEY_SOCKET_MODE=0660`
+  (as the image sets, for a proxy in another container); the proxy connects
+  to it, and forwarded headers are believed for requests on the socket
+  alone, never for those on the port. That keeps out other users (with
+  `0660`, all but the group's members), other containers and the network. It doesn't
+  keep out code that runs as the server's own user — which, until the editor
+  runs the site's code as a user of its own, includes the site's preview and
+  build. The same app answers on both, `/healthz`, `/readyz` and the preview's
+  WebSocket upgrades included. Existing installs are unchanged: without a
+  socket, `GALLEY_TRUST_PROXY` works as it did.
 
 ### Changed
 

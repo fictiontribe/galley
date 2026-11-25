@@ -607,11 +607,62 @@ the site's dev server.
   read 2026-11-23).
 - **Terminate HTTPS for all three names**, and set `X-Forwarded-Proto`; then
   `GALLEY_TRUST_PROXY=1` lets the server believe it (and `X-Forwarded-For`,
-  for the per-address sign-in limit). Only behind a proxy you control.
+  for the per-address sign-in limit). Only behind a proxy you control: it
+  believes them from every connection that reaches the port, the proxy's or a
+  program's on the same machine. With the proxy on the same machine,
+  `GALLEY_SOCKET` is narrower: the server also listens on that Unix socket,
+  the proxy connects to it instead of the port, and forwarded headers are
+  believed for requests on the socket alone — never for those on the port
+  (see [Putting the proxy on the socket](#putting-the-proxy-on-the-socket)).
 - **Pass WebSockets** (hot reload) and **stream** `GET /api/events`
   (Server-Sent Events, a heartbeat every 20 seconds). Caddy does both by
   default; `stream_close_delay 5m` in the generated Caddyfile keeps them open
   through a reload.
+
+### Putting the proxy on the socket
+
+With `GALLEY_SOCKET` set (`galley serve` only; not on Windows), the server
+listens on that Unix socket as well as its port, and believes
+`X-Forwarded-For` and `X-Forwarded-Proto` only for requests that come in on
+the socket.
+
+- **The socket** is made readable and writable by the server's user alone
+  (`0600`), unless `GALLEY_SOCKET_MODE=0660` lets its group in as well: that
+  is how a proxy that runs as another user gets in, by joining the group,
+  and every account in the group can then connect. Choose it where the group
+  is the server's own; the server can't tell that for itself (groups may
+  come from a directory service) and never guesses. The image sets `0660`:
+  its group is `node`, gid 1000, with no other account in it.
+- **Its folder**, and every folder and link on the way to it, must belong to
+  the server's user (or root), and no folder on the way may be writable by
+  other users unless it has the sticky bit, or the server refuses to start.
+  The image has one ready: `/run/galley`, user `node`, mode `0750`.
+- **Caddy:** `reverse_proxy unix//run/galley/galley.sock` in place of the
+  `host:port`. Caddy appends `X-Forwarded-For` and sets `X-Forwarded-Proto`
+  by default. Whatever the proxy, it must set or append `X-Forwarded-For`:
+  without it everyone coming through the socket is one client to the sign-in
+  limits, the log says `unknown`, and the server says so once.
+- **The compose recipe**, where Caddy is another container:
+  - give the socket's folder a named volume of its own, mounted at
+    `/run/galley` in both containers. A new named volume takes over the
+    image's folder there (user `node`, `0750`); a folder from the host
+    instead must be made so by hand (`chown 1000:1000`, `chmod 750`), as a
+    fresh one is root's and the server can't make the socket in it;
+  - set `GALLEY_SOCKET: /run/galley/galley.sock` and
+    `GALLEY_SOCKET_MODE: "0660"` in the editor's `environment`. The image
+    sets `0660` already; saying it in the file keeps the reason in sight:
+    the socket lets in group `node` (gid 1000), which has no other account
+    in it, so the only one let in besides the editor is the front you put
+    there;
+  - run Caddy with that group (`group_add: ["1000"]`), so it can reach the
+    folder and the socket.
+- **The port stays open** on `GALLEY_HOST`. With the proxy on the socket,
+  bind it to `127.0.0.1` (and don't publish it), so nothing else reaches it.
+- **What it keeps out:** other users on the machine (with `0660`, all but the
+  members of the server's group), other containers and the network. Not code
+  that runs as the server's own user — and until the editor runs the site's
+  code as a user of its own, the site's preview and build run as that user. `GALLEY_SOCKET` is kept from the site's commands, but that is
+  no wall.
 
 ---
 
@@ -930,6 +981,7 @@ server, and the setting has to match it:**
 | In front of the server | `GALLEY_TRUST_PROXY` | The client is |
 | --- | --- | --- |
 | One reverse proxy you run, receiving visitors directly (the compose recipe's Caddy) | `1` | the address that proxy saw: each visitor their own |
+| A reverse proxy on the same machine, connecting to the server's Unix socket (`GALLEY_SOCKET`) | either | the address that proxy saw, for requests on the socket; on the port, the connecting address, whatever a request claims |
 | Nothing: the server's port is reached directly | unset | the connecting address |
 | A reverse proxy, with the setting left unset | — | **the proxy, for everyone**: all people share one client's limits, so one person's wrong guesses hold everyone up. Set it. |
 | The setting on, with no proxy in front | — | **whatever the request claims**: the limits per client mean nothing. Unset it. |
