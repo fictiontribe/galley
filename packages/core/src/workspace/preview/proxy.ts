@@ -335,6 +335,8 @@ function addressVerdict(url: string): "pass" | "refused" | "malformed" {
 
 /** How long the rest of an answer is waited for when the dev server answered an upgrade as a plain request. */
 const NOT_UPGRADED_LINGER_MS = 1000;
+/** How long the dev server has to say what it makes of an upgrade before both ends are let go. */
+const UPGRADE_ANSWER_MS = 10_000;
 
 function sendError(res: ServerResponse, status: number, message: string, retry: boolean, overlayTag?: string) {
   if (res.headersSent) {
@@ -558,6 +560,11 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       // dev server's own protocol from here, both ways. On anything else it answered as it would a plain request:
       // that one answer goes back and both ends are closed, and a second request written on this socket reaches nobody.
       let answer = Buffer.alloc(0);
+      // A dev server that hangs up, or says nothing, before it has answered: the browser's end is not left open for it.
+      const unanswered = setTimeout(fail, UPGRADE_ANSWER_MS);
+
+      unanswered.unref?.();
+      upstream.once("close", fail);
       const onAnswer = (chunk: Buffer) => {
         answer = Buffer.concat([answer, chunk]);
         const lineEnd = answer.indexOf("\r\n");
@@ -567,6 +574,8 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
           return;
         }
         upstream.off("data", onAnswer);
+        upstream.off("close", fail);
+        clearTimeout(unanswered);
         if (/^HTTP\/1\.[01] 101(?: |$)/.test(answer.subarray(0, lineEnd).toString("latin1"))) {
           socket.write(answer);
           if (head.length > 0) upstream.write(head);
@@ -582,6 +591,7 @@ async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
         socket.write(answer);
         upstream.on("data", (rest: Buffer) => socket.write(rest));
         upstream.on("end", done);
+        upstream.on("close", done);
         upstream.setTimeout(NOT_UPGRADED_LINGER_MS, done);
       };
 

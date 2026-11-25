@@ -100,6 +100,12 @@ export interface StreamHooks {
    * have waiting, and every other event always has at least half of it.
    */
   low?(event: ServerEvent): boolean;
+  /**
+   * Asked whenever this reader has room again (less than half of what it
+   * may have waiting): events owed to this window alone, sent as they are.
+   * For telling it what `low` left out, so it can ask for what it missed.
+   */
+  owed?(): ServerEvent[];
 }
 
 /** An extension's event as the line it is sent as: one that goes to many readers unchanged is written out once. */
@@ -153,6 +159,7 @@ export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, 
   }
   const encoder = new TextEncoder();
   let cleanup: (() => void) | null = null;
+  let sendOwedNow: (() => void) | null = null;
 
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -180,11 +187,17 @@ export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, 
           finish();
         }
       };
+      /** What this reader is owed is sent once it has room again: before the next event, with a heartbeat, or as soon as it has read. */
+      const sendOwed = () => {
+        if (closed || !hooks?.owed || (controller.desiredSize ?? 0) < bound / 2) return;
+        for (const event of hooks.owed()) send(`data: ${JSON.stringify(event)}\n\n`);
+      };
       const sendEvent = (event: ServerEvent) => {
         if (access && !access.live()) {
           finish();
           return;
         }
+        sendOwed();
         const shown = access ? access.filter(event) : event;
 
         if (!shown) return;
@@ -199,8 +212,12 @@ export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, 
       const heartbeat = setInterval(() => {
         // A listener can stop counting with nothing sent and nobody told (a sign-in passes its age): looked at with every heartbeat.
         if (access && !access.live()) finish();
-        else send(": heartbeat\n\n");
+        else {
+          sendOwed();
+          send(": heartbeat\n\n");
+        }
       }, heartbeatMs);
+      sendOwedNow = sendOwed;
       const onAbort = () => finish();
       let unregister: () => void = () => {};
       let ended: (() => void) | undefined;
@@ -231,6 +248,10 @@ export function eventStream(c: Context, bus: EventBus, streams: StreamRegistry, 
         ended = hooks.opened(finish);
         for (const event of hooks.first()) send(`data: ${JSON.stringify(event)}\n\n`);
       }
+    },
+    // The reader has taken something: it may have room again for what it is owed.
+    pull() {
+      sendOwedNow?.();
     },
     cancel() {
       cleanup?.();

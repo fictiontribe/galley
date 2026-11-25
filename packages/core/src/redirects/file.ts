@@ -29,7 +29,8 @@ const JSON_WORD = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null/y
 
 /**
  * The place a text first stops being JSON, counted in characters from its
- * start; null when this reader finds no such place. Used only to say where a
+ * start; null when this reader finds no such place, or can't follow the text
+ * that far (brackets nested thousands deep). Used only to say where a
  * mistake is, after JSON.parse has refused the text.
  */
 export function firstMistake(text: string): number | null {
@@ -106,8 +107,9 @@ export function firstMistake(text: string): number | null {
     space();
     return at < text.length ? at : null;
   } catch (thrown) {
-    if (typeof thrown === "number") return thrown;
-    throw thrown;
+    // A place, or nothing: this only says where, after the text has been refused already. Brackets nested deeper
+    // than this reader can follow end here, and are no reason to fail whoever asked what is wrong with the list.
+    return typeof thrown === "number" ? thrown : null;
   }
 }
 
@@ -116,13 +118,16 @@ export function readList(text: string): ReadList {
   let value: unknown;
 
   if (text.trim() === "") return { ok: true, redirects: [] };
+  // Without the byte order mark some editors put first: it is no part of what a person sees or counts from.
+  const body = text.replace(/^﻿/, "");
+
   try {
-    value = JSON.parse(text.replace(/^﻿/, ""));
+    value = JSON.parse(body);
   } catch {
     // Where it goes wrong, never what is written there: the parser's own message quotes the file, and this sentence
     // is shown to the assistant and to anyone who may look at the redirects.
-    const at = firstMistake(text.replace(/^﻿/, ""));
-    const where = at === null ? "" : ` near line ${text.slice(0, at).split("\n").length}, column ${at - text.lastIndexOf("\n", at - 1)}`;
+    const at = firstMistake(body);
+    const where = at === null ? "" : ` near line ${body.slice(0, at).split("\n").length}, column ${at - body.lastIndexOf("\n", at - 1)}`;
 
     return { ok: false, redirects: [], problem: `The redirects file has a formatting mistake${where}, so it can't be read. Look there for a missing comma, quote or bracket.` };
   }

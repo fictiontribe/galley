@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { toolByName } from "../../src/ai/tools/index";
 import type { ToolContext } from "../../src/ai/tools/types";
-import { firstMistake } from "../../src/redirects/file";
+import { firstMistake, readList } from "../../src/redirects/file";
 import { listFileOf } from "../../src/redirects/locate";
 import { disposeAll, makeSite, openSite, sh, writeTree } from "../site/helpers";
 
@@ -31,6 +31,31 @@ describe("where a list stops being JSON", () => {
     ] as const) {
       expect(() => JSON.parse(text), text).toThrow();
       expect(firstMistake(text), text).toBe(at);
+    }
+  });
+});
+
+describe("a list that is nothing like a list", () => {
+  it("is said to be unreadable, never thrown at whoever asked: however deep its brackets go", () => {
+    for (const text of ["[".repeat(20_000), "{\"a\":".repeat(20_000), `${"[".repeat(20_000)}${"]".repeat(19_999)}`]) {
+      expect(() => firstMistake(text), `${text.slice(0, 12)}…`).not.toThrow();
+      const read = readList(text);
+
+      expect(read.ok).toBe(false);
+      expect((read as { problem: string }).problem).toMatch(/^The redirects file has a formatting mistake/);
+    }
+  });
+
+  it("counts the column from the first character a person sees, not from a mark before it", () => {
+    for (const [text, place] of [
+      ["{ nope }", "near line 1, column 3"],
+      ['{\n  "redirects": [\n    nope\n  ]\n}', "near line 3, column 5"],
+      ['{"redirects": [1,\n2 3]}', "near line 2, column 3"],
+    ] as const) {
+      const without = readList(text) as { problem: string };
+
+      expect(without.problem, text).toContain(place);
+      expect((readList(`\ufeff${text}`) as { problem: string }).problem, text).toBe(without.problem);
     }
   });
 });

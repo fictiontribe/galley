@@ -150,6 +150,33 @@ describe("the preview, asked for a file by its path", () => {
     expect(asked).toEqual([]);
   });
 
+  it("ends the browser's side when the dev server closes an upgrade without answering it", async () => {
+    // A dev server that takes the connection and hangs up without a word.
+    const silent = net.createServer((socket) => socket.once("data", () => socket.destroy()));
+
+    await new Promise<void>((done) => silent.listen(0, "127.0.0.1", done));
+    const proxy = await startPreviewProxy({ upstreamHost: "127.0.0.1", upstreamPort: (silent.address() as AddressInfo).port, host: "127.0.0.1", publicHost: "127.0.0.1", overlayScript: () => "" });
+
+    try {
+      const started = Date.now();
+      const closed = await new Promise<boolean>((resolve, reject) => {
+        const socket = net.connect(Number(new URL(proxy.url).port), "127.0.0.1");
+
+        socket.on("error", reject);
+        socket.on("data", () => undefined);
+        socket.on("close", () => resolve(true));
+        socket.on("connect", () => socket.write("GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n"));
+        setTimeout(() => resolve(false), 3000).unref();
+      });
+
+      expect(closed).toBe(true);
+      expect(Date.now() - started).toBeLessThan(2500);
+    } finally {
+      await proxy.close();
+      await new Promise((done) => silent.close(done));
+    }
+  });
+
   it("leaves the live site's proxy alone: that is another server's files, not this folder's", async () => {
     asked.length = 0;
     expect((await get(baseline, "/.envrc")).status).toBe(200);

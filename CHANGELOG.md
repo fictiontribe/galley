@@ -139,7 +139,10 @@ those conversations: a conversation keeps what its tools returned.
   log. A window that already has more than half of what it may have waiting
   (512 KB of 1 MB) is not sent an extension's event. So an extension's events
   never fill more than half of that and one event, and the rest is always the
-  editor's own. A stream opened with a value for an extension
+  editor's own. Such a window is told what it missed once it has room again
+  (`stream.missed`, with how many), because it was never disconnected and
+  nothing else would tell it. Names that begin with `stream.` are the server's
+  own. A stream opened with a value for an extension
   (`/api/events?x-<id>=<value>`) tells it that the window is there and, later,
   that it has gone, which replaces a heartbeat route. A value is taken only
   from the editor's own page, from an address a person opened directly, or
@@ -153,6 +156,7 @@ those conversations: a conversation keeps what its tools returned.
   ones it returned when the server started, because an address keeps the
   guards it was mounted with. One that returns others, or can't start again,
   is left stopped: its routes answer 503, and the log says why.
+
 ### Fixed
 
 - **A window that has been signed out stops receiving live updates.** On an

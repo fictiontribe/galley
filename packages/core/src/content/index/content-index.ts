@@ -21,6 +21,7 @@ import { authorReferences, dataItemTitles, formatOf, summarize } from "../entrie
 import { collectionForPath, normalizePath, urlKey } from "../entries/paths";
 import { collapseWhitespace, matchKey, truncate } from "../util/text";
 import { bodyStrings, fieldStrings, SOURCE_PATTERN, sourceStrings, type IndexedString } from "./strings";
+import { shownWhereTheyAre } from "../../workspace/paths";
 
 interface FileRecord {
   path: string;
@@ -335,9 +336,11 @@ export async function buildContentIndex(root: string, model: SiteModel): Promise
   // The site's own build output, wherever its adapter or config puts it, holds copies of the templates' text.
   const outDir = model.build?.outDir ? normalizePath(model.build.outDir) : "";
   const buildDirs = outDir && outDir !== "." ? [`${outDir}/**`] : [];
+  const shown = shownWhereTheyAre(root);
   const sources = (await glob(SOURCE_PATTERN, { cwd: root, onlyFiles: true, ignore: [...IGNORED_DIRS, "**/build/**", "**/out/**", "**/coverage/**", ...buildDirs, ...contentDirs, ...publicDirs], expandDirectories: false }))
     .map(normalizePath)
-    .filter((path) => !collectionForPath(model, path))
+    // Read here, not through the site's own read: a template that is a link is the site's only where it really leads.
+    .filter((path) => !collectionForPath(model, path) && shown(path))
     .sort();
 
   await readAll(root, sources, (path, raw) => {

@@ -8,6 +8,7 @@ import { GalleyError } from "../errors";
 import type { ChangeKind, ChangeSet, ChangeStatus, DiffHunk, DiffLine, FileChange, FileDiff } from "../types";
 import { countLines, isBinary, readIfExists } from "./files";
 import { runGit, splitNul, type Git, type RepoInfo } from "./git";
+import { shownWhereTheyAre } from "./paths";
 import { imageFacts } from "./media";
 
 export type PendingStatus = Exclude<ChangeStatus, "clean">;
@@ -279,10 +280,13 @@ export async function buildChangeSet(
       ? await readBaseBlobs(context.repo, context.info, paths.filter((p) => statuses.get(p) !== "added"))
       : new Map<string, Buffer | null>();
   const files: FileChange[] = [];
+  // Each changed file is opened here to be counted and described. A link among them is listed by its name, and
+  // what it leads to is read only where that may be shown.
+  const shown = shownWhereTheyAre(context.root);
 
   for (const path of paths) {
     const status = statuses.get(path) as PendingStatus;
-    const after = status === "deleted" ? null : await readIfExists(join(context.root, ...path.split("/"))).catch(() => null);
+    const after = status === "deleted" || !shown(path) ? null : await readIfExists(join(context.root, ...path.split("/"))).catch(() => null);
     const before = bases.get(path) ?? null;
     const counted = numstat.get(path);
     let additions = counted?.additions ?? 0;
