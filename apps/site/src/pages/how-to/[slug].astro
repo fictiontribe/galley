@@ -35,7 +35,7 @@ const { data: page } = await getPage("how-to");
 const note: string | undefined = (page.notes as Record<string, string> | undefined)?.[g.slug];
 ---
 
-<Site title={g.title} description={g.summary} type="article">
+<Site title={g.title} description={g.summary} type="article" class="page-read">
   <article class="wrap howto" aria-labelledby="howto-h" data-galley-agent="main">
     <header class="howto__head">
       <h1 class="h1" id="howto-h">{g.title}</h1>

@@ -17,7 +17,7 @@ const html = rendered?.html ?? "";
 const versions = (rendered?.headings ?? []).filter((h) => h.depth === 2);
 ---
 
-<Site title={p.title} description={p.description}>
+<Site title={p.title} description={p.description} class="page-read">
   <div class="wrap">
     <PageHead eyebrow={p.eyebrow} heading={p.heading} lead={p.lead} />
     <div class:list={["reading", versions.length > 1 && "reading--aside"]}>

@@ -6,7 +6,7 @@ import { getPage } from "../lib/pages";
 const { data: p, html } = await getPage("privacy");
 ---
 
-<Site title={p.title} description={p.description}>
+<Site title={p.title} description={p.description} class="page-read">
   <div class="wrap">
     <PageHead eyebrow={p.eyebrow} heading={p.heading} lead={p.lead} />
     <div class="prose" set:html={html} />

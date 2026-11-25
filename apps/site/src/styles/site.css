@@ -14,8 +14,9 @@
    values again for engines from before light-dark().
 
    Headings. One voice on every page, from one set of tokens (--head-*,
-   tokens.css): Figtree 600, tight. The serif stays for the product's own
-   words where they are quoted (a proof line).
+   tokens.css): Figtree 600, tight. A page that is read (body.page-read) takes
+   the calmer --t-read-* sizes of the same voice. The serif is left only for
+   the app's own proof sheet (.change__line).
 
    System
      type    15 small · 17 body · 19→20 lead · 20→24 h3 · 32→48 h2 · 40→60 h1
@@ -359,7 +360,7 @@ button.link::after { content: none; }
 .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); }
 .card { position: relative; display: grid; align-content: start; gap: var(--s2); padding: var(--s5) var(--s7) var(--s5) var(--s5); border-radius: var(--r-lg); background: var(--raised); border: 1px solid var(--line); text-decoration: none; transition: border-color .15s; }
 .card:hover { border-color: var(--line-strong); }
-.card__t { font: var(--head-weight) 1.5rem/1.15 var(--head-font); letter-spacing: var(--h3-tracking); }
+.card__t { font: var(--head-weight) 1.25rem/1.25 var(--head-font); letter-spacing: -0.012em; }
 .card .body { font-size: 0.9375rem; }
 .card::after { content: "→"; position: absolute; right: var(--s5); top: var(--s5); font-size: 1.25rem; line-height: 1; color: var(--accent-text); transition: transform .15s; }
 .card:hover::after { transform: translateX(3px); }
@@ -401,14 +402,14 @@ button.link::after { content: none; }
 .compare th, .compare td { padding: 15px var(--s5); text-align: left; vertical-align: top; border-bottom: 1px solid var(--line-2); line-height: 1.45; }
 .compare th:first-child { padding-left: 0; }
 .compare thead th { padding-top: var(--s5); padding-bottom: var(--s3); vertical-align: bottom; font: 500 var(--t-label)/1.4 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); border-bottom-color: var(--ink); }
-.compare thead th:not(:first-child) { font: var(--head-weight) 1.5rem/22px var(--head-font); letter-spacing: var(--h3-tracking); text-transform: none; color: var(--ink); }
+.compare thead th:not(:first-child) { font: var(--head-weight) 1.25rem/24px var(--head-font); letter-spacing: -0.012em; text-transform: none; color: var(--ink); }
 /* vertical-align: an inline-flex box sits on the text baseline by its bottom edge, which lifted "Galley" above "WordPress". */
 .compare__brand { display: inline-flex; align-items: center; gap: 10px; vertical-align: bottom; }
 .compare__mark { width: 22px; height: 22px; }
 .compare .us { background: var(--raised); }
 .compare thead .us { border-radius: var(--r-md) var(--r-md) 0 0; }
 .compare tbody tr:last-child .us { border-radius: 0 0 var(--r-md) var(--r-md); }
-.compare tbody th { width: 22%; font: var(--head-weight-sm, 400) 1.1875rem/1.25 var(--head-font); letter-spacing: -0.005em; }
+.compare tbody th { width: 22%; font: var(--head-weight-sm, 500) 1.0625rem/1.35 var(--head-font); letter-spacing: 0; color: var(--ink); }
 .compare td { width: 39%; color: var(--ink-2); }
 .compare td.win { color: var(--ink); }
 .compare .cell { display: flex; align-items: flex-start; gap: var(--s3); }
@@ -428,7 +429,7 @@ button.link::after { content: none; }
 /* ---------- questions ---------- */
 .faq { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: var(--s5) var(--s8); }
 .faq dl { display: grid; }
-.faq dt { font: var(--head-weight) 1.375rem/1.25 var(--head-font); letter-spacing: var(--h3-tracking); padding-top: var(--s5); border-top: 1px solid var(--line-2); }
+.faq dt { font: var(--head-weight) 1.25rem/1.3 var(--head-font); letter-spacing: -0.012em; padding-top: var(--s5); border-top: 1px solid var(--line-2); }
 .faq dt:first-child { padding-top: 0; border-top: 0; }
 .faq dd { padding: var(--s2) 0 var(--s5); color: var(--ink-2); max-width: 40rem; }
 .faq dd a { color: var(--accent-text); }
@@ -442,16 +443,19 @@ button.link::after { content: none; }
 .person__line { color: var(--ink-2); text-wrap: pretty; max-width: 30rem; }
 .person--featured { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s5) var(--s8); align-items: center; }
 .person--featured .person__name { font-size: var(--t-h2); line-height: 1.08; letter-spacing: -0.012em; }
-.person--featured .person__line { font: 400 var(--t-h3)/1.35 var(--font-serif); color: var(--ink); }
+/* The featured person's own line, set apart as a quote is: the face's middle weight, larger, on a pencil rule. */
+.person--featured .person__line { position: relative; padding-left: var(--s5); font: 500 var(--t-h3)/1.4 var(--font-text); letter-spacing: -0.01em; color: var(--ink); text-wrap: balance; }
+.person--featured .person__line::before { content: ""; position: absolute; left: 0; top: .2em; bottom: .2em; width: 2px; border-radius: 1px; background: var(--accent-text); }
 
 /* ---------- prose pages and docs ---------- */
 .page-head { display: grid; gap: var(--s4); max-width: 46rem; padding-top: clamp(28px, 4vw, 56px); margin-bottom: var(--s7); }
 .prose { max-width: 44rem; color: var(--ink-2); line-height: 1.62; }
 .prose > * + * { margin-top: var(--s4); }
-.prose h2 { margin-top: var(--s7); font: var(--head-weight) clamp(1.625rem, 1.4rem + 0.8vw, 2rem)/1.15 var(--head-font); letter-spacing: var(--h3-tracking); color: var(--ink); }
-.prose h3 { margin-top: var(--s6); font: 600 1.0625rem/1.35 var(--font-text); color: var(--ink); }
-.prose h4 { margin-top: var(--s5); font: 600 1rem/1.35 var(--font-text); color: var(--ink); }
-.prose h2 + *, .prose h3 + *, .prose h4 + * { margin-top: var(--s3); }
+.prose h2 { margin-top: var(--s8); font: var(--head-weight) var(--t-read-h2)/1.18 var(--head-font); letter-spacing: -0.018em; color: var(--ink); }
+.prose h3 { margin-top: var(--s7); font: 600 var(--t-read-h3)/1.3 var(--font-text); letter-spacing: -0.01em; color: var(--ink); }
+.prose h4 { margin-top: var(--s6); font: 600 var(--t-read-h4)/1.35 var(--font-text); color: var(--ink); }
+.prose h2 + *, .prose h3 + *, .prose h4 + * { margin-top: var(--s2); }
+.prose h3 + *, .prose h4 + * { margin-top: 6px; }
 .prose strong { color: var(--ink); font-weight: 600; }
 .prose a { color: var(--accent-text); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
 .prose ul, .prose ol { padding-left: 1.25em; }
@@ -491,7 +495,7 @@ button.link::after { content: none; }
 .docs__group a[aria-current="page"] { background: var(--raised); color: var(--ink); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .docs__group [hidden] { display: none; }
 .docs__main { min-width: 0; }
-.docs__title { font: var(--head-weight) clamp(2rem, 1.6rem + 1.4vw, 2.75rem)/var(--h2-leading) var(--head-font); letter-spacing: var(--h2-tracking); margin-top: var(--s2); text-wrap: balance; }
+.docs__title { font: var(--head-weight) var(--t-h1)/var(--h1-leading) var(--head-font); letter-spacing: var(--h1-tracking); margin-top: var(--s2); text-wrap: balance; }
 .docs__desc { margin: var(--s4) 0 var(--s7); max-width: 44rem; font-size: var(--t-lead); color: var(--ink-2); }
 .docs__toc { position: sticky; top: calc(var(--header-h) + 16px); font-size: 0.875rem; }
 .docs__toc ul { display: grid; gap: 2px; margin-top: var(--s3); border-left: 1px solid var(--line-2); }
@@ -650,7 +654,7 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
 .howto-index__more { margin-top: var(--s8); padding-top: var(--s5); border-top: 1px solid var(--line-2); color: var(--ink-2); }
 .howto { padding-top: clamp(28px, 4vw, 56px); }
 .howto__head { display: grid; gap: var(--s4); max-width: 50rem; margin-bottom: var(--s7); }
-.howto__head .h1 { font-size: clamp(2.25rem, 1.7rem + 1.9vw, 3.375rem); line-height: 1.06; }
+.howto__head .h1 { font-size: var(--t-h1); line-height: var(--h1-leading); }
 .howto__note { font-size: var(--t-small); line-height: 1.5; color: var(--ink-3); }
 .howto__needs { margin-top: var(--s2); padding: 14px 18px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--raised); color: var(--ink-2); }
 .howto__needs b { margin-right: 0.35em; font-weight: 600; color: var(--ink); }
@@ -659,7 +663,8 @@ html:has(.page-tour) { scroll-padding-top: calc(var(--header-h) + 76px); }
 .howto-step { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: var(--s5) var(--s7); align-items: start; padding-block: var(--s6) var(--s7); border-top: 1px solid var(--line-2); }
 .howto-step__text { position: sticky; top: calc(var(--header-h) + 24px); display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); gap: var(--s3) var(--s3); align-content: start; }
 .howto-step--text .howto-step__text { position: static; grid-column: 1 / -1; max-width: 40rem; }
-.howto-step__n { grid-row: span 2; font: 400 2.5rem/0.9 var(--head-font); color: var(--accent-text); font-variant-numeric: lining-nums; }
+/* A step's number: the face's middle weight, as large as the step's first line is tall twice over, the pencil's ink. */
+.howto-step__n { grid-row: span 2; font: 500 2rem/1 var(--head-font); letter-spacing: -0.03em; color: var(--accent-text); font-variant-numeric: lining-nums tabular-nums; }
 .howto-step__do { font-size: 1.1875rem; line-height: 1.5; color: var(--ink); text-wrap: pretty; }
 .howto-step__do strong, .howto-step__see strong { font-weight: 600; color: var(--ink); }
 .howto-step__see { grid-column: 2; padding-left: var(--s3); border-left: 2px solid var(--line-2); color: var(--ink-2); line-height: 1.5; text-wrap: pretty; }
@@ -1560,6 +1565,8 @@ code { background: var(--hover-2); }
 }
 /* A hero's small label goes under its actions, as a quiet meta line, never as an eyebrow over the headline. */
 .hero__text > .label { order: 9; font: 400 var(--t-small)/1.5 var(--font-text); letter-spacing: 0; color: var(--ink-3); }
+/* The same quiet line under a page head's words (changelog, privacy, the 404). */
+.head-note { font: 400 var(--t-small)/1.5 var(--font-text); letter-spacing: 0; color: var(--ink-3); }
 
 /* ---------- reading pages: the page set, comfortable for a long read in both modes ----------
    A measure near 68 characters, generous leading, body text at the second ink
