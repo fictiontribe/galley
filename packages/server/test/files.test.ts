@@ -83,10 +83,26 @@ describe("GET …/raw", () => {
     expect((await app.call("GET", `${S}/file?path=.env.production`)).status).toBe(403);
   });
 
+  it("never shows a secrets file's changes or the version history's own files' either", async () => {
+    const asked: string[] = [];
+    const app = testApp({ site: fileSite({ diff: async (path: string) => (asked.push(path), { path, status: "added", binary: false, hunks: [], additions: 1, deletions: 0 }) as never }) });
+
+    for (const path of [".env", ".env.local", ".envrc", ".env-production", ".ENV", "config/.Envrc", ".git/config", "sub/.GIT/HEAD", ".env/", ".env/.", ".envrc//"]) {
+      const response = await app.call("GET", `${S}/diff?path=${encodeURIComponent(path)}`);
+
+      expect(response.status, path).toBe(403);
+      expect((await json(response)).error.message, path).toBe("That file can't be shown here.");
+    }
+    // The engine was never asked for one of them; an ordinary file's changes are shown as before.
+    expect(asked).toEqual([]);
+    expect((await app.call("GET", `${S}/diff?path=notes.md`)).status).toBe(200);
+    expect(asked).toEqual(["notes.md"]);
+  });
+
   it("takes any file whose name starts with .env for a secrets file, and no other", async () => {
     const app = testApp({ site: fileSite() });
 
-    for (const path of [".envrc", ".env-production", ".env_local", ".ENV", "config/.Env.Staging", "sub/.envrc"]) {
+    for (const path of [".envrc", ".env-production", ".env_local", ".ENV", "config/.Env.Staging", "sub/.envrc", ".env/", ".env/.", ".envrc//", ".git/", ".envs/production"]) {
       expect((await app.call("GET", `${S}/raw?path=${encodeURIComponent(path)}`)).status, `raw ${path}`).toBe(403);
       expect((await app.call("GET", `${S}/file?path=${encodeURIComponent(path)}`)).status, `file ${path}`).toBe(403);
     }

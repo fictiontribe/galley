@@ -25,15 +25,111 @@ export function serializeList(list: Redirect[]): string {
 
 export type ReadList = { ok: true; redirects: Redirect[] } | { ok: false; problem: string; redirects: Redirect[] };
 
+const JSON_WORD = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null/y;
+
+/**
+ * The place a text first stops being JSON, counted in characters from its
+ * start; null when this reader finds no such place, or can't follow the text
+ * that far (brackets nested thousands deep). Used only to say where a
+ * mistake is, after JSON.parse has refused the text.
+ */
+export function firstMistake(text: string): number | null {
+  let at = 0;
+  const space = () => {
+    while (at < text.length && " \t\n\r".includes(text[at]!)) at += 1;
+  };
+  const stop = (): never => {
+    throw at;
+  };
+  const string = () => {
+    if (text[at] !== '"') stop();
+    at += 1;
+    for (;;) {
+      const ch = text[at];
+
+      if (ch === undefined || ch < " ") stop();
+      if (ch === '"') {
+        at += 1;
+        return;
+      }
+      if (ch === "\\") {
+        const escaped = text[at + 1];
+
+        if (escaped === "u" ? !/^[0-9a-fA-F]{4}$/.test(text.slice(at + 2, at + 6)) : escaped === undefined || !'"\\/bfnrt'.includes(escaped)) stop();
+        at += escaped === "u" ? 6 : 2;
+        continue;
+      }
+      at += 1;
+    }
+  };
+  const value = (): void => {
+    space();
+    const opened = text[at];
+
+    if (opened === "{" || opened === "[") {
+      const closing = opened === "{" ? "}" : "]";
+
+      at += 1;
+      space();
+      if (text[at] === closing) {
+        at += 1;
+        return;
+      }
+      for (;;) {
+        if (opened === "{") {
+          space();
+          string();
+          space();
+          if (text[at] !== ":") stop();
+          at += 1;
+        }
+        value();
+        space();
+        if (text[at] === ",") {
+          at += 1;
+          continue;
+        }
+        if (text[at] !== closing) stop();
+        at += 1;
+        return;
+      }
+    }
+    if (opened === '"') return string();
+    JSON_WORD.lastIndex = at;
+    const word = JSON_WORD.exec(text);
+
+    if (!word) stop();
+    at += word![0].length;
+  };
+
+  try {
+    value();
+    space();
+    return at < text.length ? at : null;
+  } catch (thrown) {
+    // A place, or nothing: this only says where, after the text has been refused already. Brackets nested deeper
+    // than this reader can follow end here, and are no reason to fail whoever asked what is wrong with the list.
+    return typeof thrown === "number" ? thrown : null;
+  }
+}
+
 /** Reads the list file. Anything that isn't plainly a redirect is a problem to fix by hand; nothing is dropped quietly. */
 export function readList(text: string): ReadList {
   let value: unknown;
 
   if (text.trim() === "") return { ok: true, redirects: [] };
+  // Without the byte order mark some editors put first: it is no part of what a person sees or counts from.
+  const body = text.replace(/^﻿/, "");
+
   try {
-    value = JSON.parse(text.replace(/^﻿/, ""));
-  } catch (error) {
-    return { ok: false, redirects: [], problem: `The redirects file has a formatting mistake, so it can't be read: ${error instanceof Error ? error.message : String(error)}.` };
+    value = JSON.parse(body);
+  } catch {
+    // Where it goes wrong, never what is written there: the parser's own message quotes the file, and this sentence
+    // is shown to the assistant and to anyone who may look at the redirects.
+    const at = firstMistake(body);
+    const where = at === null ? "" : ` near line ${body.slice(0, at).split("\n").length}, column ${at - body.lastIndexOf("\n", at - 1)}`;
+
+    return { ok: false, redirects: [], problem: `The redirects file has a formatting mistake${where}, so it can't be read. Look there for a missing comma, quote or bracket.` };
   }
   const list = (value as { redirects?: unknown })?.redirects;
 

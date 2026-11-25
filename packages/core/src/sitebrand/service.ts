@@ -33,6 +33,7 @@ import { createSourceStore, factsOf, safeSourceName, SOURCE_LIMITS, type SourceS
 import type { Reading, Synthesis } from "./schema";
 import { siteBrandFileSchema } from "./schema";
 import type { ApplyPlan, BrandCheckItem, BrandProposal, BrandSource, BrandStep, DriftReport, MeasureSummary, SiteBrandFile, SiteBrandState, SourceManifest } from "./types";
+import { mayBeShown } from "../workspace/policy";
 
 export interface SiteBrandServiceOptions {
   home: string;
@@ -223,7 +224,8 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
       if (!latin(face.unicodeRange) || face.style !== "normal" || out.some((f) => f.family === face.family)) continue;
       const ext = face.file.split(".").pop()?.toLowerCase() ?? "";
 
-      if (!FONT_TYPES[ext]) continue;
+      // Named by the site's stylesheets, and served as it is.
+      if (!FONT_TYPES[ext] || !mayBeShown(face.file)) continue;
       let path: string | null = null;
 
       if (face.file.startsWith("pkg:")) {
@@ -263,7 +265,9 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
       // Saved earlier (maybe on another computer): its bytes are in the site, or nowhere here.
       let bytesPath: string | null = null;
 
-      if (source.file) {
+      // The saved list is a file of the site, and whoever may change it names the path. What it names is served, packed
+      // into an export and read for the assistant: never a secrets file or one of the version history's own.
+      if (source.file && mayBeShown(source.file)) {
         try {
           bytesPath = site.resolvePath(source.file);
         } catch {
@@ -919,7 +923,8 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
     const file = brand.tokensFile ?? location.tokensFile ?? scan.tokensFile;
 
     if (!file) throw new GalleyError("invalid", "This site has no single file of colours and fonts to apply the brand to. The brand describes the site; changing its styles is a build-mode job for the assistant.");
-    const text = await site.readFile(file).catch(() => null);
+    // Named by the brand or the settings: read like any file a setting names, never a secrets file or one of the version history's own.
+    const text = mayBeShown(file) ? await site.readFile(file).catch(() => null) : null;
 
     if (!text || text.binary) throw new GalleyError("not-found", `The site's colours file (${file}) can't be read.`);
     const installed = new Set(scan.fontFaces.map((face) => face.family));
@@ -969,7 +974,8 @@ export function createSiteBrandService(options: SiteBrandServiceOptions) {
     const changes = await site.changes();
     const files: ChangedFile[] = [];
 
-    for (const change of changes.files.filter((f) => !f.binary && f.status !== "deleted" && (!paths || paths.includes(f.path))).slice(0, 40)) {
+    // A waiting secrets file is among the changes; its lines are read for nobody.
+    for (const change of changes.files.filter((f) => !f.binary && f.status !== "deleted" && mayBeShown(f.path) && (!paths || paths.includes(f.path))).slice(0, 40)) {
       const diff = await site.diff(change.path).catch(() => null);
 
       if (!diff) continue;

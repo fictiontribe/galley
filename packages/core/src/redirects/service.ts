@@ -43,6 +43,7 @@ import { reviewImport } from "./review";
 import { siteRoutes, type SiteRoutes } from "./routes";
 import { readState, updateState } from "./state";
 import { traceAddress } from "./trace";
+import { mayBeShown } from "../workspace/policy";
 import type {
   CloudflareCheck,
   CloudflarePlan,
@@ -156,6 +157,8 @@ export function createRedirectsService(options: RedirectsServiceOptions): Redire
   }
 
   async function readText(site: SiteService, path: string): Promise<{ content: string; hash: string } | null> {
+    // Read to be shown back, line by line where a line isn't a redirect: never a secrets file or one of the version history's own.
+    if (!mayBeShown(path)) throw new GalleyError("forbidden", "That file can't be read as a list of redirects.", path);
     if (!existsSync(site.resolvePath(path))) return null;
     try {
       const file = await site.readFile(path);

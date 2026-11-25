@@ -6,6 +6,7 @@
  * that change with every edit, keys sorted wherever objects are printed.
  */
 import type { BlockType, Collection, Field, JsonValue, SiteModel, SiteService } from "../types";
+import { mayBeShown } from "../workspace/policy";
 
 /** Caps keep a sprawling content guide from crowding out the conversation. */
 export const INSTRUCTIONS_TOTAL_CHARS = 24_000;
@@ -163,6 +164,11 @@ export async function loadInstructionFiles(site: SiteService, model: SiteModel):
   const files: InstructionFile[] = [];
 
   for (const path of [...new Set(model.ai.instructions)]) {
+    // The settings name these files, and what they hold goes into every conversation: never a secrets file, whatever the settings say.
+    if (!mayBeShown(path)) {
+      files.push({ path, content: null });
+      continue;
+    }
     try {
       const file = await site.readFile(path);
 

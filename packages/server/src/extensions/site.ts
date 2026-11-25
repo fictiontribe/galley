@@ -32,7 +32,7 @@ import { realpath } from "node:fs/promises";
 import { relative } from "node:path";
 import { GalleyError } from "@galley/core";
 import type { SiteService } from "@galley/core/types";
-import { isSecretsFile } from "@galley/core/workspace";
+import { mayBeShown } from "@galley/core/workspace";
 import type { GuardedSite } from "./types";
 
 /** Members that only read. */
@@ -125,7 +125,7 @@ export function insideGet(): boolean {
 /** Secrets and version-history internals by name, in any letter case and at any depth. */
 export function unreadable(path: unknown): boolean {
   if (typeof path !== "string") return false;
-  return path.replace(/\\/g, "/").toLowerCase().split("/").includes(".git") || isSecretsFile(path);
+  return !mayBeShown(path);
 }
 
 /**

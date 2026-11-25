@@ -2,7 +2,7 @@
  * The MCP server driven through the SDK's own client (in-memory transport)
  * against a real, git-initialised copy of the starter site.
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, symlinkSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { toolByName, type ToolContext } from "@galley/core/ai";
@@ -145,6 +145,55 @@ describe("orientation", () => {
     expect(instructions).toContain("Call get_site first");
     expect(instructions).toContain(PRODUCT.name);
     expect(instructions).toContain("content mode");
+    await close();
+    await engine.site.dispose();
+  });
+});
+
+describe("secrets files and the version history's own files", () => {
+  it("are never read or shown: not by the source-file tools, not as a file's changes, and a search says nothing of them", async () => {
+    const root = makeSite();
+    const secret = "TOKEN=not-for-any-client";
+
+    writeFileSync(join(root, ".env"), `${secret}\n`);
+    writeFileSync(join(root, ".envrc"), `export ${secret}\n`);
+    writeFileSync(join(root, ".env-production"), `${secret}\n`);
+    // A link named like a page that leads to one of them, as a repository could bring in.
+    symlinkSync("../../../.env", join(root, "src/content/pages/notes.md"));
+    git(root, "add", "-A");
+    git(root, "commit", "-q", "-m", "A link");
+    const engine = await openEngine(root);
+    const { client, close } = await connect(engine, { mode: "build" });
+
+    for (const path of [".env", ".envrc", ".env-production"]) {
+      const read = await callTool(client, "read_file", { path });
+
+      expect(read.isError, path).toBe(true);
+      expect(read.text, path).toBe("That is a secrets file, so it isn't read here. Ask the person for what you need from it.");
+      const diff = await callTool(client, "get_diff", { path });
+
+      expect(diff.isError, path).toBe(true);
+      expect(diff.text, path).toBe("That is a secrets file, so it isn't read here. Ask the person for what you need from it.");
+    }
+    for (const tool of ["read_file", "get_diff"]) {
+      const history = await callTool(client, tool, { path: ".git/config" });
+
+      expect(history.isError, tool).toBe(true);
+      expect(history.text, tool).toBe("That is one of the version history's own files, so it isn't read here. Ask for the site's history instead.");
+    }
+    // The link is no page: not listed, not read, and its lines are in no search.
+    expect((await callTool(client, "list_entries", { collection: "pages" })).text).not.toContain("notes.md");
+    expect((await callTool(client, "read_entry", { path: "src/content/pages/notes.md" })).isError).toBe(true);
+    expect((await callTool(client, "read_file", { path: "src/content/pages/notes.md" })).text).not.toContain("not-for-any-client");
+    // What the files hold reaches no answer: a search for it, where a text lives, the proof.
+    for (const [tool, args] of [
+      ["search_content", { query: "not-for-any-client" }],
+      ["find_text", { text: secret }],
+      ["get_changes", {}],
+      ["get_site", {}],
+    ] as const) {
+      expect((await callTool(client, tool, args)).text, tool).not.toContain("not-for-any-client");
+    }
     await close();
     await engine.site.dispose();
   });

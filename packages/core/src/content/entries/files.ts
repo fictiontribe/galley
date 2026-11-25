@@ -13,6 +13,7 @@ import type { Collection, EntryFormat, JsonValue, SiteModel } from "../../types"
 import type { ParsedDocument } from "../model";
 import { enumerateBodyBlocks } from "../document/body-blocks";
 import { formatForPath, parseDocument } from "../document/parse";
+import { shownWhereTheyAre } from "../../workspace/paths";
 import { collectionForPath, normalizePath, patternOf } from "./paths";
 
 /** Directories never scanned for content. */
@@ -26,7 +27,12 @@ export function absolute(root: string, path: string): string {
 export async function listCollectionFiles(root: string, model: Pick<SiteModel, "collections" | "templates">, collection: Collection): Promise<string[]> {
   const base = normalizePath(collection.path);
 
-  if (collection.kind === "data") return existsSync(absolute(root, base)) ? [base] : [];
+  // A file that is a link, or lies in a linked folder, is the collection's only where its real place may be shown:
+  // everything that lists (entries, the search index, the fields a collection is found to have) reads each file itself.
+  const shown = shownWhereTheyAre(root);
+
+  // A data collection is one file, named by the settings: it is the collection's only when a path is (see collectionForPath).
+  if (collection.kind === "data") return existsSync(absolute(root, base)) && collectionForPath(model, base)?.id === collection.id && shown(base) ? [base] : [];
   const cwd = base === "" || base === "." ? root : absolute(root, base);
 
   if (!existsSync(cwd)) return [];
@@ -34,7 +40,7 @@ export async function listCollectionFiles(root: string, model: Pick<SiteModel, "
 
   return found
     .map((file) => (base === "" || base === "." ? normalizePath(file) : `${base}/${normalizePath(file)}`))
-    .filter((path) => formatForPath(path) !== null && collectionForPath(model, path)?.id === collection.id)
+    .filter((path) => formatForPath(path) !== null && collectionForPath(model, path)?.id === collection.id && shown(path))
     .sort((a, b) => a.localeCompare(b));
 }
 

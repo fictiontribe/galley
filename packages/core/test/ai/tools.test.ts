@@ -229,6 +229,45 @@ describe("build tools and the mode guard", () => {
     expect(site.files.get("src/components/Header.astro")).toContain("Home");
   });
 
+  it("never reads a secrets file or one of the version history's own, and says so in words the assistant can act on", async () => {
+    const site = createFakeSite();
+    const ctx = context(site, "build", { read: new Map() });
+    const secrets = [".env", ".envrc", "config/.env-production", ".ENV.local", ".env/", ".env/.", ".envrc//"];
+    const reads: string[] = [];
+    const readFile = site.readFile.bind(site);
+
+    for (const path of [...secrets, ".git/config", "sub/.git/HEAD"]) site.files.set(path, "TOKEN=not-for-the-assistant\n");
+    site.readFile = async (path) => (reads.push(path), readFile(path));
+    for (const path of secrets) {
+      const read = await call(ctx, "read_file", { path });
+
+      expect(read.result.is_error, path).toBe(true);
+      expect(read.text, path).toBe("That is a secrets file, so it isn't read here. Ask the person for what you need from it.");
+      // An edit is no way to ask what a file holds: found or not, once or many times, it is told nothing.
+      for (const old_string of ["TOKEN", "nothing-like-this"]) {
+        const edit = await call(ctx, "edit_file", { path, old_string, new_string: "x", replace_all: true });
+
+        expect(edit.result.is_error, path).toBe(true);
+        expect(edit.text, path).toBe("That is a secrets file, so it isn't read here. Ask the person for what you need from it.");
+      }
+    }
+    for (const path of [".git/config", "sub/.git/HEAD"]) {
+      const read = await call(ctx, "read_file", { path });
+
+      expect(read.result.is_error, path).toBe(true);
+      expect(read.text, path).toBe("That is one of the version history's own files, so it isn't read here. Ask for the site's history instead.");
+    }
+    // Not one of them was opened, by a read, an edit or a write that found a file in its way.
+    for (const path of secrets) await call(ctx, "write_file", { path, content: "x\n" }).catch(() => undefined);
+    expect(reads).toEqual([]);
+    expect(site.files.get(".env")).toBe("TOKEN=not-for-the-assistant\n");
+    // A file that only has "env" in its name is an ordinary file.
+    site.files.set("src/env.d.ts", "/// <reference types=\"astro/client\" />\n");
+    expect((await call(ctx, "read_file", { path: "src/env.d.ts" })).json().text).toContain("astro/client");
+    // And a search of the content says nothing of what a secrets file holds: no path, no count.
+    expect((await call(ctx, "search_content", { query: "not-for-the-assistant" })).text).not.toMatch(/\.env|\.git|TOKEN/);
+  });
+
   it("doesn't replace a file that changed after it was read, until it has been read again", async () => {
     const site = createFakeSite();
     const ctx = context(site, "build", { read: new Map() });

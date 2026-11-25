@@ -18,6 +18,7 @@ import { checkChanges, type ChangedFile } from "./check";
 import { brandLocation, readSavedBrand } from "./files";
 import { brandDigest, imageryBrief } from "./guide";
 import type { SiteBrandFile } from "./types";
+import { mayBeShown } from "../workspace/policy";
 
 async function savedBrand(site: SiteService): Promise<{ brand: SiteBrandFile | null; guide: string | null; dir: string }> {
   const location = brandLocation(await site.readConfig().catch(() => null));
@@ -108,7 +109,8 @@ const checkBrand = defineTool({
     const changes = await ctx.site.changes();
     const files: ChangedFile[] = [];
 
-    for (const change of changes.files.filter((f) => !f.binary && f.status !== "deleted" && (!input.paths || input.paths.includes(f.path))).slice(0, 40)) {
+    // A waiting secrets file is among the changes; its lines are read for nobody.
+    for (const change of changes.files.filter((f) => !f.binary && f.status !== "deleted" && mayBeShown(f.path) && (!input.paths || input.paths.includes(f.path))).slice(0, 40)) {
       const diff = await ctx.site.diff(change.path).catch(() => null);
 
       if (diff) files.push({ path: change.path, after: diff.after, added: diff.hunks.flatMap((h) => h.lines.filter((l) => l.type === "add").map((l) => ({ line: l.newNumber ?? 0, text: l.text }))) });

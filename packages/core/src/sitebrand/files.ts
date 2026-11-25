@@ -20,6 +20,8 @@ import { matchesWritable } from "../workspace/policy";
 import { SITE_URL } from "../brand";
 import { parseBrandFile } from "./schema";
 import type { SiteBrandFile, SourceManifest } from "./types";
+import { firstMistake } from "../redirects/file";
+import { mayBeShown } from "../workspace/policy";
 
 export const DEFAULT_BRAND_DIR = "galley/brand";
 export const DEFAULT_LARGE_FILE_MB = 10;
@@ -37,7 +39,10 @@ export interface BrandLocation {
 }
 
 export function brandLocation(config: GalleyConfig | null): BrandLocation {
-  const dir = (config?.siteBrand?.dir ?? DEFAULT_BRAND_DIR).replace(/\/+$/, "") || DEFAULT_BRAND_DIR;
+  const named = (config?.siteBrand?.dir ?? DEFAULT_BRAND_DIR).replace(/\/+$/, "") || DEFAULT_BRAND_DIR;
+  // The settings name the folder, and what is in it is shown (the brand screen, the assistant's get_brand, the first
+  // words of every conversation): a folder that may not be shown is not taken for it, and the usual one is used.
+  const dir = mayBeShown(named) ? named : DEFAULT_BRAND_DIR;
   const mb = config?.siteBrand?.largeFileMB ?? DEFAULT_LARGE_FILE_MB;
 
   return {
@@ -52,6 +57,7 @@ export function brandLocation(config: GalleyConfig | null): BrandLocation {
 }
 
 async function readText(site: SiteService, path: string): Promise<string | null> {
+  if (!mayBeShown(path)) return null;
   try {
     const file = await site.readFile(path);
 
@@ -80,8 +86,13 @@ export async function readSavedBrand(site: SiteService, where: BrandLocation): P
 
       if (parsed.ok) brand = parsed.brand;
       else problem = `The brand file can't be read (${parsed.problem}).`;
-    } catch (error) {
-      problem = `The brand file isn't valid (${error instanceof Error ? error.message : String(error)}).`;
+    } catch {
+      // Where, never what: the parser's own message quotes the file.
+      const at = firstMistake(brandText.replace(/^\ufeff/, ""));
+      const body = brandText.replace(/^\ufeff/, "");
+      const where = at === null ? "" : ` near line ${body.slice(0, at).split("\n").length}, column ${at - body.lastIndexOf("\n", at - 1)}`;
+
+      problem = `The brand file has a formatting mistake${where}, so it can't be read.`;
     }
   }
   let manifest: SourceManifest = { version: 1, sources: [] };

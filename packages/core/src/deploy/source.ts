@@ -21,6 +21,8 @@ import type { DeployKind, SiteModel, SiteService } from "../types";
 import { git, installDependencies, runBuild, runGit } from "../workspace/index";
 import { DeployError } from "./errors";
 import { linkInstalledPackages } from "./modules";
+import { normalizeRepoPath } from "../workspace/paths";
+import { mayBeShown } from "../workspace/policy";
 
 export interface BuiltSite {
   /** Absolute path of the output folder. */
@@ -72,6 +74,19 @@ function buildFailed(output: string): DeployError {
 function requireBuild(model: SiteModel): { command: string; outDir: string } {
   if (!model.build) {
     throw new DeployError("not-set-up", "This site has no build command, so there's nothing to put online yet. Add one in the site settings (for example “npm run build”).");
+  }
+  // Everything in the output folder goes to the host, and the settings (or the framework's own configuration) name
+  // the folder. It is a folder of this site, and never the version history's own or one that holds secrets: the
+  // names inside a folder are looked at one by one as it is walked, the folder's own name here.
+  let inside: string | null;
+
+  try {
+    inside = normalizeRepoPath(model.build.outDir);
+  } catch {
+    inside = null;
+  }
+  if (inside === null || inside === "" || !mayBeShown(inside)) {
+    throw new DeployError("not-set-up", `The output folder in the site settings (“${model.build.outDir}”) can't be put online: it has to be a folder inside the site that the build writes, like “dist”. If the build writes somewhere else, set it to write inside the site.`, model.build.outDir);
   }
   return model.build;
 }

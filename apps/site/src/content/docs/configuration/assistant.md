@@ -22,6 +22,7 @@ Files, relative to the site root, whose text is added to the assistant's instruc
 - **Size**: up to 16,000 characters from each file and 24,000 in total; a longer file is cut with a note telling the assistant that the rest can be read in build mode.
 - **Freshness**: the files are read again for every message. If they — or the site's collections and fields — changed since the conversation started, the assistant is sent a note with the new version, so an edit to the guide reaches the next request.
 - A listed file that doesn't exist is reported to the assistant as unreadable; it doesn't stop anything.
+- **Never a secrets file.** A file whose name starts with `.env`, or one under `.git/`, is skipped when it is listed here: what these files hold goes to the model's provider with every message, so a secret must not be among them.
 
 ## ai.allowBuild
 

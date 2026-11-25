@@ -26,7 +26,7 @@ Two addresses outside `/api` have their own rules. **`/mcp`** (the [MCP endpoint
 ## What it serves
 
 - **The UI** with a strict Content Security Policy: scripts, styles, fonts and connections from its own origin only; frames only from the preview proxies (on a hosted install, the preview's and live comparison's two origins); no plugins; `frame-ancestors 'self'`.
-- **Files from a site** (`GET …/raw`, image candidates) with `X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`, so an uploaded SVG can't run script with the app's cookies. HTML, JavaScript and XML from a site are sent as `text/plain`. `.git/` and `.env*` are never served.
+- **Files from a site** (`GET …/raw`, image candidates) with `X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`, so an uploaded SVG can't run script with the app's cookies. HTML, JavaScript and XML from a site are sent as `text/plain`. These routes refuse a secrets file (any name that starts with `.env`) and anything under `.git/`, and so does the route that shows a file's changes; the preview refuses an address that names one.
 - **Previews** on separate loopback ports locally, and on a name of their own on a hosted install (`cms-preview.example.com`) — separate origins either way — with the overlay script added. The site's pages there run with the site's own origin, not the app's.
 
 ## What it can write

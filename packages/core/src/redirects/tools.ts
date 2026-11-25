@@ -8,11 +8,12 @@ import { z } from "zod";
 import { plural } from "../ai/tools/labels";
 import { defineTool, ok, READ_ONLY, type AssistantTool } from "../ai/tools/types";
 import { checkRedirects, hostUsage } from "./check";
-import { readList } from "./file";
+import { readList, type ReadList } from "./file";
 import { HOST_INFO } from "./info";
 import { derivedPath, hostOf, isGeneratedHost, listFileOf, slashStyleOf } from "./locate";
 import { siteRoutes } from "./routes";
 import { traceAddress } from "./trace";
+import { notReadReason } from "../workspace/policy";
 
 const checkRedirectsTool = defineTool({
   name: "check_redirects",
@@ -26,8 +27,10 @@ const checkRedirectsTool = defineTool({
   async run(input, ctx) {
     const model = await ctx.site.model();
     const file = listFileOf(model);
-    const text = await ctx.site.readFile(file).catch(() => null);
-    const read = text ? readList(text.content) : { ok: true as const, redirects: [] };
+    // The settings name the list. A secrets file named there is not opened: the answer goes to the assistant and to an MCP client.
+    const notRead = notReadReason(file);
+    const text = notRead ? null : await ctx.site.readFile(file).catch(() => null);
+    const read: ReadList = notRead ? { ok: false, problem: notRead, redirects: [] } : text ? readList(text.content) : { ok: true, redirects: [] };
     const host = hostOf(model).id;
     const routes = await siteRoutes(ctx.site, model);
     const issues = checkRedirects(read.redirects, { routes, host });

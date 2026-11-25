@@ -10,6 +10,7 @@
 import { lstatSync, realpathSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { GalleyError } from "../errors";
+import { mayBeShown } from "./policy";
 
 const OUTSIDE = "That file is outside the site folder, so it can't be opened or changed here.";
 
@@ -112,4 +113,66 @@ export function resolveContained(root: string, realRoot: string, input: string):
     }
     return { path, absolute, realPath: toPosixRelative(realRoot, real) };
   }
+}
+
+/** Site folders as they really are on disk, kept so a pass over many files resolves each site once. */
+const realRoots = new Map<string, string>();
+
+/**
+ * For one pass over many files of a site: which of them may be shown where
+ * they really are.
+ *
+ * A read by path asks this of the path it resolves (`resolveContained`, and
+ * the engine's reads). Whatever reads many files without going through
+ * that, a listing of a collection's entries, the search index, the list of
+ * changes, opens each file itself and would follow a link named like an
+ * entry to wherever it leads. So those ask here: a file that is a link, or
+ * lies in a linked folder, is one of the site's only when its real place is
+ * inside the site and may be shown.
+ *
+ * It is meant to cost little: one look at each file and one at each folder
+ * (kept for the pass), and the real place is worked out only for the few
+ * that are links or lie under one. A file that isn't there is let through:
+ * there is nothing of it to show, and whoever reads it says so.
+ */
+export function shownWhereTheyAre(root: string): (path: string) => boolean {
+  let realRoot = realRoots.get(root);
+  const linkedFolders = new Map<string, boolean>();
+  /** Whether a folder is a link, or lies under one, short of the site folder itself. */
+  const underLink = (folder: string): boolean => {
+    if (folder === root || folder.length <= root.length) return false;
+    const known = linkedFolders.get(folder);
+
+    if (known !== undefined) return known;
+    let linked = false;
+
+    try {
+      linked = lstatSync(folder).isSymbolicLink() || underLink(dirname(folder));
+    } catch {
+      linked = underLink(dirname(folder));
+    }
+    linkedFolders.set(folder, linked);
+    return linked;
+  };
+
+  return (path) => {
+    const absolute = join(root, ...path.split("/"));
+    let link: boolean;
+
+    try {
+      link = lstatSync(absolute).isSymbolicLink();
+    } catch {
+      return true;
+    }
+    if (!link && !underLink(dirname(absolute))) return true;
+    try {
+      if (realRoot === undefined) realRoots.set(root, (realRoot = realpathSync(root)));
+      const real = realpathSync(absolute);
+
+      return isInside(realRoot, real) && mayBeShown(toPosixRelative(realRoot, real));
+    } catch {
+      // A link that leads nowhere, or one that can't be followed: not a file of the site.
+      return false;
+    }
+  };
 }

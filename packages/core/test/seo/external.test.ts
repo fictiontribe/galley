@@ -45,6 +45,38 @@ describe("links to other sites", () => {
   });
 });
 
+describe("what an agent reads, and a secrets file", () => {
+  const SECRET = "TOKEN=not-for-an-agent";
+  const leak = (twin: string) => `<!doctype html><html lang="en"><head><title>A page</title><link rel="alternate" type="text/markdown" href="${twin}"></head><body><h1>A page</h1><p>Its own words.</p></body></html>`;
+
+  it("is never one that sits in the build folder, whatever a page names as its markdown version", async () => {
+    const dist = distFiles(cleanRendered(), { "dist/leak/index.html": leak("/.env"), "dist/other/index.html": leak("/keys/.env.production"), "dist/.env": `${SECRET}\n`, "dist/keys/.env.production": `${SECRET}\n` });
+    const { site } = await openSite(makeFixture(cleanFiles(), dist));
+
+    for (const page of ["/leak/", "/other/"]) {
+      const view = await agentView(site, page);
+
+      expect(view.text, page).not.toContain("not-for-an-agent");
+      expect(view.kind, page).toBe("text");
+      expect(view.text, page).toContain("Its own words.");
+    }
+    // Asked for by its own address it is not there.
+    for (const path of ["/.env", "/keys/.env.production", "/.env/"]) expect((await agentView(site, path)).text, path).not.toContain("not-for-an-agent");
+  });
+
+  it.each([".", "./", ".git", "..", ".envs"])("is never read out of a build folder the settings name as %s", async (outDir) => {
+    const files = cleanFiles();
+
+    files["galley.config.json"] = `${JSON.stringify({ ...JSON.parse(String(files["galley.config.json"])), build: { command: "true", outDir } }, null, 2)}\n`;
+    files["index.html"] = leak("/.env");
+    files["leak.html"] = leak("/.env");
+    const root = makeFixture(files, { ".env": `${SECRET}\n`, ".envs/index.html": leak("/.env"), ".envs/.env": `${SECRET}\n` });
+    const { site } = await openSite(root);
+
+    for (const page of ["/", "/leak.html", "/.env", "/config"]) expect(JSON.stringify(await agentView(site, page)), page).not.toContain("not-for-an-agent");
+  });
+});
+
 describe("what an agent reads", () => {
   it("is the page's markdown version when it is served, else what the content says", async () => {
     const built = await openSite(makeFixture(cleanFiles(), distFiles(cleanRendered())));

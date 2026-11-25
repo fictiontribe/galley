@@ -19,6 +19,7 @@ import type { ChangeOrigin, EventBus, Job, MediaItem, SettingsService, SiteServi
 import { safeDetail } from "../errors";
 import { keyConfigured, readKey } from "../images/providers";
 import { filenameFromPrompt } from "../images/service";
+import { mayBeShown } from "../../workspace/policy";
 
 export const VIDEO_CANDIDATE_TTL_MS = 2 * 60 * 60 * 1000;
 /**
@@ -135,6 +136,8 @@ export function createVideoService(options: VideoServiceOptions): GalleyVideoSer
     const mime = FRAME_MIME[path.split(".").pop()?.toLowerCase() ?? ""];
 
     if (!mime) throw new GalleyError("invalid", "The starting picture must be a PNG, JPG or WebP file.", path);
+    // What is read here is sent to the video provider: never a secrets file or one of the version history's own, whatever its name ends in.
+    if (!mayBeShown(path)) throw new GalleyError("forbidden", "That file can't be used as the starting picture.", path);
     try {
       return { data: new Uint8Array(await readFile(site.resolvePath(path))), mime };
     } catch (error) {
