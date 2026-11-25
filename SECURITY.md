@@ -37,6 +37,9 @@ preview overlay (`packages/overlay`), the adapter kit, the desktop shell
 (`apps/desktop`), the `Dockerfile`, and the Astro starter. Especially:
 
 - getting past sign-in, the session token, or the `Host` and `Origin` checks;
+- a route added by a program that embeds the server (`/api/x/…`) being reached
+  without its level or from another origin's page, or its handler being handed
+  more than the embedding documentation says;
 - writing outside the site folder or the mode's write surface, or reading or
   serving `.git/` or `.env*` files;
 - a secret (an API key, a password, a one-time link's code, the session key)
@@ -61,7 +64,9 @@ preview overlay (`packages/overlay`), the adapter kit, the desktop shell
 - script running on the app's own origin through content, uploads or the
   preview.
 
-Out of scope: a site's own code doing what its code does (see below); attacks
+Out of scope: a site's own code doing what its code does (see below); what an
+embedding program's own extension code does (it is its operator's code, and
+runs with the server's permissions); attacks
 that need someone who can already sign in to a hosted Galley, other than
 doing what their role doesn't include (the preview runs the site's code for
 anyone signed in, and editors and owners can change it — see below); denial
@@ -85,7 +90,9 @@ model* (`apps/site/src/content/docs/running/security.md`).
    cookie belongs to one person
    and is signed, `HttpOnly`, `SameSite=Strict`, and `Secure` (`__Host-`) over
    HTTPS. One table (`packages/core/src/install/route-access.ts`) gives every
-   route the level it needs, and the server checks it on every request; the
+   route of the editor the level it needs, and the server checks it on every
+   request. A route added by a program that embeds the server declares its
+   own level, and the server doesn't start with one that has none. The
    engine also checks build mode (an editor or owner) and the site's settings
    file (an owner) where the write happens, whichever way it comes, and
    refuses both, and publishing, to work done for nobody. Links
@@ -93,7 +100,9 @@ model* (`apps/site/src/content/docs/running/security.md`).
    served on a hostname of its own, only to a browser the editor let in.
 2. **Every request** must name the server in `Host` (against DNS rebinding);
    every state-changing request needs a same-origin `Origin` or a Bearer
-   token (against cross-site requests).
+   token (against cross-site requests). A route added by an embedding
+   program needs the browser's word that the request is the editor's own
+   page's on every method, GET included.
 3. **The write surface is closed.** Every path is contained to the site folder
    (no `..`, no symlink escape) and checked against the mode's writable globs;
    `.git/`, `node_modules/`, `.env*`, lockfiles and hidden folders are never

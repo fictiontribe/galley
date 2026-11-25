@@ -606,6 +606,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       }
       let updated: Account | null = null;
 
+      let renamed = false;
       await store.update((draft) => {
         const target = accountOf(draft, accountId);
 
@@ -617,11 +618,14 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         if (name !== undefined) {
           // Keeping one's own name, however it is spelt, is never a clash: accounts alike from before stay as they are until one of them changes.
           if (nameKey(name) !== nameKey(target.name) && sharesName(draft, name, target.id)) throw nameTaken(name);
+          renamed = name !== target.name;
           target.name = name;
         }
         target.incomplete = !target.name || !target.email;
         updated = publicAccount(target);
       });
+      // Whatever shows this person's name looks again.
+      if (renamed) store.sessionsChanged();
       return updated!;
     },
 

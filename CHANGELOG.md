@@ -7,6 +7,28 @@ entry says how.
 
 ## Unreleased
 
+### Added
+
+- **Embedding, first part: routes of your own (experimental).** A program
+  that starts Galley's server can add API routes to it when it is built
+  (`startServer({ extensions })`, `@galley/server/extensions`), for an edition
+  of the editor with something of its own in it: a status page, a button that
+  files a request. Each route lives under `/api/x/<id>/`, which no address of
+  the editor's own uses, and names the level it needs (edit, publish or
+  manage); the server doesn't start with a route that has none. A request has
+  passed every check a request to the editor's own API passes before a
+  handler sees it, and two more: with a cookie the browser must say the
+  request is the editor's own page's, on GET too, and a part of the address
+  can't carry a path. A handler is handed a narrowed request (never the
+  cookie or the headers) and the site with `.git/` and `.env*` unreadable; on
+  GET the site refuses whatever would change it. Work a handler leaves running
+  is nobody's once it has answered. An extension names its secret environment
+  variables, which are kept from the site's commands, its log lines and its
+  error messages. It is not a sandbox: an extension is its author's code with
+  the server's permissions. A server with extensions must be the only server
+  in its process. The shapes may change in any 0.x release. The docs page
+  is *Running Galley › Embedding the editor*.
+
 ### Changed
 
 - **A window nobody is at stops asking for its connection.** When the app
