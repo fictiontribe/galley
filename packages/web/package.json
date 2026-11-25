@@ -4,6 +4,17 @@
   "private": true,
   "type": "module",
   "description": "Galley web UI.",
+  "exports": {
+    "./app": "./src/app/App.tsx",
+    "./additions": "./src/additions/index.ts",
+    "./ui": "./src/ui/index.ts",
+    "./styles": "./src/styles/index.css",
+    "./vite": {
+      "types": "./vite.preset.d.mts",
+      "default": "./vite.preset.mjs"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "dev": "vite",
     "dev:mock": "GALLEY_MOCK=1 vite",

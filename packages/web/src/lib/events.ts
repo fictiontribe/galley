@@ -67,10 +67,100 @@ export function backoffDelay(n: number, random: () => number = Math.random): num
   return Math.round(base * (0.8 + random() * 0.4));
 }
 
+/** Handlers that have failed once: each is said once, not at every event. */
+const failedHandlers = new WeakSet<AnyHandler>();
+
 function dispatch(event: ServerEvent): void {
   const set = handlers.get(event.type);
   if (!set) return;
-  for (const handler of [...set]) handler(event);
+  for (const handler of [...set]) {
+    try {
+      handler(event);
+    } catch (error) {
+      // One handler that fails must not keep the event from the others.
+      if (!failedHandlers.has(handler)) console.error(`A handler for “${event.type}” events failed`, error);
+      failedHandlers.add(handler);
+    }
+  }
+}
+
+/**
+ * What an addition (src/additions) has carried on the stream's address for
+ * its server half, by its id: `/api/events?x-<id>=<value>`. With none, the
+ * stream is opened exactly as it always was.
+ */
+type StreamValue = () => Promise<string | null> | string | null;
+const streamValues = new Map<string, StreamValue>();
+/** How long a value may take. Past it the stream opens without: there is one stream, and one slow addition must not hold it. */
+export const STREAM_VALUE_MS = 2000;
+/** The least time between two streams opened only because a value changed. */
+export const STREAM_REOPEN_MS = 5000;
+const ADDITION_ID = /^[a-z][a-z0-9-]{2,31}$/;
+const VALUE = /^[A-Za-z0-9._~-]{1,128}$/;
+/** A value is being waited for before the stream opens. */
+let opening = false;
+/** Counts opens and closes: an answer that arrives for an older one is dropped. */
+let generation = 0;
+let reopenTimer: ReturnType<typeof setTimeout> | null = null;
+let reopenedAt = -Infinity;
+
+async function valueOf(id: string, value: StreamValue): Promise<string | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const answer = await Promise.race([Promise.resolve().then(value), new Promise<null>((resolve) => (timer = setTimeout(() => resolve(null), STREAM_VALUE_MS)))]);
+    if (answer === null) return null;
+    if (typeof answer === "string" && VALUE.test(answer)) return answer;
+    console.error(`The stream's value for “${id}” isn't usable: it is 1 to 128 letters, digits, dots, dashes, underscores or tildes.`);
+    return null;
+  } catch (error) {
+    console.error(`The stream's value for “${id}” couldn't be worked out`, error);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** The stream's address with every addition's value on it. */
+async function eventsUrl(): Promise<string> {
+  const carried = (await Promise.all([...streamValues].map(async ([id, value]) => [id, await valueOf(id, value)] as const))).filter((entry): entry is readonly [string, string] => entry[1] !== null);
+  // A value's characters need no encoding.
+  return carried.length ? `${EVENTS_URL}?${carried.map(([id, value]) => `x-${id}=${value}`).join("&")}` : EVENTS_URL;
+}
+
+/**
+ * The stream is open and what it should carry has changed: it is closed and
+ * opened again, soon, and not more often than every few seconds however
+ * often that is asked. Nothing is shown; what was missed meanwhile is
+ * fetched as after any drop.
+ */
+function reopenSoon(): void {
+  if (reopenTimer || (!source && !opening)) return;
+  reopenTimer = setTimeout(() => {
+    reopenTimer = null;
+    if (!source && !opening) return;
+    reopenedAt = Date.now();
+    generation += 1;
+    opening = false;
+    source?.close();
+    source = null;
+    open(true);
+  }, Math.max(0, reopenedAt + STREAM_REOPEN_MS - Date.now()));
+}
+
+/**
+ * Has the stream carry a value for the extension `id`, worked out each time
+ * the stream opens (null: none this time). Returns how to take it off again.
+ * Setting one while the stream is open opens the stream again with it.
+ */
+export function setStreamValue(id: string, value: StreamValue): () => void {
+  if (!ADDITION_ID.test(id)) throw new Error(`“${id}” isn't an extension's id.`);
+  streamValues.set(id, value);
+  reopenSoon();
+  return () => {
+    if (streamValues.get(id) !== value) return;
+    streamValues.delete(id);
+    reopenSoon();
+  };
 }
 
 function scheduleRetry(): void {
@@ -93,10 +183,10 @@ async function probe(): Promise<void> {
     if (!response.ok) throw new Error(String(response.status));
     authenticated = ((await response.json()) as { authenticated?: boolean }).authenticated !== false;
   } catch {
-    if (!source && !retryTimer && hasOpened) scheduleRetry();
+    if (!source && !retryTimer && !opening && hasOpened) scheduleRetry();
     return;
   }
-  if (source || retryTimer) return;
+  if (source || retryTimer || opening) return;
   if (!authenticated) {
     // Signed out by the restart: the sign-in (or hand-off) screen takes it from here, once.
     disconnectEvents();
@@ -147,12 +237,28 @@ host.document?.addEventListener?.("visibilitychange", () => {
 host.addEventListener?.("focus", retryNow);
 host.addEventListener?.("online", retryNow);
 
-function open(): void {
+function open(quiet = false): void {
   retryTimer = null;
   resting = false;
   // Asking again after being told there are too many windows changes nothing on the screen until the server lets this one in.
-  if (!limited) useConnection.setState({ state: hasOpened ? "down" : "connecting" });
-  const es = new EventSource(EVENTS_URL, { withCredentials: true });
+  if (!limited && !quiet) useConnection.setState({ state: hasOpened ? "down" : "connecting" });
+  if (streamValues.size === 0) {
+    openAt(EVENTS_URL);
+    return;
+  }
+  const mine = (generation += 1);
+
+  opening = true;
+  void eventsUrl().then((url) => {
+    // Closed, or asked for again, while the values were being worked out.
+    if (mine !== generation) return;
+    opening = false;
+    openAt(url);
+  });
+}
+
+function openAt(url: string): void {
+  const es = new EventSource(url, { withCredentials: true });
   source = es;
 
   const opened = () => {
@@ -208,7 +314,7 @@ function open(): void {
 
 /** Open the stream. Safe to call more than once. Asking for it counts as someone being here. */
 export function connectEvents(): void {
-  if (source || retryTimer) return;
+  if (source || retryTimer || opening) return;
   lastHere = Date.now();
   open();
 }
@@ -216,7 +322,10 @@ export function connectEvents(): void {
 /** Close the stream (sign-out). */
 export function disconnectEvents(): void {
   if (retryTimer) clearTimeout(retryTimer);
-  retryTimer = null;
+  if (reopenTimer) clearTimeout(reopenTimer);
+  retryTimer = reopenTimer = null;
+  generation += 1;
+  opening = false;
   source?.close();
   source = null;
   hasOpened = false;
@@ -236,6 +345,17 @@ export function subscribe<T extends EventType>(type: T, handler: (event: EventOf
   const wrapped = handler as AnyHandler;
   set.add(wrapped);
   return () => set.delete(wrapped);
+}
+
+/**
+ * Listen for one event of an extension's own (`source` is its id). The
+ * server's word that it didn't take this window's value arrives as the name
+ * "stream.refused", with `{ code, message }` as its payload.
+ */
+export function subscribeExtension(id: string, name: string, handler: (event: { siteId: string; payload: unknown }) => void): () => void {
+  return subscribe("extension", (event) => {
+    if (event.source === id && event.name === name) handler({ siteId: event.siteId, payload: event.payload });
+  });
 }
 
 /** Run after the stream reconnects following a drop. */

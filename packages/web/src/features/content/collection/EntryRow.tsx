@@ -5,6 +5,7 @@ import { rawFileUrl } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { Badge, Icon, Menu, Tag, cx, type MenuItem } from "@/ui";
 import { thumbnailSource } from "@/features/media/mediaPaths";
+import { ListRowAdditions, useHasListRowAdditions } from "@/additions/places";
 
 export interface RowColumns {
   thumb: boolean;
@@ -66,13 +67,27 @@ export const EntryRow = memo(function EntryRow({ siteId, entry, index, top, colu
     { id: "delete", label: "Delete…", icon: "trash", tone: "danger", disabled: entry.status === "deleted", onSelect: () => onDelete(entry) },
   ];
 
+  const withAdditions = useHasListRowAdditions();
+  const title = (
+    <Link ref={link} id={`row-${index}`} to={href} className="app-row__main app-row__link" tabIndex={active ? 0 : -1} onFocus={() => onActivate(index)}>
+      <span className={cx("app-row__title", entry.titleSource === "filename" && "app-row__title--guess")}>{entry.title}</span>
+      <span className="app-row__url">{entry.url ?? entry.slug}</span>
+    </Link>
+  );
+
   return (
     <div className={cx("app-row", active && "app-row--active")} style={{ top }} role="listitem" onMouseDown={() => onActivate(index)}>
       {columns.thumb ? <span className="app-row__thumb">{thumb ? <img src={thumb} alt="" loading="lazy" /> : <Icon name="image" />}</span> : null}
-      <Link ref={link} id={`row-${index}`} to={href} className="app-row__main app-row__link" tabIndex={active ? 0 : -1} onFocus={() => onActivate(index)}>
-        <span className={cx("app-row__title", entry.titleSource === "filename" && "app-row__title--guess")}>{entry.title}</span>
-        <span className="app-row__url">{entry.url ?? entry.slug}</span>
-      </Link>
+      {withAdditions ? (
+        <span className="app-row__with-additions">
+          {title}
+          <span className="app-row__additions">
+            <ListRowAdditions siteId={siteId} path={entry.path} />
+          </span>
+        </span>
+      ) : (
+        title
+      )}
       {columns.author ? (
         <span className="app-row__author" title={entry.author}>
           {entry.author ?? "—"}

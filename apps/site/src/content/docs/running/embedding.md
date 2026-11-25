@@ -1,6 +1,6 @@
 ---
 title: Embedding the editor
-description: Build your own edition of the editor. A program that starts Galley's server can add API routes and live events of its own, each with an access level, behind the editor's own guards. Experimental.
+description: Build your own edition of the editor. A program that starts Galley's server can add API routes and live events of its own, each with an access level, behind the editor's own guards, and draw in three places of the app. Experimental.
 group: running
 order: 6
 ---
@@ -9,7 +9,7 @@ A program of your own can start Galley's server and add to it. This page is for 
 
 **Experimental.** The shapes on this page may change in any 0.x release; the changelog says so under "Embedding". What does not change: addresses under `/api/x/` are reserved for whoever built the edition.
 
-Today an embedding can add **API routes** and **live events**, and can be told that a window is there. Places in the interface are planned.
+An embedding can add **API routes** and **live events**, be told that a window is there, and draw in **three places of the app**.
 
 ## What it is, and what it is not
 
@@ -157,7 +157,7 @@ host.events.onStream(({ caller, value }) => {
 - **Too many windows.** On a hosted install one account may have 16 streams open. One that is told there are too many never reaches your listener. When an account's streams are ended to make room, each of them is told to you as ended, and the windows still there connect again.
 - **What it doesn't say.** A stream ends when a window closes or its connection drops, and a browser then opens another by itself: expect the same value to go and come back. A window that goes without a word (a laptop closed, a connection lost behind a proxy) is only known to have gone when its connection is found dead, which can take minutes. And an open stream says a window is connected, not that someone is looking at it.
 
-The editor's own app does not add a value yet; that comes with places in the interface. Until then this is for a client you write yourself.
+In the app, your addition sets the value with `setStreamValue` ([below](#in-the-app)). The app as it ships sets none.
 
 ## People
 
@@ -173,11 +173,88 @@ On an install with accounts, `host.people` answers two questions: `name(account)
 - **Starting and stopping.** `setup` has 30 seconds and is handed a signal that fires when they are up. If it fails, or what it returned turns out wrong, the server doesn't start: `startServer` rejects with that error, your `stop` is called if your setup had finished, everything the server had started is undone, and **your program should exit**. `stop` is called when the server stops, while the data folder is still its own. After it, what the extension was handed does nothing: its host, every site it holds, and anything it took from one (the preview's controller), whenever it got them. What your code opened itself (a file in your folder, a timer, a connection) is yours to close: `stop` should wait for your own work to finish, and a `setup` that throws, or whose signal fires, must clean up what it had started. One that finishes after its time was up has its `stop` called then, in its turn: never in the middle of another start or stop. That can be while a newer start of your extension is already running, or after the server has stopped and let go of the data folder. So a `stop` closes only what its own `setup` opened, and doesn't count on the folder.
 - **When a backup is put back.** A restore that is refused before anything is touched (a wrong passphrase, a damaged file) never reaches your extension. Otherwise `stop` is called before the data folder is replaced, with your folder still as you left it, and when the restore has ended, whichever way, `setup` is called again with a new host: read your files afresh, because they may be the backup's now, and what you kept in memory is from before. **The routes `setup` returns must be the ones it returned when the server started**: the same addresses, each with the same level, size limit and `person`. An address keeps the guards it was mounted with, so an extension that comes back with other routes is stopped; its events may differ. The restore doesn't say how it ended, and requests are answered 503, until every extension has started again. If yours can't, the server carries on without it: its routes answer 503 until the server is restarted, and the log says why. Then every stream that carried a value for an extension is ended, so each window opens another and the extension running now is told it is there. A restore that succeeds signs everyone out, so people's streams have ended by then and they are told again once they have signed in. A `stop` that fails, or takes longer than its ten seconds, doesn't stop the restore.
 
+## In the app
+
+The browser half of an extension is an **addition**: what your edition draws in the app. Additions are given to the app's root component in your program's entry file and nowhere else. No setting, address, message or stored value adds one.
+
+```tsx
+import "@galley/web/styles";
+
+import { useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { App } from "@galley/web/app";
+import { extensionApi, onReconnect, subscribeExtension, useSiteId, type Addition } from "@galley/web/additions";
+import { Badge } from "@galley/web/ui";
+
+const status = extensionApi("status");
+
+function Waiting() {
+  const siteId = useSiteId();
+  const [waiting, setWaiting] = useState(0);
+
+  useEffect(() => {
+    if (!siteId) return;
+    const load = () =>
+      void status
+        .get<{ waiting: number }>(["sites", siteId])
+        .then((answer) => setWaiting(answer.waiting))
+        .catch(() => undefined);
+    // Asked again when it changed, when the stream came back, and when the server says this window missed some events.
+    const stops = [subscribeExtension("status", "changed", load), subscribeExtension("status", "stream.missed", load), onReconnect(load)];
+
+    load();
+    return () => stops.forEach((stop) => stop());
+  }, [siteId]);
+  return waiting ? <Badge tone="change">{waiting} waiting</Badge> : null;
+}
+
+const statusAddition: Addition = { id: "status", topBar: Waiting };
+
+createRoot(document.getElementById("root")!).render(<App additions={[statusAddition]} />);
+```
+
+### Places
+
+Three, in this version:
+
+- `root`: mounted once inside the signed-in app, and again when someone else signs in. For what the addition keeps going (a subscription, the stream's value). It should draw nothing, or little.
+- `topBar`: at the right of the top bar, before the account menu. Small.
+- `listRow`: after the title in each row of a collection's list, handed `siteId` and the page's `path`. It is drawn once for every row on screen, so keep it cheap: one request for the whole list, not one a row.
+
+With no additions each place renders nothing, and the app is as it ships. There are no places yet beside a field, on the page in the preview or in Arrange.
+
+An addition's `id` is its extension's: lower-case letters, digits and dashes, 3 to 32, starting with a letter. A wrong id, the same id twice or something that isn't a component stops the app as it starts, in a sentence that names the addition. The list is read once; changing it later changes nothing.
+
+### What an addition leans on
+
+`@galley/web/additions` exports:
+
+- **`extensionApi(id)`**: a client for your own routes. An address is given as its parts, `status.get(["sites", siteId, "note"])`, and each part is encoded, so a value that came from somewhere else can't become a path. A refusal is thrown with the server's own words in `error.message`; "not signed in" sends the person to sign in, as it does for the app's own calls.
+- **`subscribeExtension(id, name, handler)`**: your extension's events, by name. **`onReconnect(listener)`** runs after the stream came back from a drop: fetch again what you show, because events sent meanwhile are gone. Do the same on `subscribeExtension(id, "stream.missed", …)`: the server's word that this window was not sent some of your events while it was behind ([above](#events)).
+- **`setStreamValue(id, () => value)`**: the value this window's stream carries for your extension ([above](#knowing-a-window-is-there)). It is asked for each time the stream opens, may be a promise, and has two seconds: past that, or if what it gives isn't a value, the stream opens without it. Set while your `root` mounts, it is on the stream from the first time it opens. Set or changed later, the stream is opened again with it, without anything being shown, and at most once in five seconds however often you ask. When the server refuses the value, `subscribeExtension(id, "stream.refused", …)` hears it.
+- **`useSiteId()`**, **`useAccount()`** (the person's name and role; null where there are no accounts) and **`useRoleMay(level)`**. They are for showing the right thing. The server decides again at every request.
+- **`SafeText`** and **`SafeMarkdown`**: for words someone else wrote. An addition often shows a contributor's text to an owner; these are the ways to put it on the page, and `dangerouslySetInnerHTML` is not. The Markdown is small: raw HTML is shown as the text it was typed as, a picture as its description, and only links to web and mail addresses stay links.
+
+`@galley/web/ui` is the app's own interface kit (buttons, badges, dialogs, fields) with the theme's tokens.
+
+### What this is not
+
+- **Not a sandbox.** An addition is part of the one bundle. It can import any module of the app, cover a screen, block the page by being slow, or fail in a click handler. Two things the app does for it: an addition that fails *while it draws* shows nothing in that place, is said once in the console, and the screen around it stays; and one event handler that fails doesn't keep an event from the others.
+- The content security policy is unchanged (`script-src 'self'`, `connect-src 'self'`), so an addition can't call another service from the browser. It asks its own route, and the route asks the service.
+- Don't listen for `message` events: the preview's frame is another origin and can post to the app.
+- Everything in the web app that is not exported from `@galley/web/app`, `@galley/web/additions` and `@galley/web/ui` may change at any time.
+
 ## Getting the code
 
-`@galley/server` is not published as a package. Put the Galley repository inside your own workspace, **pinned to a commit**, and build from source. That has costs you should know:
+`@galley/server` and `@galley/web` are not published as packages. Put the Galley repository inside your own workspace, **pinned to a commit**, and build from source. That has costs you should know:
 
 - Your lockfile, not Galley's, decides the versions of its dependencies. Before it starts with extensions, the server checks four things about how the router it was given reads an address (the four the guards above rest on) and refuses to start if one is different. That is not every way a router can differ: keep `hono` and `@hono/node-server` at the versions the release you pinned was built with.
 - Building from source runs Galley's development tools in your build.
 - Security fixes reach you when you move your pin. Watch the repository's releases and security advisories; only the latest minor version gets fixes, and taking one may mean taking a change to the shapes on this page.
 - What [the security model](/docs/running/security/) says about the container image is about Galley's own image, not yours.
+
+For the app, three things more:
+
+- Add the preset to your Vite config, beside the React plugin: `import { galleyWeb } from "@galley/web/vite"`, then `plugins: [react(), galleyWeb()]`. It sets the two aliases the app's source is written with, `@` and `@brand`, and nothing else. Your own source can't use either name for something else.
+- TypeScript checks the app's source together with yours, by your rules. Your `tsconfig.json` needs the same two `paths` (`@/*` to the web package's `src/*`, `@brand/*` to the repository's `brand/*`), `"jsx": "react-jsx"` and the `vite/client` types; extending the repository's `tsconfig.base.json` keeps the rest in step.
+- Import `@galley/web/styles` once, in your entry file. Serve what you build as the server's `webDir`.
