@@ -243,12 +243,22 @@ function forwardedTrusted(c: Context, trustProxy: boolean): boolean {
   return trustProxy || cameThroughSocket(c);
 }
 
+/**
+ * The protocol a request arrived over: the trusted proxy's word (see `forwardedTrusted`), else the connection's own —
+ * TLS or not. Never the request line: a request may name an absolute address there (`POST https://… HTTP/1.1`), and
+ * a URL built from it would say HTTPS for a request that came over plain HTTP. (The listener also puts every request
+ * line in origin form before Hono builds a URL; this doesn't lean on that.) Only a request made inside the process
+ * (no connection, so no request line) goes by its URL.
+ */
 export function requestProtocol(c: Context, trustProxy: boolean): "http" | "https" {
   if (forwardedTrusted(c, trustProxy)) {
     const forwarded = firstHeaderValue(c.req.header("x-forwarded-proto"));
 
     if (forwarded === "https" || forwarded === "http") return forwarded;
   }
+  const incoming = (c.env as { incoming?: IncomingMessage } | undefined)?.incoming;
+
+  if (incoming !== undefined) return (incoming.socket as { encrypted?: boolean } | null | undefined)?.encrypted === true ? "https" : "http";
   return new URL(c.req.url).protocol === "https:" ? "https" : "http";
 }
 
