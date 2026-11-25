@@ -153,6 +153,8 @@ export interface ServerOptions {
    * A server with extensions must be the only server running in its process.
    */
   extensions?: import("./extensions/types").ServerExtension[];
+  /** How long one step of undoing a failed start may take (ms; teardown.ts). Tests shorten it. */
+  undoStepMs?: number;
   /** How long an extension's setup and stop may take (ms). Tests shorten them. */
   extensionTimes?: { setupMs?: number; stopMs?: number };
   /** Default: GALLEY_PORT, then 4400. */

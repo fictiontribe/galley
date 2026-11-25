@@ -48,6 +48,7 @@ import { createKeepUp, DEFAULT_SYNC_MINUTES, type KeepUp } from "./keep-up";
 import { checkExtensions, declaredSecrets, ExtensionError } from "./extensions/declare";
 import { createPeopleDesk, type PeopleDesk } from "./extensions/people";
 import { startExtensions, type StartedExtensions } from "./extensions/run";
+import { undoEach, type UndoStep } from "./teardown";
 import { defaultHome, defaultStartersDir, defaultWebDir } from "./paths";
 import type { RunningServer, ServerMode, ServerOptions, Services } from "./types";
 
@@ -668,7 +669,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   const installJobs = () => (install ? (id: string) => install!.job(id) ?? ops?.job(id) ?? null : null);
   let extensions: StartedExtensions | null = null;
   /** What else a failed start must end, added as each is started (the jobs subscription, MCP, the install's own operations). */
-  const alsoStarted: Array<() => unknown> = [];
+  const alsoStarted: UndoStep[] = [];
   /**
    * Undoes a start that failed, wherever it failed: the same things a stop
    * ends, in the same order, while the data folder is still this server's.
@@ -676,23 +677,20 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
    * failures replaces the error the start failed with.
    */
   const stop = async () => {
-    const steps: Array<() => unknown> = [
-      () => extensions?.stop(),
-      ...alsoStarted.reverse(),
-      () => install?.dispose(),
-      // The site the install opened, its watcher, a preview a setup started.
-      () => (services as Services | undefined)?.registry.dispose(),
-      () => new Promise<void>((done) => server.close(() => done())),
-      release,
-    ];
-
-    for (const step of steps) {
-      try {
-        await step();
-      } catch (error) {
-        out.log(`While undoing a start that failed: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
+    await undoEach(
+      [
+        { what: "stopping what was added to the server", run: () => extensions?.stop() },
+        ...alsoStarted.reverse(),
+        { what: "ending the install", run: () => install?.dispose() },
+        // The site the install opened, its watcher, a preview a setup started. A registry the server was handed
+        // (`options.services`) is its owner's to close: the start never got as far as being theirs to stop.
+        { what: "closing the site", run: () => (options.services ? undefined : (services as Services | undefined)?.registry.dispose()) },
+        { what: "closing the port", run: () => new Promise<void>((done) => server.close(() => done())) },
+        { what: "letting go of the data folder", run: release },
+      ],
+      out.log,
+      options.undoStepMs
+    );
     undo();
   };
 
@@ -783,7 +781,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
       })
     : null;
 
-  alsoStarted.push(() => mcp?.close());
+  alsoStarted.push({ what: "closing the MCP endpoint", run: () => mcp?.close() });
   // On an https:// address the cookie is a __Host- cookie: Secure, Path=/, no Domain, so a page on a
   // sibling hostname (the preview's) can neither set nor shadow it. One install, one address: no port in the name.
   const hostCookie = hosted && config.publicUrl?.protocol === "https:";
@@ -798,7 +796,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     }
   });
 
-  alsoStarted.push(unsubscribeJobs);
+  alsoStarted.push({ what: "letting go of the jobs", run: unsubscribeJobs });
   // Hosted: invitations and new-password links are also e-mailed when the server has outgoing mail.
   let mailer: MailTransport | null = null;
 
@@ -846,7 +844,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
       notice(`Extensions: ${extensions.list.map((extension) => `${extension.id} (${extension.routes.length} ${extension.routes.length === 1 ? "route" : "routes"})`).join(", ")}`);
     } catch (error) {
       // By now the install has started: its site may be open, its jobs subscribed to. All of it is undone, as a stop undoes it.
-      alsoStarted.push(() => ops?.dispose());
+      alsoStarted.push({ what: "ending the install's own operations", run: () => ops?.dispose() });
       await stop();
       throw error instanceof ExtensionError ? new StartupError(error.message) : error;
     }

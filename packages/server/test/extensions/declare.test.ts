@@ -3,7 +3,7 @@
  * sentence that names the extension; nothing is left for the first person
  * who calls the route to find.
  */
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -11,7 +11,8 @@ import { checkExtensions, declaredRoutes, defineExtension, EXTENSION_BODY_LIMIT,
 import { isJson } from "../../src/extensions/mount";
 import { assertRouter, callNow, oneLine, scrubberFor, startExtensions } from "../../src/extensions/run";
 import type { PeopleDesk } from "../../src/extensions/people";
-import { copyOf, duringGet, guardSite, STOPPED, unreadable } from "../../src/extensions/site";
+import { copyOf, duringGet, guardSite, LINKS_AT_ONCE, STOPPED, unreadable } from "../../src/extensions/site";
+import { undoEach } from "../../src/teardown";
 import type { ExtensionHost, ExtensionRoute, ServerExtension } from "../../src/extensions";
 import { ROUTE_ACCESS } from "@galley/core/install";
 import type { SiteService } from "@galley/core/types";
@@ -32,9 +33,11 @@ describe("what an extension declares", () => {
     expect(() => checkExtensions([defineExtension({ id: "status", secrets: ["STATUS_API_KEY", "not a name"], setup })])).toThrow("Extension “status”: “not a name” isn't the name of an environment variable.");
     expect(() => checkExtensions([defineExtension({ id: "status", secrets: ["STATUS_API_KEY"], setup }), defineExtension({ id: "a-2nd-one", setup })])).not.toThrow();
     // A variable every program needs is no secret: hidden, the site's preview wouldn't start, and its value would be struck out of every log line.
-    for (const name of ["PATH", "HOME", "NODE_OPTIONS", "path", "Tmpdir"]) {
+    for (const name of ["PATH", "HOME", "NODE_OPTIONS", "path", "Tmpdir", "SHLVL", "JAVA_HOME", "NODE_EXTRA_CA_CERTS", "SystemDrive", "LC_MESSAGES", "XDG_CONFIG_HOME", "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "npm_config_registry"]) {
       expect(() => checkExtensions([defineExtension({ id: "status", secrets: [name], setup })]), name).toThrow(`Extension “status”: ${name} can't be named as a secret.`);
     }
+    // A proxy's address can carry a password: it may be named.
+    expect(() => checkExtensions([defineExtension({ id: "status", secrets: ["HTTPS_PROXY", "STATUS_LD_KEY", "MY_PATH"], setup })])).not.toThrow();
     // A name on its own, not in a list, would be read letter by letter and hide nothing.
     expect(() => checkExtensions([{ id: "status", secrets: "STATUS_API_KEY", setup } as unknown as ServerExtension])).toThrow("Extension “status”: its secrets are a list of the names of environment variables.");
   });
@@ -232,6 +235,7 @@ describe("what the server does around an extension", () => {
     expect(preview).not.toBe(controller);
     expect(preview.start()).toBe("started");
     expect(preview.status).toEqual({ state: "stopped" });
+    expect(preview.status).not.toBe(controller.status);
     // What it is can't be changed from outside.
     expect(() => void ((preview as { start: unknown }).start = () => "mine")).toThrow(TypeError);
     expect(controller.start()).toBe("started");
@@ -240,7 +244,10 @@ describe("what the server does around an extension", () => {
 
     expect(Buffer.isBuffer(bytes)).toBe(true);
     expect(bytes.toString()).toBe("hello");
-    expect(bytes.buffer.byteLength).toBeLessThan(whole.buffer.byteLength + 1);
+    // Memory of its own and exactly its size: not the engine's, and not a pool shared with whatever else was read lately.
+    expect(bytes.buffer).not.toBe(whole.buffer);
+    expect(bytes.buffer.byteLength).toBe(5);
+    expect(bytes.byteOffset).toBe(0);
     bytes[0] = 0x48;
     expect(whole.toString().startsWith("hello")).toBe(true);
     const view = new Uint16Array(new ArrayBuffer(64), 8, 4);
@@ -277,6 +284,100 @@ describe("what the server does around an extension", () => {
     expect(() => turn.run(() => 7)).toThrow(STOPPED);
     expect(() => turn.id).toThrow(STOPPED);
     expect(calls).toEqual(["status", "start", "status"]);
+  });
+
+  it("a handed controller gives no way to the engine's own, however it is looked at", () => {
+    let live = true;
+    class Preview {
+      #state = "idle";
+      status() {
+        return { state: this.#state };
+      }
+      async start() {
+        this.#state = "ready";
+        return this.status();
+      }
+      async stop() {
+        this.#state = "idle";
+      }
+      async restart() {
+        return this.start();
+      }
+    }
+    const own = new Preview();
+    const real = { id: "s1", root: "/nowhere", resolvePath: (path: string) => `/nowhere/${path}`, preview: () => own } as unknown as SiteService;
+    const handed = (guardSite(real, { readOnly: false, alive: () => live }) as unknown as { preview(): Preview }).preview();
+
+    // A plain frozen object with the same four members, each a function of its own.
+    expect(Object.getPrototypeOf(handed)).toBe(Object.prototype);
+    expect(Object.isFrozen(handed)).toBe(true);
+    expect(Object.getOwnPropertyNames(handed).sort()).toEqual(["restart", "start", "status", "stop"]);
+    for (const name of ["status", "start", "stop", "restart"] as const) {
+      const described = Object.getOwnPropertyDescriptor(handed, name)!;
+
+      expect(typeof described.value, name).toBe("function");
+      expect(described.value, name).not.toBe(Preview.prototype[name]);
+      expect(described.value, name).not.toBe(own[name]);
+      expect([described.writable, described.configurable], name).toEqual([false, false]);
+    }
+    // What a descriptor hands out is guarded too: taken off the object and called on its own, dead or inside a GET.
+    const start = Object.getOwnPropertyDescriptor(handed, "start")!.value as () => Promise<unknown>;
+
+    expect(() => duringGet(() => start())).toThrow(/A GET route can't change a site/);
+    live = false;
+    expect(() => start()).toThrow(STOPPED);
+    expect(() => Reflect.get(handed, "status").call(own)).toThrow(STOPPED);
+    expect(own.status()).toEqual({ state: "idle" });
+    // Nothing else of the engine's object is on it.
+    expect("constructor" in handed && (handed as { constructor: unknown }).constructor).toBe(Object);
+  });
+
+  it("looks at a search's files for links a few at a time, and still leaves out every one that leads to a secret", async () => {
+    const root = await mkdtemp(join(tmpdir(), "links-"));
+
+    await mkdir(join(root, "notes"));
+    await writeFile(join(root, ".env"), "KEY=1");
+    const hits: Array<{ path: string; line: number; text: string }> = [];
+
+    for (let index = 0; index < 150; index += 1) {
+      const path = `notes/${index}.txt`;
+
+      // Every fifteenth is a link to the secret, under an ordinary name.
+      if (index % 15 === 0) await symlink("../.env", join(root, path));
+      else await writeFile(join(root, path), "KEY");
+      hits.push({ path, line: 1, text: "KEY" }, { path, line: 2, text: "KEY again" });
+    }
+    const real = { id: "s1", root, resolvePath: (path: string) => join(root, path), grepText: async () => hits } as unknown as SiteService;
+    const found = (await (guardSite(real, { readOnly: false }) as unknown as { grepText(pattern: string): Promise<typeof hits> }).grepText("KEY")).map((hit) => hit.path);
+
+    expect(LINKS_AT_ONCE).toBeLessThan(150);
+    expect(new Set(found).size).toBe(140);
+    expect(found).toHaveLength(280);
+    expect(found.filter((path) => Number(path.match(/\d+/)![0]) % 15 === 0)).toEqual([]);
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("undoing a failed start tries every step, whatever the one before did, and says which didn't work", async () => {
+    const done: string[] = [];
+    const said: string[] = [];
+
+    await undoEach(
+      [
+        { what: "the first", run: () => void done.push("first") },
+        { what: "one that throws", run: () => { throw new Error("broke"); } },
+        { what: "one that fails later", run: async () => { throw new Error("broke later"); } },
+        { what: "one that never ends", run: () => new Promise<never>(() => {}) },
+        { what: "the last", run: async () => void done.push("last") },
+      ],
+      (line) => void said.push(line),
+      40
+    );
+    expect(done).toEqual(["first", "last"]);
+    expect(said).toEqual([
+      "While undoing a start that failed, one that throws didn't work: broke",
+      "While undoing a start that failed, one that fails later didn't work: broke later",
+      "While undoing a start that failed, one that never ends didn't work: it took too long",
+    ]);
   });
 
   it("stops with the extension it was handed to: every member of the site refuses, its name included", () => {
