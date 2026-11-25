@@ -84,14 +84,15 @@ const WITHHELD_FROM_PLUGINS = new Set<string>(["dispose", "snapshot", "previewHa
  * on it (offering it as an Undo that keeps the site open is the engine's).
  */
 function publicCheckpoint(checkpoint: Checkpoint): Checkpoint {
+  // What each member answers is the plugin's own copy, never an object the engine goes on using.
   return Object.freeze({
     id: checkpoint.id,
-    paths: () => checkpoint.paths(),
+    paths: () => [...checkpoint.paths()],
     run: <T>(work: () => T) => checkpoint.run(work),
     close: () => checkpoint.close(),
-    restore: () => checkpoint.restore(),
-    left: () => checkpoint.left(),
-    release: () => checkpoint.release(),
+    restore: () => checkpoint.restore().then((paths) => [...paths]),
+    left: () => [...checkpoint.left()],
+    release: () => checkpoint.release().then(() => undefined),
   });
 }
 
@@ -99,11 +100,12 @@ function publicCheckpoint(checkpoint: Checkpoint): Checkpoint {
 function scopedPreview(preview: PreviewController, scope: { readOnly: boolean; name: string; refusal?: string }): PreviewController {
   const refuse = () => Promise.reject(new GalleyError("forbidden", scope.refusal ?? `The tool “${scope.name}” said it only reads, so it can't change the site.`));
 
+  // Answers are the plugin's own copies: a status, or a new promise, never the engine's own.
   return Object.freeze({
-    status: () => preview.status(),
-    start: scope.readOnly ? refuse : () => preview.start(),
-    stop: scope.readOnly ? refuse : () => preview.stop(),
-    restart: scope.readOnly ? refuse : () => preview.restart(),
+    status: () => structuredClone(preview.status()),
+    start: scope.readOnly ? refuse : () => preview.start().then((status) => structuredClone(status)),
+    stop: scope.readOnly ? refuse : () => preview.stop().then(() => undefined),
+    restart: scope.readOnly ? refuse : () => preview.restart().then((status) => structuredClone(status)),
   });
 }
 

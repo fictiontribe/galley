@@ -144,13 +144,13 @@ export interface WorkspaceCheckpoint extends Checkpoint {
 }
 
 /**
- * Said when something is asked to undo with a checkpoint whose site was
- * closed under it. What a checkpoint keeps is let go when its site is closed
- * (one nobody has used for a while, or one that was removed), so there is
- * nothing left to put back: answering "nothing was restored" as if the undo
- * had been done would be untrue.
+ * Said when something is asked to undo with a checkpoint whose memory was
+ * let go under it: its site was closed (removed, a backup put back), or,
+ * offered by nobody, it went unused for an hour and the idle sweep let it go.
+ * There is nothing left to put back: answering "nothing was restored" as if
+ * the undo had been done would be untrue.
  */
-export const UNDO_LOST = "That can't be undone from here any more: the site was closed, and what Undo keeps was let go with it. You can still discard the changes in Proof.";
+export const UNDO_LOST = "That can't be undone from here any more: what Undo kept was let go, because the site was closed or nothing used it for an hour. You can still discard the changes in Proof.";
 
 class CheckpointImpl implements WorkspaceCheckpoint {
   readonly id = randomUUID();
@@ -459,7 +459,11 @@ export class CheckpointManager {
    */
   async letGoOfStale(maxAgeMs: number, now = Date.now()): Promise<void> {
     for (const checkpoint of [...this.all]) {
-      if (!checkpoint.offered && checkpoint.closedAt !== null && now - checkpoint.closedAt >= maxAgeMs) await checkpoint.release();
+      if (!checkpoint.offered && checkpoint.closedAt !== null && now - checkpoint.closedAt >= maxAgeMs) {
+        // Let go by the sweep, not by whoever holds it: an undo asked of it later says so, as after the site closing.
+        checkpoint.lost = true;
+        await checkpoint.release();
+      }
     }
   }
 

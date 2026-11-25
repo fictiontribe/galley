@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { GalleyError } from "../../src/errors";
 import { createEventBus, createSiteRegistry, siteIdFor } from "../../src/site/index";
 import type { Job, ServerEvent, Settings, SiteRegistry } from "../../src/types";
+import { UNDO_LOST } from "../../src/workspace";
 import { addBareRemote, AUTHOR, cleanupAll, copyStarter, HOME, makeSite, sh, tempDir, until } from "./helpers";
 
 const STARTERS = fileURLToPath(new URL("../../../../starters", import.meta.url));
@@ -413,5 +414,7 @@ describe("checkpoints nobody offers", () => {
     await (registry as unknown as { releaseIdle(now?: number): Promise<string[]> }).releaseIdle(Date.now() + 61 * 60_000);
     expect(theirs.released).toBe(true);
     expect(offered.released).toBe(false);
+    // An undo asked of the one let go says so, rather than answer as if it had been done.
+    await expect(theirs.restore()).rejects.toMatchObject({ code: "not-found", message: UNDO_LOST });
   }, 120_000);
 });

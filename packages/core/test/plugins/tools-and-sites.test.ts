@@ -319,6 +319,8 @@ describe("more of what a plugin is handed", () => {
     }
     expect((reading.status as () => { state: string }).call(null).state).toBeTruthy();
     for (const change of ["start", "stop", "restart"]) await expect((reading[change] as () => Promise<unknown>)(), change).rejects.toMatchObject({ code: "forbidden" });
+    // What it answers is the plugin's own copy.
+    expect((writing.status as () => unknown)()).not.toBe((writing.status as () => unknown)());
     // The site's own preview is the same four members too: nothing hands the controller out.
     expect(Object.keys(site.preview()).sort()).toEqual(["restart", "start", "status", "stop"]);
   }, 120_000);
