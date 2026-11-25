@@ -185,8 +185,10 @@ scroll, the way a lit screen draws the eye in a room.
   chooses; the switch in the header overrides it and is remembered. Each mode
   ends on a block of the other's paper.
 - **One heading voice.** Every page of the site, the documentation and the
-  guides included, sets its headings in Figtree 600, tight. The product's own
-  words, quoted on any page, stay in the serif.
+  guides included, sets its headings in Figtree 600, tight. A page that is
+  read (documentation, a how-to guide, a comparison article, the changelog,
+  privacy) uses a calmer size of the same voice, so it doesn't shout. The
+  serif is left only where the site draws the app's own proof sheet.
 - **Captures are framed, and real.** The warm tan panel on paper, a warm deep
   frame on the plate. A light capture on the dark page reads as a lit screen.
   Never drawn interface.

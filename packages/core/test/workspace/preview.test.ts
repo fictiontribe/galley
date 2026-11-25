@@ -82,12 +82,13 @@ server.listen(0, "127.0.0.1", () => console.log("  \\u001b[32mLocal\\u001b[0m:  
 /** A server that runs detached from whoever started it, like a backgrounded dev server. */
 const BG_SERVER = `
 import http from "node:http";
-import { writeFileSync } from "node:fs";
+import { renameSync, writeFileSync } from "node:fs";
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "content-type": "text/html" });
   res.end("<html><head></head><body>background</body></html>");
 });
-server.listen(0, "127.0.0.1", () => writeFileSync("bg.json", JSON.stringify({ port: server.address().port, pid: process.pid })));
+// Written whole or not at all (a temporary name, then a rename): the launcher reads it the moment it appears.
+server.listen(0, "127.0.0.1", () => { writeFileSync("bg.json.tmp", JSON.stringify({ port: server.address().port, pid: process.pid })); renameSync("bg.json.tmp", "bg.json"); });
 `;
 
 /**
@@ -127,11 +128,13 @@ if (mode === "foreground") {
  */
 const SITE_SERVER = `
 import http from "node:http";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
 const at = process.argv.indexOf("--port");
 const port = at === -1 ? 0 : Number(process.argv[at + 1]);
 const label = readFileSync("label.txt", "utf8").trim();
-writeFileSync("started.json", JSON.stringify({ argv: process.argv.slice(2), env: { PORT: process.env.PORT ?? null, AI_AGENT: process.env.AI_AGENT ?? null, SITE_FLAVOUR: process.env.SITE_FLAVOUR ?? null }, cwd: process.cwd(), pid: process.pid }));
+// Whole or not at all: a test may stop this server the moment it starts, and reads the file if it is there.
+writeFileSync("started.json.tmp", JSON.stringify({ argv: process.argv.slice(2), env: { PORT: process.env.PORT ?? null, AI_AGENT: process.env.AI_AGENT ?? null, SITE_FLAVOUR: process.env.SITE_FLAVOUR ?? null }, cwd: process.cwd(), pid: process.pid }));
+renameSync("started.json.tmp", "started.json");
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "content-type": "text/html" });
   res.end("<html><head></head><body><h1>" + label + "</h1></body></html>");
@@ -146,19 +149,21 @@ server.listen(port, "127.0.0.1", () => console.log("  Local   http://localhost:"
  */
 const STRICT_SERVER = `
 import http from "node:http";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
 const port = Number(process.argv[process.argv.indexOf("--port") + 1]);
 const host = process.env.LISTEN_ON || "127.0.0.1";
+// The files a test waits for are written whole or not at all: a temporary name, then a rename.
+const put = (file, text) => { writeFileSync(file + ".tmp", text); renameSync(file + ".tmp", file); };
 let asked = [];
 try { asked = JSON.parse(readFileSync("asked.json", "utf8")); } catch {}
-writeFileSync("asked.json", JSON.stringify([...asked, port]));
+put("asked.json", JSON.stringify([...asked, port]));
 await new Promise((done) => setTimeout(done, 400));
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "content-type": "text/html" });
   res.end("<html><head></head><body><h1>strict</h1></body></html>");
 });
 // Says where it is only when asked to: one that doesn't leaves the port it was given as all there is to go by.
-server.listen(port, host, () => { writeFileSync("listening.txt", String(port)); if (!process.env.SAY_NOTHING) console.log("  Local   http://localhost:" + port + "/"); });
+server.listen(port, host, () => { put("listening.txt", String(port)); if (!process.env.SAY_NOTHING) console.log("  Local   http://localhost:" + port + "/"); });
 `;
 
 /**
@@ -167,11 +172,13 @@ server.listen(port, host, () => { writeFileSync("listening.txt", String(port)); 
  */
 const MOVING_SERVER = `
 import http from "node:http";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
 const told = Number(process.argv[process.argv.indexOf("--port") + 1]);
 let asked = [];
 try { asked = JSON.parse(readFileSync("asked.json", "utf8")); } catch {}
-writeFileSync("asked.json", JSON.stringify([...asked, told]));
+// Whole or not at all: a test waits for this file and reads it the moment it appears.
+writeFileSync("asked.json.tmp", JSON.stringify([...asked, told]));
+renameSync("asked.json.tmp", "asked.json");
 await new Promise((done) => setTimeout(done, 400));
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "content-type": "text/html" });
@@ -296,8 +303,13 @@ function freeLoopbackPort(): Promise<number> {
  * `count` consecutive free ports below the system's ephemeral range (where a
  * dev server asking for "any port" would land), like an operator's range.
  */
+/**
+ * `count` free ports in a row. Chosen below every system's range for outgoing connections (Linux hands those out from
+ * 32768, macOS and Windows from 49152), so only a program that listens on purpose can take one between this check and
+ * the test's own use — an outgoing connection elsewhere on the machine can't.
+ */
 async function freeRange(count: number): Promise<number> {
-  for (let from = 41000 + Math.floor(Math.random() * 4000); from < 48000; from += count) {
+  for (let from = 20000 + Math.floor(Math.random() * 8000); from < 32000; from += count) {
     let ok = true;
 
     for (let port = from; port < from + count && ok; port += 1) ok = await portIsFree(port);
@@ -332,6 +344,24 @@ afterEach(() => {
     }
   }
 });
+
+/**
+ * What a fixture wrote to `file`, once it is all there: polled until it exists and parses as JSON (a number is
+ * JSON too). Waiting only for the file to exist can catch a write half done, and read nothing or half of it.
+ */
+async function readWhole<T>(file: string, timeoutMs = 5000, stepMs = 10): Promise<T> {
+  let value: T | undefined;
+
+  await until(() => {
+    try {
+      value = JSON.parse(readFileSync(file, "utf8")) as T;
+      return true;
+    } catch {
+      return false;
+    }
+  }, timeoutMs, stepMs);
+  return value as T;
+}
 
 function controllerFor(root: string, settings: Partial<PreviewSettings>, extra: Partial<Parameters<typeof createPreviewController>[0]> = {}) {
   const statuses: PreviewStatus[] = [];
@@ -768,8 +798,7 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
     const { controller } = controllerFor(root, { dev: { command: "node strict-server.mjs", port, portArgs: ["--port", "{port}"] } });
     const starting = controller.start();
     // The moment the dev server says which port it was told, and before it asks for it, something else takes it.
-    await until(() => existsSync(join(root, "asked.json")), 5000, 10);
-    const told = (JSON.parse(readFileSync(join(root, "asked.json"), "utf8")) as number[])[0]!;
+    const told = (await readWhole<number[]>(join(root, "asked.json")))[0]!;
     const taker = http.createServer((_req, res) => res.end("not this site"));
 
     servers.push(taker);
@@ -788,8 +817,7 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
 
   /** Waits until the dev server in `root` has said which port it was told, and has something else take that port first. */
   async function takeThePortFirst(root: string, how: "answering" | "silent"): Promise<number> {
-    await until(() => existsSync(join(root, "asked.json")), 5000, 10);
-    const told = (JSON.parse(readFileSync(join(root, "asked.json"), "utf8")) as number[])[0]!;
+    const told = (await readWhole<number[]>(join(root, "asked.json")))[0]!;
 
     if (how === "answering") {
       const taker = http.createServer((_req, res) => res.end("<html><head></head><body><h1>not this site</h1></body></html>"));
@@ -860,8 +888,7 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
 
     // The other program arrives the moment the dev server has its address, so both are listening when the preview
     // looks: whichever address the preview asks first, it must not settle on the other program's.
-    await until(() => existsSync(join(root, "listening.txt")), 5000, 2);
-    const told = Number(readFileSync(join(root, "listening.txt"), "utf8"));
+    const told = await readWhole<number>(join(root, "listening.txt"), 5000, 2);
     const other = http.createServer((_req, res) => res.end("<html><head></head><body><h1>not this site</h1></body></html>"));
 
     servers.push(other);
@@ -998,8 +1025,9 @@ http.createServer((_req, res) => { res.writeHead(200, { "content-type": "text/ht
     const other = http.createServer((_req, res) => res.end("<html><head></head><body><h1>the container's dev server</h1></body></html>"));
 
     servers.push(other);
-    await until(() => existsSync(join(root, "asked.json")), 5000, 10);
-    await new Promise<void>((done) => other.listen((JSON.parse(readFileSync(join(root, "asked.json"), "utf8")) as number[])[0], "127.0.0.1", done));
+    const told = (await readWhole<number[]>(join(root, "asked.json")))[0];
+
+    await new Promise<void>((done) => other.listen(told, "127.0.0.1", done));
     const status = await starting;
 
     expect(status.state).toBe("ready");
@@ -1012,7 +1040,7 @@ http.createServer((_req, res) => { res.writeHead(200, { "content-type": "text/ht
     const port = await freeLoopbackPort();
 
     // A dev server that writes which port it was told and then stays alive without ever listening on it.
-    writeTree(root, { "idle-server.mjs": 'import { readFileSync, writeFileSync } from "node:fs";\nlet a = [];\ntry { a = JSON.parse(readFileSync("asked.json", "utf8")); } catch {}\nwriteFileSync("asked.json", JSON.stringify([...a, Number(process.argv[process.argv.indexOf("--port") + 1])]));\nsetInterval(() => {}, 1000);\n' });
+    writeTree(root, { "idle-server.mjs": 'import { readFileSync, renameSync, writeFileSync } from "node:fs";\nlet a = [];\ntry { a = JSON.parse(readFileSync("asked.json", "utf8")); } catch {}\nwriteFileSync("asked.json.tmp", JSON.stringify([...a, Number(process.argv[process.argv.indexOf("--port") + 1])]));\nrenameSync("asked.json.tmp", "asked.json");\nsetInterval(() => {}, 1000);\n' });
     const { controller } = controllerFor(root, { dev: { command: "node idle-server.mjs", port, portArgs: ["--port", "{port}"] }, environment: {} }, { portHeldMs: 400 });
     const starting = controller.start();
 

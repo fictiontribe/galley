@@ -37,7 +37,8 @@ const shareImage = absoluteUrl(site.shareImage);
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
-    <Font cssVariable="--font-newsreader" preload={[{ style: "normal" }]} />
+    {/* The serif is declared, not preloaded: only the Proof section's marked-up lines are set in it, so a page without one never fetches it. */}
+    <Font cssVariable="--font-newsreader" />
     <Font cssVariable="--font-figtree" preload={[{ style: "normal" }]} />
     <Font cssVariable="--font-plex-mono" />
     <meta name="color-scheme" content="light dark" />
