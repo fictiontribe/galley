@@ -3,11 +3,9 @@
  * appearance and the default theme's id), secrets (a site's own key first, then the environment, then the
  * SecretStore — see site-settings.ts) and usage.
  */
-import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import { z } from "zod";
 import { GalleyError } from "../errors";
 import { tidyName } from "../install/names";
@@ -23,8 +21,8 @@ import { currentSiteId, isSiteId } from "../site/scope";
 import { createSiteSettingsStore, describeConnections, resolveSecret } from "./site-settings";
 import { DEFAULT_PREVIEW_POLICY, PREVIEW_LIMITS } from "../site/preview-policy";
 import { isThemeId } from "../themes/contract";
+import { runGit } from "../workspace/git";
 
-const run = promisify(execFile);
 const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly", "gcp"];
 const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh"];
 
@@ -58,14 +56,28 @@ export interface GalleySettingsService extends SettingsService {
   previewPolicy(): Promise<PreviewPolicySettings>;
 }
 
-/** The machine's git identity, read once (read-only, never written). */
-function gitIdentityReader(env: NodeJS.ProcessEnv): () => Promise<{ name: string; email: string }> {
+/** Where git finds its configuration, from the environment this service was given (a test pins its own). */
+function gitConfigLocation(env: NodeJS.ProcessEnv): Record<string, string> {
+  const out: Record<string, string> = {};
+
+  for (const [name, value] of Object.entries(env)) {
+    if (value !== undefined && (name.startsWith("GIT_CONFIG") || name === "HOME" || name === "XDG_CONFIG_HOME")) out[name] = value;
+  }
+  return out;
+}
+
+/**
+ * The machine's git identity, read once (read-only, never written). Asked the way every other git call is
+ * (runGit, with its base settings), and from this service's own folder: not from wherever the process was
+ * started, so a repository that happens to be the working folder doesn't lend its identity.
+ */
+function gitIdentityReader(home: string, env: NodeJS.ProcessEnv): () => Promise<{ name: string; email: string }> {
   let cached: Promise<{ name: string; email: string }> | null = null;
   const read = async (key: string) => {
     try {
-      const { stdout } = await run("git", ["config", "--get", key], { env, timeout: 5_000 });
+      const result = await runGit(home, ["config", "--get", key], { env: gitConfigLocation(env), readOnly: true, allowFailure: true, timeoutMs: 5_000 });
 
-      return stdout.trim();
+      return result.code === 0 ? result.text.trim() : "";
     } catch {
       return "";
     }
@@ -84,7 +96,7 @@ export function createSettingsService(options: SettingsServiceOptions): GalleySe
   const now = options.now ?? Date.now;
   const imageProviders = options.imageProviders ?? builtinImageHandles;
   const file = join(home, "settings.json");
-  const gitIdentity = gitIdentityReader(env);
+  const gitIdentity = gitIdentityReader(home, env);
   let writes: Promise<unknown> = Promise.resolve();
 
   async function load(): Promise<Stored> {

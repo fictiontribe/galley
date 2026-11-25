@@ -1,4 +1,5 @@
 /** Settings, secrets and usage accounting. */
+import { execFileSync } from "node:child_process";
 import { chmodSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -24,6 +25,23 @@ describe("settings", () => {
     expect(value.images.provider).toBeNull();
     expect(value.images.providers.find((p) => p.id === "mock")?.configured).toBe(true);
     expect(value.images.providers.find((p) => p.id === "openai")?.configured).toBe(false);
+  });
+
+  it("reads the machine's git identity, not that of a repository the process happens to be started in", async () => {
+    const repo = tempDir("ai-cwd-repo-");
+    const started = process.cwd();
+
+    execFileSync("git", ["init", "-q"], { cwd: repo });
+    execFileSync("git", ["config", "user.name", "Repo Person"], { cwd: repo });
+    execFileSync("git", ["config", "user.email", "repo@example.com"], { cwd: repo });
+    process.chdir(repo);
+    try {
+      const settings = createSettingsService({ home: tempDir(), env: cleanEnv() });
+
+      expect((await settings.get()).author).toEqual({ name: "Test Editor", email: "editor@example.com" });
+    } finally {
+      process.chdir(started);
+    }
   });
 
   it("lists models with list prices and a plain blurb each", () => {
