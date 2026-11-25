@@ -14,8 +14,6 @@
 # Needs one repository secret, NPM_TOKEN: an npm granular access token with
 # read and write access to galley-cms and create-galley (RELEASING.md says
 # how to make it). Nothing else here can publish.
-#
-# This workflow has not been run yet.
 name: Release
 
 on:
@@ -40,7 +38,8 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # The checks take about a quarter of an hour; the wait for galley-cms's tarball may add twenty minutes.
+    timeout-minutes: 75
     env:
       PUBLISH: ${{ github.event_name == 'push' || inputs.dry-run == false }}
     steps:
@@ -144,7 +143,10 @@ jobs:
           path: ${{ env.PACK }}/*.tgz
           if-no-files-found: error
 
-      # galley-cms first: create-galley depends on that exact version.
+      # galley-cms first: create-galley depends on that exact version. The registry accepts galley-cms at once
+      # and then takes some minutes over its tarball (about 14 MB) before anyone can install it. Published in
+      # that window, the new create-galley asks for a galley-cms that isn't there yet, and
+      # `npm create galley@latest` fails for everyone. So create-galley waits until the tarball answers.
       - name: Publish to npm
         if: env.PUBLISH == 'true' && github.ref_type == 'tag'
         env:
@@ -152,6 +154,29 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$NODE_AUTH_TOKEN" ]; then echo "::error::The NPM_TOKEN secret isn't set (RELEASING.md)."; exit 1; fi
-          for name in galley-cms create-galley; do
-            npm publish "$PACK/$name-${{ steps.version.outputs.version }}.tgz" --provenance --access public --tag "${{ steps.version.outputs.dist-tag }}"
+          version="${{ steps.version.outputs.version }}"
+          publish() {
+            # Run again after stopping part-way: what is already on npm is left as it is.
+            if [ -n "$(npm view "$1@$version" version 2> /dev/null)" ]; then
+              echo "$1@$version is already on npm."
+              return
+            fi
+            npm publish "$PACK/$1-$version.tgz" --provenance --access public --tag "${{ steps.version.outputs.dist-tag }}"
+          }
+          publish galley-cms
+          tarball="https://registry.npmjs.org/galley-cms/-/galley-cms-$version.tgz"
+          echo "Waiting until $tarball answers, so create-galley is never published ahead of it."
+          # Every 15 seconds, for 20 minutes at most.
+          for try in $(seq 1 80); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' -I "$tarball" || true)"
+            if [ "$code" = "200" ]; then
+              echo "It answers (after about $(( (try - 1) * 15 )) seconds)."
+              break
+            fi
+            if [ "$try" = "80" ]; then
+              echo "::error::galley-cms@$version is published, but its tarball still answered $code after 20 minutes, so create-galley was not published and npm create galley@latest still gives the last release. When $tarball answers 200, run this workflow again from the tag with Dry run off; it leaves galley-cms as it is and publishes create-galley."
+              exit 1
+            fi
+            sleep 15
           done
+          publish create-galley

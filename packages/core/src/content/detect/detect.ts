@@ -25,6 +25,7 @@ import { absolute } from "../entries/files";
 import { normalizePath } from "../entries/paths";
 import { collectionNames } from "../util/text";
 import { applySiteKit } from "../../site-kit/detect";
+import { builtFromGlobs } from "./built-from";
 import { inspectCollection } from "./inspect";
 
 /** No adapter hook may hold detection up longer than this. */
@@ -366,6 +367,13 @@ function sanitizeConventions(value: unknown, report: (what: string) => void): Ad
     else report(`“${key}” was not a list of folders`);
   }
   if (input.contentUrls === "folders" || input.contentUrls === "none") out.contentUrls = input.contentUrls;
+  if (input.builtFrom !== undefined) {
+    const list = stringList(input.builtFrom);
+    const globs = list ? builtFromGlobs(list) : null;
+
+    if (globs && globs.length > 0) out.builtFrom = globs;
+    else report("“builtFrom” was not a list of globs inside the site");
+  }
   return out;
 }
 
@@ -641,6 +649,7 @@ export async function runDetection(root: string, options: DetectOptions = {}): P
 
   if (environment) result.environment = environment;
   if (previewSaves) result.previewSaves = previewSaves;
+  if (conventions.builtFrom) result.builtFrom = conventions.builtFrom;
   if (siteKit.kit) result.kit = siteKit.kit;
   if (conventions.routesDir && isDir(root, conventions.routesDir)) result.routesDir = conventions.routesDir;
   return { model: result, adapter, match, drafts: declared, candidates, problems };

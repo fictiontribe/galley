@@ -121,14 +121,37 @@ for good, so it needs the publish level.
 - **To a store**: copy (a name already there with the same size counts as
   done; a different file is reported, never replaced), rewrite references
   (`/images/a.webp` → the full address, keeping `?query`/`#hash`), then remove
-  the repository's copies nothing else reaches, unless `keepCopies`. A page
-  Galley can't write in content mode keeps its files where they are.
+  the repository's copies the site no longer uses, unless `keepCopies`.
 - **To the repository**: download into the media folder (same rule for
   names), rewrite references back. The store keeps its files.
 - **A new address**: one stored file must load from it first; then every
   reference is rewritten, and only then is `publicUrl` saved.
 
 All of it is safe to run again.
+
+**What keeps a copy in the repository.** Every file that names a picture is
+sorted once, by `standingsOf` in `move.ts`, and the plan (`foresee`), the
+rewrite and the removal all ask it:
+
+| Standing | Which files | The move |
+| --- | --- | --- |
+| content | what content mode may write | updates it, as a content write |
+| template | the files the settings list under `templates` | updates it as a build-mode write when the site's `ai.allowBuild` is on and the caller may use build mode; otherwise leaves it, and it keeps what it uses |
+| built | anything else the site is built from | never changes it; it keeps what it uses (`leftAlone`, `stillMentioned`) |
+| beside | everything else: a README, a record, a script outside the source | never changes it; it keeps nothing, and is listed (`alsoMentioned`) |
+
+What a site is built from is the model's `builtFrom`: the adapter's
+convention of that name (globs from the site root; Astro's are its source
+folder, its public folder and the configuration at the root) and the
+settings' `build.sources`. With no list from the adapter every file counts,
+which is what every file did before 0.4.2.
+
+The template write is `site.writeFile(path, text, { mode: "build" })`, so it
+passes the one guard every write passes (`workspace.ts`): the build-mode
+level, the deny-list, the writable globs. Content mode's surface is not
+widened: Principle 6 reads as it did. A move needs `manage` and build mode
+needs `publish`, so whoever may start a move through a route may use build
+mode; the site's own switch is what turns the template writes off.
 
 ## Who may
 

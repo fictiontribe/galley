@@ -73,6 +73,17 @@ export interface AdapterConventions {
    * the framework's URLs cannot be told from the folder layout). ["folders"]
    */
   contentUrls?: "folders" | "none";
+  /**
+   * What the site is built from, as globs from the site root ("src/**",
+   * "astro.config.*"): its source, the folder it serves as-is, the
+   * configuration its build reads. A file anywhere else (a README, a script,
+   * a record kept beside the site) can name a picture without the built site
+   * using it, and the engine treats the two differently: moving media to a
+   * bucket keeps a repository file only while something the site is built
+   * from still uses it. The site's own `build.sources` adds to this list.
+   * [everything in the site: any file that names a picture counts]
+   */
+  builtFrom?: string[];
 }
 
 /**

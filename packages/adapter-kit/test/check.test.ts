@@ -48,7 +48,7 @@ describe("checkAdapter on a correct adapter", () => {
     expect(report.ok).toBe(true);
     expect(report.checks.map((check) => check.id)).toEqual(CHECKS.map((check) => check.id));
     expect(report.model.framework.id).toBe("quay");
-    expect(formatReport(report)).toMatch(/All 17 checks passed\.$/);
+    expect(formatReport(report)).toMatch(/All 18 checks passed\.$/);
   });
 
   it("leaves the expectations check out when there are none", async () => {
@@ -170,6 +170,28 @@ describe("checkAdapter catches the mistakes adapters make", () => {
     expect(status(report, "detect-fast")).toMatchObject({ status: "warn", detail: expect.stringMatching(/^detect\(\) took \d+ ms; under 100 ms is the aim/) });
     expect(status(report, "commands")).toMatchObject({ status: "warn", detail: expect.stringMatching(/no dev command and no build command, so previews will be unavailable/) });
     expect(report.ok).toBe(true);
+  });
+
+  it("a list of what the site is built from that leaves its own content out", async () => {
+    // The list names the templates' folder and the configuration, and forgets where the posts and the data are.
+    const forgetful = conventionAdapter({ id: "quay", name: "Quay", packages: ["quay"], files: ["quay.toml"], build: { outDir: "out" }, contentDirs: ["content"], dataDirs: ["data"], builtFrom: ["layouts/**", "quay.toml"] });
+    const report = await checkAdapter(forgetful, fixture(QUAY_SITE));
+
+    expect(failed(report)).toEqual(["built-from"]);
+    // The posts, the data file, and the folder served as it is (where media goes).
+    expect(status(report, "built-from")?.detail).toMatch(/leaves out content\/posts; data\/menu\.json; public\/images: those are content, media or routes the built site reads/);
+    // With the content in it, it passes and says what the list is; a list that isn't globs inside the site is not used at all.
+    const whole = conventionAdapter({ id: "quay", name: "Quay", packages: ["quay"], files: ["quay.toml"], build: { outDir: "out" }, contentDirs: ["content"], dataDirs: ["data"], builtFrom: ["content/**", "data/**", "layouts/**", "public/**", "quay.toml"] });
+    const good = await checkAdapter(whole, fixture(QUAY_SITE));
+
+    expect(status(good, "built-from")?.detail).toBe("content/**, data/**, layouts/**, public/**, quay.toml");
+    expect(failed(good)).toEqual([]);
+    expect(good.model.builtFrom).toEqual(["content/**", "data/**", "layouts/**", "public/**", "quay.toml"]);
+    const outside = conventionAdapter({ id: "quay", name: "Quay", packages: ["quay"], files: ["quay.toml"], build: { outDir: "out" }, contentDirs: ["content"], dataDirs: ["data"], builtFrom: ["../elsewhere/**"] });
+    const refused = await checkAdapter(outside, fixture(QUAY_SITE));
+
+    expect(refused.model.builtFrom).toBeUndefined();
+    expect(refused.model.notes.join("\n")).toMatch(/“builtFrom” was not a list of globs inside the site/);
   });
 
   it("expectations that are not met", async () => {

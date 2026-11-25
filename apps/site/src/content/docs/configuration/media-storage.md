@@ -79,15 +79,32 @@ The key is kept on the computer (or the hosted editor) that runs Galley, never i
 
 ## Move files there and back
 
-In **Media › Storage settings**, **Move files** shows what will happen before anything does: how many files, how many places in how many pages, how many of the repository's copies are removed and how many stay, with every file that still mentions them. The plan takes the move's own steps without changing anything, so the result says the same. Moving to Cloudflare Images moves pictures only: PDFs, videos and anything over its limits stay where they are, and the plan says how many.
+In **Media › Storage settings**, **Move files** shows what will happen before anything does: how many files, how many places in how many pages and page templates, how many of the repository's copies are removed and how many stay, with what still uses them. The plan takes the move's own steps without changing anything, so the result says the same. Moving to Cloudflare Images moves pictures only: PDFs, videos and anything over its limits stay where they are, and the plan says how many.
 
-- **To the bucket**: files are copied, pages are changed to the full addresses, and then the repository's copies are removed (they leave the site when you publish) — unless you keep them. A file used by something Galley can't change in content mode (a template) stays in the repository.
+- **To the bucket**: files are copied, pages are changed to the full addresses, and then the repository's copies are removed (they leave the site when you publish) — unless you keep them.
 - **Back to the repository**: files come back to the media folder and pages use the site's own addresses again. The bucket keeps its copies until you remove them.
 - **A new public address** (a custom domain instead of r2.dev): Galley first checks the new address serves the bucket's files, then changes every page.
 
 Each is safe to run again: what is already there is skipped, and a different file under the same name is reported, never replaced. The page changes wait in Proof like any other.
 
-While a move runs, the Media screen shows how far it is. When it ends, it says there how many files were copied, how many pages changed, and how many files stayed in the repository and where they are still mentioned. That stays on the Media screen until you dismiss it or move files again. A file that stays because the site's code or a template uses it is the move working as meant; only what couldn't be copied, updated or removed is listed as a problem.
+### What stays in the repository, and why
+
+A copy stays only while something the site is built from, and that the move can't update, still uses it. The plan sorts every file that names a picture:
+
+- **Pages and other content** are updated.
+- **Galley's own page templates** (the files the site's settings list under `templates`) are updated too, so a page made from one later doesn't carry an address that is gone. A template is not content, so this is a build-mode change: it is made when the site allows build mode and your account may use it, and it waits in Proof like the rest. Where build mode is off, templates are left and keep the files they use.
+- **The site's code, and data it is built from that content mode doesn't write** are never changed by a move, so the files they use stay: the favicon and the share picture a layout names, say, or the pictures in a catalogue file. The plan names them. To move those too, put the new addresses there by hand or in build mode, then run the move again.
+- **Anything else** keeps nothing: a README, a record kept beside the site, a script outside its source. The built site doesn't read them. The plan lists them on a line of their own, "Also mentioned in …: not part of the site as built, so not changed", and they are left as they are.
+
+What a site is built from comes from its framework: for Astro, the source folder, the public folder and the configuration at the root. When a site's build reads something else, name it in `galley.config.json` and it counts too:
+
+```json
+{ "build": { "sources": ["scripts/gallery/**"] } }
+```
+
+Nothing a built file still uses is ever removed. A copy that is removed is an ordinary deletion waiting in Proof, where it can be put back; and the bucket has the file.
+
+While a move runs, the Media screen shows how far it is. When it ends, it says there how many files were copied, how many pages and page templates changed, and how many files stayed in the repository and what still uses them. That stays on the Media screen until you dismiss it or move files again. A file that stays because the site's code uses it is the move working as meant; only what couldn't be copied, updated or removed is listed as a problem.
 
 ## From a terminal
 

@@ -1,7 +1,7 @@
 /**
  * A move of the site's files, on the Media screen: its progress while it
  * runs, then how it ended — how many files were copied, how many pages
- * changed, what stayed in the repository and where it is still mentioned,
+ * changed, what stayed in the repository and what still uses it,
  * and the list of anything that went wrong. The ending stays until it is
  * dismissed or the next move replaces it, so it can be read on coming back.
  */

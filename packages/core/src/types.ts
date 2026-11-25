@@ -361,6 +361,13 @@ export interface SiteModel {
    * removed before the preview starts on newer versions. Absent when it saves none.
    */
   previewSaves?: string[];
+  /**
+   * What the site is built from, as globs from the site root: the adapter's
+   * `builtFrom` and the settings' `build.sources`. A file outside them can
+   * name a picture without the built site using it. Absent when the adapter
+   * doesn't say: then every file in the site counts.
+   */
+  builtFrom?: string[];
   /** Where the site is put online (galley.config.json `deploy`). Absent until it has been set up. */
   deploy?: DeployConfig;
   /** The redirects list and where it takes effect (galley.config.json `redirects`). Absent until set. */
@@ -403,7 +410,12 @@ export interface GalleyConfig {
    */
   plugins?: string[];
   dev?: { command?: string; port?: number };
-  build?: { command?: string; outDir?: string };
+  /**
+   * `sources`: further files the build reads, as globs from the site root
+   * ("scripts/gallery/**"), beside what the framework's adapter already
+   * names as what the site is built from.
+   */
+  build?: { command?: string; outDir?: string; sources?: string[] };
   urls?: { production?: string; staging?: string };
   media?: { dir?: string; publicPath?: string; roots?: Array<{ dir: string; publicPath: string }>; storage?: MediaStorageConfig; images?: MediaImagesConfig };
   publish?: Partial<PublishConfig>;
