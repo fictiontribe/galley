@@ -18,20 +18,24 @@ const SKIP = new Set(["node_modules", "dist", ".astro"]);
 
 export const AUTHOR = { name: "Test Editor", email: "editor@example.com" };
 
-/** Copies the starter (never its installed packages or build output) into `target`. */
-export function copyStarter(target: string): void {
+/** The starters that ship with the app, by folder name. */
+export const STARTERS = ["astro-starter", "astro-editorial", "astro-saas", "astro-storefront"] as const;
+export type StarterName = (typeof STARTERS)[number];
+
+/** Copies a starter (never its installed packages or build output) into `target`. */
+export function copyStarter(target: string, starter: StarterName = "astro-starter"): void {
   mkdirSync(target, { recursive: true });
-  cpSync(STARTER, target, { recursive: true, filter: (source) => !SKIP.has(basename(source)) });
+  cpSync(join(STARTER, "..", starter), target, { recursive: true, filter: (source) => !SKIP.has(basename(source)) });
 }
 
 /**
  * A fresh site: the starter, `git init`, one commit with an explicit identity.
  * `nodeModules` links the starter's installed packages (only the preview needs them).
  */
-export function makeSite(options: { nodeModules?: boolean; branch?: string } = {}): string {
+export function makeSite(options: { nodeModules?: boolean; branch?: string; starter?: StarterName } = {}): string {
   const root = tempDir("site-test-");
 
-  copyStarter(root);
+  copyStarter(root, options.starter);
   sh(root, "init", "-q", "-b", options.branch ?? "main");
   sh(root, "add", "-A");
   sh(root, "commit", "-q", "-m", "Initial");

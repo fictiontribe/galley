@@ -164,8 +164,12 @@ would only add a download.
    ```sh
    git grep -n -F "A.B.C" -- . ':!CHANGELOG.md' ':!pnpm-lock.yaml' ':!apps/site/public/demo'
    ```
-   What may remain: other crates in `Cargo.lock`, and the old release's own
-   line in `ROADMAP.md`.
+   What may remain, and should: other crates in `Cargo.lock`; the old
+   release's own line in `ROADMAP.md`; lines that say which release
+   something arrived in ("New in A.B.C" in the command-line reference,
+   "Released in A.B.C" in `apps/site/CLAIMS.md`); and the "captured" lines in
+   `apps/site/screens.json` and `apps/site/src/data/howto.json`, which name
+   the release the pictures were taken from until they are taken again.
 
    The release workflow refuses to publish when the tag, the two packages and
    `brand.ts` disagree.

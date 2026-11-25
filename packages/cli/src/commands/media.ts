@@ -288,8 +288,21 @@ async function move(io: DeployIo, storage: MediaStorageService, site: Parameters
     if (plan.kind === "address") io.err(`${places} will use ${plan.publicUrl}.`);
     else {
       io.err(`${plan.files} ${plan.files === 1 ? "file" : "files"} to copy${plan.done ? ` (${plan.done} already there)` : ""}; ${places} to update.`);
-      if (plan.to === "bucket") io.err(plan.keepCopies ? "The repository keeps its copies." : "Then the repository's copies are removed (they leave the site when you publish).");
-      for (const left of plan.stillMentioned ?? []) io.err(`  ${left.path} is left in the repository: still mentioned in ${left.pages.join(", ")}`);
+      const stay = plan.stillMentioned ?? [];
+
+      if (plan.to !== "repository") {
+        io.err(
+          plan.keepCopies
+            ? "The repository keeps its copies."
+            : !stay.length
+              ? "Then the repository's copies are removed (they leave the site when you publish)."
+              : plan.removes === 0
+                ? `None of the repository's copies are removed: ${stay.length === 1 ? "the file is" : `all ${stay.length} are`} still mentioned elsewhere.`
+                : `Then ${plan.removes} of the repository's copies ${plan.removes === 1 ? "is" : "are"} removed (${plan.removes === 1 ? "it leaves" : "they leave"} the site when you publish) and ${stay.length} ${stay.length === 1 ? "stays" : "stay"}.`
+        );
+      }
+      for (const left of stay) io.err(`  ${left.path} is left in the repository: still mentioned in ${left.pages.join(", ")}`);
+      if (plan.leftAlone?.length) io.err("Galley doesn't change the site's code or templates, so the files they use stay where they are.");
       if (plan.unpublished) io.err(`${plan.unpublished} of them aren't published yet: once copied, they are public at their addresses.`);
       if (plan.staying) io.err(`${plan.staying.files} stay where they are: ${plan.staying.reason}`);
     }

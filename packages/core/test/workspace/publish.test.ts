@@ -411,6 +411,97 @@ describe("history, revert and status", GIT_HEAVY, () => {
     expect(sh(root, "rev-list", "--count", "HEAD")).toBe("3");
   });
 
+  it("an undo over unpublished changes says only what works while newer versions wait", GIT_HEAVY, async () => {
+    const root = makeRepo({ "src/content/a.md": "a\n", "src/content/b.md": "b\n" });
+    const bare = addBareRemote(root);
+    const other = tempDir("ws-other-");
+    const ws = await workspaceFor(root);
+
+    writeFileSync(join(root, "src/content/a.md"), "mine\n");
+    const first = await ws.publish({ message: "Mine" }, PUBLISH);
+
+    // An unpublished change to the file that publish changed: the undo is refused either way.
+    writeFileSync(join(root, "src/content/a.md"), "mine, again\n");
+    const alone = await ws.revert(first.commit as string, PUBLISH);
+
+    // Nothing newer waits: publishing the change is a way on, and is offered.
+    expect(alone).toMatchObject({ ok: false, files: ["src/content/a.md"] });
+    expect(alone.error).toBe("Some files this would undo have unpublished changes (a.md). Publish or discard those changes first, then try again.");
+
+    // Someone publishes from elsewhere, and this copy has looked: newer versions wait, so publishing is paused.
+    sh(other, "clone", "-q", bare, ".");
+    writeTree(other, { "src/content/b.md": "theirs\n" });
+    sh(other, "commit", "-q", "-am", "Their change");
+    sh(other, "push", "-q", "origin", "main");
+    expect(await ws.check()).toMatchObject({ behind: 1 });
+    const head = sh(root, "rev-parse", "HEAD");
+    const waiting = await ws.revert(first.commit as string, PUBLISH);
+
+    expect(waiting).toMatchObject({ ok: false, files: ["src/content/a.md"] });
+    expect(waiting.error).toBe(
+      "Some files this would undo have unpublished changes (a.md). Discard those changes first (Proof shows them, so what you wrote can be copied first), get the latest versions, then try again."
+    );
+    expect(waiting.error).not.toMatch(/publish or/i);
+    expect(sh(root, "rev-parse", "HEAD")).toBe(head);
+    expect(readFileSync(join(root, "src/content/a.md"), "utf8")).toBe("mine, again\n");
+
+    // The way the words give works: discard, get the latest, undo.
+    await ws.discard(["src/content/a.md"]);
+    await ws.pull();
+    const undone = await ws.revert(first.commit as string, PUBLISH);
+
+    expect(undone).toMatchObject({ ok: true, pushed: true, files: ["src/content/a.md"] });
+    expect(readFileSync(join(root, "src/content/a.md"), "utf8")).toBe("a\n");
+    expect(readFileSync(join(root, "src/content/b.md"), "utf8")).toBe("theirs\n");
+  });
+
+  it("pauses an undo on top of an older copy, before anything is committed, so getting the latest works", GIT_HEAVY, async () => {
+    const root = makeRepo({ "src/content/a.md": "a\n", "src/content/b.md": "b\n" });
+    const bare = addBareRemote(root);
+    const other = tempDir("ws-other-");
+    const ws = await workspaceFor(root);
+
+    writeFileSync(join(root, "src/content/a.md"), "mine\n");
+    const first = await ws.publish({ message: "Mine" }, PUBLISH);
+
+    // Someone publishes from elsewhere. Nobody has looked from here since.
+    sh(other, "clone", "-q", bare, ".");
+    writeTree(other, { "src/content/b.md": "theirs\n" });
+    sh(other, "commit", "-q", "-am", "Their change");
+    sh(other, "push", "-q", "origin", "main");
+    const head = sh(root, "rev-parse", "HEAD");
+    const paused = await ws.revert(first.commit as string, PUBLISH);
+
+    // An undo is a version of its own. Made now, the code host would refuse it, and this copy and the repository
+    // would have gone separate ways.
+    expect(paused).toMatchObject({ ok: false, behind: true, files: ["src/content/a.md"] });
+    expect(paused.error).toBe("The repository has newer versions than this copy, so the undo is paused. Get the latest versions, then try again.");
+    expect(paused.error).not.toMatch(/branch|push|remote|commit/i);
+    expect(sh(root, "rev-parse", "HEAD")).toBe(head);
+    expect(sh(root, "status", "--porcelain")).toBe("");
+    expect(await ws.gitStatus()).toMatchObject({ ahead: 0, behind: 1 });
+    expect((await ws.gitStatus()).inTheWay).toBeUndefined();
+    // The way the words give works.
+    await ws.pull();
+    const undone = await ws.revert(first.commit as string, PUBLISH);
+
+    expect(undone).toMatchObject({ ok: true, pushed: true, files: ["src/content/a.md"] });
+    expect(readFileSync(join(root, "src/content/a.md"), "utf8")).toBe("a\n");
+    expect(sh(bare, "rev-parse", "main")).toBe(undone.commit);
+    // With unpublished changes to a file it would undo, and versions waiting that nobody has looked at yet,
+    // the refusal still doesn't offer publishing: the undo looks first.
+    writeFileSync(join(root, "src/content/a.md"), "mine, again\n");
+    sh(other, "pull", "-q");
+    writeTree(other, { "src/content/b.md": "theirs, again\n" });
+    sh(other, "commit", "-q", "-am", "Their second change");
+    sh(other, "push", "-q", "origin", "main");
+    const both = await ws.revert(undone.commit as string, PUBLISH);
+
+    expect(both.error).toBe(
+      "Some files this would undo have unpublished changes (a.md). Discard those changes first (Proof shows them, so what you wrote can be copied first), get the latest versions, then try again."
+    );
+  });
+
   it("refuses to revert over pending changes to the same files, and explains a conflict", async () => {
     const root = makeRepo({ "src/content/a.md": "a\n" });
     const ws = await workspaceFor(root);

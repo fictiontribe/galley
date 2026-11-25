@@ -342,6 +342,28 @@ describe("bringing newer versions in", GIT_HEAVY, () => {
     expect(await ws.catchUp()).toMatchObject({ brought: 1 });
   });
 
+  it.skipIf(!posix)("runs none of the repository's own hooks while it looks", async () => {
+    const site = setUp({ "src/content/a.md": "a\n" });
+    const ws = await workspaceFor(site.root);
+    const ran = join(tempDir("ws-hooks-"), "ran");
+
+    // The one hook git runs for a fetch: the ref that remembers the code host moves.
+    writeFileSync(join(site.root, ".git", "hooks", "reference-transaction"), `#!/bin/sh\necho reference-transaction "$1" >> '${ran}'\n`, { mode: 0o755 });
+    site.elsewhere({ "src/content/a.md": "theirs\n" }, "One");
+    // A look on its own: Version history opening, or a round that then holds back.
+    expect(await ws.check()).toMatchObject({ behind: 1 });
+    expect(existsSync(ran)).toBe(false);
+    // The look a publish makes first, when it then pauses and publishes nothing.
+    site.elsewhere({ "src/content/a.md": "theirs again\n" }, "Two");
+    writeFileSync(join(site.root, "src/content/b.md"), "mine\n");
+    expect(await ws.publish({ message: "Mine" }, PUBLISH)).toMatchObject({ ok: false, behind: true });
+    expect(existsSync(ran)).toBe(false);
+    // The hook itself is sound: the same look by hand, in a terminal, runs it.
+    site.elsewhere({ "src/content/a.md": "by hand\n" }, "Three");
+    sh(site.root, "fetch", "-q", "origin");
+    expect(readFileSync(ran, "utf8")).toContain("reference-transaction");
+  });
+
   it.skipIf(!posix)("runs none of the repository's own hooks while versions come in", async () => {
     const site = setUp({ "src/content/a.md": "a\n" });
     const ws = await workspaceFor(site.root);
@@ -355,8 +377,8 @@ describe("bringing newer versions in", GIT_HEAVY, () => {
     site.elsewhere({ "src/content/a.md": "theirs again\n" }, "Two");
     expect(await ws.getLatest()).toMatchObject({ brought: 1 });
     expect(read(site.root, "src/content/a.md")).toBe("theirs again\n");
-    // Nothing of the site's ran for either. (Looking does run the one hook git has for it: it changes no file.)
-    expect(existsSync(ran) ? readFileSync(ran, "utf8").split("\n").filter((line) => line && line !== "reference-transaction") : []).toEqual([]);
+    // Nothing of the site's ran for either: not for the look before each, nor for the versions coming in.
+    expect(existsSync(ran) ? readFileSync(ran, "utf8").split("\n").filter(Boolean) : []).toEqual([]);
     // The hooks themselves are sound: the same step by hand, in a terminal, runs them.
     site.elsewhere({ "src/content/a.md": "by hand\n" }, "Three");
     sh(site.root, "pull", "-q", "--ff-only");

@@ -32,6 +32,9 @@ what is built; when something here ships, it moves to the
   of the repository, run for real on Cloudflare R2 and against stand-ins
   for the rest; a hosted editor that keeps up with its repository; a quieter
   look, with one family of icons.
+- **0.4.1**: fixes. A link to the editor can't send a browser to another
+  site; an undo pauses while newer versions wait, as a publish does; moving
+  media to a bucket says beforehand what the move then does.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.

@@ -18,6 +18,7 @@ import { createMediaFetch, MEDIA_ANSWER_LIMIT } from "./net";
 import { makeR2Bucket, removeR2Bucket } from "./cloudflare-r2";
 import { IMAGES_INFO, imagesSettingsProblems, normalizeImagesConfig } from "./images-info";
 import { createJobTracker } from "../site/jobs";
+import { changeSettings } from "../site/settings-records";
 import { requireLevel } from "../install/caller";
 import { levelFor } from "../install/route-access";
 import type { ApiRouteKey } from "../api";
@@ -289,13 +290,19 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     };
   }
 
+  /**
+   * Saves where the site's media goes, over the settings file as it is: the
+   * file is read with its version and saved only over that version, so a key
+   * somebody else saved meanwhile is not set back (site/settings-records.ts).
+   */
   async function writeStorage(site: SiteService, next: MediaStorageConfig | null): Promise<void> {
-    const current: GalleyConfig = (await site.readConfig()) ?? {};
-    const { storage: _old, ...media } = current.media ?? {};
-    const nextMedia = next ? { ...media, storage: next } : media;
-    const { media: _media, ...rest } = current;
+    await changeSettings(site, (current: GalleyConfig) => {
+      const { storage: _old, ...media } = current.media ?? {};
+      const nextMedia = next ? { ...media, storage: next } : media;
+      const { media: _media, ...rest } = current;
 
-    await site.saveConfig(Object.keys(nextMedia).length ? { ...rest, media: nextMedia } : rest);
+      return Object.keys(nextMedia).length ? { ...rest, media: nextMedia } : rest;
+    });
   }
 
   const service: MediaStorageService = {
@@ -839,13 +846,15 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
     };
   }
 
+  /** The same for where its pictures go. */
   async function writeImages(site: SiteService, next: MediaImagesConfig | null): Promise<void> {
-    const current: GalleyConfig = (await site.readConfig()) ?? {};
-    const { images: _old, ...media } = current.media ?? {};
-    const nextMedia = next ? { ...media, images: next } : media;
-    const { media: _media, ...rest } = current;
+    await changeSettings(site, (current: GalleyConfig) => {
+      const { images: _old, ...media } = current.media ?? {};
+      const nextMedia = next ? { ...media, images: next } : media;
+      const { media: _media, ...rest } = current;
 
-    await site.saveConfig(Object.keys(nextMedia).length ? { ...rest, media: nextMedia } : rest);
+      return Object.keys(nextMedia).length ? { ...rest, media: nextMedia } : rest;
+    });
   }
 
   async function moveContext(site: SiteService, onProgress?: (detail: string, progress: number) => void): Promise<MoveContext> {

@@ -5,7 +5,7 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
-## Unreleased
+## 0.4.1 — 2026-11-25
 
 ### Added
 
@@ -36,10 +36,12 @@ entry says how.
   before, while someone is at the window. Five minutes after the window was
   last touched, it stops asking, and asks again the moment the window is
   clicked, typed in, scrolled, pointed at or brought back to the front. A
-  laptop left with the editor open no longer wakes its network every fifteen
-  seconds for a server it can't reach, and a server that was restarted, or is
-  switched off, is no longer knocked on by every window that was left open. A
-  connection that is working is never closed by this. While it waits, the
+  laptop left with the editor open no longer asks every fifteen seconds for
+  a live connection to a server it can't reach, and a server that was
+  restarted, or is switched off, is no longer asked for one by every window
+  that was left open. (A window in view on a site still tells the server
+  every half-minute that the site is open in it, as before.) A connection
+  that is working is never closed by this. While it waits, the
   status bar reads "Live updates paused — move the pointer or press a key to
   reconnect".
 
@@ -57,6 +59,47 @@ entry says how.
   while the router read it decoded, so a percent-encoded letter took a
   request past the check to a route that then asked for an owner as usual.
   Every such check now reads the address the router matched.
+- **Moving media to a bucket: the plan says what the move then does.** Before
+  it starts, the move said how many of the repository's files would stay
+  behind, and it counted only some of the reasons: a file used by the site's
+  code or by one of Galley's page templates (which a move never changes) was
+  not counted until the move had run. On a starter the plan could say 30 of 31
+  files would stay "still mentioned in" one file, and the result that all 31
+  had, naming eight. The plan now takes the move's own steps without changing
+  anything, so it gives the same count and names the same files as the result:
+  how many copies are removed, how many stay, and the files that still
+  mention them (the window names five and counts the rest; `galley media
+  move` prints them all). The result names them too, where it used to stop
+  at the first reason.
+- **Looking at the code host runs none of the repository's own hooks.**
+  Bringing newer versions in already ran none. The look before it did: git
+  has one hook for it (`reference-transaction`), and a repository that has
+  one saw it run every few minutes on a hosted editor, whenever Version
+  history opened, and before a publish that then published nothing. A look
+  runs no hook now, wherever the app makes it. Publishing still runs the
+  site's own checks.
+- **Undo of a publish no longer offers publishing while newer versions
+  wait.**
+  With unpublished changes to a file the undo would change, it said
+  "Publish or discard those changes first". While the repository has newer
+  versions, publishing is paused, so it now says to discard them (Proof
+  shows them, so what you wrote can be copied first), get the latest
+  versions, then try again. With nothing newer waiting it says what it
+  said.
+- **An undo made while newer versions wait no longer sends this copy and
+  the repository separate ways.** An undo is a version of its own. Made on
+  top of an older copy, the code host refused it, and the two then had to be
+  brought together by a developer. Undo now looks first, as Publish does,
+  and pauses while nothing has changed: "The repository has newer versions
+  than this copy, so the undo is paused. Get the latest versions, then try
+  again." The paused answer carries `behind`, as a paused publish's does.
+- **Connecting a bucket no longer sets back a setting someone else just
+  saved.** Connecting, changing or disconnecting a bucket or Cloudflare
+  Images saved the whole settings file from an earlier read of it, so a key
+  somebody else saved in between was put back to what it had been. They now
+  save over the version they read, as Site settings, putting the site
+  online and hosting the editor do: when the file changed in between, it is
+  read again and the change is made to what is there.
 
 ## 0.4.0 — 2026-11-25
 

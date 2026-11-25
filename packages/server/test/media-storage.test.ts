@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { GalleyError } from "@galley/core";
 import { createMediaStorageService } from "@galley/core/media-storage";
 import type { GalleyConfig, SiteModel } from "@galley/core/types";
 import { startFakeS3, type FakeS3 } from "../../core/test/media-storage/fakes/s3";
@@ -18,11 +19,16 @@ afterAll(() => fake.close());
 async function withStorage() {
   const home = await tempHome();
   let config: GalleyConfig = {};
+  let version = 0;
   const site = fakeSite({
     model: async () => ({ media: { dir: "public/images", publicPath: "/images", roots: [], ...(config.media?.storage ? { storage: config.media.storage } : {}) } }) as unknown as SiteModel,
     readConfig: async () => config,
-    saveConfig: async (next: GalleyConfig) => {
+    // The settings file with its version, as the engine reads it before it saves over it.
+    readFile: (async () => ({ content: JSON.stringify(config), hash: `version-${version}` })) as never,
+    saveConfig: async (next: GalleyConfig, options: { baseHash?: string } = {}) => {
+      if (options.baseHash && options.baseHash !== `version-${version}`) throw new GalleyError("conflict", "The site's settings changed since they were opened.");
       config = next;
+      version += 1;
       return {} as SiteModel;
     },
   });
@@ -93,7 +99,7 @@ describe("media storage routes", () => {
       },
       planMove: async (_site, request) => {
         calls.push(["plan", request]);
-        return { kind: "move", from: "repository", to: "bucket", files: 3, bytes: 10, references: 2, pages: 1, done: 0, problems: [], keepCopies: false };
+        return { kind: "move", from: "repository", to: "bucket", files: 3, bytes: 10, removes: 3, references: 2, pages: 1, done: 0, problems: [], keepCopies: false };
       },
       startMove: async (_site, request) => {
         calls.push(["move", request]);
