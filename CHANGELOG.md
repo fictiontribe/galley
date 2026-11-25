@@ -7,6 +7,20 @@ entry says how.
 
 ## Unreleased
 
+### Fixed
+
+- **Undo no longer says it undid something when it could not.** The editor
+  closes a site that nobody has used for an hour (one whose preview isn't
+  running), and what Undo keeps for the assistant's replies and for a batch
+  of search fixes is let go with it. Undo after that put nothing back, yet
+  answered as if it had: the chat said "Undone. Everything this reply
+  changed is back to how it was." and marked the reply, with the pages
+  still changed. Undo now says that it can't be undone from here any more
+  and why, the reply stays as it was, and the changes are still in Proof to
+  discard. Most likely on your own computer, after an hour away from the
+  window; a hosted editor keeps its site open while it keeps up with the
+  repository.
+
 ## 0.4.2 — 2026-11-25
 
 **Security.** 0.4.2 closes several ways a signed-in person on a

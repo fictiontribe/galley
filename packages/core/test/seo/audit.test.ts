@@ -11,6 +11,7 @@ import { auditEntry, auditSite, forgetAudit } from "../../src/seo/audit";
 import { applyFixes, undoFixes } from "../../src/seo/fixes";
 import { applyCrawlerPolicy, crawlerReport, readRobots } from "../../src/seo/policy";
 import { POLICY_START } from "../../src/seo/robots";
+import { UNDO_LOST } from "../../src/workspace";
 import { disposeAll, openSite, sh } from "../site/helpers";
 import { cleanFiles, cleanRendered, distFiles, makeFixture, plantedFiles, plantedRendered } from "./fixture";
 
@@ -178,6 +179,26 @@ describe("fixes", () => {
     expect(undone.restored).toHaveLength(4);
     expect(undone.left).toEqual([]);
     expect(sh(root, "status", "--porcelain")).toBe("");
+  });
+
+  it("can't be undone once the site has been closed and opened again, and the undo says so", async () => {
+    const root = makeFixture(plantedFiles(), plantedRendered());
+    const { site } = await openSite(root);
+    const audit = await auditSite(site, { now: NOW });
+    const result = await applyFixes(site, audit.findings.filter((f) => f.fix).map((f) => f.id));
+
+    expect(result.applied).toHaveLength(4);
+    const fixed = sh(root, "status", "--porcelain");
+
+    // Closed (nobody used it for a while), and opened again when someone came back.
+    await site.dispose();
+    const again = (await openSite(root)).site;
+
+    // What the undo kept went with the site: it says so, where it used to answer that nothing was put back.
+    await expect(undoFixes(again, result.undoId!)).rejects.toMatchObject({ code: "not-found", message: UNDO_LOST });
+    expect(sh(root, "status", "--porcelain")).toBe(fixed);
+    // The fixes are still changes waiting in Proof, as the sentence says.
+    expect((await again.changes()).files.length).toBe(4);
   });
 
   it("are refused when the page changed after it was checked", async () => {

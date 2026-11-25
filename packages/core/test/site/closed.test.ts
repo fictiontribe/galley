@@ -8,6 +8,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
+import { UNDO_LOST } from "../../src/workspace";
 import { cleanupAll, disposeAll, HOME, makeSite, openSite } from "./helpers";
 
 afterEach(async () => {
@@ -36,4 +37,26 @@ it("a closed site that something kept still reads and writes its folder, and nob
   expect(open.of("changes.updated")).toEqual([{ type: "changes.updated", siteId: "test-site", paths: [HOME], origin: "user" }]);
   // And the closed one's, made before it: not one event, then or since. No window hears of that change.
   expect(kept.events.slice(from)).toEqual([]);
+}, 120_000);
+
+it("a checkpoint kept from a site that was then closed refuses to undo, in a sentence; one its holder let go still answers that nothing was put back", async () => {
+  const root = makeSite();
+  const { site } = await openSite(root);
+  const text = (await site.readFile(HOME)).content;
+  const kept = site.checkpoint("kept");
+  const letGo = site.checkpoint("let go") as ReturnType<typeof site.checkpoint> & { release(): Promise<void> };
+
+  await kept.run(() => site.writeFile(HOME, `${text}\nwritten as the kept checkpoint's own work\n`, { origin: "agent", mode: "content" }));
+  kept.close();
+  // Let go by whoever held it, as after an undo: asked again, there is nothing to put back, and that is all it says.
+  await letGo.release();
+  expect(await letGo.restore()).toEqual([]);
+
+  await site.dispose();
+  // What it kept went with the site. It does not answer as if the undo had been done.
+  await expect(kept.restore()).rejects.toMatchObject({ code: "not-found", message: UNDO_LOST });
+  expect(kept.left()).toEqual([]);
+  expect(readFileSync(join(root, HOME), "utf8")).toContain("written as the kept checkpoint's own work");
+  // The one its holder had let go is not turned into a refusal by the site closing afterwards.
+  expect(await letGo.restore()).toEqual([]);
 }, 120_000);
