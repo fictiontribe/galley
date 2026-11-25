@@ -5,7 +5,8 @@ import type { MediaStorageService } from "@galley/core/media-storage";
 import type { RedirectsService } from "@galley/core/redirects";
 import type { PluginRegistry } from "@galley/core/plugins";
 import type { VisibilityService } from "@galley/core/seo";
-import type { Install, SessionStamp } from "@galley/core/install";
+import type { Install } from "@galley/core/install";
+import type { SessionInfo } from "./auth";
 import type { RevocationList } from "./auth";
 import type { SignInClock } from "./sign-in-gate";
 import type { InstallOps } from "./ops";
@@ -107,7 +108,7 @@ export interface AppOptions {
    * one-use ticket is made for a signed-in session (gateway-auth.ts). Absent:
    * the entry route answers the proxies' own addresses (local) or nothing (hosted).
    */
-  previewEntry?: { origins: { preview: string; live: string }; issue(session: SessionStamp): string } | null;
+  previewEntry?: { origins: { preview: string; live: string }; issue(session: SessionInfo): string } | null;
   /**
    * Hosted mode without a preview gateway: the sentence a preview start ends
    * with, at once — the editor has no address to show the preview on, and a

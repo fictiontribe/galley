@@ -4,10 +4,13 @@
  * Local mode: a random token minted at start-up travels once in the URL the
  * CLI opens (`?token=`), and is exchanged for an HttpOnly cookie. Hosted
  * mode: a person's e-mail and password exchanged for the same kind of
- * cookie. The cookie value is `issuedAt.nonce.hmac` (local) or
- * `issuedAt.nonce.accountId.hmac` (hosted: whose session it is, under the
- * MAC, so it can't be swapped), signed with a server key, so it can be
- * checked without server-side session state.
+ * cookie. The cookie value is `issuedAt.nonce.hmac` (local) or, hosted,
+ * `2.issuedAt.expiresAt.kind.nonce.accountId.hmac` (v2: whose session it
+ * is, when it ends and how it was started, all under the MAC, so none of it
+ * can be swapped), signed with a server key, so it can be checked without
+ * server-side session state. A hosted cookie from before v2,
+ * `issuedAt.nonce.accountId.hmac`, is still read: a password session that
+ * ends SESSION_MAX_AGE_S after its issue.
  */
 import type { IncomingMessage } from "node:http";
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
@@ -15,6 +18,7 @@ import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
 import { isIP } from "node:net";
 
+/** How long a session lasts at most, and how long one started with a password lasts. */
 export const SESSION_MAX_AGE_S = 30 * 24 * 60 * 60;
 export const LOGIN_LIMIT = 5;
 export const LOGIN_WINDOW_MS = 60_000;
@@ -30,9 +34,24 @@ export const FORGOT_CLIENT_LIMIT = 5;
 export const FORGOT_CLIENT_WINDOW_MS = 15 * 60_000;
 export const FORGOT_EMAIL_LIMIT = 3;
 export const FORGOT_EMAIL_WINDOW_MS = 60 * 60_000;
-/** The MAC's label for a hosted (person's) cookie: its MAC is never a local cookie's MAC, whatever the payload. */
+/** The MAC's label for a hosted (person's) cookie from before v2: its MAC is never a local cookie's MAC, whatever the payload. */
 const ACCOUNT_PURPOSE = "account-session/v1";
+/** The label for a v2 hosted cookie: never the MAC of any other cookie or value, whatever the payload. */
+const ACCOUNT_PURPOSE_V2 = "account-session/v2";
+const V2_TAG = "2";
 const ACCOUNT_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const NONCE = /^[A-Za-z0-9_-]{1,200}$/;
+const TIME = /^\d{1,16}$/;
+
+/** How a hosted session was started: with a password, through the identity provider, or by a `serve --reset-password` link that asked for none. */
+export type SessionKind = "password" | "provider" | "recovery";
+export const SESSION_KINDS: readonly SessionKind[] = ["password", "provider", "recovery"];
+
+/** When a new hosted session ends and how it was started. By default: a password session, SESSION_MAX_AGE_S from its issue. */
+export interface SessionLife {
+  expiresAt?: number;
+  kind?: SessionKind;
+}
 
 export function mintToken(): string {
   return randomBytes(32).toString("base64url");
@@ -64,30 +83,54 @@ function mac(key: Uint8Array, payload: string): string {
   return createHmac("sha256", key).update(payload).digest("base64url");
 }
 
-export function signSession(key: Uint8Array, issuedAt = Date.now(), nonce = randomBytes(16).toString("base64url"), accountId?: string): string {
+/**
+ * A session cookie's value. With `accountId` (hosted), a v2 cookie: its end
+ * and kind are signed into it (`life`; a password session of
+ * SESSION_MAX_AGE_S by default). A session ends after it starts and lasts
+ * no longer than SESSION_MAX_AGE_S.
+ */
+export function signSession(key: Uint8Array, issuedAt = Date.now(), nonce = randomBytes(16).toString("base64url"), accountId?: string, life: SessionLife = {}): string {
   if (accountId !== undefined) {
     if (!ACCOUNT_ID.test(accountId)) throw new Error("An account id is letters, digits, - and _ only.");
-    const payload = `${issuedAt}.${nonce}.${accountId}`;
+    if (!NONCE.test(nonce)) throw new Error("A session's id is letters, digits, - and _ only.");
+    const expiresAt = life.expiresAt ?? issuedAt + SESSION_MAX_AGE_S * 1000;
+    const kind = life.kind ?? "password";
 
-    return `${payload}.${mac(key, `${ACCOUNT_PURPOSE}\n${payload}`)}`;
+    if (!Number.isSafeInteger(issuedAt) || issuedAt < 0 || !Number.isSafeInteger(expiresAt) || expiresAt <= issuedAt || expiresAt - issuedAt > SESSION_MAX_AGE_S * 1000) {
+      throw new Error("A session ends after it starts, and lasts no longer than SESSION_MAX_AGE_S.");
+    }
+    if (!SESSION_KINDS.includes(kind)) throw new Error(`A session is started with ${SESSION_KINDS.join(", ")}.`);
+    const payload = `${V2_TAG}.${issuedAt}.${expiresAt}.${kind}.${nonce}.${accountId}`;
+
+    return `${payload}.${mac(key, `${ACCOUNT_PURPOSE_V2}\n${payload}`)}`;
   }
   const payload = `${issuedAt}.${nonce}`;
 
   return `${payload}.${mac(key, payload)}`;
 }
 
-/** A session cookie that is correctly signed and not too old: its id (the nonce), when it was issued, and whose it is (hosted). */
+/** A session cookie that is correctly signed and hasn't ended: its id (the nonce), when it was issued and ends, whose it is and how it was started (hosted). */
 export interface SessionInfo {
   id: string;
   issuedAt: number;
+  /** When it ends (ms): signed into a v2 cookie; for an older hosted cookie or a local one, SESSION_MAX_AGE_S after its issue. */
+  expiresAt: number;
   accountId?: string;
+  /** How it was started: signed into a v2 cookie; an older hosted cookie was a password sign-in. */
+  kind?: SessionKind;
 }
 
-/** The session in `value` when it is validly signed and unexpired, else null. Says nothing about revocation. */
+/** Whether a session (already correctly signed) is running at `now`: issued no later than a minute ahead of this clock, and not yet at its end. */
+export function sessionRunning(session: Pick<SessionInfo, "issuedAt" | "expiresAt">, now = Date.now()): boolean {
+  return Number.isSafeInteger(session.issuedAt) && Number.isSafeInteger(session.expiresAt) && session.issuedAt <= now + 60_000 && now < session.expiresAt && session.expiresAt - session.issuedAt <= SESSION_MAX_AGE_S * 1000;
+}
+
+/** The session in `value` when it is validly signed and hasn't ended, else null. Says nothing about revocation. */
 export function readSession(key: Uint8Array, value: string | undefined, now = Date.now()): SessionInfo | null {
   if (!value) return null;
   const parts = value.split(".");
 
+  if (parts.length === 7) return readSessionV2(key, parts, now);
   if (parts.length !== 3 && parts.length !== 4) return null;
   const signature = parts[parts.length - 1]!;
   const payload = parts.slice(0, -1).join(".");
@@ -98,9 +141,22 @@ export function readSession(key: Uint8Array, value: string | undefined, now = Da
 
   if (!sameSignature(signature, expected)) return null;
   const issuedAt = Number(parts[0]);
+  const session = { issuedAt, expiresAt: issuedAt + SESSION_MAX_AGE_S * 1000 };
 
-  if (!Number.isFinite(issuedAt) || issuedAt > now + 60_000 || now - issuedAt > SESSION_MAX_AGE_S * 1000) return null;
-  return { id: parts[1]!, issuedAt, ...(accountId !== undefined ? { accountId } : {}) };
+  if (!Number.isSafeInteger(issuedAt) || !sessionRunning(session, now)) return null;
+  return { id: parts[1]!, ...session, ...(accountId !== undefined ? { accountId, kind: "password" as const } : {}) };
+}
+
+/** A v2 hosted cookie: `2.issuedAt.expiresAt.kind.nonce.accountId.hmac`. */
+function readSessionV2(key: Uint8Array, parts: string[], now: number): SessionInfo | null {
+  const [tag, issued, ends, kind, id, accountId, signature] = parts as [string, string, string, string, string, string, string];
+
+  if (tag !== V2_TAG || !TIME.test(issued) || !TIME.test(ends) || !SESSION_KINDS.includes(kind as SessionKind) || !NONCE.test(id) || !ACCOUNT_ID.test(accountId)) return null;
+  if (!sameSignature(signature, mac(key, `${ACCOUNT_PURPOSE_V2}\n${parts.slice(0, 6).join(".")}`))) return null;
+  const session = { issuedAt: Number(issued), expiresAt: Number(ends) };
+
+  if (!sessionRunning(session, now)) return null;
+  return { id, ...session, accountId, kind: kind as SessionKind };
 }
 
 /**
@@ -346,6 +402,9 @@ export interface RevocationList {
   add(id: string): unknown;
 }
 
+/** A hosted session's start: the issue time the store gives, and its end and kind. */
+export type IssueSession = (accountId?: string, life?: SessionLife) => string;
+
 export interface SessionCheck {
   key: Uint8Array;
   token: string | null;
@@ -355,8 +414,12 @@ export interface SessionCheck {
   revoked: RevocationList;
   /** Hosted install: whether a signed, unexpired session still counts ("sign out everywhere", a changed password). */
   valid?: (session: SessionInfo) => boolean;
-  /** Hosted install: a new cookie value for this person — issued after the last "sign out everywhere" (theirs and the install's), so it isn't caught by it. */
-  issue?: (accountId?: string) => string;
+  /**
+   * Hosted install: a new cookie value for this person — issued after the
+   * last "sign out everywhere" (theirs and the install's), so it isn't caught
+   * by it — ending and started as `life` says (a password session by default).
+   */
+  issue?: IssueSession;
   /** Hosted install: checks the sign-in password against the stored hash. */
   verifyPassword?: (password: string) => Promise<boolean>;
   /** Always mark the cookie Secure (a hosted install on an https:// address), whatever the forwarded protocol says. */

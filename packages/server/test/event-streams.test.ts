@@ -3,10 +3,12 @@
  * how many streams one account may hold open, and what happens to a
  * connection whose other end stops reading.
  */
+import { readFileSync } from "node:fs";
 import { connect, type Socket } from "node:net";
+import { join } from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { TOO_MANY_TOKEN_STREAMS, TOO_MANY_WINDOWS } from "../src/accounts-routes";
-import { SESSION_MAX_AGE_S } from "../src/auth";
+import { SESSION_MAX_AGE_S, signSession } from "../src/auth";
 import { MAX_STREAMS_PER_ACCOUNT } from "../src/events";
 import { call, EDITOR, sandbox, startHosted, until, type Started } from "./hosted-helpers";
 
@@ -235,6 +237,33 @@ describe("an open stream and the sign-in it was opened with", () => {
       expect((await call(port, "GET", "/api/account", { cookie: owner })).status).toBe(401);
     } finally {
       clock.mockRestore();
+    }
+  }, 60_000);
+
+  it("ends within a heartbeat a minute after the sign-in's own end (a shorter one than thirty days), though nothing is sent; a longer sign-in beside it goes on", async () => {
+    const { port, owner, server } = await withTwoPeople({ heartbeatMs: 40 });
+    const store = server.install!.store;
+    const key = Buffer.from(readFileSync(join(store.home, "session.key"), "utf8").trim(), "hex");
+    const ownerId = server.install!.people.list().accounts.find((account) => account.email === "sam@example.com")!.id;
+    const issuedAt = store.nextIssuedAt(Date.now(), ownerId);
+    // A twelve-hour session, as one started through an identity provider will be.
+    const expiresAt = issuedAt + 12 * 60 * 60_000;
+    const short = `${owner.split("=")[0]}=${signSession(key, issuedAt, undefined, ownerId, { expiresAt, kind: "provider" })}`;
+    const stream = await open(port, { cookie: short });
+    const beside = await open(port, { cookie: owner });
+
+    expect([stream.let, beside.let]).toEqual([true, true]);
+    expect((await call(port, "GET", "/api/account", { cookie: short })).status).toBe(200);
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => expiresAt + 60_000);
+
+    try {
+      await within(5000, "the stream of a sign-in past its own end stayed open", stream.ended);
+      expect((await call(port, "GET", "/api/account", { cookie: short })).status).toBe(401);
+      expect(await Promise.race([beside.ended.then(() => "ended"), new Promise((resolve) => setTimeout(() => resolve("open"), 300))])).toBe("open");
+      expect((await call(port, "GET", "/api/account", { cookie: owner })).status).toBe(200);
+    } finally {
+      clock.mockRestore();
+      beside.close();
     }
   }, 60_000);
 });

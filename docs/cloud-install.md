@@ -591,13 +591,14 @@ didn't let in:
 2. The frame loads `/__galley/enter?ticket=…&to=<path>` on the preview's
    name; the gateway trades the ticket for a **viewer cookie** and goes to the
    page.
-3. The viewer cookie is derived from that sign-in (its id, its time and the
-   person's account, an HMAC under a label of its own), so it can never be
-   read as a session cookie, and it stops working when the sign-in does:
-   signing out, **Sign out everywhere**, a changed password, the session's
-   age, a restore, or the person being switched off or removed (checked the
-   next time the cookie is used). Viewer cookies issued before the upgrade to
-   accounts are refused.
+3. The viewer cookie is derived from that sign-in (its id, its time, when it
+   ends, how it was started and the person's account, an HMAC under a label
+   of its own), so it can never be read as a session cookie, and it stops
+   working when the sign-in does: signing out, **Sign out everywhere**, a
+   changed password, the session's own end, a restore, or the person being
+   switched off or removed (checked the next time the cookie is used).
+   Viewer cookies issued before sessions carried their end are refused; the
+   preview then asks the editor for a fresh one, which it gets by itself.
 
 A stranger gets a plain 401 page; a WebSocket upgrade without the cookie is
 closed. Neither the session cookie nor the viewer cookie is ever forwarded to
@@ -1096,12 +1097,16 @@ Signing in records when that person last signed in.
   comes back.
 - A session cookie belongs to one person. On an `https://` address it is
   `__Host-galley_session`: `HttpOnly`, always `Secure`, `SameSite=Strict`,
-  `Path=/`, no `Domain`, signed with `session.key`, 30 days. A cookie one
-  install issued is refused by another.
+  `Path=/`, no `Domain`, signed with `session.key`. When the session ends
+  and how it was started are signed into it, and every place that reads a
+  session (a request, the event stream, the preview's viewer cookie, an
+  extension asking whether a sign-in counts) ends it there; the cookie
+  lasts as long as the session. A sign-in with a password lasts 30 days. A
+  cookie one install issued is refused by another.
 - Every request checks that the person still exists, isn't switched off and
   hasn't been signed out since the cookie was issued.
 - **Changing your password** (Your account) signs your other browsers out;
-  this one stays signed in.
+  this one stays signed in, until the same time as before.
 - **Sign out everywhere** (Your account) signs only you out of every
   browser; other people stay signed in.
 - **Sign everyone out** (People) signs out everyone, the owner's own browser

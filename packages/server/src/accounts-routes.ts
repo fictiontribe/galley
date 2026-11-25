@@ -44,9 +44,11 @@ import {
   LoginLimiter,
   readKnownBrowser,
   requestProtocol,
+  readSession,
   requestSession,
-  SESSION_MAX_AGE_S,
+  sessionRunning,
   signKnownBrowser,
+  type SessionLife,
 } from "./auth";
 import { realClock, SignInGate, type Outcome, type Ticket } from "./sign-in-gate";
 import { GalleyError } from "@galley/core";
@@ -162,19 +164,24 @@ export function signInGateOf(ctx: RouteContext): SignInGate {
 
 /**
  * Signs this browser in as `accountId`: a fresh cookie, issued after that
- * person's and the install's last "sign out everywhere" — and, beside it, a
- * fresh known-browser cookie for that account (never a session: see auth.ts).
+ * person's and the install's last "sign out everywhere", ending and started
+ * as `life` says (a new password session by default; a session given again
+ * keeps its kind and its end) — the cookie lasts as long as the session.
+ * Beside a password session, a fresh known-browser cookie for that account
+ * (never a session: see auth.ts).
  */
-export function signInAs(c: Context, ctx: RouteContext, accountId: string): void {
-  const value = ctx.session.issue?.(accountId);
+export function signInAs(c: Context, ctx: RouteContext, accountId: string, life: SessionLife = {}): void {
+  const value = ctx.session.issue?.(accountId, life);
+  const session = value ? readSession(ctx.session.key, value) : null;
 
-  if (!value) throw new AuthError("Sign in to continue.");
+  if (!value || !session) throw new AuthError("Sign in to continue.");
   const secure = ctx.session.secure === true || requestProtocol(c, Boolean(ctx.options.trustProxy)) === "https";
 
-  setCookie(c, ctx.session.cookieName, value, { httpOnly: true, sameSite: "Strict", path: "/", secure, maxAge: SESSION_MAX_AGE_S });
+  setCookie(c, ctx.session.cookieName, value, { httpOnly: true, sameSite: "Strict", path: "/", secure, maxAge: Math.max(1, Math.floor((session.expiresAt - Date.now()) / 1000)) });
   const install = ctx.options.mode === "hosted" ? ctx.options.install : null;
 
-  if (install && ctx.session.knownCookieName) {
+  // The known browser softens the password limits: only a password sign-in has any use for it.
+  if (install && ctx.session.knownCookieName && session.kind === "password") {
     const known = signKnownBrowser(ctx.session.key, accountId, install.store.nextIssuedAt(Date.now(), accountId));
 
     setCookie(c, ctx.session.knownCookieName, known, { httpOnly: true, sameSite: "Strict", path: "/", secure, maxAge: KNOWN_BROWSER_MAX_AGE_S });
@@ -348,7 +355,7 @@ export async function signOutThisBrowser(c: Context, ctx: RouteContext): Promise
   const install = installOf(ctx);
   const session = requestSession(c, ctx.session);
 
-  if (session?.accountId) await install.store.endSession({ id: session.id, issuedAt: session.issuedAt, accountId: session.accountId });
+  if (session?.accountId) await install.store.endSession({ id: session.id, issuedAt: session.issuedAt, expiresAt: session.expiresAt, accountId: session.accountId });
   signOutHere(c, ctx);
   return ok;
 }
@@ -356,7 +363,7 @@ export async function signOutThisBrowser(c: Context, ctx: RouteContext): Promise
 /** POST /api/account/password, and its older name POST /api/install/password: change your own password. */
 export async function changeOwnPassword(c: Context, ctx: RouteContext): Promise<typeof ok> {
   const install = installOf(ctx);
-  const { account } = personOf(c, ctx);
+  const { account, session } = personOf(c, ctx);
   const client = clientAddress(c, Boolean(ctx.options.trustProxy));
 
   // No password to check, so none of the password limits are touched.
@@ -379,8 +386,8 @@ export async function changeOwnPassword(c: Context, ctx: RouteContext): Promise<
     // 400, not 401: the session is fine, only the typed password is wrong.
     throw invalid("That isn't the current password.");
   }
-  // Every other browser of theirs is signed out; this one gets a fresh cookie.
-  signInAs(c, ctx, account.id);
+  // Every other browser of theirs is signed out; this one gets a fresh cookie for the same session: its kind and its end stay.
+  signInAs(c, ctx, account.id, { kind: session.kind ?? "password", expiresAt: session.expiresAt });
   audit(ctx, `${named(account)} changed their password (from ${client}); their other browsers were signed out.`);
   return ok;
 }
@@ -408,7 +415,7 @@ export async function signOutEverywhere(c: Context, ctx: RouteContext): Promise<
  * submission itself. The stream is held to the test a request is held to,
  * for as long as it is open: it ends when the person is signed out (that
  * browser, everywhere, or everyone at once, as putting a backup back does),
- * switched off or removed, and when the sign-in passes its age. The browser
+ * switched off or removed, and when the sign-in reaches its end. The browser
  * that started a restore follows its job by asking (`GET /api/jobs/:jobId`,
  * which it may for a while after being signed out), not on this stream.
  * Nothing else on the bus carries a submission's content or a key.
@@ -421,8 +428,8 @@ export function eventAccess(c: Context, ctx: RouteContext): StreamAccess | undef
   const { session } = caller;
   const current = () => {
     if (ctx.session.revoked.has(session.id)) return null;
-    // As a request's cookie is read: not past its age, and not from before everyone was last signed out at once.
-    if (Date.now() - session.issuedAt > SESSION_MAX_AGE_S * 1000 || !install.store.sessionValid(session)) return null;
+    // As a request's cookie is read: not past its own end, and not from before everyone was last signed out at once.
+    if (!sessionRunning(session) || !install.store.sessionValid(session)) return null;
     const account = install.store.account(caller.account.id);
 
     return account && !account.disabled && session.issuedAt > account.sessionsValidAfter ? account : null;
