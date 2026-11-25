@@ -303,8 +303,13 @@ function freeLoopbackPort(): Promise<number> {
  * `count` consecutive free ports below the system's ephemeral range (where a
  * dev server asking for "any port" would land), like an operator's range.
  */
+/**
+ * `count` free ports in a row. Chosen below every system's range for outgoing connections (Linux hands those out from
+ * 32768, macOS and Windows from 49152), so only a program that listens on purpose can take one between this check and
+ * the test's own use — an outgoing connection elsewhere on the machine can't.
+ */
 async function freeRange(count: number): Promise<number> {
-  for (let from = 41000 + Math.floor(Math.random() * 4000); from < 48000; from += count) {
+  for (let from = 20000 + Math.floor(Math.random() * 8000); from < 32000; from += count) {
     let ok = true;
 
     for (let port = from; port < from + count && ok; port += 1) ok = await portIsFree(port);
