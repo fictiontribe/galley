@@ -144,9 +144,13 @@ jobs:
           if-no-files-found: error
 
       # galley-cms first: create-galley depends on that exact version. The registry accepts galley-cms at once
-      # and then takes some minutes over its tarball (about 14 MB) before anyone can install it. Published in
-      # that window, the new create-galley asks for a galley-cms that isn't there yet, and
-      # `npm create galley@latest` fails for everyone. So create-galley waits until the tarball answers.
+      # and then takes some minutes over its tarball (about 14 MB) before anyone can install it: eight on 0.4.1.
+      # Two things break in that window if nothing is done:
+      #   - the new create-galley asks for a galley-cms that isn't there yet, so `npm create galley@latest` fails;
+      #   - "latest" already names the new galley-cms, so `npx galley-cms` and `npm install galley-cms` fail too.
+      # So galley-cms is published under a tag of its own ("incoming"), which nobody asks for; the step waits
+      # until the registry lists the version and its tarball answers; only then does "latest" move to it, and
+      # only then is create-galley published.
       - name: Publish to npm
         if: env.PUBLISH == 'true' && github.ref_type == 'tag'
         env:
@@ -155,28 +159,49 @@ jobs:
           set -euo pipefail
           if [ -z "$NODE_AUTH_TOKEN" ]; then echo "::error::The NPM_TOKEN secret isn't set (RELEASING.md)."; exit 1; fi
           version="${{ steps.version.outputs.version }}"
+          tag="${{ steps.version.outputs.dist-tag }}"
+          tarball="https://registry.npmjs.org/galley-cms/-/galley-cms-$version.tgz"
+          listed() { [ -n "$(npm view "$1@$version" version 2> /dev/null)" ]; }
+          answers() { [ "$(curl -s -o /dev/null -w '%{http_code}' -I "$tarball" || true)" = "200" ]; }
+          # publish <package> <dist-tag>. Run again after stopping part-way, it leaves what npm already has as it
+          # is: a version the registry lists, or one it has accepted and doesn't list yet (it refuses a second).
           publish() {
-            # Run again after stopping part-way: what is already on npm is left as it is.
-            if [ -n "$(npm view "$1@$version" version 2> /dev/null)" ]; then
+            if listed "$1"; then
               echo "$1@$version is already on npm."
               return
             fi
-            npm publish "$PACK/$1-$version.tgz" --provenance --access public --tag "${{ steps.version.outputs.dist-tag }}"
+            if out="$(npm publish "$PACK/$1-$version.tgz" --provenance --access public --tag "$2" 2>&1)"; then
+              echo "$out"
+            elif echo "$out" | grep -qi "previously published\|cannot publish over"; then
+              echo "$1@$version was already accepted by npm."
+            else
+              echo "$out"
+              exit 1
+            fi
           }
-          publish galley-cms
-          tarball="https://registry.npmjs.org/galley-cms/-/galley-cms-$version.tgz"
-          echo "Waiting until $tarball answers, so create-galley is never published ahead of it."
+          publish galley-cms incoming
+          echo "Waiting until galley-cms@$version can be installed: listed by the registry, and $tarball answering."
           # Every 15 seconds, for 20 minutes at most.
           for try in $(seq 1 80); do
-            code="$(curl -s -o /dev/null -w '%{http_code}' -I "$tarball" || true)"
-            if [ "$code" = "200" ]; then
-              echo "It answers (after about $(( (try - 1) * 15 )) seconds)."
+            if listed galley-cms && answers; then
+              echo "It can (after about $(( (try - 1) * 15 )) seconds)."
               break
             fi
             if [ "$try" = "80" ]; then
-              echo "::error::galley-cms@$version is published, but its tarball still answered $code after 20 minutes, so create-galley was not published and npm create galley@latest still gives the last release. When $tarball answers 200, run this workflow again from the tag with Dry run off; it leaves galley-cms as it is and publishes create-galley."
+              echo "::error::galley-cms@$version is on npm under the tag \"incoming\", but it still couldn't be installed after 20 minutes, so \"$tag\" was not moved to it and create-galley was not published. Nobody is given the new version: npx galley-cms and npm create galley@latest still give the last release. When $tarball answers 200, run this workflow again from the tag with Dry run off; it leaves galley-cms as it is, moves \"$tag\" and publishes create-galley."
               exit 1
             fi
             sleep 15
           done
-          publish create-galley
+          # A release that was finished before has nothing left to do, and its tag may have moved on since: a run
+          # from an older release's tag must not bring "latest" back to it.
+          if listed create-galley; then
+            echo "create-galley@$version is already on npm, so this release was finished before. \"$tag\" is left where it is."
+            exit 0
+          fi
+          if ! npm dist-tag add "galley-cms@$version" "$tag"; then
+            echo "::error::galley-cms@$version can be installed, but npm refused to move \"$tag\" to it (see above), so create-galley was not published. Nobody is given the new version yet. By hand, signed in to npm as an owner: npm dist-tag add galley-cms@$version $tag. Then run this workflow again from the tag with Dry run off; it finds the tag in place and publishes create-galley."
+            exit 1
+          fi
+          npm dist-tag rm galley-cms incoming || true
+          publish create-galley "$tag"
