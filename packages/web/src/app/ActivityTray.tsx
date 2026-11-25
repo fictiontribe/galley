@@ -12,7 +12,19 @@ function JobRow({ job }: { job: Job }) {
       {job.state === "running" ? <Spinner label="Working" /> : <ProofMark kind={job.state === "done" ? "reg" : "bang"} />}
       <span className="g-toast__title">{job.label}</span>
       <div className="g-toast__actions">
-        {job.state === "done" && job.siteId ? (
+        {job.kind === "media" && job.state !== "running" && job.siteId ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              dismiss(job.id);
+              // What a move changed waits in Proof; what went wrong is listed on the Media screen.
+              navigate(job.state === "done" ? `/sites/${job.siteId}/proof` : `/sites/${job.siteId}/media`);
+            }}
+          >
+            {job.state === "done" ? "Review in Proof" : "See what went wrong"}
+          </Button>
+        ) : job.state === "done" && job.siteId ? (
           <Button
             size="sm"
             variant="secondary"
@@ -46,13 +58,13 @@ function JobRow({ job }: { job: Job }) {
   );
 }
 
-/** Slim tray of long-running work (clone, create, install) above the toasts. */
+/** Slim tray of long-running work (clone, create, install, a video, a move of the site's files) above the toasts. */
 export function ActivityTray() {
   const jobs = useJobs((s) => s.jobs);
   const dismissed = useJobs((s) => s.dismissed);
   const shown = useJobs((s) => s.shown);
   // A job whose own dialog or screen is open shows its progress there, not twice.
-  const visible = jobs.filter((job) => !dismissed.includes(job.id) && !shown.includes(job.id) && (job.kind === "clone" || job.kind === "create" || job.kind === "install" || job.kind === "video"));
+  const visible = jobs.filter((job) => !dismissed.includes(job.id) && !shown.includes(job.id) && (job.kind === "clone" || job.kind === "create" || job.kind === "install" || job.kind === "video" || job.kind === "media"));
   if (visible.length === 0) return null;
   return (
     <>

@@ -25,11 +25,11 @@ afterEach(async () => {
   cleanupAll();
 });
 
-async function setUp(bucketName: string) {
+async function setUp(bucketName: string, options: { fetch?: typeof fetch } = {}) {
   const bucket = fake.addBucket(bucketName, { region: "auto" });
   const key = fake.addKey({ id: KEY.accessKeyId, secret: KEY.secretAccessKey, buckets: { ...(fake.keys.get(KEY.accessKeyId)?.buckets ?? {}), [bucketName]: ["read", "write", "list", "delete"] } });
   const home = await tempHome();
-  const storage = createMediaStorageService({ home: home.home, env: {}, listTtlMs: 0 });
+  const storage = createMediaStorageService({ home: home.home, env: {}, listTtlMs: 0, ...(options.fetch ? { fetch: options.fetch } : {}) });
   const root = makeSite();
   const { site } = await openSite(root, { media: storage });
   const config = { connector: "r2", account: KEY.accessKeyId, bucket: bucketName, endpoint: fake.endpoint, prefix: "lowfield", publicUrl: fake.publicUrl(bucketName) };
@@ -150,19 +150,53 @@ describe("a site that keeps its media in a bucket", { timeout: 240_000 }, () => 
     expect(objects.has("other-site/secret.png")).toBe(true);
     expect(fake.buckets.get("elsewhere")!.objects.has("secret.png")).toBe(true);
     expect(Buffer.from((await storage.readStored(site, own.path))!).byteLength).toBeGreaterThan(0);
-    // A few at a time: the fifth read started together is turned away.
-    const together = await Promise.allSettled(Array.from({ length: 6 }, () => storage.readStored(site, own.path)));
-
-    expect(together.filter((result) => result.status === "rejected").map((result) => String((result as PromiseRejectedResult).reason))).toEqual([
-      expect.stringMatching(/Too many stored files/),
-      expect.stringMatching(/Too many stored files/),
-    ]);
     // A folder whose name starts with the site's ("lowfieldx/") isn't the site's.
     objects.set("lowfieldx/secret.png", secret);
     await expect(storage.readStored(site, "bucket:lowfieldx/secret.png")).rejects.toThrow("That file isn't one of this site's.");
     // Larger than the app shows: refused before anything is read.
     objects.set("lowfield/huge.mp4", { body: Buffer.alloc(26 * 1024 * 1024), contentType: "video/mp4", cacheControl: null, metadata: {}, etag: "h", lastModified: new Date() });
     await expect(storage.readStored(site, "bucket:lowfield/huge.mp4")).rejects.toThrow(/larger than 25 MB/);
+    await done();
+  });
+
+  it("shows a whole screen of stored pictures asked for at once: every read answers, four at a time", async () => {
+    let watching = false;
+    let inFlight = 0;
+    let most = 0;
+    // Each read asks the bucket twice, one after the other, so requests in flight never outnumber reads in flight.
+    const counted: typeof fetch = async (input, init) => {
+      if (!watching) return fetch(input, init);
+      most = Math.max(most, (inFlight += 1));
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return await fetch(input, init);
+      } finally {
+        inFlight -= 1;
+      }
+    };
+    const { storage, site, done } = await setUp("screenful", { fetch: counted });
+    const objects = fake.buckets.get("screenful")!.objects;
+    const pictures = Array.from({ length: 40 }, (_, index) => ({ key: `lowfield/picture-${index}.png`, body: Buffer.from(pngHeader(100 + index, 50 + index)) }));
+
+    for (const picture of pictures) objects.set(picture.key, { body: picture.body, contentType: "image/png", cacheControl: null, metadata: {}, etag: picture.key, lastModified: new Date() });
+    watching = true;
+    const together = await Promise.all(pictures.map((picture) => storage.readStored(site, `bucket:${picture.key}`)));
+
+    watching = false;
+    for (const [index, bytes] of together.entries()) expect(Buffer.from(bytes!).equals(pictures[index]!.body), pictures[index]!.key).toBe(true);
+    expect(most).toBe(4);
+    // A read nobody waits for any more leaves the line, and the ones behind it still answer.
+    const leaving = new AbortController();
+
+    watching = true;
+    const again = pictures.slice(0, 12).map((picture, index) => storage.readStored(site, `bucket:${picture.key}`, index === 9 ? { signal: leaving.signal } : {}));
+
+    leaving.abort();
+    const settled = await Promise.allSettled(again);
+
+    watching = false;
+    expect(settled.map((result) => result.status)).toEqual(again.map((_, index) => (index === 9 ? "rejected" : "fulfilled")));
+    expect(most).toBe(4);
     await done();
   });
 

@@ -2,15 +2,18 @@
  * Moving the site's files between the repository and the bucket, and
  * changing the bucket's public address: each shows its plan first (how many
  * files, how many places in how many pages, what stays), then runs as a job
- * whose progress shows with the app's other jobs. Safe to run again.
+ * whose progress and ending show on the Media screen (MoveStatus), and in the
+ * activity tray anywhere else. Safe to run again.
  */
 import { useState } from "react";
 import type { MediaMovePlan, MediaMoveRequest } from "@galley/core/media-storage/contract";
 import { api, errorShape } from "@/lib/api";
 import { bytes } from "@/lib/format";
+import { invalidate } from "@/lib/query";
 import { useJobs } from "@/lib/stores/jobs";
 import { notify } from "@/lib/stores/toasts";
 import { Button, Checkbox, ConfirmDialog, Field, Input } from "@/ui";
+import { storageKeys } from "./useMediaStorage";
 
 function describe(plan: MediaMovePlan): string {
   if (plan.kind === "address") {
@@ -55,8 +58,9 @@ export function MoveFiles({ siteId, bucket, images, onStarted }: { siteId: strin
     const job = await api("POST /api/sites/:siteId/media/storage/move", { params: { siteId }, body });
     useJobs.getState().upsert(job);
     setRequest(null);
+    // The Media screen shows its progress and how it ends; elsewhere the activity tray does.
+    invalidate(storageKeys.status(siteId));
     onStarted();
-    notify({ tone: "neutral", title: job.label, body: "Its progress shows at the bottom of the window. Pages it changes wait in Proof." });
   };
 
   return (

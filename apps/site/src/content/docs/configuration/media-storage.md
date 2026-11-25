@@ -87,6 +87,8 @@ In **Media › Storage settings**, **Move files** shows what will happen before 
 
 Each is safe to run again: what is already there is skipped, and a different file under the same name is reported, never replaced. The page changes wait in Proof like any other.
 
+While a move runs, the Media screen shows how far it is. When it ends, it says there how many files were copied, how many pages changed, and how many files stayed in the repository and where they are still mentioned. That stays on the Media screen until you dismiss it or move files again. A file that stays because the site's code or a template uses it is the move working as meant; only what couldn't be copied, updated or removed is listed as a problem.
+
 ## From a terminal
 
 ```sh

@@ -13,7 +13,7 @@
 import { BUCKET_CONNECTORS, connectorInfo, isTrialAddress, normalizeStorageConfig, settingsProblems } from "@galley/core/media-storage/info";
 import { IMAGES_INFO, imagesSettingsProblems, normalizeImagesConfig } from "@galley/core/media-storage/images-info";
 import { randomUUID } from "node:crypto";
-import type { MediaCreatedRecord, MediaCheckResult, MediaCheckStep, MediaCheckStepId, MediaConnectRequest, MediaImagesConnectRequest, MediaKeyStatus, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaUsage } from "@galley/core/media-storage/contract";
+import type { MediaCreatedRecord, MediaCheckResult, MediaCheckStep, MediaCheckStepId, MediaConnectRequest, MediaImagesConnectRequest, MediaKeyStatus, MediaMovePlan, MediaMoveRequest, MediaMoveResult, MediaStorageStatus, MediaStoreDeleteResult, MediaUsage } from "@galley/core/media-storage/contract";
 import type { Job, MediaImagesConfig, MediaItem, MediaStorageConfig } from "@galley/core/types";
 import type { Handlers, MockBackend } from "./backend.ts";
 import { MockError } from "./site.ts";
@@ -56,6 +56,9 @@ export interface MockSiteStorage {
   created: MediaCreatedRecord | null;
   imagesToken: string | null;
   imagesUseDeployKey: boolean;
+  /** The pretend move running now, and how the last one ended. */
+  moving?: Job;
+  lastMove?: MediaMoveResult;
 }
 
 const TYPES: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", avif: "image/avif", gif: "image/gif", svg: "image/svg+xml", pdf: "application/pdf", mp4: "video/mp4" };
@@ -95,6 +98,8 @@ export function createMockMediaStorage(mock: MockBackend) {
         token: state.imagesUseDeployKey ? { configured: true, source: "site", use: "deploy" } : state.imagesToken ? { configured: true, source: "site", hint: state.imagesToken.slice(-4), use: "own" } : { configured: false, source: null, use: null },
       },
       cloudflare: { keyStored: true },
+      ...(state.moving?.state === "running" ? { moving: { ...state.moving } } : {}),
+      ...(state.lastMove ? { lastMove: state.lastMove } : {}),
     };
   }
 
@@ -280,9 +285,10 @@ export function createMockMediaStorage(mock: MockBackend) {
 
   function start(siteId: string, request: MediaMoveRequest): Job {
     const steps = plan(siteId, request);
-    const job: Job = { id: randomUUID(), kind: "media", label: request.kind === "address" ? "Changing the files' address" : request.to === "repository" ? "Moving media to the repository" : "Moving media to the bucket", state: "running", progress: 0, detail: "Getting ready…", siteId, startedAt: Date.now() };
+    const job: Job = { id: randomUUID(), kind: "media", label: request.kind === "address" ? "Changing the files' address" : request.to === "repository" ? "Moving media to the repository" : request.to === "images" ? "Moving pictures to Cloudflare Images" : "Moving media to the bucket", state: "running", progress: 0, detail: "Getting ready…", siteId, startedAt: Date.now() };
 
     mock.jobs.set(job.id, job);
+    of(siteId).moving = job;
     mock.emit({ type: "job", job: { ...job } });
     void (async () => {
       for (let n = 1; n <= Math.max(1, steps.files); n += Math.max(1, Math.ceil(steps.files / 4))) {
@@ -295,6 +301,8 @@ export function createMockMediaStorage(mock: MockBackend) {
         if (state.config) state.config = { ...state.config, publicUrl: request.publicUrl.replace(/\/+$/, "") };
       }
       Object.assign(job, { state: "done", progress: 1, finishedAt: Date.now(), detail: request.kind === "address" ? `${steps.pages} pages updated; new files are loaded from ${steps.publicUrl}. Publish to make it live.` : `${steps.files} files copied, ${steps.pages} pages updated. Publish to make it live.` });
+      // Kept before the job says it ended, as the engine does: the status read on that event already has it.
+      of(siteId).lastMove = { at: Date.now(), request, state: "done", summary: job.detail ?? "", copied: request.kind === "address" ? 0 : steps.files, pages: steps.pages, removed: 0, stayed: [], stayedFiles: 0, problems: [] };
       mock.emit({ type: "job", job: { ...job } });
     })();
     return { ...job };

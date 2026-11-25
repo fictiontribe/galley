@@ -25,10 +25,11 @@ import { planMove, runMove, type MoveContext, type MoveOutcome } from "./move";
 import { checkUpload, mediaSubfolder } from "../workspace/media";
 import { createBucketStore } from "./bucket-store";
 import { runCheck, settingsFailure, testNameFor } from "./check";
-import type { MediaCreatedRecord, MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaImagesStatus, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaStoreLocation, MediaUsage } from "./contract";
+import type { MediaCreatedRecord, MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaImagesStatus, MediaMovePlan, MediaMoveRequest, MediaMoveResult, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaStoreLocation, MediaUsage } from "./contract";
 import { createMediaLibrary, type LibraryItem, type MediaLibrary } from "./library";
 import { BUCKET_CONNECTORS, isTrialAddress, normalizePrefix, normalizeStorageConfig, settingsProblems } from "./info";
 import { createMediaKeys, normalizeMediaKey, scrub, type MediaKeys } from "./keys";
+import { createReadLine } from "./read-line";
 import type { Credentials } from "./sigv4";
 import { ADDRESS_TAIL, escapePattern, parseStorePath, placeFile, StoreError, StoreNameTaken, storePath, trimFound, type MediaStore, type StoredItem } from "./store";
 import { keyUnder } from "./bucket-store";
@@ -59,8 +60,20 @@ function builtInConnectors(): BucketConnector[] {
 
 /** The most the app shows of a stored file through the server: the library's own upload limit. */
 export const RAW_LIMIT = 25 * 1024 * 1024;
-/** How many stored files one site may have read through the server at once. */
+/** How many stored files one site may have read through the server at once: each read may hold a whole file in memory. */
 export const RAW_AT_ONCE = 4;
+/**
+ * How many more reads may wait their turn for a site before one is refused.
+ * Waiting holds no file, only an open request, so the line is long: five
+ * browsers' worth at the hundred requests HTTP/2 usually lets one browser
+ * keep open (over plain HTTP a browser keeps six). It isn't longer because at
+ * a tenth to a third of a second a read, the last of this many is served in
+ * about a quarter to three quarters of a minute, which is as long as a proxy
+ * usually waits for an answer: a longer line would only fail later.
+ */
+export const RAW_WAITING = 512;
+/** The most of each list kept with how a move ended: plenty to read, and the record never grows without end. */
+const MOVE_LIST_KEPT = 300;
 const TOO_LARGE_TO_SHOW = "That file is larger than 25 MB, so the app doesn't show it. Open it at its address instead.";
 
 export interface MediaStorageServiceOptions {
@@ -145,7 +158,7 @@ export interface MediaStorageService {
   /** Deletes from a store for good — anything used by the working copy or the published version is refused. */
   deleteStored(site: SiteService, paths: string[]): Promise<MediaStoreDeleteResult>;
   /** The bytes of a stored file ("bucket:lowfield/coat.webp"), for the app's own previews; null when it isn't there. */
-  readStored(site: SiteService, path: string): Promise<Uint8Array | null>;
+  readStored(site: SiteService, path: string, options?: { signal?: AbortSignal }): Promise<Uint8Array | null>;
 
   // ── moving files, and changing a store's address
 
@@ -183,7 +196,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   const moving = new Map<string, string>();
   /** Sites whose move has been asked for and hasn't become a job yet (or runs without one). */
   const starting = new Set<string>();
-  const rawReads = new Map<string, number>();
+  const rawReads = createReadLine(RAW_AT_ONCE, RAW_WAITING);
   const claimMove = (siteId: string) => {
     const running = moving.get(siteId);
 
@@ -310,6 +323,7 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
         },
         images: await imagesStatus(site),
         cloudflare: { keyStored: Boolean(cloudflareKey) },
+        ...(await moveStatus(site.id)),
       };
     },
 
@@ -569,17 +583,9 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       return { url, working: titled, published };
     },
 
-    async readStored(site, path) {
-      // A few at a time per site: each read is bounded, and so is how many run at once.
-      const reading = rawReads.get(site.id) ?? 0;
-
-      if (reading >= RAW_AT_ONCE) throw new GalleyError("busy", "Too many stored files are being shown at once. Try again in a moment.");
-      rawReads.set(site.id, reading + 1);
-      try {
-        return await readOwn(site, path);
-      } finally {
-        rawReads.set(site.id, (rawReads.get(site.id) ?? 1) - 1);
-      }
+    readStored(site, path, read) {
+      // A few at a time per site: each read is bounded, and so is how many run at once. The rest wait their turn.
+      return rawReads.run(site.id, () => readOwn(site, path), read?.signal);
     },
 
     async planMove(site, request) {
@@ -591,7 +597,11 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
       guard("POST /api/sites/:siteId/media/storage/move");
       claimMove(site.id);
       try {
-        return await runMove(await moveContext(site, onProgress), request);
+        const outcome = await runMove(await moveContext(site, onProgress), request);
+
+        // A move that was refused or stopped here is told to whoever asked, at once; only one that ran is kept.
+        await rememberMove(site.id, request, outcome);
+        return outcome;
       } finally {
         starting.delete(site.id);
       }
@@ -608,14 +618,22 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
         starting.delete(site.id);
         throw error;
       }
-      const job = jobs.start("media", request.kind === "address" ? "Changing the files' address" : request.to === "repository" ? "Moving media to the repository" : "Moving media to the bucket");
+      const job = jobs.start("media", request.kind === "address" ? "Changing the files' address" : request.to === "repository" ? "Moving media to the repository" : request.to === "images" ? "Moving pictures to Cloudflare Images" : "Moving media to the bucket");
 
       job.update({ siteId: site.id, detail: "Getting ready…", progress: 0 });
       moving.set(site.id, job.id);
       starting.delete(site.id);
+      // How it ended is kept before the job says so: whoever hears the job end can read the whole of it at once.
       void runMove(await moveContext(site, (detail, progress) => job.update({ detail, progress })), request).then(
-        (outcome) => job.finish(outcome.problems.length ? "error" : "done", { progress: 1, detail: outcome.summary, ...(outcome.problems.length ? { output: outcome.problems.map((p) => `${p.path}: ${p.reason}`).join("\n") } : {}) }),
-        (error: unknown) => job.finish("error", { detail: error instanceof Error ? scrub(error.message) : String(error) })
+        async (outcome) => {
+          await rememberMove(site.id, request, outcome);
+          // Done unless something went wrong. A file that stays because code or a template uses it is the move working as meant.
+          job.finish(outcome.problems.length ? "error" : "done", { progress: 1, detail: outcome.summary, ...(outcome.problems.length ? { output: outcome.problems.map((p) => `${p.path}: ${p.reason}`).join("\n") } : {}) });
+        },
+        async (error: unknown) => {
+          await rememberMove(site.id, request, error);
+          job.finish("error", { detail: error instanceof Error ? scrub(error.message) : String(error) });
+        }
       );
       return job.snapshot();
     },
@@ -654,6 +672,37 @@ export function createMediaStorageService(options: MediaStorageServiceOptions): 
   };
 
   /** Reads a stored file of the site's own, refusing anything over RAW_LIMIT. */
+  /** Keeps how a move ended (its outcome, or the error that stopped it) for the site's status. Failing to keep it never fails the move. */
+  async function rememberMove(siteId: string, request: MediaMoveRequest, ended: unknown): Promise<void> {
+    const outcome = ended && typeof ended === "object" && "summary" in ended && "problems" in ended ? (ended as MoveOutcome) : null;
+    const stayed = outcome?.stillMentioned ?? [];
+    const result: MediaMoveResult = outcome
+      ? {
+          at: clock(),
+          request,
+          state: outcome.problems.length ? "error" : "done",
+          summary: outcome.summary,
+          copied: outcome.copied,
+          pages: outcome.rewrittenPages,
+          removed: outcome.removed,
+          stayed: stayed.slice(0, MOVE_LIST_KEPT).map((item) => ({ path: item.path, pages: item.pages.slice(0, 20) })),
+          stayedFiles: stayed.length,
+          problems: outcome.problems.slice(0, MOVE_LIST_KEPT).map((problem) => ({ path: problem.path, reason: scrub(problem.reason) })),
+        }
+      : { at: clock(), request, state: "error", summary: ended instanceof Error ? scrub(ended.message) : String(ended), copied: 0, pages: 0, removed: 0, stayed: [], stayedFiles: 0, problems: [] };
+
+    await library.rememberMove(siteId, result).catch(() => undefined);
+  }
+
+  /** The move running now and how the last one ended, for the site's status. */
+  async function moveStatus(siteId: string): Promise<Pick<MediaStorageStatus, "moving" | "lastMove">> {
+    const running = moving.get(siteId);
+    const job = running ? jobs.get(running) : null;
+    const lastMove = await library.lastMove(siteId).catch(() => null);
+
+    return { ...(job?.state === "running" ? { moving: job } : {}), ...(lastMove ? { lastMove } : {}) };
+  }
+
   async function readOwn(site: SiteService, path: string): Promise<Uint8Array | null> {
     const parsed = parseStorePath(path);
     const store = parsed ? (await service.stores(site)).find((candidate) => candidate.location === parsed.location) : null;

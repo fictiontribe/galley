@@ -11,6 +11,7 @@ import { keys } from "@/lib/sync";
 import { Button, Checkbox, ConfirmDialog, Dialog, Icon, PageHeader, SegmentedControl } from "@/ui";
 import { useMay } from "@/lib/may";
 import { ConnectBucketDialog } from "./storage/ConnectBucketDialog";
+import { MoveStatus } from "./storage/MoveStatus";
 import { deleteStored, isStored, useMediaStorage } from "./storage/useMediaStorage";
 import { GeneratePanel } from "./GeneratePanel";
 import { MediaDetails } from "./MediaDetails";
@@ -131,6 +132,7 @@ export function MediaScreen() {
             </Button>
           ) : null}
         </div>
+        <MoveStatus key={siteId} siteId={siteId} status={storage.data} />
         <VideoJobs
           siteId={siteId}
           onSaved={(item) => {

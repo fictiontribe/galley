@@ -242,9 +242,10 @@ async function storeReferences(site: SiteService, store: MediaStore): Promise<Ma
  * `replace`, and only those it returns a new text for change. Nothing else in
  * the file is touched.
  */
-async function rewrite(site: SiteService, paths: Iterable<string>, pattern: string, replace: (match: string) => string | null, onFile?: (done: number) => void): Promise<{ rewritten: Set<string>; refused: Map<string, string> }> {
+async function rewrite(site: SiteService, paths: Iterable<string>, pattern: string, replace: (match: string) => string | null, onFile?: (done: number) => void): Promise<{ rewritten: Set<string>; leftAlone: Set<string>; failed: Map<string, string> }> {
   const rewritten = new Set<string>();
-  const refused = new Map<string, string>();
+  const leftAlone = new Set<string>();
+  const failed = new Map<string, string>();
   let done = 0;
 
   for (const path of paths) {
@@ -267,11 +268,21 @@ async function rewrite(site: SiteService, paths: Iterable<string>, pattern: stri
       if (text !== file.content) await site.writeFile(path, text, { origin: "user", mode: "content", baseHash: file.hash });
       rewritten.add(path);
     } catch (error) {
-      refused.set(path, error instanceof GalleyError && error.code === "forbidden" ? "it is part of the site's code or templates, not its content, so Galley leaves it as it is" : error instanceof Error ? error.message : String(error));
+      // The site's code and templates are never changed by a move. That is by design, so it isn't a failure.
+      if (error instanceof GalleyError && error.code === "forbidden") leftAlone.add(path);
+      else failed.set(path, error instanceof Error ? error.message : String(error));
     }
     onFile?.((done += 1));
   }
-  return { rewritten, refused };
+  return { rewritten, leftAlone, failed };
+}
+
+/** Why a file of the site's code or templates keeps the addresses it had. */
+const LEFT_ALONE = "it is part of the site's code or templates, not its content, so Galley leaves it as it is";
+
+/** "a, b, c and 2 more". */
+function someOf(paths: string[], most = 5): string {
+  return paths.length > most ? `${paths.slice(0, most).join(", ")} and ${paths.length - most} more` : paths.join(", ");
 }
 
 /** `match` with its address part swapped, keeping a ?query or #hash and trailing punctuation. */
@@ -435,10 +446,14 @@ export interface MoveOutcome {
   skipped: number;
   rewrittenPages: number;
   removed: number;
+  /** What went wrong: a file that couldn't be copied, a page that couldn't be updated, a copy that couldn't be removed. Empty when the move worked. */
   problems: MediaMovePlan["problems"];
+  /** What happened, in a few sentences. */
   summary: string;
-  /** Repository files kept although copies weren't: a page still mentions them. */
+  /** Repository files kept although copies weren't, each with the files that still mention it. By design: not a problem. */
   stillMentioned?: Array<{ path: string; pages: string[] }>;
+  /** Files of the site's code or templates that use a moved file. Galley leaves them as they are, so they keep the address they had. By design: not a problem. */
+  leftAlone?: string[];
 }
 
 export async function runMove(context: MoveContext, request: MediaMoveRequest): Promise<MoveOutcome> {
@@ -550,9 +565,9 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
     return move ? fromStore(source, match, move.newUrl) : null;
   };
   const pages = files.size;
-  const { rewritten, refused } = await rewrite(context.site, files, pattern, replace, (count) => progress(`Updating pages: ${count} of ${pages}`, 0.65 + 0.25 * (count / Math.max(1, pages))));
+  const { rewritten, leftAlone, failed } = await rewrite(context.site, files, pattern, replace, (count) => progress(`Updating pages: ${count} of ${pages}`, 0.65 + 0.25 * (count / Math.max(1, pages))));
 
-  for (const [path, reason] of refused) problems.push({ path, reason: `Couldn't update it, so the files it uses stay where they are: ${reason}` });
+  for (const [path, reason] of failed) problems.push({ path, reason: `Couldn't update it, so the files it uses stay where they are: ${reason}` });
 
   // 3. Remove the repository's copies nothing can still reach (moving to a store, unless copies are kept).
   let removed = 0;
@@ -561,8 +576,13 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
   if (request.from === "repository" && !request.keepCopies) {
     for (const move of copiedMoves) {
       const from = referencedFrom.get(move.from) ?? new Set<string>();
+      const unchanged = [...from].filter((path) => !rewritten.has(path));
 
-      if ([...from].some((path) => !rewritten.has(path))) continue;
+      // A file Galley didn't update still uses it (code or a template it leaves alone, or a page that couldn't be saved): it stays.
+      if (unchanged.length) {
+        stillMentioned.push({ path: move.from, pages: unchanged.sort() });
+        continue;
+      }
       // After the rewrite, the old address must appear nowhere: a page still mentioning it keeps its file.
       const left = [...(await plainMentions(context.site, move.oldUrl)).keys()];
 
@@ -580,16 +600,20 @@ export async function runMove(context: MoveContext, request: MediaMoveRequest): 
   }
   progress("Done", 1);
   const where = request.to === "repository" ? "the repository" : storeOf(context, request.to as MediaStoreLocation).name;
+  const mentioning = [...new Set(stillMentioned.flatMap((item) => item.pages))].sort();
+  const alone = [...leftAlone].sort();
   const summary =
     `${copied} ${copied === 1 ? "file" : "files"} copied to ${where}${skipped ? ` (${skipped} already there)` : ""}, ${rewritten.size} ${rewritten.size === 1 ? "page" : "pages"} updated` +
     (removed ? `, ${removed} removed from the repository` : "") +
-    (stillMentioned.length ? `. ${stillMentioned.length} left in the repository: still mentioned in ${[...new Set(stillMentioned.flatMap((item) => item.pages))].slice(0, 5).join(", ")}` : "") +
+    (stillMentioned.length ? `. ${stillMentioned.length} left in the repository: still mentioned in ${someOf(mentioning)}` : "") +
+    (stillMentioned.length && mentioning.some((path) => leftAlone.has(path)) ? ". Galley doesn't change the site's code or templates, so the files they use stay where they are" : "") +
+    (request.from !== "repository" && alone.length ? `. ${someOf(alone)} still ${alone.length === 1 ? "points" : "point"} at ${storeOf(context, request.from).name}: Galley doesn't change the site's code or templates, so change ${alone.length === 1 ? "it" : "them"} by hand` : "") +
     (request.from !== "repository" ? `. The files are still in ${storeOf(context, request.from).name}; remove them there once the pages are published` : "") +
     (plan.staying ? `. ${plan.staying.files} ${plan.staying.files === 1 ? "stayed where it was" : "stayed where they were"}: ${plan.staying.reason.replace(/\.$/, "")}` : "") +
     (problems.length ? `. ${problems.length} ${problems.length === 1 ? "problem" : "problems"} — see the list` : "") +
     ". Publish to make it live.";
 
-  return { plan, copied, skipped, rewrittenPages: rewritten.size, removed, problems, summary, ...(stillMentioned.length ? { stillMentioned } : {}) };
+  return { plan, copied, skipped, rewrittenPages: rewritten.size, removed, problems, summary, ...(stillMentioned.length ? { stillMentioned } : {}), ...(alone.length ? { leftAlone: alone } : {}) };
 }
 
 async function readRepoBytes(site: SiteService, path: string): Promise<Uint8Array> {
@@ -629,8 +653,9 @@ async function runAddress(context: MoveContext, request: Extract<MediaMoveReques
 
     return next ? `${next}${match.slice(trimmed.length)}` : null;
   };
-  const { rewritten, refused } = await rewrite(context.site, files, store.addressPattern(), replace, (count) => progress(`Updating pages: ${count} of ${files.size}`, 0.2 + 0.7 * (count / Math.max(1, files.size))));
-  const problems = [...refused].map(([path, reason]) => ({ path, reason: `Couldn't update it: ${reason}` }));
+  const { rewritten, leftAlone, failed } = await rewrite(context.site, files, store.addressPattern(), replace, (count) => progress(`Updating pages: ${count} of ${files.size}`, 0.2 + 0.7 * (count / Math.max(1, files.size))));
+  // Here a file left alone does stop the change: the new address is saved only once nothing uses the old one.
+  const problems = [...[...leftAlone].map((path) => [path, LEFT_ALONE] as const), ...failed].map(([path, reason]) => ({ path, reason: `Couldn't update it: ${reason}` }));
 
   if (!problems.length) await context.saveAddress(store.location, publicUrl);
   progress("Done", 1);
