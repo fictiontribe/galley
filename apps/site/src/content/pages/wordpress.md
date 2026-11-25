@@ -16,7 +16,7 @@ sections:
       kind: screen
       src: wordpress-plan
       fallback: arrange
-      alt: "Galley’s “Bring your WordPress site” screen at its second step, “Here’s what comes across from Fernhill Garden Studio”: 60 posts, 12 pages, 84 images, 3 authors and 4 categories, and which collection each goes into."
+      alt: "Galley’s “Bring your WordPress site” screen at its second step, “Here’s what comes across from Fernhill Garden Studio”: 12 posts, 6 pages, 18 images, 3 authors and 4 categories, and which collection each goes into."
     caption: The guided move, on an invented WordPress site brought into the Lowfield starter.
   - type: lists
     id: what-moves

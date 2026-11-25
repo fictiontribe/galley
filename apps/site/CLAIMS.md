@@ -108,7 +108,7 @@ caption was written against the matching guide in `docs/editing/`.
 | WordPress: posts, pages, images and search details in four steps, as changes checked before anything goes live (badge: New, in final checks) | /tour/ “Move from WordPress” | `docs/editing/wordpress.md`; captures `wordpress-where`, `wordpress-report` (tour), `wordpress-plan` (/wordpress/). **Pictured with a stand-in WordPress site on the same computer** (`http://127.0.0.1:4792`); the tour item and /how-to/move-from-wordpress/ say so in one line |
 | “Run this in your site’s folder and Galley opens in your browser.” | /tour/ close | docs index “The quickest way in”; the install row above |
 | “Forms and their inbox, scripts with consent, redirects, the brand, search checks and every site you look after — all in the same app.” | home, “The rest of the app.” | the rows above |
-| How-to steps (`do`, `see`) | /how-to/<slug>/ (12 guides) | Each guide’s own run in `src/data/howto.json` (“captured”: 2026-11-24, Galley 0.1.2), and its `guide` in the docs. /how-to/search-and-ai/ steps 4–5 show the per-crawler Allow/Block switch (`crawlers` in `status.json`, built); the how-to pages carry no badges |
+| How-to steps (`do`, `see`) | /how-to/<slug>/ (14 guides) | Each guide’s own run in `src/data/howto.json` (“captured”: 2026-11-24, Galley 0.1.2), and its `guide` in the docs. /how-to/search-and-ai/ steps 4–5 show the per-crawler Allow/Block switch (`crawlers` in `status.json`, built); the how-to pages carry no badges |
 
 **Known differences, not changed here.** `docs/editing/brand.md`,
 `redirects.md` and `search-and-ai.md` still say “Status: new, in final

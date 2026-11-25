@@ -207,7 +207,7 @@ Intent, not a promise. The longer version is [ROADMAP.md](ROADMAP.md).
 | --- | --- |
 | [Quickstart](https://galley.fictiontribe.com/docs/getting-started/quickstart/) | Your site in Galley: change a page, proof it, publish it |
 | [Tour](https://galley.fictiontribe.com/tour/) | The whole app, in pictures |
-| [How-to guides](https://galley.fictiontribe.com/how-to/) | Twelve tasks, step by step |
+| [How-to guides](https://galley.fictiontribe.com/how-to/) | Fourteen tasks, step by step |
 | [Editing guides](https://galley.fictiontribe.com/docs/editing/tour/) | Every screen, for the people who change the site |
 | [Running it](https://galley.fictiontribe.com/docs/running/hosted/) | The hosted editor, the [desktop app](https://galley.fictiontribe.com/docs/running/desktop/), [deploying](https://galley.fictiontribe.com/docs/running/deploy/) |
 | [Reference](https://galley.fictiontribe.com/docs/reference/cli/) | The command line, the [configuration file](https://galley.fictiontribe.com/docs/reference/config/), the [HTTP API](https://galley.fictiontribe.com/docs/reference/api/) |

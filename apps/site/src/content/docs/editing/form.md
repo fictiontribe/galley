@@ -18,7 +18,7 @@ For people who edit a site. The form is the surest way to change anything on a p
 
 **Put back**, beside the field, returns it to what is published. The page in the middle shows the change a moment later.
 
-A field marked **\*** must have a value. The small grey name beside each label (`heading`) is the field's name in the file, for whoever looks after the site's code.
+A field marked **\*** must have a value. The small grey name beside the label of a page's own fields (`title`, `description`) is the field's name in the file, for whoever looks after the site's code.
 
 ## Sections
 
