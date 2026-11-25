@@ -4,7 +4,9 @@
  * SecretStore — see site-settings.ts) and usage.
  */
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { GalleyError } from "../errors";
@@ -75,7 +77,9 @@ function gitIdentityReader(home: string, env: NodeJS.ProcessEnv): () => Promise<
   let cached: Promise<{ name: string; email: string }> | null = null;
   const read = async (key: string) => {
     try {
-      const result = await runGit(home, ["config", "--get", key], { env: gitConfigLocation(env), readOnly: true, allowFailure: true, timeoutMs: 5_000 });
+      // The home may not exist yet (a first run reads settings before anything is written there); git can't be
+      // started in a folder that isn't there, so the system's temporary folder stands in: no repository either.
+      const result = await runGit(existsSync(home) ? home : tmpdir(), ["config", "--get", key], { env: gitConfigLocation(env), readOnly: true, allowFailure: true, timeoutMs: 5_000 });
 
       return result.code === 0 ? result.text.trim() : "";
     } catch {

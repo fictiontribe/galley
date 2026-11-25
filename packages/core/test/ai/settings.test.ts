@@ -44,6 +44,12 @@ describe("settings", () => {
     }
   });
 
+  it("reads the machine's git identity before its own folder exists (a first run)", async () => {
+    const settings = createSettingsService({ home: join(tempDir(), "not-made-yet"), env: cleanEnv() });
+
+    expect((await settings.get()).author).toEqual({ name: "Test Editor", email: "editor@example.com" });
+  });
+
   it("lists models with list prices and a plain blurb each", () => {
     expect(MODELS.find((m) => m.id === "claude-opus-5-5")).toMatchObject({ inputPrice: 4, outputPrice: 20 });
     expect(MODELS.find((m) => m.id === "claude-sonnet-5-5")).toMatchObject({ inputPrice: 2, outputPrice: 10 });
