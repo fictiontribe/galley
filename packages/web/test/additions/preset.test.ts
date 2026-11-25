@@ -33,10 +33,11 @@ describe("the web package's entry points", () => {
     expect(existsSync(join(galleyWebAliases["@"], "app", "App.tsx"))).toBe(true);
     expect(existsSync(join(galleyWebAliases["@brand"], "tokens.css"))).toBe(true);
     expect(existsSync(join(galleyWebPublicDir, "theme.js"))).toBe(true);
+    expect(galleyWebDedupe).toEqual(["react", "react-dom", "react-router", "react-router-dom"]);
     const plugin = galleyWeb();
 
     expect(Object.keys(plugin)).toEqual(["name", "config"]);
-    expect(plugin.config()).toEqual({ resolve: { alias: { ...galleyWebAliases }, dedupe: ["react", "react-dom", "react-router-dom"] }, publicDir: galleyWebPublicDir, build: { target: "es2023" } });
+    expect(plugin.config()).toEqual({ resolve: { alias: { ...galleyWebAliases }, dedupe: [...galleyWebDedupe] }, publicDir: galleyWebPublicDir, build: { target: "es2023" } });
     // What the program's own config says about either is left as it is, "no public folder" included.
     expect(plugin.config({ publicDir: "/somewhere/else", build: { target: "es2022" } })).toEqual({ resolve: { alias: { ...galleyWebAliases }, dedupe: [...galleyWebDedupe] } });
     expect(plugin.config({ publicDir: false })).toEqual({ resolve: { alias: { ...galleyWebAliases }, dedupe: [...galleyWebDedupe] }, build: { target: galleyWebTarget } });

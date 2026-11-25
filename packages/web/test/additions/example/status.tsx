@@ -7,7 +7,7 @@
  * One request for a site, however many places show its answer: a list draws
  * its rows' additions once for every row on screen, and again as it scrolls.
  */
-import { useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { extensionApi, onReconnect, SafeText, setStreamValue, subscribeExtension, useRoleMay, useSiteId, type Addition } from "@galley/web/additions";
 import { Badge } from "@galley/web/ui";
 
@@ -28,12 +28,17 @@ function entryFor(siteId: string) {
   return entry;
 }
 
+const same = (a: Status | null, b: Status | null) => a !== null && b !== null && a.waiting === b.waiting && a.note === b.note;
+
 function load(siteId: string): void {
   void status
     .get<Status>(["sites", siteId])
     .then((answer) => {
       const entry = entryFor(siteId);
 
+      // Keep the one we have when nothing changed: the components read the stored object, so a new one with the same
+      // contents would re-render (and, through useSyncExternalStore, churn) for no reason.
+      if (same(entry.answer, answer)) return;
       entry.answer = answer;
       for (const show of entry.showing) show();
     })
@@ -62,8 +67,12 @@ function watch(siteId: string, show: () => void): () => void {
 }
 
 function useStatus(siteId: string | null): Status | null {
+  // One subscribe function per site: a new one each render would make useSyncExternalStore re-subscribe every time,
+  // which here would re-ask the route in an endless loop.
+  const subscribe = useCallback((show: () => void) => (siteId ? watch(siteId, show) : () => undefined), [siteId]);
+
   return useSyncExternalStore(
-    (show) => (siteId ? watch(siteId, show) : () => undefined),
+    subscribe,
     () => (siteId ? (sites.get(siteId)?.answer ?? null) : null),
   );
 }

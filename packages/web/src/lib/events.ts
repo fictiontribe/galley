@@ -73,9 +73,10 @@ const lastFailure = new WeakMap<object, string>();
 /**
  * Runs something a screen or an addition handed over, on its own: what it
  * throws does not reach whoever is next in line. The failure is reported the
- * way the browser reports an uncaught error (it shows in the console, and a
- * debugger that pauses on uncaught errors still sees it), once for each
- * handler and each different failure.
+ * way the browser reports an uncaught error (`reportError`), so it reaches
+ * the console and whatever listens for the window's `error` event. Reported
+ * once for each handler and each different failure, not again while it keeps
+ * failing the same way.
  */
 function onItsOwn(what: string, key: object, run: () => void): void {
   try {
@@ -180,6 +181,9 @@ async function reopenIfChanged(): Promise<void> {
   }
   if (!source) return;
   const mine = generation;
+  // The very EventSource the check started on: `generation` isn't bumped when the stream drops and the app reopens it
+  // without values, so comparing the object too keeps the check from closing a fresh stream it never looked at.
+  const started = source;
   let url: string;
 
   checking = true;
@@ -191,8 +195,8 @@ async function reopenIfChanged(): Promise<void> {
   const again = checkAgain;
 
   checkAgain = false;
-  // Still the same stream (not closed, dropped or signed out meanwhile), and it would be opened at another address.
-  if (mine === generation && source && url !== streamUrl) {
+  // Still the same stream (not closed, dropped, reopened or signed out meanwhile), and it would be opened at another address.
+  if (mine === generation && source === started && url !== streamUrl) {
     reopenedAt = Date.now();
     generation += 1;
     source.close();
