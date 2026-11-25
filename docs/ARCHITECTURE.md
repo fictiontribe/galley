@@ -304,7 +304,12 @@ after a list is answered — listing never opens, detects or waits on a site.
 `scan`/`addMany` add the sites in a folder without opening any. The
 **preview policy** (`site/preview-policy.ts`) keeps at most N previews
 running and pauses unused ones (they wake when the person returns); an open
-site unused for an hour is closed again. `site/scope.ts` carries the site a
+site unused for an hour is closed again, unless its preview is running, a
+job is, or an Undo is still offered on it (`OpenSite.undoOffered`). A closed
+site refuses whoever kept it, in one sentence (`SITE_CLOSED`); its workspace
+refuses file writes, new checkpoints and git work still waiting, git work
+already running ends first, and the registry opens the site again only once
+it has closed. `site/scope.ts` carries the site a
 request is for, so a site's own keys and author apply to everything that
 request starts.
 

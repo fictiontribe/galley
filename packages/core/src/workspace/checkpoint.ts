@@ -21,7 +21,7 @@
  */
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { PRODUCT } from "../brand";
@@ -31,6 +31,12 @@ import { bytesEqual, hashContent, isBinary } from "./files";
 
 /** Pre-images above this size are kept in a temp file instead of memory. */
 export const SPILL_BYTES = 5 * 1024 * 1024;
+/**
+ * How much of a site's pre-images all its checkpoints together keep in memory.
+ * Past it, a pre-image goes to a temp file whatever its size: a site whose Undo
+ * is offered stays open (registry.ts), so what it keeps must stay bounded.
+ */
+export const MEMORY_BUDGET_BYTES = 32 * 1024 * 1024;
 /** Text above this size is never compared line by line to tell whether a page was moved. */
 const PRINT_BYTES = 512 * 1024;
 /** How alike two files must be (lines in common over lines in either) to be one page that moved. */
@@ -50,17 +56,33 @@ type Mark = string | null;
 
 const markOf = (bytes: Uint8Array | null): Mark => (bytes === null ? null : hashContent(bytes));
 
-/** A text file's lines, to tell how alike two files are. Null: not text, too large, or nothing in it. */
-type Print = Set<string> | null;
+/**
+ * A text file's lines, to tell how alike two files are: a number for each
+ * line (its FNV-1a hash), never the text, so what is kept stays small and
+ * keeps no copy of the file alive. Null: not text, too large, or nothing in it.
+ */
+type Print = Set<number> | null;
+/** What a print is counted as against a site's memory budget, for each line it holds. */
+const PRINT_LINE_BYTES = 16;
+
+function lineHash(text: string): number {
+  let hash = 0x811c9dc5;
+
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
 
 function printOf(bytes: Uint8Array | null): Print {
   if (bytes === null || bytes.length === 0 || bytes.length > PRINT_BYTES || isBinary(bytes)) return null;
-  const lines = new Set<string>();
+  const lines = new Set<number>();
 
   for (const line of Buffer.from(bytes.buffer, bytes.byteOffset, bytes.length).toString("utf8").split("\n")) {
     const text = line.trim();
 
-    if (text) lines.add(text);
+    if (text) lines.add(lineHash(text));
   }
   return lines.size ? lines : null;
 }
@@ -110,6 +132,14 @@ export interface WorkspaceCheckpoint extends Checkpoint {
   readonly label: string;
   /** Free the recorded pre-images (and any temp files). Restore is no longer possible afterwards. */
   release(): Promise<void>;
+  /**
+   * Its holder offers it as an Undo (the assistant's last replies, a batch of
+   * search fixes) and will release it. While it is offered, has recorded
+   * something and hasn't been put back, its site is not closed for lack of
+   * use. Only the engine's Undo holders call it; what extensions and plugins
+   * are handed of a checkpoint doesn't have it.
+   */
+  offer(): void;
 }
 
 /**
@@ -119,7 +149,7 @@ export interface WorkspaceCheckpoint extends Checkpoint {
  * nothing left to put back: answering "nothing was restored" as if the undo
  * had been done would be untrue.
  */
-export const UNDO_LOST = "That can't be undone from here any more: the site was closed after a while without use, and what Undo keeps was let go with it. You can still discard the changes in Proof.";
+export const UNDO_LOST = "That can't be undone from here any more: the site was closed, and what Undo keeps was let go with it. You can still discard the changes in Proof.";
 
 class CheckpointImpl implements WorkspaceCheckpoint {
   readonly id = randomUUID();
@@ -128,6 +158,12 @@ class CheckpointImpl implements WorkspaceCheckpoint {
   released = false;
   /** Its site was closed under it: what it kept is gone, though whoever holds it never let it go. */
   lost = false;
+  /** Offered as an Undo by a holder that will release it (`offer`). */
+  offered = false;
+  /** Put back once already: what is left of it is no longer an Undo to keep a site open for. */
+  restored = false;
+  /** Bytes of its pre-images held in memory, counted against the site's budget. */
+  inMemory = 0;
   private spillDir: string | null = null;
   private leftBehind: string[] = [];
   /** Paths its own work wrote after it was closed. */
@@ -155,6 +191,15 @@ class CheckpointImpl implements WorkspaceCheckpoint {
     this.open = false;
   }
 
+  offer(): void {
+    if (!this.released && !this.lost) this.offered = true;
+  }
+
+  /** Whether this is an Undo its holder still offers: offered, something recorded, neither put back nor let go. */
+  get live(): boolean {
+    return this.offered && !this.released && !this.lost && !this.restored && this.records.size > 0;
+  }
+
   async record(path: string, before: Uint8Array | null, after: Uint8Array | null): Promise<void> {
     if (this.released) return;
     if (!this.open) {
@@ -166,19 +211,47 @@ class CheckpointImpl implements WorkspaceCheckpoint {
     if (known) {
       if (markOf(before) !== known.wrote) known.mixed = true;
       known.wrote = markOf(after);
-      if (known.before.kind === "absent") known.made = printOf(after);
+      if (known.before.kind === "absent") known.made = this.printWithin(known.made, printOf(after));
       return;
     }
-    this.records.set(path, { before: await this.keep(before), wrote: markOf(after), mixed: false, made: before === null ? printOf(after) : null });
+    this.records.set(path, { before: await this.keep(before), wrote: markOf(after), mixed: false, made: before === null ? this.printWithin(null, printOf(after)) : null });
+  }
+
+  /**
+   * A made file's print, counted against the site's budget in place of the
+   * one it replaces. Past the budget none is kept: a page it moved is then
+   * paired only when the two are the same byte for byte.
+   */
+  private printWithin(old: Print, next: Print): Print {
+    this.inMemory -= (old?.size ?? 0) * PRINT_LINE_BYTES;
+    const cost = (next?.size ?? 0) * PRINT_LINE_BYTES;
+
+    if (!next || this.manager.inMemory() + cost > MEMORY_BUDGET_BYTES) return null;
+    this.inMemory += cost;
+    return next;
   }
 
   private async keep(before: Uint8Array | null): Promise<PreImage> {
     if (before === null) return { kind: "absent" };
-    if (before.length <= SPILL_BYTES) return { kind: "memory", bytes: before };
+    if (before.length <= SPILL_BYTES && this.manager.inMemory() + before.length <= MEMORY_BUDGET_BYTES) {
+      this.inMemory += before.length;
+      return { kind: "memory", bytes: before };
+    }
     const file = join(await this.ensureSpillDir(), `${randomUUID()}.bin`);
 
     await writeFile(file, before);
+    this.manager.keepSpillsFresh();
     return { kind: "spilled", file };
+  }
+
+  /** Marks its temp files as just used, so a cleaner that removes old temp files leaves an Undo that is still offered alone. */
+  async touchSpills(): Promise<void> {
+    if (!this.spillDir || !this.live) return;
+    const at = new Date();
+    const dir = this.spillDir;
+
+    await utimes(dir, at, at).catch(() => undefined);
+    for (const name of await readdir(dir).catch(() => [] as string[])) await utimes(join(dir, name), at, at).catch(() => undefined);
   }
 
   private async ensureSpillDir(): Promise<string> {
@@ -269,6 +342,8 @@ class CheckpointImpl implements WorkspaceCheckpoint {
     // Written by this work after the reply ended: still there unless it was put back above.
     for (const path of this.late) if (!restored.includes(path)) left.add(path);
     this.leftBehind = [...left];
+    // Put back: no longer an Undo to keep its site open for. (A restore refused before it began, above, still is.)
+    this.restored = true;
     if (restored.length > 0) await this.manager.host.emitUndo(restored);
     return restored;
   }
@@ -276,6 +351,7 @@ class CheckpointImpl implements WorkspaceCheckpoint {
   async release(): Promise<void> {
     this.close();
     this.released = true;
+    this.inMemory = 0;
     this.records.clear();
     this.late.clear();
     this.manager.forget(this);
@@ -309,8 +385,12 @@ export function outsideAnyCheckpoint<T>(run: () => T): T {
   return scope.run(undefined, run);
 }
 
+/** How often the temp files of an Undo still offered are marked as used: well inside the days a temp cleaner waits. */
+const SPILL_TOUCH_MS = 6 * 60 * 60_000;
+
 export class CheckpointManager {
   private readonly all = new Set<CheckpointImpl>();
+  private spillTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(readonly host: CheckpointHost) {}
 
@@ -351,7 +431,37 @@ export class CheckpointManager {
     this.all.delete(checkpoint);
   }
 
+  /** Keeps the temp files of offered checkpoints fresh, from the first one spilled until the workspace closes. */
+  keepSpillsFresh(): void {
+    if (this.spillTimer) return;
+    this.spillTimer = setInterval(() => {
+      for (const checkpoint of this.all) void checkpoint.touchSpills();
+    }, SPILL_TOUCH_MS);
+    this.spillTimer.unref?.();
+  }
+
+  /** Bytes of pre-images all this workspace's checkpoints hold in memory. */
+  inMemory(): number {
+    let total = 0;
+
+    for (const checkpoint of this.all) total += checkpoint.inMemory;
+    return total;
+  }
+
+  /** Whether any checkpoint here is an Undo its holder still offers (`offer`), so the site shouldn't be closed for lack of use. */
+  undoOffered(): boolean {
+    for (const checkpoint of this.all) if (checkpoint.live) return true;
+    return false;
+  }
+
+  /** Its workspace is closing: every checkpoint is lost from now on (UNDO_LOST), though what it kept is let go only at `dispose`. */
+  close(): void {
+    for (const checkpoint of this.all) checkpoint.lost = true;
+  }
+
   async dispose(): Promise<void> {
+    if (this.spillTimer) clearInterval(this.spillTimer);
+    this.spillTimer = null;
     for (const checkpoint of [...this.all]) {
       // Let go by the site closing, not by whoever holds it: an undo asked of it later says so.
       checkpoint.lost = true;

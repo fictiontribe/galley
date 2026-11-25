@@ -2039,6 +2039,12 @@ export interface Checkpoint {
   restore(): Promise<string[]>;
   /** After `restore()`: the paths it left as they are, because someone else changed them after this checkpoint's own work did. */
   left(): string[];
+  /**
+   * Lets go of what it kept (the files as they were, any temp files), once no
+   * undo is offered for it any more. `restore()` puts back nothing afterwards.
+   * One that is kept and never let go stays in memory until its site closes.
+   */
+  release(): Promise<void>;
 }
 
 export interface PreviewController {

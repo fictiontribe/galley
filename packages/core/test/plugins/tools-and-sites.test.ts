@@ -19,6 +19,7 @@ import {
   setHostedMode,
   type PluginRegistry,
 } from "../../src/plugins/index";
+import { scopedSite } from "../../src/plugins/tools";
 import { harness } from "../ai/helpers/env";
 import { createFakeSite } from "../ai/helpers/fake-site";
 import { scriptedFetch, stream, testClient, type MessageSpec } from "../ai/helpers/scripted-fetch";
@@ -251,4 +252,56 @@ describe("plugins a site names", () => {
     expect((await loadSiteModel(root)).framework.id).toBe("named-adapter");
     expect((await site.readEntry(HOME)).title).toBeTruthy();
   });
+});
+
+describe("the site a plugin is handed", () => {
+  it("can't close the site, hands a checkpoint of its public members only, and can't be changed or looked round", async () => {
+    const { site } = await openSite(makeSite());
+    const scoped = scopedSite(site, { readOnly: true, mode: "content", name: "a hook" }) as unknown as Record<string, unknown>;
+
+    for (const name of ["dispose", "snapshot", "previewHandle", "liveUrl", "undoOffered", "isClosed"]) {
+      expect(scoped[name], name).toBeUndefined();
+      expect(name in scoped, name).toBe(false);
+    }
+    // Read-only, looked at as a descriptor too: the same refusal.
+    const described = Object.getOwnPropertyDescriptor(scoped, "writeFile")!.value as (...args: unknown[]) => Promise<unknown>;
+
+    await expect(described(HOME, "x", { origin: "user", mode: "content" })).rejects.toMatchObject({ code: "forbidden" });
+    expect(() => Object.defineProperty(scoped, "added", { value: () => site })).toThrow(TypeError);
+    expect(() => Object.freeze(scoped)).toThrow(TypeError);
+    expect(Reflect.set(scoped, "readFile", () => "mine")).toBe(false);
+    // Still the site's own, every member: nothing above changed it.
+    expect((await site.readFile(HOME)).content).toBeTruthy();
+
+    const writing = scopedSite(site, { readOnly: false, mode: "content", name: "a tool" });
+    const checkpoint = writing.checkpoint("a tool's work") as unknown as Record<string, unknown>;
+
+    expect(Object.keys(checkpoint).sort()).toEqual(["close", "id", "left", "paths", "release", "restore", "run"]);
+    expect("offer" in checkpoint).toBe(false);
+    expect("manager" in checkpoint).toBe(false);
+    await (checkpoint.release as () => Promise<void>)();
+  }, 120_000);
+
+  it("a closed site's refused read of its settings isn't taken for a site naming no plugins", async () => {
+    const root = makeSite();
+
+    siteWithPlugin(root);
+    writeFileSync(join(root, "galley.config.json"), JSON.stringify({ plugins: ["./tools/plugin.mjs"] }));
+    const kept = await openSite(root);
+    const registry = createPluginRegistry();
+
+    activate(registry);
+    await ensureSitePlugins(registry, kept.site, {});
+    expect(registry.tools(root).map((tool) => tool.name)).toEqual(["local_hello"]);
+    // The settings change, and the site that was kept is closed before it reloads them.
+    writeFileSync(join(root, "galley.config.json"), JSON.stringify({ plugins: ["./tools/plugin.mjs"], name: "Renamed" }));
+    await kept.site.dispose();
+    await ensureSitePlugins(registry, kept.site, {});
+    expect(registry.tools(root).map((tool) => tool.name)).toEqual(["local_hello"]);
+    // The site opened next loads them itself.
+    const next = await openSite(root);
+
+    await ensureSitePlugins(registry, next.site, {});
+    expect(registry.tools(root).map((tool) => tool.name)).toEqual(["local_hello"]);
+  }, 120_000);
 });

@@ -7,8 +7,10 @@
  *   of the site and reads its own rules from it (what content mode may
  *   write, how it publishes), so an extension that tidied the object it was
  *   given would otherwise change those rules for everyone. Plain data is
- *   copied; a thing to drive (the preview's controller, an assistant turn's
- *   undo) is the engine's own, behind the same two guards as the site.
+ *   copied; a thing to drive (the preview's controller, a checkpoint) is a
+ *   plain object with only its public members, each going to the engine's
+ *   own behind the same two guards as the site, and what they answer is
+ *   copied too.
  * - It stops with the extension. Once the extension has been stopped, every
  *   member of every site it was handed refuses, and so does every method of
  *   a controller it took from one: the data folder may be another server's
@@ -51,7 +53,7 @@ export const SITE_CHANGES = [
 export const SITE_WITHHELD = ["dispose"] as const satisfies ReadonlyArray<keyof SiteService>;
 
 /** What an open site carries for the engine's own use, beyond the site service. Never handed either. */
-export const SITE_INTERNAL = ["snapshot", "previewHandle", "liveUrl"] as const;
+export const SITE_INTERNAL = ["snapshot", "previewHandle", "liveUrl", "undoOffered", "isClosed"] as const;
 
 /**
  * Changes that answer with a thing to drive, not with data, and which of its
@@ -67,26 +69,37 @@ const CONTROLLERS: Record<string, ReadonlySet<string>> = {
 };
 
 /**
+ * Each controller's public members (PreviewController and Checkpoint in the
+ * engine's types), and only those. Whatever else the engine's object carries
+ * for itself is never copied onto what an extension is handed.
+ */
+const CONTROLLER_MEMBERS: Record<string, readonly string[]> = {
+  preview: ["status", "start", "stop", "restart"],
+  checkpoint: ["id", "paths", "run", "close", "restore", "left", "release"],
+};
+
+/**
  * A controller as an extension is handed it: a plain, frozen object with the
  * controller's members, each going to the engine's own behind the site's
  * guards. Every method asks first whether the extension is still alive; one
  * that changes something asks the GET rule too. The engine's own object and
  * its functions are not reachable from it, however it is looked at.
  */
-function guardController<T extends object>(controller: T, changes: ReadonlySet<string>, live: () => void, mayChange: () => void): T {
+function guardController<T extends object>(controller: T, members: readonly string[], changes: ReadonlySet<string>, live: () => void, mayChange: () => void): T {
   const guarded: Record<string, unknown> = {};
-  const names = new Set<string>();
 
-  // Its own members and what it inherits (a controller may be a class's), short of what every object has.
-  for (let from: object | null = controller; from !== null && from !== Object.prototype; from = Object.getPrototypeOf(from) as object | null) {
-    for (const name of Object.getOwnPropertyNames(from)) if (name !== "constructor") names.add(name);
-  }
-  for (const name of names) {
+  // Only the controller's public members: the engine's object may carry more for its own use, and none of that is handed on.
+  for (const name of members) {
     if (typeof (controller as Record<string, unknown>)[name] === "function") {
       guarded[name] = (...args: unknown[]) => {
         if (changes.has(name)) mayChange();
         else live();
-        return ((controller as Record<string, unknown>)[name] as (...a: unknown[]) => unknown).apply(controller, args);
+        const answer = ((controller as Record<string, unknown>)[name] as (...a: unknown[]) => unknown).apply(controller, args);
+
+        // `run` answers with the extension's own work. Anything else answers with the engine's: copied, a promise too, so what
+        // is handed back is never an object the engine itself goes on using.
+        if (name === "run") return answer;
+        return answer !== null && typeof answer === "object" && typeof (answer as { then?: unknown }).then === "function" ? Promise.resolve(answer).then(copyOf) : copyOf(answer);
       };
       continue;
     }
@@ -309,7 +322,7 @@ export function guardSite(site: SiteService, options: { readOnly: boolean; alive
 
       // What a change answers with is the engine's own too (`refresh` and `saveConfig` answer with the model): data is copied,
       // a thing to drive is handed behind the same guards as the site.
-      return controls && result !== null && typeof result === "object" ? guardController(result, controls, live, mayChange) : copied(result);
+      return controls && result !== null && typeof result === "object" ? guardController(result, CONTROLLER_MEMBERS[name] ?? [], controls, live, mayChange) : copied(result);
     };
   }
   return Object.freeze(guarded) as unknown as GuardedSite;

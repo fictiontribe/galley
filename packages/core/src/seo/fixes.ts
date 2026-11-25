@@ -7,6 +7,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { GalleyError } from "../errors";
+import { UNDO_LOST } from "../workspace/index";
 import { isRedirectsFile } from "../redirects/locate";
 import type { Checkpoint, SiteModel, SiteService, UndoResult } from "../types";
 import { auditSite, lastFinding } from "./audit";
@@ -14,6 +15,16 @@ import type { FixProposal, FixResult } from "./types";
 
 const UNDO_KEEP = 20;
 const undo = new Map<string, { root: string; checkpoint: Checkpoint }>();
+
+/** Lets go of what a batch's checkpoint kept, once its Undo is no longer offered (the facade's type doesn't promise `release`). */
+function release(checkpoint: Checkpoint): void {
+  void (checkpoint as Checkpoint & { release?: () => Promise<void> }).release?.().catch(() => undefined);
+}
+
+/** Marks a held batch's checkpoint as an Undo still offered, so its site isn't closed for lack of use (checkpoint.ts `offer`). */
+function offer(checkpoint: Checkpoint): void {
+  (checkpoint as Checkpoint & { offer?: () => void }).offer?.();
+}
 
 /**
  * Why a fix may not be applied at all, or null. A second guard behind the
@@ -82,10 +93,17 @@ export async function applyFixes(site: SiteService, ids: string[]): Promise<FixR
   if (checkpoint.paths().length) {
     const undoId = randomUUID();
 
+    offer(checkpoint);
     undo.set(undoId, { root: site.root, checkpoint });
-    while (undo.size > UNDO_KEEP) undo.delete(undo.keys().next().value as string);
+    // The oldest batches past the last few are no longer offered: what they kept is let go with them.
+    while (undo.size > UNDO_KEEP) {
+      const oldest = undo.keys().next().value as string;
+
+      release(undo.get(oldest)!.checkpoint);
+      undo.delete(oldest);
+    }
     result.undoId = undoId;
-  }
+  } else release(checkpoint);
   return result;
 }
 
@@ -94,8 +112,19 @@ export async function undoFixes(site: SiteService, undoId: string): Promise<Undo
   const held = undo.get(undoId);
 
   if (!held || held.root !== site.root) throw new GalleyError("not-found", "Those fixes can't be undone from here any more. You can still discard them in Proof.");
+  // Taken off the list while it runs, so a second undo of the same batch asked meanwhile is refused rather than run twice.
   undo.delete(undoId);
-  const restored = await held.checkpoint.restore();
+  try {
+    const restored = await held.checkpoint.restore();
+    const left = held.checkpoint.left();
 
-  return { restored, left: held.checkpoint.left() };
+    release(held.checkpoint);
+    return { restored, left };
+  } catch (error) {
+    // Let go with its site: nothing is left to keep. Refused before it began (the settings file, for someone below the
+    // settings level): still offered, so someone who may can undo it.
+    if (error instanceof GalleyError && error.message === UNDO_LOST) release(held.checkpoint);
+    else undo.set(undoId, held);
+    throw error;
+  }
 }

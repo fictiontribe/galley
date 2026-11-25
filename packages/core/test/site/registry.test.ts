@@ -372,3 +372,27 @@ describe("cloning", () => {
     expect(await registry.list()).toEqual([]);
   });
 });
+
+describe("a site closed under the registry", () => {
+  it("is opened afresh when anything else closed it, never handed out closed", async () => {
+    const { registry } = await setup();
+    const site = await registry.open({ path: makeSite() });
+
+    await site.dispose();
+    const again = await registry.get(site.id);
+
+    expect(again).not.toBe(site);
+    expect((await again!.readFile(HOME)).content).toBeTruthy();
+  }, 120_000);
+
+  it("stays removed when it is asked for while it closes", async () => {
+    const { registry } = await setup();
+    const site = await registry.open({ path: makeSite() });
+    const removing = registry.remove(site.id);
+
+    expect(await registry.get(site.id)).toBeNull();
+    await removing;
+    expect(await registry.get(site.id)).toBeNull();
+    expect((await registry.list()).map((summary) => summary.id)).not.toContain(site.id);
+  }, 120_000);
+});

@@ -10,7 +10,9 @@
  * note) and what the list shows about a closed site (its facts, read in the
  * background after a list has been answered — never during it). An open site
  * nobody has used for a long while is closed again (its watcher and index
- * released) and reopens on the next `get`. Previews follow the preview policy.
+ * released), unless its preview is running, a job is, or an Undo is still
+ * offered on it, and reopens on the next `get`, once it has finished closing.
+ * Previews follow the preview policy.
  */
 import { randomBytes } from "node:crypto";
 import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
@@ -186,6 +188,38 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
   const lastUsed = new Map<string, number>();
   /** Running jobs per site, so a site isn't closed in the middle of one. */
   const runningJobs = new Map<string, string>();
+  /**
+   * Sites still closing: opening one again waits until it has, so a site is
+   * never open twice on one folder (two watchers, two save locks, two writers
+   * of one file).
+   */
+  const closingSites = new Map<string, Promise<void>>();
+
+  /** Takes a site out of the open ones and closes it; whoever asks for it next gets it opened afresh once this is done. */
+  function closeSite(id: string, service: OpenSite): Promise<void> {
+    if (services.get(id) === service) services.delete(id);
+    lastUsed.delete(id);
+    const closing: Promise<void> = service
+      .dispose()
+      .catch(() => undefined)
+      .finally(() => {
+        if (closingSites.get(id) === closing) closingSites.delete(id);
+      });
+
+    closingSites.set(id, closing);
+    return closing;
+  }
+
+  /** The open site for `id`, if it is open and still usable: one closed by anything else is let go here and opened afresh when asked for. */
+  function openNow(id: string): OpenSite | undefined {
+    const live = services.get(id);
+
+    if (live?.isClosed()) {
+      void closeSite(id, live);
+      return undefined;
+    }
+    return live;
+  }
   const releaseAfterMs = options.releaseAfterMs ?? 60 * 60_000;
   const factsMaxAgeMs = options.factsMaxAgeMs ?? 5 * 60_000;
   const readFacts = options.readFacts ?? ((record: SiteRecord) => readSiteFacts(record, options.home));
@@ -295,7 +329,7 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
 
   async function openAt(id: string, root: string): Promise<OpenSite> {
     if (disposed) throw new GalleyError("busy", "The app is shutting down.");
-    const live = services.get(id);
+    const live = openNow(id);
 
     if (live) {
       await store.put(recordFor(live, Date.now()));
@@ -306,6 +340,8 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
 
     if (pending) return pending;
     const promise = (async () => {
+      // Never beside the same site still closing.
+      await closingSites.get(id);
       // The open site serves everyone after whoever asked first: its watcher, timers and queues are made as nobody.
       const service = await outsideAnyPerson(() => openSiteService(root, {
         id,
@@ -428,15 +464,18 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
 
       if (state === "ready" || state === "starting" || state === "installing") continue;
       if (busySites.has(id) || opening.has(id)) continue;
+      // An Undo still offered (an assistant's reply, a batch of search fixes) keeps the site open: an hour later is
+      // exactly when someone wants it, and closing the site would let it go.
+      if (service.undoOffered()) continue;
       if (now - Math.max(lastUsed.get(id) ?? 0, policy?.lastUsed(id) ?? 0) < releaseAfterMs) continue;
-      services.delete(id);
-      lastUsed.delete(id);
-      const record = store.get(id);
       const snap = service.snapshot();
+      // Closed from this moment for anyone who kept it, before anything else is awaited.
+      const closing = closeSite(id, service);
+      const record = store.get(id);
 
       // What the list showed while it was open stays true once it is closed.
       if (record?.facts) await store.put({ ...record, facts: { ...record.facts, pendingChanges: snap.pendingChanges } }).catch(() => undefined);
-      await service.dispose().catch(() => undefined);
+      await closing;
       released.push(id);
     }
     return released;
@@ -487,12 +526,15 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
     },
 
     async get(id): Promise<SiteService | null> {
-      const live = services.get(id) ?? (await opening.get(id));
+      const live = openNow(id) ?? (await opening.get(id));
 
       if (live) {
         lastUsed.set(id, Date.now());
         return live;
       }
+      if (!store.get(id)) return null;
+      // A site still closing is opened again only once it has closed, and only if it is still in the list (not removed meanwhile).
+      await closingSites.get(id);
       const record = store.get(id);
 
       return record ? openAt(record.id, record.root) : null;
@@ -592,13 +634,16 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
 
     async remove(id) {
       const service = services.get(id) ?? (await opening.get(id)?.catch(() => undefined));
+      // Closed first, and remembered as closing, so nothing asked meanwhile opens it again; then out of the list.
+      const closing = service ? closeSite(id, service) : Promise.resolve();
 
       services.delete(id);
       lastUsed.delete(id);
-      await service?.dispose();
-      if (!store.get(id)) return;
-      await store.remove(id);
-      options.events.emit({ type: "sites.updated" });
+      if (store.get(id)) {
+        await store.remove(id);
+        options.events.emit({ type: "sites.updated" });
+      }
+      await closing;
     },
 
     async update(id, patch) {

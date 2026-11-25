@@ -103,6 +103,11 @@ function release(checkpoint: Checkpoint): void {
   void releasable.release?.().catch(() => undefined);
 }
 
+/** Marks a held reply's checkpoint as an Undo still offered, so its site isn't closed for lack of use (checkpoint.ts `offer`). */
+function offer(checkpoint: Checkpoint): void {
+  (checkpoint as Checkpoint & { offer?: () => void }).offer?.();
+}
+
 function parseDataUrl(url: string): { mime: string; data: Uint8Array } | null {
   const match = /^data:([^;,]+)((?:;[^;,]+)*?);base64,(.*)$/s.exec(url);
 
@@ -181,8 +186,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
     options.events.emit({ type: "chat.message", siteId, threadId, message });
   }
 
+  /** Replies being undone now: a second undo of the same reply meanwhile is told so, never run twice. */
+  const undoing = new Set<HeldCheckpoint>();
+
   function hold(threadKey: string, turnId: string, checkpoint: Checkpoint, mode: AgentMode): void {
     const list = held.get(threadKey) ?? [];
+
+    // A reply that changed something is an Undo its site stays open for; one that changed nothing keeps nothing.
+    if (checkpoint.paths().length > 0) offer(checkpoint);
+    else release(checkpoint);
 
     list.push({ turnId, checkpoint, mode });
     while (list.length > UNDO_DEPTH) {
@@ -545,6 +557,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
             hold(threadKey, turnId, checkpoint, mode);
           } catch (error) {
             log(`couldn't finish the turn: ${safeDetail(error)}`);
+            // Never held, so never offered: let go of what it kept rather than keep it until the site closes.
+            release(checkpoint);
           } finally {
             active.delete(threadKey);
             resolveDone();
@@ -595,12 +609,23 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
       }
       // Putting a build-mode reply's files back is changing the site's code: the same level as making the change.
       if (entry.mode === "build") requireLevel(BUILD_MODE_LEVEL, UNDO_BUILD_REFUSAL);
-      // A checkpoint whose site was closed meanwhile has nothing left to put back and refuses here, in a sentence (workspace
-      // UNDO_LOST). Nothing below runs then: the reply is not marked as undone, because it wasn't, and asking again says the same.
-      const restored = await entry.checkpoint.restore();
-      const left = entry.checkpoint.left();
+      if (undoing.has(entry)) throw new GalleyError("busy", "That reply is being undone already.", turnId);
+      // Found again by itself once it has run: a reply held or let go meanwhile shifts the list, never what is taken off it.
+      undoing.add(entry);
+      let restored: string[];
+      let left: string[];
 
-      list.splice(index, 1);
+      try {
+        // A checkpoint whose site was closed meanwhile has nothing left to put back and refuses here, in a sentence (workspace
+        // UNDO_LOST). Nothing below runs then: the reply is not marked as undone, because it wasn't, and asking again says the same.
+        restored = await entry.checkpoint.restore();
+        left = entry.checkpoint.left();
+      } finally {
+        undoing.delete(entry);
+      }
+      const at = list.indexOf(entry);
+
+      if (at !== -1) list.splice(at, 1);
       release(entry.checkpoint);
       let updated: ChatMessage | null = null;
 

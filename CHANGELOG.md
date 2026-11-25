@@ -7,6 +7,43 @@ entry says how.
 
 ## Unreleased
 
+### Changed
+
+- **A site with an Undo still offered stays open.** The editor closes a site
+  nobody has used for an hour, and Undo's memory went with it: Undo of an
+  assistant's reply, or of a batch of search fixes, an hour later said it
+  couldn't be done any more. A site isn't closed for lack of use now while
+  one of those is still offered. There is no time limit: a reply that
+  changed something offers its Undo until it is undone, its conversation is
+  deleted, or it is pushed out by 20 newer replies in that conversation; a
+  batch of fixes until it is undone or pushed out by 20 newer batches. So a
+  site the assistant has changed usually stays open, with its file watcher,
+  until the app stops. Measured on the Astro starter (24 entries), each site
+  kept open beyond the first costs about 1.3 MB of memory, plus what its Undo
+  keeps, about 15 KB for a typical reply; a site's Undo keeps at most 32 MB of
+  earlier copies of files in memory, and further copies go to temporary
+  files. Search fixes now let go of what an old batch kept once its Undo is
+  no longer offered.
+- **A site that has been closed refuses whoever kept it.** A site closes after
+  an hour without use (as above), when it is removed, when a backup is put
+  back, and when the app stops. Something that kept it from before (an
+  extension or a plugin that held on to it, a preview controller, a save
+  still on its way) used to go on reading stale copies and writing the
+  site's folder behind the site opened since, where two edits of one file
+  could each answer "saved" while one was lost. It now gets *This site has
+  been closed, so it can't be used from here any more. Open it again to go
+  on.* (403) for anything it asks after the close: a file save still on its
+  way and git work still waiting its turn are refused the same way, a preview
+  taken from it doesn't start again, and an Undo asked of a checkpoint taken
+  from it says the site was closed. Git work already running when the site
+  closes (a discard, a publish, Get latest) finishes, and the site isn't
+  opened again until it has. For an extension: ask `host.sites.get(siteId)`
+  each time you need a site. A checkpoint or preview controller an extension
+  or a plugin is handed now has only its public members, and a checkpoint
+  can be let go of (`release()`) once you no longer offer its undo; one never
+  let go is kept until its site closes. A plugin's site no longer offers to
+  close the site.
+
 ### Fixed
 
 - **A request whose target the server can't read as one of its own

@@ -338,6 +338,43 @@ describe("what the server does around an extension", () => {
     expect("constructor" in handed && (handed as { constructor: unknown }).constructor).toBe(Object);
   });
 
+  it("a handed checkpoint has its public members and nothing else of the engine's object, whatever that carries", () => {
+    // The engine's checkpoint carries more for its own use than an extension is handed.
+    const own = {
+      id: "c1",
+      label: "a turn",
+      manager: {},
+      records: new Map(),
+      paths: () => ["a.md"],
+      run: <T,>(work: () => T) => work(),
+      close: () => undefined,
+      restore: async () => [] as string[],
+      left: () => [] as string[],
+      release: async () => undefined,
+      offer: () => undefined,
+    };
+    const real = { id: "s1", root: "/nowhere", resolvePath: (path: string) => `/nowhere/${path}`, checkpoint: () => own } as unknown as SiteService;
+    const handed = (guardSite(real, { readOnly: false, alive: () => true }) as unknown as { checkpoint(label: string): Record<string, unknown> }).checkpoint("a turn");
+
+    expect(Object.getOwnPropertyNames(handed).sort()).toEqual(["close", "id", "left", "paths", "release", "restore", "run"]);
+    for (const name of ["manager", "label", "records", "offer"]) expect(name in handed, name).toBe(false);
+    expect(handed.id).toBe("c1");
+  });
+
+  it("what a handed controller answers is a copy, never an object the engine goes on using", async () => {
+    const shared = { state: "ready" };
+    const started = Promise.resolve(shared);
+    const own = { status: () => shared, start: () => started, stop: async () => undefined, restart: () => started };
+    const real = { id: "s1", root: "/nowhere", resolvePath: (path: string) => `/nowhere/${path}`, preview: () => own } as unknown as SiteService;
+    const handed = (guardSite(real, { readOnly: false, alive: () => true }) as unknown as { preview(): typeof own }).preview();
+    const answer = handed.start();
+
+    expect(answer).not.toBe(started);
+    expect(await answer).toEqual(shared);
+    expect(await answer).not.toBe(shared);
+    expect(handed.status()).not.toBe(shared);
+  });
+
   it("looks at a search's files for links a few at a time, and still leaves out every one that leads to a secret", async () => {
     const root = await mkdtemp(join(tmpdir(), "links-"));
 
