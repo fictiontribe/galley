@@ -108,7 +108,7 @@ const HELD_POLL_MS = 100;
 export interface PreviewControllerHandle extends PreviewController {
   /** Stop everything; identical to stop(), named for symmetry with Workspace. */
   dispose(): Promise<void>;
-  /** pid of the dev server we will stop: the child we spawned, or the pid a backgrounding server announced. Undefined when adopted, externally owned or not running. */
+  /** The process group the preview will stop (its leader's pid): the dev command it spawned, or the group a server that moved to the background stayed in. Undefined when adopted, left running, or not running. */
   readonly pid: number | undefined;
   /**
    * Stops a ready preview to save memory and leaves it "idle" with `paused`
@@ -180,8 +180,8 @@ function reservePort(preferred: number | null, avoid: number[]): Promise<number>
 
 /** Dev-server children alive in this process, killed on exit as a last resort. */
 const liveChildren = new Set<ChildProcess>();
-/** Servers that backgrounded themselves but told us their pid — ours to stop too. */
-const liveDetached = new Set<number>();
+/** Process groups this process spawned whose members outlived the command (a server that moved to the background but stayed in the group): ours to stop too. */
+const liveGroups = new Set<number>();
 let exitHookInstalled = false;
 
 function installExitHook() {
@@ -189,33 +189,35 @@ function installExitHook() {
   exitHookInstalled = true;
   process.once("exit", () => {
     for (const child of liveChildren) killTree(child, "SIGKILL");
-    for (const pid of liveDetached) killPid(pid, "SIGKILL");
+    for (const group of liveGroups) signalGroup(group, "SIGKILL");
   });
 }
 
-/** Signal a pid's process group when it leads one, else the pid alone. */
-function killPid(pid: number, signal: NodeJS.Signals): void {
-  if (IS_WINDOWS) {
-    spawn("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore", windowsHide: true }).on("error", () => undefined);
-    return;
-  }
+/**
+ * Signals a process group this process spawned (the group's id is its leader's pid). Never a pid a dev server
+ * announced: that number comes from the site and could name any process — this server, or another program.
+ */
+function signalGroup(group: number, signal: NodeJS.Signals): void {
+  if (IS_WINDOWS) return; // No process groups to signal, and nothing the site named is signalled instead.
   try {
-    process.kill(-pid, signal);
+    process.kill(-group, signal);
   } catch {
-    try {
-      process.kill(pid, signal);
-    } catch {
-      // Already gone.
-    }
+    // Already gone.
   }
 }
 
-function pidAlive(pid: number): boolean {
+/**
+ * Whether a process group this process spawned still has members it may signal. A group's id isn't handed to a
+ * new process while any member of the group lives, so a group with members is still the one that was spawned.
+ * "Permission denied" means what is there isn't this process's to signal: not alive, as far as stopping it goes.
+ */
+function ownGroupAlive(group: number): boolean {
+  if (IS_WINDOWS) return false;
   try {
-    process.kill(pid, 0);
+    process.kill(-group, 0);
     return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM";
+  } catch {
+    return false;
   }
 }
 
@@ -347,8 +349,8 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
   let child: ChildProcess | null = null;
   let childExited: Promise<void> = Promise.resolve();
   let childExitCode: number | null = null;
-  /** A server the command backgrounded and named by pid: stopped with the preview. */
-  let detached: { pid: number; port: number } | null = null;
+  /** The process group a server the command moved to the background stayed in: stopped with the preview, through that group. */
+  let detachedGroup: number | null = null;
   let preview: ProxyHandle | null = null;
   let baseline: ProxyHandle | null = null;
   let starting: Promise<PreviewStatus> | null = null;
@@ -402,17 +404,17 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
     preview = null;
     baseline = null;
     await stopChild();
-    if (detached) {
-      const { pid, port } = detached;
+    if (detachedGroup !== null) {
+      const group = detachedGroup;
 
-      detached = null;
-      killPid(pid, "SIGTERM");
-      // Done when the pid is gone and the port has stopped answering.
+      detachedGroup = null;
+      signalGroup(group, "SIGTERM");
+      // Done when nothing of the group is left.
       const deadline = Date.now() + 5000;
 
-      while (Date.now() < deadline && (pidAlive(pid) || (await answeringHost(port, 300)) !== null)) await delay(100);
-      if (pidAlive(pid)) killPid(pid, "SIGKILL");
-      liveDetached.delete(pid);
+      while (Date.now() < deadline && ownGroupAlive(group)) await delay(100);
+      if (ownGroupAlive(group)) signalGroup(group, "SIGKILL");
+      liveGroups.delete(group);
     }
     await Promise.all(closing);
   }
@@ -662,16 +664,26 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
             // run. That is a start, not a failure: follow the announced URL.
             if (childExitCode === 0 && announced !== null) {
               backgrounded = true;
-              // The launcher is gone; its process group is not ours to signal any more.
+              // The launcher is gone. What it left running in the process group it was started in is still this
+              // preview's, and is stopped through that group. A server that left the group is not signalled, whatever
+              // pid it announced: that number comes from the site, and could name any process.
               child = null;
-              if (announcedPid !== null && announcedPid !== spawned.pid && pidAlive(announcedPid)) {
-                detached = { pid: announcedPid, port: announced };
-                liveDetached.add(announcedPid);
+              if (spawned.pid !== undefined && ownGroupAlive(spawned.pid)) {
+                detachedGroup = spawned.pid;
+                liveGroups.add(spawned.pid);
                 installExitHook();
-                pushLog(`The preview server moved to the background (process ${announcedPid}); stopping the preview will stop it.`);
+                pushLog(
+                  announcedPid === null
+                    ? "The preview server moved to the background; stopping the preview will stop it."
+                    : `The preview server moved to the background (process ${announcedPid}); stopping the preview will stop it.`
+                );
               } else {
                 externallyOwned = true;
-                pushLog("The preview server moved to the background without saying which process it is, so it will be left running when the preview stops.");
+                pushLog(
+                  announcedPid === null
+                    ? "The preview server moved to the background without saying which process it is, so it will be left running when the preview stops."
+                    : `The preview server moved to the background as a process of its own (process ${announcedPid}), outside the one the preview started, so it will be left running when the preview stops. Stop it the way its dev tool says.`
+                );
               }
               return;
             }
@@ -936,7 +948,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
 
   const controller: PreviewControllerHandle = {
     get pid() {
-      return detached?.pid ?? child?.pid;
+      return detachedGroup ?? child?.pid;
     },
     get lastActivityAt() {
       return status.state === "ready" ? lastActivityAt : null;

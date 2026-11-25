@@ -120,6 +120,14 @@ entry says how.
   stay in the folder it is in (the site's files, the state, and so on): a
   backup leaves out one that doesn't, and a restore refuses an archive with
   one.
+- **Stopping a preview signals only what the editor itself started.** A dev
+  command that moves its server to the background and prints a process number
+  ("pid 1234") had that number signalled when the preview stopped — a number
+  the site's own output supplied, which could have named any process on the
+  computer. Now the editor stops the process group it started the command in:
+  a background server that stayed in it is stopped with the preview; one that
+  moved to a group of its own is left running, and the preview says so (stop it
+  the way its dev tool says).
 
 ## 0.4.2 — 2026-11-25
 
