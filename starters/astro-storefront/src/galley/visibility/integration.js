@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.3 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.4 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // The agent-readable output as an Astro integration part: after `astro
 // build` it reads every page the build wrote and adds the markdown twins,
