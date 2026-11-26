@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.8 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // HubSpot: the Forms API's unauthenticated, CORS-enabled "submit data to a
 // form" endpoint (legacy v3, still supported):

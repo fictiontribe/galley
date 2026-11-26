@@ -13,8 +13,9 @@ short, task-first version for the documentation site is
 > browser, and as this project's own website's editor on a small Google Cloud
 > VM behind Caddy on a real domain. Never run on Fly.io or with a Cloudflare
 > tunnel; "Host the editor online" has never created anything on Google
-> Cloud itself (only against a stand-in); and the image is not published to
-> a registry. **Accounts** (people, roles, invitations, one-time links) are
+> Cloud itself (only against a stand-in). From 0.4.9, the multi-arch container
+> image (`linux/amd64`, `linux/arm64`) is published to
+> `ghcr.io/fictiontribe/galley` on each release. **Accounts** (people, roles, invitations, one-time links) are
 > newer than that run: they are covered by automated tests, a rehearsal
 > over HTTP against the real server and a pass in a real browser, and have
 > not yet been tried on the real image or against a real mail server.
@@ -137,10 +138,11 @@ editor itself publishes **no** port; Caddy is the only way in and gets the
 certificates by itself. This is how this project's own website's editor runs,
 on a small Google Cloud VM.
 
-**The image isn't published yet.** The files below name
-`ghcr.io/fictiontribe/galley:0.4.8`, which is where it will be. Until then,
-build it from this repository and put your image's name on the `image:`
-line, or pass it with `--image`:
+The files below pull the multi-arch image
+`ghcr.io/fictiontribe/galley:0.4.9` from GitHub Container Registry (published
+on each release for `linux/amd64` and `linux/arm64`). To build it locally from
+this repository instead, put your image's name on the `image:` line or pass it
+with `--image`:
 
 ```sh
 docker build -t galley .
@@ -181,7 +183,7 @@ are exactly the files below for the `caddy` variant at `cms.example.com`
    name: galley-acme
    services:
      editor:
-       image: "ghcr.io/fictiontribe/galley:0.4.8"
+       image: "ghcr.io/fictiontribe/galley:0.4.9"
        restart: unless-stopped
        env_file: .env
        # Hardened: an ordinary user, nothing written outside /data and /tmp, no extra powers.
@@ -304,7 +306,7 @@ runs. It makes a fresh setup code, gives the install only its SHA-256, and
 prints the link once at the end.
 
 ```sh
-sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.4.8 --dry-run
+sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.4.9 --dry-run
 ```
 
 ```
@@ -318,13 +320,13 @@ Would create the install “acme” for git@github.com:example/acme-site.git at 
   network       galley-proxy  (created if it isn't there)
 
 Would run:
-  docker run --rm ghcr.io/fictiontribe/galley:0.4.8 host recipe --name acme --address cms.example.com --repository git@github.com:example/acme-site.git --proxy shared-proxy …
+  docker run --rm ghcr.io/fictiontribe/galley:0.4.9 host recipe --name acme --address cms.example.com --repository git@github.com:example/acme-site.git --proxy shared-proxy …
   docker network create galley-proxy            (if missing)
   docker compose -f ./galley-installs/proxy/compose.yaml up -d
   docker compose -f ./galley-installs/acme/compose.yaml up -d
   docker compose -f ./galley-installs/proxy/compose.yaml exec caddy caddy reload --config /etc/caddy/Caddyfile
 
-(The image ghcr.io/fictiontribe/galley:0.4.8 isn't on this server yet, so the files can't be shown; the real run pulls it.)
+(The image ghcr.io/fictiontribe/galley:0.4.9 isn't on this server yet, so the files can't be shown; the real run pulls it.)
 
 Then: point cms.example.com and its preview and live names at this server, and open the one-time setup link the real run prints.
 ```
@@ -2212,7 +2214,7 @@ Any server with Docker: the editor “acme”
   Editor:          https://cms.example.com
   Preview:         https://cms-preview.example.com
   Live comparison: https://cms-live.example.com
-  Runs:            ghcr.io/fictiontribe/galley:0.4.8
+  Runs:            ghcr.io/fictiontribe/galley:0.4.9
 
 Creates nothing on an account.
 
@@ -2532,8 +2534,6 @@ BuildKit, 4 GB):
   server reached the code host over SSH; the token path ran end to end only
   against a local git server.
 - **`scripts/create-install.sh` beyond its dry run.**
-- **The image on a registry.** Nothing is published; the default image name is
-  where it will be.
 - **Prices.** Every price here is an estimate from the provider's page on the
   date given; the Fly.io 2 GB figure is derived from its rates, not printed;
   the Google Cloud monthly figures are worked out from hourly prices at 730

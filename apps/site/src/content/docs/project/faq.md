@@ -34,7 +34,7 @@ Galley is free and Apache-2.0, with one edition. The assistant and image generat
 
 ## Which frameworks?
 
-Astro fits deepest: Galley reads its content config and zod schemas, the routes and the Astro config, and the site kit and the starters are Astro. Eleventy, Hugo, Jekyll, Next.js, Nuxt, SvelteKit and Docusaurus are recognised by convention, and any folder of markdown with front matter works. Other frameworks arrive as adapters. [Adapters](/docs/adapters/).
+Astro fits deepest: Galley reads its content config and zod schemas, the routes and the Astro config, and the site kit and the starters are Astro. Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll each have a built-in adapter that reads the framework's own configuration statically, and any folder of markdown with front matter works. Other frameworks arrive as adapters. [Adapters](/docs/adapters/).
 
 ## How does it fit our deploy pipeline?
 

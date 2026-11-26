@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.8 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // What the site's content files say that a rendered page can't: which
 // collection a page belongs to (for "articles": ["blog"]), which entries

@@ -1,7 +1,7 @@
 {
   "name": "@galley/site",
   "private": true,
-  "version": "0.4.8",
+  "version": "0.4.9",
   "description": "galleycms.com: the Galley marketing site and documentation. An Astro site that Galley itself can edit.",
   "type": "module",
   "scripts": {

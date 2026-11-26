@@ -354,7 +354,9 @@ what it saved under the old schema. Galley removes only regular files inside
 the site folder, never a folder and never through a link that leads out of
 it. Leave the hook out when the framework keeps nothing of the kind. The Astro
 adapter returns its content store, in the two places Astro keeps it:
-`.astro/data-store.json` and `node_modules/.astro/data-store.json`.
+`.astro/data-store.json` and `node_modules/.astro/data-store.json`. The Nuxt
+adapter returns `.data/content/contents.sqlite` (and its `-wal` and `-shm`
+files).
 
 `conventionAdapter(spec)` is the fastest way to write a simple adapter: give
 it the packages and files that identify the framework and its conventions,

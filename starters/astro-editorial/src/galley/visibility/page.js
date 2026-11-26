@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.8 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // What a rendered page says about itself, read from its HTML: the facts the
 // twin, llms.txt, the sitemap and the structured data are built from. Only

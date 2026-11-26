@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.8 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // Marketo, through Marketo's own Forms 2.0 library and a hidden Marketo form,
 // as Adobe documents it: load {host}/js/forms2/js/forms2.min.js, call

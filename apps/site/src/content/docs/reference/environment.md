@@ -101,7 +101,7 @@ Read by the app on your own computer for **Host the editor online** and `galley 
 | --- | --- | --- |
 | `FLY_API_TOKEN` | — | The Fly.io organization token. Beats the one saved in the app. |
 | `GOOGLE_APPLICATION_CREDENTIALS_JSON` | — | The whole text of a key file from Google Cloud (a service account's JSON key), for the Google Cloud host — not its path. Beats the one saved in the app. |
-| `GALLEY_HOSTING_IMAGE` | `ghcr.io/fictiontribe/galley:<version>` | The image a new or upgraded install runs. That default isn't published yet, so set this to an image you built and pushed. |
+| `GALLEY_HOSTING_IMAGE` | `ghcr.io/fictiontribe/galley:<version>` | The image a new or upgraded install runs. Published to GitHub Container Registry on each release; set this to run another image you built and pushed. |
 | `GALLEY_HOSTING_<NAME>_API` | the host's own API | Testing only: send a host's API calls (`FLY`, `CLOUDFLARE`, and Google Cloud's `GCP_COMPUTE`, `GCP_OAUTH`, `GCP_RESOURCE_MANAGER`) to a fake host. |
 | `GALLEY_HOSTING_INSTALL_API` | `https://<editor address>` | Testing only: where a new install is reached, for a rehearsal against fake hosts. |
 

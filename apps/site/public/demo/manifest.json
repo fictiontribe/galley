@@ -1,10 +1,10 @@
 {
   "what": "The Galley demo: the web app built with packages/web/vite.demo.config.ts, and the sample site (starters/astro-editorial) it previews. Generated; don't edit by hand.",
-  "builtAt": "2026-11-26T15:12:49.455Z",
-  "commit": "2a19b0ec1b3c",
+  "builtAt": "2026-11-26T20:16:20.298Z",
+  "commit": "36a956264bca+changes",
   "inputs": {
-    "sha256": "bb2b548cc9fef07708327ed2259141cbba1a2736277daf6c9b5afb55fd86e62a",
-    "files": 1097,
+    "sha256": "aed772dcc7d9d3298489ef99a65d54e8f85114086ae9826691e118508bd1f4f3",
+    "files": 1104,
     "paths": [
       "packages/web/src",
       "packages/web/mock",
@@ -22,7 +22,7 @@
     ]
   },
   "files": 241,
-  "bytes": 6073258,
+  "bytes": 6076498,
   "sampleSiteBytes": 1981697,
   "rebuild": "pnpm --filter @galley/web build:demo && pnpm --filter @galley/web demo:publish"
 }
