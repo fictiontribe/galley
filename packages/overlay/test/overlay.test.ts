@@ -341,3 +341,66 @@ describe("the follow role", () => {
     expect(sent().map((message) => message.type)).toEqual(["ready"]);
   });
 });
+
+describe("section marks", () => {
+  const sampleLists = [
+    {
+      field: "sections",
+      sections: [{ index: 0, type: "hero", label: "Hero", texts: ["Hero Heading", "Welcome aboard"], images: [] }],
+    },
+  ];
+
+  it("parses colour-only section marks and rejects non-hex colours or invalid items", () => {
+    expect(
+      parseHostMessage({
+        galley: 1,
+        type: "marks",
+        lists: sampleLists,
+        marks: [{ field: "sections", index: 0, color: "#3b82f6" }],
+      }),
+    ).toEqual({
+      galley: 1,
+      type: "marks",
+      lists: sampleLists,
+      marks: [{ field: "sections", index: 0, color: "#3b82f6" }],
+    });
+
+    expect(
+      parseHostMessage({
+        galley: 1,
+        type: "marks",
+        lists: [],
+        marks: [{ field: "sections", index: 0, color: "red; } body { display: none" }],
+      }),
+    ).toBeNull();
+    expect(
+      parseHostMessage({
+        galley: 1,
+        type: "marks",
+        lists: [],
+        marks: [{ field: "sections", index: -1, color: "#3b82f6" }],
+      }),
+    ).toBeNull();
+  });
+
+  it("renders marks as colour-only outlines with no text content", () => {
+    document.body.innerHTML = `<main><section id="hero"><h2>Hero Heading</h2><p>Welcome aboard</p></section></main>`;
+    start();
+    fromHost({
+      galley: 1,
+      type: "marks",
+      lists: sampleLists,
+      marks: [{ field: "sections", index: 0, color: "#2563eb" }],
+    });
+    const host = [...document.querySelectorAll("*")].find((el) => el.shadowRoot);
+    const root = host?.shadowRoot ?? document;
+    const boxes = root.querySelectorAll("[data-galley-mark]");
+
+    for (const box of boxes) {
+      expect(box.textContent).toBe("");
+    }
+    // Clearing marks removes them cleanly.
+    fromHost({ galley: 1, type: "marks", lists: [], marks: [] });
+    expect(root.querySelectorAll("[data-galley-mark]")).toHaveLength(0);
+  });
+});
