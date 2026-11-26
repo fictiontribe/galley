@@ -206,6 +206,18 @@ describe("the one-time setup code", () => {
 });
 
 describe("sessions", () => {
+  it("a session never counts at or after its own end, whoever asks", async () => {
+    const store = await openInstallState(tempDir("install-home-"));
+    const issuedAt = Date.now() - 1000;
+    const session = { id: "ends", issuedAt, expiresAt: issuedAt + 60_000 };
+
+    expect(store.sessionValid(session, issuedAt + 59_999)).toBe(true);
+    expect(store.sessionValid(session, issuedAt + 60_000)).toBe(false);
+    expect(store.sessionValid(session, issuedAt + 120_000)).toBe(false);
+    // Without an end of its own (a local cookie, or a caller that hasn't one), as before.
+    expect(store.sessionValid({ id: "no-end", issuedAt }, issuedAt + 120_000)).toBe(true);
+  });
+
   it("“sign out everywhere” refuses every cookie issued at or before it, after a restart too", async () => {
     const home = tempDir("install-home-");
     const store = await openInstallState(home);

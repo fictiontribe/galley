@@ -159,7 +159,7 @@ describe("local mode", () => {
     const local = testApp();
     const accountRoutes = routes.filter((route) => /^\S+ \/api\/(account|people|auth\/link|auth\/forgot)/.test(route));
 
-    expect(accountRoutes).toHaveLength(14);
+    expect(accountRoutes).toHaveLength(15);
     for (const route of accountRoutes) {
       const { method, path } = urlOf(route);
       const response = await local.call(method, path, method === "GET" || method === "DELETE" ? undefined : {});

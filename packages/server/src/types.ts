@@ -104,6 +104,12 @@ export interface AppOptions {
   /** Mark the session cookie Secure always (hosted, https:// address): what lets it be a `__Host-` cookie. */
   secureCookie?: boolean;
   /**
+   * Hosted mode: the identity provider people sign in through, when one is
+   * set up (its issuer). Where there is one, the server's access token may
+   * also switch people off, delete switched-off accounts and look them up.
+   */
+  identityProvider?: { issuer: string } | null;
+  /**
    * Hosted mode with a preview gateway: the gateway's two origins and how a
    * one-use ticket is made for a signed-in session (gateway-auth.ts). Absent:
    * the entry route answers the proxies' own addresses (local) or nothing (hosted).
@@ -199,6 +205,8 @@ export interface ServerOptions {
   resetPassword?: boolean;
   /** Which owner `resetPassword` is for, when there are several (`--email`). */
   resetPasswordEmail?: string;
+  /** Hosted mode, test seam until signing in through a provider is set up from the environment: the provider's issuer. */
+  identityProvider?: { issuer: string } | null;
   /** Hosted mode, test seam: the outgoing e-mail to use instead of the one GALLEY_SMTP_URL and GALLEY_MAIL_FROM describe (null: none). */
   mailer?: MailTransport | null;
   /** Hosted mode, test seam: what runs the editor's own rounds with the repository instead of a real interval (keep-up.ts). */

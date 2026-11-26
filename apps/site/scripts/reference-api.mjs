@@ -111,7 +111,8 @@ const LINES = {
   "GET /api/setup": "Where first run is: the owner's account, site, details or done, with the site's state and what the operator fixed. Takes the setup code until an owner exists.",
   "PUT /api/setup/details": "Save the publishing name and e-mail and the live address during first run.",
   "POST /api/setup/finish": "End first run once the owner's account exists and the site is connected. The setup link stops working.",
-  "GET /api/people": "Everyone with an account (role, switched off or not, when they last signed in), the open invitations, and whether this server e-mails links (it needs outgoing e-mail and its public address both set).",
+  "GET /api/people": "Everyone with an account (role, switched off or not, when they last signed in), the open invitations, and whether this server e-mails links (it needs outgoing e-mail and its public address both set). With the server's access token, where an identity provider is set up: `OperatorPeople` (ids, roles, switched off, subjects; no names or e-mails).",
+  "GET /api/people/by-identity": "The server's access token only, where an identity provider is set up: the account with this subject at the provider (id, role, switched off), or 404.",
   "GET /api/install": "The Install page: address, version, the site's repository and how it is reached, the publishing name, what is stored where.",
   "GET /api/editor-hosts": "The places the editor can be hosted, each key's status (never its value), and the hosts that can't run it with the reason.",
   "GET /api/sites/:siteId/editor": "The site's editor online: what its settings say, what this computer created, whether it answers, its version.",
@@ -141,7 +142,7 @@ const INTRO = `This page is for developers integrating with Galley — scripts, 
 
 - **JSON in, JSON out.** File and entry paths travel in the query string or the body, never as an address segment, relative to the site's folder with \`/\` separators: \`?path=src/content/journal/why-we-make-forty.md\`.
 - **Who may call.** A few routes answer anyone (*No sign-in* below): \`GET /api/meta\`, sign-in, sign-out, and on a hosted install the three one-time-link routes, where the link's code is the proof. Every other route needs a session: the browser's session cookie, or \`Authorization: Bearer <token>\`. On your own computer the token is the one in the link Galley prints (set your own with \`GALLEY_TOKEN\`, 16 characters or more); in hosted mode set \`GALLEY_TOKEN\` on the server to allow Bearer access at all.
-- **Roles, on a hosted install.** Each person who signs in is an owner, an editor or a contributor, and the *Who* column is the level each route needs there, read from the one table the server enforces ([\`packages/core/src/install/route-access.ts\`]({repository}/blob/main/packages/core/src/install/route-access.ts)): *Any signed-in person*, *Editors and owners*, or *Owners*. Someone signed in below a route's level gets \`403\`. *First run* routes take the one-time setup code as the Bearer token until the first owner exists, and need an owner after that. The operator's \`GALLEY_TOKEN\` reaches every route except those that need a person: your own account, people, backups, restores and opening the preview. **The levels apply only on a hosted install:** the app on your own computer has one person, who may call every route.
+- **Roles, on a hosted install.** Each person who signs in is an owner, an editor or a contributor, and the *Who* column is the level each route needs there, read from the one table the server enforces ([\`packages/core/src/install/route-access.ts\`]({repository}/blob/main/packages/core/src/install/route-access.ts)): *Any signed-in person*, *Editors and owners*, or *Owners*. Someone signed in below a route's level gets \`403\`. *First run* routes take the one-time setup code as the Bearer token until the first owner exists, and need an owner after that. The operator's \`GALLEY_TOKEN\` reaches every route except those that need a person: your own account, people (it may sign one person out), backups, restores and opening the preview. **The levels apply only on a hosted install:** the app on your own computer has one person, who may call every route.
 - **State-changing requests** (\`POST\`, \`PUT\`, \`PATCH\`, \`DELETE\`) also need the Bearer token, or a same-origin \`Origin\` header. Request bodies are limited to 40 MB.
 - **Site routes** (\`/api/sites/:siteId/…\`) run with that site's own keys and author when it has them ([Look after many sites](/docs/editing/many-sites/)).
 - **Addresses under \`/api/x/\`** are not Galley's and are not on this page: they belong to whoever built the edition of the editor you are talking to ([Embedding the editor](/docs/running/embedding/)).
@@ -191,6 +192,11 @@ const WHO = {
   edit: "Any signed-in person",
   publish: "Editors and owners",
   manage: "Owners",
+};
+
+/** Routes whose callers the level alone doesn't say. */
+const WHO_FOR = {
+  "GET /api/people/by-identity": "The server's access token",
 };
 
 /** ROUTE_ACCESS read from route-access.ts as written: route key to level. */
@@ -273,7 +279,7 @@ export function readRoutes(repoRoot) {
       body: body ? typeText(body.type, sourceFile) : "",
       response: response ? typeText(response.type, sourceFile) : "",
       stream: /text\/event-stream/.test(doc),
-      who: WHO[access.get(key)] ?? null,
+      who: WHO_FOR[key] ?? WHO[access.get(key)] ?? null,
     });
   }
   return routes;
