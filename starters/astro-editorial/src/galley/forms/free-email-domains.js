@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.4 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.5 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // Free mailbox providers, for `validation.businessEmailOnly`: an address at
 // one of these domains is refused as "not a work address". The list is kept
