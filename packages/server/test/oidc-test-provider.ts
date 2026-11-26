@@ -95,6 +95,12 @@ export interface TestProvider {
   /** The Authorization header the token endpoint was sent last. */
   lastTokenAuth: string | null;
   addKey(kid: string, alg: Alg, options?: { published?: boolean; jwk?: Record<string, unknown> }): void;
+  /**
+   * A back-channel logout token for `sub`, signed with the main key (or
+   * `signWith`), as the provider would send it; `claims` overrides or adds,
+   * `drop` leaves claims out, `header` overrides the header.
+   */
+  logoutToken(sub: string | undefined, options?: { claims?: Record<string, unknown>; drop?: string[]; header?: Record<string, unknown>; signWith?: string; none?: boolean; hmacWithPublicKey?: boolean }): string;
   /** The provider's answer to an authorization URL: the callback address it sends the browser to. */
   authorize(url: string): Promise<string>;
   close(): Promise<void>;
@@ -124,6 +130,26 @@ export async function startTestProvider(options: { alg?: Alg; clientId?: string;
       const key = makeKey(kid, alg);
 
       provider.extraKeys.set(kid, { ...key, published: keyOptions.published ?? true, ...(keyOptions.jwk ? { publicJwkOverride: { ...key.publicJwk, ...keyOptions.jwk } } : {}) });
+    },
+    logoutToken(sub, tokenOptions = {}) {
+      const now = Math.floor(Date.now() / 1000);
+      const claims: Record<string, unknown> = {
+        iss: provider.issuer,
+        aud: clientId,
+        iat: now,
+        exp: now + 120,
+        jti: randomBytes(12).toString("base64url"),
+        events: { "http://schemas.openid.net/event/backchannel-logout": {} },
+        ...(sub !== undefined ? { sub } : {}),
+        ...(tokenOptions.claims ?? {}),
+      };
+
+      for (const name of tokenOptions.drop ?? []) delete claims[name];
+      const key = tokenOptions.signWith ? provider.extraKeys.get(tokenOptions.signWith)! : main;
+
+      if (tokenOptions.none) return signJwt({ alg: "none", typ: "logout+jwt" }, claims, null);
+      if (tokenOptions.hmacWithPublicKey) return signJwt({ alg: "HS256", kid: main.kid, typ: "logout+jwt" }, claims, Buffer.from(JSON.stringify(main.publicJwk)));
+      return signJwt({ alg: key.alg, kid: key.kid, typ: "logout+jwt", ...(tokenOptions.header ?? {}) }, claims, key.privateKey);
     },
     async authorize(address) {
       const answer = await fetch(address, { redirect: "manual" });

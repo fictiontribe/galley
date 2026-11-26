@@ -17,9 +17,18 @@ import { notFound } from "../errors";
 import type { RouteContext, RouteTable } from "../routes";
 import { audit, named } from "../who";
 import { openPreLogin, PRE_LOGIN_COOKIE, PRE_LOGIN_LIFETIME_MS, safeReturnPath, sealPreLogin } from "./cookie";
-import { OidcRefusal, type OidcProvider, type OidcRefusalCode } from "./provider";
+import { LogoutRefusal, OidcRefusal, type OidcProvider, type OidcRefusalCode } from "./provider";
 
-export type OidcRouteKey = "GET /api/auth/oidc/start" | "GET /api/auth/oidc/callback";
+export type OidcRouteKey = "GET /api/auth/oidc/start" | "GET /api/auth/oidc/callback" | "POST /api/auth/oidc/backchannel-logout";
+
+/** The back-channel logout's one path: exempt from the origin check by exactly this, never a prefix (app.ts). */
+export const BACKCHANNEL_LOGOUT_PATH = "/api/auth/oidc/backchannel-logout";
+/** Its body's cap, applied before the general limit. A logout token is a few hundred bytes. */
+export const BACKCHANNEL_BODY_LIMIT_BYTES = 16 * 1024;
+/** What the provider is asked to wait before sending a logout again. */
+export const LOGOUT_RETRY_AFTER_S = 30;
+/** Refused logout tokens are logged at most this many times a minute in all, and once a minute per client. */
+export const LOGOUT_REFUSALS_LOGGED_PER_MINUTE = 30;
 
 /** Sign-ins a client may start in a minute: enough for people, too few to make the editor hammer the provider. */
 export const STARTS_PER_MINUTE = 20;
@@ -32,6 +41,8 @@ export const QUIET_LOG_MS = 60_000;
 const QUIET_CLIENTS_KEPT = 10_000;
 
 interface OidcLimits {
+  /** Refused logout tokens logged in the current minute, in all. */
+  logoutLines: { since: number; count: number };
   starts: LoginLimiter;
   /** When each client's last uncounted refusal was logged. */
   quiet: Map<string, number>;
@@ -45,7 +56,7 @@ function limitsOf(ctx: RouteContext): OidcLimits {
   let limits = limitsByApp.get(ctx);
 
   if (!limits) {
-    limits = { starts: new LoginLimiter(STARTS_PER_MINUTE, 60_000), used: new Map(), quiet: new Map() };
+    limits = { logoutLines: { since: 0, count: 0 }, starts: new LoginLimiter(STARTS_PER_MINUTE, 60_000), used: new Map(), quiet: new Map() };
     limitsByApp.set(ctx, limits);
   }
   return limits;
@@ -80,6 +91,31 @@ function quietly(ctx: RouteContext, client: string, now = Date.now()): boolean {
   }
   quiet.set(client, now);
   return true;
+}
+
+/** Whether a refused logout token is logged now: once a minute per client, and a few a minute in all (no limiter stands in front of the route). */
+function logoutLineAllowed(ctx: RouteContext, client: string, now = Date.now()): boolean {
+  const { logoutLines } = limitsOf(ctx);
+
+  if (now - logoutLines.since >= 60_000) {
+    logoutLines.since = now;
+    logoutLines.count = 0;
+  }
+  if (logoutLines.count >= LOGOUT_REFUSALS_LOGGED_PER_MINUTE || !quietly(ctx, `logout ${client}`, now)) return false;
+  logoutLines.count += 1;
+  return true;
+}
+
+/** An answer to the provider's server: JSON or nothing, never kept by anything on the way. */
+function forProvider(c: Context, status: 200 | 400 | 404 | 503, body: { error: string } | null): Response {
+  const headers: Record<string, string> = { "cache-control": "no-store", ...(status === 503 ? { "retry-after": String(LOGOUT_RETRY_AFTER_S) } : {}) };
+
+  return body === null ? c.body(null, status, headers) : c.json(body, status, headers);
+}
+
+/** What a restore answers the provider: it sends the logout again, after the backup is back (one written now would be overwritten). */
+export function logoutDuringRestore(c: Context): Response {
+  return forProvider(c, 503, { error: "temporarily_unavailable" });
 }
 
 function clearPreLogin(c: Context): void {
@@ -198,5 +234,44 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
       `Signed in through ${provider.config.name}: ${named(result.account)}${result.created ? `, a new ${ROLE_NAMES[result.account.role]}` : ""}, from ${from}${checked.keyId ? ` (key ${checked.keyId})` : ""}${result.notes.length ? `; ${result.notes.join("; ")}` : ""}.`
     );
     return c.redirect(preLogin.returnTo, 303);
+  },
+
+  "POST /api/auth/oidc/backchannel-logout": async (c, ctx) => {
+    const provider = ctx.options.mode === "hosted" && ctx.options.install ? (ctx.options.oidc ?? null) : null;
+
+    if (!provider) return forProvider(c, 404, { error: "not_found" });
+    const install = ctx.options.install!;
+    const trustProxy = Boolean(ctx.options.trustProxy);
+    const client = clientKeyOf(c, trustProxy);
+    // Server to server: no cookie is read, and no limiter stands in front of it (sign-in failures never block it, nor it them).
+    const body = new URLSearchParams(await c.req.text().catch(() => ""));
+    const token = body.get("logout_token");
+    const refused = (why: string, retry: boolean): Response => {
+      if (logoutLineAllowed(ctx, client)) audit(ctx, `A back-channel logout from ${clientAddress(c, trustProxy)} was refused: ${why}.`);
+      return retry ? forProvider(c, 503, { error: "temporarily_unavailable" }) : forProvider(c, 400, { error: "invalid_request" });
+    };
+
+    if (!token || token.length > BACKCHANNEL_BODY_LIMIT_BYTES) return refused("there is no logout_token", false);
+    let checked: Awaited<ReturnType<OidcProvider["checkLogoutToken"]>>;
+
+    try {
+      checked = await provider.checkLogoutToken(token);
+    } catch (error) {
+      if (error instanceof LogoutRefusal) return refused(error.reason, error.retry);
+      if (error instanceof OidcRefusal) return refused(error.logLine, true);
+      throw error;
+    }
+    let result: Awaited<ReturnType<typeof install.people.providerLogout>>;
+
+    // Answered 200 only once it is written: a provider sends again anything that isn't.
+    try {
+      result = await install.people.providerLogout({ issuer: provider.config.issuer, subject: checked.subject, issuedAt: checked.issuedAt });
+    } catch (error) {
+      audit(ctx, `A back-channel logout from ${provider.config.name} couldn't be written, so nobody was signed out by it; it is answered as failed, to be sent again: ${error instanceof Error ? error.message : String(error)}`);
+      return forProvider(c, 400, { error: "server_error" });
+    }
+    if (!result.ok) return refused("the list of recent logouts for people with no account here is full; it will be sent again", true);
+    audit(ctx, `The provider (${provider.config.name}) signed ${result.account ? named(result.account) : "someone with no account here"} out${checked.keyId ? ` (key ${checked.keyId})` : ""}.`);
+    return forProvider(c, 200, null);
   },
 };

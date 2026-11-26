@@ -436,6 +436,7 @@ const coveredElsewhere: ApiRouteKey[] = [
   // Signing in through an identity provider: test/oidc-sign-in.test.ts, against a provider running inside the test.
   "GET /api/auth/oidc/start",
   "GET /api/auth/oidc/callback",
+  "POST /api/auth/oidc/backchannel-logout",
 ];
 
 describe("route coverage", () => {

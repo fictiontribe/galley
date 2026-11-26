@@ -17,7 +17,7 @@ import { GalleyError } from "../errors";
 import { ACCOUNT_ROLES, INVITATION_DAYS, PASSWORD_LINK_MINUTES, ROLE_ACCESS, type Account, type AccountRole, type AccountSession, type Invitation, type LinkPreview, type OperatorAccount } from "./accounts";
 import { nameKey, tidyName } from "./names";
 import { hashPassword, passwordProblem, verifyPassword } from "./password";
-import { hasOwner, sha256Hex, signsInWithPassword, spendSetupCode, TOMBSTONES_KEPT, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink } from "./state";
+import { hasOwner, PROVIDER_LOGOUT_KEPT_MS, PROVIDER_LOGOUTS_KEPT, sha256Hex, signsInWithPassword, spendSetupCode, TOMBSTONES_KEPT, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink } from "./state";
 
 /** One refusal for every code that can't be used — unknown, used, taken back, expired — so a guesser learns nothing. */
 export const LINK_REFUSED = "This link doesn't work any more: it was used already, taken back, or it ran out. Ask an owner of this editor for a new one.";
@@ -114,6 +114,16 @@ export interface PeopleService {
    * written then.
    */
   signInThroughProvider(input: ProviderSignIn): Promise<ProviderSignInResult>;
+  /**
+   * The identity provider signed this subject out (back-channel logout): the
+   * account's sessions issued up to a minute after the logout end, and a
+   * sign-in whose ID token is from before it is refused. For a subject with
+   * no account here, the logout is kept a while, so a sign-in begun before it
+   * can't make the account after it. Both times only ever go up. It never
+   * makes an account, switches one on or changes a role. `full`: the list of
+   * recent logouts holds as many as it can, so this one wasn't kept.
+   */
+  providerLogout(input: { issuer: string; subject: string; issuedAt: number }): Promise<{ ok: true; account: Account | null } | { ok: false; reason: "full" }>;
   /** Makes the first owner, named by subject (GALLEY_OIDC_OWNER), while the install has no owner. Nothing when it has one. */
   nameFirstOwner(issuer: string, subject: string): Promise<Account | null>;
   /** Whether `password` is the password of one of the owners who has one (GALLEY_PASSWORD, at start-up). */
@@ -567,6 +577,34 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       // A changed role or name applies to whatever shows it at once.
       if (changedOthers) store.sessionsChanged();
       return result!;
+    },
+
+    async providerLogout({ issuer, subject, issuedAt }) {
+      let result: { ok: true; account: Account | null } | { ok: false; reason: "full" } = { ok: true, account: null };
+
+      await store.update((draft) => {
+        const at = now();
+        const same = (one: { issuer: string; subject: string } | undefined) => one?.issuer === issuer && one.subject === subject;
+        const account = draft.accounts.find((candidate) => same(candidate.identity));
+
+        // Only those an ID token from before them could still be taken against are kept.
+        draft.providerLogouts = draft.providerLogouts.filter((one) => at - one.at < PROVIDER_LOGOUT_KEPT_MS);
+        if (account) {
+          // Never assigned, only raised: an older logout, or one sent again, takes nothing back.
+          account.providerLogoutAt = Math.max(account.providerLogoutAt ?? 0, issuedAt);
+          // Sessions made up to a minute after it end too (a provider clock behind ours), never one made after now.
+          account.sessionsValidAfter = Math.max(account.sessionsValidAfter, Math.min(issuedAt + 60_000, at));
+          result = { ok: true, account: publicAccount(account) };
+          return;
+        }
+        const kept = draft.providerLogouts.find((one) => same(one));
+
+        if (kept) kept.at = Math.max(kept.at, issuedAt);
+        else if (draft.providerLogouts.length >= PROVIDER_LOGOUTS_KEPT) result = { ok: false, reason: "full" };
+        else draft.providerLogouts.push({ issuer, subject, at: issuedAt });
+      });
+      if (result.ok && result.account) store.sessionsChanged();
+      return result;
     },
 
     async nameFirstOwner(issuer, subject) {

@@ -1046,6 +1046,16 @@ export interface ApiRoutes {
    * page with `?signin=<why>`.
    */
   "GET /api/auth/oidc/callback": { query: { code?: string; state?: string; iss?: string; error?: string }; response: never };
+  /**
+   * Where an identity provider is set up: its back-channel logout (OpenID
+   * Connect Back-Channel Logout 1.0), server to server. A form-encoded
+   * `logout_token` of at most 16 KB; no cookie, no Origin. `200` only once
+   * the logout is written; `400` with `invalid_request` for a token that
+   * isn't good, or `server_error` when it couldn't be written; `503` with
+   * Retry-After while a backup is being put back. Anything but `200` is to be
+   * sent again.
+   */
+  "POST /api/auth/oidc/backchannel-logout": { body: { logout_token: string }; response: never };
 
   // ── "Host the editor online" (hosting/types.ts) ────────────────────────
   // Local mode only: a hosted install never creates other installs.

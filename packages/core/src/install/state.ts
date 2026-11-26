@@ -172,6 +172,8 @@ export function signsInWithPassword(account: Pick<StoredAccount, "passwordHash" 
 export const TOMBSTONES_KEPT = 10_000;
 /** At most this many recent logouts for subjects with no account are kept; each is kept fifteen minutes. */
 export const PROVIDER_LOGOUTS_KEPT = 10_000;
+/** How long a logout for a subject with no account is kept: as long as an ID token from before it could still be taken (ten minutes, with the leeway). */
+export const PROVIDER_LOGOUT_KEPT_MS = 15 * 60_000;
 
 /** How many used setup codes are remembered (one is used per first run or password reset). */
 const SPENT_CODES_KEPT = 50;
