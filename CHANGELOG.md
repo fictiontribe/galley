@@ -5,6 +5,120 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## 0.4.8 — 2026-11-26
+
+**Embedding, fourth part (experimental): an extension can follow what
+happens to a site, refuse a discard and hold a file's turn; an edition's
+additions can draw in twelve more places of the app and outline sections
+of the previewed page in a colour.** For anyone who doesn't build their own
+edition, nothing changes: with no extensions and no additions, the editor
+works as before.
+
+### Added
+
+- **Embedding, fourth part: following what happens to a site
+  (experimental).** `host.hooks` gives an extension four things. Each
+  returns a function that stops it, and all of them stop with the
+  extension:
+  - `onFileWrite(listener)` is told right after a file is written or
+    removed on any open site: `{ siteId, path, origin, beforeHash,
+    afterHash, removed, actor }`. `origin` is `user`, `agent` or `undo` for
+    the editor's own writes, and `external` for changes from outside the
+    app (another program, Get latest, catching up), which come with no
+    `beforeHash` and with the actor `outside`. A hash is the first 16 hex
+    digits of the file's SHA-256. Files that a discard or an undone publish
+    puts back are not told one by one. Secrets files (`.env…`) and `.git/`
+    are never told, as the site an extension is handed never reads them,
+    and while no extension listens, nothing is hashed for it.
+  - `onActivity(listener)` is told when a publish, a discard, an undone
+    publish (`revert`), Get latest (`pull`), a look at what is new on the
+    code host (`check`) or a catch-up starts, and when it ends: `{ siteId,
+    kind, phase, actor }`, with the paths and the commit where there are
+    some, and `failed: true` when it stopped with an error, or, for a
+    publish or an undone publish, when it answered that it failed without
+    one: refused, or committed here and not pushed.
+  - `beforeDiscard(guard)` is asked before a discard, with the site, the
+    paths (every waiting path for "discard all") and the actor. A guard
+    that answers with a sentence refuses it: nothing is discarded, and the
+    person is shown that sentence (403), as one line of at most 500
+    characters with the extension's declared secrets taken out. Guards are
+    asked one after another, and the first refusal wins. A guard may answer
+    with a promise; one that throws, or doesn't answer within five seconds,
+    refuses the discard with a plain sentence, and the log says why.
+  - `onAssistantTurn(listener)` is told when an assistant's turn starts
+    (`start`), each time one of its tools starts or finishes once the turn
+    has changed a file (`write`, with every file changed so far), and when
+    the turn ends, however it ended (`end`, with the same): `{ siteId,
+    threadId, turnId, phase, actor, paths }`.
+
+  `actor` says who did it: a person (`accountId`, `role`, and `viaPreview`
+  for a change asked from the previewed page), the operator's token, the
+  engine, or `outside`. Listeners are handed a copy, run as nobody, and
+  must answer at once: a file's listeners are called while its write
+  waits, a promise is logged and not waited for, and an error is logged.
+  None of them can fail a write or an action.
+- **Embedding: holding a file's turn (`host.sites.withPathLock`,
+  experimental).** `withPathLock(siteId, path, run)` runs `run(site)` while
+  it holds the turn that the editor's own edits of that file take (saving
+  an entry, making or deleting one, saving or deleting a file), so those
+  wait until `run` has finished. Inside `run`, the site's own edits of that
+  file go straight through, as does `withPathLock` again on it. The site is
+  handed as `host.sites.get` hands it. It is refused inside a GET, once the
+  extension has stopped, for a path under `.git/`, a secrets file or a path
+  that climbs out of the site, and for a site that isn't open. It doesn't
+  keep the file still: a discard, Get latest, an undone publish, an
+  assistant's Undo and edits made outside the app don't take that turn.
+- **Embedding: twelve more places in the app (experimental).** Beside
+  `root`, `topBar` and `listRow`, an addition can now draw:
+  - in an open entry's form: `entrySession` (once for the open entry, for
+    what keeps going while it is open; it should draw nothing), `entryTop`
+    (at the top of the form, under the mode bar), `fieldHeader` (beside a
+    field's label), `fieldNotice` (under a field's control), `fieldFrame`
+    (around a field's control, handed it as `children`), `sectionHeader`
+    (on the head of each section or list item) and `bodyAddon` (above the
+    main text);
+  - in Proof: `proofRow` (in each changed file's row, beside its button,
+    so what it draws may take a click of its own) and `proofDetail` (in the
+    head of a change);
+  - `publishNotice`, in the Publish dialog above the files, handed the
+    paths chosen;
+  - `arrangePanel`, in the Arrange panel once the page's sections are
+    found;
+  - `previewHost`, beside the preview of the page that can be edited.
+
+  Each is handed the site and the entry's or the file's path; a field's
+  places are handed its path and its definition too. `listRow` is now also
+  drawn in the list of changes on a site's home. A `fieldFrame` that waits
+  shows the control without it; one that fails leaves the control as it
+  was. `entrySession`, `entryTop` and `bodyAddon` are handed the form's
+  store, which can now tell its edits as they are made, an immediate one
+  (a switch, a picker) included, and a newer copy once it is in place
+  (`store.actions.onEvent`), put edits it didn't send onto its saved copy
+  while keeping what the person is still typing (`applyRemote`), send its
+  edits and read the entry back another way (`setTransport`, and
+  `setTransport(null)` to put its own back), and stop taking newer copies
+  of the entry (`setSuppressReceive`). `bodyAddon` is
+  also handed the main text's CodeMirror view, and can add CodeMirror
+  extensions, make the text read-only (its formatting buttons too), or
+  take its text over, so that the form neither saves what is typed there
+  nor replaces it. `@galley/web/additions` also exports `useServerEvent`,
+  `useConnection`, `useChanges`, `useSite`, `notify`, `pathKey`, and the
+  types `FormStore`, `FormStoreEvent` and `BodyAdditionProps`.
+- **Embedding: outlines on the previewed page (experimental).** A
+  `previewHost` addition can outline sections of the page in the preview
+  with `postMarks([{ field, index, color }])`: a 2-pixel line in that
+  colour around each section named, drawn over the page, which never takes
+  a click and holds no text. A colour is `#rgb` or `#rrggbb` and nothing
+  else, an index a whole number from 0, a field at most 200 characters. A
+  message with more than 32 marks, or with one mark that isn't so, is
+  ignored whole. The outlines follow scrolling and resizing; an empty list
+  takes them away, and nothing is drawn while the page's sections can't be
+  matched to the entry's. The page beside it that shows the site as it is
+  online ignores them. The preview's overlay script grows by about 1.2 KB.
+- **The embedding guide covers all of it:** the hooks, `withPathLock`, the
+  fifteen places, the form's store and its main text, and the outlines
+  ("Embedding the editor").
+
 ## 0.4.7 — 2026-11-26
 
 **The preview says in plain words why it failed, `galley doctor` checks

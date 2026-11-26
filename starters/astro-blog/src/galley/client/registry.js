@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.7 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.8 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // The one seam for adding a form destination: a submitter registered under a
 // provider id. Built-in providers load from ./providers/ on demand; a site or

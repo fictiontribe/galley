@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.7 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.8 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // The site's kit settings, read from files (a vendored kit has no
 // integration to pass them): src/galley/settings.json for the forms,
