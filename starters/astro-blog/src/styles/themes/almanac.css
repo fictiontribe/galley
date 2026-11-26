@@ -1,0 +1,202 @@
+/*
+ * DESIGN TOKENS — the one file that decides how this site looks.
+ *
+ * Look: ALMANAC — cream paper and blue-black ink by day, deep navy and lamplight
+ * by night; a soft old-style display serif, a bookish text face.
+ *
+ * Every colour, font, size, space, radius and motion value used anywhere on
+ * the site is a custom property here; components only use these names.
+ * Three complete looks live in src/styles/themes/ — ledger (the default),
+ * fieldbook and almanac. To switch, copy one over this file:
+ *
+ *   cp src/styles/themes/fieldbook.css src/styles/tokens.css
+ *
+ * LIGHT AND DARK. Every colour is light-dark(<light>, <dark>). The page
+ * follows the reader's system setting; the switch in the header pins one
+ * (global.css sets color-scheme from it). Each pair below keeps body text at
+ * least 7:1 and every other text at least 4.5:1 against its ground, in both.
+ *
+ * Colour roles:
+ *   background         page ground
+ *   surface            raised things: inputs, the search box, code blocks
+ *   surface-muted      ground of `tone: muted` sections, table stripes
+ *   text / text-muted  body copy / dates, captions, labels
+ *   border             hairlines; border-strong for form controls
+ *   accent             links, the one button, highlighted columns
+ *   accent-soft        a wash of the accent behind a highlighted column or row
+ *   accent-contrast    text on accent
+ *   inverse-*          the footer and `tone: inverse` sections
+ *   chart-1…5          data series, in order; chart-muted for the series
+ *                      that isn't the story; chart-grid for gridlines
+ *   good/bad/warn      yes / no / partly, in tables and verdicts
+ *   callout-*          note, tip, important, warning, caution
+ *   --astro-code-*     syntax colours (Shiki's css-variables theme)
+ *
+ * FONT PRELOAD (read by src/layouts/Base.astro — keep the format):
+ * preload: source-serif-4-latin-opsz-normal fraunces-latin-opsz-normal
+ */
+
+@import "@fontsource-variable/fraunces/opsz.css";
+@import "@fontsource-variable/fraunces/opsz-italic.css";
+@import "@fontsource-variable/source-serif-4/opsz.css";
+@import "@fontsource-variable/source-serif-4/opsz-italic.css";
+@import "@fontsource-variable/instrument-sans/wght.css";
+@import "@fontsource-variable/martian-mono/wght.css";
+
+:root {
+  /* ── Colour ─────────────────────────────────────────────────────────── */
+  --color-background: light-dark(oklch(96.8% 0.016 90), oklch(19% 0.026 265));
+  --color-surface: light-dark(oklch(99% 0.008 90), oklch(23% 0.03 265));
+  --color-surface-muted: light-dark(oklch(92.6% 0.022 88), oklch(25.6% 0.032 265));
+  --color-text: light-dark(oklch(22.5% 0.03 265), oklch(94% 0.015 90));
+  --color-text-muted: light-dark(oklch(44.5% 0.03 265), oklch(76.5% 0.02 90));
+  --color-border: light-dark(oklch(86% 0.02 88), oklch(33.5% 0.03 265));
+  --color-border-strong: light-dark(oklch(53% 0.025 265), oklch(60% 0.025 265));
+
+  --color-accent: light-dark(oklch(44% 0.14 262), oklch(81% 0.11 85));
+  --color-accent-strong: light-dark(oklch(36% 0.13 262), oklch(88% 0.09 88));
+  --color-accent-soft: light-dark(oklch(92.4% 0.032 262), oklch(30% 0.05 265));
+  --color-accent-contrast: light-dark(oklch(98.4% 0.008 90), oklch(19% 0.026 265));
+
+  --color-inverse-background: light-dark(oklch(22.5% 0.03 265), oklch(14% 0.022 265));
+  --color-inverse-surface: light-dark(oklch(27.5% 0.034 265), oklch(19.5% 0.026 265));
+  --color-inverse-text: light-dark(oklch(95% 0.014 90), oklch(94% 0.015 90));
+  --color-inverse-muted: light-dark(oklch(78% 0.018 90), oklch(74% 0.018 90));
+  --color-inverse-border: light-dark(oklch(37% 0.03 265), oklch(29% 0.026 265));
+  --color-inverse-accent: light-dark(oklch(82% 0.11 85), oklch(81% 0.11 85));
+
+  --color-chart-1: light-dark(oklch(45% 0.14 262), oklch(81% 0.11 85));
+  --color-chart-2: light-dark(oklch(64% 0.13 70), oklch(74% 0.09 250));
+  --color-chart-3: light-dark(oklch(52% 0.13 25), oklch(74% 0.12 30));
+  --color-chart-4: light-dark(oklch(48% 0.08 170), oklch(76% 0.09 165));
+  --color-chart-5: light-dark(oklch(50% 0.1 320), oklch(74% 0.09 322));
+  --color-chart-muted: light-dark(oklch(76% 0.018 88), oklch(46% 0.025 265));
+  --color-chart-grid: light-dark(oklch(88.5% 0.018 88), oklch(30% 0.028 265));
+
+  --color-good: light-dark(oklch(45% 0.11 150), oklch(76% 0.12 150));
+  --color-bad: light-dark(oklch(48% 0.16 28), oklch(74% 0.13 30));
+  --color-warn: light-dark(oklch(50% 0.1 75), oklch(80% 0.12 82));
+
+  --color-callout-note: light-dark(oklch(45% 0.09 250), oklch(76% 0.08 245));
+  --color-callout-tip: light-dark(oklch(44% 0.1 152), oklch(76% 0.11 150));
+  --color-callout-important: light-dark(oklch(45% 0.12 320), oklch(76% 0.1 322));
+  --color-callout-warning: light-dark(oklch(48% 0.1 70), oklch(80% 0.12 80));
+  --color-callout-caution: light-dark(oklch(48% 0.16 28), oklch(74% 0.13 30));
+
+  --color-shade: oklch(14% 0.008 62);
+  --color-on-image: oklch(97% 0.006 84);
+  --shade-strong: 0.78;
+
+  /* Syntax colours for code blocks (Shiki's css-variables theme). */
+  --astro-code-foreground: light-dark(oklch(26% 0.03 265), oklch(91% 0.015 90));
+  --astro-code-background: light-dark(oklch(94.6% 0.02 88), oklch(16% 0.024 265));
+  --astro-code-token-constant: light-dark(oklch(45% 0.09 250), oklch(78% 0.08 240));
+  --astro-code-token-string: light-dark(oklch(44% 0.1 150), oklch(78% 0.1 145));
+  --astro-code-token-comment: light-dark(oklch(52% 0.012 62), oklch(64% 0.012 72));
+  --astro-code-token-keyword: light-dark(oklch(43% 0.14 262), oklch(81% 0.11 85));
+  --astro-code-token-parameter: light-dark(oklch(46% 0.08 75), oklch(82% 0.1 84));
+  --astro-code-token-function: light-dark(oklch(44% 0.11 320), oklch(78% 0.09 322));
+  --astro-code-token-string-expression: light-dark(oklch(44% 0.1 150), oklch(78% 0.1 145));
+  --astro-code-token-punctuation: light-dark(oklch(40% 0.012 58), oklch(76% 0.012 76));
+  --astro-code-token-link: light-dark(oklch(43% 0.14 262), oklch(81% 0.11 85));
+
+  /* ── Type ───────────────────────────────────────────────────────────── */
+  /* display: headlines. text: what is read. ui: navigation, labels, figures
+     in charts and tables. mono: code. */
+  --font-display: "Fraunces Variable", "Iowan Old Style", Georgia, serif;
+  --font-text: "Source Serif 4 Variable", "Iowan Old Style", Georgia, serif;
+  --font-ui: "Instrument Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Martian Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --weight-display: 520;
+  --weight-display-strong: 640;
+  --weight-text: 400;
+  --weight-text-strong: 620;
+  --weight-ui: 420;
+  --weight-ui-medium: 530;
+  --weight-ui-strong: 650;
+
+  /* Optical size for the display face, when it has one (Newsreader does). */
+  --opsz-display: 96;
+  --opsz-text: 18;
+  --display-style: normal;
+
+  --tracking-display: -0.018em;
+  --tracking-ui: 0;
+  --tracking-caps: 0.09em;
+  --leading-tight: 1;
+  --leading-snug: 1.2;
+  --leading-text: 1.62;
+  --leading-ui: 1.4;
+
+  /* Fluid scale: -2 … 0 for interface text, 1 … 3 for sub-heads, 4 … 7 for headlines. */
+  --step--2: clamp(0.74rem, 0.72rem + 0.08vw, 0.8rem);
+  --step--1: clamp(0.84rem, 0.81rem + 0.12vw, 0.92rem);
+  --step-0: clamp(0.96rem, 0.93rem + 0.14vw, 1.04rem);
+  --step-1: clamp(1.14rem, 1.06rem + 0.38vw, 1.36rem);
+  --step-2: clamp(1.34rem, 1.18rem + 0.75vw, 1.82rem);
+  --step-3: clamp(1.6rem, 1.3rem + 1.4vw, 2.5rem);
+  --step-4: clamp(1.95rem, 1.45rem + 2.3vw, 3.4rem);
+  --step-5: clamp(2.35rem, 1.55rem + 3.6vw, 4.6rem);
+  --step-6: clamp(2.7rem, 1.5rem + 5.4vw, 6.2rem);
+  --step-7: clamp(3.2rem, 1.2rem + 8.8vw, 9rem);
+  /* The size of reading text in posts and pages. */
+  --text-size: clamp(1.12rem, 1.05rem + 0.32vw, 1.3rem);
+
+  /* ── Space ──────────────────────────────────────────────────────────── */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-s: 1rem;
+  --space-m: clamp(1.25rem, 1.12rem + 0.55vw, 1.65rem);
+  --space-l: clamp(1.75rem, 1.45rem + 1.3vw, 2.6rem);
+  --space-xl: clamp(2.4rem, 1.9rem + 2.3vw, 4rem);
+  --space-2xl: clamp(3.2rem, 2.3rem + 4vw, 6rem);
+  --space-section: clamp(3.6rem, 2.5rem + 5vw, 7rem);
+
+  /* The reading column, the width figures may break out to, and the page. */
+  --measure: 37rem;
+  --measure-wide: 60rem;
+  --container: 84rem;
+  --page-margin: 1.25rem;
+  --gutter: clamp(1.25rem, 0.9rem + 1.6vw, 2.5rem);
+  --header-height: 4.25rem;
+
+  /* ── Shape ──────────────────────────────────────────────────────────── */
+  --radius-s: 2px;
+  --radius-m: 4px;
+  --radius-l: 6px;
+  --radius-button: 999px;
+  --radius-image: 0;
+  --border-width: 1px;
+  --rule-width: 2px;
+
+  --shadow-raised: 0 1px 2px light-dark(oklch(21% 0.012 58 / 0.08), oklch(0% 0 0 / 0.4)),
+    0 12px 32px -12px light-dark(oklch(21% 0.012 58 / 0.22), oklch(0% 0 0 / 0.6));
+
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 140ms;
+  --duration: 260ms;
+  --duration-slow: 900ms;
+}
+
+@media (min-width: 40rem) {
+  :root {
+    --page-margin: 2.5rem;
+  }
+}
+
+@media (min-width: 72rem) {
+  :root {
+    --page-margin: clamp(3rem, 4vw, 5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration: 0ms;
+    --duration-slow: 0ms;
+  }
+}

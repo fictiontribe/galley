@@ -7,6 +7,20 @@ entry says how.
 
 ## Unreleased
 
+### Added
+
+- **Sarking (`sarking`, `starters/astro-blog`), a blog starter for long-form
+  writing with evidence.** Posts are plain Markdown, never MDX — so on a
+  hosted install contributors can edit them — with twelve fenced-block YAML
+  embeds (`chart`, `compare`, `stats`, `verdict`, `proscons`, `timeline`,
+  `steps`, `faq`, `gallery`, `pullquote`, `video`, `takeaways`) validated
+  against schemas in `content.config.ts` and rendered on the server without
+  JavaScript. Eighteen section types, four templates, three looks (Ledger,
+  Fieldbook, Almanac, each light and dark), authors, series, topics, archive,
+  search, full-text RSS and JSON feeds, and a Markdown copy of every page via
+  the site kit. Travels as a downloaded starter (`"download": true`), fetched
+  and hash-checked the first time someone uses it.
+
 ### Security
 
 - **What an extension or a plugin is handed is narrowed to what it is meant

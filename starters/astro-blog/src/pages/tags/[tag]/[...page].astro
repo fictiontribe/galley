@@ -1,0 +1,52 @@
+---
+// One page per topic: every post filed under it, newest first,
+// `blog.pageSize` (site.json) to a page — /tags/heat-pumps/, …/2/.
+import type { GetStaticPaths, Page } from "astro";
+import { getCollection } from "astro:content";
+import Base from "../../../layouts/Base.astro";
+import PostCard from "../../../components/PostCard.astro";
+import Pager from "../../../components/Pager.astro";
+import { byDate, isPublished, postsByTag, type Post } from "../../../lib/blog";
+import { fill, labels, site, withBase } from "../../../lib/site";
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const posts = (await getCollection("blog", isPublished)).sort(byDate);
+  return postsByTag(posts).flatMap((entry) => paginate(entry.posts, { params: { tag: entry.slug }, props: { tag: entry.tag }, pageSize: site.blog.pageSize }));
+}) satisfies GetStaticPaths;
+
+interface Props {
+  page: Page<Post>;
+  tag: string;
+}
+
+const { page: listing, tag } = Astro.props;
+const heading = fill(labels.tags.tagTitle, { tag });
+const title = listing.currentPage > 1 ? `${heading} — ${fill(labels.blog.pageOf, { current: listing.currentPage, total: listing.lastPage })}` : heading;
+const count = listing.total === 1 ? labels.blog.post : fill(labels.blog.posts, { count: listing.total });
+---
+
+<Base title={title} description={fill(labels.tags.tagDescription, { tag })}>
+  <header class="page-head container">
+    <div class="page-head__inner">
+      <p class="kicker"><a href={withBase("/tags/")}>{labels.tags.allTopics}</a></p>
+      <h1 class="page-head__title">{heading}</h1>
+      <p class="meta">{count}</p>
+    </div>
+  </header>
+  <div class="container">
+    <div class="tag-rows">
+      {listing.data.map((post, i) => <PostCard post={post} variant="row" eager={i === 0} />)}
+    </div>
+    <Pager current={listing.currentPage} last={listing.lastPage} prev={listing.url.prev} next={listing.url.next} />
+  </div>
+</Base>
+
+<style>
+  .kicker a {
+    color: inherit;
+  }
+
+  .tag-rows {
+    border-block-start: var(--rule-width) solid var(--color-text);
+  }
+</style>

@@ -1,0 +1,38 @@
+{
+  "name": "Write to Sarking",
+  "submitLabel": "Send",
+  "fields": [
+    {
+      "id": "name",
+      "type": "text",
+      "label": "Your name",
+      "required": true
+    },
+    {
+      "id": "email",
+      "type": "email",
+      "label": "Email address",
+      "required": true
+    },
+    {
+      "id": "message",
+      "type": "textarea",
+      "label": "Message",
+      "required": true,
+      "help": "A correction, a question about your own house, or a number you think is wrong."
+    }
+  ],
+  "destinations": [
+    { "provider": "galley", "settings": {} }
+  ],
+  "afterSubmit": [
+    {
+      "type": "message",
+      "title": "Thank you.",
+      "text": "Your message is here. Replies take a week or so — the house comes first."
+    }
+  ],
+  "errorMessage": "That didn't go through. Your message is still here; try again in a minute.",
+  "spam": { "honeypot": true, "minSeconds": 3 },
+  "appearance": { "layout": "stacked", "size": "regular", "labels": "above" }
+}

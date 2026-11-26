@@ -1,0 +1,102 @@
+---
+// Vendored from @galley/astro 0.4.3 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// <Form id="contact" /> renders src/content/forms/contact.json (the `forms`
+// collection); <Form definition={…} /> renders a definition given directly.
+// The whole form is server-rendered; one small script per page (bundled by
+// Astro) runs every form on it. See docs/forms.md.
+//
+// Props: id, definition, collection, endpoint, class, submitClass,
+// backClass, headingLevel, unstyled. Slots: before, after, submit, success.
+import { getEntry } from "astro:content";
+import type { FormDefinition } from "../kit";
+import { renderForm } from "../forms/render.js";
+import { describeIssues, formSchema } from "../schema.js";
+import { options } from "../runtime/site-config.js";
+import css from "../forms/forms.css?raw";
+
+interface Props {
+  /** The form's id: its file name in the forms collection. */
+  id?: string;
+  /** A definition to render instead of looking one up. */
+  definition?: FormDefinition;
+  /** The collection to look in. Default: the integration's `forms.collection` ("forms"). */
+  collection?: string;
+  /** Capture address for "galley" destinations, instead of the site-wide one. */
+  endpoint?: string;
+  /** Extra classes on the <form>. */
+  class?: string;
+  /** Extra classes on the submit (and next) button, e.g. the site's own "button". */
+  submitClass?: string;
+  /** Extra classes on a multi-step form's back button, e.g. "button button--secondary". */
+  backClass?: string;
+  /** Level of `heading` fields (2–6). Default 3. */
+  headingLevel?: number;
+  /** Emit no CSS at all; style every part yourself. */
+  unstyled?: boolean;
+}
+
+const { id, definition, collection = options.collection, endpoint, class: className, submitClass, backClass, headingLevel, unstyled = false } = Astro.props;
+let form: FormDefinition;
+let formId = id;
+
+if (definition) {
+  const parsed = formSchema.safeParse(definition);
+  if (!parsed.success) throw new Error(`The form ${id ? `“${id}”` : "given to <Form>"} has problems:\n${describeIssues(parsed.error).map((line) => `  - ${line}`).join("\n")}`);
+  form = parsed.data as FormDefinition;
+  formId ??= form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "form";
+} else {
+  if (!id) throw new Error("<Form> needs an id (a file in the forms collection) or a definition.");
+  const entry = await getEntry(collection as any, id).catch(() => undefined);
+  if (!entry) throw new Error(`No form called “${id}” in the “${collection}” collection. Add src/content/forms/${id}.json, or check the collection in src/content.config.ts.`);
+  form = (entry as any).data as FormDefinition;
+}
+
+// Ids stay unique when one form appears twice on a page; the CSS is written once.
+const locals = Astro.locals as Record<string, any>;
+const seen: Record<string, number> = (locals.__galleyForms ??= {});
+const count = (seen[formId!] = (seen[formId!] ?? 0) + 1);
+const writeCss = !unstyled && !locals.__galleyFormCss;
+if (writeCss) locals.__galleyFormCss = true;
+const pageUrl = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
+const parts = renderForm(form, formId!, {
+  endpoint: endpoint ?? options.endpoint,
+  pageUrl,
+  messages: options.messages,
+  instance: count > 1 ? String(count) : undefined,
+  className,
+  submitClass,
+  backClass,
+  headingLevel,
+  allowFormScripts: options.allowFormScripts,
+  unstyled,
+  freeEmailDomains: options.freeEmailDomains,
+  base: import.meta.env.BASE_URL,
+});
+// Each note once per build (or dev server): "no capture address" is one note
+// for the whole site however many forms it applies to.
+const warned: Set<string> = ((globalThis as any).__galleyFormWarnings ??= new Set());
+for (const notice of parts.notices) {
+  if (!warned.has(notice.key)) {
+    warned.add(notice.key);
+    console.warn(`[galley] ${notice.text}`);
+  }
+}
+const styles = writeCss ? css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ").replace(/\s*([{};,>])\s*/g, "$1").trim() : "";
+---
+
+{styles && <style is:inline set:html={styles} data-galley-form-css />}
+<Fragment set:html={parts.start} />
+<slot name="before" />
+<Fragment set:html={parts.middle + parts.actionsStart} />
+{Astro.slots.has("submit") ? <slot name="submit" /> : <Fragment set:html={parts.submit} />}
+<Fragment set:html={parts.actionsEnd} />
+<slot name="after" />
+<Fragment set:html={parts.formEnd + parts.successStart} />
+{Astro.slots.has("success") ? <slot name="success" /> : <Fragment set:html={parts.successDefault} />}
+<Fragment set:html={parts.end} />
+
+<script>
+  import { initForms } from "../client/forms.js";
+
+  initForms();
+</script>

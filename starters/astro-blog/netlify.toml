@@ -1,0 +1,6 @@
+# Netlify: build the static site into dist/. $URL is the site's main address
+# on Netlify (your custom domain once you add one), so canonical links and
+# the sitemap point at the right place without editing src/data/site.json.
+[build]
+  command = "npm run build -- --site \"$URL\""
+  publish = "dist"

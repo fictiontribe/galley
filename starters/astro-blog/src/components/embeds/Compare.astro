@@ -1,0 +1,219 @@
+---
+// A comparison table: the options across the top, what they are compared on
+// down the side. "yes", "no" and "partly" become marks (with the word for
+// screen readers); anything else is shown as written. One column can be
+// picked out. On a phone the table scrolls sideways with the row names held
+// in place.
+//
+// Fields: src/content.config.ts → compareFields.
+import Icon from "../Icon.astro";
+import { inline, labels } from "../../lib/site";
+
+interface Props {
+  title?: string;
+  text?: string;
+  columns: string[];
+  rows: Array<{ label: string; values: string[]; group?: string; note?: string }>;
+  highlight?: number;
+  badge?: string;
+  source?: string;
+}
+
+const { title, text, columns, rows, highlight, badge, source } = Astro.props;
+
+type Mark = "yes" | "no" | "partly";
+const marks: Record<string, Mark> = { yes: "yes", y: "yes", true: "yes", "✓": "yes", no: "no", n: "no", false: "no", "✗": "no", partly: "partly", partial: "partly", some: "partly" };
+const markOf = (value: string): Mark | undefined => marks[value.trim().toLowerCase()];
+const icon: Record<Mark, string> = { yes: "check", no: "minus", partly: "half-circle" };
+const isPicked = (index: number) => highlight === index + 1;
+---
+
+<figure class="compare">
+  {
+    (title || text) && (
+      <div class="compare__head">
+        {title && <p class="embed__title">{title}</p>}
+        {text && <p class="embed__text">{text}</p>}
+      </div>
+    )
+  }
+  <div class="compare__scroll" tabindex="0">
+    <table class="compare__table" style={`--cols: ${columns.length}`} aria-label={title}>
+      <thead>
+        <tr>
+          <td class="compare__corner"></td>
+          {
+            columns.map((column, i) => (
+              <th scope="col" class:list={{ "is-picked": isPicked(i) }}>
+                {isPicked(i) && badge && <span class="compare__badge">{badge} </span>}
+                <span class="compare__column">{column}</span>
+              </th>
+            ))
+          }
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((row) => (
+            <>
+              {row.group && (
+                <tr class="compare__group">
+                  <th scope="colgroup" colspan={columns.length + 1}>
+                    {row.group}
+                  </th>
+                </tr>
+              )}
+              <tr>
+                <th scope="row">
+                  {row.label}
+                  {row.note && <span class="compare__note">{row.note}</span>}
+                </th>
+                {columns.map((_, i) => {
+                  const value = row.values[i] ?? "";
+                  const mark = markOf(value);
+                  return (
+                    <td class:list={{ "is-picked": isPicked(i), [`is-${mark}`]: mark }}>
+                      {mark ? (
+                        <span class="compare__mark">
+                          <Icon name={icon[mark]} size={18} />
+                          <span class="visually-hidden">{labels.embeds[mark]}</span>
+                        </span>
+                      ) : (
+                        <Fragment set:html={inline(value)} />
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            </>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  {source && <figcaption class="embed__source">{labels.embeds.source}: {source}</figcaption>}
+</figure>
+
+<style>
+  .compare {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-inline-size: 0;
+    gap: var(--space-s);
+    font-family: var(--font-ui);
+  }
+
+  .compare__head {
+    display: grid;
+    gap: var(--space-3xs);
+  }
+
+  .compare__scroll {
+    position: relative;
+    overflow-x: auto;
+    border-block-start: var(--rule-width) solid var(--tone-text);
+    scrollbar-width: thin;
+  }
+
+  .compare__table {
+    inline-size: 100%;
+    min-inline-size: calc(9rem + var(--cols, 3) * 7.5rem);
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: var(--step--1);
+    line-height: 1.4;
+  }
+
+  .compare__table :where(th, td) {
+    padding: 0.75em 0.8em;
+    border-block-end: var(--border-width) solid var(--tone-line);
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .compare__table thead th {
+    vertical-align: bottom;
+    padding-block: 1.1em 0.8em;
+    font-weight: var(--weight-ui-strong);
+    border-block-end-color: var(--tone-line-strong);
+  }
+
+  .compare__corner {
+    border-block-end-color: var(--tone-line-strong) !important;
+  }
+
+  .compare__table tbody th {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    min-inline-size: 9rem;
+    max-inline-size: 15rem;
+    padding-inline-start: 0;
+    background: var(--tone-bg);
+    font-weight: var(--weight-ui-medium);
+    text-align: start;
+  }
+
+  .compare__corner {
+    position: sticky;
+    inset-inline-start: 0;
+    background: var(--tone-bg);
+  }
+
+  .compare__note {
+    display: block;
+    margin-block-start: 0.15em;
+    color: var(--tone-muted);
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui);
+  }
+
+  .compare__group th {
+    position: static;
+    padding-block: 1.6em 0.5em;
+    color: var(--tone-muted);
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui-strong);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    text-align: start;
+    background: none;
+  }
+
+  .compare__table .is-picked {
+    background: var(--tone-accent-soft);
+  }
+
+  .compare__table thead .is-picked {
+    border-start-start-radius: var(--radius-m);
+    border-start-end-radius: var(--radius-m);
+    color: var(--tone-text);
+  }
+
+  .compare__badge {
+    display: block;
+    margin-block-end: 0.4em;
+    color: var(--tone-accent);
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+  }
+
+  .compare__mark {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+  }
+
+  .is-yes .compare__mark {
+    color: var(--color-good);
+  }
+
+  .is-no .compare__mark {
+    color: var(--tone-muted);
+  }
+
+  .is-partly .compare__mark {
+    color: var(--color-warn);
+  }
+</style>

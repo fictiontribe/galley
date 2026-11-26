@@ -1,0 +1,53 @@
+---
+// Pages of numbers for lists: newer, "Page 2 of 5", older.
+import { fill, labels } from "../lib/site";
+
+interface Props {
+  current: number;
+  last: number;
+  prev?: string;
+  next?: string;
+}
+
+const { current, last, prev, next } = Astro.props;
+---
+
+{
+  last > 1 && (
+    <nav class="pager" aria-label={labels.blog.pagination}>
+      {prev ? (
+        <a class="button button--ghost" href={prev} rel="prev">
+          ← {labels.blog.newerPage}
+        </a>
+      ) : (
+        <span />
+      )}
+      <p class="meta">{fill(labels.blog.pageOf, { current, total: last })}</p>
+      {next ? (
+        <a class="button button--ghost" href={next} rel="next">
+          {labels.blog.olderPage} →
+        </a>
+      ) : (
+        <span />
+      )}
+    </nav>
+  )
+}
+
+<style>
+  .pager {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: var(--space-s);
+    margin-block-start: var(--space-xl);
+  }
+
+  .pager > :last-child {
+    justify-self: end;
+  }
+
+  .pager .meta {
+    text-align: center;
+  }
+</style>

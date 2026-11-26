@@ -1,0 +1,114 @@
+{
+  "/images/blog/bench.webp": {
+    "width": 1600,
+    "height": 1067,
+    "widths": [
+      800,
+      1600
+    ]
+  },
+  "/images/blog/hallway.webp": {
+    "width": 1600,
+    "height": 1067,
+    "widths": [
+      800,
+      1600
+    ]
+  },
+  "/images/blog/heat-pump.webp": {
+    "width": 1600,
+    "height": 1067,
+    "widths": [
+      800,
+      1600
+    ]
+  },
+  "/images/blog/house-front.webp": {
+    "width": 1600,
+    "height": 1067,
+    "widths": [
+      800,
+      1600
+    ]
+  },
+  "/images/blog/loft.webp": {
+    "width": 1600,
+    "height": 1067,
+    "widths": [
+      800,
+      1600
+    ]
+  },
+  "/images/blog/meter-cupboard.webp": {
+    "width": 1600,
+    "height": 1067,
+    "widths": [
+      800,
+      1600
+    ]
+  },
+  "/images/blog/radiator.webp": {
+    "width": 1600,
+    "height": 1067,
+    "widths": [
+      800,
+      1600
+    ]
+  },
+  "/images/blog/solar-roof.webp": {
+    "width": 1600,
+    "height": 1067,
+    "widths": [
+      800,
+      1600
+    ]
+  },
+  "/images/blog/street.webp": {
+    "width": 2000,
+    "height": 857,
+    "widths": [
+      1000,
+      2000
+    ]
+  },
+  "/images/blog/thermal.webp": {
+    "width": 1600,
+    "height": 1067,
+    "widths": [
+      800,
+      1600
+    ]
+  },
+  "/images/blog/window.webp": {
+    "width": 1600,
+    "height": 1067,
+    "widths": [
+      800,
+      1600
+    ]
+  },
+  "/images/blog/wood-fibre.webp": {
+    "width": 1600,
+    "height": 1067,
+    "widths": [
+      800,
+      1600
+    ]
+  },
+  "/images/people/dougal-reay.webp": {
+    "width": 800,
+    "height": 1000,
+    "widths": [
+      400,
+      800
+    ]
+  },
+  "/images/people/ines-calloway.webp": {
+    "width": 800,
+    "height": 1000,
+    "widths": [
+      400,
+      800
+    ]
+  }
+}

@@ -1,0 +1,183 @@
+---
+// One post in a list, in one of four shapes:
+//   row    date, title, standfirst and a small photograph, in a row
+//   card   photograph above, title and standfirst below
+//   lead   a large photograph beside a large title (the home page's lead)
+//   brief  title and date only, for compact lists
+import Media from "./Media.astro";
+import { postUrl, type Post } from "../lib/blog";
+import { fill, formatDate, isoDate, labels, readingMinutes } from "../lib/site";
+
+interface Props {
+  post: Post;
+  variant?: "row" | "card" | "lead" | "brief";
+  /** Heading level of the title, so lists sit right in the page outline. */
+  level?: 2 | 3;
+  /** The first photograph on the page loads straight away. */
+  eager?: boolean;
+}
+
+const { post, variant = "row", level = 2, eager = false } = Astro.props;
+const { title, description, date, image, imageAlt, tags } = post.data;
+const Heading = `h${level}` as "h2" | "h3";
+const href = postUrl(post);
+const minutes = readingMinutes(post.body);
+const sizes = {
+  row: "(min-width: 48rem) 14rem, 100vw",
+  card: "(min-width: 64rem) 26rem, (min-width: 40rem) 50vw, 100vw",
+  lead: "(min-width: 64rem) 50rem, 100vw",
+  brief: "1px",
+}[variant];
+---
+
+<article class:list={["post-card", `post-card--${variant}`]}>
+  {
+    variant !== "brief" && (
+      <a class="post-card__image" href={href} tabindex="-1" aria-hidden="true">
+        <Media src={image} alt={imageAlt} ratio={variant === "row" ? "4/3" : "3/2"} sizes={sizes} eager={eager} />
+      </a>
+    )
+  }
+  <div class="post-card__body">
+    {variant !== "brief" && tags[0] && <p class="kicker">{tags[0]}</p>}
+    <Heading class="post-card__title">
+      <a href={href}>{title}</a>
+    </Heading>
+    {variant !== "brief" && <p class="post-card__text">{description}</p>}
+    <p class="meta post-card__meta">
+      <time datetime={isoDate(date)}>{formatDate(date)}</time>
+      {variant !== "brief" && (
+        <>
+          <span aria-hidden="true">·</span>
+          <span>{fill(labels.post.readingTime, { minutes })}</span>
+        </>
+      )}
+    </p>
+  </div>
+</article>
+
+<style>
+  .post-card {
+    position: relative;
+    display: grid;
+    gap: var(--space-s);
+    align-content: start;
+  }
+
+  .post-card__image {
+    display: block;
+    overflow: hidden;
+    border-radius: var(--radius-image);
+  }
+
+  .post-card__image :global(img) {
+    transition: transform var(--duration-slow) var(--ease-out);
+  }
+
+  .post-card:hover .post-card__image :global(img) {
+    transform: scale(1.025);
+  }
+
+  .post-card__body {
+    display: grid;
+    gap: var(--space-2xs);
+    align-content: start;
+  }
+
+  .post-card__title {
+    font-size: var(--step-2);
+    line-height: 1.12;
+  }
+
+  .post-card__title a {
+    text-decoration: none;
+  }
+
+  /* The whole card is the link's target. */
+  .post-card__title a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .post-card__title a:hover,
+  .post-card:hover .post-card__title a {
+    color: var(--tone-accent);
+  }
+
+  .post-card__title a:focus-visible {
+    outline: none;
+  }
+
+  .post-card:has(.post-card__title a:focus-visible) {
+    outline: 2px solid var(--tone-accent);
+    outline-offset: 6px;
+    border-radius: var(--radius-s);
+  }
+
+  .post-card__text {
+    color: var(--tone-muted);
+    font-family: var(--font-text);
+    font-variation-settings: "opsz" var(--opsz-text);
+    font-size: var(--step-0);
+    line-height: 1.5;
+  }
+
+  .post-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    margin-block-start: var(--space-3xs);
+  }
+
+  /* row */
+  .post-card--row {
+    padding-block: var(--space-m);
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  @media (min-width: 48rem) {
+    .post-card--row {
+      grid-template-columns: 1fr 14rem;
+      gap: var(--space-l);
+    }
+
+    .post-card--row .post-card__image {
+      order: 2;
+    }
+
+    .post-card--row .post-card__title {
+      font-size: var(--step-3);
+    }
+  }
+
+  /* lead */
+  .post-card--lead .post-card__title {
+    font-size: var(--step-5);
+    line-height: 1.02;
+  }
+
+  .post-card--lead .post-card__text {
+    font-size: var(--step-1);
+    max-inline-size: 32em;
+  }
+
+  @media (min-width: 64rem) {
+    .post-card--lead {
+      grid-template-columns: 7fr 5fr;
+      gap: var(--gutter);
+      align-items: end;
+    }
+  }
+
+  /* brief */
+  .post-card--brief {
+    padding-block: var(--space-s);
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .post-card--brief .post-card__title {
+    font-size: var(--step-1);
+    line-height: 1.2;
+  }
+</style>

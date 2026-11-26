@@ -1,0 +1,57 @@
+---
+// The series: each with its picture, title, line and parts.
+import { getCollection } from "astro:content";
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import SeriesCard from "../SeriesCard.astro";
+import { isPublished, postsInSeries, refId } from "../../lib/blog";
+import type { Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  items?: Array<string | { id: string }>;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone = "default", eyebrow, heading, text, items, index = 0, level = 2, block } = Astro.props;
+const all = await getCollection("series");
+const posts = await getCollection("blog", isPublished);
+const chosen = items?.map(refId).filter(Boolean) as string[] | undefined;
+const series = (chosen ? chosen.map((name) => all.find((entry) => entry.id === name)).filter((entry) => entry !== undefined) : all)
+  .map((entry) => ({ entry, posts: postsInSeries(posts, entry.id) }))
+  .filter((item) => item.posts.length > 0);
+const headingId = `${id ?? `section-${index}`}-heading`;
+---
+
+<Section type="series" id={id} tone={tone} labelledby={heading ? headingId : undefined} label={heading ? undefined : eyebrow} block={block}>
+  <div class="series-section">
+    <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+    <div class="series-section__grid">
+      {series.map((item) => <SeriesCard series={item.entry} posts={item.posts} level={heading ? 3 : 2} />)}
+    </div>
+  </div>
+</Section>
+
+<style>
+  .series-section {
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  .series-section__grid {
+    display: grid;
+    gap: var(--space-xl) var(--gutter);
+  }
+
+  @media (min-width: 48rem) {
+    .series-section__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { findGalley, galleyArguments, nodeProblem, olderThan } from "../index.js";
 
 const BIN = fileURLToPath(new URL("../bin/create-galley.js", import.meta.url));
-const STARTERS = ["astro-editorial", "caddow", "astro-saas", "ferrow", "astro-starter", "lowfield", "astro-storefront", "storefront"];
+const STARTERS = ["astro-blog", "sarking", "astro-editorial", "caddow", "astro-saas", "ferrow", "astro-starter", "lowfield", "astro-storefront", "storefront"];
 const NPM = { npm_config_user_agent: "npm/10.9.2 node/v22.23.4 darwin arm64 workspaces/false" };
 
 describe("Node versions", () => {
@@ -75,6 +75,6 @@ describe("the command", () => {
     const result = spawnSync(process.execPath, [BIN, "x", "--starter", "nope"], { encoding: "utf8", env: { PATH: process.env.PATH ?? "", HOME: "/nonexistent" } });
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain("There's no starter called “nope”. Choose caddow, ferrow, lowfield or storefront");
+    expect(result.stderr).toContain("There's no starter called “nope”. Choose caddow, ferrow, lowfield, sarking or storefront");
   });
 });

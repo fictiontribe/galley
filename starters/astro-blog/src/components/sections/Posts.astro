@@ -1,0 +1,93 @@
+---
+// The latest posts (or those under one tag) as rows, cards or an index of
+// titles by year. `offset` skips the posts a featured section above shows.
+import { getCollection } from "astro:content";
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import PostCard from "../PostCard.astro";
+import PostIndex from "../PostIndex.astro";
+import { byDate, isPublished, tagSlug } from "../../lib/blog";
+import { withBase, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading?: string;
+  text?: string;
+  tag?: string;
+  offset?: number;
+  limit?: number;
+  layout?: "list" | "cards" | "index";
+  cta?: Link;
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone = "default", eyebrow, heading, text, tag, offset = 0, limit = 6, layout = "list", cta, index = 0, level = 2, block } = Astro.props;
+const all = (await getCollection("blog", isPublished)).sort(byDate);
+const posts = all.filter((post) => !tag || post.data.tags.some((item) => tagSlug(item) === tagSlug(tag))).slice(offset, offset + limit);
+const headingId = `${id ?? `section-${index}`}-heading`;
+const cardLevel = heading ? 3 : 2;
+---
+
+<Section type="posts" id={id} tone={tone} labelledby={heading ? headingId : undefined} label={heading ? undefined : eyebrow} block={block}>
+  <div class="posts-head">
+    <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+    {cta && <a class="text-link" href={withBase(cta.href)}>{cta.label} →</a>}
+  </div>
+  {
+    layout === "cards" ? (
+      <div class="posts-cards">
+        {posts.map((post) => (
+          <PostCard post={post} variant="card" level={cardLevel} />
+        ))}
+      </div>
+    ) : layout === "index" ? (
+      <PostIndex posts={posts} level={cardLevel} />
+    ) : (
+      <div class="posts-list">
+        {posts.map((post) => (
+          <PostCard post={post} variant="row" level={cardLevel} />
+        ))}
+      </div>
+    )
+  }
+</Section>
+
+<style>
+  .posts-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-s) var(--space-l);
+    margin-block-end: var(--space-l);
+  }
+
+  .posts-head:empty {
+    display: none;
+  }
+
+  .posts-list {
+    border-block-start: var(--rule-width) solid var(--tone-text);
+  }
+
+  .posts-cards {
+    display: grid;
+    gap: var(--space-xl) var(--gutter);
+  }
+
+  @media (min-width: 40rem) {
+    .posts-cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .posts-cards {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

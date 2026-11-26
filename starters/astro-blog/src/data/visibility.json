@@ -1,0 +1,26 @@
+{
+  "crawlers": {},
+  "robots": {
+    "disallow": []
+  },
+  "sitemap": {
+    "exclude": ["/search/"],
+    "lastmod": "content"
+  },
+  "structuredData": {
+    "website": true,
+    "organization": {
+      "sameAs": []
+    },
+    "articles": ["blog"],
+    "breadcrumbs": true
+  },
+  "agentReadable": {
+    "llmsTxt": true,
+    "llmsFullTxt": true,
+    "markdownTwins": true,
+    "agentPage": true,
+    "optional": ["/privacy/", "/search/", "/archive/", "/tags/**", "/blog/page/**"],
+    "exclude": ["/search/"]
+  }
+}

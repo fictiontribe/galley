@@ -1,0 +1,85 @@
+---
+// A film: its poster frame and a play mark, linking to where it is hosted.
+// Nothing is embedded, so no other site is asked for anything until the
+// reader chooses to go. Fields: src/content.config.ts → videoFields.
+import Icon from "../Icon.astro";
+import Media from "../Media.astro";
+import { isExternal, labels, withBase } from "../../lib/site";
+
+interface Props {
+  title: string;
+  href: string;
+  image: string;
+  imageAlt: string;
+  duration?: string;
+  caption?: string;
+}
+
+const { title, href, image, imageAlt, duration, caption } = Astro.props;
+const external = isExternal(href);
+---
+
+<figure class="video">
+  <a class="video__link" href={withBase(href)} rel={external ? "noopener" : undefined}>
+    <Media src={image} alt={imageAlt} ratio="16/9" sizes="(min-width: 64rem) 60rem, 100vw" />
+    <span class="video__bar">
+      <span class="video__play" aria-hidden="true"><Icon name="play" size={22} /></span>
+      <span class="video__title">
+        <span class="visually-hidden">{labels.embeds.play}: </span>{title}
+        {external && <span class="visually-hidden"> ({labels.embeds.opensElsewhere})</span>}
+      </span>
+      {duration && <span class="video__duration">{duration}</span>}
+    </span>
+  </a>
+  {caption && <figcaption class="caption">{caption}</figcaption>}
+</figure>
+
+<style>
+  .video__link {
+    position: relative;
+    display: block;
+    border-radius: var(--radius-image);
+    overflow: hidden;
+    color: var(--color-on-image);
+    text-decoration: none;
+  }
+
+  .video__bar {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    padding: var(--space-m);
+    background: linear-gradient(to top, color-mix(in oklch, var(--color-shade) calc(var(--shade-strong) * 100%), transparent), transparent);
+    font-family: var(--font-ui);
+  }
+
+  .video__play {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    inline-size: 3.25rem;
+    block-size: 3.25rem;
+    border-radius: 50%;
+    background: var(--color-on-image);
+    color: var(--color-shade);
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .video__link:hover .video__play {
+    transform: scale(1.08);
+  }
+
+  .video__title {
+    flex: 1;
+    font-size: var(--step-1);
+    font-weight: var(--weight-ui-strong);
+    line-height: 1.25;
+  }
+
+  .video__duration {
+    font-size: var(--step--1);
+  }
+</style>

@@ -37,7 +37,7 @@ sections:
     id: starters
     layout: gallery
     heading: Starters made for it.
-    text: Three complete Astro sites built from sections.
+    text: Four complete Astro sites built from sections.
     link:
       label: Browse the starters
       href: /starters/

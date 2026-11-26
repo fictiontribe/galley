@@ -1,0 +1,78 @@
+---
+// Every post, newest first, `blog.pageSize` (site.json) to a page: /blog/,
+// /blog/2/, … The first page leads with the newest post, large.
+import type { GetStaticPaths, Page } from "astro";
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import PostCard from "../../components/PostCard.astro";
+import Pager from "../../components/Pager.astro";
+import NewsletterBand from "../../components/NewsletterBand.astro";
+import { byDate, isPublished, postsByTag, tagUrl, type Post } from "../../lib/blog";
+import { fill, labels, site } from "../../lib/site";
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const posts = (await getCollection("blog", isPublished)).sort(byDate);
+  return paginate(posts, { pageSize: site.blog.pageSize, props: { tags: postsByTag(posts).map((entry) => ({ tag: entry.tag, count: entry.posts.length })) } });
+}) satisfies GetStaticPaths;
+
+interface Props {
+  page: Page<Post>;
+  tags: Array<{ tag: string; count: number }>;
+}
+
+const { page: listing, tags } = Astro.props;
+const first = listing.currentPage === 1;
+const [lead, ...rest] = first ? listing.data : [undefined, ...listing.data];
+const title = first ? labels.blog.title : `${labels.blog.title} — ${fill(labels.blog.pageOf, { current: listing.currentPage, total: listing.lastPage })}`;
+---
+
+<Base title={title} description={labels.blog.description}>
+  <header class="page-head container">
+    <div class="page-head__inner">
+      <h1 class="page-head__title">{labels.blog.title}</h1>
+      <p class="lede">{site.tagline}</p>
+      <ul role="list" class="tag-list">
+        {
+          tags.map((entry) => (
+            <li>
+              <a class="tag" href={tagUrl(entry.tag)}>
+                {entry.tag} <span class="tag__count">{entry.count}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </header>
+
+  <div class="container blog-list">
+    {listing.data.length === 0 && <p class="lede">{labels.blog.empty}</p>}
+    {
+      lead && (
+        <div class="blog-list__lead">
+          <PostCard post={lead} variant="lead" eager />
+        </div>
+      )
+    }
+    <div class="blog-list__rows">
+      {rest.map((post) => post && <PostCard post={post} variant="row" />)}
+    </div>
+    <Pager current={listing.currentPage} last={listing.lastPage} prev={listing.url.prev} next={listing.url.next} />
+  </div>
+
+  <NewsletterBand />
+</Base>
+
+<style>
+  .page-head .tag-list {
+    margin-block-start: var(--space-xs);
+  }
+
+  .blog-list__lead {
+    padding-block-end: var(--space-xl);
+  }
+
+  .blog-list__rows {
+    border-block-start: var(--rule-width) solid var(--color-text);
+  }
+</style>

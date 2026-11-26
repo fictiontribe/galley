@@ -1,0 +1,12 @@
+---
+// The newsletter sign-up that closes posts and list pages: the newsletter
+// section of src/content/pages/subscribe.md, so its words are edited in one
+// place. Renders nothing when that page has no newsletter section.
+import { getEntry } from "astro:content";
+import Newsletter from "./sections/Newsletter.astro";
+
+const page = await getEntry("pages", "subscribe");
+const section = page?.data.sections.find((item) => item.type === "newsletter") as Record<string, any> | undefined;
+---
+
+{section && <Newsletter {...section} tone="muted" layout="inline" level={2} />}

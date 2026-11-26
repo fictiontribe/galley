@@ -1,0 +1,110 @@
+---
+// For and against, side by side. Fields: src/content.config.ts → prosconsFields.
+import Icon from "../Icon.astro";
+import { inline, labels } from "../../lib/site";
+
+interface Props {
+  title?: string;
+  pros: string[];
+  cons: string[];
+  prosLabel?: string;
+  consLabel?: string;
+}
+
+const { title, pros, cons, prosLabel = labels.embeds.pros, consLabel = labels.embeds.cons } = Astro.props;
+---
+
+<figure class="proscons">
+  {title && <p class="embed__title">{title}</p>}
+  <div class="proscons__grid">
+    <div class="proscons__side is-pros">
+      <p class="proscons__label">{prosLabel}</p>
+      <ul role="list">
+        {
+          pros.map((item) => (
+            <li>
+              <Icon name="plus" size={16} />
+              <span set:html={inline(item)} />
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+    <div class="proscons__side is-cons">
+      <p class="proscons__label">{consLabel}</p>
+      <ul role="list">
+        {
+          cons.map((item) => (
+            <li>
+              <Icon name="minus" size={16} />
+              <span set:html={inline(item)} />
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+</figure>
+
+<style>
+  .proscons {
+    container-type: inline-size;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-s);
+    font-family: var(--font-ui);
+  }
+
+  .proscons__grid {
+    display: grid;
+    gap: var(--space-m);
+  }
+
+  .proscons__side {
+    padding-block-start: var(--space-s);
+    border-block-start: var(--rule-width) solid var(--side);
+  }
+
+  .is-pros {
+    --side: var(--color-good);
+  }
+
+  .is-cons {
+    --side: var(--color-bad);
+  }
+
+  .proscons__label {
+    margin-block-end: var(--space-xs);
+    color: var(--side);
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui-strong);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+  }
+
+  .proscons ul {
+    display: grid;
+    gap: var(--space-xs);
+    padding: 0;
+    list-style: none;
+    font-size: var(--step--1);
+    line-height: 1.5;
+  }
+
+  .proscons li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.6em;
+  }
+
+  .proscons li :global(svg) {
+    margin-block-start: 0.18em;
+    color: var(--side);
+  }
+
+  @container (min-width: 30rem) {
+    .proscons__grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>

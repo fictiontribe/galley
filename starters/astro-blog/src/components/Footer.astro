@@ -1,0 +1,179 @@
+---
+// Site footer: the name and tagline set large, the link columns from
+// src/data/navigation.json, social links and the closing line from
+// src/data/site.json.
+import { labels, navigation, site, withBase } from "../lib/site";
+
+const year = new Date().getUTCFullYear();
+---
+
+<footer class="site-footer tone-inverse">
+  <div class="container site-footer__inner">
+    <div class="site-footer__intro">
+      <a class="site-footer__name" href={withBase("/")}>{site.name}</a>
+      <p class="site-footer__tagline">{site.tagline}</p>
+    </div>
+
+    <nav class="site-footer__nav" aria-label={labels.nav.footer}>
+      {
+        navigation.footer.map((column) => (
+          <div class="site-footer__column">
+            <h2 class="site-footer__heading">{column.heading}</h2>
+            <ul role="list">
+              {column.links.map((link) => (
+                <li>
+                  <a href={withBase(link.href)}>{link.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+      <div class="site-footer__column">
+        <h2 class="site-footer__heading">{labels.nav.social}</h2>
+        <ul role="list">
+          {
+            site.social.map((link) => (
+              <li>
+                <a href={link.href} rel="me">
+                  {link.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </nav>
+
+    <div class="site-footer__base">
+      <p data-galley-agent="include">{site.footerText}</p>
+      <ul role="list" class="site-footer__legal">
+        <li>© {year} {site.name}</li>
+        {
+          navigation.legal.map((link) => (
+            <li>
+              <a href={withBase(link.href)}>{link.label}</a>
+            </li>
+          ))
+        }
+        <li>
+          <a href={`mailto:${site.email}`}>{site.email}</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-block-start: var(--space-section);
+    padding-block: var(--space-2xl) var(--space-l);
+    font-size: var(--step--1);
+  }
+
+  .site-footer__inner {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  .site-footer__intro {
+    display: grid;
+    gap: var(--space-s);
+    max-inline-size: 34rem;
+  }
+
+  .site-footer__name {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" var(--opsz-display);
+    font-size: var(--step-6);
+    font-weight: var(--weight-display);
+    font-style: var(--display-style);
+    letter-spacing: var(--tracking-display);
+    line-height: 0.95;
+    text-decoration: none;
+  }
+
+  .site-footer__tagline {
+    font-family: var(--font-text);
+    font-size: var(--step-1);
+    line-height: 1.4;
+    color: var(--tone-muted);
+  }
+
+  .site-footer__nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-l) var(--gutter);
+  }
+
+  .site-footer__heading {
+    margin-block-end: var(--space-xs);
+    font-family: var(--font-ui);
+    font-variation-settings: normal;
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui-strong);
+    font-style: normal;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .site-footer ul {
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-footer__column li + li {
+    margin-block-start: var(--space-2xs);
+  }
+
+  .site-footer a {
+    color: var(--tone-text);
+    text-decoration: none;
+  }
+
+  .site-footer a:hover {
+    color: var(--tone-accent);
+    text-decoration: underline;
+  }
+
+  .site-footer__base {
+    display: grid;
+    gap: var(--space-s);
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
+    color: var(--tone-muted);
+  }
+
+  .site-footer__legal {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs) var(--space-m);
+  }
+
+  .site-footer__legal a {
+    color: var(--tone-muted);
+  }
+
+  @media (min-width: 48rem) {
+    .site-footer__nav {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .site-footer__base {
+      grid-template-columns: 1fr auto;
+      align-items: baseline;
+    }
+  }
+
+  @media (min-width: 72rem) {
+    .site-footer__inner {
+      grid-template-columns: 5fr 7fr;
+      align-items: start;
+    }
+
+    .site-footer__base {
+      grid-column: 1 / -1;
+    }
+  }
+</style>

@@ -1,0 +1,94 @@
+---
+// Questions that open one at a time. Plain <details>: works without
+// JavaScript, and every answer is in the page (and its Markdown copy).
+// Fields: src/content.config.ts → faqFields.
+import Icon from "../Icon.astro";
+import { inline, markdown } from "../../lib/site";
+
+interface Props {
+  title?: string;
+  items: Array<{ question: string; answer: string }>;
+}
+
+const { title, items } = Astro.props;
+---
+
+<div class="faq">
+  {title && <p class="embed__title">{title}</p>}
+  <div class="faq__list">
+    {
+      items.map((item) => (
+        <details class="faq__item">
+          <summary class="faq__question">
+            <span set:html={inline(item.question)} />
+            <Icon name="plus" size={18} class="faq__icon" />
+          </summary>
+          <div class="faq__answer" set:html={markdown(item.answer)} />
+        </details>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .faq {
+    display: grid;
+    gap: var(--space-s);
+    font-family: var(--font-ui);
+  }
+
+  .faq__list {
+    border-block-start: var(--rule-width) solid var(--tone-text);
+  }
+
+  .faq__item {
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .faq__question {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-s);
+    padding-block: var(--space-s);
+    font-size: var(--step-0);
+    font-weight: var(--weight-ui-strong);
+    line-height: 1.4;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .faq__question::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq__question:hover {
+    color: var(--tone-accent);
+  }
+
+  .faq__question :global(.faq__icon) {
+    flex: none;
+    margin-block-start: 0.15em;
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .faq__item[open] :global(.faq__icon) {
+    transform: rotate(45deg);
+  }
+
+  .faq__answer {
+    padding-block-end: var(--space-m);
+    max-inline-size: 40em;
+    color: var(--tone-muted);
+    font-size: var(--step--1);
+    line-height: 1.6;
+  }
+
+  .faq__answer :global(* + *) {
+    margin-block-start: 0.7em;
+  }
+
+  .faq__answer :global(a) {
+    color: var(--tone-text);
+  }
+</style>

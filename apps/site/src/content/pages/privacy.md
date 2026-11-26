@@ -33,7 +33,7 @@ Your keys are stored on your machine and never sent to the browser. Without a ke
 - Astro is a trademark of its owner. Galley is built for Astro and is not affiliated with or endorsed by the Astro project.
 - WordPress and Elementor are trademarks of their owners, named on this site only to describe them. Galley is not affiliated with, endorsed by or sponsored by either.
 - HubSpot, Marketo, Salesforce, Pardot, Shopify, Cloudflare, Vercel, GitHub and the other products named here are trademarks of their owners, named only to describe what Galley connects to.
-- The photographs in the starters and in their pictures on this site are AI-generated. The businesses in them — Caddow, Ferrow, Lowfield Studio — are made up.
+- The photographs in the starters and in their pictures on this site are AI-generated. The businesses in them — Caddow, Ferrow, Lowfield Studio, Sarking — are made up.
 - Galley is open source under the [Apache-2.0 licence]({license}).
 
 ## Questions

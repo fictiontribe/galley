@@ -1,0 +1,179 @@
+---
+// Search: a box and a list, filtered in the browser from /search.json as you
+// type. Titles count most, then topics and headings, then the line under the
+// title. The query lives in the address (?q=heat), so a search can be shared.
+// Without JavaScript the page points to the archive instead.
+import Base from "../layouts/Base.astro";
+import { labels, withBase } from "../lib/site";
+---
+
+<Base title={labels.search.title} description={labels.search.description}>
+  <header class="page-head container">
+    <div class="page-head__inner">
+      <h1 class="page-head__title">{labels.search.title}</h1>
+      <form class="search" role="search" action={withBase("/search/")} data-search data-index={withBase("/search.json")}>
+        <label class="visually-hidden" for="search-input">{labels.search.label}</label>
+        <input id="search-input" class="search__input" type="search" name="q" placeholder={labels.search.placeholder} autocomplete="off" spellcheck="false" />
+        <button class="button" type="submit">{labels.search.button}</button>
+      </form>
+      <p class="meta" data-search-status aria-live="polite">{labels.search.hint}</p>
+      <noscript><p class="lede"><a href={withBase("/archive/")}>{labels.search.noScript}</a></p></noscript>
+    </div>
+  </header>
+  <div class="container">
+    <ol role="list" class="search-results" data-search-results></ol>
+  </div>
+</Base>
+
+<script
+  is:inline
+  define:vars={{
+    resultsLabel: labels.search.results,
+    oneLabel: labels.search.oneResult,
+    noneLabel: labels.search.none,
+    hint: labels.search.hint,
+  }}
+>
+  const form = document.querySelector("[data-search]");
+  const input = form.querySelector("input");
+  const status = document.querySelector("[data-search-status]");
+  const list = document.querySelector("[data-search-results]");
+  let index = null;
+
+  const fold = (text) => text.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  const fill = (template, values) => template.replace(/\{(\w+)\}/g, (match, key) => values[key] ?? match);
+
+  function score(entry, words) {
+    let total = 0;
+    for (const word of words) {
+      const title = fold(entry.title).includes(word) ? 6 : 0;
+      const tags = entry.tags.some((tag) => fold(tag).includes(word)) ? 4 : 0;
+      const heads = entry.headings.some((heading) => fold(heading).includes(word)) ? 3 : 0;
+      const text = fold(entry.description).includes(word) ? 2 : 0;
+      const found = title + tags + heads + text;
+      if (!found) return 0;
+      total += found;
+    }
+    return total;
+  }
+
+  function show(query) {
+    list.replaceChildren();
+    const words = fold(query).split(/\s+/).filter((word) => word.length > 1);
+    if (!words.length) {
+      status.textContent = hint;
+      return;
+    }
+    const found = index
+      .map((entry) => ({ entry, score: score(entry, words) }))
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score);
+    status.textContent = found.length === 0 ? fill(noneLabel, { query }) : found.length === 1 ? fill(oneLabel, { query }) : fill(resultsLabel, { count: found.length, query });
+    for (const { entry } of found) {
+      const item = document.createElement("li");
+      item.className = "search-result";
+      const link = document.createElement("a");
+      link.href = entry.url;
+      link.className = "search-result__title";
+      link.textContent = entry.title;
+      const text = document.createElement("p");
+      text.className = "search-result__text";
+      text.textContent = entry.description;
+      const meta = document.createElement("p");
+      meta.className = "meta";
+      meta.textContent = [entry.date, ...entry.tags].join(" · ");
+      item.append(link, text, meta);
+      list.append(item);
+    }
+  }
+
+  async function load() {
+    if (!index) index = await (await fetch(form.dataset.index)).json();
+  }
+
+  let timer;
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      await load();
+      show(input.value);
+      const url = new URL(location.href);
+      input.value ? url.searchParams.set("q", input.value) : url.searchParams.delete("q");
+      history.replaceState(null, "", url);
+    }, 120);
+  });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await load();
+    show(input.value);
+  });
+
+  const initial = new URLSearchParams(location.search).get("q");
+  if (initial) {
+    input.value = initial;
+    load().then(() => show(initial));
+  }
+  input.addEventListener("focus", load, { once: true });
+</script>
+
+<style is:global>
+  .search {
+    display: flex;
+    gap: var(--space-2xs);
+    margin-block-start: var(--space-s);
+    max-inline-size: 40rem;
+  }
+
+  .search__input {
+    flex: 1;
+    min-inline-size: 0;
+    min-block-size: 3.25rem;
+    padding: 0.6em 1em;
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-button);
+    background: var(--color-surface);
+    font-size: var(--step-1);
+  }
+
+  .search__input:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  .search-results {
+    padding: 0;
+    list-style: none;
+  }
+
+  .search-result {
+    display: grid;
+    gap: var(--space-2xs);
+    padding-block: var(--space-m);
+    border-block-end: var(--border-width) solid var(--color-border);
+  }
+
+  .search-result:first-child {
+    border-block-start: var(--rule-width) solid var(--color-text);
+  }
+
+  .search-result__title {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" var(--opsz-display);
+    font-size: var(--step-3);
+    font-style: var(--display-style);
+    letter-spacing: var(--tracking-display);
+    line-height: 1.1;
+    text-decoration: none;
+  }
+
+  .search-result__title:hover {
+    color: var(--color-accent);
+  }
+
+  .search-result__text {
+    max-inline-size: 40em;
+    color: var(--color-text-muted);
+    font-family: var(--font-text);
+    line-height: 1.5;
+  }
+</style>

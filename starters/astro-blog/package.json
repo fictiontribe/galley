@@ -1,0 +1,54 @@
+{
+  "name": "galley-astro-blog",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A blog starter for Astro that reads well and is read well: long-form posts in plain Markdown with charts, comparison tables, verdicts, timelines and callouts written as fenced blocks; authors, series, tags, an archive, search and full-text feeds; a Markdown copy of every page, llms.txt and structured data; three looks, each light and dark. Ready to edit by hand or with Galley.",
+  "keywords": [
+    "astro",
+    "astro-template",
+    "astro-theme",
+    "starter",
+    "template",
+    "blog",
+    "markdown",
+    "charts",
+    "rss",
+    "dark-mode",
+    "llms-txt",
+    "cms",
+    "galley"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.23.4"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "galley": "npx --yes galley-cms",
+    "photos": "node scripts/ingest-photos.mjs",
+    "thumbnails": "node scripts/make-thumbnails.mjs",
+    "check:type": "node scripts/check-type.mjs"
+  },
+  "dependencies": {
+    "@astrojs/markdown-satteri": "^0.4.10",
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource-variable/instrument-sans": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/literata": "^5.3.0",
+    "@fontsource-variable/martian-mono": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
+    "@fontsource-variable/schibsted-grotesk": "^5.3.0",
+    "@fontsource-variable/source-serif-4": "^5.3.1",
+    "astro": "^7.4.13",
+    "marked": "^18.2.1",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
+  }
+}

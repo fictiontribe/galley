@@ -13,6 +13,7 @@ business site) predates the Galley-specific parts — the block markers,
 | `astro-saas` (`ferrow`) | Ferrow — B2B software | A B2B software company | 29 | 7 | 3 |
 | `astro-editorial` | Caddow — fashion editorial | A small fashion label's photography-led site | 20 | 6 | 3 |
 | `astro-storefront` | Caddow — storefront | A small fashion label's shop, with products from Shopify | 24 | 8 | 3 |
+| `astro-blog` (`sarking`) | Sarking — blog | A long-form blog with charts, tables and evidence; posts in Markdown with fenced-block embeds | 18 | 4 | 3 (each light and dark) |
 
 ## 1. Files
 

@@ -1,0 +1,112 @@
+---
+// One author: portrait, name, role, the longer bio (the file's body), links,
+// and every post they wrote.
+import { getCollection, render, type CollectionEntry } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import Media from "../../components/Media.astro";
+import PostCard from "../../components/PostCard.astro";
+import { byDate, isPublished, refId, type Post } from "../../lib/blog";
+import { fill, inline, labels } from "../../lib/site";
+
+export async function getStaticPaths() {
+  const posts = (await getCollection("blog", isPublished)).sort(byDate);
+  const authors = await getCollection("authors");
+  return authors.map((author) => ({ params: { id: author.id }, props: { author, posts: posts.filter((post) => refId(post.data.author) === author.id) } }));
+}
+
+interface Props {
+  author: CollectionEntry<"authors">;
+  posts: Post[];
+}
+
+const { author, posts } = Astro.props;
+const { Content } = await render(author);
+const { name, role, photo, photoAlt, bio, links } = author.data;
+---
+
+<Base title={name} description={bio} image={photo} imageAlt={photoAlt}>
+  <header class="container author-head">
+    <div class="author-head__photo">
+      <Media src={photo} alt={photoAlt ?? ""} ratio="4/5" sizes="(min-width: 56rem) 22rem, 100vw" eager />
+    </div>
+    <div class="author-head__copy">
+      <p class="kicker">{role}</p>
+      <h1 class="page-head__title">{name}</h1>
+      <p class="lede" set:html={inline(bio)} />
+      <div class="prose author-head__bio"><Content /></div>
+      {
+        links.length > 0 && (
+          <ul role="list" class="tag-list" aria-label={labels.authors.links}>
+            {links.map((link) => (
+              <li>
+                <a class="tag" href={link.href} rel="me">
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+  </header>
+
+  {
+    posts.length > 0 && (
+      <section class="container author-posts" aria-labelledby="author-posts">
+        <h2 class="author-posts__heading" id="author-posts">
+          {fill(labels.authors.postsBy, { name })}
+        </h2>
+        <div class="author-posts__rows">
+          {posts.map((post) => (
+            <PostCard post={post} variant="row" level={3} />
+          ))}
+        </div>
+      </section>
+    )
+  }
+</Base>
+
+<style>
+  .author-head {
+    display: grid;
+    gap: var(--space-l) var(--gutter);
+    padding-block: var(--space-xl);
+  }
+
+  .author-head__photo {
+    max-inline-size: 22rem;
+  }
+
+  .author-head__copy {
+    display: grid;
+    gap: var(--space-s);
+    align-content: start;
+    max-inline-size: 42rem;
+  }
+
+  .author-head__bio {
+    font-size: var(--step-0);
+  }
+
+  .author-posts {
+    display: grid;
+    gap: var(--space-l);
+    padding-block-start: var(--space-l);
+  }
+
+  .author-posts__heading {
+    font-size: var(--step-4);
+    line-height: 1;
+  }
+
+  .author-posts__rows {
+    border-block-start: var(--rule-width) solid var(--color-text);
+  }
+
+  @media (min-width: 56rem) {
+    .author-head {
+      grid-template-columns: 22rem 1fr;
+      align-items: end;
+    }
+  }
+</style>

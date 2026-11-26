@@ -1,0 +1,30 @@
+{
+  "name": "Sarking letters",
+  "submitLabel": "Subscribe",
+  "fields": [
+    {
+      "id": "email",
+      "type": "email",
+      "label": "Email address",
+      "required": true
+    },
+    {
+      "id": "source",
+      "type": "hidden",
+      "autofill": { "from": "page-url" }
+    }
+  ],
+  "destinations": [
+    { "provider": "galley", "settings": {} }
+  ],
+  "afterSubmit": [
+    {
+      "type": "message",
+      "title": "You're on the list.",
+      "text": "The next post goes to **{{email}}** the day it is published. Every letter has a one-click way out."
+    }
+  ],
+  "errorMessage": "That didn't go through. Your address is still here; try again in a minute.",
+  "spam": { "honeypot": true, "minSeconds": 2 },
+  "appearance": { "layout": "inline", "size": "regular", "labels": "above" }
+}

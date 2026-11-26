@@ -1,0 +1,34 @@
+{
+  "name": "Sarking — blog",
+  "short": "sarking",
+  "summary": "A blog for long-form writing with charts, tables and evidence",
+  "description": "A blog for people who write with evidence: long-form posts in plain Markdown with charts, comparison tables, verdicts, timelines and callouts; authors, series, topics, an archive, search and full-text feeds; a Markdown copy of every page for AI agents. Eighteen section types, four templates and three looks, each light and dark.",
+  "framework": "astro",
+  "download": true,
+  "tags": ["blog", "writing", "editorial"],
+  "tokens": "src/styles/tokens.css",
+  "preview": "galley/previews/home.webp",
+  "looks": [
+    {
+      "id": "ledger",
+      "label": "Ledger",
+      "file": "src/styles/themes/ledger.css",
+      "swatches": ["#f8f4ec", "#221d18", "#a63d26", "#221d18"],
+      "preview": "galley/previews/ledger.webp"
+    },
+    {
+      "id": "fieldbook",
+      "label": "Fieldbook",
+      "file": "src/styles/themes/fieldbook.css",
+      "swatches": ["#f2f6f2", "#14221c", "#1f6b55", "#14221c"],
+      "preview": "galley/previews/fieldbook.webp"
+    },
+    {
+      "id": "almanac",
+      "label": "Almanac",
+      "file": "src/styles/themes/almanac.css",
+      "swatches": ["#f8f3e5", "#1b2133", "#2e4ca3", "#1b2133"],
+      "preview": "galley/previews/almanac.webp"
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+---
+// The contents of a long post: its h2s (and h3s beneath them). Beside the
+// post on a wide screen, held in view as it scrolls, with the section being
+// read marked; folded into a <details> above the post on a narrow one.
+import { labels } from "../lib/site";
+
+interface Props {
+  headings: Array<{ depth: number; slug: string; text: string }>;
+  variant: "side" | "inline";
+}
+
+const { headings, variant } = Astro.props;
+const items = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+---
+
+{
+  items.length >= 3 &&
+    (variant === "side" ? (
+      <nav class="toc toc--side" aria-label={labels.post.contents} data-toc data-galley-agent="skip">
+        <p class="toc__title">{labels.post.onThisPage}</p>
+        <ol role="list">
+          {items.map((heading) => (
+            <li class:list={[`toc__item--${heading.depth}`]}>
+              <a href={`#${heading.slug}`}>{heading.text}</a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+    ) : (
+      <details class="toc toc--inline" data-galley-agent="skip">
+        <summary class="toc__title">{labels.post.contents}</summary>
+        <ol role="list">
+          {items.map((heading) => (
+            <li class:list={[`toc__item--${heading.depth}`]}>
+              <a href={`#${heading.slug}`}>{heading.text}</a>
+            </li>
+          ))}
+        </ol>
+      </details>
+    ))
+}
+
+<script is:inline>
+  // Mark the section being read in the side contents.
+  document.querySelectorAll("[data-toc]").forEach((toc) => {
+    const links = [...toc.querySelectorAll("a")];
+    const targets = links.map((link) => document.getElementById(decodeURIComponent(link.hash.slice(1)))).filter(Boolean);
+    if (!("IntersectionObserver" in window) || targets.length === 0) return;
+    const visible = new Set();
+    const mark = () => {
+      const current = targets.find((target) => visible.has(target)) ?? null;
+      if (!current) return;
+      links.forEach((link) => link.toggleAttribute("aria-current", link.hash.slice(1) === current.id));
+    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => (entry.isIntersecting ? visible.add(entry.target) : visible.delete(entry.target)));
+        mark();
+      },
+      { rootMargin: "0px 0px -70% 0px" },
+    );
+    targets.forEach((target) => observer.observe(target));
+  });
+</script>
+
+<style>
+  .toc {
+    font-family: var(--font-ui);
+    font-size: var(--step--1);
+    line-height: 1.4;
+  }
+
+  .toc__title {
+    color: var(--tone-muted);
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui-strong);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+  }
+
+  .toc ol {
+    display: grid;
+    gap: 0.15rem;
+    margin-block-start: var(--space-xs);
+    padding: 0;
+    list-style: none;
+  }
+
+  .toc a {
+    display: block;
+    padding-block: 0.3em;
+    color: var(--tone-muted);
+    text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+
+  .toc a:hover,
+  .toc a[aria-current] {
+    color: var(--tone-text);
+  }
+
+  .toc--side a {
+    padding-inline-start: 0.85rem;
+    border-inline-start: var(--rule-width) solid var(--tone-line);
+  }
+
+  .toc--side a[aria-current] {
+    border-inline-start-color: var(--tone-accent);
+  }
+
+  .toc__item--3 a {
+    padding-inline-start: 1.7rem;
+    font-size: var(--step--2);
+  }
+
+  .toc--inline {
+    padding: var(--space-s) 0;
+    border-block: var(--border-width) solid var(--tone-line);
+  }
+
+  .toc--inline summary {
+    cursor: pointer;
+  }
+
+  .toc--inline .toc__item--3 a {
+    padding-inline-start: 1rem;
+  }
+</style>

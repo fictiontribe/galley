@@ -1,0 +1,73 @@
+---
+// The sign-up: heading and text beside (or above) the form. The form is a
+// file in src/content/forms/ (`form`, default "newsletter"), rendered by the
+// site kit: its fields, wording and where it sends live there.
+import Section from "../Section.astro";
+import SectionHeader from "../SectionHeader.astro";
+import { Form } from "../../galley/components/index.js";
+import { markdown, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  form?: string | { id: string };
+  note?: string;
+  layout?: "inline" | "stacked";
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone = "muted", eyebrow, heading, text, form = "newsletter", note, layout = "inline", index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const formId = typeof form === "string" ? form : form.id;
+---
+
+<Section type="newsletter" id={id} tone={tone} labelledby={headingId} block={block}>
+  <div class:list={["newsletter", `newsletter--${layout}`]}>
+    <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+    <div class="newsletter__form">
+      <Form id={formId} submitClass="button" />
+      {note && <div class="newsletter__note" set:html={markdown(note)} />}
+    </div>
+  </div>
+</Section>
+
+<style>
+  .newsletter {
+    display: grid;
+    gap: var(--space-l) var(--gutter);
+  }
+
+  .newsletter__form {
+    display: grid;
+    gap: var(--space-xs);
+    align-content: start;
+    max-inline-size: 34rem;
+  }
+
+  .newsletter__note {
+    color: var(--tone-muted);
+    font-size: var(--step--2);
+    line-height: 1.5;
+  }
+
+  .newsletter__note :global(a) {
+    color: inherit;
+  }
+
+  @media (min-width: 56rem) {
+    .newsletter--inline {
+      grid-template-columns: 7fr 5fr;
+      align-items: end;
+    }
+
+    .newsletter--inline .newsletter__form {
+      justify-self: end;
+      inline-size: 100%;
+    }
+  }
+</style>

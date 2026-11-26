@@ -1,0 +1,25 @@
+---
+// Every entry in src/content/pages/ becomes a page: index.md is "/",
+// about.md is "/about/", a/b.md is "/a/b/". 404.md is rendered by 404.astro.
+import { getCollection, type CollectionEntry } from "astro:content";
+import Base from "../layouts/Base.astro";
+import PageEntry from "../components/PageEntry.astro";
+
+export async function getStaticPaths() {
+  const pages = await getCollection("pages", (page) => page.id !== "404");
+  return pages.map((page) => ({
+    params: { slug: page.id === "index" ? undefined : page.id },
+    props: { page },
+  }));
+}
+
+interface Props {
+  page: CollectionEntry<"pages">;
+}
+
+const { page } = Astro.props;
+---
+
+<Base title={page.data.title} description={page.data.description} image={page.data.image} noindex={page.data.noindex} bareTitle={page.id === "index"}>
+  <PageEntry page={page} />
+</Base>

@@ -1,0 +1,88 @@
+---
+// Numbered steps: how to do something. Fields: src/content.config.ts → stepsFields.
+import { inline } from "../../lib/site";
+
+interface Props {
+  title?: string;
+  items: Array<{ title: string; text?: string; meta?: string }>;
+}
+
+const { title, items } = Astro.props;
+---
+
+<figure class="steps">
+  {title && <p class="embed__title">{title}</p>}
+  <ol role="list" class="steps__list">
+    {
+      items.map((item, i) => (
+        <li class="steps__item">
+          <span class="steps__number" aria-hidden="true">
+            {String(i + 1).padStart(2, "0")}
+          </span>
+          <div class="steps__body">
+            <p class="steps__title">
+              <span set:html={inline(item.title)} />
+              {item.meta && <span class="steps__meta">{item.meta}</span>}
+            </p>
+            {item.text && <p class="steps__text" set:html={inline(item.text)} />}
+          </div>
+        </li>
+      ))
+    }
+  </ol>
+</figure>
+
+<style>
+  .steps {
+    display: grid;
+    gap: var(--space-s);
+    font-family: var(--font-ui);
+  }
+
+  .steps__list {
+    padding: 0;
+    list-style: none;
+    border-block-start: var(--rule-width) solid var(--tone-text);
+  }
+
+  .steps__item {
+    display: grid;
+    grid-template-columns: 2.6rem 1fr;
+    gap: var(--space-s);
+    padding-block: var(--space-s);
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .steps__number {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" var(--opsz-display);
+    font-size: var(--step-2);
+    font-style: var(--display-style);
+    line-height: 1;
+    color: var(--tone-accent);
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  .steps__title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.2em var(--space-s);
+    font-weight: var(--weight-ui-strong);
+    line-height: 1.35;
+  }
+
+  .steps__meta {
+    color: var(--tone-muted);
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui-medium);
+  }
+
+  .steps__text {
+    margin-block-start: var(--space-3xs);
+    color: var(--tone-muted);
+    font-size: var(--step--1);
+    line-height: 1.5;
+  }
+</style>

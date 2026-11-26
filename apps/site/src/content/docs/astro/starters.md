@@ -1,6 +1,6 @@
 ---
 title: Starters
-description: The four Astro sites `galley new` can copy — Caddow, Ferrow, Lowfield Studio and the Caddow storefront — what each holds, their looks, and what every starter must do.
+description: The five Astro sites `galley new` can copy — Caddow, Ferrow, Lowfield Studio, Sarking and the Caddow storefront — what each holds, their looks, and what every starter must do.
 group: astro
 order: 8
 ---
@@ -12,11 +12,12 @@ This page is for developers. A starter is a complete Astro site that `galley new
 | `caddow` | Caddow | A small fashion label: campaign, lookbooks, journal, stockists, atelier | 20 | Chalk, Paper, Night | `starters/astro-editorial` |
 | `ferrow` | Ferrow | A B2B software company: customer stories, changelog, blog, team | 29 | Signal, Meridian, Night shift | `starters/astro-saas` |
 | `lowfield` | Lowfield Studio | A small studio or local business: services, about, pricing, contact, journal, team | 17 | Lowfield, Sage, Evening | `starters/astro-starter` |
+| `sarking` | Sarking | A blog for long-form writing with charts, comparison tables, verdicts and timelines in plain Markdown | 18 | Ledger, Fieldbook, Almanac (each light and dark) | `starters/astro-blog` |
 | `storefront` | Caddow (shop) | A shop whose products, prices, stock, cart and checkout come from Shopify | 24 | Chalk, Paper, Night | `starters/astro-storefront` |
 
-*Status:* the first three are built. **The Shopify storefront is in progress**: `galley starters` lists it, and it works with a demo catalogue, but it isn't finished ([Shopify](/docs/plugins/shopify/)).
+*Status:* the first four are built. **The Shopify storefront is in progress**: `galley starters` lists it, and it works with a demo catalogue, but it isn't finished ([Shopify](/docs/plugins/shopify/)). Sarking is downloaded and verified against its SHA-256 the first time it is used (`"download": true` in `starter.json`), so the `galley-cms` package stays small.
 
-`--starter` takes the short names — `caddow`, `ferrow`, `lowfield`, `storefront` — and `--look` one of the starter's looks (default: its first). Without `--starter` you get Lowfield.
+`--starter` takes the short names — `caddow`, `ferrow`, `lowfield`, `sarking`, `storefront` — and `--look` one of the starter's looks (default: its first). Without `--starter` you get Lowfield.
 
 <!-- if install.published -->
 ```sh

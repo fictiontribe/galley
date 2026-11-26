@@ -1,0 +1,291 @@
+---
+// Site header: the name on the left, the sections of the blog, then search,
+// light/dark and the one button. Links come from src/data/navigation.json.
+// Below 56rem the links fold into a <details> menu, which works without
+// JavaScript.
+import Icon from "./Icon.astro";
+import StarterNotice from "./StarterNotice.astro";
+import ThemeToggle from "./ThemeToggle.astro";
+import { isCurrent, labels, navigation, site, withBase } from "../lib/site";
+
+const pathname = Astro.url.pathname;
+const links = navigation.header;
+const cta = navigation.cta;
+---
+
+<header class="site-header">
+  <StarterNotice />
+  <a class="button skip-link" href="#main">{labels.skipLink}</a>
+  <div class="container site-header__inner">
+    <a class="wordmark" href={withBase("/")} aria-label={labels.home}>
+      <span class="wordmark__name">{site.name}</span>
+    </a>
+
+    <nav class="site-nav" aria-label={labels.nav.main}>
+      <ul role="list">
+        {
+          links.map((link) => (
+            <li>
+              <a href={withBase(link.href)} aria-current={isCurrent(link.href, pathname) ? "page" : undefined}>
+                {link.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="site-header__tools">
+      <a class="icon-button" href={withBase("/search/")} aria-label={labels.nav.search} aria-current={isCurrent("/search/", pathname) ? "page" : undefined}>
+        <Icon name="search" />
+      </a>
+      <ThemeToggle />
+      {cta && <a class="button button--ghost site-header__cta" href={withBase(cta.href)}>{cta.label}</a>}
+
+      <details class="menu" data-menu>
+        <summary class="icon-button menu__toggle">
+          <span class="visually-hidden menu__label--open">{labels.nav.menu}</span>
+          <span class="visually-hidden menu__label--close">{labels.nav.close}</span>
+          <span class="menu__icon" aria-hidden="true"></span>
+        </summary>
+        <div class="menu__panel">
+          <nav aria-label={labels.nav.main}>
+            <ul role="list">
+              {
+                [...links, ...(cta ? [cta] : [])].map((link) => (
+                  <li>
+                    <a href={withBase(link.href)} aria-current={isCurrent(link.href, pathname) ? "page" : undefined}>
+                      {link.label}
+                      <Icon name="arrow-right" />
+                    </a>
+                  </li>
+                ))
+              }
+            </ul>
+          </nav>
+        </div>
+      </details>
+    </div>
+  </div>
+</header>
+
+<script is:inline>
+  // Close the mobile menu on Escape and after following a link.
+  document.querySelectorAll("[data-menu]").forEach((menu) => {
+    menu.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && menu.open) {
+        menu.open = false;
+        menu.querySelector("summary").focus();
+      }
+    });
+    menu.addEventListener("click", (event) => {
+      if (event.target.closest("a")) menu.open = false;
+    });
+  });
+</script>
+
+<style>
+  .site-header {
+    position: relative;
+    z-index: 20;
+    background: var(--color-background);
+    color: var(--color-text);
+  }
+
+  .site-header__inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-m);
+    min-block-size: var(--header-height);
+    border-block-end: var(--border-width) solid var(--color-border);
+  }
+
+  .wordmark {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5em;
+    margin-inline-end: auto;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .wordmark__name {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" var(--opsz-display);
+    font-size: var(--step-2);
+    font-weight: var(--weight-display-strong);
+    font-style: var(--display-style);
+    letter-spacing: var(--tracking-display);
+    line-height: 1;
+  }
+
+  .site-nav {
+    display: none;
+  }
+
+  .site-nav ul {
+    display: flex;
+    gap: var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-nav a {
+    position: relative;
+    display: inline-block;
+    padding-block: 0.5em;
+    color: var(--color-text-muted);
+    font-size: var(--step--1);
+    font-weight: var(--weight-ui-medium);
+    text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+
+  .site-nav a:hover,
+  .site-nav a[aria-current="page"] {
+    color: var(--color-text);
+  }
+
+  .site-nav a[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0.15em;
+    block-size: var(--rule-width);
+    background: var(--color-accent);
+  }
+
+  .site-header__tools {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3xs);
+  }
+
+  .site-header__cta {
+    display: none;
+    margin-inline-start: var(--space-2xs);
+  }
+
+  .icon-button,
+  .site-header :global(.icon-button) {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text);
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .icon-button:hover,
+  .site-header :global(.icon-button:hover),
+  .icon-button[aria-current="page"] {
+    background: var(--color-surface-muted);
+  }
+
+  /* Mobile menu */
+  .menu {
+    position: static;
+  }
+
+  .menu__toggle {
+    list-style: none;
+  }
+
+  .menu__toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .menu__icon,
+  .menu__icon::before {
+    display: block;
+    inline-size: 1.15rem;
+    block-size: var(--rule-width);
+    background: currentColor;
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .menu__icon {
+    position: relative;
+    box-shadow: 0 -0.35rem 0 currentColor;
+    background: transparent;
+  }
+
+  .menu__icon::before {
+    content: "";
+    position: absolute;
+    inset-block-start: 0.35rem;
+    transform: translateY(-0.35rem);
+    box-shadow: 0 0.35rem 0 currentColor;
+  }
+
+  .menu:not([open]) .menu__label--close,
+  .menu[open] .menu__label--open {
+    display: none;
+  }
+
+  .menu[open] .menu__icon {
+    box-shadow: none;
+    transform: rotate(45deg);
+    background: currentColor;
+  }
+
+  .menu[open] .menu__icon::before {
+    transform: rotate(-90deg);
+    box-shadow: none;
+    inset-block-start: 0;
+  }
+
+  .menu__panel {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: 100%;
+    padding: var(--space-s) var(--page-margin) var(--space-l);
+    background: var(--color-background);
+    border-block-end: var(--border-width) solid var(--color-border);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .menu__panel ul {
+    padding: 0;
+    list-style: none;
+  }
+
+  .menu__panel a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: var(--space-s);
+    border-block-end: var(--border-width) solid var(--color-border);
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" var(--opsz-display);
+    font-size: var(--step-3);
+    font-style: var(--display-style);
+    letter-spacing: var(--tracking-display);
+    text-decoration: none;
+  }
+
+  .menu__panel a[aria-current="page"] {
+    color: var(--color-accent);
+  }
+
+  @media (min-width: 56rem) {
+    .site-nav {
+      display: block;
+    }
+
+    .site-header__cta {
+      display: inline-flex;
+    }
+
+    .menu {
+      display: none;
+    }
+  }
+</style>

@@ -1,0 +1,121 @@
+---
+// The site's one sentence, set large: the top of the home page. `statement`
+// is words only; `portrait` puts a round portrait beside them.
+import Section from "../Section.astro";
+import Media from "../Media.astro";
+import { inline, markdown, withBase, type Link, type Tone } from "../../lib/site";
+
+interface Props {
+  id?: string;
+  tone?: Tone;
+  eyebrow?: string;
+  heading: string;
+  text?: string;
+  cta?: Link;
+  secondaryCta?: Link;
+  image?: string;
+  imageAlt?: string;
+  layout?: "statement" | "portrait";
+  index?: number;
+  level?: number;
+  block?: { key: string; type: string };
+}
+
+const { id, tone = "default", eyebrow, heading, text, cta, secondaryCta, image, imageAlt = "", layout = "statement", index = 0, level = 2, block } = Astro.props;
+const headingId = `${id ?? `section-${index}`}-heading`;
+const Heading = level === 1 ? "h1" : "h2";
+const withPortrait = layout === "portrait" && image;
+---
+
+<Section type="intro" id={id} tone={tone} labelledby={headingId} block={block} class="intro-section">
+  <div class:list={["intro", { "intro--portrait": withPortrait }]}>
+    {
+      withPortrait && (
+        <div class="intro__portrait rise">
+          <Media src={image} alt={imageAlt} ratio="1/1" sizes="12rem" eager={index === 0} />
+        </div>
+      )
+    }
+    <div class="intro__copy">
+      {eyebrow && <p class="kicker rise">{eyebrow}</p>}
+      <Heading class="intro__heading headline rise rise-2" id={headingId} set:html={inline(heading)} />
+      {text && <div class="intro__text rise rise-3" set:html={markdown(text)} />}
+      {
+        (cta || secondaryCta) && (
+          <div class="intro__actions rise rise-3">
+            {cta && (
+              <a class="button" href={withBase(cta.href)}>
+                {cta.label}
+              </a>
+            )}
+            {secondaryCta && (
+              <a class="button button--ghost" href={withBase(secondaryCta.href)}>
+                {secondaryCta.label}
+              </a>
+            )}
+          </div>
+        )
+      }
+    </div>
+  </div>
+</Section>
+
+<style>
+  :global(.section.intro-section) {
+    padding-block: var(--space-2xl) var(--space-xl);
+  }
+
+  .intro {
+    display: grid;
+    gap: var(--space-l);
+    align-items: center;
+  }
+
+  .intro__copy {
+    display: grid;
+    gap: var(--space-m);
+    justify-items: start;
+    max-inline-size: 62rem;
+  }
+
+  .intro__heading {
+    font-size: var(--step-6);
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  .intro__text {
+    max-inline-size: 34em;
+    color: var(--tone-muted);
+    font-family: var(--font-text);
+    font-variation-settings: "opsz" var(--opsz-text);
+    font-size: var(--step-2);
+    line-height: 1.38;
+  }
+
+  .intro__text :global(a) {
+    color: var(--tone-text);
+  }
+
+  .intro__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-block-start: var(--space-2xs);
+  }
+
+  .intro__portrait {
+    inline-size: clamp(6rem, 18vw, 11rem);
+  }
+
+  .intro__portrait :global(img) {
+    border-radius: 50%;
+  }
+
+  @media (min-width: 56rem) {
+    .intro--portrait {
+      grid-template-columns: auto 1fr;
+      gap: var(--space-xl);
+    }
+  }
+</style>

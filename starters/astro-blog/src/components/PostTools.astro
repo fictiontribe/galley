@@ -1,0 +1,80 @@
+---
+// The tools under a post: copy the post as Markdown (the same Markdown copy
+// AI agents read at /blog/<post>.md), open that copy, and copy the link.
+// The copy buttons need JavaScript and stay hidden without it; the link to
+// the Markdown version always works.
+import Icon from "./Icon.astro";
+import { labels } from "../lib/site";
+
+interface Props {
+  /** The page's own address, with the base path (Astro.url.pathname). */
+  pathname: string;
+}
+
+const { pathname } = Astro.props;
+const twin = `${pathname.replace(/\/+$/, "") || "/index"}.md`;
+---
+
+<div class="post-tools" data-galley-agent="skip">
+  <button class="post-tools__button" type="button" data-copy-markdown={twin} data-done={labels.post.copied} hidden>
+    <Icon name="copy" size={18} />
+    <span>{labels.post.copyMarkdown}</span>
+  </button>
+  <a class="post-tools__button" href={twin} type="text/markdown">
+    <Icon name="markdown" size={18} />
+    <span>{labels.post.markdownVersion}</span>
+  </a>
+  <button class="post-tools__button" type="button" data-copy-link data-done={labels.post.linkCopied} hidden>
+    <Icon name="link" size={18} />
+    <span>{labels.post.copyLink}</span>
+  </button>
+</div>
+
+<script is:inline>
+  document.querySelectorAll("[data-copy-markdown], [data-copy-link]").forEach((button) => {
+    if (!navigator.clipboard) return;
+    button.hidden = false;
+    const label = button.querySelector("span");
+    const idle = label.textContent;
+    button.addEventListener("click", async () => {
+      try {
+        const text = button.dataset.copyMarkdown ? await (await fetch(button.dataset.copyMarkdown)).text() : location.href.split("#")[0];
+        await navigator.clipboard.writeText(text);
+        label.textContent = button.dataset.done;
+        setTimeout(() => (label.textContent = idle), 1800);
+      } catch {}
+    });
+  });
+</script>
+
+<style>
+  .post-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs);
+  }
+
+  .post-tools__button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    min-block-size: 2.5rem;
+    padding: 0.4em 0.95em;
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-button);
+    background: transparent;
+    color: var(--tone-text);
+    font-family: var(--font-ui);
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui-medium);
+    text-decoration: none;
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .post-tools__button:hover {
+    border-color: var(--tone-accent);
+    color: var(--tone-accent);
+  }
+</style>

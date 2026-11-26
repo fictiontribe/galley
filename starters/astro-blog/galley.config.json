@@ -1,0 +1,95 @@
+{
+  "name": "Sarking",
+  "ai": {
+    "instructions": ["CONTENT-GUIDE.md"]
+  },
+  "media": {
+    "dir": "public/images",
+    "publicPath": "/images"
+  },
+  "collections": [
+    {
+      "id": "pages",
+      "url": "/{slug}/",
+      "fields": [
+        {
+          "key": "sections",
+          "blocks": [
+            { "type": "intro", "label": "Intro", "description": "The site's one sentence, set large, with a line beneath and up to two buttons; optionally beside a round portrait. First on a page.", "thumbnail": "galley/sections/intro.webp" },
+            { "type": "featured", "label": "Lead post", "description": "The lead post with a large photograph, and the next few as titles beside or below it. Picks the newest featured post unless one is named.", "thumbnail": "galley/sections/featured.webp" },
+            { "type": "posts", "label": "Posts", "description": "The latest posts, or those under one tag, as rows, cards or an index of titles by year.", "thumbnail": "galley/sections/posts.webp" },
+            { "type": "topics", "label": "Topics", "description": "Every topic the posts use, with counts. Nothing to set up: it comes from the posts' tags.", "thumbnail": "galley/sections/topics.webp" },
+            { "type": "series", "label": "Series", "description": "The series, each with its picture, line and parts in order.", "thumbnail": "galley/sections/series.webp" },
+            { "type": "author", "label": "Author", "description": "One author, large: portrait, role, name and bio, with a link to their posts.", "thumbnail": "galley/sections/author.webp" },
+            { "type": "newsletter", "label": "Newsletter", "description": "The sign-up form (src/content/forms/newsletter.json) beside a heading; sends to the Galley inbox.", "thumbnail": "galley/sections/newsletter.webp" },
+            { "type": "rich-text", "label": "Text", "description": "Writing in Markdown, in the reading column or with its heading in the margin.", "thumbnail": "galley/sections/rich-text.webp" },
+            { "type": "image", "label": "Photograph", "description": "One photograph with a caption: in the reading column, across the page or edge to edge.", "thumbnail": "galley/sections/image.webp" },
+            { "type": "cta", "label": "Invitation", "description": "A heading, a line and one or two buttons, to close a page.", "thumbnail": "galley/sections/cta.webp" },
+            { "type": "contact", "label": "Contact", "description": "Ways to get in touch beside the contact form (src/content/forms/contact.json).", "thumbnail": "galley/sections/contact.webp" },
+            { "type": "chart", "label": "Chart", "description": "Lines, areas, columns, bars or stacked columns from a few numbers, with the numbers in a table beneath. Same as ```chart in a post.", "thumbnail": "galley/sections/chart.webp" },
+            { "type": "compare", "label": "Comparison table", "description": "Options across the top, what they're compared on down the side; yes/no/partly become marks and one column can be picked out.", "thumbnail": "galley/sections/compare.webp" },
+            { "type": "stats", "label": "Figures", "description": "Two to four figures set large, each with what it counts and how it moved.", "thumbnail": "galley/sections/stats.webp" },
+            { "type": "timeline", "label": "Timeline", "description": "Dated events in order, on a line.", "thumbnail": "galley/sections/timeline.webp" },
+            { "type": "faq", "label": "Questions", "description": "Questions that open one at a time; answers in Markdown.", "thumbnail": "galley/sections/faq.webp" },
+            { "type": "pullquote", "label": "Pull quote", "description": "One line set large in italic, with a name.", "thumbnail": "galley/sections/pullquote.webp" },
+            { "type": "gallery", "label": "Gallery", "description": "Photographs in a grid of two to four columns, each with a caption.", "thumbnail": "galley/sections/gallery.webp" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "blog",
+      "label": "Posts",
+      "singular": "post",
+      "url": "/blog/{slug}/",
+      "dateField": "date",
+      "draftField": "draft"
+    },
+    {
+      "id": "authors",
+      "label": "Authors",
+      "singular": "author",
+      "url": "/authors/{slug}/",
+      "titleField": "name",
+      "imageField": "photo"
+    },
+    {
+      "id": "series",
+      "label": "Series",
+      "singular": "series",
+      "url": "/series/{slug}/"
+    }
+  ],
+  "templates": [
+    {
+      "id": "post",
+      "label": "Post",
+      "description": "A post with a cover, \"In short\", a chart, a callout and sources — the shape most posts take.",
+      "collection": "blog",
+      "file": "galley/templates/post.md"
+    },
+    {
+      "id": "review",
+      "label": "Review or comparison",
+      "description": "Weighing up options: a comparison table, a fifteen-year chart and a verdict with a score.",
+      "collection": "blog",
+      "file": "galley/templates/review.md"
+    },
+    {
+      "id": "about",
+      "label": "About page",
+      "description": "Who writes the blog and why: an intro, a photograph, the story, figures, a timeline and questions.",
+      "collection": "pages",
+      "file": "galley/templates/about.md",
+      "thumbnail": "galley/templates/about.webp"
+    },
+    {
+      "id": "landing",
+      "label": "Topic landing page",
+      "description": "An intro, the lead post on one topic, the rest of its posts and a sign-up.",
+      "collection": "pages",
+      "file": "galley/templates/landing.md",
+      "thumbnail": "galley/templates/landing.webp"
+    }
+  ]
+}

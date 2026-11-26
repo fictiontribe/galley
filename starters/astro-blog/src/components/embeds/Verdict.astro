@@ -1,0 +1,212 @@
+---
+// The end of a review: a score, one sentence, what is good and what isn't,
+// and who it suits. Fields: src/content.config.ts → verdictFields.
+import Icon from "../Icon.astro";
+import { fill, inline, labels, site } from "../../lib/site";
+
+interface Props {
+  title: string;
+  score?: number;
+  outOf?: number;
+  summary: string;
+  pros?: string[];
+  cons?: string[];
+  bestFor?: string;
+}
+
+const { title, score, outOf = 5, summary, pros = [], cons = [], bestFor } = Astro.props;
+const number = new Intl.NumberFormat(site.locale, { maximumFractionDigits: 1 });
+const dots = outOf <= 10 ? Array.from({ length: outOf }, (_, i) => Math.max(0, Math.min(1, (score ?? 0) - i))) : [];
+---
+
+<aside class="verdict tone-muted">
+  <div class="verdict__head">
+    <p class="verdict__title">{title}</p>
+    {
+      typeof score === "number" && (
+        <p class="verdict__score">
+          <span class="verdict__number" aria-hidden="true">
+            {number.format(score)}
+            <span class="verdict__out">/{outOf}</span>
+          </span>
+          <span class="visually-hidden">{fill(labels.embeds.score, { score: number.format(score), outOf })}</span>
+          {dots.length > 0 && (
+            <span class="verdict__dots" aria-hidden="true">
+              {dots.map((amount) => (
+                <span class="verdict__dot" style={`--fill: ${amount * 100}%`} />
+              ))}
+            </span>
+          )}
+        </p>
+      )
+    }
+  </div>
+  <p class="verdict__summary" set:html={inline(summary)} />
+  {
+    (pros.length > 0 || cons.length > 0) && (
+      <div class="verdict__lists">
+        {pros.length > 0 && (
+          <div>
+            <p class="verdict__list-title">{labels.embeds.pros}</p>
+            <ul role="list" class="verdict__list is-pros">
+              {pros.map((item) => (
+                <li>
+                  <Icon name="plus" size={16} />
+                  <span set:html={inline(item)} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {cons.length > 0 && (
+          <div>
+            <p class="verdict__list-title">{labels.embeds.cons}</p>
+            <ul role="list" class="verdict__list is-cons">
+              {cons.map((item) => (
+                <li>
+                  <Icon name="minus" size={16} />
+                  <span set:html={inline(item)} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    )
+  }
+  {
+    bestFor && (
+      <p class="verdict__best">
+        <strong>{labels.embeds.bestFor}</strong> <span set:html={inline(bestFor)} />
+      </p>
+    )
+  }
+</aside>
+
+<style>
+  .verdict {
+    container-type: inline-size;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-m);
+    padding: var(--space-l);
+    border-radius: var(--radius-l);
+    font-family: var(--font-ui);
+    font-size: var(--step-0);
+    line-height: 1.5;
+  }
+
+  .verdict__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-s);
+    padding-block-end: var(--space-m);
+    border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .verdict__title {
+    max-inline-size: 22em;
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" var(--opsz-display);
+    font-size: var(--step-3);
+    font-weight: var(--weight-display);
+    font-style: var(--display-style);
+    letter-spacing: var(--tracking-display);
+    line-height: 1.1;
+  }
+
+  .verdict__score {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+  }
+
+  .verdict__number {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" var(--opsz-display);
+    font-size: var(--step-5);
+    font-weight: var(--weight-display);
+    line-height: 0.9;
+    color: var(--tone-accent);
+    font-variant-numeric: lining-nums;
+  }
+
+  .verdict__out {
+    font-size: 0.4em;
+    color: var(--tone-muted);
+  }
+
+  .verdict__dots {
+    display: flex;
+    gap: 4px;
+  }
+
+  .verdict__dot {
+    inline-size: 0.6rem;
+    block-size: 0.6rem;
+    border-radius: 50%;
+    background: linear-gradient(to right, var(--tone-accent) var(--fill), var(--tone-line) var(--fill));
+  }
+
+  .verdict__summary {
+    font-family: var(--font-text);
+    font-variation-settings: "opsz" var(--opsz-text);
+    font-size: var(--step-1);
+    line-height: 1.45;
+  }
+
+  .verdict__lists {
+    display: grid;
+    gap: var(--space-m);
+  }
+
+  .verdict__list-title {
+    margin-block-end: var(--space-2xs);
+    font-size: var(--step--2);
+    font-weight: var(--weight-ui-strong);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-muted);
+  }
+
+  .verdict__list {
+    display: grid;
+    gap: var(--space-2xs);
+    padding: 0;
+    list-style: none;
+    font-size: var(--step--1);
+  }
+
+  .verdict__list li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.6em;
+    align-items: start;
+  }
+
+  .verdict__list :global(svg) {
+    margin-block-start: 0.15em;
+  }
+
+  .is-pros :global(svg) {
+    color: var(--color-good);
+  }
+
+  .is-cons :global(svg) {
+    color: var(--color-bad);
+  }
+
+  .verdict__best {
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
+    font-size: var(--step--1);
+  }
+
+  @container (min-width: 32rem) {
+    .verdict__lists {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>
