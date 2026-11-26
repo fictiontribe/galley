@@ -497,7 +497,7 @@ async function takeDataFolder(config: ResolvedConfig, notice: (line: string) => 
 /** Opens (and, for an older data folder, upgrades) the install's state. A folder it can't use stops the start in one plain sentence. */
 async function openState(config: ResolvedConfig, notice: (line: string) => void): Promise<InstallStore> {
   try {
-    return await openInstallState(config.home, { keepSite: config.keepSite, log: notice });
+    return await openInstallState(config.home, { keepSite: config.keepSite, log: notice, ...(config.oidc?.passwordsOff ? { passwordsOff: true } : {}) });
   } catch (error) {
     if (isGalleyError(error)) throw new StartupError(error.message);
     throw error;
@@ -1028,13 +1028,15 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         allowLocalRepositories: config.allowLocalRepositories,
         fixed: config.fixed,
         notice,
-        ...(config.oidc ? { provider: { issuer: config.oidc.issuer } } : {}),
+        ...(config.oidc ? { provider: { issuer: config.oidc.issuer, passwordsOff: config.oidc.passwordsOff } } : {}),
         ...(options.siteInstall ? { installDependencies: options.siteInstall } : {}),
       });
       try {
         const started = await install.start(config.starting ?? {}, {
           resetPassword: options.resetPassword === true,
           ...(options.resetPasswordEmail !== undefined ? { resetPasswordEmail: options.resetPasswordEmail } : {}),
+          ...(options.resetPasswordAccount !== undefined ? { resetPasswordAccount: options.resetPasswordAccount } : {}),
+          ...(options.resetPasswordSubject !== undefined ? { resetPasswordSubject: options.resetPasswordSubject } : {}),
           ...(config.oidc?.owner ? { firstOwner: { issuer: config.oidc.issuer, subject: config.oidc.owner } } : {}),
         });
 
@@ -1043,8 +1045,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         if (started.passwordLink) {
           // A link this server made, printed once to whoever runs it — and never written to the log.
           out.remember(started.passwordLink.code);
-          passwordLink = { url: `${url}${LINK_PATHS.password}#${started.passwordLink.code}`, expiresAt: started.passwordLink.expiresAt, name: started.passwordLink.name };
-          out.event(`A new-password link was made for ${started.passwordLink.name || "the owner with no name yet"} (Owner) by whoever runs the server (--reset-password).`);
+          passwordLink = { url: `${url}${LINK_PATHS.password}#${started.passwordLink.code}`, expiresAt: started.passwordLink.expiresAt, name: started.passwordLink.name, signIn: started.passwordLink.signIn };
+          out.event(`A ${started.passwordLink.signIn ? "sign-in" : "new-password"} link was made for ${started.passwordLink.name || "the owner with no name yet"} (Owner) by whoever runs the server (--reset-password).`);
         }
         notices.push(...started.notices);
       } catch (error) {

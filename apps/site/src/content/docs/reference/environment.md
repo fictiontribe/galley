@@ -79,7 +79,9 @@ Read by `galley serve` when it starts, from its environment and nowhere else: ne
 | `GALLEY_OIDC_DEFAULT_ROLE` | none | The role for someone whose token has no role claim: `editor` or `contributor`, never `owner`. Unset: they are refused. Only for a provider that decides who may sign in to this client: with one that lets anyone register, it makes an account here for anyone. |
 | `GALLEY_OIDC_SESSION_HOURS` | `12` | How long a session started through the provider lasts, from 1 to 720 hours. |
 | `GALLEY_OIDC_OWNER` | none | The first owner's subject at the provider. Read only while the install has no owner (ignored, with a notice, once it has one): the owner's account is made at start, with no password, and first run can finish with nobody signed in. Not with `GALLEY_PASSWORD` on an install that has no owner yet. |
-| `GALLEY_OIDC_ONLY` | off | Not available in this version: a server started with it refuses to start. |
+| `GALLEY_OIDC_ONLY` | off | `1`: passwords are off, and the sign-in screen has the provider's button alone. Signing in with a password, invitations, "forgot my password", an owner's new-password links and choosing a password at first run are refused, and every open invitation and new-password link stops working. Sessions not started through the provider are refused, and once passwords have been off, those from before stay refused even if they are turned on again. The one other way in is `galley serve --reset-password`. Not with `GALLEY_PASSWORD` on an install that has no owner. |
+
+Whoever runs the server lets an owner back in with `galley serve --reset-password` (add `--email`, `--account <id>` or `--subject <subject>` with several owners). For an owner who signs in through the provider, or with passwords off, its link signs them in once without a password and sets none: it is the way back in when the provider is down.
 
 ## Hosting the editor online
 

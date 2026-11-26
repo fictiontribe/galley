@@ -23,8 +23,12 @@ Options
                             choose a new password (it works once, for ${PASSWORD_LINK_MINUTES} minutes), then
                             serve as usual until stopped. Nobody else's account changes,
                             and the owner's old password works until the link is used.
-                            With no owner yet: a new one-time setup link instead
+                            With no owner yet: a new one-time setup link instead.
+                            For an owner who signs in through the identity provider, or
+                            with passwords off: a link that signs them in without one
       --email <address>     With --reset-password, when there are several owners: which one
+      --account <id>        The same, by account id (for an owner with no e-mail)
+      --subject <subject>   The same, by their subject at the identity provider
   -h, --help                Show this help
 
 First run
@@ -120,7 +124,7 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
   const { values } = parse(
     "serve",
     argv,
-    { host: { type: "string" }, port: { type: "string", short: "p" }, socket: { type: "string" }, "sites-dir": { type: "string" }, "reset-password": { type: "boolean" }, email: { type: "string" } },
+    { host: { type: "string" }, port: { type: "string", short: "p" }, socket: { type: "string" }, "sites-dir": { type: "string" }, "reset-password": { type: "boolean" }, email: { type: "string" }, account: { type: "string" }, subject: { type: "string" } },
     0
   );
 
@@ -128,7 +132,10 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
     io.out(SERVE_HELP);
     return 0;
   }
-  if (values.email !== undefined && !values["reset-password"]) throw new UsageError("--email is only used with --reset-password, to say which owner's password to reset.");
+  for (const flag of ["email", "account", "subject"] as const) {
+    if (values[flag] !== undefined && !values["reset-password"]) throw new UsageError(`--${flag} is only used with --reset-password, to say which owner to let back in.`);
+  }
+  if ([values.email, values.account, values.subject].filter((one) => one !== undefined).length > 1) throw new UsageError("Name the owner one way: --email, --account or --subject.");
   const host = values.host ?? io.env.GALLEY_HOST ?? "0.0.0.0";
   // Still accepted so old scripts start; the server says it is ignored now.
   const sitesDir = values["sites-dir"] ? resolve(io.cwd, values["sites-dir"]) : undefined;
@@ -147,6 +154,8 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
       log: (line) => io.err(stamped(line)),
       ...(values["reset-password"] ? { resetPassword: true } : {}),
       ...(values.email !== undefined ? { resetPasswordEmail: values.email } : {}),
+      ...(values.account !== undefined ? { resetPasswordAccount: values.account } : {}),
+      ...(values.subject !== undefined ? { resetPasswordSubject: values.subject } : {}),
     });
   } catch (error) {
     if (error instanceof StartupError) {
@@ -173,6 +182,8 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
           ? `Setup:     ${new URL("/setup", server.setupUrl).href}?token=<the setup code you supplied>\n           It works once, and whoever opens it first creates the owner's account.`
           : "Setup:     waiting for first run, with the setup code you supplied (only its hash is kept here)"
     );
+  } else if (server.install?.people?.signInWith() === "provider") {
+    io.out("Sign-in:   through the identity provider only (GALLEY_OIDC_ONLY): passwords are off; `--reset-password` is the way back in");
   } else {
     // Whether GALLEY_PASSWORD still signs the first owner in, without saying anything about it: it only sets it while there is no owner, and the app can change it since.
     const fromEnv = Boolean(server.install && env.GALLEY_PASSWORD && (await server.install.people.ownerPasswordIs(env.GALLEY_PASSWORD).catch(() => false)));
@@ -185,7 +196,9 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
     const until = new Date(server.passwordLink.expiresAt).toISOString().slice(11, 16);
 
     io.out(
-      `Password:  ${server.passwordLink.url}\n           Open it now: it lets ${server.passwordLink.name || "the owner"} choose a new password, once, until ${until} UTC. Nobody else's account changed.`
+      server.passwordLink.signIn
+        ? `Sign in:   ${server.passwordLink.url}\n           Open it now: it signs ${server.passwordLink.name || "the owner"} in, once, without a password, until ${until} UTC, and changes nothing else.`
+        : `Password:  ${server.passwordLink.url}\n           Open it now: it lets ${server.passwordLink.name || "the owner"} choose a new password, once, until ${until} UTC. Nobody else's account changed.`
     );
   }
   io.out(

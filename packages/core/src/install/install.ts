@@ -54,7 +54,7 @@ export interface InstallOptions {
    * any: accounts that sign in through it get no password by any link, and
    * an install whose accounts name another issuer doesn't start.
    */
-  provider?: { issuer: string } | null;
+  provider?: { issuer: string; passwordsOff?: boolean } | null;
 }
 
 export interface StartOptions {
@@ -65,8 +65,12 @@ export interface StartOptions {
    * fresh setup link, as always.
    */
   resetPassword?: boolean;
-  /** Which owner `resetPassword` is for, when there are several. */
+  /** Which owner `resetPassword` is for, when there are several (`--email`). */
   resetPasswordEmail?: string;
+  /** Which owner `resetPassword` is for, by account id (`--account`). */
+  resetPasswordAccount?: string;
+  /** Which owner `resetPassword` is for, by subject at the identity provider (`--subject`). */
+  resetPasswordSubject?: string;
   /**
    * GALLEY_OIDC_OWNER: the first owner, named by their subject at the
    * install's identity provider. Used only while the install has no owner:
@@ -80,7 +84,8 @@ export interface StartResult {
   /** The one-time setup code to print, when first run waits for it and the operator didn't supply only its hash. */
   setupCode: string | null;
   /** `resetPassword` with an owner: the new-password link's code (it goes after LINK_PATHS.password and a "#"), when it stops working, and for whom. */
-  passwordLink: { code: string; expiresAt: string; name: string } | null;
+  /** `signIn`: the link signs the owner in without a password (they sign in through the provider, or passwords are off). */
+  passwordLink: { code: string; expiresAt: string; name: string; signIn: boolean } | null;
   notices: string[];
 }
 
@@ -250,7 +255,7 @@ export function createInstall(options: InstallOptions): Install {
   let autoFinish = false;
   let disposed = false;
   const notice = options.notice ?? (() => {});
-  const people = createPeople(store, { providerConfigured: Boolean(options.provider) });
+  const people = createPeople(store, { providerConfigured: Boolean(options.provider), passwordsOff: Boolean(options.provider?.passwordsOff) });
 
   const hostOf = (repository: string | null) => (repository ? (parseRemoteUrl(repository)?.kind ?? null) : null);
 
@@ -682,12 +687,30 @@ export function createInstall(options: InstallOptions): Install {
       }
     }
 
+    const passwordsOff = Boolean(options.provider?.passwordsOff);
+
+    // Passwords off (GALLEY_OIDC_ONLY): kept from the first such start; every open link without the server's mark stops working.
+    if (passwordsOff) {
+      if (values.password && !store.hasOwner()) {
+        throw new GalleyError("invalid", "GALLEY_PASSWORD (or the starting-values file's password) can't choose the first owner with GALLEY_OIDC_ONLY: passwords are off. Name the first owner with GALLEY_OIDC_OWNER instead.");
+      }
+      const { dropped } = await store.turnPasswordsOff();
+
+      if (dropped > 0) notices.push(`Passwords are off (GALLEY_OIDC_ONLY), so the ${dropped === 1 ? "open invitation or new-password link stopped" : `${dropped} open invitations and new-password links stopped`} working.`);
+      if (!store.hasOwner() && !startOptions.firstOwner) {
+        notices.push("Passwords are off (GALLEY_OIDC_ONLY) and this install has no owner yet, so nobody can finish setting it up. Name the first owner by their subject at the identity provider with GALLEY_OIDC_OWNER, and start the server again.");
+      }
+    }
     if (startOptions.resetPassword) {
       // A first owner is chosen through the setup link, never put straight back from GALLEY_PASSWORD.
       await store.markSeeded(["password"]);
-      const rescued = await people.rescue(startOptions.resetPasswordEmail);
+      const rescued = await people.rescue({
+        ...(startOptions.resetPasswordEmail !== undefined ? { email: startOptions.resetPasswordEmail } : {}),
+        ...(startOptions.resetPasswordAccount !== undefined ? { accountId: startOptions.resetPasswordAccount } : {}),
+        ...(startOptions.resetPasswordSubject !== undefined ? { subject: startOptions.resetPasswordSubject } : {}),
+      });
 
-      if (rescued) passwordLink = { code: rescued.link.code, expiresAt: rescued.link.expiresAt, name: rescued.account.name };
+      if (rescued) passwordLink = { code: rescued.link.code, expiresAt: rescued.link.expiresAt, name: rescued.account.name, signIn: people.checkLink(rescued.link.code).kind === "sign-in" };
     }
     // The first owner named by their subject at the provider: made now, with no password, while there's no owner.
     if (startOptions.firstOwner && store.hasOwner()) {
@@ -700,8 +723,10 @@ export function createInstall(options: InstallOptions): Install {
       await store.markSeeded(["password"]);
       notices.push("The first owner is the account GALLEY_OIDC_OWNER names; they sign in through the identity provider.");
     }
-    // The first owner's password: a starting value, used once, only while there's no owner.
-    if (values.password) {
+    // The first owner's password: a starting value, used once, only while there's no owner. Never with passwords off.
+    if (values.password && passwordsOff) {
+      notices.push("GALLEY_PASSWORD is ignored: passwords are off on this editor (GALLEY_OIDC_ONLY).");
+    } else if (values.password) {
       if (!store.hasOwner() && !store.isSeeded("password")) {
         await people.createOwner({ password: values.password, ...(values.owner ?? {}) });
         await store.markSeeded(["password", ...(values.owner ? ["owner"] : [])]);

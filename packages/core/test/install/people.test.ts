@@ -529,7 +529,7 @@ describe("the operator's way back in", () => {
     expect(people.checkLink(only!.link.code).kind).toBe("password");
     const second = await join("second@example.com", "owner", "Second");
 
-    expect((await refusal(people.rescue())).message).toMatch(/has 2 owners. Say whose password to reset with --email/);
+    expect((await refusal(people.rescue())).message).toMatch(/has 2 owners. Say which one to let back in, with --email <their e-mail>, --account <id> or --subject <subject>:/);
     expect((await refusal(people.rescue("ed@example.com"))).message).toMatch(/No owner of this editor signs in with that e-mail/);
     await people.change(owner.id, second.id, { disabled: true });
     const named = await people.rescue(" SECOND@example.com ");

@@ -257,6 +257,8 @@ export interface SessionStamp {
   issuedAt: number;
   /** When the session ends (ms), as its cookie says; without it, SESSION_LIFETIME_MS after its issue. */
   expiresAt?: number;
+  /** How it was started (a hosted cookie says): password, provider or recovery. Absent: a password session. */
+  kind?: string;
   /** Whose session it is (hosted cookies carry it; the person's own sign-outs then apply). */
   accountId?: string;
 }
@@ -325,6 +327,14 @@ export interface InstallStore {
   endSession(session: SessionStamp, now?: number): Promise<void>;
   /** Ends every session issued so far. */
   signOutEverywhere(): Promise<void>;
+  /**
+   * Passwords are off (GALLEY_OIDC_ONLY) as this server starts: the first
+   * time, the moment is kept (`oidcOnlySince`), and from then on a session
+   * from before it that isn't the provider's never counts again. Every open
+   * password link and invitation without the `serve --reset-password` mark
+   * is dropped.
+   */
+  turnPasswordsOff(now?: number): Promise<{ dropped: number }>;
   /** Called after anything about sessions changed (so a viewer cookie bound to one can be dropped). */
   onSessionsChanged(listener: () => void): () => void;
 
@@ -349,6 +359,12 @@ export interface OpenInstallStateOptions {
   log?: (line: string) => void;
   /** Tests only: stand-ins for the calls the state is saved with. */
   files?: Partial<StateFiles>;
+  /**
+   * GALLEY_OIDC_ONLY: passwords are off. Only a session started through the
+   * identity provider, or a `serve --reset-password` link's recovery session,
+   * counts; every other is refused when it is read.
+   */
+  passwordsOff?: boolean;
 }
 
 /**
@@ -594,6 +610,12 @@ export async function openInstallState(home: string, options: OpenInstallStateOp
     sessionValid(session, now = Date.now()) {
       // Past its own end, whoever asks: the cookie's reader checks it too, and nothing has to remember to.
       if (session.expiresAt !== undefined && now >= session.expiresAt) return false;
+      if (session.accountId !== undefined && session.kind !== "provider") {
+        // Passwords off: only the provider's sessions and a recovery link's.
+        if (options.passwordsOff && session.kind !== "recovery") return false;
+        // Once passwords were first off, no other session from before then counts again, whether or not they are on now.
+        if (state.oidcOnlySince !== null && session.issuedAt <= state.oidcOnlySince) return false;
+      }
       if (session.issuedAt <= state.sessions.validAfter) return false;
       if (state.sessions.revoked.some((entry) => entry.id === session.id && entry.until > now)) return false;
       if (session.accountId === undefined) return true;
@@ -631,6 +653,19 @@ export async function openInstallState(home: string, options: OpenInstallStateOp
         else draft.sessions.validAfter = Math.max(now, draft.sessions.validAfter + 1);
       });
       sessionsChanged();
+    },
+    async turnPasswordsOff(now = Date.now()) {
+      let dropped = 0;
+
+      await update((draft) => {
+        draft.oidcOnlySince ??= now;
+        const kept = draft.links.filter((link) => link.madeBy === "server");
+
+        dropped = draft.links.length - kept.length;
+        draft.links = kept;
+      });
+      sessionsChanged();
+      return { dropped };
     },
     async signOutEverywhere() {
       await update((draft) => {

@@ -22,8 +22,21 @@ entry says how.
   `GALLEY_OIDC_OWNER` names the first owner by subject. Someone who signs in
   through the provider gets no password ("forgot my password" and new-password
   links don't apply to them), so removing them at the provider removes them.
-  Turning passwords off comes in a later version. The variables are in the
-  environment reference.
+  The variables are in the environment reference.
+- **Passwords can be turned off** with `GALLEY_OIDC_ONLY=1` beside an
+  identity provider: the sign-in screen has the provider's button alone;
+  signing in with a password, invitations, "forgot my password", an owner's
+  new-password links and choosing a password at first run are refused, and
+  open links stop working. Sessions not started through the provider are
+  refused when read, and once passwords have been off, those from before stay
+  refused even if they are turned back on. `GALLEY_PASSWORD` is ignored with
+  a notice (and refused while the install has no owner: name it with
+  `GALLEY_OIDC_OWNER`).
+- **`galley serve --reset-password` lets back in an owner who signs in
+  through the provider, or anyone while passwords are off**: its link signs
+  them in once, without a password, with a session as long as the provider's,
+  and sets none. `--account <id>` and `--subject <subject>` name the owner
+  when there are several; with none named, they are listed on the console.
 - **The server's access token can sign one person out**
   (`POST /api/people/:accountId/sign-out`), logged as the token. It could
   already sign everyone out; the rest of People still needs a person signed

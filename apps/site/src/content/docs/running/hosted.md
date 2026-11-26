@@ -220,7 +220,7 @@ Password:  https://cms.example.com/new-password#<one-time code>
 …
 ```
 
-It prints a one-time new-password link for the owner (60 minutes, once) and keeps serving. Nobody else's account changes, nobody is signed out, and the owner's old password works until the link is used; an owner who was switched off is switched back on. With several owners, say whose with `--email`: `serve --reset-password --email sam@example.com`. Open the link, choose the new password, then stop it with Ctrl+C and start the editor again:
+It prints a one-time new-password link for the owner (60 minutes, once) and keeps serving. Nobody else's account changes, nobody is signed out, and the owner's old password works until the link is used; an owner who was switched off is switched back on. With several owners, say whose with `--email`: `serve --reset-password --email sam@example.com`, or with `--account <id>` or `--subject <subject>` for an owner who has no e-mail; with several and none named, it lists them on the console. **For an owner who signs in through the identity provider, or with passwords off (`GALLEY_OIDC_ONLY`), the link signs them in instead, once, without a password** (`Sign in:` in place of `Password:`), for as long as a session through the provider lasts, and sets no password: it is the way back in when the provider is down. Open the link, choose the new password, then stop it with Ctrl+C and start the editor again:
 
 ```sh
 docker compose start editor

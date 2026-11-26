@@ -520,7 +520,7 @@ describe("starting values", () => {
     // Nobody's account is forgotten: the owner keeps their password until the link is used.
     expect(first.store.hasOwner()).toBe(true);
     expect(reset.setupCode).toBeNull();
-    expect(reset.passwordLink).toEqual({ code: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/), expiresAt: expect.any(String), name: "" });
+    expect(reset.passwordLink).toEqual({ code: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/), expiresAt: expect.any(String), name: "", signIn: false });
     expect(first.install.people.checkLink(reset.passwordLink!.code)).toMatchObject({ kind: "password" });
     expect(await first.install.people.ownerPasswordIs(PASSWORD)).toBe(true);
   });

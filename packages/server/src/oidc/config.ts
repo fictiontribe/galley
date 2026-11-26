@@ -35,6 +35,8 @@ export interface OidcConfig {
   sessionHours: number;
   /** The subject of the first owner, read only while the install has no owner. */
   owner: string | null;
+  /** GALLEY_OIDC_ONLY: passwords are off; the provider is the way in, and a `serve --reset-password` link the one other. */
+  passwordsOff: boolean;
   /** The exact redirect address registered at the provider. */
   redirectUri: string;
   /** Tests only: an http:// issuer on this computer. */
@@ -110,9 +112,9 @@ export function readOidcConfig(input: OidcConfigInput, warnings: string[]): Oidc
   if (issuerUrl.username || issuerUrl.password || issuerUrl.search || issuerUrl.hash) {
     throw new OidcConfigError("GALLEY_OIDC_ISSUER must be the issuer address alone: no user name, password, query or fragment.");
   }
-  if (env.GALLEY_OIDC_ONLY?.trim()) {
-    throw new OidcConfigError("GALLEY_OIDC_ONLY can't be used with this version: passwords stay on beside the provider. Unset it.");
-  }
+  const rawOnly = given(env, "GALLEY_OIDC_ONLY")?.toLowerCase();
+
+  if (rawOnly !== undefined && !["1", "0", "true", "false"].includes(rawOnly)) throw new OidcConfigError(`GALLEY_OIDC_ONLY must be 1 (passwords off) or 0, not “${env.GALLEY_OIDC_ONLY?.trim()}”.`);
   const clientId = given(env, "GALLEY_OIDC_CLIENT_ID");
 
   if (!clientId) throw new OidcConfigError("GALLEY_OIDC_ISSUER is set without GALLEY_OIDC_CLIENT_ID. Set this editor's client id at the provider.");
@@ -162,6 +164,7 @@ export function readOidcConfig(input: OidcConfigInput, warnings: string[]): Oidc
     defaultRole: (rawDefault as "editor" | "contributor" | undefined) ?? null,
     sessionHours,
     owner,
+    passwordsOff: rawOnly === "1" || rawOnly === "true",
     redirectUri: `${input.publicUrl.origin}/api/auth/oidc/callback`,
     allowLoopbackHttp: loopbackHttp,
   };

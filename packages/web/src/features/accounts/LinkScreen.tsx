@@ -85,6 +85,8 @@ export function LinkRefused() {
 function LinkForm({ code, preview, onRefused }: { code: string; preview: LinkPreview; onRefused: () => void }) {
   const navigate = useNavigate();
   const invitation = preview.kind === "invitation";
+  // The server's way back in, for someone who signs in through the identity provider or with passwords off: no password is asked for.
+  const signIn = preview.kind === "sign-in";
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [again, setAgain] = useState("");
@@ -99,14 +101,14 @@ function LinkForm({ code, preview, onRefused }: { code: string; preview: LinkPre
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const found = { name: invitation ? (nameProblem(name) ?? undefined) : undefined, password: passwordProblem(password, again) ?? undefined };
+    const found = { name: invitation ? (nameProblem(name) ?? undefined) : undefined, password: signIn ? undefined : (passwordProblem(password, again) ?? undefined) };
     setProblems(found);
     if (found.name || found.password) return;
     setBusy(true);
     setProblem(null);
     const wasSignedIn = Boolean(useMeta.getState().meta?.authenticated);
     try {
-      await api("POST /api/auth/link", { body: { code, password, ...(invitation ? { name: name.trim() } : {}) } });
+      await api("POST /api/auth/link", { body: { code, ...(signIn ? {} : { password }), ...(invitation ? { name: name.trim() } : {}) } });
       setPassword("");
       setAgain("");
       if (wasSignedIn) {
@@ -129,7 +131,7 @@ function LinkForm({ code, preview, onRefused }: { code: string; preview: LinkPre
   const role = preview.role;
   return (
     <form className="app-form-stack" onSubmit={(event) => void submit(event)} noValidate>
-      <h1 className="app-login__title">{invitation ? "You’re invited." : "Choose a new password."}</h1>
+      <h1 className="app-login__title">{invitation ? "You’re invited." : signIn ? "Sign in." : "Choose a new password."}</h1>
       {invitation ? (
         <p className="app-login__body">
           {preview.invitedBy ? `${preview.invitedBy} invited ` : "This invitation is for "}
@@ -143,6 +145,15 @@ function LinkForm({ code, preview, onRefused }: { code: string; preview: LinkPre
           ) : null}
           .
         </p>
+      ) : signIn ? (
+        <p className="app-login__body">
+          {preview.email ? (
+            <>
+              For <strong>{preview.email}</strong>.{" "}
+            </>
+          ) : null}
+          Whoever runs the server made this link to let you back in. It signs you in once, without a password, and changes nothing else.
+        </p>
       ) : (
         <p className="app-login__body">
           For <strong>{preview.email}</strong>. Your old password works until you choose this one.
@@ -154,16 +165,20 @@ function LinkForm({ code, preview, onRefused }: { code: string; preview: LinkPre
           <Input ref={first} autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} />
         </Field>
       ) : null}
-      <input type="email" autoComplete="username" value={preview.email} readOnly hidden />
-      <Field label={invitation ? "Password" : "New password"} hint={`At least ${MIN_INSTALL_PASSWORD_LENGTH} characters`} error={problems.password}>
-        <Input ref={invitation ? undefined : first} type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
-      </Field>
-      <Field label="The same password again">
-        <Input type="password" autoComplete="new-password" value={again} onChange={(event) => setAgain(event.target.value)} />
-      </Field>
+      {signIn ? null : (
+        <>
+          <input type="email" autoComplete="username" value={preview.email} readOnly hidden />
+          <Field label={invitation ? "Password" : "New password"} hint={`At least ${MIN_INSTALL_PASSWORD_LENGTH} characters`} error={problems.password}>
+            <Input ref={invitation ? undefined : first} type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          </Field>
+          <Field label="The same password again">
+            <Input type="password" autoComplete="new-password" value={again} onChange={(event) => setAgain(event.target.value)} />
+          </Field>
+        </>
+      )}
       {problem ? <Problem>{problem}</Problem> : null}
-      <Button type="submit" variant="primary" block busy={busy} busyLabel={invitation ? "Joining…" : "Saving…"}>
-        {invitation ? "Join" : "Save password"}
+      <Button type="submit" variant="primary" block busy={busy} busyLabel={invitation ? "Joining…" : signIn ? "Signing in…" : "Saving…"}>
+        {invitation ? "Join" : signIn ? "Sign in" : "Save password"}
       </Button>
       <p className="app-login__body g-hint">{`This link stops working ${timeLeft(preview.expiresAt)}, or once it’s used.`}</p>
     </form>
@@ -194,7 +209,7 @@ export function LinkScreen() {
   }, [check]);
 
   useEffect(() => {
-    if (meta) document.title = `${kind === "password" ? "New password" : "Join"} · ${meta.brand.productName}`;
+    if (meta) document.title = `${kind === "password" ? "New password" : kind === "sign-in" ? "Sign in" : "Join"} · ${meta.brand.productName}`;
   }, [meta, kind]);
 
   if (!meta) return null;

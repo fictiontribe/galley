@@ -205,7 +205,8 @@ describe("the callback refuses, always by sending the browser to the sign-in pag
     expect(bare.headers["content-type"] ?? "").not.toMatch(/json/);
     // Another sign-in's cookie (another tab, or a callback someone made up): refused, and that cookie is left as it is.
     const other = await call(port, "GET", "/api/auth/oidc/start");
-    const mixed = await call(port, "GET", `${back.pathname}${back.search}`, { cookie: cookieNamed(other.cookies, PRE_LOGIN)! });
+    // From another address: a refusal that counts nothing is logged once a minute per client.
+    const mixed = await call(port, "GET", `${back.pathname}${back.search}`, { cookie: cookieNamed(other.cookies, PRE_LOGIN)!, headers: { "x-forwarded-for": "198.51.100.251" } });
 
     expect(mixed.headers.location).toBe("/login?signin=another-tab");
     expect(setCookieLine(mixed.headers, PRE_LOGIN)).toBeUndefined();
@@ -667,11 +668,17 @@ describe("the accounts", () => {
 
     expect([used.status, used.body.error.message]).toEqual([409, NO_PASSWORD_FOR_PROVIDER_ACCOUNT]);
     expect(install.store.account(pat.id)!.passwordHash).toBeNull();
-    // The server's way back in, for an owner who signs in through the provider, waits for a later version.
+    // The server's way back in, for an owner who signs in through the provider: a link that signs them in and sets no password.
     await server.close();
-    await expect(
-      startHosted(box, home, { GALLEY_PUBLIC_URL: EDITOR, GALLEY_OIDC_ISSUER: idp.issuer, GALLEY_OIDC_CLIENT_ID: CLIENT, GALLEY_TRUST_PROXY: "1" }, { oidcAllowLoopbackHttp: true, resetPassword: true, resetPasswordEmail: "pat@example.com" })
-    ).rejects.toThrow(NO_PASSWORD_FOR_PROVIDER_ACCOUNT);
+    const reset = await startHosted(box, home, { GALLEY_PUBLIC_URL: EDITOR, GALLEY_OIDC_ISSUER: idp.issuer, GALLEY_OIDC_CLIENT_ID: CLIENT, GALLEY_TRUST_PROXY: "1" }, { oidcAllowLoopbackHttp: true, resetPassword: true, resetPasswordEmail: "pat@example.com" });
+    const code = reset.server.passwordLink!.url.split("#")[1]!;
+
+    expect((await call(reset.port, "POST", "/api/auth/link/check", { body: { code } })).body.kind).toBe("sign-in");
+    const recovered = await call(reset.port, "POST", "/api/auth/link", { body: { code } });
+
+    expect(recovered.status, recovered.text).toBe(200);
+    expect(reset.server.install!.store.account(pat.id)!.passwordHash).toBeNull();
+    await reset.server.close();
     // The provider taken away: such an account can be given a password, as any other.
     const without = await startHosted(box, home, { GALLEY_PUBLIC_URL: EDITOR, GALLEY_TRUST_PROXY: "1" });
     const again = await call(without.port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD } });
@@ -765,7 +772,7 @@ describe("the first owner named by subject, and the configuration", () => {
     await refuses({ ...base, GALLEY_OIDC_DEFAULT_ROLE: "owner" }, /can't be owner/);
     await refuses({ ...base, GALLEY_OIDC_ID_TOKEN_ALG: "HS256" }, /GALLEY_OIDC_ID_TOKEN_ALG must be one of/);
     await refuses({ ...base, GALLEY_OIDC_SESSION_HOURS: "721" }, /from 1 to 720/);
-    await refuses({ ...base, GALLEY_OIDC_ONLY: "1" }, /GALLEY_OIDC_ONLY can't be used with this version/);
+    await refuses({ ...base, GALLEY_OIDC_ONLY: "maybe" }, /GALLEY_OIDC_ONLY must be 1/);
     await refuses({ ...base, GALLEY_PASSWORD: PASSWORD, GALLEY_OIDC_OWNER: "the-owner" }, /would both decide who this install's first owner is/);
     writeFileSync(file, JSON.stringify({ oidcIssuer: idp.issuer }));
     await refuses({ ...base, GALLEY_INSTALL_CONFIG: file }, /set in the server's environment only/);

@@ -97,7 +97,7 @@ describe("the first owner named by subject", () => {
 });
 
 describe("a password for someone who signs in through the provider", () => {
-  it("is never given while a provider is set up: not by \"forgot\", an owner's link, the server's way back in, or a link made before", async () => {
+  it("is never given while a provider is set up: not by \"forgot\", an owner's link, the server's way back in (which signs them in instead), or a link made before", async () => {
     const { store } = await opened();
     const people = createPeople(store, { providerConfigured: true });
     const sam = await people.createOwner({ password: "correct horse battery staple", name: "Sam", email: "sam@example.com" });
@@ -112,7 +112,10 @@ describe("a password for someone who signs in through the provider", () => {
 
     expect(await people.forgot("pat@example.com")).toBeNull();
     await refused(people.passwordLink(sam.id, pat));
-    await refused(people.rescue("pat@example.com"));
+    // The server's way back in signs them in without a password.
+    const rescued = (await people.rescue("pat@example.com"))!;
+
+    expect(people.checkLink(rescued.link.code).kind).toBe("sign-in");
     // A link made while no provider was set up, used once one is.
     const before = createPeople(store);
     const { link } = await before.passwordLink(sam.id, pat);
