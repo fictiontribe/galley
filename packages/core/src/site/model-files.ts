@@ -6,7 +6,7 @@ import { PRODUCT } from "../brand";
 import { collectionForPath, formatForPath } from "../content/index";
 import type { SiteModel } from "../types";
 
-const CONTENT_CONFIG = /^src\/(content\.config|content\/config)\.[cm]?[jt]s$/;
+const CONTENT_CONFIG = /^(?:src\/)?(?:content\.config|content\/config|contentlayer\.config|velite\.config)\.[cm]?[jt]s$/;
 const FRAMEWORK_CONFIG =
   /^(astro|svelte|nuxt|next|docusaurus|vite|eleventy|gatsby)\.config\.[cm]?[jt]s$|^\.eleventy\.[cm]?js$|^(hugo|config)\.(toml|ya?ml|json)$|^_config\.ya?ml$/;
 const LOCKFILES = /^(package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$/;

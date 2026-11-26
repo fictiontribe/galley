@@ -99,7 +99,7 @@ function extensionFor(collection: Collection): string {
     case "mdx":
       return "mdx";
     case "markdown":
-      return /\bmd\b/.test(pattern) || pattern === "" ? "md" : /markdown/.test(pattern) ? "markdown" : /mdx/.test(pattern) ? "mdx" : "md";
+      return /\bmd\b/.test(pattern) || pattern === "" ? "md" : /markdown/.test(pattern) ? "markdown" : /\bmdx\b/.test(pattern) ? "mdx" : /\bsvx\b/.test(pattern) ? "svx" : "md";
     case "yaml":
       return /yml/.test(pattern) && !/yaml/.test(pattern) ? "yml" : "yaml";
     default:

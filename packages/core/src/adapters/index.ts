@@ -5,12 +5,20 @@
  */
 import type { GalleyAdapter } from "../adapter/types";
 import { astroAdapter } from "./astro/index";
-import { docusaurusAdapter, eleventyAdapter, hugoAdapter, jekyllAdapter, nextAdapter, nuxtAdapter, sveltekitAdapter } from "./conventions/index";
+import { eleventyAdapter, hugoAdapter, jekyllAdapter } from "./conventions/index";
+import { docusaurusAdapter } from "./docusaurus/index";
 import { genericAdapter } from "./generic/index";
+import { nextAdapter } from "./next/index";
+import { nuxtAdapter } from "./nuxt/index";
+import { sveltekitAdapter } from "./sveltekit/index";
 
 export { astroAdapter } from "./astro/index";
-export { docusaurusAdapter, eleventyAdapter, hugoAdapter, jekyllAdapter, nextAdapter, nuxtAdapter, sveltekitAdapter } from "./conventions/index";
+export { eleventyAdapter, hugoAdapter, jekyllAdapter } from "./conventions/index";
+export { docusaurusAdapter } from "./docusaurus/index";
 export { genericAdapter, GENERIC_ID } from "./generic/index";
+export { nextAdapter } from "./next/index";
+export { nuxtAdapter } from "./nuxt/index";
+export { sveltekitAdapter } from "./sveltekit/index";
 
 export const BUILTIN_ADAPTERS: readonly GalleyAdapter[] = Object.freeze([
   astroAdapter,
