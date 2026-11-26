@@ -53,6 +53,17 @@ handed only what it is meant to use.
 
 ### Changed
 
+- **The Plugins screen is laid out anew.** Each installed plugin is a card
+  with its status, a switch, what it adds and one action (Configure, Set up
+  or Details), and its settings, problems and details open in a panel of
+  their own. **Create with AI** starts a plugin from an idea, in the
+  assistant's build mode or as a prompt to copy for another coding agent.
+  A **Directory** tab lists the plugins that ship with the app, the example
+  plugin in Galley's repository, and ideas the assistant can build. It
+  offers to install a package only from a list of plugins Galley publishes
+  on npm, which is empty for now, so the plugins listed there say "Built in"
+  or link to their source rather than offering an npm name. Adding a plugin
+  by hand is a command shown in its own window, as before.
 - **A session's end is signed into its cookie.** On a hosted install, a
   sign-in cookie made from this version on carries when the session ends and how it was started,
   under its signature, and every place that reads a session (a request, the

@@ -713,7 +713,7 @@ app (OpenRouter, and the WordPress importer when its package is present) can.
 
 <!-- command -->
 ```sh
-galley plugin add galley-plugin-example     # from npm
+galley plugin add <package>                 # from npm: a name you trust
 galley plugin add ./galley-plugin-example   # from a folder
 galley plugin add ./galley-plugin-example-1.0.0.tgz
 galley plugin list

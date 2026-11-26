@@ -9,6 +9,17 @@ export type DirectoryIcon = "image" | "data" | "upload" | "scripts" | "publish" 
 
 export type DirectoryCategory = "all" | "ai-media" | "commerce" | "forms" | "analytics" | "publishing" | "importers" | "workflows";
 export type DirectoryKind = "official" | "community" | "blueprint";
+/** Where an entry that isn't installed from npm lives: in the app itself, or in Galley's repository only. */
+export type DirectoryOrigin = "built-in" | "repository";
+
+/**
+ * The npm packages Fiction Tribe publishes that the directory may offer to install. "Install" fills in
+ * `galley plugin add <name>`, and that command installs whatever npm has under the name and runs it with the
+ * server's rights: a name that isn't ours on npm could be registered by anyone. So a package is offered only from
+ * this list, and adding one is a reviewed change (test/plugins/directory.test.ts holds the list). Empty today:
+ * nothing Fiction Tribe makes is published to npm as a plugin.
+ */
+export const INSTALLABLE_PACKAGES: readonly string[] = [];
 
 export interface DirectoryPlugin {
   id: string;
@@ -20,8 +31,10 @@ export interface DirectoryPlugin {
   author: string;
   icon: DirectoryIcon;
   capabilities: string[];
-  /** Real npm package name (or built-in id) when installable / built in. */
+  /** The plugin's name: what it is registered as when it is installed or built in. Installable only from INSTALLABLE_PACKAGES. */
   packageName?: string;
+  /** Where it lives when it isn't installed from npm: "built-in" ships with the app; "repository" is source to read. */
+  origin?: DirectoryOrigin;
   /** Source or documentation URL. */
   sourceUrl?: string;
   /** Pre-filled idea for the "Create with AI" studio. */
@@ -54,6 +67,7 @@ export const DIRECTORY_PLUGINS: readonly DirectoryPlugin[] = [
     icon: "image",
     capabilities: ["Image generator", "Video generator"],
     packageName: "@galley/plugin-openrouter",
+    origin: "built-in",
     sourceUrl: "https://github.com/fictiontribe/galley/tree/main/packages/plugins/openrouter",
   },
   {
@@ -67,6 +81,7 @@ export const DIRECTORY_PLUGINS: readonly DirectoryPlugin[] = [
     icon: "data",
     capabilities: ["Data sources", "AI tools", "Publish check"],
     packageName: "@galley/plugin-shopify",
+    origin: "built-in",
     sourceUrl: "https://github.com/fictiontribe/galley/tree/main/packages/plugins/shopify",
   },
   {
@@ -80,6 +95,7 @@ export const DIRECTORY_PLUGINS: readonly DirectoryPlugin[] = [
     icon: "upload",
     capabilities: ["Importer"],
     packageName: "@galley/import-wordpress",
+    origin: "built-in",
     sourceUrl: "https://github.com/fictiontribe/galley/tree/main/packages/import-wordpress",
   },
   {
@@ -93,6 +109,7 @@ export const DIRECTORY_PLUGINS: readonly DirectoryPlugin[] = [
     icon: "scripts",
     capabilities: ["Script", "Publish hook", "AI tool"],
     packageName: "galley-plugin-example",
+    origin: "repository",
     sourceUrl: "https://github.com/fictiontribe/galley/tree/main/examples/plugin-example",
   },
   {
@@ -192,6 +209,11 @@ export const DIRECTORY_PLUGINS: readonly DirectoryPlugin[] = [
     aiIdea: "Add an afterPublish hook that checks for newly added Markdown posts in the blog collection and creates a draft broadcast in Buttondown via its API using a secret API key setting.",
   },
 ];
+
+/** The package an entry may be installed as — only one on the INSTALLABLE_PACKAGES list — or null. */
+export function installablePackage(entry: DirectoryPlugin): string | null {
+  return entry.kind !== "blueprint" && entry.packageName !== undefined && INSTALLABLE_PACKAGES.includes(entry.packageName) ? entry.packageName : null;
+}
 
 export const AI_STARTER_IDEAS: Array<{ label: string; idea: string }> = [
   {

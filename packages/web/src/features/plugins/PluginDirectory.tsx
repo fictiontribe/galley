@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import { PRODUCT } from "@galley/core/brand";
 import type { PluginInfo } from "@galley/core/types";
 import { Badge, Button, EmptyState, Icon, Input, cx } from "@/ui";
-import { COMMUNITY_SUBMIT_URL, DIRECTORY_CATEGORIES, DIRECTORY_PLUGINS, type DirectoryCategory, type DirectoryPlugin } from "./directory";
+import { COMMUNITY_SUBMIT_URL, DIRECTORY_CATEGORIES, DIRECTORY_PLUGINS, installablePackage, type DirectoryCategory, type DirectoryPlugin } from "./directory";
 
 export interface PluginDirectoryProps {
   installed: readonly PluginInfo[];
@@ -89,6 +90,9 @@ export function PluginDirectory({ installed, onConfigureInstalled, onInstallPack
         <div className="plg-grid">
           {filtered.map((entry) => {
             const match = entry.packageName ? installedByName.get(entry.packageName) : undefined;
+            // Install is offered only for a package Fiction Tribe publishes (INSTALLABLE_PACKAGES), never for a name
+            // npm doesn't have from us: whoever registered it would have their code installed by the button.
+            const installable = installablePackage(entry);
             return (
               <article key={entry.id} className={cx("plg-card plg-dir-card", entry.kind === "blueprint" && "plg-dir-card--blueprint")}>
                 <header className="plg-card__head">
@@ -101,7 +105,13 @@ export function PluginDirectory({ installed, onConfigureInstalled, onInstallPack
                     </div>
                     <p className="plg-card__meta">
                       <span>{entry.author}</span>
-                      {entry.packageName ? <span className="g-mono plg-card__package">{entry.packageName}</span> : null}
+                      {installable ? (
+                        <span className="g-mono plg-card__package">{installable}</span>
+                      ) : entry.origin === "built-in" ? (
+                        <span>Built in</span>
+                      ) : entry.origin === "repository" ? (
+                        <span>In Galley's repository</span>
+                      ) : null}
                     </p>
                   </div>
                   {match ? <Badge tone="success">Installed</Badge> : kindBadge(entry.kind)}
@@ -133,11 +143,17 @@ export function PluginDirectory({ installed, onConfigureInstalled, onInstallPack
                     <Button size="sm" variant="secondary" icon="chat" onClick={() => onCreateWithAi(entry.aiIdea ?? entry.tagline)}>
                       Generate with AI
                     </Button>
-                  ) : (
-                    <Button size="sm" variant="secondary" icon="download" onClick={() => onInstallPackage(entry.packageName ?? entry.id)}>
+                  ) : installable ? (
+                    <Button size="sm" variant="secondary" icon="download" onClick={() => onInstallPackage(installable)}>
                       Install
                     </Button>
-                  )}
+                  ) : entry.origin === "repository" && entry.sourceUrl ? (
+                    <a className="g-btn g-btn--secondary g-btn--sm" href={entry.sourceUrl} target="_blank" rel="noreferrer">
+                      View source
+                    </a>
+                  ) : entry.origin === "built-in" ? (
+                    <span className="g-faint plg-card__setting-summary">Ships with {PRODUCT.name}</span>
+                  ) : null}
                 </footer>
               </article>
             );
