@@ -8,9 +8,10 @@
  *   `includes_dir`, and `exclude`;
  * - custom `collections:` (object or array), respecting `output: true | false`
  *   and custom `permalink` patterns;
- * - `_posts` (and `_drafts`), mapping slug-only permalinks like `/:title/` or
- *   `/blog/:title:output_ext` to `{slug}` URLs and setting date-based
- *   permalinks to `null` with a note;
+ * - `_posts` (and `_drafts`), keeping `_posts` routes as `null` with a note
+ *   unless the permalink literally matches `:year-:month-:day-:title` / `:slug`
+ *   (since `_posts` filenames carry `YYYY-MM-DD-` prefixes that `{slug}` does
+ *   not strip);
  * - global data files in `data_dir` (`_data`).
  */
 import { posix } from "node:path";
@@ -222,6 +223,34 @@ function convertJekyllPermalink(
   return { ok: true, pattern };
 }
 
+/**
+ * `_posts` filenames carry a `YYYY-MM-DD-` prefix (`2026-01-01-first-note.md`)
+ * that Galley's `{slug}` keeps intact, whereas Jekyll strips it for `:title` /
+ * `:slug`. Only a permalink that literally writes `:year-:month-:day-:title`
+ * (or `:slug`) matches `{slug}` accurately.
+ */
+function convertJekyllPostsPermalink(
+  raw: string
+): { ok: true; pattern: string } | { ok: false; reason: "date" | "date-prefix" | "dynamic" } {
+  const expanded = BUILTIN_STYLES[raw.toLowerCase()] ?? raw.trim();
+  let pattern = expanded.replace(/:year-:month-:day-:(title|slug)(?![a-zA-Z0-9_])/g, "{slug}");
+
+  if (pattern.includes("{slug}")) {
+    if (JEKYLL_DATE_TOKEN.test(pattern)) return { ok: false, reason: "date" };
+    pattern = pattern.replace(/:output_ext(?![a-zA-Z0-9_])/g, "/");
+    if (/:[a-zA-Z0-9_]+/.test(pattern)) return { ok: false, reason: "dynamic" };
+    if ((pattern.match(/\{slug\}/g) ?? []).length !== 1) return { ok: false, reason: "dynamic" };
+    pattern = pattern.replace(/\/{2,}/g, "/");
+    if (!pattern.startsWith("/")) pattern = `/${pattern}`;
+    if (/\s|[?#]/.test(pattern)) return { ok: false, reason: "dynamic" };
+    return { ok: true, pattern };
+  }
+
+  if (JEKYLL_DATE_TOKEN.test(expanded)) return { ok: false, reason: "date" };
+  if (/:(title|slug|name|path)(?![a-zA-Z0-9_])/.test(expanded)) return { ok: false, reason: "date-prefix" };
+  return { ok: false, reason: "dynamic" };
+}
+
 function withBaseurl(baseurl: string, pattern: string): string {
   if (!baseurl) return pattern;
   if (pattern === baseurl || pattern.startsWith(`${baseurl}/`)) return pattern;
@@ -373,10 +402,12 @@ export const jekyllAdapter = defineAdapter({
           continue;
         }
         const rawPermalink = state.postsConfig?.permalink ?? state.permalink;
-        const converted = convertJekyllPermalink(rawPermalink);
+        const converted = convertJekyllPostsPermalink(rawPermalink);
 
         if (!converted.ok) {
-          if (converted.reason === "date") {
+          if (converted.reason === "date-prefix") {
+            ctx.note(`The “${collection.label}” permalink (${rawPermalink}) drops the YYYY-MM-DD- prefix from _posts filenames, which a {slug} pattern cannot strip, so its pages could not be matched to their files.`);
+          } else if (converted.reason === "date") {
             ctx.note(`The “${collection.label}” permalink (${rawPermalink}) is date-based, so its page addresses could not be expressed as a {slug} pattern.`);
           } else {
             ctx.note(`The “${collection.label}” permalink (${rawPermalink}) uses tokens beyond the file name, so its pages could not be matched to their files.`);

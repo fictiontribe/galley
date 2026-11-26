@@ -109,7 +109,7 @@ describe("jekyllAdapter config reading", () => {
     expect(report.ok).toBe(true);
   });
 
-  it("maps _posts to /{slug}/ or /blog/{slug}/ when _config.yml sets a slug-only permalink, and handles array collections", async () => {
+  it("keeps _posts route null for /:title/ and /blog/:title:output_ext (YYYY-MM-DD- filename prefix), and maps /:year-:month-:day-:title/", async () => {
     const rootTitle = site({
       "_config.yml": `
         url: https://notes.org
@@ -127,10 +127,11 @@ describe("jekyllAdapter config reading", () => {
 
     expect(modelTitle.urls.production).toBe("https://notes.org");
     expect(urls(modelTitle.collections)).toEqual({
-      posts: "/{slug}/",
+      posts: null,
       snippets: null,
       site: null,
     });
+    expect(modelTitle.notes.some((note) => note.includes("YYYY-MM-DD-"))).toBe(true);
 
     const rootBlog = site({
       "_config.yml": `
@@ -145,19 +146,39 @@ describe("jekyllAdapter config reading", () => {
     const modelBlog = await detectSite(rootBlog);
 
     expect(urls(modelBlog.collections)).toEqual({
-      posts: "/blog/{slug}/",
+      posts: null,
       pages: "/{slug}/",
     });
+    expect(modelBlog.notes.some((note) => note.includes("YYYY-MM-DD-"))).toBe(true);
 
     const report = await checkAdapter(jekyllAdapter, rootBlog, {
       collections: [
-        { id: "posts", minEntries: 2, url: "/blog/{slug}/" },
+        { id: "posts", minEntries: 2, url: null },
         { id: "pages", minEntries: 2, url: "/{slug}/" },
       ],
     });
 
     expect(report.checks.filter((check) => check.status === "fail")).toEqual([]);
     expect(report.ok).toBe(true);
+
+    const rootFullStem = site({
+      "_config.yml": `
+        permalink: /blog/:year-:month-:day-:title/
+      `,
+      "_posts/2026-03-01-spring.md": "---\ntitle: Spring\n---\nSpring.\n",
+      "_posts/2026-03-02-summer.md": "---\ntitle: Summer\n---\nSummer.\n",
+    });
+
+    const modelFullStem = await detectSite(rootFullStem);
+
+    expect(urls(modelFullStem.collections)).toEqual({ posts: "/blog/{slug}/" });
+
+    const fullStemReport = await checkAdapter(jekyllAdapter, rootFullStem, {
+      collections: [{ id: "posts", minEntries: 2, url: "/blog/{slug}/" }],
+    });
+
+    expect(fullStemReport.checks.filter((check) => check.status === "fail")).toEqual([]);
+    expect(fullStemReport.ok).toBe(true);
   });
 
   it("keeps _posts route null when permalink uses date tokens explicitly", async () => {
