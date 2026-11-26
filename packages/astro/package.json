@@ -74,6 +74,7 @@
     "astro": "^7.0.0"
   },
   "scripts": {
+    "build": "node build.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "sync": "node scripts/sync-contract.mjs && node scripts/build-inline.mjs",

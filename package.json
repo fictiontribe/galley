@@ -19,6 +19,7 @@
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
+    "verify:kits": "node scripts/verify-kits-pack.mjs",
     "check": "pnpm typecheck && pnpm test"
   },
   "devDependencies": {

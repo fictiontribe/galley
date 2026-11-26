@@ -43,5 +43,7 @@ jobs:
       # and a small runner times out when several run at once.
       - run: pnpm -r --workspace-concurrency=1 --if-present test
       - run: pnpm --filter @galley/web build
+      # Build, pack and verify standalone kit tarballs (@galley/astro, @galley/adapter-kit, @galley/plugin-kit).
+      - run: node scripts/verify-kits-pack.mjs
       # Runs scripts/check-docs.mjs, then astro build.
       - run: pnpm --filter @galley/site build

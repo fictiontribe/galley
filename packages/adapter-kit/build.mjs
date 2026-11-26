@@ -124,8 +124,10 @@ writeFileSync(
       },
       bin: { "galley-adapter-check": "./bin/galley-adapter-check.js" },
       files: ["lib", "types", "index.d.ts", "vitest.d.ts", "fixtures", "bin", "README.md", "LICENSE", "NOTICE"],
-      // The kit's own source keeps "private": true so it is never published by accident; this copy is the one meant for npm.
-      private: pkg.private,
+      publishConfig: {
+        access: "public",
+        provenance: true,
+      },
     },
     null,
     2

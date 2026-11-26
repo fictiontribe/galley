@@ -17,12 +17,13 @@
 #
 # Needs one repository secret, NPM_TOKEN: an npm granular access token with
 # read and write access to galley-cms and create-galley (RELEASING.md says
-# how to make it). Three jobs, each with only the rights it needs: "release"
+# how to make it). Four jobs, each with only the rights it needs: "release"
 # installs, builds, checks and packs with a read-only token (any package's
 # lifecycle script runs there); "starters" only makes or checks the
 # starters' release, with "contents: write"; "publish" only publishes the
 # checked tarballs to npm, after "starters", with the identity token npm's
-# provenance needs.
+# provenance needs; "docker" builds and smoke-tests the container image (and
+# pushes multi-arch images to ghcr.io on version tags with "packages: write").
 name: Release
 
 on:
@@ -52,6 +53,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       dist-tag: ${{ steps.version.outputs.dist-tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
       archives: ${{ steps.downloaded.outputs.archives }}
     steps:
       - uses: actions/checkout@v4
@@ -100,9 +102,10 @@ jobs:
               process.exit(1);
             }
             // A release candidate (0.2.0-rc.1) goes out as "next", so npm create galley@latest keeps the last release.
-            const distTag = cli.includes("-") ? "next" : "latest";
-            console.log(`Version ${cli}, npm dist-tag ${distTag}`);
-            appendFileSync(process.env.GITHUB_OUTPUT, `version=${cli}\ndist-tag=${distTag}\n`);
+            const prerelease = cli.includes("-") ? "true" : "false";
+            const distTag = prerelease === "true" ? "next" : "latest";
+            console.log(`Version ${cli}, npm dist-tag ${distTag}, prerelease ${prerelease}`);
+            appendFileSync(process.env.GITHUB_OUTPUT, `version=${cli}\ndist-tag=${distTag}\nprerelease=${prerelease}\n`);
           '
 
       - run: pnpm -r --if-present typecheck
@@ -316,3 +319,127 @@ jobs:
             exit 1
           fi
           publish create-galley "$tag"
+
+  # Builds and smoke-tests the hosted container image from Dockerfile.
+  # On a dry run, builds linux/amd64 locally and verifies /healthz without pushing.
+  # On a version tag release (or manual run from a tag with Dry run off), smoke-tests
+  # linux/amd64 first, then builds and pushes linux/amd64 and linux/arm64 to GHCR.
+  # Run again from a tag whose version image is already published for both architectures,
+  # it leaves existing tags untouched so an older tag can never move "latest" backwards.
+  docker:
+    needs: [release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    env:
+      PUBLISH: ${{ (github.event_name == 'push' || inputs.dry-run == false) && github.ref_type == 'tag' }}
+      IMAGE: ghcr.io/fictiontribe/galley
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Build the native linux/amd64 image and load it locally to smoke-test /healthz
+      # before pushing anything (and on dry runs to prove Dockerfile builds and boots).
+      - name: Build linux/amd64 image for smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ${{ env.IMAGE }}:${{ needs.release.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke-test container /healthz
+        run: |
+          set -euo pipefail
+          image_tag="${IMAGE}:${{ needs.release.outputs.version }}"
+          cleanup() {
+            docker rm -f galley-smoke >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker run -d \
+            --name galley-smoke \
+            -p 127.0.0.1:4400:4400 \
+            -e GALLEY_PUBLIC_URL=http://127.0.0.1:4400 \
+            "$image_tag"
+          body=""
+          for i in $(seq 1 30); do
+            if body="$(curl -fsS http://127.0.0.1:4400/healthz 2>/dev/null)" && [ "$body" = '{"ok":true}' ]; then
+              echo "Health check passed: $body"
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' galley-smoke 2>/dev/null || echo false)" != "true" ]; then
+              echo "::error::Container exited before /healthz became ready."
+              docker logs galley-smoke || true
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "::error::Timed out waiting for /healthz to return {\"ok\":true} (last response: ${body:-none})."
+          docker logs galley-smoke || true
+          exit 1
+
+      - name: Log in to GitHub Container Registry
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if version image is already published
+        id: existing
+        if: env.PUBLISH == 'true'
+        run: |
+          set -euo pipefail
+          ref="${IMAGE}:${{ needs.release.outputs.version }}"
+          if out="$(docker buildx imagetools inspect "$ref" 2>/dev/null)" && echo "$out" | grep -q "linux/amd64" && echo "$out" | grep -q "linux/arm64"; then
+            echo "$ref is already published for linux/amd64 and linux/arm64; skipping push so existing tags are left untouched."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute image tags
+        id: tags
+        if: env.PUBLISH == 'true' && steps.existing.outputs.published != 'true'
+        run: |
+          set -euo pipefail
+          version="${{ needs.release.outputs.version }}"
+          prerelease="${{ needs.release.outputs.prerelease }}"
+          {
+            echo "tags<<EOF"
+            echo "${IMAGE}:${version}"
+            if [ "$prerelease" != "true" ]; then
+              major_minor="$(echo "$version" | sed -E 's/^([0-9]+\.[0-9]+)\..*$/\1/')"
+              if echo "$major_minor" | grep -Eq '^[0-9]+\.[0-9]+$'; then
+                echo "${IMAGE}:${major_minor}"
+              fi
+              echo "${IMAGE}:latest"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        if: env.PUBLISH == 'true' && steps.existing.outputs.published != 'true'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Build and push multi-arch image to GHCR
+        if: env.PUBLISH == 'true' && steps.existing.outputs.published != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/fictiontribe/galley
+            org.opencontainers.image.version=${{ needs.release.outputs.version }}
+            org.opencontainers.image.licenses=Apache-2.0
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

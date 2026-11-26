@@ -25,7 +25,7 @@ One version number for the whole project, `MAJOR.MINOR.PATCH`, tagged
 | `galley-cms` — the `galley` command, and what `npx galley-cms` runs | `packages/cli`: the single-file bundle `dist/galley.mjs`, with `web/`, `starters/` and the overlay beside it | npm, by `.github/workflows/release.yml` |
 | `create-galley` — what `npm create galley@latest` runs | `packages/create-galley`: a few lines that hand over to `galley new` from `galley-cms` | npm, by the same workflow |
 | Desktop installers | `apps/desktop`, built by `.github/workflows/desktop.yml` on the tag | the GitHub release |
-| The container image | `Dockerfile` | a registry (not chosen yet) |
+| The container image | `Dockerfile` (`linux/amd64`, `linux/arm64`) | `ghcr.io/fictiontribe/galley`, by `.github/workflows/release.yml` |
 | The website and documentation | `apps/site` | the site's host |
 
 The engine, server, web UI and overlay are not published on their own: they
@@ -229,8 +229,11 @@ instead, downloaded each time a site is made from it (starters/README.md):
    ```
    Two workflows start: `desktop.yml` builds the installers, and
    `release.yml` builds, tests, packs, verifies, makes and opens a site from
-   the tarballs, then publishes `galley-cms` and then `create-galley` to npm
-   with provenance (the exact tarballs it checked, also attached to the run).
+   the tarballs, publishes `galley-cms` and then `create-galley` to npm with
+   provenance (the exact tarballs it checked, also attached to the run), and
+   runs the `docker` job to smoke-test `/healthz` on `linux/amd64` and push
+   the multi-arch container image (`linux/amd64`, `linux/arm64`) to
+   `ghcr.io/fictiontribe/galley`.
 7. **Check npm**: `npm view galley-cms version`, `npm view create-galley
    version`, and from an empty folder `npm create galley@latest` and
    `npx galley-cms --version`.
@@ -271,8 +274,18 @@ instead, downloaded each time a site is made from it (starters/README.md):
    `create-galley` itself is listed a few minutes after it is published
    (three and a half, on 0.4.2); until then `npm create galley@latest` gives
    the release before, which still installs.
-8. **The container**: build from the tag, run the health check, push with the
-   version and `latest` tags.
+8. **The container**: the `docker` job in `release.yml` builds `Dockerfile`
+   for `linux/amd64`, starts it and checks that `GET /healthz` answers
+   `{"ok":true}`, then logs in to `ghcr.io` with `GITHUB_TOKEN` and pushes a
+   multi-arch (`linux/amd64`, `linux/arm64`) image tagged
+   `ghcr.io/fictiontribe/galley:X.Y.Z` (plus `X.Y` and `latest` when the
+   version is not a prerelease). On a dry run it builds `linux/amd64` and runs
+   the `/healthz` smoke test without pushing; on a re-run for a version already
+   published for both architectures it skips pushing so existing tags stay as
+   they are. Confirm the published manifest with
+   `docker buildx imagetools inspect ghcr.io/fictiontribe/galley:X.Y.Z` (on the
+   first push, make sure the package's visibility on GitHub Packages is set to
+   Public).
 9. **The website**: build and deploy `apps/site` (`.github/workflows/site.yml`
    can deploy it to GitHub Pages). On the first release, set `install.published`
    to `true` in `apps/site/src/data/site.json` — the site then shows
