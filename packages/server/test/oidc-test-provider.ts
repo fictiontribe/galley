@@ -94,6 +94,8 @@ export interface TestProvider {
   codes: Map<string, { challenge: string | null; nonce: string; redirectUri: string; clientId: string; used: boolean }>;
   /** Requests the provider was asked, in order: `GET /authorize`, `POST /token`, … */
   asked: string[];
+  /** The last authorization request's parameters. */
+  lastAuthorize: URLSearchParams | null;
   /** The Authorization header the token endpoint was sent last. */
   lastTokenAuth: string | null;
   addKey(kid: string, alg: Alg, options?: { published?: boolean; jwk?: Record<string, unknown>; modulusLength?: number }): void;
@@ -127,6 +129,7 @@ export async function startTestProvider(options: { alg?: Alg; clientId?: string;
     extraKeys: new Map(),
     codes: new Map(),
     asked: [],
+    lastAuthorize: null,
     lastTokenAuth: null,
     addKey(kid, alg, keyOptions = {}) {
       const key = makeKey(kid, alg, keyOptions.modulusLength);
@@ -179,7 +182,8 @@ export async function startTestProvider(options: { alg?: Alg; clientId?: string;
   function idToken(code: { nonce: string; clientId: string }): string {
     const { wrong } = provider;
     const now = Math.floor(Date.now() / 1000);
-    const claims: Record<string, unknown> = { iss: provider.issuer, aud: code.clientId, iat: now, exp: now + 300, nonce: code.nonce, ...provider.user, ...(wrong.claims ?? {}) };
+    // auth_time: the person signed in at the provider just now (a link asks for that).
+    const claims: Record<string, unknown> = { iss: provider.issuer, aud: code.clientId, iat: now, exp: now + 300, auth_time: now, nonce: code.nonce, ...provider.user, ...(wrong.claims ?? {}) };
 
     for (const name of wrong.dropClaims ?? []) delete claims[name];
     const extra = wrong.signWith ? provider.extraKeys.get(wrong.signWith)! : null;
@@ -222,6 +226,8 @@ export async function startTestProvider(options: { alg?: Alg; clientId?: string;
     if (at.pathname === "/authorize") {
       const q = at.searchParams;
       const redirectUri = q.get("redirect_uri") ?? "";
+
+      provider.lastAuthorize = new URLSearchParams(q);
       const back = new URL(redirectUri);
 
       if (wrong.error) {

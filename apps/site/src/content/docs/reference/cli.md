@@ -209,6 +209,8 @@ server stopped.
             it signs in through the provider. A subject that has an account of
             its own here, or was removed, is refused: two accounts are never
             merged. A file of pairs has one "<account id> <subject>" a line.
+            An id or a subject that starts with "-" goes after "--":
+            galley accounts link -- <account id> <subject>
   rekey     The provider's issuer changed: move every account and removed
             account from the old issuer to the new one, in one write, or none
             if one would meet the same subject under the new issuer.

@@ -53,6 +53,10 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "GET /api/account": "edit",
   "PATCH /api/account": "edit",
   "POST /api/account/password": "edit",
+  "POST /api/account/identity/remove": "edit",
+  "POST /api/auth/oidc/link": "edit",
+  "GET /api/auth/oidc/link/pending": "edit",
+  "POST /api/auth/oidc/link/confirm": "edit",
   /** The older name for changing your own password. */
   "POST /api/install/password": "edit",
 

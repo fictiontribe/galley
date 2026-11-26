@@ -157,7 +157,7 @@ describe("an account that isn't complete", () => {
 
 describe("a sign-in through the identity provider that was refused", () => {
   it("is said in a sentence chosen by its code, never the provider's own words; an unknown code says nothing", () => {
-    for (const code of ["provider-unreachable", "provider-no-pkce", "provider-misconfigured", "refused-state", "another-tab", "provider-error", "provider-cancelled", "refused-token", "no-role", "bad-role", "removed", "switched-off", "signed-out", "full", "too-many"]) {
+    for (const code of ["provider-unreachable", "provider-no-pkce", "provider-misconfigured", "refused-state", "another-tab", "provider-error", "provider-cancelled", "refused-token", "no-role", "bad-role", "removed", "switched-off", "signed-out", "full", "too-many", "link-stale"]) {
       const sentence = providerRefusal(code, "Example Sign-in");
 
       expect(sentence, code).toMatch(/^[A-Z].*\.$/);

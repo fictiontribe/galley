@@ -75,6 +75,10 @@ export type AccountsRouteKey = Extract<
   | "GET /api/auth/oidc/start"
   | "GET /api/auth/oidc/callback"
   | "POST /api/auth/oidc/backchannel-logout"
+  | "POST /api/auth/oidc/link"
+  | "GET /api/auth/oidc/link/pending"
+  | "POST /api/auth/oidc/link/confirm"
+  | "POST /api/account/identity/remove"
 >;
 
 function notHere(): never {
@@ -102,6 +106,10 @@ export function accountsHandlers(): Pick<Handlers, AccountsRouteKey> {
     "GET /api/auth/oidc/start": () => notHere(),
     "GET /api/auth/oidc/callback": () => notHere(),
     "POST /api/auth/oidc/backchannel-logout": () => notHere(),
+    "POST /api/auth/oidc/link": () => notHere(),
+    "GET /api/auth/oidc/link/pending": () => notHere(),
+    "POST /api/auth/oidc/link/confirm": () => notHere(),
+    "POST /api/account/identity/remove": () => notHere(),
   };
 }
 
@@ -124,10 +132,18 @@ export interface MockAccountsOptions {
   legacy?: boolean;
   /** Start this browser signed in as the first person with this role (first run must be over). */
   role?: AccountRole;
+  /**
+   * An identity provider set up: its button's name, whether passwords are
+   * off, and the e-mails of the people who sign in through it (with a
+   * subject each).
+   */
+  provider?: { name: string; passwordsOff?: boolean; people?: string[] };
 }
 
 interface MockAccount extends Account {
   password: string;
+  /** Their subject at the identity provider, when they sign in through it. */
+  subject?: string;
 }
 
 interface MockInvitation extends Invitation {
@@ -243,6 +259,7 @@ export class MockAccounts {
     // A link is only ever e-mailed when it can be built from the server's own public address.
     this.emailAvailable = Boolean(options.email) && options.publicAddress !== false;
     this.seed(install.step() === "done");
+    for (const account of this.accounts) if (options.provider?.people?.includes(account.email)) account.subject = `${account.email.split("@")[0]}-at-provider`;
     if (options.role && install.step() === "done") {
       const person = this.accounts.find((account) => account.role === options.role && !account.disabled);
       if (person) {
@@ -316,12 +333,14 @@ export class MockAccounts {
 
   meta(meta: MetaInfo): MetaInfo {
     const person = this.current();
-    const install = meta.install ? { ...meta.install, signInWith: this.signInWith(), passwordEmail: this.emailAvailable } : meta.install;
+    const provider = this.options.provider;
+    const install = meta.install ? { ...meta.install, signInWith: this.signInWith(), passwordEmail: this.emailAvailable, ...(provider ? { provider: { name: provider.name } } : {}) } : meta.install;
     return { ...meta, install, ...(person ? { account: this.session(person) } : {}) };
   }
 
   /** The password alone, while the only way in is an owner from before accounts who has no e-mail yet. */
-  signInWith(): "email" | "password" {
+  signInWith(): "email" | "password" | "provider" {
+    if (this.options.provider?.passwordsOff) return "provider";
     return this.accounts.some((account) => !account.email && !account.disabled) ? "password" : "email";
   }
 
@@ -703,6 +722,10 @@ export function withAccounts(mock: MockBackend, base: Handlers, accounts: MockAc
     "GET /api/auth/oidc/start": () => notHere(),
     "GET /api/auth/oidc/callback": () => notHere(),
     "POST /api/auth/oidc/backchannel-logout": () => notHere(),
+    "POST /api/auth/oidc/link": () => notHere(),
+    "GET /api/auth/oidc/link/pending": () => notHere(),
+    "POST /api/auth/oidc/link/confirm": () => notHere(),
+    "POST /api/account/identity/remove": () => notHere(),
   };
   return { ...handlers, ...own };
 }

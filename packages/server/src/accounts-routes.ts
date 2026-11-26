@@ -65,6 +65,7 @@ export type AccountsRouteKey = Extract<
   | "GET /api/account"
   | "PATCH /api/account"
   | "POST /api/account/password"
+  | "POST /api/account/identity/remove"
   | "GET /api/people"
   | "GET /api/people/by-identity"
   | "POST /api/people/invitations"
@@ -335,7 +336,9 @@ async function deliver(ctx: RouteContext, message: MailMessage, what: string): P
 export function accountsMeta(c: Context, ctx: RouteContext): { account?: AccountSession; passwordEmail: boolean } {
   const install = installOf(ctx);
   const caller = callerOf(c, ctx);
-  const account = caller?.kind === "person" ? install.people.session(caller.account.id) : null;
+  const found = caller?.kind === "person" ? install.people.session(caller.account.id) : null;
+  // How this browser's session was started: the app offers what fits it (a recovery session can take the provider off).
+  const account = found && caller?.kind === "person" && caller.session.kind ? { ...found, sessionKind: caller.session.kind } : found;
 
   return { ...(account ? { account } : {}), passwordEmail: linksAreEmailed(ctx) };
 }
@@ -400,6 +403,53 @@ export async function signOutThisBrowser(c: Context, ctx: RouteContext): Promise
 
   if (session?.accountId) await install.store.endSession({ id: session.id, issuedAt: session.issuedAt, expiresAt: session.expiresAt, accountId: session.accountId });
   signOutHere(c, ctx);
+  return ok;
+}
+
+/**
+ * The signed-in person's own password, typed to confirm something (linking
+ * their account to the identity provider): checked through the sign-in gate
+ * as a password change is — per client, per e-mail, slowed after failures —
+ * and a wrong one is logged. Throws the gate's refusal when it is busy.
+ */
+export async function ownPasswordThroughGate(c: Context, ctx: RouteContext, account: Account, password: string, what: string): Promise<boolean> {
+  const install = installOf(ctx);
+  const ticket = reserveCheck(c, ctx, TOO_MANY_ATTEMPTS, `${what} for ${named(account)}`);
+  let matches: boolean;
+
+  try {
+    const address = account.email || null;
+    const outcome = await limitsOf(ctx).gate.checkPassword(ticket, address ?? NO_EMAIL, knownBrowserFor(c, ctx, install, address), () => install.people.passwordIs(account.id, password), (done) => !done);
+
+    if (outcome.refused !== null) throw new RateLimitError(refusalFor(outcome.refused));
+    matches = outcome.value;
+  } finally {
+    ticket.release();
+  }
+  if (!matches) audit(ctx, `${what} for ${named(account)} from ${clientAddress(c, Boolean(ctx.options.trustProxy))} was refused: the current password was wrong.`);
+  return matches;
+}
+
+/**
+ * POST /api/account/identity/remove: from a recovery session (`serve
+ * --reset-password`) on an account that signs in through the provider, with
+ * passwords on — the account stops signing in through the provider and signs
+ * in with the password chosen here. The way to put a wrong link right from
+ * the app; on the server it is `galley accounts link --replace`.
+ */
+export async function removeOwnIdentity(c: Context, ctx: RouteContext): Promise<typeof ok> {
+  const install = installOf(ctx);
+  const { account, session } = personOf(c, ctx);
+  const off = passwordsOffRefusal(ctx);
+
+  if (off) throw off;
+  if (session.kind !== "recovery") throw forbidden("Only the sign-in link `serve --reset-password` makes can take the identity provider off an account here. Ask whoever runs the server.");
+  const body = await v.body(c, z.object({ password }).strict());
+  const { removed } = await install.people.removeIdentity(account.id, body.password);
+
+  // A security event: who, and which subject they no longer sign in as.
+  audit(ctx, `Security: ${named(account)} took subject ${removed.subject} at ${removed.issuer} off their account from a recovery session (from ${clientAddress(c, Boolean(ctx.options.trustProxy))}) and chose a password; every other session of theirs ended.`);
+  signInAs(c, ctx, account.id, { kind: "recovery", expiresAt: session.expiresAt });
   return ok;
 }
 
@@ -567,6 +617,7 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
   },
 
   "POST /api/account/password": changeOwnPassword,
+  "POST /api/account/identity/remove": removeOwnIdentity,
 
   // ── people ─────────────────────────────────────────────────────────────
   "GET /api/people": async (c, ctx) => {
@@ -640,9 +691,14 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
     const body = await v.body(c, changeBody);
     const provider = ctx.options.mode === "hosted" ? (ctx.options.oidc ?? null) : null;
 
-    // Where someone signs in through the provider, it is authoritative for their role: it sets it at every sign-in.
-    if (by && body.role !== undefined && provider && install.store.account(target)?.identity?.issuer === provider.config.issuer) {
-      throw new GalleyError("conflict", `This person's role is set at ${provider.config.name}, where they sign in, and comes with each sign-in. Change it there.`);
+    const viaProvider = Boolean(provider && install.store.account(target)?.identity?.issuer === provider.config.issuer);
+
+    // Where someone signs in through the provider, it is authoritative for their role and their e-mail: it sets both at every sign-in.
+    if (by && body.role !== undefined && viaProvider) {
+      throw new GalleyError("conflict", `This person's role is set at ${provider!.config.name}, where they sign in, and comes with each sign-in. Change it there.`);
+    }
+    if (by && body.email !== undefined && viaProvider) {
+      throw new GalleyError("conflict", `This person's e-mail comes from ${provider!.config.name}, where they sign in, with each sign-in. Change it there.`);
     }
     const { before, after } = await install.people.change(by?.id ?? null, target, body);
 
@@ -657,7 +713,15 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
   "DELETE /api/people/:accountId": async (c, ctx) => {
     const install = installOf(ctx);
     const by = ownerOrToken(c, ctx, "with-provider");
-    const removed = await install.people.remove(by?.id ?? null, idParam(c, "accountId"));
+    const target = idParam(c, "accountId");
+    const provider = ctx.options.mode === "hosted" ? (ctx.options.oidc ?? null) : null;
+    const stored = install.store.account(target);
+
+    // Someone who signs in through the provider is removed by switching them off; deleting is the second step, for an account already off.
+    if (by && provider && stored?.identity?.issuer === provider.config.issuer && !stored.disabled) {
+      throw new GalleyError("conflict", `Switch this person off first: someone who signs in through ${provider.config.name} is removed by switching them off, and deleted after that.`);
+    }
+    const removed = await install.people.remove(by?.id ?? null, target);
 
     audit(ctx, `${by ? named(by) : BY_TOKEN} removed ${named(removed)}; they were signed out.`);
     return ok;

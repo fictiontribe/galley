@@ -99,6 +99,8 @@ export interface AccountSession extends Account {
   access: AccessLevel[];
   /** They sign in through the identity provider: they have no password here, and their e-mail and role come from it. */
   viaProvider?: true;
+  /** How this browser's session was started (GET /api/meta, for the signed-in person only). */
+  sessionKind?: "password" | "provider" | "recovery";
 }
 
 /** An invitation that hasn't been taken up yet. */
@@ -144,14 +146,33 @@ export interface OperatorAccount {
   subject: string | null;
 }
 
+/** A link to the identity provider waiting for the person to confirm it: whom the provider signed in. */
+export interface PendingLinkView {
+  /** The provider's name for the button and the page. */
+  provider: string;
+  /** Only an e-mail the provider confirmed; null otherwise (the page says so). */
+  email: string | null;
+  /** The provider's name for the person. */
+  name: string | null;
+  subject: string;
+  /** When it can no longer be confirmed. */
+  expiresAt: string;
+}
+
 /** GET /api/people with the server's access token, where an identity provider is set up. */
 export interface OperatorPeople {
   accounts: OperatorAccount[];
 }
 
+/** Someone in the People list, as owners see them. */
+export interface PeopleAccount extends Account {
+  /** Their subject at the identity provider, when they sign in through it. Owners alone see it. */
+  subject?: string;
+}
+
 /** The People list on the Install page. */
 export interface People {
-  accounts: Account[];
+  accounts: PeopleAccount[];
   invitations: Invitation[];
   /**
    * This server e-mails links: outgoing e-mail is set up AND the editor's

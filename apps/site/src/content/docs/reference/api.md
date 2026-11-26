@@ -376,6 +376,10 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `GET /api/account` | The signed-in person. | — | `AccountSession` | Any signed-in person |
 | `PATCH /api/account` | Change your own name or e-mail. | `{ name?, email?, password? }` | `AccountSession` | Any signed-in person |
 | `POST /api/account/password` | Change your own password. | `{ current, next }` | `Ok` | Any signed-in person |
+| `POST /api/account/identity/remove` | From a recovery session (the link `serve --reset-password` makes) on an account that signs in through the identity provider, with passwords on: stop signing in through it, and sign in with this password instead. | `{ password }` | `Ok` | Any signed-in person |
+| `POST /api/auth/oidc/link` | Where an identity provider is set up and passwords are on: start linking your own account to it, with your current password. | `{ password }` | `{ url }` | Any signed-in person |
+| `GET /api/auth/oidc/link/pending` | Who the provider signed in for the link you started, to confirm: their e-mail (only when the provider confirmed it), else their name and subject. | — | `PendingLinkView` | Any signed-in person |
+| `POST /api/auth/oidc/link/confirm` | Connect (or cancel) the link waiting. | `{ connect }` | `Ok` | Any signed-in person |
 | `GET /api/people` | Everyone with an account (role, switched off or not, when they last signed in), the open invitations, and whether this server e-mails links (it needs outgoing e-mail and its public address both set). With the server's access token, where an identity provider is set up: `OperatorPeople` (ids, roles, switched off, subjects; no names or e-mails). | — | `People` | Owners |
 | `GET /api/people/by-identity` | The server's access token only, where an identity provider is set up: the account with this subject at the provider (id, role, switched off), or 404. | `?subject` | `Pick<OperatorAccount, "id" \| "role" \| "disabled">` | The server's access token |
 | `POST /api/people/invitations` | Invite someone. | `{ email, role }` | `{ invitation, link }` | Owners |

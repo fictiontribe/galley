@@ -73,7 +73,7 @@ import type { FormProviderInfo, ScriptIntegrationInfo } from "./kit";
 import type { CloudflareCheck, CloudflarePlan, ImportMode, ImportResolutions, ImportReview, Redirect, RedirectExportFormat, RedirectHealth, RedirectHostId, RedirectsOverview, RedirectTrace } from "./redirects/types";
 import type { AddSitesRequest, AddSitesResult, ScanSitesRequest, ScanSitesResult, SiteConnections, SiteGroup, SiteGroupInput, SitePatch, SiteUsageTotals, UndoResult } from "./types";
 import type { DeployKeyInfo, InstallInfo, RestoreUpload, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./install/types";
-import type { Account, AccountRole, AccountSession, Invitation, LinkPreview, OneTimeLink, OperatorAccount, People } from "./install/accounts";
+import type { Account, AccountRole, AccountSession, Invitation, LinkPreview, OneTimeLink, OperatorAccount, PendingLinkView, People } from "./install/accounts";
 import type { MediaCreatedRecord, MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaLibraryAnswer, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaUsage } from "./media-storage/contract";
 import type { EditorHostAbsent, EditorHostAccount, EditorHostInfo, HostedEditorBackup, HostedEditorPlan, HostedEditorRemoval, HostedEditorRequest, HostedEditorStatus } from "./hosting/types";
 
@@ -965,6 +965,28 @@ export interface ApiRoutes {
   // account that has none yet. Everyone else's e-mail is changed by an owner, in People.
   /** Change your own password. Your other browsers are signed out; this one stays. */
   "POST /api/account/password": { body: { current: string; next: string }; response: Ok };
+  /**
+   * From a recovery session (the link `serve --reset-password` makes) on an
+   * account that signs in through the identity provider, with passwords on:
+   * stop signing in through it, and sign in with this password instead. Every
+   * other session of the account ends.
+   */
+  "POST /api/account/identity/remove": { body: { password: string }; response: Ok };
+  /**
+   * Where an identity provider is set up and passwords are on: start linking
+   * your own account to it, with your current password. Answers the
+   * provider's address to go to; the provider asks you to sign in again, and
+   * sends you back to confirm who it signed in. Nothing is bound until then.
+   */
+  "POST /api/auth/oidc/link": { body: { password: string }; response: { url: string } };
+  /** Who the provider signed in for the link you started, to confirm: their e-mail (only when the provider confirmed it), else their name and subject. 404: none waiting. */
+  "GET /api/auth/oidc/link/pending": { response: PendingLinkView };
+  /**
+   * Connect (or cancel) the link waiting. Connect binds the subject to your
+   * account, drops your password, ends every session of yours and signs this
+   * browser in through the provider. Two accounts are never merged.
+   */
+  "POST /api/auth/oidc/link/confirm": { body: { connect: boolean }; response: Ok };
   /**
    * Everyone with an account, the open invitations, and whether this server
    * e-mails links. With the server's access token, only where an identity

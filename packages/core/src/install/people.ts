@@ -14,7 +14,7 @@
  */
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { GalleyError } from "../errors";
-import { ACCOUNT_ROLES, INVITATION_DAYS, PASSWORD_LINK_MINUTES, ROLE_ACCESS, type Account, type AccountRole, type AccountSession, type Invitation, type LinkPreview, type OperatorAccount } from "./accounts";
+import { ACCOUNT_ROLES, INVITATION_DAYS, PASSWORD_LINK_MINUTES, ROLE_ACCESS, type Account, type AccountRole, type AccountSession, type Invitation, type LinkPreview, type OperatorAccount, type PeopleAccount } from "./accounts";
 import { nameKey, tidyName } from "./names";
 import { hashPassword, passwordProblem, verifyPassword } from "./password";
 import { hasOwner, PROVIDER_LOGOUT_KEPT_MS, PROVIDER_LOGOUTS_KEPT, sha256Hex, signsInWithPassword, spendSetupCode, TOMBSTONES_KEPT, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink } from "./state";
@@ -86,8 +86,8 @@ export type ProviderSignInResult =
 export const ACCOUNTS_KEPT = 10_000;
 
 export interface PeopleService {
-  /** Everyone, and the open invitations (newest first). */
-  list(): { accounts: Account[]; invitations: Invitation[] };
+  /** Everyone (with their subject, for those who sign in through the provider) and the open invitations (newest first). */
+  list(): { accounts: PeopleAccount[]; invitations: Invitation[] };
   get(id: string): Account | null;
   /** The signed-in person as GET /api/meta tells the app: their account and what their role may do. */
   session(id: string): AccountSession | null;
@@ -132,6 +132,16 @@ export interface PeopleService {
    * it ends. Two accounts are never merged.
    */
   linkIdentity(accountId: string, identity: { issuer: string; subject: string }, options?: { replace?: boolean }): Promise<{ account: Account; replaced: { issuer: string; subject: string } | null }>;
+  /** Whether `password` is this account's own (false for an account with none). Takes as long either way. */
+  passwordIs(accountId: string, password: string): Promise<boolean>;
+  /**
+   * From a recovery session (`serve --reset-password`): the account stops
+   * signing in through the provider and signs in with this new password
+   * instead — the way to put a wrong link right from the app. Every other
+   * session of it ends. Refused with passwords off: the provider is the
+   * one way in there.
+   */
+  removeIdentity(accountId: string, newPassword: string): Promise<{ account: Account; removed: { issuer: string; subject: string } }>;
   /**
    * `galley accounts rekey`: every identity and removed account under one
    * issuer moves to another, in one write — or none does, when one would
@@ -426,7 +436,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       const at = now();
 
       return {
-        accounts: state.accounts.map(publicAccount),
+        // Owners see how each signs in: the subject at the provider, for those who sign in through it.
+        accounts: state.accounts.map((account) => ({ ...publicAccount(account), ...(account.identity ? { subject: account.identity.subject } : {}) })),
         invitations: state.links
           .filter((link) => link.kind === "invitation" && Date.parse(link.expiresAt) > at)
           .map(publicInvitation)
@@ -651,6 +662,41 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         endSessions(target);
         target.incomplete = !target.name;
         result = { account: publicAccount(target), replaced };
+      });
+      store.sessionsChanged();
+      return result!;
+    },
+
+    async passwordIs(accountId, password) {
+      const account = accountOf(store.read(), accountId);
+      const matches = await verifyPassword(password, account?.passwordHash ?? (await standInHash()));
+
+      return Boolean(account && account.passwordHash !== null && matches);
+    },
+
+    async removeIdentity(accountId, newPassword) {
+      if (options.passwordsOff) throw new GalleyError("forbidden", `${PASSWORDS_OFF} Signing in through it is the one way in here.`);
+      const problem = passwordProblem(newPassword);
+
+      if (problem) throw new GalleyError("invalid", problem);
+      const hash = await hashPassword(newPassword);
+      let result: { account: Account; removed: { issuer: string; subject: string } } | null = null;
+
+      await store.update((draft) => {
+        const target = accountOf(draft, accountId);
+
+        if (!target) throw notHere();
+        if (!target.identity) throw new GalleyError("conflict", "This account doesn't sign in through the identity provider.");
+        const removed = { ...target.identity };
+
+        delete target.identity;
+        delete target.providerLogoutAt;
+        target.passwordHash = hash;
+        target.passwordChangedAt = iso(now());
+        dropPasswordLinks(draft, target.id);
+        endSessions(target);
+        target.incomplete = !target.name || !target.email;
+        result = { account: publicAccount(target), removed };
       });
       store.sessionsChanged();
       return result!;

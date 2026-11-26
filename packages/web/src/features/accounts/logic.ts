@@ -133,6 +133,7 @@ export function providerRefusal(code: string | null, provider: string, at: strin
     "signed-out": when ? `You were signed out at ${when}. Sign in again.` : "You were signed out. Sign in again.",
     full: "This editor can’t take any more accounts. Ask one of its owners.",
     "too-many": "Too many sign-ins from here. Wait a minute, then try again.",
+    "link-stale": `${provider} didn’t ask you to sign in again, so nothing was connected. Try again.`,
   };
 
   return code !== null && Object.hasOwn(sentences, code) ? sentences[code]! : null;

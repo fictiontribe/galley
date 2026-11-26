@@ -1,7 +1,7 @@
 /**
  * Moving inside the app goes through its router, and exports are downloads:
- * setting `location` loads the whole app again (and leaves the demo). Two
- * places reload on purpose, each saying why where it does.
+ * setting `location` loads the whole app again (and leaves the demo). Three
+ * places leave on purpose, each saying why where it does.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -11,8 +11,12 @@ import { describe, expect, it } from "vitest";
 const SRC = fileURLToPath(new URL("../../src", import.meta.url));
 const RELOADS = /location\.(assign|replace)\(|location\.href\s*=[^=]|window\.location\s*=[^=]/;
 
-/** Starting over on purpose: a restore replaced everything, sessions included; a link signed this browser in as someone else. */
-const DELIBERATE = new Set(["features/install/InstallScreen.tsx", "features/accounts/LinkScreen.tsx"]);
+/**
+ * On purpose: a restore replaced everything, sessions included; a link signed
+ * this browser in as someone else; connecting an account goes to the
+ * identity provider, which is a top-level navigation, never a fetch or a frame.
+ */
+const DELIBERATE = new Set(["features/install/InstallScreen.tsx", "features/accounts/LinkScreen.tsx", "features/accounts/AccountScreen.tsx"]);
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

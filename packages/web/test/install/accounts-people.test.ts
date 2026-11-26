@@ -42,7 +42,7 @@ async function act(name: string, item: string): Promise<void> {
   await click(byText(document, '[role="menuitem"]', item));
 }
 
-async function open(options: { email?: boolean; publicAddress?: boolean } = {}): Promise<MockServer> {
+async function open(options: { email?: boolean; publicAddress?: boolean; provider?: { name: string; passwordsOff?: boolean; people?: string[] } } = {}): Promise<MockServer> {
   const server = await startServer({ mode: "hosted", setup: "done", role: "owner", ...options });
   page = await renderApp(server, "/install");
   await until(() => expect(document.querySelector(".accounts-table tbody tr")).not.toBeNull());
@@ -297,3 +297,47 @@ describe("People", () => {
     expect(refusals(server)).toEqual([]);
   });
 });
+
+describe("People, with an identity provider", () => {
+  /** The labels of a person's menu, as it opens. */
+  async function menu(name: string): Promise<string[]> {
+    await click(row(name).querySelector('button[aria-haspopup="menu"]'));
+    await until(() => expect(document.querySelector('[role="menuitem"]')).not.toBeNull());
+    const labels = [...document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent?.trim() ?? "");
+
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await settle();
+    return labels;
+  }
+
+  it("offers nothing the server refuses for someone who signs in through it: no role picker, no new-password link, no e-mail change; Remove switches them off, Delete comes after", async () => {
+    await open({ provider: { name: "Acme ID", people: ["robin@example.com", "kim@example.com"] } });
+
+    expect(row("Robin Park").textContent).toContain("Signs in with Acme ID (robin-at-provider)");
+    expect(row("Robin Park").querySelector("select")).toBeNull();
+    expect(row("Robin Park").textContent).toContain("Editor, set at Acme ID");
+    const robin = await menu("Robin Park");
+
+    expect(robin).not.toContain("New-password link");
+    expect(robin).not.toContain("Change e-mail…");
+    expect(robin).toContain("Remove (switch off)");
+    expect(robin).not.toContain("Delete…");
+    // Kim is switched off: deleting is offered now.
+    const kim = await menu("Kim Lee");
+
+    expect(kim).toEqual(expect.arrayContaining(["Switch on", "Delete…"]));
+    // Someone who signs in with a password is offered everything, as before.
+    expect(row("Jo Chen").querySelector("select")).not.toBeNull();
+    expect(await menu("Jo Chen")).toEqual(expect.arrayContaining(["New-password link", "Change e-mail…", "Remove…"]));
+    expect(page?.text()).toContain("Invite someone");
+  });
+
+  it("with passwords off, offers no invitation and no new-password link for anyone", async () => {
+    await open({ provider: { name: "Acme ID", passwordsOff: true, people: ["robin@example.com"] } });
+
+    expect(page?.text()).not.toContain("Invite someone");
+    expect(page?.text()).toContain("Passwords are off: nobody is invited here.");
+    expect(await menu("Jo Chen")).not.toContain("New-password link");
+  });
+});
+

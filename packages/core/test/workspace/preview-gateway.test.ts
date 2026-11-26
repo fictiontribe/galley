@@ -159,6 +159,7 @@ describe("the app's own cookies", () => {
       `__Host-${slug}_session_known`,
       `${slug}_session_4400_known`,
       `__Host-${slug}_oidc`,
+      `__Host-${slug}_oidc_link`,
     ]) {
       expect(isAppCookie(name)).toBe(true);
     }
