@@ -97,7 +97,7 @@ export async function pluginCommand(argv: string[], io: Io): Promise<number> {
       if (target !== undefined) throw new UsageError(`\`${PRODUCT.slug} plugin list\` takes no name. Run \`${PRODUCT.slug} plugin --help\`.`);
       return list(io, home, json);
     case "add": {
-      if (!target) throw new UsageError(`Say which plugin to add: \`${PRODUCT.slug} plugin add galley-plugin-example\`, a folder, or a .tgz file.`);
+      if (!target) throw new UsageError(`Say which plugin to add: an npm name you trust, a folder (\`${PRODUCT.slug} plugin add ./galley-plugin-example\`), or a .tgz file.`);
       if (!json) io.err(`… installing ${target}`);
       const result = await installPlugin(home, target, { cwd: io.cwd, env: io.env });
 

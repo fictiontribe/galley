@@ -4,7 +4,7 @@ description: Galley is an open-source AI CMS for static sites. Change a page in 
 sections:
   - type: hero
     layout: canvas
-    heading: The open‑source AI CMS.
+    heading: The open‑source AI CMS that builds itself.
     text: Ask for a change in plain words, check it beside your live site, then publish it to your own repository.
     cta:
       label: Get started
@@ -65,7 +65,7 @@ sections:
       href: /video/galley-explainer.txt
   - type: starters
     id: starters
-    layout: stage
+    layout: row
     heading: Start from a finished site.
     text: Four starters, three looks each.
     link:
@@ -73,7 +73,6 @@ sections:
       href: /starters/
     items:
       - starter: astro-editorial
-        tall: caddow-tall
         name: Caddow
         kind: Fashion
         text: 20 sections.
@@ -85,6 +84,10 @@ sections:
         name: Lowfield Studio
         kind: Small business
         text: 17 sections.
+      - starter: astro-blog
+        name: Sarking
+        kind: Blog
+        text: 18 sections.
   - type: filmstrip
     id: tour
     heading: The rest of the app.

@@ -1,6 +1,6 @@
 [package]
 name = "galley-desktop"
-version = "0.4.3"
+version = "0.4.4"
 description = "Desktop shell: runs the server privately and shows its UI in a native window"
 license = "Apache-2.0"
 edition = "2021"

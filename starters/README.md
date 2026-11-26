@@ -201,7 +201,8 @@ The first look is the default. Swatches are computed from the look file.
 
 `"download": true` keeps the starter out of the `galley-cms` package:
 it travels as `starters-<id>.tgz` on the release of its version's starters
-and is downloaded the first time someone uses it, checked against the
+and is downloaded each time a site is made from it (nothing is kept
+between uses), checked against the
 SHA-256 the package records. The package keeps only what shows it in the
 wizard and in `galley starters`: `package.json`, `starter.json`,
 `galley.config.json` and the pictures `preview` and the looks name. Use

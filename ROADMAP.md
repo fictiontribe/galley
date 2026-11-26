@@ -55,6 +55,14 @@ what is built; when something here ships, it moves to the
   in their folder; stopping a preview signals only what the editor
   started. A third, experimental part of embedding: places in the app for
   an edition's own additions.
+- **0.4.4**: Sarking, a blog starter for long-form writing with charts,
+  tables and evidence in plain Markdown, and the first starter downloaded
+  the first time it is used rather than carried in the package. A
+  session's end is signed into its cookie; a site with an assistant's Undo
+  still offered stays open, and a closed site refuses whoever kept it;
+  what an extension or a plugin is handed is narrowed to what it is meant
+  to use; accounts can be held without a password, ready for signing in
+  through a provider.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.

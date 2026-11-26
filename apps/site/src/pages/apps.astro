@@ -23,17 +23,25 @@ import { on, ready, releasePage, screens, systems, version } from "../lib/downlo
 const { data: p } = await getPage("apps");
 
 // "How to open it": platforms with the same steps and the same signature share one list (both Macs, usually).
-const groups: { labels: string[]; steps: string[]; line: string }[] = [];
+const groups: { labels: string[]; system: string; steps: string[]; line: string }[] = [];
 for (const platform of ready) {
   if (platform.open.length === 0) continue;
   const line = platform.signed
     ? platform.signature ? p.open.signed.replace("{signature}", platform.signature) : ""
-    : platform.system ? p.open.unsigned.replace("{system}", platform.system) : "";
+    : platform.system ? p.open.unsigned.replace("{system}", platform.system) : p.open.direct ?? "";
   const key = platform.open.join("\n") + line;
   const same = groups.find((g) => g.steps.join("\n") + g.line === key);
   if (same) same.labels.push(platform.label);
-  else groups.push({ labels: [platform.label], steps: platform.open, line });
+  else groups.push({ labels: [platform.label], system: platform.system, steps: platform.open, line });
 }
+const openGroups = groups.map((g) => {
+  const combinedMac = g.labels.length > 1 && g.system === "macOS";
+  return {
+    title: combinedMac ? (p.open.macTitle ?? g.system) : g.labels.join(" · "),
+    line: combinedMac && p.open.macNote ? `${p.open.macNote} ${g.line}`.trim() : g.line,
+    steps: g.steps,
+  };
+});
 const words = { download: p.download, coming: p.coming, otherSystems: p.otherSystems, macHint: p.macHint, systems: p.systems, unsigned: p.unsignedWord };
 const w = p.ways;
 const serverBadge = badgeOf(w.server.status);
@@ -147,14 +155,19 @@ const others = [w.browser, w.server, ...(demo.on ? [w.demo] : [])];
   </div>
 
   {
-    on && groups.length > 0 && (
+    on && openGroups.length > 0 && (
       <section class="wrap dlpage__open" aria-labelledby="dl-open-h">
-        <h2 class="h2" id="dl-open-h">{p.open.heading}</h2>
+        <div class="head head--row">
+          <h2 class="h2" id="dl-open-h">{p.open.heading}</h2>
+          <p><a class="link" href={p.guide.href}>{p.guide.label}</a></p>
+        </div>
         <div class="dlopen">
-          {groups.map((g) => (
+          {openGroups.map((g) => (
             <div class="dlopen__group">
-              <h3 class="dlopen__h">{g.labels.join(" · ")}</h3>
-              {g.line && <p class="dlopen__line">{g.line}</p>}
+              <div class="dlopen__head">
+                <h3 class="dlopen__h">{g.title}</h3>
+                {g.line && <p class="dlopen__line">{g.line}</p>}
+              </div>
               <ol class="dlopen__steps">
                 {g.steps.map((step) => <li set:html={inline(step)} />)}
               </ol>
@@ -165,33 +178,44 @@ const others = [w.browser, w.server, ...(demo.on ? [w.demo] : [])];
     )
   }
 
-  <section class="wrap dlpage__guide">
-    <p><a class="link link--accent" href={p.guide.href}>{p.guide.label}</a></p>
-  </section>
-
   <section class="wrap appways" aria-labelledby="ways-h">
-    <h2 class="h2" id="ways-h">{w.heading}</h2>
+    <div class="head">
+      <h2 class="h2" id="ways-h">{w.heading}</h2>
+    </div>
     <div class:list={["appways__grid", `appways__grid--${others.length}`]}>
       <article class="way-card" id={w.browser.id} aria-labelledby="way-browser-h">
-        <p class="label">{w.browser.label}</p>
-        <h3 class="way-card__t" id="way-browser-h"><Glyph name="window" size={24} />{w.browser.title}</h3>
+        <div class="way-card__top">
+          <p class="way-card__eyebrow"><Glyph name="window" size={18} />{w.browser.label}</p>
+        </div>
+        <h3 class="way-card__t" id="way-browser-h">{w.browser.title}</h3>
         <p class="body">{w.browser.text}</p>
         <Command lines={runCommands()} />
-        <a class="link" href={w.browser.link.href}>{w.browser.link.label}</a>
+        <div class="way-card__foot">
+          <a class="link" href={w.browser.link.href}>{w.browser.link.label}</a>
+        </div>
       </article>
       <article class="way-card" id={w.server.id} aria-labelledby="way-server-h">
-        <p class="label">{w.server.label}</p>
-        <h3 class="way-card__t" id="way-server-h"><Glyph name="install" size={24} />{w.server.title} {serverBadge && <span class:list={["badge", `badge--${serverBadge.status}`]}>{serverBadge.label}</span>}</h3>
+        <div class="way-card__top">
+          <p class="way-card__eyebrow"><Glyph name="install" size={18} />{w.server.label}</p>
+          {serverBadge && <span class:list={["badge", `badge--${serverBadge.status}`]}>{serverBadge.label}</span>}
+        </div>
+        <h3 class="way-card__t" id="way-server-h">{w.server.title}</h3>
         <p class="body">{w.server.text}</p>
-        <p class="way-card__links">{w.server.links.map((l: { label: string; href: string }) => <a class="link" href={l.href}>{l.label}</a>)}</p>
+        <div class="way-card__foot">
+          <p class="way-card__links">{w.server.links.map((l: { label: string; href: string }) => <a class="link" href={l.href}>{l.label}</a>)}</p>
+        </div>
       </article>
       {
         demo.on && (
           <article class="way-card way-card--demo" id={w.demo.id} aria-labelledby="way-demo-h">
-            <p class="label">{w.demo.label}</p>
-            <h3 class="way-card__t" id="way-demo-h"><Glyph name="play" size={24} />{w.demo.title}</h3>
+            <div class="way-card__top">
+              <p class="way-card__eyebrow"><Glyph name="play" size={18} />{w.demo.label}</p>
+            </div>
+            <h3 class="way-card__t" id="way-demo-h">{w.demo.title}</h3>
             <p class="body">{w.demo.text}</p>
-            <a class="btn btn--quiet" href={demo.href}>{site.ui.demoOpen}</a>
+            <div class="way-card__foot">
+              <a class="btn btn--quiet btn--sm" href={demo.href}>{site.ui.demoOpen}</a>
+            </div>
           </article>
         )
       }
