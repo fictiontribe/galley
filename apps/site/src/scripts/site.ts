@@ -64,6 +64,27 @@ if (menu) {
   });
 }
 
+// Header mega-menus: one open at a time; Escape or a click outside closes them.
+const navDropdowns = $$<HTMLDetailsElement>("[data-nav-dd]");
+if (navDropdowns.length) {
+  for (const dd of navDropdowns) {
+    dd.addEventListener("toggle", () => {
+      if (!dd.open) return;
+      for (const other of navDropdowns) if (other !== dd && other.open) other.open = false;
+    });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const open = navDropdowns.find((dd) => dd.open);
+    if (!open) return;
+    open.open = false;
+    open.querySelector("summary")?.focus();
+  });
+  document.addEventListener("click", (e) => {
+    for (const dd of navDropdowns) if (dd.open && !dd.contains(e.target as Node)) dd.open = false;
+  });
+}
+
 // Tabs: click, arrow keys, Home and End.
 for (const list of $$("[data-tabs]")) {
   const tabs = $$<HTMLButtonElement>('[role="tab"]', list);

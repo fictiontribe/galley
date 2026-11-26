@@ -1,15 +1,36 @@
 ---
-// The header: the logo, five links, GitHub, the light/dark switch (shown
-// only with JavaScript; without it the system's setting rules) and one action. Below 1024 px the
-// links fold into a menu (a native disclosure: it works without JavaScript).
+// The header: the logo, top-level links and mega-menus (native disclosures, so
+// they work without JavaScript), GitHub, the light/dark switch and one action.
+// Below 1024 px the links fold into a menu.
 import lockup from "../../../../brand/logo/lockup.svg?raw";
 import navigation from "../data/navigation.json";
 import { fill, site } from "../lib/site";
 import Glyph from "./Glyph.astro";
 
+interface NavSubItem {
+  label: string;
+  href: string;
+  desc?: string;
+}
+interface NavGroup {
+  heading: string;
+  compact?: boolean;
+  items: NavSubItem[];
+}
+interface NavEntry {
+  label: string;
+  href?: string;
+  also?: string[];
+  groups?: NavGroup[];
+}
+
+const entries = navigation.header as NavEntry[];
 const path = Astro.url.pathname;
-// A link is current on its own pages and on any it names in `also` (the tour's how-to guides).
-const isCurrent = (href: string, also: string[] = []) => (href === "/" ? path === "/" : [href, ...also].some((h) => path.startsWith(h)));
+// A link is current on its own pages and on any it names in `also`.
+const isCurrent = (href?: string, also: string[] = []) => {
+  const list = [...(href ? [href] : []), ...also];
+  return list.some((h) => (h === "/" ? path === "/" : path.startsWith(h)));
+};
 // Its inks come from the page's tokens (site.css): the normal lockup on paper, the reverse on the plate.
 const logo = lockup.replace(/ width="[^"]+" height="[^"]+"/, "").replace(' role="img" aria-labelledby="t"', ' aria-hidden="true"').replace(/<title[^>]*>.*?<\/title>/, "").replace(/(fill|stroke)="#1A1712"/g, 'class="logo-ink-$1"').replace(/fill="#2E2BFF"/g, 'class="logo-pencil"');
 ---
@@ -18,7 +39,37 @@ const logo = lockup.replace(/ width="[^"]+" height="[^"]+"/, "").replace(' role=
   <div class="wrap header__in">
     <a class="header__logo" href="/" aria-label={site.ui.home} set:html={logo} />
     <nav class="nav" aria-label={site.ui.nav}>
-      {navigation.header.map((l) => <a href={l.href} aria-current={isCurrent(l.href, (l as { also?: string[] }).also) ? "page" : undefined}>{l.label}</a>)}
+      {
+        entries.map((l) =>
+          l.groups ? (
+            <details class="nav-dd" data-nav-dd>
+              <summary aria-current={isCurrent(l.href, l.also) ? "page" : undefined}>
+                {l.label}
+                <svg class="nav-dd__chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              </summary>
+              <div class="nav-mega">
+                {l.groups.map((g) => (
+                  <div class:list={["nav-mega__col", g.compact && "nav-mega__col--compact"]}>
+                    <p class="nav-mega__heading">{g.heading}</p>
+                    <ul class:list={["nav-mega__list", g.compact && "nav-mega__list--grid"]}>
+                      {g.items.map((item) => (
+                        <li>
+                          <a class:list={["nav-mega__item", g.compact && "nav-mega__item--compact"]} href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>
+                            <span class="nav-mega__label">{item.label}</span>
+                            {item.desc && <span class="nav-mega__desc">{item.desc}</span>}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : (
+            <a href={l.href} aria-current={isCurrent(l.href, l.also) ? "page" : undefined}>{l.label}</a>
+          ),
+        )
+      }
     </nav>
     <div class="header__end">
       <a class="gh" href={fill(navigation.github.href)}>{navigation.github.label}</a>
@@ -27,7 +78,27 @@ const logo = lockup.replace(/ width="[^"]+" height="[^"]+"/, "").replace(' role=
       <details class="menu" data-menu>
         <summary>{site.ui.menu}</summary>
         <nav class="menu__panel" aria-label={site.ui.nav}>
-          {navigation.header.map((l) => <a href={l.href} aria-current={isCurrent(l.href, (l as { also?: string[] }).also) ? "page" : undefined}>{l.label}</a>)}
+          {
+            entries.map((l) =>
+              l.groups ? (
+                <details class="menu__group">
+                  <summary>{l.label}</summary>
+                  <div class="menu__sub">
+                    {l.groups.map((g) => (
+                      <div class="menu__col">
+                        <p class="menu__heading">{g.heading}</p>
+                        {g.items.map((item) => (
+                          <a href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>{item.label}</a>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : (
+                <a href={l.href} aria-current={isCurrent(l.href, l.also) ? "page" : undefined}>{l.label}</a>
+              ),
+            )
+          }
           <a href={fill(navigation.github.href)}>{navigation.github.label}</a>
           <a class="btn btn--primary" href={navigation.action.href}>{navigation.action.label}</a>
           <div class="menu__mode"><button type="button" class="mode" data-mode-switch data-galley-agent="skip" data-to-dark={site.ui.themeToDark} data-to-light={site.ui.themeToLight} aria-label={site.ui.themeToDark}><Glyph name="moon" size={20} class="mode__moon" /><Glyph name="sun" size={20} class="mode__sun" /></button></div>

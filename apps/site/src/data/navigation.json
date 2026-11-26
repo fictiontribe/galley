@@ -1,10 +1,56 @@
 {
   "header": [
     {
-      "label": "Tour",
-      "href": "/tour/",
+      "label": "Product",
       "also": [
-        "/how-to/"
+        "/tour/",
+        "/how-to/",
+        "/themes/",
+        "/ai-first/",
+        "/wordpress/",
+        "/astro/"
+      ],
+      "groups": [
+        {
+          "heading": "The editor",
+          "items": [
+            {
+              "label": "Tour",
+              "href": "/tour/",
+              "desc": "Every screen of the app, in pictures"
+            },
+            {
+              "label": "How-to guides",
+              "href": "/how-to/",
+              "desc": "Step-by-step tasks from start to publish"
+            },
+            {
+              "label": "Themes",
+              "href": "/themes/",
+              "desc": "Quiet, Plate, Desk, or a theme of your own"
+            }
+          ]
+        },
+        {
+          "heading": "Built for",
+          "items": [
+            {
+              "label": "AI-first websites",
+              "href": "/ai-first/",
+              "desc": "Markdown copies, llms.txt and crawler controls"
+            },
+            {
+              "label": "From WordPress",
+              "href": "/wordpress/",
+              "desc": "Bring posts, pages, images and redirects over"
+            },
+            {
+              "label": "Galley and Astro",
+              "href": "/astro/",
+              "desc": "Schemas become forms, zero lock-in"
+            }
+          ]
+        }
       ]
     },
     {
@@ -16,12 +62,57 @@
       "href": "/starters/"
     },
     {
-      "label": "From WordPress",
-      "href": "/wordpress/"
+      "label": "Compare",
+      "also": [
+        "/compare/"
+      ],
+      "groups": [
+        {
+          "heading": "Guides",
+          "items": [
+            {
+              "label": "All comparisons",
+              "href": "/compare/",
+              "desc": "Every guide and side-by-side in one place"
+            },
+            {
+              "label": "What is an AI CMS?",
+              "href": "/compare/ai-cms/",
+              "desc": "What CMSs mean by AI, and what to check"
+            },
+            {
+              "label": "Git-based CMSs compared",
+              "href": "/compare/git-based-cms/",
+              "desc": "Eight Git-based CMSs side by side"
+            },
+            {
+              "label": "Types of CMS",
+              "href": "/compare/types-of-cms/",
+              "desc": "Traditional, headless and Git-based"
+            }
+          ]
+        },
+        {
+          "heading": "Galley vs…",
+          "compact": true,
+          "items": [
+            { "label": "CloudCannon", "href": "/compare/cloudcannon/" },
+            { "label": "Contentful", "href": "/compare/contentful/" },
+            { "label": "Decap CMS", "href": "/compare/decap-cms/" },
+            { "label": "Keystatic", "href": "/compare/keystatic/" },
+            { "label": "Payload", "href": "/compare/payload/" },
+            { "label": "Sanity", "href": "/compare/sanity/" },
+            { "label": "Storyblok", "href": "/compare/storyblok/" },
+            { "label": "Strapi", "href": "/compare/strapi/" },
+            { "label": "TinaCMS", "href": "/compare/tinacms/" },
+            { "label": "Webflow", "href": "/compare/webflow/" }
+          ]
+        }
+      ]
     },
     {
-      "label": "AI-first",
-      "href": "/ai-first/"
+      "label": "Cloud",
+      "href": "/cloud/"
     },
     {
       "label": "Docs",
