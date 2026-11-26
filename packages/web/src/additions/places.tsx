@@ -75,6 +75,8 @@ interface BoundaryProps {
   id: string;
   place: AdditionPlace;
   children: ReactNode;
+  /** What is shown in its place when the addition fails: nothing, unless the place has something of the app's own. */
+  fallback?: ReactNode;
 }
 
 /**
@@ -99,7 +101,7 @@ class AdditionBoundary extends Component<BoundaryProps, { failed: boolean }> {
   }
 
   override render(): ReactNode {
-    return this.state.failed ? null : this.props.children;
+    return this.state.failed ? (this.props.fallback ?? null) : this.props.children;
   }
 }
 
@@ -179,7 +181,8 @@ export function FieldFrameAdditions(props: { siteId: string; entryPath: string; 
     const addition = frames[i]!;
     const Frame = addition.fieldFrame!;
     node = (
-      <AdditionBoundary key={addition.id} id={addition.id} place="fieldFrame">
+      // A frame that fails leaves what it framed (the field's own control, and any frames inside) as it was.
+      <AdditionBoundary key={addition.id} id={addition.id} place="fieldFrame" fallback={node}>
         <Suspense fallback={node}>
           <Frame siteId={props.siteId} entryPath={props.entryPath} path={props.path} field={props.field}>
             {node}

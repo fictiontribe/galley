@@ -1007,6 +1007,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     onFileWrite(notice) {
       for (const listener of [...fileWriteListeners]) listener(notice);
     },
+    // With no extension listening, a write is neither hashed nor an outside change read again for anyone.
+    wantsFileWrites: () => fileWriteListeners.size > 0,
     onActivity(notice) {
       for (const listener of [...activityListeners]) listener(notice);
     },

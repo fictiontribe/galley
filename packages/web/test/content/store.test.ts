@@ -234,3 +234,53 @@ describe("form store", () => {
     expect(store.getState().saveError).toBeNull();
   });
 });
+
+describe("form store events and transport, for an edition's additions", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("tells an immediate edit as a draft before it is sent", async () => {
+    const engine = fakeEngine(initial);
+    const store = createFormStore(entryOf(initial, "h1"), engine.deps);
+    const events: Array<{ type: string; sentBefore: number }> = [];
+
+    store.actions.onEvent((event) => events.push({ type: event.type, sentBefore: engine.sent.length }));
+    store.actions.edit(["title"], "Home page", { required: true, immediate: true });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(events[0]).toEqual({ type: "draft", sentBefore: 0 });
+    expect(engine.sent).toHaveLength(1);
+  });
+
+  it("tells a newer copy once it is in place, and not the same copy again", () => {
+    const engine = fakeEngine(initial);
+    const store = createFormStore(entryOf(initial, "h1"), engine.deps);
+    const received: string[] = [];
+
+    store.actions.onEvent((event) => {
+      if (event.type === "received") received.push(`${event.entry.hash}:${store.getState().hash}`);
+    });
+    const fresh = engine.outside({ ...initial, title: "From elsewhere" });
+
+    store.actions.receive(fresh);
+    store.actions.receive(fresh);
+    expect(received).toEqual([`${fresh.hash}:${fresh.hash}`]);
+  });
+
+  it("takes its own send and reload back with setTransport(null)", async () => {
+    const engine = fakeEngine(initial);
+    const store = createFormStore(entryOf(initial, "h1"), engine.deps);
+    const other = vi.fn(engine.deps.send);
+
+    store.actions.setTransport({ send: other });
+    store.actions.edit(["title"], "One", { required: true });
+    store.actions.commit(["title"]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(other).toHaveBeenCalledTimes(1);
+    store.actions.setTransport(null);
+    store.actions.edit(["title"], "Two", { required: true });
+    store.actions.commit(["title"]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(other).toHaveBeenCalledTimes(1);
+    expect(engine.sent.map((one) => one.ops)).toEqual([[{ op: "set", path: ["title"], value: "One" }], [{ op: "set", path: ["title"], value: "Two" }]]);
+  });
+});

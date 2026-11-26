@@ -25,7 +25,6 @@ function Row({ siteId, change, current, onSelect, onDiscard }: { siteId: string 
         <span className="g-file__main">
           <span className="g-file__title">
             {title}
-            {siteId ? <ProofRowAdditions siteId={siteId} path={change.path} status={change.status} /> : null}
           </span>
           <span className="g-file__path">
             {dirName(change.path)}
@@ -41,6 +40,8 @@ function Row({ siteId, change, current, onSelect, onDiscard }: { siteId: string 
           <ChangeCount additions={change.additions} deletions={change.deletions} />
         )}
       </button>
+      {/* Beside the row's button, not inside it: an addition may hold controls of its own, which a button can't. */}
+      {siteId ? <ProofRowAdditions siteId={siteId} path={change.path} status={change.status} /> : null}
       <Button variant="quiet" size="sm" className="proof-row__discard" onClick={onDiscard} aria-label={`${change.status === "deleted" ? "Put back" : "Discard"} ${title}`}>
         {change.status === "deleted" ? "Put back" : "Discard"}
       </Button>

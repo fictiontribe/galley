@@ -11,5 +11,5 @@
   "include": ["vite.config.ts", "vite.preset.d.mts", "vitest.config.ts", "mock", "test"],
   // The install tests render the app in a browser-like page: tsconfig.test-dom.json checks them.
   // The demo's tests run its browser code: tsconfig.demo.json checks them.
-  "exclude": ["test/install", "test/hosting", "test/ui", "test/demo", "test/additions/example"]
+  "exclude": ["test/install", "test/hosting", "test/ui", "test/demo", "test/additions/example", "test/additions/field-frame.test.ts"]
 }

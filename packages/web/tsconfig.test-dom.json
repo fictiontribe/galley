@@ -12,5 +12,5 @@
   // Tests that render the app (happy-dom). They reach the mock server and the
   // app through dynamic imports, so neither is type-checked a second time here
   // with the browser's types mixed into the server's.
-  "include": ["test/install", "test/hosting", "test/ui", "test/additions/example"]
+  "include": ["test/install", "test/hosting", "test/ui", "test/additions/example", "test/additions/field-frame.test.ts"]
 }

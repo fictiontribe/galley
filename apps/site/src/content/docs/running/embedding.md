@@ -1,6 +1,6 @@
 ---
 title: Embedding the editor
-description: Build your own edition of the editor. A program that starts Galley's server can add API routes and live events of its own, each with an access level, behind the editor's own guards, and draw in three places of the app. Experimental.
+description: Build your own edition of the editor. A program that starts Galley's server can add API routes and live events of its own, each with an access level, behind the editor's own guards, follow what happens to a site, and draw in fifteen places of the app. Experimental.
 group: running
 order: 6
 ---
@@ -9,7 +9,7 @@ A program of your own can start Galley's server and add to it. This page is for 
 
 **Experimental.** The shapes on this page may change in any 0.x release; the changelog says so under "Embedding". What does not change: addresses under `/api/x/` are reserved for whoever built the edition.
 
-An embedding can add **API routes** and **live events**, be told that a window is there, and draw in **three places of the app**.
+An embedding can add **API routes** and **live events**, be told that a window is there, **follow what happens to a site** (and refuse a discard, or hold a file's turn), and draw in **fifteen places of the app**, outlines on the previewed page included.
 
 ## What it is, and what it is not
 
@@ -165,6 +165,23 @@ On an install with accounts, `host.people` answers two questions: `name(account)
 
 `counts` can turn false early, never true late: a sign-in from before the server last started doesn't count for an extension, and nor does one pushed out of the server's memory by thousands of newer ones.
 
+## Following what happens to a site
+
+`host.hooks` tells an extension what happens to the open sites. Each of its four functions returns one that stops it, and everything stops with the extension. A listener is handed a copy, is called as nobody, and must answer at once: a file's listeners are called while its write waits, a promise is logged and not waited for, and an error is logged. None of them can fail a write or an action.
+
+- **`onFileWrite(listener)`**, right after a file is written or removed on any open site: `{ siteId, path, origin, beforeHash, afterHash, removed, actor }`. `origin` is `user`, `agent` or `undo` for the editor's own writes, and `external` for a change from outside the app (another program, Get latest, catching up), which comes with no `beforeHash` and with the actor `outside`. A hash is the first 16 hex digits of the file's SHA-256. Files a discard or an undone publish puts back are not told one by one. **Secrets files (`.env…`) and `.git/` are never told**, as the site an extension is handed never reads them. While no extension listens, nothing is hashed for it.
+- **`onActivity(listener)`**, when a publish, a discard, an undone publish (`revert`), Get latest (`pull`), a look at what is new on the code host (`check`) or a catch-up starts, and when it ends: `{ siteId, kind, phase, actor }`, with the paths and the commit where there are some. An end carries `failed: true` when it stopped with an error, and, for a publish or an undone publish, when it answered that it failed without one: refused, or committed here and not pushed.
+- **`beforeDiscard(guard)`**, before a discard, with the site, the paths (every waiting path for "discard all") and the actor. A guard that answers with a sentence refuses it: nothing is discarded, and the person is shown that sentence (403), as one line of at most 500 characters with your declared secrets taken out. Guards are asked one after another and the first refusal wins. **A guard fails closed**: one that throws, or doesn't answer within five seconds, refuses the discard (*A check this editor runs before a discard couldn't give its answer, so nothing was discarded. Try again in a moment.*), and the log says why. The paths are as asked; the discard may then leave out some (an unchanged file, a secrets file).
+- **`onAssistantTurn(listener)`**, when an assistant's turn starts (`start`), each time one of its tools starts or finishes once the turn has changed a file (`write`, with every file changed so far), and when the turn ends, however it ended (`end`, with the same): `{ siteId, threadId, turnId, phase, actor, paths }`.
+
+`actor` says who did it: a person (`accountId`, `role`, and `viaPreview` for a change asked from the previewed page), the operator's token, the engine, or `outside`. Account ids are for owners, as [above](#what-a-handler-is-handed).
+
+### Holding a file's turn
+
+`host.sites.withPathLock(siteId, path, run)` runs `run(site)` while it holds the turn the editor's own edits of that file take (saving an entry, making or deleting one, saving or deleting a file), so those wait until `run` has finished. Inside `run`, the site's own edits of that file go straight through, as does `withPathLock` again on the same path. The site is handed as `host.sites.get` hands it. It is refused inside a GET, once the extension has stopped, for a path under `.git/`, a secrets file or a path that climbs out of the site, and for a site that isn't open.
+
+It doesn't keep the file still: a discard, Get latest, an undone publish, an assistant's Undo and edits made outside the app don't take that turn. Take one path at a time: holding two, in one order here and the other order somewhere else, can wait forever. And don't publish, undo a publish or get the latest from inside `run`.
+
 ## Secrets, files, and one server to a process
 
 - **Secrets.** Name the environment variables your extension reads that are secret in `secrets`, as a list. A variable every program needs (`PATH`, `HOME`, `NODE_OPTIONS` and the like) can't be named: the server won't start. On a hosted install they are kept from the site's own commands, from before anything is started (its preview and build run the site's code, which editors can change). On your own computer a site's commands get your shell's environment as they always have. Everywhere, their values are taken out of every line the server logs and of the error messages your routes answer with. Know the limits: a value under six characters is never taken out, an encoded form of a value (in a URL, in base64) is not recognised, and a variable you don't name is not covered at all.
@@ -215,13 +232,39 @@ createRoot(document.getElementById("root")!).render(<App additions={[statusAddit
 
 ### Places
 
-Three, in this version:
+Fifteen, in this version:
 
 - `root`: mounted once inside the signed-in app, and again when someone else signs in. For what the addition keeps going (a subscription, the stream's value). It should draw nothing, or little.
 - `topBar`: at the right of the top bar, before the account menu. Small.
-- `listRow`: after the title in each row of a collection's list, handed `siteId` and the page's `path`. It is drawn once for every row on screen, and again as the list scrolls, so keep it cheap: one request for the whole list, not one a row (share it between rows, outside the component). What it draws can be clicked. The list is moved through with the arrow keys and has one tab stop; anything of yours that takes focus adds a tab stop for every row, so prefer what doesn't, or give it `tabIndex={-1}`.
+- `listRow`: after the title in each row of a collection's list, and of the list of changes on a site's home, handed `siteId` and the page's `path`. It is drawn once for every row on screen, and again as the list scrolls, so keep it cheap: one request for the whole list, not one a row (share it between rows, outside the component). What it draws can be clicked. The list is moved through with the arrow keys and has one tab stop; anything of yours that takes focus adds a tab stop for every row, so prefer what doesn't, or give it `tabIndex={-1}`.
+- In an open entry's form, each handed `siteId` and the entry's path:
+  - `entrySession`: mounted once for the open entry, for what keeps going while it is open; handed the entry, its collection and the form's store ([below](#the-forms-store-and-its-main-text)). It should draw nothing.
+  - `entryTop`: at the top of the form, under the mode bar; handed the store.
+  - `fieldHeader` (beside a field's label) and `fieldNotice` (under its control), handed the field's path and its definition.
+  - `fieldFrame`: around a field's control, handed it as `children` with the field's path and definition. One that waits shows the control without it; **one that fails shows the control as it was**, without the frame.
+  - `sectionHeader`: on the head of each section or list item, handed the list's path, the index and whether it is open.
+  - `bodyAddon`: above the main text, handed the store and the main text's editor ([below](#the-forms-store-and-its-main-text)).
+- In Proof: `proofRow`, in each changed file's row, beside the row's own button (so what it draws may take a click of its own), handed the path and its status; and `proofDetail`, in the head of a change.
+- `publishNotice`: in the Publish dialog above the files, handed the paths chosen.
+- `arrangePanel`: in the Arrange panel once the page's sections are found, handed the entry's path, the field and the sections' labels.
+- `previewHost`: beside the preview of a page that can be edited, handed the page's sections and `postMarks` ([below](#outlines-on-the-previewed-page)).
 
-With no additions each place renders nothing, and the app is as it ships. There are no places yet beside a field, on the page in the preview or in Arrange.
+With no additions each place renders nothing, and the app is as it ships.
+
+### The form's store and its main text
+
+The store handed to `entrySession`, `entryTop` and `bodyAddon` is the form's own (`FormStore`). Besides reading it, an addition can:
+
+- `store.actions.onEvent(listener)`: be told the form's edits as they are made: `draft` (a field changed, before it is sent; at once for a switch, a picker or a chip), `commit` (a field sent), `body-draft`, `body-commit`, and `received` (a newer copy of the entry put in place). It returns a function that stops it.
+- `applyRemote(ops, next)`: put edits it didn't send onto the form's saved copy, keeping what the person is still typing, without asking for the entry again.
+- `setTransport({ send, reload })`: send the form's edits and read the entry back another way. `setTransport(null)` puts the form's own back: do that when your addition unmounts.
+- `setSuppressReceive(true)`: stop taking newer copies of the entry while your addition brings them in itself; `false` takes them again.
+
+`bodyAddon` is also handed (`BodyAdditionProps`) the main text's CodeMirror `view`, `setExtensions(extensions)` to add CodeMirror extensions, `setReadOnly(readOnly)` (its formatting buttons too), and `setManagedValue(managed)`: take its text over, so the form neither saves what is typed there nor replaces it. These are one set for the main text: when two additions call one, the last call wins.
+
+### Outlines on the previewed page
+
+A `previewHost` addition can outline sections of the page in the preview with `postMarks([{ field, index, color }])`: a 2-pixel line in that colour around each section named, drawn over the page, which never takes a click and holds no text. A colour is `#rgb` or `#rrggbb` and nothing else, an index a whole number from 0, a field at most 200 characters. A message with more than 32 marks, or with one mark that isn't so, is ignored whole. The outlines follow scrolling and resizing; an empty list takes them away, and nothing is drawn while the page's sections can't be matched to the entry's. The page beside it, the site as it is online, ignores them.
 
 An addition's `id` is its extension's: lower-case letters, digits and dashes, 3 to 32, starting with a letter. A wrong id, the same id twice or something that isn't a component stops the app as it starts, in a sentence that names the addition. A component is a function, or what `memo`, `forwardRef` or `lazy` return; an element (`<Badge />` where `Badge` was meant) is refused. The list is read once; changing it later changes nothing.
 
@@ -238,6 +281,7 @@ An addition that waits the first time it draws (a `lazy` component, a promise it
   - **Changed later, the stream is opened again with it**, at most once in five seconds however often you ask. Setting the same value again doesn't open the stream again; but every addition's value function, yours and others', is asked again to find out, so keep yours cheap and have it give the same value for the same state — fetch once and return the one promise you kept, not a new request each time.
   - **What opening it again costs.** It counts as the stream coming back: events sent in the gap are missed, every `onReconnect` listener runs, and the app fetches afresh what is on screen. Nothing is shown to the person. So a value should change rarely: a name for the window, not something that follows what the person does.
 - **`useSiteId()`**, **`useAccount()`** (the person's name and role; null where there are no accounts) and **`useRoleMay(level)`**. They are for showing the right thing. The server decides again at every request.
+- **`useServerEvent`**, **`useConnection`**, **`useChanges`** and **`useSite`**: the app's own server events, the stream's state, a site's waiting changes and the open site. **`notify`** shows a message as the app's own do; **`pathKey`** is how the form names a field's path. The types `FormStore`, `FormStoreEvent` and `BodyAdditionProps` describe what the form's places are handed.
 - **`SafeText`** and **`SafeMarkdown`**: for words someone else wrote. An addition often shows a contributor's text to an owner; these are the ways to put it on the page, and `dangerouslySetInnerHTML` is not. The Markdown is small: raw HTML is shown as the text it was typed as, a picture as its description, and only links to web and mail addresses stay links. Both wrap long words. How much to show is yours to decide: clamp a note to a line in a bar or a row, because someone can write five thousand characters.
 
 `@galley/web/ui` is the app's own interface kit (buttons, badges, dialogs, fields) with the theme's tokens.
@@ -245,7 +289,7 @@ An addition that waits the first time it draws (a `lazy` component, a promise it
 ### What this is not
 
 - **Not a sandbox.** An addition is part of the one bundle. It can import any module of the app (everything the app knows about the person, not only what `useAccount` hands over), cover a screen, block the page by being slow, or fail in a click handler. Three things the app does for it:
-  - An addition that fails *while it draws* shows nothing in that place, and the screen around it stays. The app names the failing addition and the place once in the console. React also logs every error it catches there, once for each row a `listRow` fails in; an edition that wants that quieter gives its root an `onCaughtError` (`createRoot(el, { onCaughtError })`).
+  - An addition that fails *while it draws* shows nothing in that place, and the screen around it stays; a `fieldFrame` leaves the field's control as it was. The app names the failing addition and the place once in the console. React also logs every error it catches there, once for each row a `listRow` fails in; an edition that wants that quieter gives its root an `onCaughtError` (`createRoot(el, { onCaughtError })`).
   - A handler for an event, or a listener for the stream coming back, that fails doesn't keep the event from the others. The failure is reported as an uncaught error, once for each handler, and not again while it keeps failing the same way.
   - An addition that waits shows nothing meanwhile (above).
 - The content security policy is unchanged (`script-src 'self'`, `connect-src 'self'`). It blocks requests from the page to other origins, so call your own route and let the route call the service. **This is not containment**: an addition is your code, and can still send the page, or a new window, to another address.

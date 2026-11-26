@@ -19,7 +19,7 @@
 .proof-group__count { color: var(--ink-tertiary); }
 .proof-group__rows { list-style: none; margin: 0; padding: 0; border-block-start: var(--border-hair) solid var(--border-subtle); }
 
-.proof-row { grid-template-columns: minmax(0, 1fr) auto; padding: 0 var(--space-2) 0 0; gap: var(--space-1); }
+.proof-row { grid-template-columns: minmax(0, 1fr); grid-auto-flow: column; grid-auto-columns: auto; padding: 0 var(--space-2) 0 0; gap: var(--space-1); }
 .proof-row__select {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3);
   min-block-size: 52px; padding: var(--space-1-5) var(--space-2) var(--space-1-5) var(--space-4);

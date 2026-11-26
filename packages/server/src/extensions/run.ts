@@ -131,6 +131,11 @@ export const SAID_EVERY_MS = 60_000;
  * step back.
  */
 const clock = (): number => performance.now();
+/** How long a discard guard may take before the discard is refused without it. */
+export const DISCARD_GUARD_MS = 5_000;
+/** What a person is told when a discard guard failed or took too long: the discard is refused, never let through. */
+export const DISCARD_GUARD_FAILED = "A check this editor runs before a discard couldn't give its answer, so nothing was discarded. Try again in a moment.";
+
 /** The most of a refusal's words that is sent to a window. */
 const REFUSAL_CHARACTERS = 500;
 
@@ -396,7 +401,8 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
       onFileWrite(listener: (notice: SiteFileWriteNotice) => void) {
         if (!live || !hooksHub || typeof listener !== "function") return () => undefined;
         const unlisten = hooksHub.onFileWrite((notice) => {
-          if (!live) return;
+          // A secrets file or the version history's own: never told, as the site handed over never reads them.
+          if (!live || unreadable(notice.path)) return;
           void callNow(say, "a file-write listener", () => listener(structuredClone(notice)));
         });
 
@@ -417,11 +423,24 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
         if (!live || !hooksHub || typeof guard !== "function") return () => undefined;
         const unlisten = hooksHub.beforeDiscard(async (info) => {
           if (!live) return null;
+          let timer: ReturnType<typeof setTimeout> | undefined;
+
           try {
-            return (await outside(() => guard(structuredClone(info)))) ?? null;
+            const answer = await Promise.race([
+              Promise.resolve(outside(() => guard(structuredClone(info)))),
+              new Promise<never>((_, reject) => {
+                timer = setTimeout(() => reject(new Error(`it didn't answer within ${DISCARD_GUARD_MS / 1000} seconds`)), DISCARD_GUARD_MS);
+              }),
+            ]);
+
+            // A refusal is said the way a stream's is: one line, at most 500 characters, no secret in it.
+            return typeof answer === "string" && answer.trim() !== "" ? scrub(oneLine(answer)).slice(0, REFUSAL_CHARACTERS) : null;
           } catch (error) {
-            say(`a discard guard failed: ${error instanceof Error ? error.message : String(error)}`);
-            return null;
+            // Fails closed: a guard that throws or doesn't answer in time refuses the discard.
+            say(`a discard guard failed, so the discard was refused: ${error instanceof Error ? error.message : String(error)}`);
+            return DISCARD_GUARD_FAILED;
+          } finally {
+            if (timer) clearTimeout(timer);
           }
         });
 
