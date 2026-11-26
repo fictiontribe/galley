@@ -17,8 +17,12 @@
 #
 # Needs one repository secret, NPM_TOKEN: an npm granular access token with
 # read and write access to galley-cms and create-galley (RELEASING.md says
-# how to make it). The starters' release is made with the workflow's own
-# token, hence "contents: write".
+# how to make it). Three jobs, each with only the rights it needs: "release"
+# installs, builds, checks and packs with a read-only token (any package's
+# lifecycle script runs there); "starters" only makes or checks the
+# starters' release, with "contents: write"; "publish" only publishes the
+# checked tarballs to npm, after "starters", with the identity token npm's
+# provenance needs.
 name: Release
 
 on:
@@ -32,10 +36,7 @@ on:
         default: true
 
 permissions:
-  # The starters' release (starters-vX.Y.Z) and its archives.
-  contents: write
-  # npm provenance: the registry checks this workflow's identity token.
-  id-token: write
+  contents: read
 
 concurrency:
   group: release
@@ -48,6 +49,10 @@ jobs:
     timeout-minutes: 75
     env:
       PUBLISH: ${{ github.event_name == 'push' || inputs.dry-run == false }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      dist-tag: ${{ steps.version.outputs.dist-tag }}
+      archives: ${{ steps.downloaded.outputs.archives }}
     steps:
       - uses: actions/checkout@v4
 
@@ -146,10 +151,12 @@ jobs:
       # Each starter that is downloaded when used, made from the tarballs with its archive served from this runner:
       # the record in the bundle and the archive the release will attach agree, and the site is made.
       - name: Make a site from each downloaded starter
+        id: downloaded
         run: |
           set -euo pipefail
           assets="$GITHUB_WORKSPACE/packages/cli/starter-assets"
-          if ! ls "$assets"/starters-*.tgz > /dev/null 2>&1; then echo "No starter is downloaded when used."; exit 0; fi
+          if ! ls "$assets"/starters-*.tgz > /dev/null 2>&1; then echo "No starter is downloaded when used."; echo "archives=no" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "archives=yes" >> "$GITHUB_OUTPUT"
           try="$RUNNER_TEMP/try"
           (cd "$assets" && python3 -m http.server 4799 --bind 127.0.0.1 > "$RUNNER_TEMP/assets.log" 2>&1) &
           server=$!
@@ -174,34 +181,40 @@ jobs:
           path: ${{ env.PACK }}/*.tgz
           if-no-files-found: error
 
-      # galley-cms first: create-galley depends on that exact version. The registry accepts galley-cms at once
-      # and then takes some minutes over its tarball (about 14 MB) before anyone can install it: eight on 0.4.1.
-      # Two things break in that window if nothing is done:
-      #   - the new create-galley asks for a galley-cms that isn't there yet, so `npm create galley@latest` fails;
-      #   - "latest" already names the new galley-cms, so `npx galley-cms` and `npm install galley-cms` fail too.
-      # So galley-cms is published under a tag of its own ("incoming"), which nobody asks for; the step waits
-      # until the registry lists the version and its tarball answers; only then does "latest" move to it, and
-      # only then is create-galley published.
-      # "incoming" is left where it is: the release's token may add or move a tag and may not remove one
-      # (0.4.2: the removal was refused), and the next release moves it to its own version.
-      # Before the packages: a galley-cms on npm downloads these, and the version's own release stays a draft until a
-      # person publishes it (desktop.yml), so they go on a release of their own, published at once, a prerelease so
-      # that ".../releases/latest" keeps naming the version's release. Run again, an archive already there is kept
-      # (a published bundle may name it) and must be the same bytes: build.mjs writes the same archive for the same
-      # files.
+  # Before the packages: a galley-cms on npm downloads these, and the version's own release stays a draft until a
+  # person publishes it (desktop.yml), so they go on a release of their own, published at once, a prerelease so
+  # that ".../releases/latest" keeps naming the version's release. Run again, an archive already there is kept
+  # (a published bundle may name it) and must be the same bytes: build.mjs writes the same archive for the same
+  # files.
+  starters:
+    needs: release
+    if: (github.event_name == 'push' || inputs.dry-run == false) && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      # With no starter downloaded when used there is no archive, and nothing to make: the job passes, so npm goes on.
+      - uses: actions/download-artifact@v4
+        if: needs.release.outputs.archives == 'yes'
+        with:
+          name: starter-archives-${{ needs.release.outputs.version }}
+          path: ${{ runner.temp }}/archives
+
       - name: Publish the downloaded starters' archives
-        if: env.PUBLISH == 'true' && github.ref_type == 'tag'
+        if: needs.release.outputs.archives == 'yes'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          assets="packages/cli/starter-assets"
-          if ! ls "$assets"/starters-*.tgz > /dev/null 2>&1; then echo "No starter is downloaded when used."; exit 0; fi
-          release="starters-v${{ steps.version.outputs.version }}"
+          assets="$RUNNER_TEMP/archives"
+          if ! ls "$assets"/starters-*.tgz > /dev/null 2>&1; then echo "::error::The release job made starter archives, and none arrived here."; exit 1; fi
+          release="starters-v${{ needs.release.outputs.version }}"
           if ! gh release view "$release" > /dev/null 2>&1; then
             gh release create "$release" "$assets"/starters-*.tgz --target "$GITHUB_SHA" --prerelease \
-              --title "Starters for ${{ steps.version.outputs.version }}" \
-              --notes "The starters that galley-cms ${{ steps.version.outputs.version }} downloads the first time each is used. Each archive's SHA-256 is recorded in galley-cms and checked after download."
+              --title "Starters for ${{ needs.release.outputs.version }}" \
+              --notes "The starters that galley-cms ${{ needs.release.outputs.version }} downloads the first time each is used. Each archive's SHA-256 is recorded in galley-cms and checked after download."
             exit 0
           fi
           have="$RUNNER_TEMP/have"
@@ -215,15 +228,50 @@ jobs:
             fi
           done
 
+  # galley-cms first: create-galley depends on that exact version. The registry accepts galley-cms at once
+  # and then takes some minutes over its tarball (about 14 MB) before anyone can install it: eight on 0.4.1.
+  # Two things break in that window if nothing is done:
+  #   - the new create-galley asks for a galley-cms that isn't there yet, so `npm create galley@latest` fails;
+  #   - "latest" already names the new galley-cms, so `npx galley-cms` and `npm install galley-cms` fail too.
+  # So galley-cms is published under a tag of its own ("incoming"), which nobody asks for; the step waits
+  # until the registry lists the version and its tarball answers; only then does "latest" move to it, and
+  # only then is create-galley published.
+  # "incoming" is left where it is: the release's token may add or move a tag and may not remove one
+  # (0.4.2: the removal was refused), and the next release moves it to its own version.
+  publish:
+    needs: [release, starters]
+    if: (github.event_name == 'push' || inputs.dry-run == false) && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    # The wait for galley-cms's tarball may take twenty minutes.
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      # npm provenance: the registry checks this workflow's identity token.
+      id-token: write
+    steps:
+      - name: Choose where the packed files go
+        run: echo "PACK=${RUNNER_TEMP}/pack" >> "$GITHUB_ENV"
+
+      # registry-url writes the .npmrc that reads NODE_AUTH_TOKEN.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Exactly the tarballs the release job checked.
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-tarballs-${{ needs.release.outputs.version }}
+          path: ${{ runner.temp }}/pack
+
       - name: Publish to npm
-        if: env.PUBLISH == 'true' && github.ref_type == 'tag'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "$NODE_AUTH_TOKEN" ]; then echo "::error::The NPM_TOKEN secret isn't set (RELEASING.md)."; exit 1; fi
-          version="${{ steps.version.outputs.version }}"
-          tag="${{ steps.version.outputs.dist-tag }}"
+          version="${{ needs.release.outputs.version }}"
+          tag="${{ needs.release.outputs.dist-tag }}"
           tarball="https://registry.npmjs.org/galley-cms/-/galley-cms-$version.tgz"
           listed() { [ -n "$(npm view "$1@$version" version 2> /dev/null)" ]; }
           answers() { [ "$(curl -s -o /dev/null -w '%{http_code}' -I "$tarball" || true)" = "200" ]; }
