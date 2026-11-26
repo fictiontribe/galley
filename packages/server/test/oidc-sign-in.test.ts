@@ -437,6 +437,20 @@ describe("the ID token", () => {
     expect((await signIn(port, idp)).session).toBeDefined();
   });
 
+  it("is signed with the one algorithm the editor is set to: each of the four works, and a token signed another way is refused", async () => {
+    for (const alg of ["RS256", "PS256", "ES256", "EdDSA"] as const) {
+      const idp = await provider({ alg });
+      const { port } = await editor(idp, { GALLEY_OIDC_ID_TOKEN_ALG: alg });
+
+      expect((await signIn(port, idp)).session, alg).toBeDefined();
+    }
+    // Set to ES256; the provider signs with RS256.
+    const rsa = await provider({ alg: "RS256" });
+    const expectsEc = await editor(rsa, { GALLEY_OIDC_ID_TOKEN_ALG: "ES256" });
+
+    refusedWith(await signIn(expectsEc.port, rsa), "refused-token");
+  });
+
   it("is refused for its audience, its times, its nonce and its subject", async () => {
     const idp = await provider();
     const { port } = await editor(idp);
