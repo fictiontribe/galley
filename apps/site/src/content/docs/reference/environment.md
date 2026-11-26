@@ -70,7 +70,7 @@ Read by `galley serve` when it starts, from its environment and nowhere else: ne
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `GALLEY_OIDC_ISSUER` | none | The provider's issuer, an `https://` address. Its discovery document's `issuer` must equal it byte for byte. Set: people may sign in through the provider, beside their passwords. |
+| `GALLEY_OIDC_ISSUER` | none | The provider's issuer, an `https://` address. Its discovery document's `issuer` must equal it byte for byte. Set: people may sign in through the provider, beside their passwords, and someone who signs in through it is never given a password. Accounts are kept by issuer: once people have signed in, a server started with another issuer refuses to start. |
 | `GALLEY_OIDC_CLIENT_ID` | none | This editor's client id at the provider. Needed with `GALLEY_OIDC_ISSUER`. |
 | `GALLEY_OIDC_CLIENT_SECRET` | none | Optional. With it, the editor sends it to the token endpoint as well as the PKCE verifier. Without it, the provider's discovery document must list `S256` in `code_challenge_methods_supported`, or every sign-in through it is refused. The site's own commands never see it. |
 | `GALLEY_OIDC_ID_TOKEN_ALG` | `RS256` | The one algorithm ID tokens are signed with: `RS256`, `PS256`, `ES256` or `EdDSA`. |
@@ -78,7 +78,7 @@ Read by `galley serve` when it starts, from its environment and nowhere else: ne
 | `GALLEY_OIDC_ROLE_CLAIM` | `galley_role` | The claim that carries the person's role here: `owner`, `editor` or `contributor`. It must be a claim only the provider's administrators can set. Anything else in it refuses the sign-in. The provider sets the role at every sign-in. |
 | `GALLEY_OIDC_DEFAULT_ROLE` | none | The role for someone whose token has no role claim: `editor` or `contributor`, never `owner`. Unset: they are refused. Only for a provider that decides who may sign in to this client: with one that lets anyone register, it makes an account here for anyone. |
 | `GALLEY_OIDC_SESSION_HOURS` | `12` | How long a session started through the provider lasts, from 1 to 720 hours. |
-| `GALLEY_OIDC_OWNER` | none | The first owner's subject at the provider. Read only while the install has no owner: the owner's account is made at start, with no password, and first run can finish with nobody signed in. Not with `GALLEY_PASSWORD` on an install that has no owner yet. |
+| `GALLEY_OIDC_OWNER` | none | The first owner's subject at the provider. Read only while the install has no owner (ignored, with a notice, once it has one): the owner's account is made at start, with no password, and first run can finish with nobody signed in. Not with `GALLEY_PASSWORD` on an install that has no owner yet. |
 | `GALLEY_OIDC_ONLY` | off | Not available in this version: a server started with it refuses to start. |
 
 ## Hosting the editor online

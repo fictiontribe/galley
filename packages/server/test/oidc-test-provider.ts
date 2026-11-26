@@ -67,6 +67,8 @@ export interface Wrongs {
   ignorePkce?: boolean;
   tokenStatus?: number;
   tokenBytes?: number;
+  /** The token endpoint refuses the code with this error, and a description that repeats the code. */
+  tokenError?: string;
   // the ID token: its header, its claims, how it is signed
   header?: Record<string, unknown>;
   claims?: Record<string, unknown>;
@@ -213,6 +215,7 @@ export async function startTestProvider(options: { alg?: Alg; clientId?: string;
 
       provider.lastTokenAuth = req.headers.authorization ?? null;
       if (wrong.tokenStatus) return send(res, wrong.tokenStatus, { error: "server_error" });
+      if (wrong.tokenError) return send(res, 400, { error: wrong.tokenError, error_description: `The code ${body.get("code")} can't be used.` });
       const code = provider.codes.get(body.get("code") ?? "");
 
       if (!code || code.used) return send(res, 400, { error: "invalid_grant" });

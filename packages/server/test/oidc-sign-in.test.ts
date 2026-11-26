@@ -10,9 +10,9 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { APP_SECRET_ENV_NAMES, needsName, type AccountSession } from "@galley/core/install";
+import { APP_SECRET_ENV_NAMES, NO_PASSWORD_FOR_PROVIDER_ACCOUNT, needsName, sha256Hex, type AccountSession } from "@galley/core/install";
 import { readSession, SESSION_MAX_AGE_S } from "../src/auth";
-import { safeReturnPath } from "../src/oidc/cookie";
+import { RETURN_PATH_LIMIT, safeReturnPath } from "../src/oidc/cookie";
 import { ANSWER_LIMIT_BYTES, boundedFetch, forTheLog } from "../src/oidc/provider";
 import { call, EDITOR, sandbox, startHosted, type Started } from "./hosted-helpers";
 import { startTestProvider, type TestProvider } from "./oidc-test-provider";
@@ -22,6 +22,8 @@ const PASSWORD = "correct horse battery staple";
 const CLIENT = "galley-test-client";
 const SESSION = "__Host-galley_session";
 const PRE_LOGIN = "__Host-galley_oidc";
+/** A one-time link's code, in the form links have. */
+const EARLIER_CODE = "AnEarlierLinkCodeForPat_0123456789abcdefghi";
 const providers: TestProvider[] = [];
 
 afterAll(async () => {
@@ -171,6 +173,22 @@ describe("the round trip", () => {
     expect(safeReturnPath("/%5Cevil.example", origin)).toBe("/%5Cevil.example");
     expect(safeReturnPath("https://cms.example.com/sites/a?b=1#c", origin)).toBe("/sites/a?b=1#c");
     expect(safeReturnPath("/sites/a", origin)).toBe("/sites/a");
+    // Long enough to push the sealed cookie past what a browser keeps: not kept.
+    expect(safeReturnPath(`/${"a".repeat(RETURN_PATH_LIMIT)}`, origin)).toBe("/");
+    expect(safeReturnPath(`/${"a".repeat(RETURN_PATH_LIMIT - 1)}`, origin)).toBe(`/${"a".repeat(RETURN_PATH_LIMIT - 1)}`);
+  });
+
+  it("with the longest return path kept, the pre-login cookie stays well inside a browser's 4 KB", async () => {
+    const idp = await provider();
+    const { port } = await editor(idp);
+    const longest = `/${"a".repeat(RETURN_PATH_LIMIT - 1)}`;
+    const start = await call(port, "GET", `/api/auth/oidc/start?return=${encodeURIComponent(longest)}`);
+
+    expect(setCookieLine(start.headers, PRE_LOGIN)!.length).toBeLessThan(3000);
+    const back = new URL(await idp.authorize(String(start.headers.location)));
+    const done = await call(port, "GET", `${back.pathname}${back.search}`, { cookie: cookieNamed(start.cookies, PRE_LOGIN)! });
+
+    expect(done.headers.location).toBe(longest);
   });
 });
 
@@ -263,6 +281,33 @@ describe("the callback refuses, always by sending the browser to the sign-in pag
     refusedWith(await signIn(port, idp, "/", (url) => url.searchParams.set("state", "not-this-one")), "another-tab");
     idp.wrong = {};
     expect(forTheLog("a b\u0007c")).toBe("a b c");
+  });
+});
+
+describe("a page elsewhere can't use up an address's sign-ins", () => {
+  it("callbacks with no cookie, or another sign-in's, count nothing: passwords and the provider still work from that address", async () => {
+    const idp = await provider();
+    const { port } = await editor(idp);
+    const from = { "x-forwarded-for": "203.0.113.30" };
+    const other = await call(port, "GET", "/api/auth/oidc/start", { headers: { "x-forwarded-for": "198.51.100.200" } });
+
+    // What five <img src=…/callback> on any page would send, and more: no cookie, or one for another sign-in.
+    for (let i = 0; i < 8; i += 1) {
+      expect((await call(port, "GET", "/api/auth/oidc/callback", { headers: from })).headers.location).toBe("/login?signin=refused-state");
+      expect((await call(port, "GET", "/api/auth/oidc/callback?state=made-up&code=x", { headers: from, cookie: cookieNamed(other.cookies, PRE_LOGIN)! })).headers.location).toBe("/login?signin=another-tab");
+    }
+    expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD }, headers: from })).status).toBe(200);
+    expect((await signIn(port, idp, "/", undefined, "203.0.113.30")).session).toBeDefined();
+  });
+
+  it("starts that aren't a browser navigating (an image, a fetch) count nothing; navigations do", async () => {
+    const idp = await provider();
+    const { port } = await editor(idp);
+    const from = (mode?: string) => ({ "x-forwarded-for": "203.0.113.31", ...(mode ? { "sec-fetch-mode": mode } : {}) });
+
+    for (let i = 0; i < 25; i += 1) expect((await call(port, "GET", "/api/auth/oidc/start", { headers: from(i % 2 ? "no-cors" : "cors") })).status).toBe(302);
+    for (let i = 0; i < 20; i += 1) expect((await call(port, "GET", "/api/auth/oidc/start", { headers: from(i % 2 ? "navigate" : undefined) })).status, String(i)).toBe(302);
+    expect((await call(port, "GET", "/api/auth/oidc/start", { headers: from("navigate") })).headers.location).toBe("/login?signin=too-many");
   });
 });
 
@@ -372,6 +417,14 @@ describe("the provider and PKCE", () => {
     refusedWith(await signIn(big.port, idp), "provider-unreachable");
     idp.wrong = { tokenStatus: 500 };
     refusedWith(await signIn((await editor(idp)).port, idp), "refused-token");
+    // The token endpoint's own description may repeat the code: only its error code is logged.
+    idp.wrong = { tokenError: "invalid_grant" };
+    const echoed = await editor(idp);
+    const trip = await signIn(echoed.port, idp);
+
+    refusedWith(trip, "refused-token");
+    expect(logOf(echoed.logs)).toContain("The token endpoint refused the code: it answered 400: invalid_grant.");
+    expect(logOf(echoed.logs)).not.toContain(new URL(`https://x${trip.callback!}`).searchParams.get("code")!);
     idp.wrong = {};
     // Slow: the bound covers the whole call, answer included.
     const slow = createServer((_req, res) => {
@@ -588,6 +641,44 @@ describe("the accounts", () => {
     expect(install.people.list().accounts.map((one) => one.name)).toEqual(["Sam Owner", "Switched"]);
   });
 
+  it("someone who signs in through the provider gets no password while it is set up: not by \"forgot\", an owner's link, a link made earlier, or the server's way back in", async () => {
+    const idp = await provider();
+    const home = box.folder("home");
+    const { port, server } = await editor(idp, {}, home);
+    const install = server.install!;
+    const owner = await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD } });
+
+    idp.user = { sub: "pat", name: "Pat", email: "pat@example.com", email_verified: true, galley_role: "owner" };
+    const pat = (await call<AccountSession>(port, "GET", "/api/account", { cookie: (await signIn(port, idp)).session! })).body;
+    // "Forgot my password": the same answer as for an e-mail nobody has, and no link made.
+    const forgot = await call(port, "POST", "/api/auth/forgot", { body: { email: "pat@example.com" } });
+
+    expect(forgot.status).toBe(200);
+    expect(install.store.read().links).toEqual([]);
+    // An owner's link.
+    const link = await call(port, "POST", `/api/people/${pat.id}/password-link`, { cookie: owner.cookies[0]! });
+
+    expect([link.status, link.body.error.message]).toEqual([409, NO_PASSWORD_FOR_PROVIDER_ACCOUNT]);
+    // A link that exists anyway (made before the provider was set up): refused when used, the password still none.
+    await install.store.update((draft) => {
+      draft.links.push({ id: "earlier", kind: "password", codeSha256: sha256Hex(EARLIER_CODE), email: "pat@example.com", role: null, accountId: pat.id, createdBy: null, createdByName: "", createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), emailed: false });
+    });
+    const used = await call(port, "POST", "/api/auth/link", { body: { code: EARLIER_CODE, password: "a password of their own here" } });
+
+    expect([used.status, used.body.error.message]).toEqual([409, NO_PASSWORD_FOR_PROVIDER_ACCOUNT]);
+    expect(install.store.account(pat.id)!.passwordHash).toBeNull();
+    // The server's way back in, for an owner who signs in through the provider, waits for a later version.
+    await server.close();
+    await expect(
+      startHosted(box, home, { GALLEY_PUBLIC_URL: EDITOR, GALLEY_OIDC_ISSUER: idp.issuer, GALLEY_OIDC_CLIENT_ID: CLIENT, GALLEY_TRUST_PROXY: "1" }, { oidcAllowLoopbackHttp: true, resetPassword: true, resetPasswordEmail: "pat@example.com" })
+    ).rejects.toThrow(NO_PASSWORD_FOR_PROVIDER_ACCOUNT);
+    // The provider taken away: such an account can be given a password, as any other.
+    const without = await startHosted(box, home, { GALLEY_PUBLIC_URL: EDITOR, GALLEY_TRUST_PROXY: "1" });
+    const again = await call(without.port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD } });
+
+    expect((await call(without.port, "POST", `/api/people/${pat.id}/password-link`, { cookie: again.cookies[0]! })).status).toBe(200);
+  });
+
   it("an owner can't change the role of an account whose role the provider sets", async () => {
     const idp = await provider();
     const { port } = await editor(idp);
@@ -623,6 +714,40 @@ describe("the first owner named by subject, and the configuration", () => {
     expect(theo).toMatchObject({ id: owner!.id, name: "Theo Owner", role: "owner" });
     idp.user = { sub: "another-owner", name: "Ann Other", galley_role: "owner" };
     expect((await call<AccountSession>(started.port, "GET", "/api/account", { cookie: (await signIn(started.port, idp)).session! })).body.role).toBe("owner");
+  });
+
+  it("doesn't start when accounts or removed accounts are from another issuer; starts again with it, or with no provider at all", async () => {
+    const idp = await provider();
+    const home = box.folder("home");
+    const first = await editor(idp, {}, home);
+
+    await signIn(first.port, idp);
+    await first.server.install!.store.update((draft) => {
+      draft.tombstones.push({ id: "gone", issuer: idp.issuer, subject: "removed-one", removedAt: new Date().toISOString(), removedBy: null });
+    });
+    await first.server.close();
+    const other = await provider();
+
+    await expect(editor(other, {}, home)).rejects.toThrow(new RegExp(`this install has accounts, or removed accounts, from another identity provider: “${idp.issuer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}”.*accounts rekey`));
+    // Only a removed account left from it: still refused.
+    const plain = await startHosted(box, home, { GALLEY_PUBLIC_URL: EDITOR, GALLEY_PASSWORD: PASSWORD });
+
+    await plain.server.install!.store.update((draft) => {
+      draft.accounts = draft.accounts.filter((account) => !account.identity);
+    });
+    await plain.server.close();
+    await expect(editor(other, {}, home)).rejects.toThrow(/from another identity provider/);
+    expect((await editor(idp, {}, home)).server.install).toBeTruthy();
+  });
+
+  it("GALLEY_OIDC_OWNER on an install that has an owner is ignored, with a notice", async () => {
+    const idp = await provider();
+    const home = box.folder("home");
+
+    await (await editor(idp, {}, home)).server.close();
+    const { notices } = await editor(idp, { GALLEY_OIDC_OWNER: "someone" }, home);
+
+    expect(notices.join("\n")).toContain("GALLEY_OIDC_OWNER is ignored: this install has an owner already.");
   });
 
   it("refuses to start with a variable that is wrong or half-given, or set where the site's code could write it", async () => {

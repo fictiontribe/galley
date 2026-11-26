@@ -99,7 +99,8 @@ function describe(error: unknown): string {
   if (error instanceof AnswerTooLarge) return error.message;
   if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) return `no answer within ${PROVIDER_TIMEOUT_MS / 1000} seconds`;
   if (error instanceof TypeError && /redirect/i.test(String(error.cause ?? error.message))) return "it answered with a redirect, which isn't followed";
-  if (error instanceof oauth.ResponseBodyError) return `it answered ${error.status}: ${forTheLog(error.error)}${error.error_description ? ` (${forTheLog(error.error_description)})` : ""}`;
+  // The error code only: a provider may echo the code it refused in its description.
+  if (error instanceof oauth.ResponseBodyError) return `it answered ${error.status}: ${forTheLog(error.error, 60)}`;
   if (error instanceof oauth.OperationProcessingError) return forTheLog(error.message);
   return forTheLog(error instanceof Error ? (error.cause instanceof Error ? `${error.message}: ${error.cause.message}` : error.message) : String(error));
 }

@@ -55,7 +55,7 @@ export function openPreLogin(cookieKey: Uint8Array, value: string | undefined, n
     const plain = Buffer.concat([decipher.update(raw.subarray(12, raw.length - 16)), decipher.final()]).toString("utf8");
     const parsed = JSON.parse(plain) as Record<string, unknown>;
 
-    if (parsed.v !== VERSION || !TEXT(parsed.state, 200) || !TEXT(parsed.nonce, 200) || !TEXT(parsed.verifier, 200) || !TEXT(parsed.returnTo, 2048)) return null;
+    if (parsed.v !== VERSION || !TEXT(parsed.state, 200) || !TEXT(parsed.nonce, 200) || !TEXT(parsed.verifier, 200) || !TEXT(parsed.returnTo, RETURN_PATH_LIMIT)) return null;
     const startedAt = parsed.startedAt;
 
     if (typeof startedAt !== "number" || !Number.isSafeInteger(startedAt) || startedAt > now + 60_000 || now - startedAt > PRE_LOGIN_LIFETIME_MS) return null;
@@ -71,15 +71,18 @@ export function openPreLogin(cookieKey: Uint8Array, value: string | undefined, n
  * anything else is `/`. Never an address from the round trip: this is
  * checked when the sign-in starts and kept in the sealed cookie.
  */
+/** The longest return path kept: the sealed cookie must stay well inside a browser's 4 KB, or it is dropped without a word. */
+export const RETURN_PATH_LIMIT = 1024;
+
 export function safeReturnPath(raw: string | undefined, origin: string): string {
-  if (typeof raw !== "string" || raw === "" || raw.length > 2048) return "/";
+  if (typeof raw !== "string" || raw === "" || raw.length > RETURN_PATH_LIMIT) return "/";
   try {
     const url = new URL(raw, origin);
 
     if (url.origin !== origin) return "/";
     const path = `${url.pathname.replace(/^\/+/, "/")}${url.search}${url.hash}`;
 
-    return path.startsWith("/") ? path : "/";
+    return path.startsWith("/") && path.length <= RETURN_PATH_LIMIT ? path : "/";
   } catch {
     return "/";
   }

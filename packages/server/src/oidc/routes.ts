@@ -73,7 +73,10 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
       audit(ctx, `A sign-in through ${provider.config.name} from ${clientAddress(c, Boolean(ctx.options.trustProxy))} wasn't started: too many in a minute.`);
       return toSignIn(c, "too-many");
     }
-    starts.fail(client);
+    // Counted only when a browser navigates here: an image or a fetch from another page can't use up a client's starts.
+    const mode = c.req.header("sec-fetch-mode");
+
+    if (mode === undefined || mode === "navigate") starts.fail(client);
     const origin = ctx.options.publicOrigin ?? new URL(c.req.url).origin;
     const returnTo = safeReturnPath(c.req.query("return"), origin);
     const state = oauth.generateRandomState();
@@ -106,9 +109,12 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
     const client = clientKeyOf(c, trustProxy);
     const from = clientAddress(c, trustProxy);
     const params = new URL(c.req.url).searchParams;
+    // Until the state has matched a cookie this browser opened, nothing was tested: a page anywhere can send a browser here
+    // without one, and that must never count against everyone at its address, whose passwords the same count holds back.
+    let tested = false;
     const refuse = (code: OidcRefusalCode, why: string, extra: Record<string, string> = {}): Response => {
       // Counted against this client as a wrong password is, unless it is the provider's or this server's doing.
-      if (!NOT_THE_BROWSERS.has(code)) ctx.limiter.fail(client);
+      if (tested && !NOT_THE_BROWSERS.has(code)) ctx.limiter.fail(client);
       audit(ctx, `A sign-in through ${provider.config.name} from ${from} was refused: ${why}`);
       return toSignIn(c, code, extra);
     };
@@ -123,6 +129,7 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
     }
     // 2. Its state. Another one is left as it is: it may be another tab's sign-in, or a callback someone made up.
     if (!sameSignature(params.get("state") ?? "", preLogin.state)) return refuse("another-tab", "the answer is for another sign-in than the one this browser started last.");
+    tested = true;
     clearPreLogin(c);
     // 3. Used once.
     const { used } = limitsOf(ctx);

@@ -1028,6 +1028,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         allowLocalRepositories: config.allowLocalRepositories,
         fixed: config.fixed,
         notice,
+        ...(config.oidc ? { provider: { issuer: config.oidc.issuer } } : {}),
         ...(options.siteInstall ? { installDependencies: options.siteInstall } : {}),
       });
       try {

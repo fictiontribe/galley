@@ -8,7 +8,8 @@
  * never complete an owner who signs in through the provider.
  */
 import { describe, expect, it } from "vitest";
-import { ACCOUNTS_KEPT, createPeople, type ProviderSignIn } from "../../src/install/people";
+import { GalleyError } from "../../src/errors";
+import { ACCOUNTS_KEPT, createPeople, NO_PASSWORD_FOR_PROVIDER_ACCOUNT, type ProviderSignIn } from "../../src/install/people";
 import { openInstallState } from "../../src/install/state";
 import { tempDir } from "./helpers";
 
@@ -94,3 +95,34 @@ describe("the first owner named by subject", () => {
     expect(store.read().accounts[0]).toMatchObject({ name: "", email: "" });
   });
 });
+
+describe("a password for someone who signs in through the provider", () => {
+  it("is never given while a provider is set up: not by \"forgot\", an owner's link, the server's way back in, or a link made before", async () => {
+    const { store } = await opened();
+    const people = createPeople(store, { providerConfigured: true });
+    const sam = await people.createOwner({ password: "correct horse battery staple", name: "Sam", email: "sam@example.com" });
+    const made = await people.signInThroughProvider(input({ role: "owner" }));
+    const pat = made.ok ? made.account.id : "";
+    const refused = async (work: Promise<unknown>) => {
+      const error = await work.then(() => null, (caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(GalleyError);
+      expect((error as GalleyError).message).toBe(NO_PASSWORD_FOR_PROVIDER_ACCOUNT);
+    };
+
+    expect(await people.forgot("pat@example.com")).toBeNull();
+    await refused(people.passwordLink(sam.id, pat));
+    await refused(people.rescue("pat@example.com"));
+    // A link made while no provider was set up, used once one is.
+    const before = createPeople(store);
+    const { link } = await before.passwordLink(sam.id, pat);
+
+    await refused(people.useLink(link.code, { password: "a password of their own here" }));
+    expect(store.read().accounts.find((account) => account.id === pat)!.passwordHash).toBeNull();
+    // With the provider taken away, the same link works, as for anyone.
+    expect((await before.useLink(link.code, { password: "a password of their own here" })).kind).toBe("password");
+    // Someone who signs in with a password is not affected.
+    expect(await people.forgot("sam@example.com")).not.toBeNull();
+  });
+});
+

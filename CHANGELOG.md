@@ -19,8 +19,11 @@ entry says how.
   provider's issuer and subject (never by e-mail), and starts a session of
   `GALLEY_OIDC_SESSION_HOURS` (12 by default). The provider sets the role at
   every sign-in, from `GALLEY_OIDC_ROLE_CLAIM`, or `GALLEY_OIDC_DEFAULT_ROLE`.
-  `GALLEY_OIDC_OWNER` names the first owner by subject. Turning passwords off
-  comes in a later version. The variables are in the environment reference.
+  `GALLEY_OIDC_OWNER` names the first owner by subject. Someone who signs in
+  through the provider gets no password ("forgot my password" and new-password
+  links don't apply to them), so removing them at the provider removes them.
+  Turning passwords off comes in a later version. The variables are in the
+  environment reference.
 - **The server's access token can sign one person out**
   (`POST /api/people/:accountId/sign-out`), logged as the token. It could
   already sign everyone out; the rest of People still needs a person signed
