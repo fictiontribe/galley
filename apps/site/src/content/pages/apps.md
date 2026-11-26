@@ -23,9 +23,12 @@ points:
     text: Each keeps its own files and version history in its own folder, exactly as it does without the app.
 screensLabel: The app
 open:
-  heading: How to open it
+  heading: How to open it.
+  macTitle: Mac
+  macNote: Apple silicon and Intel.
   signed: "{signature}, so it opens like any other app."
   unsigned: Not signed yet, so {system} warns you the first time. These steps open it anyway.
+  direct: Runs directly as an AppImage — no installer needed.
 guide:
   label: The desktop app, in full
   href: /docs/running/desktop/
