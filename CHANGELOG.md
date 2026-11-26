@@ -39,6 +39,16 @@ entry says how.
   choose a new password now go to the new one; it holds no link and doesn't
   name the new address.
 
+### Changed
+
+- **`galley accounts link --replace` remembers the subject it replaces as
+  removed**, as taking the provider off from a recovery session does: it
+  can't sign in again (as a new account) or be linked until
+  `galley accounts unremove` or **Let them back** takes it off the list. A
+  subject under another issuer isn't added. When the list of removed
+  accounts is full, nothing changes and the command says to let some back
+  first.
+
 ## 0.4.5 — 2026-11-26
 
 **Signing in through your own identity provider**, for a hosted editor: an

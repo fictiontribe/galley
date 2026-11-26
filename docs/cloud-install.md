@@ -518,7 +518,8 @@ Password:  https://cms.example.com/new-password#<one-time code>
   command is for owners) is undone by an owner: switch it off and delete it
   in People, which remembers its subject as removed, then invite the person
   again; or, on the server with it stopped, bind the right subject with
-  `galley accounts link --replace <account id> <subject>`.
+  `galley accounts link --replace <account id> <subject>`, which remembers
+  the wrong one as removed (remove that person at the provider too).
 - An owner who was switched off is switched back on by it.
 - With no owner yet, it prints a fresh one-time **setup** link instead, as
   first run does. A setup code that was used stays dead: an old code or hash
