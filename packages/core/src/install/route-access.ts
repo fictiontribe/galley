@@ -225,6 +225,7 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "POST /api/sites/:siteId/deploy/check": "publish",
   "POST /api/sites/:siteId/deploy": "publish",
   "GET /api/sites/:siteId/deployments": "edit",
+  "POST /api/sites/:siteId/deployments/:deploymentId/promote": "publish",
   "POST /api/sites/:siteId/deploy/domain/plan": "manage",
   "POST /api/sites/:siteId/deploy/domain": "manage",
   "POST /api/sites/:siteId/deploy/domain/check": "manage",

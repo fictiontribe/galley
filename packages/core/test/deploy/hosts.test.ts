@@ -188,6 +188,25 @@ describe("Cloudflare (Workers static assets, Direct Upload)", () => {
     expect(fake.log.some((entry) => entry.method === "DELETE")).toBe(false);
     expect(await target.checkProject(ctx(), { account: ACCOUNT, name: "Bad Name" })).toMatchObject({ available: false });
   });
+
+  it("lists versions and promotes an earlier version to live", async () => {
+    fake = await startFakeCloudflare();
+    const { dir, files } = await siteFiles();
+
+    await target.ensureProject(ctx(), { account: ACCOUNT, name: "lowfield-studio" });
+    const first = await target.deploy(ctx(), input(dir, files, { account: ACCOUNT, commit: "1111111", label: "First" }));
+    const second = await target.deploy(ctx(), input(dir, files, { account: ACCOUNT, commit: "2222222", label: "Second" }));
+    const listed = await target.list!(ctx(), { account: ACCOUNT, project: "lowfield-studio" });
+
+    expect(listed.map((item) => [item.id, item.kind])).toEqual([
+      [second.id, "production"],
+      [first.id, "preview"],
+    ]);
+    const promoted = await target.promote!(ctx(), { account: ACCOUNT, project: "lowfield-studio", id: first.id });
+
+    expect(promoted).toMatchObject({ id: first.id, kind: "production", url: "https://lowfield-studio.studio.workers.dev" });
+    expect(fake.activeVersion.get("lowfield-studio")).toBe(first.id);
+  });
 });
 
 describe("Vercel (REST: files by SHA, then a deployment)", () => {
@@ -248,5 +267,21 @@ describe("Vercel (REST: files by SHA, then a deployment)", () => {
 
     await target.ensureProject(ctx(), { account: TEAM, name: "lowfield-studio" });
     await expect(target.deploy(ctx(), input(dir, files, { account: TEAM }))).rejects.toMatchObject({ reason: "host", message: expect.stringContaining("couldn't finish") });
+  });
+
+  it("lists deployments and promotes an earlier deployment to production", async () => {
+    fake = await startFakeVercel();
+    const { dir, files } = await siteFiles();
+
+    await target.ensureProject(ctx(), { account: TEAM, name: "lowfield-studio" });
+    const first = await target.deploy(ctx(), input(dir, files, { account: TEAM, commit: "1111111", label: "First" }));
+    const second = await target.deploy(ctx(), input(dir, files, { account: TEAM, commit: "2222222", label: "Second" }));
+    const listed = await target.list!(ctx(), { account: TEAM, project: "lowfield-studio" });
+
+    expect(listed.map((item) => item.id)).toEqual([second.id, first.id]);
+    const promoted = await target.promote!(ctx(), { account: TEAM, project: "lowfield-studio", id: first.id });
+
+    expect(promoted).toMatchObject({ id: first.id, kind: "production", url: "https://lowfield-studio.vercel.app" });
+    expect(fake.promoted.get("lowfield-studio")).toBe(first.id);
   });
 });

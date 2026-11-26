@@ -151,10 +151,14 @@ Written by the **Online** setup and by `galley deploy` ([Deploying, for develope
 | `deploy.project` | string, **required**, lowercase letters, digits and dashes, up to 54 | The project (Cloudflare Worker, Vercel project) the site goes into. |
 | `deploy.productionUrl` | string, a URL | The site's live address: the host's own address after the first deploy, or your own domain once you choose one. |
 | `deploy.defaultUrl` | string, a URL | The address the host gave the site (`…workers.dev`, `…vercel.app`). Kept so a site on its own domain can go back to it. |
-| `deploy.domain` | object | Your own domain for the site, written by **Use your own domain** on the Online screen or `galley domain`. |
-| `deploy.domain.hostname` | string, a host name like `www.example.com` | The domain. |
+| `deploy.domain` | object | Your primary custom domain for the site, kept in sync with `deploy.domains[0]`, written by **Use your own domain** on the Online screen or `galley domain`. |
+| `deploy.domain.hostname` | string, a host name like `www.example.com` | The primary custom domain. |
 | `deploy.domain.attached` | boolean | `true` when Galley attached the domain itself, so removing it detaches it. `false` when the domain was already pointing at the site: Galley then leaves it in place. |
 | `deploy.domain.pending` | boolean | `true` while the domain is attached but not answering over HTTPS yet. |
+| `deploy.domains` | object[] | All custom domains configured for the site (up to 20). The first entry is the primary domain, mirrored in `deploy.domain`. |
+| `deploy.domains[].hostname` | string, a host name like `www.example.com` | The domain. |
+| `deploy.domains[].attached` | boolean | `true` when Galley attached this domain itself, so removing it detaches it on the host. |
+| `deploy.domains[].pending` | boolean | `true` while this domain is attached but not answering over HTTPS yet. |
 | `deploy.autoDeploy` | boolean | **Put changes live every time I publish**: each publish puts the new version online by itself. *Default:* `false`. |
 | `deploy.previewOnShare` | boolean | `false` hides **Share a preview link** in Proof. *Default:* shown. |
 

@@ -28,6 +28,8 @@ export interface FakeVercel extends FakeServer {
   elsewhere: Set<string>;
   projects: Map<string, { teamId: string | null; deployments: number }>;
   deployments: VercelDeployment[];
+  /** Active production deployment id per project (updated on production deploy or promote). */
+  promoted: Map<string, string>;
   stored: Map<string, Buffer>;
   uploads: number;
 }
@@ -50,6 +52,7 @@ export async function startFakeVercel(options: FakeVercelOptions = {}): Promise<
   const stored = new Map<string, Buffer>();
   const projects = new Map<string, { teamId: string | null; deployments: number }>();
   const deployments: VercelDeployment[] = [];
+  const promoted = new Map<string, string>();
   const domains: FakeVercel["domains"] = new Map();
   const dnsReady = new Set<string>();
   const elsewhere = new Set<string>();
@@ -176,7 +179,38 @@ export async function startFakeVercel(options: FakeVercelOptions = {}): Promise<
           }
         }
         deployments.push({ id, kind, project: name, teamId, files, body, polls: 0, config });
+        if (kind === "production") promoted.set(name, id);
         return { status: 200, body: { id, url: `${name}-${id.slice(4, 13)}-studio.vercel.app`, readyState: "QUEUED", alias: [] } };
+      }
+      if (request.method === "GET" && path === "/v6/deployments") {
+        const projectId = request.url.searchParams.get("projectId");
+        const limit = Number(request.url.searchParams.get("limit") ?? 20);
+        const list = deployments
+          .filter((entry) => (!projectId || entry.project === projectId) && entry.teamId === teamId)
+          .slice()
+          .reverse()
+          .slice(0, limit)
+          .map((entry) => ({
+            uid: entry.id,
+            url: `${entry.project}-${entry.id.slice(4, 13)}-studio.vercel.app`,
+            state: "READY",
+            target: promoted.get(entry.project) === entry.id || entry.kind === "production" ? "production" : null,
+            created: Date.now(),
+            meta: entry.body?.meta ?? {},
+          }));
+
+        return { status: 200, body: { deployments: list } };
+      }
+      const promoteMatch = /^\/v10\/projects\/([^/]+)\/promote\/([^/]+)$/.exec(path);
+
+      if (request.method === "POST" && promoteMatch) {
+        const name = decodeURIComponent(promoteMatch[1]!);
+        const targetId = decodeURIComponent(promoteMatch[2]!);
+        const found = deployments.find((entry) => entry.project === name && entry.id === targetId && entry.teamId === teamId);
+
+        if (!found) return err(404, "not_found", "Deployment not found");
+        promoted.set(name, targetId);
+        return { status: 201, body: {} };
       }
       const deployment = /^\/v13\/deployments\/([^/]+)$/.exec(path)?.[1];
 
@@ -211,6 +245,7 @@ export async function startFakeVercel(options: FakeVercelOptions = {}): Promise<
     dnsReady,
     elsewhere,
     deployments,
+    promoted,
     stored,
     get uploads() {
       return uploads;

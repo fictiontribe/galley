@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeployStatus, Deployment, Job } from "@galley/core/types";
-import { onlineOutcome, canContinue, failureFor, hostOf, initialSetup, jobFailureTitle, nextStepForJob, onlineSettingsWaiting, progressSteps, setupReducer, statusLine } from "../../src/features/deploy/logic";
+import { canPromoteDeployment, configuredDomains, deploymentItems, isCurrentLive, onlineOutcome, canContinue, failureFor, hostOf, initialSetup, jobFailureTitle, nextStepForJob, onlineSettingsWaiting, progressSteps, setupReducer, statusLine } from "../../src/features/deploy/logic";
 
 const NOW = new Date(2026, 10, 23, 15, 0, 0).getTime();
 const LIVE: Deployment = { id: "d1", kind: "production", target: "cloudflare", project: "lowfield", url: "https://lowfield.studio.workers.dev", commit: "abc", createdAt: new Date(NOW - 3 * 60_000).toISOString(), files: 214, bytes: 1000 };
@@ -122,5 +122,43 @@ describe("the online settings at the end of setting up", () => {
   it("says nothing when the settings aren't waiting", () => {
     expect(onlineSettingsWaiting([])).toBeNull();
     expect(onlineSettingsWaiting([change("src/content/pages/index.md", "content")])).toBeNull();
+  });
+});
+
+describe("deployments, rollback, and multiple custom domains", () => {
+  const OLDER: Deployment = { ...LIVE, id: "d0", createdAt: new Date(NOW - 60 * 60_000).toISOString() };
+
+  it("merges listed and status deployments without duplicates and enables Make live only on non-current versions", () => {
+    const status: DeployStatus = { ...BASE, config: CONFIG, production: LIVE, deployments: [LIVE, OLDER], canPromote: true };
+
+    expect(deploymentItems(status, [LIVE]).map((item) => item.id)).toEqual(["d1", "d0"]);
+    expect(isCurrentLive(LIVE, status)).toBe(true);
+    expect(isCurrentLive(OLDER, status)).toBe(false);
+    expect(canPromoteDeployment(LIVE, status, true)).toBe(false);
+    expect(canPromoteDeployment(OLDER, status, true)).toBe(true);
+    expect(canPromoteDeployment(OLDER, status, false)).toBe(false);
+    expect(canPromoteDeployment(OLDER, { ...status, canPromote: false }, true)).toBe(false);
+    expect(canPromoteDeployment(OLDER, { ...status, job: job({ state: "running" }) }, true)).toBe(false);
+  });
+
+  it("collects configured custom domains from domains[] and legacy domain without duplicates", () => {
+    expect(configuredDomains(null)).toEqual([]);
+    expect(configuredDomains({ ...CONFIG, domain: { hostname: "example.com", attached: true } })).toEqual([{ hostname: "example.com", attached: true }]);
+    expect(
+      configuredDomains({
+        ...CONFIG,
+        domain: { hostname: "example.com", attached: true },
+        domains: [
+          { hostname: "example.com", attached: true },
+          { hostname: "www.example.com", attached: true, pending: true },
+        ],
+      }).map((item) => item.hostname)
+    ).toEqual(["example.com", "www.example.com"]);
+  });
+
+  it("skips the access key step for hosts with no credentials", () => {
+    const state = setupReducer(initialSetup(BASE), { type: "host", target: "source-host", keyStored: false, skipKey: true });
+
+    expect(state.step).toBe("account");
   });
 });

@@ -1856,8 +1856,10 @@ export interface DeployConfig {
   productionUrl?: string;
   /** The host's own address for the project (`…workers.dev`, `….vercel.app`), whatever the live address is. */
   defaultUrl?: string;
-  /** The site's own domain, when one is in use. */
+  /** The site's primary custom domain, when one is in use (kept synced with `domains[0]`). */
   domain?: DeployDomainConfig;
+  /** Custom domains attached to this site (`domains[0]` is the primary, synced with `domain`). */
+  domains?: DeployDomainConfig[];
   /** Put published versions live by themselves after each publish. */
   autoDeploy?: boolean;
   /** Proof's "Share a preview link" is offered. Default true. */
@@ -2009,6 +2011,12 @@ export interface DeployStatus {
   domainJob?: Job | null;
   /** DNS records the person still has to create for the site's own address, when the host said so. */
   domainRecords?: DomainRecord[];
+  /** Pending DNS records keyed by hostname, when multiple custom domains are configured. */
+  domainRecordsByHost?: Record<string, DomainRecord[]>;
+  /** Recent deployments (from the host when supported, merged with local history), newest first. */
+  deployments?: Deployment[];
+  /** Whether the configured host supports making a previous deployment live again. */
+  canPromote?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────── engine facade

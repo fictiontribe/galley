@@ -16,12 +16,12 @@ import { notify } from "@/lib/stores/toasts";
 import { keys } from "@/lib/sync";
 import { Badge, Button, EmptyState, ErrorState, Icon, PageHeader, Skeleton, Toggle, buttonClass } from "@/ui";
 import { putLive } from "./DeployStatusItem";
-import { hostOf, statusLine, targetName } from "./logic";
+import { canPromoteDeployment, deploymentItems, hostOf, isCurrentLive, statusLine, targetName } from "./logic";
 export { onlineOutcome } from "./logic";
 import { copyText, DeployProgress } from "./parts";
 import { DomainSection } from "./Domain";
 import { SharePreviewButton } from "./SharePreview";
-import { deployKeys, setAutoDeploy, useDeployStatus, useDeployTargets, useDeployUi, useLatestDeployJob } from "./useDeploy";
+import { deployKeys, promoteDeployment, setAutoDeploy, useDeployStatus, useDeployTargets, useDeployUi, useLatestDeployJob } from "./useDeploy";
 import { useMay } from "@/lib/may";
 import "./deploy.css";
 
@@ -216,12 +216,31 @@ export function PublishDeployNote({ siteId }: { siteId: string }) {
   );
 }
 
-function DeploymentRow({ item, versions }: { item: Deployment; versions: Map<string, string> }) {
+function DeploymentRow({
+  item,
+  versions,
+  currentLive,
+  canPromote,
+  promoting,
+  anyPromoting,
+  onPromote,
+}: {
+  item: Deployment;
+  versions: Map<string, string>;
+  currentLive: boolean;
+  canPromote: boolean;
+  promoting: boolean;
+  anyPromoting: boolean;
+  onPromote: () => void;
+}) {
   const version = item.commit ? versions.get(item.commit) : undefined;
+  const badgeTone = currentLive ? "success" : item.kind === "production" ? "neutral" : "info";
+  const badgeLabel = currentLive ? "Live" : item.kind === "production" ? "Previous" : "Preview";
+
   return (
     <li className="deploy-row">
-      <Badge tone={item.kind === "production" ? "success" : "info"} mark={null}>
-        {item.kind === "production" ? "Live" : "Preview"}
+      <Badge tone={badgeTone} mark={null}>
+        {badgeLabel}
       </Badge>
       <div className="deploy-row__main">
         <a className="deploy-row__address" href={item.url} target="_blank" rel="noopener noreferrer">
@@ -234,11 +253,20 @@ function DeploymentRow({ item, versions }: { item: Deployment; versions: Map<str
             {relativeTime(item.createdAt)}
           </time>
           {item.who ? ` · ${item.who}` : ""}
-          <span aria-hidden="true"> · </span>
-          {count(item.files, "file")}, {bytes(item.bytes)}
+          {item.files > 0 || item.bytes > 0 ? (
+            <>
+              <span aria-hidden="true"> · </span>
+              {count(item.files, "file")}, {bytes(item.bytes)}
+            </>
+          ) : null}
         </p>
       </div>
       <div className="deploy-row__actions">
+        {canPromote ? (
+          <Button variant="secondary" size="sm" busy={promoting} busyLabel="Making live…" disabled={anyPromoting && !promoting} onClick={onPromote}>
+            Make live
+          </Button>
+        ) : null}
         <a className={buttonClass("quiet", "sm")} href={item.url} target="_blank" rel="noopener noreferrer">
           <Icon name="external" />
           Open
@@ -255,11 +283,27 @@ function DeploymentRow({ item, versions }: { item: Deployment; versions: Map<str
 export function OnlineScreen() {
   const { siteId = "" } = useParams();
   useTopBar({ crumbs: [{ label: "Online" }] });
-  const mayPublish = useMay()("POST /api/sites/:siteId/publish");
+  const may = useMay();
+  const mayPublish = may("POST /api/sites/:siteId/publish");
+  const mayPromote = may("POST /api/sites/:siteId/deployments/:deploymentId/promote");
+  const status = useDeployStatus(siteId);
   const list = useQuery(deployKeys.deployments(siteId), () => api("GET /api/sites/:siteId/deployments", { params: { siteId }, query: { limit: 50 } }));
   const history = useQuery(keys.history(siteId, 50), () => api("GET /api/sites/:siteId/history", { params: { siteId }, query: { limit: 50 } }));
+  const [promotingId, setPromotingId] = useState<string | null>(null);
   const versions = new Map((history.data?.items ?? []).map((item) => [item.commit, item.message]));
-  const items = list.data?.items ?? [];
+  const items = deploymentItems(status.data, list.data?.items);
+
+  const makeLive = async (item: Deployment) => {
+    setPromotingId(item.id);
+    try {
+      const promoted = await promoteDeployment(siteId, item.id);
+      notify({ tone: "success", title: "Live version updated", body: `Now serving at ${hostOf(promoted.url)}.` });
+    } catch (caught: unknown) {
+      notify({ tone: "danger", title: "Couldn’t make that version live", body: errorShape(caught).message });
+    } finally {
+      setPromotingId(null);
+    }
+  };
 
   return (
     <div className="app-screen">
@@ -269,9 +313,9 @@ export function OnlineScreen() {
         <OnlineCard siteId={siteId} variant="settings" listLink={false} />
         <EditorOnlineSection siteId={siteId} />
         <h2 className="app-section__title deploy-list__title">Deployments</h2>
-        {list.loading ? (
+        {list.loading && items.length === 0 ? (
           <Skeleton lines={4} />
-        ) : list.status === "error" && !list.data ? (
+        ) : list.status === "error" && !list.data && items.length === 0 ? (
           <ErrorState compact title="Couldn’t load the deployments" error={list.error} onRetry={() => void list.refetch()} />
         ) : items.length === 0 ? (
           <div className="app-card">
@@ -279,9 +323,23 @@ export function OnlineScreen() {
           </div>
         ) : (
           <ul className="app-card deploy-list">
-            {items.map((item) => (
-              <DeploymentRow key={`${item.kind}-${item.id}`} item={item} versions={versions} />
-            ))}
+            {items.map((item) => {
+              const currentLive = isCurrentLive(item, status.data);
+              const promotable = canPromoteDeployment(item, status.data, mayPromote);
+
+              return (
+                <DeploymentRow
+                  key={`${item.kind}-${item.id}`}
+                  item={item}
+                  versions={versions}
+                  currentLive={currentLive}
+                  canPromote={promotable}
+                  promoting={promotingId === item.id}
+                  anyPromoting={promotingId !== null}
+                  onPromote={() => void makeLive(item)}
+                />
+              );
+            })}
           </ul>
         )}
       </div>

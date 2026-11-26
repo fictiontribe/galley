@@ -148,6 +148,7 @@
 .deploy-records th { text-align: start; font: var(--weight-medium) var(--text-2xs) / 1 var(--font-mono); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-tertiary); padding: var(--space-1) var(--space-2); }
 .deploy-records td { padding: var(--space-1-5) var(--space-2); border-block-start: var(--border-hair) solid var(--border-subtle); color: var(--ink-primary); }
 .deploy-records__value { overflow-wrap: anywhere; }
-.deploy-domain { display: grid; gap: var(--space-2); padding-block-start: var(--space-3); border-block-start: var(--border-hair) solid var(--border-subtle); }
+.deploy-domain { display: grid; gap: var(--space-3); padding-block-start: var(--space-3); border-block-start: var(--border-hair) solid var(--border-subtle); }
+.deploy-domain__item { display: grid; gap: var(--space-2); }
 .deploy-domain__line { margin: 0; font-size: var(--text-sm); color: var(--ink-secondary); }
 .deploy-domain__working { display: flex; gap: var(--space-2); align-items: center; margin: 0; color: var(--ink-primary); }

@@ -7,7 +7,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import { createDeployService, hostnameProblem, normalizeHostname, type DeployService } from "../../src/deploy/index";
+import { createDeployService, configuredDomains, hostnameProblem, normalizeHostname, type DeployService } from "../../src/deploy/index";
+import { validateConfig } from "../../src/content/index";
 import { createEventBus } from "../../src/site/index";
 import type { Job, ServerEvent, Settings } from "../../src/types";
 import { disposeAll, openSite } from "../site/helpers";
@@ -221,5 +222,77 @@ describe("Vercel: use your own domain", { timeout: 90_000 }, () => {
 
     expect(refused).toMatchObject({ state: "error", detail: expect.stringContaining("already used by another Vercel project") });
     expect(vercel!.domains.size).toBe(0);
+  });
+
+  it("supports multiple custom domains per site while keeping legacy `domain` synced as primary", async () => {
+    const { deploy, site, root, events } = await rig("cloudflare");
+    const workersDev = "https://lowfield-studio.studio.workers.dev";
+
+    await finished(events, await deploy.attachDomain(site, "example.com"));
+    expect(config(root).deploy).toMatchObject({
+      productionUrl: "https://example.com",
+      domain: { hostname: "example.com", attached: true },
+      domains: [{ hostname: "example.com", attached: true }],
+    });
+
+    // Attach a second custom domain: primary stays example.com, both are stored in domains[].
+    await finished(events, await deploy.attachDomain(site, "www.example.com"));
+    expect(config(root).deploy).toMatchObject({
+      productionUrl: "https://example.com",
+      domain: { hostname: "example.com", attached: true },
+      domains: [
+        { hostname: "example.com", attached: true },
+        { hostname: "www.example.com", attached: true },
+      ],
+    });
+    expect(validateConfig(config(root)).ok).toBe(true);
+    expect(configuredDomains(config(root).deploy).map((d) => d.hostname)).toEqual(["example.com", "www.example.com"]);
+
+    // Detaching the secondary domain keeps primary untouched.
+    await deploy.detachDomain(site, "www.example.com");
+    expect(cf!.domains.map((d) => d.hostname)).toEqual(["example.com"]);
+    expect(config(root).deploy).toMatchObject({
+      productionUrl: "https://example.com",
+      domain: { hostname: "example.com", attached: true },
+      domains: [{ hostname: "example.com", attached: true }],
+    });
+
+    // Re-attach secondary, then detach primary: secondary is promoted to primary (`domain` + `productionUrl`).
+    await finished(events, await deploy.attachDomain(site, "blog.example.com"));
+    await deploy.detachDomain(site, "example.com");
+    expect(cf!.domains.map((d) => d.hostname)).toEqual(["blog.example.com"]);
+    expect(config(root).deploy).toMatchObject({
+      productionUrl: "https://blog.example.com",
+      domain: { hostname: "blog.example.com", attached: true },
+      domains: [{ hostname: "blog.example.com", attached: true }],
+    });
+
+    // Detaching the last domain restores the host's default address and clears both `domain` and `domains`.
+    await deploy.detachDomain(site);
+    expect(cf!.domains).toHaveLength(0);
+    expect(config(root).deploy.domain).toBeUndefined();
+    expect(config(root).deploy.domains).toBeUndefined();
+    expect(config(root).deploy.productionUrl).toBe(workersDev);
+  });
+
+  it("checks a specific pending domain by hostname and tracks per-host DNS records", async () => {
+    const { deploy, site, root, events } = await rig("vercel");
+
+    vercel!.dnsReady.add("example.com");
+    await finished(events, await deploy.attachDomain(site, "example.com"));
+    await finished(events, await deploy.attachDomain(site, "www.example.com"));
+    const pendingStatus = await deploy.status(site);
+
+    expect(pendingStatus.domainRecordsByHost?.["www.example.com"]).toEqual([{ type: "CNAME", name: "www.example.com", value: "cname.vercel-dns-fake.com" }]);
+    expect(config(root).deploy.productionUrl).toBe("https://example.com");
+    vercel!.dnsReady.add("www.example.com");
+    const checked = await finished(events, await deploy.checkDomain(site, "www.example.com"));
+
+    expect(checked).toMatchObject({ state: "done", url: "https://www.example.com" });
+    expect(config(root).deploy.domains).toEqual([
+      { hostname: "example.com", attached: true },
+      { hostname: "www.example.com", attached: true },
+    ]);
+    expect(config(root).deploy.productionUrl).toBe("https://example.com");
   });
 });

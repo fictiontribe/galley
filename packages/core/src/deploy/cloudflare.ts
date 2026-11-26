@@ -39,7 +39,7 @@ import { describeResponse, hostRequest, type HostResponse, type RequestBody } fr
 import { CLOUDFLARE_CREDENTIALS, CLOUDFLARE_INFO, projectNameProblem } from "./info";
 import { apexOf } from "./domains";
 import { checkCloudflareHeaders, checkCloudflareRedirects, hasMarkdown, withCloudflareMarkdownHeader } from "./routing";
-import type { DomainPlan } from "../types";
+import type { Deployment, DomainPlan } from "../types";
 import type { DeployContext, DeployTarget } from "./types";
 
 export const CLOUDFLARE_API = "https://api.cloudflare.com/client/v4";
@@ -420,6 +420,58 @@ export function createCloudflareTarget(): DeployTarget {
 
       if (!version?.id) throw new DeployError("host", "Cloudflare didn't say where the preview is. Try again.", "versions upload returned no id");
       return { id: version.id, url: `https://${version.id.slice(0, 8)}-${project}.${subdomain}.workers.dev`, kind, createdAt };
+    },
+
+    async list(ctx, { account, project }) {
+      const [subdomain, versionsRes, deploymentsRes] = await Promise.all([
+        accountSubdomain(ctx, account),
+        cf<{ items?: Array<{ id?: string; created_on?: string; annotations?: Record<string, string> }> } | Array<{ id?: string; created_on?: string; annotations?: Record<string, string> }>>(
+          ctx,
+          "GET",
+          `${scriptPath(account, project)}/versions`,
+          "list the Worker's versions",
+          { query: { per_page: "20" } }
+        ),
+        cf<{ deployments?: Array<{ id?: string; created_on?: string; versions?: Array<{ version_id?: string; percentage?: number }> }> }>(
+          ctx,
+          "GET",
+          `${scriptPath(account, project)}/deployments`,
+          "list the Worker's deployments"
+        ).catch(() => null),
+      ]);
+      const items = Array.isArray(versionsRes) ? versionsRes : (versionsRes?.items ?? []);
+      const activeVersionId = deploymentsRes?.deployments?.[0]?.versions?.find((entry) => (entry.percentage ?? 0) > 0)?.version_id ?? null;
+      const prodUrl = productionAddress(project, subdomain);
+
+      return items
+        .filter((version): version is { id: string; created_on?: string; annotations?: Record<string, string> } => typeof version?.id === "string" && version.id.length > 0)
+        .map((version): Deployment => {
+          const isLive = activeVersionId ? version.id === activeVersionId : false;
+
+          return {
+            id: version.id,
+            kind: isLive ? "production" : "preview",
+            target: "cloudflare",
+            project,
+            url: isLive ? prodUrl : `https://${version.id.slice(0, 8)}-${project}.${subdomain}.workers.dev`,
+            commit: version.annotations?.["workers/tag"] ?? null,
+            createdAt: version.created_on ?? new Date(0).toISOString(),
+            ...(version.annotations?.["workers/message"] ? { label: version.annotations["workers/message"] } : {}),
+            files: 0,
+            bytes: 0,
+          };
+        });
+    },
+
+    async promote(ctx, { account, project, id }) {
+      const subdomain = await accountSubdomain(ctx, account);
+
+      await cf(ctx, "POST", `${scriptPath(account, project)}/deployments`, "make that version live", {
+        json: { strategy: "percentage", versions: [{ version_id: id, percentage: 100 }] },
+      });
+      const url = productionAddress(project, subdomain);
+
+      return { id, url, kind: "production", createdAt: new Date().toISOString(), productionUrl: url };
     },
   };
 }

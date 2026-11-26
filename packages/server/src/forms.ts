@@ -12,7 +12,7 @@
  */
 import type { Context } from "hono";
 import { z } from "zod";
-import { CAPTURE_KEY_HEADER, introspectForm, type CaptureResponse, type FormCaptureService } from "@galley/core/forms";
+import { CAPTURE_ID_HEADER, CAPTURE_KEY_HEADER, CAPTURED_AT_HEADER, introspectForm, type CaptureResponse, type FormCaptureService } from "@galley/core/forms";
 import type { FormSubmission } from "@galley/core/kit";
 import type { JsonValue } from "@galley/core/types";
 import { GalleyError } from "@galley/core";
@@ -76,6 +76,8 @@ export function captureHandlers(services: Services, options: AppOptions) {
           method: c.req.method,
           origin: c.req.header("origin") ?? null,
           captureKey: c.req.header(CAPTURE_KEY_HEADER) ?? null,
+          captureId: c.req.header(CAPTURE_ID_HEADER) ?? null,
+          capturedAt: c.req.header(CAPTURED_AT_HEADER) ?? null,
           contentType: c.req.header("content-type") ?? null,
           client: clientKeyOf(c, Boolean(options.trustProxy)),
           body: await c.req.text(),

@@ -121,6 +121,29 @@ describe("the capture endpoint: CORS", () => {
     expect(ok.status).toBe(200);
     expect(ok.headers.get("access-control-allow-origin")).toBeNull();
   });
+
+  it("X-Capture-Key supports idempotent X-Capture-Id and X-Captured-At over HTTP and rejects invalid headers or bad keys", async () => {
+    const t = setup();
+    const key = (await json(await t.call("POST", `${S}/capture/key`, { action: "rotate" }))).key as string;
+    const captureId = "01JABCDEFGHJKMNPQRSTVW";
+    const capturedAt = "2026-10-15T12:00:00.000Z";
+
+    const first = await capture(t, null, submission(), { "x-capture-key": key, "x-capture-id": captureId, "x-captured-at": capturedAt });
+
+    expect(first.status).toBe(200);
+    expect(await json(first)).toEqual({ ok: true, id: captureId });
+    expect((await json(await t.call("GET", `${S}/inbox/contact/${captureId}`))).at).toBe(capturedAt);
+
+    const replay = await capture(t, null, submission(), { "x-capture-key": key, "x-capture-id": captureId, "x-captured-at": capturedAt });
+
+    expect(replay.status).toBe(200);
+    expect(await json(replay)).toEqual({ ok: true, id: captureId, duplicate: true });
+    expect((await json(await t.call("GET", `${S}/inbox/contact`))).total).toBe(1);
+
+    expect((await capture(t, null, submission(), { "x-capture-key": key, "x-capture-id": "bad-id" })).status).toBe(400);
+    expect((await capture(t, null, submission(), { "x-capture-key": key, "x-captured-at": "not-a-timestamp" })).status).toBe(400);
+    expect((await capture(t, SITE_ORIGIN, submission(), { "x-capture-key": "ck_wrong", "x-capture-id": captureId })).status).toBe(403);
+  });
 });
 
 describe("the capture endpoint sits outside the session guard — and nothing else does", () => {

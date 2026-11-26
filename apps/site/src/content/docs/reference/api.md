@@ -233,11 +233,12 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `PUT /api/sites/:siteId/deploy` | Change the site's deploy settings (galley.config.json `deploy`). | `Partial<DeployConfig>` | `DeployStatus` | Owners |
 | `POST /api/sites/:siteId/deploy/live-address` | Use the live address as the site's `urls.production` (what Proof compares against). | — | `DeployStatus` | Owners |
 | `POST /api/sites/:siteId/deploy` | Start a deploy: "production" puts the published version live; "preview" puts the working tree, pending changes included, at an address of its own. | `{ kind, label? }` | `Job` | Editors and owners |
-| `GET /api/sites/:siteId/deployments` | Deployments made from this computer, newest first. | `?limit?` | `{ items }` | Any signed-in person |
+| `GET /api/sites/:siteId/deployments` | Deployments made for this site, newest first. | `?limit?` | `{ items }` | Any signed-in person |
+| `POST /api/sites/:siteId/deployments/:deploymentId/promote` | Make a previous deployment live again (rollback / promote). | — | `Deployment` | Editors and owners |
 | `POST /api/sites/:siteId/deploy/domain/plan` | What using this address as the site's own would do. | `{ hostname }` | `DomainPlan` | Owners |
 | `POST /api/sites/:siteId/deploy/domain` | Use the address (after the person said yes to the plan): attach it and wait until it answers over HTTPS. | `{ hostname }` | `Job` | Owners |
-| `POST /api/sites/:siteId/deploy/domain/check` | Look again at an address that isn't answering yet. | — | `Job` | Owners |
-| `DELETE /api/sites/:siteId/deploy/domain` | Stop using the site's own address: detached only if Galley attached it; the host's address becomes the live one again. | — | `DeployStatus` | Owners |
+| `POST /api/sites/:siteId/deploy/domain/check` | Look again at an address that isn't answering yet. | `{ hostname? }` | `Job` | Owners |
+| `DELETE /api/sites/:siteId/deploy/domain` | Stop using a custom domain (primary when `hostname` is absent): detached only if Galley attached it. | `?hostname?` | `DeployStatus` | Owners |
 
 ## Redirects
 

@@ -326,7 +326,7 @@ export function DeploySetupDialog({ siteId }: { siteId: string }) {
     setBusy(true);
     try {
       if (state.step === "host") {
-        dispatch({ type: "host", target: state.target!, keyStored: Boolean(target?.secrets[0]?.configured) });
+        dispatch({ type: "host", target: state.target!, keyStored: Boolean(target?.secrets[0]?.configured), skipKey: Boolean(target && target.credentials.length === 0) });
       } else if (state.step === "key") {
         if (keyValue.trim()) {
           try {

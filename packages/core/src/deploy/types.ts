@@ -52,6 +52,26 @@ export interface DeployInput {
   onProgress: (progress: DeployProgress) => void;
 }
 
+export interface DeploySourceInput {
+  account: string;
+  project: string;
+  kind: DeployKind;
+  /** The published version (production) or current commit (preview), when known. */
+  commit: string | null;
+  /** The site's publish branch, when configured. */
+  branch?: string;
+  /** A note shown with the deployment on the host ("Published version 1a2b3c4"). */
+  label?: string;
+  onProgress: (progress: DeployProgress) => void;
+}
+
+export interface PromoteInput {
+  account: string;
+  project: string;
+  /** The deployment or version id to make live again. */
+  id: string;
+}
+
 export interface DeployOutcome {
   id: string;
   url: string;
@@ -59,6 +79,13 @@ export interface DeployOutcome {
   createdAt: string;
   /** The project's live address when this deploy revealed or changed it. */
   productionUrl?: string;
+  /** The version it corresponds to, when known by the host. */
+  commit?: string | null;
+  /** A note or label returned by the host, when available. */
+  label?: string;
+  /** File count and size when reported by the host (source deploys or rollbacks). */
+  files?: number;
+  bytes?: number;
 }
 
 export interface DeployTarget {
@@ -66,7 +93,7 @@ export interface DeployTarget {
   name: string;
   /** Everything the setup screen shows about this host, except secret status (the engine adds it). */
   info: Omit<DeployTargetInfo, "secrets">;
-  /** What the person must provide, for the setup form. */
+  /** What the person must provide, for the setup form. Empty when the host handles auth outside stored secrets. */
   credentials: Array<{ secret: SecretName; label: string; help: string; docsUrl: string }>;
   /** Default API origin; overridden in tests and the rehearsal. */
   apiBase: string;
@@ -82,6 +109,8 @@ export interface DeployTarget {
   ensureProject(ctx: DeployContext, input: { account: string; name: string; ours?: boolean }): Promise<{ project: string; productionUrl: string }>;
   /** Upload a built folder and make it reachable. */
   deploy(ctx: DeployContext, input: DeployInput): Promise<DeployOutcome>;
+  /** Deploy directly from a published commit / branch on the host, skipping the local build and file upload. */
+  deployFromSource?(ctx: DeployContext, input: DeploySourceInput): Promise<DeployOutcome>;
   /** What using `hostname` for the project would do — read-only. Absent: the host has no custom domains here. */
   planDomain?(ctx: DeployContext, input: DomainInput): Promise<DomainPlan>;
   /** Point `hostname` at the project. Returns records the person must still create (Vercel), if any. */
@@ -92,4 +121,6 @@ export interface DeployTarget {
   detachDomain?(ctx: DeployContext, input: DomainInput): Promise<void>;
   /** The host's own list of recent deployments, when it can give one. */
   list?(ctx: DeployContext, input: { account: string; project: string }): Promise<Deployment[]>;
+  /** Make a previous deployment live again (rollback / promote). */
+  promote?(ctx: DeployContext, input: PromoteInput): Promise<DeployOutcome>;
 }

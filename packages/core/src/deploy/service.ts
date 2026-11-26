@@ -21,6 +21,7 @@ import { changeSettings, recordSettings } from "../site/settings-records";
 import type {
   DeployAccount,
   DeployConfig,
+  DeployDomainConfig,
   DeployKind,
   DeployProjectCheck,
   DeployStatus,
@@ -108,6 +109,8 @@ export interface DeployService {
   /** Start a deploy and wait for it: the deployment, or the scrubbed DeployError. (CLI.) */
   run(site: SiteService, options: StartOptions, onJob?: (job: Job) => void): Promise<Deployment>;
   deployments(site: SiteService, limit?: number): Promise<Deployment[]>;
+  /** Make a previous deployment live again (rollback / promote). */
+  promote(site: SiteService, deploymentId: string): Promise<Deployment>;
   /** The publish hook: start a production deploy when the site has auto-deploy on. Never throws. */
   afterPublish(site: SiteService, result: PublishResult): void;
   job(id: string): Job | null;
@@ -116,9 +119,9 @@ export interface DeployService {
   /** Attach `hostname` (after the person said yes to the plan) and wait until it answers over HTTPS. A "domain" job. */
   attachDomain(site: SiteService, hostname: string): Promise<Job>;
   /** Look again at an address that isn't answering yet (DNS or certificate on its way). A "domain" job. */
-  checkDomain(site: SiteService): Promise<Job>;
-  /** Stop using the site's own address: detach it if Galley attached it, and put the host's address back as the live one. */
-  detachDomain(site: SiteService): Promise<DeployStatus>;
+  checkDomain(site: SiteService, hostname?: string): Promise<Job>;
+  /** Stop using a custom domain (primary when `hostname` is omitted): detach it if Galley attached it, and update the live address if needed. */
+  detachDomain(site: SiteService, hostname?: string): Promise<DeployStatus>;
   /** The default project name for a site. */
   suggestName(site: SiteService): Promise<string>;
   dispose(): void;
@@ -132,14 +135,91 @@ const STEP = { immediate: true } as const;
 /** The hosts' own addresses; anything else as a live address is one the person chose. */
 const HOST_ADDRESS = /^https?:\/\/[^/]+\.(workers\.dev|pages\.dev|vercel\.app)\/?$/i;
 
+/** Allowed deployment id characters (no control chars, whitespace or path traversal). */
+const DEPLOYMENT_ID = /^[A-Za-z0-9._:@-]{1,200}$/;
+
+/** All custom domains configured on a site (`domains`, falling back to legacy `domain`), deduplicated in order. */
+export function configuredDomains(config: DeployConfig | null | undefined): DeployDomainConfig[] {
+  if (!config) return [];
+  const raw = [...(config.domains ?? []), ...(config.domain ? [config.domain] : [])];
+  const seen = new Set<string>();
+  const out: DeployDomainConfig[] = [];
+
+  for (const item of raw) {
+    if (!item?.hostname || seen.has(item.hostname)) continue;
+    seen.add(item.hostname);
+    out.push(item);
+  }
+  return out;
+}
+
+/** Keeps `domain` synced as primary (`domains[0]`) and drops both when empty. */
+function withDomains(config: DeployConfig, list: DeployDomainConfig[]): DeployConfig {
+  const seen = new Set<string>();
+  const nextList: DeployDomainConfig[] = [];
+
+  for (const item of list) {
+    if (!item?.hostname || seen.has(item.hostname)) continue;
+    seen.add(item.hostname);
+    nextList.push(item);
+  }
+  const { domain: _oldDomain, domains: _oldDomains, ...rest } = config;
+
+  if (nextList.length === 0) return rest;
+  return { ...rest, domain: nextList[0], domains: nextList };
+}
+
 /** Whether the saved live address is the person's own (a domain), which a deploy must never replace. */
 export function hasCustomAddress(config: DeployConfig): boolean {
-  if (config.domain && !config.domain.pending) return true;
+  if (configuredDomains(config).some((entry) => !entry.pending)) return true;
   return Boolean(config.productionUrl) && config.productionUrl !== config.defaultUrl && !HOST_ADDRESS.test(config.productionUrl!);
 }
 
 function normalizeUrl(url: string | undefined): string {
   return (url ?? "").trim().replace(/\/+$/, "").toLowerCase();
+}
+
+/**
+ * Merges host-reported deployments with locally recorded ones, newest first,
+ * deduplicated by id while preserving richer local metadata (file counts,
+ * author, custom live url) when the same id appears in both.
+ */
+function mergeDeployments(local: Deployment[], remote: Deployment[] | null, limit: number): Deployment[] {
+  const dedupe = (items: Deployment[]): Deployment[] => {
+    const seen = new Set<string>();
+    const out: Deployment[] = [];
+
+    for (const item of items) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      out.push(item);
+    }
+    return out;
+  };
+  const uniqueLocal = dedupe(local);
+
+  if (!remote) return uniqueLocal.slice(0, limit);
+  const localById = new Map(uniqueLocal.map((item) => [item.id, item]));
+  const seen = new Set<string>();
+  const out: Deployment[] = [];
+
+  for (const item of remote) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    const locally = localById.get(item.id);
+
+    if (locally) {
+      out.push(locally.kind === item.kind ? locally : { ...locally, kind: item.kind });
+    } else {
+      out.push(item);
+    }
+  }
+  for (const locally of uniqueLocal) {
+    if (seen.has(locally.id)) continue;
+    seen.add(locally.id);
+    out.push(locally);
+  }
+  return out.slice(0, limit);
 }
 
 export function createDeployService(options: DeployServiceOptions): DeployService {
@@ -151,7 +231,7 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
   const running = new Map<string, { kind: DeployKind; job: JobHandle; done: Promise<Deployment>; again: StartOptions | null; listeners: Set<(job: Job) => void> }>();
   const lastJob = new Map<string, string>();
   const lastDomainJob = new Map<string, string>();
-  const domainRecords = new Map<string, DomainRecord[]>();
+  const domainRecords = new Map<string, Map<string, DomainRecord[]>>();
   const probeTemplate = env.GALLEY_DEPLOY_PROBE?.trim();
   const probe =
     options.probe ??
@@ -170,6 +250,32 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
   const waitMs = options.domainWaitMs ?? 10 * 60_000;
   const pollMs = options.domainPollMs ?? 5_000;
 
+  function recordsMapFor(siteId: string): Map<string, DomainRecord[]> {
+    let map = domainRecords.get(siteId);
+
+    if (!map) {
+      map = new Map();
+      domainRecords.set(siteId, map);
+    }
+    return map;
+  }
+
+  function setRecordsFor(siteId: string, hostname: string, records: DomainRecord[]): void {
+    const map = recordsMapFor(siteId);
+
+    if (records.length > 0) map.set(hostname, records);
+    else map.delete(hostname);
+    if (map.size === 0) domainRecords.delete(siteId);
+  }
+
+  function clearRecordsFor(siteId: string, hostname: string): void {
+    const map = domainRecords.get(siteId);
+
+    if (!map) return;
+    map.delete(hostname);
+    if (map.size === 0) domainRecords.delete(siteId);
+  }
+
   function targetFor(id: DeployTargetId | undefined): DeployTarget {
     const target = targets.find((candidate) => candidate.id === id);
 
@@ -185,7 +291,11 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
 
   async function contextFor(target: DeployTarget, signal?: AbortSignal): Promise<DeployContext> {
     const secret = target.credentials[0]?.secret;
-    const token = secret ? await options.settings.readSecret(secret) : null;
+
+    if (!secret) {
+      return { token: "", fetch: doFetch, apiBase: apiBaseFor(target), ...(signal ? { signal } : {}) };
+    }
+    const token = await options.settings.readSecret(secret);
 
     if (!token) {
       const variable = SECRET_ENV_HINT[target.id];
@@ -207,6 +317,17 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       return await call(ctx);
     } catch (error) {
       throw scrubError(error, [ctx?.token]);
+    }
+  }
+
+  async function fetchRemoteDeployments(config: DeployConfig, target: DeployTarget, limit: number): Promise<Deployment[] | null> {
+    if (!target.list) return null;
+    try {
+      const listed = await withHost(target, (ctx) => target.list!(ctx, { account: config.account, project: config.project }));
+
+      return Array.isArray(listed) ? listed.slice(0, limit) : null;
+    } catch {
+      return null;
     }
   }
 
@@ -255,29 +376,68 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       const check = await target.checkProject(ctx, { account: config.account, name: config.project, ours: true });
 
       if (!check.available) throw new DeployError("taken", check.message ?? `The name “${config.project}” can't be used. Choose a different one in the site's Online settings.`);
-      job.update({ detail: start.kind === "production" ? "Building the published version…" : "Building the site with your changes…", progress: 0.05 }, STEP);
-      built = await buildForDeploy(site, start.kind, (detail) => job.update({ detail }, STEP));
-      job.update({ detail: "Checking the files…", progress: 0.35 }, STEP);
-      const files = await collectFiles(built.dir, target.info.limits, target.name, built.outDir);
-      const bytes = files.reduce((sum, file) => sum + file.size, 0);
+      let project: { project: string; productionUrl: string };
+      let outcome: Awaited<ReturnType<DeployTarget["deploy"]>>;
+      let commit: string | null;
+      let fileCount = 0;
+      let byteCount = 0;
 
-      // Only now that there is something to upload is anything created on the host.
-      const project = await target.ensureProject(ctx, { account: config.account, name: config.project, ours: true });
+      if (target.deployFromSource) {
+        const model = await site.model();
 
-      job.update({ detail: `Sending ${files.length.toLocaleString("en-US")} ${files.length === 1 ? "file" : "files"} (${formatBytes(bytes)}) to ${target.name}…`, progress: 0.4 }, STEP);
-      const outcome = await target.deploy(ctx, {
-        project: project.project,
-        account: config.account,
-        dir: built.dir,
-        files,
-        kind: start.kind,
-        commit: built.commit,
-        siteRoot: built.root,
-        label: start.label ?? (start.kind === "production" ? `Published version ${built.commit?.slice(0, 7) ?? ""}`.trim() : "Preview of unpublished changes"),
-        // The first and last words of an upload are steps; the counts in between may be coalesced.
-        onProgress: ({ detail, progress }) =>
-          job.update({ detail, ...(progress !== undefined ? { progress: 0.4 + progress * 0.55 } : {}) }, progress === undefined || progress === 0 || progress === 1 ? STEP : {}),
-      });
+        if (start.kind === "production") {
+          commit = await publishedCommit(site.root, model);
+          if (!commit) {
+            throw new DeployError("unpublished", "Nothing has been published yet, so there's nothing to put live. Publish your changes first — what's live is what you've published.");
+          }
+        } else {
+          const gitState = await site.gitStatus().catch(() => null);
+
+          commit = gitState?.lastCommit?.commit ?? (await publishedCommit(site.root, model).catch(() => null));
+        }
+        const branch = model.publish.branch?.trim() || undefined;
+
+        project = await target.ensureProject(ctx, { account: config.account, name: config.project, ours: true });
+        job.update({ detail: start.kind === "production" ? `Putting the published version live on ${target.name}…` : `Making a preview on ${target.name}…`, progress: 0.4 }, STEP);
+        outcome = await target.deployFromSource(ctx, {
+          account: config.account,
+          project: project.project,
+          kind: start.kind,
+          commit,
+          ...(branch ? { branch } : {}),
+          label: start.label ?? (start.kind === "production" ? `Published version ${commit?.slice(0, 7) ?? ""}`.trim() : "Preview of unpublished changes"),
+          onProgress: ({ detail, progress }) =>
+            job.update({ detail, ...(progress !== undefined ? { progress: 0.4 + progress * 0.55 } : {}) }, progress === undefined || progress === 0 || progress === 1 ? STEP : {}),
+        });
+        if (outcome.commit !== undefined) commit = outcome.commit;
+        fileCount = outcome.files ?? 0;
+        byteCount = outcome.bytes ?? 0;
+      } else {
+        job.update({ detail: start.kind === "production" ? "Building the published version…" : "Building the site with your changes…", progress: 0.05 }, STEP);
+        built = await buildForDeploy(site, start.kind, (detail) => job.update({ detail }, STEP));
+        job.update({ detail: "Checking the files…", progress: 0.35 }, STEP);
+        const files = await collectFiles(built.dir, target.info.limits, target.name, built.outDir);
+
+        fileCount = files.length;
+        byteCount = files.reduce((sum, file) => sum + file.size, 0);
+        commit = built.commit;
+        // Only now that there is something to upload is anything created on the host.
+        project = await target.ensureProject(ctx, { account: config.account, name: config.project, ours: true });
+        job.update({ detail: `Sending ${fileCount.toLocaleString("en-US")} ${fileCount === 1 ? "file" : "files"} (${formatBytes(byteCount)}) to ${target.name}…`, progress: 0.4 }, STEP);
+        outcome = await target.deploy(ctx, {
+          project: project.project,
+          account: config.account,
+          dir: built.dir,
+          files,
+          kind: start.kind,
+          commit: built.commit,
+          siteRoot: built.root,
+          label: start.label ?? (start.kind === "production" ? `Published version ${built.commit?.slice(0, 7) ?? ""}`.trim() : "Preview of unpublished changes"),
+          // The first and last words of an upload are steps; the counts in between may be coalesced.
+          onProgress: ({ detail, progress }) =>
+            job.update({ detail, ...(progress !== undefined ? { progress: 0.4 + progress * 0.55 } : {}) }, progress === undefined || progress === 0 || progress === 1 ? STEP : {}),
+        });
+      }
       const author = await who();
       // The live address is the person's choice: a custom one is kept, the host's own is recorded beside it.
       const latest = start.kind === "production" ? await readDeployConfig(site) : null;
@@ -289,12 +449,12 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
         target: target.id,
         project: project.project,
         url: custom && latest?.productionUrl ? latest.productionUrl : outcome.url,
-        commit: built.commit,
+        commit,
         createdAt: outcome.createdAt,
         ...(author ? { who: author } : {}),
-        ...(start.label ? { label: start.label } : {}),
-        files: files.length,
-        bytes,
+        ...(start.label ?? outcome.label ? { label: start.label ?? outcome.label } : {}),
+        files: fileCount,
+        bytes: byteCount,
       };
 
       await appendDeployment(options.home, site.id, record);
@@ -395,7 +555,7 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
     return { config, target, hostname: requireHostname(input) };
   }
 
-  /** Waits until the host is done and the address answers over HTTPS; then it becomes the live address. */
+  /** Waits until the host is done and the address answers over HTTPS; then it becomes ready (and the live address when primary). */
   async function waitForDomain(site: SiteService, target: DeployTarget, ctx: DeployContext, input: DomainInput, job: JobHandle, records: DomainRecord[]): Promise<void> {
     const { hostname } = input;
     const started = Date.now();
@@ -406,7 +566,7 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       const needs = status.records ?? records;
 
       if (!status.ready && needs.length > 0) {
-        domainRecords.set(site.id, needs);
+        setRecordsFor(site.id, hostname, needs);
         // Nothing to wait for until the person creates the record: say so and stop.
         job.finish("done", { progress: 1, detail: `Create the DNS record for ${hostname}, then check again.` });
         return;
@@ -421,10 +581,19 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       }
       await new Promise((resolve) => setTimeout(resolve, pollMs));
     }
-    domainRecords.delete(site.id);
+    clearRecordsFor(site.id, hostname);
     const latest = await readDeployConfig(site);
 
-    if (latest) await writeDeployConfig(site, { ...latest, productionUrl: `https://${hostname}`, domain: { hostname, attached: latest.domain?.hostname === hostname ? latest.domain.attached : false } });
+    if (latest) {
+      const existing = configuredDomains(latest);
+      const found = existing.find((entry) => entry.hostname === hostname);
+      const entry: DeployDomainConfig = { hostname, attached: found?.attached ?? false };
+      const nextDomains = found ? existing.map((item) => (item.hostname === hostname ? entry : item)) : [...existing, entry];
+      const keepPrimary = hasCustomAddress(latest) && nextDomains[0]?.hostname !== hostname;
+      const updated = withDomains(latest, nextDomains);
+
+      await writeDeployConfig(site, { ...updated, ...(keepPrimary ? {} : { productionUrl: `https://${hostname}` }) });
+    }
     job.finish("done", { progress: 1, url: `https://${hostname}`, detail: `${hostname} answers` });
   }
 
@@ -486,8 +655,11 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
     async status(site) {
       const [model, records] = await Promise.all([site.model(), readDeployments(options.home, site.id, 50)]);
       const config = model.deploy ?? null;
-      const production = records.find((record) => record.kind === "production" && (!config || (record.target === config.target && record.project === config.project))) ?? null;
-      const preview = records.find((record) => record.kind === "preview") ?? null;
+      const target = config ? (targets.find((candidate) => candidate.id === config.target) ?? null) : null;
+      const remote = config && target?.list ? await fetchRemoteDeployments(config, target, 20) : null;
+      const merged = mergeDeployments(records, remote, 20);
+      const production = merged.find((record) => record.kind === "production" && (!config || (record.target === config.target && record.project === config.project))) ?? null;
+      const preview = merged.find((record) => record.kind === "preview") ?? null;
       let behind: number | null = null;
 
       if (production?.commit) {
@@ -497,6 +669,10 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       }
       const active = running.get(site.id)?.job.snapshot() ?? null;
       const last = lastJob.get(site.id);
+      const hostRecords = domainRecords.get(site.id);
+      const recordsByHost = hostRecords && hostRecords.size > 0 ? Object.fromEntries(hostRecords.entries()) : null;
+      const firstPendingHost = configuredDomains(config).find((entry) => entry.pending && hostRecords?.has(entry.hostname))?.hostname;
+      const primaryRecords = (firstPendingHost ? hostRecords?.get(firstPendingHost) : undefined) ?? (hostRecords ? [...hostRecords.values()][0] : undefined);
 
       return {
         config,
@@ -508,7 +684,10 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
         liveAddressSet: Boolean(config?.productionUrl) && normalizeUrl(model.urls.production) === normalizeUrl(config?.productionUrl),
         suggestedProject: defaultProjectName(model.name),
         domainJob: lastDomainJob.get(site.id) ? jobs.get(lastDomainJob.get(site.id)!) : null,
-        ...(domainRecords.get(site.id)?.length ? { domainRecords: domainRecords.get(site.id) } : {}),
+        ...(primaryRecords?.length ? { domainRecords: primaryRecords } : {}),
+        ...(recordsByHost ? { domainRecordsByHost: recordsByHost } : {}),
+        deployments: merged,
+        canPromote: Boolean(target?.promote),
       };
     },
 
@@ -523,14 +702,17 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       if (problem) throw new DeployError("taken", problem);
       // A different host or project means a different live address, learned again on the next deploy.
       const moved = current && (current.target !== next.target || current.account !== next.account || current.project !== next.project);
-      const config: DeployConfig = {
+      const keptDomains = !moved ? configuredDomains(next as DeployConfig) : [];
+      const base: DeployConfig = {
         target: target.id,
         account: next.account.trim(),
         project: next.project!,
         ...(next.productionUrl && !moved ? { productionUrl: next.productionUrl } : {}),
+        ...(next.defaultUrl && !moved ? { defaultUrl: next.defaultUrl } : {}),
         ...(next.autoDeploy !== undefined ? { autoDeploy: Boolean(next.autoDeploy) } : {}),
         ...(next.previewOnShare !== undefined ? { previewOnShare: Boolean(next.previewOnShare) } : {}),
       };
+      const config = keptDomains.length ? withDomains(base, keptDomains) : base;
 
       await writeDeployConfig(site, config);
       return service.status(site);
@@ -564,8 +746,62 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       return done;
     },
 
-    deployments(site, limit) {
-      return readDeployments(options.home, site.id, limit);
+    async deployments(site, limit = 50) {
+      const [config, local] = await Promise.all([readDeployConfig(site).catch(() => null), readDeployments(options.home, site.id, limit)]);
+      const target = config ? (targets.find((candidate) => candidate.id === config.target) ?? null) : null;
+      const remote = config && target?.list ? await fetchRemoteDeployments(config, target, limit) : null;
+
+      return mergeDeployments(local, remote, limit);
+    },
+
+    async promote(site, deploymentId) {
+      const cleanId = deploymentId.trim();
+
+      if (!DEPLOYMENT_ID.test(cleanId)) {
+        throw new GalleyError("invalid", "That doesn't look like a deployment id.");
+      }
+      const config = await readDeployConfig(site);
+
+      if (!config) throw new DeployError("not-set-up", "This site isn't set up to go online yet. Choose a host first.");
+      const target = targetFor(config.target);
+
+      if (!target.promote) {
+        throw new DeployError("not-set-up", `${target.name} doesn't support making a previous version live from here.`);
+      }
+      if (running.get(site.id)) {
+        throw new DeployError("busy", "The site is being put online right now. Wait for that to finish, then try again.");
+      }
+      const prior = (await readDeployments(options.home, site.id, 100)).find((entry) => entry.id === cleanId) ?? null;
+      const outcome = await withHost(target, (ctx) => target.promote!(ctx, { account: config.account, project: config.project, id: cleanId }));
+      const author = await who();
+      const latest = await readDeployConfig(site);
+      const custom = latest ? hasCustomAddress(latest) : false;
+      const hostDefault = outcome.productionUrl ?? latest?.defaultUrl;
+      const label = outcome.label ?? prior?.label;
+      const record: Deployment = {
+        id: outcome.id,
+        kind: "production",
+        target: target.id,
+        project: config.project,
+        url: custom && latest?.productionUrl ? latest.productionUrl : outcome.url,
+        commit: outcome.commit !== undefined ? outcome.commit : (prior?.commit ?? null),
+        createdAt: outcome.createdAt,
+        ...(author ? { who: author } : {}),
+        ...(label ? { label } : {}),
+        files: outcome.files ?? prior?.files ?? 0,
+        bytes: outcome.bytes ?? prior?.bytes ?? 0,
+      };
+
+      await appendDeployment(options.home, site.id, record);
+      if (latest && hostDefault) {
+        const next: DeployConfig = { ...latest, defaultUrl: hostDefault, ...(custom ? {} : { productionUrl: hostDefault }) };
+
+        if (next.defaultUrl !== latest.defaultUrl || next.productionUrl !== latest.productionUrl) {
+          await recordSettings(site, { kind: "deploy-address", defaultUrl: hostDefault, ...(custom ? {} : { productionUrl: hostDefault }) });
+        }
+      }
+      options.events.emit({ type: "site.updated", siteId: site.id });
+      return record;
     },
 
     afterPublish(site, result) {
@@ -590,9 +826,9 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
 
     async attachDomain(site, input) {
       const { config, target, hostname } = await domainContext(site, input);
-      const running = lastDomainJob.get(site.id) ? jobs.get(lastDomainJob.get(site.id)!) : null;
+      const runningJob = lastDomainJob.get(site.id) ? jobs.get(lastDomainJob.get(site.id)!) : null;
 
-      if (running?.state === "running") throw new DeployError("busy", "An address is being set up right now. Wait for it to finish.");
+      if (runningJob?.state === "running") throw new DeployError("busy", "An address is being set up right now. Wait for it to finish.");
       const job = jobs.start("domain", `Using ${hostname}`);
 
       job.update({ siteId: site.id, detail: `Checking ${hostname}…`, progress: 0 }, STEP);
@@ -602,22 +838,26 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
 
         try {
           ctx = await contextFor(target);
-          const input = { account: config.account, project: config.project, hostname };
-          const plan = await target.planDomain!(ctx, input);
+          const domainInput = { account: config.account, project: config.project, hostname };
+          const plan = await target.planDomain!(ctx, domainInput);
 
           if (!plan.canAttach && plan.status !== "already") throw new DeployError("domain", plan.summary, plan.status);
           let records: DomainRecord[] = [];
 
           if (plan.status !== "already") {
             job.update({ detail: `Asking ${target.name} to answer ${hostname}…`, progress: 0.2 }, STEP);
-            records = (await target.attachDomain!(ctx, input)).records ?? [];
+            records = (await target.attachDomain!(ctx, domainInput)).records ?? [];
           }
           // Recorded before waiting, so it can be stopped even if it never answers. `attached`: only what Galley attached is ever detached.
           const latest = (await readDeployConfig(site)) ?? config;
-          const attached = plan.status !== "already" || (latest.domain?.hostname === hostname && latest.domain.attached);
+          const existing = configuredDomains(latest);
+          const found = existing.find((entry) => entry.hostname === hostname);
+          const attached = plan.status !== "already" || Boolean(found?.attached);
+          const entry: DeployDomainConfig = { hostname, attached, pending: true };
+          const nextDomains = found ? existing.map((item) => (item.hostname === hostname ? entry : item)) : [...existing, entry];
 
-          await writeDeployConfig(site, { ...latest, domain: { hostname, attached, pending: true } });
-          await waitForDomain(site, target, ctx, input, job, records);
+          await writeDeployConfig(site, withDomains(latest, nextDomains));
+          await waitForDomain(site, target, ctx, domainInput, job, records);
         } catch (error) {
           const clean = scrubError(error, [ctx?.token]);
 
@@ -627,12 +867,18 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       return job.snapshot();
     },
 
-    async checkDomain(site) {
+    async checkDomain(site, inputHostname) {
       const config = await readDeployConfig(site);
+      const domains = configuredDomains(config);
 
-      if (!config?.domain) throw new DeployError("domain", "This site isn't using an address of its own.");
+      if (!config || domains.length === 0) throw new DeployError("domain", "This site isn't using an address of its own.");
       const target = targetFor(config.target);
-      const hostname = config.domain.hostname;
+      const entry = inputHostname
+        ? domains.find((item) => item.hostname === requireHostname(inputHostname))
+        : (domains.find((item) => item.pending) ?? domains[0]);
+
+      if (!entry) throw new DeployError("domain", `${inputHostname} isn't configured on this site.`);
+      const hostname = entry.hostname;
       const job = jobs.start("domain", `Using ${hostname}`);
 
       job.update({ siteId: site.id, detail: `Checking ${hostname}…`, progress: 0.2 }, STEP);
@@ -642,7 +888,7 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
 
         try {
           ctx = await contextFor(target);
-          await waitForDomain(site, target, ctx, { account: config.account, project: config.project, hostname }, job, domainRecords.get(site.id) ?? []);
+          await waitForDomain(site, target, ctx, { account: config.account, project: config.project, hostname }, job, domainRecords.get(site.id)?.get(hostname) ?? []);
         } catch (error) {
           const clean = scrubError(error, [ctx?.token]);
 
@@ -652,27 +898,38 @@ export function createDeployService(options: DeployServiceOptions): DeployServic
       return job.snapshot();
     },
 
-    async detachDomain(site) {
+    async detachDomain(site, inputHostname) {
       const config = await readDeployConfig(site);
+      const domains = configuredDomains(config);
 
-      if (!config?.domain) return service.status(site);
+      if (!config || domains.length === 0) return service.status(site);
+      const entry = inputHostname ? domains.find((item) => item.hostname === requireHostname(inputHostname)) : domains[0];
+
+      if (!entry) return service.status(site);
       const target = targetFor(config.target);
-      const { hostname, attached } = config.domain;
+      const { hostname, attached } = entry;
 
       if (attached && target.detachDomain) {
         await withHost(target, (ctx) => target.detachDomain!(ctx, { account: config.account, project: config.project, hostname }));
       }
-      domainRecords.delete(site.id);
+      clearRecordsFor(site.id, hostname);
       const custom = `https://${hostname}`;
-      const { domain: _gone, productionUrl: _was, ...rest } = config;
-      const next: DeployConfig = { ...rest, ...(config.defaultUrl ? { productionUrl: config.defaultUrl } : {}) };
+      const remaining = domains.filter((item) => item.hostname !== hostname);
+      const updated = withDomains(config, remaining);
+      const wasPrimaryUrl = normalizeUrl(config.productionUrl) === normalizeUrl(custom);
+      const nextReady = remaining.find((item) => !item.pending);
+      const fallbackUrl = nextReady ? `https://${nextReady.hostname}` : config.defaultUrl;
+      const { productionUrl: _was, ...withoutProd } = updated;
+      const next: DeployConfig = wasPrimaryUrl
+        ? { ...withoutProd, ...(fallbackUrl ? { productionUrl: fallbackUrl } : {}) }
+        : updated;
 
       // The comparison address goes back too, when it was this one.
       await writeDeployConfig(site, next, (file) => {
-        if (normalizeUrl(file.urls?.production) !== normalizeUrl(custom)) return file;
+        if (!wasPrimaryUrl || normalizeUrl(file.urls?.production) !== normalizeUrl(custom)) return file;
         const { production: _old, ...urls } = file.urls ?? {};
 
-        return { ...file, urls: config.defaultUrl ? { ...urls, production: config.defaultUrl } : urls };
+        return { ...file, urls: fallbackUrl ? { ...urls, production: fallbackUrl } : urls };
       });
       return service.status(site);
     },

@@ -681,16 +681,18 @@ export interface ApiRoutes {
    * A `Job` (kind "deploy"); progress arrives as `job` events.
    */
   "POST /api/sites/:siteId/deploy": { body: { kind: DeployKind; label?: string }; response: Job };
-  /** Deployments made from this computer, newest first. */
+  /** Deployments made for this site, newest first. */
   "GET /api/sites/:siteId/deployments": { query: { limit?: number }; response: { items: Deployment[] } };
+  /** Make a previous deployment live again (rollback / promote). */
+  "POST /api/sites/:siteId/deployments/:deploymentId/promote": { response: Deployment };
   /** What using this address as the site's own would do. Read-only: nothing changes on the host. */
   "POST /api/sites/:siteId/deploy/domain/plan": { body: { hostname: string }; response: DomainPlan };
   /** Use the address (after the person said yes to the plan): attach it and wait until it answers over HTTPS. A `Job` of kind "domain". */
   "POST /api/sites/:siteId/deploy/domain": { body: { hostname: string }; response: Job };
   /** Look again at an address that isn't answering yet. A `Job` of kind "domain". */
-  "POST /api/sites/:siteId/deploy/domain/check": { response: Job };
-  /** Stop using the site's own address: detached only if Galley attached it; the host's address becomes the live one again. */
-  "DELETE /api/sites/:siteId/deploy/domain": { response: DeployStatus };
+  "POST /api/sites/:siteId/deploy/domain/check": { body: { hostname?: string }; response: Job };
+  /** Stop using a custom domain (primary when `hostname` is absent): detached only if Galley attached it. */
+  "DELETE /api/sites/:siteId/deploy/domain": { query: { hostname?: string }; response: DeployStatus };
 
   // ── redirects ──────────────────────────────────────────────────────────
   /** The list, its checks, where it takes effect (the host and its file), what can be imported, and the Cloudflare state. */

@@ -20,6 +20,7 @@ type DeployKey =
   | "POST /api/sites/:siteId/deploy/live-address"
   | "POST /api/sites/:siteId/deploy"
   | "GET /api/sites/:siteId/deployments"
+  | "POST /api/sites/:siteId/deployments/:deploymentId/promote"
   | "POST /api/sites/:siteId/deploy/domain/plan"
   | "POST /api/sites/:siteId/deploy/domain"
   | "POST /api/sites/:siteId/deploy/domain/check"
@@ -78,6 +79,8 @@ export function createMockDeploy(mock: MockBackend) {
       behind: production ? (at === -1 ? null : at) : null,
       liveAddressSet: liveAddress.has(siteId),
       suggestedProject: defaultProjectName(site.name),
+      deployments: list.slice(0, 20),
+      canPromote: Boolean(config),
     };
   }
 
@@ -211,35 +214,66 @@ export function createMockDeploy(mock: MockBackend) {
           mock.emit({ type: "job", job: { ...job } });
         }
         await sleep(2500);
-        configs.set(params.siteId, { ...configs.get(params.siteId)!, productionUrl: `https://${hostname}`, domain: { hostname, attached: true } });
+        const current = configs.get(params.siteId)!;
+        const existing = [...(current.domains ?? (current.domain ? [current.domain] : []))].filter((item) => item.hostname !== hostname);
+        const nextDomains = [...existing, { hostname, attached: true }];
+
+        configs.set(params.siteId, { ...current, ...(existing.length === 0 ? { productionUrl: `https://${hostname}` } : {}), domain: nextDomains[0], domains: nextDomains });
         Object.assign(job, { state: "done", progress: 1, url: `https://${hostname}`, detail: `${hostname} answers`, finishedAt: Date.now() });
         mock.emit({ type: "job", job: { ...job } });
         mock.emit({ type: "site.updated", siteId: params.siteId });
       })();
       return { ...job };
     },
-    "POST /api/sites/:siteId/deploy/domain/check": ({ params }) => {
+    "POST /api/sites/:siteId/deploy/domain/check": ({ params, body }) => {
       const config = configs.get(params.siteId);
+      const list = config?.domains ?? (config?.domain ? [config.domain] : []);
+      const target = body?.hostname ? list.find((item) => item.hostname === body.hostname) : list[0];
 
-      if (!config?.domain) throw new MockError("invalid", "This site isn't using an address of its own.");
-      const job: Job = { id: randomUUID(), kind: "domain", label: `Using ${config.domain.hostname}`, state: "done", progress: 1, url: `https://${config.domain.hostname}`, detail: `${config.domain.hostname} answers`, siteId: params.siteId, startedAt: Date.now(), finishedAt: Date.now() };
+      if (!target) throw new MockError("invalid", "This site isn't using an address of its own.");
+      const job: Job = { id: randomUUID(), kind: "domain", label: `Using ${target.hostname}`, state: "done", progress: 1, url: `https://${target.hostname}`, detail: `${target.hostname} answers`, siteId: params.siteId, startedAt: Date.now(), finishedAt: Date.now() };
 
       mock.jobs.set(job.id, job);
       domainJobs.set(params.siteId, job.id);
       return job;
     },
-    "DELETE /api/sites/:siteId/deploy/domain": ({ params }) => {
+    "DELETE /api/sites/:siteId/deploy/domain": ({ params, query }) => {
       const config = configs.get(params.siteId);
 
-      if (config?.domain) {
-        const { domain: _gone, ...rest } = config;
+      if (config) {
+        const list = config.domains ?? (config.domain ? [config.domain] : []);
+        const target = query.hostname ? list.find((item) => item.hostname === query.hostname) : list[0];
 
-        configs.set(params.siteId, { ...rest, ...(config.defaultUrl ? { productionUrl: config.defaultUrl } : {}) });
+        if (target) {
+          const remaining = list.filter((item) => item.hostname !== target.hostname);
+          const { domain: _gone, domains: _goneAll, ...rest } = config;
+          const nextProd = remaining[0] ? `https://${remaining[0].hostname}` : config.defaultUrl;
+
+          configs.set(params.siteId, {
+            ...rest,
+            ...(nextProd ? { productionUrl: nextProd } : {}),
+            ...(remaining.length ? { domain: remaining[0], domains: remaining } : {}),
+          });
+        }
       }
       mock.emit({ type: "site.updated", siteId: params.siteId });
       return status(params.siteId);
     },
     "GET /api/sites/:siteId/deployments": ({ params, query }) => ({ items: (records.get(params.siteId) ?? []).slice(0, query.limit ? Number(query.limit) : 50) }),
+    "POST /api/sites/:siteId/deployments/:deploymentId/promote": ({ params }) => {
+      const config = configs.get(params.siteId);
+
+      if (!config) throw new MockError("unconfigured", "This site isn't set up to go online yet. Choose a host first.");
+      const list = records.get(params.siteId) ?? [];
+      const found = list.find((item) => item.id === params.deploymentId);
+
+      if (!found) throw new MockError("not-found", "That deployment wasn't found.");
+      const promoted: Deployment = { ...found, kind: "production", url: config.productionUrl ?? productionUrl(config), createdAt: new Date().toISOString() };
+
+      records.set(params.siteId, [promoted, ...list.filter((item) => item.id !== found.id)]);
+      mock.emit({ type: "site.updated", siteId: params.siteId });
+      return promoted;
+    },
   };
 
   return {

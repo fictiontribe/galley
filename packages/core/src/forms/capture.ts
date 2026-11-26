@@ -36,7 +36,51 @@ import { validateSubmission } from "./validate";
 
 export const CAPTURE_BODY_LIMIT = 64 * 1024;
 export const CAPTURE_KEY_HEADER = "x-capture-key";
+export const CAPTURE_ID_HEADER = "x-capture-id";
+export const CAPTURED_AT_HEADER = "x-captured-at";
+/** Clock-skew allowance for caller-supplied `X-Captured-At` timestamps (5 minutes). */
+export const CAPTURED_AT_MAX_SKEW_MS = 5 * 60_000;
 export const INBOX_PAGE_MAX = 200;
+
+const ISO_TIMESTAMP = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
+const EPOCH_MS = /^\d{1,16}$/;
+
+/**
+ * Parses an authenticated `X-Captured-At` header (strict ISO-8601 with zone,
+ * or positive epoch milliseconds) and rejects malformed or far-future dates.
+ */
+export function parseCapturedAt(raw: string, now = Date.now()): string | null {
+  const text = raw.trim();
+
+  if (!text) return null;
+  let ms: number;
+
+  if (EPOCH_MS.test(text)) {
+    ms = Number(text);
+    if (!Number.isSafeInteger(ms) || ms <= 0) return null;
+  } else {
+    const match = ISO_TIMESTAMP.exec(text);
+
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+    const second = Number(match[6]);
+    const tzHour = match[8] ? Number(match[8]) : 0;
+    const tzMinute = match[9] ? Number(match[9]) : 0;
+
+    if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59 || tzHour > 23 || tzMinute > 59) return null;
+    const maxDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+    if (day < 1 || day > maxDay) return null;
+    ms = Date.parse(text);
+    if (!Number.isFinite(ms) || ms <= 0) return null;
+  }
+  if (ms > now + CAPTURED_AT_MAX_SKEW_MS) return null;
+  return new Date(ms).toISOString();
+}
 
 /** What the server knows about one request to `/f/:siteId`. */
 export interface CaptureRequest {
@@ -46,6 +90,10 @@ export interface CaptureRequest {
   origin: string | null;
   /** The X-Capture-Key header, when sent. */
   captureKey: string | null;
+  /** Optional submission id (`X-Capture-Id`), honoured only when authenticated with `X-Capture-Key`. */
+  captureId?: string | null;
+  /** Optional capture timestamp (`X-Captured-At`), honoured only when authenticated with `X-Capture-Key`. */
+  capturedAt?: string | null;
   contentType: string | null;
   /** The visitor's address — used for rate limits only, never stored. */
   client: string;
@@ -58,7 +106,7 @@ export interface CaptureRequest {
 /** The answer to send. `allowOrigin` set means: send CORS headers for it. */
 export interface CaptureResponse {
   status: number;
-  body: { ok: true; id: string } | { ok: false; message?: string; errors?: { [fieldId: string]: string } } | null;
+  body: { ok: true; id: string; duplicate?: true } | { ok: false; message?: string; errors?: { [fieldId: string]: string } } | null;
   allowOrigin: string | null;
   retryAfterSeconds?: number;
   /** A no-JavaScript form post: send the visitor back to the page (303) … */
@@ -231,7 +279,10 @@ export class FormCaptureService {
   /** The origins allowed to post to a site, and whether loopback previews are too. */
   async allowedOrigins(site: SiteService): Promise<{ site: string[]; extra: string[]; loopback: boolean }> {
     const model = await site.model();
-    const own = [model.urls.production, model.urls.staging]
+    const customDomains = (model.deploy?.domains ?? (model.deploy?.domain ? [model.deploy.domain] : []))
+      .filter((entry) => !entry.pending)
+      .map((entry) => `https://${entry.hostname}`);
+    const own = [model.urls.production, model.urls.staging, ...customDomains]
       .map((url) => (url ? normaliseOrigin(url) : null))
       .filter((origin): origin is string => origin !== null)
       .flatMap(withTwin);
@@ -303,21 +354,59 @@ export class FormCaptureService {
     let allowOrigin: string | null = null;
     let preview = false;
     let fromApp = false;
+    let keyAuthenticated = false;
 
-    if (request.origin !== null) {
+    if (request.captureKey !== null) {
+      if (!(await this.settings.keyMatches(site.id, request.captureKey))) {
+        return json(403, { ok: false }, null);
+      }
+      keyAuthenticated = true;
+      if (request.origin !== null) {
+        const verdict = await this.originVerdict(site, request.origin, request.ownOrigins);
+
+        if (verdict.allowed) {
+          allowOrigin = request.origin;
+          preview = verdict.preview;
+          fromApp = verdict.test;
+        }
+      }
+    } else if (request.origin !== null) {
       const verdict = await this.originVerdict(site, request.origin, request.ownOrigins);
 
       if (!verdict.allowed) return json(403, { ok: false }, null);
       allowOrigin = request.origin;
       preview = verdict.preview;
       fromApp = verdict.test;
-    } else if (!request.captureKey || !(await this.settings.keyMatches(site.id, request.captureKey))) {
+    } else {
       return json(403, { ok: false }, null);
     }
-    const limits = (await this.settings.read(site.id)).rateLimits;
-    const perIp = this.limiter.take(`ip|${site.id}|${request.client}`, limits.perIpPerMinute);
 
-    if (!perIp.ok) return this.tooMany(perIp.retryAfterMs, allowOrigin);
+    let suppliedId: string | null = null;
+    let suppliedAt: string | null = null;
+
+    if (keyAuthenticated) {
+      if (request.captureId !== undefined && request.captureId !== null) {
+        if (!SUBMISSION_ID.test(request.captureId)) {
+          return json(400, { ok: false, message: "Invalid X-Capture-Id header." }, allowOrigin);
+        }
+        suppliedId = request.captureId;
+      }
+      if (request.capturedAt !== undefined && request.capturedAt !== null) {
+        const parsed = parseCapturedAt(request.capturedAt);
+
+        if (!parsed) {
+          return json(400, { ok: false, message: "Invalid X-Captured-At header." }, allowOrigin);
+        }
+        suppliedAt = parsed;
+      }
+    }
+    const limits = (await this.settings.read(site.id)).rateLimits;
+
+    if (!keyAuthenticated) {
+      const perIp = this.limiter.take(`ip|${site.id}|${request.client}`, limits.perIpPerMinute);
+
+      if (!perIp.ok) return this.tooMany(perIp.retryAfterMs, allowOrigin);
+    }
     if (!context.formPost && !/^application\/json\b/i.test(request.contentType ?? "")) {
       return json(415, { ok: false, message: "Send the form as JSON (Content-Type: application/json)." }, allowOrigin);
     }
@@ -348,6 +437,9 @@ export class FormCaptureService {
     const loaded = await loadForm(site, formId, source).catch(() => null);
 
     if (!loaded || !capturesHere(loaded.definition)) return json(404, { ok: false, message: "This form isn't taking submissions here." }, allowOrigin);
+    if (suppliedId && (await this.store.get(site.id, formId, suppliedId))) {
+      return json(200, { ok: true, id: suppliedId, duplicate: true }, allowOrigin);
+    }
     const form = loaded.definition;
 
     context.form = form;
@@ -359,7 +451,7 @@ export class FormCaptureService {
     const meta = payload.meta && typeof payload.meta === "object" ? payload.meta : {};
     let spamReason: SpamReason | null = localSpamReason(form, meta);
 
-    if (!spamReason && form.spam?.turnstileSiteKey) {
+    if (!keyAuthenticated && !spamReason && form.spam?.turnstileSiteKey) {
       const secret = (await this.settings.secrets(site.id)).turnstile;
 
       if (secret) {
@@ -368,14 +460,16 @@ export class FormCaptureService {
         if (!result.success) spamReason = "turnstile";
       }
     }
-    const repeat = this.duplicates.find(site.id, formId, outcome.values);
+    if (!suppliedId) {
+      const repeat = this.duplicates.find(site.id, formId, outcome.values);
 
-    if (repeat) return json(200, { ok: true, id: repeat }, allowOrigin);
+      if (repeat) return json(200, { ok: true, id: repeat }, allowOrigin);
+    }
     const submission: FormSubmission = {
-      id: this.mint(),
+      id: suppliedId ?? this.mint(),
       siteId: site.id,
       form: formId,
-      at: new Date().toISOString(),
+      at: suppliedAt ?? new Date().toISOString(),
       values: outcome.values,
       read: false,
     };
@@ -388,8 +482,14 @@ export class FormCaptureService {
     }
     // The live site never posts from the app or its preview, so what arrives from one is a test, said or not.
     if (meta.test === true || fromApp) submission.test = true;
-    await this.store.append(submission);
-    this.duplicates.remember(site.id, formId, outcome.values, submission.id);
+    if (suppliedId) {
+      const inserted = await this.store.appendIfAbsent(submission);
+
+      if (!inserted) return json(200, { ok: true, id: suppliedId, duplicate: true }, allowOrigin);
+    } else {
+      await this.store.append(submission);
+      this.duplicates.remember(site.id, formId, outcome.values, submission.id);
+    }
     this.options.events.emit({ type: "forms.submission", siteId: site.id, form: formId, change: "added", ids: [submission.id], submission });
     if (!submission.spam) this.background(() => this.afterStore(site, form, submission));
     return json(200, { ok: true, id: submission.id }, allowOrigin);

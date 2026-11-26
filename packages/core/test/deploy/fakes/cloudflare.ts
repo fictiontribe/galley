@@ -33,6 +33,8 @@ export interface FakeCloudflare extends FakeServer {
   domains: Array<{ id: string; hostname: string; service: string; zone_id: string; zone_name: string }>;
   /** Host names that already have a DNS record of their own (not a Worker domain). */
   dnsRecords: Set<string>;
+  /** Active production version id per Worker script (updated on production deploy or promote). */
+  activeVersion: Map<string, string>;
 }
 
 export interface FakeCloudflareOptions {
@@ -70,6 +72,7 @@ export async function startFakeCloudflare(options: FakeCloudflareOptions = {}): 
   const sessions = new Map<string, { account: string; script: string; manifest: Record<string, { hash: string; size: number }>; needed: Set<string> }>();
   const completions = new Map<string, { script: string; manifest: Record<string, { hash: string; size: number }> }>();
   const deployments: CfDeployment[] = [];
+  const activeVersion = new Map<string, string>();
   const zones = options.zones ?? { "example.com": "zone0123456789abcdef0123456789ab" };
   const domains: FakeCloudflare["domains"] = [];
   const dnsRecords = new Set<string>();
@@ -244,6 +247,35 @@ export async function startFakeCloudflare(options: FakeCloudflareOptions = {}): 
           else sessions.set(jwt, { account: account!, script, manifest: body.manifest, needed: new Set(missing) });
           return ok({ jwt, buckets });
         }
+        if (request.method === "GET" && tail === "versions") {
+          if (!scripts.has(script)) return fail(404, 10007, "Worker not found");
+          const perPage = Number(request.url.searchParams.get("per_page") ?? 20);
+          const list = deployments
+            .filter((entry) => entry.script === script)
+            .slice()
+            .reverse()
+            .slice(0, perPage)
+            .map((entry, index) => ({ id: entry.id, number: deployments.length - index, created_on: new Date().toISOString(), annotations: entry.metadata?.annotations ?? {} }));
+
+          return ok({ items: list });
+        }
+        if (request.method === "GET" && tail === "deployments") {
+          if (!scripts.has(script)) return fail(404, 10007, "Worker not found");
+          const current = activeVersion.get(script);
+
+          return ok({ deployments: current ? [{ id: `dep-${current}`, created_on: new Date().toISOString(), versions: [{ version_id: current, percentage: 100 }] }] : [] });
+        }
+        if (request.method === "POST" && tail === "deployments") {
+          if (!scripts.has(script)) return fail(404, 10007, "Worker not found");
+          const body = request.json<{ strategy?: string; versions?: Array<{ version_id?: string; percentage?: number }> }>();
+          const versionId = body?.versions?.[0]?.version_id;
+
+          if (!versionId || !deployments.some((entry) => entry.script === script && entry.id === versionId)) {
+            return fail(404, 10007, "Version not found");
+          }
+          activeVersion.set(script, versionId);
+          return ok({ id: `dep-${randomUUID().slice(0, 8)}`, created_on: new Date().toISOString(), versions: [{ version_id: versionId, percentage: 100 }] });
+        }
         if (request.method === "POST" && tail === "subdomain") {
           const body = request.json<{ enabled?: boolean; previews_enabled?: boolean }>();
           const known = scripts.get(script);
@@ -289,6 +321,7 @@ export async function startFakeCloudflare(options: FakeCloudflareOptions = {}): 
           const id = randomUUID();
 
           deployments.push({ kind: production ? "production" : "preview", script, id, files, metadata, moduleType: module.type, config: { ...(metadata.assets?.config ?? {}) } });
+          if (production) activeVersion.set(script, id);
           return production ? ok({ id: script, etag: `etag-${id}`, deployment_id: id, has_assets: true }) : ok({ id, number: deployments.length, metadata: { hasPreview: true } });
         }
       }
@@ -306,6 +339,7 @@ export async function startFakeCloudflare(options: FakeCloudflareOptions = {}): 
     domains,
     dnsRecords,
     deployments,
+    activeVersion,
     stored,
     get uploadedParts() {
       return uploadedParts;
