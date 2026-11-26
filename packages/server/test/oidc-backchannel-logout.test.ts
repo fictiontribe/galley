@@ -10,7 +10,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { PROVIDER_LOGOUTS_KEPT, type AccountSession } from "@galley/core/install";
 import { signSession } from "../src/auth";
 import { BACKCHANNEL_LOGOUT_PATH } from "../src/oidc/routes";
@@ -206,7 +206,7 @@ describe("a bad logout token", () => {
       ["iat 31 days old", idp.logoutToken("pat", { claims: { iat: now - 31 * 24 * 3600 }, drop: ["exp"] })],
       ["iat in the future", idp.logoutToken("pat", { claims: { iat: now + 600, exp: now + 900 } })],
       ["encrypted", "a.b.c.d.e"],
-      ["signed by another key", idp.logoutToken("pat", { signWith: "unpublished" })],
+      ["signed by another key than the one it names", idp.logoutToken("pat", { signWith: "unpublished", header: { kid: "main" } })],
       ["another audience", idp.logoutToken("pat", { claims: { aud: "another-client" } })],
       ["an extra audience", idp.logoutToken("pat", { claims: { aud: [CLIENT, "another-client"] } })],
       ["another issuer", idp.logoutToken("pat", { claims: { iss: "https://another.example" } })],
@@ -216,7 +216,7 @@ describe("a bad logout token", () => {
       ["typ JOSE", idp.logoutToken("pat", { header: { typ: "JOSE" } })],
       ["a sub with a newline", idp.logoutToken("pat\nForged")],
       ["not a JWT", "not-a-token"],
-      ["a jwk in the header, signed by it", idp.logoutToken("pat", { signWith: "unpublished", header: { kid: "nope", jwk: { kty: "RSA" } } })],
+      ["a jwk in the header, signed by it", idp.logoutToken("pat", { signWith: "unpublished", header: { kid: "main", jwk: { kty: "RSA" } } })],
     ];
 
     for (const [what, token] of cases) {
@@ -280,7 +280,7 @@ describe("the route", () => {
     expect(logs.filter((line) => line.startsWith("A back-channel logout from 203.0.113.78 was refused"))).toHaveLength(1);
   });
 
-  it("answers 200 only once it is written: a failed write is a 400 server_error, logged, and ends nothing; past 10,000 recent logouts, 503 to be sent again", async () => {
+  it("answers 200 only once it is written: a failed write is a 503 to be sent again, logged, and ends nothing; past 10,000 recent logouts, 503 too", async () => {
     const idp = await provider();
     const { port, server, logs } = await editor(idp);
     const store = server.install!.store;
@@ -293,7 +293,7 @@ describe("the route", () => {
     try {
       const answer = await logout(port, idp.logoutToken("pat"));
 
-      expect([answer.status, answer.body]).toEqual([400, { error: "server_error" }]);
+      expect([answer.status, answer.body, answer.headers["retry-after"]]).toEqual([503, { error: "temporarily_unavailable" }, "30"]);
     } finally {
       store.update = write;
     }
@@ -334,5 +334,92 @@ describe("the route", () => {
 
     expect((await call(started.port, "POST", BACKCHANNEL_LOGOUT_PATH, { raw: "logout_token=x", headers: { "content-type": "application/x-www-form-urlencoded" }, origin: null })).status).toBe(403);
     expect((await call<AccountSession>(started.port, "POST", BACKCHANNEL_LOGOUT_PATH, { raw: "logout_token=x", headers: { "content-type": "application/x-www-form-urlencoded" } })).status).toBe(404);
+  });
+});
+
+describe("the provider's keys, for logout tokens", () => {
+  it("a failing keys address isn't asked again on every logout: once, then not for a few seconds", async () => {
+    const idp = await provider();
+    const { port } = await editor(idp);
+
+    idp.wrong = { jwksStatus: 500 };
+    for (let i = 0; i < 6; i += 1) {
+      const answer = await logout(port, idp.logoutToken("pat"));
+
+      expect([answer.status, answer.headers["retry-after"]]).toEqual([503, "30"]);
+    }
+    expect(idp.asked.filter((one) => one === "GET /jwks")).toHaveLength(1);
+    idp.wrong = {};
+  });
+
+  it("when a refresh fails, the last good keys check a logout if they are under an hour old; older, it is to be sent again", async () => {
+    const idp = await provider();
+    const { port } = await editor(idp);
+    const pat = (await signIn(port, idp, "pat")).cookie!;
+
+    // The keys read once, for a first logout.
+    expect((await logout(port, idp.logoutToken("someone"))).status).toBe(200);
+    idp.wrong = { jwksStatus: 503 };
+    const real = Date.now;
+    const later = (ms: number) => vi.spyOn(Date, "now").mockImplementation(() => real() + ms);
+    let clock = later(10 * 60_000);
+
+    try {
+      // Ten minutes on, the kept keys are stale and the address fails: the last good keys check it.
+      const answer = await logout(port, idp.logoutToken("pat"));
+
+      expect(answer.status, answer.text).toBe(200);
+      clock.mockRestore();
+      expect(await signedIn(port, pat)).toBe(false);
+      // Two hours on: too old to trust alone.
+      clock = later(2 * 3_600_000);
+      expect((await logout(port, idp.logoutToken("pat", { claims: { iat: Math.floor((real() + 2 * 3_600_000) / 1000) } }))).status).toBe(503);
+    } finally {
+      clock.mockRestore();
+      idp.wrong = {};
+    }
+  });
+
+  it("a key just rotated in, before the keys may be read again, is to be sent again (503), and taken once they are", async () => {
+    const idp = await provider();
+    const { port } = await editor(idp);
+    const pat = (await signIn(port, idp, "pat")).cookie!;
+
+    expect((await logout(port, idp.logoutToken("someone"))).status).toBe(200);
+    idp.addKey("rotated", "RS256");
+    const early = await logout(port, idp.logoutToken("pat", { signWith: "rotated" }));
+
+    expect([early.status, early.headers["retry-after"]]).toEqual([503, "30"]);
+    expect(await signedIn(port, pat)).toBe(true);
+    const real = Date.now;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => real() + 61_000);
+
+    try {
+      expect((await logout(port, idp.logoutToken("pat", { signWith: "rotated", claims: { iat: Math.floor((real() + 61_000) / 1000) } }))).status).toBe(200);
+    } finally {
+      clock.mockRestore();
+    }
+    expect(await signedIn(port, pat)).toBe(false);
+    // A key id the provider doesn't have even after a fresh read: refused for good.
+    const later = vi.spyOn(Date, "now").mockImplementation(() => real() + 200_000);
+
+    try {
+      expect((await logout(port, idp.logoutToken("pat", { header: { kid: "never-published" }, claims: { iat: Math.floor((real() + 200_000) / 1000) } }))).status).toBe(400);
+    } finally {
+      later.mockRestore();
+    }
+  });
+
+  it("an RSA key under 2,048 bits is never used", async () => {
+    const idp = await provider();
+    const { port, logs } = await editor(idp);
+    const pat = (await signIn(port, idp, "pat")).cookie!;
+
+    idp.addKey("small", "RS256", { modulusLength: 1024 });
+    const answer = await logout(port, idp.logoutToken("pat", { signWith: "small" }));
+
+    expect([answer.status, answer.body]).toEqual([400, { error: "invalid_request" }]);
+    expect(await signedIn(port, pat)).toBe(true);
+    expect(logs.join("\n")).toContain("its key is an RSA key under 2048 bits");
   });
 });

@@ -166,6 +166,12 @@ export const LOGOUT_TOKEN_MAX_AGE_S = 30 * 24 * 60 * 60;
 /** The provider's keys are read again for a key id they don't have at most this often, and every five minutes anyway. */
 const KEYS_REFRESH_FOR_UNKNOWN_KID_MS = 60_000;
 const KEYS_KEPT_MS = 5 * 60_000;
+/** After a failed read of the keys, they aren't asked for again for this long: a failing address isn't fetched on every logout. */
+const KEYS_RETRY_AFTER_FAILURE_MS = 5_000;
+/** While the keys can't be read, the last good ones are used if they are no older than this. */
+const KEYS_LAST_GOOD_MS = 60 * 60_000;
+/** The smallest RSA key a logout token is taken from. */
+export const MIN_RSA_BITS = 2048;
 
 type Jwk = JsonWebKey & { kid?: string; alg?: string; use?: string; key_ops?: string[] };
 
@@ -179,10 +185,14 @@ function mediaType(typ: string): string {
   return lower.includes("/") ? lower : `application/${lower}`;
 }
 
-/** Verifies a compact JWS signature with a public JWK, for one of the four algorithms. */
+/** Verifies a compact JWS signature with a public JWK, for one of the four algorithms. An RSA key under MIN_RSA_BITS is never used. */
 function signatureHolds(alg: string, jwk: Jwk, input: string, signature: Buffer): boolean {
   const key = createPublicKey({ key: jwk, format: "jwk" });
   const data = Buffer.from(input);
+
+  if (key.asymmetricKeyType === "rsa" || key.asymmetricKeyType === "rsa-pss") {
+    if ((key.asymmetricKeyDetails?.modulusLength ?? 0) < MIN_RSA_BITS) throw new LogoutRefusal(`its key is an RSA key under ${MIN_RSA_BITS} bits`);
+  }
 
   if (alg === "RS256") return verify("sha256", data, key, signature);
   if (alg === "PS256") return verify("sha256", data, { key, padding: constants.RSA_PKCS1_PSS_PADDING, saltLength: 32 }, signature);
@@ -281,13 +291,28 @@ export function createOidcProvider(config: OidcConfig, now: () => number = () =>
   /** The provider's keys for logout tokens: kept five minutes, read again for an unknown key id at most once a minute. */
   let logoutKeys: { keys: Jwk[]; at: number } | null = null;
   let readingKeys: Promise<Jwk[]> | null = null;
+  let keysFailedAt = Number.NEGATIVE_INFINITY;
 
-  async function keysFor(kid: string | undefined): Promise<Jwk[]> {
+  /**
+   * The provider's keys for a logout token naming `kid`, and whether they
+   * were read just now. Kept five minutes, read again for an unknown key id
+   * at most once a minute. When a read fails, it isn't tried again for a few
+   * seconds, and meanwhile the last good keys are used if they are under an
+   * hour old; otherwise the logout is to be sent again (retry).
+   */
+  async function keysFor(kid: string | undefined): Promise<{ keys: Jwk[]; readNow: boolean }> {
     const fresh = logoutKeys && now() - logoutKeys.at < KEYS_KEPT_MS;
     const known = (keys: Jwk[]) => kid === undefined || keys.some((key) => key.kid === kid);
+    const lastGood = () => (logoutKeys && now() - logoutKeys.at < KEYS_LAST_GOOD_MS ? logoutKeys.keys : null);
 
-    if (fresh && (known(logoutKeys!.keys) || now() - logoutKeys!.at < KEYS_REFRESH_FOR_UNKNOWN_KID_MS)) return logoutKeys!.keys;
-    readingKeys ??= (async () => {
+    if (fresh && (known(logoutKeys!.keys) || now() - logoutKeys!.at < KEYS_REFRESH_FOR_UNKNOWN_KID_MS)) return { keys: logoutKeys!.keys, readNow: false };
+    if (now() - keysFailedAt < KEYS_RETRY_AFTER_FAILURE_MS) {
+      const keys = lastGood();
+
+      if (keys) return { keys, readNow: false };
+      throw new LogoutRefusal("the provider's keys couldn't be read a moment ago; they aren't asked for again yet", true);
+    }
+    const reading = (readingKeys ??= (async () => {
       const as = await server();
       let response: Response;
 
@@ -304,8 +329,18 @@ export function createOidcProvider(config: OidcConfig, now: () => number = () =>
       return logoutKeys.keys;
     })().finally(() => {
       readingKeys = null;
-    });
-    return readingKeys;
+    }));
+
+    try {
+      return { keys: await reading, readNow: true };
+    } catch (error) {
+      keysFailedAt = now();
+      const keys = lastGood();
+
+      // The keys address failing for a while doesn't stop logouts the keys in hand can check.
+      if (keys) return { keys, readNow: false };
+      throw error;
+    }
   }
 
   /** A failure talking to the provider: read its documents again at a later sign-in, not within the next few seconds. */
@@ -342,7 +377,10 @@ export function createOidcProvider(config: OidcConfig, now: () => number = () =>
       if (header.typ !== undefined && (typeof header.typ !== "string" || !["application/logout+jwt", "application/jwt"].includes(mediaType(header.typ)))) refuse(`its typ (${forTheLog(header.typ, 40)}) isn't a logout token's`);
       if (header.crit !== undefined) refuse("it has critical header parameters this editor doesn't know");
       const kid = typeof header.kid === "string" ? header.kid : header.kid === undefined ? undefined : refuse("its kid isn't a string");
-      const published = await keysFor(kid);
+      const { keys: published, readNow } = await keysFor(kid);
+
+      // A key id the provider's keys don't have yet (a key just rotated in, read again only once a minute): sent again later, not refused for good.
+      if (kid !== undefined && !readNow && !published.some((key) => key.kid === kid)) throw new LogoutRefusal("its key (kid) isn't among the provider's keys as last read; they are read again within a minute", true);
       const fit = KEY_FOR[config.idTokenAlg]!;
       const candidates = published.filter(
         (key) =>
@@ -360,7 +398,8 @@ export function createOidcProvider(config: OidcConfig, now: () => number = () =>
 
       try {
         holds = signatureHolds(config.idTokenAlg, candidates[0]!, `${rawHeader}.${rawPayload}`, Buffer.from(rawSignature, "base64url"));
-      } catch {
+      } catch (error) {
+        if (error instanceof LogoutRefusal) throw error;
         holds = false;
       }
       if (!holds) refuse("its signature doesn't hold");
