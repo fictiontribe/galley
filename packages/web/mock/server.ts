@@ -70,7 +70,7 @@ export interface MockServerOptions {
   /** Hosted only: false answers as a server from before accounts did — one shared password, no `meta.account`, no people routes. */
   accounts?: boolean;
   /** Hosted only: an identity provider set up (see MockAccountsOptions). */
-  provider?: { name: string; passwordsOff?: boolean; people?: string[] };
+  provider?: { name: string; passwordsOff?: boolean; people?: string[]; removed?: string[] };
   /** The role-access table, when the caller loads it (the dev server: see `loadAccess`). */
   access?: Promise<MockAccessTable>;
   /** Core's theme engine, when the caller loads it (the dev server, through Vite: see themes.ts). */

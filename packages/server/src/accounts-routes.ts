@@ -72,6 +72,7 @@ export type AccountsRouteKey = Extract<
   | "DELETE /api/people/invitations/:invitationId"
   | "PATCH /api/people/:accountId"
   | "DELETE /api/people/:accountId"
+  | "DELETE /api/people/tombstones/:removedId"
   | "POST /api/people/:accountId/password-link"
   | "POST /api/people/:accountId/sign-out"
   | "POST /api/people/sign-out"
@@ -624,7 +625,15 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
     const install = installOf(ctx);
     const by = ownerOrToken(c, ctx, "with-provider");
 
-    if (by) return { ...install.people.list(), emailAvailable: linksAreEmailed(ctx) };
+    if (by) {
+      // The removed list, newest first, with who removed each by name (never an e-mail).
+      const removed = install.people
+        .removed()
+        .map((one) => ({ id: one.id, subject: one.subject, removedAt: one.removedAt, removedBy: one.removedBy ? (install.people.get(one.removedBy)?.name ?? null) || null : null }))
+        .reverse();
+
+      return { ...install.people.list(), removed, emailAvailable: linksAreEmailed(ctx) };
+    }
     // The token, where a provider is set up: enough to bring a list kept elsewhere back in step. No names, no e-mails, no invitations.
     const accounts = install.people.forOperator(providerOf(ctx)!.issuer);
 
@@ -724,6 +733,18 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
     const removed = await install.people.remove(by?.id ?? null, target);
 
     audit(ctx, `${by ? named(by) : BY_TOKEN} removed ${named(removed)}; they were signed out.`);
+    return ok;
+  },
+
+  "DELETE /api/people/tombstones/:removedId": async (c, ctx) => {
+    const install = installOf(ctx);
+    const { account: by } = personOf(c, ctx);
+    const id = c.req.param("removedId") ?? "";
+
+    if (!ID.test(id)) throw notFound("That person isn't on the list of removed people any more. Reload the list.");
+    const taken = await install.people.unremove(id);
+
+    audit(ctx, `${named(by)} let subject ${taken.subject} at ${taken.issuer} back: it may sign in again (as a new account) or be linked.`);
     return ok;
   },
 

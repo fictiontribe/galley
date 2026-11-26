@@ -76,7 +76,7 @@ export interface MockServerOptions {
   /** false: a server from before accounts (one shared password). */
   accounts?: boolean;
   /** An identity provider set up (see mock/accounts.ts). */
-  provider?: { name: string; passwordsOff?: boolean; people?: string[] };
+  provider?: { name: string; passwordsOff?: boolean; people?: string[]; removed?: string[] };
   /** Replace or wrap some answers (mock/server.ts `handlers`): the handlers are the mock's own, typed loosely here. */
   handlers?: (handlers: Record<string, (request: any) => unknown>, backend: { emit(event: ServerEvent): void }) => Record<string, (request: any) => unknown>;
 }

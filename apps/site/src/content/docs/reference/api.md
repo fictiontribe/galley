@@ -383,6 +383,7 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `GET /api/people` | Everyone with an account (role, switched off or not, when they last signed in), the open invitations, and whether this server e-mails links (it needs outgoing e-mail and its public address both set). With the server's access token, where an identity provider is set up: `OperatorPeople` (ids, roles, switched off, subjects; no names or e-mails). | — | `People` | Owners |
 | `GET /api/people/by-identity` | The server's access token only, where an identity provider is set up: the account with this subject at the provider (id, role, switched off), or 404. | `?subject` | `Pick<OperatorAccount, "id" \| "role" \| "disabled">` | The server's access token |
 | `POST /api/people/invitations` | Invite someone. | `{ email, role }` | `{ invitation, link }` | Owners |
+| `DELETE /api/people/tombstones/:removedId` | Let a removed person back: their subject is taken off the list of removed accounts, so they may sign in through the identity provider again (as a new account) or be linked. | — | `Ok` | Owners |
 | `DELETE /api/people/invitations/:invitationId` | Take an invitation back: its link stops working. | — | `Ok` | Owners |
 | `PATCH /api/people/:accountId` | Change someone's role or e-mail, or switch their account off or on. | `{ role?, disabled?, email? }` | `Account` | Owners |
 | `DELETE /api/people/:accountId` | Remove an account. | — | `Ok` | Owners |

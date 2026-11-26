@@ -42,7 +42,7 @@ async function act(name: string, item: string): Promise<void> {
   await click(byText(document, '[role="menuitem"]', item));
 }
 
-async function open(options: { email?: boolean; publicAddress?: boolean; provider?: { name: string; passwordsOff?: boolean; people?: string[] } } = {}): Promise<MockServer> {
+async function open(options: { email?: boolean; publicAddress?: boolean; provider?: { name: string; passwordsOff?: boolean; people?: string[]; removed?: string[] } } = {}): Promise<MockServer> {
   const server = await startServer({ mode: "hosted", setup: "done", role: "owner", ...options });
   page = await renderApp(server, "/install");
   await until(() => expect(document.querySelector(".accounts-table tbody tr")).not.toBeNull());
@@ -330,6 +330,17 @@ describe("People, with an identity provider", () => {
     expect(row("Jo Chen").querySelector("select")).not.toBeNull();
     expect(await menu("Jo Chen")).toEqual(expect.arrayContaining(["New-password link", "Change e-mail…", "Remove…"]));
     expect(page?.text()).toContain("Invite someone");
+  });
+
+  it("lists the removed, with who removed them and when; Let them back takes one off the list", async () => {
+    const server = await open({ provider: { name: "Acme ID", removed: ["gone-subject", "another-subject"] } });
+
+    expect(page?.text()).toContain("Removed");
+    expect(page?.text()).toContain("gone-subject");
+    await click(byText(document, "button", "Let them back"));
+    await until(() => expect(calls(server, "DELETE", /^\/api\/people\/tombstones\//)).toHaveLength(1));
+    await until(() => expect(page?.text()).not.toContain("gone-subject"));
+    expect(page?.text()).toContain("another-subject");
   });
 
   it("with passwords off, offers no invitation and no new-password link for anyone", async () => {

@@ -50,6 +50,7 @@ import {
   type LinkPreview,
   type OneTimeLink,
   type People,
+  type RemovedPerson,
 } from "@galley/core/install/accounts";
 import type { Handlers, MockBackend, MockRequest } from "./backend.ts";
 import type { MockInstall } from "./install.ts";
@@ -66,6 +67,7 @@ export type AccountsRouteKey = Extract<
   | "DELETE /api/people/invitations/:invitationId"
   | "PATCH /api/people/:accountId"
   | "DELETE /api/people/:accountId"
+  | "DELETE /api/people/tombstones/:removedId"
   | "POST /api/people/:accountId/password-link"
   | "POST /api/people/:accountId/sign-out"
   | "POST /api/people/sign-out"
@@ -97,6 +99,7 @@ export function accountsHandlers(): Pick<Handlers, AccountsRouteKey> {
     "DELETE /api/people/invitations/:invitationId": () => notHere(),
     "PATCH /api/people/:accountId": () => notHere(),
     "DELETE /api/people/:accountId": () => notHere(),
+    "DELETE /api/people/tombstones/:removedId": () => notHere(),
     "POST /api/people/:accountId/password-link": () => notHere(),
     "POST /api/people/:accountId/sign-out": () => notHere(),
     "POST /api/people/sign-out": () => notHere(),
@@ -137,7 +140,7 @@ export interface MockAccountsOptions {
    * off, and the e-mails of the people who sign in through it (with a
    * subject each).
    */
-  provider?: { name: string; passwordsOff?: boolean; people?: string[] };
+  provider?: { name: string; passwordsOff?: boolean; people?: string[]; removed?: string[] };
 }
 
 interface MockAccount extends Account {
@@ -260,6 +263,7 @@ export class MockAccounts {
     this.emailAvailable = Boolean(options.email) && options.publicAddress !== false;
     this.seed(install.step() === "done");
     for (const account of this.accounts) if (options.provider?.people?.includes(account.email)) account.subject = `${account.email.split("@")[0]}-at-provider`;
+    this.removed = (options.provider?.removed ?? []).map((subject, index) => ({ id: `removed-${index + 1}`, subject, removedAt: new Date(Date.now() - (index + 1) * 86_400_000).toISOString(), removedBy: "Sam Rivera" }));
     if (options.role && install.step() === "done") {
       const person = this.accounts.find((account) => account.role === options.role && !account.disabled);
       if (person) {
@@ -476,9 +480,18 @@ export class MockAccounts {
 
   // ── people ────────────────────────────────────────────────────────────
 
+  /** Removed people who signed in through the provider (the demo's, from MockAccountsOptions). */
+  removed: RemovedPerson[] = [];
+
+  letBack(id: string): void {
+    if (!this.removed.some((one) => one.id === id)) throw new MockError("not-found", "That person isn't on the list of removed people any more. Reload the list.");
+    this.removed = this.removed.filter((one) => one.id !== id);
+  }
+
   people(): People {
     return {
       accounts: this.accounts.map((account) => this.public(account)),
+      removed: [...this.removed],
       invitations: this.invitations.map(({ code: _code, ...invitation }) => invitation),
       emailAvailable: this.emailAvailable,
     };
@@ -700,6 +713,10 @@ export function withAccounts(mock: MockBackend, base: Handlers, accounts: MockAc
     "PATCH /api/people/:accountId": ({ params, body }) => accounts.change(params.accountId, body),
     "DELETE /api/people/:accountId": ({ params }) => {
       accounts.remove(params.accountId);
+      return ok;
+    },
+    "DELETE /api/people/tombstones/:removedId": ({ params }) => {
+      accounts.letBack(params.removedId);
       return ok;
     },
     "POST /api/people/:accountId/password-link": ({ params }) => accounts.passwordLink(params.accountId),

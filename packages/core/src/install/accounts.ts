@@ -170,9 +170,20 @@ export interface PeopleAccount extends Account {
   subject?: string;
 }
 
+/** Someone removed who signed in through the identity provider, as owners see them in People: their subject can't sign in again until an owner lets them back. */
+export interface RemovedPerson {
+  id: string;
+  subject: string;
+  removedAt: string;
+  /** The owner who removed them, by name; null: the server's access token, the server, or an owner no longer here. */
+  removedBy: string | null;
+}
+
 /** The People list on the Install page. */
 export interface People {
   accounts: PeopleAccount[];
+  /** Removed people who signed in through the identity provider, most recent first. */
+  removed: RemovedPerson[];
   invitations: Invitation[];
   /**
    * This server e-mails links: outgoing e-mail is set up AND the editor's

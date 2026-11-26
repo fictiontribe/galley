@@ -428,6 +428,7 @@ const coveredElsewhere: ApiRouteKey[] = [
   "DELETE /api/people/invitations/:invitationId",
   "PATCH /api/people/:accountId",
   "DELETE /api/people/:accountId",
+  "DELETE /api/people/tombstones/:removedId",
   "POST /api/people/:accountId/password-link",
   "POST /api/people/:accountId/sign-out",
   "POST /api/people/sign-out",

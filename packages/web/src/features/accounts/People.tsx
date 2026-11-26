@@ -8,7 +8,7 @@
  */
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ACCOUNT_ROLES, type Account, type AccountRole, type Invitation, type OneTimeLink, type PeopleAccount } from "@galley/core/install/accounts";
+import { ACCOUNT_ROLES, type Account, type AccountRole, type Invitation, type OneTimeLink, type PeopleAccount, type RemovedPerson } from "@galley/core/install/accounts";
 import { hostedInstall } from "@/lib/hosted";
 import { api, errorShape } from "@/lib/api";
 import { disconnectEvents } from "@/lib/events";
@@ -345,6 +345,39 @@ function InvitationRow({ invitation, onChanged, onProblem }: { invitation: Invit
   );
 }
 
+/** Someone removed who signed in through the provider: they can't sign in again until an owner lets them back. */
+function RemovedRow({ removed, provider, onChanged, onProblem }: { removed: RemovedPerson; provider: string; onChanged: () => void; onProblem: (message: string | null) => void }) {
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <li className="accounts-invitation">
+      <span>
+        <strong>{removed.subject}</strong>
+        <span className="g-hint">{` · removed ${relativeTime(removed.removedAt)}${removed.removedBy ? ` by ${removed.removedBy}` : ""}`}</span>
+      </span>
+      <Button
+        size="sm"
+        variant="secondary"
+        busy={busy}
+        busyLabel="Letting them back…"
+        onClick={() => {
+          setBusy(true);
+          onProblem(null);
+          api("DELETE /api/people/tombstones/:removedId", { params: { removedId: removed.id } })
+            .then(() => notify({ tone: "neutral", title: `${removed.subject} can come back`, body: `Their next sign-in through ${provider} makes a new account.` }))
+            .catch((caught: unknown) => onProblem(errorShape(caught).message))
+            .finally(() => {
+              setBusy(false);
+              onChanged();
+            });
+        }}
+      >
+        Let them back
+      </Button>
+    </li>
+  );
+}
+
 function SignEveryoneOut() {
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
@@ -422,6 +455,18 @@ export function PeopleSection() {
             </tbody>
           </table>
           {problem ? <Problem>{problem}</Problem> : null}
+
+          {data.removed.length > 0 ? (
+            <>
+              <h3 className="accounts-subtitle">Removed</h3>
+              <p className="install-note">{`They can’t sign in through ${ways.provider ?? "the identity provider"} until you let them back. Then their next sign-in there makes a new account.`}</p>
+              <ul className="accounts-invitations">
+                {data.removed.map((removed) => (
+                  <RemovedRow key={removed.id} removed={removed} provider={ways.provider ?? "the identity provider"} onChanged={refresh} onProblem={setProblem} />
+                ))}
+              </ul>
+            </>
+          ) : null}
 
           {ways.passwordsOff ? (
             <p className="install-note">{`Passwords are off: nobody is invited here. Whoever ${ways.provider} lets sign in to this editor gets an account at their first sign-in, with the role it gives them.`}</p>

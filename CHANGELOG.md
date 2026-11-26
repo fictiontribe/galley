@@ -49,6 +49,13 @@ entry says how.
   are never merged. Each link is logged naming the subject. From the link
   `serve --reset-password` makes, an account connected to the wrong person
   can take the provider off and choose a password.
+- **People shows how each person signs in, and offers only what can be
+  done.** Someone who signs in through the identity provider shows their
+  subject, and has no role picker, new-password link or e-mail change (their
+  role and e-mail come from the provider); they are removed by switching them
+  off, then deleted. With passwords off there are no invitations. A
+  **Removed** list shows who was removed, when and by whom, with **Let them
+  back** (`DELETE /api/people/tombstones/:id`).
 - **`galley accounts`** (list, link, rekey), run on the server with the
   server stopped: `link` binds existing accounts to their subjects at the
   identity provider (`GALLEY_OIDC_ISSUER`), one pair or a file of them, and

@@ -261,7 +261,7 @@ describe("a wrong link put right from a recovery session", () => {
 describe("People, for someone who signs in through the provider", () => {
   it("owners see their subject; their e-mail isn't the owner's to change; they are removed by switching off, and deleted after that, remembered as removed", async () => {
     const idp = await provider();
-    const { port, server } = await editor(idp);
+    const { port, server, logs } = await editor(idp);
     const sam = await passwordSignIn(port);
 
     idp.user = { sub: "robin-sub", name: "Robin", email: "robin@corp.example", email_verified: true, galley_role: "editor" };
@@ -283,6 +283,21 @@ describe("People, for someone who signs in through the provider", () => {
     expect((await call(port, "PATCH", `/api/people/${robin.id}`, { cookie: sam, body: { disabled: true } })).status).toBe(200);
     expect((await call(port, "DELETE", `/api/people/${robin.id}`, { cookie: sam })).status).toBe(200);
     expect(server.install!.store.read().tombstones).toEqual([expect.objectContaining({ subject: "robin-sub" })]);
+    // Owners see the removed, and who removed them, by name; letting one back takes it off the list.
+    const removed = (await call(port, "GET", "/api/people", { cookie: sam })).body.removed;
+
+    expect(removed).toEqual([{ id: expect.any(String), subject: "robin-sub", removedAt: expect.any(String), removedBy: "Sam Owner" }]);
+    expect((await call(port, "DELETE", "/api/people/tombstones/no-such-id", { cookie: sam })).status).toBe(404);
+    expect((await call(port, "DELETE", `/api/people/tombstones/${removed[0].id}`, { cookie: sam })).status).toBe(200);
+    expect((await call(port, "GET", "/api/people", { cookie: sam })).body.removed).toEqual([]);
+    expect(logs.join("\n")).toContain("Sam Owner (Owner) let subject robin-sub at");
+    // Back: Robin's next sign-in makes a new account.
+    const again = await call(port, "GET", "/api/auth/oidc/start", { headers: { "x-forwarded-for": "198.51.100.94" } });
+    const backAgain = new URL(await idp.authorize(String(again.headers.location)));
+    const signedBack = await call(port, "GET", `${backAgain.pathname}${backAgain.search}`, { cookie: cookieNamed(again.cookies, PRE_LOGIN)!, headers: { "x-forwarded-for": "198.51.100.94" } });
+
+    expect(cookieNamed(signedBack.cookies, SESSION)).toBeDefined();
+    expect(server.install!.people.list().accounts.filter((one) => one.subject === "robin-sub")).toHaveLength(1);
   });
 });
 

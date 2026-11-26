@@ -1009,6 +1009,12 @@ export interface ApiRoutes {
    * account, or an open invitation, is refused.
    */
   "POST /api/people/invitations": { body: { email: string; role: AccountRole }; response: { invitation: Invitation; link: OneTimeLink } };
+  /**
+   * Let a removed person back: their subject is taken off the list of removed
+   * accounts, so they may sign in through the identity provider again (as a
+   * new account) or be linked.
+   */
+  "DELETE /api/people/tombstones/:removedId": { response: Ok };
   /** Take an invitation back: its link stops working. */
   "DELETE /api/people/invitations/:invitationId": { response: Ok };
   /**
