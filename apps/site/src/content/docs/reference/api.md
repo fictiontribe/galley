@@ -390,6 +390,7 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `POST /api/auth/forgot` | "I forgot my password." When the server e-mails links (outgoing e-mail and its public address both set) and the address has an account, a new-password link is e-mailed. | `{ email }` | `{ ok, emailAvailable }` | No sign-in |
 | `GET /api/auth/oidc/start` | Where an identity provider is set up: start signing in through it. | `?return?` | a file | No sign-in |
 | `GET /api/auth/oidc/callback` | Where an identity provider is set up: where the provider sends the browser back (the redirect address registered there). | `?code?&state?&iss?&error?` | a file | No sign-in |
+| `POST /api/auth/oidc/backchannel-logout` | Where an identity provider is set up: its back-channel logout (OpenID Connect Back-Channel Logout 1.0), server to server. | `{ logout_token }` | a file | No sign-in |
 
 ## Host the editor online
 

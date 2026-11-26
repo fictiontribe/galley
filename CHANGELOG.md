@@ -37,6 +37,17 @@ entry says how.
   them in once, without a password, with a session as long as the provider's,
   and sets none. `--account <id>` and `--subject <subject>` name the owner
   when there are several; with none named, they are listed on the console.
+- **Back-channel logout** from the identity provider
+  (`POST /api/auth/oidc/backchannel-logout`, OpenID Connect Back-Channel
+  Logout 1.0): a logout token for a subject ends every one of their sessions,
+  open streams included, holds across a restart, and refuses a sign-in begun
+  before it, also for someone with no account here yet. The token is checked
+  as an ID token is (the same keys and algorithm, this editor alone) and as a
+  logout token (the event, `iat`, `jti`, no `nonce`, no older than 30 days, a
+  subject). The route reads no cookie and needs no Origin, by its exact path;
+  its body is capped at 16 KB; it shares no limit with signing in; it answers
+  `200` only once the logout is written, and `503` while a backup is being
+  put back.
 - **The server's access token can sign one person out**
   (`POST /api/people/:accountId/sign-out`), logged as the token. It could
   already sign everyone out; the rest of People still needs a person signed

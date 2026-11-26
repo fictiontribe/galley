@@ -45,6 +45,7 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "POST /api/auth/forgot": "public",
   "GET /api/auth/oidc/start": "public",
   "GET /api/auth/oidc/callback": "public",
+  "POST /api/auth/oidc/backchannel-logout": "public",
   "POST /api/auth/logout-all": "edit",
   "GET /api/events": "edit",
 

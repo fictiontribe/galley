@@ -74,6 +74,7 @@ export type AccountsRouteKey = Extract<
   | "POST /api/auth/forgot"
   | "GET /api/auth/oidc/start"
   | "GET /api/auth/oidc/callback"
+  | "POST /api/auth/oidc/backchannel-logout"
 >;
 
 function notHere(): never {
@@ -100,6 +101,7 @@ export function accountsHandlers(): Pick<Handlers, AccountsRouteKey> {
     "POST /api/auth/forgot": () => notHere(),
     "GET /api/auth/oidc/start": () => notHere(),
     "GET /api/auth/oidc/callback": () => notHere(),
+    "POST /api/auth/oidc/backchannel-logout": () => notHere(),
   };
 }
 
@@ -700,6 +702,7 @@ export function withAccounts(mock: MockBackend, base: Handlers, accounts: MockAc
     // The demo has no identity provider: these routes aren't there.
     "GET /api/auth/oidc/start": () => notHere(),
     "GET /api/auth/oidc/callback": () => notHere(),
+    "POST /api/auth/oidc/backchannel-logout": () => notHere(),
   };
   return { ...handlers, ...own };
 }

@@ -26,6 +26,7 @@
  * origins, or the site's capture key without an Origin. It reads no cookie
  * and reaches nothing but the submission store.
  */
+import { BACKCHANNEL_BODY_LIMIT_BYTES, BACKCHANNEL_LOGOUT_PATH, logoutDuringRestore } from "./oidc/routes";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { PRODUCT } from "@galley/core/brand";
@@ -164,6 +165,17 @@ export function createApp(services: Services, options: AppOptions): Hono {
     if (c.req.path.startsWith("/api/") && !c.res.headers.has("cache-control")) c.header("cache-control", "no-store");
   });
 
+  // 1a. The identity provider's back-channel logout, server to server: its own small cap, before the general one reads anything.
+  if (install && options.oidc) {
+    app.use(
+      BACKCHANNEL_LOGOUT_PATH,
+      bodyLimit({
+        maxSize: BACKCHANNEL_BODY_LIMIT_BYTES,
+        onError: (c) => c.json({ error: "invalid_request" }, 413, { "cache-control": "no-store" }),
+      })
+    );
+  }
+
   // 2. Body limit — except for a backup being uploaded, which is streamed to a file under its own cap.
   const limit = bodyLimit({
     maxSize: BODY_LIMIT_BYTES,
@@ -176,6 +188,8 @@ export function createApp(services: Services, options: AppOptions): Hono {
   if (ops) {
     app.use("/api/*", async (c, next) => {
       if (!ops.restoring() || DURING_RESTORE.test(c.req.path)) return next();
+      // A logout written now would be overwritten by the backup: the provider is told to send it again.
+      if (c.req.method === "POST" && c.req.path === BACKCHANNEL_LOGOUT_PATH && options.oidc) return logoutDuringRestore(c);
       return c.json(errorBody("busy", "A backup is being put back. Wait a moment, then sign in again."), 503);
     });
   }
@@ -246,6 +260,8 @@ export function createApp(services: Services, options: AppOptions): Hono {
   // 3. Origin (CSRF) — every state-changing request
   app.use("*", async (c, next) => {
     if (SAFE_METHODS.has(c.req.method)) return next();
+    // Server to server, with no cookie read: the identity provider's back-channel logout, by its exact path (the router's), never a prefix.
+    if (install && options.oidc && c.req.method === "POST" && c.req.path === BACKCHANNEL_LOGOUT_PATH) return next();
     const bearer = bearerToken(c);
 
     if (bearer !== null && install && (SETUP_PATH.test(c.req.path) || RESTORE_PATH.test(c.req.path))) {
