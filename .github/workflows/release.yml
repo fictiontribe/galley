@@ -321,13 +321,17 @@ jobs:
           publish create-galley "$tag"
 
   # Builds and smoke-tests the hosted container image from Dockerfile.
-  # On a dry run, builds linux/amd64 locally and verifies /healthz without pushing.
-  # On a version tag release (or manual run from a tag with Dry run off), smoke-tests
-  # linux/amd64 first, then builds and pushes linux/amd64 and linux/arm64 to GHCR.
+  # On a dry run, "starters" is skipped and this job still builds linux/amd64
+  # locally and verifies /healthz without pushing. On a version tag release (or
+  # manual run from a tag with Dry run off), it waits for "starters" so
+  # downloadable starter archives exist on GitHub Releases before the image is
+  # published, smoke-tests linux/amd64 first, then builds and pushes
+  # linux/amd64 and linux/arm64 to GHCR.
   # Run again from a tag whose version image is already published for both architectures,
   # it leaves existing tags untouched so an older tag can never move "latest" backwards.
   docker:
-    needs: [release]
+    needs: [release, starters]
+    if: always() && needs.release.result == 'success' && (needs.starters.result == 'success' || needs.starters.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
