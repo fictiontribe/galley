@@ -69,7 +69,10 @@ instead, downloaded the first time someone uses it (starters/README.md):
 - `release.yml` makes a site from each such starter with the archive served
   from the runner, then publishes the archives on a release of their own,
   `starters-vX.Y.Z` (a prerelease, so `…/releases/latest` keeps naming the
-  version's release), **before** it publishes `galley-cms`. Not on the
+  version's release), **before** it publishes `galley-cms`. That is a job
+  of its own, the only one that may write to the repository; the job that
+  installs and builds has a read-only token, and npm is published by a
+  third job once the archives are in place. Not on the
   version's own release: that stays a draft until a person publishes it
   (step 10), and a `galley-cms` on npm would meanwhile find nothing to
   download. Run again, an archive already on that release is kept and must
