@@ -5,6 +5,148 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## 0.4.7 — 2026-11-26
+
+**The preview says in plain words why it failed, `galley doctor` checks
+more and has a `--cloud` mode, the app opens in the right light or dark,
+and new settings send AI requests through a proxy.** On your own computer or
+your own server the AI part changes nothing unless you set the new
+variables. `galley doctor` does report more for everyone, and it now exits
+with 1 for an invalid `galley.config.json` or a broken local dependency.
+
+### Added
+
+- **The preview explains common failures in plain words.** These messages
+  replace "The log below says why" when installing, when starting, when the
+  time to start runs out, and when a running preview stops:
+  - a package whose entry files are missing (for example a local `file:`
+    dependency whose `dist/` is ignored by git or not built);
+  - a lockfile that is out of date with `package.json`;
+  - the package registry refusing a package (401, 403), not finding it
+    (404), or not answering (`ENOTFOUND`, `EAI_AGAIN`);
+  - running out of memory, which includes a dev server ended by `SIGKILL`
+    or exit code 137;
+  - a port already in use;
+  - content that doesn't match an Astro content collection schema;
+  - a missing environment variable;
+  - a missing package or file;
+  - an error in `astro.config.*` or `vite.config.*`.
+
+  Any other failure keeps the message from before. The last 20 lines of the
+  log stay in the details.
+- **`galley doctor --cloud` checks a site before it is put online from a
+  fresh clone.** It runs every `galley doctor` check (below), with two
+  differences. A file over 25 MiB in `public/`, `dist/` or the site's build
+  folder is a failure instead of a warning; that is Cloudflare's per-file
+  limit, and the five largest files are named. A site with no lockfile gets
+  a warning. When no file is over the limit, it says so.
+- **Settings that send image and video requests to another address**, as
+  `GALLEY_ANTHROPIC_BASE_URL` already does for the assistant:
+  - `GALLEY_OPENAI_BASE_URL` (default `https://api.openai.com/v1`);
+  - `GALLEY_GOOGLE_BASE_URL` (default
+    `https://generativelanguage.googleapis.com`; `/v1beta/interactions` is
+    added unless the address already ends with it);
+  - `GALLEY_OPENROUTER_BASE_URL` (default `https://openrouter.ai/api/v1`),
+    for the OpenRouter plugin's images, videos and model lists.
+
+  When one is set, every request to that service goes to that address,
+  including the service's API key. A trailing `/` is dropped. The address is
+  read on each request, and OpenRouter's model lists are fetched again when
+  its address changes. When none is set, requests go where they always did.
+- **A managed AI mode, `GALLEY_AI_MANAGED=1`**, for an install whose AI
+  services are supplied and counted by whoever runs it. It is off by
+  default, and while it is off nothing changes. When it is on, signed-in
+  people see:
+  - no API key forms for the assistant, the image services or the OpenRouter
+    plugin, in App settings, Site settings › Connections and Plugins. The
+    keys must still reach the server, for example through its environment;
+  - prices, usage, estimates and costs in credits instead of US dollars;
+  - an **AI credits** section at the top of App settings.
+
+  `GALLEY_AI_CREDIT_MILLICENTS` sets what one credit is worth, in thousandths
+  of a cent. It must be a positive whole number; anything else, or no value,
+  gives 250. Amounts round up, and any cost of more than zero is at least 1
+  credit. `GALLEY_AI_MANAGE_URL` adds a link from that section, and from
+  wherever AI is unavailable; it, like `GALLEY_AI_CREDITS_URL` below, is
+  taken only as an `https://` address, or plain `http://` to `127.0.0.1`,
+  `localhost` or `[::1]`, with no name or password in it, and anything else
+  counts as not set. With managed mode on, `GALLEY_AI_OFF=1` shows
+  AI as switched off: chat, the Search and AI writer, and image and video
+  services other than the placeholders can't be started from the app. This
+  only changes the app. The server doesn't refuse AI requests itself; a
+  proxy in front of the services has to. These flags take `1` or `true`.
+  `GET /api/meta` gives signed-in callers an `ai` field while managed mode
+  is on.
+- **`GET /api/ai/credits`** (any signed-in person) returns three things:
+  - whether managed mode is on and whether AI is off;
+  - what a credit is worth;
+  - a balance read from `GALLEY_AI_CREDITS_URL`.
+
+  To get the balance, the server sends a `GET` to that address with the
+  install's shared assistant key as `Authorization: Bearer` and waits up to
+  5 seconds; a redirect is refused rather than followed with the key. It does this only when managed mode is on, AI isn't off, and
+  both the address and the key are set. Otherwise, or when the address fails
+  or answers in another shape, `balance` is `null` and the section shows no
+  figures. The section shows credits left, used, included and added, about
+  how many typical changes are left, when the balance renews, and a limit
+  for this site. A note appears once 80% are used, and another when AI is
+  paused.
+
+### Changed
+
+- **When a proxy refuses an AI request for one of its own reasons, the app
+  shows the proxy's message.** This covers the assistant, OpenAI and Google
+  images, and OpenRouter's images and videos. An error that carries
+  `galley_ai_allowance_used`, `galley_ai_paused_unpaid` or
+  `galley_ai_switched_off` shows the message that came with it, with
+  anything shaped like a key removed, instead of Galley's own message.
+- **`galley doctor` checks more, with or without `--cloud`:**
+  - `galley.config.json` is validated the way the editor reads it. A file
+    with problems is now a failure (exit 1) naming them. Before, it showed as
+    found, with a note that it was ignored.
+  - Each local dependency (`file:` or `link:` in `dependencies`,
+    `devDependencies` or `optionalDependencies`) is followed. It fails (exit
+    1) if its target doesn't exist, or its `package.json` is missing. It also
+    fails if an entry file named in `main`, `module` or `exports` is
+    missing, ignored by git, or (once the repository tracks files) not
+    committed.
+  - A file over 25 MiB in `public/`, `dist/` or the build folder is a
+    warning.
+  - Lockfiles from more than one package manager are a warning, as is a
+    lockfile that doesn't match `packageManager` in `package.json`, or a
+    lockfile whose package manager isn't installed. To find out, `doctor`
+    looks for the manager on `PATH` (with `PATHEXT` on Windows) without
+    running it, so nothing of the site's runs (a Yarn `yarnPath`, say).
+- **On a hosted editor, once someone has chosen their own light or dark,
+  returning to the window no longer reads the editor's settings again.**
+
+### Fixed
+
+- **The Search & AI screen keeps working when managed AI is switched off or
+  on while it is open.** It broke ("calling Hooks conditionally") until it
+  was opened again.
+- **Managed AI's messages say what is true.** A setting switched off by
+  whoever runs the editor says "Switched off for this site", not "in site
+  settings", which has no such switch. The assistant panel tells "AI is
+  switched off for this site" from "The assistant isn't connected for this
+  site yet" (AI on, no assistant key set).
+- **The app opens in the right light or dark from the first paint.**
+  `/theme.js` now carries the install's appearance setting (`theme` in
+  `self.galleyStart`, next to `keeper` and `look`), read on every request.
+  - On your own computer and in the desktop app, this setting wins over the
+    copy saved in this browser. A new browser, or a change made in another
+    one, no longer shows the wrong appearance first.
+  - On a hosted editor, someone who hasn't chosen their own starts from it.
+
+  The page's `color-scheme` is set at the same time, so the browser's
+  scrollbars and form controls match from the start.
+- **The theme no longer flips to the default while the app loads.** The
+  theme painted before the app starts stays until the editor's details have
+  loaded. If the chosen theme is one saved on the server rather than built
+  in, it stays until the saved themes have loaded too. Before this, the app
+  could remove the painted theme while loading, along with this browser's
+  saved copy of a theme the person had chosen.
+
 ## 0.4.6 — 2026-11-26
 
 **Connecting your own account to the identity provider in the app, and

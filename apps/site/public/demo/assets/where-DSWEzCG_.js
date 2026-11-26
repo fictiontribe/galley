@@ -1,0 +1,1 @@
+import{C as e}from"./ui-FFgYKFXt.js";var t={recorded:`on this computer`,keyStore:`on this computer only`,machines:`this computer’s`},n={recorded:`in this editor`,keyStore:`on the server, in this editor’s own data`,machines:`the server’s`};function r(e){return e?n:t}function i(){return r(e())}export{i as n,r as t};
