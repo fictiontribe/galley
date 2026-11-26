@@ -129,6 +129,24 @@ export interface OneTimeLink {
   emailed: boolean;
 }
 
+/**
+ * An account as the server's access token is shown it, only where an
+ * identity provider is set up: never a name or an e-mail.
+ */
+export interface OperatorAccount {
+  id: string;
+  role: AccountRole;
+  /** Switched off: can't sign in. */
+  disabled: boolean;
+  /** Its subject at the install's identity provider; null when it signs in some other way. */
+  subject: string | null;
+}
+
+/** GET /api/people with the server's access token, where an identity provider is set up. */
+export interface OperatorPeople {
+  accounts: OperatorAccount[];
+}
+
 /** The People list on the Install page. */
 export interface People {
   accounts: Account[];

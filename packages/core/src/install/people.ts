@@ -14,10 +14,10 @@
  */
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { GalleyError } from "../errors";
-import { ACCOUNT_ROLES, INVITATION_DAYS, PASSWORD_LINK_MINUTES, ROLE_ACCESS, type Account, type AccountRole, type AccountSession, type Invitation, type LinkPreview } from "./accounts";
+import { ACCOUNT_ROLES, INVITATION_DAYS, PASSWORD_LINK_MINUTES, ROLE_ACCESS, type Account, type AccountRole, type AccountSession, type Invitation, type LinkPreview, type OperatorAccount } from "./accounts";
 import { nameKey, tidyName } from "./names";
 import { hashPassword, passwordProblem, verifyPassword } from "./password";
-import { hasOwner, sha256Hex, signsInWithPassword, spendSetupCode, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink } from "./state";
+import { hasOwner, sha256Hex, signsInWithPassword, spendSetupCode, TOMBSTONES_KEPT, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink } from "./state";
 
 /** One refusal for every code that can't be used — unknown, used, taken back, expired — so a guesser learns nothing. */
 export const LINK_REFUSED = "This link doesn't work any more: it was used already, taken back, or it ran out. Ask an owner of this editor for a new one.";
@@ -28,6 +28,12 @@ export const NAME_LIMIT = 100;
 export const WRONG_CURRENT_PASSWORD = "That isn't your current password.";
 /** Someone who isn't an owner asks to change the e-mail they sign in with. */
 export const OWN_EMAIL_REFUSAL = "Only an owner can change the e-mail you sign in with. Ask an owner of this editor to change it for you.";
+/** The server's access token asked to change an account in any way but switching it off. */
+export const TOKEN_ONLY_SWITCHES_OFF = 'With the server\'s access token, an account can only be switched off ({ "disabled": true }). Switching someone on, a role and an e-mail are an owner\'s, in People.';
+/** The server's access token asked to delete an account that is still switched on. */
+export const TOKEN_DELETES_ONLY_SWITCHED_OFF = "With the server's access token, only an account that is switched off can be deleted. Switch it off first.";
+/** Deleting a linked account when the list of removed ones is full. */
+export const REMOVED_LIST_FULL = `This editor remembers at most ${TOMBSTONES_KEPT.toLocaleString("en")} removed accounts that signed in through its identity provider, and the list is full, so this account can't be deleted now. Switch it off instead.`;
 /** An account with no password (it signs in through a provider) asked to change it. */
 export const NO_PASSWORD_TO_CHANGE = "This account signs in without a password, so it has none to change.";
 /** An account with no password asked to change its own e-mail, which needs the current password. */
@@ -87,9 +93,20 @@ export interface PeopleService {
    * off ends their sessions and their open links at once; a new e-mail ends
    * their open links (each was made for the old one).
    */
-  change(byId: string, accountId: string, input: { role?: AccountRole; disabled?: boolean; email?: string }): Promise<{ before: Account; after: Account }>;
+  /** `byId` null: the server's access token, which may only switch an account off. */
+  change(byId: string | null, accountId: string, input: { role?: AccountRole; disabled?: boolean; email?: string }): Promise<{ before: Account; after: Account }>;
   /** Removes someone: their sessions and open links end at once. */
-  remove(byId: string, accountId: string): Promise<Account>;
+  /**
+   * Deletes an account. One that signs in through the identity provider is
+   * remembered as removed (a tombstone), so its next sign-in doesn't make it
+   * again. `byId` null: the server's access token, only for an account
+   * already switched off.
+   */
+  remove(byId: string | null, accountId: string): Promise<Account>;
+  /** Everyone, as the server's access token is shown them: no name, no e-mail; the subject only of an identity at `issuer`. */
+  forOperator(issuer: string): OperatorAccount[];
+  /** The account whose identity at `issuer` has this subject, as the server's access token is shown it; null: none. */
+  byIdentity(issuer: string, subject: string): OperatorAccount | null;
   /**
    * A new-password link for someone. `byId` null: whoever runs the server
    * (`serve --reset-password`), which also switches the account back on.
@@ -127,6 +144,11 @@ export interface PeopleService {
 export interface PeopleOptions {
   /** The clock, in ms (tests move it to see links run out). */
   now?: () => number;
+}
+
+/** An account as the server's access token is shown it: no name, no e-mail. */
+function operatorAccount(stored: StoredAccount, issuer: string): OperatorAccount {
+  return { id: stored.id, role: stored.role, disabled: stored.disabled, subject: stored.identity?.issuer === issuer ? stored.identity.subject : null };
 }
 
 export function publicAccount(stored: StoredAccount): Account {
@@ -441,6 +463,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       let after: Account | null = null;
       let ended = false;
 
+      // The token ends access, never grants it: no role, no e-mail, never switching someone on.
+      if (byId === null && (input.role !== undefined || input.email !== undefined || input.disabled !== true)) throw new GalleyError("forbidden", TOKEN_ONLY_SWITCHES_OFF);
       await store.update((draft) => {
         const target = accountOf(draft, accountId);
 
@@ -481,13 +505,31 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
         if (!target) throw notHere();
         if (target.id === byId) throw new GalleyError("conflict", ASK_ANOTHER_OWNER);
+        if (byId === null && !target.disabled) throw new GalleyError("conflict", TOKEN_DELETES_ONLY_SWITCHED_OFF);
         if (target.role === "owner" && !target.disabled && enabledOwners(draft, target.id) === 0) throw new GalleyError("conflict", LAST_OWNER);
+        const identity = target.identity;
+
+        // Remembered as removed, so that subject's next sign-in at the provider is refused instead of making the account again.
+        if (identity && !draft.tombstones.some((one) => one.issuer === identity.issuer && one.subject === identity.subject)) {
+          if (draft.tombstones.length >= TOMBSTONES_KEPT) throw new GalleyError("conflict", REMOVED_LIST_FULL);
+          draft.tombstones.push({ id: newId(), issuer: identity.issuer, subject: identity.subject, removedAt: iso(now()), removedBy: byId });
+        }
         dropPasswordLinks(draft, target.id);
         draft.accounts = draft.accounts.filter((account) => account !== target);
         removed = publicAccount(target);
       });
       store.sessionsChanged();
       return removed!;
+    },
+
+    forOperator(issuer) {
+      return store.read().accounts.map((account) => operatorAccount(account, issuer));
+    },
+
+    byIdentity(issuer, subject) {
+      const found = store.read().accounts.find((account) => account.identity?.issuer === issuer && account.identity.subject === subject);
+
+      return found ? operatorAccount(found, issuer) : null;
     },
 
     passwordLink(byId, accountId) {

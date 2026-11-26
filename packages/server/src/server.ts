@@ -1137,6 +1137,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     cookieName: hostCookie ? `__Host-${PRODUCT.slug}_session` : `${PRODUCT.slug}_session_${port}`,
     install,
     secureCookie: hostCookie,
+    ...(hosted && options.identityProvider ? { identityProvider: options.identityProvider } : {}),
     allowedHosts:
       config.mode === "local"
         ? [config.host]

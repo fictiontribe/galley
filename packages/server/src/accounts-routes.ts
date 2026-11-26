@@ -26,6 +26,7 @@ import {
   WRONG_CURRENT_PASSWORD,
   roleMay,
   signsInWithPassword,
+  type Account,
   type AccountSession,
   type Install,
   type LinkPreview,
@@ -52,11 +53,11 @@ import {
 } from "./auth";
 import { realClock, SignInGate, type Outcome, type Ticket } from "./sign-in-gate";
 import { GalleyError } from "@galley/core";
-import { AuthError, invalid, notFound, RateLimitError } from "./errors";
+import { AuthError, forbidden, invalid, notFound, RateLimitError } from "./errors";
 import { MAX_STREAMS_PER_ACCOUNT, type StreamAccess, type StreamLimits } from "./events";
 import type { RouteContext, RouteTable } from "./routes";
 import * as v from "./validate";
-import { audit, callerOf, named, personOf } from "./who";
+import { audit, callerOf, named, NEEDS_A_PERSON, personOf } from "./who";
 
 export type AccountsRouteKey = Extract<
   ApiRouteKey,
@@ -64,6 +65,7 @@ export type AccountsRouteKey = Extract<
   | "PATCH /api/account"
   | "POST /api/account/password"
   | "GET /api/people"
+  | "GET /api/people/by-identity"
   | "POST /api/people/invitations"
   | "DELETE /api/people/invitations/:invitationId"
   | "PATCH /api/people/:accountId"
@@ -125,6 +127,33 @@ function installOf(ctx: RouteContext): Install {
 }
 
 /** A route's id parameter, or a plain refusal (never a crash on a strange value). */
+/** How the server's access token is named in the log, where a people change otherwise names the owner who made it. */
+const BY_TOKEN = "The server's access token";
+/** A browser's sign-in asking for what only the server's access token may ask. */
+export const TOKEN_ONLY_LOOKUP = "Only the server's access token looks an account up by its identity.";
+/** The lookup on an install with no identity provider. */
+export const NO_IDENTITY_PROVIDER = "This editor has no identity provider set up, so no account has an identity at one.";
+
+/** The identity provider people sign in through, when one is set up. */
+function providerOf(ctx: RouteContext): { issuer: string } | null {
+  return ctx.options.mode === "hosted" ? (ctx.options.identityProvider ?? null) : null;
+}
+
+/**
+ * Who is changing someone on a people route: the signed-in person (an owner,
+ * by the level check), or null for the server's access token where the
+ * route takes it — on every install (`always`), or only where an identity
+ * provider is set up (`with-provider`). Anywhere else the token is refused
+ * as it always was. The token only ever ends access or looks; never grants.
+ */
+function ownerOrToken(c: Context, ctx: RouteContext, takesToken: "always" | "with-provider"): Account | null {
+  if (callerOf(c, ctx)?.kind === "token") {
+    if (takesToken === "always" || providerOf(ctx)) return null;
+    throw forbidden(NEEDS_A_PERSON);
+  }
+  return personOf(c, ctx).account;
+}
+
 function idParam(c: Context, param: string): string {
   const value = c.req.param(param) ?? "";
 
@@ -528,9 +557,34 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
   // ── people ─────────────────────────────────────────────────────────────
   "GET /api/people": async (c, ctx) => {
     const install = installOf(ctx);
+    const by = ownerOrToken(c, ctx, "with-provider");
 
-    personOf(c, ctx);
-    return { ...install.people.list(), emailAvailable: linksAreEmailed(ctx) };
+    if (by) return { ...install.people.list(), emailAvailable: linksAreEmailed(ctx) };
+    // The token, where a provider is set up: enough to bring a list kept elsewhere back in step. No names, no e-mails, no invitations.
+    const accounts = install.people.forOperator(providerOf(ctx)!.issuer);
+
+    audit(ctx, `${BY_TOKEN} read the list of people (${accounts.length} ${accounts.length === 1 ? "account" : "accounts"}).`);
+    return c.json({ accounts });
+  },
+
+  "GET /api/people/by-identity": async (c, ctx) => {
+    const install = installOf(ctx);
+    const provider = providerOf(ctx);
+
+    if (callerOf(c, ctx)?.kind !== "token") {
+      personOf(c, ctx);
+      throw forbidden(TOKEN_ONLY_LOOKUP);
+    }
+    if (!provider) throw notFound(NO_IDENTITY_PROVIDER);
+    const subject = c.req.query("subject") ?? "";
+
+    if (subject.length === 0 || subject.length > 255) throw invalid("Give the subject to look up: ?subject=<the provider's subject>, at most 255 characters.");
+    const found = install.people.byIdentity(provider.issuer, subject);
+    const account = found ? install.people.get(found.id) : null;
+
+    audit(ctx, `${BY_TOKEN} looked an account up by its identity: ${account ? named(account) : "no account has it"}.`);
+    if (!found) throw notFound("No account here has that identity.");
+    return { id: found.id, role: found.role, disabled: found.disabled };
   },
 
   "POST /api/people/invitations": async (c, ctx) => {
@@ -566,23 +620,26 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
 
   "PATCH /api/people/:accountId": async (c, ctx) => {
     const install = installOf(ctx);
-    const { account: by } = personOf(c, ctx);
+    const by = ownerOrToken(c, ctx, "with-provider");
+    const who = by ? named(by) : BY_TOKEN;
     const target = idParam(c, "accountId");
     const body = await v.body(c, changeBody);
-    const { before, after } = await install.people.change(by.id, target, body);
+    const { before, after } = await install.people.change(by?.id ?? null, target, body);
 
-    if (before.email !== after.email) audit(ctx, `${named(by)} changed the e-mail ${named(after)} signs in with; their open links stopped working.`);
-    if (before.role !== after.role) audit(ctx, `${named(by)} changed the role of ${named(before)} to ${ROLE_NAMES[after.role]}.`);
-    if (before.disabled !== after.disabled) audit(ctx, after.disabled ? `${named(by)} switched off ${named(after)}; they were signed out.` : `${named(by)} switched ${named(after)} back on.`);
-    return after;
+    if (before.email !== after.email) audit(ctx, `${who} changed the e-mail ${named(after)} signs in with; their open links stopped working.`);
+    if (before.role !== after.role) audit(ctx, `${who} changed the role of ${named(before)} to ${ROLE_NAMES[after.role]}.`);
+    if (before.disabled !== after.disabled) audit(ctx, after.disabled ? `${who} switched off ${named(after)}; they were signed out.` : `${who} switched ${named(after)} back on.`);
+    if (by) return after;
+    // The token is never shown a name or an e-mail.
+    return c.json(install.people.forOperator(providerOf(ctx)!.issuer).find((account) => account.id === after.id)!);
   },
 
   "DELETE /api/people/:accountId": async (c, ctx) => {
     const install = installOf(ctx);
-    const { account: by } = personOf(c, ctx);
-    const removed = await install.people.remove(by.id, idParam(c, "accountId"));
+    const by = ownerOrToken(c, ctx, "with-provider");
+    const removed = await install.people.remove(by?.id ?? null, idParam(c, "accountId"));
 
-    audit(ctx, `${named(by)} removed ${named(removed)}; they were signed out.`);
+    audit(ctx, `${by ? named(by) : BY_TOKEN} removed ${named(removed)}; they were signed out.`);
     return ok;
   },
 
@@ -609,14 +666,15 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
 
   "POST /api/people/:accountId/sign-out": async (c, ctx) => {
     const install = installOf(ctx);
-    const { account: by } = personOf(c, ctx);
+    // Less than signing everyone out, which the token could always do.
+    const by = ownerOrToken(c, ctx, "always");
     const target = idParam(c, "accountId");
     const account = install.people.get(target);
 
     if (!account) throw notFound("That person isn't on this editor any more. Reload the list.");
     await install.people.signOut(target);
-    if (target === by.id) signOutHere(c, ctx);
-    audit(ctx, `${named(by)} signed ${target === by.id ? "themselves" : named(account)} out everywhere.`);
+    if (target === by?.id) signOutHere(c, ctx);
+    audit(ctx, `${by ? named(by) : BY_TOKEN} signed ${target === by?.id ? "themselves" : named(account)} out everywhere.`);
     return ok;
   },
 
