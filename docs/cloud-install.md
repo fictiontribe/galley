@@ -1122,8 +1122,12 @@ Signing in records when that person last signed in.
   out once to shorten it. People sign in again as usual.*); the install
   starts as usual.
 - An open live-update stream ends when its person is signed out, switched
-  off or removed. For anyone who can't read the inbox, a new form
-  submission arrives only as "the inbox changed", never its content.
+  off or removed, and when their session reaches its end. A stream with
+  nothing to send is looked at with each heartbeat (every 20 seconds), so it
+  may stay open up to that long past the session's end, sending nothing:
+  every event is checked before it is sent. For anyone who can't read the
+  inbox, a new form submission arrives only as "the inbox changed", never
+  its content.
 
 ### Looking after people
 

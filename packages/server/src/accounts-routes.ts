@@ -386,9 +386,15 @@ export async function changeOwnPassword(c: Context, ctx: RouteContext): Promise<
     // 400, not 401: the session is fine, only the typed password is wrong.
     throw invalid("That isn't the current password.");
   }
-  // Every other browser of theirs is signed out; this one gets a fresh cookie for the same session: its kind and its end stay.
-  signInAs(c, ctx, account.id, { kind: session.kind ?? "password", expiresAt: session.expiresAt });
   audit(ctx, `${named(account)} changed their password (from ${client}); their other browsers were signed out.`);
+  // Every other browser of theirs is signed out; this one gets a fresh cookie for the same session: its kind and its end stay.
+  try {
+    signInAs(c, ctx, account.id, { kind: session.kind ?? "password", expiresAt: session.expiresAt });
+  } catch (error) {
+    // The session reached its end while the password was being changed: this browser is signed out with the rest.
+    audit(ctx, `This browser of ${named(account)} wasn't signed in again after the password change: its session had ended.`);
+    throw error;
+  }
   return ok;
 }
 

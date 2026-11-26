@@ -302,8 +302,9 @@ export interface InstallStore {
 
   /**
    * Whether a session cookie (already checked for its signature and age)
-   * still counts. With `accountId`: also only while that account exists, is
-   * switched on, and hasn't been signed out everywhere since.
+   * still counts: never at or after its own end (`expiresAt`). With
+   * `accountId`: also only while that account exists, is switched on, and
+   * hasn't been signed out everywhere since.
    */
   sessionValid(session: SessionStamp, now?: number): boolean;
   /** Whether this one session was signed out (its cookie's other checks aside). */
@@ -591,6 +592,8 @@ export async function openInstallState(home: string, options: OpenInstallStateOp
     },
 
     sessionValid(session, now = Date.now()) {
+      // Past its own end, whoever asks: the cookie's reader checks it too, and nothing has to remember to.
+      if (session.expiresAt !== undefined && now >= session.expiresAt) return false;
       if (session.issuedAt <= state.sessions.validAfter) return false;
       if (state.sessions.revoked.some((entry) => entry.id === session.id && entry.until > now)) return false;
       if (session.accountId === undefined) return true;

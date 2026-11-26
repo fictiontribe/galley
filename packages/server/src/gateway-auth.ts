@@ -17,7 +17,7 @@
  */
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { InstallStore } from "@galley/core/install";
-import { SESSION_KINDS, sessionRunning, type RevocationList, type SessionInfo, type SessionKind } from "./auth";
+import { sameSignature, SESSION_KINDS, sessionRunning, type RevocationList, type SessionInfo, type SessionKind } from "./auth";
 import type { GatewayAuth } from "./gateway";
 
 /** How long a ticket can be traded. The editor uses it at once, in a frame it is loading. */
@@ -123,10 +123,8 @@ export function createGatewayTickets(options: GatewayTicketsOptions): GatewayTic
         const [, issued, ends, kind, id, accountId, signature] = parts as [string, string, string, string, string, string, string];
 
         if (!/^\d{1,16}$/.test(issued) || !/^\d{1,16}$/.test(ends) || !SESSION_KINDS.includes(kind as SessionKind) || !/^[A-Za-z0-9_-]{1,200}$/.test(id) || !ACCOUNT_ID.test(accountId) || !/^[A-Za-z0-9_-]{43}$/.test(signature)) return false;
-        const expected = mac(options.key, `${issued}.${ends}.${kind}.${id}.${accountId}`);
-        const given = Buffer.from(signature, "base64url");
-
-        if (given.length !== expected.length || !timingSafeEqual(given, expected)) return false;
+        // Compared as the text it is, as a session cookie's is: no two spellings of one MAC are both taken.
+        if (!sameSignature(signature, mac(options.key, `${issued}.${ends}.${kind}.${id}.${accountId}`).toString("base64url"))) return false;
         return live({ id, issuedAt: Number(issued), expiresAt: Number(ends), kind: kind as SessionKind, accountId });
       } catch {
         return false;
