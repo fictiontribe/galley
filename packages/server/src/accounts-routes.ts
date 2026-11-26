@@ -136,7 +136,9 @@ export const NO_IDENTITY_PROVIDER = "This editor has no identity provider set up
 
 /** The identity provider people sign in through, when one is set up. */
 function providerOf(ctx: RouteContext): { issuer: string } | null {
-  return ctx.options.mode === "hosted" ? (ctx.options.identityProvider ?? null) : null;
+  const provider = ctx.options.mode === "hosted" ? (ctx.options.oidc ?? null) : null;
+
+  return provider ? { issuer: provider.config.issuer } : null;
 }
 
 /**
@@ -624,6 +626,12 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
     const who = by ? named(by) : BY_TOKEN;
     const target = idParam(c, "accountId");
     const body = await v.body(c, changeBody);
+    const provider = ctx.options.mode === "hosted" ? (ctx.options.oidc ?? null) : null;
+
+    // Where someone signs in through the provider, it is authoritative for their role: it sets it at every sign-in.
+    if (by && body.role !== undefined && provider && install.store.account(target)?.identity?.issuer === provider.config.issuer) {
+      throw new GalleyError("conflict", `This person's role is set at ${provider.config.name}, where they sign in, and comes with each sign-in. Change it there.`);
+    }
     const { before, after } = await install.people.change(by?.id ?? null, target, body);
 
     if (before.email !== after.email) audit(ctx, `${who} changed the e-mail ${named(after)} signs in with; their open links stopped working.`);

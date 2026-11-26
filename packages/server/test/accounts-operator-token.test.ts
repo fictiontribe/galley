@@ -30,8 +30,15 @@ async function withPeople(provider: boolean): Promise<Started & { owner: string;
   const started = await startHosted(
     box,
     box.folder("home"),
-    { GALLEY_PUBLIC_URL: EDITOR, GALLEY_PASSWORD: PASSWORD, GALLEY_OWNER_NAME: "Sam Owner", GALLEY_OWNER_EMAIL: "sam@example.com", GALLEY_TOKEN: TOKEN },
-    provider ? { identityProvider: { issuer: ISSUER } } : {}
+    {
+      GALLEY_PUBLIC_URL: EDITOR,
+      GALLEY_PASSWORD: PASSWORD,
+      GALLEY_OWNER_NAME: "Sam Owner",
+      GALLEY_OWNER_EMAIL: "sam@example.com",
+      GALLEY_TOKEN: TOKEN,
+      // A provider set up as an operator would: nothing is asked of it until someone signs in through it.
+      ...(provider ? { GALLEY_OIDC_ISSUER: ISSUER, GALLEY_OIDC_CLIENT_ID: "galley-token-test" } : {}),
+    }
   );
   const owner = await signIn(started.port, "sam@example.com");
   const join = async (email: string, role: "owner" | "editor", name: string) => {

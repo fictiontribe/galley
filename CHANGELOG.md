@@ -9,14 +9,29 @@ entry says how.
 
 ### Added
 
+- **Signing in through your own identity provider (OpenID Connect)**, on a
+  hosted install, beside the passwords. Set `GALLEY_OIDC_ISSUER` and
+  `GALLEY_OIDC_CLIENT_ID` in the server's environment (never in the
+  starting-values file), with `GALLEY_PUBLIC_URL` on `https://`. The sign-in
+  screen gets a "Sign in with …" button. It uses the authorization code flow
+  with PKCE, checks every ID token in full (one algorithm, the issuer, this
+  editor as its only audience, its age, its nonce), finds each person by the
+  provider's issuer and subject (never by e-mail), and starts a session of
+  `GALLEY_OIDC_SESSION_HOURS` (12 by default). The provider sets the role at
+  every sign-in, from `GALLEY_OIDC_ROLE_CLAIM`, or `GALLEY_OIDC_DEFAULT_ROLE`.
+  `GALLEY_OIDC_OWNER` names the first owner by subject. Someone who signs in
+  through the provider gets no password ("forgot my password" and new-password
+  links don't apply to them), so removing them at the provider removes them.
+  Turning passwords off comes in a later version. The variables are in the
+  environment reference.
 - **The server's access token can sign one person out**
   (`POST /api/people/:accountId/sign-out`), logged as the token. It could
   already sign everyone out; the rest of People still needs a person signed
-  in in a browser. The API also gains the routes the token will have where
-  an identity provider is set up, which a later version adds: switching
-  someone off, deleting an account already switched off, the list of people
-  without names or e-mails, and `GET /api/people/by-identity`. None of them
-  ever switches someone on, changes a role or an e-mail, or makes a link.
+  in in a browser. Where an identity provider is set up (above), it may
+  also switch someone off, delete an account already switched off, list the
+  people without names or e-mails, and look one up by subject
+  (`GET /api/people/by-identity`). None of them ever switches someone on,
+  changes a role or an e-mail, or makes a link.
 
 ## 0.4.4 — 2026-11-26
 

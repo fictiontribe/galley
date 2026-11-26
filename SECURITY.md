@@ -123,8 +123,9 @@ model* (`apps/site/src/content/docs/running/security.md`).
    file in the Galley home, never cross the HTTP boundary, and are scrubbed
    from errors and logs.
 6. **Nothing phones home.** Galley talks to your git host, your package
-   registry, your deployed site, and — only when someone uses them and a key
-   is set — Anthropic, OpenAI or Google. There is no telemetry.
+   registry, your deployed site, the identity provider a hosted install's
+   operator sets up (`GALLEY_OIDC_ISSUER`), and — only when someone uses them
+   and a key is set — Anthropic, OpenAI or Google. There is no telemetry.
 
 ## Known limitations
 

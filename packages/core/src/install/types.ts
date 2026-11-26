@@ -192,6 +192,11 @@ export interface InstallMeta {
    * the password alone. Absent from servers without accounts.
    */
   signInWith?: "email" | "password";
+  /**
+   * The identity provider people may sign in through, beside the usual form:
+   * what its button says ("Sign in with …"). Absent: none is set up.
+   */
+  provider?: { name: string };
   /** This server can e-mail a new-password link, so "Forgot your password?" works without an owner. */
   passwordEmail?: boolean;
 }

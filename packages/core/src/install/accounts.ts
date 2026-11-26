@@ -97,6 +97,8 @@ export interface Account {
 export interface AccountSession extends Account {
   /** What this person may do, worked out from the role. */
   access: AccessLevel[];
+  /** They sign in through the identity provider: they have no password here, and their e-mail and role come from it. */
+  viaProvider?: true;
 }
 
 /** An invitation that hasn't been taken up yet. */

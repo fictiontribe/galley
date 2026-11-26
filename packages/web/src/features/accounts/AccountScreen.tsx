@@ -30,12 +30,15 @@ import "./accounts.css";
 
 /** Under someone's own e-mail when it isn't theirs to change. */
 export const EMAIL_BY_OWNER = "An owner of this editor can change it";
+/** Under the e-mail of someone who signs in through the identity provider. */
+export const EMAIL_BY_PROVIDER = "It comes from where you sign in, with each sign-in";
 
 function You({ account }: { account: AccountSession }) {
   const may = useMay();
   const mayPublish = may("POST /api/sites/:siteId/publish");
   // Your own e-mail is where a new-password link goes: an owner changes it (in People, or here for themselves); an account with none yet adds it here.
-  const ownEmail = may("PATCH /api/people/:accountId") || !account.email;
+  // Someone who signs in through the identity provider has their e-mail from it, and no password to confirm a change with.
+  const ownEmail = !account.viaProvider && (may("PATCH /api/people/:accountId") || !account.email);
   const [name, setName] = useState(account.name);
   const [email, setEmail] = useState(account.email);
   const [password, setPassword] = useState("");
@@ -84,7 +87,7 @@ function You({ account }: { account: AccountSession }) {
               <Input type="email" value={email} autoComplete="email" spellCheck={false} onChange={(event) => setEmail(event.target.value)} />
             </Field>
           ) : (
-            <Field label="E-mail" hint={EMAIL_BY_OWNER}>
+            <Field label="E-mail" hint={account.viaProvider ? EMAIL_BY_PROVIDER : EMAIL_BY_OWNER}>
               <Input type="email" value={account.email} readOnly spellCheck={false} />
             </Field>
           )}
@@ -252,7 +255,7 @@ export function AccountScreen() {
         <div className="app-settings__sections">
           <You account={account} />
           <Role account={account} />
-          <Password />
+          {account.viaProvider ? null : <Password />}
           <SignOutEverywhere />
           {may("PATCH /api/settings") ? null : <Appearance />}
         </div>

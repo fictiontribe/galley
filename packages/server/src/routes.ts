@@ -33,6 +33,7 @@ import { importRoutes, importsOf } from "./import";
 import { siteBrandRoutes } from "./sitebrand";
 import { installRoutes } from "./install-routes";
 import { accountsMeta, accountsRoutes, eventAccess, signInWithAccount, signOutThisBrowser, streamLimits } from "./accounts-routes";
+import { oidcRoutes } from "./oidc/routes";
 import { previewEntry } from "./preview-entry";
 import { hostingRoutes } from "./hosting-routes";
 import { checkLookPatch, defaultLook, publicLook, themeRoutes } from "./themes-routes";
@@ -196,6 +197,7 @@ export const routes: RouteTable = {
 
   // ── the hosted install: people and their accounts (accounts-routes.ts) ─
   ...accountsRoutes,
+  ...oidcRoutes,
 
   // ── "Host the editor online" (hosting-routes.ts) ──────────────────────
   ...hostingRoutes,
@@ -224,6 +226,8 @@ export const routes: RouteTable = {
       const { account, passwordEmail } = accountsMeta(c, ctx);
 
       meta.install.passwordEmail = passwordEmail;
+      // The provider's button: its name is shown to anyone at the sign-in screen.
+      if (ctx.options.oidc) meta.install.provider = { name: ctx.options.oidc.config.name };
       if (account) meta.account = account;
     }
     // The default theme, so the sign-in screen and anyone who hasn't chosen show it: colours and switches only.

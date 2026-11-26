@@ -148,11 +148,21 @@ function websocket(origin: string, headers = ""): Promise<{ head: string; echo: 
 const appCookies = `${slug}_session=a; ${slug}_session_4400=b; __Host-${slug}_session=c; __Host-${slug}_viewer=d; ${slug}_viewer=e`;
 
 describe("the app's own cookies", () => {
-  it("knows every form of the session and viewer cookie, and nothing else", () => {
-    for (const name of [`${slug}_session`, `${slug}_session_4400`, `__Host-${slug}_session`, `__Secure-${slug}_session`, `__Host-${slug}_viewer`, `${slug}_viewer`]) {
+  it("knows every form of the session, known-browser, viewer and pre-login cookie, and nothing else", () => {
+    for (const name of [
+      `${slug}_session`,
+      `${slug}_session_4400`,
+      `__Host-${slug}_session`,
+      `__Secure-${slug}_session`,
+      `__Host-${slug}_viewer`,
+      `${slug}_viewer`,
+      `__Host-${slug}_session_known`,
+      `${slug}_session_4400_known`,
+      `__Host-${slug}_oidc`,
+    ]) {
       expect(isAppCookie(name)).toBe(true);
     }
-    for (const name of ["session", `${slug}_sessions`, `${slug}_session_x`, `x${slug}_session`, `${slug}_prefs`, `__Host-session`, `${slug.toUpperCase()}_SESSION`]) {
+    for (const name of ["session", `${slug}_sessions`, `${slug}_session_x`, `x${slug}_session`, `${slug}_prefs`, `__Host-session`, `${slug.toUpperCase()}_SESSION`, `${slug}_known`, `${slug}_session_knowns`, `${slug}_oidc_x`]) {
       expect(isAppCookie(name)).toBe(false);
     }
     expect(viewerCookieName(true)).toBe(`__Host-${slug}_viewer`);

@@ -55,6 +55,36 @@ export interface MadeLink {
   expiresAt: string;
 }
 
+/** What a sign-in through the identity provider brings, its ID token already checked. */
+export interface ProviderSignIn {
+  issuer: string;
+  subject: string;
+  /** The `name` claim, as sent (null: none). */
+  name: string | null;
+  /** The e-mail, only when the provider marked it verified (null otherwise). */
+  email: string | null;
+  /** From the role claim, else the default role: the caller has refused a sign-in with neither. */
+  role: AccountRole;
+  /** The ID token's `iat`, in ms (the provider's clock). */
+  issuedAt: number;
+}
+
+/** Why a sign-in through the provider was refused. */
+export type ProviderSignInRefusal = "removed" | "switched-off" | "full" | "signed-out";
+
+export type ProviderSignInResult =
+  | {
+      ok: true;
+      account: Account;
+      created: boolean;
+      /** What changed at this sign-in, said for the log (no e-mails, no subjects). */
+      notes: string[];
+    }
+  | { ok: false; reason: ProviderSignInRefusal; account: Account | null; signedOutAt?: number };
+
+/** The most accounts an install's state holds: past it, the next start would refuse the state. */
+export const ACCOUNTS_KEPT = 10_000;
+
 export interface PeopleService {
   /** Everyone, and the open invitations (newest first). */
   list(): { accounts: Account[]; invitations: Invitation[] };
@@ -75,6 +105,17 @@ export interface PeopleService {
   verify(email: string | null, password: string): Promise<SignInResult>;
   /** Writes down when this person signed in. */
   noteSignIn(id: string): Promise<void>;
+  /**
+   * A sign-in through the identity provider: the account with that issuer
+   * and subject, brought up to date (name, e-mail, role), or made at the
+   * first sign-in — never found by e-mail. Refused for a removed subject, an
+   * account switched off here, an ID token from before the subject's last
+   * logout at the provider, and a new account past the limit; nothing is
+   * written then.
+   */
+  signInThroughProvider(input: ProviderSignIn): Promise<ProviderSignInResult>;
+  /** Makes the first owner, named by subject (GALLEY_OIDC_OWNER), while the install has no owner. Nothing when it has one. */
+  nameFirstOwner(issuer: string, subject: string): Promise<Account | null>;
   /** Whether `password` is the password of one of the owners who has one (GALLEY_PASSWORD, at start-up). */
   ownerPasswordIs(password: string): Promise<boolean>;
 
@@ -144,7 +185,17 @@ export interface PeopleService {
 export interface PeopleOptions {
   /** The clock, in ms (tests move it to see links run out). */
   now?: () => number;
+  /**
+   * An identity provider is set up: an account that signs in through it gets
+   * no password by any link, so taking it away at the provider takes its
+   * access away. (Without one — the provider taken away — such an account
+   * can be given a password, as any other.)
+   */
+  providerConfigured?: boolean;
 }
+
+/** A password link for someone who signs in through the identity provider, while one is set up. */
+export const NO_PASSWORD_FOR_PROVIDER_ACCOUNT = "This person signs in through the identity provider: a password would give them a way in that the provider can't take away.";
 
 /** An account as the server's access token is shown it: no name, no e-mail. */
 function operatorAccount(stored: StoredAccount, issuer: string): OperatorAccount {
@@ -288,6 +339,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
       if (!target) throw notHere();
       if (byId !== null && !by) throw notHere();
+      if (target.identity && options.providerConfigured) throw new GalleyError("conflict", NO_PASSWORD_FOR_PROVIDER_ACCOUNT);
       if (target.disabled) {
         if (byId !== null) throw new GalleyError("conflict", "This account is switched off, so it can't sign in. Switch it on first.");
         target.disabled = false;
@@ -318,9 +370,10 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
     },
 
     session(id) {
-      const account = people.get(id);
+      const stored = ID.test(id) ? store.account(id) : null;
 
-      return account ? { ...account, access: [...ROLE_ACCESS[account.role]] } : null;
+      // Whether they sign in through the provider is theirs to know (no password to change, a name the only thing to add); never which subject.
+      return stored ? { ...publicAccount(stored), access: [...ROLE_ACCESS[stored.role]], ...(stored.identity ? { viaProvider: true as const } : {}) } : null;
     },
 
     signInWith() {
@@ -346,6 +399,159 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       if (!matches) return { ok: false, reason: "wrong", account: publicAccount(account) };
       if (account.disabled) return { ok: false, reason: "disabled", account: publicAccount(account) };
       return { ok: true, account: publicAccount(account) };
+    },
+
+    async signInThroughProvider(input) {
+      let result: ProviderSignInResult | null = null;
+      let changedOthers = false;
+
+      await store.update((draft) => {
+        const at = now();
+        const sameIdentity = (identity: { issuer: string; subject: string } | undefined) => identity?.issuer === input.issuer && identity.subject === input.subject;
+        const account = draft.accounts.find((candidate) => sameIdentity(candidate.identity));
+
+        if (draft.tombstones.some((one) => sameIdentity(one))) {
+          result = { ok: false, reason: "removed", account: account ? publicAccount(account) : null };
+          return;
+        }
+        // A sign-in begun before the provider signed this subject out can't finish after it (both times are the provider's).
+        const logoutAt = account ? account.providerLogoutAt : draft.providerLogouts.filter((one) => sameIdentity(one)).reduce<number | undefined>((latest, one) => Math.max(latest ?? 0, one.at), undefined);
+
+        if (logoutAt !== undefined && input.issuedAt <= logoutAt) {
+          result = { ok: false, reason: "signed-out", account: account ? publicAccount(account) : null, signedOutAt: logoutAt };
+          return;
+        }
+        if (account?.disabled) {
+          result = { ok: false, reason: "switched-off", account: publicAccount(account) };
+          return;
+        }
+        const notes: string[] = [];
+        // A name nobody here shares and the editor's own check takes; else the part of the e-mail before the @; else none.
+        const nameFrom = (raw: string | null, exceptId: string | null): string => {
+          for (const candidate of [raw, input.email?.split("@")[0] ?? null]) {
+            if (candidate === null) continue;
+            try {
+              const name = cleanName(candidate);
+
+              if (!sharesName(draft, name, exceptId)) return name;
+              notes.push("its name is taken here, so it was left without one");
+              return "";
+            } catch {
+              notes.push("the name it was sent can't be used here");
+            }
+          }
+          return "";
+        };
+        // The e-mail: verified at the provider, taken by the editor's own check, and nobody else's here.
+        const emailFor = (exceptId: string | null): string => {
+          if (input.email === null) return "";
+          try {
+            const email = normalizeEmail(input.email);
+
+            if (draft.accounts.some((candidate) => candidate.email === email && candidate.id !== exceptId)) {
+              notes.push("its e-mail is another account's here, so it has none");
+              return "";
+            }
+            return email;
+          } catch {
+            notes.push("the e-mail it was sent can't be used here");
+            return "";
+          }
+        };
+
+        if (!account) {
+          if (draft.accounts.length >= ACCOUNTS_KEPT) {
+            result = { ok: false, reason: "full", account: null };
+            return;
+          }
+          const name = nameFrom(input.name, null);
+          const created: StoredAccount = {
+            id: newId(),
+            name,
+            email: emailFor(null),
+            role: input.role,
+            passwordHash: null,
+            passwordChangedAt: iso(at),
+            createdAt: iso(at),
+            lastSeenAt: iso(at),
+            disabled: false,
+            incomplete: !name,
+            sessionsValidAfter: 0,
+            identity: { issuer: input.issuer, subject: input.subject },
+          };
+
+          draft.accounts.push(created);
+          result = { ok: true, account: publicAccount(created), created: true, notes };
+          return;
+        }
+        // Every sign-in after the first brings the account up to date, by the same rules.
+        if (input.name !== null) {
+          let name = "";
+
+          try {
+            name = cleanName(input.name);
+          } catch {
+            notes.push("the name it was sent can't be used here, so it kept its own");
+          }
+          if (name && name !== account.name) {
+            if (sharesName(draft, name, account.id)) notes.push("its new name is taken here, so it kept its own");
+            else {
+              account.name = name;
+              changedOthers = true;
+            }
+          }
+        }
+        const email = emailFor(account.id);
+
+        if (email !== account.email) {
+          // Its open password links went to the old address.
+          dropPasswordLinks(draft, account.id);
+          account.email = email;
+        }
+        // The provider is authoritative for the role, except where that would leave no owner who can sign in.
+        if (input.role !== account.role) {
+          if (account.role === "owner" && enabledOwners(draft, account.id) === 0) notes.push(`the provider says ${input.role}, but it is the last owner here, so it stays an owner`);
+          else {
+            notes.push(`its role is now ${input.role}, as the provider says`);
+            account.role = input.role;
+            changedOthers = true;
+          }
+        }
+        account.incomplete = !account.name;
+        account.lastSeenAt = iso(at);
+        result = { ok: true, account: publicAccount(account), created: false, notes };
+      });
+      // A changed role or name applies to whatever shows it at once.
+      if (changedOthers) store.sessionsChanged();
+      return result!;
+    },
+
+    async nameFirstOwner(issuer, subject) {
+      let made: Account | null = null;
+
+      await store.update((draft) => {
+        if (hasOwner(draft)) return;
+        const at = iso(now());
+        const owner: StoredAccount = {
+          id: newId(),
+          name: "",
+          email: "",
+          role: "owner",
+          passwordHash: null,
+          passwordChangedAt: at,
+          createdAt: at,
+          lastSeenAt: null,
+          disabled: false,
+          incomplete: true,
+          sessionsValidAfter: 0,
+          identity: { issuer, subject },
+        };
+
+        draft.accounts.push(owner);
+        spendSetupCode(draft);
+        made = publicAccount(owner);
+      });
+      return made;
     },
 
     async noteSignIn(id) {
@@ -392,7 +598,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       let changed = false;
 
       await store.update((draft) => {
-        const owner = draft.accounts.find((account) => account.role === "owner" && account.incomplete);
+        // Never an owner who signs in through the provider: their name and e-mail come from it.
+        const owner = draft.accounts.find((account) => account.role === "owner" && account.incomplete && account.identity === undefined);
 
         if (!owner) return;
         // Like an e-mail that is taken: a name someone else here has is left for the owner to choose in the app.
@@ -548,7 +755,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
       await store.update((draft) => {
         prune(draft);
-        const target = draft.accounts.find((account) => account.email === email && !account.disabled);
+        // Nothing for someone who signs in through the provider: the same answer as for an e-mail nobody has.
+        const target = draft.accounts.find((account) => account.email === email && !account.disabled && !(account.identity && options.providerConfigured));
 
         if (target) result = { account: publicAccount(target), link: passwordLinkFor(draft, target, null) };
       });
@@ -568,6 +776,10 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       const found = linkFor(store.read(), code, now());
 
       if (!found) throw new GalleyError("not-found", LINK_REFUSED);
+      const forProvider = (state: InstallStateFile, link: StoredLink) => link.kind === "password" && Boolean(options.providerConfigured && accountOf(state, link.accountId ?? "")?.identity);
+
+      // Whoever made it: someone who signs in through the provider gets no password while one is set up.
+      if (forProvider(store.read(), found)) throw new GalleyError("conflict", NO_PASSWORD_FOR_PROVIDER_ACCOUNT);
       const name = found.kind === "invitation" ? cleanName(input.name) : null;
       const problem = passwordProblem(input.password);
 
@@ -608,6 +820,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
           result = { kind: "invitation", account: publicAccount(created) };
           return;
         }
+        if (forProvider(draft, link)) throw new GalleyError("conflict", NO_PASSWORD_FOR_PROVIDER_ACCOUNT);
         const account = accountOf(draft, link.accountId ?? "")!;
 
         account.passwordHash = hash;

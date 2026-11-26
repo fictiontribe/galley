@@ -5,13 +5,14 @@ import { exchangeToken } from "@/lib/auth";
 import { hostedInstall } from "@/lib/hosted";
 import { safeNext } from "@/lib/session";
 import { useMeta } from "@/lib/stores/meta";
-import { Button, Field, Input, Logo } from "@/ui";
-import { loginBody, loginProblem } from "@/features/accounts/logic";
+import { Button, buttonClass, Field, Input, Logo } from "@/ui";
+import { loginBody, loginProblem, providerRefusal } from "@/features/accounts/logic";
 import { ForgotPassword } from "@/features/accounts/ForgotPassword";
 
 /**
  * Hosted mode: your e-mail and password (or, on an install from before
- * accounts, the password alone). Local mode: the session link printed when
+ * accounts, the password alone), and, where the install has an identity
+ * provider, its button above them. Local mode: the session link printed when
  * the app started (or its token pasted here).
  */
 export function LoginScreen() {
@@ -41,6 +42,9 @@ export function LoginScreen() {
   const hosted = meta.mode === "hosted";
   const install = hostedInstall(meta);
   const signInWith = install?.signInWith;
+  // Signing in through the identity provider: a top-level navigation, never a fetch. A refusal comes back as ?signin=<why>.
+  const provider = hosted ? install?.provider : undefined;
+  const refused = provider ? providerRefusal(params.get("signin"), provider.name, params.get("at")) : null;
   const byEmail = hosted && signInWith === "email";
   const wrong = byEmail ? "That e-mail and password don’t match an account here. Try again." : "That password isn’t right. Try again.";
   // First run left half-way: the password exists, so this is the ordinary sign-in, and first run carries on after it.
@@ -120,13 +124,28 @@ export function LoginScreen() {
         </div>
         <h1 className="app-login__title">{hosted ? "Sign in to edit." : "Open with your session link."}</h1>
         <p className="app-login__body">
-          {byEmail
+          {provider
+            ? `Sign in with your account at ${provider.name}. If an owner invited you instead, use the e-mail and password you chose.`
+            : byEmail
             ? "Sign in with your e-mail and the password you chose. To get in, ask an owner of this editor for an invitation."
             : hosted
               ? "This app is protected by a password. Ask whoever set it up if you don’t have it."
               : "For safety, this app only opens from the link it printed when it started. Open that link, or paste it here."}
         </p>
         {unfinished ? <p className="app-login__body g-hint">Setting up this editor isn’t finished. It carries on where it was left once you sign in.</p> : null}
+        {refused ? (
+          <p className="app-login__body app-login__refused" role="alert">
+            {refused}
+          </p>
+        ) : null}
+        {provider ? (
+          <>
+            <a className={buttonClass("primary", "md", "g-btn--block")} href={`/api/auth/oidc/start?return=${encodeURIComponent(next)}`}>
+              Sign in with {provider.name}
+            </a>
+            <p className="app-login__body g-hint">{byEmail ? "Or with your e-mail and password:" : "Or with the password:"}</p>
+          </>
+        ) : null}
         {byEmail ? (
           <Field label="E-mail">
             <Input ref={emailInput} type="email" autoComplete="username" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} />
@@ -143,7 +162,7 @@ export function LoginScreen() {
             onChange={(event) => setSecret(event.target.value)}
           />
         </Field>
-        <Button type="submit" variant="primary" block busy={busy} busyLabel={hosted ? "Signing in" : "Opening"}>
+        <Button type="submit" variant={provider ? "secondary" : "primary"} block busy={busy} busyLabel={hosted ? "Signing in" : "Opening"}>
           {hosted ? "Sign in" : "Open"}
         </Button>
         {byEmail ? (

@@ -587,6 +587,7 @@ html, body { overflow: hidden; }
 .app-login__brand { display: flex; align-items: center; gap: var(--space-2); }
 .app-login__title { margin: var(--space-4) 0 0; font: var(--weight-regular) var(--text-2xl) / var(--leading-2xl) var(--font-display); letter-spacing: var(--tracking-heading); }
 .app-login__body { margin: 0; color: var(--ink-secondary); font-size: var(--text-md); line-height: var(--leading-md); }
+.app-login__refused { color: var(--ink-primary); }
 .app-open { inline-size: min(100%, 480px); }
 .app-open__working { display: flex; align-items: center; gap: var(--space-2); }
 .app-open__folder { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-sunken); color: var(--ink-secondary); font-size: var(--text-xs); overflow-wrap: anywhere; }

@@ -28,6 +28,7 @@
     "@galley/plugin-shopify": "workspace:*",
     "@hono/node-server": "^2.1.11",
     "hono": "^4.13.20",
+    "oauth4webapi": "3.8.9",
     "zod": "^4.6.7"
   },
   "devDependencies": {
