@@ -1049,11 +1049,10 @@ export interface ApiRoutes {
   /**
    * Where an identity provider is set up: its back-channel logout (OpenID
    * Connect Back-Channel Logout 1.0), server to server. A form-encoded
-   * `logout_token` of at most 16 KB; no cookie, no Origin. `200` only once
-   * the logout is written; `400` with `invalid_request` for a token that
-   * isn't good, or `server_error` when it couldn't be written; `503` with
-   * Retry-After while a backup is being put back. Anything but `200` is to be
-   * sent again.
+   * `logout_token` of at most 16 KB; no cookie, no Origin. `200`: written.
+   * `503` with Retry-After: send it again (it couldn't be checked or written
+   * now, or a backup is being put back). `400` (`invalid_request`): this token
+   * will never be taken.
    */
   "POST /api/auth/oidc/backchannel-logout": { body: { logout_token: string }; response: never };
 
