@@ -199,6 +199,8 @@ Usage: galley accounts list
        galley accounts link <account id> <subject> [--replace]
        galley accounts link --file <pairs>
        galley accounts rekey --from <issuer> --to <issuer>
+       galley accounts removed
+       galley accounts unremove <subject>
 Change who signs in as whom on a hosted Galley, on the server, with the
 server stopped.
   list      Every account: its id, role, whether it is switched off, and how it
@@ -214,6 +216,13 @@ server stopped.
   rekey     The provider's issuer changed: move every account and removed
             account from the old issuer to the new one, in one write, or none
             if one would meet the same subject under the new issuer.
+  removed   The removed accounts that signed in through the provider, which
+            can't sign in or be linked again: subject, issuer, when, by whom.
+  unremove  Take a subject at GALLEY_OIDC_ISSUER off that list: it may sign
+            in again (as a new account) or be linked. What the removal ended
+            stays ended.
+An account id or a subject that starts with "-" goes after --, so it isn't
+read as an option: galley accounts link -- <account id> <subject>.
 Options
       --replace             With link: bind this subject in place of the one the
                             account has (to put a wrong link right)

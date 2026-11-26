@@ -30,6 +30,8 @@ export const ACCOUNTS_HELP = `Usage: ${PRODUCT.slug} accounts list
        ${PRODUCT.slug} accounts link <account id> <subject> [--replace]
        ${PRODUCT.slug} accounts link --file <pairs>
        ${PRODUCT.slug} accounts rekey --from <issuer> --to <issuer>
+       ${PRODUCT.slug} accounts removed
+       ${PRODUCT.slug} accounts unremove <subject>
 
 Change who signs in as whom on a hosted ${PRODUCT.name}, on the server, with the
 server stopped.
@@ -47,6 +49,14 @@ server stopped.
   rekey     The provider's issuer changed: move every account and removed
             account from the old issuer to the new one, in one write, or none
             if one would meet the same subject under the new issuer.
+  removed   The removed accounts that signed in through the provider, which
+            can't sign in or be linked again: subject, issuer, when, by whom.
+  unremove  Take a subject at GALLEY_OIDC_ISSUER off that list: it may sign
+            in again (as a new account) or be linked. What the removal ended
+            stays ended.
+
+An account id or a subject that starts with "-" goes after --, so it isn't
+read as an option: ${PRODUCT.slug} accounts link -- <account id> <subject>.
 
 Options
       --replace             With link: bind this subject in place of the one the
@@ -170,5 +180,40 @@ export async function accountsCommand(argv: string[], io: Io): Promise<number> {
       return 1;
     }
   }
-  throw new UsageError(`“${action}” isn't something accounts does. Use \`${PRODUCT.slug} accounts list\`, \`link\` or \`rekey\`.`);
+  if (action === "removed") {
+    if (rest.length > 0) throw new UsageError(`\`${PRODUCT.slug} accounts removed\` takes no arguments.`);
+    const { store, people } = await openPeople(home);
+    const names = new Map(store.read().accounts.map((account) => [account.id, account.name || account.id]));
+    const list = people.removed();
+
+    if (list.length === 0) io.out("No removed account is on the list.");
+    for (const removed of list) {
+      const by = removed.removedBy === null ? "the server's access token or the server" : (names.get(removed.removedBy) ?? `${removed.removedBy} (removed since)`);
+
+      io.out(`subject ${removed.subject} at ${removed.issuer}  removed ${removed.removedAt} by ${by}`);
+    }
+    return 0;
+  }
+  if (action === "unremove") {
+    const issuer = io.env.GALLEY_OIDC_ISSUER?.trim();
+
+    if (!issuer) throw new UsageError("Set GALLEY_OIDC_ISSUER to the provider's issuer, as the server is started with: the subject is taken off the list under it.");
+    if (rest.length !== 1) throw new UsageError(`Write \`${PRODUCT.slug} accounts unremove <subject>\`.`);
+    const subject = rest[0]!;
+
+    await refuseWhileServed(home, values.force === true);
+    const { people } = await openPeople(home);
+    // The command line names the subject; the list's own entry (by its id) is what is taken off.
+    const entry = people.removed().find((removed) => removed.issuer === issuer && removed.subject === subject);
+
+    if (!entry) {
+      io.err(`No removed account has subject ${subject} at ${issuer}. \`${PRODUCT.slug} accounts removed\` lists them.`);
+      return 1;
+    }
+    const taken = await people.unremove(entry.id);
+
+    io.out(`Took subject ${taken.subject} at ${taken.issuer} off the list of removed accounts (removed ${taken.removedAt}): it may sign in again, as a new account, or be linked.`);
+    return 0;
+  }
+  throw new UsageError(`“${action}” isn't something accounts does. Use \`${PRODUCT.slug} accounts list\`, \`link\`, \`rekey\`, \`removed\` or \`unremove\`.`);
 }

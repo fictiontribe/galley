@@ -12,12 +12,13 @@
  * this module returns for the API carries a hash or a code: the code is
  * handed back once, to the caller that made the link, to put in the link.
  */
+import { PRODUCT } from "../brand";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { GalleyError } from "../errors";
 import { ACCOUNT_ROLES, INVITATION_DAYS, PASSWORD_LINK_MINUTES, ROLE_ACCESS, type Account, type AccountRole, type AccountSession, type Invitation, type LinkPreview, type OperatorAccount, type PeopleAccount } from "./accounts";
 import { nameKey, tidyName } from "./names";
 import { hashPassword, passwordProblem, verifyPassword } from "./password";
-import { hasOwner, PROVIDER_LOGOUT_KEPT_MS, PROVIDER_LOGOUTS_KEPT, sha256Hex, signsInWithPassword, spendSetupCode, TOMBSTONES_KEPT, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink } from "./state";
+import { hasOwner, PROVIDER_LOGOUT_KEPT_MS, PROVIDER_LOGOUTS_KEPT, sha256Hex, signsInWithPassword, spendSetupCode, TOMBSTONES_KEPT, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink, type StoredTombstone } from "./state";
 
 /** One refusal for every code that can't be used — unknown, used, taken back, expired — so a guesser learns nothing. */
 export const LINK_REFUSED = "This link doesn't work any more: it was used already, taken back, or it ran out. Ask an owner of this editor for a new one.";
@@ -33,6 +34,20 @@ export const TOKEN_ONLY_SWITCHES_OFF = 'With the server\'s access token, an acco
 /** The server's access token asked to delete an account that is still switched on. */
 export const TOKEN_DELETES_ONLY_SWITCHED_OFF = "With the server's access token, only an account that is switched off can be deleted. Switch it off first.";
 /** Deleting a linked account when the list of removed ones is full. */
+/** A removed account that signed in through a provider, as the list of removed accounts shows it. */
+export interface RemovedIdentity {
+  id: string;
+  issuer: string;
+  subject: string;
+  removedAt: string;
+  /** The account that removed it; null: the server's access token, or the server. */
+  removedBy: string | null;
+}
+
+function removedIdentity(removed: StoredTombstone): RemovedIdentity {
+  return { id: removed.id, issuer: removed.issuer, subject: removed.subject, removedAt: removed.removedAt, removedBy: removed.removedBy };
+}
+
 export const REMOVED_LIST_FULL = `This editor remembers at most ${TOMBSTONES_KEPT.toLocaleString("en")} removed accounts that signed in through its identity provider, and the list is full, so this account can't be deleted now. Switch it off instead.`;
 /** An account with no password (it signs in through a provider) asked to change it. */
 export const NO_PASSWORD_TO_CHANGE = "This account signs in without a password, so it has none to change.";
@@ -148,6 +163,16 @@ export interface PeopleService {
    * meet an identity or removed account already under the new issuer.
    */
   rekeyIssuer(from: string, to: string): Promise<{ accounts: number; removed: number }>;
+  /**
+   * The removed accounts that signed in through a provider, oldest first: each entry's id, its identity, when it was
+   * removed, and by which account (null: the server's access token, or the server).
+   */
+  removed(): RemovedIdentity[];
+  /**
+   * Takes the removed entry with this id off the list, so that identity may sign in again (as a new account) or be
+   * linked. What the removal ended stays ended. Not-found when no entry has the id.
+   */
+  unremove(id: string): Promise<RemovedIdentity>;
   /** Makes the first owner, named by subject (GALLEY_OIDC_OWNER), while the install has no owner. Nothing when it has one. */
   nameFirstOwner(issuer: string, subject: string): Promise<Account | null>;
   /** Whether `password` is the password of one of the owners who has one (GALLEY_PASSWORD, at start-up). */
@@ -309,8 +334,13 @@ function validSubjectText(subject: unknown): subject is string {
   return typeof subject === "string" && /^[\x20-\x7e]{1,255}$/.test(subject);
 }
 
+/** Never starting with "-": an id is typed on the command line (`galley accounts link <account id>`), where it would read as an option. */
 function newId(): string {
-  return randomBytes(9).toString("base64url");
+  for (;;) {
+    const id = randomBytes(9).toString("base64url");
+
+    if (!id.startsWith("-")) return id;
+  }
 }
 
 function sameHex(a: string, b: string): boolean {
@@ -648,8 +678,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         if (!target) throw new GalleyError("not-found", "No account here has that id. `galley accounts list` shows them.");
         const other = draft.accounts.find((account) => account !== target && same(account.identity));
 
-        if (other) throw new GalleyError("conflict", `That subject already has its own account here (${other.id}${other.name ? `, ${other.name}` : ""}). Two accounts are never merged: delete that one first, then take its subject off the list of removed accounts.`);
-        if (draft.tombstones.some((removed) => same(removed))) throw new GalleyError("conflict", "That subject is on this editor's list of removed accounts, so it can't be linked. An owner takes it off the list first.");
+        if (other) throw new GalleyError("conflict", `That subject already has its own account here (${other.id}${other.name ? `, ${other.name}` : ""}). Two accounts are never merged: delete that one first, then take its subject off the list of removed accounts (\`${PRODUCT.slug} accounts unremove <subject>\`).`);
+        if (draft.tombstones.some((removed) => same(removed))) throw new GalleyError("conflict", `That subject is on this editor's list of removed accounts, so it can't be linked. Take it off the list first, on the server with the server stopped: \`${PRODUCT.slug} accounts unremove <subject>\`.`);
         if (target.identity && !linkOptions.replace) {
           throw new GalleyError("conflict", `That account signs in through the provider already (subject ${target.identity.subject}). To bind another subject in its place, add --replace.`);
         }
@@ -712,7 +742,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         const clashes = [...under(from)].filter((subject) => there.has(subject));
 
         if (clashes.length > 0) {
-          throw new GalleyError("conflict", `${clashes.length === 1 ? "One subject is" : `${clashes.length} subjects are`} already under ${to} as well as under ${from}, so nothing was moved: two accounts are never merged. Delete or take off the list whichever shouldn't stay, then run this again.`);
+          throw new GalleyError("conflict", `${clashes.length === 1 ? "One subject is" : `${clashes.length} subjects are`} already under ${to} as well as under ${from}, so nothing was moved: two accounts are never merged. Delete whichever account shouldn't stay, or take a removed one off the list (\`${PRODUCT.slug} accounts unremove <subject>\`, under its issuer), then run this again.`);
         }
         for (const account of draft.accounts) {
           if (account.identity?.issuer !== from) continue;
@@ -727,6 +757,22 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         for (const logout of draft.providerLogouts) if (logout.issuer === from) logout.issuer = to;
       });
       return moved;
+    },
+
+    removed() {
+      return store.read().tombstones.map(removedIdentity);
+    },
+
+    async unremove(id) {
+      let found: RemovedIdentity | null = null;
+
+      await store.update((draft) => {
+        const at = draft.tombstones.findIndex((removed) => removed.id === id);
+
+        if (at < 0) throw new GalleyError("not-found", `No removed account has that id. \`${PRODUCT.slug} accounts removed\` lists them.`);
+        found = removedIdentity(draft.tombstones.splice(at, 1)[0]!);
+      });
+      return found!;
     },
 
     async nameFirstOwner(issuer, subject) {
