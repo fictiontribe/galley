@@ -843,6 +843,22 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
     while (silent.length) await new Promise((done) => silent.pop()!.close(done));
   });
 
+  /**
+   * The dev server was started again away from the port another program had, and that port was never asked again.
+   * How many times is not fixed: a restart takes the next free port up, and on a busy machine (other test files run
+   * at the same time, each listening on ports of its own) another program can take that one before the dev server
+   * does, and moving on again is right. So every start but the last must be one the log says was taken.
+   */
+  function startedAgainAwayFrom(told: number, root: string, status: PreviewStatus): void {
+    const asked = JSON.parse(readFileSync(join(root, "asked.json"), "utf8")) as number[];
+    const log = status.log.join("\n");
+
+    expect(asked[0]).toBe(told);
+    expect(asked.length, log).toBeGreaterThanOrEqual(2);
+    expect(asked.slice(1)).not.toContain(told);
+    for (const left of asked.slice(0, -1)) expect(log).toContain(`Port ${left} was taken by another program`);
+  }
+
   it("starts the dev server again on another port when the one it chose was taken by something that says nothing", async () => {
     const root = site("strict");
     const port = await freeLoopbackPort();
@@ -853,7 +869,7 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
 
     expect(status.state).toBe("ready");
     expect(await (await fetch((status.url as string) + "/")).text()).toContain("<h1>strict</h1>");
-    expect(JSON.parse(readFileSync(join(root, "asked.json"), "utf8"))).toHaveLength(2);
+    startedAgainAwayFrom(told, root, status);
     expect(status.log.join("\n")).toContain(`Port ${told} was taken by another program before the preview could use it, so the preview is starting again on another port.`);
   });
 
@@ -903,8 +919,7 @@ server.listen({ port, host: "::", ipv6Only: true }, () => console.log("  Local: 
     expect(await (await fetch((status.url as string) + "/")).text()).toContain("<h1>strict</h1>");
     expect(statuses.filter((each) => each.state === "ready")).toHaveLength(1);
     // The port wasn't this preview's alone, so the dev server was started again somewhere that is.
-    expect(JSON.parse(readFileSync(join(root, "asked.json"), "utf8"))).toHaveLength(2);
-    expect(status.log.join("\n")).toContain(`Port ${told} was taken by another program`);
+    startedAgainAwayFrom(told, root, status);
   });
 
   it("re-checks the other address of a confirmed port, so a program that takes it later is not shown", async () => {
