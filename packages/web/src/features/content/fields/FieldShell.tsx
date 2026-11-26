@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import type { Field as FieldDef, FieldPath } from "@galley/core/types";
+import { FieldFrameAdditions, FieldHeaderAdditions, FieldNoticeAdditions } from "@/additions/places";
 import { Field, ProofMark } from "@/ui";
-import { useChangeKind, useEditCount, useIssues, useRefusal, useSaveState } from "../form/context";
+import { useChangeKind, useEditCount, useForm, useIssues, useRefusal, useSaveState } from "../form/context";
 import { pathKey } from "../form/paths";
 import { PutBack } from "./PutBack";
 
@@ -48,6 +49,7 @@ function SaveNote({ path }: { path: FieldPath }) {
  * engine's refusal wins over validation errors; warnings sit with the hint.
  */
 export function FieldShell({ field, path, children, showKey, group, id, note, className, tools }: FieldShellProps) {
+  const { siteId, entryPath } = useForm();
   const refusal = useRefusal(path);
   const issues = useIssues(path);
   const edits = useEditCount(path);
@@ -86,15 +88,19 @@ export function FieldShell({ field, path, children, showKey, group, id, note, cl
       hint={hint}
       aside={
         <>
+          <FieldHeaderAdditions siteId={siteId} entryPath={entryPath} path={path} field={field} />
           <SaveNote path={path} />
           {edits > 0 ? <PutBack path={path} label={field.label} /> : null}
         </>
       }
       tools={tools}
     >
-      <div className="app-field-control" data-path={pathKey(path)}>
-        {children}
-      </div>
+      <FieldFrameAdditions siteId={siteId} entryPath={entryPath} path={path} field={field}>
+        <div className="app-field-control" data-path={pathKey(path)}>
+          {children}
+        </div>
+      </FieldFrameAdditions>
+      <FieldNoticeAdditions siteId={siteId} entryPath={entryPath} path={path} field={field} />
     </Field>
   );
 }

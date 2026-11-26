@@ -1,4 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import type { Extension } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 import { Skeleton } from "../Skeleton";
 import { cx } from "../cx";
 import type { CodeLanguage, EditorControl } from "./codemirror";
@@ -7,6 +9,7 @@ import type { TextEdit } from "./markdownText";
 export interface CodeEditorHandle {
   edit: (make: (text: string, start: number, end: number) => TextEdit) => void;
   focus: () => void;
+  view?: () => EditorView | null;
 }
 
 export interface CodeEditorProps {
@@ -25,20 +28,45 @@ export interface CodeEditorProps {
   handle?: Ref<CodeEditorHandle>;
   /** Labelled-by / described-by ids, when the editor sits inside a field. */
   describedBy?: string;
+  /** Optional extra CodeMirror extensions. */
+  extensions?: Extension[];
+  /** When true, the editor shows its text read-only. */
+  readOnly?: boolean;
+  /** When true, external `value` prop syncing is suppressed (managed by an extension). */
+  managedValue?: boolean;
+  /** Called once the underlying CodeMirror view mounts and with null on unmount. */
+  onView?: (view: EditorView | null) => void;
 }
 
 /**
  * CodeMirror 6, loaded on first use. Outside changes to `value` are applied
  * only while the editor isn't focused, so typing is never overwritten.
  */
-export function CodeEditor({ value, onChange, onFocus, onBlur, language, label, variant = "code", placeholder, shortcuts, className, handle, describedBy }: CodeEditorProps) {
+export function CodeEditor({
+  value,
+  onChange,
+  onFocus,
+  onBlur,
+  language,
+  label,
+  variant = "code",
+  placeholder,
+  shortcuts,
+  className,
+  handle,
+  describedBy,
+  extensions,
+  readOnly = false,
+  managedValue = false,
+  onView,
+}: CodeEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const control = useRef<EditorControl | null>(null);
   const [ready, setReady] = useState(false);
-  const callbacks = useRef({ onChange, onFocus, onBlur });
-  callbacks.current = { onChange, onFocus, onBlur };
-  const latest = useRef(value);
-  latest.current = value;
+  const callbacks = useRef({ onChange, onFocus, onBlur, onView });
+  callbacks.current = { onChange, onFocus, onBlur, onView };
+  const latest = useRef({ value, extensions, readOnly });
+  latest.current = { value, extensions, readOnly };
 
   useEffect(() => {
     let live = true;
@@ -46,19 +74,23 @@ export function CodeEditor({ value, onChange, onFocus, onBlur, language, label, 
       if (!live || !host.current) return;
       control.current = createEditor({
         parent: host.current,
-        value: latest.current,
+        value: latest.current.value,
         language,
         label,
         placeholder,
         shortcuts,
+        extra: latest.current.extensions,
+        readOnly: latest.current.readOnly,
         onChange: (text) => callbacks.current.onChange(text),
         onFocus: () => callbacks.current.onFocus?.(),
         onBlur: () => callbacks.current.onBlur?.(),
       });
+      callbacks.current.onView?.(control.current.view());
       setReady(true);
     });
     return () => {
       live = false;
+      callbacks.current.onView?.(null);
       control.current?.destroy();
       control.current = null;
     };
@@ -67,12 +99,21 @@ export function CodeEditor({ value, onChange, onFocus, onBlur, language, label, 
 
   useEffect(() => {
     const editor = control.current;
-    if (editor && !editor.hasFocus()) editor.setValue(value);
-  }, [value, ready]);
+    if (editor && !managedValue && !editor.hasFocus()) editor.setValue(value);
+  }, [value, ready, managedValue]);
+
+  useEffect(() => {
+    control.current?.setExtra(extensions ?? []);
+  }, [extensions, ready]);
+
+  useEffect(() => {
+    control.current?.setReadOnly(readOnly);
+  }, [readOnly, ready]);
 
   useImperativeHandle(handle, () => ({
     edit: (make) => control.current?.edit(make),
     focus: () => control.current?.focus(),
+    view: () => control.current?.view() ?? null,
   }));
 
   return (

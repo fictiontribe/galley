@@ -4,7 +4,7 @@
  * assistant's tools call these and nothing below them (docs/ARCHITECTURE.md §3.3).
  */
 export { createEventBus } from "./events";
-export { createSiteService, siteNameAt, type SiteDeps } from "./service";
+export { createSiteService, siteNameAt, type SiteActivityNotice, type SiteActor, type SiteDeps, type SiteFileWriteNotice, type SiteHooks } from "./service";
 export { createSiteRegistry, type GalleySiteRegistry, type SiteRegistryOptions } from "./registry";
 export { currentSiteId, isSiteId, withSiteScope, withoutSiteScope } from "./scope";
 export { createPreviewPolicy, DEFAULT_PREVIEW_POLICY, PREVIEW_LIMITS, type PreviewPolicy, type PreviewPolicyOptions } from "./preview-policy";

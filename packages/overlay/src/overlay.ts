@@ -8,13 +8,14 @@
  * parent sends. Until the parent speaks the protocol, editing stays off and
  * nothing is sent anywhere else.
  */
-import type { HostToOverlay, OverlayRect, OverlayToHost, PageDrawState } from "@galley/core/types";
+import type { HostToOverlay, OverlayRect, OverlaySectionList, OverlayToHost, PageDrawState } from "@galley/core/types";
 import { createArrange, type Arrange } from "./arrange";
 import { beginEdit, type EditOutcome, type EditSession } from "./edit";
 import { measurePage } from "./measure";
 import { watchPage, type PageArrival } from "./page";
 import { currentPath, watchNavigation, watchScroll } from "./navigation";
 import { allowedFor, parseHostMessage, type OverlayRole } from "./protocol";
+import { mapSections } from "./sections";
 import { ACTIVE_CLASS, HOVER_CLASS, TAG_ACTION_ATTR, TAG_ATTR, applyAppearance, injectStyles } from "./styles";
 import { collapse, editableTarget, findCopy, imageTarget, occurrenceOf, visibleText } from "./text";
 
@@ -97,6 +98,50 @@ export function createOverlay(env: OverlayEnv): Overlay {
   const queue: Outgoing[] = [];
   /** Arrange mode's chrome, made the first time the host turns it on. */
   let arrange: Arrange | null = null;
+  /** Colour-only section outlines (never carries text or names). */
+  let marksHost: HTMLDivElement | null = null;
+  let marksShadow: ShadowRoot | null = null;
+  let marksState: { lists: OverlaySectionList[]; marks: Array<{ field: string; index: number; color: string }> } | null = null;
+  const drawMarks = () => {
+    if (!marksState || marksState.marks.length === 0) {
+      marksHost?.remove();
+      marksHost = null;
+      marksShadow = null;
+      return;
+    }
+    const result = mapSections(doc, marksState.lists);
+    if (!result.ok) {
+      marksHost?.remove();
+      marksHost = null;
+      marksShadow = null;
+      return;
+    }
+    if (!marksHost) {
+      marksHost = doc.createElement("div");
+      marksHost.setAttribute("data-galley-marks", "");
+      marksHost.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:2147483640;";
+      marksShadow = marksHost.attachShadow({ mode: "open" });
+      doc.documentElement.appendChild(marksHost);
+    }
+    const byKey = new Map<string, Element>();
+    for (const item of result.sections) byKey.set(`${item.field}.${item.index}`, item.element);
+    const nodes: Node[] = [];
+    for (const mark of marksState.marks) {
+      const root = byKey.get(`${mark.field}.${mark.index}`);
+      if (!root) continue;
+      const box = root.getBoundingClientRect();
+      if (box.width <= 0 || box.height <= 0) continue;
+      const outline = doc.createElement("div");
+      outline.style.cssText = `position:fixed;left:${Math.round(box.left)}px;top:${Math.round(box.top)}px;width:${Math.round(box.width)}px;height:${Math.round(box.height)}px;border:2px solid ${mark.color};border-radius:4px;box-sizing:border-box;pointer-events:none;`;
+      nodes.push(outline);
+    }
+    marksShadow?.replaceChildren(...nodes);
+  };
+  const onMarksViewport = () => {
+    if (marksState && marksState.marks.length > 0) drawMarks();
+  };
+  win.addEventListener("scroll", onMarksViewport, { passive: true });
+  win.addEventListener("resize", onMarksViewport, { passive: true });
 
   const send = (message: Outgoing) => {
     if (!hostOrigin) {
@@ -424,6 +469,10 @@ export function createOverlay(env: OverlayEnv): Overlay {
       case "placing-drop":
         arrange?.drop();
         return;
+      case "marks":
+        marksState = message.marks.length > 0 ? { lists: message.lists, marks: message.marks } : null;
+        drawMarks();
+        return;
       case "measure": {
         // Read-only: sampling computed styles changes nothing on the page.
         let summary: ReturnType<typeof measurePage>;
@@ -497,6 +546,12 @@ export function createOverlay(env: OverlayEnv): Overlay {
       stopNavigation();
       win.removeEventListener("message", onMessage);
       win.removeEventListener("pagehide", rememberScroll);
+      win.removeEventListener("scroll", onMarksViewport);
+      win.removeEventListener("resize", onMarksViewport);
+      marksState = null;
+      marksHost?.remove();
+      marksHost = null;
+      marksShadow = null;
       if (highlightTimer) clearTimeout(highlightTimer);
       if (leaveTimer) clearTimeout(leaveTimer);
       arrange?.dispose();

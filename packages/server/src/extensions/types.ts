@@ -10,7 +10,9 @@
  * hash, an e-mail or the operator's token) and what the server does for it
  * (every guard a built-in route has, a level that is always checked).
  */
+import type { AssistantTurnNotice } from "@galley/core/ai";
 import type { AccountRole } from "@galley/core/install";
+import type { SiteActivityNotice, SiteActor, SiteFileWriteNotice } from "@galley/core/site";
 import type { SiteService } from "@galley/core/types";
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
@@ -190,6 +192,17 @@ export interface ExtensionPeople {
   onChange(listener: () => void): () => void;
 }
 
+export interface ExtensionHooks {
+  /** Called right after bytes reach disk (or a file is removed) on any open site. Listeners run outside any person and answer at once. */
+  onFileWrite(listener: (notice: SiteFileWriteNotice) => void): () => void;
+  /** Called around whole-tree site actions (publish, discard, revert, pull, check, catch-up). Listeners run outside any person. */
+  onActivity(listener: (notice: SiteActivityNotice) => void): () => void;
+  /** Optional guard called before discarding paths; return a plain refusal sentence to forbid it, or null/undefined to allow. */
+  beforeDiscard(guard: (info: { siteId: string; paths: string[]; actor: SiteActor }) => string | null | undefined | Promise<string | null | undefined>): () => void;
+  /** Called when an assistant turn starts, writes files, or ends. Listeners run outside any person. */
+  onAssistantTurn(listener: (notice: AssistantTurnNotice) => void): () => void;
+}
+
 export interface ExtensionHost {
   events: ExtensionEvents;
   /** Null where there are no accounts (local mode, the desktop app). */
@@ -201,7 +214,13 @@ export interface ExtensionHost {
    * when a backup is put back and when the server stops, and one kept from
    * before then refuses every call (SITE_CLOSED).
    */
-  sites: { get(siteId: string): Promise<GuardedSite | null> };
+  sites: {
+    get(siteId: string): Promise<GuardedSite | null>;
+    /** Runs `run` under the site's per-file lock for `path`, sequenced with built-in saves. Refused inside GET or once stopped. */
+    withPathLock<T>(siteId: string, path: string, run: (site: GuardedSite) => Promise<T>): Promise<T>;
+  };
+  /** Lifecycle observers and guards on open sites and assistant turns, unsubscribed automatically when the extension stops. */
+  hooks: ExtensionHooks;
   /**
    * Runs `run` outside any person, any publishing name and any site: the way
    * to start work that outlives a request. Work a handler merely leaves

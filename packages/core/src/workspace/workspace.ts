@@ -35,6 +35,14 @@ import { isSiteSettingsPath, requireBuildMode, requireSiteSettings } from "../in
 import { watchTree, type TreeWatcher, type WatchBatch } from "./watch";
 import { realpathSync, statSync } from "node:fs";
 
+export interface WorkspaceFileWrite {
+  path: string;
+  origin: ChangeOrigin;
+  beforeHash: string | null;
+  afterHash: string | null;
+  removed: boolean;
+}
+
 export interface WorkspaceOptions {
   /** Current writable globs — a function, because the site model can change. */
   writable: () => WritableConfig;
@@ -48,6 +56,8 @@ export interface WorkspaceOptions {
   authorLayers?: () => AuthorLayers | null;
   /** Watch the tree for edits made outside the app. Default true. */
   watch?: boolean;
+  /** Called right after bytes reach disk (or a file is removed) inside the save lock. Never fails the write. */
+  onFileWrite?: (write: WorkspaceFileWrite) => void;
 }
 
 /** WriteOptions plus engine-internal flags. */
@@ -352,14 +362,14 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
 
         try {
           for (const step of held) {
-            await applyWrite(step.target.resolved, step.target.bytes, {});
+            await applyWrite(step.target.resolved, step.target.bytes, { origin: "undo" });
             done.push(step);
           }
         } catch {
           // Together or not at all: what was already put back goes to what it held a moment ago. Whatever can't is reported as put back, because it is.
           const stuck: string[] = [];
 
-          for (const step of done.reverse()) await applyWrite(step.target.resolved, step.current, {}).catch(() => stuck.push(step.target.path));
+          for (const step of done.reverse()) await applyWrite(step.target.resolved, step.current, { origin: "undo" }).catch(() => stuck.push(step.target.path));
           return stuck;
         }
         return held.map((step) => step.target.path);
@@ -387,7 +397,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
    * The single place bytes reach the disk. Records checkpoint pre-images,
    * writes atomically (or deletes), marks the write as ours for the watcher.
    */
-  async function applyWrite(resolved: ResolvedPath, bytes: Uint8Array | null, flags: { createOnly?: boolean }) {
+  async function applyWrite(resolved: ResolvedPath, bytes: Uint8Array | null, flags: { createOnly?: boolean; origin?: ChangeOrigin }) {
     // A write still on its way when the site closed (or asked of one somebody kept) lands nowhere: the site open next is
     // another, with its own locks, and two writers of one file would each answer "saved" while one edit disappeared.
     if (closedForWrites) throw new GalleyError("forbidden", SITE_CLOSED, resolved.path);
@@ -415,6 +425,19 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
       }
     }
     markSelfWrite(resolved.path, bytes);
+    if (options.onFileWrite) {
+      try {
+        options.onFileWrite({
+          path: resolved.path,
+          origin: flags.origin ?? "user",
+          beforeHash: current ? hashContent(current) : null,
+          afterHash: bytes ? hashContent(bytes) : null,
+          removed: bytes === null,
+        });
+      } catch {
+        // An observer never fails a write.
+      }
+    }
     return true;
   }
 
@@ -716,7 +739,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
 
       return lock(async () => {
         await checkBaseHash(resolved, writeOptions.baseHash);
-        const wrote = await applyWrite(resolved, toBytes(content), { createOnly: writeOptions.createOnly });
+        const wrote = await applyWrite(resolved, toBytes(content), { createOnly: writeOptions.createOnly, origin: writeOptions.origin });
 
         if (wrote) await changed([resolved.path], writeOptions.origin);
       });
@@ -731,7 +754,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
         if (!kind) throw new GalleyError("not-found", "That file doesn't exist.", resolved.path);
         if (kind.isDirectory()) throw new GalleyError("invalid", "That's a folder, not a file.", resolved.path);
         await checkBaseHash(resolved, writeOptions.baseHash);
-        await applyWrite(resolved, null, {});
+        await applyWrite(resolved, null, { origin: writeOptions.origin });
         await changed([resolved.path], writeOptions.origin);
       });
     },

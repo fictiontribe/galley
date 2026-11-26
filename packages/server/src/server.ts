@@ -981,6 +981,48 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     undo();
   };
 
+  const fileWriteListeners = new Set<(notice: import("@galley/core/site").SiteFileWriteNotice) => void>();
+  const activityListeners = new Set<(notice: import("@galley/core/site").SiteActivityNotice) => void>();
+  const discardGuards = new Set<(info: { siteId: string; paths: string[]; actor: import("@galley/core/site").SiteActor }) => string | null | undefined | Promise<string | null | undefined>>();
+  const assistantTurnListeners = new Set<(notice: import("@galley/core/ai").AssistantTurnNotice) => void>();
+  const hooksHub: import("./extensions/run").ExtensionHooksHub = {
+    onFileWrite(listener) {
+      fileWriteListeners.add(listener);
+      return () => void fileWriteListeners.delete(listener);
+    },
+    onActivity(listener) {
+      activityListeners.add(listener);
+      return () => void activityListeners.delete(listener);
+    },
+    beforeDiscard(guard) {
+      discardGuards.add(guard);
+      return () => void discardGuards.delete(guard);
+    },
+    onAssistantTurn(listener) {
+      assistantTurnListeners.add(listener);
+      return () => void assistantTurnListeners.delete(listener);
+    },
+  };
+  const siteHooks: import("@galley/core/site").SiteHooks = {
+    onFileWrite(notice) {
+      for (const listener of [...fileWriteListeners]) listener(notice);
+    },
+    onActivity(notice) {
+      for (const listener of [...activityListeners]) listener(notice);
+    },
+    async beforeDiscard(info) {
+      for (const guard of [...discardGuards]) {
+        const refusal = await guard(info);
+
+        if (typeof refusal === "string" && refusal.trim().length > 0) return refusal;
+      }
+      return null;
+    },
+  };
+  const onAssistantTurn = (notice: import("@galley/core/ai").AssistantTurnNotice) => {
+    for (const listener of [...assistantTurnListeners]) listener(notice);
+  };
+
   try {
     if (options.services) {
       services = hosted && store && !isSingleSiteRegistry(options.services.registry)
@@ -1005,6 +1047,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
           for (const name of names) pluginSecretEnv.add(name);
           if (hosted && pluginSecretEnv.size !== before) hideSecrets();
         },
+        siteHooks,
+        onAssistantTurn,
         ...(store
           ? {
               installSite: () => store.siteFolder(),
@@ -1139,6 +1183,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         site: (siteId) => services.registry.get(siteId),
         emit: (event) => services.events.emit(event),
         siteId: () => install?.siteId() ?? null,
+        hooks: hooksHub,
         ...(options.extensionTimes ?? {}),
       });
       notice(`Extensions: ${extensions.list.map((extension) => `${extension.id} (${extension.routes.length} ${extension.routes.length === 1 ? "route" : "routes"})`).join(", ")}`);

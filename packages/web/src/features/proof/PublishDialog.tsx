@@ -15,6 +15,7 @@ import { publishOutcome, type PublishOutcome } from "./publishOutcome";
 import { sendNow } from "./sendNow";
 import { usePublishCheck } from "./publishCheck";
 import { authorLine } from "./authorLine";
+import { PublishNoticeAdditions } from "@/additions/places";
 import { PublishDeployNote, onlineOutcome } from "@/features/deploy/Online";
 import { useDeployStatus } from "@/features/deploy/useDeploy";
 import "./proof.css";
@@ -302,6 +303,7 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
               }}
             />
           </Field>
+          <PublishNoticeAdditions siteId={siteId} paths={chosen.map((file) => file.path)} />
           {check.refusal || check.warnings.length > 0 ? <PluginWarnings check={check} /> : null}
           <fieldset className="app-fieldset">
             <legend className="g-label">{files.length === 1 ? "What goes" : `What goes · ${chosen.length} of ${files.length}`}</legend>

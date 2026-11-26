@@ -31,7 +31,8 @@ import { contextText, modeChangeNote, siteChangedNote, SYSTEM_PROMPT, undoNote }
 import { buildSiteCard, loadInstructionFiles } from "./site-card";
 import { hashText, summaryOf, ThreadStore, titleFrom, type StoredImageRef, type StoredMessage, type ThreadRecord } from "./threads";
 import { buildToolNames, offeredBuildToolNames } from "./tools/index";
-import { BUILD_MODE_REFUSAL, callerMay, requireBuildMode, requireLevel } from "../install/caller";
+import { BUILD_MODE_REFUSAL, callerMay, currentScope, requireBuildMode, requireLevel } from "../install/caller";
+import type { SiteActor } from "../site/service";
 import { BUILD_MODE_LEVEL, UNDO_BUILD_REFUSAL } from "../install/route-access";
 import { siteBrandInstructions } from "../sitebrand/tools";
 import { plural } from "./tools/labels";
@@ -50,6 +51,15 @@ export const MAX_TITLE = 120;
 const VIEWABLE_BYTES = 3_700_000;
 const VISION_MIME: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
 const MEDIA_EXT: Record<string, string> = { ...VISION_MIME, "image/svg+xml": "svg", "image/avif": "avif" };
+
+export interface AssistantTurnNotice {
+  siteId: string;
+  threadId: string;
+  turnId: string;
+  phase: "start" | "write" | "end";
+  actor: SiteActor;
+  paths?: string[];
+}
 
 export interface AgentRuntimeOptions {
   home: string;
@@ -72,6 +82,8 @@ export interface AgentRuntimeOptions {
   env?: NodeJS.ProcessEnv;
   /** Test seam: the input-token window the plain profile's size guard uses. */
   contextWindow?: number;
+  /** Optional observer notified when a turn starts, writes files, or ends. Never fails the turn. */
+  onTurn?: (notice: AssistantTurnNotice) => void;
 }
 
 /** The runtime plus a diagnostic: which request profile a turn finished on. */
@@ -487,6 +499,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
         };
         const tools = new Map<string, ToolActivity>();
 
+        const turnActor: SiteActor = currentScope() ?? { kind: "outside" };
+        const notifyTurn = (phase: AssistantTurnNotice["phase"], paths?: string[]) => {
+          try {
+            options.onTurn?.({ siteId, threadId, turnId, phase, actor: turnActor, ...(paths ? { paths } : {}) });
+          } catch {
+            // An observer never fails a turn.
+          }
+        };
+
+        notifyTurn("start");
         void checkpoint.run(async () => {
           let outcome: LoopResult;
 
@@ -529,6 +551,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
               onTool: (activity) => {
                 tools.set(activity.id, activity);
                 options.events.emit({ type: "chat.tool", siteId, threadId, messageId: assistantId, tool: activity });
+                if (checkpoint.paths().length > 0) notifyTurn("write", [...checkpoint.paths()]);
               },
               commit: (messages) =>
                 store.update(siteId, threadId, (stored) => {
@@ -560,6 +583,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): GalleyAgentRun
             // Never held, so never offered: let go of what it kept rather than keep it until the site closes.
             release(checkpoint);
           } finally {
+            notifyTurn("end", [...checkpoint.paths()]);
             active.delete(threadKey);
             resolveDone();
           }

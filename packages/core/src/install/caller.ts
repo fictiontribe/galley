@@ -137,11 +137,31 @@ export function asEngine<T>(run: () => T): T {
   return storage.run({ kind: "engine" }, run);
 }
 
+/** Who is acting right now: a signed-in person, the operator, the engine, or nobody. */
+export type CallerScope =
+  | { kind: "person"; accountId: string; role: AccountRole; viaPreview?: boolean }
+  | { kind: "operator" }
+  | { kind: "engine" }
+  | null;
+
 /** The person whose work this is, or null (nobody, the operator, the engine). */
 export function currentCaller(): Caller | null {
   const scope = storage.getStore();
 
   return scope?.kind === "person" ? scope.caller : null;
+}
+
+/** Snapshot of whoever is acting right now (for observers that record who did what). */
+export function currentScope(): CallerScope {
+  const scope = storage.getStore();
+
+  if (!scope) return null;
+  if (scope.kind === "person") {
+    const role = scope.caller.current ? (scope.caller.current() ?? scope.caller.role) : scope.caller.role;
+
+    return { kind: "person", accountId: scope.caller.accountId, role, ...(scope.caller.viaPreview ? { viaPreview: true } : {}) };
+  }
+  return { kind: scope.kind };
 }
 
 /**

@@ -69,6 +69,13 @@ export interface FormDeps {
   onEntry: (entry: Entry) => void;
 }
 
+export type FormStoreEvent =
+  | { type: "draft"; path: FieldPath; key: string }
+  | { type: "commit"; path: FieldPath; key: string }
+  | { type: "body-draft" }
+  | { type: "body-commit" }
+  | { type: "received"; entry: Entry };
+
 export interface FormActions {
   /** A control's new value. `immediate` skips the idle wait (switches, pickers, chips). */
   edit: (path: FieldPath, value: JsonValue | undefined, options: { required: boolean; immediate?: boolean }) => void;
@@ -78,6 +85,17 @@ export interface FormActions {
   commitBody: () => void;
   /** An op that changes shape (insert / move / remove) or puts a value back. Drafts are sent first. */
   apply: (...ops: DataOp[]) => void;
+  /**
+   * Apply remote edits directly onto the stored copy (preserving active drafts),
+   * without refetching the entry. Used by incremental live-sync additions.
+   */
+  applyRemote: (ops: EditOp[], next: { hash: string; raw?: string; body?: string | null; issues?: ValidationIssue[]; modifiedAt?: number }) => void;
+  /** Replace the form's send/reload transport dynamically (for compiled-in additions). */
+  setTransport: (transport: Partial<Pick<FormDeps, "send" | "reload">>) => void;
+  /** Subscribe to form draft/commit/receive lifecycle events. */
+  onEvent: (listener: (event: FormStoreEvent) => void) => () => void;
+  /** Suppress or re-enable refetch-on-receive while an incremental sync handles updates. */
+  setSuppressReceive: (suppress: boolean) => void;
   /**
    * Run what a message from the previewed page asks for. Any change made while
    * it runs — and, when it returns a promise, until that settles — taints the
@@ -162,6 +180,19 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
   let bodyDraft: { value: string; timer: ReturnType<typeof setTimeout> | null } | null = null;
   let queue: Batch[] = [];
   let inflight: Batch | null = null;
+  let transportSend = deps.send;
+  let transportReload = deps.reload;
+  let suppressReceive = false;
+  const listeners = new Set<(event: FormStoreEvent) => void>();
+  const emitEvent = (event: FormStoreEvent) => {
+    for (const listener of [...listeners]) {
+      try {
+        listener(event);
+      } catch {
+        // An observer never breaks form state.
+      }
+    }
+  };
   // How many messages from the previewed page are being handled now (see fromPage), and whether a change one of them
   // made is still waiting to be saved: the next save then goes marked.
   let pageDepth = 0;
@@ -278,7 +309,7 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
     inflight = batch;
     store.setState({ busy: true });
     try {
-      const result = await deps.send(batch.ops, store.getState().hash, batch.viaPreview);
+      const result = await transportSend(batch.ops, store.getState().hash, batch.viaPreview);
       inflight = null;
       received(result, batch);
     } catch (error) {
@@ -337,7 +368,7 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
     tainted = false;
     let fresh: Entry | null = null;
     try {
-      fresh = await deps.reload();
+      fresh = await transportReload();
     } catch {
       fresh = null;
     }
@@ -400,10 +431,12 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
         recompute();
         void pump();
       }, IDLE_MS);
+      emitEvent({ type: "draft", path, key });
       recompute();
     },
     commit(path) {
       const key = pathKey(path);
+      emitEvent({ type: "commit", path, key });
       if (!drafts.has(key)) return;
       flushDraft(key);
       recompute();
@@ -420,9 +453,11 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
           void pump();
         }, IDLE_MS),
       };
+      emitEvent({ type: "body-draft" });
       recompute();
     },
     commitBody() {
+      emitEvent({ type: "body-commit" });
       if (!bodyDraft) return;
       flushBody();
       recompute();
@@ -434,6 +469,32 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       enqueue(ops, [...new Set(ops.map(keyOfOp))]);
       recompute();
       void pump();
+    },
+    applyRemote(ops, next) {
+      const state = store.getState();
+      const nextStored = share(state.stored, applyOpsLocal(state.stored, dataOps(ops)));
+      const bodyFromOps = lastBody(ops);
+      const nextBody = next.body !== undefined ? next.body : bodyFromOps !== undefined ? bodyFromOps : state.storedBody;
+      if (next.modifiedAt && next.modifiedAt > lastModified) lastModified = next.modifiedAt;
+      store.setState({
+        hash: next.hash,
+        stored: nextStored,
+        storedBody: nextBody,
+        ...(next.raw !== undefined ? { raw: next.raw } : {}),
+        ...(next.issues !== undefined ? { issues: next.issues } : {}),
+      });
+      recompute();
+    },
+    setTransport(transport) {
+      if (transport.send) transportSend = transport.send;
+      if (transport.reload) transportReload = transport.reload;
+    },
+    onEvent(listener) {
+      listeners.add(listener);
+      return () => void listeners.delete(listener);
+    },
+    setSuppressReceive(suppress) {
+      suppressReceive = suppress;
     },
     fromPage(run) {
       pageDepth += 1;
@@ -464,6 +525,7 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       return done;
     },
     receive(fresh, origin = null) {
+      if (suppressReceive) return;
       const state = store.getState();
       if (fresh.path !== state.path || fresh.hash === state.hash) return;
       // While a save is on its way, wait for its reply, then keep whichever copy is newer.
@@ -479,7 +541,7 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       // text is theirs.
       const marked = pageDepth > 0;
       await actions.flush();
-      const result = await deps.send([{ op: "raw", value: text }], store.getState().hash, marked || undefined);
+      const result = await transportSend([{ op: "raw", value: text }], store.getState().hash, marked || undefined);
       if (result.applied > 0 || result.refused.length === 0) {
         lastModified = result.entry.modifiedAt;
         store.setState({

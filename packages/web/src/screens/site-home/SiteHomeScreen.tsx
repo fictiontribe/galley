@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { ListRowAdditions } from "@/additions/places";
 import { useTopBar } from "@/app/chrome";
 import { FileChangeRow } from "@/components/FileChangeRow";
 import { pendingSummary } from "@/features/proof/changes";
@@ -109,11 +110,14 @@ function PendingSection({ siteId }: { siteId: string }) {
                 key={file.path}
                 change={file}
                 actions={
-                  file.kind === "content" && file.status !== "deleted" ? (
-                    <Link className={buttonClass("quiet", "sm")} to={`/sites/${siteId}/edit?path=${encodeURIComponent(file.path)}`}>
-                      Open
-                    </Link>
-                  ) : undefined
+                  <>
+                    <ListRowAdditions siteId={siteId} path={file.path} />
+                    {file.kind === "content" && file.status !== "deleted" ? (
+                      <Link className={buttonClass("quiet", "sm")} to={`/sites/${siteId}/edit?path=${encodeURIComponent(file.path)}`}>
+                        Open
+                      </Link>
+                    ) : null}
+                  </>
                 }
               />
             ))}

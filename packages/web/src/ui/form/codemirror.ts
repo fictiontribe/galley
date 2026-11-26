@@ -4,7 +4,7 @@
  * styles the `app-cm-*` classes these decorations add).
  */
 import { minimalSetup } from "codemirror";
-import { EditorState, type Extension } from "@codemirror/state";
+import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import { Decoration, EditorView, MatchDecorator, ViewPlugin, keymap, placeholder as placeholderExt, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
@@ -22,6 +22,10 @@ export interface EditorOptions {
   placeholder?: string;
   /** Markdown shortcuts (⌘B, ⌘I, ⌘K…). */
   shortcuts?: boolean;
+  /** Optional extra CodeMirror extensions (reconfigured dynamically via setExtra). */
+  extra?: Extension[];
+  /** Optional read-only flag (reconfigured dynamically via setReadOnly). */
+  readOnly?: boolean;
   onChange: (text: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
@@ -29,6 +33,9 @@ export interface EditorOptions {
 
 export interface EditorControl {
   setValue: (text: string) => void;
+  setExtra: (extra: Extension[]) => void;
+  setReadOnly: (readOnly: boolean) => void;
+  view: () => EditorView;
   hasFocus: () => boolean;
   focus: () => void;
   /** Apply a text edit to the main selection (toolbar buttons). */
@@ -105,6 +112,9 @@ export function createEditor(options: EditorOptions): EditorControl {
       ])
     : [];
 
+  const extraCompartment = new Compartment();
+  const readOnlyCompartment = new Compartment();
+
   view = new EditorView({
     parent: options.parent,
     state: EditorState.create({
@@ -123,6 +133,8 @@ export function createEditor(options: EditorOptions): EditorControl {
             else options.onBlur?.();
           }
         }),
+        readOnlyCompartment.of([EditorState.readOnly.of(Boolean(options.readOnly)), EditorView.editable.of(!options.readOnly)]),
+        extraCompartment.of(options.extra ?? []),
       ],
     }),
   });
@@ -135,6 +147,13 @@ export function createEditor(options: EditorOptions): EditorControl {
       view.dispatch({ changes: change });
       applying = false;
     },
+    setExtra(extra) {
+      view.dispatch({ effects: extraCompartment.reconfigure(extra) });
+    },
+    setReadOnly(readOnly) {
+      view.dispatch({ effects: readOnlyCompartment.reconfigure([EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]) });
+    },
+    view: () => view,
     hasFocus: () => view.hasFocus,
     focus: () => view.focus(),
     edit: (make) => void run(make),

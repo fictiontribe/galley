@@ -1088,6 +1088,8 @@ export type HostToOverlay =
   | { galley: 1; type: "placing-pointer"; point: { x: number; y: number } | null }
   /** The drag ended over the frame: the overlay answers with `place` for the gap it showed, or nothing. */
   | { galley: 1; type: "placing-drop" }
+  /** Colour-only outlines on mapped sections; never carries names or text. */
+  | { galley: 1; type: "marks"; lists: OverlaySectionList[]; marks: Array<{ field: string; index: number; color: string }> }
   /**
    * Read-only: sample the current page's computed styles and answer with
    * `measure-result` (same `id`). Edit role only. Overlays that don't know it

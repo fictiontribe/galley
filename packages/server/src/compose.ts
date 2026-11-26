@@ -4,10 +4,10 @@
  * against fakes.
  */
 import { realpathSync } from "node:fs";
-import { createAgentRuntime, createFileSecretStore, createImageService, createSettingsService, createVideoService, type GalleyImageService, type GalleySettingsService } from "@galley/core/ai";
+import { createAgentRuntime, createFileSecretStore, createImageService, createSettingsService, createVideoService, type AssistantTurnNotice, type GalleyImageService, type GalleySettingsService } from "@galley/core/ai";
 import { builtInTargets } from "@galley/core/deploy";
 import { ensureSitePlugins, setActivePlugins, withPluginHooks, withSiteHooks, type PluginRegistry } from "@galley/core/plugins";
-import { createEventBus, createSiteRegistry, createSiteService, siteIdFor } from "@galley/core/site";
+import { createEventBus, createSiteRegistry, createSiteService, siteIdFor, type SiteHooks } from "@galley/core/site";
 import { createDeployService } from "@galley/core/deploy";
 import { createMediaStorageService, type MediaStorageService } from "@galley/core/media-storage";
 import { builtInEditorHosts, createHostingService } from "@galley/core/hosting";
@@ -64,6 +64,10 @@ export interface ServicesOptions {
   previewGateway?: PreviewGateway;
   /** Told the environment variables plugins name for their secret settings (see PluginSystemOptions.onSecretEnv). */
   onPluginSecretEnv?: (names: string[]) => void;
+  /** Optional site lifecycle hooks for compiled-in extensions. */
+  siteHooks?: SiteHooks;
+  /** Optional assistant turn observer for compiled-in extensions. */
+  onAssistantTurn?: (notice: AssistantTurnNotice) => void;
 }
 
 export async function createServices(options: ServicesOptions): Promise<Services> {
@@ -119,6 +123,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
     ...(options.installSite ? { installSite: options.installSite } : {}),
     ...(options.liveUrl ? { liveUrl: () => options.liveUrl?.() ?? null } : {}),
     ...(options.addLockfile === false ? { addLockfile: false } : {}),
+    ...(options.siteHooks ? { hooks: options.siteHooks } : {}),
   });
   const images = createImageService({ home: options.home, settings, providers: () => pluginRegistry.imageProviders(), env });
   const videos = createVideoService({ home: options.home, settings, events, providers: () => pluginRegistry.videoProviders() });
@@ -133,7 +138,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
     },
   });
   const registry = options.wrapRegistry ? options.wrapRegistry(hooked) : hooked;
-  const agent = createAgentRuntime({ home: options.home, registry, settings, images, events, env });
+  const agent = createAgentRuntime({ home: options.home, registry, settings, images, events, env, ...(options.onAssistantTurn ? { onTurn: options.onAssistantTurn } : {}) });
 
   // afterDeploy and onSubmission hooks follow what the deploy and form modules already announce.
   events.subscribe((event) => {

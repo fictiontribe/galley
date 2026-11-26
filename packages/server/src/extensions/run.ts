@@ -12,15 +12,16 @@
 import { chmod, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { Hono } from "hono";
+import type { AssistantTurnNotice } from "@galley/core/ai";
 import { outsideAnyPerson } from "@galley/core/install";
-import { withoutSiteScope } from "@galley/core/site";
+import { withoutSiteScope, type SiteActivityNotice, type SiteActor, type SiteFileWriteNotice } from "@galley/core/site";
 import { GalleyError, isGalleyError } from "@galley/core";
 import type { ServerEvent, SiteService } from "@galley/core/types";
 import { checkExtensions, declaredEvents, declaredRoutes, EXTENSION_EVENT_BYTES, EXTENSION_EVENT_BYTES_A_SECOND, EXTENSION_EVENTS_A_SECOND, ExtensionError, type DeclaredRoute } from "./declare";
 import { isJson, jsonBytes } from "./json";
 import type { PeopleDesk } from "./people";
-import { guardSite, insideGet } from "./site";
-import type { ExtensionCaller, ExtensionEventRule, ExtensionEvents, ExtensionHost, ExtensionParts, ExtensionPeople, ExtensionStream, GuardedSite, JsonValue, ServerExtension } from "./types";
+import { GET_CHANGES_NOTHING, guardSite, insideGet, STOPPED, UNREADABLE, unreadable } from "./site";
+import type { ExtensionCaller, ExtensionEventRule, ExtensionEvents, ExtensionHooks, ExtensionHost, ExtensionParts, ExtensionPeople, ExtensionStream, GuardedSite, JsonValue, ServerExtension } from "./types";
 
 /** How long an extension's setup may take. */
 export const EXTENSION_SETUP_MS = 30_000;
@@ -96,6 +97,13 @@ export interface StartedExtensions {
   endStreams(): void;
 }
 
+export interface ExtensionHooksHub {
+  onFileWrite(listener: (notice: SiteFileWriteNotice) => void): () => void;
+  onActivity(listener: (notice: SiteActivityNotice) => void): () => void;
+  beforeDiscard(guard: (info: { siteId: string; paths: string[]; actor: SiteActor }) => string | null | undefined | Promise<string | null | undefined>): () => void;
+  onAssistantTurn(listener: (notice: AssistantTurnNotice) => void): () => void;
+}
+
 export interface StartOptions {
   home: string;
   mode: "local" | "hosted";
@@ -108,6 +116,8 @@ export interface StartOptions {
   emit?(event: ServerEvent): void;
   /** A hosted install's one site, when it has one: an extension may send events about it without having asked for it first. */
   siteId?(): string | null;
+  /** Optional lifecycle hooks hub wired to the engine's sites and assistant runtime. */
+  hooks?: ExtensionHooksHub;
   setupMs?: number;
   stopMs?: number;
 }
@@ -381,6 +391,55 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
       },
     });
 
+    const hooksHub = options.hooks;
+    const hooks: ExtensionHooks = Object.freeze({
+      onFileWrite(listener: (notice: SiteFileWriteNotice) => void) {
+        if (!live || !hooksHub || typeof listener !== "function") return () => undefined;
+        const unlisten = hooksHub.onFileWrite((notice) => {
+          if (!live) return;
+          void callNow(say, "a file-write listener", () => listener(structuredClone(notice)));
+        });
+
+        listening.push(unlisten);
+        return unlisten;
+      },
+      onActivity(listener: (notice: SiteActivityNotice) => void) {
+        if (!live || !hooksHub || typeof listener !== "function") return () => undefined;
+        const unlisten = hooksHub.onActivity((notice) => {
+          if (!live) return;
+          void callNow(say, "a site-activity listener", () => listener(structuredClone(notice)));
+        });
+
+        listening.push(unlisten);
+        return unlisten;
+      },
+      beforeDiscard(guard: (info: { siteId: string; paths: string[]; actor: SiteActor }) => string | null | undefined | Promise<string | null | undefined>) {
+        if (!live || !hooksHub || typeof guard !== "function") return () => undefined;
+        const unlisten = hooksHub.beforeDiscard(async (info) => {
+          if (!live) return null;
+          try {
+            return (await outside(() => guard(structuredClone(info)))) ?? null;
+          } catch (error) {
+            say(`a discard guard failed: ${error instanceof Error ? error.message : String(error)}`);
+            return null;
+          }
+        });
+
+        listening.push(unlisten);
+        return unlisten;
+      },
+      onAssistantTurn(listener: (notice: AssistantTurnNotice) => void) {
+        if (!live || !hooksHub || typeof listener !== "function") return () => undefined;
+        const unlisten = hooksHub.onAssistantTurn((notice) => {
+          if (!live) return;
+          void callNow(say, "an assistant-turn listener", () => listener(structuredClone(notice)));
+        });
+
+        listening.push(unlisten);
+        return unlisten;
+      },
+    });
+
     await mkdir(stateDir, { recursive: true, mode: 0o700 });
     await chmod(stateDir, 0o700);
     const host: ExtensionHost = Object.freeze({
@@ -395,7 +454,22 @@ export async function startExtensions(extensions: readonly ServerExtension[], op
           // Asked from inside a GET's handler, the site is as read-only as the one the handler was handed.
           return guardSite(site, { readOnly: insideGet(), alive });
         },
+        async withPathLock<T>(siteId: string, path: string, run: (site: GuardedSite) => Promise<T>): Promise<T> {
+          if (!live) throw new GalleyError("forbidden", STOPPED);
+          if (insideGet()) throw new GalleyError("forbidden", GET_CHANGES_NOTHING);
+          if (typeof path !== "string" || unreadable(path)) throw new GalleyError("forbidden", UNREADABLE);
+          const site = typeof siteId === "string" ? await options.site(siteId) : null;
+
+          if (!site || !live) throw new GalleyError("not-found", "That site isn't open.");
+          handedSites.add(site.id);
+          const guarded = guardSite(site, { readOnly: false, alive });
+          const lockable = site as SiteService & { withPathLock?: <R>(p: string, fn: () => Promise<R>) => Promise<R> };
+
+          if (typeof lockable.withPathLock === "function") return lockable.withPathLock(path, () => run(guarded));
+          return run(guarded);
+        },
       }),
+      hooks,
       outside,
       stateDir,
       log: say,

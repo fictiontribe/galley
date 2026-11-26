@@ -1,5 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import type { FileChange } from "@galley/core/types";
+import { ProofRowAdditions } from "@/additions/places";
+import { useSiteId } from "@/additions/hooks";
 import { dirName, fileName, mediaFacts } from "@/lib/format";
 import { useChanges } from "@/lib/stores/changes";
 import { notify } from "@/lib/stores/toasts";
@@ -13,7 +15,7 @@ const STATUS: Record<FileChange["status"], { label: string; tone: BadgeTone }> =
   deleted: { label: "Deleted", tone: "delete" },
 };
 
-function Row({ change, current, onSelect, onDiscard }: { change: FileChange; current: boolean; onSelect: () => void; onDiscard: () => void }) {
+function Row({ siteId, change, current, onSelect, onDiscard }: { siteId: string | null; change: FileChange; current: boolean; onSelect: () => void; onDiscard: () => void }) {
   const status = STATUS[change.status];
   const title = useChangeName()(change);
   return (
@@ -21,7 +23,10 @@ function Row({ change, current, onSelect, onDiscard }: { change: FileChange; cur
       <button type="button" className="proof-row__select" data-path={change.path} aria-current={current || undefined} tabIndex={current ? 0 : -1} onClick={onSelect}>
         <Badge tone={status.tone}>{status.label}</Badge>
         <span className="g-file__main">
-          <span className="g-file__title">{title}</span>
+          <span className="g-file__title">
+            {title}
+            {siteId ? <ProofRowAdditions siteId={siteId} path={change.path} status={change.status} /> : null}
+          </span>
           <span className="g-file__path">
             {dirName(change.path)}
             <b>{fileName(change.path)}</b>
@@ -51,6 +56,7 @@ export interface ChangeListProps {
 
 /** The pending changes, grouped; ↑/↓ move through them, Home/End jump. */
 export function ChangeList({ groups, selected, onSelect }: ChangeListProps) {
+  const siteId = useSiteId();
   const discard = useChanges((s) => s.discard);
   const [confirming, setConfirming] = useState<FileChange | null>(null);
   const collections = useCollections();
@@ -81,7 +87,7 @@ export function ChangeList({ groups, selected, onSelect }: ChangeListProps) {
           </h2>
           <ul className="proof-group__rows" aria-label={group.label}>
             {group.files.map((file) => (
-              <Row key={file.path} change={file} current={file.path === selected} onSelect={() => onSelect(file.path)} onDiscard={() => setConfirming(file)} />
+              <Row key={file.path} siteId={siteId} change={file} current={file.path === selected} onSelect={() => onSelect(file.path)} onDiscard={() => setConfirming(file)} />
             ))}
           </ul>
         </section>
