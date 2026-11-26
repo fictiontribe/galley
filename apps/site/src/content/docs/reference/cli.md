@@ -21,6 +21,7 @@ Usage
   galley [path]          Open the site in [path] (default: this folder) in the browser
   galley serve           Run for other computers, for the people you invite
   galley backup …        Back up a hosted install's data folder, or put a backup back
+  galley accounts …      Link a hosted install's accounts to its identity provider
   galley init [path]     Write galley.config.json from what detection finds
   galley doctor [path]   Check that a site and this computer are ready
   galley deploy [path]   Put the site online with Cloudflare or Vercel (--preview: unpublished changes)
@@ -181,6 +182,46 @@ you type it). It needs at least 12 characters. Without it the backup can't be
 opened: keep it somewhere safe.
 After a restore everyone is signed out. The backup's people come back with it:
 each signs in with the password they had when the backup was made.
+```
+
+## `galley accounts`
+
+Changes who signs in as whom on a hosted install, on the server, with the server stopped: `list` shows every account and how it signs in; `link` binds accounts to their subjects at the identity provider `GALLEY_OIDC_ISSUER` names (each loses its password and open links, and its sessions end); `rekey` moves every account and removed account to a new issuer when the provider's changes. It refuses while a server holds the data folder.
+
+```sh
+GALLEY_HOME=/data GALLEY_OIDC_ISSUER=https://id.example.com galley accounts link <account id> <subject>
+```
+
+Its help (`--help`):
+
+```text
+Usage: galley accounts list
+       galley accounts link <account id> <subject> [--replace]
+       galley accounts link --file <pairs>
+       galley accounts rekey --from <issuer> --to <issuer>
+Change who signs in as whom on a hosted Galley, on the server, with the
+server stopped.
+  list      Every account: its id, role, whether it is switched off, and how it
+            signs in (its subject at the identity provider, or its e-mail).
+  link      Bind an account to its subject at the identity provider that
+            GALLEY_OIDC_ISSUER names. The account loses its password and any
+            open new-password link, every session of it ends, and from then on
+            it signs in through the provider. A subject that has an account of
+            its own here, or was removed, is refused: two accounts are never
+            merged. A file of pairs has one "<account id> <subject>" a line.
+  rekey     The provider's issuer changed: move every account and removed
+            account from the old issuer to the new one, in one write, or none
+            if one would meet the same subject under the new issuer.
+Options
+      --replace             With link: bind this subject in place of the one the
+                            account has (to put a wrong link right)
+      --file <pairs>        With link: a file of "<account id> <subject>" lines
+      --from <issuer>       With rekey: the old issuer, exactly as it was set
+      --to <issuer>         With rekey: the new issuer, exactly as GALLEY_OIDC_ISSUER
+      --home <folder>       The data folder (default GALLEY_HOME)
+      --force               Go ahead though a lock file says a server on another
+                            machine uses the folder (only when you know it is stopped)
+  -h, --help                Show this help
 ```
 
 ## `galley init [path]`

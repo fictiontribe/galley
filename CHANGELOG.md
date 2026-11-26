@@ -37,6 +37,14 @@ entry says how.
   them in once, without a password, with a session as long as the provider's,
   and sets none. `--account <id>` and `--subject <subject>` name the owner
   when there are several; with none named, they are listed on the console.
+- **`galley accounts`** (list, link, rekey), run on the server with the
+  server stopped: `link` binds existing accounts to their subjects at the
+  identity provider (`GALLEY_OIDC_ISSUER`), one pair or a file of them, and
+  each loses its password and open links and is signed out everywhere;
+  `--replace` puts a wrong link right; a subject another account has, or one
+  that was removed, is refused. `rekey` moves every account and removed
+  account to a new issuer in one write, or none if one would clash. Both
+  refuse while a server holds the data folder.
 - **Back-channel logout** from the identity provider
   (`POST /api/auth/oidc/backchannel-logout`, OpenID Connect Back-Channel
   Logout 1.0): a logout token for a subject ends every one of their sessions,

@@ -129,3 +129,19 @@ describe("a password for someone who signs in through the provider", () => {
   });
 });
 
+describe("linking and rekeying (the server's commands)", () => {
+  it("rekey refuses the same issuer, and moves recent logouts with the rest; a subject is checked before anything is linked", async () => {
+    const { store, people } = await opened();
+    const sam = await people.createOwner({ password: "correct horse battery staple", name: "Sam", email: "sam@example.com" });
+
+    await expect(people.linkIdentity(sam.id, { issuer: ISSUER, subject: "bad\nsubject" })).rejects.toThrow(/1 to 255 printable characters/);
+    expect(store.read().accounts[0]!.passwordHash).not.toBeNull();
+    await expect(people.rekeyIssuer(ISSUER, ISSUER)).rejects.toThrow(/the same issuer/);
+    await store.update((draft) => {
+      draft.providerLogouts.push({ issuer: ISSUER, subject: "someone", at: at });
+    });
+    expect(await people.rekeyIssuer(ISSUER, "https://new.example.com")).toEqual({ accounts: 0, removed: 0 });
+    expect(store.read().providerLogouts).toEqual([{ issuer: "https://new.example.com", subject: "someone", at }]);
+  });
+});
+

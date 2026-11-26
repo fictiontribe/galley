@@ -6,6 +6,7 @@ import { isGalleyError } from "@galley/core";
 import { PRODUCT, VERSION } from "@galley/core/brand";
 import { StartupError } from "@galley/server";
 import { UsageError } from "./args";
+import { accountsCommand } from "./commands/accounts";
 import { backupCommand } from "./commands/backup";
 import { deployCommand } from "./commands/deploy";
 import { domainCommand } from "./commands/domain";
@@ -31,6 +32,7 @@ Usage
   ${PRODUCT.slug} [path]          Open the site in [path] (default: this folder) in the browser
   ${PRODUCT.slug} serve           Run for other computers, for the people you invite
   ${PRODUCT.slug} backup …        Back up a hosted install's data folder, or put a backup back
+  ${PRODUCT.slug} accounts …      Link a hosted install's accounts to its identity provider
   ${PRODUCT.slug} init [path]     Write ${PRODUCT.configFile} from what detection finds
   ${PRODUCT.slug} doctor [path]   Check that a site and this computer are ready
   ${PRODUCT.slug} deploy [path]   Put the site online with Cloudflare or Vercel (--preview: unpublished changes)
@@ -69,6 +71,7 @@ const versionCommand: Command = async (argv, io) => {
 export const COMMANDS: Record<string, Command> = {
   serve: serveCommand,
   backup: backupCommand,
+  accounts: accountsCommand,
   init: initCommand,
   doctor: doctorCommand,
   new: newCommand,

@@ -29,6 +29,11 @@ Open: http://127.0.0.1:4400/sites/e9f5bf4fa34d?token=…
 \`\`\`sh
 GALLEY_HOME=/data galley backup create --out /data/backups/site.bak
 \`\`\``,
+  accounts: `Changes who signs in as whom on a hosted install, on the server, with the server stopped: \`list\` shows every account and how it signs in; \`link\` binds accounts to their subjects at the identity provider \`GALLEY_OIDC_ISSUER\` names (each loses its password and open links, and its sessions end); \`rekey\` moves every account and removed account to a new issuer when the provider's changes. It refuses while a server holds the data folder.
+
+\`\`\`sh
+GALLEY_HOME=/data GALLEY_OIDC_ISSUER=https://id.example.com galley accounts link <account id> <subject>
+\`\`\``,
   host: `Puts an editor for the site online on your own account — Fly.io, Cloudflare in front of a computer of yours, or any server with Docker — as the Online screen's **Host the editor online** does. It prints the plan and the monthly cost before anything is created, and asks. \`galley host recipe\` writes the files to run one install with Docker, for an operator. \`--preview-address\` and \`--live-address\` set the other two names (needed for an address like \`example.co.uk\`). Not in a release yet: it is in the repository. [Host the editor online](/docs/editing/editor-online/).
 
 \`\`\`sh
