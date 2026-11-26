@@ -43,12 +43,15 @@ entry says how.
   provider (`prompt=login`, `max_age=0`, and its `auth_time` checked), then a
   page showing whom it signed in (an e-mail only when the provider confirmed
   it) to Connect or Cancel. Nothing is bound before Connect, which needs this
-  browser still signed in as you; it drops your password and open links,
-  signs you out everywhere and starts a session through the provider. A
-  subject with an account of its own, or removed, is refused: two accounts
-  are never merged. Each link is logged naming the subject. From the link
-  `serve --reset-password` makes, an account connected to the wrong person
-  can take the provider off and choose a password.
+  browser still signed in as you; it takes the role the provider gives (the
+  last owner stays an owner, and the page says so), drops your password and
+  open links, signs you out everywhere and starts a session through the
+  provider. The provider's refusals apply as at a sign-in. A subject with an
+  account of its own, or removed, is refused: two accounts are never merged.
+  Each link is logged naming the subject, and where this server e-mails, the
+  account's address is told. From the link `serve --reset-password` makes, an
+  account connected to the wrong person can take the provider off and choose
+  a password, and that subject is remembered as removed.
 - **People shows how each person signs in, and offers only what can be
   done.** Someone who signs in through the identity provider shows their
   subject, and has no role picker, new-password link or e-mail change (their

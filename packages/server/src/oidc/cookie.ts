@@ -41,6 +41,10 @@ export interface PendingLink {
   email: string | null;
   /** The provider's name for the person. */
   name: string | null;
+  /** The role the provider gives them (its claim, else the default role), set at Connect under the last-owner rule. */
+  role: "owner" | "editor" | "contributor";
+  /** The ID token's `iat` (ms): Connect is refused when the provider signed this subject out at or after it. */
+  issuedAt: number;
   /** When the provider's sign-in came back (ms). */
   at: number;
 }
@@ -108,10 +112,11 @@ export function openPendingLink(cookieKey: Uint8Array, value: string | undefined
   const parsed = unseal(cookieKey, PENDING_LABEL, value);
 
   if (!parsed || typeof parsed.accountId !== "string" || !ACCOUNT_ID.test(parsed.accountId) || !TEXT(parsed.subject, 255) || !recent(parsed.at, now)) return null;
+  if ((parsed.role !== "owner" && parsed.role !== "editor" && parsed.role !== "contributor") || typeof parsed.issuedAt !== "number" || !Number.isFinite(parsed.issuedAt)) return null;
   const email = typeof parsed.email === "string" ? parsed.email : null;
   const name = typeof parsed.name === "string" ? parsed.name : null;
 
-  return { accountId: parsed.accountId, subject: parsed.subject, email, name, at: parsed.at };
+  return { accountId: parsed.accountId, subject: parsed.subject, email, name, role: parsed.role, issuedAt: parsed.issuedAt, at: parsed.at };
 }
 
 /**

@@ -42,6 +42,28 @@ function html(paragraphs: string[], link: { url: string; label: string }): strin
   ].join("");
 }
 
+export interface IdentityLinkedEmailInput {
+  to: string;
+  product: string;
+  address: string;
+  /** The identity provider's name. */
+  provider: string;
+}
+
+/** To the address an account had when it was connected to the identity provider: said once, so a link someone else made is noticed. */
+export function identityLinkedEmail(input: IdentityLinkedEmailInput): MailMessage {
+  const host = new URL(input.address).host;
+  const first = `Your account on ${input.product} at ${host} now signs in through ${input.provider}.`;
+  const rest = ["Its password stopped working, and every other browser signed in as you was signed out.", "If this wasn't you, tell an owner of this editor straight away."];
+
+  return {
+    to: [input.to],
+    subject: headerText(`Your account at ${host} now signs in through ${input.provider}`),
+    text: [first, "", ...rest.flatMap((line) => [line, ""]), input.address].join("\n"),
+    html: html([first, ...rest], { url: input.address, label: "Open the editor" }),
+  };
+}
+
 export interface InvitationEmailInput {
   to: string;
   /** The product's name (brand.ts). */

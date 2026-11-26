@@ -12,8 +12,8 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import * as oauth from "oauth4webapi";
 import { z } from "zod";
 import { GalleyError } from "@galley/core";
-import { MAX_INSTALL_PASSWORD_LENGTH, PASSWORDS_OFF, ROLE_NAMES, type AccountRole } from "@galley/core/install";
-import { ownPasswordThroughGate, signInAs } from "../accounts-routes";
+import { identityLinkedEmail, MAX_INSTALL_PASSWORD_LENGTH, PASSWORDS_OFF, ROLE_NAMES, type AccountRole } from "@galley/core/install";
+import { deliverMail, ownPasswordThroughGate, signInAs } from "../accounts-routes";
 import { clientAddress, clientKeyOf, LoginLimiter, sameSignature } from "../auth";
 import { forbidden, invalid, notFound } from "../errors";
 import * as v from "../validate";
@@ -231,7 +231,13 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
     if (preLogin.link) {
       // A fresh sign-in at the provider since the link started, whatever session it already had (prompt=login, max_age=0 asked it to).
       if (checked.authTime === null || checked.authTime * 1000 < preLogin.startedAt - 60_000) return refuse("link-stale", "the provider didn't ask whoever is at the keyboard to sign in again (its auth_time is from before the link started).");
-      setCookie(c, PENDING_LINK_COOKIE, sealPendingLink(ctx.session.key, { accountId: preLogin.link.accountId, subject: checked.subject, email: checked.email, name: checked.name, at: Date.now() }), {
+      // The role exactly as a sign-in works it out: a subject a sign-in would refuse can't be linked either.
+      const linkedRole: AccountRole | null = checked.role ?? provider.config.defaultRole;
+
+      if (!linkedRole) return refuse("no-role", `the ID token has no ${provider.config.roleClaim} claim, and no default role is set.`);
+      const pending = { accountId: preLogin.link.accountId, subject: checked.subject, email: checked.email, name: checked.name, role: linkedRole, issuedAt: checked.issuedAt, at: Date.now() };
+
+      setCookie(c, PENDING_LINK_COOKIE, sealPendingLink(ctx.session.key, pending), {
         httpOnly: true,
         secure: true,
         sameSite: "Strict",
@@ -340,11 +346,24 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
 
   "GET /api/auth/oidc/link/pending": async (c, ctx) => {
     const provider = providerOf(ctx);
+    const install = ctx.options.install!;
     const { account } = personOf(c, ctx);
     const pending = openPendingLink(ctx.session.key, getCookie(c, PENDING_LINK_COOKIE));
 
     if (!pending || pending.accountId !== account.id) throw notFound("No link to the identity provider is waiting to be confirmed. Start it again from your account.");
-    return { provider: provider.config.name, email: pending.email, name: pending.name, subject: pending.subject, expiresAt: new Date(pending.at + PRE_LOGIN_LIFETIME_MS).toISOString() };
+    // The last owner who can sign in stays an owner, whatever the provider says: the page says so before Connect.
+    const owners = install.people.list().accounts.filter((one) => one.role === "owner" && !one.disabled);
+    const keepsOwner = account.role === "owner" && pending.role !== "owner" && owners.length === 1 && owners[0]!.id === account.id;
+
+    return {
+      provider: provider.config.name,
+      email: pending.email,
+      name: pending.name,
+      subject: pending.subject,
+      role: pending.role,
+      keepsOwner,
+      expiresAt: new Date(pending.at + PRE_LOGIN_LIFETIME_MS).toISOString(),
+    };
   },
 
   "POST /api/auth/oidc/link/confirm": async (c, ctx) => {
@@ -369,10 +388,18 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
     }
     if (provider.config.passwordsOff) throw forbidden(`${PASSWORDS_OFF} Linking an account is done on the server: \`galley accounts link\`.`);
     // Never two accounts merged: a subject with an account of its own, or removed, and an account linked already, are refused here.
-    const { account: linked } = await install.people.linkIdentity(account.id, { issuer: provider.config.issuer, subject: pending.subject });
+    // The role the provider gives them, and any logout of that subject since the provider's sign-in, apply as at a sign-in.
+    const { account: linked, keptOwner } = await install.people.linkIdentity(account.id, { issuer: provider.config.issuer, subject: pending.subject }, { role: pending.role, issuedAt: pending.issuedAt });
 
     deleteCookie(c, PENDING_LINK_COOKIE, { path: "/", secure: true });
-    audit(ctx, `Security: ${named(linked)} linked their account to subject ${pending.subject} at ${provider.config.issuer} (from ${from}); their password is gone and every other session of theirs ended.`);
+    audit(
+      ctx,
+      `Security: ${named(linked)} linked their account to subject ${pending.subject} at ${provider.config.issuer} (from ${from}); their password is gone and every other session of theirs ended${keptOwner ? `; ${provider.config.name} says ${ROLE_NAMES[pending.role]}, but they are the last owner who can sign in, so they stay an owner` : ""}.`
+    );
+    // Said to the address the account had, where this server e-mails: a link someone else made is noticed.
+    if (account.email) {
+      void deliverMail(ctx, identityLinkedEmail({ to: account.email, product: ctx.options.brand.productName, address: ctx.options.publicOrigin ?? new URL(c.req.url).origin, provider: provider.config.name }), `the notice that ${named(linked)} now signs in through ${provider.config.name}`);
+    }
     // Every session of the account ended, this one too: a provider session takes its place.
     signInAs(c, ctx, linked.id, { kind: "provider", lastsMs: provider.config.sessionHours * 60 * 60_000 });
     return { ok: true as const };

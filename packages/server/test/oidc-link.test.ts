@@ -9,6 +9,7 @@
  * provider taken off again (a wrong link put right).
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
+import type { MailMessage } from "@galley/core/forms";
 import { PASSWORDS_OFF, type AccountSession } from "@galley/core/install";
 import { call, EDITOR, sandbox, startHosted, type Started } from "./hosted-helpers";
 import { startTestProvider, type TestProvider } from "./oidc-test-provider";
@@ -84,7 +85,7 @@ describe("linking your account in the app", () => {
     const both = `${sam}; ${trip.pending}`;
     const view = await call(port, "GET", "/api/auth/oidc/link/pending", { cookie: both });
 
-    expect(view.body).toEqual({ provider: "127.0.0.1", email: "sam@corp.example", name: "Samuel", subject: "sam-at-provider", expiresAt: expect.any(String) });
+    expect(view.body).toEqual({ provider: "127.0.0.1", email: "sam@corp.example", name: "Samuel", subject: "sam-at-provider", role: "owner", keepsOwner: false, expiresAt: expect.any(String) });
     const connected = await call(port, "POST", "/api/auth/oidc/link/confirm", { cookie: both, body: { connect: true } });
 
     expect(connected.status, connected.text).toBe(200);
@@ -208,6 +209,91 @@ describe("linking your account in the app", () => {
   });
 });
 
+describe("what a link takes from the provider", () => {
+  it("the provider's role, as at a sign-in: none and no default refuses the link; a contributor claim makes an owner account a contributor, except the last owner, who is told so", async () => {
+    const idp = await provider();
+    const { port, server } = await editor(idp);
+    const install = server.install!;
+    const sam = await passwordSignIn(port);
+    const samId = install.people.list().accounts[0]!.id;
+
+    // No role claim, no default role: refused at the callback, nothing kept.
+    idp.user = { sub: "no-role-sub", name: "Nobody" };
+    const refused = await roundTrip(port, idp, sam);
+
+    expect(refused.location).toBe("/account?link=no-role");
+    expect(refused.pending).toBeUndefined();
+    // The last owner: kept an owner, and the confirm page says so before Connect.
+    idp.user = { sub: "sam-sub", name: "Sam", galley_role: "contributor" };
+    const last = await roundTrip(port, idp, sam);
+
+    expect((await call(port, "GET", "/api/auth/oidc/link/pending", { cookie: `${sam}; ${last.pending}` })).body).toMatchObject({ role: "contributor", keepsOwner: true });
+    expect((await call(port, "POST", "/api/auth/oidc/link/confirm", { cookie: `${sam}; ${last.pending}`, body: { connect: true } })).status).toBe(200);
+    expect(install.store.account(samId)!.role).toBe("owner");
+    // Another owner, with a password, linking under a contributor claim: a contributor now.
+    await install.people.useLink((await install.people.invite(samId, { email: "olive@example.com", role: "owner" })).link.code, { password: PASSWORD, name: "Olive" });
+    const olive = await passwordSignIn(port, "olive@example.com");
+    const oliveId = install.people.list().accounts.find((one) => one.name === "Olive")!.id;
+
+    idp.user = { sub: "olive-sub", name: "Olive", galley_role: "contributor" };
+    const trip = await roundTrip(port, idp, olive);
+
+    expect((await call(port, "GET", "/api/auth/oidc/link/pending", { cookie: `${olive}; ${trip.pending}` })).body).toMatchObject({ role: "contributor", keepsOwner: false });
+    expect((await call(port, "POST", "/api/auth/oidc/link/confirm", { cookie: `${olive}; ${trip.pending}`, body: { connect: true } })).status).toBe(200);
+    expect(install.store.account(oliveId)!.role).toBe("contributor");
+  });
+
+  it("a logout from the provider between its sign-in and Connect: Connect is refused and nothing is bound; one from before its sign-in is carried by the account", async () => {
+    const idp = await provider();
+    const { port, server } = await editor(idp);
+    const install = server.install!;
+    const sam = await passwordSignIn(port);
+    const samId = install.people.list().accounts[0]!.id;
+
+    idp.user = { sub: "sam-sub", name: "Sam", galley_role: "owner" };
+    const trip = await roundTrip(port, idp, sam);
+    const logout = (iat: number) =>
+      call(port, "POST", "/api/auth/oidc/backchannel-logout", { raw: `logout_token=${encodeURIComponent(idp.logoutToken("sam-sub", { claims: { iat } }))}`, headers: { "content-type": "application/x-www-form-urlencoded" }, origin: null });
+    const now = Math.floor(Date.now() / 1000);
+
+    // The subject has no account yet: the logout is kept on the list for such subjects.
+    expect((await logout(now + 1)).status).toBe(200);
+    const refused = await call(port, "POST", "/api/auth/oidc/link/confirm", { cookie: `${sam}; ${trip.pending}`, body: { connect: true } });
+
+    expect([refused.status, refused.body.error.message]).toEqual([409, expect.stringMatching(/signed that person out after the sign-in this link came from/)]);
+    expect(install.store.account(samId)).toMatchObject({ passwordHash: expect.any(String) });
+    expect(install.store.account(samId)!.identity).toBeUndefined();
+    // A fresh round trip, after the logout: connected, and the account carries the logout's time.
+    await new Promise((resolve) => setTimeout(resolve, 2100));
+    const again = await roundTrip(port, idp, sam);
+
+    expect((await call(port, "POST", "/api/auth/oidc/link/confirm", { cookie: `${sam}; ${again.pending}`, body: { connect: true } })).status).toBe(200);
+    expect(install.store.account(samId)!.providerLogoutAt).toBe((now + 1) * 1000);
+  });
+
+  it("where this server e-mails, the address the account had is told it now signs in through the provider", async () => {
+    const idp = await provider();
+    const sent: MailMessage[] = [];
+    const { port } = await editor(idp, { GALLEY_SMTP_URL: "smtp://mail.example.com:25", GALLEY_MAIL_FROM: "editor@example.com" }, box.folder("home"), {
+      mailer: {
+        send: async (message: MailMessage) => {
+          sent.push(message);
+        },
+        verify: async () => {},
+      } as never,
+    });
+    const sam = await passwordSignIn(port);
+
+    idp.user = { sub: "sam-sub", name: "Sam", galley_role: "owner" };
+    const trip = await roundTrip(port, idp, sam);
+
+    expect((await call(port, "POST", "/api/auth/oidc/link/confirm", { cookie: `${sam}; ${trip.pending}`, body: { connect: true } })).status).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(sent).toEqual([expect.objectContaining({ to: ["sam@example.com"], subject: "Your account at cms.localhost now signs in through 127.0.0.1" })]);
+    expect(sent[0]!.text).toContain("If this wasn't you, tell an owner of this editor straight away.");
+  });
+});
+
 describe("a wrong link put right from a recovery session", () => {
   it("the provider taken off and a password chosen; only from a recovery session, and never with passwords off", async () => {
     const idp = await provider();
@@ -235,6 +321,12 @@ describe("a wrong link put right from a recovery session", () => {
 
     expect(removed.status, removed.text).toBe(200);
     expect(reset.server.install!.store.account(samId)!.identity).toBeUndefined();
+    // The subject it was wrongly linked to is remembered as removed: it can't come back as an account of its own.
+    expect(reset.server.install!.store.read().tombstones).toEqual([expect.objectContaining({ subject: "not-sam", removedBy: samId })]);
+    const comeBack = await call(reset.port, "GET", "/api/auth/oidc/start", { headers: { "x-forwarded-for": "198.51.100.95" } });
+    const comeBackTo = new URL(await idp.authorize(String(comeBack.headers.location)));
+
+    expect((await call(reset.port, "GET", `${comeBackTo.pathname}${comeBackTo.search}`, { cookie: cookieNamed(comeBack.cookies, PRE_LOGIN)!, headers: { "x-forwarded-for": "198.51.100.95" } })).headers.location).toBe("/login?signin=removed");
     expect(await signedIn(reset.port, intruder)).toBe(false);
     expect(await signedIn(reset.port, cookieNamed(removed.cookies, SESSION)!)).toBe(true);
     // The intruder's sign-in had set the account's e-mail as the provider sent it (none): the password alone signs Sam in now.

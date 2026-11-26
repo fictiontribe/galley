@@ -305,6 +305,11 @@ function linkUrl(address: string, kind: LinkPreview["kind"], secret: string): st
  * logged — what kind of e-mail and the mail server's error code, never the
  * address, the link or the mail server's own words, which can quote both.
  */
+/** Sends one message where this server e-mails links (outgoing e-mail and its public address); false when it doesn't, or it failed (logged). */
+export function deliverMail(ctx: RouteContext, message: MailMessage, what: string): Promise<boolean> {
+  return deliver(ctx, message, what);
+}
+
 async function deliver(ctx: RouteContext, message: MailMessage, what: string): Promise<boolean> {
   const mailer: MailTransport | null | undefined = ctx.options.mailer;
 

@@ -155,6 +155,10 @@ export interface PendingLinkView {
   /** The provider's name for the person. */
   name: string | null;
   subject: string;
+  /** The role the provider gives them, which Connect sets. */
+  role: AccountRole;
+  /** They are the last owner who can sign in here: Connect keeps them an owner whatever the provider says. */
+  keepsOwner: boolean;
   /** When it can no longer be confirmed. */
   expiresAt: string;
 }

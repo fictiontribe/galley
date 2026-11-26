@@ -146,15 +146,25 @@ export interface PeopleService {
    * account loses its password and open password links, and every session of
    * it ends. Two accounts are never merged.
    */
-  linkIdentity(accountId: string, identity: { issuer: string; subject: string }, options?: { replace?: boolean }): Promise<{ account: Account; replaced: { issuer: string; subject: string } | null }>;
+  linkIdentity(
+    accountId: string,
+    identity: { issuer: string; subject: string },
+    options?: {
+      replace?: boolean;
+      /** Linked in the app: the role the provider gives them, set now under the last-owner rule. */
+      role?: AccountRole;
+      /** Linked in the app: the ID token's `iat` (ms). Refused when the provider signed this subject out at or after it. */
+      issuedAt?: number;
+    }
+  ): Promise<{ account: Account; replaced: { issuer: string; subject: string } | null; keptOwner: boolean }>;
   /** Whether `password` is this account's own (false for an account with none). Takes as long either way. */
   passwordIs(accountId: string, password: string): Promise<boolean>;
   /**
    * From a recovery session (`serve --reset-password`): the account stops
    * signing in through the provider and signs in with this new password
-   * instead — the way to put a wrong link right from the app. Every other
-   * session of it ends. Refused with passwords off: the provider is the
-   * one way in there.
+   * instead — the way to put a wrong link right from the app. The subject
+   * it was linked to is remembered as removed. Every other session of it
+   * ends. Refused with passwords off: the provider is the one way in there.
    */
   removeIdentity(accountId: string, newPassword: string): Promise<{ account: Account; removed: { issuer: string; subject: string } }>;
   /**
@@ -669,7 +679,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
     async linkIdentity(accountId, identity, linkOptions = {}) {
       if (!validSubjectText(identity.subject)) throw new GalleyError("invalid", "A subject is 1 to 255 printable characters, as the provider sends it in `sub`.");
-      let result: { account: Account; replaced: { issuer: string; subject: string } | null } | null = null;
+      let result: { account: Account; replaced: { issuer: string; subject: string } | null; keptOwner: boolean } | null = null;
 
       await store.update((draft) => {
         const target = accountOf(draft, accountId);
@@ -684,14 +694,28 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
           throw new GalleyError("conflict", `That account signs in through the provider already (subject ${target.identity.subject}). To bind another subject in its place, add --replace.`);
         }
         const replaced = target.identity && !same(target.identity) ? { ...target.identity } : null;
+        // A logout from the provider for this subject, kept while it had no account here: the account carries it from now on,
+        // and a sign-in from before it can't be what links it.
+        const logoutAt = draft.providerLogouts.filter((one) => same(one)).reduce<number | undefined>((latest, one) => Math.max(latest ?? 0, one.at), target.providerLogoutAt);
 
+        if (linkOptions.issuedAt !== undefined && logoutAt !== undefined && linkOptions.issuedAt <= logoutAt) {
+          throw new GalleyError("conflict", "The identity provider signed that person out after the sign-in this link came from, so nothing was connected. Start again.");
+        }
+        if (logoutAt !== undefined) target.providerLogoutAt = logoutAt;
+        // The provider's role, as at a sign-in: but never leaving no owner who can sign in.
+        let keptOwner = false;
+
+        if (linkOptions.role !== undefined && linkOptions.role !== target.role) {
+          if (target.role === "owner" && !target.disabled && enabledOwners(draft, target.id) === 0) keptOwner = true;
+          else target.role = linkOptions.role;
+        }
         target.identity = { issuer: identity.issuer, subject: identity.subject };
         // From now on the provider is its one way in: no password, no link to choose one, no session from before.
         target.passwordHash = null;
         dropPasswordLinks(draft, target.id);
         endSessions(target);
         target.incomplete = !target.name;
-        result = { account: publicAccount(target), replaced };
+        result = { account: publicAccount(target), replaced, keptOwner };
       });
       store.sessionsChanged();
       return result!;
@@ -719,6 +743,11 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         if (!target.identity) throw new GalleyError("conflict", "This account doesn't sign in through the identity provider.");
         const removed = { ...target.identity };
 
+        // The subject it was wrongly linked to is remembered as removed: it can't come back as an account of its own until an owner lets it.
+        if (!draft.tombstones.some((one) => one.issuer === removed.issuer && one.subject === removed.subject)) {
+          if (draft.tombstones.length >= TOMBSTONES_KEPT) throw new GalleyError("conflict", REMOVED_LIST_FULL);
+          draft.tombstones.push({ id: newId(), issuer: removed.issuer, subject: removed.subject, removedAt: iso(now()), removedBy: target.id });
+        }
         delete target.identity;
         delete target.providerLogoutAt;
         target.passwordHash = hash;

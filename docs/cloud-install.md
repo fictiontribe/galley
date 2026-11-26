@@ -510,7 +510,15 @@ Password:  https://cms.example.com/new-password#<one-time code>
   passwords off (`GALLEY_OIDC_ONLY`), the link signs them in instead
   (`Sign in:` in place of `Password:`): once, without a password, with a
   session as long as one through the provider, and it sets no password.
-  It is the way back in when the provider is down.
+  It is the way back in when the provider is down. With passwords on, that
+  session can also take the provider off an owner's account that was linked
+  to the wrong person, and choose a password; the subject it was linked to
+  is then remembered as removed.
+- An editor's or contributor's account linked to the wrong person (this
+  command is for owners) is undone by an owner: switch it off and delete it
+  in People, which remembers its subject as removed, then invite the person
+  again; or, on the server with it stopped, bind the right subject with
+  `galley accounts link --replace <account id> <subject>`.
 - An owner who was switched off is switched back on by it.
 - With no owner yet, it prints a fresh one-time **setup** link instead, as
   first run does. A setup code that was used stays dead: an old code or hash

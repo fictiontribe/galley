@@ -16,6 +16,7 @@ import { useMeta } from "@/lib/stores/meta";
 import { notify } from "@/lib/stores/toasts";
 import { Button, PageHeader } from "@/ui";
 import { Problem } from "@/features/install/parts";
+import { roleName } from "@/lib/may";
 
 export function ConnectScreen() {
   useTopBar({ crumbs: [{ label: "Your account", to: "/account" }, { label: "Connect" }] });
@@ -65,6 +66,11 @@ export function ConnectScreen() {
                 {pending.provider} signed in {pending.name ? <strong>{pending.name}</strong> : "someone"} (subject <code>{pending.subject}</code>). {pending.provider} hasn’t confirmed an e-mail for this account.
               </p>
             )}
+            <p className="app-login__body">
+              {pending.keepsOwner
+                ? `You stay ${roleName("owner")}: you’re the last owner who can sign in here, though ${pending.provider} says ${roleName(pending.role)}.`
+                : `You’ll be ${roleName(pending.role)} here, as ${pending.provider} says.`}
+            </p>
             <p className="g-hint">Connect only if that is you. From then on you sign in with it, your password here stops working, and you’re signed out everywhere else.</p>
             <div className="app-form-row">
               <Button variant="primary" busy={busy === "connect"} busyLabel="Connecting…" disabled={busy !== null} onClick={() => void answer(true)}>
