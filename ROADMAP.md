@@ -75,6 +75,10 @@ what is built; when something here ships, it moves to the
   that were removed and **Let them back**; with a provider set up, an
   account linked to it never signs in with a password; the guide to running
   a hosted install covers signing in through a provider step by step.
+- **0.4.7**: the preview says in plain words why it failed; `galley doctor`
+  checks more, with a `--cloud` mode for a site about to go online; the app
+  opens in the right light or dark from the first paint; settings to send
+  AI requests through a proxy, and a managed AI mode that shows credits.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.
