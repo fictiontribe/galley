@@ -10,6 +10,7 @@
  * depend on the index wait for that pipeline, so a search right after an edit
  * sees the edit.
  */
+import { AsyncLocalStorage } from "node:async_hooks";
 import { existsSync, lstatSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { PRODUCT } from "../brand";
@@ -678,7 +679,19 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     return serializeEntry(collection, { ...parsed.data, ...input.data }, input.body ?? parsed.body ?? undefined);
   }
 
-  const pathLock = createKeyedLock();
+  const rawPathLock = createKeyedLock();
+  const heldPaths = new AsyncLocalStorage<ReadonlySet<string>>();
+  const pathLock = <T>(path: string, task: () => Promise<T>): Promise<T> => {
+    const held = heldPaths.getStore();
+
+    if (held?.has(path)) return task();
+    return rawPathLock(path, () => {
+      const next = new Set(held);
+
+      next.add(path);
+      return heldPaths.run(next, task);
+    });
+  };
 
   /**
    * One edit at a time per file, each worked out from the file as it is.
