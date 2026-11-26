@@ -282,6 +282,16 @@ export function spendSetupCode(draft: InstallStateFile): void {
   draft.setup.tokenSha256 = null;
 }
 
+/**
+ * The first issuer other than `issuer`, byte for byte, that an account's
+ * identity or a removed account names. Both are kept by issuer, so under
+ * another one the removed would be free again: a server doesn't start, and
+ * an account isn't linked, while there is one.
+ */
+export function otherIssuer(state: Pick<InstallStateFile, "accounts" | "tombstones">, issuer: string): string | undefined {
+  return [...state.accounts.map((account) => account.identity?.issuer), ...state.tombstones.map((removed) => removed.issuer)].find((one) => one !== undefined && one !== issuer);
+}
+
 /** Whether an owner who can sign in exists: what "the password is chosen" used to mean for first run. */
 export function hasOwner(state: Pick<InstallStateFile, "accounts">): boolean {
   return state.accounts.some((account) => account.role === "owner");

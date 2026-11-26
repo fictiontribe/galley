@@ -266,6 +266,8 @@ export interface RunningServer {
    */
   /** `signIn`: the link signs the owner in without a password (they sign in through the provider, or passwords are off). */
   passwordLink: { url: string; expiresAt: string; name: string; signIn: boolean } | null;
+  /** Hosted mode: the identity provider people may sign in through (GALLEY_OIDC_ISSUER), by the name its button shows. Null: none. */
+  provider: { name: string } | null;
   /** Hosted mode: things the operator should hear once at start (a GALLEY_PASSWORD that no longer applies…). Already passed to `notice`. */
   notices: string[];
   /** Hosted mode: the preview's and the live comparison's addresses, or null when none could be worked out. */

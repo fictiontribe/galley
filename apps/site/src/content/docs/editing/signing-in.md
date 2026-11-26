@@ -6,7 +6,7 @@ group: editing
 order: 1.5
 ---
 
-For people who edit a site through an editor someone runs online, at an address like `cms.example.com` — a **hosted editor**. Everyone there has their own account: an e-mail, a password, and a role the owner chose. On the desktop app, or Galley on your own computer, there is nothing to sign in to and none of this applies.
+For people who edit a site through an editor someone runs online, at an address like `cms.example.com` — a **hosted editor**. Everyone there has their own account and a role. You sign in with your e-mail and a password, or, where whoever runs the editor set it up, through your organisation's own sign-in. On the desktop app, or Galley on your own computer, there is nothing to sign in to and none of this applies.
 
 > **Status.** Accounts are new. They are covered by automated tests, a rehearsal against the real server and a pass in a real browser, but haven't yet been tried with real e-mail, and the new-password and forgotten-password pages haven't been driven in a browser. If something here reads differently in the app, the app is right; tell whoever runs the editor.
 
@@ -50,6 +50,7 @@ Your name and initials are at the right of the top bar. Its menu shows your name
 - **You**: your name and e-mail. Change your name here. The e-mail is an owner's to change: an owner changes their own here, with their current password (it's where a new-password link goes); editors and contributors see theirs with *An owner of this editor can change it* and ask an owner. An account with no e-mail yet adds one here. If your role publishes, your publishes carry your name and e-mail from then on; a contributor's name is how the others who use the editor know them.
 - **Role**: your role, and what it allows. Only another owner can change it.
 - **Password**: change it here. Your other browsers are signed out; this one stays signed in.
+- **Sign in with …**: where the editor has your organisation's sign-in and passwords are on, you can use it instead of your password. Type your current password and press **Connect with …**; sign in there; then a page shows whom it signed in. Press **Connect** only if that is you: from then on you sign in with the button, your password here stops working, you're signed out everywhere else, and your role is the one your organisation gives you. **Cancel** changes nothing. If that sign-in already has an account here of its own, it isn't connected: two accounts are never joined.
 - **Sign out everywhere**: signs you out of every browser, this one included. Other people stay signed in.
 - **Appearance**: for editors and contributors, the app's theme, kept in this browser only (an owner sets it for everyone in App settings).
 
@@ -84,7 +85,7 @@ An owner sees everything, plus **People** on the Install page:
 
 - **Invite someone**: an e-mail and a role. The link is shown once, with **Copy link**; the dialog says whether it was also e-mailed and when it stops working. Open invitations are listed with a **Take back** button. To send a new link, take the invitation back and invite again.
 - **For each other person** (the **…** menu): **Change e-mail…** (the address they sign in with; their open new-password link stops working), **New-password link** (works for 1 hour, once), **Sign out**, **Switch off** or **Switch on**, and **Remove…** — what they published keeps their name.
-- **Someone who signs in through your organisation's provider** gets their role from the provider, so changing it here, a new-password link and a new e-mail are refused for them, though People still offers them in this release. People doesn't yet show which identity at the provider an account signs in as, or the accounts that were removed, and doesn't link accounts to the provider (whoever runs the editor does that on the server). **Removing such a person keeps them out until whoever runs the editor lets them back on the server** (`galley accounts unremove`): they can't sign in or be added again until then. Switch them off instead if they may come back.
+- **Someone who signs in through your organisation's provider** shows *Signs in with …* and their identity there. Their role and e-mail come from the provider with each sign-in, so People offers no role, **Change e-mail…** or new-password link for them. To remove them, **Switch off**, then **Remove…**: they are listed under **Removed**, with when and by whom, and can't sign in or be added again until you press **Let them back**. Switch them off instead if they may come back. Where passwords are turned off, there is no **Invite someone**: people come in by signing in through the provider.
 - **A new-password link**: when the editor e-mails it to the person, the dialog says *The link was e-mailed to …, and isn’t shown here.* — it stays with them. When it can't be e-mailed, it is shown once, with **Copy link**, for you to send.
 - **Their role**: choose Owner, Editor or Contributor beside their name. It applies to their next action.
 - **Sign everyone out…**: everyone, you included.
@@ -95,7 +96,7 @@ An owner of an editor set up before accounts is asked once, right after signing 
 
 ## If you're locked out as the only owner
 
-Whoever runs the server can make you a new-password link ([Run a hosted install](/docs/running/hosted/#a-forgotten-password)). Nothing else changes, and your old password works until you use the link.
+Whoever runs the server can make you a new-password link ([Run a hosted install](/docs/running/hosted/#a-forgotten-password)). Nothing else changes, and your old password works until you use the link. If you sign in through your organisation's provider, or passwords are off, the link signs you in once instead, without a password. Where passwords are on, that page also offers **Stop signing in with …**, for an account that was connected to the wrong person: take the provider off and choose a password.
 
 ## Next
 

@@ -690,8 +690,10 @@ the socket.
 ## Access
 
 A hosted install has **people**, not one shared password. Each person signs
-in with their own e-mail and password, has one of three roles, and their
-publishes carry their own name. An owner decides who is let in, and as
+in with their own e-mail and password, or through the identity provider
+whoever runs the server sets up
+([below](#signing-in-through-your-own-identity-provider)), has one of three
+roles, and their publishes carry their own name. An owner decides who is let in, and as
 what. The desktop app and local mode have no accounts and are unchanged:
 one person, one computer, everything allowed.
 
@@ -842,15 +844,15 @@ Three more things to know:
   isn't an owner (`packages/server/src/key-hints.ts`). Nobody ever sees a
   key itself.
 
-Single sign-on isn't there yet ([Not there yet](#not-there-yet)).
-
 ### First run makes the owner
 
 Whoever opens the setup link first creates the first account, as **Owner**
 ([First run](#first-run)). From then on the setup link is dead and
 everyone else comes in by invitation. An unattended install makes its owner
 from `GALLEY_PASSWORD` with `GALLEY_OWNER_NAME` and `GALLEY_OWNER_EMAIL`
-([The unattended start](#the-unattended-start)). First run is an owner's: an
+([The unattended start](#the-unattended-start)), or, with an identity
+provider, from their subject there (`GALLEY_OIDC_OWNER`,
+[Signing in through your own identity provider](#signing-in-through-your-own-identity-provider)). First run is an owner's: an
 editor or contributor who opens `/setup` (an old link, say) goes straight
 into the app once first run is over, and while it isn't, sees "This isn't
 part of your account." rather than anything about setup links.
@@ -1091,6 +1093,178 @@ characters, without `<` or `>`; a password is 12 to 1,024 characters, kept
 as an **scrypt hash** with its parameters and checked in constant time.
 Signing in records when that person last signed in.
 
+### Signing in through your own identity provider
+
+Whoever runs the server can have people sign in with the accounts of an
+identity provider they already run (their company's sign-in, a hosted
+identity service), through **OpenID Connect**: the authorization code flow
+with PKCE, with the editor as the client. One provider to an install, set in
+the server's environment when it starts. Nothing in the app, the data folder
+or the starting-values file can add or change one. Each variable is in the
+[environment reference](../apps/site/src/content/docs/reference/environment.md#signing-in-through-an-identity-provider).
+
+**Setting it up**, at the provider and then here:
+
+1. Register a client for **this** editor (one for each editor you run), with
+   the redirect address `https://<your editor>/api/auth/oidc/callback`.
+2. If the provider can send back-channel logout (its discovery document says
+   `backchannel_logout_supported: true`), register
+   `https://<your editor>/api/auth/oidc/backchannel-logout` as well
+   ([below](#taking-someones-access-away)).
+3. If it doesn't sign ID tokens with RS256, set `GALLEY_OIDC_ID_TOKEN_ALG` to
+   the algorithm it uses (`PS256`, `ES256` or `EdDSA`), and register the same
+   one there.
+4. Have it put each person's role here in a claim of the ID token
+   (`galley_role`, or the name `GALLEY_OIDC_ROLE_CLAIM` gives): `owner`,
+   `editor` or `contributor`. **Only the provider's administrators may be
+   able to set that claim.** Some providers let people edit attributes of
+   their own account; a role claim mapped from one of those lets anyone make
+   themselves an owner. Send it for everyone, the first owner included. Set
+   `GALLEY_OIDC_DEFAULT_ROLE` (`editor` or `contributor`) only if the
+   provider decides who may sign in to this client: with open sign-up it
+   lets anyone in.
+5. Make sure the subject (`sub`) the provider sends is never given to
+   someone else. An e-mail address or a username isn't a subject. If the
+   provider gives each client subjects of its own (pairwise subjects), use
+   the subject **this client** receives wherever one is asked for.
+6. Set `GALLEY_OIDC_ISSUER` and `GALLEY_OIDC_CLIENT_ID` (and
+   `GALLEY_OIDC_CLIENT_SECRET` if the client has one) in the server's
+   environment, with `GALLEY_PUBLIC_URL` on `https://`, and start the server
+   again. Not in the starting-values file, which refuses these keys. A value
+   that is wrong or half-given stops the server from starting, and the
+   message says which.
+7. On a new install, name the first owner by their subject with
+   `GALLEY_OIDC_OWNER`. Their account is made at start, with no password;
+   with the site and the author given too, first run finishes by itself.
+
+**A sign-in.** The sign-in page gets a **Sign in with …** button
+(`GALLEY_OIDC_NAME`, or the issuer's hostname). The editor checks every ID
+token in full: the one algorithm it is set to, the issuer byte for byte,
+this editor as its only audience, its age and its nonce. It finds the person
+by the provider's issuer and subject, never by e-mail, and takes an e-mail
+only when the provider says it confirmed it. A first sign-in makes the
+account; each later one brings its name, e-mail and role up to date, except
+that the last owner who can sign in stays an owner. A session started this
+way lasts `GALLEY_OIDC_SESSION_HOURS` (12 by default). A refusal is a fixed
+sentence on the sign-in page; what the provider said goes only to the log.
+Failed sign-ins through the provider count against the client's limits, as
+wrong passwords do ([Signing in](#signing-in)).
+
+**Someone who signs in through the provider has no password here.** Forgot
+your password? and new-password links don't apply to them, and Your account
+doesn't offer to change a password or an e-mail. In People their subject is
+shown, and their role and e-mail can't be changed there: both come from the
+provider at each sign-in.
+
+**What the editor asks the provider**: its discovery document, its keys, and,
+at each sign-in, the token endpoint, which turns the sign-in's code into an
+ID token. Each call goes only to an address the provider's own discovery
+document gives, over HTTPS, follows no redirect, gives up after 10 seconds
+and reads at most 64 KB of the answer. Nothing is asked at start, so a
+provider that is down doesn't stop the server: sign-ins through it are
+refused until it answers, and sessions already started go on. The codes and
+tokens never reach the log. The editor keeps no access token and no refresh
+token.
+
+**Passwords beside the provider, or off.** By default both work: whoever has
+a password signs in with it, and others through the provider. With
+`GALLEY_OIDC_ONLY=1` passwords are off: the sign-in page has the provider's
+button alone; signing in with a password, invitations, Forgot your
+password?, an owner's new-password links and choosing a password at first
+run are refused; every open invitation and new-password link stops working;
+and a session that wasn't started through the provider is refused, and stays
+refused if passwords are turned on again. People has no invitations then:
+someone new signs in through the provider and gets the role it gives. The
+one other way in is `galley serve --reset-password`
+([The way back in](#the-way-back-in-for-a-locked-out-owner)).
+
+**Moving an install that had passwords.** While passwords are still on, each
+person connects their own account on **Your account → Sign in with …**. It
+takes their current password, then a fresh sign-in at the provider, then a
+page showing whom the provider signed in, to **Connect** or **Cancel**.
+Connect takes the role the provider gives (the last owner stays an owner),
+drops their password and open links, and signs them out everywhere else.
+Or, on the server with it stopped, bind accounts to their subjects with
+`galley accounts link <account id> <subject>`, or `--file` for many
+(`galley accounts list` shows the ids). Then turn passwords off. A subject
+that has an account of its own here, or was removed, is never linked: two
+accounts are never merged. Every link is logged, naming the subject, and
+where the server e-mails links, the account's address is told.
+
+**An account linked to the wrong person** (someone with that person's
+password could link it to their own subject):
+
+- on the server, with it stopped, `galley accounts link --replace <account
+  id> <the right subject>` binds the right one in its place, and remembers
+  the subject it replaces as removed. If that person shouldn't sign in here
+  at all, remove them at the provider too;
+- for an owner, with passwords on, the link `galley serve --reset-password`
+  makes can take the provider off the account and choose a password; the
+  subject it was linked to is then remembered as removed;
+- an editor's or contributor's account is switched off and deleted by an
+  owner in People (its subject is remembered as removed), and the person
+  invited again.
+
+#### Taking someone's access away
+
+Remove or switch them off at the provider, so that their next sign-in is
+refused, and end their sessions here:
+
+- **A back-channel logout** (OpenID Connect Back-Channel Logout 1.0) ends
+  every one of that person's sessions here at once, on every device, and
+  their open windows. Check whether your provider sends one when someone is
+  removed or switched off there: many send one only when a sign-in session
+  at the provider ends.
+- **Otherwise, or to be sure, switch their account off here**: in People, or
+  with the server's access token (`PATCH /api/people/<id>` with
+  `{ "disabled": true }`; `GET /api/people/by-identity?subject=…` finds the
+  id).
+
+Signing someone out isn't removing them while the provider still lets them
+in. In People, someone who signs in through the provider is removed by
+switching them off; deleting them is a second step, which puts their subject
+on the list of **Removed** accounts, so that it can't sign in again (as a
+new account) or be linked by accident until an owner chooses **Let them
+back** (or `galley accounts unremove <subject>` on the server). The
+last-owner rule counts an owner who has never signed in, or whose user at
+the provider is gone, as an owner.
+
+**What the logout route takes.** The logout token must name the person's
+subject (`sub`): the editor keeps no session ids from the provider, so a
+token that carries only `sid` is refused every time. It is checked with the
+provider's keys under the same rules as an ID token, and a body over 16 KB
+is refused before it is read. The answer is `200` once the logout is written
+(it holds across a restart); `503` with `Retry-After` means send it again
+(it couldn't be checked or written just then, or a backup is being put
+back); `400` means this token will never be taken. Have the provider send
+again anything that isn't answered `200`. A sign-in that began before a
+logout and comes back after it is refused. The route needs no `Origin`,
+reads no cookie, and shares no limit with signing in.
+
+**After putting a backup back, send your removals again.** A backup older
+than a removal brings that person back
+([Back it up and restore it](#back-it-up-and-restore-it)).
+
+**Taking the provider away**: start the server without the `GALLEY_OIDC_*`
+variables. Nobody signs in through it from then on, no back-channel logout
+reaches the editor, and sessions already started through it go on until
+they end (**Sign everyone out** in People ends them at once). Someone who
+signed in through it has no password here, and can get one the usual ways
+([A forgotten password](#a-forgotten-password)), **at the e-mail the
+provider last gave**: the editor takes it at each sign-in without telling
+the address it had before. So check those addresses in People first (each
+is shown beside the person's subject). Their subjects stay recorded, so the
+same provider can be set up again.
+
+**If the issuer changes**, stop the server and run
+`galley accounts rekey --from <old issuer> --to <new issuer>`, which moves
+every identity and every removal in one write. Until then, a server started
+with the new issuer refuses to start, and `galley accounts link` refuses to
+link under it: the issuer is compared byte for byte, so a trailing slash or
+a capital letter makes another one. With pairwise subjects, changing the
+editor's address changes every subject too, unless the provider keeps the
+sector identifier fixed: treat it as an issuer change.
+
 ### Sessions
 
 - An account may have **16 windows of the editor** open at once (each holds
@@ -1118,7 +1292,10 @@ Signing in records when that person last signed in.
   and how it was started are signed into it, and every place that reads a
   session (a request, the event stream, the preview's viewer cookie, an
   extension asking whether a sign-in counts) ends it there; the cookie
-  lasts as long as the session. A sign-in with a password lasts 30 days. A
+  lasts as long as the session. A sign-in with a password lasts 30 days;
+  one through the identity provider, `GALLEY_OIDC_SESSION_HOURS` (12 hours
+  by default). Signing out of the editor doesn't sign anyone out of the
+  provider. A
   cookie one install issued is refused by another.
 - Every request checks that the person still exists, isn't switched off and
   hasn't been signed out since the cookie was issued.
@@ -1167,6 +1344,13 @@ other person:
 - **Remove…**: the account goes, with the same immediate effect. What they
   published keeps their name.
 
+For someone who signs in through the identity provider, People shows their
+subject there, and offers no role, **Change e-mail…** or new-password link:
+the provider sets their role and e-mail at each sign-in. They are removed by
+**Switch off**, then deleted; a deleted one is listed under **Removed**,
+with when and by whom, and **Let them back** takes them off that list. With
+passwords off there are no invitations.
+
 Two rules hold whatever the order of the clicks (every change is checked
 against the state as it is at that moment):
 
@@ -1201,7 +1385,13 @@ token can't do it.*, or the existing refusals): your own account
 downloading a backup, restoring one, and opening the preview. With the
 token, `POST /api/auth/logout-all` signs **everyone** out, and
 `POST /api/people/:accountId/sign-out` signs **one person** out of every
-browser; each is logged as the token, not as a person.
+browser; each is logged as the token, not as a person. Where an identity
+provider is set up, the token can also list the accounts with their
+subjects (`GET /api/people`, without names or e-mails), find one by subject
+(`GET /api/people/by-identity?subject=…`), switch one off
+(`PATCH /api/people/:accountId` with `{ "disabled": true }`, nothing else)
+and delete one that is switched off: enough for a script to take someone's
+access away when they leave.
 
 ### Who published
 
@@ -1220,10 +1410,13 @@ offers a way to change the install's.
 
 ### Not there yet
 
-- **Single sign-on.** Signing in is an e-mail and a password only. The seam
-  for it is `POST /api/auth/login`; the simplest form would trust an
-  identity header from a proxy the operator controls, such as Cloudflare
-  Access.
+- **More of single sign-on.** One OpenID Connect provider to an install:
+  not SAML or LDAP, not several providers. Accounts are made at their first
+  sign-in (no provisioning, no SCIM). An owner doesn't link someone else's
+  account: each person connects their own, or `galley accounts link` does
+  it on the server. Signing out of the editor doesn't sign anyone out of
+  the provider, and nothing warns before a session through the provider
+  ends.
 - **A draft per person.** Everyone shares one working copy (above).
 - **An audit log as such.** The server's log records who did what to the
   people ([Logs](#logs)); there is no separate record, screen or export of
@@ -1290,6 +1483,11 @@ a code:
 - signed out everywhere — one person, themselves, or everyone;
 - a one-time link refused;
 - an e-mail that couldn't be sent, or wasn't sent in time;
+- with an identity provider: a sign-in through it (and whether it made a
+  new account), one refused, with why, or one that couldn't be started; an
+  account linked to a subject (as a security line naming the subject), a
+  link cancelled or refused; a back-channel logout taken, refused, or not
+  written; someone removed let back;
 - at start-up, the list of signed-out browsers shortened by signing
   everyone out once ([Sessions](#sessions)).
 
@@ -1501,7 +1699,8 @@ editor" and "the server", never "this computer".
 
 **What a backup holds**: everything a fresh install couldn't rebuild — the
 state (with the accounts: everyone's name, e-mail, role and password hash,
-and the open invitations and links as hashes), settings, stored keys,
+or the subject they sign in as at the identity provider; the removed
+accounts; and the open invitations and links as hashes), settings, stored keys,
 `keys/`, the session key, the per-site state
 (inbox, history of going online, brand material, conversations, plugin
 state), and the site's checkout **with its unpublished changes and its
@@ -1528,7 +1727,9 @@ Three ways:
   swaps the state in, keeps the old one aside until the swap is done, and
   signs everyone out. From then on the backup's own people and passwords
   apply: everyone signs in again with the account they had when the backup
-  was made, and anyone added since is gone. A backup made before accounts
+  was made, and anyone added since is gone. **Anyone removed or switched
+  off since is back**: send your removals again (switch them off, delete
+  them, and with an identity provider have it send its logouts again). A backup made before accounts
   is read through the same upgrade as a data folder
   ([Upgrading to accounts](#upgrading-to-accounts)); that path hasn't been
   tried with a real backup yet. Only an owner can restore.
@@ -1657,6 +1858,15 @@ the main ones; its test titles are the claims.
 | The assistant offers each role only its tools and checks again on every call; every MCP tool, run as each role, does only what that role allows. | `core/test/ai/tools-access.test.ts`, `server/test/mcp-access.test.ts` |
 | Only an owner changes an e-mail address: their own, with their password, or anyone else's in People; it ends that person's open link. | `server/test/accounts-hardening.test.ts` |
 | Where the server e-mails links, an account's old address is told when its e-mail changes, with no link in the message and not the new address. | `server/test/accounts-links.test.ts` |
+| The identity provider is set from the server's environment only: a value that is wrong or half-given, or where the site's code could write it, stops the server from starting; so do accounts from another issuer. | `server/test/oidc-sign-in.test.ts` |
+| A sign-in through the provider is checked in full — its state and cookie, PKCE, the ID token's one algorithm, issuer, audience, times, nonce and subject — and finds the person by issuer and subject, never by e-mail; a role claim that isn't exactly a role is refused. | `server/test/oidc-sign-in.test.ts` |
+| Someone who signs in through the provider gets no password here by any route, and an owner can't change the role the provider sets. | `server/test/oidc-sign-in.test.ts` |
+| A call to the provider that is slow, fails, redirects or is too big is refused in a sentence and the server carries on; a provider that is down when the server starts doesn't stop it. | `server/test/oidc-sign-in.test.ts` |
+| Failed sign-ins through the provider count against the client they came from; requests a page elsewhere can make count nothing; a good sign-in clears nothing. | `server/test/oidc-sign-in.test.ts` |
+| A back-channel logout ends that subject's sessions and open streams, nobody else's, across a restart; a bad token ends nothing (400); it is answered 200 only once written, else 503; a sign-in begun before it is refused. | `server/test/oidc-backchannel-logout.test.ts` |
+| With passwords off, every password way in is refused, and a password session from before stays refused when they are on again; `serve --reset-password` is the one other way in. | `server/test/oidc-passwords-off.test.ts` |
+| Linking in the app takes the current password, a fresh sign-in at the provider, the same browser at Connect and the provider's role; a logout before Connect stops it; two accounts are never merged. | `server/test/oidc-link.test.ts` |
+| A removed subject can't sign in again or be linked until it is let back. | `server/test/oidc-sign-in.test.ts`, `server/test/oidc-link.test.ts`, `core/test/install/people-provider.test.ts` |
 | The list of signed-out browsers stays within its cap; past it, a sign-out signs that person out everywhere; a longer list never stops the install from starting. | `server/test/accounts-hardening.test.ts` |
 | Switching someone off or removing them ends their access on their next request, their open event streams and their preview access; a role change applies to the next request. | `server/test/accounts.test.ts`, `server/test/gateway-auth.test.ts`, `core/test/install/people.test.ts` |
 | A one-time link works once and only while it lasts; every bad code gets the same refusal; a newer new-password link cancels the older. | `server/test/accounts.test.ts`, `core/test/install/people.test.ts` |
@@ -1715,8 +1925,11 @@ No telemetry, and nothing to Fiction Tribe. An install connects to:
   or image generation;
 - **Cloudflare or Vercel**, if someone puts the site online from the install;
 - **a mail server or webhook**, if the inbox's alerts or forwarding are set;
-  and the mail server for invitations and new-password links, when
-  `GALLEY_SMTP_URL` is set.
+  and the mail server for invitations, new-password links and the notices to
+  an account's address, when `GALLEY_SMTP_URL` is set;
+- **the identity provider** a hosted install's operator sets up
+  (`GALLEY_OIDC_ISSUER`): its discovery document and keys, and its token
+  endpoint at each sign-in through it.
 
 The full list, with what is sent, is the documentation site's
 [Security model](../apps/site/src/content/docs/running/security.md).
@@ -2043,7 +2256,7 @@ written to an evidence file, with no keys in it.
 
 ## What has been run
 
-> This section holds only what has been run, as of 2026-11-24.
+> This section holds only what has been run, as of 2026-11-26.
 
 **By automated tests in this repository**, against real folders, real local
 git repositories and started servers:
@@ -2110,6 +2323,16 @@ git repositories and started servers:
   up, remove — against strict local fakes of Fly.io and Cloudflare
   (`core/test/hosting/service.test.ts`) and of Google Cloud's sign-in,
   permission check and Compute Engine (`core/test/hosting/gcp.test.ts`);
+- signing in through an identity provider, against one the tests run
+  themselves (`server/test/oidc-test-provider.ts`), with switches that make
+  it get each thing wrong: the round trip, refusals and limits, the ID
+  token, the accounts and the first owner (`server/test/oidc-sign-in.test.ts`);
+  back-channel logout (`server/test/oidc-backchannel-logout.test.ts`);
+  passwords off and the way back in (`server/test/oidc-passwords-off.test.ts`);
+  linking in the app and People for provider accounts
+  (`server/test/oidc-link.test.ts`); the rules in the engine
+  (`core/test/install/people-provider*.test.ts`); and `galley accounts`
+  (`cli/test/accounts.test.ts`);
 - no lockfile left behind by the preview's package install
   (`core/test/workspace/install-lockfile.test.ts`); the Install page's
   storage sizes (`core/test/install/storage.test.ts`); the repository's
@@ -2133,6 +2356,14 @@ the contributor off: their browser was sent to sign-in on its next step and
 signing in again was refused. Not driven in a browser: the editor's role,
 the new-password page, "Forgot your password?", and the question an owner
 from before accounts is asked.
+
+**Signing in through an identity provider, in a real browser**, on
+2026-11-26 on a Mac: headless Chromium and WebKit against a real editor
+behind HTTPS, with the tests' own provider. The round trip landed on the
+page the person was going to, the app's own requests carried the session
+cookie, the cookie kept for the round trip was cleared, and a refusal showed
+its sentence on the sign-in page. Firefox wouldn't start on that machine,
+so it hasn't been tried yet.
 
 **By `scripts/rehearse-accounts.mjs`** (`npx tsx scripts/rehearse-accounts.mjs`),
 on 2026-11-24 on a Mac: the real `galley serve`, from the repository, in
@@ -2274,6 +2505,11 @@ BuildKit, 4 GB):
   engine, not over HTTP. The sign-in limits have not been run end to end
   against a real server (the tests and the app's stand-in server check
   them); they live in memory, so a restart resets them.
+- **Signing in through a real identity provider.** Only the tests' own
+  provider has played one: not a hosted identity service or a company's
+  sign-in, not on the real image, not in Firefox. Linking in the app and
+  People for provider accounts haven't been driven in a real browser (the
+  app's stand-in server covers them).
 - **Any real run of "Host the editor online" on Google Cloud.** In
   particular: whether an address takes its labels on insert (the code sets
   them with setLabels when it didn't), the status code of a stale metadata
