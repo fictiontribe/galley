@@ -518,7 +518,8 @@ Password:  https://cms.example.com/new-password#<one-time code>
   command is for owners) is undone by an owner: switch it off and delete it
   in People, which remembers its subject as removed, then invite the person
   again; or, on the server with it stopped, bind the right subject with
-  `galley accounts link --replace <account id> <subject>`.
+  `galley accounts link --replace <account id> <subject>`, which remembers
+  the wrong one as removed (remove that person at the provider too).
 - An owner who was switched off is switched back on by it.
 - With no owner yet, it prints a fresh one-time **setup** link instead, as
   first run does. A setup code that was used stays dead: an old code or hash
@@ -949,8 +950,9 @@ public address (`GALLEY_PUBLIC_URL`) are set**, because a link is only ever
 built from that address. Then invitations are also e-mailed (the owner
 still sees the invitation link once); a new-password link an owner makes is
 e-mailed to the person and not shown to the owner; and **Forgot your
-password?** on the sign-in page e-mails a new-password link. The server
-waits at most 15 seconds for the mail server, then answers without it. A
+password?** on the sign-in page e-mails a new-password link. When an
+account's e-mail is changed, its old address is told (without a link). The
+server waits at most 15 seconds for the mail server, then answers without it. A
 send that fails, or doesn't finish in time, never fails the request: the
 owner is shown the link to pass on, and the log gets one line with the
 mail server's error code — never the address, the link or the mail
@@ -1182,7 +1184,11 @@ People. Editors and contributors see their e-mail on Your account but don't
 change it; asked anyway, the server answers *Only an owner can change the
 e-mail you sign in with. Ask an owner of this editor to change it for
 you.* An account with no e-mail yet (an owner carried over from before
-accounts) adds its own, with the current password.
+accounts) adds its own, with the current password. When the server e-mails
+links ([Outgoing e-mail](#outgoing-e-mail)), the address an account had is
+told that the e-mail it signs in with was changed and that new-password
+links now go to the new one; that message holds no link and doesn't name
+the new address. The change is logged too.
 
 ### The operator's token
 
@@ -1233,8 +1239,6 @@ offers a way to change the install's.
 - **More than one proxy in front.** Only the hop nearest the server is
   believed (the table under [Signing in](#signing-in)).
 - **Limits that outlast a restart.** They are kept in memory.
-- **Telling the old address** when an owner changes someone's e-mail.
-  Owners are trusted with that; it is logged.
 
 ---
 
@@ -1652,6 +1656,7 @@ the main ones; its test titles are the claims.
 | The site's settings file — saved, written as a file in any mode or letter case, discarded, or put back by undoing a reply or a publish — is an owner's by every route; build mode, custom code in a form and the brand outside the content files are an editor's or owner's, and a request for build mode below that is refused, not narrowed; the values the editor records for itself change nothing else in the file. | `core/test/install/caller-access.test.ts`, `server/test/accounts-hardening.test.ts`, `core/test/install/settings-records.test.ts` |
 | The assistant offers each role only its tools and checks again on every call; every MCP tool, run as each role, does only what that role allows. | `core/test/ai/tools-access.test.ts`, `server/test/mcp-access.test.ts` |
 | Only an owner changes an e-mail address: their own, with their password, or anyone else's in People; it ends that person's open link. | `server/test/accounts-hardening.test.ts` |
+| Where the server e-mails links, an account's old address is told when its e-mail changes, with no link in the message and not the new address. | `server/test/accounts-links.test.ts` |
 | The list of signed-out browsers stays within its cap; past it, a sign-out signs that person out everywhere; a longer list never stops the install from starting. | `server/test/accounts-hardening.test.ts` |
 | Switching someone off or removing them ends their access on their next request, their open event streams and their preview access; a role change applies to the next request. | `server/test/accounts.test.ts`, `server/test/gateway-auth.test.ts`, `core/test/install/people.test.ts` |
 | A one-time link works once and only while it lasts; every bad code gets the same refusal; a newer new-password link cancels the older. | `server/test/accounts.test.ts`, `core/test/install/people.test.ts` |

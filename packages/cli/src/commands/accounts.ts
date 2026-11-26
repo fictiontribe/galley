@@ -7,7 +7,8 @@
  *   (GALLEY_OIDC_ISSUER), one pair or a file of them. Each account loses its
  *   password and open password links, and every session of it ends; from
  *   then on it signs in through the provider. `--replace` puts a wrong link
- *   right. Two accounts are never merged.
+ *   right, and remembers the subject it replaces as removed. Two accounts are
+ *   never merged.
  * - `rekey`: moves every identity and removed account from one issuer to
  *   another, in one write, when the provider's issuer changes.
  *
@@ -60,7 +61,8 @@ read as an option: ${PRODUCT.slug} accounts link -- <account id> <subject>.
 
 Options
       --replace             With link: bind this subject in place of the one the
-                            account has (to put a wrong link right)
+                            account has (to put a wrong link right); that one is
+                            then remembered as removed
       --file <pairs>        With link: a file of "<account id> <subject>" lines
       --from <issuer>       With rekey: the old issuer, exactly as it was set
       --to <issuer>         With rekey: the new issuer, exactly as GALLEY_OIDC_ISSUER
@@ -151,7 +153,7 @@ export async function accountsCommand(argv: string[], io: Io): Promise<number> {
         const { account, replaced } = await people.linkIdentity(pair.accountId, { issuer, subject: pair.subject }, { replace: values.replace === true });
 
         io.out(
-          `${where}Linked ${account.id} (${account.name || "no name yet"}, ${ROLE_NAMES[account.role]}) to subject ${pair.subject} at ${issuer}${replaced ? `, in place of subject ${replaced.subject}` : ""}. Its password and open new-password links are gone, and every session of it ended.`
+          `${where}Linked ${account.id} (${account.name || "no name yet"}, ${ROLE_NAMES[account.role]}) to subject ${pair.subject} at ${issuer}${replaced ? `, in place of subject ${replaced.subject}` : ""}. Its password and open new-password links are gone, and every session of it ended.${replaced?.removed ? ` Subject ${replaced.subject} is remembered as removed: it can't sign in here or be linked until \`${PRODUCT.slug} accounts unremove\` takes it off the list.` : ""}`
         );
       } catch (error) {
         if (!isGalleyError(error)) throw error;

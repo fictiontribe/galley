@@ -33,6 +33,8 @@ export const OWN_EMAIL_REFUSAL = "Only an owner can change the e-mail you sign i
 export const TOKEN_ONLY_SWITCHES_OFF = 'With the server\'s access token, an account can only be switched off ({ "disabled": true }). Switching someone on, a role and an e-mail are an owner\'s, in People.';
 /** The server's access token asked to delete an account that is still switched on. */
 export const TOKEN_DELETES_ONLY_SWITCHED_OFF = "With the server's access token, only an account that is switched off can be deleted. Switch it off first.";
+/** Taking the provider off an account (from a recovery session), or binding another subject in its place (`galley accounts link --replace`), when the list of removed ones is full: the subject it was linked to has nowhere to go. */
+export const REMOVED_LIST_FULL_FOR_TAKE_OFF = `This editor remembers at most ${TOMBSTONES_KEPT.toLocaleString("en")} removed accounts, and the list is full, so the subject this account was linked to can't be remembered as removed. Let some of the removed back first (People, under Removed, or \`galley accounts unremove\` on the server), then try again.`;
 /** Deleting a linked account when the list of removed ones is full. */
 /** A removed account that signed in through a provider, as the list of removed accounts shows it. */
 export interface RemovedIdentity {
@@ -142,9 +144,11 @@ export interface PeopleService {
   /**
    * `galley accounts link`: binds an account to a subject at the provider.
    * The subject must be on no other account and not removed, and the account
-   * must have no identity yet unless `replace` (a wrong link put right). The
-   * account loses its password and open password links, and every session of
-   * it ends. Two accounts are never merged.
+   * must have no identity yet unless `replace` (a wrong link put right): the
+   * subject it replaces is then remembered as removed, by whoever runs the
+   * server, unless it is under another issuer (refused with nothing changed
+   * when that list is full). The account loses its password and open password
+   * links, and every session of it ends. Two accounts are never merged.
    */
   linkIdentity(
     accountId: string,
@@ -156,7 +160,7 @@ export interface PeopleService {
       /** Linked in the app: the ID token's `iat` (ms). Refused when the provider signed this subject out at or after it. */
       issuedAt?: number;
     }
-  ): Promise<{ account: Account; replaced: { issuer: string; subject: string } | null; keptOwner: boolean }>;
+  ): Promise<{ account: Account; replaced: { issuer: string; subject: string; removed: boolean } | null; keptOwner: boolean }>;
   /** Whether `password` is this account's own (false for an account with none). Takes as long either way. */
   passwordIs(accountId: string, password: string): Promise<boolean>;
   /**
@@ -679,7 +683,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
     async linkIdentity(accountId, identity, linkOptions = {}) {
       if (!validSubjectText(identity.subject)) throw new GalleyError("invalid", "A subject is 1 to 255 printable characters, as the provider sends it in `sub`.");
-      let result: { account: Account; replaced: { issuer: string; subject: string } | null; keptOwner: boolean } | null = null;
+      let result: { account: Account; replaced: { issuer: string; subject: string; removed: boolean } | null; keptOwner: boolean } | null = null;
 
       await store.update((draft) => {
         const target = accountOf(draft, accountId);
@@ -694,6 +698,12 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
           throw new GalleyError("conflict", `That account signs in through the provider already (subject ${target.identity.subject}). To bind another subject in its place, add --replace.`);
         }
         const replaced = target.identity && !same(target.identity) ? { ...target.identity } : null;
+        // The subject put right is remembered as removed, as when a recovery session takes the provider off: it can't sign in
+        // again (as a new account) or be linked until it is let back. One under another issuer can't sign in here at all, and
+        // a removal under it would stop the server from starting, so it is left off.
+        const rememberReplaced = replaced !== null && replaced.issuer === identity.issuer && !draft.tombstones.some((removed) => removed.issuer === replaced.issuer && removed.subject === replaced.subject);
+
+        if (rememberReplaced && draft.tombstones.length >= TOMBSTONES_KEPT) throw new GalleyError("conflict", REMOVED_LIST_FULL_FOR_TAKE_OFF);
         // A logout from the provider for this subject, kept while it had no account here: the account carries it from now on,
         // and a sign-in from before it can't be what links it.
         const logoutAt = draft.providerLogouts.filter((one) => same(one)).reduce<number | undefined>((latest, one) => Math.max(latest ?? 0, one.at), target.providerLogoutAt);
@@ -709,13 +719,15 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
           if (target.role === "owner" && !target.disabled && enabledOwners(draft, target.id) === 0) keptOwner = true;
           else target.role = linkOptions.role;
         }
+        // Removed by whoever runs the server, as a deletion with the server's access token is.
+        if (rememberReplaced) draft.tombstones.push({ id: newId(), issuer: replaced.issuer, subject: replaced.subject, removedAt: iso(now()), removedBy: null });
         target.identity = { issuer: identity.issuer, subject: identity.subject };
         // From now on the provider is its one way in: no password, no link to choose one, no session from before.
         target.passwordHash = null;
         dropPasswordLinks(draft, target.id);
         endSessions(target);
         target.incomplete = !target.name;
-        result = { account: publicAccount(target), replaced, keptOwner };
+        result = { account: publicAccount(target), replaced: replaced && { ...replaced, removed: replaced.issuer === identity.issuer }, keptOwner };
       });
       store.sessionsChanged();
       return result!;
@@ -745,7 +757,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
         // The subject it was wrongly linked to is remembered as removed: it can't come back as an account of its own until an owner lets it.
         if (!draft.tombstones.some((one) => one.issuer === removed.issuer && one.subject === removed.subject)) {
-          if (draft.tombstones.length >= TOMBSTONES_KEPT) throw new GalleyError("conflict", REMOVED_LIST_FULL);
+          if (draft.tombstones.length >= TOMBSTONES_KEPT) throw new GalleyError("conflict", REMOVED_LIST_FULL_FOR_TAKE_OFF);
           draft.tombstones.push({ id: newId(), issuer: removed.issuer, subject: removed.subject, removedAt: iso(now()), removedBy: target.id });
         }
         delete target.identity;

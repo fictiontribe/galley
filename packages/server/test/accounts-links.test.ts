@@ -228,3 +228,34 @@ describe("with the editor's public address", () => {
     expect((await call(started.port, "POST", "/api/auth/forgot", { body: { email: "sam@example.com" } })).body).toEqual({ ok: true, emailAvailable: false });
   });
 });
+
+describe("a changed e-mail", () => {
+  it("is told to the address the account had, without a link or the new address: an owner's own change, and an owner's change of someone else's", async () => {
+    const mail = fakeMail();
+    const { port, owner } = await install(EDITOR, mail);
+    const invited = await call(port, "POST", "/api/people/invitations", { cookie: owner, body: { email: "ed@example.com", role: "editor" } });
+
+    await call(port, "POST", "/api/auth/link", { body: { code: String(invited.body.link.url).split("#")[1], password: PASSWORD, name: "Ed" } });
+    mail.sent.length = 0;
+    // Sam changes their own, with their password.
+    expect((await call(port, "PATCH", "/api/account", { cookie: owner, body: { email: "sam@elsewhere.example.com", password: PASSWORD } })).status).toBe(200);
+    // Sam changes Ed's.
+    const ed = (await call(port, "GET", "/api/people", { cookie: owner })).body.accounts.find((one: { name: string }) => one.name === "Ed");
+
+    expect((await call(port, "PATCH", `/api/people/${ed.id}`, { cookie: owner, body: { email: "ed@elsewhere.example.com" } })).status).toBe(200);
+    await settle();
+    expect(mail.sent.map((message) => message.to)).toEqual([["sam@example.com"], ["ed@example.com"]]);
+    for (const message of mail.sent) {
+      expect(message.subject).toBe("Your sign-in e-mail at cms.localhost was changed");
+      expect(message.text).toContain("If this wasn't you or an owner of the editor, tell an owner straight away.");
+      expect(`${message.text}${message.html}`).not.toMatch(/elsewhere\.example\.com|https?:\/\//);
+    }
+  });
+
+  it("sends nothing where this server doesn't e-mail", async () => {
+    const { port, owner } = await install(EDITOR, null);
+
+    expect((await call(port, "PATCH", "/api/account", { cookie: owner, body: { email: "sam@elsewhere.example.com", password: PASSWORD } })).status).toBe(200);
+  });
+});
+

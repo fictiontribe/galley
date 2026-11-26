@@ -5,6 +5,50 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## Unreleased
+
+### Added
+
+- **Connecting your own account to the identity provider in the app**
+  (Your account → Sign in with …), with passwords on: your current password
+  (held to the same limits as a password change), a fresh sign-in at the
+  provider (`prompt=login`, `max_age=0`, and its `auth_time` checked), then a
+  page showing whom it signed in (an e-mail only when the provider confirmed
+  it) to Connect or Cancel. Nothing is bound before Connect, which needs this
+  browser still signed in as you; it takes the role the provider gives (the
+  last owner stays an owner, and the page says so), drops your password and
+  open links, signs you out everywhere and starts a session through the
+  provider. The provider's refusals apply as at a sign-in, and a back-channel
+  logout for that subject before Connect stops it. A subject with an
+  account of its own, or removed, is refused: two accounts are never merged.
+  Each link is logged naming the subject, and where this server e-mails, the
+  account's address is told. From the link `serve --reset-password` makes, an
+  account connected to the wrong person can take the provider off and choose
+  a password, and that subject is remembered as removed (when the list of
+  removed accounts is full, it says to let some back first).
+- **People shows how each person signs in, and offers only what can be
+  done.** Someone who signs in through the identity provider shows their
+  subject, and has no role picker, new-password link or e-mail change (their
+  role and e-mail come from the provider); they are removed by switching them
+  off, then deleted. With passwords off there are no invitations. A
+  **Removed** list shows who was removed, when and by whom, with **Let them
+  back** (`DELETE /api/people/tombstones/:id`).
+- **The address an account had is told when its e-mail changes**, where this
+  server e-mails: an owner changing their own, or anyone's from People. The
+  message says the address it signs in with was changed and that links to
+  choose a new password now go to the new one; it holds no link and doesn't
+  name the new address.
+
+### Changed
+
+- **`galley accounts link --replace` remembers the subject it replaces as
+  removed**, as taking the provider off from a recovery session does: it
+  can't sign in again (as a new account) or be linked until
+  `galley accounts unremove` or **Let them back** takes it off the list. A
+  subject under another issuer isn't added. When the list of removed
+  accounts is full, nothing changes and the command says to let some back
+  first.
+
 ## 0.4.5 — 2026-11-26
 
 **Signing in through your own identity provider**, for a hosted editor: an
@@ -55,28 +99,6 @@ the server, `galley accounts removed` and `unremove` do that part.
   them in once, without a password, with a session as long as the provider's,
   and sets none. `--account <id>` and `--subject <subject>` name the owner
   when there are several; with none named, they are listed on the console.
-- **Connecting your own account to the identity provider in the app**
-  (Your account → Sign in with …), with passwords on: your current password
-  (held to the same limits as a password change), a fresh sign-in at the
-  provider (`prompt=login`, `max_age=0`, and its `auth_time` checked), then a
-  page showing whom it signed in (an e-mail only when the provider confirmed
-  it) to Connect or Cancel. Nothing is bound before Connect, which needs this
-  browser still signed in as you; it takes the role the provider gives (the
-  last owner stays an owner, and the page says so), drops your password and
-  open links, signs you out everywhere and starts a session through the
-  provider. The provider's refusals apply as at a sign-in. A subject with an
-  account of its own, or removed, is refused: two accounts are never merged.
-  Each link is logged naming the subject, and where this server e-mails, the
-  account's address is told. From the link `serve --reset-password` makes, an
-  account connected to the wrong person can take the provider off and choose
-  a password, and that subject is remembered as removed.
-- **People shows how each person signs in, and offers only what can be
-  done.** Someone who signs in through the identity provider shows their
-  subject, and has no role picker, new-password link or e-mail change (their
-  role and e-mail come from the provider); they are removed by switching them
-  off, then deleted. With passwords off there are no invitations. A
-  **Removed** list shows who was removed, when and by whom, with **Let them
-  back** (`DELETE /api/people/tombstones/:id`).
 - **`galley accounts`** (list, link, rekey), run on the server with the
   server stopped: `link` binds existing accounts to their subjects at the
   identity provider (`GALLEY_OIDC_ISSUER`), one pair or a file of them, and

@@ -98,7 +98,13 @@ describe("galley accounts link", () => {
     expect(await run(["link", "--", ed, "ed-subject"], { GALLEY_HOME: home })).toMatchObject({ code: 2, err: expect.stringMatching(/Set GALLEY_OIDC_ISSUER/) });
     expect((await run(["link", "--", ed, "wrong-subject"])).code).toBe(0);
     expect(await run(["link", "--", ed, "ed-subject"])).toMatchObject({ code: 1, err: expect.stringMatching(/signs in through the provider already \(subject wrong-subject\)\. .*--replace/) });
-    expect(await run(["link", "--replace", "--", ed, "ed-subject"])).toMatchObject({ code: 0, out: expect.stringContaining("in place of subject wrong-subject") });
+    expect(await run(["link", "--replace", "--", ed, "ed-subject"])).toMatchObject({
+      code: 0,
+      out: expect.stringContaining("in place of subject wrong-subject. Its password and open new-password links are gone, and every session of it ended. Subject wrong-subject is remembered as removed: it can't sign in here or be linked until `galley accounts unremove` takes it off the list."),
+    });
+    expect(await run(["removed"])).toMatchObject({ code: 0, out: expect.stringMatching(new RegExp(`^subject wrong-subject at ${ISSUER}  removed \\S+ by the server's access token or the server$`)) });
+    expect(await run(["link", "--", sam, "wrong-subject"])).toMatchObject({ code: 1, err: expect.stringMatching(/list of removed accounts/) });
+    expect(await run(["unremove", "--", "wrong-subject"])).toMatchObject({ code: 0 });
     expect(await run(["link", "--", sam, "ed-subject"])).toMatchObject({ code: 1, err: expect.stringMatching(/already has its own account here .*never merged/) });
     const store = await openInstallState(home);
 

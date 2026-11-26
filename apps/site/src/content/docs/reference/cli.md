@@ -225,7 +225,8 @@ An account id or a subject that starts with "-" goes after --, so it isn't
 read as an option: galley accounts link -- <account id> <subject>.
 Options
       --replace             With link: bind this subject in place of the one the
-                            account has (to put a wrong link right)
+                            account has (to put a wrong link right); that one is
+                            then remembered as removed
       --file <pairs>        With link: a file of "<account id> <subject>" lines
       --from <issuer>       With rekey: the old issuer, exactly as it was set
       --to <issuer>         With rekey: the new issuer, exactly as GALLEY_OIDC_ISSUER

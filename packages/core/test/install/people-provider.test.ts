@@ -9,8 +9,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { GalleyError } from "../../src/errors";
-import { ACCOUNTS_KEPT, createPeople, NO_PASSWORD_FOR_PROVIDER_ACCOUNT, type ProviderSignIn } from "../../src/install/people";
-import { openInstallState } from "../../src/install/state";
+import { ACCOUNTS_KEPT, createPeople, NO_PASSWORD_FOR_PROVIDER_ACCOUNT, REMOVED_LIST_FULL_FOR_TAKE_OFF, type ProviderSignIn } from "../../src/install/people";
+import { openInstallState, TOMBSTONES_KEPT } from "../../src/install/state";
 import { tempDir } from "./helpers";
 
 const ISSUER = "https://id.example.com";
@@ -145,3 +145,68 @@ describe("linking and rekeying (the server's commands)", () => {
   });
 });
 
+describe("taking the provider off from a recovery session, with the list of removed accounts full", () => {
+  it("is refused with a sentence that says to let some back first, and nothing changes", async () => {
+    const { store, people } = await opened();
+    const made = await people.signInThroughProvider(input({ role: "owner" }));
+    const id = made.ok ? made.account.id : "";
+
+    await store.update((draft) => {
+      draft.tombstones = Array.from({ length: TOMBSTONES_KEPT }, (_, i) => ({ id: `t${i}`, issuer: ISSUER, subject: `gone-${i}`, removedAt: "2026-11-01T10:00:00.000Z", removedBy: null }));
+    });
+    await expect(people.removeIdentity(id, "a brand new long password")).rejects.toThrow(REMOVED_LIST_FULL_FOR_TAKE_OFF);
+    expect(REMOVED_LIST_FULL_FOR_TAKE_OFF).toMatch(/Let some of the removed back first \(People, under Removed, or `galley accounts unremove` on the server\)/);
+    expect(store.read().accounts.find((account) => account.id === id)).toMatchObject({ identity: { subject: "sub-1" }, passwordHash: null });
+  });
+});
+
+
+describe("a wrong link put right on the server (linkIdentity with replace)", () => {
+  async function linkedWrongly() {
+    const { store, people } = await opened();
+    const sam = await people.createOwner({ password: "correct horse battery staple", name: "Sam", email: "sam@example.com" });
+
+    await people.linkIdentity(sam.id, { issuer: ISSUER, subject: "wrong-subject" });
+    return { store, people, sam };
+  }
+
+  it("remembers the subject it replaces as removed, by whoever runs the server: it can't sign in or be linked until it is let back", async () => {
+    const { store, people, sam } = await linkedWrongly();
+    const { replaced } = await people.linkIdentity(sam.id, { issuer: ISSUER, subject: "right-subject" }, { replace: true });
+
+    expect(replaced).toEqual({ issuer: ISSUER, subject: "wrong-subject", removed: true });
+    expect(people.removed()).toEqual([expect.objectContaining({ issuer: ISSUER, subject: "wrong-subject", removedBy: null })]);
+    expect(store.read().accounts.find((account) => account.id === sam.id)!.identity).toEqual({ issuer: ISSUER, subject: "right-subject" });
+    expect(await people.signInThroughProvider(input({ subject: "wrong-subject", issuedAt: Date.now() }))).toMatchObject({ ok: false, reason: "removed", account: null });
+    const ed = await people.signInThroughProvider(input({ subject: "ed-subject", name: "Ed", email: "ed@example.com", issuedAt: Date.now() }));
+
+    await expect(people.linkIdentity(ed.ok ? ed.account.id : "", { issuer: ISSUER, subject: "wrong-subject" }, { replace: true })).rejects.toThrow(/list of removed accounts/);
+    await people.unremove(people.removed()[0]!.id);
+    expect(await people.signInThroughProvider(input({ subject: "wrong-subject", issuedAt: Date.now() }))).toMatchObject({ ok: true, created: true });
+  });
+
+  it("with the list of removed accounts full, is refused with the sentence that says to let some back first, and nothing changes", async () => {
+    const { store, people, sam } = await linkedWrongly();
+
+    await store.update((draft) => {
+      draft.tombstones = Array.from({ length: TOMBSTONES_KEPT }, (_, i) => ({ id: `t${i}`, issuer: ISSUER, subject: `gone-${i}`, removedAt: "2026-11-01T10:00:00.000Z", removedBy: null }));
+    });
+    const before = store.read();
+
+    await expect(people.linkIdentity(sam.id, { issuer: ISSUER, subject: "right-subject" }, { replace: true })).rejects.toThrow(REMOVED_LIST_FULL_FOR_TAKE_OFF);
+    expect(store.read()).toEqual(before);
+  });
+
+  it("binding the same subject again, or replacing one under another issuer, adds nothing to the list", async () => {
+    const { store, people, sam } = await linkedWrongly();
+
+    expect((await people.linkIdentity(sam.id, { issuer: ISSUER, subject: "wrong-subject" }, { replace: true })).replaced).toBeNull();
+    await store.update((draft) => {
+      draft.accounts.find((account) => account.id === sam.id)!.identity = { issuer: "https://old.example.com", subject: "old-subject" };
+    });
+    const { replaced } = await people.linkIdentity(sam.id, { issuer: ISSUER, subject: "right-subject" }, { replace: true });
+
+    expect(replaced).toEqual({ issuer: "https://old.example.com", subject: "old-subject", removed: false });
+    expect(store.read().tombstones).toEqual([]);
+  });
+});
