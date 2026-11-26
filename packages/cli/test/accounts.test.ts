@@ -116,6 +116,35 @@ describe("galley accounts link", () => {
     expect((await read(home)).accounts.find((account) => account.id === sam)!.passwordHash).not.toBeNull();
   });
 
+  it("refuses a GALLEY_OIDC_ISSUER that isn't byte for byte the issuer the accounts or removed accounts hold, pointing to rekey; nothing changes", async () => {
+    const { home, sam, ed } = await install();
+    const run = async (issuer: string, argv: string[]) => {
+      const io = testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: issuer });
+
+      return { code: await main(["accounts", "link", "--", ...argv], io), err: io.stderr.join("\n") };
+    };
+
+    expect((await run(ISSUER, [ed, "ed-subject"])).code).toBe(0);
+    for (const other of [`${ISSUER}/`, ISSUER.toUpperCase(), "https://id.example.com:443"]) {
+      expect(await run(other, [sam, "sam-subject"])).toMatchObject({
+        code: 1,
+        err: expect.stringContaining(`GALLEY_OIDC_ISSUER is “${other}”, but this install has accounts, or removed accounts, from another identity provider: “${ISSUER}”.`),
+      });
+    }
+    expect((await run(`${ISSUER}/`, [sam, "sam-subject"])).err).toContain(`galley accounts rekey --from ${ISSUER} --to ${ISSUER}/`);
+    expect((await read(home)).accounts.find((account) => account.id === sam)!.identity).toBeUndefined();
+    // A removed account alone holds the issuer too.
+    const store = await openInstallState(home);
+
+    await store.update((draft) => {
+      draft.accounts = draft.accounts.filter((account) => account.id !== ed);
+      draft.tombstones.push({ id: "gone", issuer: ISSUER, subject: "ed-subject", removedAt: new Date().toISOString(), removedBy: null });
+    });
+    expect(await run(`${ISSUER}/`, [sam, "ed-subject"])).toMatchObject({ code: 1, err: expect.stringMatching(/from another identity provider/) });
+    expect((await read(home)).accounts.find((account) => account.id === sam)!.passwordHash).not.toBeNull();
+    expect((await run(ISSUER, [sam, "sam-subject"])).code).toBe(0);
+  });
+
   it("takes a file of pairs, each said on its own line; one that can't be linked doesn't stop the rest", async () => {
     const { home, sam, ed } = await install();
     const pairs = join(folder("pairs"), "pairs.txt");
@@ -173,7 +202,10 @@ describe("galley accounts rekey", () => {
     const NEW = "https://new.example.com";
 
     expect(await main(["accounts", "link", "--", ed, "same-subject"], testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: ISSUER }))).toBe(0);
-    expect(await main(["accounts", "link", "--", sam, "same-subject"], testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: NEW }))).toBe(0);
+    // A link under a second issuer is refused now, so the state is written as an older version could have left it.
+    await (await openInstallState(home)).update((draft) => {
+      draft.accounts.find((account) => account.id === sam)!.identity = { issuer: NEW, subject: "same-subject" };
+    });
     const io = testIo({ GALLEY_HOME: home });
 
     expect(await main(["accounts", "rekey", "--from", ISSUER, "--to", NEW], io)).toBe(1);

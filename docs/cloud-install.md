@@ -1259,7 +1259,9 @@ same provider can be set up again.
 **If the issuer changes**, stop the server and run
 `galley accounts rekey --from <old issuer> --to <new issuer>`, which moves
 every identity and every removal in one write. Until then, a server started
-with the new issuer refuses to start. With pairwise subjects, changing the
+with the new issuer refuses to start, and `galley accounts link` refuses to
+link under it: the issuer is compared byte for byte, so a trailing slash or
+a capital letter makes another one. With pairwise subjects, changing the
 editor's address changes every subject too, unless the provider keeps the
 sector identifier fixed: treat it as an issuer change.
 

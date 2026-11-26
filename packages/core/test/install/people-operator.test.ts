@@ -138,9 +138,13 @@ describe("deleting an account that signs in through the provider", () => {
 
 describe("taking a removed account off the list", () => {
   it("lists each removed identity with its entry's id; unremove(id) takes it off, and that identity signs in again as a new account", async () => {
-    const { people, sam, ed } = await install();
+    const { store, people, sam, ed, pat } = await install();
     const signIn = () => people.signInThroughProvider({ issuer: ISSUER, subject: "ed-subject", name: "Ed Again", email: "ed@example.com", role: "editor", issuedAt: Date.now() });
 
+    // Only one issuer, as a link needs: the account under another one goes.
+    await store.update((draft) => {
+      draft.accounts = draft.accounts.filter((account) => account.id !== pat);
+    });
     await people.remove(sam, ed);
     const [entry] = people.removed();
 
