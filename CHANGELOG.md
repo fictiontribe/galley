@@ -5,7 +5,16 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
-## Unreleased
+## 0.4.6 — 2026-11-26
+
+**Connecting your own account to the identity provider in the app, and
+People showing how everyone signs in**, for a hosted editor with its own
+identity provider, with the guide to running one covering it step by step.
+**A security fix:** with a provider set up, an account linked to it now
+never signs in with a password. Update if you ever took the provider away
+and set it up again: the first start of 0.4.6 with the provider set up takes
+off any password such an account was given meanwhile, and ends its
+sessions.
 
 ### Added
 
@@ -55,8 +64,9 @@ entry says how.
   guide to running a hosted install has it step by step (setting it up,
   passwords beside it or off, moving an install that had passwords, a wrong
   link put right, taking someone's access away, back-channel logout, taking
-  the provider away), and the security pages, `SECURITY.md` and
-  `galley serve --help` say people may sign in through one.
+  the provider away), and the security pages, `SECURITY.md`,
+  `galley serve --help` and its start-up line say people may sign in through
+  one.
 
 ### Security
 

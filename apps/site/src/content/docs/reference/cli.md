@@ -67,7 +67,7 @@ Options
 
 ## `galley serve`
 
-A hosted install: Galley for one site, on a server, for the people its owner invites, each signing in with their own e-mail and password, or through your own identity provider ([`GALLEY_OIDC_ISSUER`](/docs/reference/environment/#signing-in-through-an-identity-provider)). Everything it keeps is in its data folder (`GALLEY_HOME`). With no owner yet it prints a one-time setup link, and whoever opens it creates the owner's account; `--reset-password` prints a one-time link for a locked-out owner to choose a new password (`--email` says which owner, when there are several) and keeps serving. Not in a release yet: it is in the repository. What it prints, the image, the three addresses and the proxy in front: [Run a hosted install](/docs/running/hosted/).
+A hosted install: Galley for one site, on a server, for the people its owner invites, each signing in with their own e-mail and password, or through your own identity provider ([`GALLEY_OIDC_ISSUER`](/docs/reference/environment/#signing-in-through-an-identity-provider)). Everything it keeps is in its data folder (`GALLEY_HOME`). With no owner yet it prints a one-time setup link, and whoever opens it creates the owner's account; `--reset-password` prints a one-time link for a locked-out owner to choose a new password (`--email` says which owner, when there are several) and keeps serving. What it prints, the image, the three addresses and the proxy in front: [Run a hosted install](/docs/running/hosted/).
 
 Its help (`--help`):
 
@@ -155,7 +155,7 @@ Secrets are read from the environment or that file only, so they never show up i
 
 ## `galley backup`
 
-Backs up a hosted install's data folder into one file sealed with a passphrase, or puts such a file back — the same file the Install page downloads. Stop the server first. In a container whose only volume is `/data`, write to `/data/backups/`: no backup includes it and no restore replaces it. Not in a release yet. What a backup holds: [Run a hosted install](/docs/running/hosted/#back-it-up).
+Backs up a hosted install's data folder into one file sealed with a passphrase, or puts such a file back — the same file the Install page downloads. Stop the server first. In a container whose only volume is `/data`, write to `/data/backups/`: no backup includes it and no restore replaces it. What a backup holds: [Run a hosted install](/docs/running/hosted/#back-it-up).
 
 ```sh
 GALLEY_HOME=/data galley backup create --out /data/backups/site.bak
@@ -586,7 +586,7 @@ Examples
 
 ## `galley host`
 
-Puts an editor for the site online on your own account — Fly.io, Cloudflare in front of a computer of yours, or any server with Docker — as the Online screen's **Host the editor online** does. It prints the plan and the monthly cost before anything is created, and asks. `galley host recipe` writes the files to run one install with Docker, for an operator. `--preview-address` and `--live-address` set the other two names (needed for an address like `example.co.uk`). Not in a release yet: it is in the repository. [Host the editor online](/docs/editing/editor-online/).
+Puts an editor for the site online on your own account — Fly.io, Cloudflare in front of a computer of yours, or any server with Docker — as the Online screen's **Host the editor online** does. It prints the plan and the monthly cost before anything is created, and asks. `galley host recipe` writes the files to run one install with Docker, for an operator. `--preview-address` and `--live-address` set the other two names (needed for an address like `example.co.uk`). [Host the editor online](/docs/editing/editor-online/).
 
 ```sh
 galley host --host fly --address cms.example.com --dry-run
@@ -649,7 +649,7 @@ recipe: the files to run one install with Docker, for an operator
       --repository <address>  The site's repository
       --folder <path>         Where the site is inside it ("apps/site")
       --proxy <how>           caddy (default), shared-proxy or tunnel
-      --image <reference>     Default: ghcr.io/fictiontribe/galley:0.4.5
+      --image <reference>     Default: ghcr.io/fictiontribe/galley:0.4.6
       --setup-token-sha256 <hex>  The SHA-256 of a one-time setup code
       --out <folder|->        Write the files there (default -: print them)
 Keys

@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.5 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.6 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // The whole agent-readable output of a site, from its rendered pages: which
 // pages count, each page's markdown twin and the tags its <head> gains, and
