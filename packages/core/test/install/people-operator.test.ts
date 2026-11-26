@@ -135,3 +135,35 @@ describe("deleting an account that signs in through the provider", () => {
     expect(people.get(cy)).toBeNull();
   });
 });
+
+describe("taking a removed account off the list", () => {
+  it("lists each removed identity with its entry's id; unremove(id) takes it off, and that identity signs in again as a new account", async () => {
+    const { people, sam, ed } = await install();
+    const signIn = () => people.signInThroughProvider({ issuer: ISSUER, subject: "ed-subject", name: "Ed Again", email: "ed@example.com", role: "editor", issuedAt: Date.now() });
+
+    await people.remove(sam, ed);
+    const [entry] = people.removed();
+
+    expect(people.removed()).toEqual([{ id: expect.any(String), issuer: ISSUER, subject: "ed-subject", removedAt: expect.any(String), removedBy: sam }]);
+    expect(await signIn()).toMatchObject({ ok: false, reason: "removed" });
+    // The refusal to link it says how to take it off the list, with a command that does.
+    expect((await refusal(people.linkIdentity(sam, { issuer: ISSUER, subject: "ed-subject" }))).message).toContain("galley accounts unremove <subject>");
+    expect(await people.unremove(entry!.id)).toEqual(entry);
+    expect(people.removed()).toEqual([]);
+    const again = await signIn();
+
+    expect(again).toMatchObject({ ok: true });
+    expect((again as { account: { id: string } }).account.id).not.toBe(ed);
+  });
+
+  it("refuses an id that isn't on the list, and changes nothing", async () => {
+    const { people, sam, ed } = await install();
+
+    await people.remove(sam, ed);
+    const error = await refusal(people.unremove("no-such-entry"));
+
+    expect(error.code).toBe("not-found");
+    expect(error.message).toContain("galley accounts removed");
+    expect(people.removed()).toHaveLength(1);
+  });
+});

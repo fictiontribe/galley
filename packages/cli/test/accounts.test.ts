@@ -177,6 +177,69 @@ describe("galley accounts rekey", () => {
   });
 });
 
+describe("galley accounts removed and unremove", () => {
+  it("lists a removed subject with when and by whom; unremove takes it off by subject, and it can be linked again", async () => {
+    const { home, sam, ed } = await install();
+    const run = async (argv: string[], env: Record<string, string> = { GALLEY_HOME: home, GALLEY_OIDC_ISSUER: ISSUER }) => {
+      const io = testIo(env);
+
+      return { code: await main(["accounts", ...argv], io), err: io.stderr.join("\n"), out: io.stdout.join("\n") };
+    };
+
+    expect((await run(["link", ed, "ed-subject"])).code).toBe(0);
+    const store = await openInstallState(home);
+    const people = createPeople(store, { providerConfigured: true });
+
+    await people.remove(sam, ed);
+    expect(await run(["removed"])).toMatchObject({ code: 0, out: expect.stringMatching(new RegExp(`^subject ed-subject at ${ISSUER}  removed \\S+ by Sam Owner$`)) });
+    // Linking it is refused, and the refusal names the command that takes it off the list.
+    expect(await run(["link", sam, "ed-subject"])).toMatchObject({ code: 1, err: expect.stringContaining("galley accounts unremove <subject>") });
+    expect(await run(["unremove", "ed-subject"])).toMatchObject({ code: 0, out: expect.stringMatching(/^Took subject ed-subject at https:\/\/id\.example\.com off the list of removed accounts \(removed \S+\): it may sign in again/) });
+    expect(await run(["removed"])).toMatchObject({ code: 0, out: "No removed account is on the list." });
+    expect((await run(["link", sam, "ed-subject"])).code).toBe(0);
+  });
+
+  it("refuses without GALLEY_OIDC_ISSUER, a subject that isn't on the list, and while a server holds the data folder", async () => {
+    const { home, sam, ed } = await install();
+    const env = { GALLEY_HOME: home, GALLEY_OIDC_ISSUER: ISSUER };
+
+    expect(await main(["accounts", "link", ed, "ed-subject"], testIo(env))).toBe(0);
+    await createPeople(await openInstallState(home), { providerConfigured: true }).remove(sam, ed);
+    const noIssuer = testIo({ GALLEY_HOME: home });
+
+    expect(await main(["accounts", "unremove", "ed-subject"], noIssuer)).toBe(2);
+    expect(noIssuer.stderr.join("\n")).toMatch(/Set GALLEY_OIDC_ISSUER/);
+    const unknown = testIo(env);
+
+    expect(await main(["accounts", "unremove", "someone-else"], unknown)).toBe(1);
+    expect(unknown.stderr.join("\n")).toBe(`No removed account has subject someone-else at ${ISSUER}. \`galley accounts removed\` lists them.`);
+    const sleeper = spawn("sleep", ["30"], { stdio: "ignore" });
+
+    children.push(sleeper);
+    writeFileSync(join(home, "server.lock"), JSON.stringify({ pid: sleeper.pid, hostname: hostname(), port: 4400, startedAt: new Date().toISOString() }));
+    const served = testIo(env);
+
+    expect(await main(["accounts", "unremove", "ed-subject"], served)).toBe(2);
+    expect(served.stderr.join("\n")).toMatch(/A server is using this data folder right now/);
+    expect((await read(home)).tombstones).toHaveLength(1);
+  });
+});
+
+describe("an account id or subject that starts with -", () => {
+  it("goes after --, for link and unremove alike", async () => {
+    const { home, sam, ed } = await install();
+    const env = { GALLEY_HOME: home, GALLEY_OIDC_ISSUER: ISSUER };
+
+    expect(await main(["accounts", "link", "--", ed, "-ed-subject"], testIo(env))).toBe(0);
+    expect((await read(home)).accounts.find((account) => account.id === ed)!.identity).toEqual({ issuer: ISSUER, subject: "-ed-subject" });
+    await createPeople(await openInstallState(home), { providerConfigured: true }).remove(sam, ed);
+    const io = testIo(env);
+
+    expect(await main(["accounts", "unremove", "--", "-ed-subject"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("Took subject -ed-subject at");
+  });
+});
+
 describe("galley accounts", () => {
   it("says what it does, and refuses a folder with no install", async () => {
     const help = testIo({});
