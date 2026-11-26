@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import { astroAdapter, docusaurusAdapter, hugoAdapter, nextAdapter, nuxtAdapter, sveltekitAdapter } from "@galley/core/adapter";
+import { astroAdapter, docusaurusAdapter, eleventyAdapter, hugoAdapter, jekyllAdapter, nextAdapter, nuxtAdapter, sveltekitAdapter } from "@galley/core/adapter";
 import { CHECKS, checkAdapter, conventionAdapter, defineAdapter, formatReport, type AdapterReport, type GalleyAdapter } from "../src/index";
 
 const CORE_FIXTURES = fileURLToPath(new URL("../../core/test/fixtures/", import.meta.url));
@@ -374,5 +374,101 @@ describe("the built-in adapters pass the kit", () => {
 
     expect(failed(customReport)).toEqual([]);
     expect(failed(minimalReport)).toEqual([]);
+  });
+
+  it("Eleventy, on fluent v3 and classic fixtures", async () => {
+    const fluent = fixture({
+      "package.json": JSON.stringify({ scripts: { start: "eleventy --serve", build: "eleventy" }, devDependencies: { "@11ty/eleventy": "^3.0.0" } }),
+      "eleventy.config.js": `export default function (eleventyConfig) {
+        eleventyConfig.setInputDirectory("src");
+        eleventyConfig.setOutputDirectory("dist");
+        eleventyConfig.addPassthroughCopy({ "src/img": "assets/img" });
+      }`,
+      "src/img/hero.png": "",
+      "src/index.md": "---\ntitle: Home\n---\nWelcome.\n",
+      "src/about.md": "---\ntitle: About\n---\nStory.\n",
+      "src/posts/posts.11tydata.json": JSON.stringify({ tags: "posts", permalink: "/journal/{{ page.fileSlug }}/" }),
+      "src/posts/first.md": "---\ntitle: First\n---\nOne.\n",
+      "src/posts/second.md": "---\ntitle: Second\n---\nTwo.\n",
+      "src/_data/site.json": '{ "name": "Harbour" }\n',
+    });
+    const classic = fixture({
+      ".eleventy.cjs": `module.exports = function () { return { dir: { output: "_site" } }; };`,
+      "notes/a.md": "---\ntitle: A\n---\nA.\n",
+      "notes/b.md": "---\ntitle: B\n---\nB.\n",
+      "_data/hours.yaml": "weekdays: 9-5\n",
+    });
+
+    const fluentReport = await checkAdapter(eleventyAdapter, fluent, {
+      collections: [
+        { id: "posts", minEntries: 2, url: "/journal/{slug}/", fields: ["title"] },
+        { id: "pages", minEntries: 2, url: "/{slug}/" },
+        { id: "site", url: null },
+      ],
+      dev: { command: "npm start", port: 8080 },
+    });
+    const classicReport = await checkAdapter(eleventyAdapter, classic, {
+      collections: [
+        { id: "notes", minEntries: 2, url: "/notes/{slug}/" },
+        { id: "hours", url: null },
+      ],
+      dev: { command: "npx @11ty/eleventy --serve", port: 8080 },
+    });
+
+    expect(failed(fluentReport)).toEqual([]);
+    expect(failed(classicReport)).toEqual([]);
+  });
+
+  it("Jekyll, on custom collections and classic _posts fixtures", async () => {
+    const custom = fixture({
+      "_config.yml": `url: https://kitchen-notes.org
+source: src
+destination: _out
+collections_dir: collections
+collections:
+  recipes:
+    output: true
+    permalink: /recipes/:name/
+  authors:
+    output: false
+`,
+      Gemfile: 'gem "jekyll"\n',
+      "src/index.md": "---\ntitle: Home\n---\nWelcome.\n",
+      "src/about.md": "---\ntitle: About\n---\nAbout.\n",
+      "src/collections/_posts/2026-05-01-sourdough.md": "---\ntitle: Sourdough\n---\nOne.\n",
+      "src/collections/_posts/2026-05-02-rye.md": "---\ntitle: Rye\n---\nTwo.\n",
+      "src/collections/_recipes/bread.md": "---\ntitle: Bread\n---\nBake.\n",
+      "src/collections/_recipes/tart.md": "---\ntitle: Tart\n---\nBake.\n",
+      "src/collections/_authors/ana.md": "---\ntitle: Ana\n---\nBaker.\n",
+      "src/_data/nav.yml": "items:\n  - label: Home\n",
+    });
+    const classic = fixture({
+      "_config.yml": "title: Field Notes\n",
+      "_posts/2026-01-01-first.md": "---\ntitle: First\n---\nOne.\n",
+      "_posts/2026-01-02-second.md": "---\ntitle: Second\n---\nTwo.\n",
+      "index.md": "---\ntitle: Home\n---\nWelcome.\n",
+      "about.md": "---\ntitle: About\n---\nAbout.\n",
+    });
+
+    const customReport = await checkAdapter(jekyllAdapter, custom, {
+      collections: [
+        { id: "posts", minEntries: 2, url: null },
+        { id: "recipes", minEntries: 2, url: "/recipes/{slug}/", fields: ["title"] },
+        { id: "authors", minEntries: 1, url: null },
+        { id: "pages", minEntries: 2, url: "/{slug}/" },
+        { id: "nav", url: null },
+      ],
+      dev: { command: "bundle exec jekyll serve", port: 4000 },
+    });
+    const classicReport = await checkAdapter(jekyllAdapter, classic, {
+      collections: [
+        { id: "posts", minEntries: 2, url: null },
+        { id: "pages", minEntries: 2, url: "/{slug}/" },
+      ],
+      dev: { command: "bundle exec jekyll serve", port: 4000 },
+    });
+
+    expect(failed(customReport)).toEqual([]);
+    expect(failed(classicReport)).toEqual([]);
   });
 });
