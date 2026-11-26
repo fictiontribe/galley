@@ -74,7 +74,7 @@ export function VideoSettingsSection() {
           provider ? (
             <p className="app-images-note">
               <ProofMark kind={aiDisabled ? "stet" : "reg"} className={aiDisabled ? "g-faint" : "app-secret__ok"} />
-              <span>{aiDisabled ? "Switched off in site settings." : "Included with your Galley AI credits."}</span>
+              <span>{aiDisabled ? "Switched off for this site." : "Included with your Galley AI credits."}</span>
             </p>
           ) : null
         ) : provider && !provider.configured ? (

@@ -19,7 +19,7 @@ export { createFileSecretStore } from "./secrets";
 export { createSiteSettingsStore, describeConnections, resolveSecret, type SiteSettingsStore } from "./site-settings";
 export type { SecretStore } from "./secrets";
 export { MODELS, DEFAULT_MODEL, SUMMARY_MODEL, costFor } from "./models";
-export { DEFAULT_AI_CREDIT_MILLICENTS, creditsFromUsd, readManagedAiConfig, aiMetaFromEnv, parseCreditsBalance, fetchManagedAiCredits } from "./credits";
+export { DEFAULT_AI_CREDIT_MILLICENTS, creditsFromUsd, readManagedAiConfig, aiMetaFromEnv, parseCreditsBalance, fetchManagedAiCredits, safeAiUrl } from "./credits";
 export type { ManagedAiConfig } from "./credits";
 export { PROXY_ERROR_CODES, extractProxyError } from "./errors";
 export { createOpenAiProvider, openaiBaseUrl, OPENAI_BASE } from "./images/openai";

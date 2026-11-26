@@ -207,7 +207,9 @@ function RenderNote({ siteId, audit }: { siteId: string; audit: SiteAudit }) {
 function Body({ siteId, audit, refetch }: { siteId: string; audit: SiteAudit; refetch: () => Promise<unknown> }) {
   const production = useSite((s) => s.detail?.model.urls.production);
   const { disabled: aiDisabled } = useManagedAi();
-  const connected = !aiDisabled && (useQuery(["settings"], () => api("GET /api/settings")).data?.secrets.some((secret) => secret.name === "anthropic" && secret.configured) ?? false);
+  // Asked every render, AI off or not: a hook called only sometimes breaks the screen when AI is switched off or on.
+  const settings = useQuery(["settings"], () => api("GET /api/settings"));
+  const connected = !aiDisabled && (settings.data?.secrets.some((secret) => secret.name === "anthropic" && secret.configured) ?? false);
   const [open, setOpen] = useState<ReadonlySet<FindingGroup>>(() => new Set(GROUP_ORDER.filter((group) => audit.byGroup[group].must + audit.byGroup[group].should > 0).slice(0, 1)));
   const [batch, setBatch] = useState<{ kind: WriteKind; paths?: string[] } | null>(null);
   const { fix, busy } = useFixes(siteId, refetch);

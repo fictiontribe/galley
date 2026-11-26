@@ -187,21 +187,26 @@ else, and the server says so when it starts.
 ### Before the first paint
 
 `packages/web/public/theme.js` runs before the app's styles paint, on every
-screen the app opens on (sign-in, first run and one-time links included). It
-applies the appearance from `galley.ui`, and the theme: the install's default,
-which the server puts in front of the script it serves at `/theme.js`
-(`self.galleyStart = { keeper, look }`), or, on a hosted editor where the
-person has chosen their own, this browser's copy of it (`galley.look`). In
-local mode and the desktop app the default is the person's choice, so it
-always wins. Nothing is stored for someone who hasn't chosen. Only colours
+screen the app opens on (sign-in, first run and one-time links included). The
+server puts what it needs in front of the script it serves at `/theme.js`:
+`self.galleyStart = { keeper, theme, look }`, where `theme` is the install's
+light, dark or system setting and `look` its default theme. It applies the
+appearance — in local mode and the desktop app the install's setting
+(`keeper: "server"`), which wins over this browser's copy in `galley.ui`; on a
+hosted editor (`keeper: "browser"`) the person's own choice once they've made
+one, the install's setting until then — and sets the page's `color-scheme` to
+match. And it applies the theme: the install's default, or, on a hosted
+editor where the person has chosen their own, this browser's copy of it
+(`galley.look`). In local mode and the desktop app the default is the
+person's choice, so it always wins. Nothing is stored for someone who hasn't chosen. Only colours
 that are exactly `#RRGGBB` and switches from their lists are applied; anything
 else is ignored.
 
 The default also goes out on `GET /api/meta` (`look`), to anyone: colours and
 switches only, never a name, description or author, and to anyone not signed
 in (and in `/theme.js`) under the constant id `default` rather than its own.
-The server works it out once and keeps it until a theme, the default or a
-plugin changes, reading only that one setting.
+The server works the look out once and keeps it until a theme, the default or
+a plugin changes; the appearance setting it reads on every request.
 
 ## Routes
 

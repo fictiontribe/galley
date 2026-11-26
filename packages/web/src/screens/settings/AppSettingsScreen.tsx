@@ -335,7 +335,7 @@ function AssistantSection({ settings }: { settings: Settings }) {
       description={
         managed
           ? aiDisabled
-            ? "Switched off in site settings."
+            ? "Switched off for this site."
             : "Included with your Galley AI credits."
           : `Connect the assistant with your own API key. It’s stored ${where} and never sent to the browser.`
       }
@@ -347,7 +347,7 @@ function AssistantSection({ settings }: { settings: Settings }) {
               <span className="g-label">Assistant access</span>
               <span className="app-secret__status">
                 <ProofMark kind={aiDisabled ? "stet" : "reg"} className={aiDisabled ? "g-faint" : "app-secret__ok"} />
-                <span>{aiDisabled ? "Switched off in site settings" : "Included with your Galley AI credits"}</span>
+                <span>{aiDisabled ? "Switched off for this site" : "Included with your Galley AI credits"}</span>
               </span>
             </div>
           </div>
@@ -432,7 +432,7 @@ function ImagesSection({ settings }: { settings: Settings }) {
         managed ? (
           <p className="app-images-note">
             <ProofMark kind={aiDisabled ? "stet" : "reg"} className={aiDisabled ? "g-faint" : "app-secret__ok"} />
-            <span>{aiDisabled ? "Switched off in site settings." : "Included with your Galley AI credits."}</span>
+            <span>{aiDisabled ? "Switched off for this site." : "Included with your Galley AI credits."}</span>
           </p>
         ) : provider.configured ? (
           IMAGE_SECRETS.has(provider.id as SecretName) ? null : (

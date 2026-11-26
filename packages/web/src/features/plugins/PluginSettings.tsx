@@ -317,7 +317,7 @@ function ManagedKeySetting({ setting, disabled }: { setting: PluginSettingInfo; 
           <span className="g-label">{setting.label}</span>
           <span className="plg-setting__status">
             <ProofMark kind={disabled ? "stet" : "reg"} className={disabled ? "g-faint" : "app-secret__ok"} />
-            <span>{disabled ? "Switched off in site settings" : "Included with your Galley AI credits"}</span>
+            <span>{disabled ? "Switched off for this site" : "Included with your Galley AI credits"}</span>
           </span>
         </div>
       </div>
