@@ -8,7 +8,8 @@
  * no global, address, message or stored value adds one. It is not
  * sandboxed: it can import any module of the app, and a mistake in it is
  * its author's. What the app does for it: a place that crashes while it
- * draws, or waits, shows nothing there and leaves the screen as it was.
+ * draws, or waits, shows nothing there (a fieldFrame: what it framed) and
+ * leaves the screen as it was.
  */
 import type { ComponentType, ReactNode } from "react";
 import type { Extension } from "@codemirror/state";
@@ -43,7 +44,7 @@ export interface Addition {
    * for the list, shared between rows, not one a row.
    */
   listRow?: ComponentType<{ siteId: string; path: string }>;
-  /** Mounted inside an open entry's form to wire incremental sync or transport. Draws nothing. */
+  /** Mounted inside an open entry's form, for what an edition keeps going while it is open (its own transport, say). Draws nothing. */
   entrySession?: ComponentType<{ siteId: string; path: string; entry: Entry; store: FormStore; collection: Collection | null }>;
   /** At the top of an open entry's form, below the mode bar and above notices. */
   entryTop?: ComponentType<{ siteId: string; path: string; store: FormStore }>;

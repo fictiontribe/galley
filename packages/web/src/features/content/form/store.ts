@@ -86,15 +86,15 @@ export interface FormActions {
   /** An op that changes shape (insert / move / remove) or puts a value back. Drafts are sent first. */
   apply: (...ops: DataOp[]) => void;
   /**
-   * Apply remote edits directly onto the stored copy (preserving active drafts),
-   * without refetching the entry. Used by incremental live-sync additions.
+   * Apply edits made elsewhere directly onto the stored copy (preserving active drafts), without refetching the
+   * entry: for an edition's additions that send and receive edits incrementally.
    */
   applyRemote: (ops: EditOp[], next: { hash: string; raw?: string; body?: string | null; issues?: ValidationIssue[]; modifiedAt?: number }) => void;
-  /** Replace the form's send/reload transport dynamically (for compiled-in additions). */
-  setTransport: (transport: Partial<Pick<FormDeps, "send" | "reload">>) => void;
+  /** Replace the form's send/reload transport (for an edition's additions); null puts the form's own back. */
+  setTransport: (transport: Partial<Pick<FormDeps, "send" | "reload">> | null) => void;
   /** Subscribe to form draft/commit/receive lifecycle events. */
   onEvent: (listener: (event: FormStoreEvent) => void) => () => void;
-  /** Suppress or re-enable refetch-on-receive while an incremental sync handles updates. */
+  /** Suppress or re-enable refetch-on-receive while an edition's addition handles updates incrementally. */
   setSuppressReceive: (suppress: boolean) => void;
   /**
    * Run what a message from the previewed page asks for. Any change made while
@@ -409,6 +409,8 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       ...(origin ? { outside: { origin, at: Date.now() } } : {}),
     });
     recompute();
+    // Told once the newer copy is in place (at once, or after a save's reply).
+    emitEvent({ type: "received", entry: fresh });
   }
 
   const actions: FormActions = {
@@ -421,6 +423,8 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       noteChange();
       if (store.getState().refusals[key]) actions.clearRefusal(path);
       if (immediate) {
+        // Told as a draft too, before it is sent: an addition sees every edit, not only the ones that wait.
+        emitEvent({ type: "draft", path, key });
         flushDraft(key);
         recompute();
         void pump();
@@ -486,6 +490,11 @@ export function createFormStore(entry: Entry, deps: FormDeps): FormStore {
       recompute();
     },
     setTransport(transport) {
+      if (transport === null) {
+        transportSend = deps.send;
+        transportReload = deps.reload;
+        return;
+      }
       if (transport.send) transportSend = transport.send;
       if (transport.reload) transportReload = transport.reload;
     },

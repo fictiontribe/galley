@@ -128,9 +128,19 @@ export interface SiteActivityNotice {
   failed?: boolean;
 }
 
+/**
+ * Whether a publish or an undone publish that answered (rather than threw) failed: refused (`ok: false`), or made
+ * its commit here and couldn't push it (`pushError`). Either way it isn't on the code host.
+ */
+function answeredFailed(result: PublishResult | undefined): boolean {
+  return result !== undefined && (!result.ok || result.pushError !== undefined);
+}
+
 /** Optional lifecycle hooks for an embedding program that hosts the engine. */
 export interface SiteHooks {
   onFileWrite?: (notice: SiteFileWriteNotice) => void;
+  /** Whether anything listens for file writes now; without it, onFileWrite counts as listened to. Nothing is hashed while it says no. */
+  wantsFileWrites?: () => boolean;
   onActivity?: (notice: SiteActivityNotice) => void;
   beforeDiscard?: (info: { siteId: string; paths: string[]; actor: SiteActor }) => string | null | undefined | Promise<string | null | undefined>;
 }
@@ -340,6 +350,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
           onFileWrite: (write) => {
             deps.hooks?.onFileWrite?.({ siteId: deps.id, ...write, actor: actorNow() });
           },
+          wantsFileWrites: () => deps.hooks?.wantsFileWrites?.() ?? true,
         }
       : {}),
   });
@@ -493,7 +504,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     }
     if (disposed) return;
     if (siteChanged) deps.events.emit({ type: "site.updated", siteId: deps.id });
-    if (origin === "external" && deps.hooks?.onFileWrite) {
+    if (origin === "external" && deps.hooks?.onFileWrite && (deps.hooks.wantsFileWrites?.() ?? true)) {
       for (const path of paths) {
         const present = existing.get(path) ?? false;
         const afterHash = present ? await workspace.readBytes(path).then(hashContent).catch(() => null) : null;
@@ -1449,7 +1460,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
           actor,
           ...(result?.files ? { paths: result.files } : {}),
           ...(result?.commit ? { commit: result.commit } : {}),
-          ...(failed ? { failed: true } : {}),
+          ...(failed || answeredFailed(result) ? { failed: true } : {}),
         });
       }
     },
@@ -1483,7 +1494,7 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         failed = true;
         throw error;
       } finally {
-        notifyActivity({ kind: "revert", phase: "end", actor, ...(result?.files ? { paths: result.files } : {}), ...(result?.commit ? { commit: result.commit } : { commit }), ...(failed ? { failed: true } : {}) });
+        notifyActivity({ kind: "revert", phase: "end", actor, ...(result?.files ? { paths: result.files } : {}), ...(result?.commit ? { commit: result.commit } : { commit }), ...(failed || answeredFailed(result) ? { failed: true } : {}) });
       }
     },
 

@@ -2,11 +2,12 @@
  * Embedding: generic server hooks (`onFileWrite`, `beforeDiscard`, `onActivity`)
  * and per-path locking (`host.sites.withPathLock`).
  */
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SiteActivityNotice, SiteFileWriteNotice } from "@galley/core/site";
 import { defineExtension, type ExtensionHost } from "../../src/extensions";
+import { DISCARD_GUARD_FAILED } from "../../src/extensions/run";
 import { GET_CHANGES_NOTHING, STOPPED } from "../../src/extensions/site";
 import { call, EDITOR, sandbox, siteRepository, startHosted, stopHosted, until } from "../hosted-helpers";
 
@@ -17,6 +18,9 @@ const OWN_PAGE = { "sec-fetch-site": "same-origin" };
 const writes: SiteFileWriteNotice[] = [];
 const activities: SiteActivityNotice[] = [];
 let blockDiscard = false;
+/** How the probe's discard guard answers: as before (blockDiscard), by throwing, by never answering, or with a long, many-line sentence holding its secret. */
+let guardMode: "plain" | "throw" | "hang" | "loud" = "plain";
+const PROBE_SECRET = "probe-secret-value-0123456789";
 let capturedHost: ExtensionHost | null = null;
 let started: Awaited<ReturnType<typeof startHosted>>;
 let port = 0;
@@ -26,6 +30,7 @@ let folder = "";
 
 const hooksExtension = defineExtension({
   id: "hooks-probe",
+  secrets: ["HOOKS_PROBE_TOKEN"],
   setup(host) {
     capturedHost = host;
     host.hooks.onFileWrite((notice) => {
@@ -35,6 +40,9 @@ const hooksExtension = defineExtension({
       activities.push(notice);
     });
     host.hooks.beforeDiscard((notice) => {
+      if (guardMode === "throw") throw new Error("the guard broke");
+      if (guardMode === "hang") return new Promise<null>(() => undefined);
+      if (guardMode === "loud") return `Refused:\nline two with ${PROBE_SECRET}\n${"x".repeat(900)}`;
       if (blockDiscard) {
         return `Refused discard for ${notice.paths.join(", ")}`;
       }
@@ -97,6 +105,7 @@ beforeAll(async () => {
       GALLEY_SITE_REPOSITORY: repo,
       GALLEY_SITE_ACCESS: "token",
       GALLEY_SITE_TOKEN: "fake-access-key-for-the-repository-0000",
+      HOOKS_PROBE_TOKEN: PROBE_SECRET,
     },
     { extensions: [hooksExtension] },
   );
@@ -160,6 +169,59 @@ describe("host.hooks and host.sites.withPathLock", () => {
     expect(allowed.status).toBe(200);
     expect(activities.some((a) => a.kind === "discard" && a.phase === "start")).toBe(true);
     expect(activities.some((a) => a.kind === "discard" && a.phase === "end")).toBe(true);
+  });
+
+  it("refuses a discard when a guard throws or doesn't answer in time: it fails closed, and the file is kept", async () => {
+    const changed = "---\ntitle: Kept\n---\nBody\n";
+    const discard = () => call(port, "POST", `/api/sites/${siteId}/discard`, { cookie: ownerCookie, headers: OWN_PAGE, body: { paths: ["src/content/pages/home.md"] } });
+
+    writeFileSync(join(folder, "src/content/pages/home.md"), changed);
+    try {
+      for (const mode of ["throw", "hang"] as const) {
+        guardMode = mode;
+        const refused = await discard();
+
+        expect(refused.status, mode).toBe(403);
+        expect(JSON.stringify(refused.body), mode).toContain(DISCARD_GUARD_FAILED);
+        expect(readFileSync(join(folder, "src/content/pages/home.md"), "utf8"), mode).toBe(changed);
+      }
+    } finally {
+      guardMode = "plain";
+    }
+  }, 30_000);
+
+  it("says a guard's refusal as one line of at most 500 characters, with its secrets taken out", async () => {
+    writeFileSync(join(folder, "src/content/pages/home.md"), "---\ntitle: Loud\n---\nBody\n");
+    guardMode = "loud";
+    try {
+      const refused = await call(port, "POST", `/api/sites/${siteId}/discard`, { cookie: ownerCookie, headers: OWN_PAGE, body: { paths: ["src/content/pages/home.md"] } });
+      const message = (refused.body as { error: { message: string } }).error.message;
+
+      expect(refused.status).toBe(403);
+      expect(message).not.toContain("\n");
+      expect(message).not.toContain(PROBE_SECRET);
+      expect(message.length).toBeLessThanOrEqual(500);
+      expect(message.startsWith("Refused:")).toBe(true);
+    } finally {
+      guardMode = "plain";
+    }
+  });
+
+  it("never tells onFileWrite of a secrets file, while it tells of other changes made outside the app", async () => {
+    writes.length = 0;
+    writeFileSync(join(folder, ".env.local"), "TOKEN=outside\n");
+    writeFileSync(join(folder, "src/content/pages/outside.md"), "---\ntitle: Outside\n---\n");
+    await until(() => writes.some((w) => w.path === "src/content/pages/outside.md"), 15_000);
+    await new Promise((done) => setTimeout(done, 500));
+    expect(writes.filter((w) => w.path.includes(".env"))).toEqual([]);
+  }, 30_000);
+
+  it("tells onActivity a publish failed when it answers ok: false without throwing (nothing to publish)", async () => {
+    activities.length = 0;
+    const res = await call(port, "POST", `/api/sites/${siteId}/publish`, { cookie: ownerCookie, headers: OWN_PAGE, body: { paths: ["src/content/pages/no-such-change.md"] } });
+
+    expect((res.body as { ok?: boolean }).ok).toBe(false);
+    expect(activities.find((a) => a.kind === "publish" && a.phase === "end")).toMatchObject({ failed: true });
   });
 
   it("refuses withPathLock once the server has stopped", async () => {

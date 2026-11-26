@@ -58,6 +58,8 @@ export interface WorkspaceOptions {
   watch?: boolean;
   /** Called right after bytes reach disk (or a file is removed) inside the save lock. Never fails the write. */
   onFileWrite?: (write: WorkspaceFileWrite) => void;
+  /** Whether onFileWrite has anyone to tell now; without it, it does. Nothing is hashed for a write while it says no. */
+  wantsFileWrites?: () => boolean;
 }
 
 /** WriteOptions plus engine-internal flags. */
@@ -425,7 +427,7 @@ export async function createWorkspace(rootInput: string, options: WorkspaceOptio
       }
     }
     markSelfWrite(resolved.path, bytes);
-    if (options.onFileWrite) {
+    if (options.onFileWrite && (options.wantsFileWrites?.() ?? true)) {
       try {
         options.onFileWrite({
           path: resolved.path,
