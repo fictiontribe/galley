@@ -10,4 +10,6 @@
  */
 export { defineExtension, ExtensionError, EXTENSION_BODY_LIMIT, EXTENSION_EVENT_BYTES, EXTENSION_EVENT_BYTES_A_SECOND, EXTENSION_EVENTS_A_SECOND, EXTENSION_PREFIX, STREAM_MISSED, STREAM_REFUSED } from "./declare";
 export { forbidden, invalid, notFound } from "../errors";
-export type { ExtensionAccess, ExtensionCaller, ExtensionEventRule, ExtensionEvents, ExtensionHost, ExtensionStream, ExtensionParts, ExtensionPeople, ExtensionRequest, ExtensionRoute, GuardedSite, JsonValue, ServerExtension, SessionRef } from "./types";
+export type { ExtensionAccess, ExtensionCaller, ExtensionEventRule, ExtensionEvents, ExtensionHooks, ExtensionHost, ExtensionStream, ExtensionParts, ExtensionPeople, ExtensionRequest, ExtensionRoute, GuardedSite, JsonValue, ServerExtension, SessionRef } from "./types";
+export type { AssistantTurnNotice } from "@galley/core/ai";
+export type { SiteActivityNotice, SiteActor, SiteFileWriteNotice } from "@galley/core/site";

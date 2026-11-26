@@ -1,4 +1,7 @@
-import { useRef } from "react";
+import { useCallback, useRef, useState } from "react";
+import type { Extension } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
+import { BodyAddonAdditions } from "@/additions/places";
 import { count } from "@/lib/format";
 import { ProofMark, keyName } from "@/ui";
 import { CodeEditor, type CodeEditorHandle } from "@/ui/form/CodeEditor";
@@ -45,10 +48,17 @@ function BodyState() {
 
 /** The main text: CodeMirror in the writing face, a formatting toolbar, images from media, a word count. */
 export function BodyEditor() {
-  const { store, pickImage, select } = useForm();
+  const { store, siteId, entryPath, pickImage, select } = useForm();
   const body = useFormState((s) => s.body ?? "");
   const edited = useBodyChanged();
   const handle = useRef<CodeEditorHandle | null>(null);
+  const [cmView, setCmView] = useState<EditorView | null>(null);
+  const [extraExtensions, setExtraExtensions] = useState<Extension[]>([]);
+  const [readOnly, setReadOnly] = useState(false);
+  const [managedValue, setManagedValue] = useState(false);
+  const onExtensions = useCallback((next: Extension[]) => setExtraExtensions(next), []);
+  const onReadOnly = useCallback((next: boolean) => setReadOnly(next), []);
+  const onManagedValue = useCallback((next: boolean) => setManagedValue(next), []);
 
   const insertImage = async () => {
     const url = await pickImage();
@@ -77,12 +87,21 @@ export function BodyEditor() {
           <BodyState />
         </span>
       </div>
+      <BodyAddonAdditions
+        siteId={siteId}
+        entryPath={entryPath}
+        store={store}
+        view={cmView}
+        setExtensions={onExtensions}
+        setReadOnly={onReadOnly}
+        setManagedValue={onManagedValue}
+      />
       <div className="app-body__frame">
         <div className="app-body__toolbar" role="toolbar" aria-label="Formatting">
           {TOOLS.map((tool) => (
-            <ToolButton key={tool.label} icon={tool.icon} label={tool.label} shortcut={tool.keys} onClick={() => handle.current && tool.run(handle.current)} />
+            <ToolButton key={tool.label} icon={tool.icon} label={tool.label} shortcut={tool.keys} disabled={readOnly} onClick={() => handle.current && tool.run(handle.current)} />
           ))}
-          <ToolButton icon="image" label="Image from media" onClick={() => void insertImage()} className="app-body__image" />
+          <ToolButton icon="image" label="Image from media" disabled={readOnly} onClick={() => void insertImage()} className="app-body__image" />
         </div>
         <CodeEditor
           handle={handle}
@@ -92,8 +111,16 @@ export function BodyEditor() {
           shortcuts
           label="Main text"
           placeholder="Write the main text here…"
-          onChange={(text) => store.actions.editBody(text)}
-          onBlur={() => store.actions.commitBody()}
+          extensions={extraExtensions}
+          readOnly={readOnly}
+          managedValue={managedValue}
+          onView={setCmView}
+          onChange={(text) => {
+            if (!managedValue) store.actions.editBody(text);
+          }}
+          onBlur={() => {
+            if (!managedValue) store.actions.commitBody();
+          }}
           onFocus={() => select("Main text")}
         />
         <div className="app-body__foot">

@@ -3,7 +3,7 @@
  * See docs/ARCHITECTURE.md §3.4.
  */
 export { createAgentRuntime, UNDO_DEPTH } from "./runtime";
-export type { AgentRuntimeOptions, GalleyAgentRuntime } from "./runtime";
+export type { AgentRuntimeOptions, AssistantTurnNotice, GalleyAgentRuntime } from "./runtime";
 export { PROFILE_ENV } from "./profiles";
 export type { RequestProfile } from "./profiles";
 export { createImageService, filenameFromPrompt, CANDIDATE_TTL_MS } from "./images/service";

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { OverlayToHost, PreviewStatus } from "@galley/core/types";
+import { PreviewHostAdditions } from "@/additions/places";
 import { ArrangePanel } from "@/features/builder/ArrangePanel";
 import type { PageReport } from "@/features/builder/declined";
 import { useArrange, type BuilderSource } from "@/features/builder/useArrange";
@@ -380,6 +381,14 @@ function RunningPreview({ siteId, status, urlPath, onNavigate, mode, editable = 
       ) : (
         <div className="g-sr" role="status" />
       )}
+      {editable ? (
+        <PreviewHostAdditions
+          siteId={siteId}
+          entryPath={builder?.entry?.path}
+          lists={arrange.lists}
+          postMarks={(marks) => post("proposed", toOverlay({ type: "marks", lists: arrange.lists, marks }))}
+        />
+      ) : null}
       {editable ? (
         <EditAssist
           siteId={siteId}

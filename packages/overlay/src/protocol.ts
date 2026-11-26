@@ -76,6 +76,16 @@ export function parseHostMessage(data: unknown): HostToOverlay | null {
     }
     case "placing-drop":
       return { galley: 1, type: "placing-drop" };
+    case "marks": {
+      const lists = sectionLists(data.lists);
+      if (!lists || !Array.isArray(data.marks) || data.marks.length > 32) return null;
+      const marks: Array<{ field: string; index: number; color: string }> = [];
+      for (const item of data.marks) {
+        if (!isObject(item) || !isText(item.field) || !isCount(item.index) || !isHexColor(item.color)) return null;
+        marks.push({ field: item.field, index: item.index, color: item.color });
+      }
+      return { galley: 1, type: "marks", lists, marks };
+    }
     case "measure":
       return typeof data.id === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(data.id) ? { galley: 1, type: "measure", id: data.id } : null;
     default:

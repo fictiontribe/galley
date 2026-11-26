@@ -4,7 +4,8 @@ import { Icon, Menu, ProofMark, cx, type MenuItem } from "@/ui";
 import { FormIcon } from "@/ui/form/FormIcon";
 import { ToolButton } from "@/ui/form/ToolButton";
 import { count } from "@/lib/format";
-import { useChangeKind, useEditCount, useFormValue } from "../../form/context";
+import { SectionHeaderAdditions } from "@/additions/places";
+import { useChangeKind, useEditCount, useForm, useFormValue } from "../../form/context";
 
 /** What a card asks its list to do. Stable across renders (methods read the latest list). */
 export interface ItemController {
@@ -70,6 +71,7 @@ function EditMark({ path }: { path: FieldPath }) {
 
 /** One section (or list item): a folded head with its label and summary, the fields inside when open. */
 export const ItemCard = memo(function ItemCard({ id, index, total, listPath, open, focusToken, dropEdge, dragging, controller, describe, renderBody }: ItemCardProps) {
+  const { siteId, entryPath } = useForm();
   const itemPath = [...listPath, index];
   const item = useFormValue(itemPath);
   const head = useRef<HTMLButtonElement>(null);
@@ -139,6 +141,7 @@ export const ItemCard = memo(function ItemCard({ id, index, total, listPath, ope
             , {noun} {index + 1} of {total}. Alt and arrow keys move it.
           </span>
         </button>
+        <SectionHeaderAdditions siteId={siteId} entryPath={entryPath} listPath={listPath} index={index} open={open} />
         <EditMark path={itemPath} />
         <span className="g-field__key app-card__key">{key}</span>
         <span className="app-card__actions">

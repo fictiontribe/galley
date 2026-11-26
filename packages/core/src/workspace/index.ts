@@ -6,7 +6,7 @@
 export { CHANGED_SINCE_OPENED, createWorkspace, NEUTRAL_AUTHOR } from "./workspace";
 export { SITE_CLOSED } from "./closed";
 export { chooseAuthor, currentAccountAuthor, withAccountAuthor, withoutAccountAuthor, DEFAULT_AUTHOR, type AuthorLayers, type AuthorSource, type ChosenAuthor } from "./author";
-export type { Workspace, WorkspaceOptions, WorkspaceWriteOptions } from "./workspace";
+export type { Workspace, WorkspaceFileWrite, WorkspaceOptions, WorkspaceWriteOptions } from "./workspace";
 export type { ChangeEnricher, PendingStatus } from "./changes";
 export { classifyKind, computeHunks, defaultSummary, parsePorcelain, MAX_DIFF_BYTES } from "./changes";
 export type { WorkspaceCheckpoint } from "./checkpoint";

@@ -53,7 +53,7 @@ export const SITE_CHANGES = [
 export const SITE_WITHHELD = ["dispose"] as const satisfies ReadonlyArray<keyof SiteService>;
 
 /** What an open site carries for the engine's own use, beyond the site service. Never handed either. */
-export const SITE_INTERNAL = ["snapshot", "previewHandle", "liveUrl", "undoOffered", "isClosed", "letGoOfStaleCheckpoints"] as const;
+export const SITE_INTERNAL = ["snapshot", "previewHandle", "liveUrl", "undoOffered", "isClosed", "letGoOfStaleCheckpoints", "withPathLock"] as const;
 
 /**
  * Changes that answer with a thing to drive, not with data, and which of its

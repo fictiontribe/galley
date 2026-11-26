@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useSyncExternalStore, type KeyboardEvent } from "react";
+import { ArrangePanelAdditions } from "@/additions/places";
 import { blockTypeOf } from "@/features/content/form/summary";
 import { useStoredState } from "@/features/preview/useStoredState";
 import { count } from "@/lib/format";
@@ -186,6 +187,7 @@ export function ArrangePanel({ siteId, arrange, onShowForm, failure = null }: Ar
           <p className="builder-panel__hint">Click a section on the page to select it. Drag it by its handle to move it, or use ＋ between sections to add one.</p>
         ) : null}
 
+        {mapped && field && arrange.entry ? <ArrangePanelAdditions siteId={siteId} entryPath={arrange.entry.path} fieldKey={field.key} labels={labels} /> : null}
         {mapped && selected && arrange.store ? (
           <section className="builder-panel__selected" aria-label={`${block?.label ?? "Section"}, selected`}>
             <p className="g-eyebrow">

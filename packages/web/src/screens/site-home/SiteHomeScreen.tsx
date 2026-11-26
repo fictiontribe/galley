@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { ListRowAdditions, useHasListRowAdditions } from "@/additions/places";
 import { useTopBar } from "@/app/chrome";
 import { FileChangeRow } from "@/components/FileChangeRow";
 import { pendingSummary } from "@/features/proof/changes";
@@ -67,6 +68,7 @@ function PendingSection({ siteId }: { siteId: string }) {
   const { changes, status, error, refresh } = useChanges();
   const navigate = useNavigate();
   const publishes = useWhoPublishes();
+  const hasRowAdditions = useHasListRowAdditions();
   const files = changes?.files ?? [];
   return (
     <Section
@@ -104,19 +106,27 @@ function PendingSection({ siteId }: { siteId: string }) {
             {pendingSummary(files) ? ` — ${pendingSummary(files)}` : ""}.
           </p>
           <div className="app-card" role="list">
-            {files.slice(0, 5).map((file) => (
-              <FileChangeRow
-                key={file.path}
-                change={file}
-                actions={
-                  file.kind === "content" && file.status !== "deleted" ? (
-                    <Link className={buttonClass("quiet", "sm")} to={`/sites/${siteId}/edit?path=${encodeURIComponent(file.path)}`}>
-                      Open
-                    </Link>
-                  ) : undefined
-                }
-              />
-            ))}
+            {files.slice(0, 5).map((file) => {
+              const canOpen = file.kind === "content" && file.status !== "deleted";
+              return (
+                <FileChangeRow
+                  key={file.path}
+                  change={file}
+                  actions={
+                    hasRowAdditions || canOpen ? (
+                      <>
+                        {hasRowAdditions ? <ListRowAdditions siteId={siteId} path={file.path} /> : null}
+                        {canOpen ? (
+                          <Link className={buttonClass("quiet", "sm")} to={`/sites/${siteId}/edit?path=${encodeURIComponent(file.path)}`}>
+                            Open
+                          </Link>
+                        ) : null}
+                      </>
+                    ) : undefined
+                  }
+                />
+              );
+            })}
           </div>
           {files.length > 5 ? (
             <Link className="g-link app-section__more" to={`/sites/${siteId}/proof`}>

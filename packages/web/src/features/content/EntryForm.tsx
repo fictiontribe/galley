@@ -16,6 +16,7 @@ import { IssueSummary } from "./form/IssueSummary";
 import { pathKey } from "./form/paths";
 import { outsideKind } from "./form/outside";
 import { createFormStore, type FormStore } from "./form/store";
+import { EntrySessionAdditions, EntryTopAdditions } from "@/additions/places";
 import { EntryPanel } from "@/features/seo/EntryPanel";
 
 const BodyEditor = lazy(() => import("./body/BodyEditor").then((m) => ({ default: m.BodyEditor })));
@@ -170,6 +171,8 @@ const FormRoot = memo(function FormRoot({ siteId, entry, collection, media, setS
           <SegmentedControl label="Edit as" options={MODES} value={mode} onChange={(next) => void switchMode(next)} />
           <SaveStatus />
         </div>
+        <EntrySessionAdditions siteId={siteId} path={entryPath} entry={entry} store={store} collection={collection} />
+        <EntryTopAdditions siteId={siteId} path={entryPath} store={store} />
         <ConflictNotice fields={fields} />
         <SaveErrorNotice />
         <OutsideNotice />

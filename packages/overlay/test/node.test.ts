@@ -15,8 +15,9 @@ describe("overlaySource()", () => {
     expect(source).not.toMatch(/\bimport\s|\brequire\(/);
     // Click to edit was ~15 KB; Arrange (section mapping, the chrome in its shadow root, drag
     // and drop, keyboard) brought it to ~41 KB minified, ~15 KB gzipped. Measure (read-only style
-    // sampling for the Brand screen, with its colour parser) adds ~12 KB. The budget keeps it there.
-    expect(source.length).toBeLessThan(56 * 1024);
+    // sampling for the Brand screen, with its colour parser) adds ~12 KB, and colour-only section
+    // marks add ~1.2 KB. The budget keeps it there.
+    expect(source.length).toBeLessThan(60 * 1024);
   }, 20_000);
 
   it("rebuilds when a source is newer than the build, and reuses it otherwise", async () => {

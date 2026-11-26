@@ -10,6 +10,7 @@
  * depend on the index wait for that pipeline, so a search right after an edit
  * sees the edit.
  */
+import { AsyncLocalStorage } from "node:async_hooks";
 import { existsSync, lstatSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { PRODUCT } from "../brand";
@@ -86,7 +87,8 @@ import { formCodeRefusal, isScriptsFile, scriptCodeRefusal } from "../site-kit/g
 import { brandLocation, DEFAULT_BRAND_DIR } from "../sitebrand/files";
 import { astroMarkdownRefusal, contentWriteRefusal, heldBelowBuild, isAgentInstructionName, isMarkdownPath, renderedAsPageRefusal, showsBuildTool, type ContentWrite, type GuardContext } from "./content-code";
 import { ASSISTANT_INSTRUCTION_FILES } from "../content/detect/detect";
-import { isSiteSettingsPath, outsideAnyPerson, requireBuildMode, requireLevel, requireName, requireSiteSettings } from "../install/caller";
+import { currentScope, isSiteSettingsPath, outsideAnyPerson, requireBuildMode, requireLevel, requireName, requireSiteSettings } from "../install/caller";
+import type { AccountRole } from "../install/accounts";
 import { levelFor, SITE_METHOD_ACCESS, SITE_SETTINGS_RECORDS, siteMethodLevel, type GuardedSiteMethod } from "../install/route-access";
 import { applyRecord, RECORD_SETTINGS, type SettingsRecord } from "./settings-records";
 import { readOnly } from "./read-only";
@@ -98,6 +100,40 @@ import { isStoreAddress, type SiteMediaRouter } from "../media-storage/router";
 import { mayBeShown } from "../workspace/policy";
 
 type Author = { name: string; email: string } | null;
+
+/** Who caused a file write or site action, as observed by an embedding hook. */
+export type SiteActor =
+  | { kind: "person"; accountId: string; role: AccountRole; viaPreview?: boolean }
+  | { kind: "operator" }
+  | { kind: "engine" }
+  | { kind: "outside" };
+
+export interface SiteFileWriteNotice {
+  siteId: string;
+  path: string;
+  origin: ChangeOrigin;
+  beforeHash: string | null;
+  afterHash: string | null;
+  removed: boolean;
+  actor: SiteActor;
+}
+
+export interface SiteActivityNotice {
+  siteId: string;
+  kind: "publish" | "discard" | "revert" | "pull" | "check" | "catch-up";
+  phase: "start" | "end";
+  actor: SiteActor;
+  paths?: string[];
+  commit?: string;
+  failed?: boolean;
+}
+
+/** Optional lifecycle hooks for an embedding program that hosts the engine. */
+export interface SiteHooks {
+  onFileWrite?: (notice: SiteFileWriteNotice) => void;
+  onActivity?: (notice: SiteActivityNotice) => void;
+  beforeDiscard?: (info: { siteId: string; paths: string[]; actor: SiteActor }) => string | null | undefined | Promise<string | null | undefined>;
+}
 
 export interface SiteDeps {
   id: string;
@@ -159,6 +195,8 @@ export interface SiteDeps {
    * package manager does by itself.
    */
   addLockfile?: boolean;
+  /** Optional lifecycle hooks for an embedding program. */
+  hooks?: SiteHooks;
 }
 
 /** What the registry reads without awaiting anything, so listing sites stays instant. */
@@ -183,6 +221,8 @@ export interface OpenSite extends SiteService {
   isClosed(): boolean;
   /** Lets go of checkpoints nobody offers as an Undo that were closed longer ago than `maxAgeMs` (an extension's, a plugin's, never released). */
   letGoOfStaleCheckpoints(maxAgeMs: number, now?: number): Promise<void>;
+  /** Runs `task` under this site's per-file lock for `path`, sequencing it with built-in edits to that file. */
+  withPathLock<T>(path: string, task: () => Promise<T>): Promise<T>;
 }
 
 /** What an open site still answers once it is closed: what it is, closing it again, and the registry's own reads from memory. */
@@ -281,11 +321,27 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     }
   };
 
+  const actorNow = (): SiteActor => currentScope() ?? { kind: "outside" };
+  const notifyActivity = (notice: Omit<SiteActivityNotice, "siteId">) => {
+    try {
+      deps.hooks?.onActivity?.({ siteId: deps.id, ...notice });
+    } catch {
+      // An observer never fails a site action.
+    }
+  };
+
   const workspace: Workspace = await createWorkspace(rootInput, {
     writable: () => model.writable,
     author: () => author,
     ...(deps.authorLayers ? { authorLayers: () => layers } : {}),
     watch: deps.watch !== false,
+    ...(deps.hooks?.onFileWrite
+      ? {
+          onFileWrite: (write) => {
+            deps.hooks?.onFileWrite?.({ siteId: deps.id, ...write, actor: actorNow() });
+          },
+        }
+      : {}),
   });
   const root = workspace.root;
 
@@ -437,6 +493,18 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     }
     if (disposed) return;
     if (siteChanged) deps.events.emit({ type: "site.updated", siteId: deps.id });
+    if (origin === "external" && deps.hooks?.onFileWrite) {
+      for (const path of paths) {
+        const present = existing.get(path) ?? false;
+        const afterHash = present ? await workspace.readBytes(path).then(hashContent).catch(() => null) : null;
+
+        try {
+          deps.hooks.onFileWrite({ siteId: deps.id, path, origin: "external", beforeHash: null, afterHash, removed: !present, actor: { kind: "outside" } });
+        } catch {
+          // Observer errors never break change processing.
+        }
+      }
+    }
     deps.events.emit({ type: "changes.updated", siteId: deps.id, paths, origin });
   }
 
@@ -611,7 +679,19 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     return serializeEntry(collection, { ...parsed.data, ...input.data }, input.body ?? parsed.body ?? undefined);
   }
 
-  const pathLock = createKeyedLock();
+  const rawPathLock = createKeyedLock();
+  const heldPaths = new AsyncLocalStorage<ReadonlySet<string>>();
+  const pathLock = <T>(path: string, task: () => Promise<T>): Promise<T> => {
+    const held = heldPaths.getStore();
+
+    if (held?.has(path)) return task();
+    return rawPathLock(path, () => {
+      const next = new Set(held);
+
+      next.add(path);
+      return heldPaths.run(next, task);
+    });
+  };
 
   /**
    * One edit at a time per file, each worked out from the file as it is.
@@ -1313,25 +1393,65 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     },
 
     async discard(paths) {
-      await workspace.discard(paths);
-      await settled();
-      return service.changes();
+      const actor = actorNow();
+      const targets = paths ? [...new Set(paths.map((p) => normalizeRepoPath(p)))] : workspace.pendingPaths();
+
+      if (deps.hooks?.beforeDiscard && targets.length > 0) {
+        const refusal = await deps.hooks.beforeDiscard({ siteId: deps.id, paths: targets, actor });
+
+        if (typeof refusal === "string" && refusal.trim().length > 0) throw new GalleyError("forbidden", refusal);
+      }
+      notifyActivity({ kind: "discard", phase: "start", actor, paths: targets });
+      let failed = false;
+      let discarded: string[] = [];
+
+      try {
+        discarded = await workspace.discard(paths);
+        await settled();
+        return service.changes();
+      } catch (error) {
+        failed = true;
+        throw error;
+      } finally {
+        notifyActivity({ kind: "discard", phase: "end", actor, paths: discarded.length ? discarded : targets, ...(failed ? { failed: true } : {}) });
+      }
     },
 
     async publish(request = {}) {
-      await refreshAuthor();
-      // Resolved now, not at open: the branch may have been switched since.
-      await enqueue(async () => {
-        await refreshPublish();
-      });
-      const describe = async (files: string[]) => {
-        const wanted = new Set(files);
-        const set = await service.changes();
+      const actor = actorNow();
 
-        return describeChanges(set.files.filter((file) => wanted.has(file.path)));
-      };
+      notifyActivity({ kind: "publish", phase: "start", actor, ...(request.paths ? { paths: request.paths } : {}) });
+      let failed = false;
+      let result: PublishResult | undefined;
 
-      return afterPublish(await workspace.publish(request, model.publish, describe));
+      try {
+        await refreshAuthor();
+        // Resolved now, not at open: the branch may have been switched since.
+        await enqueue(async () => {
+          await refreshPublish();
+        });
+        const describe = async (files: string[]) => {
+          const wanted = new Set(files);
+          const set = await service.changes();
+
+          return describeChanges(set.files.filter((file) => wanted.has(file.path)));
+        };
+
+        result = afterPublish(await workspace.publish(request, model.publish, describe));
+        return result;
+      } catch (error) {
+        failed = true;
+        throw error;
+      } finally {
+        notifyActivity({
+          kind: "publish",
+          phase: "end",
+          actor,
+          ...(result?.files ? { paths: result.files } : {}),
+          ...(result?.commit ? { commit: result.commit } : {}),
+          ...(failed ? { failed: true } : {}),
+        });
+      }
     },
 
     history(limit) {
@@ -1346,11 +1466,25 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     },
 
     async revert(commit) {
-      await refreshAuthor();
-      await enqueue(async () => {
-        await refreshPublish();
-      });
-      return afterPublish(await workspace.revert(commit, model.publish));
+      const actor = actorNow();
+
+      notifyActivity({ kind: "revert", phase: "start", actor, commit });
+      let failed = false;
+      let result: PublishResult | undefined;
+
+      try {
+        await refreshAuthor();
+        await enqueue(async () => {
+          await refreshPublish();
+        });
+        result = afterPublish(await workspace.revert(commit, model.publish));
+        return result;
+      } catch (error) {
+        failed = true;
+        throw error;
+      } finally {
+        notifyActivity({ kind: "revert", phase: "end", actor, ...(result?.files ? { paths: result.files } : {}), ...(result?.commit ? { commit: result.commit } : { commit }), ...(failed ? { failed: true } : {}) });
+      }
     },
 
     async gitStatus() {
@@ -1360,21 +1494,45 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
     },
 
     async checkGit() {
-      await refreshAuthor();
-      const status = await workspace.check();
+      const actor = actorNow();
 
-      announce(status, 0);
-      return status;
+      notifyActivity({ kind: "check", phase: "start", actor });
+      let failed = false;
+
+      try {
+        await refreshAuthor();
+        const status = await workspace.check();
+
+        announce(status, 0);
+        return status;
+      } catch (error) {
+        failed = true;
+        throw error;
+      } finally {
+        notifyActivity({ kind: "check", phase: "end", actor, ...(failed ? { failed: true } : {}) });
+      }
     },
 
     async pull() {
       if (previewInstalling()) throw new GalleyError("busy", INSTALLING);
-      const result = await workspace.getLatest(aroundBringIn());
+      const actor = actorNow();
 
-      // A pull reports its files as external; don't make the caller wait out the coalescing window.
-      await settleBroughtIn();
-      announce(result.status, 0);
-      return result.status;
+      notifyActivity({ kind: "pull", phase: "start", actor });
+      let failed = false;
+
+      try {
+        const result = await workspace.getLatest(aroundBringIn());
+
+        // A pull reports its files as external; don't make the caller wait out the coalescing window.
+        await settleBroughtIn();
+        announce(result.status, 0);
+        return result.status;
+      } catch (error) {
+        failed = true;
+        throw error;
+      } finally {
+        notifyActivity({ kind: "pull", phase: "end", actor, ...(failed ? { failed: true } : {}) });
+      }
     },
 
     async catchUp(): Promise<CatchUpResult | null> {
@@ -1384,15 +1542,27 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         announce(await workspace.check(), 0);
         return null;
       }
-      const result = await workspace.catchUp(aroundBringIn()).catch((error: unknown) => {
-        if (error instanceof GalleyError && error.code === "busy" && error.message === INSTALLING) return null;
-        throw error;
-      });
+      const actor = actorNow();
 
-      if (!result) return null;
-      if (result.brought > 0) await settleBroughtIn();
-      announce(result.status, result.brought);
-      return result;
+      notifyActivity({ kind: "catch-up", phase: "start", actor });
+      let failed = false;
+
+      try {
+        const result = await workspace.catchUp(aroundBringIn()).catch((error: unknown) => {
+          if (error instanceof GalleyError && error.code === "busy" && error.message === INSTALLING) return null;
+          throw error;
+        });
+
+        if (!result) return null;
+        if (result.brought > 0) await settleBroughtIn();
+        announce(result.status, result.brought);
+        return result;
+      } catch (error) {
+        failed = true;
+        throw error;
+      } finally {
+        notifyActivity({ kind: "catch-up", phase: "end", actor, ...(failed ? { failed: true } : {}) });
+      }
     },
 
     checkpoint(label): Checkpoint {
@@ -1463,6 +1633,10 @@ export async function openSiteService(rootInput: string, deps: SiteDeps): Promis
         throw new GalleyError("unconfigured", "This site has no build command yet. Add one in the site settings (for example “npm run build”).");
       }
       return runBuild(root, model.build.command, model.environment ? { env: model.environment } : {});
+    },
+
+    withPathLock<T>(path: string, task: () => Promise<T>): Promise<T> {
+      return pathLock(normalizeRepoPath(path), task);
     },
 
     dispose() {

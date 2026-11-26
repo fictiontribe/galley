@@ -340,6 +340,8 @@ export function useArrange({ source, on, post, frame, page = null }: ArrangeOpti
     active,
     decline,
     editable,
+    entry,
+    lists,
     fields,
     data,
     store,

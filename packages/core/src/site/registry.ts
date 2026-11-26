@@ -41,7 +41,7 @@ import type { PortPool } from "../workspace/preview/ports";
 import type { PreviewGateway } from "../workspace/preview/proxy";
 import { createJobTracker } from "./jobs";
 import { checkLook, scaffoldSite } from "./scaffold-site";
-import { openSiteService, type OpenSite } from "./service";
+import { openSiteService, type OpenSite, type SiteHooks } from "./service";
 import { outsideAnyPerson } from "../install/caller";
 import { listStarters, starterPreviewFile } from "./starters";
 import { readSiteFacts, THUMBNAIL_MAX_BYTES, THUMBNAIL_TYPES, type FactsResult } from "./facts";
@@ -98,6 +98,8 @@ export interface SiteRegistryOptions {
    * app's own settings" refusal.
    */
   installSite?: string | (() => string | null);
+  /** Optional lifecycle hooks forwarded to every open site. */
+  hooks?: SiteHooks;
 }
 
 /** The registry as the engine composes it: the contract, plus what tests and the server's shutdown use. */
@@ -359,6 +361,7 @@ export async function createSiteRegistry(options: SiteRegistryOptions): Promise<
         ...(options.media ? { media: options.media } : {}),
         ...(options.liveUrl ? { liveUrl: () => options.liveUrl?.(id) ?? null } : {}),
         ...(options.addLockfile === false ? { addLockfile: false } : {}),
+        ...(options.hooks ? { hooks: options.hooks } : {}),
       }));
 
       services.set(id, service);

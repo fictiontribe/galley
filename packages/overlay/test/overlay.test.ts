@@ -341,3 +341,79 @@ describe("the follow role", () => {
     expect(sent().map((message) => message.type)).toEqual(["ready"]);
   });
 });
+
+describe("section marks", () => {
+  const sampleLists = [
+    {
+      field: "sections",
+      sections: [{ index: 0, type: "hero", label: "Hero", texts: ["Hero Heading", "Welcome aboard"], images: [] }],
+    },
+  ];
+
+  it("parses colour-only section marks and rejects non-hex colours or invalid items", () => {
+    expect(
+      parseHostMessage({
+        galley: 1,
+        type: "marks",
+        lists: sampleLists,
+        marks: [{ field: "sections", index: 0, color: "#3b82f6" }],
+      }),
+    ).toEqual({
+      galley: 1,
+      type: "marks",
+      lists: sampleLists,
+      marks: [{ field: "sections", index: 0, color: "#3b82f6" }],
+    });
+
+    expect(
+      parseHostMessage({
+        galley: 1,
+        type: "marks",
+        lists: [],
+        marks: [{ field: "sections", index: 0, color: "red; } body { display: none" }],
+      }),
+    ).toBeNull();
+    expect(
+      parseHostMessage({
+        galley: 1,
+        type: "marks",
+        lists: [],
+        marks: [{ field: "sections", index: -1, color: "#3b82f6" }],
+      }),
+    ).toBeNull();
+  });
+
+  it("renders marks as colour-only outlines with no text content", () => {
+    document.body.innerHTML = `<main><section id="hero" data-galley-block="sections.0" data-galley-block-type="hero"><h2>Hero Heading</h2><p>Welcome aboard</p></section></main>`;
+    const hero = document.getElementById("hero")!;
+    vi.spyOn(hero, "getBoundingClientRect").mockReturnValue({
+      left: 10,
+      top: 20,
+      width: 320,
+      height: 180,
+      right: 330,
+      bottom: 200,
+      x: 10,
+      y: 20,
+      toJSON: () => ({}),
+    } as DOMRect);
+    start();
+    fromHost({
+      galley: 1,
+      type: "marks",
+      lists: sampleLists,
+      marks: [{ field: "sections", index: 0, color: "#2563eb" }],
+    });
+    const host = document.querySelector("[data-galley-marks]");
+    const root = host?.shadowRoot ?? null;
+    expect(root).not.toBeNull();
+    const boxes = root!.querySelectorAll("[data-galley-mark]");
+
+    expect(boxes).toHaveLength(1);
+    expect(boxes[0]!.textContent).toBe("");
+    expect((boxes[0] as HTMLElement).style.border).toContain("#2563eb");
+    // Clearing marks removes them cleanly.
+    fromHost({ galley: 1, type: "marks", lists: [], marks: [] });
+    expect(document.querySelector("[data-galley-marks]")).toBeNull();
+  });
+});

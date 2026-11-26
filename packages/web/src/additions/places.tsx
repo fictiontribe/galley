@@ -3,12 +3,30 @@
  * not even an empty element: the app is as it is without them.
  */
 import { Component, createContext, Suspense, useContext, useState, type ComponentType, type ReactNode } from "react";
+import type { Collection, Entry, Field, FieldPath, FileChange, OverlaySectionList } from "@galley/core/types";
+import type { FormStore } from "@/features/content/form/store";
 import { accountOf } from "@/lib/may";
 import { useMeta } from "@/lib/stores/meta";
-import type { Addition, AdditionPlace } from "./types";
+import type { Addition, AdditionPlace, BodyAdditionProps } from "./types";
 
 const ID = /^[a-z][a-z0-9-]{2,31}$/;
-const PLACES: readonly AdditionPlace[] = ["root", "topBar", "listRow"];
+const PLACES: readonly AdditionPlace[] = [
+  "root",
+  "topBar",
+  "listRow",
+  "entrySession",
+  "entryTop",
+  "fieldHeader",
+  "fieldNotice",
+  "fieldFrame",
+  "sectionHeader",
+  "bodyAddon",
+  "proofRow",
+  "proofDetail",
+  "publishNotice",
+  "arrangePanel",
+  "previewHost",
+];
 const NONE: readonly Addition[] = Object.freeze([]);
 
 const AdditionsContext = createContext<readonly Addition[]>(NONE);
@@ -34,7 +52,11 @@ export function checkedAdditions(additions: readonly Addition[] | undefined): re
       for (const place of PLACES) {
         if (addition[place] !== undefined && !isComponent(addition[place])) throw new Error(`The addition “${addition.id}” gives something for ${place} that isn't a component. A component is a function, or what memo, forwardRef or lazy return; an element such as <Badge /> is not one.`);
       }
-      return Object.freeze({ id: addition.id, ...(addition.root ? { root: addition.root } : {}), ...(addition.topBar ? { topBar: addition.topBar } : {}), ...(addition.listRow ? { listRow: addition.listRow } : {}) });
+      const copied: Record<string, unknown> = { id: addition.id };
+      for (const place of PLACES) {
+        if (addition[place] !== undefined) copied[place] = addition[place];
+      }
+      return Object.freeze(copied) as unknown as Addition;
     }),
   );
 }
@@ -121,9 +143,85 @@ export function useHasListRowAdditions(): boolean {
   return useContext(AdditionsContext).some((addition) => addition.listRow);
 }
 
-/** What additions draw after the title in a row of a collection's list. */
+/** What additions draw after the title in a row of a collection's list or site home. */
 export function ListRowAdditions({ siteId, path }: { siteId: string; path: string }) {
   const additions = useContext(AdditionsContext);
 
   return additions.length ? drawn(additions, "listRow", { siteId, path }) : null;
+}
+
+export function EntrySessionAdditions(props: { siteId: string; path: string; entry: Entry; store: FormStore; collection: Collection | null }) {
+  const additions = useContext(AdditionsContext);
+  return additions.length ? drawn(additions, "entrySession", props) : null;
+}
+
+export function EntryTopAdditions(props: { siteId: string; path: string; store: FormStore }) {
+  const additions = useContext(AdditionsContext);
+  return additions.length ? drawn(additions, "entryTop", props) : null;
+}
+
+export function FieldHeaderAdditions(props: { siteId: string; entryPath: string; path: FieldPath; field: Field }) {
+  const additions = useContext(AdditionsContext);
+  return additions.length ? drawn(additions, "fieldHeader", props) : null;
+}
+
+export function FieldNoticeAdditions(props: { siteId: string; entryPath: string; path: FieldPath; field: Field }) {
+  const additions = useContext(AdditionsContext);
+  return additions.length ? drawn(additions, "fieldNotice", props) : null;
+}
+
+export function FieldFrameAdditions(props: { siteId: string; entryPath: string; path: FieldPath; field: Field; children: ReactNode }) {
+  const additions = useContext(AdditionsContext);
+  const frames = additions.filter((addition) => addition.fieldFrame);
+  if (frames.length === 0) return <>{props.children}</>;
+  let node: ReactNode = props.children;
+  for (let i = frames.length - 1; i >= 0; i -= 1) {
+    const addition = frames[i]!;
+    const Frame = addition.fieldFrame!;
+    node = (
+      <AdditionBoundary key={addition.id} id={addition.id} place="fieldFrame">
+        <Suspense fallback={node}>
+          <Frame siteId={props.siteId} entryPath={props.entryPath} path={props.path} field={props.field}>
+            {node}
+          </Frame>
+        </Suspense>
+      </AdditionBoundary>
+    );
+  }
+  return <>{node}</>;
+}
+
+export function SectionHeaderAdditions(props: { siteId: string; entryPath: string; listPath: FieldPath; index: number; open: boolean }) {
+  const additions = useContext(AdditionsContext);
+  return additions.length ? drawn(additions, "sectionHeader", props) : null;
+}
+
+export function BodyAddonAdditions(props: BodyAdditionProps) {
+  const additions = useContext(AdditionsContext);
+  return additions.length ? drawn(additions, "bodyAddon", props) : null;
+}
+
+export function ProofRowAdditions(props: { siteId: string; path: string; status: FileChange["status"] }) {
+  const additions = useContext(AdditionsContext);
+  return additions.length ? drawn(additions, "proofRow", props) : null;
+}
+
+export function ProofDetailAdditions(props: { siteId: string; path: string }) {
+  const additions = useContext(AdditionsContext);
+  return additions.length ? drawn(additions, "proofDetail", props) : null;
+}
+
+export function PublishNoticeAdditions(props: { siteId: string; paths: string[] }) {
+  const additions = useContext(AdditionsContext);
+  return additions.length ? drawn(additions, "publishNotice", props) : null;
+}
+
+export function ArrangePanelAdditions(props: { siteId: string; entryPath: string; fieldKey: string; labels: string[] }) {
+  const additions = useContext(AdditionsContext);
+  return additions.length ? drawn(additions, "arrangePanel", props) : null;
+}
+
+export function PreviewHostAdditions(props: { siteId: string; entryPath?: string; lists: OverlaySectionList[]; postMarks: (marks: Array<{ field: string; index: number; color: string }>) => void }) {
+  const additions = useContext(AdditionsContext);
+  return additions.length ? drawn(additions, "previewHost", props) : null;
 }

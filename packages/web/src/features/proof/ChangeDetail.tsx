@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { FileChange } from "@galley/core/types";
+import { ProofDetailAdditions } from "@/additions/places";
 import { PreviewPane } from "@/features/preview/PreviewPane";
 import { Badge, TabPanel, Tabs, buttonClass, type TabItem } from "@/ui";
 import { firstChangedText, groupOf } from "./changes";
@@ -38,6 +39,7 @@ export function ChangeDetail({ siteId, change, view, onView }: { siteId: string;
             <Badge tone={status.tone}>{status.label}</Badge>
             <span>{change.summary}</span>
           </p>
+          <ProofDetailAdditions siteId={siteId} path={change.path} />
         </div>
         {change.kind === "content" && change.status !== "deleted" ? (
           <Link className={buttonClass("secondary", "sm")} to={`/sites/${siteId}/edit?path=${encodeURIComponent(change.path)}`}>
