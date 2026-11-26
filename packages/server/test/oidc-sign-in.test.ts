@@ -276,6 +276,18 @@ describe("failed callbacks count against the address they came from", () => {
     expect((await signIn(port, idp, "/", undefined, "203.0.113.10")).session).toBeDefined();
     expect(logOf(logs)).toContain("from 203.0.113.9 was refused: too many failed sign-ins from there.");
   });
+
+  it("a good sign-in through the provider doesn't wipe the failures that hold back passwords guessed from the same address", async () => {
+    const idp = await provider();
+    const { port } = await editor(idp);
+    const from = { "x-forwarded-for": "203.0.113.20" };
+
+    for (let i = 0; i < 4; i += 1) expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: "a wrong password here" }, headers: from })).status).toBe(401);
+    expect((await signIn(port, idp, "/", undefined, "203.0.113.20")).session).toBeDefined();
+    expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: "a wrong password here" }, headers: from })).status).toBe(401);
+    // Five failures in the minute: the right password from there waits too.
+    expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: PASSWORD }, headers: from })).status).toBe(429);
+  });
 });
 
 describe("the provider and PKCE", () => {
@@ -356,8 +368,10 @@ describe("the provider and PKCE", () => {
 
     refusedWith(await signIn(big.port, idp), "provider-unreachable");
     expect(logOf(big.logs)).toContain("larger than 64 KB");
+    // A failed exchange: the provider isn't asked again within the next few seconds.
+    refusedWith(await signIn(big.port, idp), "provider-unreachable");
     idp.wrong = { tokenStatus: 500 };
-    refusedWith(await signIn(big.port, idp), "refused-token");
+    refusedWith(await signIn((await editor(idp)).port, idp), "refused-token");
     idp.wrong = {};
     // Slow: the bound covers the whole call, answer included.
     const slow = createServer((_req, res) => {

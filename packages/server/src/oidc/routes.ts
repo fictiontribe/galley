@@ -156,8 +156,8 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
       return refuse("signed-out", `the provider signed ${who} out after this sign-in began.`, { at: String(result.signedOutAt ?? "") });
     }
     // 10. A session of its own kind, as long as the operator set; then where the person was going.
+    // A good sign-in clears nothing: the same count holds back passwords guessed from this client.
     signInAs(c, ctx, result.account.id, { kind: "provider", lastsMs: provider.config.sessionHours * 60 * 60_000 });
-    ctx.limiter.succeed(client);
     audit(
       ctx,
       `Signed in through ${provider.config.name}: ${named(result.account)}${result.created ? `, a new ${ROLE_NAMES[result.account.role]}` : ""}, from ${from}${checked.keyId ? ` (key ${checked.keyId})` : ""}${result.notes.length ? `; ${result.notes.join("; ")}` : ""}.`

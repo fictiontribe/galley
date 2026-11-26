@@ -225,9 +225,10 @@ export function createOidcProvider(config: OidcConfig, now: () => number = () =>
     }
   }
 
-  /** A failure talking to the provider: read its documents again at the next sign-in. */
+  /** A failure talking to the provider: read its documents again at a later sign-in, not within the next few seconds. */
   function forget(): void {
     discovered = null;
+    failedAt = now();
     delete jwks.jwks;
     delete jwks.uat;
   }
@@ -310,7 +311,8 @@ export function createOidcProvider(config: OidcConfig, now: () => number = () =>
       if (typeof claims.nonce !== "string" || claims.nonce !== expected.nonce) refuse("its nonce isn't this sign-in's");
       // It is logged and shown to owners: a newline in it would forge log lines.
       if (!validSubject(claims.sub)) refuse("its subject isn't 1 to 255 printable characters");
-      const rawRole = (claims as Record<string, unknown>)[config.roleClaim];
+      // The token's own claim only, whatever the claim is called.
+      const rawRole = Object.hasOwn(claims, config.roleClaim) ? (claims as Record<string, unknown>)[config.roleClaim] : undefined;
       let role: AccountRole | null = null;
 
       if (rawRole !== undefined) {
