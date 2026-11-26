@@ -44,7 +44,8 @@ export type OidcRefusalCode =
   | "switched-off"
   | "signed-out"
   | "full"
-  | "too-many";
+  | "too-many"
+  | "link-stale";
 
 /** A refusal: its code for the page, and one line for the log (never a token, a code or a secret). */
 export class OidcRefusal extends Error {
@@ -118,6 +119,8 @@ export interface CheckedSignIn {
   issuedAt: number;
   /** The signing key's id, for the log. */
   keyId: string | null;
+  /** `auth_time`: when the person signed in at the provider (seconds), when it says. */
+  authTime: number | null;
 }
 
 export interface OidcProvider {
@@ -129,7 +132,7 @@ export interface OidcProvider {
    * provider can't be reached or doesn't say it enforces PKCE (S256) and no
    * client secret is set.
    */
-  authorizationUrl(input: { state: string; nonce: string; verifier: string }): Promise<string>;
+  authorizationUrl(input: { state: string; nonce: string; verifier: string; link?: boolean }): Promise<string>;
   /**
    * The callback's answer: `iss` checked, a provider's `error` refused with a
    * fixed code, the code exchanged with the verifier, and the ID token
@@ -428,7 +431,7 @@ export function createOidcProvider(config: OidcConfig, now: () => number = () =>
       return discovered ? discovered.authorization_response_iss_parameter_supported === true : null;
     },
 
-    async authorizationUrl({ state, nonce, verifier }) {
+    async authorizationUrl({ state, nonce, verifier, link }) {
       const as = await server();
       const url = new URL(as.authorization_endpoint!);
 
@@ -440,6 +443,11 @@ export function createOidcProvider(config: OidcConfig, now: () => number = () =>
       url.searchParams.set("nonce", nonce);
       url.searchParams.set("code_challenge", await oauth.calculatePKCECodeChallenge(verifier));
       url.searchParams.set("code_challenge_method", "S256");
+      // A link: whoever is at the keyboard signs in at the provider again, whatever session it already has in this browser.
+      if (link) {
+        url.searchParams.set("prompt", "login");
+        url.searchParams.set("max_age", "0");
+      }
       return url.href;
     },
 
@@ -512,7 +520,9 @@ export function createOidcProvider(config: OidcConfig, now: () => number = () =>
       const email = claims.email_verified === true && typeof claims.email === "string" ? claims.email : null;
       const name = typeof claims.name === "string" ? claims.name : null;
 
-      return { subject: claims.sub, name, email, role, issuedAt: (claims.iat as number) * 1000, keyId: typeof header.kid === "string" ? forTheLog(header.kid, 100) : null };
+      const authTime = typeof claims.auth_time === "number" && Number.isFinite(claims.auth_time) ? claims.auth_time : null;
+
+      return { subject: claims.sub, name, email, role, issuedAt: (claims.iat as number) * 1000, keyId: typeof header.kid === "string" ? forTheLog(header.kid, 100) : null, authTime };
     },
   };
 }

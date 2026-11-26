@@ -8,7 +8,8 @@
  */
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ACCOUNT_ROLES, type Account, type AccountRole, type Invitation, type OneTimeLink } from "@galley/core/install/accounts";
+import { ACCOUNT_ROLES, type Account, type AccountRole, type Invitation, type OneTimeLink, type PeopleAccount, type RemovedPerson } from "@galley/core/install/accounts";
+import { hostedInstall } from "@/lib/hosted";
 import { api, errorShape } from "@/lib/api";
 import { disconnectEvents } from "@/lib/events";
 import { relativeTime } from "@/lib/format";
@@ -181,19 +182,28 @@ function InviteForm({ onInvited }: { onInvited: (invitation: Invitation, link: O
   );
 }
 
+/** What People can offer on this install: the identity provider's name, if one is set up, and whether passwords are off. */
+interface Ways {
+  provider: string | null;
+  passwordsOff: boolean;
+}
+
 interface RowProps {
-  person: Account;
+  person: PeopleAccount;
+  ways: Ways;
   me: boolean;
   onChanged: () => void;
   onProblem: (message: string | null) => void;
   onLink: (shown: Shown) => void;
-  onRemove: (person: Account) => void;
+  onRemove: (person: PeopleAccount) => void;
   onEmail: (person: Account) => void;
 }
 
-function PersonRow({ person, me, onChanged, onProblem, onLink, onRemove, onEmail }: RowProps) {
+function PersonRow({ person, ways, me, onChanged, onProblem, onLink, onRemove, onEmail }: RowProps) {
   const [busy, setBusy] = useState(false);
   const name = personLabel(person);
+  // Someone who signs in through the provider: their role and e-mail come from it, and they never get a password here.
+  const viaProvider = Boolean(ways.provider && person.subject);
 
   /** Run an action; the server's refusal is shown in its words, and the list is read again either way. */
   const run = async (action: () => Promise<void>) => {
@@ -224,14 +234,18 @@ function PersonRow({ person, me, onChanged, onProblem, onLink, onRemove, onEmail
             {me ? <Badge mark={null}>You</Badge> : null}
             {person.disabled ? <Badge tone="warning" mark={null}>Switched off</Badge> : null}
           </span>
-          <span className="accounts-person__email">{person.email || "No e-mail yet"}</span>
+          <span className="accounts-person__email">{viaProvider ? `Signs in with ${ways.provider} (${person.subject})${person.email ? ` · ${person.email}` : ""}` : person.email || "No e-mail yet"}</span>
         </span>
       </th>
       <td>
         {me ? (
           // Your own role, switching yourself off and removing yourself are another owner's to do: the server refuses them from you.
-          <span className="accounts-own-role" title="Another owner can change your role">
+          <span className="accounts-own-role" title={viaProvider ? `Set at ${ways.provider}` : "Another owner can change your role"}>
             {roleName(person.role)}
+          </span>
+        ) : viaProvider ? (
+          <span className="accounts-own-role" title={`${ways.provider} sets it with each sign-in`}>
+            {`${roleName(person.role)}, set at ${ways.provider}`}
           </span>
         ) : (
           <Select aria-label={`Role of ${name}`} value={person.role} options={ROLE_OPTIONS} disabled={busy} onChange={(value) => void changeRole(value as AccountRole)} />
@@ -248,17 +262,21 @@ function PersonRow({ person, me, onChanged, onProblem, onLink, onRemove, onEmail
             label={`What to do about ${name}`}
             placement="bottom-end"
             items={[
+              ...(viaProvider || ways.passwordsOff
+                ? []
+                : [
               {
                 id: "password-link",
                 label: "New-password link",
-                icon: "key",
+                icon: "key" as const,
                 onSelect: () =>
                   void run(async () => {
                     const link = await api("POST /api/people/:accountId/password-link", { params: { accountId: person.id } });
                     onLink({ title: `A new-password link for ${name}`, who: name, link, again: "to get another, make a new one here." });
                   }),
               },
-              { id: "email", label: "Change e-mail…", icon: "person", onSelect: () => onEmail(person) },
+              ]),
+              ...(viaProvider ? [] : [{ id: "email", label: "Change e-mail…", icon: "person" as const, onSelect: () => onEmail(person) }]),
               {
                 id: "sign-out",
                 label: "Sign out",
@@ -271,7 +289,8 @@ function PersonRow({ person, me, onChanged, onProblem, onLink, onRemove, onEmail
               },
               {
                 id: "switch",
-                label: person.disabled ? "Switch on" : "Switch off",
+                // For someone who signs in through the provider, switching off is how they are removed.
+                label: person.disabled ? "Switch on" : viaProvider ? "Remove (switch off)" : "Switch off",
                 icon: person.disabled ? "check" : "stop",
                 onSelect: () =>
                   void run(async () => {
@@ -279,8 +298,13 @@ function PersonRow({ person, me, onChanged, onProblem, onLink, onRemove, onEmail
                     notify({ tone: "neutral", title: person.disabled ? `${name} can sign in again` : `${name} is switched off`, body: person.disabled ? undefined : "They can’t sign in until an owner switches them on. What they published keeps their name." });
                   }),
               },
-              { kind: "separator", id: "sep" },
-              { id: "remove", label: "Remove…", icon: "trash", tone: "danger", onSelect: () => onRemove(person) },
+              // Deleting someone who signs in through the provider is the second step, once they are switched off.
+              ...(viaProvider && !person.disabled
+                ? []
+                : [
+                    { kind: "separator" as const, id: "sep" },
+                    { id: "remove", label: viaProvider ? "Delete…" : "Remove…", icon: "trash" as const, tone: "danger" as const, onSelect: () => onRemove(person) },
+                  ]),
             ]}
             trigger={(props) => <IconButton {...props} icon="more" label={`What to do about ${name}`} size="sm" variant="quiet" disabled={busy} />}
           />
@@ -316,6 +340,39 @@ function InvitationRow({ invitation, onChanged, onProblem }: { invitation: Invit
         }}
       >
         Take back
+      </Button>
+    </li>
+  );
+}
+
+/** Someone removed who signed in through the provider: they can't sign in again until an owner lets them back. */
+function RemovedRow({ removed, provider, onChanged, onProblem }: { removed: RemovedPerson; provider: string; onChanged: () => void; onProblem: (message: string | null) => void }) {
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <li className="accounts-invitation">
+      <span>
+        <strong>{removed.subject}</strong>
+        <span className="g-hint">{` · removed ${relativeTime(removed.removedAt)}${removed.removedBy ? ` by ${removed.removedBy}` : ""}`}</span>
+      </span>
+      <Button
+        size="sm"
+        variant="secondary"
+        busy={busy}
+        busyLabel="Letting them back…"
+        onClick={() => {
+          setBusy(true);
+          onProblem(null);
+          api("DELETE /api/people/tombstones/:removedId", { params: { removedId: removed.id } })
+            .then(() => notify({ tone: "neutral", title: `${removed.subject} can come back`, body: `Their next sign-in through ${provider} makes a new account.` }))
+            .catch((caught: unknown) => onProblem(errorShape(caught).message))
+            .finally(() => {
+              setBusy(false);
+              onChanged();
+            });
+        }}
+      >
+        Let them back
       </Button>
     </li>
   );
@@ -357,13 +414,21 @@ export function PeopleSection() {
   const people = useQuery(peopleKey(), () => api("GET /api/people"));
   const [problem, setProblem] = useState<string | null>(null);
   const [shown, setShown] = useState<Shown | null>(null);
-  const [removing, setRemoving] = useState<Account | null>(null);
+  const [removing, setRemoving] = useState<PeopleAccount | null>(null);
   const [emailing, setEmailing] = useState<Account | null>(null);
+  const install = hostedInstall(useMeta((s) => s.meta));
+  const ways: Ways = { provider: install?.provider?.name ?? null, passwordsOff: install?.signInWith === "provider" };
   const refresh = () => void people.refetch();
   const data = people.data;
+  const removingViaProvider = Boolean(ways.provider && removing?.subject);
+  const howTheySignIn = ways.passwordsOff
+    ? `Each person signs in through ${ways.provider}, and what they publish carries their name.`
+    : ways.provider
+      ? `Each person signs in through ${ways.provider}, or with their own e-mail and password, and what they publish carries their name.`
+      : "Each person signs in with their own e-mail and password, and what they publish carries their name.";
 
   return (
-    <Section id="people" title="People" description="Everyone who can sign in to this editor. Each person signs in with their own e-mail and password, and what they publish carries their name.">
+    <Section id="people" title="People" description={`Everyone who can sign in to this editor. ${howTheySignIn}`}>
       {people.loading ? (
         <Skeleton lines={4} height={14} />
       ) : people.status === "error" && !data ? (
@@ -385,21 +450,39 @@ export function PeopleSection() {
             </thead>
             <tbody>
               {data.accounts.map((person) => (
-                <PersonRow key={person.id} person={person} me={person.id === me?.id} onChanged={refresh} onProblem={setProblem} onLink={setShown} onRemove={setRemoving} onEmail={setEmailing} />
+                <PersonRow key={person.id} person={person} ways={ways} me={person.id === me?.id} onChanged={refresh} onProblem={setProblem} onLink={setShown} onRemove={setRemoving} onEmail={setEmailing} />
               ))}
             </tbody>
           </table>
           {problem ? <Problem>{problem}</Problem> : null}
 
-          <h3 className="accounts-subtitle">Invite someone</h3>
-          <InviteForm
-            onInvited={(invitation, link) => {
-              refresh();
-              setShown({ title: `An invitation for ${invitation.email}`, who: invitation.email, link, again: "to send a new one, take this invitation back and invite them again." });
-            }}
-          />
+          {data.removed.length > 0 ? (
+            <>
+              <h3 className="accounts-subtitle">Removed</h3>
+              <p className="install-note">{`They can’t sign in through ${ways.provider ?? "the identity provider"} until you let them back. Then their next sign-in there makes a new account.`}</p>
+              <ul className="accounts-invitations">
+                {data.removed.map((removed) => (
+                  <RemovedRow key={removed.id} removed={removed} provider={ways.provider ?? "the identity provider"} onChanged={refresh} onProblem={setProblem} />
+                ))}
+              </ul>
+            </>
+          ) : null}
 
-          {data.invitations.length > 0 ? (
+          {ways.passwordsOff ? (
+            <p className="install-note">{`Passwords are off: nobody is invited here. Whoever ${ways.provider} lets sign in to this editor gets an account at their first sign-in, with the role it gives them.`}</p>
+          ) : (
+            <>
+              <h3 className="accounts-subtitle">Invite someone</h3>
+              <InviteForm
+                onInvited={(invitation, link) => {
+                  refresh();
+                  setShown({ title: `An invitation for ${invitation.email}`, who: invitation.email, link, again: "to send a new one, take this invitation back and invite them again." });
+                }}
+              />
+            </>
+          )}
+
+          {data.invitations.length > 0 && !ways.passwordsOff ? (
             <>
               <h3 className="accounts-subtitle">Open invitations</h3>
               <ul className="accounts-invitations">
@@ -411,7 +494,7 @@ export function PeopleSection() {
           ) : null}
 
           <h3 className="accounts-subtitle">Sign everyone out</h3>
-          <p className="install-note">For a lost laptop or a password that was shared too widely. Everyone signs in again with their own e-mail and password.</p>
+          <p className="install-note">{ways.passwordsOff ? "For a lost laptop. Everyone signs in again, as they usually do." : "For a lost laptop or a password that was shared too widely. Everyone signs in again with their own e-mail and password."}</p>
           <SignEveryoneOut />
         </>
       ) : null}
@@ -420,9 +503,13 @@ export function PeopleSection() {
       <ConfirmDialog
         open={removing !== null}
         onClose={() => setRemoving(null)}
-        title={`Remove ${removing ? personLabel(removing) : ""}?`}
-        body="They can’t sign in any more, and any browser signed in as them is signed out. What they published keeps their name, in Version history and in the repository."
-        confirmLabel={`Remove ${removing ? personLabel(removing) : ""}`}
+        title={`${removingViaProvider ? "Delete" : "Remove"} ${removing ? personLabel(removing) : ""}?`}
+        body={
+          removingViaProvider
+            ? `Their account here is deleted, and they are kept on the list of removed people, so signing in through ${ways.provider} won’t make it again until an owner lets them back. What they published keeps their name.`
+            : "They can’t sign in any more, and any browser signed in as them is signed out. What they published keeps their name, in Version history and in the repository."
+        }
+        confirmLabel={`${removingViaProvider ? "Delete" : "Remove"} ${removing ? personLabel(removing) : ""}`}
         cancelLabel="Keep them"
         busyLabel="Removing…"
         errorTitle="Couldn’t remove them"

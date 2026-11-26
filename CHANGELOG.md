@@ -55,6 +55,28 @@ the server, `galley accounts removed` and `unremove` do that part.
   them in once, without a password, with a session as long as the provider's,
   and sets none. `--account <id>` and `--subject <subject>` name the owner
   when there are several; with none named, they are listed on the console.
+- **Connecting your own account to the identity provider in the app**
+  (Your account → Sign in with …), with passwords on: your current password
+  (held to the same limits as a password change), a fresh sign-in at the
+  provider (`prompt=login`, `max_age=0`, and its `auth_time` checked), then a
+  page showing whom it signed in (an e-mail only when the provider confirmed
+  it) to Connect or Cancel. Nothing is bound before Connect, which needs this
+  browser still signed in as you; it takes the role the provider gives (the
+  last owner stays an owner, and the page says so), drops your password and
+  open links, signs you out everywhere and starts a session through the
+  provider. The provider's refusals apply as at a sign-in. A subject with an
+  account of its own, or removed, is refused: two accounts are never merged.
+  Each link is logged naming the subject, and where this server e-mails, the
+  account's address is told. From the link `serve --reset-password` makes, an
+  account connected to the wrong person can take the provider off and choose
+  a password, and that subject is remembered as removed.
+- **People shows how each person signs in, and offers only what can be
+  done.** Someone who signs in through the identity provider shows their
+  subject, and has no role picker, new-password link or e-mail change (their
+  role and e-mail come from the provider); they are removed by switching them
+  off, then deleted. With passwords off there are no invitations. A
+  **Removed** list shows who was removed, when and by whom, with **Let them
+  back** (`DELETE /api/people/tombstones/:id`).
 - **`galley accounts`** (list, link, rekey), run on the server with the
   server stopped: `link` binds existing accounts to their subjects at the
   identity provider (`GALLEY_OIDC_ISSUER`), one pair or a file of them, and

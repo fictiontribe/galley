@@ -10,16 +10,29 @@
 import type { Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import * as oauth from "oauth4webapi";
-import { ROLE_NAMES, type AccountRole } from "@galley/core/install";
-import { signInAs } from "../accounts-routes";
+import { z } from "zod";
+import { GalleyError } from "@galley/core";
+import { identityLinkedEmail, MAX_INSTALL_PASSWORD_LENGTH, PASSWORDS_OFF, ROLE_NAMES, type AccountRole } from "@galley/core/install";
+import { deliverMail, ownPasswordThroughGate, signInAs } from "../accounts-routes";
 import { clientAddress, clientKeyOf, LoginLimiter, sameSignature } from "../auth";
-import { notFound } from "../errors";
+import { forbidden, invalid, notFound } from "../errors";
+import * as v from "../validate";
+import { personOf } from "../who";
 import type { RouteContext, RouteTable } from "../routes";
 import { audit, named } from "../who";
-import { openPreLogin, PRE_LOGIN_COOKIE, PRE_LOGIN_LIFETIME_MS, safeReturnPath, sealPreLogin } from "./cookie";
+import { openPendingLink, openPreLogin, PENDING_LINK_COOKIE, PRE_LOGIN_COOKIE, PRE_LOGIN_LIFETIME_MS, safeReturnPath, sealPendingLink, sealPreLogin } from "./cookie";
 import { LogoutRefusal, OidcRefusal, type OidcProvider, type OidcRefusalCode } from "./provider";
 
-export type OidcRouteKey = "GET /api/auth/oidc/start" | "GET /api/auth/oidc/callback" | "POST /api/auth/oidc/backchannel-logout";
+export type OidcRouteKey =
+  | "GET /api/auth/oidc/start"
+  | "GET /api/auth/oidc/callback"
+  | "POST /api/auth/oidc/backchannel-logout"
+  | "POST /api/auth/oidc/link"
+  | "GET /api/auth/oidc/link/pending"
+  | "POST /api/auth/oidc/link/confirm";
+
+/** Where a link round trip ends: the app's page to confirm whom the provider signed in. */
+export const LINK_CONFIRM_PATH = "/account/connect";
 
 /** The back-channel logout's one path: exempt from the origin check by exactly this, never a prefix (app.ts). */
 export const BACKCHANNEL_LOGOUT_PATH = "/api/auth/oidc/backchannel-logout";
@@ -69,9 +82,9 @@ function providerOf(ctx: RouteContext): OidcProvider {
   return provider;
 }
 
-/** The sign-in page, with the reason a sign-in was refused. */
-function toSignIn(c: Context, code: OidcRefusalCode, extra: Record<string, string> = {}): Response {
-  return c.redirect(`/login?${new URLSearchParams({ signin: code, ...extra }).toString()}`, 303);
+/** The sign-in page with the reason a sign-in was refused; for a link, the person's account page. */
+function toSignIn(c: Context, code: OidcRefusalCode, extra: Record<string, string> = {}, link = false): Response {
+  return c.redirect(link ? `/account?${new URLSearchParams({ link: code }).toString()}` : `/login?${new URLSearchParams({ signin: code, ...extra }).toString()}`, 303);
 }
 
 /** Refusals that say something is wrong with the provider or this server, not with the browser: they don't count against it. */
@@ -174,13 +187,14 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
     // Until the state has matched a cookie this browser opened, nothing was tested: a page anywhere can send a browser here
     // without one, and that must never count against everyone at its address, whose passwords the same count holds back.
     let tested = false;
+    let linking = false;
     const refuse = (code: OidcRefusalCode, why: string, extra: Record<string, string> = {}): Response => {
       const counted = tested && !NOT_THE_BROWSERS.has(code);
 
       // Counted against this client as a wrong password is, unless it is the provider's or this server's doing.
       if (counted) ctx.limiter.fail(client);
-      if (counted || quietly(ctx, client)) audit(ctx, `A sign-in through ${provider.config.name} from ${from} was refused: ${why}`);
-      return toSignIn(c, code, extra);
+      if (counted || quietly(ctx, client)) audit(ctx, `A ${linking ? "link to" : "sign-in through"} ${provider.config.name} from ${from} was refused: ${why}`);
+      return toSignIn(c, code, extra, linking);
     };
 
     if (ctx.limiter.blocked(client)) return refuse("too-many", "too many failed sign-ins from there.");
@@ -194,6 +208,7 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
     // 2. Its state. Another one is left as it is: it may be another tab's sign-in, or a callback someone made up.
     if (!sameSignature(params.get("state") ?? "", preLogin.state)) return refuse("another-tab", "the answer is for another sign-in than the one this browser started last.");
     tested = true;
+    linking = preLogin.link !== undefined;
     clearPreLogin(c);
     // 3. Used once.
     const { used } = limitsOf(ctx);
@@ -211,6 +226,25 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
     } catch (error) {
       if (!(error instanceof OidcRefusal)) throw error;
       return refuse(error.code, error.logLine);
+    }
+    // A link: nothing is bound here (the session cookie, Strict, isn't even sent). Whom the provider signed in waits, sealed, for the person to confirm.
+    if (preLogin.link) {
+      // A fresh sign-in at the provider since the link started, whatever session it already had (prompt=login, max_age=0 asked it to).
+      if (checked.authTime === null || checked.authTime * 1000 < preLogin.startedAt - 60_000) return refuse("link-stale", "the provider didn't ask whoever is at the keyboard to sign in again (its auth_time is from before the link started).");
+      // The role exactly as a sign-in works it out: a subject a sign-in would refuse can't be linked either.
+      const linkedRole: AccountRole | null = checked.role ?? provider.config.defaultRole;
+
+      if (!linkedRole) return refuse("no-role", `the ID token has no ${provider.config.roleClaim} claim, and no default role is set.`);
+      const pending = { accountId: preLogin.link.accountId, subject: checked.subject, email: checked.email, name: checked.name, role: linkedRole, issuedAt: checked.issuedAt, at: Date.now() };
+
+      setCookie(c, PENDING_LINK_COOKIE, sealPendingLink(ctx.session.key, pending), {
+        httpOnly: true,
+        secure: true,
+        sameSite: "Strict",
+        path: "/",
+        maxAge: PRE_LOGIN_LIFETIME_MS / 1000,
+      });
+      return c.redirect(LINK_CONFIRM_PATH, 303);
     }
     const role: AccountRole | null = checked.role ?? provider.config.defaultRole;
 
@@ -273,5 +307,101 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
     if (!result.ok) return refused("the list of recent logouts for people with no account here is full; it will be sent again", true);
     audit(ctx, `The provider (${provider.config.name}) signed ${result.account ? named(result.account) : "someone with no account here"} out${checked.keyId ? ` (key ${checked.keyId})` : ""}.`);
     return forProvider(c, 200, null);
+  },
+
+  "POST /api/auth/oidc/link": async (c, ctx) => {
+    const provider = providerOf(ctx);
+    const install = ctx.options.install!;
+    const { account } = personOf(c, ctx);
+    const stored = install.store.account(account.id)!;
+
+    if (provider.config.passwordsOff) throw forbidden(`${PASSWORDS_OFF} Linking an account is done on the server: \`galley accounts link\`.`);
+    if (stored.identity) throw new GalleyError("conflict", `Your account signs in through ${provider.config.name} already.`);
+    if (stored.passwordHash === null) throw new GalleyError("conflict", "Your account has no password to confirm this with.");
+    const body = await v.body(c, z.object({ password: z.string().min(1).max(MAX_INSTALL_PASSWORD_LENGTH) }).strict());
+
+    // The first of four proofs: the password, through the same limits as a password change.
+    if (!(await ownPasswordThroughGate(c, ctx, account, body.password, `Linking to ${provider.config.name}`))) throw invalid("That isn't your current password.");
+    const state = oauth.generateRandomState();
+    const nonce = oauth.generateRandomNonce();
+    const verifier = oauth.generateRandomCodeVerifier();
+    let url: string;
+
+    try {
+      url = await provider.authorizationUrl({ state, nonce, verifier, link: true });
+    } catch (error) {
+      if (!(error instanceof OidcRefusal)) throw error;
+      audit(ctx, `Linking ${named(account)} to ${provider.config.name} couldn't be started: ${error.logLine}`);
+      throw new GalleyError("busy", `${provider.config.name} can't be reached right now, or this editor's settings for it are wrong. Try again in a moment.`);
+    }
+    setCookie(c, PRE_LOGIN_COOKIE, sealPreLogin(ctx.session.key, { state, nonce, verifier, returnTo: "/account", startedAt: Date.now(), link: { accountId: account.id } }), {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+      path: "/",
+      maxAge: PRE_LOGIN_LIFETIME_MS / 1000,
+    });
+    return { url };
+  },
+
+  "GET /api/auth/oidc/link/pending": async (c, ctx) => {
+    const provider = providerOf(ctx);
+    const install = ctx.options.install!;
+    const { account } = personOf(c, ctx);
+    const pending = openPendingLink(ctx.session.key, getCookie(c, PENDING_LINK_COOKIE));
+
+    if (!pending || pending.accountId !== account.id) throw notFound("No link to the identity provider is waiting to be confirmed. Start it again from your account.");
+    // The last owner who can sign in stays an owner, whatever the provider says: the page says so before Connect.
+    const owners = install.people.list().accounts.filter((one) => one.role === "owner" && !one.disabled);
+    const keepsOwner = account.role === "owner" && pending.role !== "owner" && owners.length === 1 && owners[0]!.id === account.id;
+
+    return {
+      provider: provider.config.name,
+      email: pending.email,
+      name: pending.name,
+      subject: pending.subject,
+      role: pending.role,
+      keepsOwner,
+      expiresAt: new Date(pending.at + PRE_LOGIN_LIFETIME_MS).toISOString(),
+    };
+  },
+
+  "POST /api/auth/oidc/link/confirm": async (c, ctx) => {
+    const provider = providerOf(ctx);
+    const install = ctx.options.install!;
+    // The fourth proof: this browser's session, the Strict cookie, is still the account the link was started for.
+    const { account } = personOf(c, ctx);
+    const body = await v.body(c, z.object({ connect: z.boolean() }).strict());
+    const pending = openPendingLink(ctx.session.key, getCookie(c, PENDING_LINK_COOKIE));
+    const from = clientAddress(c, Boolean(ctx.options.trustProxy));
+
+    if (!pending) throw notFound("No link to the identity provider is waiting to be confirmed, or it waited more than ten minutes. Start it again from your account.");
+    if (pending.accountId !== account.id) {
+      deleteCookie(c, PENDING_LINK_COOKIE, { path: "/", secure: true });
+      audit(ctx, `A link to ${provider.config.name} from ${from} was refused: this browser is signed in as another account than the one it was started for.`);
+      throw forbidden("This browser is signed in as someone else than when the link was started. Start it again from your account.");
+    }
+    if (!body.connect) {
+      deleteCookie(c, PENDING_LINK_COOKIE, { path: "/", secure: true });
+      audit(ctx, `${named(account)} cancelled linking their account to ${provider.config.name}; nothing changed.`);
+      return { ok: true as const };
+    }
+    if (provider.config.passwordsOff) throw forbidden(`${PASSWORDS_OFF} Linking an account is done on the server: \`galley accounts link\`.`);
+    // Never two accounts merged: a subject with an account of its own, or removed, and an account linked already, are refused here.
+    // The role the provider gives them, and any logout of that subject since the provider's sign-in, apply as at a sign-in.
+    const { account: linked, keptOwner } = await install.people.linkIdentity(account.id, { issuer: provider.config.issuer, subject: pending.subject }, { role: pending.role, issuedAt: pending.issuedAt });
+
+    deleteCookie(c, PENDING_LINK_COOKIE, { path: "/", secure: true });
+    audit(
+      ctx,
+      `Security: ${named(linked)} linked their account to subject ${pending.subject} at ${provider.config.issuer} (from ${from}); their password is gone and every other session of theirs ended${keptOwner ? `; ${provider.config.name} says ${ROLE_NAMES[pending.role]}, but they are the last owner who can sign in, so they stay an owner` : ""}.`
+    );
+    // Said to the address the account had, where this server e-mails: a link someone else made is noticed.
+    if (account.email) {
+      void deliverMail(ctx, identityLinkedEmail({ to: account.email, product: ctx.options.brand.productName, address: ctx.options.publicOrigin ?? new URL(c.req.url).origin, provider: provider.config.name }), `the notice that ${named(linked)} now signs in through ${provider.config.name}`);
+    }
+    // Every session of the account ended, this one too: a provider session takes its place.
+    signInAs(c, ctx, linked.id, { kind: "provider", lastsMs: provider.config.sessionHours * 60 * 60_000 });
+    return { ok: true as const };
   },
 };

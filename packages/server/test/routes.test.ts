@@ -421,12 +421,14 @@ const coveredElsewhere: ApiRouteKey[] = [
   "GET /api/account",
   "PATCH /api/account",
   "POST /api/account/password",
+  "POST /api/account/identity/remove",
   "GET /api/people",
   "GET /api/people/by-identity",
   "POST /api/people/invitations",
   "DELETE /api/people/invitations/:invitationId",
   "PATCH /api/people/:accountId",
   "DELETE /api/people/:accountId",
+  "DELETE /api/people/tombstones/:removedId",
   "POST /api/people/:accountId/password-link",
   "POST /api/people/:accountId/sign-out",
   "POST /api/people/sign-out",
@@ -437,6 +439,9 @@ const coveredElsewhere: ApiRouteKey[] = [
   "GET /api/auth/oidc/start",
   "GET /api/auth/oidc/callback",
   "POST /api/auth/oidc/backchannel-logout",
+  "POST /api/auth/oidc/link",
+  "GET /api/auth/oidc/link/pending",
+  "POST /api/auth/oidc/link/confirm",
 ];
 
 describe("route coverage", () => {

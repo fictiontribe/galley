@@ -44,6 +44,8 @@ server stopped.
             it signs in through the provider. A subject that has an account of
             its own here, or was removed, is refused: two accounts are never
             merged. A file of pairs has one "<account id> <subject>" a line.
+            An id or a subject that starts with "-" goes after "--":
+            ${PRODUCT.slug} accounts link -- <account id> <subject>
   rekey     The provider's issuer changed: move every account and removed
             account from the old issuer to the new one, in one write, or none
             if one would meet the same subject under the new issuer.
@@ -91,12 +93,25 @@ function pairsIn(path: string): Array<{ accountId: string; subject: string; line
 }
 
 export async function accountsCommand(argv: string[], io: Io): Promise<number> {
-  const { values, positionals } = parse(
-    "accounts",
-    argv,
-    { replace: { type: "boolean" }, file: { type: "string" }, from: { type: "string" }, to: { type: "string" }, home: { type: "string" }, force: { type: "boolean" } },
-    3
-  );
+  let parsed;
+
+  try {
+    parsed = parse(
+      "accounts",
+      argv,
+      { replace: { type: "boolean" }, file: { type: "string" }, from: { type: "string" }, to: { type: "string" }, home: { type: "string" }, force: { type: "boolean" } },
+      3
+    );
+  } catch (error) {
+    // Account ids are letters, digits, - and _: one that starts with "-" reads as an option unless it comes after "--".
+    const looksLikeId = argv.find((arg) => /^-[A-Za-z0-9_-]{2,}$/.test(arg) && !arg.startsWith("--"));
+
+    if (error instanceof UsageError && looksLikeId !== undefined) {
+      throw new UsageError(`${looksLikeId} reads as an option. An account id or subject that starts with "-" goes after "--": \`${PRODUCT.slug} accounts link -- ${looksLikeId} <subject>\`.`);
+    }
+    throw error;
+  }
+  const { values, positionals } = parsed;
   const [action, ...rest] = positionals;
 
   if (values.help || !action) {

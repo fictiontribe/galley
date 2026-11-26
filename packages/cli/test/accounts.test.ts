@@ -72,7 +72,7 @@ describe("galley accounts link", () => {
     const before = (await read(home)).accounts.find((account) => account.id === ed)!;
     const io = testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: ISSUER });
 
-    expect(await main(["accounts", "link", ed, "ed-subject"], io)).toBe(0);
+    expect(await main(["accounts", "link", "--", ed, "ed-subject"], io)).toBe(0);
     expect(io.stdout.join("\n")).toBe(`Linked ${ed} (Ed Editor, Editor) to subject ed-subject at ${ISSUER}. Its password and open new-password links are gone, and every session of it ended.`);
     const state = await read(home);
     const after = state.accounts.find((account) => account.id === ed)!;
@@ -95,18 +95,18 @@ describe("galley accounts link", () => {
       return { code: await main(["accounts", ...argv], io), err: io.stderr.join("\n"), out: io.stdout.join("\n") };
     };
 
-    expect(await run(["link", ed, "ed-subject"], { GALLEY_HOME: home })).toMatchObject({ code: 2, err: expect.stringMatching(/Set GALLEY_OIDC_ISSUER/) });
-    expect((await run(["link", ed, "wrong-subject"])).code).toBe(0);
-    expect(await run(["link", ed, "ed-subject"])).toMatchObject({ code: 1, err: expect.stringMatching(/signs in through the provider already \(subject wrong-subject\)\. .*--replace/) });
-    expect(await run(["link", "--replace", ed, "ed-subject"])).toMatchObject({ code: 0, out: expect.stringContaining("in place of subject wrong-subject") });
-    expect(await run(["link", sam, "ed-subject"])).toMatchObject({ code: 1, err: expect.stringMatching(/already has its own account here .*never merged/) });
+    expect(await run(["link", "--", ed, "ed-subject"], { GALLEY_HOME: home })).toMatchObject({ code: 2, err: expect.stringMatching(/Set GALLEY_OIDC_ISSUER/) });
+    expect((await run(["link", "--", ed, "wrong-subject"])).code).toBe(0);
+    expect(await run(["link", "--", ed, "ed-subject"])).toMatchObject({ code: 1, err: expect.stringMatching(/signs in through the provider already \(subject wrong-subject\)\. .*--replace/) });
+    expect(await run(["link", "--replace", "--", ed, "ed-subject"])).toMatchObject({ code: 0, out: expect.stringContaining("in place of subject wrong-subject") });
+    expect(await run(["link", "--", sam, "ed-subject"])).toMatchObject({ code: 1, err: expect.stringMatching(/already has its own account here .*never merged/) });
     const store = await openInstallState(home);
 
     await store.update((draft) => {
       draft.tombstones.push({ id: "gone", issuer: ISSUER, subject: "removed-one", removedAt: new Date().toISOString(), removedBy: null });
     });
-    expect(await run(["link", sam, "removed-one"])).toMatchObject({ code: 1, err: expect.stringMatching(/list of removed accounts/) });
-    expect(await run(["link", "no-such-id", "someone"])).toMatchObject({ code: 1, err: expect.stringMatching(/No account here has that id/) });
+    expect(await run(["link", "--", sam, "removed-one"])).toMatchObject({ code: 1, err: expect.stringMatching(/list of removed accounts/) });
+    expect(await run(["link", "--", "no-such-id", "someone"])).toMatchObject({ code: 1, err: expect.stringMatching(/No account here has that id/) });
     expect((await read(home)).accounts.find((account) => account.id === sam)!.passwordHash).not.toBeNull();
   });
 
@@ -130,7 +130,7 @@ describe("galley accounts link", () => {
     writeFileSync(join(home, "server.lock"), JSON.stringify({ pid: sleeper.pid, hostname: hostname(), port: 4400, startedAt: new Date().toISOString() }));
     const io = testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: ISSUER });
 
-    expect(await main(["accounts", "link", ed, "ed-subject"], io)).toBe(2);
+    expect(await main(["accounts", "link", "--", ed, "ed-subject"], io)).toBe(2);
     expect(io.stderr.join("\n")).toBe(`A server is using this data folder right now (process ${sleeper.pid}, port 4400). Stop it first, then run this again.`);
     expect(await main(["accounts", "rekey", "--from", ISSUER, "--to", "https://new.example.com"], io)).toBe(2);
     expect((await read(home)).accounts.find((account) => account.id === ed)!.identity).toBeUndefined();
@@ -142,7 +142,7 @@ describe("galley accounts rekey", () => {
     const { home, sam, ed } = await install();
     const NEW = "https://new.example.com";
 
-    expect(await main(["accounts", "link", ed, "ed-subject"], testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: ISSUER }))).toBe(0);
+    expect(await main(["accounts", "link", "--", ed, "ed-subject"], testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: ISSUER }))).toBe(0);
     const store = await openInstallState(home);
 
     await store.update((draft) => {
@@ -166,8 +166,8 @@ describe("galley accounts rekey", () => {
     const { home, sam, ed } = await install();
     const NEW = "https://new.example.com";
 
-    expect(await main(["accounts", "link", ed, "same-subject"], testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: ISSUER }))).toBe(0);
-    expect(await main(["accounts", "link", sam, "same-subject"], testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: NEW }))).toBe(0);
+    expect(await main(["accounts", "link", "--", ed, "same-subject"], testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: ISSUER }))).toBe(0);
+    expect(await main(["accounts", "link", "--", sam, "same-subject"], testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: NEW }))).toBe(0);
     const io = testIo({ GALLEY_HOME: home });
 
     expect(await main(["accounts", "rekey", "--from", ISSUER, "--to", NEW], io)).toBe(1);
@@ -241,6 +241,14 @@ describe("an account id or subject that starts with -", () => {
 });
 
 describe("galley accounts", () => {
+  it("says to put an id that starts with a dash after --", async () => {
+    const { home } = await install();
+    const io = testIo({ GALLEY_HOME: home, GALLEY_OIDC_ISSUER: ISSUER });
+
+    expect(await main(["accounts", "link", "-Abc123", "someone"], io)).toBe(2);
+    expect(io.stderr.join("\n")).toBe('-Abc123 reads as an option. An account id or subject that starts with "-" goes after "--": `galley accounts link -- -Abc123 <subject>`.');
+  });
+
   it("says what it does, and refuses a folder with no install", async () => {
     const help = testIo({});
 

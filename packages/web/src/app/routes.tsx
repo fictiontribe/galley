@@ -35,6 +35,7 @@ const InstallScreen = lazy(() => import("@/features/install/InstallScreen").then
 const ThemesScreen = lazy(() => import("@/features/themes/ThemesScreen").then((m) => ({ default: m.ThemesScreen })));
 const AccountScreen = lazy(() => import("@/features/accounts/AccountScreen").then((m) => ({ default: m.AccountScreen })));
 const LinkScreen = lazy(() => import("@/features/accounts/LinkScreen").then((m) => ({ default: m.LinkScreen })));
+const ConnectScreen = lazy(() => import("@/features/accounts/ConnectScreen").then((m) => ({ default: m.ConnectScreen })));
 
 /**
  * A hosted install has one site: no Sites screen, no /new or /open (their
@@ -67,6 +68,7 @@ export function AppRoutes() {
         <Route path="plugins" element={<Allowed route="POST /api/plugins/enabled"><PluginsScreen /></Allowed>} />
         {hosted ? <Route path="install" element={<Allowed route="GET /api/install"><InstallScreen /></Allowed>} /> : null}
         {hosted ? <Route path="account" element={<AccountScreen />} /> : null}
+        {hosted ? <Route path="account/connect" element={<ConnectScreen />} /> : null}
         <Route path="*" element={<NotFoundScreen />} />
       </Route>
       <Route path="/sites/:siteId" element={<SiteFrame />}>

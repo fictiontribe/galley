@@ -50,6 +50,7 @@ import {
   type LinkPreview,
   type OneTimeLink,
   type People,
+  type RemovedPerson,
 } from "@galley/core/install/accounts";
 import type { Handlers, MockBackend, MockRequest } from "./backend.ts";
 import type { MockInstall } from "./install.ts";
@@ -66,6 +67,7 @@ export type AccountsRouteKey = Extract<
   | "DELETE /api/people/invitations/:invitationId"
   | "PATCH /api/people/:accountId"
   | "DELETE /api/people/:accountId"
+  | "DELETE /api/people/tombstones/:removedId"
   | "POST /api/people/:accountId/password-link"
   | "POST /api/people/:accountId/sign-out"
   | "POST /api/people/sign-out"
@@ -75,6 +77,10 @@ export type AccountsRouteKey = Extract<
   | "GET /api/auth/oidc/start"
   | "GET /api/auth/oidc/callback"
   | "POST /api/auth/oidc/backchannel-logout"
+  | "POST /api/auth/oidc/link"
+  | "GET /api/auth/oidc/link/pending"
+  | "POST /api/auth/oidc/link/confirm"
+  | "POST /api/account/identity/remove"
 >;
 
 function notHere(): never {
@@ -93,6 +99,7 @@ export function accountsHandlers(): Pick<Handlers, AccountsRouteKey> {
     "DELETE /api/people/invitations/:invitationId": () => notHere(),
     "PATCH /api/people/:accountId": () => notHere(),
     "DELETE /api/people/:accountId": () => notHere(),
+    "DELETE /api/people/tombstones/:removedId": () => notHere(),
     "POST /api/people/:accountId/password-link": () => notHere(),
     "POST /api/people/:accountId/sign-out": () => notHere(),
     "POST /api/people/sign-out": () => notHere(),
@@ -102,6 +109,10 @@ export function accountsHandlers(): Pick<Handlers, AccountsRouteKey> {
     "GET /api/auth/oidc/start": () => notHere(),
     "GET /api/auth/oidc/callback": () => notHere(),
     "POST /api/auth/oidc/backchannel-logout": () => notHere(),
+    "POST /api/auth/oidc/link": () => notHere(),
+    "GET /api/auth/oidc/link/pending": () => notHere(),
+    "POST /api/auth/oidc/link/confirm": () => notHere(),
+    "POST /api/account/identity/remove": () => notHere(),
   };
 }
 
@@ -124,10 +135,18 @@ export interface MockAccountsOptions {
   legacy?: boolean;
   /** Start this browser signed in as the first person with this role (first run must be over). */
   role?: AccountRole;
+  /**
+   * An identity provider set up: its button's name, whether passwords are
+   * off, and the e-mails of the people who sign in through it (with a
+   * subject each).
+   */
+  provider?: { name: string; passwordsOff?: boolean; people?: string[]; removed?: string[] };
 }
 
 interface MockAccount extends Account {
   password: string;
+  /** Their subject at the identity provider, when they sign in through it. */
+  subject?: string;
 }
 
 interface MockInvitation extends Invitation {
@@ -243,6 +262,8 @@ export class MockAccounts {
     // A link is only ever e-mailed when it can be built from the server's own public address.
     this.emailAvailable = Boolean(options.email) && options.publicAddress !== false;
     this.seed(install.step() === "done");
+    for (const account of this.accounts) if (options.provider?.people?.includes(account.email)) account.subject = `${account.email.split("@")[0]}-at-provider`;
+    this.removed = (options.provider?.removed ?? []).map((subject, index) => ({ id: `removed-${index + 1}`, subject, removedAt: new Date(Date.now() - (index + 1) * 86_400_000).toISOString(), removedBy: "Sam Rivera" }));
     if (options.role && install.step() === "done") {
       const person = this.accounts.find((account) => account.role === options.role && !account.disabled);
       if (person) {
@@ -316,12 +337,14 @@ export class MockAccounts {
 
   meta(meta: MetaInfo): MetaInfo {
     const person = this.current();
-    const install = meta.install ? { ...meta.install, signInWith: this.signInWith(), passwordEmail: this.emailAvailable } : meta.install;
+    const provider = this.options.provider;
+    const install = meta.install ? { ...meta.install, signInWith: this.signInWith(), passwordEmail: this.emailAvailable, ...(provider ? { provider: { name: provider.name } } : {}) } : meta.install;
     return { ...meta, install, ...(person ? { account: this.session(person) } : {}) };
   }
 
   /** The password alone, while the only way in is an owner from before accounts who has no e-mail yet. */
-  signInWith(): "email" | "password" {
+  signInWith(): "email" | "password" | "provider" {
+    if (this.options.provider?.passwordsOff) return "provider";
     return this.accounts.some((account) => !account.email && !account.disabled) ? "password" : "email";
   }
 
@@ -457,9 +480,18 @@ export class MockAccounts {
 
   // ── people ────────────────────────────────────────────────────────────
 
+  /** Removed people who signed in through the provider (the demo's, from MockAccountsOptions). */
+  removed: RemovedPerson[] = [];
+
+  letBack(id: string): void {
+    if (!this.removed.some((one) => one.id === id)) throw new MockError("not-found", "That person isn't on the list of removed people any more. Reload the list.");
+    this.removed = this.removed.filter((one) => one.id !== id);
+  }
+
   people(): People {
     return {
       accounts: this.accounts.map((account) => this.public(account)),
+      removed: [...this.removed],
       invitations: this.invitations.map(({ code: _code, ...invitation }) => invitation),
       emailAvailable: this.emailAvailable,
     };
@@ -683,6 +715,10 @@ export function withAccounts(mock: MockBackend, base: Handlers, accounts: MockAc
       accounts.remove(params.accountId);
       return ok;
     },
+    "DELETE /api/people/tombstones/:removedId": ({ params }) => {
+      accounts.letBack(params.removedId);
+      return ok;
+    },
     "POST /api/people/:accountId/password-link": ({ params }) => accounts.passwordLink(params.accountId),
     "POST /api/people/:accountId/sign-out": ({ params }) => {
       accounts.signOutPerson(params.accountId);
@@ -703,6 +739,10 @@ export function withAccounts(mock: MockBackend, base: Handlers, accounts: MockAc
     "GET /api/auth/oidc/start": () => notHere(),
     "GET /api/auth/oidc/callback": () => notHere(),
     "POST /api/auth/oidc/backchannel-logout": () => notHere(),
+    "POST /api/auth/oidc/link": () => notHere(),
+    "GET /api/auth/oidc/link/pending": () => notHere(),
+    "POST /api/auth/oidc/link/confirm": () => notHere(),
+    "POST /api/account/identity/remove": () => notHere(),
   };
   return { ...handlers, ...own };
 }

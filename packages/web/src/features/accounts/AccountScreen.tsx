@@ -6,7 +6,7 @@
  * browser.
  */
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { AccountSession } from "@galley/core/install/accounts";
 import { useTopBar } from "@/app/chrome";
 import { api, errorShape } from "@/lib/api";
@@ -24,7 +24,8 @@ import { passwordProblem } from "@/features/install/logic";
 import { Problem } from "@/features/install/parts";
 import { NotYours } from "./NotYours";
 import { ThemeField } from "@/features/themes/ThemeField";
-import { emailProblem, nameProblem } from "./logic";
+import { emailProblem, nameProblem, providerRefusal } from "./logic";
+import { hostedInstall } from "@/lib/hosted";
 import { Section } from "./parts";
 import "./accounts.css";
 
@@ -178,6 +179,103 @@ function Password() {
   );
 }
 
+/**
+ * Sign in through the identity provider instead of a password: confirmed with
+ * the current password, then a fresh sign-in at the provider, then a page to
+ * confirm whom it signed in. Nothing changes until then.
+ */
+function ConnectProvider({ provider }: { provider: string }) {
+  const [params] = useSearchParams();
+  const [password, setPassword] = useState("");
+  const [problem, setProblem] = useState<string | null>(() => providerRefusal(params.get("link"), provider));
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!password) {
+      setProblem("Enter the password you sign in with now.");
+      return;
+    }
+    setBusy(true);
+    setProblem(null);
+    try {
+      const { url } = await api("POST /api/auth/oidc/link", { body: { password } });
+      // A top-level navigation to the provider, never a fetch or a frame.
+      window.location.assign(url);
+    } catch (caught) {
+      setProblem(errorShape(caught).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section id="provider" title={`Sign in with ${provider}`}>
+      <form className="app-form-stack" onSubmit={(event) => void submit(event)} noValidate>
+        <p className="g-hint">{`Use your account at ${provider} to sign in here, instead of a password. You’ll sign in there, then confirm who it signed in. After that your password here stops working, and you’re signed out everywhere else.`}</p>
+        <Field label="Current password">
+          <Input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+        </Field>
+        {problem ? <Problem>{problem}</Problem> : null}
+        <div>
+          <Button type="submit" variant="primary" size="sm" busy={busy} busyLabel="Going there…">
+            {`Connect with ${provider}`}
+          </Button>
+        </div>
+      </form>
+    </Section>
+  );
+}
+
+/** From the link `serve --reset-password` made: stop signing in through the provider (a wrong link put right) and choose a password. */
+function RemoveProvider({ provider }: { provider: string }) {
+  const [next, setNext] = useState("");
+  const [again, setAgain] = useState("");
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const issue = passwordProblem(next, again);
+    if (issue) {
+      setProblem(issue);
+      return;
+    }
+    setBusy(true);
+    setProblem(null);
+    try {
+      await api("POST /api/account/identity/remove", { body: { password: next } });
+      await useMeta.getState().load();
+      notify({ tone: "success", title: `${provider} taken off`, body: "You sign in with this password now. Your other browsers were signed out." });
+    } catch (caught) {
+      setProblem(errorShape(caught).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section id="provider" title={`Stop signing in with ${provider}`}>
+      <form className="app-form-stack" onSubmit={(event) => void submit(event)} noValidate>
+        <p className="g-hint">{`You came in with the link whoever runs the server made. If this account was connected to the wrong person at ${provider}, take ${provider} off it and choose a password: you’ll sign in with it from now on.`}</p>
+        <div className="app-form-row">
+          <Field label="New password">
+            <Input type="password" autoComplete="new-password" value={next} onChange={(event) => setNext(event.target.value)} />
+          </Field>
+          <Field label="New password again">
+            <Input type="password" autoComplete="new-password" value={again} onChange={(event) => setAgain(event.target.value)} />
+          </Field>
+        </div>
+        {problem ? <Problem>{problem}</Problem> : null}
+        <div>
+          <Button type="submit" variant="danger" size="sm" busy={busy} busyLabel="Taking it off…">
+            {`Take ${provider} off`}
+          </Button>
+        </div>
+      </form>
+    </Section>
+  );
+}
+
 function SignOutEverywhere() {
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
@@ -228,6 +326,10 @@ export function AccountScreen() {
   const may = useMay();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
+  const install = hostedInstall(useMeta((s) => s.meta));
+  const provider = install?.provider?.name ?? null;
+  // With passwords off, linking and choosing a password are done on the server.
+  const passwordsOn = install?.signInWith !== "provider";
   if (!account) return <NotYours />;
   return (
     <div className="app-screen">
@@ -256,6 +358,8 @@ export function AccountScreen() {
           <You account={account} />
           <Role account={account} />
           {account.viaProvider ? null : <Password />}
+          {provider && passwordsOn && !account.viaProvider ? <ConnectProvider provider={provider} /> : null}
+          {provider && passwordsOn && account.viaProvider && account.sessionKind === "recovery" ? <RemoveProvider provider={provider} /> : null}
           <SignOutEverywhere />
           {may("PATCH /api/settings") ? null : <Appearance />}
         </div>

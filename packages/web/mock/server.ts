@@ -69,6 +69,8 @@ export interface MockServerOptions {
   legacy?: boolean;
   /** Hosted only: false answers as a server from before accounts did — one shared password, no `meta.account`, no people routes. */
   accounts?: boolean;
+  /** Hosted only: an identity provider set up (see MockAccountsOptions). */
+  provider?: { name: string; passwordsOff?: boolean; people?: string[]; removed?: string[] };
   /** The role-access table, when the caller loads it (the dev server: see `loadAccess`). */
   access?: Promise<MockAccessTable>;
   /** Core's theme engine, when the caller loads it (the dev server, through Vite: see themes.ts). */
@@ -154,7 +156,7 @@ export function createMockServer(options: MockServerOptions): MockServer {
     backend.themesEngine = () => themes;
   }
   const install = options.mode === "hosted" ? new MockInstall(backend, { setup: options.setup ?? "done", fixed: options.fixed, stepMs: options.stepMs, allowLocalRepositories: options.allowLocalRepositories, address: options.address }) : null;
-  const accounts = install && options.accounts !== false ? new MockAccounts(backend, install, { email: options.email, publicAddress: options.publicAddress, legacy: options.legacy, role: options.role }) : null;
+  const accounts = install && options.accounts !== false ? new MockAccounts(backend, install, { email: options.email, publicAddress: options.publicAddress, legacy: options.legacy, role: options.role, ...(options.provider ? { provider: options.provider } : {}) }) : null;
   const local = createHandlers(backend);
   const hosted = install ? withInstall(backend, local, install) : null;
   const built: Handlers = hosted && accounts ? withAccounts(backend, hosted, accounts) : (hosted ?? local);
