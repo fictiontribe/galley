@@ -43,8 +43,12 @@ entry says how.
   each loses its password and open links and is signed out everywhere;
   `--replace` puts a wrong link right; a subject another account has, or one
   that was removed, is refused. `rekey` moves every account and removed
-  account to a new issuer in one write, or none if one would clash. Both
-  refuse while a server holds the data folder.
+  account to a new issuer in one write, or none if one would clash.
+  `removed` lists the removed accounts that signed in through the provider
+  (subject, when, by whom), and `unremove <subject>` takes one off the list,
+  so that identity may sign in again or be linked. Link, rekey and unremove
+  refuse while a server holds the data folder. An account id or subject that
+  starts with `-` goes after `--`; new account ids never start with one.
 - **Back-channel logout** from the identity provider
   (`POST /api/auth/oidc/backchannel-logout`, OpenID Connect Back-Channel
   Logout 1.0): a logout token for a subject ends every one of their sessions,
