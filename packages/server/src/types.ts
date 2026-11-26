@@ -140,6 +140,10 @@ export interface AppOptions {
    * routes are mounted under `/api/x/`. Hosted mode needs accounts for it.
    */
   extensions?: { runtime: import("./extensions/run").StartedExtensions; desk: import("./extensions/people").PeopleDesk | null };
+  /** Environment variables read dynamically for runtime flags (e.g. GALLEY_AI_MANAGED). Default: process.env. */
+  env?: NodeJS.ProcessEnv;
+  /** Optional fetch implementation used by server-side requests such as GET /api/ai/credits (test seam). */
+  fetch?: typeof fetch;
 }
 
 /** Keeps track of open event streams so shutdown can end them, and of how many each identity has open where that is limited. */

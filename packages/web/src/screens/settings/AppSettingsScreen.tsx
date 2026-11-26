@@ -10,12 +10,13 @@ import { useHostedInstall, useMeta } from "@/lib/stores/meta";
 import { useAccount } from "@/lib/may";
 import { placeWords } from "@/lib/where";
 import { api, errorShape } from "@/lib/api";
+import { formatCredits, formatUsdAsCredits, usdToCredits, useManagedAi } from "@/lib/credits";
 import { compactNumber, count, money } from "@/lib/format";
 import { getQueryState, setQueryData, useQuery } from "@/lib/query";
 import { notify } from "@/lib/stores/toasts";
 import { useUi } from "@/lib/stores/ui";
 import { keys } from "@/lib/sync";
-import { Badge, Button, ErrorState, Field, Input, PageHeader, ProofMark, SegmentedControl, Select, Skeleton, cx } from "@/ui";
+import { Badge, Button, ErrorState, Field, Input, PageHeader, ProofMark, SegmentedControl, Select, Skeleton, buttonClass, cx } from "@/ui";
 import { PreviewsSection } from "./PreviewsSection";
 import { refreshThemes, useServerThemes, useThemeList } from "@/app/look";
 import { ThemeField } from "@/features/themes/ThemeField";
@@ -176,8 +177,145 @@ function SecretRow({ secret, hint }: { secret: SecretStatus; hint?: string }) {
   );
 }
 
+function formatRenewDate(iso: string): string {
+  const date = new Date(iso);
+
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+}
+
+function AiCreditsSection() {
+  const { managed, disabled, manageUrl } = useManagedAi();
+  const credits = useQuery(["ai", "credits"], () => api("GET /api/ai/credits"), { enabled: managed && !disabled });
+
+  if (!managed) return null;
+  const effectiveDisabled = disabled || Boolean(credits.data?.disabled);
+  const linkUrl = credits.data?.manageUrl ?? manageUrl;
+  const balance = credits.data?.balance ?? null;
+
+  return (
+    <SettingsSection
+      id="credits"
+      title="AI credits"
+      description={
+        effectiveDisabled
+          ? "AI features are currently switched off for this site."
+          : "Included with your Galley Cloud plan and shared across assistant, image, and video tools."
+      }
+    >
+      {effectiveDisabled ? (
+        <div className="app-secret" role="status">
+          <div className="app-secret__row">
+            <div className="app-secret__text">
+              <span className="g-label">AI is switched off for this site</span>
+              <span className="app-secret__status">
+                <ProofMark kind="stet" className="g-faint" />
+                <span>A workspace manager can turn AI back on in Galley Cloud.</span>
+              </span>
+            </div>
+            {linkUrl ? (
+              <a className={buttonClass("secondary", "sm")} href={linkUrl} target="_blank" rel="noopener noreferrer">
+                Open Galley Cloud
+              </a>
+            ) : null}
+          </div>
+        </div>
+      ) : credits.loading && !credits.data ? (
+        <Skeleton height={110} />
+      ) : balance ? (
+        <>
+          {balance.state === "paused" ? (
+            <p className="g-margin-note" role="alert">
+              <ProofMark kind="bang" />
+              <span>
+                Your AI credits for this period are used up, so AI is paused until credits renew or more are added.
+                {linkUrl ? (
+                  <>
+                    {" "}
+                    <a className="g-link" href={linkUrl} target="_blank" rel="noopener noreferrer">
+                      Add credits in Galley Cloud
+                    </a>
+                  </>
+                ) : null}
+              </span>
+            </p>
+          ) : balance.state === "warn80" ? (
+            <p className="g-margin-note" role="status">
+              <ProofMark kind="bang" />
+              <span>
+                You’ve used 80% or more of this period’s AI credits.
+                {linkUrl ? (
+                  <>
+                    {" "}
+                    <a className="g-link" href={linkUrl} target="_blank" rel="noopener noreferrer">
+                      Manage credits in Galley Cloud
+                    </a>
+                  </>
+                ) : null}
+              </span>
+            </p>
+          ) : null}
+          <div className="app-usage__totals">
+            <div className="app-usage__total">
+              <span className="g-eyebrow">Left</span>
+              <span className="app-usage__cost">{balance.leftCredits.toLocaleString()}</span>
+              <span className="app-usage__sub">~{count(balance.changesLeft, "typical change")} left</span>
+            </div>
+            <div className="app-usage__total">
+              <span className="g-eyebrow">Used</span>
+              <span className="app-usage__cost">{balance.usedCredits.toLocaleString()}</span>
+              <span className="app-usage__sub">this period</span>
+            </div>
+            <div className="app-usage__total">
+              <span className="g-eyebrow">Included</span>
+              <span className="app-usage__cost">{balance.includedCredits.toLocaleString()}</span>
+              <span className="app-usage__sub">with your plan</span>
+            </div>
+            <div className="app-usage__total">
+              <span className="g-eyebrow">Top-up</span>
+              <span className="app-usage__cost">{balance.topUpCredits.toLocaleString()}</span>
+              <span className="app-usage__sub">added credits</span>
+            </div>
+          </div>
+          <div className="app-secret__row">
+            <span className="g-hint" style={{ flex: 1 }}>
+              {balance.renewsAt ? `Renews on ${formatRenewDate(balance.renewsAt)}.` : "Trial credits don’t renew."}
+              {balance.siteLimit
+                ? ` Site limit: ${balance.siteLimit.usedCredits.toLocaleString()} of ${formatCredits(balance.siteLimit.limitCredits)} used.`
+                : ""}
+            </span>
+            {linkUrl ? (
+              <a className={buttonClass("secondary", "sm")} href={linkUrl} target="_blank" rel="noopener noreferrer">
+                Manage credits &amp; AI
+              </a>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <div className="app-secret">
+          <div className="app-secret__row">
+            <div className="app-secret__text">
+              <span className="g-label">Galley AI credits</span>
+              <span className="app-secret__status">
+                <ProofMark kind="reg" className="app-secret__ok" />
+                <span>Included with your Galley Cloud workspace.</span>
+              </span>
+            </div>
+            {linkUrl ? (
+              <a className={buttonClass("secondary", "sm")} href={linkUrl} target="_blank" rel="noopener noreferrer">
+                Manage in Galley Cloud
+              </a>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </SettingsSection>
+  );
+}
+
 function AssistantSection({ settings }: { settings: Settings }) {
   const where = useWhere();
+  const { managed, creditMillicents, disabled: aiDisabled } = useManagedAi();
   const [saving, setSaving] = useState<string | null>(null);
   const anthropic = settings.secrets.find((secret) => secret.name === "anthropic");
   const set = async (patch: SettingsPatch, what: string) => {
@@ -191,8 +329,32 @@ function AssistantSection({ settings }: { settings: Settings }) {
     }
   };
   return (
-    <SettingsSection id="assistant" title="Assistant" description={`Connect the assistant with your own API key. It’s stored ${where} and never sent to the browser.`}>
-      {anthropic ? <SecretRow secret={anthropic} hint="Find it in your Anthropic console under API keys" /> : null}
+    <SettingsSection
+      id="assistant"
+      title="Assistant"
+      description={
+        managed
+          ? aiDisabled
+            ? "Switched off in site settings."
+            : "Included with your Galley AI credits."
+          : `Connect the assistant with your own API key. It’s stored ${where} and never sent to the browser.`
+      }
+    >
+      {managed ? (
+        <div className="app-secret">
+          <div className="app-secret__row">
+            <div className="app-secret__text">
+              <span className="g-label">Assistant access</span>
+              <span className="app-secret__status">
+                <ProofMark kind={aiDisabled ? "stet" : "reg"} className={aiDisabled ? "g-faint" : "app-secret__ok"} />
+                <span>{aiDisabled ? "Switched off in site settings" : "Included with your Galley AI credits"}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : anthropic ? (
+        <SecretRow secret={anthropic} hint="Find it in your Anthropic console under API keys" />
+      ) : null}
       <fieldset className="app-fieldset app-models" aria-busy={saving === "model"} aria-describedby="model-prices">
         <legend className="g-label">Model</legend>
         {settings.ai.models.map((model) => {
@@ -205,14 +367,18 @@ function AssistantSection({ settings }: { settings: Settings }) {
                 <span className="app-model__blurb">{model.blurb}</span>
               </span>
               <span className="app-model__price">
-                ${model.inputPrice} to read · ${model.outputPrice} to write
+                {managed
+                  ? `${usdToCredits(model.inputPrice, creditMillicents).toLocaleString()} credits to read · ${usdToCredits(model.outputPrice, creditMillicents).toLocaleString()} credits to write`
+                  : `$${model.inputPrice} to read · $${model.outputPrice} to write`}
               </span>
             </label>
           );
         })}
       </fieldset>
       <p className="g-hint" id="model-prices">
-        Prices are in US dollars per million tokens — the units the AI service bills in — for what the assistant reads and what it writes.
+        {managed
+          ? "Shown in Galley AI credits per million tokens for what the assistant reads and what it writes."
+          : "Prices are in US dollars per million tokens — the units the AI service bills in — for what the assistant reads and what it writes."}
       </p>
       <Field label="Effort" group hint={EFFORTS.find((effort) => effort.value === settings.ai.effort)?.title}>
         <SegmentedControl label="Effort" options={EFFORTS} value={settings.ai.effort} onChange={(effort) => void set({ ai: { effort } }, "effort")} />
@@ -227,6 +393,7 @@ const IMAGE_SECRETS: ReadonlySet<SecretName> = new Set<SecretName>(["openai", "g
 
 function ImagesSection({ settings }: { settings: Settings }) {
   const where = useWhere();
+  const { managed, creditMillicents, disabled: aiDisabled } = useManagedAi();
   const services = settings.images.providers.filter((p) => p.id !== PLACEHOLDER_PROVIDER);
   // `null` (or the placeholder generator itself) means the built-in placeholders are used.
   const chosen = settings.images.provider && settings.images.provider !== PLACEHOLDER_PROVIDER ? settings.images.provider : "";
@@ -244,7 +411,10 @@ function ImagesSection({ settings }: { settings: Settings }) {
             onChange={(id) => void save({ images: id ? { provider: id, model: services.find((p) => p.id === id)?.defaultModel ?? null } : { provider: null, model: null } })}
             options={[
               { value: "", label: "Built-in placeholders" },
-              ...services.map((p) => ({ value: p.id, label: p.configured ? p.label : `${p.label} (no key)` })),
+              ...services.map((p) => ({
+                value: p.id,
+                label: p.configured ? p.label : managed ? (aiDisabled ? `${p.label} (switched off)` : p.label) : `${p.label} (no key)`,
+              })),
             ]}
           />
         </Field>
@@ -253,13 +423,18 @@ function ImagesSection({ settings }: { settings: Settings }) {
             <Select
               value={settings.images.model ?? provider.defaultModel}
               onChange={(model) => void save({ images: { model } })}
-              options={provider.models.map((model) => ({ value: model.id, label: modelOptionLabel(model) }))}
+              options={provider.models.map((model) => ({ value: model.id, label: modelOptionLabel(model, managed ? creditMillicents : undefined) }))}
             />
           </Field>
         ) : null}
       </div>
       {provider ? (
-        provider.configured ? (
+        managed ? (
+          <p className="app-images-note">
+            <ProofMark kind={aiDisabled ? "stet" : "reg"} className={aiDisabled ? "g-faint" : "app-secret__ok"} />
+            <span>{aiDisabled ? "Switched off in site settings." : "Included with your Galley AI credits."}</span>
+          </p>
+        ) : provider.configured ? (
           IMAGE_SECRETS.has(provider.id as SecretName) ? null : (
             <p className="app-images-note">
               <ProofMark kind="reg" className="app-secret__ok" />
@@ -294,9 +469,7 @@ function ImagesSection({ settings }: { settings: Settings }) {
           <span>{`Images you generate are placeholders: plain artwork labelled with your description, made ${where}. Choose a service to make real images.`}</span>
         </p>
       )}
-      {imageSecrets.map((secret) => (
-        <SecretRow key={secret.name} secret={secret} />
-      ))}
+      {managed ? null : imageSecrets.map((secret) => <SecretRow key={secret.name} secret={secret} />)}
     </SettingsSection>
   );
 }
@@ -464,39 +637,41 @@ function AppearanceSection({ settings }: { settings: Settings }) {
   );
 }
 
-/** "3 images, $0.04": a kind of generation and what its service reported it cost (that part of the total). */
-function mediaLine(made: number, noun: string, cost: number | undefined): string {
-  return `${count(made, noun)}${cost ? `, ${money(cost)}` : ""}`;
+/** "3 images, $0.04" (or "3 images, 16 credits" in managed mode). */
+function mediaLine(made: number, noun: string, cost: number | undefined, managed: boolean, creditMillicents: number): string {
+  return `${count(made, noun)}${cost ? `, ${managed ? formatUsdAsCredits(cost, creditMillicents) : money(cost)}` : ""}`;
 }
 
-function Totals({ label, totals }: { label: string; totals: UsageTotals }) {
+function Totals({ label, totals, managed, creditMillicents }: { label: string; totals: UsageTotals; managed: boolean; creditMillicents: number }) {
   const unpriced = totals.media?.unpriced ?? 0;
   return (
     <div className="app-usage__total">
       <span className="g-eyebrow">{label}</span>
-      <span className="app-usage__cost">{money(totals.cost)}</span>
+      <span className="app-usage__cost">{managed ? formatUsdAsCredits(totals.cost, creditMillicents) : money(totals.cost)}</span>
       <span className="app-usage__sub">
         {count(totals.turns, "request")}
-        {totals.images ? ` · ${mediaLine(totals.images, "image", totals.media?.images)}` : ""}
-        {totals.videos ? ` · ${mediaLine(totals.videos, "video", totals.media?.videos)}` : ""}
+        {totals.images ? ` · ${mediaLine(totals.images, "image", totals.media?.images, managed, creditMillicents)}` : ""}
+        {totals.videos ? ` · ${mediaLine(totals.videos, "video", totals.media?.videos, managed, creditMillicents)}` : ""}
       </span>
       {unpriced > 0 ? <span className="app-usage__sub g-faint">{`${count(unpriced, "generation")} with no price reported, not counted`}</span> : null}
     </div>
   );
 }
 
-function DayBars({ days }: { days: UsageSummary["days"] }) {
+function DayBars({ days, managed, creditMillicents }: { days: UsageSummary["days"]; managed: boolean; creditMillicents: number }) {
   const max = Math.max(0.0001, ...days.map((day) => day.cost ?? 0));
   const label = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" });
   return (
     <figure className="app-bars">
       <figcaption className="g-eyebrow">Last 14 days</figcaption>
-      <div className="app-bars__plot" role="list" aria-label="Spend per day">
+      <div className="app-bars__plot" role="list" aria-label={managed ? "Credits per day" : "Spend per day"}>
         {days.map((day) => {
           const height = day.cost ? Math.max(3, (day.cost / max) * 100) : 0;
+          const formatted = managed ? formatUsdAsCredits(day.cost, creditMillicents) : money(day.cost);
+          const barText = day.cost ? (managed ? usdToCredits(day.cost, creditMillicents).toLocaleString() : money(day.cost)) : "";
           return (
-            <div key={day.date} className="app-bars__col" role="listitem" aria-label={`${label(day.date)}: ${money(day.cost)}, ${count(day.requests, "request")}`}>
-              <span className="app-bars__value">{day.cost ? money(day.cost) : ""}</span>
+            <div key={day.date} className="app-bars__col" role="listitem" aria-label={`${label(day.date)}: ${formatted}, ${count(day.requests, "request")}`}>
+              <span className="app-bars__value">{barText}</span>
               <span className="app-bars__bar" style={{ blockSize: `${height}%` }} data-empty={height === 0 || undefined} />
             </div>
           );
@@ -512,9 +687,18 @@ function DayBars({ days }: { days: UsageSummary["days"] }) {
 
 function UsageSection() {
   const hosted = useHostedInstall();
+  const { managed, creditMillicents } = useManagedAi();
   const usage = useQuery(keys.usage(), () => api("GET /api/usage"));
   return (
-    <SettingsSection id="usage" title="Usage" description={`What the assistant has cost at list prices, with what image and video services reported for their work, ${hosted ? "in this editor" : "on this computer"}.`}>
+    <SettingsSection
+      id="usage"
+      title="Usage"
+      description={
+        managed
+          ? `What the assistant, image, and video tools have used in Galley AI credits, ${hosted ? "in this editor" : "on this computer"}.`
+          : `What the assistant has cost at list prices, with what image and video services reported for their work, ${hosted ? "in this editor" : "on this computer"}.`
+      }
+    >
       {usage.loading ? (
         <Skeleton height={160} />
       ) : usage.status === "error" && !usage.data ? (
@@ -522,12 +706,12 @@ function UsageSection() {
       ) : usage.data ? (
         <>
           <div className="app-usage__totals">
-            <Totals label="Today" totals={usage.data.today} />
-            <Totals label="7 days" totals={usage.data.last7} />
-            <Totals label="30 days" totals={usage.data.last30} />
-            <Totals label="All time" totals={usage.data.allTime} />
+            <Totals label="Today" totals={usage.data.today} managed={managed} creditMillicents={creditMillicents} />
+            <Totals label="7 days" totals={usage.data.last7} managed={managed} creditMillicents={creditMillicents} />
+            <Totals label="30 days" totals={usage.data.last30} managed={managed} creditMillicents={creditMillicents} />
+            <Totals label="All time" totals={usage.data.allTime} managed={managed} creditMillicents={creditMillicents} />
           </div>
-          <DayBars days={usage.data.days} />
+          <DayBars days={usage.data.days} managed={managed} creditMillicents={creditMillicents} />
           {usage.data.byModel.length > 0 ? (
             <table className="app-table">
               <caption className="g-sr">Usage by model</caption>
@@ -537,7 +721,7 @@ function UsageSection() {
                   <th scope="col">Requests</th>
                   <th scope="col">Read</th>
                   <th scope="col">Written</th>
-                  <th scope="col">Cost</th>
+                  <th scope="col">{managed ? "Credits" : "Cost"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -549,13 +733,17 @@ function UsageSection() {
                     <td>{row.requests.toLocaleString()}</td>
                     <td>{compactNumber(row.inputTokens)}</td>
                     <td>{compactNumber(row.outputTokens)}</td>
-                    <td>{money(row.cost)}</td>
+                    <td>{managed ? formatUsdAsCredits(row.cost, creditMillicents) : money(row.cost)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           ) : null}
-          {usage.data.byModel.length > 0 ? <p className="g-hint">Read and written are counted in tokens, the units the AI service bills in.</p> : null}
+          {usage.data.byModel.length > 0 ? (
+            <p className="g-hint">
+              {managed ? "Read and written are counted in tokens." : "Read and written are counted in tokens, the units the AI service bills in."}
+            </p>
+          ) : null}
         </>
       ) : null}
     </SettingsSection>
@@ -568,8 +756,10 @@ export function AppSettingsScreen() {
   const settings = useQuery(keys.settings(), () => api("GET /api/settings"));
   const hosted = useMeta((s) => s.meta?.mode === "hosted");
   const install = useHostedInstall();
+  const { managed } = useManagedAi();
   // Preview limits share a computer between many sites' previews; a hosted install runs one.
-  const sections = install ? SECTIONS.filter((section) => section.id !== "previews") : SECTIONS;
+  const baseSections = install ? SECTIONS.filter((section) => section.id !== "previews") : SECTIONS;
+  const sections = managed ? [{ id: "credits", label: "AI credits" } as const, ...baseSections] : baseSections;
   useScrollToHash(Boolean(settings.data));
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
@@ -614,6 +804,7 @@ export function AppSettingsScreen() {
               <ErrorState title="Couldn’t load settings" error={settings.error} onRetry={() => void settings.refetch()} />
             ) : settings.data ? (
               <>
+                <AiCreditsSection />
                 <AssistantSection settings={settings.data} />
                 <ImagesSection settings={settings.data} />
                 <VideoSettingsSection />

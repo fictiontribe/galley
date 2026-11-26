@@ -45,6 +45,8 @@ export interface ImageServiceOptions {
   fetch?: typeof fetch;
   /** The providers to choose from — the plugin registry's. Default: the built-in ones. */
   providers?: ImageProviderSource;
+  /** Environment for built-in provider base URL overrides when `providers` is omitted. */
+  env?: NodeJS.ProcessEnv;
   /** Test seam: the clock used for the candidate TTL. */
   now?: () => number;
 }
@@ -108,7 +110,7 @@ export function createImageService(options: ImageServiceOptions): GalleyImageSer
   const dir = join(options.home, "tmp", "candidates");
   const fetchImpl = options.fetch ?? fetch;
   const now = options.now ?? Date.now;
-  const handles = options.providers ?? builtinImageHandles;
+  const handles = options.providers ?? (() => builtinImageHandles(options.env));
 
   let sweeping: Promise<number> = Promise.resolve(0);
   let lastSweep = Number.NEGATIVE_INFINITY;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import type { AgentMode, ChatContext, SendMessageRequest } from "@galley/core/types";
 import { api, errorShape } from "@/lib/api";
+import { useManagedAi } from "@/lib/credits";
 import { invalidate, useQuery } from "@/lib/query";
 import { useSite } from "@/lib/stores/site";
 import { usePlaceWords } from "@/lib/where";
@@ -47,6 +48,22 @@ const readFile = (file: File) =>
 
 function NoKey() {
   const where = usePlaceWords();
+  const { managed, manageUrl } = useManagedAi();
+
+  if (managed) {
+    return (
+      <div className="chat-nokey">
+        <ProofMark kind="reg" className="chat-nokey__mark" />
+        <h3 className="chat-nokey__title">AI is switched off for this site.</h3>
+        <p className="chat-nokey__body">AI is switched off for this site. A workspace manager can turn it on in Galley Cloud.</p>
+        {manageUrl ? (
+          <a className={buttonClass("primary", "sm")} href={manageUrl} target="_blank" rel="noopener noreferrer">
+            Open Galley Cloud
+          </a>
+        ) : null}
+      </div>
+    );
+  }
   return (
     <div className="chat-nokey">
       <ProofMark kind="reg" className="chat-nokey__mark" />
@@ -72,7 +89,8 @@ export function ChatPanel({ siteId, context, initialMessage }: ChatPanelProps) {
   const publishes = useWhoPublishes();
   const threads = useThreads(siteId);
   const settings = useQuery(keys.settings(), () => api("GET /api/settings"));
-  const keyReady = settings.data ? settings.data.secrets.some((secret) => secret.name === "anthropic" && secret.configured) : null;
+  const { managed, disabled: aiDisabled } = useManagedAi();
+  const keyReady = aiDisabled ? false : settings.data ? settings.data.secrets.some((secret) => secret.name === "anthropic" && secret.configured) : null;
 
   // The first time a site's assistant opens, it continues the most recent conversation.
   useEffect(() => {
@@ -332,7 +350,15 @@ export function ChatPanel({ siteId, context, initialMessage }: ChatPanelProps) {
           busy={busy}
           disabled={sending || keyReady === false}
           locked={keyReady === false}
-          placeholder={keyReady === false ? "Connect the assistant to ask for changes" : busy ? "Working… you can type the next request" : "Ask for a change…"}
+          placeholder={
+            keyReady === false
+              ? managed
+                ? "AI is switched off for this site"
+                : "Connect the assistant to ask for changes"
+              : busy
+                ? "Working… you can type the next request"
+                : "Ask for a change…"
+          }
           history={promptHistory(thread)}
           attachments={attachments}
           onAttach={(files) => void addFiles(files)}

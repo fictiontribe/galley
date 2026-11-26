@@ -5,7 +5,7 @@
  * the server and the document. (Light and dark — the appearance — are
  * app/theme.ts.)
  */
-import { useEffect, useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo } from "react";
 import type { ThemesInfo } from "@galley/core/api";
 import { isAppliedTheme, type AppliedTheme, type ThemeFile } from "@galley/core/themes";
 import { api, errorShape } from "@/lib/api";
@@ -17,7 +17,7 @@ import { useUi } from "@/lib/stores/ui";
 import { keys } from "@/lib/sync";
 import { shownTheme, themeKeeper } from "@/lib/theme";
 import { listThemes, type ListedTheme } from "@/lib/themes/catalog";
-import { lookFromServer, lookSavesToServer, shownLook } from "@/lib/themes/choice";
+import { chosenLookId, lookFromServer, lookSavesToServer, shownLook } from "@/lib/themes/choice";
 import { putLookOnPage, rememberLook } from "@/lib/themes/apply";
 import { useSystemDark } from "./theme";
 
@@ -87,18 +87,32 @@ export function useLookOnPage(): void {
   const appearance = useUi((s) => s.theme);
   const systemDark = useSystemDark();
   const editing = useThemeEdit((s) => s.preview !== null);
+  const metaLoaded = useMeta((s) => s.meta !== null);
+  const authenticated = useMeta((s) => Boolean(s.meta?.authenticated));
   const keeper = useMeta((s) => themeKeeper(s.meta));
   const serverId = useMeta((s) => serverLook(s.meta?.look)?.id ?? null);
+  const localLook = useUi((s) => s.look);
   const chosen = useUi((s) => s.lookChosen);
   const shown = shownTheme(appearance, systemDark);
+  const serverThemes = useServerThemes();
+  const themes = useThemeList();
+  const targetId = editing ? null : chosenLookId(keeper, { look: localLook, chosen });
+  const waitingForServerThemes =
+    authenticated &&
+    serverThemes.loading &&
+    targetId !== null &&
+    targetId !== serverId &&
+    !themes.some((entry) => entry.theme.id === targetId);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!metaLoaded || waitingForServerThemes) return;
     putLookOnPage(look, shown);
     if (!editing) rememberLook(look, keeper === "browser" && chosen);
-  }, [look, shown, editing, keeper, chosen]);
+  }, [metaLoaded, waitingForServerThemes, look, shown, editing, keeper, chosen]);
 
   // Printing is on paper whatever the appearance (app/theme.ts usePrintOnPaper): the light colours, with light's tuned inks.
   useEffect(() => {
+    if (!metaLoaded || waitingForServerThemes) return;
     const before = () => putLookOnPage(look, "light");
     const after = () => putLookOnPage(look, shown);
     window.addEventListener("beforeprint", before);
@@ -107,7 +121,7 @@ export function useLookOnPage(): void {
       window.removeEventListener("beforeprint", before);
       window.removeEventListener("afterprint", after);
     };
-  }, [look, shown]);
+  }, [metaLoaded, waitingForServerThemes, look, shown]);
 
   // A hosted account's own themes: another person signing in on this browser starts from the default, with none of them.
   const account = useMeta((s) => s.meta?.account?.id ?? null);
@@ -119,10 +133,11 @@ export function useLookOnPage(): void {
   }, [account]);
 
   useEffect(() => {
+    if (!metaLoaded) return;
     const ui = useUi.getState();
     const next = lookFromServer(keeper, serverId, { look: ui.look, chosen: ui.lookChosen });
     if (next !== undefined) ui.followLook(next);
-  }, [keeper, serverId]);
+  }, [metaLoaded, keeper, serverId]);
 }
 
 let latest = 0;

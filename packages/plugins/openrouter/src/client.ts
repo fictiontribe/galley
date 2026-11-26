@@ -12,8 +12,29 @@ import { ProviderError, type ProviderCallContext, type ProviderErrorKind } from 
 
 export const OPENROUTER_API = "https://openrouter.ai/api/v1";
 
+export type BaseUrlOption = string | (() => string);
+
+/** Resolves a static or dynamic OpenRouter API base URL, falling back to `OPENROUTER_API`. */
+export function resolveBaseUrl(baseUrl?: BaseUrlOption): string {
+  const raw = typeof baseUrl === "function" ? baseUrl() : baseUrl;
+
+  return (raw?.trim() || OPENROUTER_API).replace(/\/+$/, "");
+}
+
+const GALLEY_PROXY_ERROR_CODES: ReadonlySet<string> = new Set([
+  "galley_ai_allowance_used",
+  "galley_ai_paused_unpaid",
+  "galley_ai_switched_off",
+]);
+
 export interface OpenRouterErrorBody {
-  error?: { code?: number | string; message?: string; metadata?: { error_type?: string; limit_source?: string; reasons?: unknown; provider_code?: unknown } | null };
+  error?: {
+    code?: number | string;
+    type?: string;
+    message?: string;
+    details?: { error_code?: string } | null;
+    metadata?: { error_code?: string; error_type?: string; limit_source?: string; reasons?: unknown; provider_code?: unknown } | null;
+  };
 }
 
 /**
@@ -60,7 +81,13 @@ export function classify(status: number, body: unknown, key: string | null, what
   const detail = scrub(`openrouter ${status} code=${String(error?.code ?? "")} type=${type} limit=${limit} ${error?.message ?? ""}`, key);
   const noun = nouns[what];
   const fail = (kind: ProviderErrorKind, plain: string) => new ProviderError(kind, plain, detail);
+  const proxyCode = [error?.details?.error_code, error?.metadata?.error_code, error?.metadata?.error_type, error?.code, error?.type].find(
+    (value): value is string => typeof value === "string" && GALLEY_PROXY_ERROR_CODES.has(value)
+  );
 
+  if (proxyCode && typeof error?.message === "string" && error.message.trim()) {
+    return fail(proxyCode === "galley_ai_switched_off" ? "auth" : "quota", scrub(error.message.trim(), key));
+  }
   if (status === 401 || type === "authentication") return fail("auth", "OpenRouter didn't accept the API key in Settings. Add a fresh key and try again.");
   if (status === 402) {
     return limit === "openrouter_in_flight_budget"

@@ -103,12 +103,31 @@ describe("the install's default theme", () => {
     const script = await (await app.request("/theme.js")).text();
     expect(script.startsWith("self.galleyStart={")).toBe(true);
     expect(script).toContain('"keeper":"server"');
+    expect(script).toContain('"theme":"system"');
     expect(script).toContain('"id":"default"');
     expect(script).not.toContain("fog");
     expect(script.endsWith("/* the start-up script */")).toBe(true);
+    // Changing appearance.theme is immediately reflected in /theme.js without stale caching.
+    await call("PATCH", "/api/settings", { appearance: { theme: "dark" } });
+    const darkScript = await (await app.request("/theme.js")).text();
+    expect(darkScript).toContain('"theme":"dark"');
     // Deleting the default falls back to Quiet.
     await call("DELETE", "/api/themes/fog");
     expect((await json(await app.request("/api/meta"))).look.light.paper).toBe(QUIET.light.paper);
+  });
+
+  it("includes keeper:browser and the install's dynamic appearance theme in /theme.js on hosted installs", async () => {
+    const webDir = mkdtempSync(join(tmpdir(), "galley-web-hosted-"));
+    homes.push(webDir);
+    writeFileSync(join(webDir, "theme.js"), "/* hosted boot */");
+    const { call, app } = setup({ mode: "hosted", webDir });
+    const initial = await (await app.request("/theme.js")).text();
+    expect(initial).toContain('"keeper":"browser"');
+    expect(initial).toContain('"theme":"system"');
+    await call("PATCH", "/api/settings", { appearance: { theme: "light" } });
+    const updated = await (await app.request("/theme.js")).text();
+    expect(updated).toContain('"keeper":"browser"');
+    expect(updated).toContain('"theme":"light"');
   });
 
   it("starts as a white-label brand's theme, with the brand's accent as the built-ins' pencil", async () => {

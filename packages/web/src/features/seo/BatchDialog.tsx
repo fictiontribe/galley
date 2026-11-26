@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { WriteBatchStatus, WriteKind, WritePlan } from "@galley/core/seo/types";
 import { api } from "@/lib/api";
+import { useManagedAi } from "@/lib/credits";
 import { Badge, Button, buttonClass, Dialog, ErrorState, Field, Input, Skeleton } from "@/ui";
 import { useNameOf } from "@/lib/names";
 import { count, WRITE_LABEL } from "./logic";
@@ -29,6 +30,7 @@ const STATE: Record<string, { label: string; tone: "neutral" | "success" | "warn
  * Proof; it never publishes.
  */
 export function BatchDialog({ siteId, open, onClose, kind, paths, onFinished }: BatchDialogProps) {
+  const { managed, disabled: aiDisabled, manageUrl } = useManagedAi();
   const [plan, setPlan] = useState<WritePlan | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [cap, setCap] = useState(0);
@@ -119,7 +121,25 @@ export function BatchDialog({ siteId, open, onClose, kind, paths, onFinished }: 
                 <Input type="number" min={1} max={plan.requests} value={cap} onChange={(event) => setCap(Number(event.target.value))} size="sm" />
               </Field>
             ) : null}
-            {!plan.connected ? <p className="seo-batch__note">Connect the assistant in App settings to write these. Nothing is sent until then.</p> : null}
+            {!plan.connected || aiDisabled ? (
+              <p className="seo-batch__note">
+                {managed ? (
+                  <>
+                    AI is switched off for this site. A workspace manager can turn it on in{" "}
+                    {manageUrl ? (
+                      <a className="g-link" href={manageUrl} target="_blank" rel="noopener noreferrer">
+                        Galley Cloud
+                      </a>
+                    ) : (
+                      "Galley Cloud"
+                    )}
+                    .
+                  </>
+                ) : (
+                  "Connect the assistant in App settings to write these. Nothing is sent until then."
+                )}
+              </p>
+            ) : null}
           </>
         ) : (
           <div className="seo-batch__progress" role="status" aria-live="polite">
@@ -172,7 +192,7 @@ export function BatchDialog({ siteId, open, onClose, kind, paths, onFinished }: 
             <Button variant="secondary" onClick={onClose}>
               Not now
             </Button>
-            <Button variant="primary" icon="chat" busy={starting} busyLabel="Starting…" disabled={!plan || !plan.connected || plan.requests === 0} onClick={() => void start()}>
+            <Button variant="primary" icon="chat" busy={starting} busyLabel="Starting…" disabled={!plan || !plan.connected || aiDisabled || plan.requests === 0} onClick={() => void start()}>
               {label && plan ? label.many(Math.min(cap || plan.requests, plan.requests)) : "Write"}
             </Button>
           </>

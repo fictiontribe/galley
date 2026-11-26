@@ -6,13 +6,13 @@
  * and prices come from OpenRouter's own catalogue at run time.
  */
 import { definePlugin, PLUGIN_API_VERSION, type GalleyPlugin } from "@galley/plugin-kit";
-import { OPENROUTER_API } from "./client";
+import { OPENROUTER_API, resolveBaseUrl, type BaseUrlOption } from "./client";
 import { createImageCatalogue, imageProvider } from "./images";
 import { createVideoCatalogue, videoProvider } from "./videos";
 
 export interface OpenRouterOptions {
-  /** API origin; tests point it at a fake. */
-  baseUrl?: string;
+  /** API origin or dynamic getter; tests point it at a fake and managed hosts may switch it live. */
+  baseUrl?: BaseUrlOption;
   /** How long a fetched model list is kept. Default one hour. */
   cacheMs?: number;
   now?: () => number;
@@ -38,7 +38,7 @@ const settings = [
 // #endregion settings
 
 export function createOpenRouterPlugin(options: OpenRouterOptions = {}): GalleyPlugin {
-  const baseUrl = (options.baseUrl ?? OPENROUTER_API).replace(/\/+$/, "");
+  const baseUrl = () => resolveBaseUrl(options.baseUrl);
   const cache = { baseUrl, cacheMs: options.cacheMs ?? 60 * 60_000, now: options.now ?? Date.now };
 
   return definePlugin({

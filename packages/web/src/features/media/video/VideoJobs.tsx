@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { MediaItem, VideoCandidate } from "@galley/core/types";
 import { api, errorShape, isApiFailure } from "@/lib/api";
+import { usdToCredits, useManagedAi } from "@/lib/credits";
 import { bytes, money } from "@/lib/format";
 import { invalidate } from "@/lib/query";
 import { useJob, useShowingJob } from "@/lib/stores/jobs";
@@ -14,6 +15,7 @@ import "./video.css";
 
 /** One made video: play it, name it, save it into media — or throw it away. */
 function Candidate({ siteId, candidate, onSaved, onGone }: { siteId: string; candidate: VideoCandidate; onSaved: (item: MediaItem) => void; onGone: () => void }) {
+  const { managed, creditMillicents } = useManagedAi();
   const [name, setName] = useState(() => fileNameFromPrompt(candidate.prompt));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +49,9 @@ function Candidate({ siteId, candidate, onSaved, onGone }: { siteId: string; can
       <div className="vid-candidate__side">
         <p className="vid-candidate__facts">
           <span>{bytes(candidate.size)}</span>
-          {candidate.cost !== undefined ? <span>Cost {money(candidate.cost)}</span> : null}
+          {candidate.cost !== undefined ? (
+            <span>{managed ? `Credits ${usdToCredits(candidate.cost, creditMillicents).toLocaleString()}` : `Cost ${money(candidate.cost)}`}</span>
+          ) : null}
         </p>
         {tooBig ? (
           <p className="g-margin-note vid-candidate__warn">
@@ -80,6 +84,7 @@ function Candidate({ siteId, candidate, onSaved, onGone }: { siteId: string; can
 
 /** One video being made, or made: progress while it runs, the result when it's done. */
 function VideoJobRow({ video, onSaved }: { video: TrackedVideo; onSaved: (item: MediaItem) => void }) {
+  const { managed } = useManagedAi();
   const status = useVideoJob(video.jobId);
   const live = useJob(video.jobId);
   const forget = useVideoJobs((s) => s.forget);
@@ -98,7 +103,13 @@ function VideoJobRow({ video, onSaved }: { video: TrackedVideo; onSaved: (item: 
           <span className="vid-job__prompt">“{video.prompt}”</span>
           <IconButton icon="close" label="Dismiss" onClick={() => forget(video.jobId)} />
         </div>
-        <p className="vid-job__detail">{unknown ? "This video isn’t known any more — the app was restarted or it expired. Nothing more will be charged for it." : errorShape(status.error).message}</p>
+        <p className="vid-job__detail">
+          {unknown
+            ? managed
+              ? "This video isn’t known any more — the app was restarted or it expired. No further credits will be used for it."
+              : "This video isn’t known any more — the app was restarted or it expired. Nothing more will be charged for it."
+            : errorShape(status.error).message}
+        </p>
       </li>
     );
   }

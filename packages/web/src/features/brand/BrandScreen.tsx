@@ -11,6 +11,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import type { ApplyPlan, BrandFinding, BrandProposal, BrandQuestion, DriftReport, SiteBrandFile, SiteBrandState } from "@galley/core/sitebrand/types";
 import { useTopBar } from "@/app/chrome";
 import { api, buildUrl, isApiFailure } from "@/lib/api";
+import { formatUsdAsCredits, useManagedAi } from "@/lib/credits";
 import { download } from "@/lib/download";
 import { notify } from "@/lib/stores/toasts";
 import { useSite } from "@/lib/stores/site";
@@ -294,6 +295,7 @@ function DriftDialog({ report, onClose }: { report: DriftReport | null; onClose:
 export function BrandScreen() {
   const { siteId = "" } = useParams();
   const navigate = useNavigate();
+  const { managed, creditMillicents } = useManagedAi();
   const query = useBrandState(siteId);
   const { measure, stop, progress, starting } = useMeasure(siteId);
   const [applyOpen, setApplyOpen] = useState(false);
@@ -473,7 +475,13 @@ export function BrandScreen() {
               <div className="brand-review" role="region" aria-label="Review the proposal">
                 <div className="brand-review__text">
                   <strong>Nothing is saved yet.</strong> Saving writes the brand into the site as changes you can check in Proof.
-                  {proposal.cost !== null ? <span className="brand-review__cost"> Reading it cost about ${proposal.cost.toFixed(2)}.</span> : null}
+                  {proposal.cost !== null ? (
+                    <span className="brand-review__cost">
+                      {managed
+                        ? ` Reading it used about ${formatUsdAsCredits(proposal.cost, creditMillicents)}.`
+                        : ` Reading it cost about $${proposal.cost.toFixed(2)}.`}
+                    </span>
+                  ) : null}
                 </div>
                 <Button
                   variant="quiet"

@@ -5,6 +5,7 @@
  * names who charges. Nothing is guessed: no published price, no number.
  */
 import type { ImageProviderInfo, VideoProviderInfo } from "@galley/core/types";
+import { formatCredits, formatPriceStringAsCredits, usdToCredits } from "@/lib/credits";
 
 export type VideoModel = VideoProviderInfo["models"][number];
 
@@ -39,12 +40,35 @@ function range(low: number, high: number): string {
   return `${dollars(low)}–${dollars(high)}`;
 }
 
+function creditRange(lowUsd: number, highUsd: number, creditMillicents: number): string {
+  const low = usdToCredits(lowUsd, creditMillicents);
+  const high = usdToCredits(highUsd, creditMillicents);
+
+  if (low === high) return formatCredits(low);
+  return `${low.toLocaleString()}–${high.toLocaleString()} credits`;
+}
+
 /**
  * The one line under the form: "About $0.40 for 5 seconds — charged by
- * OpenRouter". With a price range it says what moves it.
+ * OpenRouter" (or in credits when `creditMillicents` is provided).
  */
-export function costLine(model: VideoModel | undefined, seconds: number | undefined, provider: string): string {
+export function costLine(model: VideoModel | undefined, seconds: number | undefined, provider: string, creditMillicents?: number): string {
   const parsed = parsePrice(model?.price);
+
+  if (creditMillicents !== undefined) {
+    const who = "from your Galley AI credits";
+
+    if (!model || !parsed) return "Drawn from your Galley AI credits when the video is made.";
+    const ranged = usdToCredits(parsed.high, creditMillicents) > usdToCredits(parsed.low, creditMillicents);
+    const why = ranged && (model.resolutions?.length ?? 0) > 1 ? ", depending on the resolution" : "";
+
+    if (parsed.unit === "second") {
+      if (!seconds) return `About ${creditRange(parsed.low, parsed.high, creditMillicents)} a second${why}; this model chooses the length — ${who}`;
+      return `About ${creditRange(parsed.low * seconds, parsed.high * seconds, creditMillicents)} for ${seconds} ${seconds === 1 ? "second" : "seconds"}${why} — ${who}`;
+    }
+    if (parsed.unit === "video") return `About ${creditRange(parsed.low, parsed.high, creditMillicents)} for this video${why} — ${who}`;
+    return `About ${formatPriceStringAsCredits(model.price ?? "", creditMillicents)} — ${who}`;
+  }
   const who = `charged by ${provider}`;
   if (!model || !parsed) return `${provider} doesn’t publish a price for this model. It’s charged to your ${provider} account when the video is made.`;
   const ranged = parsed.high - parsed.low >= 0.005;
@@ -88,7 +112,10 @@ export function imageModelFacts(provider: Pick<ImageProviderInfo, "supportsRefer
   return parts.join(" · ");
 }
 
-/** "FLUX.2 Pro — $0.03 per megapixel": a model's name with its price, for a picker. */
-export function modelOptionLabel(model: { label: string; price?: string }): string {
-  return model.price ? `${model.label} — ${model.price}` : model.label;
+/** "FLUX.2 Pro — $0.03 per megapixel" (or in credits when `creditMillicents` is provided). */
+export function modelOptionLabel(model: { label: string; price?: string }, creditMillicents?: number): string {
+  if (!model.price) return model.label;
+  const price = creditMillicents !== undefined ? formatPriceStringAsCredits(model.price, creditMillicents) : model.price;
+
+  return `${model.label} — ${price}`;
 }

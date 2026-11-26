@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { PluginConflict, PluginInfo } from "@galley/core/types";
 import { errorShape } from "@/lib/api";
+import { useManagedAi } from "@/lib/credits";
 import { useMeta } from "@/lib/stores/meta";
 import { notify } from "@/lib/stores/toasts";
 import { Badge, Button, Icon, ProofMark, Toggle, cx } from "@/ui";
@@ -24,6 +25,14 @@ function originLabel(source: PluginInfo["source"], hosted: boolean): string {
   return hosted ? "Server" : "Installed";
 }
 
+const OPENROUTER_PLUGIN = "@galley/plugin-openrouter";
+
+function visibleMissing(plugin: PluginInfo, managed: boolean) {
+  const missing = missingSettings(plugin);
+
+  return managed && plugin.name === OPENROUTER_PLUGIN ? missing.filter((setting) => setting.key !== "apiKey") : missing;
+}
+
 /**
  * Clean, scannable plugin card: identity, concise description, capability chips,
  * on/off switch, and a single Configure / Details button that opens the drawer.
@@ -31,11 +40,12 @@ function originLabel(source: PluginInfo["source"], hosted: boolean): string {
  */
 export function PluginCard({ plugin, conflicts, linkSiteId, siteId, onInspect }: PluginCardProps) {
   const hosted = useMeta((s) => s.meta?.mode === "hosted");
+  const { managed } = useManagedAi();
   const [busy, setBusy] = useState(false);
 
   const lines = contributionLines(plugin.contributes, linkSiteId);
   const { lost } = conflictsOf(plugin.name, conflicts);
-  const missing = missingSettings(plugin);
+  const missing = visibleMissing(plugin, managed);
   const hasSettings = plugin.settings.length > 0;
   const hasProblems = plugin.problems.length > 0;
   const needsSetup = plugin.enabled && missing.length > 0;

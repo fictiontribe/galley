@@ -6,6 +6,7 @@
 import { useId, useRef, useState, type DragEvent } from "react";
 import type { BrandSource, SiteBrandState } from "@galley/core/sitebrand/types";
 import { api, isApiFailure } from "@/lib/api";
+import { useManagedAi } from "@/lib/credits";
 import { notify } from "@/lib/stores/toasts";
 import { Button, Icon, Input, Tag } from "@/ui";
 import { guessKind, uploadSource } from "./upload";
@@ -204,6 +205,7 @@ export function SourceList({ siteId, sources, staged, settings, onChange }: { si
 }
 
 export function Start({ siteId, state, onReadSite, onReadMaterial, onChange }: { siteId: string; state: SiteBrandState; onReadSite: () => void; onReadMaterial: () => void; onChange: () => void }) {
+  const { managed, disabled: aiDisabled, manageUrl } = useManagedAi();
   const fromSite = (
     <section className="brand-way brand-way--site" aria-labelledby="brand-way-site">
       <span className="g-eyebrow">From the site</span>
@@ -244,7 +246,25 @@ export function Start({ siteId, state, onReadSite, onReadMaterial, onChange }: {
   return (
     <div className="brand-start">
       <p className="brand-start__lede">A brand is the site’s look and voice written down — so every page, image and sentence the assistant makes fits the rest.</p>
-      {!state.assistant ? <p className="brand-start__note">No assistant key is set: colours, fonts and sizes can still be read, but the voice guide needs the assistant. Add a key in Settings.</p> : null}
+      {!state.assistant || (managed && aiDisabled) ? (
+        <p className="brand-start__note">
+          {managed ? (
+            <>
+              AI is switched off for this site. Colours, fonts and sizes can still be read, and a workspace manager can turn AI on in{" "}
+              {manageUrl ? (
+                <a className="g-link" href={manageUrl} target="_blank" rel="noopener noreferrer">
+                  Galley Cloud
+                </a>
+              ) : (
+                "Galley Cloud"
+              )}
+              .
+            </>
+          ) : (
+            "No assistant key is set: colours, fonts and sizes can still be read, but the voice guide needs the assistant. Add a key in Settings."
+          )}
+        </p>
+      ) : null}
       <div className="brand-ways">
         {state.hasPages ? (
           <>

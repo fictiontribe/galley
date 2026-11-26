@@ -71,6 +71,56 @@ function overriddenHost(baseURL: string | undefined): string | null {
   }
 }
 
+/** Structured error codes returned by the Galley Cloud AI proxy whose plain-English message should be surfaced directly. */
+export const GALLEY_PROXY_ERROR_CODES: ReadonlySet<string> = new Set([
+  "galley_ai_allowance_used",
+  "galley_ai_paused_unpaid",
+  "galley_ai_switched_off",
+]);
+
+/**
+ * Extracts a Galley Cloud proxy error from a provider JSON body (Anthropic,
+ * OpenAI, Google, or OpenRouter shape), returning its code and scrubbed
+ * plain-English message when recognised.
+ */
+export function extractProxyError(body: unknown): { code: string; message: string } | null {
+  if (!body || typeof body !== "object") return null;
+  const record = body as Record<string, unknown>;
+  const nested = record.error && typeof record.error === "object" ? (record.error as Record<string, unknown>) : record;
+  const message = typeof nested.message === "string" ? nested.message.trim() : "";
+
+  if (!message) return null;
+  const details = nested.details;
+  const metadata = nested.metadata && typeof nested.metadata === "object" ? (nested.metadata as Record<string, unknown>) : null;
+  const candidates: unknown[] = [
+    details && !Array.isArray(details) && typeof details === "object" ? (details as Record<string, unknown>).error_code : undefined,
+    ...(Array.isArray(details)
+      ? details.flatMap((entry) =>
+          entry && typeof entry === "object" ? [(entry as Record<string, unknown>).reason, (entry as Record<string, unknown>).error_code] : []
+        )
+      : []),
+    nested.code,
+    nested.type,
+    metadata?.error_code,
+    metadata?.error_type,
+  ];
+  const code = candidates.find((value): value is string => typeof value === "string" && GALLEY_PROXY_ERROR_CODES.has(value));
+
+  return code ? { code, message: scrubSecrets(message) } : null;
+}
+
+function anthropicProxyError(error: InstanceType<typeof Anthropic.APIError>): { code: string; message: string } | null {
+  const fromBody = extractProxyError(error.error);
+
+  if (fromBody) return fromBody;
+  const extra = error as unknown as { errorCode?: unknown; apiMessage?: unknown };
+
+  if (typeof extra.errorCode === "string" && GALLEY_PROXY_ERROR_CODES.has(extra.errorCode) && typeof extra.apiMessage === "string" && extra.apiMessage.trim()) {
+    return { code: extra.errorCode, message: scrubSecrets(extra.apiMessage.trim()) };
+  }
+  return null;
+}
+
 export function describeApiFailure(error: unknown, options: { baseURL?: string } = {}): ApiFailure {
   const say = (message: string): ApiFailure => ({ message, aborted: false });
   const host = overriddenHost(options.baseURL);
@@ -80,6 +130,11 @@ export function describeApiFailure(error: unknown, options: { baseURL?: string }
     : "The assistant can't connect: the API key in Settings was rejected. Add a fresh key in Settings.";
 
   if (error instanceof Anthropic.APIUserAbortError) return { message: "", aborted: true };
+  if (error instanceof Anthropic.APIError) {
+    const proxy = anthropicProxyError(error);
+
+    if (proxy) return say(proxy.message);
+  }
   if (error instanceof Anthropic.APIConnectionTimeoutError) {
     return say("The assistant took too long to answer, so the request was stopped. Try again in a moment.");
   }

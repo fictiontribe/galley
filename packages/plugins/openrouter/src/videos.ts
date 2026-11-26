@@ -17,7 +17,7 @@
  * only answers "where is it now".
  */
 import { ProviderError, type ProviderCallContext, type VideoGenerationRequest, type VideoJobState, type VideoModelInfo, type VideoProviderPlugin } from "@galley/plugin-kit";
-import { call, classify, dataUrl, headers, money, readBody, scrub } from "./client";
+import { call, classify, dataUrl, headers, money, readBody, resolveBaseUrl, scrub, type BaseUrlOption } from "./client";
 
 interface CatalogueVideoModel {
   id?: string;
@@ -84,21 +84,23 @@ export function videoRecordFrom(model: CatalogueVideoModel): VideoModelInfo | nu
   };
 }
 
-export function createVideoCatalogue(options: { baseUrl: string; cacheMs: number; now: () => number }) {
-  let cache: { at: number; models: VideoModelInfo[] } | null = null;
+export function createVideoCatalogue(options: { baseUrl: BaseUrlOption; cacheMs: number; now: () => number }) {
+  let cache: { at: number; base: string; models: VideoModelInfo[] } | null = null;
 
   return {
     async models(ctx: ProviderCallContext): Promise<VideoModelInfo[]> {
-      if (cache && options.now() - cache.at < options.cacheMs) return cache.models;
+      const base = resolveBaseUrl(options.baseUrl);
+
+      if (cache && cache.base === base && options.now() - cache.at < options.cacheMs) return cache.models;
       if (!ctx.key) return cache?.models ?? FALLBACK_VIDEO_MODELS;
       try {
-        const response = await call(ctx, `${options.baseUrl}/videos/models`, { method: "GET", headers: headers(ctx, false) }, "video");
+        const response = await call(ctx, `${base}/videos/models`, { method: "GET", headers: headers(ctx, false) }, "video");
         const body = await readBody(response);
 
         if (!response.ok) throw classify(response.status, body, ctx.key, "video");
         const models = ((body as { data?: CatalogueVideoModel[] }).data ?? []).map(videoRecordFrom).filter((model): model is VideoModelInfo => model !== null);
 
-        if (models.length) cache = { at: options.now(), models: models.sort((a, b) => a.label.localeCompare(b.label)) };
+        if (models.length) cache = { at: options.now(), base, models: models.sort((a, b) => a.label.localeCompare(b.label)) };
       } catch (error) {
         ctx.log.warn(`couldn't read the video model list, so the built-in list is used: ${error instanceof ProviderError ? error.detail : String(error)}`);
       }
@@ -129,7 +131,7 @@ function jobUrl(baseUrl: string, jobId: string, suffix = ""): string {
   return `${baseUrl}/videos/${encodeURIComponent(jobId)}${suffix}`;
 }
 
-export function videoProvider(catalogue: Catalogue, options: { baseUrl: string }): VideoProviderPlugin {
+export function videoProvider(catalogue: Catalogue, options: { baseUrl: BaseUrlOption }): VideoProviderPlugin {
   return {
     id: "openrouter",
     label: "OpenRouter",
@@ -156,7 +158,7 @@ export function videoProvider(catalogue: Catalogue, options: { baseUrl: string }
         ...(request.audio !== undefined ? { generate_audio: request.audio } : {}),
         ...(request.firstFrame ? { frame_images: [{ type: "image_url", image_url: { url: dataUrl(request.firstFrame.data, request.firstFrame.mime) }, frame_type: "first_frame" }] } : {}),
       };
-      const response = await call(ctx, `${options.baseUrl}/videos`, { method: "POST", headers: headers(ctx), body: JSON.stringify(body) }, "video");
+      const response = await call(ctx, `${resolveBaseUrl(options.baseUrl)}/videos`, { method: "POST", headers: headers(ctx), body: JSON.stringify(body) }, "video");
       const json = (await readBody(response)) as JobBody;
 
       if (!response.ok) throw classify(response.status, json, ctx.key, "video");
@@ -165,7 +167,7 @@ export function videoProvider(catalogue: Catalogue, options: { baseUrl: string }
     },
 
     async poll(jobId, ctx): Promise<VideoJobState> {
-      const response = await call(ctx, jobUrl(options.baseUrl, jobId), { method: "GET", headers: headers(ctx, false) }, "video");
+      const response = await call(ctx, jobUrl(resolveBaseUrl(options.baseUrl), jobId), { method: "GET", headers: headers(ctx, false) }, "video");
       const json = (await readBody(response)) as JobBody;
 
       if (!response.ok) throw classify(response.status, json, ctx.key, "video");
@@ -192,7 +194,7 @@ export function videoProvider(catalogue: Catalogue, options: { baseUrl: string }
     },
 
     async download(jobId, index, ctx) {
-      const response = await call(ctx, jobUrl(options.baseUrl, jobId, `/content?index=${Math.max(0, Math.floor(index))}`), { method: "GET", headers: headers(ctx, false) }, "video");
+      const response = await call(ctx, jobUrl(resolveBaseUrl(options.baseUrl), jobId, `/content?index=${Math.max(0, Math.floor(index))}`), { method: "GET", headers: headers(ctx, false) }, "video");
 
       if (!response.ok) throw classify(response.status, await readBody(response), ctx.key, "video");
       const data = new Uint8Array(await response.arrayBuffer());

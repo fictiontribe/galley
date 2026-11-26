@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ImageAspect, ImageCandidate, MediaItem } from "@galley/core/types";
 import { api, candidateUrl, errorShape, isApiFailure } from "@/lib/api";
+import { useManagedAi } from "@/lib/credits";
 import { invalidate, useQuery } from "@/lib/query";
 import { keys } from "@/lib/sync";
 import { Button, ErrorState, Field, Input, ProofMark, SegmentedControl, Select, Skeleton, Textarea, buttonClass, cx } from "@/ui";
@@ -36,7 +37,11 @@ export function GeneratePanel({ siteId, onSaved, initialPrompt = "" }: GenerateP
   const providers = useQuery(["images", "providers"], () => api("GET /api/images/providers"));
   const settings = useQuery(keys.settings(), () => api("GET /api/settings"));
   const mayChooseService = useMay()("PATCH /api/settings");
-  const configured = useMemo(() => (providers.data?.providers ?? []).filter((provider) => provider.configured), [providers.data]);
+  const { managed, creditMillicents, disabled: aiDisabled, manageUrl } = useManagedAi();
+  const configured = useMemo(
+    () => (providers.data?.providers ?? []).filter((provider) => provider.configured && !(aiDisabled && provider.id !== PLACEHOLDER)),
+    [providers.data, aiDisabled],
+  );
   // The site's imagery direction rides along with every request, as it does when the assistant makes an image.
   const brandDirection = useImageryDirection(siteId);
 
@@ -135,7 +140,33 @@ export function GeneratePanel({ siteId, onSaved, initialPrompt = "" }: GenerateP
         <p className="g-margin-note app-generate__note">
           <ProofMark kind="stet" />
           <span>
-            {mayChooseService ? (
+            {managed && aiDisabled ? (
+              <>
+                AI is switched off for this site, so only placeholders are available. A workspace manager can turn AI on in{" "}
+                {manageUrl ? (
+                  <a className="g-link" href={manageUrl} target="_blank" rel="noopener noreferrer">
+                    Galley Cloud
+                  </a>
+                ) : (
+                  "Galley Cloud"
+                )}
+                .
+              </>
+            ) : managed ? (
+              <>
+                These will be placeholders: simple artwork labelled with your description. Choose an image service below
+                {mayChooseService ? (
+                  <>
+                    {" "}
+                    or set a default in{" "}
+                    <Link className="g-link" to="/settings#images">
+                      Settings
+                    </Link>
+                  </>
+                ) : null}{" "}
+                to make real images using your Galley AI credits.
+              </>
+            ) : mayChooseService ? (
               <>
                 These will be placeholders: simple artwork labelled with your description. Choosing an image service in{" "}
                 <Link className="g-link" to="/settings#images">
@@ -164,16 +195,23 @@ export function GeneratePanel({ siteId, onSaved, initialPrompt = "" }: GenerateP
               setProviderId(next);
               setModelId(allProviders.find((item) => item.id === next)?.defaultModel ?? "");
             }}
-            options={allProviders.map((item) => ({
-              value: item.id,
-              label: item.id === PLACEHOLDER ? "Built-in placeholders" : item.configured ? item.label : `${item.label} — connect in Settings`,
-              disabled: !item.configured,
-            }))}
+            options={allProviders.map((item) => {
+              const available = item.configured && !(aiDisabled && item.id !== PLACEHOLDER);
+              const label =
+                item.id === PLACEHOLDER
+                  ? "Built-in placeholders"
+                  : available
+                    ? item.label
+                    : managed
+                      ? `${item.label} — ${aiDisabled ? "switched off" : "unavailable"}`
+                      : `${item.label} — connect in Settings`;
+              return { value: item.id, label, disabled: !available };
+            })}
           />
         </Field>
         {provider && provider.models.length > 1 ? (
           <Field label="Model" hint={imageModelFacts(provider, provider.models.find((model) => model.id === modelId)) || undefined}>
-            <Select value={modelId} onChange={setModelId} options={provider.models.map((model) => ({ value: model.id, label: modelOptionLabel(model) }))} />
+            <Select value={modelId} onChange={setModelId} options={provider.models.map((model) => ({ value: model.id, label: modelOptionLabel(model, managed ? creditMillicents : undefined) }))} />
           </Field>
         ) : null}
       </div>
@@ -197,9 +235,17 @@ export function GeneratePanel({ siteId, onSaved, initialPrompt = "" }: GenerateP
           detail={errorShape(error).detail}
           actions={
             unconfigured ? (
-              <SettingsLink route="PATCH /api/settings" className={buttonClass("secondary", "sm")} to="/settings#images">
-                Open settings
-              </SettingsLink>
+              managed ? (
+                manageUrl ? (
+                  <a className={buttonClass("secondary", "sm")} href={manageUrl} target="_blank" rel="noopener noreferrer">
+                    Open Galley Cloud
+                  </a>
+                ) : undefined
+              ) : (
+                <SettingsLink route="PATCH /api/settings" className={buttonClass("secondary", "sm")} to="/settings#images">
+                  Open settings
+                </SettingsLink>
+              )
             ) : undefined
           }
         />

@@ -38,18 +38,35 @@
     return true;
   }
 
-  try {
-    var ui = read("galley.ui");
-    var appearance = ui && ui.state && ui.state.theme;
-    if (appearance === "light" || appearance === "dark" || appearance === "system") root.dataset.theme = appearance;
+  function validTheme(value) {
+    return value === "light" || value === "dark" || value === "system";
+  }
 
+  try {
     var start = self.galleyStart || null;
+    var ui = read("galley.ui");
+    var localTheme = ui && ui.state && validTheme(ui.state.theme) ? ui.state.theme : null;
+    var themeChosen = Boolean(ui && ui.state && ui.state.themeChosen === true);
+    var serverTheme = start && validTheme(start.theme) ? start.theme : null;
+    var keeper = start && start.keeper === "browser" ? "browser" : start && start.keeper === "server" ? "server" : null;
+    var appearance;
+    if (keeper === "browser") {
+      appearance = themeChosen && localTheme ? localTheme : serverTheme || localTheme || "system";
+    } else if (keeper === "server") {
+      appearance = serverTheme || localTheme || "system";
+    } else {
+      appearance = localTheme || serverTheme || "system";
+    }
+    root.dataset.theme = appearance;
+
+    var shown = appearance === "dark" || (appearance === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+    root.style.colorScheme = shown;
+
     var mine = read("galley.look");
     var fromServer = start && valid(start.look) ? start.look : null;
     var look = fromServer && (start.keeper === "server" || !(mine && mine.chosen)) ? fromServer : mine && valid(mine.look) ? mine.look : fromServer;
     if (!look) return;
 
-    var shown = root.dataset.theme === "dark" || (root.dataset.theme === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
     root.setAttribute("data-look", look.id);
     for (var s in SWITCHES) root.setAttribute("data-look-" + s, look.switches[s]);
     for (var j = 0; j < SEEDS.length; j++) {

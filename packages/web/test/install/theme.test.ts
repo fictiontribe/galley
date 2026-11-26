@@ -107,13 +107,14 @@ describe("the theme switch, hosted install", () => {
     await click(themeSwitch());
     expect(shownTheme()).toBe("dark");
     expect(stored()).toMatchObject({ theme: "dark", themeChosen: true });
-    // Coming back to the window reads the install's settings again and leaves this person's theme alone.
+    // Coming back to the window leaves this person's theme alone and avoids redundant /api/settings fetches.
+    const settingsBeforeFocus = calls(server, "GET", "/api/settings").length;
     const { act } = await import("react");
     await act(async () => {
       window.dispatchEvent(new Event("focus"));
     });
-    await until(() => expect(calls(server, "GET", "/api/settings").length).toBeGreaterThan(1));
     await settle();
+    expect(calls(server, "GET", "/api/settings").length).toBe(settingsBeforeFocus);
     expect(shownTheme()).toBe("dark");
     expect(calls(server, "PATCH", "/api/settings")).toHaveLength(0);
     expect(refusals(server)).toEqual([]);
