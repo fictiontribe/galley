@@ -70,6 +70,11 @@ what is built; when something here ships, it moves to the
   server, and the server's access token can sign someone out or switch
   them off. Linking accounts from People, and showing owners identities
   and removed accounts there, come later.
+- **0.4.6**: each person can connect their own account to the identity
+  provider in the app, and People shows how everyone signs in, the accounts
+  that were removed and **Let them back**; with a provider set up, an
+  account linked to it never signs in with a password; the guide to running
+  a hosted install covers signing in through a provider step by step.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.
