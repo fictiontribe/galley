@@ -15,16 +15,16 @@ Galley asks every adapter whether it recognises the site; the most confident des
 | Adapter | Recognised by | Runs it with | Content from |
 | --- | --- | --- | --- |
 | **Astro** | the `astro` package, `astro.config.*` | the `dev` script; port from the config (4321) | the content config, read statically; `src/data`; routes from `src/pages` — [details](/docs/astro/content-collections/) |
-| Docusaurus | `@docusaurus/core`, `docusaurus.config.*` | the `dev`/`start` script; port 3000 | `docs`, `blog`, `src/pages`; data in `data`; live address from the config's `url` |
-| Nuxt | `nuxt`, `@nuxt/content`, `nuxt.config.*` | the `dev` script; port 3000 | `content`; data in `data`, `content/data` |
-| Next.js | `next`, `next.config.*` | the `dev` script; port 3000 | `content`, `posts`, `_posts`, `src/content`, `data/blog`; data in `data`, `src/data` |
-| SvelteKit | `@sveltejs/kit`, `svelte.config.*` | the `dev` script; port 5173 | `src/content`, `src/posts`, `content`, `posts`; data in `src/data`, `src/lib/data` |
-| Eleventy | `@11ty/eleventy`, `.eleventy.js` / `eleventy.config.*` | the `dev`/`start` script; port 8080 | `src`, `content` or the root; data in `_data`, `src/_data` |
-| Hugo | `hugo.toml` (or `.yaml`/`.json`); `config.toml` with a `content/` folder | `hugo server`, port 1313 | `content`; data in `data`; live address from `baseURL` (front matter in TOML is read-only) |
-| Jekyll | `_config.yml` with `_posts/` or a `Gemfile` | `bundle exec jekyll serve`, port 4000 | `_posts` and the root; data in `_data`; posts get no URL pattern (their permalinks are date-based) |
+| Docusaurus | `@docusaurus/core`, `docusaurus.config.*` | the `dev`/`start` script; port 3000 | `docusaurus.config.*` (classic preset and standalone `docs`, `blog` and `pages` plugins, `url`, `baseUrl`, `trailingSlash`, `staticDirectories`); data in `data` |
+| Nuxt | `nuxt`, `@nuxt/content`, `nuxt.config.*` | the `dev` script; port from `devServer.port` (3000) | `nuxt.config.*` (`srcDir`, `@nuxt/content` v2 `content.sources`) and `@nuxt/content` v3 `content.config.*` (`defineCollection` and Zod schemas); clears `.data/content/contents.sqlite` on preview restarts |
+| Next.js | `next`, `next.config.*` | the `dev` script; port 3000 | `next.config.*` (`output`, `distDir`, `trailingSlash`, `basePath`, `pageExtensions`), MDX route pages, Contentlayer (`contentlayer.config.*`), Velite (`velite.config.*`), plus conventional content and data folders |
+| SvelteKit | `@sveltejs/kit`, `svelte.config.*` | the `dev` script; port from `vite.config.*` (5173) | `svelte.config.*` and `vite.config.*` (custom routes/assets/base paths, MDsveX `.svx` route pages), plus conventional content and data folders |
+| Eleventy | `@11ty/eleventy`, `.eleventy.*` / `eleventy.config.*` | the `dev`/`start` script; port 8080 | `eleventy.config.*` / `.eleventy.*` (object and fluent v3 configs, `dir.*`, `pathPrefix`, `addPassthroughCopy` media), directory data files (`*.11tydata.*` tags and permalinks), and global data |
+| Hugo | `hugo.*`, `config.*`, or `config/_default/` | `hugo server`, port 1313 | root and `config/_default/` configs (`baseURL`, `contentDir`, `publishDir`, `staticDir`, `dataDir`, `uglyURLs`), multilingual `[languages]` and `[permalinks]` (front matter in TOML is read-only) |
+| Jekyll | `_config.yml` / `_config.yaml` with `_posts/` or a `Gemfile` | `bundle exec jekyll serve`, port 4000 | `_config.yml` (`url`, `baseurl`, `source`, `destination`, `collections_dir`, `data_dir`, `collections:` with `output` and `permalink`), `_posts` and `_data` |
 | Generic | any folder (weakly, so anything else wins) | the `dev`/`start`/`serve` script, if there is one | `content`, `src/content` or the root: any folder with two or more markdown files that start with front matter; data in `data`, `_data`, `src/data`. No URL patterns — without a framework there is no telling where pages are served. |
 
-Only the Astro adapter reads its framework's own configuration. The others are **convention adapters**: they know how the framework is usually run and where its content usually lives, and find collections by looking. They are the floor, not the ceiling — a full adapter for any of them is welcome, and a worked [Eleventy adapter]({repository}/tree/main/examples/adapter-eleventy) that reads Eleventy's own config is in the repository as an example. When detection gets a convention site wrong, [`galley.config.json`](/docs/configuration/) corrects it.
+All eight framework adapters read each framework's own configuration statically, without running site code; Astro fits deepest because the site kit and starters are Astro. Adapters for other frameworks are welcome — a worked standalone [Eleventy adapter]({repository}/tree/main/examples/adapter-eleventy) is in the repository as an example. When detection gets something wrong, [`galley.config.json`](/docs/configuration/) corrects it.
 
 ## Loading a site's own adapter
 

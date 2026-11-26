@@ -35,13 +35,12 @@ export const DEFAULT_BRAND: BrandConfig = {
   docsUrl: `${SITE_URL}/docs`,
 };
 
-export const VERSION = "0.4.8";
+export const VERSION = "0.4.9";
 
 /**
- * Where the hosted install's image is expected to be published: the GitHub
- * container registry, under the same organisation as the repository. Nothing
- * is published there yet (RELEASING.md lists the registry as not chosen);
- * "Host the editor online" runs `${IMAGE_REPOSITORY}:${VERSION}` unless
- * GALLEY_HOSTING_IMAGE names another image.
+ * Where the hosted install's image is published: the GitHub Container Registry,
+ * under the same organisation as the repository. "Host the editor online" runs
+ * `${IMAGE_REPOSITORY}:${VERSION}` unless GALLEY_HOSTING_IMAGE names another
+ * image.
  */
 export const IMAGE_REPOSITORY = `ghcr.io${new URL(REPOSITORY_URL).pathname.toLowerCase()}`;

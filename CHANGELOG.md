@@ -5,6 +5,89 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
+## 0.4.9 — 2026-11-26
+
+**Full built-in adapters for seven more frameworks, putting an earlier version
+back live and holding multiple custom domains, idempotent form delivery for
+trusted relays, a multi-arch container image published to GitHub Container
+Registry, and standalone kit tarballs checked in CI.** Existing Astro sites,
+single-domain deploy configurations and unauthenticated browser form posts keep
+working as before.
+
+### Added
+
+- **Full built-in adapters beyond Astro.** Docusaurus, Nuxt, Next.js,
+  SvelteKit, Eleventy, Hugo and Jekyll now read each framework's own
+  configuration statically (never running site code), written against the
+  public adapter API and checked by `@galley/adapter-kit`:
+  - **Docusaurus** reads `docusaurus.config.{ts,js,mjs,cjs}` (`url`, `baseUrl`,
+    `trailingSlash`, `staticDirectories`, classic preset `docs`, `blog` and
+    `pages` options including docs-only and blog-only `"/"` modes, and
+    standalone multi-instance `@docusaurus/plugin-content-{docs,blog,pages}`
+    plugins).
+  - **Nuxt** reads `nuxt.config.*` (`srcDir`, `dir.public`,
+    `nitro.output.publicDir`, `app.baseURL`, `router.options.strict`,
+    `devServer.port`, `site.url`), `@nuxt/content` v2 `content.sources`, and
+    `@nuxt/content` v3 `content.config.*` (`defineCollection` page and data
+    collections with their Zod schemas). Its `forgetPreviewSaves` clears
+    `.data/content/contents.sqlite` (and its `-wal` and `-shm` files) before
+    preview restarts so a fresh schema or content change isn't masked by an
+    older cache.
+  - **Next.js** reads `next.config.{ts,mjs,js,cjs}` (including wrapped configs
+    such as `withMDX` and `withContentlayer`: `output`, `distDir`,
+    `trailingSlash`, `basePath`, `pageExtensions`), MDX route pages
+    (`pages/**/*.{md,mdx}`, `app/**/page.{md,mdx}`), Contentlayer
+    (`contentlayer.config.*`) and Velite (`velite.config.*`).
+  - **SvelteKit** reads `svelte.config.*` and `vite.config.*` (custom
+    `kit.files.routes`, `kit.files.assets`, `kit.paths.base`, `outDir`,
+    `server.port`, MDsveX `.svx` extensions and `+page.{md,mdx,svx}` route
+    pages).
+  - **Eleventy** reads `eleventy.config.*` and `.eleventy.*` (object configs
+    and Eleventy 3 fluent `set*Directory` and `setPathPrefix` calls),
+    `addPassthroughCopy` media folders, and directory data files
+    (`*.11tydata.{json,js,cjs,mjs}` and `<dir>/<name>.json`) for tags and
+    permalinks.
+  - **Hugo** reads root (`hugo.*`, `config.*`) and split `config/_default/`
+    configs (`baseURL`, `contentDir`, `publishDir`, `staticDir`, `dataDir`,
+    `archetypeDir`, `uglyURLs`), multilingual `[languages]` with separate
+    `contentDir` folders, and `[permalinks]` rules.
+  - **Jekyll** reads `_config.yml` and `_config.yaml` (`url`, `baseurl`,
+    `source`, `destination`, `collections_dir`, `data_dir`, `layouts_dir`,
+    `includes_dir`, `exclude`, and `collections:` with `output` and
+    `permalink` rules).
+- **Putting an earlier version back live.** The Online screen lists recent
+  versions from Cloudflare and Vercel (and any custom deploy target that
+  provides `list`), with **Make live** to roll back or promote a previous
+  version without rebuilding
+  (`POST /api/sites/:siteId/deployments/:deploymentId/promote`, available to
+  owners and editors).
+- **Multiple custom domains per site.** `deploy.domains` in
+  `galley.config.json` holds up to 20 custom domains while keeping
+  `deploy.domain` as the primary domain.
+  `POST /api/sites/:siteId/deploy/domain/check` and
+  `DELETE /api/sites/:siteId/deploy/domain` accept an optional `hostname` so
+  additional domains can be checked and detached one by one.
+- **Source-based and secret-free deploy targets.** A custom deploy target can
+  implement `deployFromSource` to build and deploy directly from a published
+  commit or branch on the host rather than uploading a local build, and can
+  leave `credentials` empty when the host handles authentication outside stored
+  secrets.
+- **Idempotent authenticated form delivery.** `POST /f/:siteId` authenticated
+  with `X-Capture-Key` accepts `X-Capture-Id` and `X-Captured-At` (strict
+  ISO-8601 with timezone, or positive epoch milliseconds, up to 5 minutes ahead
+  of clock skew) so a trusted relay can retry delivery without storing
+  duplicates or re-sending notifications. Re-delivering a known id answers
+  `{ ok: true, id, duplicate: true }`.
+- **Container image on GitHub Container Registry.** `.github/workflows/release.yml`
+  builds `Dockerfile` for `linux/amd64`, smoke-tests `GET /healthz`, and pushes
+  a multi-arch (`linux/amd64`, `linux/arm64`) image to
+  `ghcr.io/fictiontribe/galley:<version>` (plus `<major>.<minor>` and `latest`
+  for non-prerelease tags).
+- **Standalone kit tarball verification.** `pnpm verify:kits`
+  (`scripts/verify-kits-pack.mjs`), run in CI, packs and verifies standalone
+  tarballs of `@galley/astro`, `@galley/adapter-kit` and `@galley/plugin-kit`
+  outside the workspace.
+
 ## 0.4.8 — 2026-11-26
 
 **Embedding, fourth part (experimental): an extension can follow what

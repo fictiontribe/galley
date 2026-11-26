@@ -85,6 +85,14 @@ what is built; when something here ships, it moves to the
   edition's additions can draw in twelve more places (the entry form,
   Proof, Publish, Arrange and the preview) and outline sections of the
   previewed page in a colour.
+- **0.4.9**: full built-in adapters that read each framework's own
+  configuration statically for Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy,
+  Hugo and Jekyll (third-party adapters for other frameworks remain welcome via
+  [`docs/adapters.md`](docs/adapters.md)); putting an earlier version back live
+  from the Online screen, up to 20 custom domains per site and source-based
+  deploy targets; idempotent authenticated form delivery; a multi-arch
+  container image published to `ghcr.io/fictiontribe/galley` on each release,
+  and standalone kit tarball verification in CI.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.
@@ -97,7 +105,8 @@ In final checks.
   and a stand-in WordPress site; not yet against a real one.
 - **The editor hosted on your own server**, as an install that serves one
   site. Released in 0.2.0 and run for real, on its image and on a server
-  behind HTTPS; its image isn't on a registry yet
+  behind HTTPS; its multi-arch image is published to
+  `ghcr.io/fictiontribe/galley` on each release
   ([`docs/cloud-install.md`](docs/cloud-install.md)). Its accounts and roles
   (owner, editor, contributor) are built, tested and tried in a real
   browser, not yet with real e-mail.
@@ -125,12 +134,6 @@ Built and waiting to be proven, or being built.
 - **The kits on npm as packages**: the site kit (`@galley/astro`), the adapter
   kit and the plugin kit. Sites carry the site kit vendored today.
 - **The starters listed in Astro's catalogue** of themes.
-- **Full adapters beyond Astro.** Docusaurus, Nuxt, Next.js, SvelteKit,
-  Eleventy, Hugo and Jekyll are recognised by their conventions; that is the
-  floor. A full adapter reads the framework's own configuration. This is a
-  good place to contribute: [`docs/adapters.md`](docs/adapters.md) shows how,
-  and [`examples/adapter-eleventy`](examples/adapter-eleventy) is a worked
-  example.
 
 ## Later
 

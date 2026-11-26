@@ -8,19 +8,19 @@ order: 2
 
 This page is for whoever runs Galley on a server so a site can be edited from any browser. A **hosted install** is the same server and app as on a laptop, for **one site**, for the people its owner lets in — each with their own e-mail and password, or through your own identity provider — with everything it keeps in one data folder. Ten sites are ten installs that share nothing. The desktop app keeps its list of many sites; a hosted install has no Sites screen.
 
-> **Status.** New in 0.2.0. **The image isn't published to a registry yet**, so you build it yourself (below). Run for real on 2026-11-24, as this page describes it: built from source on a small Google Cloud VM and running this project's own website's editor behind Caddy on a real domain; a whole first run, preview, Proof, Publish, restart, upgrade, backup and restore on the real image. Not yet run: on Fly.io or with a Cloudflare tunnel, behind Cloudflare Access, with a deploy key accepted by GitHub, GitLab or Bitbucket end to end, or `scripts/create-install.sh` beyond its dry run. **Accounts and roles came in 0.3.0, after that run**: covered by automated tests, by a rehearsal over HTTP against the real server on one computer (`scripts/rehearse-accounts.mjs`) and by a pass in a real browser (first run, signing in, People, an invitation, joining from its link, a contributor's screens and switching someone off), not yet tried on the real image or with a real mail server. The full account: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#what-has-been-run).
+> **Status.** New in 0.2.0. From 0.4.9, the multi-arch container image (`linux/amd64`, `linux/arm64`) is published to `ghcr.io/fictiontribe/galley` on each release (you can also build it yourself, below). Run for real on 2026-11-24, as this page describes it: built from source on a small Google Cloud VM and running this project's own website's editor behind Caddy on a real domain; a whole first run, preview, Proof, Publish, restart, upgrade, backup and restore on the real image. Not yet run: on Fly.io or with a Cloudflare tunnel, behind Cloudflare Access, with a deploy key accepted by GitHub, GitLab or Bitbucket end to end, or `scripts/create-install.sh` beyond its dry run. **Accounts and roles came in 0.3.0, after that run**: covered by automated tests, by a rehearsal over HTTP against the real server on one computer (`scripts/rehearse-accounts.mjs`) and by a pass in a real browser (first run, signing in, People, an invitation, joining from its link, a contributor's screens and switching someone off), not yet tried on the real image or with a real mail server. The full account: [`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#what-has-been-run).
 
 ## Start one
 
 You need a server with Docker and its compose plugin, ports 80 and 443 open, about 2 GB of memory for the editor, and a domain you can add three DNS names to.
 
-**Build the image** on the server, in a clone of the repository. It needs Docker's BuildKit — the default builder of Docker Engine with its buildx plugin; with Debian's and Ubuntu's own `docker.io` package, install `docker-buildx` beside it. The old builder stops at the Dockerfile's `--platform=$BUILDPLATFORM`.
+**Use the published image** (`ghcr.io/fictiontribe/galley:0.4.9`), or build the image yourself on the server in a clone of the repository. Building needs Docker's BuildKit — the default builder of Docker Engine with its buildx plugin; with Debian's and Ubuntu's own `docker.io` package, install `docker-buildx` beside it. The old builder stops at the Dockerfile's `--platform=$BUILDPLATFORM`.
 
 ```sh
 docker build -t galley .
 ```
 
-**Write the files for one install.** The repository's own [`docker-compose.yml`]({repository}/blob/main/docker-compose.yml), [`Caddyfile`]({repository}/blob/main/Caddyfile) and [`.env.example`]({repository}/blob/main/.env.example) are exactly these files for `cms.example.com`. Copy them — `.env.example` as `.env`, the `image:` line naming the image you built — and change the names, or write them for your own names with the command line, from a clone on your own computer with its dependencies installed ([`CONTRIBUTING.md`]({repository}/blob/main/CONTRIBUTING.md); `galley host` isn't in a release on npm yet):
+**Write the files for one install.** The repository's own [`docker-compose.yml`]({repository}/blob/main/docker-compose.yml), [`Caddyfile`]({repository}/blob/main/Caddyfile) and [`.env.example`]({repository}/blob/main/.env.example) are exactly these files for `cms.example.com`. Copy them — `.env.example` as `.env`, using `ghcr.io/fictiontribe/galley:0.4.9` or the image you built — and change the names, or write them for your own names with the command line:
 
 ```sh
 node packages/cli/bin/galley.js host recipe --name acme --address cms.example.com --repository git@github.com:example/acme-site.git --image galley --out acme
@@ -30,7 +30,7 @@ node packages/cli/bin/galley.js host recipe --name acme --address cms.example.co
 ✓ Wrote compose.yaml, Caddyfile, .env to …/acme
 ```
 
-`acme/` now holds `compose.yaml` (the editor and [Caddy](https://caddyserver.com), which gets the HTTPS certificates; project `galley-acme`), `Caddyfile` (the three names, one block) and `.env` (the editor's settings; nothing secret). `--out -` prints them instead. The editor runs as the user `node` with a read-only root filesystem, every capability dropped, a 2 GB memory limit, one volume and 30 seconds to stop, and publishes no port: only Caddy reaches it. `--image` names the image you built; the default is where the image will be published.
+`acme/` now holds `compose.yaml` (the editor and [Caddy](https://caddyserver.com), which gets the HTTPS certificates; project `galley-acme`), `Caddyfile` (the three names, one block) and `.env` (the editor's settings; nothing secret). `--out -` prints them instead. The editor runs as the user `node` with a read-only root filesystem, every capability dropped, a 2 GB memory limit, one volume and 30 seconds to stop, and publishes no port: only Caddy reaches it. `--image` chooses a different image; the default is `ghcr.io/fictiontribe/galley:0.4.9`.
 
 Copy the folder to the server. Then, in that folder there:
 
@@ -52,7 +52,7 @@ Copy the folder to the server. Then, in that folder there:
 `scripts/create-install.sh` makes one install per run — its own project, its own volume, its own folder — behind one Caddy all of them share, and prints the setup link once at the end. `--dry-run` says what it would do:
 
 ```sh
-sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.4.8 --dry-run
+sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.4.9 --dry-run
 ```
 
 ```output
