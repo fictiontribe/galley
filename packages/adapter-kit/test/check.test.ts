@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import { astroAdapter, hugoAdapter } from "@galley/core/adapter";
+import { astroAdapter, docusaurusAdapter, eleventyAdapter, hugoAdapter, jekyllAdapter, nextAdapter, nuxtAdapter, sveltekitAdapter } from "@galley/core/adapter";
 import { CHECKS, checkAdapter, conventionAdapter, defineAdapter, formatReport, type AdapterReport, type GalleyAdapter } from "../src/index";
 
 const CORE_FIXTURES = fileURLToPath(new URL("../../core/test/fixtures/", import.meta.url));
@@ -224,5 +224,251 @@ describe("the built-in adapters pass the kit", () => {
 
     expect(failed(report)).toEqual([]);
     expect(status(report, "round-trip")?.detail).toMatch(/3 entries edited and restored; 2 TOML files skipped\./);
+  });
+
+  it("Docusaurus, on classic preset and docs-only fixtures", async () => {
+    const classic = fixture({
+      "package.json": JSON.stringify({ scripts: { start: "docusaurus start", build: "docusaurus build" }, dependencies: { "@docusaurus/core": "^3.7.0" } }),
+      "docusaurus.config.ts": `export default { url: "https://docs.harbour-lantern.org", baseUrl: "/", presets: [["classic", { docs: { path: "guides", routeBasePath: "guides" }, blog: { path: "blog", routeBasePath: "blog" } }]] };`,
+      "guides/intro.md": "---\ntitle: Intro\n---\nHello.\n",
+      "guides/setup.md": "---\ntitle: Setup\n---\nSteps.\n",
+      "blog/launch.md": "---\ntitle: Launch\n---\nNews.\n",
+      "blog/update.md": "---\ntitle: Update\n---\nMore news.\n",
+      "data/links.json": '{ "site": "Harbour" }\n',
+    });
+    const docsOnly = fixture({
+      "package.json": JSON.stringify({ scripts: { start: "docusaurus start", build: "docusaurus build" }, dependencies: { "@docusaurus/core": "^3.7.0" } }),
+      "docusaurus.config.js": `module.exports = { url: "https://wiki.harbour-lantern.org", presets: [["classic", { docs: { routeBasePath: "/" }, blog: false }]] };`,
+      "docs/welcome.md": "---\ntitle: Welcome\n---\nHi.\n",
+      "docs/guide.md": "---\ntitle: Guide\n---\nDetails.\n",
+    });
+
+    const classicReport = await checkAdapter(docusaurusAdapter, classic, {
+      collections: [
+        { id: "docs", minEntries: 2, url: "/guides/{slug}/", fields: ["title"] },
+        { id: "blog", minEntries: 2, url: "/blog/{slug}/", fields: ["title"] },
+        { id: "links", url: null },
+      ],
+      dev: { command: "npm start", port: 3000 },
+    });
+    const docsOnlyReport = await checkAdapter(docusaurusAdapter, docsOnly, {
+      collections: [{ id: "docs", minEntries: 2, url: "/{slug}/" }],
+      dev: { command: "npm start", port: 3000 },
+    });
+
+    expect(failed(classicReport)).toEqual([]);
+    expect(failed(docsOnlyReport)).toEqual([]);
+  });
+
+  it("Nuxt, on @nuxt/content v3 and conventional fixtures", async () => {
+    const v3 = fixture({
+      "package.json": JSON.stringify({ scripts: { dev: "nuxt dev", build: "nuxt build" }, dependencies: { nuxt: "^3.16.0", "@nuxt/content": "^3.4.0" } }),
+      "nuxt.config.ts": `export default defineNuxtConfig({ devServer: { port: 3100 } });`,
+      "content.config.ts": `import { defineContentConfig, defineCollection, z } from "@nuxt/content";
+        export default defineContentConfig({
+          collections: {
+            posts: defineCollection({ type: "page", source: "posts/**/*.md", schema: z.object({ title: z.string() }) }),
+            authors: defineCollection({ type: "data", source: "authors/*.json" }),
+          },
+        });`,
+      "content/posts/first.md": "---\ntitle: First\n---\nOne.\n",
+      "content/posts/second.md": "---\ntitle: Second\n---\nTwo.\n",
+      "content/authors/ana.json": '{ "name": "Ana" }\n',
+      "content/authors/ben.json": '{ "name": "Ben" }\n',
+    });
+    const conventional = fixture({
+      "package.json": JSON.stringify({ scripts: { dev: "nuxt dev", build: "nuxt build" }, dependencies: { nuxt: "^3.16.0" } }),
+      "nuxt.config.ts": "export default defineNuxtConfig({});",
+      "content/blog/a.md": "---\ntitle: A\n---\nA.\n",
+      "content/blog/b.md": "---\ntitle: B\n---\nB.\n",
+    });
+
+    const v3Report = await checkAdapter(nuxtAdapter, v3, {
+      collections: [
+        { id: "posts", minEntries: 2, url: "/posts/{slug}/", fields: ["title"] },
+        { id: "authors", minEntries: 2, url: null },
+      ],
+      dev: { command: "npm run dev", port: 3100 },
+    });
+    const convReport = await checkAdapter(nuxtAdapter, conventional, {
+      collections: [{ id: "blog", minEntries: 2, url: "/blog/{slug}/" }],
+      dev: { command: "npm run dev", port: 3000 },
+    });
+
+    expect(failed(v3Report)).toEqual([]);
+    expect(failed(convReport)).toEqual([]);
+  });
+
+  it("Next.js, on wrapped MDX and Velite fixtures", async () => {
+    const mdxSite = fixture({
+      "package.json": JSON.stringify({ scripts: { dev: "next dev", build: "next build" }, dependencies: { next: "^15.2.0", "@next/mdx": "^15.2.0" } }),
+      "next.config.mjs": `import createMDX from "@next/mdx";
+        const withMDX = createMDX();
+        const nextConfig = { output: "export", pageExtensions: ["ts", "tsx", "mdx"] };
+        export default withMDX(nextConfig);`,
+      "pages/index.mdx": "---\ntitle: Home\n---\nWelcome.\n",
+      "pages/about.mdx": "---\ntitle: About\n---\nAbout.\n",
+      "content/posts/a.md": "---\ntitle: A\n---\nA.\n",
+      "content/posts/b.md": "---\ntitle: B\n---\nB.\n",
+    });
+    const veliteSite = fixture({
+      "package.json": JSON.stringify({ scripts: { dev: "next dev", build: "next build" }, dependencies: { next: "^15.2.0" } }),
+      "next.config.ts": "export default { trailingSlash: true };",
+      "velite.config.ts": `import { defineConfig, defineCollection } from "velite";
+        export default defineConfig({ collections: { notes: defineCollection({ name: "Note", pattern: "notes/**/*.md" }) } });`,
+      "content/notes/one.md": "---\ntitle: One\n---\nOne.\n",
+      "content/notes/two.md": "---\ntitle: Two\n---\nTwo.\n",
+    });
+
+    const mdxReport = await checkAdapter(nextAdapter, mdxSite, {
+      collections: [
+        { id: "pages", minEntries: 2, url: "/{slug}", fields: ["title"] },
+        { id: "posts", minEntries: 2, url: "/posts/{slug}" },
+      ],
+      dev: { command: "npm run dev", port: 3000 },
+    });
+    const veliteReport = await checkAdapter(nextAdapter, veliteSite, {
+      collections: [{ id: "notes", minEntries: 2, url: "/notes/{slug}/" }],
+      dev: { command: "npm run dev", port: 3000 },
+    });
+
+    expect(failed(mdxReport)).toEqual([]);
+    expect(failed(veliteReport)).toEqual([]);
+  });
+
+  it("SvelteKit, on custom kit.files and mdsvex fixtures", async () => {
+    const custom = fixture({
+      "package.json": JSON.stringify({ scripts: { dev: "vite dev", build: "vite build" }, devDependencies: { "@sveltejs/kit": "^2.18.0", mdsvex: "^0.12.0" } }),
+      "svelte.config.js": `import adapter from "@sveltejs/adapter-static";
+        import { mdsvex } from "mdsvex";
+        export default {
+          extensions: [".svelte", ".svx", ".md"],
+          preprocess: [mdsvex()],
+          kit: { adapter: adapter({ pages: "dist" }), files: { assets: "assets" } },
+        };`,
+      "vite.config.ts": "export default { server: { port: 5180 } };",
+      "src/posts/first.svx": "---\ntitle: First\n---\nHello.\n",
+      "src/posts/second.svx": "---\ntitle: Second\n---\nWorld.\n",
+      "src/routes/+page.svx": "---\ntitle: Home\n---\nWelcome.\n",
+      "src/lib/data/site.json": '{ "title": "Harbour" }\n',
+    });
+    const minimal = fixture({
+      "package.json": JSON.stringify({ scripts: { dev: "vite dev", build: "vite build" }, devDependencies: { "@sveltejs/kit": "^2.18.0" } }),
+      "svelte.config.js": "export default {};",
+      "content/notes/a.md": "---\ntitle: A\n---\nA.\n",
+      "content/notes/b.md": "---\ntitle: B\n---\nB.\n",
+    });
+
+    const customReport = await checkAdapter(sveltekitAdapter, custom, {
+      collections: [
+        { id: "posts", minEntries: 2, url: "/posts/{slug}/", fields: ["title"] },
+        { id: "pages", minEntries: 1, url: null },
+        { id: "site", url: null },
+      ],
+      dev: { command: "npm run dev", port: 5180 },
+    });
+    const minimalReport = await checkAdapter(sveltekitAdapter, minimal, {
+      collections: [{ id: "notes", minEntries: 2, url: "/notes/{slug}/" }],
+      dev: { command: "npm run dev", port: 5173 },
+    });
+
+    expect(failed(customReport)).toEqual([]);
+    expect(failed(minimalReport)).toEqual([]);
+  });
+
+  it("Eleventy, on fluent v3 and classic fixtures", async () => {
+    const fluent = fixture({
+      "package.json": JSON.stringify({ scripts: { start: "eleventy --serve", build: "eleventy" }, devDependencies: { "@11ty/eleventy": "^3.0.0" } }),
+      "eleventy.config.js": `export default function (eleventyConfig) {
+        eleventyConfig.setInputDirectory("src");
+        eleventyConfig.setOutputDirectory("dist");
+        eleventyConfig.addPassthroughCopy({ "src/img": "assets/img" });
+      }`,
+      "src/img/hero.png": "",
+      "src/index.md": "---\ntitle: Home\n---\nWelcome.\n",
+      "src/about.md": "---\ntitle: About\n---\nStory.\n",
+      "src/posts/posts.11tydata.json": JSON.stringify({ tags: "posts", permalink: "/journal/{{ page.fileSlug }}/" }),
+      "src/posts/first.md": "---\ntitle: First\n---\nOne.\n",
+      "src/posts/second.md": "---\ntitle: Second\n---\nTwo.\n",
+      "src/_data/site.json": '{ "name": "Harbour" }\n',
+    });
+    const classic = fixture({
+      ".eleventy.cjs": `module.exports = function () { return { dir: { output: "_site" } }; };`,
+      "notes/a.md": "---\ntitle: A\n---\nA.\n",
+      "notes/b.md": "---\ntitle: B\n---\nB.\n",
+      "_data/hours.yaml": "weekdays: 9-5\n",
+    });
+
+    const fluentReport = await checkAdapter(eleventyAdapter, fluent, {
+      collections: [
+        { id: "posts", minEntries: 2, url: "/journal/{slug}/", fields: ["title"] },
+        { id: "pages", minEntries: 2, url: "/{slug}/" },
+        { id: "site", url: null },
+      ],
+      dev: { command: "npm start", port: 8080 },
+    });
+    const classicReport = await checkAdapter(eleventyAdapter, classic, {
+      collections: [
+        { id: "notes", minEntries: 2, url: "/notes/{slug}/" },
+        { id: "hours", url: null },
+      ],
+      dev: { command: "npx @11ty/eleventy --serve", port: 8080 },
+    });
+
+    expect(failed(fluentReport)).toEqual([]);
+    expect(failed(classicReport)).toEqual([]);
+  });
+
+  it("Jekyll, on custom collections and classic _posts fixtures", async () => {
+    const custom = fixture({
+      "_config.yml": `url: https://kitchen-notes.org
+source: src
+destination: _out
+collections_dir: collections
+collections:
+  recipes:
+    output: true
+    permalink: /recipes/:name/
+  authors:
+    output: false
+`,
+      Gemfile: 'gem "jekyll"\n',
+      "src/index.md": "---\ntitle: Home\n---\nWelcome.\n",
+      "src/about.md": "---\ntitle: About\n---\nAbout.\n",
+      "src/collections/_posts/2026-05-01-sourdough.md": "---\ntitle: Sourdough\n---\nOne.\n",
+      "src/collections/_posts/2026-05-02-rye.md": "---\ntitle: Rye\n---\nTwo.\n",
+      "src/collections/_recipes/bread.md": "---\ntitle: Bread\n---\nBake.\n",
+      "src/collections/_recipes/tart.md": "---\ntitle: Tart\n---\nBake.\n",
+      "src/collections/_authors/ana.md": "---\ntitle: Ana\n---\nBaker.\n",
+      "src/_data/nav.yml": "items:\n  - label: Home\n",
+    });
+    const classic = fixture({
+      "_config.yml": "title: Field Notes\n",
+      "_posts/2026-01-01-first.md": "---\ntitle: First\n---\nOne.\n",
+      "_posts/2026-01-02-second.md": "---\ntitle: Second\n---\nTwo.\n",
+      "index.md": "---\ntitle: Home\n---\nWelcome.\n",
+      "about.md": "---\ntitle: About\n---\nAbout.\n",
+    });
+
+    const customReport = await checkAdapter(jekyllAdapter, custom, {
+      collections: [
+        { id: "posts", minEntries: 2, url: null },
+        { id: "recipes", minEntries: 2, url: "/recipes/{slug}/", fields: ["title"] },
+        { id: "authors", minEntries: 1, url: null },
+        { id: "pages", minEntries: 2, url: "/{slug}/" },
+        { id: "nav", url: null },
+      ],
+      dev: { command: "bundle exec jekyll serve", port: 4000 },
+    });
+    const classicReport = await checkAdapter(jekyllAdapter, classic, {
+      collections: [
+        { id: "posts", minEntries: 2, url: null },
+        { id: "pages", minEntries: 2, url: "/{slug}/" },
+      ],
+      dev: { command: "bundle exec jekyll serve", port: 4000 },
+    });
+
+    expect(failed(customReport)).toEqual([]);
+    expect(failed(classicReport)).toEqual([]);
   });
 });

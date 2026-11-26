@@ -20,6 +20,7 @@ const EXTENSIONS: Record<string, EntryFormat> = {
   mdown: "markdown",
   mkd: "markdown",
   mdx: "mdx",
+  svx: "markdown",
   markdoc: "markdown",
   mdoc: "markdown",
   json: "json",
