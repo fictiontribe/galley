@@ -49,6 +49,15 @@ entry says how.
   accounts is full, nothing changes and the command says to let some back
   first.
 
+### Security
+
+- **With an identity provider set up, an account that signs in through it
+  never signs in with a password**, not even one it was given while no
+  provider was set up, so removing someone at the provider takes their way
+  in away. Such a password is taken off at the next start with the provider,
+  with that account's open new-password links and sessions (a notice says
+  how many).
+
 ## 0.4.5 — 2026-11-26
 
 **Signing in through your own identity provider**, for a hosted editor: an

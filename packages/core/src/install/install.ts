@@ -687,6 +687,16 @@ export function createInstall(options: InstallOptions): Install {
       }
     }
 
+    // With the provider set up again, an account linked to it that was given a password while it wasn't loses that password.
+    if (issuer !== undefined) {
+      const dropped = await people.dropProviderAccountPasswords();
+
+      if (dropped > 0) {
+        notices.push(
+          `${dropped === 1 ? "An account that signs in through the identity provider had a password" : `${dropped} accounts that sign in through the identity provider had passwords`}, given while no provider was set up. ${dropped === 1 ? "It was" : "They were"} taken off, with any open new-password links, and ${dropped === 1 ? "that account's sessions" : "those accounts' sessions"} ended: they sign in through the provider again.`
+        );
+      }
+    }
     const passwordsOff = Boolean(options.provider?.passwordsOff);
 
     // Passwords off (GALLEY_OIDC_ONLY): kept from the first such start; every open link without the server's mark stops working.

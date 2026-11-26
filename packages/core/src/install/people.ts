@@ -115,7 +115,9 @@ export interface PeopleService {
    * Checks an e-mail and password. Without an e-mail, the password is tried
    * against the account that has none yet (an owner carried over from the
    * single password; never an account with no password or with an identity
-   * at a provider). An account with no password is refused ("no-password").
+   * at a provider). An account with no password is refused ("no-password"),
+   * and so, while a provider is set up, is one linked to it, whatever
+   * password it has: the provider is its one way in.
    * Takes as long for an unknown e-mail as for a wrong password: a stand-in
    * hash is checked when there is no such account or no password.
    */
@@ -177,6 +179,13 @@ export interface PeopleService {
    * meet an identity or removed account already under the new issuer.
    */
   rekeyIssuer(from: string, to: string): Promise<{ accounts: number; removed: number }>;
+  /**
+   * At a start with an identity provider set up: an account linked to it
+   * that has a password (from a link used while no provider was set up)
+   * loses it, with its open new-password links and every session, so the
+   * provider is again its one way in. How many did.
+   */
+  dropProviderAccountPasswords(): Promise<number>;
   /**
    * The removed accounts that signed in through a provider, oldest first: each entry's id, its identity, when it was
    * removed, and by which account (null: the server's access token, or the server).
@@ -519,10 +528,13 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
         account = wanted ? state.accounts.find((candidate) => candidate.email === wanted) : undefined;
       }
-      const matches = await verifyPassword(password, account?.passwordHash ?? (await standInHash()));
+      // While a provider is set up, an account linked to it signs in only through it: a password it was given while none was
+      // set up is no way in, or removing the person at the provider would leave them one. The stand-in hash is checked then too.
+      const usable = account && (options.providerConfigured ? signsInWithPassword(account) : account.passwordHash !== null) ? account.passwordHash : null;
+      const matches = await verifyPassword(password, usable ?? (await standInHash()));
 
       if (!account) return { ok: false, reason: "unknown", account: null };
-      if (account.passwordHash === null) return { ok: false, reason: "no-password", account: publicAccount(account) };
+      if (usable === null) return { ok: false, reason: "no-password", account: publicAccount(account) };
       if (!matches) return { ok: false, reason: "wrong", account: publicAccount(account) };
       if (account.disabled) return { ok: false, reason: "disabled", account: publicAccount(account) };
       return { ok: true, account: publicAccount(account) };
@@ -771,6 +783,25 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       });
       store.sessionsChanged();
       return result!;
+    },
+
+    async dropProviderAccountPasswords() {
+      let dropped = 0;
+
+      if (!options.providerConfigured) return 0;
+      if (!store.read().accounts.some((account) => account.identity && account.passwordHash !== null)) return 0;
+      await store.update((draft) => {
+        dropped = 0;
+        for (const account of draft.accounts) {
+          if (!account.identity || account.passwordHash === null) continue;
+          account.passwordHash = null;
+          dropPasswordLinks(draft, account.id);
+          endSessions(account);
+          dropped += 1;
+        }
+      });
+      if (dropped > 0) store.sessionsChanged();
+      return dropped;
     },
 
     async rekeyIssuer(from, to) {

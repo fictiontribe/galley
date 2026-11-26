@@ -210,3 +210,48 @@ describe("a wrong link put right on the server (linkIdentity with replace)", () 
     expect(store.read().tombstones).toEqual([]);
   });
 });
+
+describe("a password given while no provider was set up", () => {
+  async function gap() {
+    const { store } = await opened();
+    const plain = createPeople(store);
+    const sam = await plain.createOwner({ password: "correct horse battery staple", name: "Sam", email: "sam@example.com" });
+    const withProvider = createPeople(store, { providerConfigured: true });
+    const made = await withProvider.signInThroughProvider(input());
+    const pat = made.ok ? made.account.id : "";
+
+    // As a link used while no provider was set up would leave it: Pat's identity, and a password (Sam's, to keep it short).
+    await store.update((draft) => {
+      draft.accounts.find((account) => account.id === pat)!.passwordHash = draft.accounts.find((account) => account.id === sam.id)!.passwordHash;
+    });
+    return { store, plain, withProvider, pat };
+  }
+
+  it("signs in by e-mail without a provider, never while one is set up, right password or wrong; a password account does either way", async () => {
+    const { plain, withProvider } = await gap();
+
+    expect(await plain.verify("pat@example.com", "correct horse battery staple")).toMatchObject({ ok: true });
+    expect(await withProvider.verify("pat@example.com", "correct horse battery staple")).toMatchObject({ ok: false, reason: "no-password" });
+    expect(await withProvider.verify("pat@example.com", "not the password at all")).toMatchObject({ ok: false, reason: "no-password" });
+    expect(await withProvider.verify("sam@example.com", "correct horse battery staple")).toMatchObject({ ok: true });
+  });
+
+  it("is taken off by dropProviderAccountPasswords, with open new-password links and every session, only while a provider is set up", async () => {
+    const { store, plain, withProvider, pat } = await gap();
+    const before = store.read().accounts.find((account) => account.id === pat)!;
+
+    expect(await plain.dropProviderAccountPasswords()).toBe(0);
+    expect(store.read().accounts.find((account) => account.id === pat)!.passwordHash).not.toBeNull();
+    await store.update((draft) => {
+      draft.links.push({ id: "pl", kind: "password", codeSha256: "0".repeat(64), email: "pat@example.com", role: null, accountId: pat, createdBy: null, createdByName: "", createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), emailed: false });
+    });
+    expect(await withProvider.dropProviderAccountPasswords()).toBe(1);
+    const after = store.read();
+
+    expect(after.accounts.find((account) => account.id === pat)).toMatchObject({ passwordHash: null, identity: { issuer: ISSUER, subject: "sub-1" } });
+    expect(after.accounts.find((account) => account.id === pat)!.sessionsValidAfter).toBeGreaterThan(before.sessionsValidAfter);
+    expect(after.links.filter((link) => link.accountId === pat)).toEqual([]);
+    expect(after.accounts.find((account) => account.email === "sam@example.com")!.passwordHash).not.toBeNull();
+    expect(await withProvider.dropProviderAccountPasswords()).toBe(0);
+  });
+});
