@@ -1254,7 +1254,11 @@ signed in through it has no password here, and can get one the usual ways
 provider last gave**: the editor takes it at each sign-in without telling
 the address it had before. So check those addresses in People first (each
 is shown beside the person's subject). Their subjects stay recorded, so the
-same provider can be set up again.
+same provider can be set up again. **Setting it up again ends password
+sign-in for every account linked to it**: at that start, a password one of
+them was given meanwhile is taken off, with its open new-password links and
+its sessions (a notice says how many), and from then on they sign in
+through the provider only.
 
 **If the issuer changes**, stop the server and run
 `galley accounts rekey --from <old issuer> --to <new issuer>`, which moves
@@ -1858,9 +1862,10 @@ the main ones; its test titles are the claims.
 | The assistant offers each role only its tools and checks again on every call; every MCP tool, run as each role, does only what that role allows. | `core/test/ai/tools-access.test.ts`, `server/test/mcp-access.test.ts` |
 | Only an owner changes an e-mail address: their own, with their password, or anyone else's in People; it ends that person's open link. | `server/test/accounts-hardening.test.ts` |
 | Where the server e-mails links, an account's old address is told when its e-mail changes, with no link in the message and not the new address. | `server/test/accounts-links.test.ts` |
-| The identity provider is set from the server's environment only: a value that is wrong or half-given, or where the site's code could write it, stops the server from starting; so do accounts from another issuer. | `server/test/oidc-sign-in.test.ts` |
+| The identity provider is set from the server's environment only: a value that is wrong or half-given, or where the site's code could write it, stops the server from starting; so do accounts from another issuer, and `galley accounts link` refuses to link under one. | `server/test/oidc-sign-in.test.ts`, `cli/test/accounts.test.ts` |
 | A sign-in through the provider is checked in full — its state and cookie, PKCE, the ID token's one algorithm, issuer, audience, times, nonce and subject — and finds the person by issuer and subject, never by e-mail; a role claim that isn't exactly a role is refused. | `server/test/oidc-sign-in.test.ts` |
 | Someone who signs in through the provider gets no password here by any route, and an owner can't change the role the provider sets. | `server/test/oidc-sign-in.test.ts` |
+| While a provider is set up, an account linked to it never signs in with a password, even one given while none was set up; a start with the provider takes such a password off, with its links and sessions. | `server/test/oidc-passwords-off.test.ts`, `core/test/install/people-provider.test.ts` |
 | A call to the provider that is slow, fails, redirects or is too big is refused in a sentence and the server carries on; a provider that is down when the server starts doesn't stop it. | `server/test/oidc-sign-in.test.ts` |
 | Failed sign-ins through the provider count against the client they came from; requests a page elsewhere can make count nothing; a good sign-in clears nothing. | `server/test/oidc-sign-in.test.ts` |
 | A back-channel logout ends that subject's sessions and open streams, nobody else's, across a restart; a bad token ends nothing (400); it is answered 200 only once written, else 503; a sign-in begun before it is refused. | `server/test/oidc-backchannel-logout.test.ts` |
