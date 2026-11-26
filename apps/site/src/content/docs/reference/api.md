@@ -43,7 +43,7 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 
 | Route | Does | Takes | Returns | Who |
 | --- | --- | --- | --- | --- |
-| `GET /api/meta` | Version, brand, mode (`local` or `hosted`), whether the caller is signed in, whether the desktop app is the host. Answers without a session, with less detail. | — | `MetaInfo` | No sign-in |
+| `GET /api/meta` | Version, brand, mode (`local` or `hosted`), whether the caller is signed in, whether the desktop app is the host; for a signed-in caller with managed AI on (`GALLEY_AI_MANAGED`), `ai` (`AiMetaInfo`: managed, what a credit is worth, whether AI is switched off, the manage address). Answers without a session, with less detail. | — | `MetaInfo` | No sign-in |
 | `POST /api/auth/login` | Hosted install: sign in with an e-mail and password (the password alone for an owner from before accounts, who has no e-mail yet); sets the session cookie. Rate-limited. | `{ password, email? }` | `Ok` | No sign-in |
 | `POST /api/auth/logout` | Clear and revoke the session. | — | `Ok` | No sign-in |
 | `GET /api/events` | The live event stream ([below](#events)). | — | a stream | Any signed-in person |

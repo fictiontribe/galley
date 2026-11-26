@@ -15,7 +15,7 @@ import ts from "typescript";
 
 /** One line per route, where the doc comment in api.ts is missing or too long for a table. */
 const LINES = {
-  "GET /api/meta": "Version, brand, mode (`local` or `hosted`), whether the caller is signed in, whether the desktop app is the host. Answers without a session, with less detail.",
+  "GET /api/meta": "Version, brand, mode (`local` or `hosted`), whether the caller is signed in, whether the desktop app is the host; for a signed-in caller with managed AI on (`GALLEY_AI_MANAGED`), `ai` (`AiMetaInfo`: managed, what a credit is worth, whether AI is switched off, the manage address). Answers without a session, with less detail.",
   "POST /api/auth/login": "Hosted install: sign in with an e-mail and password (the password alone for an owner from before accounts, who has no e-mail yet); sets the session cookie. Rate-limited.",
   "POST /api/auth/logout": "Clear and revoke the session.",
   "GET /api/events": "The live event stream ([below](#events)).",

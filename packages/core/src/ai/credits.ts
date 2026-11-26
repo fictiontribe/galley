@@ -47,13 +47,40 @@ export function creditsFromUsd(usd: number, creditMillicents = DEFAULT_AI_CREDIT
   return Math.ceil(millicents / unit);
 }
 
+/** Plain http is taken only for this computer itself (a local or test gateway). */
+const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
+
+/**
+ * GALLEY_AI_CREDITS_URL and GALLEY_AI_MANAGE_URL as an address that is safe to use, or null: `https://`, or plain
+ * `http://` to this computer itself, with no name and password in it. The credits address is sent the install's
+ * assistant key, which must never cross a network unencrypted; the manage address becomes a link, which must never be
+ * `javascript:` or another scheme. Anything else, or an address that doesn't parse, counts as not set.
+ */
+export function safeAiUrl(value: string | undefined): string | null {
+  const text = value?.trim();
+
+  if (!text) return null;
+  let url: URL;
+
+  try {
+    url = new URL(text);
+  } catch {
+    return null;
+  }
+  if (url.username || url.password) return null;
+  // Checked, then kept as it was written (URL's own form would add a "/" to a bare address).
+  if (url.protocol === "https:") return text;
+  if (url.protocol === "http:" && LOCAL_HOSTS.has(url.hostname)) return text;
+  return null;
+}
+
 /** Reads managed AI settings from `env` (default `process.env`) dynamically. */
 export function readManagedAiConfig(env: NodeJS.ProcessEnv = process.env): ManagedAiConfig {
   const managed = truthy(env.GALLEY_AI_MANAGED);
   const creditMillicents = parseCreditMillicents(env.GALLEY_AI_CREDIT_MILLICENTS);
   const disabled = truthy(env.GALLEY_AI_OFF);
-  const creditsUrl = env.GALLEY_AI_CREDITS_URL?.trim() || null;
-  const manageUrl = env.GALLEY_AI_MANAGE_URL?.trim() || null;
+  const creditsUrl = safeAiUrl(env.GALLEY_AI_CREDITS_URL);
+  const manageUrl = safeAiUrl(env.GALLEY_AI_MANAGE_URL);
 
   return { managed, creditMillicents, disabled, creditsUrl, manageUrl };
 }
@@ -149,6 +176,8 @@ export async function fetchManagedAiCredits(
     const response = await fetchImpl(config.creditsUrl, {
       method: "GET",
       headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+      // The key goes to this address alone: a redirect elsewhere is refused, never followed with it.
+      redirect: "error",
       signal: AbortSignal.timeout(AI_CREDITS_TIMEOUT_MS),
     });
 

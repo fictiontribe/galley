@@ -48,14 +48,15 @@ const readFile = (file: File) =>
 
 function NoKey() {
   const where = usePlaceWords();
-  const { managed, manageUrl } = useManagedAi();
+  const { managed, disabled, manageUrl } = useManagedAi();
 
   if (managed) {
+    // Switched off, or on with no assistant key here yet: two different things to tell someone.
     return (
       <div className="chat-nokey">
         <ProofMark kind="reg" className="chat-nokey__mark" />
-        <h3 className="chat-nokey__title">AI is switched off for this site.</h3>
-        <p className="chat-nokey__body">AI is switched off for this site. A workspace manager can turn it on in Galley Cloud.</p>
+        <h3 className="chat-nokey__title">{disabled ? "AI is switched off for this site." : "The assistant isn't connected for this site yet."}</h3>
+        <p className="chat-nokey__body">{disabled ? "A workspace manager can turn it on in Galley Cloud." : "A workspace manager can connect it in Galley Cloud."}</p>
         {manageUrl ? (
           <a className={buttonClass("primary", "sm")} href={manageUrl} target="_blank" rel="noopener noreferrer">
             Open Galley Cloud
@@ -353,7 +354,9 @@ export function ChatPanel({ siteId, context, initialMessage }: ChatPanelProps) {
           placeholder={
             keyReady === false
               ? managed
-                ? "AI is switched off for this site"
+                ? aiDisabled
+                  ? "AI is switched off for this site"
+                  : "The assistant isn't connected for this site yet"
                 : "Connect the assistant to ask for changes"
               : busy
                 ? "Working… you can type the next request"

@@ -12,6 +12,8 @@ import {
   OPENAI_BASE,
   openaiBaseUrl,
   readManagedAiConfig,
+  fetchManagedAiCredits,
+  safeAiUrl,
 } from "../../src/ai/index";
 import { describeApiFailure, rememberSecret } from "../../src/ai/errors";
 import { jsonResponse, scriptedFetch } from "./helpers/scripted-fetch";
@@ -70,6 +72,35 @@ describe("managed AI credits helpers", () => {
       creditMillicents: DEFAULT_AI_CREDIT_MILLICENTS,
       manageUrl: "https://cloud.galleycms.com/sites/s1",
     });
+  });
+});
+
+describe("the credits and manage addresses", () => {
+  it("take https, or plain http to this computer only; anything else counts as not set", () => {
+    expect(safeAiUrl(" https://credits.example.com/v1 ")).toBe("https://credits.example.com/v1");
+    for (const local of ["http://127.0.0.1:8787/credits", "http://localhost:8787/credits", "http://[::1]:8787/credits"]) expect(safeAiUrl(local)).toBe(local);
+    for (const refused of ["http://credits.example.com/v1", "http://127.0.0.2/credits", "javascript:alert(1)", "data:text/html,x", "ftp://credits.example.com", "https://user:secret@credits.example.com", "not a url", "", undefined]) {
+      expect(safeAiUrl(refused), String(refused)).toBeNull();
+    }
+    const config = readManagedAiConfig({ GALLEY_AI_MANAGED: "1", GALLEY_AI_CREDITS_URL: "http://credits.example.com/v1", GALLEY_AI_MANAGE_URL: "javascript:alert(1)" });
+
+    expect([config.creditsUrl, config.manageUrl]).toEqual([null, null]);
+    expect(aiMetaFromEnv({ GALLEY_AI_MANAGED: "1", GALLEY_AI_MANAGE_URL: "javascript:alert(1)" })).toEqual({ managed: true, creditMillicents: DEFAULT_AI_CREDIT_MILLICENTS });
+  });
+
+  it("never send the assistant key to a plain-http address, and refuse to follow a redirect with it", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchImpl = (async (url: string, init?: RequestInit) => {
+      calls.push({ url: String(url), ...(init ? { init } : {}) });
+      return new Response(JSON.stringify({ remainingCredits: 10 }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as unknown as typeof fetch;
+    const settings = { readSecret: async () => "sk-ant-assistant-key-0000000000" };
+    const plain = await fetchManagedAiCredits(settings, { GALLEY_AI_MANAGED: "1", GALLEY_AI_CREDITS_URL: "http://credits.example.com/v1" }, fetchImpl);
+
+    expect(plain.balance).toBeNull();
+    expect(calls).toEqual([]);
+    await fetchManagedAiCredits(settings, { GALLEY_AI_MANAGED: "1", GALLEY_AI_CREDITS_URL: "https://credits.example.com/v1" }, fetchImpl);
+    expect(calls.map((call) => [call.url, call.init?.redirect])).toEqual([["https://credits.example.com/v1", "error"]]);
   });
 });
 

@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { accessSync, constants, existsSync, lstatSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { delimiter, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { PRODUCT } from "@galley/core/brand";
 import { loadSiteModel, readConfig } from "@galley/core/content";
 import type { PackageManager, SecretStatus, Settings, SiteModel } from "@galley/core/types";
@@ -388,10 +388,38 @@ export async function configValidationCheck(root: string): Promise<{ check: Chec
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const detail = typeof (error as { detail?: unknown })?.detail === "string" ? (error as { detail: string }).detail : "";
-    const text = detail && !message.includes(detail) ? `${message} (${detail})` : message;
+    // The detail is said only when it adds something: a schema error's detail is its problems again, one a line.
+    const adds = detail.split("\n").some((line) => line.trim() !== "" && !message.includes(line.trim()));
+    const text = adds ? `${message} (${detail})` : message;
 
     return { check: { level: "fail", text }, invalid: true };
   }
+}
+
+/**
+ * Whether `name` is a program on PATH (with PATHEXT's endings on Windows), found by looking at the file system alone.
+ * Nothing is run: `<manager> --version` in the site's folder would let the site's own settings run or fetch code
+ * (Yarn's `yarnPath` in .yarnrc.yml, Corepack for a pinned `packageManager`), and doctor reads a site without running
+ * any of its code.
+ */
+export function onPath(name: string, env: NodeJS.ProcessEnv, platform: NodeJS.Platform = process.platform): boolean {
+  const dirs = (env.PATH ?? env.Path ?? "").split(platform === "win32" ? ";" : delimiter).filter((dir) => dir !== "" && isAbsolute(dir));
+  const endings = platform === "win32" ? ["", ...(env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean)] : [""];
+
+  for (const dir of dirs) {
+    for (const ending of endings) {
+      const file = join(dir, `${name}${ending}`);
+
+      try {
+        if (!statSync(file).isFile()) continue;
+        if (platform !== "win32") accessSync(file, constants.X_OK);
+        return true;
+      } catch {
+        // Not here, or not runnable: the next one.
+      }
+    }
+  }
+  return false;
 }
 
 export async function lockfileChecks(root: string, env: NodeJS.ProcessEnv, options: DoctorOptions = {}): Promise<Check[]> {
@@ -423,9 +451,7 @@ export async function lockfileChecks(root: string, env: NodeJS.ProcessEnv, optio
         text: `Lockfile ${file} (${manager}) doesn't match packageManager “${declared}” in package.json`,
       });
     }
-    const checkBin = await run(manager, ["--version"], root, env);
-
-    if (checkBin.missing) {
+    if (!onPath(manager, env)) {
       checks.push({
         level: "warn",
         text: `Found ${file}, but ${manager} isn't installed in PATH — install ${manager} or switch lockfiles`,

@@ -74,13 +74,13 @@ The file is validated strictly with the same zod schema that produces the JSON S
 }
 ```
 
-gives, in `galley doctor`:
+gives, in `galley doctor`, a failing line — it is listed again under *Galley can't work here until this is fixed*, and `doctor` exits with 1:
 
 ```text
-  galley.config.json has 4 problems: urls.production: should be a valid web address (https://…). publish.mode: must be one of "commit", "pull-request". collections[0].fields[0].type: must be one of "string", "text", "markdown", "number", "boolean", "date", "datetime", "image", "url", "color", "select", "tags", "list", "object", "blocks", "reference", "json". The config: “colour” is not a setting Galley knows. The file was ignored until it is fixed.
+! galley.config.json has 4 problems: urls.production: should be a valid web address (https://…). publish.mode: must be one of "commit", "pull-request". collections[0].fields[0].type: must be one of "string", "text", "markdown", "number", "boolean", "date", "datetime", "image", "url", "color", "select", "tags", "list", "object", "blocks", "reference", "json". The config: “colour” is not a setting Galley knows.
 ```
 
-and a JSON syntax error gives *galley.config.json is not valid JSON. Check for a missing comma or quote. The file was ignored until it is fixed.*
+and a JSON syntax error gives *galley.config.json is not valid JSON. Check for a missing comma or quote. (Unexpected end of JSON input)*, with the parser's own words in brackets.
 
 ## Other ways to change it
 
