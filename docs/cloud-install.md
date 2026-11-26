@@ -501,9 +501,16 @@ Password:  https://cms.example.com/new-password#<one-time code>
 
 - It works once, for 60 minutes. Nobody else's account changes, nobody is
   signed out, and the owner's old password works until the link is used.
-- With several owners, say whose with `--email <their e-mail>` (`--email`
-  is accepted only with `--reset-password`). Without it, the server refuses
-  to start and says how many owners there are.
+- With several owners, say whose with `--email <their e-mail>`, or with
+  `--account <id>` or `--subject <subject>` for an owner who has no e-mail
+  (each accepted only with `--reset-password`, one at a time). Without one,
+  the server refuses to start and lists each owner's id, subject or e-mail,
+  and name on the console.
+- For an owner who signs in through the identity provider, or with
+  passwords off (`GALLEY_OIDC_ONLY`), the link signs them in instead
+  (`Sign in:` in place of `Password:`): once, without a password, with a
+  session as long as one through the provider, and it sets no password.
+  It is the way back in when the provider is down.
 - An owner who was switched off is switched back on by it.
 - With no owner yet, it prints a fresh one-time **setup** link instead, as
   first run does. A setup code that was used stays dead: an old code or hash

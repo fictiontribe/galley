@@ -1018,9 +1018,12 @@ export interface ApiRoutes {
   /**
    * Use a one-time link: an invitation creates the account (`name` required),
    * a new-password link sets the password and signs that person's other
-   * browsers out. Either way this browser is signed in and the link is spent.
+   * browsers out, and a sign-in link (`serve --reset-password`, for someone
+   * who signs in through the identity provider or with passwords off) takes
+   * the code alone and changes nothing else. Each time this browser is
+   * signed in and the link is spent.
    */
-  "POST /api/auth/link": { body: { code: string; password: string; name?: string }; response: Ok };
+  "POST /api/auth/link": { body: { code: string; password?: string; name?: string }; response: Ok };
   /**
    * "I forgot my password." When the server e-mails links (outgoing e-mail
    * and its public address both set) and the address has an account, a

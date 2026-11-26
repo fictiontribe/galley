@@ -14,9 +14,9 @@ import { SECRET_NAMES, type ApiRouteKey } from "@galley/core/api";
 import { MAX_INSTALL_PASSWORD_LENGTH, type Install } from "@galley/core/install";
 import type { SecretName } from "@galley/core/types";
 import { bearerToken, clientAddress, requestSession } from "./auth";
-import { changeOwnPassword, signInAs, signOutEverywhere } from "./accounts-routes";
+import { changeOwnPassword, passwordsOffRefusal, signInAs, signOutEverywhere } from "./accounts-routes";
 import { restoreCredentials } from "./app";
-import { errorBody, notFound } from "./errors";
+import { errorBody, forbidden, notFound } from "./errors";
 import { TooLargeError, type InstallOps } from "./ops";
 import type { RouteContext, RouteTable } from "./routes";
 import * as v from "./validate";
@@ -110,6 +110,10 @@ export const installRoutes: Pick<RouteTable, InstallRouteKey> = {
 
   "POST /api/setup/password": async (c, ctx) => {
     const install = installOf(ctx);
+    const off = passwordsOffRefusal(ctx);
+
+    // With passwords off the first owner is named on the server (GALLEY_OIDC_OWNER), whoever asks here, the operator's token too.
+    if (off) throw forbidden(`${off.message} The first owner is named on the server with GALLEY_OIDC_OWNER.`);
     const body = await v.body(c, setPasswordBody);
 
     if (install.store.hasOwner()) throw new GalleyError("conflict", "The password has been chosen already. Sign in with it.");

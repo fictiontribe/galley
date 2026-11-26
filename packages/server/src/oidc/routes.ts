@@ -26,8 +26,15 @@ export const STARTS_PER_MINUTE = 20;
 /** `state` values remembered as used, at most (each for ten minutes). */
 const USED_STATES_KEPT = 10_000;
 
+/** A refusal that counts nothing is logged at most this often per client: an image tag in a page left open can't fill the log. */
+export const QUIET_LOG_MS = 60_000;
+/** Clients whose last quiet line is remembered, at most. */
+const QUIET_CLIENTS_KEPT = 10_000;
+
 interface OidcLimits {
   starts: LoginLimiter;
+  /** When each client's last uncounted refusal was logged. */
+  quiet: Map<string, number>;
   /** Each `state` accepted at a callback, until it could no longer be: a copied cookie value is refused the second time. */
   used: Map<string, number>;
 }
@@ -38,7 +45,7 @@ function limitsOf(ctx: RouteContext): OidcLimits {
   let limits = limitsByApp.get(ctx);
 
   if (!limits) {
-    limits = { starts: new LoginLimiter(STARTS_PER_MINUTE, 60_000), used: new Map() };
+    limits = { starts: new LoginLimiter(STARTS_PER_MINUTE, 60_000), used: new Map(), quiet: new Map() };
     limitsByApp.set(ctx, limits);
   }
   return limits;
@@ -59,6 +66,22 @@ function toSignIn(c: Context, code: OidcRefusalCode, extra: Record<string, strin
 /** Refusals that say something is wrong with the provider or this server, not with the browser: they don't count against it. */
 const NOT_THE_BROWSERS: ReadonlySet<OidcRefusalCode> = new Set(["provider-unreachable", "provider-no-pkce", "provider-misconfigured", "too-many"]);
 
+/** Whether an uncounted refusal from this client is logged now: once a minute at most. */
+function quietly(ctx: RouteContext, client: string, now = Date.now()): boolean {
+  const { quiet } = limitsOf(ctx);
+  const last = quiet.get(client);
+
+  if (last !== undefined && now - last < QUIET_LOG_MS) return false;
+  quiet.delete(client);
+  if (quiet.size >= QUIET_CLIENTS_KEPT) {
+    for (const [key, at] of quiet) if (now - at >= QUIET_LOG_MS) quiet.delete(key);
+    // Still full of clients refused this minute: the oldest goes.
+    if (quiet.size >= QUIET_CLIENTS_KEPT) quiet.delete(quiet.keys().next().value!);
+  }
+  quiet.set(client, now);
+  return true;
+}
+
 function clearPreLogin(c: Context): void {
   deleteCookie(c, PRE_LOGIN_COOKIE, { path: "/", secure: true });
 }
@@ -70,10 +93,13 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
     const { starts } = limitsOf(ctx);
 
     if (starts.blocked(client)) {
-      audit(ctx, `A sign-in through ${provider.config.name} from ${clientAddress(c, Boolean(ctx.options.trustProxy))} wasn't started: too many in a minute.`);
+      if (quietly(ctx, client)) audit(ctx, `A sign-in through ${provider.config.name} from ${clientAddress(c, Boolean(ctx.options.trustProxy))} wasn't started: too many in a minute.`);
       return toSignIn(c, "too-many");
     }
     // Counted only when a browser navigates here: an image or a fetch from another page can't use up a client's starts.
+    // A script can send any Sec-Fetch-Mode, or none, and so start without being counted; that gains it nothing a
+    // stranger lacks: a start reads only what the provider publishes for anyone, once (it is kept), and makes a
+    // sealed cookie for that script alone. The limit is there so pages elsewhere can't make browsers hammer it.
     const mode = c.req.header("sec-fetch-mode");
 
     if (mode === undefined || mode === "navigate") starts.fail(client);
@@ -113,9 +139,11 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
     // without one, and that must never count against everyone at its address, whose passwords the same count holds back.
     let tested = false;
     const refuse = (code: OidcRefusalCode, why: string, extra: Record<string, string> = {}): Response => {
+      const counted = tested && !NOT_THE_BROWSERS.has(code);
+
       // Counted against this client as a wrong password is, unless it is the provider's or this server's doing.
-      if (tested && !NOT_THE_BROWSERS.has(code)) ctx.limiter.fail(client);
-      audit(ctx, `A sign-in through ${provider.config.name} from ${from} was refused: ${why}`);
+      if (counted) ctx.limiter.fail(client);
+      if (counted || quietly(ctx, client)) audit(ctx, `A sign-in through ${provider.config.name} from ${from} was refused: ${why}`);
       return toSignIn(c, code, extra);
     };
 

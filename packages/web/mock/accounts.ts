@@ -692,7 +692,8 @@ export function withAccounts(mock: MockBackend, base: Handlers, accounts: MockAc
     },
     "POST /api/auth/link/check": ({ body }) => accounts.check(body.code),
     "POST /api/auth/link": ({ body }) => {
-      accounts.use(body);
+      // The demo has no identity provider, so every link it makes asks for a password.
+      accounts.use({ ...body, password: body.password ?? "" });
       return ok;
     },
     "POST /api/auth/forgot": ({ body }) => accounts.forgot(body.email),

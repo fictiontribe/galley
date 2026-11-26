@@ -163,7 +163,12 @@ export interface People {
 
 /** What an invitation or a new-password link is for, shown before the person types anything. Nothing here identifies the install. */
 export interface LinkPreview {
-  kind: "invitation" | "password";
+  /**
+   * `sign-in`: a link `serve --reset-password` made, for someone who signs in
+   * through the identity provider, or for anyone while passwords are off: it
+   * asks for no password and sets none.
+   */
+  kind: "invitation" | "password" | "sign-in";
   email: string;
   /** Invitations only. */
   role?: AccountRole;
@@ -176,7 +181,7 @@ export interface LinkPreview {
  * (`/join#<code>`): a fragment never leaves the browser, so the code reaches
  * no server log and no proxy on the way. The page sends it in a request body.
  */
-export const LINK_PATHS: Record<LinkPreview["kind"], string> = { invitation: "/join", password: "/new-password" };
+export const LINK_PATHS: Record<LinkPreview["kind"], string> = { invitation: "/join", password: "/new-password", "sign-in": "/new-password" };
 
 /** How long an invitation stays good. */
 export const INVITATION_DAYS = 7;

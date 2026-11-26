@@ -101,6 +101,30 @@ export function LoginScreen() {
     }
   };
 
+  // Passwords off: the provider's button is the one way in.
+  if (provider && signInWith === "provider") {
+    return (
+      <div className="app-login">
+        <div className="g-sheet g-crop app-login__sheet">
+          <div className="app-login__brand">
+            <Logo />
+            <span className="g-brand__name">{meta.brand.productName}</span>
+          </div>
+          <h1 className="app-login__title">Sign in to edit.</h1>
+          <p className="app-login__body">{`Sign in with your account at ${provider.name}.`}</p>
+          {refused ? (
+            <p className="app-login__body app-login__refused" role="alert">
+              {refused}
+            </p>
+          ) : null}
+          <a className={buttonClass("primary", "md", "g-btn--block")} href={`/api/auth/oidc/start?return=${encodeURIComponent(next)}`}>
+            Sign in with {provider.name}
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   if (forgot && byEmail) {
     return (
       <div className="app-login">

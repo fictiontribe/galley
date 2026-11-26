@@ -189,9 +189,10 @@ export interface InstallMeta {
   /**
    * What the sign-in page asks for: an e-mail and a password, or — on an
    * install set up before accounts existed, until its owner adds an e-mail —
-   * the password alone. Absent from servers without accounts.
+   * the password alone, or, with passwords off (GALLEY_OIDC_ONLY), only the
+   * identity provider's button. Absent from servers without accounts.
    */
-  signInWith?: "email" | "password";
+  signInWith?: "email" | "password" | "provider";
   /**
    * The identity provider people may sign in through, beside the usual form:
    * what its button says ("Sign in with …"). Absent: none is set up.

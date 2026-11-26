@@ -92,7 +92,7 @@ export interface PeopleService {
   /** The signed-in person as GET /api/meta tells the app: their account and what their role may do. */
   session(id: string): AccountSession | null;
   /** What the sign-in page asks for: the password alone only while everyone here who signs in with a password is an owner with no e-mail yet. */
-  signInWith(): "email" | "password";
+  signInWith(): "email" | "password" | "provider";
 
   /**
    * Checks an e-mail and password. Without an e-mail, the password is tried
@@ -164,7 +164,7 @@ export interface PeopleService {
    * new-password link sets the password and ends that person's other
    * sessions. Either way the link is spent.
    */
-  useLink(code: string, input: { password: string; name?: string }): Promise<{ kind: LinkPreview["kind"]; account: Account }>;
+  useLink(code: string, input: { password?: string; name?: string }): Promise<{ kind: LinkPreview["kind"]; account: Account }>;
 
   /** Changes a person's own password. False: `current` isn't their password. Their other sessions end. */
   changePassword(accountId: string, current: string, next: string): Promise<boolean>;
@@ -179,7 +179,7 @@ export interface PeopleService {
   /** Signs everyone out of every browser: the install's own "sign out everywhere", and each person's, so whatever is bound to a person's session (an open event stream) ends too. */
   signOutEveryone(): Promise<void>;
   /** The operator's way back in (`serve --reset-password`): a new-password link for the only owner, or the owner with this e-mail. Null: there is no owner yet. */
-  rescue(email?: string): Promise<{ account: Account; link: MadeLink } | null>;
+  rescue(target?: string | RescueTarget): Promise<{ account: Account; link: MadeLink } | null>;
 }
 
 export interface PeopleOptions {
@@ -192,6 +192,18 @@ export interface PeopleOptions {
    * can be given a password, as any other.)
    */
   providerConfigured?: boolean;
+  /** GALLEY_OIDC_ONLY: passwords are off. No password is checked, set or invited; the one way in besides the provider is a `serve --reset-password` link. */
+  passwordsOff?: boolean;
+}
+
+/** Said for anything passwords are needed for while they are off (GALLEY_OIDC_ONLY). */
+export const PASSWORDS_OFF = "Passwords are off on this editor: people sign in through its identity provider.";
+
+/** Which owner `serve --reset-password` is for: by e-mail, by account id, or by subject at the provider. */
+export interface RescueTarget {
+  email?: string;
+  accountId?: string;
+  subject?: string;
 }
 
 /** A password link for someone who signs in through the identity provider, while one is set up. */
@@ -339,12 +351,42 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
       if (!target) throw notHere();
       if (byId !== null && !by) throw notHere();
-      if (target.identity && options.providerConfigured) throw new GalleyError("conflict", NO_PASSWORD_FOR_PROVIDER_ACCOUNT);
+      // The server's own link (`serve --reset-password`) is the one way in besides the provider, and is marked so; nobody else's.
+      if (!server && options.passwordsOff) throw new GalleyError("forbidden", `${PASSWORDS_OFF} A new-password link can't be made.`);
+      if (!server && target.identity && options.providerConfigured) throw new GalleyError("conflict", NO_PASSWORD_FOR_PROVIDER_ACCOUNT);
       if (target.disabled) {
         if (byId !== null) throw new GalleyError("conflict", "This account is switched off, so it can't sign in. Switch it on first.");
         target.disabled = false;
       }
       result = { account: publicAccount(target), link: passwordLinkFor(draft, target, by ?? null, server) };
+    });
+    return result!;
+  };
+
+  /**
+   * What a link is for, as things stand: an invitation, a new password, or —
+   * for the server's own link, where the account signs in through the
+   * provider or passwords are off — a sign-in that asks for no password.
+   * Null: no way in while passwords are off (only the server's link is).
+   */
+  const kindOf = (state: InstallStateFile, link: StoredLink): LinkPreview["kind"] | null => {
+    if (link.kind === "invitation") return options.passwordsOff ? null : "invitation";
+    const account = accountOf(state, link.accountId ?? "");
+
+    if (link.madeBy === "server" && (options.passwordsOff || (account?.identity && options.providerConfigured))) return "sign-in";
+    return options.passwordsOff ? null : "password";
+  };
+  /** The server's link used as a sign-in: spent, and nothing else changed (the owner was switched back on when it was made). */
+  const signInByLink = async (code: string): Promise<{ kind: LinkPreview["kind"]; account: Account }> => {
+    let result: { kind: LinkPreview["kind"]; account: Account } | null = null;
+
+    await store.update((draft) => {
+      prune(draft);
+      const link = linkFor(draft, code, now());
+
+      if (!link || kindOf(draft, link) !== "sign-in") throw new GalleyError("not-found", LINK_REFUSED);
+      draft.links = draft.links.filter((candidate) => candidate !== link);
+      result = { kind: "sign-in", account: publicAccount(accountOf(draft, link.accountId ?? "")!) };
     });
     return result!;
   };
@@ -377,6 +419,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
     },
 
     signInWith() {
+      if (options.passwordsOff) return "provider";
       const withPasswords = store.read().accounts.filter((account) => !account.disabled && signsInWithPassword(account));
 
       return withPasswords.length > 0 && withPasswords.every((account) => account.email === "") ? "password" : "email";
@@ -617,6 +660,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
     },
 
     async invite(byId, input) {
+      if (options.passwordsOff) throw new GalleyError("forbidden", `${PASSWORDS_OFF} Nobody is invited with a link: whoever may sign in there comes in.`);
       const email = normalizeEmail(input.email);
 
       if (!ACCOUNT_ROLES.includes(input.role)) throw new GalleyError("invalid", "Choose a role: Owner, Editor or Contributor.");
@@ -755,8 +799,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
       await store.update((draft) => {
         prune(draft);
-        // Nothing for someone who signs in through the provider: the same answer as for an e-mail nobody has.
-        const target = draft.accounts.find((account) => account.email === email && !account.disabled && !(account.identity && options.providerConfigured));
+        // Nothing for someone who signs in through the provider, or with passwords off: the same answer as for an e-mail nobody has.
+        const target = options.passwordsOff ? undefined : draft.accounts.find((account) => account.email === email && !account.disabled && !(account.identity && options.providerConfigured));
 
         if (target) result = { account: publicAccount(target), link: passwordLinkFor(draft, target, null) };
       });
@@ -768,23 +812,31 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       const link = linkFor(state, code, now());
 
       if (!link) throw new GalleyError("not-found", LINK_REFUSED);
-      if (link.kind === "invitation") return { kind: "invitation", email: link.email, role: link.role ?? "contributor", invitedBy: link.createdByName, expiresAt: link.expiresAt };
-      return { kind: "password", email: accountOf(state, link.accountId ?? "")?.email ?? link.email, expiresAt: link.expiresAt };
+      const kind = kindOf(state, link);
+
+      // With passwords off, only the server's own link is a way in (the rest were dropped at start).
+      if (kind === null) throw new GalleyError("not-found", LINK_REFUSED);
+      if (kind === "invitation") return { kind: "invitation", email: link.email, role: link.role ?? "contributor", invitedBy: link.createdByName, expiresAt: link.expiresAt };
+      return { kind, email: accountOf(state, link.accountId ?? "")?.email ?? link.email, expiresAt: link.expiresAt };
     },
 
     async useLink(code, input) {
       const found = linkFor(store.read(), code, now());
 
       if (!found) throw new GalleyError("not-found", LINK_REFUSED);
-      const forProvider = (state: InstallStateFile, link: StoredLink) => link.kind === "password" && Boolean(options.providerConfigured && accountOf(state, link.accountId ?? "")?.identity);
+      const forProvider = (state: InstallStateFile, link: StoredLink) => link.kind === "password" && link.madeBy !== "server" && Boolean(options.providerConfigured && accountOf(state, link.accountId ?? "")?.identity);
+      const kind = kindOf(store.read(), found);
 
+      if (kind === null) throw new GalleyError("not-found", LINK_REFUSED);
       // Whoever made it: someone who signs in through the provider gets no password while one is set up.
       if (forProvider(store.read(), found)) throw new GalleyError("conflict", NO_PASSWORD_FOR_PROVIDER_ACCOUNT);
+      // The server's link for them signs them in and changes nothing else: no password is asked for, or set.
+      if (kind === "sign-in") return signInByLink(code);
       const name = found.kind === "invitation" ? cleanName(input.name) : null;
       const problem = passwordProblem(input.password);
 
       if (problem) throw new GalleyError("invalid", problem);
-      const hash = await hashPassword(input.password);
+      const hash = await hashPassword(input.password!);
       let result: { kind: LinkPreview["kind"]; account: Account } | null = null;
 
       await store.update((draft) => {
@@ -820,7 +872,10 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
           result = { kind: "invitation", account: publicAccount(created) };
           return;
         }
-        if (forProvider(draft, link)) throw new GalleyError("conflict", NO_PASSWORD_FOR_PROVIDER_ACCOUNT);
+        const currentKind = kindOf(draft, link);
+
+        if (currentKind === null) throw new GalleyError("not-found", LINK_REFUSED);
+        if (forProvider(draft, link) || currentKind !== link.kind) throw new GalleyError("conflict", NO_PASSWORD_FOR_PROVIDER_ACCOUNT);
         const account = accountOf(draft, link.accountId ?? "")!;
 
         account.passwordHash = hash;
@@ -918,19 +973,32 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       await store.signOutEverywhere();
     },
 
-    async rescue(email) {
+    async rescue(given) {
       const owners = store.read().accounts.filter((account) => account.role === "owner");
+      const wanted: RescueTarget = typeof given === "string" ? { email: given } : (given ?? {});
+      const email = wanted.email?.trim().toLowerCase() || undefined;
+      const accountId = wanted.accountId?.trim() || undefined;
+      const subject = wanted.subject?.trim() || undefined;
 
       if (owners.length === 0) return null;
       let target: StoredAccount | undefined;
 
-      if (email !== undefined && email.trim() !== "") {
-        const wanted = email.trim().toLowerCase();
-
-        target = owners.find((owner) => owner.email === wanted);
+      if (email !== undefined) {
+        target = owners.find((owner) => owner.email === email);
         if (!target) throw new GalleyError("invalid", "No owner of this editor signs in with that e-mail. Check it, or leave --email out when there is only one owner.");
+      } else if (accountId !== undefined) {
+        target = owners.find((owner) => owner.id === accountId);
+        if (!target) throw new GalleyError("invalid", "No owner of this editor has that account id. Check it, or leave --account out when there is only one owner.");
+      } else if (subject !== undefined) {
+        target = owners.find((owner) => owner.identity?.subject === subject);
+        if (!target) throw new GalleyError("invalid", "No owner of this editor signs in through the identity provider with that subject. Check it, or leave --subject out when there is only one owner.");
       } else if (owners.length === 1) target = owners[0];
-      else throw new GalleyError("invalid", `This editor has ${owners.length} owners. Say whose password to reset with --email <their e-mail>.`);
+      else {
+        // Printed on the server's console, which only someone with a shell there sees: enough to choose by.
+        const listed = owners.map((owner) => `  ${owner.id}  ${owner.identity ? `subject ${owner.identity.subject}` : owner.email || "no e-mail"}  ${owner.name || "no name yet"}`).join("\n");
+
+        throw new GalleyError("invalid", `This editor has ${owners.length} owners. Say which one to let back in, with --email <their e-mail>, --account <id> or --subject <subject>:\n${listed}`);
+      }
       return makePasswordLink(null, target!.id, true);
     },
   };

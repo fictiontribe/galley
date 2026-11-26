@@ -85,8 +85,12 @@ Options
                             choose a new password (it works once, for 60 minutes), then
                             serve as usual until stopped. Nobody else's account changes,
                             and the owner's old password works until the link is used.
-                            With no owner yet: a new one-time setup link instead
+                            With no owner yet: a new one-time setup link instead.
+                            For an owner who signs in through the identity provider, or
+                            with passwords off: a link that signs them in without one
       --email <address>     With --reset-password, when there are several owners: which one
+      --account <id>        The same, by account id (for an owner with no e-mail)
+      --subject <subject>   The same, by their subject at the identity provider
   -h, --help                Show this help
 First run
   With no owner yet, the server prints a one-time setup link. Whoever opens it first

@@ -206,6 +206,10 @@ export interface ServerOptions {
   resetPassword?: boolean;
   /** Which owner `resetPassword` is for, when there are several (`--email`). */
   resetPasswordEmail?: string;
+  /** The same, by account id (`--account`): for an owner who has no e-mail. */
+  resetPasswordAccount?: string;
+  /** The same, by subject at the identity provider (`--subject`). */
+  resetPasswordSubject?: string;
   /** Hosted mode, test seam: an http:// identity provider on this computer (the provider that runs inside the tests). Never offered to an operator. */
   oidcAllowLoopbackHttp?: boolean;
   /** Hosted mode, test seam: the outgoing e-mail to use instead of the one GALLEY_SMTP_URL and GALLEY_MAIL_FROM describe (null: none). */
@@ -260,7 +264,8 @@ export interface RunningServer {
    * the one-time link that lets that owner choose a new password, and when
    * it stops working. Null otherwise.
    */
-  passwordLink: { url: string; expiresAt: string; name: string } | null;
+  /** `signIn`: the link signs the owner in without a password (they sign in through the provider, or passwords are off). */
+  passwordLink: { url: string; expiresAt: string; name: string; signIn: boolean } | null;
   /** Hosted mode: things the operator should hear once at start (a GALLEY_PASSWORD that no longer applies…). Already passed to `notice`. */
   notices: string[];
   /** Hosted mode: the preview's and the live comparison's addresses, or null when none could be worked out. */

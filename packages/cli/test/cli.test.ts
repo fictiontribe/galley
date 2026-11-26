@@ -534,6 +534,26 @@ describe("galley serve", () => {
 
     expect(await main(["serve", "--email", "sam@example.com"], alone)).toBe(2);
     expect(alone.stderr.join("\n")).toMatch(/--email is only used with --reset-password/);
+    // By account id or subject (for an owner with no e-mail), one way at a time.
+    expect(await main(["serve", "--reset-password", "--subject", "owner-two"], io)).toBe(0);
+    expect(received).toMatchObject({ resetPassword: true, resetPasswordSubject: "owner-two" });
+    expect(await main(["serve", "--reset-password", "--account", "acc_1"], io)).toBe(0);
+    expect(received).toMatchObject({ resetPassword: true, resetPasswordAccount: "acc_1" });
+    for (const argv of [["serve", "--subject", "owner-two"], ["serve", "--reset-password", "--account", "a", "--subject", "b"]]) {
+      const wrong = testIo({ startServer: async () => ({}) as RunningServer });
+
+      expect(await main(argv, wrong), argv.join(" ")).toBe(2);
+    }
+  });
+
+  it("--reset-password for an owner who signs in through the provider prints a sign-in link, not a new-password one", async () => {
+    const io = testIo({
+      startServer: async () =>
+        ({ url: "http://127.0.0.1:4400", port: 4400, close: async () => {}, passwordLink: { url: "http://127.0.0.1:4400/new-password#code", expiresAt: "2026-11-26T12:30:00.000Z", name: "Una", signIn: true } }) as unknown as RunningServer,
+    });
+
+    expect(await main(["serve", "--reset-password"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("Sign in:   http://127.0.0.1:4400/new-password#code\n           Open it now: it signs Una in, once, without a password, until 12:30 UTC, and changes nothing else.");
   });
 
   it("says plainly what it answers to without a public address", async () => {

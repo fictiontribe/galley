@@ -98,7 +98,7 @@ The placeholder image provider is offline. The web UI loads nothing from anyone 
 
 ## Not covered yet
 
-- Single sign-on on a hosted install is OpenID Connect only, beside the passwords, which can't be turned off yet. No audit log beyond the server's own log lines. One shared draft for everyone. Roles are not a security boundary (above). Accounts have been run by automated tests, a rehearsal over HTTP against the real server and a pass in a real browser — not yet on the real image or with a real mail server ([`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#not-verified-yet)).
+- Single sign-on on a hosted install is OpenID Connect only, beside the passwords or with them off (`GALLEY_OIDC_ONLY`). No audit log beyond the server's own log lines. One shared draft for everyone. Roles are not a security boundary (above). Accounts have been run by automated tests, a rehearsal over HTTP against the real server and a pass in a real browser — not yet on the real image or with a real mail server ([`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#not-verified-yet)).
 - The site's own code runs inside the hosted install's container and can read what the container holds.
 - The desktop app's installers are unsigned, and keys are kept in owner-only files, not the OS keychain.
 - Windows and Linux have not been verified.

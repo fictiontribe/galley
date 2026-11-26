@@ -21,6 +21,7 @@ import {
   LINK_REFUSED,
   MAX_INSTALL_PASSWORD_LENGTH,
   NO_PASSWORD_TO_CHANGE,
+  PASSWORDS_OFF,
   passwordLinkEmail,
   ROLE_NAMES,
   WRONG_CURRENT_PASSWORD,
@@ -113,7 +114,8 @@ const changeBody = z
   .strict()
   .refine((value) => value.role !== undefined || value.disabled !== undefined || value.email !== undefined, "give a role, an e-mail, or whether the account is switched off");
 const checkBody = z.object({ code }).strict();
-const useBody = z.object({ code, password, name: name.optional() }).strict();
+// No password for a link that signs someone in without one (`serve --reset-password`, for an account that signs in through the provider, or with passwords off).
+const useBody = z.object({ code, password: password.optional(), name: name.optional() }).strict();
 const forgotBody = z.object({ email: z.string().max(320) }).strict();
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -154,6 +156,13 @@ function ownerOrToken(c: Context, ctx: RouteContext, takesToken: "always" | "wit
     throw forbidden(NEEDS_A_PERSON);
   }
   return personOf(c, ctx).account;
+}
+
+/** With passwords off (GALLEY_OIDC_ONLY): the sentence a password route answers. */
+export function passwordsOffRefusal(ctx: RouteContext): GalleyError | null {
+  const provider = ctx.options.mode === "hosted" ? (ctx.options.oidc ?? null) : null;
+
+  return provider?.config.passwordsOff ? forbidden(`${PASSWORDS_OFF} Sign in with ${provider.config.name}.`) : null;
 }
 
 function idParam(c: Context, param: string): string {
@@ -337,6 +346,9 @@ export function accountsMeta(c: Context, ctx: RouteContext): { account?: Account
  * in about the same time, whatever was wrong.
  */
 export async function signInWithAccount(c: Context, ctx: RouteContext): Promise<typeof ok> {
+  const off = passwordsOffRefusal(ctx);
+
+  if (off) throw off;
   const install = installOf(ctx);
   const client = clientAddress(c, Boolean(ctx.options.trustProxy));
   const ticket = reserveCheck(c, ctx, TOO_MANY_SIGN_INS, "A sign-in");
@@ -738,19 +750,28 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
       }
       throw error;
     }
-    signInAs(c, ctx, used.account.id);
+    const provider = ctx.options.mode === "hosted" ? (ctx.options.oidc ?? null) : null;
+
+    // The server's way back in, without a password: a recovery session as long as one through the provider, and nothing else changed.
+    if (used.kind === "sign-in") signInAs(c, ctx, used.account.id, { kind: "recovery", lastsMs: (provider?.config.sessionHours ?? 12) * 60 * 60_000 });
+    else signInAs(c, ctx, used.account.id);
     await install.people.noteSignIn(used.account.id).catch(() => undefined);
     audit(
       ctx,
       used.kind === "invitation"
         ? `${named(used.account)} accepted an invitation and signed in (from ${client}).`
-        : `${named(used.account)} chose a new password through a one-time link (from ${client}); their other browsers were signed out.`
+        : used.kind === "sign-in"
+          ? `${named(used.account)} signed in with the link \`serve --reset-password\` made (from ${client}), without a password.`
+          : `${named(used.account)} chose a new password through a one-time link (from ${client}); their other browsers were signed out.`
     );
     return ok;
   },
 
   "POST /api/auth/forgot": async (c, ctx) => {
     const install = installOf(ctx);
+    const off = passwordsOffRefusal(ctx);
+
+    if (off) throw off;
     const client = clientKeyOf(c, Boolean(ctx.options.trustProxy));
     const limits = limitsOf(ctx);
 

@@ -386,7 +386,7 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `POST /api/people/:accountId/sign-out` | Sign one person out of every browser. | — | `Ok` | Owners |
 | `POST /api/people/sign-out` | Sign everyone out, this browser included. | — | `Ok` | Owners |
 | `POST /api/auth/link/check` | What a one-time link is for. | `{ code }` | `LinkPreview` | No sign-in |
-| `POST /api/auth/link` | Use a one-time link: an invitation creates the account (`name` required), a new-password link sets the password and signs that person's other browsers out. | `{ code, password, name? }` | `Ok` | No sign-in |
+| `POST /api/auth/link` | Use a one-time link: an invitation creates the account (`name` required), a new-password link sets the password and signs that person's other browsers out, and a sign-in link (`serve --reset-password`, for someone who signs in through the identity provider or with passwords off) takes the code alone and changes nothing else. | `{ code, password?, name? }` | `Ok` | No sign-in |
 | `POST /api/auth/forgot` | "I forgot my password." When the server e-mails links (outgoing e-mail and its public address both set) and the address has an account, a new-password link is e-mailed. | `{ email }` | `{ ok, emailAvailable }` | No sign-in |
 | `GET /api/auth/oidc/start` | Where an identity provider is set up: start signing in through it. | `?return?` | a file | No sign-in |
 | `GET /api/auth/oidc/callback` | Where an identity provider is set up: where the provider sends the browser back (the redirect address registered there). | `?code?&state?&iss?&error?` | a file | No sign-in |
