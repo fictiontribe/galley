@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.7 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.8 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // The AI crawlers a site can allow or block one by one, from each provider's
 // own documentation (read 23 November 2026 — the links are in `docs`). The

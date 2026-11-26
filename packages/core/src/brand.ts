@@ -35,7 +35,7 @@ export const DEFAULT_BRAND: BrandConfig = {
   docsUrl: `${SITE_URL}/docs`,
 };
 
-export const VERSION = "0.4.7";
+export const VERSION = "0.4.8";
 
 /**
  * Where the hosted install's image is expected to be published: the GitHub

@@ -79,6 +79,12 @@ what is built; when something here ships, it moves to the
   checks more, with a `--cloud` mode for a site about to go online; the app
   opens in the right light or dark from the first paint; settings to send
   AI requests through a proxy, and a managed AI mode that shows credits.
+- **0.4.8**: a fourth, experimental part of embedding. An extension can
+  follow writes, publishes, discards and the assistant's turns on a site,
+  refuse a discard, and hold a file's turn while it changes it; an
+  edition's additions can draw in twelve more places (the entry form,
+  Proof, Publish, Arrange and the preview) and outline sections of the
+  previewed page in a colour.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.
