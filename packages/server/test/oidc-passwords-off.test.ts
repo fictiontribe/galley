@@ -146,6 +146,49 @@ describe("passwords off", () => {
   });
 });
 
+describe("a password given while no provider was set up", () => {
+  it("stops signing in by e-mail once the provider is set up again: taken off at the start, with that account's sessions; a password account and passwords off are unchanged", async () => {
+    const idp = await provider();
+    const home = box.folder("home");
+    const owner = { email: "sam@example.com", password: PASSWORD };
+    const pat = { email: "pat@example.com", password: "a password given in the gap" };
+    const mixed = await editor(idp, home, { GALLEY_PASSWORD: PASSWORD, GALLEY_OWNER_NAME: "Sam Owner", GALLEY_OWNER_EMAIL: "sam@example.com" });
+
+    expect(await signIn(mixed.port, idp)).toBeDefined();
+    const patId = mixed.server.install!.store.read().accounts.find((account) => account.identity?.subject === "subject-1")!.id;
+
+    await mixed.server.close();
+    // No provider: an owner's new-password link gives Pat a password, and it signs in by e-mail.
+    const none = await startHosted(box, home, { GALLEY_PUBLIC_URL: EDITOR, GALLEY_TRUST_PROXY: "1" });
+    const sam = cookieNamed((await call(none.port, "POST", "/api/auth/login", { body: owner })).cookies, SESSION)!;
+    const made = await call(none.port, "POST", `/api/people/${patId}/password-link`, { cookie: sam });
+
+    expect(made.status).toBe(200);
+    expect((await call(none.port, "POST", "/api/auth/link", { body: { code: String(made.body.url).split("#")[1], password: pat.password } })).status).toBe(200);
+    const gap = await call(none.port, "POST", "/api/auth/login", { body: pat });
+
+    expect(gap.status).toBe(200);
+    const gapSession = cookieNamed(gap.cookies, SESSION)!;
+
+    await none.server.close();
+    // The provider set up again: the password is taken off at the start, that session ends, and e-mail sign-in is refused.
+    const again = await editor(idp, home);
+
+    expect(again.server.notices.join("\n")).toContain("An account that signs in through the identity provider had a password, given while no provider was set up. It was taken off, with any open new-password links, and that account's sessions ended");
+    expect(again.server.install!.store.read().accounts.find((account) => account.id === patId)!.passwordHash).toBeNull();
+    expect((await call(again.port, "GET", "/api/account", { cookie: gapSession })).status).toBe(401);
+    expect((await call(again.port, "POST", "/api/auth/login", { body: pat, headers: { "x-forwarded-for": "198.51.100.251" } })).status).toBe(401);
+    // A password account signs in as before, and Pat through the provider.
+    expect((await call(again.port, "POST", "/api/auth/login", { body: owner })).status).toBe(200);
+    expect(await signIn(again.port, idp)).toBeDefined();
+    await again.server.close();
+    // Passwords off: refused as always.
+    const off = await editor(idp, home, { GALLEY_OIDC_ONLY: "1" });
+
+    expect((await call(off.port, "POST", "/api/auth/login", { body: owner })).status).toBe(403);
+  });
+});
+
 describe("the way back in: serve --reset-password", () => {
   it("with passwords off, signs an owner in without a password, with a recovery session as long as the provider's, and sets none", async () => {
     const idp = await provider();
