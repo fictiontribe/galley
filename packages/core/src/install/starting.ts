@@ -68,6 +68,7 @@ export const APP_SECRET_ENV_NAMES: readonly string[] = [
   "GALLEY_SETUP_TOKEN_SHA256",
   "GALLEY_SITE_TOKEN",
   "GALLEY_INSTALL_CONFIG",
+  "GALLEY_OIDC_CLIENT_SECRET",
   ...Object.values(SECRET_ENV).flat(),
   ...Object.values(MEDIA_KEY_ENV),
 ];
@@ -125,6 +126,12 @@ function readFileValues(path: string, warnings: string[]): z.infer<typeof FileSc
     raw = JSON.parse(readFileSync(path, "utf8"));
   } catch {
     throw new GalleyError("invalid", `${path} (GALLEY_INSTALL_CONFIG) isn't valid JSON.`);
+  }
+  // Signing in through an identity provider is set in the server's environment alone: this file may sit where the site's code can write.
+  const oidcKey = raw && typeof raw === "object" && !Array.isArray(raw) ? Object.keys(raw).find((key) => /oidc|openid/i.test(key)) : undefined;
+
+  if (oidcKey !== undefined) {
+    throw new GalleyError("invalid", `${path} (GALLEY_INSTALL_CONFIG) sets “${oidcKey}”: signing in through an identity provider is set in the server's environment only (GALLEY_OIDC_ISSUER and the rest), never in this file. Move it there.`);
   }
   const parsed = FileSchema.safeParse(raw);
 

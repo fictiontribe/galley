@@ -61,6 +61,13 @@ export interface StartOptions {
   resetPassword?: boolean;
   /** Which owner `resetPassword` is for, when there are several. */
   resetPasswordEmail?: string;
+  /**
+   * GALLEY_OIDC_OWNER: the first owner, named by their subject at the
+   * install's identity provider. Used only while the install has no owner:
+   * the account is made at start, with no password, and first run can
+   * finish with nobody signed in.
+   */
+  firstOwner?: { issuer: string; subject: string };
 }
 
 export interface StartResult {
@@ -662,6 +669,15 @@ export function createInstall(options: InstallOptions): Install {
 
       if (rescued) passwordLink = { code: rescued.link.code, expiresAt: rescued.link.expiresAt, name: rescued.account.name };
     }
+    // The first owner named by their subject at the provider: made now, with no password, while there's no owner.
+    if (startOptions.firstOwner && !store.hasOwner()) {
+      if (values.password) {
+        throw new GalleyError("invalid", "GALLEY_PASSWORD (or the starting-values file's password) and GALLEY_OIDC_OWNER would both decide who this install's first owner is. Unset one of them.");
+      }
+      await people.nameFirstOwner(startOptions.firstOwner.issuer, startOptions.firstOwner.subject);
+      await store.markSeeded(["password"]);
+      notices.push("The first owner is the account GALLEY_OIDC_OWNER names; they sign in through the identity provider.");
+    }
     // The first owner's password: a starting value, used once, only while there's no owner.
     if (values.password) {
       if (!store.hasOwner() && !store.isSeeded("password")) {
@@ -674,7 +690,10 @@ export function createInstall(options: InstallOptions): Install {
       }
     }
     // The owner's name and e-mail: filled in once, while the owner (carried over from a single password) has none.
-    if (values.owner && !store.isSeeded("owner")) {
+    // Never for an owner named at the provider: those come from it.
+    if (values.owner && startOptions.firstOwner) {
+      notices.push("GALLEY_OWNER_NAME and GALLEY_OWNER_EMAIL are ignored with GALLEY_OIDC_OWNER: the owner's name and e-mail come from the identity provider.");
+    } else if (values.owner && !store.isSeeded("owner")) {
       if (store.hasOwner()) {
         await people.completeOwner(values.owner);
         await store.markSeeded(["owner"]);
@@ -726,7 +745,8 @@ export function createInstall(options: InstallOptions): Install {
     await registerAccess();
     const recorded = store.read().site;
 
-    autoFinish = Boolean(values.password && values.site && values.author);
+    // First run finishes by itself when the first owner, the site and the publishing name are all given: by a password or by the provider's subject.
+    autoFinish = Boolean((values.password || startOptions.firstOwner) && values.site && values.author);
     if (values.site && !store.isSeeded("site") && !recorded) {
       const { site: given } = values;
 

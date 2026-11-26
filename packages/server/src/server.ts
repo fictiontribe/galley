@@ -3,6 +3,8 @@
  * environment variables, then defaults), refuse unsafe configurations, bind,
  * compose the engine and serve the app. Signal handling belongs to the CLI.
  */
+import { OidcConfigError, readOidcConfig, type OidcConfig } from "./oidc/config";
+import { createOidcProvider } from "./oidc/provider";
 import { randomBytes } from "node:crypto";
 import { chmod, chown, lstat, mkdir, readFile, readlink, unlink, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -123,6 +125,8 @@ export interface ResolvedConfig {
   previewMemoryMb: number | null;
   /** Hosted: minutes between the editor's own looks at the repository (0: none). Null in local mode, which never looks by itself. */
   syncMinutes: number | null;
+  /** Hosted: the identity provider people may sign in through (GALLEY_OIDC_*), from the environment only. Null: none. */
+  oidc: OidcConfig | null;
 }
 
 function wholeNumber(raw: string | number | undefined, name: string, min: number, max: number): number | null {
@@ -288,6 +292,19 @@ export function resolveConfig(options: ServerOptions = {}): ResolvedConfig {
     }
   }
 
+  // Signing in through an identity provider: from the environment alone, checked now, the provider asked nothing yet.
+  let oidc: OidcConfig | null = null;
+
+  try {
+    oidc = readOidcConfig(
+      { env, mode, publicUrl, publicUrlFromEnvironment: Boolean(options.publicUrl?.trim() || env.GALLEY_PUBLIC_URL?.trim()), allowLoopbackHttp: options.oidcAllowLoopbackHttp === true },
+      warnings
+    );
+  } catch (error) {
+    if (error instanceof OidcConfigError) throw new StartupError(error.message);
+    throw error;
+  }
+
   const tokenInput = (options.token ?? env.GALLEY_TOKEN)?.trim() || null;
 
   if (tokenInput !== null && tokenInput.length < 16) throw new StartupError("GALLEY_TOKEN must be at least 16 characters long.");
@@ -367,6 +384,7 @@ export function resolveConfig(options: ServerOptions = {}): ResolvedConfig {
     logRequests: options.logRequests ?? (mode === "hosted" && !off(env.GALLEY_LOG_REQUESTS)),
     previewMemoryMb,
     syncMinutes,
+    oidc,
   };
 }
 
@@ -1016,6 +1034,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         const started = await install.start(config.starting ?? {}, {
           resetPassword: options.resetPassword === true,
           ...(options.resetPasswordEmail !== undefined ? { resetPasswordEmail: options.resetPasswordEmail } : {}),
+          ...(config.oidc?.owner ? { firstOwner: { issuer: config.oidc.issuer, subject: config.oidc.owner } } : {}),
         });
 
         setupCode = started.setupCode;
@@ -1137,6 +1156,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     cookieName: hostCookie ? `__Host-${PRODUCT.slug}_session` : `${PRODUCT.slug}_session_${port}`,
     install,
     secureCookie: hostCookie,
+    ...(install && config.oidc ? { oidc: createOidcProvider(config.oidc) } : {}),
     allowedHosts:
       config.mode === "local"
         ? [config.host]

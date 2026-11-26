@@ -50,6 +50,8 @@ export const SESSION_KINDS: readonly SessionKind[] = ["password", "provider", "r
 /** When a new hosted session ends and how it was started. By default: a password session, SESSION_MAX_AGE_S from its issue. */
 export interface SessionLife {
   expiresAt?: number;
+  /** How long it lasts from its own issue (ms), when `expiresAt` isn't given. */
+  lastsMs?: number;
   kind?: SessionKind;
 }
 
@@ -93,7 +95,7 @@ export function signSession(key: Uint8Array, issuedAt = Date.now(), nonce = rand
   if (accountId !== undefined) {
     if (!ACCOUNT_ID.test(accountId)) throw new Error("An account id is letters, digits, - and _ only.");
     if (!NONCE.test(nonce)) throw new Error("A session's id is letters, digits, - and _ only.");
-    const expiresAt = life.expiresAt ?? issuedAt + SESSION_MAX_AGE_S * 1000;
+    const expiresAt = life.expiresAt ?? issuedAt + (life.lastsMs ?? SESSION_MAX_AGE_S * 1000);
     const kind = life.kind ?? "password";
 
     if (!Number.isSafeInteger(issuedAt) || issuedAt < 0 || !Number.isSafeInteger(expiresAt) || expiresAt <= issuedAt || expiresAt - issuedAt > SESSION_MAX_AGE_S * 1000) {

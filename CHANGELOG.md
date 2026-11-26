@@ -9,6 +9,18 @@ entry says how.
 
 ### Added
 
+- **Signing in through your own identity provider (OpenID Connect)**, on a
+  hosted install, beside the passwords. Set `GALLEY_OIDC_ISSUER` and
+  `GALLEY_OIDC_CLIENT_ID` in the server's environment (never in the
+  starting-values file), with `GALLEY_PUBLIC_URL` on `https://`. The sign-in
+  screen gets a "Sign in with …" button. It uses the authorization code flow
+  with PKCE, checks every ID token in full (one algorithm, the issuer, this
+  editor as its only audience, its age, its nonce), finds each person by the
+  provider's issuer and subject (never by e-mail), and starts a session of
+  `GALLEY_OIDC_SESSION_HOURS` (12 by default). The provider sets the role at
+  every sign-in, from `GALLEY_OIDC_ROLE_CLAIM`, or `GALLEY_OIDC_DEFAULT_ROLE`.
+  `GALLEY_OIDC_OWNER` names the first owner by subject. Turning passwords off
+  comes in a later version. The variables are in the environment reference.
 - **Sarking (`sarking`, `starters/astro-blog`), a blog starter for long-form
   writing with evidence.** Posts are plain Markdown, never MDX — so on a
   hosted install contributors can edit them — with twelve fenced-block YAML

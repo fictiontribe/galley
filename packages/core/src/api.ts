@@ -1008,6 +1008,19 @@ export interface ApiRoutes {
    * page tells the person to ask an owner for a link.
    */
   "POST /api/auth/forgot": { body: { email: string }; response: { ok: true; emailAvailable: boolean } };
+  /**
+   * Where an identity provider is set up: start signing in through it. A
+   * top-level navigation: answers a redirect to the provider, and remembers
+   * `return` (a path on the editor) for afterwards.
+   */
+  "GET /api/auth/oidc/start": { query: { return?: string }; response: never };
+  /**
+   * Where an identity provider is set up: where the provider sends the
+   * browser back (the redirect address registered there). Answers a
+   * redirect: to where the person was going, signed in, or to the sign-in
+   * page with `?signin=<why>`.
+   */
+  "GET /api/auth/oidc/callback": { query: { code?: string; state?: string; iss?: string; error?: string }; response: never };
 
   // ── "Host the editor online" (hosting/types.ts) ────────────────────────
   // Local mode only: a hosted install never creates other installs.

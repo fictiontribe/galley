@@ -5,7 +5,7 @@ import { ROUTE_ACCESS, roleMayCall } from "@galley/core/install/route-access";
 import type { ApiRouteKey } from "@galley/core/api";
 import { BUILD_MODE_LEVEL, SITE_SETTINGS_LEVEL } from "@galley/core/install/route-access";
 import { BUILD_BY_OTHERS, SETTINGS_BY_OTHERS, accountOf, mayCall, mayLevel, ROLE_LINES, whoMay, whoMayFirst, whoPublishes } from "../../src/lib/may";
-import { codeFromHash, completeKind, emailProblem, initials, linkKindAt, loginBody, loginProblem, nameProblem, personLabel, takeLinkCode, timeLeft } from "../../src/features/accounts/logic";
+import { codeFromHash, completeKind, emailProblem, initials, linkKindAt, loginBody, loginProblem, nameProblem, personLabel, providerRefusal, takeLinkCode, timeLeft } from "../../src/features/accounts/logic";
 
 function meta(role: AccountRole | null, mode: "local" | "hosted" = "hosted"): MetaInfo {
   const account: AccountSession | undefined = role
@@ -148,7 +148,26 @@ describe("an account that isn't complete", () => {
   it("is asked for a name alone when it has an e-mail, and for both details when it has neither", () => {
     expect(completeKind({ name: "", email: "ed@example.com" })).toBe("name");
     expect(completeKind({ name: "", email: "" })).toBe("details");
+    // Someone who signs in through the identity provider is asked only for a name, e-mail or not: no password, and the e-mail is the provider's.
+    expect(completeKind({ name: "", email: "", viaProvider: true })).toBe("name");
+    expect(completeKind({ name: "", email: "pat@example.com", viaProvider: true })).toBe("name");
     expect(completeKind({ name: "Sam Owner", email: "" })).toBe("details");
   });
 });
 
+describe("a sign-in through the identity provider that was refused", () => {
+  it("is said in a sentence chosen by its code, never the provider's own words; an unknown code says nothing", () => {
+    for (const code of ["provider-unreachable", "provider-no-pkce", "provider-misconfigured", "refused-state", "another-tab", "provider-error", "provider-cancelled", "refused-token", "no-role", "bad-role", "removed", "switched-off", "signed-out", "full", "too-many"]) {
+      const sentence = providerRefusal(code, "Example Sign-in");
+
+      expect(sentence, code).toMatch(/^[A-Z].*\.$/);
+      expect(sentence, code).not.toMatch(/<|undefined|null/);
+    }
+    expect(providerRefusal("another-tab", "Example Sign-in")).toBe("Another sign-in was started in this browser. Start again.");
+    expect(providerRefusal("removed", "Example Sign-in")).toBe("You were removed from this editor. Ask one of its owners.");
+    expect(providerRefusal("provider-cancelled", "Example Sign-in")).toBe("The sign-in was cancelled at Example Sign-in.");
+    expect(providerRefusal("signed-out", "X", String(Date.UTC(2026, 10, 25, 16, 40)))).toMatch(/^You were signed out at \d{1,2}[:.]\d{2}.*\. Sign in again\.$/);
+    expect(providerRefusal("signed-out", "X", "<b>")).toBe("You were signed out. Sign in again.");
+    for (const code of [null, "", "constructor", "toString", "__proto__", "<script>"]) expect(providerRefusal(code, "X")).toBeNull();
+  });
+});

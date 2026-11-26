@@ -92,12 +92,13 @@ Galley has no telemetry and no account. It connects to:
 | Your mail server, webhooks | an inbox e-mail alert (`GALLEY_SMTP_URL`), a server-side form destination | the submission |
 | Your mail server | on a hosted install with `GALLEY_SMTP_URL` and `GALLEY_PUBLIC_URL`: an invitation, a new-password link an owner made, **Forgot your password?** | the person's e-mail address, who invited them and as what, and the one-time link |
 | Other sites | only when someone asks Search and AI to check external links | `HEAD` requests, a few at a time |
+| The identity provider `GALLEY_OIDC_ISSUER` names | on a hosted install that sets one up: when someone signs in through it | a read of its discovery document and its keys, and the exchange of the sign-in's code at its token endpoint, with the PKCE verifier (and the client secret, when one is set): only to addresses its own discovery document gives, over HTTPS, following no redirect, each answer read up to 64 KB |
 
 The placeholder image provider is offline. The web UI loads nothing from anyone else: fonts and scripts are served by Galley itself. The GitHub CLI (`gh`), when installed, is used in pull-request mode to open the pull request.
 
 ## Not covered yet
 
-- No single sign-on on a hosted install: an e-mail and a password only. No audit log beyond the server's own log lines. One shared draft for everyone. Roles are not a security boundary (above). Accounts have been run by automated tests, a rehearsal over HTTP against the real server and a pass in a real browser — not yet on the real image or with a real mail server ([`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#not-verified-yet)).
+- Single sign-on on a hosted install is OpenID Connect only, beside the passwords, which can't be turned off yet. No audit log beyond the server's own log lines. One shared draft for everyone. Roles are not a security boundary (above). Accounts have been run by automated tests, a rehearsal over HTTP against the real server and a pass in a real browser — not yet on the real image or with a real mail server ([`docs/cloud-install.md`]({repository}/blob/main/docs/cloud-install.md#not-verified-yet)).
 - The site's own code runs inside the hosted install's container and can read what the container holds.
 - The desktop app's installers are unsigned, and keys are kept in owner-only files, not the OS keychain.
 - Windows and Linux have not been verified.

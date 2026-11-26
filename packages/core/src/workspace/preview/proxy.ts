@@ -51,8 +51,13 @@ export function viewerCookieName(secure: boolean): string {
 }
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-/** `<slug>_session`, `<slug>_session_<port>`, `__Host-<slug>_session` (and `__Secure-`), and the viewer cookie in both forms. */
-const APP_COOKIE = new RegExp(`^(?:__Host-|__Secure-)?${escapeRegExp(PRODUCT.slug)}_(?:session(?:_\\d+)?|viewer)$`);
+/**
+ * `<slug>_session`, `<slug>_session_<port>`, `__Host-<slug>_session` (and
+ * `__Secure-`), each with its known-browser cookie (`…_known`), the viewer
+ * cookie, and the sign-in through a provider's pre-login cookie
+ * (`__Host-<slug>_oidc`), each in every form.
+ */
+const APP_COOKIE = new RegExp(`^(?:__Host-|__Secure-)?${escapeRegExp(PRODUCT.slug)}_(?:session(?:_\\d+)?(?:_known)?|viewer|oidc)$`);
 
 /** Whether a cookie name is one of this app's own: the editor's session in any of its forms, or a gateway's viewer cookie. */
 export function isAppCookie(name: string): boolean {

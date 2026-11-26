@@ -106,9 +106,35 @@ export function takeLinkCode(address?: AddressBar, past?: PageHistory): string |
  * What an account that isn't complete is asked for: both details (the owner
  * of an install from before accounts, who has neither), or only a name
  * (someone who has an e-mail: they accepted an invitation with a name
- * someone here already has, or their name held nothing a reader can see).
+ * someone here already has, or their name held nothing a reader can see; or
+ * someone who signs in through the identity provider, whose e-mail comes
+ * from it, and who has no password to type).
  */
-export function completeKind(account: { name: string; email: string }): "details" | "name" {
-  return needsName(account) ? "name" : "details";
+export function completeKind(account: { name: string; email: string; viaProvider?: true }): "details" | "name" {
+  return account.viaProvider || needsName(account) ? "name" : "details";
+}
+
+/** Why a sign-in through the identity provider was refused (`/login?signin=<code>`), in the sign-in page's words. Null: not a code it sends. */
+export function providerRefusal(code: string | null, provider: string, at: string | null = null): string | null {
+  const when = at && /^\d{1,16}$/.test(at) ? new Date(Number(at)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : null;
+  const sentences: Record<string, string> = {
+    "provider-unreachable": `${provider} didn’t answer. Try again in a moment.`,
+    "provider-no-pkce": `Signing in with ${provider} is turned off: it doesn’t say it protects its sign-in codes (PKCE), and this editor has no client secret for it. Whoever runs the server can fix this.`,
+    "provider-misconfigured": `Signing in with ${provider} isn’t working: this editor’s settings for it don’t match ${provider}. Whoever runs the server can see why in its log.`,
+    "refused-state": "That sign-in couldn’t be finished. Start it again.",
+    "another-tab": "Another sign-in was started in this browser. Start again.",
+    "provider-error": `${provider} didn’t sign you in. Try again, or ask whoever looks after your account there.`,
+    "provider-cancelled": `The sign-in was cancelled at ${provider}.`,
+    "refused-token": `${provider}’s answer couldn’t be checked, so you weren’t signed in. Try again; if it keeps happening, tell whoever runs this editor.`,
+    "no-role": `Your account at ${provider} doesn’t say what you may do in this editor. Ask whoever looks after your account there.`,
+    "bad-role": `Your account at ${provider} gives a role this editor doesn’t know. Ask whoever looks after your account there.`,
+    removed: "You were removed from this editor. Ask one of its owners.",
+    "switched-off": "Your account on this editor is switched off. Ask one of its owners.",
+    "signed-out": when ? `You were signed out at ${when}. Sign in again.` : "You were signed out. Sign in again.",
+    full: "This editor can’t take any more accounts. Ask one of its owners.",
+    "too-many": "Too many sign-ins from here. Wait a minute, then try again.",
+  };
+
+  return code !== null && Object.hasOwn(sentences, code) ? sentences[code]! : null;
 }
 
