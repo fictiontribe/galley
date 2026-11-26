@@ -48,6 +48,12 @@ entry says how.
   subject under another issuer isn't added. When the list of removed
   accounts is full, nothing changes and the command says to let some back
   first.
+- **The docs cover signing in through your own identity provider**: the
+  guide to running a hosted install has it step by step (setting it up,
+  passwords beside it or off, moving an install that had passwords, a wrong
+  link put right, taking someone's access away, back-channel logout, taking
+  the provider away), and the security pages, `SECURITY.md` and
+  `galley serve --help` say people may sign in through one.
 
 ## 0.4.5 — 2026-11-26
 

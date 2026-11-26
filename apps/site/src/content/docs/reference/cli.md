@@ -67,14 +67,15 @@ Options
 
 ## `galley serve`
 
-A hosted install: Galley for one site, on a server, for the people its owner invites, each signing in with their own e-mail and password. Everything it keeps is in its data folder (`GALLEY_HOME`). With no owner yet it prints a one-time setup link, and whoever opens it creates the owner's account; `--reset-password` prints a one-time link for a locked-out owner to choose a new password (`--email` says which owner, when there are several) and keeps serving. Not in a release yet: it is in the repository. What it prints, the image, the three addresses and the proxy in front: [Run a hosted install](/docs/running/hosted/).
+A hosted install: Galley for one site, on a server, for the people its owner invites, each signing in with their own e-mail and password, or through your own identity provider ([`GALLEY_OIDC_ISSUER`](/docs/reference/environment/#signing-in-through-an-identity-provider)). Everything it keeps is in its data folder (`GALLEY_HOME`). With no owner yet it prints a one-time setup link, and whoever opens it creates the owner's account; `--reset-password` prints a one-time link for a locked-out owner to choose a new password (`--email` says which owner, when there are several) and keeps serving. Not in a release yet: it is in the repository. What it prints, the image, the three addresses and the proxy in front: [Run a hosted install](/docs/running/hosted/).
 
 Its help (`--help`):
 
 ```text
 Usage: galley serve [options]
 Run Galley for other computers (hosted mode): one site, for the people an owner
-invites, each with their own e-mail and password.
+invites, each with their own e-mail and password, or through an identity provider
+(OpenID Connect, set with GALLEY_OIDC_ISSUER).
 Everything it keeps — the site, settings, keys, accounts, sessions — is in its data
 folder (GALLEY_HOME).
 Options

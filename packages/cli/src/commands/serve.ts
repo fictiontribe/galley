@@ -10,7 +10,8 @@ import type { Io } from "../io";
 export const SERVE_HELP = `Usage: ${PRODUCT.slug} serve [options]
 
 Run ${PRODUCT.name} for other computers (hosted mode): one site, for the people an owner
-invites, each with their own e-mail and password.
+invites, each with their own e-mail and password, or through an identity provider
+(OpenID Connect, set with GALLEY_OIDC_ISSUER).
 Everything it keeps — the site, settings, keys, accounts, sessions — is in its data
 folder (GALLEY_HOME).
 
