@@ -72,7 +72,7 @@ function overriddenHost(baseURL: string | undefined): string | null {
 }
 
 /** Structured error codes returned by the Galley Cloud AI proxy whose plain-English message should be surfaced directly. */
-export const GALLEY_PROXY_ERROR_CODES: ReadonlySet<string> = new Set([
+export const PROXY_ERROR_CODES: ReadonlySet<string> = new Set([
   "galley_ai_allowance_used",
   "galley_ai_paused_unpaid",
   "galley_ai_switched_off",
@@ -104,7 +104,7 @@ export function extractProxyError(body: unknown): { code: string; message: strin
     metadata?.error_code,
     metadata?.error_type,
   ];
-  const code = candidates.find((value): value is string => typeof value === "string" && GALLEY_PROXY_ERROR_CODES.has(value));
+  const code = candidates.find((value): value is string => typeof value === "string" && PROXY_ERROR_CODES.has(value));
 
   return code ? { code, message: scrubSecrets(message) } : null;
 }
@@ -115,7 +115,7 @@ function anthropicProxyError(error: InstanceType<typeof Anthropic.APIError>): { 
   if (fromBody) return fromBody;
   const extra = error as unknown as { errorCode?: unknown; apiMessage?: unknown };
 
-  if (typeof extra.errorCode === "string" && GALLEY_PROXY_ERROR_CODES.has(extra.errorCode) && typeof extra.apiMessage === "string" && extra.apiMessage.trim()) {
+  if (typeof extra.errorCode === "string" && PROXY_ERROR_CODES.has(extra.errorCode) && typeof extra.apiMessage === "string" && extra.apiMessage.trim()) {
     return { code: extra.errorCode, message: scrubSecrets(extra.apiMessage.trim()) };
   }
   return null;

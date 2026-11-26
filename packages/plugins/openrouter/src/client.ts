@@ -21,7 +21,7 @@ export function resolveBaseUrl(baseUrl?: BaseUrlOption): string {
   return (raw?.trim() || OPENROUTER_API).replace(/\/+$/, "");
 }
 
-const GALLEY_PROXY_ERROR_CODES: ReadonlySet<string> = new Set([
+const PROXY_ERROR_CODES: ReadonlySet<string> = new Set([
   "galley_ai_allowance_used",
   "galley_ai_paused_unpaid",
   "galley_ai_switched_off",
@@ -82,7 +82,7 @@ export function classify(status: number, body: unknown, key: string | null, what
   const noun = nouns[what];
   const fail = (kind: ProviderErrorKind, plain: string) => new ProviderError(kind, plain, detail);
   const proxyCode = [error?.details?.error_code, error?.metadata?.error_code, error?.metadata?.error_type, error?.code, error?.type].find(
-    (value): value is string => typeof value === "string" && GALLEY_PROXY_ERROR_CODES.has(value)
+    (value): value is string => typeof value === "string" && PROXY_ERROR_CODES.has(value)
   );
 
   if (proxyCode && typeof error?.message === "string" && error.message.trim()) {

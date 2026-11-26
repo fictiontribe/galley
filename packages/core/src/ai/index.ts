@@ -21,7 +21,7 @@ export type { SecretStore } from "./secrets";
 export { MODELS, DEFAULT_MODEL, SUMMARY_MODEL, costFor } from "./models";
 export { DEFAULT_AI_CREDIT_MILLICENTS, creditsFromUsd, readManagedAiConfig, aiMetaFromEnv, parseCreditsBalance, fetchManagedAiCredits } from "./credits";
 export type { ManagedAiConfig } from "./credits";
-export { GALLEY_PROXY_ERROR_CODES, extractProxyError } from "./errors";
+export { PROXY_ERROR_CODES, extractProxyError } from "./errors";
 export { createOpenAiProvider, openaiBaseUrl, OPENAI_BASE } from "./images/openai";
 export { createGoogleProvider, googleInteractionsUrl, GOOGLE_BASE, GOOGLE_INTERACTIONS_PATH, GOOGLE_INTERACTIONS_URL } from "./images/google";
 export { briefToPrompt } from "./brief";
