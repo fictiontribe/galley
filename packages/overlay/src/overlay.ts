@@ -132,6 +132,7 @@ export function createOverlay(env: OverlayEnv): Overlay {
       const box = root.getBoundingClientRect();
       if (box.width <= 0 || box.height <= 0) continue;
       const outline = doc.createElement("div");
+      outline.setAttribute("data-galley-mark", "");
       outline.style.cssText = `position:fixed;left:${Math.round(box.left)}px;top:${Math.round(box.top)}px;width:${Math.round(box.width)}px;height:${Math.round(box.height)}px;border:2px solid ${mark.color};border-radius:4px;box-sizing:border-box;pointer-events:none;`;
       nodes.push(outline);
     }
