@@ -87,6 +87,22 @@ export class SubmissionStore {
     });
   }
 
+  /** Appends only when no submission with the same id is already stored. Returns true when stored. */
+  async appendIfAbsent(submission: FormSubmission): Promise<boolean> {
+    const file = this.file(submission.siteId, submission.form);
+
+    return this.lock(file, async () => {
+      const state = await this.load(file);
+
+      if (state.items.some((item) => item.id === submission.id)) return false;
+      await this.ensureDir(submission.siteId);
+      await appendFile(file, `${JSON.stringify(submission)}\n`, { mode: 0o600 });
+      state.items.push(submission);
+      await this.remember(file, state);
+      return true;
+    });
+  }
+
   /** Change the named submissions with `change`; returns them as they are now. */
   async update(siteId: string, formId: string, ids: string[], change: (item: FormSubmission) => FormSubmission): Promise<FormSubmission[]> {
     const file = this.file(siteId, formId);

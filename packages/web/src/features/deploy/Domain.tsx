@@ -6,13 +6,13 @@
  * outside the account), the record is shown with Copy and "Check again".
  */
 import { useEffect, useState, type FormEvent } from "react";
-import type { DomainPlan, DomainRecord, Job } from "@galley/core/types";
+import type { DeployDomainConfig, DomainPlan, DomainRecord, Job } from "@galley/core/types";
 import { api, errorShape } from "@/lib/api";
 import { invalidate } from "@/lib/query";
 import { useJob, useJobs, useShowingJob } from "@/lib/stores/jobs";
 import { notify } from "@/lib/stores/toasts";
 import { Button, ConfirmDialog, Dialog, ErrorState, Field, Icon, IconButton, Input, ProofMark, Spinner, buttonClass } from "@/ui";
-import { hostOf } from "./logic";
+import { configuredDomains, hostOf } from "./logic";
 import { AddressBlock, copyText } from "./parts";
 import { applyLiveAddress, deployKeys, useDeployStatus, useDeployUi } from "./useDeploy";
 import "./deploy.css";
@@ -59,6 +59,7 @@ const PLAN_MARK: Record<DomainPlan["status"], "reg" | "bang" | "stet"> = {
 
 export function DomainDialog({ siteId }: { siteId: string }) {
   const open = useDeployUi((s) => s.domain);
+  const initialHost = useDeployUi((s) => s.domainHost);
   const setOpen = useDeployUi((s) => s.setDomain);
   const status = useDeployStatus(siteId);
   const [text, setText] = useState("");
@@ -68,17 +69,18 @@ export function DomainDialog({ siteId }: { siteId: string }) {
   const [jobId, setJobId] = useState<string | null>(null);
   const [compared, setCompared] = useState(false);
   const job = useJob(jobId);
-  const records = status.data?.domainRecords ?? [];
+  const activeHost = plan?.hostname ?? (initialHost || text.trim().toLowerCase() || status.data?.config?.domain?.hostname || "");
+  const records = (activeHost ? status.data?.domainRecordsByHost?.[activeHost] : undefined) ?? status.data?.domainRecords ?? [];
 
   useShowingJob(jobId, open);
   useEffect(() => {
     if (!open) return;
-    setText(status.data?.config?.domain?.hostname ?? "");
+    setText(initialHost ?? "");
     setPlan(null);
     setError(null);
     setJobId(null);
     setCompared(false);
-  }, [open]);
+  }, [open, initialHost]);
   // A finished job changes the status (the live address, records to create).
   useEffect(() => {
     if (job && job.state !== "running") invalidate(deployKeys.status(siteId));
@@ -110,7 +112,7 @@ export function DomainDialog({ siteId }: { siteId: string }) {
     }
   };
   const attach = () => run(() => api("POST /api/sites/:siteId/deploy/domain", { params: { siteId }, body: { hostname: plan!.hostname } }));
-  const checkAgain = () => run(() => api("POST /api/sites/:siteId/deploy/domain/check", { params: { siteId } }));
+  const checkAgain = () => run(() => api("POST /api/sites/:siteId/deploy/domain/check", { params: { siteId }, body: activeHost ? { hostname: activeHost } : {} }));
   const close = () => setOpen(false);
 
   const working = job?.state === "running";
@@ -164,7 +166,7 @@ export function DomainDialog({ siteId }: { siteId: string }) {
   } else if (waitingForDns) {
     body = (
       <div className="deploy-setup">
-        <p className="deploy-setup__lede">Create this record where {status.data?.config?.domain?.hostname ?? "the domain"}’s DNS is managed. Then check again — it can take a few minutes to be seen.</p>
+        <p className="deploy-setup__lede">Create this record where {activeHost || "the domain"}’s DNS is managed. Then check again — it can take a few minutes to be seen.</p>
         <DomainRecords records={records} />
       </div>
     );
@@ -254,15 +256,15 @@ export function DomainDialog({ siteId }: { siteId: string }) {
   );
 }
 
-/** The Online card's own-domain line: the address, its state, Check again, Stop using it — or the way in. */
+/** The Online card's own-domain list: each address, its state, Check again, Stop using it — and the way to add another. */
 export function DomainSection({ siteId }: { siteId: string }) {
   const status = useDeployStatus(siteId);
-  const domain = status.data?.config?.domain;
-  const [confirm, setConfirm] = useState(false);
+  const domains = configuredDomains(status.data?.config);
+  const [removing, setRemoving] = useState<DeployDomainConfig | null>(null);
   const fallback = status.data?.config?.defaultUrl;
 
   if (!status.data?.config) return null;
-  if (!domain) {
+  if (domains.length === 0) {
     return (
       <Button variant="quiet" size="sm" icon="globe" onClick={() => useDeployUi.getState().setDomain(true)}>
         Use your own domain…
@@ -271,34 +273,47 @@ export function DomainSection({ siteId }: { siteId: string }) {
   }
   return (
     <div className="deploy-domain">
-      <p className="deploy-domain__line">
-        <span className="g-mono">{domain.hostname}</span>
-        <span>{domain.pending ? " · not answering yet" : " · your own address"}</span>
-      </p>
-      {status.data.domainRecords?.length ? <DomainRecords records={status.data.domainRecords} /> : null}
+      {domains.map((domain, index) => {
+        const records = status.data?.domainRecordsByHost?.[domain.hostname] ?? (index === 0 ? status.data?.domainRecords : undefined) ?? [];
+
+        return (
+          <div key={domain.hostname} className="deploy-domain__item">
+            <p className="deploy-domain__line">
+              <span className="g-mono">{domain.hostname}</span>
+              <span>{domain.pending ? " · not answering yet" : index === 0 && domains.length > 1 ? " · primary address" : " · your own address"}</span>
+            </p>
+            {records.length ? <DomainRecords records={records} /> : null}
+            <div className="deploy-card__actions">
+              {domain.pending ? (
+                <Button variant="secondary" size="sm" onClick={() => useDeployUi.getState().setDomain(true, domain.hostname)}>
+                  Check again…
+                </Button>
+              ) : (
+                <a className={buttonClass("quiet", "sm")} href={`https://${domain.hostname}`} target="_blank" rel="noopener noreferrer">
+                  <Icon name="external" />
+                  Open
+                </a>
+              )}
+              <Button variant="danger-quiet" size="sm" onClick={() => setRemoving(domain)}>
+                Stop using this address
+              </Button>
+            </div>
+          </div>
+        );
+      })}
       <div className="deploy-card__actions">
-        {domain.pending ? (
-          <Button variant="secondary" size="sm" onClick={() => useDeployUi.getState().setDomain(true)}>
-            Check again…
-          </Button>
-        ) : (
-          <a className={buttonClass("quiet", "sm")} href={`https://${domain.hostname}`} target="_blank" rel="noopener noreferrer">
-            <Icon name="external" />
-            Open
-          </a>
-        )}
-        <Button variant="danger-quiet" size="sm" onClick={() => setConfirm(true)}>
-          Stop using this address
+        <Button variant="quiet" size="sm" icon="globe" onClick={() => useDeployUi.getState().setDomain(true, null)}>
+          Add another domain…
         </Button>
       </div>
       <ConfirmDialog
-        open={confirm}
-        onClose={() => setConfirm(false)}
-        title={`Stop using ${domain.hostname}?`}
+        open={removing !== null}
+        onClose={() => setRemoving(null)}
+        title={removing ? `Stop using ${removing.hostname}?` : ""}
         body={
-          domain.attached
-            ? `${domain.hostname} stops showing this site${fallback ? `, and the live address goes back to ${hostOf(fallback)}` : ""}. The domain itself and its other records aren’t touched. You can use the address again later.`
-            : `The live address goes back to ${fallback ? hostOf(fallback) : "the host’s own"}. ${domain.hostname} was set up outside this app, so it stays as it is on the host.`
+          removing?.attached
+            ? `${removing.hostname} stops showing this site${domains.length === 1 && fallback ? `, and the live address goes back to ${hostOf(fallback)}` : ""}. The domain itself and its other records aren’t touched. You can use the address again later.`
+            : `${removing ? `${removing.hostname} was set up outside this app, so it stays as it is on the host.` : ""}${domains.length === 1 && fallback ? ` The live address goes back to ${hostOf(fallback)}.` : ""}`
         }
         confirmLabel="Stop using this address"
         busyLabel="Stopping…"
@@ -306,9 +321,10 @@ export function DomainSection({ siteId }: { siteId: string }) {
         tone="danger"
         errorTitle="Couldn’t stop using the address"
         onConfirm={async () => {
-          await api("DELETE /api/sites/:siteId/deploy/domain", { params: { siteId } });
+          if (!removing) return;
+          await api("DELETE /api/sites/:siteId/deploy/domain", { params: { siteId }, query: { hostname: removing.hostname } });
           invalidate(deployKeys.status(siteId));
-          notify({ tone: "success", title: "Address removed", body: fallback ? `The site’s live address is ${hostOf(fallback)} again.` : "The site’s live address is the host’s own again." });
+          notify({ tone: "success", title: "Address removed", body: `${removing.hostname} is no longer listed for this site.` });
         }}
       />
     </div>

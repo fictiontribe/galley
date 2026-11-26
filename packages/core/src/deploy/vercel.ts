@@ -28,7 +28,7 @@ import { describeResponse, hostRequest, type HostResponse } from "./http";
 import { VERCEL_CREDENTIALS, VERCEL_INFO, projectNameProblem } from "./info";
 import { apexOf } from "./domains";
 import { hasMarkdown, vercelRoutingMembers, withVercelMarkdownHeader } from "./routing";
-import type { DomainRecord } from "../types";
+import type { Deployment, DomainRecord } from "../types";
 import type { DeployContext, DeployTarget } from "./types";
 
 export const VERCEL_API = "https://api.vercel.com";
@@ -349,6 +349,44 @@ export function createVercelTarget(): DeployTarget {
         createdAt: new Date().toISOString(),
         ...(production ? { productionUrl: https(production) } : {}),
       };
+    },
+
+    async list(ctx, { account, project }) {
+      const listed = await vercel<{
+        deployments?: Array<{ uid?: string; url?: string; state?: string; target?: string | null; created?: number; meta?: Record<string, string> }>;
+      }>(ctx, "GET", "v6/deployments", "list the project's deployments", {
+        query: { ...team(account), projectId: project, limit: "20" },
+      });
+
+      return (listed.body?.deployments ?? [])
+        .filter((entry): entry is { uid: string; url: string; state?: string; target?: string | null; created?: number; meta?: Record<string, string> } =>
+          Boolean(entry?.uid && entry?.url) && (!entry.state || entry.state === "READY")
+        )
+        .map((entry): Deployment => {
+          const kind = entry.target === "production" ? "production" : "preview";
+
+          return {
+            id: entry.uid,
+            kind,
+            target: "vercel",
+            project,
+            url: kind === "production" ? `https://${project}.vercel.app` : https(entry.url),
+            commit: entry.meta?.commit ?? null,
+            createdAt: typeof entry.created === "number" ? new Date(entry.created).toISOString() : new Date(0).toISOString(),
+            ...(entry.meta?.label ? { label: entry.meta.label } : {}),
+            files: 0,
+            bytes: 0,
+          };
+        });
+    },
+
+    async promote(ctx, { account, project, id }) {
+      await vercel(ctx, "POST", `v10/projects/${encodeURIComponent(project)}/promote/${encodeURIComponent(id)}`, "make that version live", {
+        query: team(account),
+      });
+      const url = `https://${project}.vercel.app`;
+
+      return { id, url, kind: "production", createdAt: new Date().toISOString(), productionUrl: url };
     },
   };
 }

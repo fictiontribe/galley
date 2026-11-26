@@ -481,3 +481,164 @@ describe("a form posted without JavaScript", () => {
     expect(stored).toMatchObject({ values: { name: "Ada", email: "ada@example.com", areas: ["a", "b"] }, spamReason: "too-fast", page: { url: "https://example.com/contact/" } });
   });
 });
+
+describe("authenticated idempotent form delivery", () => {
+  const VALID_ID_1 = "01JABCDEFGHJKMNPQRSTVW";
+  const VALID_ID_2 = "01JABCDEFGHJKMNPQRSTVX";
+
+  it("valid X-Capture-Key accepts X-Capture-Id and X-Captured-At (ISO-8601 and epoch ms) and deduplicates replays without re-notifying or re-forwarding", async () => {
+    const form = contactForm({ destinations: [{ provider: "galley", settings: {} }, { provider: "webhook", settings: { url: "https://hooks.example.com/in", serverSide: true } }] });
+    const { capture, mails, hookCalls, events } = setup({ working: { contact: form }, published: { contact: form } });
+    const { key } = await capture.captureKey(SITE_ID, "rotate");
+
+    await capture.patchCaptureSettings(SITE_ID, { notify: { contact: ["team@example.com"] } });
+    const capturedAtIso = "2026-10-15T12:34:56.789Z";
+    const first = await capture.capture(post(GOOD, { origin: null, captureKey: key, captureId: VALID_ID_1, capturedAt: capturedAtIso }));
+
+    expect(first.status).toBe(200);
+    expect(first.body).toEqual({ ok: true, id: VALID_ID_1 });
+    await capture.idle();
+    expect(mails).toHaveLength(1);
+    expect(hookCalls).toHaveLength(1);
+    const stored = await capture.get(SITE_ID, "contact", VALID_ID_1);
+
+    expect(stored).toMatchObject({ id: VALID_ID_1, at: capturedAtIso, values: GOOD });
+
+    // Replay with the same capture id: idempotent 200, no duplicate stored, no second email or webhook.
+    const eventsBefore = events.events.length;
+    const replay = await capture.capture(post(GOOD, { origin: null, captureKey: key, captureId: VALID_ID_1, capturedAt: capturedAtIso }));
+
+    expect(replay.status).toBe(200);
+    expect(replay.body).toEqual({ ok: true, id: VALID_ID_1, duplicate: true });
+    await capture.idle();
+    expect((await capture.list(SITE_ID, "contact", { filter: "all" })).total).toBe(1);
+    expect(mails).toHaveLength(1);
+    expect(hookCalls).toHaveLength(1);
+    expect(events.events.length).toBe(eventsBefore);
+
+    // Even if the submission was marked spam, replaying its id stays idempotent.
+    await capture.mark(SITE_ID, "contact", [VALID_ID_1], { spam: true });
+    const spamReplay = await capture.capture(post(GOOD, { origin: null, captureKey: key, captureId: VALID_ID_1, capturedAt: capturedAtIso }));
+
+    expect(spamReplay.status).toBe(200);
+    expect(spamReplay.body).toEqual({ ok: true, id: VALID_ID_1, duplicate: true });
+    expect((await capture.list(SITE_ID, "contact", { filter: "all" })).total).toBe(1);
+
+    // Epoch milliseconds are accepted and normalized to ISO-8601; distinct capture ids with identical answers are both stored.
+    const epochMs = Date.parse("2026-10-16T08:00:00.000Z");
+    const second = await capture.capture(post(GOOD, { origin: null, captureKey: key, captureId: VALID_ID_2, capturedAt: String(epochMs) }));
+
+    expect(second.status).toBe(200);
+    expect(second.body).toEqual({ ok: true, id: VALID_ID_2 });
+    expect((await capture.get(SITE_ID, "contact", VALID_ID_2)).at).toBe("2026-10-16T08:00:00.000Z");
+    expect((await capture.list(SITE_ID, "contact", { filter: "all" })).total).toBe(2);
+  });
+
+  it("rejects malformed X-Capture-Id and X-Captured-At with 400 when authenticated with X-Capture-Key", async () => {
+    const { capture } = setup();
+    const { key } = await capture.captureKey(SITE_ID, "rotate");
+
+    for (const badId of ["", "short", "01JABCDEFGHJKMNPQRSTV!", "01jabcdefghjkmnpqrstvw", "01IABCDEFGHJKMNPQRSTVW", "01LABCDEFGHJKMNPQRSTVW", "01OABCDEFGHJKMNPQRSTVW", "01UABCDEFGHJKMNPQRSTVW", `${VALID_ID_1}X`]) {
+      const res = await capture.capture(post(GOOD, { origin: null, captureKey: key, captureId: badId }));
+
+      expect(res.status, `captureId=${JSON.stringify(badId)}`).toBe(400);
+      expect(res.body).toMatchObject({ ok: false });
+    }
+    const farFutureIso = new Date(Date.now() + 10 * 60_000).toISOString();
+    const farFutureMs = String(Date.now() + 10 * 60_000);
+
+    for (const badAt of ["", "not-a-date", "0", "-1000", "2026-02-31T00:00:00Z", "2026-10-15", farFutureIso, farFutureMs]) {
+      const res = await capture.capture(post(GOOD, { origin: null, captureKey: key, capturedAt: badAt }));
+
+      expect(res.status, `capturedAt=${JSON.stringify(badAt)}`).toBe(400);
+      expect(res.body).toMatchObject({ ok: false });
+    }
+  });
+
+  it("valid X-Capture-Key skips per-IP rate limiting and Turnstile verification", async () => {
+    const { home, cleanup } = tempHome();
+
+    cleanups.push(cleanup);
+    const form = contactForm({ spam: { turnstileSiteKey: "0x4AAAAAAA" } });
+    const site = fakeSite({ working: { contact: form }, published: { contact: form } });
+    let turnstileCalls = 0;
+    const capture = createFormCapture({
+      home,
+      registry: { get: async () => site },
+      events: recordingBus(),
+      mode: "hosted",
+      mailer: null,
+      turnstileFetch: (async () => {
+        turnstileCalls += 1;
+        return new Response(JSON.stringify({ success: false }));
+      }) as unknown as typeof fetch,
+      log: () => {},
+    });
+    const { key } = await capture.captureKey(SITE_ID, "rotate");
+
+    await capture.patchCaptureSettings(SITE_ID, { turnstileSecret: "0x4AAAAAAAsecret" });
+    const statuses: number[] = [];
+
+    for (let i = 0; i < 8; i += 1) {
+      const res = await capture.capture(post({ ...GOOD, name: `Relay ${i}` }, { origin: null, captureKey: key, client: "198.51.100.1" }));
+
+      statuses.push(res.status);
+    }
+    expect(statuses).toEqual([200, 200, 200, 200, 200, 200, 200, 200]);
+    expect(turnstileCalls).toBe(0);
+    expect((await capture.list(SITE_ID, "contact", { filter: "spam" })).total).toBe(0);
+    expect((await capture.list(SITE_ID, "contact", { filter: "inbox" })).total).toBe(8);
+  });
+
+  it("unauthenticated or wrong-key requests cannot supply X-Capture-Id / X-Captured-At or bypass per-IP limits and Turnstile", async () => {
+    const { home, cleanup } = tempHome();
+
+    cleanups.push(cleanup);
+    const form = contactForm({ spam: { turnstileSiteKey: "0x4AAAAAAA" } });
+    const site = fakeSite({ working: { contact: form }, published: { contact: form } });
+    let turnstileCalls = 0;
+    const capture = createFormCapture({
+      home,
+      registry: { get: async () => site },
+      events: recordingBus(),
+      mode: "hosted",
+      mailer: null,
+      turnstileFetch: (async () => {
+        turnstileCalls += 1;
+        return new Response(JSON.stringify({ success: false }));
+      }) as unknown as typeof fetch,
+      log: () => {},
+    });
+    const { key } = await capture.captureKey(SITE_ID, "rotate");
+
+    await capture.patchCaptureSettings(SITE_ID, { turnstileSecret: "0x4AAAAAAAsecret" });
+
+    // Wrong capture key is refused with 403 even when Origin is allowed.
+    expect((await capture.capture(post(GOOD, { origin: SITE_ORIGIN, captureKey: "ck_wrong", captureId: VALID_ID_1 }))).status).toBe(403);
+    expect((await capture.capture(post(GOOD, { origin: SITE_ORIGIN, captureKey: "", captureId: VALID_ID_1 }))).status).toBe(403);
+    expect(key).toBeTruthy();
+
+    // No capture key with allowed Origin: ignores X-Capture-Id and X-Captured-At, still enforces Turnstile and per-IP rate limits.
+    const oldAt = "2020-01-01T00:00:00.000Z";
+    const first = await capture.capture(post(GOOD, { origin: SITE_ORIGIN, captureKey: null, captureId: VALID_ID_1, capturedAt: oldAt, meta: { elapsedMs: 9000, turnstileToken: "forged" } }));
+
+    expect(first.status).toBe(200);
+    const id = (first.body as { id: string }).id;
+
+    expect(id).not.toBe(VALID_ID_1);
+    const stored = await capture.get(SITE_ID, "contact", id);
+
+    expect(stored.at).not.toBe(oldAt);
+    expect(stored.spam).toBe(true);
+    expect(stored.spamReason).toBe("turnstile");
+    expect(turnstileCalls).toBe(1);
+
+    // Per-IP limit still blocks on the 6th request from the same IP.
+    const statuses: number[] = [];
+
+    for (let i = 0; i < 5; i += 1) {
+      statuses.push((await capture.capture(post({ ...GOOD, name: `U${i}` }, { origin: SITE_ORIGIN, captureKey: null, captureId: VALID_ID_2 }))).status);
+    }
+    expect(statuses).toEqual([200, 200, 200, 200, 429]);
+  });
+});

@@ -334,6 +334,7 @@ const coveredElsewhere: ApiRouteKey[] = [
   "POST /api/sites/:siteId/deploy/live-address",
   "POST /api/sites/:siteId/deploy",
   "GET /api/sites/:siteId/deployments",
+  "POST /api/sites/:siteId/deployments/:deploymentId/promote",
   "POST /api/sites/:siteId/deploy/domain/plan",
   "POST /api/sites/:siteId/deploy/domain",
   "POST /api/sites/:siteId/deploy/domain/check",

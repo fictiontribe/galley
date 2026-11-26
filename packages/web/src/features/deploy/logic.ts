@@ -4,7 +4,7 @@
  * failure means for the next step. Copy follows brand/voice.md: "online",
  * "live", "address", "access key" — never deploy, token, build or artifact.
  */
-import type { DeployStatus, DeployTargetInfo, FileChange, GalleyErrorShape, Job } from "@galley/core/types";
+import type { DeployConfig, DeployDomainConfig, DeployStatus, DeployTargetInfo, Deployment, FileChange, GalleyErrorShape, Job } from "@galley/core/types";
 import { count, relativeTime } from "@/lib/format";
 
 // ─────────────────────────────────────────────────────────────── addresses
@@ -12,6 +12,46 @@ import { count, relativeTime } from "@/lib/format";
 /** "https://lowfield.pages.dev/" → "lowfield.pages.dev". */
 export function hostOf(url: string): string {
   return url.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+}
+
+/** All custom domains on a site (`domains`, falling back to legacy `domain`), deduplicated in order. */
+export function configuredDomains(config: DeployConfig | null | undefined): DeployDomainConfig[] {
+  if (!config) return [];
+  const raw = [...(config.domains ?? []), ...(config.domain ? [config.domain] : [])];
+  const seen = new Set<string>();
+  const out: DeployDomainConfig[] = [];
+
+  for (const item of raw) {
+    if (!item?.hostname || seen.has(item.hostname)) continue;
+    seen.add(item.hostname);
+    out.push(item);
+  }
+  return out;
+}
+
+/** Recent deployments for the Online screen, merging `/deployments` with `status.deployments` without duplicates. */
+export function deploymentItems(status: DeployStatus | null | undefined, listed: readonly Deployment[] | undefined): Deployment[] {
+  const seen = new Set<string>();
+  const out: Deployment[] = [];
+
+  for (const item of [...(listed ?? []), ...(status?.deployments ?? [])]) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(item);
+  }
+  return out;
+}
+
+/** Whether `item` is the deployment currently live on the site. */
+export function isCurrentLive(item: Deployment, status: DeployStatus | null | undefined): boolean {
+  return Boolean(status?.production && status.production.id === item.id);
+}
+
+/** Whether "Make live" should be offered on `item`. */
+export function canPromoteDeployment(item: Deployment, status: DeployStatus | null | undefined, mayPromote: boolean): boolean {
+  if (!mayPromote || !status?.canPromote) return false;
+  if (status.job?.state === "running") return false;
+  return !isCurrentLive(item, status);
 }
 
 // ─────────────────────────────────────────────────────────────── settings left waiting
@@ -93,7 +133,7 @@ export type SetupAction =
   | { type: "pick-host"; target: string }
   | { type: "pick-account"; account: string }
   /** Continue from a step. */
-  | { type: "host"; target: string; keyStored: boolean }
+  | { type: "host"; target: string; keyStored: boolean; skipKey?: boolean }
   | { type: "key-saved" }
   | { type: "accounts"; accounts: Array<{ id: string; name: string }> }
   | { type: "account"; account: string }
@@ -131,7 +171,7 @@ export function setupReducer(state: SetupState, action: SetupAction): SetupState
       return { ...state, account: action.account };
     case "host":
       // A different host forgets the account picked for the last one.
-      return { ...state, target: action.target, account: state.target === action.target || state.target === null ? state.account : null, accounts: null, step: "key" };
+      return { ...state, target: action.target, account: state.target === action.target || state.target === null ? state.account : null, accounts: null, step: action.skipKey ? "account" : "key" };
     case "key-saved":
       return { ...state, step: "account" };
     case "accounts": {

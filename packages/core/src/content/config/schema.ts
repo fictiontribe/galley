@@ -134,6 +134,14 @@ const mediaImages = z
 /** Project names both built-in hosts accept, short enough for a preview address label (`<8 chars>-<name>`). */
 const DEPLOY_PROJECT = /^[a-z0-9](?:[a-z0-9-]{0,52}[a-z0-9])?$/;
 
+const deployDomainConfig = z
+  .object({
+    hostname: z.string().regex(/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, { message: "must be a host name like “www.example.com”." }),
+    attached: z.boolean(),
+    pending: z.boolean().optional(),
+  })
+  .strict();
+
 const deployConfig = z
   .object({
     target: z.string().regex(ADAPTER_ID, { message: "must be a host id, like “cloudflare” or “vercel”." }),
@@ -141,14 +149,8 @@ const deployConfig = z
     project: z.string().regex(DEPLOY_PROJECT, { message: "must be lowercase letters, digits and dashes (up to 54), like “my-site”." }),
     productionUrl: z.string().url().optional(),
     defaultUrl: z.string().url().optional(),
-    domain: z
-      .object({
-        hostname: z.string().regex(/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, { message: "must be a host name like “www.example.com”." }),
-        attached: z.boolean(),
-        pending: z.boolean().optional(),
-      })
-      .strict()
-      .optional(),
+    domain: deployDomainConfig.optional(),
+    domains: z.array(deployDomainConfig).max(20).optional(),
     autoDeploy: z.boolean().optional(),
     previewOnShare: z.boolean().optional(),
   })

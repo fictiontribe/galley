@@ -9,7 +9,7 @@ import { withAccountAuthor } from "../../src/workspace/author";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import { createDeployService, type DeployService } from "../../src/deploy/index";
+import { createDeployService, type DeployService, type DeployTarget } from "../../src/deploy/index";
 import { createEventBus } from "../../src/site/index";
 import type { Job, ServerEvent, Settings } from "../../src/types";
 import { createSettingsService } from "../../src/ai/settings";
@@ -441,4 +441,143 @@ describe("deploying a site", () => {
     expect([...live.files.keys()].some((path) => path.startsWith("node_modules/") || path.startsWith(".git/"))).toBe(false);
     expect(sh(root, "worktree", "list").split("\n")).toHaveLength(1);
   }, 180_000);
+
+  it("deployFromSource skips local build and empty-credential targets run without stored secrets", async () => {
+    const root = tempDir("deploy-source-site-");
+
+    // No build config at all: a source-based target never runs a local build or walks dist/.
+    writeTree(root, {
+      "galley.config.json": JSON.stringify({ name: "Source Site" }, null, 2),
+      "content/index.md": "---\ntitle: Home\n---\nHello.\n",
+    });
+    sh(root, "init", "-q", "-b", "main");
+    sh(root, "add", "-A");
+    sh(root, "commit", "-q", "-m", "Initial version");
+    const head = sh(root, "rev-parse", "HEAD");
+    const sourceCalls: unknown[] = [];
+    const promoteCalls: unknown[] = [];
+    let deployCalls = 0;
+    const remoteHistory: Array<{ id: string; kind: "production" | "preview"; commit: string | null; createdAt: string; url: string }> = [
+      { id: "rel-old", kind: "production", commit: "0000000", createdAt: "2026-10-01T00:00:00.000Z", url: "https://source-site.example.net" },
+    ];
+    const sourceTarget: DeployTarget = {
+      id: "source-host",
+      name: "Source Host",
+      apiBase: "https://api.source-host.example",
+      credentials: [],
+      info: {
+        id: "source-host",
+        name: "Source Host",
+        blurb: "Builds from source.",
+        recommended: false,
+        credentials: [],
+        keySteps: [],
+        keyUrl: "https://source-host.example",
+        keyGrants: "",
+        accountNoun: "account",
+        accountHelp: "",
+        previewNote: "",
+        limits: { maxFiles: 1000, maxFileBytes: null, maxTotalBytes: null },
+        pricingUrl: "https://source-host.example/pricing",
+        domainsUrl: "https://source-host.example/domains",
+      },
+      async connect(ctx) {
+        expect(ctx.token).toBe("");
+        return { accounts: [{ id: "acct-1", name: "Default" }] };
+      },
+      async checkProject(_ctx, { name }) {
+        return { name, available: true, existing: false, productionUrl: `https://${name}.example.net` };
+      },
+      async ensureProject(_ctx, { name }) {
+        return { project: name, productionUrl: `https://${name}.example.net` };
+      },
+      async deploy() {
+        deployCalls += 1;
+        throw new Error("deploy() must not be called when deployFromSource is implemented");
+      },
+      async deployFromSource(ctx, input) {
+        expect(ctx.token).toBe("");
+        sourceCalls.push({ account: input.account, project: input.project, kind: input.kind, commit: input.commit, branch: input.branch });
+        const createdAt = "2026-10-02T00:00:00.000Z";
+        const outcome = { id: "rel-new", url: `https://${input.project}.example.net`, kind: input.kind, createdAt, productionUrl: `https://${input.project}.example.net` };
+
+        remoteHistory.unshift({ id: outcome.id, kind: outcome.kind, commit: input.commit, createdAt, url: outcome.url });
+        return outcome;
+      },
+      async list(_ctx, { project }) {
+        return remoteHistory.map((item) => ({ ...item, target: "source-host", project, files: 0, bytes: 0 }));
+      },
+      async promote(ctx, input) {
+        expect(ctx.token).toBe("");
+        promoteCalls.push(input);
+        const createdAt = "2026-10-03T00:00:00.000Z";
+        const found = remoteHistory.find((entry) => entry.id === input.id);
+
+        return { id: input.id, url: `https://${input.project}.example.net`, kind: "production", createdAt, productionUrl: `https://${input.project}.example.net`, commit: found?.commit ?? null };
+      },
+    };
+    const bus = createEventBus();
+    const deploy = createDeployService({
+      home: tempDir("deploy-source-home-"),
+      settings: {
+        readSecret: async () => null,
+        get: async () => ({ author: { name: "Test Editor", email: "editor@example.com" } }) as Settings,
+        setSecret: async (name) => ({ name, configured: false, source: null }),
+      },
+      events: bus,
+      targets: [sourceTarget],
+      env: {},
+    });
+    const harness = await openSite(root, { events: bus });
+    const site = harness.site;
+
+    // Empty-credential target connects without any stored secret.
+    expect(await deploy.connect("source-host")).toEqual({ accounts: [{ id: "acct-1", name: "Default" }] });
+    await deploy.configure(site, { target: "source-host", account: "acct-1", project: "source-site" });
+    const deployed = await deploy.run(site, { kind: "production" });
+
+    expect(deployCalls).toBe(0);
+    expect(sourceCalls).toEqual([{ account: "acct-1", project: "source-site", kind: "production", commit: head, branch: "main" }]);
+    expect(deployed).toMatchObject({ id: "rel-new", kind: "production", commit: head, url: "https://source-site.example.net", files: 0, bytes: 0 });
+
+    const status = await deploy.status(site);
+
+    expect(status.canPromote).toBe(true);
+    expect(status.production?.id).toBe("rel-new");
+    expect(status.deployments?.map((item) => item.id)).toEqual(["rel-new", "rel-old"]);
+
+    // Promote an earlier release back to live.
+    const promoted = await deploy.promote(site, "rel-old");
+
+    expect(promoteCalls).toEqual([{ account: "acct-1", project: "source-site", id: "rel-old" }]);
+    expect(promoted).toMatchObject({ id: "rel-old", kind: "production", commit: "0000000", url: "https://source-site.example.net" });
+    // Reject invalid deployment ids before touching the host.
+    await expect(deploy.promote(site, "../bad id")).rejects.toMatchObject({ code: "invalid" });
+  });
+
+  it("list and promote work end to end on built-in Cloudflare and Vercel targets", async () => {
+    const root = makeTinySite();
+    const { harness, deploy } = await rig(root);
+    const site = harness.site;
+
+    await deploy.configure(site, { target: "cloudflare", account: ACCOUNT, project: "lowfield-studio" });
+    const first = await deploy.run(site, { kind: "production" });
+
+    writeFileSync(join(root, "content/about.md"), "---\ntitle: About v2\n---\n");
+    sh(root, "commit", "-qam", "Second version");
+    const second = await deploy.run(site, { kind: "production" });
+
+    expect(fakeCf!.activeVersion.get("lowfield-studio")).toBe(second.id);
+    const statusBefore = await deploy.status(site);
+
+    expect(statusBefore.canPromote).toBe(true);
+    expect(statusBefore.production?.id).toBe(second.id);
+    expect(statusBefore.deployments?.map((item) => item.id)).toEqual([second.id, first.id]);
+
+    const promoted = await deploy.promote(site, first.id);
+
+    expect(promoted).toMatchObject({ id: first.id, kind: "production", commit: first.commit });
+    expect(fakeCf!.activeVersion.get("lowfield-studio")).toBe(first.id);
+    expect((await deploy.status(site)).production?.id).toBe(first.id);
+  });
 });

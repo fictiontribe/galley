@@ -1,8 +1,15 @@
+import { randomBytes } from "node:crypto";
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DeployError, type DeployService } from "@galley/core/deploy";
-import type { DeployStatus, Job, SecretStatus } from "@galley/core/types";
+import { createPeople, openInstallState, type Account, type AccountRole, type Install } from "@galley/core/install";
+import type { DeployStatus, Deployment, Job, SecretStatus } from "@galley/core/types";
+import { ROLE_REFUSAL } from "../src/app";
+import { signSession } from "../src/auth";
 import { secretName } from "../src/validate";
-import { fake, fakeSite, json, SITE_ID, testApp } from "./helpers";
+import { fake, fakeSite, json, SITE_ID, testApp, TOKEN } from "./helpers";
 
 const STATUS: DeployStatus = { config: null, production: null, preview: null, job: null, behind: null, liveAddressSet: false, suggestedProject: "site-1" };
 const JOB: Job = { id: "job-1", kind: "deploy", label: "Putting the site online", state: "running", siteId: SITE_ID, startedAt: 1 };
@@ -122,9 +129,59 @@ describe("deploy routes", () => {
     expect(await json(await call("POST", `/api/sites/${SITE_ID}/deploy/domain/plan`, { hostname: "galley.example.com" }))).toMatchObject({ status: "ready", canAttach: true });
     expect(await json(await call("POST", `/api/sites/${SITE_ID}/deploy/domain`, { hostname: "galley.example.com" }))).toEqual(domainJob);
     expect(await json(await call("POST", `/api/sites/${SITE_ID}/deploy/domain/check`))).toEqual(domainJob);
+    expect(await json(await call("POST", `/api/sites/${SITE_ID}/deploy/domain/check`, { hostname: "www.example.com" }))).toEqual(domainJob);
     expect(await json(await call("DELETE", `/api/sites/${SITE_ID}/deploy/domain`))).toEqual(STATUS);
+    expect(await json(await call("DELETE", `/api/sites/${SITE_ID}/deploy/domain?hostname=www.example.com`))).toEqual(STATUS);
     expect((await call("POST", `/api/sites/${SITE_ID}/deploy/domain`, {})).status).toBe(400);
     expect(calls).toEqual([["plan", "galley.example.com"], ["attach", "galley.example.com"]]);
+  });
+
+  it("promotes a deployment for owner and editor roles and refuses contributors with 403", async () => {
+    const promoted: Deployment = { id: "dep-1", kind: "production", target: "cloudflare", project: "site-1", url: "https://site-1.workers.dev", commit: "abc1234", createdAt: "2026-10-01T00:00:00.000Z", files: 3, bytes: 120 };
+    const calls: string[] = [];
+    const home = realpathSync(mkdtempSync(join(tmpdir(), "galley-deploy-promote-")));
+
+    try {
+      const store = await openInstallState(home);
+      const engine = createPeople(store);
+      const owner = await engine.createOwner({ password: "correct horse battery staple", name: "Owner", email: "owner@example.com" });
+      const people: Record<AccountRole, Account> = { owner } as Record<AccountRole, Account>;
+
+      for (const role of ["editor", "contributor"] as const) {
+        const { link } = await engine.invite(owner.id, { email: `${role}@example.com`, role });
+
+        people[role] = (await engine.useLink(link.code, { password: "correct horse battery staple", name: role })).account;
+      }
+      const install = fake<Install>("install", { store, people: engine, home, meta: () => ({ singleSite: true, setupNeeded: false, passwordSet: true, siteId: null, signInWith: "email" }) });
+      const key = randomBytes(32);
+      const host = "https://cms.example.com";
+      const app = testApp({ site: fakeSite() }, { mode: "hosted", token: TOKEN, install, cookieKey: key, allowedHosts: ["cms.example.com"], publicOrigin: host });
+
+      app.services.deploy = fake<DeployService>("deploy", {
+        promote: async (_site, id) => {
+          calls.push(id);
+          return promoted;
+        },
+      });
+      const asRole = (role: AccountRole) =>
+        app.raw("POST", `${host}/api/sites/${SITE_ID}/deployments/dep-1/promote`, {
+          headers: { origin: host, cookie: `galley_session_test=${signSession(key, store.nextIssuedAt(Date.now(), people[role].id), undefined, people[role].id)}` },
+        });
+
+      const ownerRes = await asRole("owner");
+      const editorRes = await asRole("editor");
+      const contributorRes = await asRole("contributor");
+
+      expect(ownerRes.status).toBe(200);
+      expect(await json(ownerRes)).toEqual(promoted);
+      expect(editorRes.status).toBe(200);
+      expect(await json(editorRes)).toEqual(promoted);
+      expect(contributorRes.status).toBe(403);
+      expect((await json(contributorRes)).error.message).toBe(ROLE_REFUSAL);
+      expect(calls).toEqual(["dep-1", "dep-1"]);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
   });
 
   it("store host keys through the secrets route and never echo them", async () => {

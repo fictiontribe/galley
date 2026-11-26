@@ -110,7 +110,7 @@ export class CaptureSettingsStore {
     const given = Buffer.from(hashKey(key), "hex");
     const expected = Buffer.from(stored.hash, "hex");
 
-    return given.length === expected.length && timingSafeEqual(given, expected);
+    return expected.length === 32 && given.length === expected.length && timingSafeEqual(given, expected);
   }
 
   async patch(siteId: string, patch: CaptureSettingsPatchInput): Promise<StoredCaptureSettings> {

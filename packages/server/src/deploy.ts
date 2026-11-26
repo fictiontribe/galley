@@ -6,6 +6,7 @@
  * the key into a 400 — a 401 would tell the UI the *app* session ended.
  */
 import { z } from "zod";
+import { GalleyError } from "@galley/core";
 import { DeployError, shapeForHttp, type DeployService } from "@galley/core/deploy";
 import type { SiteService } from "@galley/core/types";
 import { notFound } from "./errors";
@@ -21,6 +22,7 @@ type DeployRouteKey =
   | "POST /api/sites/:siteId/deploy/live-address"
   | "POST /api/sites/:siteId/deploy"
   | "GET /api/sites/:siteId/deployments"
+  | "POST /api/sites/:siteId/deployments/:deploymentId/promote"
   | "POST /api/sites/:siteId/deploy/domain/plan"
   | "POST /api/sites/:siteId/deploy/domain"
   | "POST /api/sites/:siteId/deploy/domain/check"
@@ -45,6 +47,12 @@ export const deploySettingsBody = z
   .strict();
 export const deployStartBody = z.object({ kind: z.enum(["production", "preview"]), label: z.string().trim().max(200).optional() }).strict();
 export const domainBody = z.object({ hostname: z.string().trim().min(1, "it can't be empty").max(300) }).strict();
+export const domainCheckBody = z
+  .object({ hostname: z.string().trim().min(1, "it can't be empty").max(300).optional() })
+  .strict()
+  .optional()
+  .transform((value) => value ?? {});
+export const domainQuery = z.object({ hostname: z.string().trim().min(1).max(300).optional() });
 export const deploymentsQuery = z.object({ limit: z.coerce.number().int().min(1).max(200).optional() });
 
 function deployOf(ctx: RouteContext): DeployService {
@@ -122,18 +130,30 @@ export const deployRoutes: Pick<RouteTable, DeployRouteKey> = {
   },
   "POST /api/sites/:siteId/deploy/domain/check": async (c, ctx) => {
     const deploy = deployOf(ctx);
+    const { hostname } = await v.body(c, domainCheckBody);
+    const site = await siteOf(c, ctx);
 
-    return host(async () => deploy.checkDomain(await siteOf(c, ctx)));
+    return host(() => deploy.checkDomain(site, hostname));
   },
   "DELETE /api/sites/:siteId/deploy/domain": async (c, ctx) => {
     const deploy = deployOf(ctx);
+    const { hostname } = v.query(c, domainQuery);
+    const site = await siteOf(c, ctx);
 
-    return host(async () => deploy.detachDomain(await siteOf(c, ctx)));
+    return host(() => deploy.detachDomain(site, hostname));
   },
   "GET /api/sites/:siteId/deployments": async (c, ctx) => {
     const deploy = deployOf(ctx);
     const { limit } = v.query(c, deploymentsQuery);
 
     return { items: await deploy.deployments(await siteOf(c, ctx), limit) };
+  },
+  "POST /api/sites/:siteId/deployments/:deploymentId/promote": async (c, ctx) => {
+    const deploy = deployOf(ctx);
+    const site = await siteOf(c, ctx);
+    const deploymentId = (c.req.param("deploymentId") ?? "").trim();
+
+    if (!deploymentId || deploymentId.length > 200) throw new GalleyError("invalid", "Choose a deployment to make live.");
+    return host(() => deploy.promote(site, deploymentId));
   },
 };

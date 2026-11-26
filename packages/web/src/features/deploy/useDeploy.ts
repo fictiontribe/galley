@@ -4,7 +4,7 @@
  * events, and the one global "open the setup" switch every entry point uses.
  */
 import { create } from "zustand";
-import type { DeployKind, Job } from "@galley/core/types";
+import type { DeployKind, Deployment, Job } from "@galley/core/types";
 import { api } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
 import { invalidate, setQueryData, useQuery } from "@/lib/query";
@@ -22,7 +22,9 @@ interface DeployUi {
   share: boolean;
   /** The "Use your own domain" dialog. */
   domain: boolean;
-  setDomain: (open: boolean) => void;
+  /** Hostname to prefill/check in the domain dialog, or null when adding a new one. */
+  domainHost: string | null;
+  setDomain: (open: boolean, hostname?: string | null) => void;
   openSetup: (intent?: SetupIntent) => void;
   closeSetup: () => void;
   setShare: (open: boolean) => void;
@@ -33,7 +35,8 @@ export const useDeployUi = create<DeployUi>((set) => ({
   setup: { open: false, intent: "production" },
   share: false,
   domain: false,
-  setDomain: (domain) => set({ domain }),
+  domainHost: null,
+  setDomain: (domain, hostname = null) => set({ domain, domainHost: domain ? hostname : null }),
   openSetup: (intent = "production") => set({ setup: { open: true, intent } }),
   closeSetup: () => set((state) => ({ setup: { ...state.setup, open: false } })),
   setShare: (share) => set({ share }),
@@ -83,4 +86,11 @@ export async function setAutoDeploy(siteId: string, autoDeploy: boolean): Promis
 export async function applyLiveAddress(siteId: string): Promise<void> {
   setQueryData(deployKeys.status(siteId), await api("POST /api/sites/:siteId/deploy/live-address", { params: { siteId } }));
   invalidate(["site", siteId, "config"]);
+}
+
+export async function promoteDeployment(siteId: string, deploymentId: string): Promise<Deployment> {
+  const promoted = await api("POST /api/sites/:siteId/deployments/:deploymentId/promote", { params: { siteId, deploymentId } });
+  invalidate(deployKeys.status(siteId));
+  invalidate(deployKeys.deployments(siteId));
+  return promoted;
 }

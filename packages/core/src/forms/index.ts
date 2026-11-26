@@ -5,10 +5,14 @@
  */
 export {
   CAPTURE_BODY_LIMIT,
+  CAPTURE_ID_HEADER,
   CAPTURE_KEY_HEADER,
+  CAPTURED_AT_HEADER,
+  CAPTURED_AT_MAX_SKEW_MS,
   createFormCapture,
   FormCaptureService,
   INBOX_PAGE_MAX,
+  parseCapturedAt,
   type CaptureRequest,
   type CaptureResponse,
   type FormCaptureOptions,
