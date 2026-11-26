@@ -12,7 +12,7 @@
 import { SOURCES, type SourceId } from "./sources";
 import type { CheckInfo, FindingGroup, FindingKind, FindingSeverity } from "./types";
 
-interface Spec {
+export interface Spec {
   group: FindingGroup;
   severity: FindingSeverity;
   kind: FindingKind;
