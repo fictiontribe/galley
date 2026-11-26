@@ -1,6 +1,7 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
 import type { PluginInfo, PluginSettingInfo } from "@galley/core/types";
 import { api, errorShape } from "@/lib/api";
+import { useManagedAi } from "@/lib/credits";
 import { useMeta } from "@/lib/stores/meta";
 import { notify } from "@/lib/stores/toasts";
 import { Badge, Button, Field, Input, ProofMark, Select, Toggle } from "@/ui";
@@ -306,13 +307,37 @@ function SelectSetting({ plugin, setting, siteId }: SettingProps) {
   );
 }
 
+const OPENROUTER_PLUGIN = "@galley/plugin-openrouter";
+
+function ManagedKeySetting({ setting, disabled }: { setting: PluginSettingInfo; disabled: boolean }) {
+  return (
+    <div className="plg-setting">
+      <div className="plg-setting__row">
+        <div className="plg-setting__text">
+          <span className="g-label">{setting.label}</span>
+          <span className="plg-setting__status">
+            <ProofMark kind={disabled ? "stet" : "reg"} className={disabled ? "g-faint" : "app-secret__ok"} />
+            <span>{disabled ? "Switched off in site settings" : "Included with your Galley AI credits"}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Every setting a plugin declares, drawn from its own declaration. */
 export function PluginSettings({ plugin, siteId }: { plugin: PluginInfo; siteId?: string }) {
+  const { managed, disabled: aiDisabled } = useManagedAi();
+
   if (plugin.settings.length === 0) return null;
+  const managedOpenRouter = managed && plugin.name === OPENROUTER_PLUGIN;
+
   return (
     <div className="plg-settings" role="group" aria-label={`${plugin.displayName} settings`}>
       {plugin.settings.map((setting) =>
-        setting.source === "env" ? (
+        managedOpenRouter && setting.secret && setting.key === "apiKey" ? (
+          <ManagedKeySetting key={setting.key} setting={setting} disabled={aiDisabled} />
+        ) : setting.source === "env" ? (
           <EnvSetting key={setting.key} setting={setting} />
         ) : setting.secret ? (
           <SecretSetting key={setting.key} plugin={plugin} setting={setting} siteId={siteId} />

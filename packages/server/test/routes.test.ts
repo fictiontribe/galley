@@ -309,6 +309,7 @@ const coveredElsewhere: ApiRouteKey[] = [
   "PUT /api/sites/:siteId/author",
   "GET /api/sites/:siteId/usage",
   "GET /api/usage/sites",
+  "GET /api/ai/credits", // ai-credits.test.ts
   // media-storage.test.ts (needs a media storage service and a bucket)
   "GET /api/media-storage/connectors",
   "GET /api/sites/:siteId/media/storage",

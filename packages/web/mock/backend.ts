@@ -427,6 +427,7 @@ export function createHandlers(mock: MockBackend): Handlers {
       return mock.secrets[name];
     },
     "GET /api/usage": () => usage(),
+    "GET /api/ai/credits": () => ({ managed: false, disabled: false, creditMillicents: 250, balance: null }),
 
     "GET /api/sites": () => [...mock.sites.values()].map((site) => multiSite.withListing(site.summaryInfo())),
     "POST /api/sites/open": ({ body }) => {

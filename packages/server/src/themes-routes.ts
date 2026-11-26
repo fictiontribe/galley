@@ -148,9 +148,15 @@ export async function themeScript(webDir: string, ctx: Pick<RouteContext, "servi
     return null;
   }
   // The same for every visitor, signed in or not: the constant id, never the theme's own.
-  const look = await publicLook(ctx).catch(() => null);
+  // Appearance is read dynamically so PATCH /api/settings takes effect on the very next load.
+  const [look, settings] = await Promise.all([
+    publicLook(ctx).catch(() => null),
+    ctx.services.settings.get().catch(() => null),
+  ]);
+  const rawTheme = settings?.appearance?.theme;
+  const theme = rawTheme === "light" || rawTheme === "dark" || rawTheme === "system" ? rawTheme : "system";
   const keeper = ctx.options.mode === "hosted" ? "browser" : "server";
-  const start = JSON.stringify({ keeper, look }).replace(/</g, "\\u003c");
+  const start = JSON.stringify({ keeper, theme, look }).replace(/</g, "\\u003c");
 
   return `self.galleyStart=${start};\n${script}`;
 }

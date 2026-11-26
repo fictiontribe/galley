@@ -30,6 +30,7 @@ import type { PackageManager, PreviewController, PreviewPause, PreviewState, Pre
 import { installDependencies } from "../build";
 import { resolveCommand } from "../command";
 import { IS_WINDOWS, killTree, stripAnsi } from "../exec";
+import { diagnosePreviewFailure } from "./diagnose";
 import { listenerStartedHere, portOwnership, type Ownership, type PortStanding } from "./owner";
 import { freePort, portIsFree, type PortPool } from "./ports";
 import { probe, startBaselineProxy, startPreviewProxy, type PreviewGateway, type ProxyHandle, type ProxyPorts } from "./proxy";
@@ -352,6 +353,7 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
   let child: ChildProcess | null = null;
   let childExited: Promise<void> = Promise.resolve();
   let childExitCode: number | null = null;
+  let childExitSignal: NodeJS.Signals | null = null;
   /** The process group a server the command moved to the background stayed in: stopped with the preview, through that group. */
   let detachedGroup: number | null = null;
   let preview: ProxyHandle | null = null;
@@ -442,12 +444,14 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
 
     child = spawned;
     childExitCode = null;
+    childExitSignal = null;
     liveChildren.add(spawned);
     installExitHook();
     childExited = new Promise<void>((resolve) => {
       spawned.once("exit", (code, signal) => {
         liveChildren.delete(spawned);
         childExitCode = code;
+        childExitSignal = signal;
         pushLog(`The preview command exited (${signal ?? `code ${code ?? "?"}`}).`);
         resolve();
       });
@@ -514,7 +518,9 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
       if (good && (!firstGood || firstGood.port !== good.port)) firstGood = { ...good, at: Date.now() };
       if (!good) firstGood = null;
       if (Date.now() > deadline) {
-        throw new GalleyError("preview", "The preview didn't start in time. The log below may say why.", log.slice(-20).join("\n"));
+        const diagnosed = diagnosePreviewFailure(log, { phase: "timeout" });
+
+        throw new GalleyError("preview", diagnosed ?? "The preview didn't start in time. The log below may say why.", log.slice(-20).join("\n"));
       }
       // Not listening yet is checked often (a TCP connect is cheap); a first
       // good answer waits out the settle gap before the second look.
@@ -548,7 +554,15 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
     try {
       if (!settings.installed && existsSync(join(options.root, "package.json"))) {
         set("installing", { detail: "Installing the site's dependencies. The first time can take a few minutes.", startedAt });
-        await installDependencies(options.root, settings.packageManager, pushLog, settings.environment, options.addLockfile === false ? { addLockfile: false } : {});
+        try {
+          await installDependencies(options.root, settings.packageManager, pushLog, settings.environment, options.addLockfile === false ? { addLockfile: false } : {});
+        } catch (installError) {
+          const lines = log.length ? log : installError instanceof GalleyError && installError.detail ? installError.detail.split(/\r?\n/) : [];
+          const diagnosed = diagnosePreviewFailure(lines, { phase: "install" });
+
+          if (diagnosed) throw new GalleyError("preview", diagnosed, log.slice(-20).join("\n"));
+          throw installError;
+        }
         if (stale()) return snapshot();
       }
       set("starting", { detail: waking ? WAKING_DETAIL : "Starting the preview.", startedAt });
@@ -690,7 +704,9 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
               }
               return;
             }
-            stoppedEarly = new GalleyError("preview", "The preview stopped before it was ready. The log below says why.", log.slice(-20).join("\n"));
+            const diagnosed = diagnosePreviewFailure(log, { exitCode: childExitCode, signal: childExitSignal, phase: "start" });
+
+            stoppedEarly = new GalleyError("preview", diagnosed ?? "The preview stopped before it was ready. The log below says why.", log.slice(-20).join("\n"));
             throw stoppedEarly;
           };
           // Only ports this server is known to use: the one it announced, the one
@@ -796,7 +812,11 @@ export function createPreviewController(options: PreviewOptions): PreviewControl
               if (child === spawned && !stale()) {
                 child = null;
                 void teardown().then(() => {
-                  if (!stale()) set("error", { url: null, baselineUrl: null, baselineSource: null, detail: "The preview stopped unexpectedly. Restart it to try again." });
+                  if (!stale()) {
+                    const diagnosed = diagnosePreviewFailure(log, { exitCode: childExitCode, signal: childExitSignal, phase: "running" });
+
+                    set("error", { url: null, baselineUrl: null, baselineSource: null, detail: diagnosed ?? "The preview stopped unexpectedly. Restart it to try again." });
+                  }
                 });
               }
             });

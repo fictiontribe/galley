@@ -8,7 +8,7 @@
  * is accepted. Responses carry `data[].b64_json`. Shapes per the docs listed in
  * catalog.ts (verified 2026-11-23); not exercised against the live service.
  */
-import { scrubSecrets } from "../errors";
+import { extractProxyError, scrubSecrets } from "../errors";
 import { OPENAI_SIZES } from "./catalog";
 import {
   ImageProviderError,
@@ -22,8 +22,15 @@ import {
 
 export const OPENAI_BASE = "https://api.openai.com/v1";
 
+/** Reads `GALLEY_OPENAI_BASE_URL` dynamically (per-call) so live proxy switches take effect without restarting. */
+export function openaiBaseUrl(env?: NodeJS.ProcessEnv): string {
+  const raw = env?.GALLEY_OPENAI_BASE_URL?.trim() || process.env.GALLEY_OPENAI_BASE_URL?.trim();
+
+  return (raw || OPENAI_BASE).replace(/\/+$/, "");
+}
+
 interface OpenAiError {
-  error?: { message?: string; type?: string; code?: string | null };
+  error?: { message?: string; type?: string; code?: string | null; details?: { error_code?: string } };
 }
 
 interface OpenAiImages {
@@ -35,7 +42,9 @@ function classify(status: number, body: OpenAiError): ImageProviderError {
   const code = body.error?.code ?? "";
   const type = body.error?.type ?? "";
   const detail = scrubSecrets(`openai ${status} type=${type} code=${code} ${body.error?.message ?? ""}`).slice(0, 600);
+  const proxy = extractProxyError(body);
 
+  if (proxy) return new ImageProviderError(proxy.code === "galley_ai_switched_off" ? "auth" : "quota", proxy.message, detail);
   if (status === 401) return new ImageProviderError("auth", "OpenAI didn't accept the API key in Settings. Add a fresh key and try again.", detail);
   if (status === 403) {
     return new ImageProviderError("auth", "This OpenAI account isn't allowed to use that image model yet. OpenAI may ask the organization to verify itself first.", detail);
@@ -51,45 +60,49 @@ function classify(status: number, body: OpenAiError): ImageProviderError {
   return new ImageProviderError("invalid", "OpenAI couldn't make that image. Try a simpler description.", detail);
 }
 
-export const openaiProvider: ImageProvider = {
-  id: "openai",
-  async generate(request: ProviderRequest, key: string | null, fetchImpl: typeof fetch): Promise<GeneratedImage[]> {
-    if (!key) throw new ImageProviderError("auth", "Add an OpenAI API key in Settings to generate images with OpenAI.", "no key");
-    const size = OPENAI_SIZES[request.aspect];
-    const body: Record<string, unknown> = {
-      model: request.model,
-      prompt: request.prompt,
-      n: request.count,
-      size: `${size.width}x${size.height}`,
-      output_format: "png",
-      ...(request.transparent ? { background: "transparent" } : {}),
-    };
-    const editing = request.references.length > 0;
+export function createOpenAiProvider(env?: NodeJS.ProcessEnv): ImageProvider {
+  return {
+    id: "openai",
+    async generate(request: ProviderRequest, key: string | null, fetchImpl: typeof fetch): Promise<GeneratedImage[]> {
+      if (!key) throw new ImageProviderError("auth", "Add an OpenAI API key in Settings to generate images with OpenAI.", "no key");
+      const size = OPENAI_SIZES[request.aspect];
+      const body: Record<string, unknown> = {
+        model: request.model,
+        prompt: request.prompt,
+        n: request.count,
+        size: `${size.width}x${size.height}`,
+        output_format: "png",
+        ...(request.transparent ? { background: "transparent" } : {}),
+      };
+      const editing = request.references.length > 0;
 
-    if (editing) {
-      body.images = request.references.slice(0, 16).map((ref) => ({ image_url: `data:${ref.mime};base64,${bytesToBase64(ref.data)}` }));
-    }
-    let response: Response;
+      if (editing) {
+        body.images = request.references.slice(0, 16).map((ref) => ({ image_url: `data:${ref.mime};base64,${bytesToBase64(ref.data)}` }));
+      }
+      let response: Response;
 
-    try {
-      response = await fetchImpl(`${OPENAI_BASE}/images/${editing ? "edits" : "generations"}`, {
-        method: "POST",
-        headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-        body: JSON.stringify(body),
-        signal: request.signal ?? null,
-      });
-    } catch (error) {
-      throw new ImageProviderError("unavailable", "Couldn't reach OpenAI. Check the internet connection, then try again.", scrubSecrets(String(error)));
-    }
-    const json = (await readJson(response)) as OpenAiImages & OpenAiError;
+      try {
+        response = await fetchImpl(`${openaiBaseUrl(env)}/images/${editing ? "edits" : "generations"}`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+          body: JSON.stringify(body),
+          signal: request.signal ?? null,
+        });
+      } catch (error) {
+        throw new ImageProviderError("unavailable", "Couldn't reach OpenAI. Check the internet connection, then try again.", scrubSecrets(String(error)));
+      }
+      const json = (await readJson(response)) as OpenAiImages & OpenAiError;
 
-    if (!response.ok) throw classify(response.status, json);
-    const images = (json.data ?? [])
-      .map((item) => item.b64_json)
-      .filter((data): data is string => typeof data === "string" && data.length > 0)
-      .map((data) => ({ data: base64ToBytes(data), mime: "image/png", width: size.width, height: size.height }));
+      if (!response.ok) throw classify(response.status, json);
+      const images = (json.data ?? [])
+        .map((item) => item.b64_json)
+        .filter((data): data is string => typeof data === "string" && data.length > 0)
+        .map((data) => ({ data: base64ToBytes(data), mime: "image/png", width: size.width, height: size.height }));
 
-    if (images.length === 0) throw new ImageProviderError("empty", "OpenAI didn't send an image back. Try again.", "openai: empty data[]");
-    return images;
-  },
-};
+      if (images.length === 0) throw new ImageProviderError("empty", "OpenAI didn't send an image back. Try again.", "openai: empty data[]");
+      return images;
+    },
+  };
+}
+
+export const openaiProvider: ImageProvider = createOpenAiProvider();

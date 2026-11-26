@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { SecretName, SiteConnections, SiteSecretConnection, UsageTotals } from "@galley/core/types";
 import { api, errorShape } from "@/lib/api";
+import { formatUsdAsCredits, useManagedAi } from "@/lib/credits";
 import { count, money } from "@/lib/format";
 import { setQueryData, useQuery } from "@/lib/query";
 import { useHostedInstall } from "@/lib/stores/meta";
@@ -162,11 +163,11 @@ function AuthorRow({ siteId, connections, onChange }: { siteId: string; connecti
   );
 }
 
-function UsageLine({ label, totals }: { label: string; totals: UsageTotals }) {
+function UsageLine({ label, totals, managed, creditMillicents }: { label: string; totals: UsageTotals; managed: boolean; creditMillicents: number }) {
   return (
     <div className="sites-usage__cell">
       <span className="g-eyebrow">{label}</span>
-      <span className="sites-usage__cost">{money(totals.cost)}</span>
+      <span className="sites-usage__cost">{managed ? formatUsdAsCredits(totals.cost, creditMillicents) : money(totals.cost)}</span>
       <span className="g-hint">
         {count(totals.turns, "request")}
         {totals.images ? ` · ${count(totals.images, "image")}` : ""}
@@ -174,6 +175,8 @@ function UsageLine({ label, totals }: { label: string; totals: UsageTotals }) {
     </div>
   );
 }
+
+const AI_SECRETS: ReadonlySet<SecretName> = new Set<SecretName>(["anthropic", "openai", "google"]);
 
 /**
  * Site settings › Connections: for each key the site uses, which one is in
@@ -186,6 +189,7 @@ export function ConnectionsSection({ siteId }: { siteId: string }) {
   // A hosted install has one site: its keys and author are the editor's own
   // (App settings, the Install page), so there is no shared one to override.
   const hosted = useHostedInstall();
+  const { managed, creditMillicents } = useManagedAi();
   const connections = useQuery(connectionsKey(siteId), () => api("GET /api/sites/:siteId/connections", { params: { siteId } }), { enabled: !hosted });
   const usage = useQuery(usageKey(siteId), () => api("GET /api/sites/:siteId/usage", { params: { siteId } }));
   const update = (next: SiteConnections) => setQueryData(connectionsKey(siteId), next);
@@ -209,6 +213,7 @@ export function ConnectionsSection({ siteId }: { siteId: string }) {
           ) : connections.data ? (
             <ul className="sites-conns">
               {[...connections.data.secrets]
+                .filter((secret) => !managed || !AI_SECRETS.has(secret.name))
                 .sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name))
                 .map((secret) => (
                   <SecretRow key={secret.name} siteId={siteId} secret={secret} onChange={update} />
@@ -222,16 +227,20 @@ export function ConnectionsSection({ siteId }: { siteId: string }) {
       <section className="app-settings__section" id="site-usage">
         <header className="app-settings__section-head">
           <h2 className="app-settings__section-title">Assistant use</h2>
-          <p className="app-settings__section-text">What the assistant has cost on this site at list prices, whichever key paid for it.</p>
+          <p className="app-settings__section-text">
+            {managed
+              ? "What the assistant has used on this site, in Galley AI credits."
+              : "What the assistant has cost on this site at list prices, whichever key paid for it."}
+          </p>
         </header>
         <div className="app-settings__section-body">
           {usage.loading ? (
             <Skeleton height={80} />
           ) : usage.data ? (
             <div className="sites-usage">
-              <UsageLine label="30 days" totals={usage.data.last30} />
-              <UsageLine label="7 days" totals={usage.data.last7} />
-              <UsageLine label="All time" totals={usage.data.allTime} />
+              <UsageLine label="30 days" totals={usage.data.last30} managed={managed} creditMillicents={creditMillicents} />
+              <UsageLine label="7 days" totals={usage.data.last7} managed={managed} creditMillicents={creditMillicents} />
+              <UsageLine label="All time" totals={usage.data.allTime} managed={managed} creditMillicents={creditMillicents} />
             </div>
           ) : (
             <ErrorState compact title="Couldn’t load this site’s use" error={usage.error} onRetry={() => void usage.refetch()} />

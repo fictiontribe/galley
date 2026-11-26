@@ -263,9 +263,11 @@ Its help (`--help`):
 ```text
 Usage: galley doctor [path] [options]
 Check that the site in [path] (default: this folder) and this computer are
-ready: what detection finds, Node, git, dependencies, and the assistant's key.
+ready: what detection finds, Node, git, dependencies, config, deploy limits,
+and the assistant's key.
 Exits with 1 when something would stop Galley from working.
 Options
+      --cloud  Check readiness for cloud deploys (Cloudflare 25 MiB limit, local dependencies, config)
       --json   Print the checks as JSON
   -h, --help   Show this help
 ```

@@ -129,7 +129,7 @@ export { DEFAULT_API_BASE_URL };
  * through a gateway.
  */
 export function createApiClient(apiKey: string, env: NodeJS.ProcessEnv, maxRetries: number): Anthropic {
-  const override = env.GALLEY_ANTHROPIC_BASE_URL?.trim();
+  const override = env.GALLEY_ANTHROPIC_BASE_URL?.trim() || process.env.GALLEY_ANTHROPIC_BASE_URL?.trim();
 
   return new Anthropic({ apiKey, authToken: null, baseURL: override || DEFAULT_API_BASE_URL, maxRetries });
 }

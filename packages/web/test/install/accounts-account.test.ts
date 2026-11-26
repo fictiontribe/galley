@@ -137,13 +137,14 @@ describe("Your account", () => {
     await click(dark);
     await settle();
     expect(JSON.parse(localStorage.getItem("galley.ui") ?? "{}").state?.theme).toBe("dark");
-    // Coming back to the window reads the editor's settings again, and leaves this person's theme alone.
+    // Coming back to the window in hosted mode once the person chose a theme doesn't re-poll settings or touch their theme.
+    const settingsBefore = server.log.filter((entry) => entry.path === "/api/settings").length;
     const { act } = await import("react");
     await act(async () => {
       window.dispatchEvent(new Event("focus"));
     });
-    await until(() => expect(server.log.filter((entry) => entry.path === "/api/settings").length).toBeGreaterThan(1));
     await settle();
+    expect(server.log.filter((entry) => entry.path === "/api/settings").length).toBe(settingsBefore);
     expect(JSON.parse(localStorage.getItem("galley.ui") ?? "{}").state?.theme).toBe("dark");
     expect(calls(server, "PATCH", "/api/settings")).toHaveLength(0);
     expect(refusals(server)).toEqual([]);

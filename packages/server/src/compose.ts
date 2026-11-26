@@ -120,7 +120,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
     ...(options.liveUrl ? { liveUrl: () => options.liveUrl?.() ?? null } : {}),
     ...(options.addLockfile === false ? { addLockfile: false } : {}),
   });
-  const images = createImageService({ home: options.home, settings, providers: () => pluginRegistry.imageProviders() });
+  const images = createImageService({ home: options.home, settings, providers: () => pluginRegistry.imageProviders(), env });
   const videos = createVideoService({ home: options.home, settings, events, providers: () => pluginRegistry.videoProviders() });
   // Every site handed out publishes through the plugins' hooks and loads the plugins its config names.
   const hooked: SiteRegistry = withPluginHooks(sites, pluginRegistry, {
@@ -133,7 +133,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
     },
   });
   const registry = options.wrapRegistry ? options.wrapRegistry(hooked) : hooked;
-  const agent = createAgentRuntime({ home: options.home, registry, settings, images, events });
+  const agent = createAgentRuntime({ home: options.home, registry, settings, images, events, env });
 
   // afterDeploy and onSubmission hooks follow what the deploy and form modules already announce.
   events.subscribe((event) => {
@@ -241,7 +241,7 @@ export async function openSingleSite(options: SingleSiteOptions): Promise<Single
   plugins = await createPluginSystem({ home: options.home, env, settings, secrets });
   const pluginRegistry = plugins;
   const releaseActive = setActivePlugins({ adapters: (root) => pluginRegistry.adapters(root), tools: (root) => pluginRegistry.tools(root) });
-  const images = createImageService({ home: options.home, settings, providers: () => pluginRegistry.imageProviders() });
+  const images = createImageService({ home: options.home, settings, providers: () => pluginRegistry.imageProviders(), env });
   const root = realpathSync(options.root);
   const mediaStorage = createMediaStorageService({ home: options.home, settings, env });
   const raw = await createSiteService(root, {

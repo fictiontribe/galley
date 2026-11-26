@@ -9,6 +9,7 @@ import { usePreview, usePreviewStatus } from "@/lib/stores/preview";
 import { useSite } from "@/lib/stores/site";
 import { useQuery } from "@/lib/query";
 import { api } from "@/lib/api";
+import { useManagedAi } from "@/lib/credits";
 import { Badge, Button, EmptyState, ErrorState, Icon, PageHeader, Skeleton } from "@/ui";
 import { AgentPanel, CrawlerPanel } from "./AiPanel";
 import { BatchDialog } from "./BatchDialog";
@@ -80,6 +81,7 @@ interface GroupProps {
 }
 
 function Group({ siteId, group, findings, open, onToggle, connected, address, fixing, onFix, onWrite }: GroupProps) {
+  const { managed, manageUrl } = useManagedAi();
   const counts = { must: 0, should: 0, idea: 0 };
 
   for (const item of findings) counts[item.severity] += 1;
@@ -120,11 +122,43 @@ function Group({ siteId, group, findings, open, onToggle, connected, address, fi
                 </Button>
               ) : null}
               {writes.map((write) => (
-                <Button key={write.kind} size="sm" variant="secondary" icon="chat" disabled={!connected} title={connected ? `${count(write.count, "request")} to the assistant, one per page` : "Connect the assistant in App settings first."} onClick={() => onWrite(write.kind)}>
+                <Button
+                  key={write.kind}
+                  size="sm"
+                  variant="secondary"
+                  icon="chat"
+                  disabled={!connected}
+                  title={
+                    connected
+                      ? `${count(write.count, "request")} to the assistant, one per page`
+                      : managed
+                        ? "AI is switched off for this site."
+                        : "Connect the assistant in App settings first."
+                  }
+                  onClick={() => onWrite(write.kind)}
+                >
                   {WRITE_LABEL[write.kind].many(write.count)}
                 </Button>
               ))}
-              {writes.length && !connected ? <p className="seo-group__batch-note">Connect the assistant in App settings to have it write these. It uses one request per page, and only what each page already says.</p> : null}
+              {writes.length && !connected ? (
+                <p className="seo-group__batch-note">
+                  {managed ? (
+                    <>
+                      AI is switched off for this site. A workspace manager can turn it on in{" "}
+                      {manageUrl ? (
+                        <a className="g-link" href={manageUrl} target="_blank" rel="noopener noreferrer">
+                          Galley Cloud
+                        </a>
+                      ) : (
+                        "Galley Cloud"
+                      )}
+                      .
+                    </>
+                  ) : (
+                    "Connect the assistant in App settings to have it write these. It uses one request per page, and only what each page already says."
+                  )}
+                </p>
+              ) : null}
             </div>
           ) : null}
           <ul className="seo-findings">
@@ -172,7 +206,8 @@ function RenderNote({ siteId, audit }: { siteId: string; audit: SiteAudit }) {
 
 function Body({ siteId, audit, refetch }: { siteId: string; audit: SiteAudit; refetch: () => Promise<unknown> }) {
   const production = useSite((s) => s.detail?.model.urls.production);
-  const connected = useQuery(["settings"], () => api("GET /api/settings")).data?.secrets.some((secret) => secret.name === "anthropic" && secret.configured) ?? false;
+  const { disabled: aiDisabled } = useManagedAi();
+  const connected = !aiDisabled && (useQuery(["settings"], () => api("GET /api/settings")).data?.secrets.some((secret) => secret.name === "anthropic" && secret.configured) ?? false);
   const [open, setOpen] = useState<ReadonlySet<FindingGroup>>(() => new Set(GROUP_ORDER.filter((group) => audit.byGroup[group].must + audit.byGroup[group].should > 0).slice(0, 1)));
   const [batch, setBatch] = useState<{ kind: WriteKind; paths?: string[] } | null>(null);
   const { fix, busy } = useFixes(siteId, refetch);

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Job, MediaItem, VideoAspect } from "@galley/core/types";
 import { api, errorShape, isApiFailure, rawFileUrl } from "@/lib/api";
+import { useManagedAi } from "@/lib/credits";
 import { useQuery } from "@/lib/query";
 import { useMeta } from "@/lib/stores/meta";
 import { keys } from "@/lib/sync";
 import { Button, ErrorState, Field, IconButton, ProofMark, SegmentedControl, Select, Skeleton, Textarea, Toggle, buttonClass } from "@/ui";
 import { MediaGrid } from "../MediaGrid";
-import { CANDIDATE_HOURS, choices, costLine, defaultDuration, modelFacts } from "./cost";
+import { CANDIDATE_HOURS, choices, costLine, defaultDuration, modelFacts, modelOptionLabel } from "./cost";
 import { useVideoJobs } from "./jobs";
 import { preferredProvider, useVideoPrefs } from "./prefs";
 import { BrandDirectionNote } from "@/features/brand/BrandDirectionNote";
@@ -75,6 +76,7 @@ export function GenerateVideoPanel({ siteId, onStarted, onCancel }: GenerateVide
   const providers = useQuery(keys.videoProviders(), () => api("GET /api/videos/providers"));
   const prefs = useVideoPrefs();
   const hosted = useMeta((s) => s.meta?.mode === "hosted");
+  const { managed, creditMillicents, disabled: aiDisabled, manageUrl } = useManagedAi();
   const list = useMemo(() => providers.data?.providers ?? [], [providers.data]);
   // The site's imagery direction rides along with the request, as it does for images.
   const brandDirection = useImageryDirection(siteId);
@@ -137,18 +139,36 @@ export function GenerateVideoPanel({ siteId, onStarted, onCancel }: GenerateVide
     return (
       <div className="vid-generate">
         <div className="vid-setup">
-          <p className="vid-setup__title">No video service is set up yet.</p>
-          <p className="vid-setup__body">Videos are made by a plugin. OpenRouter comes with the app: turn it on in Plugins and add its API key, then come back here.</p>
-          <SettingsLink route="POST /api/plugins/enabled" className={buttonClass("primary", "sm")} to="/plugins">
-            Open plugins
-          </SettingsLink>
+          {managed ? (
+            <>
+              <p className="vid-setup__title">{aiDisabled ? "AI is switched off for this site." : "Video generation isn’t available right now."}</p>
+              <p className="vid-setup__body">
+                {aiDisabled
+                  ? "A workspace manager can turn AI on in Galley Cloud."
+                  : "Video generation uses your Galley AI credits when a video plugin is enabled."}
+              </p>
+              {manageUrl ? (
+                <a className={buttonClass("primary", "sm")} href={manageUrl} target="_blank" rel="noopener noreferrer">
+                  Open Galley Cloud
+                </a>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <p className="vid-setup__title">No video service is set up yet.</p>
+              <p className="vid-setup__body">Videos are made by a plugin. OpenRouter comes with the app: turn it on in Plugins and add its API key, then come back here.</p>
+              <SettingsLink route="POST /api/plugins/enabled" className={buttonClass("primary", "sm")} to="/plugins">
+                Open plugins
+              </SettingsLink>
+            </>
+          )}
         </div>
       </div>
     );
   }
 
   const seconds = duration ? Number(duration) : undefined;
-  const ready = Boolean(provider?.configured && model && prompt.trim().length >= 3);
+  const ready = Boolean(provider?.configured && !aiDisabled && model && prompt.trim().length >= 3);
 
   const start = async () => {
     if (!provider || !model) return;
@@ -181,13 +201,37 @@ export function GenerateVideoPanel({ siteId, onStarted, onCancel }: GenerateVide
   const unconfigured = isApiFailure(error) && error.shape.code === "unconfigured";
   return (
     <div className="vid-generate">
-      {provider && !provider.configured ? (
+      {managed && aiDisabled ? (
         <div className="vid-setup" role="status">
-          <p className="vid-setup__title">{provider.label} needs its API key before it can make videos.</p>
-          <p className="vid-setup__body">Add the key on the Plugins screen. It’s kept on this {hosted ? "server" : "computer"} with the app’s other keys, and never shown again.</p>
-          <SettingsLink route="PUT /api/plugins/settings" className={buttonClass("primary", "sm")} to="/plugins">
-            Add the key
-          </SettingsLink>
+          <p className="vid-setup__title">AI is switched off for this site.</p>
+          <p className="vid-setup__body">A workspace manager can turn it on in Galley Cloud.</p>
+          {manageUrl ? (
+            <a className={buttonClass("primary", "sm")} href={manageUrl} target="_blank" rel="noopener noreferrer">
+              Open Galley Cloud
+            </a>
+          ) : null}
+        </div>
+      ) : provider && !provider.configured ? (
+        <div className="vid-setup" role="status">
+          {managed ? (
+            <>
+              <p className="vid-setup__title">Video generation isn’t currently available for this site.</p>
+              <p className="vid-setup__body">Check this site’s AI settings in Galley Cloud.</p>
+              {manageUrl ? (
+                <a className={buttonClass("primary", "sm")} href={manageUrl} target="_blank" rel="noopener noreferrer">
+                  Open Galley Cloud
+                </a>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <p className="vid-setup__title">{provider.label} needs its API key before it can make videos.</p>
+              <p className="vid-setup__body">Add the key on the Plugins screen. It’s kept on this {hosted ? "server" : "computer"} with the app’s other keys, and never shown again.</p>
+              <SettingsLink route="PUT /api/plugins/settings" className={buttonClass("primary", "sm")} to="/plugins">
+                Add the key
+              </SettingsLink>
+            </>
+          )}
         </div>
       ) : null}
       <Field label="Describe the video" hint="What happens, where, and how the camera moves. A sentence or two is plenty.">
@@ -203,13 +247,20 @@ export function GenerateVideoPanel({ siteId, onStarted, onCancel }: GenerateVide
                 setProviderId(next);
                 setModelId(list.find((item) => item.id === next)?.defaultModel ?? "");
               }}
-              options={list.map((item) => ({ value: item.id, label: item.configured ? item.label : `${item.label} — needs its key` }))}
+              options={list.map((item) => ({
+                value: item.id,
+                label: item.configured ? item.label : managed ? `${item.label} — unavailable` : `${item.label} — needs its key`,
+              }))}
             />
           </Field>
         ) : null}
         {provider ? (
           <Field label="Model" hint={model ? modelFacts(model) : undefined}>
-            <Select value={model?.id ?? ""} onChange={setModelId} options={provider.models.map((item) => ({ value: item.id, label: item.price ? `${item.label} — ${item.price}` : item.label }))} />
+            <Select
+              value={model?.id ?? ""}
+              onChange={setModelId}
+              options={provider.models.map((item) => ({ value: item.id, label: modelOptionLabel(item, managed ? creditMillicents : undefined) }))}
+            />
           </Field>
         ) : null}
       </div>
@@ -237,7 +288,7 @@ export function GenerateVideoPanel({ siteId, onStarted, onCancel }: GenerateVide
 
       <div className="vid-cost" aria-live="polite">
         <ProofMark kind="reg" />
-        <span>{costLine(model, seconds, provider?.label ?? "the service")}</span>
+        <span>{costLine(model, seconds, provider?.label ?? "the service", managed ? creditMillicents : undefined)}</span>
       </div>
       <p className="g-hint vid-generate__limits">
         It takes a few minutes, and you can leave this screen while it’s made. Media keeps MP4 videos up to 25 MB; a finished video waits {CANDIDATE_HOURS} hours for you to save it.
@@ -247,13 +298,21 @@ export function GenerateVideoPanel({ siteId, onStarted, onCancel }: GenerateVide
         <ErrorState
           compact
           title={unconfigured ? "The video service needs attention" : "Couldn’t start the video"}
-          message={`${errorShape(error).message} Nothing was charged.`}
+          message={`${errorShape(error).message} ${managed ? "No credits were used." : "Nothing was charged."}`}
           detail={errorShape(error).detail}
           actions={
             unconfigured ? (
-              <SettingsLink route="POST /api/plugins/enabled" className={buttonClass("secondary", "sm")} to="/plugins">
-                Open plugins
-              </SettingsLink>
+              managed ? (
+                manageUrl ? (
+                  <a className={buttonClass("secondary", "sm")} href={manageUrl} target="_blank" rel="noopener noreferrer">
+                    Open Galley Cloud
+                  </a>
+                ) : undefined
+              ) : (
+                <SettingsLink route="POST /api/plugins/enabled" className={buttonClass("secondary", "sm")} to="/plugins">
+                  Open plugins
+                </SettingsLink>
+              )
             ) : undefined
           }
         />

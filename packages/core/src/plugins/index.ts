@@ -67,7 +67,7 @@ export {
   type ResolvedScriptIntegration,
 } from "./registry";
 export { createPluginLogger, createPluginSettingsStore, envNamesFor, secretNameFor, type PluginSettingsOptions, type PluginSettingsStore, type PluginSettingStatus, type SettingsOwner } from "./settings";
-export { builtinPlugin, BUILTIN_PLUGIN_NAME, wordpressImporterPlugin } from "./builtin";
+export { builtinPlugin, createBuiltinPlugin, BUILTIN_PLUGIN_NAME, wordpressImporterPlugin } from "./builtin";
 export { activePlugins, hostedMode, setActivePlugins, setHostedMode, type ActivePlugins } from "./active";
 export { ensureSitePlugins, importSitePlugin, siteExtensions, sitePluginPolicy, type SitePluginPolicy } from "./site";
 export { checkPublish, withPluginHooks, withSiteHooks } from "./hooks";

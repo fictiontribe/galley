@@ -253,6 +253,45 @@ describe("errors", () => {
     await expect(images.generate(request, providerContext({ key: KEY, fetch: api.fetch }))).rejects.toMatchObject({ kind: "quota" });
     await expect(images.generate(request, providerContext({ key: null }))).rejects.toMatchObject({ kind: "auth" });
   });
+
+  it("surfaces Galley Cloud proxy error messages directly and scrubs the key", () => {
+    for (const [code, status, expectedKind] of [
+      ["galley_ai_allowance_used", 402, "quota"],
+      ["galley_ai_paused_unpaid", 402, "quota"],
+      ["galley_ai_switched_off", 403, "auth"],
+    ] as const) {
+      const error = classify(
+        status,
+        { error: { type: "billing_error", message: `Proxy says ${code} (${KEY})`, details: { error_code: code } } },
+        KEY,
+        "image"
+      );
+
+      expect(error).toMatchObject({ kind: expectedKind, plain: `Proxy says ${code} ([redacted])` });
+      expect(`${error.plain} ${error.detail}`).not.toContain(KEY);
+    }
+  });
+
+  it("resolves a dynamic baseUrl getter on every request so live switches take effect", async () => {
+    let currentBase = "https://proxy-a.test/api/v1";
+    const dynamic = createOpenRouterPlugin({ baseUrl: () => currentBase });
+    const api = fakeFetch((req) => {
+      if (req.url.endsWith("/images")) return json(200, { data: [{ b64_json: PNG, media_type: "image/png" }] });
+      if (req.url.endsWith("/videos")) return json(202, { id: "gen-vid-1748372400-abcdefghij0123456789", status: "pending" });
+      return json(404, {});
+    });
+    const ctx = providerContext({ key: KEY, fetch: api.fetch });
+
+    await dynamic.imageProviders![0]!.generate(request, ctx);
+    expect(api.requests[0]!.url).toBe("https://proxy-a.test/api/v1/images");
+
+    currentBase = "https://proxy-b.test/api/v1/";
+    await dynamic.imageProviders![0]!.generate(request, ctx);
+    expect(api.requests[1]!.url).toBe("https://proxy-b.test/api/v1/images");
+
+    await dynamic.videoProviders![0]!.start({ prompt: "Waves", model: "google/veo-3.1-lite", durationSeconds: 4 }, ctx);
+    expect(api.requests[2]!.url).toBe("https://proxy-b.test/api/v1/videos");
+  });
 });
 
 describe("video", () => {

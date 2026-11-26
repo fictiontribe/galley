@@ -11,6 +11,7 @@ import type { Context } from "hono";
 import { deleteCookie, setCookie } from "hono/cookie";
 import type { ApiRouteKey, RouteResponse } from "@galley/core/api";
 import { GalleyError } from "@galley/core";
+import { aiMetaFromEnv, fetchManagedAiCredits } from "@galley/core/ai";
 import { validateConfig } from "@galley/core/content";
 import { readSettings, siteNameAt } from "@galley/core/site";
 import { checkPublish } from "@galley/core/plugins";
@@ -164,6 +165,10 @@ export function handOffToken(c: Context, ctx: RouteContext, token: string): bool
   return true;
 }
 
+function envOf(ctx: RouteContext): NodeJS.ProcessEnv {
+  return ctx.options.env ?? process.env;
+}
+
 export const routes: RouteTable = {
   // ── forms: introspection and the inbox (forms.ts) ─────────────────────
   ...inboxRoutes,
@@ -234,6 +239,11 @@ export const routes: RouteTable = {
     const look = await (authenticated ? defaultLook(ctx) : publicLook(ctx)).catch(() => null);
 
     if (look) meta.look = look;
+    if (authenticated) {
+      const ai = aiMetaFromEnv(envOf(ctx));
+
+      if (ai) meta.ai = ai;
+    }
     return meta;
   },
   "POST /api/auth/login": async (c, ctx) => {
@@ -298,6 +308,7 @@ export const routes: RouteTable = {
     }
   },
   "GET /api/usage": async (_c, ctx) => ctx.services.settings.usage(),
+  "GET /api/ai/credits": async (_c, ctx) => fetchManagedAiCredits(ctx.services.settings, envOf(ctx), ctx.options.fetch),
 
   // ── sites ──────────────────────────────────────────────────────────────
   "GET /api/sites": async (_c, ctx) => ctx.services.registry.list(),

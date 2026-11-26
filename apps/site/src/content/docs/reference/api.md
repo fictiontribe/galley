@@ -56,6 +56,7 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `PATCH /api/settings` | Change any of those. | `SettingsPatch` | `Settings` | Owners |
 | `PUT /api/secrets/:name` | Save a shared key — `anthropic`, `openai`, `google`, `cloudflare` or `vercel`; `null` removes it. Returns its status only. | `{ value }` | `SecretStatus` | Owners |
 | `GET /api/usage` | What the assistant and image generation cost at list prices: today, 7 and 30 days, all time, per model. | — | `UsageSummary` | Owners |
+| `GET /api/ai/credits` | Managed AI credit balance and status for this install when managed credits mode is on. | — | `AiCreditsInfo` | Any signed-in person |
 
 ## Themes for the app (docs/themes.md)
 

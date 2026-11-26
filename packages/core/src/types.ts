@@ -1774,6 +1774,36 @@ export interface BrandConfig {
   docsUrl?: string;
 }
 
+export interface AiMetaInfo {
+  /** True when AI is routed through a managed Galley Cloud proxy and counted in credits. */
+  managed: boolean;
+  /** Value of one AI credit in millicents (default 250 = $0.0025; 400 credits = $1). */
+  creditMillicents: number;
+  /** True when AI is currently switched off for this site by a workspace manager. */
+  disabled?: boolean;
+  /** Dashboard link for topping up credits or toggling AI. */
+  manageUrl?: string;
+}
+
+export interface AiCreditsBalance {
+  usedCredits: number;
+  includedCredits: number;
+  topUpCredits: number;
+  leftCredits: number;
+  changesLeft: number;
+  state: "ok" | "warn80" | "paused";
+  renewsAt: string | null;
+  siteLimit?: { limitCredits: number; usedCredits: number } | null;
+}
+
+export interface AiCreditsInfo {
+  managed: boolean;
+  disabled: boolean;
+  creditMillicents: number;
+  manageUrl?: string;
+  balance: AiCreditsBalance | null;
+}
+
 export interface MetaInfo {
   version: string;
   brand: BrandConfig;
@@ -1794,6 +1824,8 @@ export interface MetaInfo {
    * see it. Absent from servers from before themes: Quiet.
    */
   look?: import("./themes").AppliedTheme;
+  /** Managed AI credits mode metadata. Absent when self-hosted / BYOK. */
+  ai?: AiMetaInfo;
 }
 
 // ─────────────────────────────────────────────────────────────── deploy

@@ -19,6 +19,7 @@
  */
 import type { PluginTheme, ThemeAdjustment, ThemeFile, ThemeWarning } from "./themes";
 import type {
+  AiCreditsInfo,
   BuildResult,
   ChangeSet,
   ChatThread,
@@ -346,6 +347,8 @@ export interface ApiRoutes {
   /** `value: null` removes a stored secret. */
   "PUT /api/secrets/:name": { body: { value: string | null }; response: SecretStatus };
   "GET /api/usage": { response: UsageSummary };
+  /** Managed AI credit balance and status for this install when managed credits mode is on. */
+  "GET /api/ai/credits": { response: AiCreditsInfo };
 
   // ── themes for the app (docs/themes.md) ────────────────────────────────
   /** The themes saved for everyone here, the ones plugins add, and the install's default. Built-ins ship with the app. */

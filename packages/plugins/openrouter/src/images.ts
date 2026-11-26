@@ -20,7 +20,7 @@
  * where the model takes image input.
  */
 import { ProviderError, type GeneratedImageResult, type ImageAspect, type ImageGenerationRequest, type ImageModelInfo, type ImageProviderPlugin, type ProviderCallContext } from "@galley/plugin-kit";
-import { base64ToBytes, call, classify, dataUrl, headers, money, OPENROUTER_API, readBody, scrub } from "./client";
+import { base64ToBytes, call, classify, dataUrl, headers, money, OPENROUTER_API, readBody, resolveBaseUrl, scrub, type BaseUrlOption } from "./client";
 
 /** What a model accepts, per its catalogue entry. */
 export interface ImageModelRecord extends ImageModelInfo {
@@ -139,7 +139,7 @@ export function resolutionFor(model: ImageModelRecord | undefined, wanted?: stri
 }
 
 export interface ImageCatalogueOptions {
-  baseUrl: string;
+  baseUrl: BaseUrlOption;
   /** How long a fetched catalogue is kept. */
   cacheMs: number;
   now: () => number;
@@ -147,11 +147,11 @@ export interface ImageCatalogueOptions {
 
 /** The live model list (with prices), cached; the fallback list when it can't be read. */
 export function createImageCatalogue(options: ImageCatalogueOptions) {
-  let cache: { at: number; models: ImageModelRecord[] } | null = null;
+  let cache: { at: number; base: string; models: ImageModelRecord[] } | null = null;
   let loading: Promise<ImageModelRecord[]> | null = null;
 
-  async function fetchAll(ctx: ProviderCallContext): Promise<ImageModelRecord[]> {
-    const response = await call(ctx, `${options.baseUrl}/images/models`, { method: "GET", headers: headers(ctx, false) }, "image");
+  async function fetchAll(ctx: ProviderCallContext, base: string): Promise<ImageModelRecord[]> {
+    const response = await call(ctx, `${base}/images/models`, { method: "GET", headers: headers(ctx, false) }, "image");
     const body = await readBody(response);
 
     if (!response.ok) throw classify(response.status, body, ctx.key, "image");
@@ -162,7 +162,7 @@ export function createImageCatalogue(options: ImageCatalogueOptions) {
     const worker = async () => {
       for (let model = queue.shift(); model; model = queue.shift()) {
         try {
-          const priced = await call(ctx, `${options.baseUrl}/images/models/${model.id.split("/").map(encodeURIComponent).join("/")}/endpoints`, { method: "GET", headers: headers(ctx, false) }, "image");
+          const priced = await call(ctx, `${base}/images/models/${model.id.split("/").map(encodeURIComponent).join("/")}/endpoints`, { method: "GET", headers: headers(ctx, false) }, "image");
 
           if (priced.ok) {
             const price = priceFrom(((await readBody(priced)) as { endpoints?: Array<{ pricing?: PricingLine[] }> }).endpoints ?? []);
@@ -181,12 +181,14 @@ export function createImageCatalogue(options: ImageCatalogueOptions) {
 
   return {
     async models(ctx: ProviderCallContext): Promise<ImageModelRecord[]> {
-      if (cache && options.now() - cache.at < options.cacheMs) return cache.models;
+      const base = resolveBaseUrl(options.baseUrl);
+
+      if (cache && cache.base === base && options.now() - cache.at < options.cacheMs) return cache.models;
       // The catalogue is only listed to a signed-in caller.
       if (!ctx.key) return cache?.models ?? FALLBACK_IMAGE_MODELS;
-      loading ??= fetchAll(ctx)
+      loading ??= fetchAll(ctx, base)
         .then((models) => {
-          if (models.length) cache = { at: options.now(), models };
+          if (models.length) cache = { at: options.now(), base, models };
           return cache?.models ?? FALLBACK_IMAGE_MODELS;
         })
         .catch((error: unknown) => {
@@ -234,7 +236,7 @@ async function imagesFrom(items: ImageItem[], ctx: ProviderCallContext): Promise
   return out;
 }
 
-export function imageProvider(catalogue: Catalogue, options: { baseUrl: string }): ImageProviderPlugin {
+export function imageProvider(catalogue: Catalogue, options: { baseUrl: BaseUrlOption }): ImageProviderPlugin {
   return {
     id: "openrouter",
     label: "OpenRouter",
@@ -274,7 +276,7 @@ export function imageProvider(catalogue: Catalogue, options: { baseUrl: string }
             ? { input_references: request.references.slice(0, 16).map((ref) => ({ type: "image_url", image_url: { url: dataUrl(ref.data, ref.mime) } })) }
             : {}),
         };
-        const response = await call(ctx, `${options.baseUrl}/images`, { method: "POST", headers: headers(ctx), body: JSON.stringify(body) }, "image");
+        const response = await call(ctx, `${resolveBaseUrl(options.baseUrl)}/images`, { method: "POST", headers: headers(ctx), body: JSON.stringify(body) }, "image");
         const json = (await readBody(response)) as { data?: ImageItem[]; usage?: { cost?: number | null } };
 
         if (!response.ok) throw classify(response.status, json, ctx.key, "image");

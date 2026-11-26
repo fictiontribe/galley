@@ -118,6 +118,14 @@ Keys are looked for in this order: the site's own key (Site settings › Connect
 | `GEMINI_API_KEY` | — | Google image generation. |
 | `GOOGLE_API_KEY` | — | Google image generation, when `GEMINI_API_KEY` isn't set. |
 | `OPENROUTER_API_KEY` | — | The OpenRouter plugin's key (images and videos), when it isn't saved in Plugins. |
+| `GALLEY_OPENAI_BASE_URL` | `https://api.openai.com/v1` | Send OpenAI image generation requests to this address instead, e.g. a gateway. |
+| `GALLEY_GOOGLE_BASE_URL` | `https://generativelanguage.googleapis.com` | Send Google image generation requests to this address instead, e.g. a gateway. |
+| `GALLEY_OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Send OpenRouter image and video requests to this address instead, e.g. a gateway. |
+| `GALLEY_AI_MANAGED` | off | `1`: switch the editor UI into managed AI credits mode (hiding BYOK API key forms and showing AI credits instead of US dollars). |
+| `GALLEY_AI_CREDIT_MILLICENTS` | `250` | Value of one managed AI credit in millicents (`250` = $0.0025; 400 credits per US dollar). |
+| `GALLEY_AI_OFF` | off | `1`: indicate that managed AI is switched off for this site. |
+| `GALLEY_AI_CREDITS_URL` | — | Endpoint polled by `GET /api/ai/credits` (authenticated with the assistant key) to display the workspace's live credit balance. |
+| `GALLEY_AI_MANAGE_URL` | — | External dashboard URL linked from managed AI settings so workspace managers can top up credits or toggle AI. |
 
 ## Putting sites online
 

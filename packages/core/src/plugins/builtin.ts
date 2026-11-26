@@ -18,9 +18,9 @@ import { createOwnServerHost } from "../hosting/own-server";
 import { PRODUCT, VERSION } from "../brand";
 import { FORM_PROVIDERS, SCRIPT_INTEGRATIONS } from "../kit-catalog";
 import { IMAGE_CATALOG, type ProviderCatalogEntry } from "../ai/images/catalog";
-import { googleProvider } from "../ai/images/google";
+import { createGoogleProvider } from "../ai/images/google";
 import { mockProvider } from "../ai/images/mock";
-import { openaiProvider } from "../ai/images/openai";
+import { createOpenAiProvider } from "../ai/images/openai";
 import type { ImageProvider } from "../ai/images/provider";
 import { SECRET_ENV } from "../ai/secrets";
 import { PLUGIN_API_VERSION } from "./define";
@@ -28,12 +28,9 @@ import type { GalleyPlugin, ImageProviderPlugin, ImporterContribution, ImporterI
 
 export const BUILTIN_PLUGIN_NAME = "@galley/builtin";
 
-const INTERNAL: Record<ProviderCatalogEntry["id"], ImageProvider> = { mock: mockProvider, openai: openaiProvider, google: googleProvider };
 const KEY_LABELS: Record<"openai" | "google", string> = { openai: "OpenAI API key", google: "Google AI API key" };
 
-function builtinImageProvider(entry: ProviderCatalogEntry): ImageProviderPlugin {
-  const internal = INTERNAL[entry.id];
-
+function builtinImageProvider(entry: ProviderCatalogEntry, internal: ImageProvider): ImageProviderPlugin {
   return {
     id: entry.id,
     label: entry.label,
@@ -46,27 +43,38 @@ function builtinImageProvider(entry: ProviderCatalogEntry): ImageProviderPlugin 
   };
 }
 
-export const builtinPlugin: GalleyPlugin = {
-  name: BUILTIN_PLUGIN_NAME,
-  displayName: `${PRODUCT.name} built-ins`,
-  description: "The framework adapters, image providers, form destinations and script integrations that come with the app.",
-  version: VERSION,
-  apiVersion: PLUGIN_API_VERSION,
-  adapters: [...BUILTIN_ADAPTERS],
-  imageProviders: IMAGE_CATALOG.map(builtinImageProvider),
-  formProviders: FORM_PROVIDERS,
-  scriptIntegrations: SCRIPT_INTEGRATIONS,
-  deployTargets: [createCloudflareTarget(), createVercelTarget()],
-  editorHosts: [createFlyHost(), createCloudflareEditorHost(), createOwnServerHost()],
-  // The app's own image keys keep their names and environment variables.
-  settings: (["openai", "google"] as const).map((name) => ({
-    key: name,
-    label: KEY_LABELS[name],
-    secret: true,
-    secretName: name,
-    env: [...SECRET_ENV[name]],
-  })),
-};
+/** Builds the built-in plugin with an optional environment for provider base URL overrides. */
+export function createBuiltinPlugin(env?: NodeJS.ProcessEnv): GalleyPlugin {
+  const internal: Record<ProviderCatalogEntry["id"], ImageProvider> = {
+    mock: mockProvider,
+    openai: createOpenAiProvider(env),
+    google: createGoogleProvider(env),
+  };
+
+  return {
+    name: BUILTIN_PLUGIN_NAME,
+    displayName: `${PRODUCT.name} built-ins`,
+    description: "The framework adapters, image providers, form destinations and script integrations that come with the app.",
+    version: VERSION,
+    apiVersion: PLUGIN_API_VERSION,
+    adapters: [...BUILTIN_ADAPTERS],
+    imageProviders: IMAGE_CATALOG.map((entry) => builtinImageProvider(entry, internal[entry.id])),
+    formProviders: FORM_PROVIDERS,
+    scriptIntegrations: SCRIPT_INTEGRATIONS,
+    deployTargets: [createCloudflareTarget(), createVercelTarget()],
+    editorHosts: [createFlyHost(), createCloudflareEditorHost(), createOwnServerHost()],
+    // The app's own image keys keep their names and environment variables.
+    settings: (["openai", "google"] as const).map((name) => ({
+      key: name,
+      label: KEY_LABELS[name],
+      secret: true,
+      secretName: name,
+      env: [...SECRET_ENV[name]],
+    })),
+  };
+}
+
+export const builtinPlugin: GalleyPlugin = createBuiltinPlugin();
 
 interface WordPressModule {
   importCommand?: { run(args: string[], io: ImporterIo): Promise<number> };

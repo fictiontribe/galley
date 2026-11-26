@@ -78,6 +78,7 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "PUT /api/secrets/:name": "manage",
   "GET /api/usage": "manage",
   "GET /api/usage/sites": "manage",
+  "GET /api/ai/credits": "edit",
 
   // ── themes for the app: everyone chooses their own (in their browser); saving one for everyone, and the default, is the install's ──
   "GET /api/themes": "edit",

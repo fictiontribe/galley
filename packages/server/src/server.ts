@@ -1193,6 +1193,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     log: out.log,
     streams,
     mcp,
+    env,
   });
 
   handler = (request, env) => app.fetch(request, env as never);

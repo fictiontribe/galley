@@ -7,7 +7,7 @@
 import { PRODUCT, SITE_URL, VERSION } from "@galley/core/brand";
 import type { GalleySettingsService, SecretStore } from "@galley/core/ai";
 import {
-  builtinPlugin,
+  createBuiltinPlugin,
   createPluginRegistry,
   createPluginSettingsStore,
   loadInstalledPlugins,
@@ -15,12 +15,16 @@ import {
   type GalleyPlugin,
   type PluginRegistry,
 } from "@galley/core/plugins";
-import { openrouterPlugin } from "@galley/plugin-openrouter";
+import { createOpenRouterPlugin, OPENROUTER_API } from "@galley/plugin-openrouter";
 import { shopifyPlugin } from "@galley/plugin-shopify";
 
 /** Plugins written against the public kit and shipped with the app; they can be turned off like any other. */
-export function firstPartyPlugins(): GalleyPlugin[] {
-  return [openrouterPlugin, shopifyPlugin];
+export function firstPartyPlugins(env?: NodeJS.ProcessEnv): GalleyPlugin[] {
+  const openrouter = createOpenRouterPlugin({
+    baseUrl: () => env?.GALLEY_OPENROUTER_BASE_URL?.trim() || process.env.GALLEY_OPENROUTER_BASE_URL?.trim() || OPENROUTER_API,
+  });
+
+  return [openrouter, shopifyPlugin];
 }
 
 export interface PluginSystemOptions {
@@ -80,8 +84,8 @@ export async function createPluginSystem(options: PluginSystemOptions): Promise<
       return register(plugin, registerOptions);
     };
   }
-  plugins.register(builtinPlugin, { source: "builtin", required: true, location: "built in" });
-  for (const plugin of firstPartyPlugins()) plugins.register(plugin, { source: "builtin", location: "ships with the app" });
+  plugins.register(createBuiltinPlugin(options.env), { source: "builtin", required: true, location: "built in" });
+  for (const plugin of firstPartyPlugins(options.env)) plugins.register(plugin, { source: "builtin", location: "ships with the app" });
   // A literal specifier, so the CLI bundle (and the desktop sidecar, which runs it) carries the importer inside it.
   const wordpress = await wordpressImporterPlugin(() => import("@galley/import-wordpress"));
 
