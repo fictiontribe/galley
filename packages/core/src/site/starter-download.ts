@@ -1,5 +1,5 @@
 /**
- * Starters that are downloaded the first time they are used, instead of
+ * Starters that are downloaded each time a site is made from them, instead of
  * travelling inside galley-cms (RELEASING.md, "How the starters travel").
  *
  * The bundle keeps what shows such a starter (its package.json,
@@ -83,7 +83,7 @@ function megabytes(bytes: number): string {
 
 async function download(url: string, record: StarterDownload, name: string): Promise<Buffer> {
   const unreachable = (detail: string) =>
-    new GalleyError("busy", `The ${name} starter is downloaded the first time it is used, and it couldn't be downloaded just now. Check that this computer is online, then try again, or choose another starter.`, detail, 503);
+    new GalleyError("busy", `The ${name} starter is downloaded each time a site is made from it, and it couldn't be downloaded just now. Check that this computer is online, then try again, or choose another starter.`, detail, 503);
   let response: Response;
 
   try {

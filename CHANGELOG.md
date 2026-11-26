@@ -5,7 +5,12 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
-## Unreleased
+## 0.4.4 — 2026-11-26
+
+**Security.** If you run a hosted editor, or extensions or plugins you
+didn't write, update: a request is now read by the name in its Host header
+alone however its request line is written, and an extension or a plugin is
+handed only what it is meant to use.
 
 ### Added
 
@@ -19,7 +24,18 @@ entry says how.
   Fieldbook, Almanac, each light and dark), authors, series, topics, archive,
   search, full-text RSS and JSON feeds, and a Markdown copy of every page via
   the site kit. Travels as a downloaded starter (`"download": true`), fetched
-  and hash-checked the first time someone uses it.
+  and hash-checked each time a site is made from it.
+- **A starter can travel apart from `galley-cms`, downloaded whenever a site
+  is made from it.** A starter whose `starter.json` says `"download": true`
+  is published as `starters-<id>.tgz` on its version's starters release; the
+  package keeps what shows it in the wizard and `galley starters`, with the
+  archive's size and SHA-256. Making a site from it (the wizard, `galley
+  new`, a hosted editor's first run, the desktop app) downloads the archive
+  each time — nothing is kept between uses, so it needs the computer to be
+  online, and the `tar` program to unpack it — refuses one that isn't exactly
+  what was recorded, and says plainly when it can't be downloaded. The four
+  starters that shipped before stay inside the package and work offline as
+  before. `GALLEY_STARTER_DOWNLOADS` points the download at a mirror.
 
 ### Security
 
@@ -30,11 +46,15 @@ entry says how.
   through. Before, an extension or a plugin could reach past the limits it
   was given (its read-only scope, the mode, the site being closed). **If you
   run extensions or plugins you didn't write, update.**
+- **A request is read by the name in its Host header alone, however its
+  request line is written.** 0.4.3 left some request lines that the preview
+  could still read another way; they are now refused (400) before the preview
+  or the app sees them. **If you run a hosted editor, update.**
 
 ### Changed
 
-- **A session's end is signed into its cookie.** A sign-in cookie made from
-  this version on carries when the session ends and how it was started,
+- **A session's end is signed into its cookie.** On a hosted install, a
+  sign-in cookie made from this version on carries when the session ends and how it was started,
   under its signature, and every place that reads a session (a request, the
   event stream, the preview, an extension asking whether a sign-in counts)
   ends it at that moment; a sign-out is remembered until then. A password
@@ -68,7 +88,8 @@ entry says how.
   files. A batch of search fixes, whose Undo is offered for a few seconds,
   doesn't keep a site open, and it now lets go of what it kept once undone
   or pushed out. A checkpoint an extension or a plugin opens and never lets
-  go of (`release()`) is let go an hour after it was closed.
+  go of (`release()`) is let go about an hour after its `close()`; one never
+  closed is kept until its site closes.
 - **A site that has been closed refuses whoever kept it.** A site closes after
   an hour without use (as above), when it is removed, when a backup is put
   back, and when the app stops. Something that kept it from before (an
@@ -85,33 +106,17 @@ entry says how.
   turn again, and the site isn't opened again until it has. For an
   extension: ask `host.sites.get(siteId)` each time you need a site.
 
-- **A starter can travel apart from `galley-cms`, downloaded the first time
-  it is used.** A starter whose `starter.json` says `"download": true` is
-  published as `starters-<id>.tgz` on its version's starters release; the
-  package keeps what shows it in the wizard and `galley starters`, with the
-  archive's size and SHA-256. Making a site from it (the wizard, `galley new`,
-  a hosted editor's first run, the desktop app) downloads the archive,
-  refuses one that isn't exactly what was recorded, and says plainly when it
-  can't be downloaded, as when the computer is offline. The four starters
-  that ship today stay inside the package and work offline as before.
-  `GALLEY_STARTER_DOWNLOADS` points the download at a mirror.
-
 ### Fixed
 
 - **A save the previewed page asked for, when refused, no longer tells an
   owner or an editor to ask an owner or an editor.** Someone at build-mode
   level is told only what they can do: make the change in the form. An
   account below that level is still told who can help.
-
-- **A request whose target the server can't read as one of its own
-  addresses is refused.** A request line naming another scheme (`ws://…`,
-  say) now gets 400 before the preview or the app sees it, as one that isn't
-  an address at all already did.
-- **A backup can always be restored when the site's files share a file with
-  the install's own.** A file with names in two of the data folder's
-  top-level folders is now carried under the names in one of them only,
-  never the site's when another holds it; before, the restore refused such
-  a backup.
+- **A backup can be restored when the site's files share a file with the
+  install's own.** A file with names in two of the data folder's top-level
+  folders is now carried under the names in one of them only, never the
+  site's when another holds it, so the site's own name for such a file isn't
+  in the restored site; before, the restore refused such a backup.
 
 ## 0.4.3 — 2026-11-25
 

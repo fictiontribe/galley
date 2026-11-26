@@ -1,4 +1,4 @@
-// A starter that is downloaded when it is first used, instead of travelling
+// A starter that is downloaded each time a site is made from it, instead of travelling
 // inside galley-cms: its archive, and what the bundle keeps of it.
 //
 // The archive is a plain ustar tar, gzipped, written here rather than by a

@@ -27,7 +27,7 @@ const dist = process.env.GALLEY_CLI_DIST ? resolve(process.env.GALLEY_CLI_DIST) 
 const webPackage = join(repo, "packages", "web");
 const webDist = join(webPackage, "dist");
 const starters = process.env.GALLEY_CLI_STARTERS ? resolve(process.env.GALLEY_CLI_STARTERS) : join(repo, "starters");
-/** The archives of the starters that are downloaded when first used: the release's assets, never in the npm package. */
+/** The archives of the starters that are downloaded when used: the release's assets, never in the npm package. */
 const assets = process.env.GALLEY_CLI_DIST ? `${dist}-starter-assets` : join(here, "starter-assets");
 const SKIP = new Set(["node_modules", ".git", "dist", ".astro", ".DS_Store"]);
 /** Never shipped inside a starter, whatever git or the folder holds. */
@@ -205,7 +205,7 @@ for (const id of readdirSync(join(dist, "starters"), { withFileTypes: true }).fi
   const record = { asset: starterAssetName(id), bytes: archive.length, sha256: sha256(archive), sections: count("galley/sections", ".webp"), templates: count("galley/templates", ".md") };
 
   writeFileSync(join(dir, STARTER_DOWNLOAD), `${JSON.stringify(record, null, 2)}\n`);
-  console.log(`✓ starters/${id} travels as ${record.asset} (${(archive.length / (1024 * 1024)).toFixed(1)} MB), downloaded when it is first used`);
+  console.log(`✓ starters/${id} travels as ${record.asset} (${(archive.length / (1024 * 1024)).toFixed(1)} MB), downloaded when a site is made from it`);
 }
 
 writeFileSync(join(dist, "overlay.js"), overlay);
