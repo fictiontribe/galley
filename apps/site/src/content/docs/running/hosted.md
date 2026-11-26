@@ -52,7 +52,7 @@ Copy the folder to the server. Then, in that folder there:
 `scripts/create-install.sh` makes one install per run — its own project, its own volume, its own folder — behind one Caddy all of them share, and prints the setup link once at the end. `--dry-run` says what it would do:
 
 ```sh
-sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.4.4 --dry-run
+sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.4.5 --dry-run
 ```
 
 ```output
@@ -133,7 +133,7 @@ Each starting value is used once, only while the install lacks that thing, so re
 
 ## People and roles
 
-A hosted install has accounts, not one shared password. The owner invites everyone else from **People** on the Install page, each with one of three roles:
+A hosted install has accounts, not one shared password. The owner invites everyone else from **People** on the Install page, each with one of three roles — or, with your own identity provider set up (OpenID Connect, [Signing in through an identity provider](/docs/reference/environment/#signing-in-through-an-identity-provider)), people sign in through it and it gives each their role. People doesn't yet show which identity an account signs in as or the accounts that were removed, and doesn't link accounts to the provider (`galley accounts link` on the server does); deleting someone who signs in through the provider puts their identity on a list of removed accounts, which only `galley accounts unremove` on the server takes it off, so switch them off instead if they may come back. The roles:
 
 | Role | What they can do |
 | --- | --- |
@@ -220,7 +220,7 @@ Password:  https://cms.example.com/new-password#<one-time code>
 …
 ```
 
-It prints a one-time new-password link for the owner (60 minutes, once) and keeps serving. Nobody else's account changes, nobody is signed out, and the owner's old password works until the link is used; an owner who was switched off is switched back on. With several owners, say whose with `--email`: `serve --reset-password --email sam@example.com`, or with `--account <id>` or `--subject <subject>` for an owner who has no e-mail; with several and none named, it lists them on the console. **For an owner who signs in through the identity provider, or with passwords off (`GALLEY_OIDC_ONLY`), the link signs them in instead, once, without a password** (`Sign in:` in place of `Password:`), for as long as a session through the provider lasts, and sets no password: it is the way back in when the provider is down. Open the link, choose the new password, then stop it with Ctrl+C and start the editor again:
+It prints a one-time new-password link for the owner (60 minutes, once) and keeps serving. Nobody else's account changes, nobody is signed out, and the owner's old password works until the link is used; an owner who was switched off is switched back on, by design: it is the operator's way back in. With several owners, say whose with `--email`: `serve --reset-password --email sam@example.com`, or with `--account <id>` or `--subject <subject>` for an owner who has no e-mail; with several and none named, it lists them on the console. **For an owner who signs in through the identity provider, or with passwords off (`GALLEY_OIDC_ONLY`), the link signs them in instead, once, without a password** (`Sign in:` in place of `Password:`), for as long as a session through the provider lasts, and sets no password: it is the way back in when the provider is down. Open the link, choose the new password, then stop it with Ctrl+C and start the editor again:
 
 ```sh
 docker compose start editor

@@ -63,6 +63,13 @@ what is built; when something here ships, it moves to the
   what an extension or a plugin is handed is narrowed to what it is meant
   to use; accounts can be held without a password, ready for signing in
   through a provider.
+- **0.4.5**: signing in to a hosted editor through your own identity
+  provider (OpenID Connect), with passwords beside it or turned off;
+  the provider can end a person's sessions at once (back-channel logout);
+  `galley accounts` links existing accounts to their identities on the
+  server, and the server's access token can sign someone out or switch
+  them off. Linking accounts from People, and showing owners identities
+  and removed accounts there, come later.
 - **On the website**: [a tour of the app](https://galley.fictiontribe.com/tour/)
   and [fourteen how-to guides](https://galley.fictiontribe.com/how-to/), with
   pictures.

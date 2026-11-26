@@ -5,7 +5,14 @@ All notable changes to Galley, newest first. Versions follow
 may change the configuration file, the HTTP API or the adapter API, and the
 entry says how.
 
-## Unreleased
+## 0.4.5 — 2026-11-26
+
+**Signing in through your own identity provider**, for a hosted editor: an
+OpenID Connect provider beside the passwords or in their place, back-channel
+logout, and `galley accounts` to link the accounts you have. Not in this
+release yet: linking an account from People, and People showing owners an
+account's identity at the provider or the accounts that were removed; on
+the server, `galley accounts removed` and `unremove` do that part.
 
 ### Added
 
@@ -18,22 +25,33 @@ entry says how.
   editor as its only audience, its age, its nonce), finds each person by the
   provider's issuer and subject (never by e-mail), and starts a session of
   `GALLEY_OIDC_SESSION_HOURS` (12 by default). The provider sets the role at
-  every sign-in, from `GALLEY_OIDC_ROLE_CLAIM`, or `GALLEY_OIDC_DEFAULT_ROLE`.
-  `GALLEY_OIDC_OWNER` names the first owner by subject. Someone who signs in
-  through the provider gets no password ("forgot my password" and new-password
-  links don't apply to them), so removing them at the provider removes them.
-  The variables are in the environment reference.
+  every sign-in, from `GALLEY_OIDC_ROLE_CLAIM`, or `GALLEY_OIDC_DEFAULT_ROLE`
+  — except that the last owner who can sign in stays an owner — and an owner
+  can't change it in People (refused). `GALLEY_OIDC_OWNER` names the first
+  owner by subject; with the site and the author given too, first run
+  finishes by itself (`GALLEY_OWNER_NAME` and `GALLEY_OWNER_EMAIL` are then
+  ignored). Someone who signs in through the provider gets no password
+  ("forgot my password" and new-password links don't apply to them, and Your
+  account doesn't offer to change a password or e-mail), so once they are
+  removed at the provider they can't sign in here again; sessions they
+  already have end when they run out, or at once through a back-channel
+  logout (below) or by switching them off here. Deleting such an account
+  puts its identity on a list of removed accounts, so it can't sign in or be
+  linked again until `galley accounts unremove` (below) takes it off. A
+  server started with another `GALLEY_OIDC_ISSUER` than its accounts
+  were made with refuses to start until `galley accounts rekey` (below)
+  moves them. The variables are in the environment reference.
 - **Passwords can be turned off** with `GALLEY_OIDC_ONLY=1` beside an
   identity provider: the sign-in screen has the provider's button alone;
   signing in with a password, invitations, "forgot my password", an owner's
   new-password links and choosing a password at first run are refused, and
-  open links stop working. Sessions not started through the provider are
-  refused when read, and once passwords have been off, those from before stay
+  open links stop working. Sessions not started through the provider (or by
+  a `galley serve --reset-password` link) are refused when read, and once passwords have been off, those from before stay
   refused even if they are turned back on. `GALLEY_PASSWORD` is ignored with
   a notice (and refused while the install has no owner: name it with
   `GALLEY_OIDC_OWNER`).
 - **`galley serve --reset-password` lets back in an owner who signs in
-  through the provider, or anyone while passwords are off**: its link signs
+  through the provider, or any owner while passwords are off**: its link signs
   them in once, without a password, with a session as long as the provider's,
   and sets none. `--account <id>` and `--subject <subject>` name the owner
   when there are several; with none named, they are listed on the console.
@@ -61,7 +79,9 @@ entry says how.
   answers `200` once the logout is written; `503` means send it again (it
   couldn't be checked or written just then, or a backup is being put back);
   `400` means the token will never be taken. RSA keys under 2,048 bits are
-  never used.
+  never used. While the provider's keys address fails, keys read in the last
+  hour still check logouts; one signed with a key just rotated in is answered
+  `503` until the keys are read again, within a minute.
 - **The server's access token can sign one person out**
   (`POST /api/people/:accountId/sign-out`), logged as the token. It could
   already sign everyone out; the rest of People still needs a person signed
@@ -70,6 +90,12 @@ entry says how.
   people without names or e-mails, and look one up by subject
   (`GET /api/people/by-identity`). None of them ever switches someone on,
   changes a role or an e-mail, or makes a link.
+
+### Changed
+
+- **The preview no longer passes the editor's known-browser cookie on to the
+  site's dev server**, and the preview's entry tickets take one spelling of
+  their signature only.
 
 ## 0.4.4 — 2026-11-26
 

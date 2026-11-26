@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.4 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.5 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // Settings, wording and styles of the email-link dialog (docs/mailto.md).
 import { MAILTO_RUNTIME } from "./runtime.gen.js";

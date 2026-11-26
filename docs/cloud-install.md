@@ -120,8 +120,8 @@ before single-site installs — a hosted server that kept any number of sites:
 
 Layout 1 had one shared password; layout 2 has accounts. What the upgrade
 from 1 to 2 does is in [Upgrading to accounts](#upgrading-to-accounts).
-Layout 3 makes room for accounts that sign in through an identity provider,
-which a later version adds; the upgrade from 2 to 3 changes nothing anyone
+Layout 3 makes room for accounts that sign in through an identity provider
+(OpenID Connect, from 0.4.5); the upgrade from 2 to 3 changes nothing anyone
 sees: every account keeps its password, and open invitations and links keep
 working.
 
@@ -138,7 +138,7 @@ certificates by itself. This is how this project's own website's editor runs,
 on a small Google Cloud VM.
 
 **The image isn't published yet.** The files below name
-`ghcr.io/fictiontribe/galley:0.4.4`, which is where it will be. Until then,
+`ghcr.io/fictiontribe/galley:0.4.5`, which is where it will be. Until then,
 build it from this repository and put your image's name on the `image:`
 line, or pass it with `--image`:
 
@@ -181,7 +181,7 @@ are exactly the files below for the `caddy` variant at `cms.example.com`
    name: galley-acme
    services:
      editor:
-       image: "ghcr.io/fictiontribe/galley:0.4.4"
+       image: "ghcr.io/fictiontribe/galley:0.4.5"
        restart: unless-stopped
        env_file: .env
        # Hardened: an ordinary user, nothing written outside /data and /tmp, no extra powers.
@@ -304,7 +304,7 @@ runs. It makes a fresh setup code, gives the install only its SHA-256, and
 prints the link once at the end.
 
 ```sh
-sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.4.4 --dry-run
+sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.4.5 --dry-run
 ```
 
 ```
@@ -318,13 +318,13 @@ Would create the install “acme” for git@github.com:example/acme-site.git at 
   network       galley-proxy  (created if it isn't there)
 
 Would run:
-  docker run --rm ghcr.io/fictiontribe/galley:0.4.4 host recipe --name acme --address cms.example.com --repository git@github.com:example/acme-site.git --proxy shared-proxy …
+  docker run --rm ghcr.io/fictiontribe/galley:0.4.5 host recipe --name acme --address cms.example.com --repository git@github.com:example/acme-site.git --proxy shared-proxy …
   docker network create galley-proxy            (if missing)
   docker compose -f ./galley-installs/proxy/compose.yaml up -d
   docker compose -f ./galley-installs/acme/compose.yaml up -d
   docker compose -f ./galley-installs/proxy/compose.yaml exec caddy caddy reload --config /etc/caddy/Caddyfile
 
-(The image ghcr.io/fictiontribe/galley:0.4.4 isn't on this server yet, so the files can't be shown; the real run pulls it.)
+(The image ghcr.io/fictiontribe/galley:0.4.5 isn't on this server yet, so the files can't be shown; the real run pulls it.)
 
 Then: point cms.example.com and its preview and live names at this server, and open the one-time setup link the real run prints.
 ```
@@ -1981,7 +1981,7 @@ Any server with Docker: the editor “acme”
   Editor:          https://cms.example.com
   Preview:         https://cms-preview.example.com
   Live comparison: https://cms-live.example.com
-  Runs:            ghcr.io/fictiontribe/galley:0.4.4
+  Runs:            ghcr.io/fictiontribe/galley:0.4.5
 
 Creates nothing on an account.
 
