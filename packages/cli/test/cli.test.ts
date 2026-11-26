@@ -400,6 +400,18 @@ describe("galley serve", () => {
     expect(io.stderr.join("\n")).toMatch(/at least 12 characters/);
   });
 
+  it("says the identity provider beside the passwords when one is set up", async () => {
+    const io = testIo({
+      env: { HOME: tmp, GALLEY_PUBLIC_URL: "https://cms.example.com", GALLEY_HOME: "/data" },
+      startServer: async () => ({ url: "https://cms.example.com", port: 4400, provider: { name: "Acme ID" }, close: async () => {} }) as unknown as RunningServer,
+    });
+
+    expect(await main(["serve"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain(
+      "Sign-in:   each person's own e-mail and password, or through Acme ID (GALLEY_OIDC_ISSUER); an owner invites people in the app; after 5 wrong attempts in a minute, that address waits a minute"
+    );
+  });
+
   it("prints what is exposed and how sign-in works", async () => {
     let received: Record<string, unknown> = {};
     const io = testIo({
