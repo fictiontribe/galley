@@ -263,12 +263,12 @@ export const oidcRoutes: Pick<RouteTable, OidcRouteKey> = {
     }
     let result: Awaited<ReturnType<typeof install.people.providerLogout>>;
 
-    // Answered 200 only once it is written: a provider sends again anything that isn't.
+    // Answered 200 only once it is written; one that couldn't be is answered 503, to be sent again.
     try {
       result = await install.people.providerLogout({ issuer: provider.config.issuer, subject: checked.subject, issuedAt: checked.issuedAt });
     } catch (error) {
-      audit(ctx, `A back-channel logout from ${provider.config.name} couldn't be written, so nobody was signed out by it; it is answered as failed, to be sent again: ${error instanceof Error ? error.message : String(error)}`);
-      return forProvider(c, 400, { error: "server_error" });
+      audit(ctx, `A back-channel logout from ${provider.config.name} couldn't be written, so nobody was signed out by it; it is answered 503, to be sent again: ${error instanceof Error ? error.message : String(error)}`);
+      return forProvider(c, 503, { error: "temporarily_unavailable" });
     }
     if (!result.ok) return refused("the list of recent logouts for people with no account here is full; it will be sent again", true);
     audit(ctx, `The provider (${provider.config.name}) signed ${result.account ? named(result.account) : "someone with no account here"} out${checked.keyId ? ` (key ${checked.keyId})` : ""}.`);

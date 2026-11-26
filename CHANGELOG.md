@@ -53,9 +53,11 @@ entry says how.
   as an ID token is (the same keys and algorithm, this editor alone) and as a
   logout token (the event, `iat`, `jti`, no `nonce`, no older than 30 days, a
   subject). The route reads no cookie and needs no Origin, by its exact path;
-  its body is capped at 16 KB; it shares no limit with signing in; it answers
-  `200` only once the logout is written, and `503` while a backup is being
-  put back.
+  its body is capped at 16 KB; it shares no limit with signing in. It
+  answers `200` once the logout is written; `503` means send it again (it
+  couldn't be checked or written just then, or a backup is being put back);
+  `400` means the token will never be taken. RSA keys under 2,048 bits are
+  never used.
 - **The server's access token can sign one person out**
   (`POST /api/people/:accountId/sign-out`), logged as the token. It could
   already sign everyone out; the rest of People still needs a person signed

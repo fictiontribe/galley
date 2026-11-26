@@ -16,9 +16,9 @@ interface Key {
   publicJwk: Record<string, unknown>;
 }
 
-function makeKey(kid: string, alg: Alg): Key {
+function makeKey(kid: string, alg: Alg, modulusLength = 2048): Key {
   const pair =
-    alg === "ES256" ? generateKeyPairSync("ec", { namedCurve: "P-256" }) : alg === "EdDSA" ? generateKeyPairSync("ed25519") : generateKeyPairSync("rsa", { modulusLength: 2048 });
+    alg === "ES256" ? generateKeyPairSync("ec", { namedCurve: "P-256" }) : alg === "EdDSA" ? generateKeyPairSync("ed25519") : generateKeyPairSync("rsa", { modulusLength });
 
   return { kid, alg, privateKey: pair.privateKey, publicJwk: { ...(pair.publicKey.export({ format: "jwk" }) as Record<string, unknown>), kid, use: "sig", alg } };
 }
@@ -58,6 +58,8 @@ export interface Wrongs {
   discoveryStatus?: number;
   discoveryRedirect?: boolean;
   discoveryBytes?: number;
+  /** The keys address answers this status. */
+  jwksStatus?: number;
   issParameterSupported?: boolean;
   // the authorization answer
   omitIss?: boolean;
@@ -94,7 +96,7 @@ export interface TestProvider {
   asked: string[];
   /** The Authorization header the token endpoint was sent last. */
   lastTokenAuth: string | null;
-  addKey(kid: string, alg: Alg, options?: { published?: boolean; jwk?: Record<string, unknown> }): void;
+  addKey(kid: string, alg: Alg, options?: { published?: boolean; jwk?: Record<string, unknown>; modulusLength?: number }): void;
   /**
    * A back-channel logout token for `sub`, signed with the main key (or
    * `signWith`), as the provider would send it; `claims` overrides or adds,
@@ -127,7 +129,7 @@ export async function startTestProvider(options: { alg?: Alg; clientId?: string;
     asked: [],
     lastTokenAuth: null,
     addKey(kid, alg, keyOptions = {}) {
-      const key = makeKey(kid, alg);
+      const key = makeKey(kid, alg, keyOptions.modulusLength);
 
       provider.extraKeys.set(kid, { ...key, published: keyOptions.published ?? true, ...(keyOptions.jwk ? { publicJwkOverride: { ...key.publicJwk, ...keyOptions.jwk } } : {}) });
     },
@@ -212,6 +214,7 @@ export async function startTestProvider(options: { alg?: Alg; clientId?: string;
       return send(res, 200, document);
     }
     if (at.pathname === "/jwks") {
+      if (wrong.jwksStatus) return send(res, wrong.jwksStatus, { error: "server_error" });
       const keys = [main.publicJwk, ...[...provider.extraKeys.values()].filter((key) => key.published).map((key) => key.publicJwkOverride ?? key.publicJwk)];
 
       return send(res, 200, { keys });
