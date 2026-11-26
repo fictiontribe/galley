@@ -75,7 +75,7 @@ async function passphraseFor(io: Io, purpose: "create" | "restore"): Promise<str
 }
 
 /** Refuses while a server holds `home`, saying how that was told. */
-async function refuseWhileServed(home: string, force: boolean): Promise<void> {
+export async function refuseWhileServed(home: string, force: boolean): Promise<void> {
   const holder = await serverHolding(home);
 
   if (!holder) return;

@@ -124,6 +124,20 @@ export interface PeopleService {
    * recent logouts holds as many as it can, so this one wasn't kept.
    */
   providerLogout(input: { issuer: string; subject: string; issuedAt: number }): Promise<{ ok: true; account: Account | null } | { ok: false; reason: "full" }>;
+  /**
+   * `galley accounts link`: binds an account to a subject at the provider.
+   * The subject must be on no other account and not removed, and the account
+   * must have no identity yet unless `replace` (a wrong link put right). The
+   * account loses its password and open password links, and every session of
+   * it ends. Two accounts are never merged.
+   */
+  linkIdentity(accountId: string, identity: { issuer: string; subject: string }, options?: { replace?: boolean }): Promise<{ account: Account; replaced: { issuer: string; subject: string } | null }>;
+  /**
+   * `galley accounts rekey`: every identity and removed account under one
+   * issuer moves to another, in one write — or none does, when one would
+   * meet an identity or removed account already under the new issuer.
+   */
+  rekeyIssuer(from: string, to: string): Promise<{ accounts: number; removed: number }>;
   /** Makes the first owner, named by subject (GALLEY_OIDC_OWNER), while the install has no owner. Nothing when it has one. */
   nameFirstOwner(issuer: string, subject: string): Promise<Account | null>;
   /** Whether `password` is the password of one of the owners who has one (GALLEY_PASSWORD, at start-up). */
@@ -278,6 +292,11 @@ function sharesName(state: InstallStateFile, name: string, exceptId: string | nu
   const key = nameKey(name);
 
   return key !== "" && state.accounts.some((account) => account.id !== exceptId && account.name !== "" && nameKey(account.name) === key);
+}
+
+/** A subject as the provider sends it: 1 to 255 printable ASCII characters. */
+function validSubjectText(subject: unknown): subject is string {
+  return typeof subject === "string" && /^[\x20-\x7e]{1,255}$/.test(subject);
 }
 
 function newId(): string {
@@ -605,6 +624,63 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
       });
       if (result.ok && result.account) store.sessionsChanged();
       return result;
+    },
+
+    async linkIdentity(accountId, identity, linkOptions = {}) {
+      if (!validSubjectText(identity.subject)) throw new GalleyError("invalid", "A subject is 1 to 255 printable characters, as the provider sends it in `sub`.");
+      let result: { account: Account; replaced: { issuer: string; subject: string } | null } | null = null;
+
+      await store.update((draft) => {
+        const target = accountOf(draft, accountId);
+        const same = (one: { issuer: string; subject: string } | undefined) => one?.issuer === identity.issuer && one.subject === identity.subject;
+
+        if (!target) throw new GalleyError("not-found", "No account here has that id. `galley accounts list` shows them.");
+        const other = draft.accounts.find((account) => account !== target && same(account.identity));
+
+        if (other) throw new GalleyError("conflict", `That subject already has its own account here (${other.id}${other.name ? `, ${other.name}` : ""}). Two accounts are never merged: delete that one first, then take its subject off the list of removed accounts.`);
+        if (draft.tombstones.some((removed) => same(removed))) throw new GalleyError("conflict", "That subject is on this editor's list of removed accounts, so it can't be linked. An owner takes it off the list first.");
+        if (target.identity && !linkOptions.replace) {
+          throw new GalleyError("conflict", `That account signs in through the provider already (subject ${target.identity.subject}). To bind another subject in its place, add --replace.`);
+        }
+        const replaced = target.identity && !same(target.identity) ? { ...target.identity } : null;
+
+        target.identity = { issuer: identity.issuer, subject: identity.subject };
+        // From now on the provider is its one way in: no password, no link to choose one, no session from before.
+        target.passwordHash = null;
+        dropPasswordLinks(draft, target.id);
+        endSessions(target);
+        target.incomplete = !target.name;
+        result = { account: publicAccount(target), replaced };
+      });
+      store.sessionsChanged();
+      return result!;
+    },
+
+    async rekeyIssuer(from, to) {
+      let moved = { accounts: 0, removed: 0 };
+
+      await store.update((draft) => {
+        if (from === to) throw new GalleyError("invalid", "--from and --to are the same issuer: nothing to move.");
+        const under = (issuer: string) => new Set([...draft.accounts.flatMap((account) => (account.identity?.issuer === issuer ? [account.identity.subject] : [])), ...draft.tombstones.flatMap((removed) => (removed.issuer === issuer ? [removed.subject] : []))]);
+        const there = under(to);
+        const clashes = [...under(from)].filter((subject) => there.has(subject));
+
+        if (clashes.length > 0) {
+          throw new GalleyError("conflict", `${clashes.length === 1 ? "One subject is" : `${clashes.length} subjects are`} already under ${to} as well as under ${from}, so nothing was moved: two accounts are never merged. Delete or take off the list whichever shouldn't stay, then run this again.`);
+        }
+        for (const account of draft.accounts) {
+          if (account.identity?.issuer !== from) continue;
+          account.identity = { issuer: to, subject: account.identity.subject };
+          moved.accounts += 1;
+        }
+        for (const removed of draft.tombstones) {
+          if (removed.issuer !== from) continue;
+          removed.issuer = to;
+          moved.removed += 1;
+        }
+        for (const logout of draft.providerLogouts) if (logout.issuer === from) logout.issuer = to;
+      });
+      return moved;
     },
 
     async nameFirstOwner(issuer, subject) {

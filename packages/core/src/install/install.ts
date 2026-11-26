@@ -682,7 +682,7 @@ export function createInstall(options: InstallOptions): Install {
       if (other !== undefined) {
         throw new GalleyError(
           "invalid",
-          `GALLEY_OIDC_ISSUER is “${issuer}”, but this install has accounts, or removed accounts, from another identity provider: “${other}”. Starting would make those people new accounts and let the removed ones back in. Set GALLEY_OIDC_ISSUER back to “${other}”. Moving them to a new issuer is \`${PRODUCT.slug} accounts rekey\`, which a later version adds.`
+          `GALLEY_OIDC_ISSUER is “${issuer}”, but this install has accounts, or removed accounts, from another identity provider: “${other}”. Starting would make those people new accounts and let the removed ones back in. Set GALLEY_OIDC_ISSUER back to “${other}”, or move them to the new issuer with the server stopped: \`${PRODUCT.slug} accounts rekey --from ${other} --to ${issuer}\`.`
         );
       }
     }
