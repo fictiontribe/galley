@@ -33,6 +33,8 @@ export const OWN_EMAIL_REFUSAL = "Only an owner can change the e-mail you sign i
 export const TOKEN_ONLY_SWITCHES_OFF = 'With the server\'s access token, an account can only be switched off ({ "disabled": true }). Switching someone on, a role and an e-mail are an owner\'s, in People.';
 /** The server's access token asked to delete an account that is still switched on. */
 export const TOKEN_DELETES_ONLY_SWITCHED_OFF = "With the server's access token, only an account that is switched off can be deleted. Switch it off first.";
+/** Taking the provider off an account (from a recovery session) when the list of removed ones is full: the subject it was linked to has nowhere to go. */
+export const REMOVED_LIST_FULL_FOR_TAKE_OFF = `This editor remembers at most ${TOMBSTONES_KEPT.toLocaleString("en")} removed accounts, and the list is full, so the subject this account was linked to can't be remembered as removed. Let some of the removed back first (People, under Removed, or \`galley accounts unremove\` on the server), then try again.`;
 /** Deleting a linked account when the list of removed ones is full. */
 /** A removed account that signed in through a provider, as the list of removed accounts shows it. */
 export interface RemovedIdentity {
@@ -745,7 +747,7 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
 
         // The subject it was wrongly linked to is remembered as removed: it can't come back as an account of its own until an owner lets it.
         if (!draft.tombstones.some((one) => one.issuer === removed.issuer && one.subject === removed.subject)) {
-          if (draft.tombstones.length >= TOMBSTONES_KEPT) throw new GalleyError("conflict", REMOVED_LIST_FULL);
+          if (draft.tombstones.length >= TOMBSTONES_KEPT) throw new GalleyError("conflict", REMOVED_LIST_FULL_FOR_TAKE_OFF);
           draft.tombstones.push({ id: newId(), issuer: removed.issuer, subject: removed.subject, removedAt: iso(now()), removedBy: target.id });
         }
         delete target.identity;

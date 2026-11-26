@@ -64,6 +64,35 @@ export function identityLinkedEmail(input: IdentityLinkedEmailInput): MailMessag
   };
 }
 
+export interface EmailChangedEmailInput {
+  /** The address the account had. */
+  to: string;
+  product: string;
+  address: string;
+}
+
+/**
+ * To the address an account had, when its e-mail changes: said once, with no
+ * link and not the new address, so a change someone else made is noticed.
+ */
+export function emailChangedEmail(input: EmailChangedEmailInput): MailMessage {
+  const host = new URL(input.address).host;
+  const first = `The e-mail address your account on ${input.product} at ${host} signs in with was changed, so it is no longer this one.`;
+  const rest = ["Links to choose a new password now go to the new address.", "If this wasn't you or an owner of the editor, tell an owner straight away."];
+
+  return {
+    to: [input.to],
+    subject: headerText(`Your sign-in e-mail at ${host} was changed`),
+    text: [first, "", ...rest.flatMap((line) => [line, ""])].join("\n").trimEnd(),
+    html: [
+      `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;color:#1a1a1a;">`,
+      `<p style="margin:0 0 16px">${escapeHtml(first)}</p>`,
+      ...rest.map((text) => `<p style="margin:0 0 12px;color:#555">${escapeHtml(text)}</p>`),
+      `</body></html>`,
+    ].join(""),
+  };
+}
+
 export interface InvitationEmailInput {
   to: string;
   /** The product's name (brand.ts). */

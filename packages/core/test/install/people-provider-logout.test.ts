@@ -61,3 +61,23 @@ describe("a logout from the provider", () => {
     expect(await people.providerLogout({ issuer: ISSUER, subject: "s7", issuedAt: at() + 1 })).toEqual({ ok: true, account: null });
   });
 });
+
+describe("a logout kept for a link's Connect", () => {
+  it("is still there sixteen minutes on, after another logout's write, so a link from before it is refused; gone after twenty-five", async () => {
+    const { store, people, at, move } = await opened();
+    const sam = await people.createOwner({ password: "correct horse battery staple", name: "Sam", email: "sam@example.com" });
+    const signedInAt = at() - 60_000;
+
+    await people.providerLogout({ issuer: ISSUER, subject: "linking", issuedAt: at() });
+    move(16 * 60_000);
+    // Another subject's logout: its write prunes what is past keeping.
+    await people.providerLogout({ issuer: ISSUER, subject: "someone-else", issuedAt: at() });
+    expect(store.read().providerLogouts.map((one) => one.subject)).toEqual(["linking", "someone-else"]);
+    await expect(people.linkIdentity(sam.id, { issuer: ISSUER, subject: "linking" }, { role: "owner", issuedAt: signedInAt })).rejects.toThrow(/signed that person out after the sign-in this link came from/);
+    move(10 * 60_000);
+    await people.providerLogout({ issuer: ISSUER, subject: "third", issuedAt: at() });
+    expect(store.read().providerLogouts.map((one) => one.subject)).toEqual(["someone-else", "third"]);
+    expect(PROVIDER_LOGOUT_KEPT_MS).toBe(25 * 60_000);
+  });
+});
+

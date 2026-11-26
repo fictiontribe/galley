@@ -16,6 +16,7 @@ import { z } from "zod";
 import type { ApiRouteKey } from "@galley/core/api";
 import type { MailMessage, MailTransport } from "@galley/core/forms";
 import {
+  emailChangedEmail,
   invitationEmail,
   LINK_PATHS,
   LINK_REFUSED,
@@ -305,6 +306,16 @@ function linkUrl(address: string, kind: LinkPreview["kind"], secret: string): st
  * logged — what kind of e-mail and the mail server's error code, never the
  * address, the link or the mail server's own words, which can quote both.
  */
+/**
+ * Where this server e-mails, the address an account had is told its e-mail
+ * changed (no link, not the new address): someone who has the password and
+ * changes the address first is noticed before anything else is sent there.
+ */
+function tellOldAddress(c: Context, ctx: RouteContext, old: string, account: Account): void {
+  if (!old) return;
+  void deliver(ctx, emailChangedEmail({ to: old, product: ctx.options.brand.productName, address: ctx.options.publicOrigin ?? new URL(c.req.url).origin }), `the notice to ${named(account)}'s previous address that their e-mail changed`);
+}
+
 /** Sends one message where this server e-mails links (outgoing e-mail and its public address); false when it doesn't, or it failed (logged). */
 export function deliverMail(ctx: RouteContext, message: MailMessage, what: string): Promise<boolean> {
   return deliver(ctx, message, what);
@@ -617,7 +628,10 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
       ticket?.release();
     }
 
-    if (body.email !== undefined && updated.email !== account.email) audit(ctx, `${named(updated)} changed the e-mail they sign in with.`);
+    if (body.email !== undefined && updated.email !== account.email) {
+      audit(ctx, `${named(updated)} changed the e-mail they sign in with.`);
+      tellOldAddress(c, ctx, account.email, updated);
+    }
     if (updated.name !== account.name) audit(ctx, `${named(account)} is now called ${updated.name}.`);
     return install.people.session(updated.id)!;
   },
@@ -716,7 +730,10 @@ export const accountsRoutes: Pick<RouteTable, AccountsRouteKey> = {
     }
     const { before, after } = await install.people.change(by?.id ?? null, target, body);
 
-    if (before.email !== after.email) audit(ctx, `${who} changed the e-mail ${named(after)} signs in with; their open links stopped working.`);
+    if (before.email !== after.email) {
+      audit(ctx, `${who} changed the e-mail ${named(after)} signs in with; their open links stopped working.`);
+      tellOldAddress(c, ctx, before.email, after);
+    }
     if (before.role !== after.role) audit(ctx, `${who} changed the role of ${named(before)} to ${ROLE_NAMES[after.role]}.`);
     if (before.disabled !== after.disabled) audit(ctx, after.disabled ? `${who} switched off ${named(after)}; they were signed out.` : `${who} switched ${named(after)} back on.`);
     if (by) return after;

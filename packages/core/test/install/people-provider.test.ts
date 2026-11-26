@@ -9,8 +9,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { GalleyError } from "../../src/errors";
-import { ACCOUNTS_KEPT, createPeople, NO_PASSWORD_FOR_PROVIDER_ACCOUNT, type ProviderSignIn } from "../../src/install/people";
-import { openInstallState } from "../../src/install/state";
+import { ACCOUNTS_KEPT, createPeople, NO_PASSWORD_FOR_PROVIDER_ACCOUNT, REMOVED_LIST_FULL_FOR_TAKE_OFF, type ProviderSignIn } from "../../src/install/people";
+import { openInstallState, TOMBSTONES_KEPT } from "../../src/install/state";
 import { tempDir } from "./helpers";
 
 const ISSUER = "https://id.example.com";
@@ -142,6 +142,21 @@ describe("linking and rekeying (the server's commands)", () => {
     });
     expect(await people.rekeyIssuer(ISSUER, "https://new.example.com")).toEqual({ accounts: 0, removed: 0 });
     expect(store.read().providerLogouts).toEqual([{ issuer: "https://new.example.com", subject: "someone", at }]);
+  });
+});
+
+describe("taking the provider off from a recovery session, with the list of removed accounts full", () => {
+  it("is refused with a sentence that says to let some back first, and nothing changes", async () => {
+    const { store, people } = await opened();
+    const made = await people.signInThroughProvider(input({ role: "owner" }));
+    const id = made.ok ? made.account.id : "";
+
+    await store.update((draft) => {
+      draft.tombstones = Array.from({ length: TOMBSTONES_KEPT }, (_, i) => ({ id: `t${i}`, issuer: ISSUER, subject: `gone-${i}`, removedAt: "2026-11-01T10:00:00.000Z", removedBy: null }));
+    });
+    await expect(people.removeIdentity(id, "a brand new long password")).rejects.toThrow(REMOVED_LIST_FULL_FOR_TAKE_OFF);
+    expect(REMOVED_LIST_FULL_FOR_TAKE_OFF).toMatch(/Let some of the removed back first \(People, under Removed, or `galley accounts unremove` on the server\)/);
+    expect(store.read().accounts.find((account) => account.id === id)).toMatchObject({ identity: { subject: "sub-1" }, passwordHash: null });
   });
 });
 
