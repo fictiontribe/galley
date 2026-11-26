@@ -78,7 +78,8 @@ same path without the token. API calls need that cookie or
 **Hosted mode** (`GALLEY_HOST` not loopback, or `galley serve`). One site
 (`hosted-refusals.ts` answers the multi-site routes with 403 and the "Host the
 editor online" routes with 404), for people with accounts: each signs in with
-their own e-mail and password and is an owner, an editor or a contributor
+their own e-mail and password, or through the OpenID Connect provider the
+environment names (`oidc/`), and is an owner, an editor or a contributor
 (`packages/core/src/install/accounts.ts`, `people.ts`). With no owner yet, the
 server prints a one-time setup link; the code is kept as its SHA-256, the
 first-run routes (`/api/setup…`) take it as a Bearer value until an owner

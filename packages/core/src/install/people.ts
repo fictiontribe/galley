@@ -18,7 +18,7 @@ import { GalleyError } from "../errors";
 import { ACCOUNT_ROLES, INVITATION_DAYS, PASSWORD_LINK_MINUTES, ROLE_ACCESS, type Account, type AccountRole, type AccountSession, type Invitation, type LinkPreview, type OperatorAccount, type PeopleAccount } from "./accounts";
 import { nameKey, tidyName } from "./names";
 import { hashPassword, passwordProblem, verifyPassword } from "./password";
-import { hasOwner, PROVIDER_LOGOUT_KEPT_MS, PROVIDER_LOGOUTS_KEPT, sha256Hex, signsInWithPassword, spendSetupCode, TOMBSTONES_KEPT, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink, type StoredTombstone } from "./state";
+import { hasOwner, otherIssuer, PROVIDER_LOGOUT_KEPT_MS, PROVIDER_LOGOUTS_KEPT, sha256Hex, signsInWithPassword, spendSetupCode, TOMBSTONES_KEPT, type InstallStateFile, type InstallStore, type StoredAccount, type StoredLink, type StoredTombstone } from "./state";
 
 /** One refusal for every code that can't be used — unknown, used, taken back, expired — so a guesser learns nothing. */
 export const LINK_REFUSED = "This link doesn't work any more: it was used already, taken back, or it ran out. Ask an owner of this editor for a new one.";
@@ -148,8 +148,8 @@ export interface PeopleService {
    * The subject must be on no other account and not removed, and the account
    * must have no identity yet unless `replace` (a wrong link put right): the
    * subject it replaces is then remembered as removed, by whoever runs the
-   * server, unless it is under another issuer (refused with nothing changed
-   * when that list is full). The account loses its password and open password
+   * server (refused with nothing changed when that list is full). Refused
+   * while any account or removed account names another issuer. The account loses its password and open password
    * links, and every session of it ends. Two accounts are never merged.
    */
   linkIdentity(
@@ -702,6 +702,15 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         const same = (one: { issuer: string; subject: string } | undefined) => one?.issuer === identity.issuer && one.subject === identity.subject;
 
         if (!target) throw new GalleyError("not-found", "No account here has that id. `galley accounts list` shows them.");
+        // Kept by issuer, byte for byte, as a start checks: under another one, the removed under the first would be free.
+        const otherOne = otherIssuer(draft, identity.issuer);
+
+        if (otherOne !== undefined) {
+          throw new GalleyError(
+            "conflict",
+            `GALLEY_OIDC_ISSUER is “${identity.issuer}”, but this install has accounts, or removed accounts, from another identity provider: “${otherOne}”. Accounts are kept by issuer, byte for byte, so nothing was linked. Set GALLEY_OIDC_ISSUER to exactly “${otherOne}”, as the server is started with, or move them to the new issuer first, with the server stopped: \`${PRODUCT.slug} accounts rekey --from ${otherOne} --to ${identity.issuer}\`.`
+          );
+        }
         const other = draft.accounts.find((account) => account !== target && same(account.identity));
 
         if (other) throw new GalleyError("conflict", `That subject already has its own account here (${other.id}${other.name ? `, ${other.name}` : ""}). Two accounts are never merged: delete that one first, then take its subject off the list of removed accounts (\`${PRODUCT.slug} accounts unremove <subject>\`).`);
@@ -711,8 +720,8 @@ export function createPeople(store: InstallStore, options: PeopleOptions = {}): 
         }
         const replaced = target.identity && !same(target.identity) ? { ...target.identity } : null;
         // The subject put right is remembered as removed, as when a recovery session takes the provider off: it can't sign in
-        // again (as a new account) or be linked until it is let back. One under another issuer can't sign in here at all, and
-        // a removal under it would stop the server from starting, so it is left off.
+        // again (as a new account) or be linked until it is let back. A link under another issuer than the accounts hold is
+        // refused above; the issuer is checked again so that a removal is never written under one the server won't start with.
         const rememberReplaced = replaced !== null && replaced.issuer === identity.issuer && !draft.tombstones.some((removed) => removed.issuer === replaced.issuer && removed.subject === replaced.subject);
 
         if (rememberReplaced && draft.tombstones.length >= TOMBSTONES_KEPT) throw new GalleyError("conflict", REMOVED_LIST_FULL_FOR_TAKE_OFF);

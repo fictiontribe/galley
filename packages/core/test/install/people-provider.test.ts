@@ -197,17 +197,17 @@ describe("a wrong link put right on the server (linkIdentity with replace)", () 
     expect(store.read()).toEqual(before);
   });
 
-  it("binding the same subject again, or replacing one under another issuer, adds nothing to the list", async () => {
+  it("binding the same subject again adds nothing to the list; one under another issuer than the accounts hold is refused, pointing to rekey, and nothing changes", async () => {
     const { store, people, sam } = await linkedWrongly();
 
     expect((await people.linkIdentity(sam.id, { issuer: ISSUER, subject: "wrong-subject" }, { replace: true })).replaced).toBeNull();
-    await store.update((draft) => {
-      draft.accounts.find((account) => account.id === sam.id)!.identity = { issuer: "https://old.example.com", subject: "old-subject" };
-    });
-    const { replaced } = await people.linkIdentity(sam.id, { issuer: ISSUER, subject: "right-subject" }, { replace: true });
-
-    expect(replaced).toEqual({ issuer: "https://old.example.com", subject: "old-subject", removed: false });
     expect(store.read().tombstones).toEqual([]);
+    const before = store.read();
+
+    await expect(people.linkIdentity(sam.id, { issuer: `${ISSUER}/`, subject: "right-subject" }, { replace: true })).rejects.toThrow(
+      `this install has accounts, or removed accounts, from another identity provider: “${ISSUER}”. Accounts are kept by issuer, byte for byte, so nothing was linked.`
+    );
+    expect(store.read()).toEqual(before);
   });
 });
 

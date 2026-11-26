@@ -26,7 +26,7 @@ import { tidyName } from "./names";
 import { accessEnv, ensureDeployKey, forgetAccessToken, hasAccessToken, readDeployKey, storeAccessToken, trialAccess, type RepositoryAccess } from "./access";
 import { createPeople, type PeopleService } from "./people";
 import { createSingleSiteRegistry, type SingleSiteRegistry } from "./single-site";
-import { hasOwner, mintSetupCode, SITE_FOLDER, type InstallStore } from "./state";
+import { hasOwner, mintSetupCode, otherIssuer, SITE_FOLDER, type InstallStore } from "./state";
 import type { StartingValues } from "./starting";
 import type { DeployKeyInfo, InstallFixed, InstallMeta, InstallSite, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./types";
 
@@ -676,8 +676,7 @@ export function createInstall(options: InstallOptions): Install {
 
     // Identities and removed accounts are kept by issuer: under another one, every removed person would be let back in and everyone else made again.
     if (issuer !== undefined) {
-      const state = store.read();
-      const other = [...state.accounts.map((account) => account.identity?.issuer), ...state.tombstones.map((removed) => removed.issuer)].find((one) => one !== undefined && one !== issuer);
+      const other = otherIssuer(store.read(), issuer);
 
       if (other !== undefined) {
         throw new GalleyError(

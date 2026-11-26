@@ -1251,6 +1251,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     displaced,
     setupUrl: setupCode ? `${url}/setup?token=${encodeURIComponent(setupCode)}` : null,
     passwordLink,
+    provider: install && config.oidc ? { name: config.oidc.name } : null,
     notices,
     previews: gateway ? gateway.origins : null,
     syncMinutes: config.syncMinutes,

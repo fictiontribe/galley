@@ -119,8 +119,6 @@ Built and waiting to be proven, or being built.
 
 ## Later
 
-- **Single sign-on for hosted installs.** Today each person signs in to a
-  hosted Galley with their own e-mail and password.
 - **Galley Cloud**: the editor, hosted for you. No date or price yet.
 
 ## Have a say

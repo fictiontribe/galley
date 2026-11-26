@@ -10,7 +10,8 @@ import type { Io } from "../io";
 export const SERVE_HELP = `Usage: ${PRODUCT.slug} serve [options]
 
 Run ${PRODUCT.name} for other computers (hosted mode): one site, for the people an owner
-invites, each with their own e-mail and password.
+invites, each with their own e-mail and password, or through an identity provider
+(OpenID Connect, set with GALLEY_OIDC_ISSUER).
 Everything it keeps — the site, settings, keys, accounts, sessions — is in its data
 folder (GALLEY_HOME).
 
@@ -188,8 +189,11 @@ export async function serveCommand(argv: string[], io: Io): Promise<number> {
     // Whether GALLEY_PASSWORD still signs the first owner in, without saying anything about it: it only sets it while there is no owner, and the app can change it since.
     const fromEnv = Boolean(server.install && env.GALLEY_PASSWORD && (await server.install.people.ownerPasswordIs(env.GALLEY_PASSWORD).catch(() => false)));
 
+    // With a provider beside the passwords, it is said too (a stand-in server may not say either way).
+    const provider = server.provider?.name;
+
     io.out(
-      `Sign-in:   each person's own e-mail and password${fromEnv ? " (an owner's is still the one GALLEY_PASSWORD set)" : "; an owner invites people in the app"}; after 5 wrong attempts in a minute, that address waits a minute`
+      `Sign-in:   each person's own e-mail and password${fromEnv ? " (an owner's is still the one GALLEY_PASSWORD set)" : ""}${provider ? `, or through ${provider} (GALLEY_OIDC_ISSUER)` : ""}${fromEnv ? "" : "; an owner invites people in the app"}; after 5 wrong attempts in a minute, that address waits a minute`
     );
   }
   if (server.passwordLink) {

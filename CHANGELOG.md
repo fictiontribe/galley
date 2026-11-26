@@ -44,10 +44,19 @@ entry says how.
 - **`galley accounts link --replace` remembers the subject it replaces as
   removed**, as taking the provider off from a recovery session does: it
   can't sign in again (as a new account) or be linked until
-  `galley accounts unremove` or **Let them back** takes it off the list. A
-  subject under another issuer isn't added. When the list of removed
-  accounts is full, nothing changes and the command says to let some back
-  first.
+  `galley accounts unremove` or **Let them back** takes it off the list.
+  When the list of removed accounts is full, nothing changes and the command
+  says to let some back first.
+- **`galley accounts link` refuses a `GALLEY_OIDC_ISSUER` that isn't, byte
+  for byte, the issuer the install's accounts and removed accounts already
+  hold**, as a server's start does, and points to `galley accounts rekey`.
+  Nothing is linked.
+- **The docs cover signing in through your own identity provider**: the
+  guide to running a hosted install has it step by step (setting it up,
+  passwords beside it or off, moving an install that had passwords, a wrong
+  link put right, taking someone's access away, back-channel logout, taking
+  the provider away), and the security pages, `SECURITY.md` and
+  `galley serve --help` say people may sign in through one.
 
 ### Security
 

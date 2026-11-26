@@ -52,6 +52,12 @@ preview overlay (`packages/overlay`), the adapter kit, the desktop shell
 - on a hosted install, work done for nobody — a plugin's hooks, or anything
   left running after a request — publishing, changing the site's settings
   file or writing outside the content;
+- on a hosted install with an identity provider: signing in as someone
+  the provider didn't sign in, or with a token the editor should have
+  refused; an account found or linked by its e-mail at the provider, or two
+  accounts merged; a removed person getting back in before they are let
+  back; a back-channel logout that ended someone else's sessions, or
+  didn't end theirs;
 - more guesses at one account's password than the sign-in limits allow
   (about 2,900 a day, from any number of addresses), or making sign-in fail
   for everyone from one address or one IPv6 `/64`;
@@ -71,7 +77,9 @@ that need someone who can already sign in to a hosted Galley, other than
 doing what their role doesn't include (the preview runs the site's code for
 anyone signed in, and editors and owners can change it — see below); denial
 of service by a signed-in user; the deployed sites
-themselves; third-party services (Anthropic, OpenAI, Google, your git host).
+themselves; third-party services (Anthropic, OpenAI, Google, your git host);
+the identity provider an operator sets up, including whom it lets sign in
+and which role it sends.
 
 ## The security model, in brief
 
@@ -81,10 +89,15 @@ model* (`apps/site/src/content/docs/running/security.md`).
 1. **Who can reach it.** Locally the server listens on `127.0.0.1` only and
    needs the random session token from the printed link. A hosted install
    looks after one site, for people with accounts: each signs in with their
-   own e-mail and password (12 or more characters, stored as an scrypt hash)
-   and is an owner, an editor or a contributor. Whoever opens a one-time setup
-   link creates the first owner; owners invite everyone else with one-time
-   links. Sign-in is limited per client (an IPv4 address or an IPv6 `/64`)
+   own e-mail and password (12 or more characters, stored as an scrypt hash),
+   or through the OpenID Connect provider its operator sets up in the
+   server's environment, and is an owner, an editor or a contributor. Whoever
+   opens a one-time setup link creates the first owner; owners invite
+   everyone else with one-time links. Through a provider (the authorization
+   code flow with PKCE), every ID token is checked in full, a person is
+   found by the provider's issuer and subject, never by e-mail, and the
+   provider sets their role; the operator can turn passwords off, and the
+   provider can end someone's sessions at once (back-channel logout). Sign-in is limited per client (an IPv4 address or an IPv6 `/64`)
    and per e-mail from everywhere, one check at a time, with a growing
    delay; a browser that has signed in before isn't held up. Each session
    cookie belongs to one person
@@ -138,7 +151,7 @@ account is being guessed at, its right password from a browser that hasn't
 signed in before may have to wait or be told to wait (a browser used before
 and a one-time link go round it); the assistant reads what contributors
 wrote, and in a conversation someone switched to build mode it changes code
-without asking before each change (it never publishes); the hosted install has not been run on Fly.io or Cloudflare; Windows and
+without asking before each change (it never publishes); signing in through an identity provider has been run only against the tests' own provider; signing out of the editor doesn't sign anyone out of the provider, and a provider that sends a back-channel logout only when a session there ends doesn't end someone's sessions here when they are removed there (switch them off here too); a backup put back brings back anyone removed since it was made; the hosted install has not been run on Fly.io or Cloudflare; Windows and
 Linux have not been verified.
 
 ## Cryptography
@@ -147,4 +160,6 @@ Galley uses Node's `crypto` for random tokens, constant-time comparison,
 HMAC-SHA256 session signatures, scrypt password hashes and — for a hosted
 install's backups — scrypt key derivation and AES-256-GCM in authenticated
 frames (the format is described in `packages/core/src/install/backup.ts`),
-and TLS through Node and git. It implements no cipher of its own.
+and TLS through Node and git. An identity provider's signed tokens (one of
+RS256, PS256, ES256 or EdDSA, as configured) are checked with
+[`oauth4webapi`](https://github.com/panva/oauth4webapi) and Node's `crypto`. It implements no cipher of its own.
