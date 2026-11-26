@@ -103,7 +103,12 @@ export interface AppOptions {
   install?: Install | null;
   /** Mark the session cookie Secure always (hosted, https:// address): what lets it be a `__Host-` cookie. */
   secureCookie?: boolean;
-  /** Hosted mode: the identity provider people may sign in through (oidc/), when the environment sets one up. */
+  /**
+   * Hosted mode: the identity provider people may sign in through (oidc/),
+   * when the environment sets one up. Where there is one, the server's access
+   * token may also switch people off, delete switched-off accounts and look
+   * them up by subject (accounts-routes.ts).
+   */
   oidc?: import("./oidc/provider").OidcProvider | null;
   /**
    * Hosted mode with a preview gateway: the gateway's two origins and how a

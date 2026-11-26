@@ -57,6 +57,7 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
 
   // ── people ─────────────────────────────────────────────────────────────
   "GET /api/people": "manage",
+  "GET /api/people/by-identity": "manage",
   "POST /api/people/invitations": "manage",
   "DELETE /api/people/invitations/:invitationId": "manage",
   "PATCH /api/people/:accountId": "manage",

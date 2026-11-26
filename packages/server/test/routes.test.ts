@@ -422,6 +422,7 @@ const coveredElsewhere: ApiRouteKey[] = [
   "PATCH /api/account",
   "POST /api/account/password",
   "GET /api/people",
+  "GET /api/people/by-identity",
   "POST /api/people/invitations",
   "DELETE /api/people/invitations/:invitationId",
   "PATCH /api/people/:accountId",

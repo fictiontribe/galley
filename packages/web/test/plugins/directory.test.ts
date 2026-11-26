@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AI_STARTER_IDEAS, DIRECTORY_CATEGORIES, DIRECTORY_PLUGINS, buildPluginPrompt } from "@/features/plugins/directory";
+import { AI_STARTER_IDEAS, DIRECTORY_CATEGORIES, DIRECTORY_PLUGINS, INSTALLABLE_PACKAGES, buildPluginPrompt, installablePackage } from "@/features/plugins/directory";
 
 describe("plugin directory", () => {
   it("lists unique plugins across valid categories, with blueprints carrying AI prompts", () => {
@@ -14,6 +14,22 @@ describe("plugin directory", () => {
         expect(entry.aiIdea?.trim().length).toBeGreaterThan(10);
       } else {
         expect(entry.packageName).toBeTruthy();
+      }
+    }
+  });
+
+  it("offers Install only for a package on its explicit list of what Fiction Tribe publishes on npm, empty today", () => {
+    // Install fills in `galley plugin add <name>`, which installs whatever npm has under that name and runs it with
+    // the server's rights. A name goes on this list only once the package is ours on npm, as a reviewed change.
+    expect(INSTALLABLE_PACKAGES).toEqual([]);
+    for (const entry of DIRECTORY_PLUGINS) {
+      const installable = installablePackage(entry);
+
+      if (installable !== null) expect(INSTALLABLE_PACKAGES).toContain(installable);
+      // Anything else that isn't an AI blueprint says where it lives instead: built into the app, or source to read.
+      if (installable === null && entry.kind !== "blueprint") {
+        expect(entry.origin, entry.id).toMatch(/^(built-in|repository)$/);
+        expect(entry.sourceUrl, entry.id).toMatch(/^https:\/\/github\.com\/fictiontribe\/galley\//);
       }
     }
   });

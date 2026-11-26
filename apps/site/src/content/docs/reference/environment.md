@@ -14,7 +14,7 @@ This page is for developers and whoever runs Galley. Command-line options beat v
 | `GALLEY_HOME` | `~/.galley` (`/data` in the image) | The Galley home: the sites list, settings, keys, conversations, the inbox, per-site state. The CLI and the desktop app share it when they share this value. On a hosted install it is the data folder: the one site and everything the install keeps ([Run a hosted install](/docs/running/hosted/#what-is-kept-where)). [Settings and secrets](/docs/running/settings/). |
 | `GALLEY_SITES_DIR` | `<GALLEY_HOME>/sites` | Where cloned and new sites go. Ignored on a hosted install, which keeps its one site in its data folder (it says so at start-up). |
 | `GALLEY_STARTERS_DIR` | the repository's `starters/` | The starters, one folder each. |
-| `GALLEY_STARTER_DOWNLOADS` | this version's starters release on GitHub | Where a starter that is downloaded the first time it is used comes from: a folder address its `starters-<id>.tgz` is fetched from, for a mirror. Whatever comes is checked against the size and SHA-256 the package records. |
+| `GALLEY_STARTER_DOWNLOADS` | this version's starters release on GitHub | Where a starter that is downloaded each time a site is made from it comes from: a folder address its `starters-<id>.tgz` is fetched from, for a mirror. Whatever comes is checked against the size and SHA-256 the package records. |
 | `GALLEY_WEB_DIR` | `packages/web/dist` | The built app screens. Without an `index.html` there, the server shows a page saying how to build them. |
 
 ## The server

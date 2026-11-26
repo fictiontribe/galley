@@ -138,7 +138,7 @@ certificates by itself. This is how this project's own website's editor runs,
 on a small Google Cloud VM.
 
 **The image isn't published yet.** The files below name
-`ghcr.io/fictiontribe/galley:0.4.3`, which is where it will be. Until then,
+`ghcr.io/fictiontribe/galley:0.4.4`, which is where it will be. Until then,
 build it from this repository and put your image's name on the `image:`
 line, or pass it with `--image`:
 
@@ -181,7 +181,7 @@ are exactly the files below for the `caddy` variant at `cms.example.com`
    name: galley-acme
    services:
      editor:
-       image: "ghcr.io/fictiontribe/galley:0.4.3"
+       image: "ghcr.io/fictiontribe/galley:0.4.4"
        restart: unless-stopped
        env_file: .env
        # Hardened: an ordinary user, nothing written outside /data and /tmp, no extra powers.
@@ -304,7 +304,7 @@ runs. It makes a fresh setup code, gives the install only its SHA-256, and
 prints the link once at the end.
 
 ```sh
-sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.4.3 --dry-run
+sh scripts/create-install.sh acme git@github.com:example/acme-site.git cms.example.com --image ghcr.io/fictiontribe/galley:0.4.4 --dry-run
 ```
 
 ```
@@ -318,13 +318,13 @@ Would create the install “acme” for git@github.com:example/acme-site.git at 
   network       galley-proxy  (created if it isn't there)
 
 Would run:
-  docker run --rm ghcr.io/fictiontribe/galley:0.4.3 host recipe --name acme --address cms.example.com --repository git@github.com:example/acme-site.git --proxy shared-proxy …
+  docker run --rm ghcr.io/fictiontribe/galley:0.4.4 host recipe --name acme --address cms.example.com --repository git@github.com:example/acme-site.git --proxy shared-proxy …
   docker network create galley-proxy            (if missing)
   docker compose -f ./galley-installs/proxy/compose.yaml up -d
   docker compose -f ./galley-installs/acme/compose.yaml up -d
   docker compose -f ./galley-installs/proxy/compose.yaml exec caddy caddy reload --config /etc/caddy/Caddyfile
 
-(The image ghcr.io/fictiontribe/galley:0.4.3 isn't on this server yet, so the files can't be shown; the real run pulls it.)
+(The image ghcr.io/fictiontribe/galley:0.4.4 isn't on this server yet, so the files can't be shown; the real run pulls it.)
 
 Then: point cms.example.com and its preview and live names at this server, and open the one-time setup link the real run prints.
 ```
@@ -1122,8 +1122,12 @@ Signing in records when that person last signed in.
   out once to shorten it. People sign in again as usual.*); the install
   starts as usual.
 - An open live-update stream ends when its person is signed out, switched
-  off or removed. For anyone who can't read the inbox, a new form
-  submission arrives only as "the inbox changed", never its content.
+  off or removed, and when their session reaches its end. A stream with
+  nothing to send is looked at with each heartbeat (every 20 seconds), so it
+  may stay open up to that long past the session's end, sending nothing:
+  every event is checked before it is sent. For anyone who can't read the
+  inbox, a new form submission arrives only as "the inbox changed", never
+  its content.
 
 ### Looking after people
 
@@ -1174,7 +1178,9 @@ needs someone signed in to this editor in a browser; a script's access
 token can't do it.*, or the existing refusals): your own account
 (`/api/account*`, `POST /api/install/password`), People (`/api/people*`),
 downloading a backup, restoring one, and opening the preview. With the
-token, `POST /api/auth/logout-all` signs **everyone** out.
+token, `POST /api/auth/logout-all` signs **everyone** out, and
+`POST /api/people/:accountId/sign-out` signs **one person** out of every
+browser; each is logged as the token, not as a person.
 
 ### Who published
 
@@ -1968,7 +1974,7 @@ Any server with Docker: the editor “acme”
   Editor:          https://cms.example.com
   Preview:         https://cms-preview.example.com
   Live comparison: https://cms-live.example.com
-  Runs:            ghcr.io/fictiontribe/galley:0.4.3
+  Runs:            ghcr.io/fictiontribe/galley:0.4.4
 
 Creates nothing on an account.
 

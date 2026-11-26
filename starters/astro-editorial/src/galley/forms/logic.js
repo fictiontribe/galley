@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.3 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galley/astro 0.4.4 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // The rules of a form that don't need a page: which fields are showing,
 // whether an answer is acceptable, which destinations get the submission and

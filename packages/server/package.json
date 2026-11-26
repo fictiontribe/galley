@@ -1,7 +1,7 @@
 {
   "name": "@galley/server",
   "private": true,
-  "version": "0.4.3",
+  "version": "0.4.4",
   "type": "module",
   "description": "Galley HTTP server: the engine behind an API, live events, and the web UI.",
   "license": "Apache-2.0",

@@ -61,6 +61,7 @@ export type AccountsRouteKey = Extract<
   | "PATCH /api/account"
   | "POST /api/account/password"
   | "GET /api/people"
+  | "GET /api/people/by-identity"
   | "POST /api/people/invitations"
   | "DELETE /api/people/invitations/:invitationId"
   | "PATCH /api/people/:accountId"
@@ -86,6 +87,7 @@ export function accountsHandlers(): Pick<Handlers, AccountsRouteKey> {
     "PATCH /api/account": () => notHere(),
     "POST /api/account/password": () => notHere(),
     "GET /api/people": () => notHere(),
+    "GET /api/people/by-identity": () => notHere(),
     "POST /api/people/invitations": () => notHere(),
     "DELETE /api/people/invitations/:invitationId": () => notHere(),
     "PATCH /api/people/:accountId": () => notHere(),
@@ -665,6 +667,10 @@ export function withAccounts(mock: MockBackend, base: Handlers, accounts: MockAc
       return ok;
     },
     "GET /api/people": () => accounts.people(),
+    // A browser never may: it is the server's access token's, where an identity provider is set up.
+    "GET /api/people/by-identity": () => {
+      throw new MockError("forbidden", "Only the server's access token looks an account up by its identity.");
+    },
     "POST /api/people/invitations": ({ body }) => accounts.inviteBy(body),
     "DELETE /api/people/invitations/:invitationId": ({ params }) => {
       accounts.takeBack(params.invitationId);

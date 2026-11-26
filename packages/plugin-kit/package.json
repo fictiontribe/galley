@@ -1,6 +1,6 @@
 {
   "name": "@galley/plugin-kit",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "private": true,
   "type": "module",
   "description": "Write and test Galley plugins: the plugin types, definePlugin, ProviderError, and checkPlugin — the structural and behaviour checks that say whether a plugin is correct.",

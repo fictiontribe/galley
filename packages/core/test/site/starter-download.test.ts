@@ -1,5 +1,5 @@
 /**
- * A starter that is downloaded the first time it is used: the bundle keeps
+ * A starter that is downloaded each time a site is made from it: the bundle keeps
  * what shows it and a record (asset, size, SHA-256); making a site from it
  * downloads the archive, refuses anything that isn't exactly what the record
  * says, and says so in plain words when it can't be downloaded.
@@ -75,7 +75,7 @@ async function serve(files: Record<string, Buffer>): Promise<string> {
 
 const workFolders = () => readdirSync(tmpdir()).filter((name) => name.startsWith("galley-starter-")).length;
 
-describe("a starter downloaded when it is first used", () => {
+describe("a starter downloaded each time a site is made from it", () => {
   it("is listed from what the bundle keeps, preview included", async () => {
     const { startersDir } = packed();
     const [starter] = await listStarters(startersDir);
@@ -128,7 +128,7 @@ describe("a starter downloaded when it is first used", () => {
 
     await new Promise<void>((done) => servers.pop()!.close(() => done()));
     await expect(scaffoldSite({ starterDir: join(startersDir, "sarking"), targetDir: target, name: "My Blog", env: { GALLEY_STARTER_DOWNLOADS: closed } })).rejects.toThrow(
-      "The Sarking starter is downloaded the first time it is used, and it couldn't be downloaded just now. Check that this computer is online, then try again, or choose another starter."
+      "The Sarking starter is downloaded each time a site is made from it, and it couldn't be downloaded just now. Check that this computer is online, then try again, or choose another starter."
     );
     await expect(scaffoldSite({ starterDir: join(startersDir, "sarking"), targetDir: target, name: "My Blog", env: { GALLEY_STARTER_DOWNLOADS: missing } })).rejects.toThrow(
       "The Sarking starter isn't available to download yet. Try again later, or choose another starter."

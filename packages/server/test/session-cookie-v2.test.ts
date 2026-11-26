@@ -10,7 +10,7 @@
 import { createHmac, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { createPeople, openInstallState, type Install } from "@galley/core/install";
 import { readKnownBrowser, readSession, SESSION_MAX_AGE_S, sessionRunning, signKnownBrowser, signSession, type SessionInfo } from "../src/auth";
 import { createPeopleDesk } from "../src/extensions/people";
@@ -119,6 +119,61 @@ describe("the v2 session cookie", () => {
 
     expect(local.split(".")).toHaveLength(3);
     expect(readSession(key, local, now)).toEqual({ id: local.split(".")[1], issuedAt: now, expiresAt: now + SESSION_MAX_AGE_S * 1000 });
+  });
+});
+
+describe("a session cookie and a viewer value", () => {
+  it("can't be read as each other, either way; a seven-part value is a session only with the tag 2", async () => {
+    const store = await openInstallState(box.folder("cross"));
+    const people = createPeople(store);
+    const owner = await people.createOwner({ password: PASSWORD, name: "Sam", email: "sam@example.com" });
+    const key = randomBytes(32);
+    const tickets = createGatewayTickets({ key, store });
+    const issuedAt = store.nextIssuedAt(Date.now(), owner.id);
+    const cookie = signSession(key, issuedAt, "same-id", owner.id);
+    const session = readSession(key, cookie)!;
+    const viewer = tickets.redeem(tickets.issue(session))!;
+
+    // Both are seven parts made from the same session with the same key, under labels of their own.
+    expect([cookie.split(".").length, viewer.split(".").length]).toEqual([7, 7]);
+    expect(readSession(key, viewer)).toBeNull();
+    expect(tickets.check(cookie)).toBe(false);
+    expect(tickets.check(viewer)).toBe(true);
+    // The viewer value's payload signed as a session, or the cookie's signed as a viewer value: still nothing, unless the tag is theirs.
+    const asSession = `v3.${viewer.split(".").slice(1, 6).join(".")}`;
+    const asViewer = `2.${cookie.split(".").slice(1, 6).join(".")}`;
+
+    expect(readSession(key, `${asSession}.${hmac(key, `account-session/v2\n${asSession}`)}`)).toBeNull();
+    expect(tickets.check(`${asViewer}.${createHmac("sha256", key).update(`preview-viewer/v3\n${asViewer.split(".").slice(1).join(".")}`).digest("base64url")}`)).toBe(false);
+    // Seven parts, correctly signed under the session label, but tagged other than 2.
+    for (const tag of ["1", "3", "v2", "02", ""]) {
+      const payload = [tag, ...cookie.split(".").slice(1, 6)].join(".");
+
+      expect(readSession(key, `${payload}.${hmac(key, `account-session/v2\n${payload}`)}`)).toBeNull();
+    }
+    tickets.dispose();
+  });
+
+  it("a viewer value's MAC is taken only as it was written: another spelling of the same bytes is refused", async () => {
+    const store = await openInstallState(box.folder("spelling"));
+    const people = createPeople(store);
+    const owner = await people.createOwner({ password: PASSWORD, name: "Sam", email: "sam@example.com" });
+    const key = randomBytes(32);
+    const tickets = createGatewayTickets({ key, store });
+    const issuedAt = store.nextIssuedAt(Date.now(), owner.id);
+    const viewer = tickets.redeem(tickets.issue({ id: "an-id", issuedAt, expiresAt: issuedAt + HOUR, kind: "password", accountId: owner.id }))!;
+    const signature = viewer.split(".").at(-1)!;
+    // 43 characters carry 258 bits for 256: the last one's two lowest bits are spare, so three other letters give the same bytes.
+    const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const last = ALPHABET.indexOf(signature.at(-1)!);
+    const respelled = [1, 2, 3].map((flip) => `${viewer.slice(0, -1)}${ALPHABET[last ^ flip]}`);
+
+    for (const value of respelled) {
+      expect(Buffer.from(value.split(".").at(-1)!, "base64url")).toEqual(Buffer.from(signature, "base64url"));
+      expect(tickets.check(value)).toBe(false);
+    }
+    expect(tickets.check(viewer)).toBe(true);
+    tickets.dispose();
   });
 });
 
@@ -238,6 +293,38 @@ describe("on a hosted install", () => {
       expect((await call(port, "GET", "/api/account", { cookie: `${cookieName}=${valueOf(line)}` })).status).toBe(200);
       expect((await call(port, "GET", "/api/account", { cookie })).status).toBe(401);
     }
+  });
+
+  it("a password changed in the last moments of a session: the change is logged, and this browser is signed out with the rest", async () => {
+    const { port, key, ownerId, cookieName, server, logs } = await withOwner();
+    const install = server.install!;
+    const issuedAt = install.store.nextIssuedAt(Date.now(), ownerId);
+    const expiresAt = issuedAt + HOUR;
+    const cookie = `${cookieName}=${signSession(key, issuedAt, undefined, ownerId, { expiresAt })}`;
+    const change = install.people.changePassword.bind(install.people);
+    let clock: ReturnType<typeof vi.spyOn> | null = null;
+
+    // The session ends while the new password is being saved.
+    install.people.changePassword = async (...args) => {
+      const done = await change(...args);
+      const real = Date.now.bind(Date);
+
+      clock = vi.spyOn(Date, "now").mockImplementation(() => Math.max(real(), expiresAt));
+      return done;
+    };
+    try {
+      const answer = await call(port, "POST", "/api/account/password", { cookie, body: { current: PASSWORD, next: "a brand new long password" } });
+
+      expect(answer.status, answer.text).toBe(401);
+      expect(answer.cookies.filter((one) => one.startsWith(`${cookieName}=`) && one.length > cookieName.length + 1)).toEqual([]);
+    } finally {
+      (clock as ReturnType<typeof vi.spyOn> | null)?.mockRestore();
+      install.people.changePassword = change;
+    }
+    expect(logs.join("\n")).toContain("Sam Owner (Owner) changed their password (from ");
+    expect(logs.join("\n")).toContain("This browser of Sam Owner (Owner) wasn't signed in again after the password change: its session had ended.");
+    // The password did change.
+    expect((await call(port, "POST", "/api/auth/login", { body: { email: "sam@example.com", password: "a brand new long password" } })).status).toBe(200);
   });
 
   it("a sign-out is kept until the session's own end, not 30 days from its issue", async () => {

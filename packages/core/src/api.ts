@@ -73,7 +73,7 @@ import type { FormProviderInfo, ScriptIntegrationInfo } from "./kit";
 import type { CloudflareCheck, CloudflarePlan, ImportMode, ImportResolutions, ImportReview, Redirect, RedirectExportFormat, RedirectHealth, RedirectHostId, RedirectsOverview, RedirectTrace } from "./redirects/types";
 import type { AddSitesRequest, AddSitesResult, ScanSitesRequest, ScanSitesResult, SiteConnections, SiteGroup, SiteGroupInput, SitePatch, SiteUsageTotals, UndoResult } from "./types";
 import type { DeployKeyInfo, InstallInfo, RestoreUpload, SetupHandover, SetupStatus, SiteAccessCheck, SiteConnectRequest } from "./install/types";
-import type { Account, AccountRole, AccountSession, Invitation, LinkPreview, OneTimeLink, People } from "./install/accounts";
+import type { Account, AccountRole, AccountSession, Invitation, LinkPreview, OneTimeLink, OperatorAccount, People } from "./install/accounts";
 import type { MediaCreatedRecord, MediaCheckResult, MediaConnectRequest, MediaConnectResult, MediaImagesConnectRequest, MediaImagesConnectResult, MediaLibraryAnswer, MediaMovePlan, MediaMoveRequest, MediaStorageStatus, MediaStoreDeleteResult, MediaStoreInfo, MediaUsage } from "./media-storage/contract";
 import type { EditorHostAbsent, EditorHostAccount, EditorHostInfo, HostedEditorBackup, HostedEditorPlan, HostedEditorRemoval, HostedEditorRequest, HostedEditorStatus } from "./hosting/types";
 
@@ -965,7 +965,21 @@ export interface ApiRoutes {
   // account that has none yet. Everyone else's e-mail is changed by an owner, in People.
   /** Change your own password. Your other browsers are signed out; this one stays. */
   "POST /api/account/password": { body: { current: string; next: string }; response: Ok };
+  /**
+   * Everyone with an account, the open invitations, and whether this server
+   * e-mails links. With the server's access token, only where an identity
+   * provider is set up: `OperatorPeople` instead — each account's id, role,
+   * whether it is switched off and its subject at the provider; never a name
+   * or an e-mail.
+   */
   "GET /api/people": { response: People };
+  /**
+   * With the server's access token only, where an identity provider is set
+   * up (a browser's sign-in is refused): the account whose identity at that
+   * provider has this subject — its id, role and whether it is switched off
+   * — or 404.
+   */
+  "GET /api/people/by-identity": { query: { subject: string }; response: Pick<OperatorAccount, "id" | "role" | "disabled"> };
   /**
    * Invite someone. The link is told once, here; it is also e-mailed when the
    * server e-mails links (outgoing e-mail and its public address both set).
@@ -978,14 +992,22 @@ export interface ApiRoutes {
   /**
    * Change someone's role or e-mail, or switch their account off or on.
    * Switching off signs them out at once. The last owner can't be demoted
-   * or switched off.
+   * or switched off. With the server's access token, only where an identity
+   * provider is set up, and only `{ "disabled": true }`; it answers an
+   * `OperatorAccount`.
    */
   "PATCH /api/people/:accountId": { body: { role?: AccountRole; disabled?: boolean; email?: string }; response: Account };
-  /** Remove an account. What they published keeps their name. The last owner can't be removed, and nobody removes themselves. */
+  /**
+   * Remove an account. What they published keeps their name. The last owner
+   * can't be removed, and nobody removes themselves. One that signs in through
+   * the identity provider is remembered as removed, so its next sign-in is
+   * refused. With the server's access token, only where an identity provider
+   * is set up, and only for an account already switched off.
+   */
   "DELETE /api/people/:accountId": { response: Ok };
   /** A link for someone to choose a new password (they forgot it). When the server e-mails links it goes to that person and `url` is null here; otherwise it is told once, here. Their old password works until they use it. */
   "POST /api/people/:accountId/password-link": { response: OneTimeLink };
-  /** Sign one person out of every browser. */
+  /** Sign one person out of every browser. The server's access token may too. */
   "POST /api/people/:accountId/sign-out": { response: Ok };
   /** Sign everyone out, this browser included. */
   "POST /api/people/sign-out": { response: Ok };

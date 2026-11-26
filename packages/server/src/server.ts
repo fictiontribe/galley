@@ -1156,6 +1156,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     cookieName: hostCookie ? `__Host-${PRODUCT.slug}_session` : `${PRODUCT.slug}_session_${port}`,
     install,
     secureCookie: hostCookie,
+    // The identity provider: the sign-in routes' client, and its issuer for the operator's token on the people routes.
     ...(install && config.oidc ? { oidc: createOidcProvider(config.oidc) } : {}),
     allowedHosts:
       config.mode === "local"

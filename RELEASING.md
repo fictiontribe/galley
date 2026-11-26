@@ -49,7 +49,7 @@ four starters 13.5 MB of it unpacked — mostly photographs, already WebP.
 `verify-pack.mjs` fails the release above 15 MB.
 
 A starter whose `starter.json` says `"download": true` travels apart
-instead, downloaded the first time someone uses it (starters/README.md):
+instead, downloaded each time a site is made from it (starters/README.md):
 
 - `build.mjs` writes its archive, `packages/cli/starter-assets/starters-<id>.tgz`
   — a plain tar, gzipped, the same bytes for the same files on every
