@@ -39,10 +39,10 @@ import { withAccountAuthor } from "@galley/core/workspace";
 import { ExtensionError } from "./extensions/declare";
 import { mountExtensions, type MountCaller } from "./extensions/mount";
 import { extensionStream } from "./extensions/stream";
-import { bearerToken, clientAddress, clientKeyOf, isAuthenticated, loopbackHostnames, normalizeHostname, requestProtocol, requestSession, safeEqual, signSession, LoginLimiter, type RevocationList, type SessionCheck } from "./auth";
+import { bearerToken, clientAddress, clientKeyOf, isAuthenticated, loopbackHostnames, normalizeHostname, requestProtocol, requestSession, safeEqual, signSession, LoginLimiter, type RevocationList, type SessionCheck, type SessionLife } from "./auth";
 import { hostedRefusals } from "./hosted-refusals";
 import { withoutKeyHints } from "./key-hints";
-import { errorBody, errorResponse } from "./errors";
+import { AuthError, errorBody, errorResponse } from "./errors";
 import { createStreamRegistry } from "./events";
 import { captureHandlers, CAPTURE_BODY_LIMIT_BYTES, CAPTURE_PATH } from "./forms";
 import { mcpRoute } from "./mcp";
@@ -123,7 +123,13 @@ export function createApp(services: Services, options: AppOptions): Hono {
       ? {
           // Only a person's cookie counts on a hosted install: one from before accounts (or from a local app) names nobody.
           valid: (current: { id: string; issuedAt: number; accountId?: string }) => current.accountId !== undefined && install.store.sessionValid(current),
-          issue: (accountId?: string) => signSession(options.cookieKey, install.store.nextIssuedAt(Date.now(), accountId), undefined, accountId),
+          issue: (accountId?: string, life?: SessionLife) => {
+            const issuedAt = install.store.nextIssuedAt(Date.now(), accountId);
+
+            // A session given again (a changed password) ends when it would have: one that ends now isn't given again.
+            if (life?.expiresAt !== undefined && life.expiresAt <= issuedAt) throw new AuthError("Sign in to continue.");
+            return signSession(options.cookieKey, issuedAt, undefined, accountId, life);
+          },
         }
       : {}),
     ...(options.secureCookie ? { secure: true } : {}),

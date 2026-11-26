@@ -33,6 +33,16 @@ entry says how.
 
 ### Changed
 
+- **A session's end is signed into its cookie.** A sign-in cookie made from
+  this version on carries when the session ends and how it was started,
+  under its signature, and every place that reads a session (a request, the
+  event stream, the preview, an extension asking whether a sign-in counts)
+  ends it at that moment; a sign-out is remembered until then. A password
+  sign-in still lasts 30 days, and cookies from before stay good until their
+  30 days are up. Changing your password keeps this browser signed in until
+  the same time as before, rather than for 30 days more. The preview's
+  viewer cookies from before are refused once: the preview asks the editor
+  for a new one, which it gets by itself.
 - **The install's data layout goes from 2 to 3** at the first start of this
   version, to make room for accounts that sign in through an identity
   provider, which a later version adds. Nothing changes for anyone: every

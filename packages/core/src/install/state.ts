@@ -255,6 +255,8 @@ export interface SessionStamp {
   id: string;
   /** When the cookie was issued (ms). */
   issuedAt: number;
+  /** When the session ends (ms), as its cookie says; without it, SESSION_LIFETIME_MS after its issue. */
+  expiresAt?: number;
   /** Whose session it is (hosted cookies carry it; the person's own sign-outs then apply). */
   accountId?: string;
 }
@@ -316,7 +318,8 @@ export interface InstallStore {
    * Signs one browser out: only a session that still counts is written down
    * (signed and unexpired is the caller's check; this one: not ended already,
    * its account there and switched on), kept only until it would have
-   * expired anyway. With the list full, that person's sessions end by time.
+   * ended anyway (its own end, never later than SESSION_LIFETIME_MS after its
+   * issue). With the list full, that person's sessions end by time.
    */
   endSession(session: SessionStamp, now?: number): Promise<void>;
   /** Ends every session issued so far. */
@@ -612,7 +615,7 @@ export async function openInstallState(home: string, options: OpenInstallStateOp
       sessionsChanged();
     },
     async endSession(session, now = Date.now()) {
-      const until = session.issuedAt + SESSION_LIFETIME_MS;
+      const until = Math.min(session.expiresAt ?? Infinity, session.issuedAt + SESSION_LIFETIME_MS);
 
       if (until <= now || !store.sessionValid(session, now)) return;
       await update((draft) => {

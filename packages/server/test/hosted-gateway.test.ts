@@ -64,7 +64,7 @@ async function enter(ready: Ready, cookie: string): Promise<{ viewer: string; en
   const line = (answer.headers["set-cookie"] ?? [])[0]!;
 
   // Was v1: the value now names whose session it is (v1 values, from before accounts, are refused).
-  expect(line).toMatch(new RegExp(`^${VIEWER}=v2\\.`));
+  expect(line).toMatch(new RegExp(`^${VIEWER}=v3\\.`));
   expect(line).toMatch(/; Secure; HttpOnly; SameSite=None; Partitioned/);
   return { viewer: answer.cookies[0]!, entry: entry.body };
 }

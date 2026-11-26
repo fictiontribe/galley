@@ -9,7 +9,8 @@ import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { createPeople, openInstallState, type SessionStamp } from "@galley/core/install";
+import { createPeople, openInstallState } from "@galley/core/install";
+import { SESSION_MAX_AGE_S, type SessionInfo } from "../src/auth";
 import { createGatewayTickets } from "../src/gateway-auth";
 
 const PASSWORD = "correct horse battery staple";
@@ -24,8 +25,12 @@ describe("the viewer cookie and the person's session", () => {
     const owner = await people.createOwner({ password: PASSWORD, name: "Sam", email: "sam@example.com" });
     const invited = async (email: string) => (await people.useLink((await people.invite(owner.id, { email, role: "editor" })).link.code, { password: PASSWORD, name: email })).account;
     const tickets = createGatewayTickets({ key: randomBytes(32), store });
-    const session = (accountId: string): SessionStamp => ({ id: randomBytes(16).toString("base64url"), issuedAt: store.nextIssuedAt(Date.now(), accountId), accountId });
-    const viewer = (stamp: SessionStamp) => tickets.redeem(tickets.issue(stamp));
+    const session = (accountId: string): SessionInfo => {
+      const issuedAt = store.nextIssuedAt(Date.now(), accountId);
+
+      return { id: randomBytes(16).toString("base64url"), issuedAt, expiresAt: issuedAt + SESSION_MAX_AGE_S * 1000, kind: "password", accountId };
+    };
+    const viewer = (stamp: SessionInfo) => tickets.redeem(tickets.issue(stamp));
     const ed = await invited("ed@example.com");
     const cy = await invited("cy@example.com");
     const sams = viewer(session(owner.id))!;
@@ -34,7 +39,7 @@ describe("the viewer cookie and the person's session", () => {
 
     expect([tickets.check(sams), tickets.check(eds), tickets.check(cys)]).toEqual([true, true, true]);
     // A session from before accounts, with no person in it, gets nothing.
-    expect(tickets.redeem(tickets.issue({ id: "no-person", issuedAt: Date.now() }))).toBeNull();
+    expect(tickets.redeem(tickets.issue({ id: "no-person", issuedAt: Date.now(), expiresAt: Date.now() + 60_000 }))).toBeNull();
     // Switched off, removed: theirs end; nobody else's.
     await new Promise((resolve) => setTimeout(resolve, 5));
     await people.change(owner.id, ed.id, { disabled: true });

@@ -227,13 +227,15 @@ describe("signing out", () => {
     const key = Buffer.from(readFileSync(join(home, "session.key"), "utf8").trim(), "hex");
     const cookie = (value: string) => `__Host-galley_session=${value}`;
     const ownerId = server.install!.people.list().accounts[0]!.id;
-    const issued = Number(owner.split("=")[1]!.split(".")[0]);
+    // A v2 cookie: 2.issuedAt.expiresAt.kind.nonce.accountId.mac — a password session ends 30 days after its issue.
+    const [version, issued, ends, kind] = owner.split("=")[1]!.split(".");
 
+    expect([version, kind, Number(ends) - Number(issued)]).toEqual(["2", "password", SESSION_LIFETIME_MS]);
     expect((await call(port, "POST", "/api/auth/logout", { cookie: owner })).status).toBe(200);
     const once = state(home).sessions.revoked;
 
     expect(once).toHaveLength(1);
-    expect(once[0].until).toBe(issued + SESSION_LIFETIME_MS);
+    expect(once[0].until).toBe(Number(ends));
     // Again with the same cookie, with one for an account that doesn't exist, and with one from before this person's last sign-out everywhere.
     await call(port, "POST", "/api/auth/logout", { cookie: owner });
     await call(port, "POST", "/api/auth/logout", { cookie: cookie(signSession(key, Date.now(), undefined, "nobody-here")) });

@@ -15,7 +15,7 @@
  */
 import { createHmac, randomBytes } from "node:crypto";
 import type { Install } from "@galley/core/install";
-import { SESSION_MAX_AGE_S, type RevocationList, type SessionInfo } from "../auth";
+import { sessionRunning, type RevocationList, type SessionInfo } from "../auth";
 import type { SessionRef } from "./types";
 
 /** The most sign-ins remembered at once. Past it, the ones that no longer count go first, then the oldest. */
@@ -40,7 +40,7 @@ export function createPeopleDesk(install: Install, revoked: Pick<RevocationList,
 
   function stillCounts(stamp: SessionInfo, now = Date.now()): boolean {
     if (stamp.accountId === undefined || revoked.has(stamp.id)) return false;
-    if (now - stamp.issuedAt > SESSION_MAX_AGE_S * 1000 || !install.store.sessionValid(stamp, now)) return false;
+    if (!sessionRunning(stamp, now) || !install.store.sessionValid(stamp, now)) return false;
     const account = install.store.account(stamp.accountId);
 
     return Boolean(account && !account.disabled && stamp.issuedAt > account.sessionsValidAfter);
@@ -59,10 +59,11 @@ export function createPeopleDesk(install: Install, revoked: Pick<RevocationList,
   return {
     stillCounts,
     refOf(stamp) {
-      const ref = `s${createHmac("sha256", key).update(`${stamp.id}\n${stamp.issuedAt}\n${stamp.accountId ?? ""}`, "utf8").digest("base64url").slice(0, 32)}`;
+      const ref = `s${createHmac("sha256", key).update(`${stamp.id}\n${stamp.issuedAt}\n${stamp.expiresAt}\n${stamp.kind ?? ""}\n${stamp.accountId ?? ""}`, "utf8").digest("base64url").slice(0, 32)}`;
 
       if (!known.has(ref)) {
-        known.set(ref, { id: stamp.id, issuedAt: stamp.issuedAt, ...(stamp.accountId === undefined ? {} : { accountId: stamp.accountId }) });
+        // The record keeps the sign-in's end and kind: it stops counting at the same moment the sign-in does.
+        known.set(ref, { id: stamp.id, issuedAt: stamp.issuedAt, expiresAt: stamp.expiresAt, ...(stamp.kind === undefined ? {} : { kind: stamp.kind }), ...(stamp.accountId === undefined ? {} : { accountId: stamp.accountId }) });
         if (known.size > MAX_SESSION_REFS) prune();
       }
       return ref as SessionRef;

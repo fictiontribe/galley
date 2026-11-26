@@ -513,7 +513,7 @@ describe("a reader whose sign-in no longer counts", () => {
     });
     const runtime = await startExtensions([noted], await options());
     const account = { id: "a1", role: "owner", name: "Sam Owner", disabled: false } as never;
-    const session = { id: "s1", issuedAt: Date.now(), accountId: "a1" };
+    const session = { id: "s1", issuedAt: Date.now(), expiresAt: Date.now() + 60_000, kind: "password" as const, accountId: "a1" };
     let counts = true;
     // Everything else says yes: the account is there, and the stream's own check lets them listen.
     const base = { live: () => true, filter: (event: ServerEvent) => event };
