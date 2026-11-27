@@ -163,8 +163,8 @@
     {
       "id": "hosted-sso",
       "label": "Single sign-on for a hosted editor",
-      "line": "Signing in through your own identity provider. Today: an e-mail and a password.",
-      "status": "later",
+      "line": "OpenID Connect with PKCE, role mapping and back-channel logout; tested in Chromium and WebKit, not yet run against a live identity service.",
+      "status": "new",
       "home": false
     },
     {

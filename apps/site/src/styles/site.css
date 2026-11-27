@@ -374,6 +374,7 @@ button.link::after { content: none; }
 
 /* ---------- lists (what moves, what stays) ---------- */
 .lists { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+.lists:has(> .list:nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .list { padding: var(--s5); border-radius: var(--r-lg); background: var(--raised); border: 1px solid var(--line); }
 .list--delete, .list--stet { background: transparent; border-style: dashed; border-color: var(--line-2); }
 .list h3 { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s4); font: var(--head-weight) 1.375rem/1.15 var(--head-font); letter-spacing: var(--h3-tracking); }
@@ -827,6 +828,7 @@ a.desk__frame { text-decoration: none; }
   .hero__row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s5) var(--s6); }
   .hero--split .hero__grid, .split, .split--flip, .band__grid, .close { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .lists { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lists:has(> .list:nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .person--featured { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .docs { grid-template-columns: 220px minmax(0, 1fr); }
   .docs__toc { display: none; }
@@ -835,6 +837,7 @@ a.desk__frame { text-decoration: none; }
   .nav, .gh, .header__cta { display: none; }
   .menu { display: block; }
   .header__in { justify-content: space-between; }
+  .lists:has(> .list:nth-child(3):last-child) { grid-template-columns: minmax(0, 1fr); }
   .hero__row, .head--row, .hero--split .hero__grid, .ways, .proof, .band__grid, .split, .split--flip, .builder, .film__grid, .close, .close--solo, .faq { grid-template-columns: minmax(0, 1fr); }
   .split--flip .split__text { order: 0; }
   .close--solo .close__actions { justify-content: flex-start; }
@@ -1288,6 +1291,10 @@ code { background: var(--hover-2); }
 
 /* ---------- Canvas, narrower ---------- */
 @media (max-width: 1180px) {
+  .header__in { gap: var(--s4); }
+  .nav { gap: 2px; }
+  .nav a, .nav-dd > summary, .gh { padding: 0 8px; font-size: 0.875rem; }
+  .header__end { gap: 6px; }
   .rel__group { grid-column: span 5; }
   .rel__group--built { grid-column: span 7; }
 }
