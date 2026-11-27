@@ -41,11 +41,11 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
               <Media src={item.image} alt={item.imageAlt ?? ""} ratio="1/1" contain class="award__badge" />
             ) : (
               <span class="award__stars" aria-hidden="true">
-                <Icon name="star" size={16} />
-                <Icon name="star" size={16} />
-                <Icon name="star" size={16} />
-                <Icon name="star" size={16} />
-                <Icon name="star" size={16} />
+                <Icon name="star" size={14} />
+                <Icon name="star" size={14} />
+                <Icon name="star" size={14} />
+                <Icon name="star" size={14} />
+                <Icon name="star" size={14} />
               </span>
             )}
             <span class="award__body">
@@ -69,7 +69,7 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
   .awards__intro {
     display: grid;
     gap: var(--space-2xs);
-    max-width: 26rem;
+    max-width: 24rem;
   }
 
   .awards__heading {
@@ -83,36 +83,41 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
 
   .awards__list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
-    gap: var(--space-m);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+    gap: 1px;
     padding: 0;
     list-style: none;
+    background: var(--tone-line);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    overflow: hidden;
   }
 
   .award {
     display: flex;
     align-items: center;
     gap: var(--space-s);
+    padding: var(--space-m);
+    background: var(--tone-surface);
   }
 
   .awards--ratings .award {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-2xs);
-    padding-inline-start: var(--space-s);
-    border-inline-start: var(--border-width) solid var(--tone-line);
+    padding: var(--space-m);
   }
 
   .award :global(.award__badge) {
     flex: none;
-    inline-size: 4.25rem;
-    block-size: 4.25rem;
+    inline-size: 3.75rem;
+    block-size: 3.75rem;
     color: var(--tone-text);
   }
 
   .award__stars {
     display: flex;
-    gap: 0.1rem;
+    gap: 0.12rem;
     color: var(--tone-link);
   }
 
@@ -122,23 +127,32 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
 
   .award__body {
     display: grid;
-    gap: 0.1em;
+    gap: 0.15em;
   }
 
   .award__label {
-    font-weight: var(--weight-bold);
-    line-height: 1.3;
+    font-family: var(--font-display);
+    font-size: var(--step-0);
+    font-weight: var(--weight-display);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+  }
+
+  .awards--ratings .award__label {
+    font-size: var(--step-2);
   }
 
   .award__detail {
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     color: var(--tone-muted);
+    line-height: 1.4;
   }
 
   @media (min-width: 60rem) {
     .awards:has(.awards__intro) {
       grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
-      gap: var(--space-2xl);
+      gap: var(--space-xl);
     }
   }
 </style>

@@ -67,9 +67,12 @@ const hi = highlight - 1;
   .table-scroll {
     position: relative;
     overflow-x: auto;
-    max-width: 60rem;
+    max-width: 62rem;
     margin-inline: auto;
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-l);
+    box-shadow: var(--shadow-card);
   }
 
   .comparison {
@@ -82,14 +85,20 @@ const hi = highlight - 1;
 
   .comparison th,
   .comparison td {
-    padding: var(--space-xs) var(--space-s);
+    padding: 0.85rem var(--space-s);
     border-block-end: var(--border-width) solid var(--tone-line);
     text-align: center;
     vertical-align: middle;
   }
 
+  .comparison tbody tr:last-child th,
+  .comparison tbody tr:last-child td {
+    border-block-end: 0;
+  }
+
   .comparison thead th {
-    padding-block: var(--space-s);
+    padding-block: var(--space-m);
+    background: var(--tone-surface);
     font-family: var(--font-display);
     font-size: var(--step-0);
     font-weight: var(--weight-display);
@@ -97,26 +106,27 @@ const hi = highlight - 1;
   }
 
   .comparison tbody th {
+    padding-inline-start: var(--space-m);
     text-align: start;
     font-weight: var(--weight-medium);
-    inline-size: 38%;
+    inline-size: 40%;
   }
 
   .comparison .is-highlight {
-    background: var(--tone-surface);
+    background: color-mix(in oklch, var(--tone-raised) 55%, var(--tone-surface));
     border-inline: var(--border-width) solid var(--tone-line);
   }
 
   .comparison thead .is-highlight {
+    background: var(--tone-raised);
     border-block-start: 3px solid var(--tone-link);
-    border-start-start-radius: var(--radius-m);
-    border-start-end-radius: var(--radius-m);
     color: var(--tone-link);
   }
 
   .comparison__note {
-    max-width: 60rem;
-    margin: var(--space-m) auto 0;
+    max-width: 62rem;
+    margin: var(--space-s) auto 0;
+    font-family: var(--font-mono);
     font-size: var(--step--2);
     color: var(--tone-muted);
   }
@@ -127,6 +137,6 @@ const hi = highlight - 1;
     position: sticky;
     left: 0;
     z-index: 1;
-    background: var(--tone-bg);
+    background: var(--tone-surface);
   }
 </style>

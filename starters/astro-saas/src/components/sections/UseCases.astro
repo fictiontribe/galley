@@ -31,16 +31,19 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   <ul class:list={["use-cases", `use-cases--${style}`]} role="list" style={`--columns: ${columns}`}>
     {
       items.map((item) => (
-        <li class:list={["use-case", "card-link", { card: style === "cards" }]}>
+        <li class="use-case card-link">
           {item.image && style === "cards" && <Media src={item.image} alt={item.imageAlt ?? ""} ratio="16/10" class="use-case__media" />}
           <div class="use-case__body">
             <div class="use-case__top">
               {item.icon && (
                 <span class="use-case__icon" aria-hidden="true">
-                  <Icon name={item.icon} size={20} />
+                  <Icon name={item.icon} size={18} />
                 </span>
               )}
-              {item.label && <span class="use-case__label">{item.label}</span>}
+              {item.label && <span class="use-case__label mono">{item.label}</span>}
+              <span class="use-case__arrow" aria-hidden="true">
+                <Icon name="arrow-up-right" size={18} />
+              </span>
             </div>
             <ItemHeading class="use-case__heading">
               <a class="card-link__target" href={withBase(item.href)}>
@@ -48,9 +51,6 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
               </a>
             </ItemHeading>
             <p class="use-case__text">{item.text}</p>
-            <span class="use-case__arrow" aria-hidden="true">
-              <Icon name="arrow-up-right" size={20} />
-            </span>
           </div>
         </li>
       ))
@@ -62,20 +62,32 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   .use-cases {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
-    gap: var(--space-m);
     padding: 0;
     list-style: none;
+  }
+
+  .use-cases--cards {
+    gap: 1px;
+    background: var(--tone-line);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
   }
 
   .use-case {
     display: grid;
     align-content: start;
     overflow: hidden;
-    transition: border-color var(--duration-fast) var(--ease-out);
+    transition: background-color var(--duration-fast) var(--ease-out);
   }
 
-  .use-case.card:hover {
-    border-color: var(--tone-control);
+  .use-cases--cards .use-case {
+    background: var(--tone-surface);
+  }
+
+  .use-cases--cards .use-case:hover {
+    background: var(--tone-raised);
   }
 
   .use-case :global(.use-case__media) {
@@ -87,47 +99,37 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     position: relative;
     display: grid;
     gap: var(--space-2xs);
-    padding: var(--space-l) var(--space-l) var(--space-xl);
+    padding: var(--space-l);
   }
 
   .use-case__top {
     display: flex;
     align-items: center;
     gap: var(--space-xs);
-    margin-block-end: var(--space-xs);
+    margin-block-end: var(--space-s);
   }
 
   .use-case__icon {
     display: inline-grid;
     place-items: center;
-    inline-size: 2.25rem;
-    block-size: 2.25rem;
+    inline-size: 2.15rem;
+    block-size: 2.15rem;
+    border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-m);
-    background: var(--tone-mark);
+    background: var(--tone-raised);
     color: var(--tone-link);
   }
 
   .use-case__label {
     font-size: var(--step--2);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     color: var(--tone-muted);
   }
 
-  .use-case__heading {
-    font-size: var(--step-2);
-    line-height: 1.12;
-  }
-
-  .use-case__text {
-    color: var(--tone-muted);
-  }
-
   .use-case__arrow {
-    position: absolute;
-    top: var(--space-l);
-    right: var(--space-l);
+    margin-inline-start: auto;
     color: var(--tone-muted);
     transition:
       transform var(--duration) var(--ease-out),
@@ -136,7 +138,18 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
   .use-case:hover .use-case__arrow {
     color: var(--tone-link);
-    transform: translate(0.15rem, -0.15rem);
+    transform: translate(0.18rem, -0.18rem);
+  }
+
+  .use-case__heading {
+    font-size: var(--step-2);
+    line-height: 1.15;
+  }
+
+  .use-case__text {
+    font-size: var(--step--1);
+    color: var(--tone-muted);
+    line-height: 1.55;
   }
 
   .use-cases--list {
@@ -145,13 +158,8 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   }
 
   .use-cases--list .use-case__body {
-    padding: var(--space-m) var(--space-xl) var(--space-m) 0;
+    padding: var(--space-m) 0;
     border-block-end: var(--border-width) solid var(--tone-line);
-  }
-
-  .use-cases--list .use-case__arrow {
-    top: var(--space-m);
-    right: 0;
   }
 
   @media (min-width: 60rem) {

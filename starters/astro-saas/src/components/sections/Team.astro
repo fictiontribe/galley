@@ -42,7 +42,7 @@ const people = members?.length
           <Media src={person.data.photo} alt={person.data.name} ratio={style === "compact" ? "1/1" : "4/5"} class="person__photo" />
           <div class="person__body">
             <ItemHeading class="person__name">{person.data.name}</ItemHeading>
-            <p class="person__role">{person.data.role}</p>
+            <p class="person__role mono">{person.data.role}</p>
             {style === "portrait" && <p class="person__bio">{person.data.bio}</p>}
             {person.data.links.length > 0 && (
               <ul class="person__links" role="list">
@@ -64,15 +64,28 @@ const people = members?.length
   .team {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
-    gap: var(--space-xl) var(--space-m);
     padding: 0;
     list-style: none;
+  }
+
+  .team--portrait {
+    gap: 1px;
+    background: var(--tone-line);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
   }
 
   .person {
     display: grid;
     align-content: start;
     gap: var(--space-s);
+  }
+
+  .team--portrait .person {
+    padding: var(--space-m);
+    background: var(--tone-surface);
   }
 
   .person :global(.person__photo) {
@@ -91,7 +104,7 @@ const people = members?.length
   }
 
   .person__role {
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     font-weight: var(--weight-medium);
     color: var(--tone-link);
   }
@@ -100,6 +113,7 @@ const people = members?.length
     margin-block-start: var(--space-2xs);
     font-size: var(--step--1);
     color: var(--tone-muted);
+    line-height: 1.5;
   }
 
   .person__links {
@@ -109,18 +123,24 @@ const people = members?.length
     margin-block-start: var(--space-2xs);
     padding: 0;
     list-style: none;
-    font-size: var(--step--1);
+    font-size: var(--step--2);
   }
 
   .team--compact {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
-    gap: var(--space-m);
+    gap: 1px;
+    background: var(--tone-line);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    overflow: hidden;
   }
 
   .team--compact .person {
-    grid-template-columns: 4rem 1fr;
+    grid-template-columns: 3.5rem 1fr;
     align-items: center;
     gap: var(--space-s);
+    padding: var(--space-m);
+    background: var(--tone-surface);
   }
 
   .team--compact :global(.person__photo) {

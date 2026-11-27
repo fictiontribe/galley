@@ -61,7 +61,7 @@ const PanelHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
               <p class="eyebrow tabs__eyebrow">{item.label}</p>
               <PanelHeading class="tabs__heading">{item.heading}</PanelHeading>
               <p class="tabs__text">{item.text}</p>
-              <Checklist items={item.items} />
+              <Checklist items={item.items} class="tabs__checklist" />
               {item.cta && (
                 <a class="text-link" href={withBase(item.cta.href)}>
                   {item.cta.label}
@@ -69,7 +69,9 @@ const PanelHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
                 </a>
               )}
             </div>
-            <Frame image={item.image} imageAlt={item.imageAlt} frame={frame} class="tabs__media" />
+            <div class="tabs__stage">
+              <Frame image={item.image} imageAlt={item.imageAlt} frame={frame} class="tabs__media" />
+            </div>
           </div>
         ))
       }
@@ -120,18 +122,20 @@ const PanelHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 <style>
   .tabs {
     display: grid;
-    gap: var(--space-l);
+    gap: var(--space-m);
   }
 
   .tabs__list {
-    display: flex;
-    gap: var(--space-3xs);
-    padding: var(--space-3xs);
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(max-content, 1fr);
+    gap: 1px;
     overflow-x: auto;
     scrollbar-width: none;
+    background: var(--tone-line);
     border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-l);
-    background: var(--tone-surface);
+    overflow: hidden;
   }
 
   .tabs__list[hidden] {
@@ -139,20 +143,20 @@ const PanelHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   }
 
   .tabs--horizontal .tabs__list {
+    inline-size: min(100%, 44rem);
     justify-self: center;
-    max-inline-size: 100%;
   }
 
   .tabs__tab {
+    position: relative;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.6em;
-    flex: none;
-    min-height: 2.75rem;
-    padding: 0.5em 1em;
+    min-height: 3rem;
+    padding: 0.65em 1.15em;
     border: 0;
-    border-radius: calc(var(--radius-l) - var(--space-3xs));
-    background: transparent;
+    background: var(--tone-surface);
     color: var(--tone-muted);
     font-size: var(--step--1);
     font-weight: var(--weight-bold);
@@ -162,6 +166,7 @@ const PanelHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   }
 
   .tabs__tab:hover {
+    background: var(--tone-raised);
     color: var(--tone-text);
   }
 
@@ -175,15 +180,24 @@ const PanelHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     font-weight: var(--weight-medium);
   }
 
+  .tabs__tab[aria-selected="true"] .tabs__index {
+    color: var(--tone-bg);
+  }
+
   .tabs__panels {
     display: grid;
-    gap: var(--space-2xl);
+    gap: var(--space-xl);
   }
 
   .tabs__panel {
     display: grid;
-    gap: var(--space-xl);
+    gap: var(--space-l);
     align-items: center;
+    padding: var(--space-l);
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-card);
   }
 
   .tabs__panel[hidden] {
@@ -191,7 +205,7 @@ const PanelHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   }
 
   .tabs__panel:focus-visible {
-    outline-offset: 8px;
+    outline-offset: 4px;
   }
 
   .tabs__copy {
@@ -207,8 +221,16 @@ const PanelHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
   .tabs__text {
     color: var(--tone-muted);
-    font-size: var(--step-1);
-    line-height: 1.5;
+    font-size: var(--step-0);
+    line-height: 1.55;
+  }
+
+  .tabs__copy :global(.tabs__checklist) {
+    inline-size: 100%;
+    margin-block-start: var(--space-2xs);
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
+    font-size: var(--step--1);
   }
 
   /* Once the tabs are live, the tab already names the panel. */
@@ -218,18 +240,19 @@ const PanelHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
   @media (min-width: 60rem) {
     .tabs__panel {
-      grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
-      gap: var(--space-2xl);
+      grid-template-columns: minmax(0, 4.5fr) minmax(0, 7.5fr);
+      gap: var(--space-xl);
+      padding: var(--space-xl);
     }
 
     .tabs--vertical[data-tabs-ready] {
       grid-template-columns: minmax(0, 3fr) minmax(0, 9fr);
-      gap: var(--space-xl);
+      gap: var(--space-l);
       align-items: start;
     }
 
     .tabs--vertical .tabs__list {
-      flex-direction: column;
+      grid-auto-flow: row;
       position: sticky;
       top: calc(var(--header-height) + var(--space-m));
     }

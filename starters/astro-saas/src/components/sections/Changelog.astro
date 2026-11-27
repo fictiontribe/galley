@@ -35,7 +35,7 @@ const updates = (await getUpdates()).slice(0, limit);
         cta && (
           <a class="text-link" href={withBase(cta.href)}>
             {cta.label}
-            <Icon name="arrow-right" size={18} />
+            <Icon name="arrow-right" size={16} />
           </a>
         )
       }
@@ -44,7 +44,7 @@ const updates = (await getUpdates()).slice(0, limit);
       updates.length > 0 ? (
         <ul class="changelog__list" role="list">
           {updates.map((entry) => (
-            <li class:list={{ card: layout === "cards" }}>
+            <li>
               <UpdateEntry entry={entry} headingLevel={level === 1 ? 2 : 3} />
             </li>
           ))}
@@ -82,12 +82,16 @@ const updates = (await getUpdates()).slice(0, limit);
   .changelog--cards .changelog__list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
-    gap: var(--space-m);
-    border: 0;
+    gap: 1px;
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    background: var(--tone-line);
+    overflow: hidden;
   }
 
   .changelog--cards .changelog__list > li {
     padding: 0 var(--space-m);
+    background: var(--tone-surface);
   }
 
   .changelog--cards .changelog__list :global(.update) {

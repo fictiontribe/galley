@@ -67,7 +67,7 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
         )
       }
       <Actions cta={cta} secondaryCta={secondaryCta} class="hero-split__actions" />
-      <Checklist items={items} inline />
+      <Checklist items={items} inline class="hero-split__points" />
     </div>
     <div class="hero-split__media">
       <Frame image={image} imageAlt={imageAlt} frame={frame} eager={index === 0} />
@@ -77,13 +77,13 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
 
 <style>
   :global(.section--hero-split) {
-    padding-block: var(--space-2xl) var(--space-section);
+    padding-block: var(--space-xl) var(--space-2xl);
     overflow: hidden;
   }
 
   .hero-split {
     display: grid;
-    gap: var(--space-2xl);
+    gap: var(--space-xl);
     align-items: center;
   }
 
@@ -94,47 +94,48 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
   }
 
   .hero-split__heading {
-    font-size: var(--step-6);
+    font-size: var(--step-5);
     font-weight: var(--weight-display-strong);
     line-height: var(--leading-tight);
-    max-width: 12em;
+    max-width: 14.5em;
   }
 
   .hero-split__text {
     display: grid;
     gap: var(--space-xs);
-    max-width: 32em;
+    max-width: 34em;
     font-size: var(--step-1);
     line-height: 1.5;
     color: var(--tone-muted);
   }
 
   .hero-split__copy :global(.hero-split__actions) {
+    margin-block-start: var(--space-3xs);
+  }
+
+  .hero-split__copy :global(.hero-split__points) {
+    inline-size: 100%;
     margin-block-start: var(--space-2xs);
   }
 
   @media (min-width: 64rem) {
     .hero-split {
-      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-      gap: var(--space-2xl);
+      grid-template-columns: minmax(0, 5.5fr) minmax(0, 6.5fr);
+      gap: var(--space-xl);
     }
 
-    .hero-split__heading {
-      font-size: var(--step-5);
-    }
-
-    /* The picture runs off the container's edge, like a window left open. */
+    /* The picture runs cleanly past the right rail like an open application viewport. */
     .hero-split--image-right .hero-split__media {
-      margin-inline-end: calc(-1 * min(var(--gutter) + 2rem, 8vw));
+      margin-inline-end: calc(-1 * min(var(--gutter) + 2.5rem, 8.5vw));
     }
 
     .hero-split--image-left {
-      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      grid-template-columns: minmax(0, 6.5fr) minmax(0, 5.5fr);
     }
 
     .hero-split--image-left .hero-split__media {
       order: -1;
-      margin-inline-start: calc(-1 * min(var(--gutter) + 2rem, 8vw));
+      margin-inline-start: calc(-1 * min(var(--gutter) + 2.5rem, 8.5vw));
     }
   }
 </style>

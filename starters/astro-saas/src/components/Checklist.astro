@@ -17,7 +17,9 @@ const { items = [], inline = false, class: className } = Astro.props;
     <ul class:list={["checklist", { "checklist--inline": inline }, className]} role="list">
       {items.map((item) => (
         <li>
-          <Icon name="check" size={18} />
+          <span class="checklist__mark" aria-hidden="true">
+            <Icon name="check" size={14} />
+          </span>
           <span>{item}</span>
         </li>
       ))}
@@ -37,7 +39,10 @@ const { items = [], inline = false, class: className } = Astro.props;
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2xs) var(--space-m);
-    font-size: var(--step--1);
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
+    font-size: var(--step--2);
+    font-weight: var(--weight-medium);
     color: var(--tone-muted);
   }
 
@@ -45,11 +50,24 @@ const { items = [], inline = false, class: className } = Astro.props;
     display: grid;
     grid-template-columns: auto 1fr;
     align-items: start;
-    gap: 0.5em;
+    gap: 0.55em;
   }
 
-  .checklist :global(svg) {
-    margin-block-start: 0.15em;
+  .checklist__mark {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 1.2rem;
+    block-size: 1.2rem;
+    margin-block-start: 0.16em;
+    border: var(--border-width) solid color-mix(in oklch, var(--tone-link) 28%, var(--tone-line));
+    border-radius: var(--radius-s);
+    background: var(--tone-mark);
     color: var(--tone-link);
+  }
+
+  .checklist--inline .checklist__mark {
+    inline-size: 1.05rem;
+    block-size: 1.05rem;
+    margin-block-start: 0.1em;
   }
 </style>

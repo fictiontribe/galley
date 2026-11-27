@@ -39,7 +39,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
               <span class="step__number mono">{String(i + 1).padStart(2, "0")}</span>
             </span>
             <div class="step__body">
-              {item.label && <p class="step__label">{item.label}</p>}
+              {item.label && <p class="step__label mono">{item.label}</p>}
               <ItemHeading class="step__heading">{item.heading}</ItemHeading>
               <p class="step__text">{item.text}</p>
             </div>
@@ -89,13 +89,13 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   .step__number {
     display: inline-grid;
     place-items: center;
-    inline-size: 2.5rem;
-    block-size: 2.5rem;
-    border: var(--border-width) solid var(--tone-control);
-    border-radius: 50%;
-    background: var(--tone-bg);
-    font-size: var(--step--1);
-    font-weight: var(--weight-medium);
+    inline-size: 2.35rem;
+    block-size: 2.35rem;
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-m);
+    background: var(--tone-surface);
+    font-size: var(--step--2);
+    font-weight: var(--weight-bold);
     color: var(--tone-text);
   }
 
@@ -105,11 +105,11 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     color: var(--tone-bg);
   }
 
-  /* The line joining one step to the next. */
+  /* The architectural rail joining one step to the next. */
   .step:not(:last-child) .step__marker::after {
     content: "";
     position: absolute;
-    top: 2.5rem;
+    top: 2.35rem;
     bottom: calc(-1 * var(--space-l));
     inline-size: 1px;
     background: var(--tone-line);
@@ -118,12 +118,12 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   .step__body {
     display: grid;
     gap: var(--space-3xs);
-    padding-block-start: 0.4rem;
+    padding-block-start: 0.25rem;
   }
 
   .step__label {
     font-size: var(--step--2);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     color: var(--tone-link);
@@ -136,8 +136,10 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   }
 
   .step__text {
+    font-size: var(--step--1);
     color: var(--tone-muted);
     max-width: 34em;
+    line-height: 1.55;
   }
 
   @media (min-width: 60rem) {
@@ -155,10 +157,10 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     }
 
     .steps-layout--row .step:not(:last-child) .step__marker::after {
-      top: 1.25rem;
+      top: 1.18rem;
       bottom: auto;
-      left: 3.25rem;
-      right: calc(-1 * var(--space-m) + 0.75rem);
+      left: 2.85rem;
+      right: calc(-1 * var(--space-m) + 0.5rem);
       inline-size: auto;
       block-size: 1px;
     }

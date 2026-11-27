@@ -32,18 +32,23 @@ const headingId = `${id ?? `section-${index}`}-heading`;
         cta && (
           <a class="text-link" href={withBase(cta.href)}>
             {cta.label}
-            <Icon name="arrow-right" size={18} />
+            <Icon name="arrow-right" size={16} />
           </a>
         )
       }
     </div>
     <div class="faq__list">
       {
-        items.map((item) => (
+        items.map((item, i) => (
           <details class="faq__item">
             <summary class="faq__question">
-              <span>{item.question}</span>
-              <Icon name="plus" size={20} class="faq__icon" />
+              <span class="faq__index mono" aria-hidden="true">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span class="faq__q-text">{item.question}</span>
+              <span class="faq__icon-box" aria-hidden="true">
+                <Icon name="plus" size={16} class="faq__icon" />
+              </span>
             </summary>
             <div class="faq__answer prose" set:html={markdown(item.answer)} />
           </details>
@@ -80,26 +85,31 @@ const headingId = `${id ?? `section-${index}`}-heading`;
   }
 
   .faq__list {
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+  }
+
+  .faq__item + .faq__item {
     border-block-start: var(--border-width) solid var(--tone-line);
   }
 
-  .faq__item {
-    border-block-end: var(--border-width) solid var(--tone-line);
-  }
-
   .faq__question {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-m);
-    padding-block: var(--space-s);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--space-s);
+    padding: var(--space-m) var(--space-l);
     font-family: var(--font-display);
-    font-size: var(--step-1);
-    font-weight: var(--weight-medium);
+    font-size: var(--step-0);
+    font-weight: var(--weight-bold);
     letter-spacing: -0.015em;
-    line-height: 1.3;
+    line-height: 1.35;
     list-style: none;
     cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease-out);
   }
 
   .faq__question::-webkit-details-marker {
@@ -107,13 +117,26 @@ const headingId = `${id ?? `section-${index}`}-heading`;
   }
 
   .faq__question:hover {
+    background: var(--tone-raised);
+  }
+
+  .faq__index {
+    font-size: var(--step--2);
+    color: var(--tone-muted);
+  }
+
+  .faq__icon-box {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-s);
+    background: var(--tone-raised);
     color: var(--tone-link);
   }
 
   .faq__question :global(.faq__icon) {
-    flex: none;
-    margin-block-start: 0.15em;
-    color: var(--tone-link);
     transition: transform var(--duration) var(--ease-out);
   }
 
@@ -122,8 +145,8 @@ const headingId = `${id ?? `section-${index}`}-heading`;
   }
 
   .faq__answer {
-    padding-block-end: var(--space-m);
-    padding-inline-end: var(--space-xl);
+    padding: 0 var(--space-l) var(--space-m) calc(var(--space-l) + 2.3rem);
+    font-size: var(--step--1);
     color: var(--tone-muted);
   }
 
