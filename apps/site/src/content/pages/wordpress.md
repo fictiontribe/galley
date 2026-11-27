@@ -65,17 +65,25 @@ sections:
         theirs: Core, theme and plugins
         better: ours
       - label: Security
-        ours: No database online; no login unless you host the editor (new)
+        ours: Static live site behind Cloudflare or your CDN; isolated editor with OIDC SSO (new)
         theirs: Patches for core and plugins
         better: ours
       - label: Editing
-        ours: Form, page or assistant, proofed
+        ours: Form, page or assistant, proofed; live co-editing on Galley Cloud
         theirs: Block editor or page builder
         better: even
       - label: Page building
         ours: Your own sections (preview)
         theirs: Mature builders, many widgets
         better: theirs
+      - label: SEO & AI visibility
+        ours: Built-in SEO checks, live rankings, keyword gaps, 404 recovery and llms.txt
+        theirs: Requires SEO plugins plus separate tools
+        better: ours
+      - label: Languages
+        ours: Built-in i18n, side-by-side editing, AI translation with memory and glossary
+        theirs: Multilingual plugins (WPML, Polylang)
+        better: ours
       - label: Forms
         ours: Built in, to your marketing tools
         theirs: Many form plugins
@@ -85,7 +93,7 @@ sections:
         theirs: Rows in a database
         better: ours
       - label: Hosting
-        ours: Static files, often free
+        ours: Static files anywhere, or Cloudflare edge on Galley Cloud (by invite)
         theirs: A PHP server and database
         better: ours
       - label: Extensions
@@ -130,22 +138,24 @@ sections:
       - q: What is a good alternative to WordPress?
         a: "We think a static site with a Git-based CMS suits a site that is mostly pages and posts: the pages are built ahead of time and served as files, and the words live in your own repository. Galley is one, and its guided move (new, in final checks) brings the posts, pages, images and SEO details across. For a shop, memberships or comments, WordPress or a dedicated platform may still fit better. [The three kinds of CMS](/compare/types-of-cms/)."
       - q: Can I keep editing the site myself after I leave WordPress?
-        a: "Yes. In Galley you change a page in a form, by retyping words on the page, or by asking the assistant, and every change waits in Proof beside the live site until someone presses Publish. Publishing is a commit to your own repository, and a publish can be undone with a new commit."
+        a: "Yes. In Galley you change a page in a form, by retyping words on the page, or by asking the assistant, and every change waits in Proof beside the live site until someone presses Publish. Publishing is a commit to your own repository, and a publish can be undone with a new commit. On [Galley Cloud](/cloud/), teammates can also edit together in real time with live presence."
       - q: What happens to my search rankings when I move?
-        a: "Nobody can promise rankings. The guided move (new, in final checks) carries across the search details it can: descriptions, and SEO titles and canonical addresses where the site has fields for them. Its report lists the old addresses that change, which you review on the Redirects screen before you publish; archive pages need redirect rules of your own."
+        a: "Nobody can promise rankings. The guided move (new, in final checks) carries across the search details it can: descriptions, and SEO titles and canonical addresses where the site has fields for them. Its report lists the old addresses that change, which you review on the Redirects screen before you publish; archive pages need redirect rules of your own. After the move, Galley’s built-in Search and AI intelligence tracks live Google rankings, striking-distance quick wins, and broken-404 backlinks with one-click redirects — included on [Galley Cloud](/cloud/) or available self-hosted with your own search data key."
       - q: Can I use WordPress as a headless CMS instead?
         a: "You can. WordPress has a REST API that lets a separate front end read its content. Someone still runs WordPress, its database and its updates behind that front end: the same upkeep as before. [Traditional, headless and Git-based, explained](/compare/types-of-cms/)."
       - q: Is a static site safer than WordPress?
-        a: "A static site has less on the live site to attack and to patch: its pages are files built ahead of time, with no database or login page behind them. WordPress needs its core, theme and plugin updates kept up, though it can apply many of them automatically. If you run Galley's editor on a public server (new), that puts a sign-in page online, and that server is yours to look after too. Neither is a wall against someone determined."
+        a: "A static site has less on the live site to attack and to patch: its pages are files built ahead of time, with no database or login page behind them. WordPress needs its core, theme and plugin updates kept up, though it can apply many of them automatically. If you self-host Galley’s editor on a public server (`ghcr.io/fictiontribe/galley`, with optional OIDC SSO, new), it runs in an isolated container off your live domain and that server is yours to look after too, or [Galley Cloud](/cloud/) manages it for you. Neither is a wall against someone determined; see [the security model](/docs/running/security/)."
       - q: How much does the move cost?
-        a: "Galley is free and open-source, and the guided move is part of it. Static hosting is often free or cheap. Rebuilding page-builder pages with the assistant uses your own AI key, billed to you by its provider, and the page builder is in preview. The guided move is new and still in final checks."
+        a: "Galley is free and Apache-2.0, and the guided move is part of it. Static hosting is often free or cheap. Running locally or self-hosted, rebuilding page-builder pages with the assistant uses your own AI key, billed to you by its provider; on [Galley Cloud](/cloud/) (opening by invitation), Cloudflare edge hosting, a dedicated editor and monthly AI credits start at $35 a month per site ($99 on Agency for five sites), with no per-seat fees. The page builder is in preview, and the guided move is new and still in final checks."
   - type: close
     id: honest
     heading: Galley is new.
-    text: Today the app runs on your computer or on a server you manage.
+    text: Run it free on your computer or your own server with Docker, or join Galley Cloud for Cloudflare edge hosting, real-time collaboration and monthly AI credits.
     actions:
       - label: Read the moving guide
         href: /docs/getting-started/wordpress/
+      - label: See Galley Cloud
+        href: /cloud/
       - label: Ways to run it
         href: /apps/
 ---

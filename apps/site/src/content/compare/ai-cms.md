@@ -6,6 +6,7 @@ name: What an AI CMS is
 heading: Most CMSs sell AI now. The question is who presses Publish.
 lead: An AI CMS lets you change a website by asking for the change in plain words. Most of the CMSs we looked at now offer some of that. What separates them is what happens to a change after the AI has made it.
 published: "2026-11-25"
+updated: "2026-11-27"
 checked: November 2026
 order: 2
 draft: false
@@ -18,7 +19,7 @@ faq:
   - q: What is an AI CMS?
     a: A content management system that lets you change a site by asking in plain words, as well as by filling in fields. It may draft or translate text, change many entries at once, carry out tasks you describe, or let outside AI tools connect to it. What matters most is whether its changes wait for a person to check and publish them.
   - q: Which CMS works best with Claude?
-    a: "Two ways to read the question. Several CMSs offer an MCP server that Claude Desktop or Claude Code can connect to, among them Sanity, Contentful, Storyblok, Strapi, Prismic and Hygraph, and WordPress through a plugin. Contentful lists Claude among the models for its AI Actions. Galley's built-in assistant runs on Claude itself, with your own Anthropic key, and its MCP server lets Claude Desktop or Claude Code work on the site's files, with their changes waiting in the same proof; those tools can publish too (their instructions say only when you ask, and Galley doesn't check that you did), unless publishing over MCP is switched off."
+    a: "Two ways to read the question. Several CMSs offer an MCP server that Claude Desktop or Claude Code can connect to, among them Sanity, Contentful, Storyblok, Strapi, Prismic and Hygraph, and WordPress through a plugin. Contentful lists Claude among the models for its AI Actions. Galley's built-in assistant runs on Claude itself (with your own Anthropic key when self-hosted, or included monthly AI credits on [Galley Cloud](/cloud/)), and its MCP server lets Claude Desktop or Claude Code work on the site's files, with their changes waiting in the same proof; those tools can publish too (their instructions say only when you ask, and Galley doesn't check that you did), unless publishing over MCP is switched off."
   - q: Can an AI assistant safely edit a live website?
     a: "We think it can if it is unable to publish. The assistant should change content, not code, and every change should wait where a person can see it beside the live page before anything goes out. In Galley the assistant never publishes: its changes wait in Proof until someone presses Publish, and each one can be put back."
   - q: How do I connect a CMS to an AI agent?
@@ -26,7 +27,7 @@ faq:
   - q: Is a headless CMS better for AI search?
     a: "The kind of CMS matters less than what each page serves: readable text in the HTML, accurate structured data, and, on some sites, a plain markdown copy for AI tools, though Google says its AI features don't need one. Any kind of CMS can produce those. No CMS can promise that an AI answer will cite you."
   - q: Do I need my own AI key?
-    a: "It depends on the product. Some include AI use in a plan or sell credits; others use a key you bring. Galley's assistant uses your own Anthropic key, billed to you by Anthropic at its prices; image generation uses a key for the image service you choose, and everything else works without a key."
+    a: "It depends on the product. Some include AI use in a plan or sell credits; others use a key you bring. When you run Galley locally or self-host it, the assistant and AI translation use your own Anthropic key and image or video generation uses your own OpenAI, Google Gemini or OpenRouter key; everything else works without a key. On [Galley Cloud](/cloud/) (opening by invitation), monthly AI credits are included on every plan with no API keys to paste."
 sources:
   - label: "Sanity documentation, AI in Sanity"
     href: https://www.sanity.io/docs/ai
@@ -72,6 +73,10 @@ sources:
     href: /docs/editing/assistant/
   - label: "Galley, never guess"
     href: /docs/concepts/never-guess/
+  - label: "Galley Cloud"
+    href: /cloud/
+  - label: "Galley for enterprise and security teams"
+    href: /enterprise/
 related: [types-of-cms, cloudcannon, git-based-cms]
 ---
 
@@ -125,14 +130,16 @@ Several products are arriving at the same place in their own ways. Prismic says 
 
 ## How does Galley do it?
 
-Galley is our open-source AI CMS for static sites, Apache-2.0 and free, first released in November 2026. It's built around the answer above.
+Galley is our open-source AI CMS for static sites, Apache-2.0 and free to run locally or self-host — with optional managed hosting on [Galley Cloud](/cloud/) (opening by invitation) — first released in November 2026. It's built around the answer above.
 
-- **The assistant writes; a person publishes.** You ask in plain words, beside the page. The assistant reads the site before it edits, asks one short question when a request is ambiguous, and quotes the new words back. Its documentation is blunt: "It never publishes."
-- **Every change waits in Proof.** Old words struck out, new ones written in, beside the live site, whether the change came from the assistant, the form or retyping on the page. Any one change can be put back. Nothing the assistant does is live until someone presses [Publish](/how-to/proof-and-publish/).
+- **The assistant writes; a person publishes.** You ask in plain words, beside the page. The assistant reads the site before it edits, asks one short question when a request is ambiguous, and quotes the new words back. Its documentation is blunt: "It never publishes." You can also generate images and short video clips across OpenAI, Google Gemini and OpenRouter models.
+- **Every change waits in Proof.** Old words struck out, new ones written in, beside the live site, whether the change came from the assistant, the form, retyping on the page or translation. Any one change can be put back. Nothing the assistant does is live until someone presses [Publish](/how-to/proof-and-publish/).
 - **The record is yours.** Publishing is a commit to your own Git repository, or a branch and a pull request. Undo is a new commit. History is never rewritten.
 - **Content, not code.** In content mode the assistant can change only content and media, and it has no shell or network tool. Build mode, which can change code, is for whoever maintains the site, and a site's settings can turn it off. It's told not to invent figures, prices or quotes, and the docs call those rules "instructions to a model, not guarantees", which is why the proof exists.
+- **Multilingual (`i18n`) translation with Proof.** Configure target languages, localized URL slugs, `hreflang` alternates and Astro `<LanguageSelector />` / `<LocaleHead />` components; translate side by side (with out-of-sync flags when the source changes) or translate individual pages or the whole site with AI using a Git-tracked Translation Memory (reusing approved phrases at zero cost), a brand/product Glossary and a clear upfront cost estimate before anything runs — every translated page waiting in Proof.
+- **Built-in Search and AI intelligence.** On-site SEO and structured-data checks, one-click fixes into Proof, Markdown twins, `llms.txt` and per-AI-crawler `robots.txt` controls, plus live Google search rankings, striking-distance (`#4–#15`) quick wins, keyword research, competitor content gaps, broken-404 backlink recovery with one-click redirects, and AI search answer citations — included on every [Galley Cloud](/cloud/) plan (at zero AI credits for lookups) or self-hosted with your own search data key.
 - **Your own AI tools, too.** Galley's [MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, and their changes wait in the same proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off. By our own rule above, switch it off (`--no-publish`, or `GALLEY_MCP_PUBLISH=0` on a server) if no AI should publish.
 
-Where it falls short: the assistant runs on Anthropic's Claude with your own key, and each request is billed to you. Galley is new. As of November 2026 its page builder is in preview, and the hosted editor, with its accounts and roles, is new and still in final checks; the roles keep people out of each other's way, and they aren't a security boundary. It has no scheduled publishing, no editorial workflows across many languages and no approval chains beyond pull requests, and AI translation is where Sanity, Contentful, Storyblok and Hygraph are the better choice today. And it suits websites, not content that has to reach apps through an API. For that, see [the three kinds of CMS](/compare/types-of-cms/).
+Where it falls short: on local or self-hosted installs, the assistant and AI translation run on Anthropic's Claude with your own key (billed to you), while [Galley Cloud](/cloud/) includes monthly AI credits on every plan and is opening by invitation. Galley is young (first released November 2026), its page builder is in preview, and self-hosted accounts and OpenID Connect SSO are new and in final checks (roles organize work while the container is the security boundary; see [`/enterprise/`](/enterprise/)). It has no scheduled publishing, no multi-stage per-locale approval chains or external TMS integrations (where Contentful, Storyblok, Sanity and Hygraph still lead for large localization teams), and no SOC 2 report or SLA yet. And it suits websites, not content that has to reach apps through an API. For that, see [the three kinds of CMS](/compare/types-of-cms/).
 
 The machine can do the typing. Keep the button.

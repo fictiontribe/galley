@@ -19,8 +19,8 @@ how:
     - "Found something wrong or out of date? [Open an issue]({repository}/issues) and we will correct it."
 ui:
   up: CMS comparisons
-  byline: By Fiction Tribe, who make Galley. Facts about {product} checked against its own pages in {month}.
-  bylineGuide: By Fiction Tribe, who make Galley. Facts about other products checked against their own pages in {month}.
+  byline: By the team behind Galley. Facts about {product} checked against its own pages in {month}.
+  bylineGuide: By the team behind Galley. Facts about other products checked against their own pages in {month}.
   short: The short version
   questions: Questions people ask
   sources: Sources
