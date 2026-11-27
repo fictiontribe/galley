@@ -8,7 +8,7 @@
  * without a token; else the site's demo catalogue. When the settings and
  * the site name different stores the call refuses rather than pick one.
  */
-import type { SiteService } from "@galley/plugin-kit";
+import type { SiteService } from "@galleycms/plugin-kit";
 import { connectionFrom, ShopifyError, storeOrigin, type StoreConnection } from "./client";
 import { formatMoney, type CollectionSummary, type ProductDetail, type ProductSummary } from "./store";
 

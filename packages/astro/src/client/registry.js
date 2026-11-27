@@ -3,7 +3,7 @@
 // provider id. Built-in providers load from ./providers/ on demand; a site or
 // plugin registers its own before (or after) the forms start:
 //
-//   import { registerFormProvider } from "@galley/astro/client";
+//   import { registerFormProvider } from "@galleycms/astro/client";
 //   registerFormProvider("crm", async (values, destination, context) => {
 //     const res = await fetch(String(destination.settings.url), { method: "POST", body: JSON.stringify(values) });
 //     return res.ok ? { ok: true } : { ok: false, detail: `HTTP ${res.status}` };

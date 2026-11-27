@@ -5,7 +5,7 @@
  * galley.config.json, and the app's picker searches here. The file keeps
  * the handle — a plain string — so the site stays files.
  */
-import type { DataSourceContribution, DataSourceItem } from "@galley/plugin-kit";
+import type { DataSourceContribution, DataSourceItem } from "@galleycms/plugin-kit";
 import { ShopifyError } from "./client";
 import { demoCollections, demoSearch, demoSummary, resolveSource } from "./source";
 import { getCollection, listCollections, productSummary, searchProducts, type CollectionSummary, type ProductSummary } from "./store";

@@ -13,7 +13,7 @@ sections are for developers.
 
 ## How a submission travels
 
-1. A visitor sends the form. The site's own script (`@galley/astro`) posts the
+1. A visitor sends the form. The site's own script (`@galleycms/astro`) posts the
    answers as JSON to the site's **capture address**:
    `<server address>/f/<siteId>`. Without JavaScript, the browser posts the
    same form as a plain form post and is sent back to the page afterwards.

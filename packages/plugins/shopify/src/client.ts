@@ -20,7 +20,7 @@
  * Errors are classified by HTTP status and documented error codes, never
  * by the wording of a message.
  */
-import type { PluginContext } from "@galley/plugin-kit";
+import type { PluginContext } from "@galleycms/plugin-kit";
 
 export const DEFAULT_API_VERSION = "2026-10";
 const VERSION = /^\d{4}-(01|04|07|10)$/;

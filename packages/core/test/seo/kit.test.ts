@@ -30,7 +30,7 @@ function kitFiles(visibility: unknown = { crawlers: { CCBot: "block" }, structur
 
   delete files["public/robots.txt"];
   files["astro.config.mjs"] = `import { defineConfig } from "astro/config";\nimport galley from "./src/galley/integration.js";\n\nexport default defineConfig({ site: "${SITE_URL}", trailingSlash: "always", integrations: [galley()] });\n`;
-  files["src/galley/integration.js"] = "// Vendored from @galley/astro by scripts/vendor.mjs.\nexport default function galley() {\n  return { name: \"galley-kit\", hooks: {} };\n}\n";
+  files["src/galley/integration.js"] = "// Vendored from @galleycms/astro by scripts/vendor.mjs.\nexport default function galley() {\n  return { name: \"galley-kit\", hooks: {} };\n}\n";
   if (visibility !== null) files["src/data/visibility.json"] = `${JSON.stringify(visibility, null, 2)}\n`;
   return files;
 }

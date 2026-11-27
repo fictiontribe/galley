@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galleycms/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // Page-path globs for a script's `include` / `exclude`, matched at build time
 // against each page's path (without the site's base):

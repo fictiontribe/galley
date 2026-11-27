@@ -1,5 +1,5 @@
 // @ts-check
-// `@galley/astro/catalog` — what the site kit knows how to do, as JSON-able
+// `@galleycms/astro/catalog` — what the site kit knows how to do, as JSON-able
 // data, so an app can list it: the form destinations, the third-party
 // script integrations and the AI crawlers robots.txt can allow or block. The
 // first two are the contract shared with the app (packages/core/src/kit-catalog.ts,

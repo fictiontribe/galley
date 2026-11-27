@@ -1,11 +1,11 @@
 /**
  * @galley/plugin-openrouter — image and video generation through OpenRouter,
- * written against @galley/plugin-kit only, exactly the way a third party
+ * written against @galleycms/plugin-kit only, exactly the way a third party
  * writes a plugin. One key (the "openrouter" secret, or OPENROUTER_API_KEY)
  * reaches every image and video model OpenRouter routes to; the model lists
  * and prices come from OpenRouter's own catalogue at run time.
  */
-import { definePlugin, PLUGIN_API_VERSION, type GalleyPlugin } from "@galley/plugin-kit";
+import { definePlugin, PLUGIN_API_VERSION, type GalleyPlugin } from "@galleycms/plugin-kit";
 import { OPENROUTER_API, resolveBaseUrl, type BaseUrlOption } from "./client";
 import { createImageCatalogue, imageProvider } from "./images";
 import { createVideoCatalogue, videoProvider } from "./videos";

@@ -1,9 +1,9 @@
 /**
- * @galley/plugin-kit — what a plugin author installs: the plugin types,
+ * @galleycms/plugin-kit — what a plugin author installs: the plugin types,
  * `definePlugin`, `ProviderError` (the error a provider throws for a plain
  * message), `resolveScriptSnippet`, and `checkPlugin` — the checks that say
  * whether a plugin is correct. For vitest, `describePlugin` lives in
- * `@galley/plugin-kit/vitest`. Guide: docs/plugins.md.
+ * `@galleycms/plugin-kit/vitest`. Guide: docs/plugins.md.
  */
 export type {
   BeforePublishResult,

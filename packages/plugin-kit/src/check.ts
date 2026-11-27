@@ -8,7 +8,7 @@
  * script integration's snippet through the resolver. Every failure says
  * what to change.
  */
-import { checkAdapter, type AdapterExpectations } from "@galley/adapter-kit";
+import { checkAdapter, type AdapterExpectations } from "@galleycms/adapter-kit";
 import { isProviderError, objectSchema, RESERVED_TOOLS, resolveScriptSnippet, validatePlugin, type GalleyPlugin, type ImageGenerationRequest } from "@galley/core/plugins";
 import { fakeFetch, json, providerContext, testContext, type FakeRoute } from "./testing";
 
@@ -58,7 +58,7 @@ function judge(error: unknown, expected: string, what: string): Omit<CheckResult
   if (!isProviderError(error)) {
     return {
       status: "fail",
-      detail: `${what} threw a raw error (“${message(error).slice(0, 160)}”). Throw ProviderError(kind, plain, detail) from @galley/plugin-kit so the person reads a plain sentence.`,
+      detail: `${what} threw a raw error (“${message(error).slice(0, 160)}”). Throw ProviderError(kind, plain, detail) from @galleycms/plugin-kit so the person reads a plain sentence.`,
     };
   }
   if (leaks(error)) return { status: "fail", detail: `${what} put the API key in its error. Cut it out of message and detail before throwing.` };

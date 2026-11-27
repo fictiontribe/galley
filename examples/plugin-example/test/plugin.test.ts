@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fakeFetch, json, resolveScriptSnippet, testContext, type SiteService } from "@galley/plugin-kit";
-import { describePlugin } from "@galley/plugin-kit/vitest";
+import { fakeFetch, json, resolveScriptSnippet, testContext, type SiteService } from "@galleycms/plugin-kit";
+import { describePlugin } from "@galleycms/plugin-kit/vitest";
 import { examplePlugin } from "../src/index";
 
 // #region checks

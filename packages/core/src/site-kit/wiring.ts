@@ -118,7 +118,7 @@ export function wireContentConfig(text: string, file: string): WiringResult {
   if (existing) {
     const binding = module.imports.get("formSchema");
 
-    return binding?.imported === "formSchema" && /galley\/schema|@galley\/astro\/schema/.test(binding.from)
+    return binding?.imported === "formSchema" && /galley\/schema|@galleycms\/astro\/schema/.test(binding.from)
       ? { state: "done" }
       : { state: "left", reason: `${file} already has a collection called “forms” that isn’t the site kit’s.` };
   }
@@ -273,7 +273,7 @@ export function wireLayout(text: string, file: string): WiringResult {
 function kitIntegrationImport(module: ReturnType<typeof parseModule>, name: string): boolean {
   const binding = module.imports.get(name);
 
-  return binding !== undefined && binding.imported === "default" && /(^@galley\/astro$|(^|\/)galley\/integration(\.m?js)?$)/.test(binding.from);
+  return binding !== undefined && binding.imported === "default" && /(^@galleycms\/astro$|(^|\/)galley\/integration(\.m?js)?$)/.test(binding.from);
 }
 
 /** Where a top-level key of the object whose `{` is at `open` starts its value, or -1. */

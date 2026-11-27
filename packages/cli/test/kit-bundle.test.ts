@@ -87,10 +87,10 @@ describe("the built CLI", () => {
       job = await api("GET", `/api/jobs/${job.id}`);
     }
     expect(job.state, job.detail).toBe("done");
-    expect(readFileSync(join(site, "src/galley/schema.js"), "utf8")).toMatch(/^\/\/ Vendored from @galley\/astro \d+\.\d+\.\d+ by scripts\/vendor\.mjs\./);
+    expect(readFileSync(join(site, "src/galley/schema.js"), "utf8")).toMatch(/^\/\/ Vendored from @galleycms\/astro \d+\.\d+\.\d+ by scripts\/vendor\.mjs\./);
     expect(readFileSync(join(site, "src/content.config.ts"), "utf8")).toContain('import { formSchema } from "./galley/schema.js";');
     // The kit's build step (the version AI assistants read) comes from the bundle too.
-    expect(readFileSync(join(site, "src/galley/integration.js"), "utf8")).toMatch(/^\/\/ Vendored from @galley\/astro/);
+    expect(readFileSync(join(site, "src/galley/integration.js"), "utf8")).toMatch(/^\/\/ Vendored from @galleycms\/astro/);
     expect(readFileSync(join(site, "astro.config.ts"), "utf8")).toContain('import galley from "./src/galley/integration.js";');
     expect(JSON.parse(readFileSync(join(site, "src/data/visibility.json"), "utf8")).agentReadable.llmsTxt).toBe(true);
     expect((await api<{ ready: boolean }>("GET", `/api/sites/${opened.id}/kit`)).ready).toBe(true);

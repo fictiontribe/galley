@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Builds @galley/astro, @galley/adapter-kit and @galley/plugin-kit into their
+// Builds @galleycms/astro, @galleycms/adapter-kit and @galleycms/plugin-kit into their
 // standalone dist/ directories, packs each dist/ with `npm pack` into a clean
-// temporary directory outside the repository, verifies every tarball's manifest,
+// temporary directory (or --pack-destination <dir>), verifies every tarball's manifest,
 // files and size, then installs the three tarballs into an isolated consumer
 // project outside the monorepo and verifies runtime imports, CLI binary
 // execution, subpath resolution and strict TypeScript typechecking.
 //
 // Usage:
-//   node scripts/verify-kits-pack.mjs
+//   node scripts/verify-kits-pack.mjs [--pack-destination <dir>]
 import { execFileSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -27,7 +27,7 @@ if (!EXPECTED_VERSION) {
 
 const KITS = [
   {
-    name: "@galley/astro",
+    name: "@galleycms/astro",
     dir: join(REPO, "packages", "astro"),
     limitBytes: 256 * KB,
     requiredFiles: [
@@ -55,7 +55,7 @@ const KITS = [
     ],
   },
   {
-    name: "@galley/adapter-kit",
+    name: "@galleycms/adapter-kit",
     dir: join(REPO, "packages", "adapter-kit"),
     limitBytes: 1 * MB,
     requiredFiles: [
@@ -74,7 +74,7 @@ const KITS = [
     ],
   },
   {
-    name: "@galley/plugin-kit",
+    name: "@galleycms/plugin-kit",
     dir: join(REPO, "packages", "plugin-kit"),
     limitBytes: 1 * MB,
     requiredFiles: [
@@ -158,6 +158,7 @@ function checkManifest(pkg, expectedName, problems) {
         problems.push(`${field}.${name} is “${range}”, which only works inside the repository`);
       }
       if (name.startsWith("@galley/")) problems.push(`${field}.${name} references an unpublished workspace package`);
+      if (name.startsWith("@galleycms/")) problems.push(`${field}.${name} references another @galleycms/* kit instead of being standalone`);
     }
   }
   for (const script of INSTALL_SCRIPTS) {
@@ -186,7 +187,7 @@ function inspectTarball(kit, tarball) {
       if (!files.includes(req)) problems.push(`${req} is missing`);
     }
 
-    if (kit.name === "@galley/astro" && files.includes("README.md")) {
+    if (kit.name === "@galleycms/astro" && files.includes("README.md")) {
       const readme = readFileSync(join(root, "README.md"), "utf8");
 
       if (/Not published yet/i.test(readme)) problems.push('README.md still contains the "Not published yet" banner');
@@ -206,8 +207,8 @@ function inspectTarball(kit, tarball) {
           problems.push(`${file} contains ${what}: “${text.slice(Math.max(0, match.index - 30), match.index + match[0].length + 30).replace(/\s+/g, " ")}”`);
         }
       }
-      if (file.endsWith(".d.ts") && /(?:from|import)\s*\(?\s*["']@galley\/(?:core|adapter-kit|plugin-kit|astro)/.test(text)) {
-        problems.push(`${file} still imports a workspace @galley/* specifier`);
+      if (file.endsWith(".d.ts") && /(?:from|import)\s*\(?\s*["'](?:@galley\/|@galleycms\/)/.test(text)) {
+        problems.push(`${file} still imports a workspace @galley/* or cross-kit @galleycms/* specifier`);
       }
     }
 
@@ -255,7 +256,7 @@ function verifyIsolatedConsumer(tarballs) {
       symlinkSync(typesNodeSource, join(consumer, "node_modules", "@types", "node"), "dir");
     }
 
-    // Create a tiny fixture site and adapter module that imports from the installed @galley/adapter-kit tarball.
+    // Create a tiny fixture site and adapter module that imports from the installed @galleycms/adapter-kit tarball.
     const fixtureDir = join(consumer, "fixture-site");
 
     mkdirSync(join(fixtureDir, "posts"), { recursive: true });
@@ -267,7 +268,7 @@ function verifyIsolatedConsumer(tarballs) {
 
     writeFileSync(
       adapterFile,
-      `import { conventionAdapter } from "@galley/adapter-kit";
+      `import { conventionAdapter } from "@galleycms/adapter-kit";
 
 export default conventionAdapter({
   id: "smoke",
@@ -291,13 +292,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
-import { checkAdapter, conventionAdapter, defineAdapter } from "@galley/adapter-kit";
-import { checkPlugin, definePlugin, isProviderError, PLUGIN_API_VERSION, ProviderError } from "@galley/plugin-kit";
-import galley, { resolveGalleyUrl } from "@galley/astro";
-import { formSchema, scriptsSchema } from "@galley/astro/schema";
-import { aiCrawlers, formProviders, scriptIntegrations } from "@galley/astro/catalog";
+import { checkAdapter, conventionAdapter, defineAdapter } from "@galleycms/adapter-kit";
+import { checkPlugin, definePlugin, isProviderError, PLUGIN_API_VERSION, ProviderError } from "@galleycms/plugin-kit";
+import galley, { resolveGalleyUrl } from "@galleycms/astro";
+import { formSchema, scriptsSchema } from "@galleycms/astro/schema";
+import { aiCrawlers, formProviders, scriptIntegrations } from "@galleycms/astro/catalog";
 
-// @galley/adapter-kit runtime
+// @galleycms/adapter-kit runtime
 assert.equal(typeof defineAdapter, "function");
 assert.equal(typeof conventionAdapter, "function");
 assert.equal(typeof checkAdapter, "function");
@@ -331,7 +332,7 @@ const convReport = await checkAdapter(convAdapter, "./fixture-site", {
 });
 assert.equal(convReport.ok, true, "conventionAdapter conformance check failed: " + JSON.stringify(convReport.checks.filter((c) => c.status === "fail")));
 
-// @galley/plugin-kit runtime
+// @galleycms/plugin-kit runtime
 assert.equal(typeof definePlugin, "function");
 assert.equal(typeof ProviderError, "function");
 assert.equal(typeof checkPlugin, "function");
@@ -361,9 +362,9 @@ const plugin = definePlugin({
 const pluginReport = await checkPlugin(plugin);
 assert.equal(pluginReport.ok, true, "checkPlugin failed: " + JSON.stringify(pluginReport.checks.filter((c) => c.status === "fail")));
 
-// @galley/astro runtime + subpath resolution
+// @galleycms/astro runtime + subpath resolution
 const integration = galley({ url: "http://127.0.0.1:4400" });
-assert.equal(integration.name, "@galley/astro");
+assert.equal(integration.name, "@galleycms/astro");
 assert.equal(typeof integration.hooks["astro:config:setup"], "function");
 assert.equal(resolveGalleyUrl({ url: "http://127.0.0.1:4400/" }), "http://127.0.0.1:4400");
 
@@ -382,8 +383,8 @@ assert.ok(Array.isArray(formProviders) && formProviders.length > 0, "formProvide
 assert.ok(Array.isArray(aiCrawlers) && aiCrawlers.length > 0, "aiCrawlers empty");
 
 const req = createRequire(import.meta.url);
-const componentsPath = fileURLToPath(import.meta.resolve("@galley/astro/components"));
-const formsCssPath = req.resolve("@galley/astro/forms.css");
+const componentsPath = fileURLToPath(import.meta.resolve("@galleycms/astro/components"));
+const formsCssPath = req.resolve("@galleycms/astro/forms.css");
 assert.ok(existsSync(componentsPath) && componentsPath.includes("node_modules"), "components subpath did not resolve to installed package: " + componentsPath);
 assert.ok(existsSync(formsCssPath) && formsCssPath.includes("node_modules"), "forms.css subpath did not resolve to installed package: " + formsCssPath);
 assert.ok(readFileSync(formsCssPath, "utf8").includes(".galley-form"), "forms.css missing expected styles");
@@ -443,8 +444,8 @@ console.log("✓ Isolated runtime imports and subpath resolution passed");
   defineAdapter,
   type AdapterReport,
   type GalleyAdapter,
-} from "@galley/adapter-kit";
-import { describeAdapter } from "@galley/adapter-kit/vitest";
+} from "@galleycms/adapter-kit";
+import { describeAdapter } from "@galleycms/adapter-kit/vitest";
 import {
   PLUGIN_API_VERSION,
   ProviderError,
@@ -452,14 +453,14 @@ import {
   definePlugin,
   type GalleyPlugin,
   type PluginReport,
-} from "@galley/plugin-kit";
-import { describePlugin } from "@galley/plugin-kit/vitest";
-import galley, { resolveGalleyUrl, type GalleyOptions } from "@galley/astro";
-import { describeIssues, formSchema, scriptsSchema } from "@galley/astro/schema";
-import { aiCrawlers, formProviders, scriptIntegrations, type AiCrawler } from "@galley/astro/catalog";
-import { ConsentBanner, Form, Scripts, type FormProps } from "@galley/astro/components";
-import { initForms, registerFormProvider, type Submitter } from "@galley/astro/client";
-import type { FormDefinition, ScriptsConfig } from "@galley/astro/kit";
+} from "@galleycms/plugin-kit";
+import { describePlugin } from "@galleycms/plugin-kit/vitest";
+import galley, { resolveGalleyUrl, type GalleyOptions } from "@galleycms/astro";
+import { describeIssues, formSchema, scriptsSchema } from "@galleycms/astro/schema";
+import { aiCrawlers, formProviders, scriptIntegrations, type AiCrawler } from "@galleycms/astro/catalog";
+import { ConsentBanner, Form, Scripts, type FormProps } from "@galleycms/astro/components";
+import { initForms, registerFormProvider, type Submitter } from "@galleycms/astro/client";
+import type { FormDefinition, ScriptsConfig } from "@galleycms/astro/kit";
 
 export const apiVersions: [number, number] = [ADAPTER_API_VERSION, PLUGIN_API_VERSION];
 export const adapter: GalleyAdapter = conventionAdapter({
@@ -506,7 +507,35 @@ export type CheckedSubmitter = Submitter;
   }
 }
 
-const packDir = mkdtempSync(join(tmpdir(), "galley-kits-pack-"));
+const args = process.argv.slice(2);
+let packDestination = null;
+
+for (let i = 0; i < args.length; i += 1) {
+  const arg = args[i];
+
+  if (arg === "--pack-destination") {
+    packDestination = args[i + 1] ?? null;
+    if (!packDestination || packDestination.startsWith("-")) {
+      console.error("Usage: node scripts/verify-kits-pack.mjs [--pack-destination <dir>]");
+      process.exit(2);
+    }
+    i += 1;
+  } else if (arg.startsWith("--pack-destination=")) {
+    packDestination = arg.slice("--pack-destination=".length) || null;
+    if (!packDestination) {
+      console.error("Usage: node scripts/verify-kits-pack.mjs [--pack-destination <dir>]");
+      process.exit(2);
+    }
+  } else {
+    console.error(`Unknown argument: ${arg}\nUsage: node scripts/verify-kits-pack.mjs [--pack-destination <dir>]`);
+    process.exit(2);
+  }
+}
+
+const keepPackDir = packDestination !== null;
+const packDir = keepPackDir ? resolve(packDestination) : mkdtempSync(join(tmpdir(), "galley-kits-pack-"));
+
+if (keepPackDir) mkdirSync(packDir, { recursive: true });
 let failed = false;
 
 try {
@@ -539,7 +568,7 @@ try {
     verifyIsolatedConsumer(tarballs);
   }
 } finally {
-  rmSync(packDir, { recursive: true, force: true });
+  if (!keepPackDir) rmSync(packDir, { recursive: true, force: true });
 }
 
 process.exit(failed ? 1 : 0);

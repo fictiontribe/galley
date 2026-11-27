@@ -1,7 +1,7 @@
 # Galley + Astro on Astro's catalogs — submission kit
 
 Everything needed to list Galley where Astro developers look: the starter on
-[astro.build/themes](https://astro.build/themes/), the `@galley/astro` Dev
+[astro.build/themes](https://astro.build/themes/), the `@galleycms/astro` Dev
 Toolbar integration on [astro.build/integrations](https://astro.build/integrations/),
 and a Galley page among the [CMS guides](https://docs.astro.build/en/guides/cms/)
 in Astro's docs. Work through the six steps in order; each says what to do,
@@ -152,14 +152,15 @@ the four images.
 | Placeholder content: `example.com` URLs and e-mails, root-domain social links, nothing real | **Pass** — e-mails `@example.com`, site `https://www.example.com`, social links without usernames, a phone number from Ofcom's range for fiction (01632 960xxx), an invented town (Wrenhallow), people, clients and suppliers |
 | Not a duplicate listing | **Pass** — no Galley listing exists |
 
-## 5. Publish `@galley/astro`
+## 5. Publish `@galleycms/astro`
 
 The integrations catalog has no form: it syncs from npm weekly. See
 `integration-listing.md` for what it will show and the optional avatar.
 
-**Only you:** own the `@galley` scope on npm, remove `"private": true` and
-set the version in `packages/astro/package.json`, then
-`cd packages/astro && npm publish --access public`. Publish the Galley
+**Only you:** own the `@galleycms` scope on npm, set the version in
+`packages/astro/package.json`, run `node packages/astro/build.mjs`, then
+`cd packages/astro/dist && npm publish --access public` (or let
+`.github/workflows/release.yml` publish it on a version tag). Publish the Galley
 repository and site first, so the homepage and repository links answer.
 
 **Verified:** `npm pack --dry-run` ships 9 files (`src/`, README, LICENSE,
@@ -229,10 +230,10 @@ command and the three linked pages work — reviewers click them.
 3. **Publish to npm** — own the `@galley` scope (none of its packages exist
    today; whether the scope name is free could not be checked from here),
    publish `galley-cms` (the README's and CMS guide's `npx galley-cms`) and
-   `@galley/astro`. Deploy galley.fictiontribe.com (the docs links).
+   `@galleycms/astro`. Deploy galley.fictiontribe.com (the docs links).
 4. **Sign in to the theme portal** with GitHub and **confirm theme
    submissions are open** — they were paused around the Astro 6 release.
 5. **Open the docs pull request** to `withastro/docs`, after 1–3.
 6. **Confirm the starter's licence** — MIT was chosen for the template
    (people copy starters into client work, where Apache-2.0's NOTICE duties
-   are awkward); Galley and `@galley/astro` stay Apache-2.0.
+   are awkward); Galley and `@galleycms/astro` stay Apache-2.0.

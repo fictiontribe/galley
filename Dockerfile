@@ -43,7 +43,7 @@ RUN pnpm install --frozen-lockfile \
       --filter galley \
       --filter "galley-cms..." \
       --filter "@galley/web..." \
-      --filter "@galley/astro..." \
+      --filter "@galleycms/astro..." \
       --filter "@galley/overlay..."
 RUN pnpm --filter @galley/web build \
  && pnpm --filter galley-cms build \

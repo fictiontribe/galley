@@ -87,9 +87,9 @@ describe("galley(): forms and scripts", () => {
   });
 
   it("refuses a broken scripts file with a message that says where and what", () => {
-    expect(() => setup(site({ "src/data/scripts.json": "{ nope" }))).toThrow(/^@galley\/astro: src\/data\/scripts\.json can't be read as JSON/);
+    expect(() => setup(site({ "src/data/scripts.json": "{ nope" }))).toThrow(/^@galleycms\/astro: src\/data\/scripts\.json can't be read as JSON/);
     expect(() => setup(site({ "src/data/scripts.json": JSON.stringify({ scripts: [{ id: "gtm", kind: "gtm", enabled: true, settings: { containerId: "GTM-1" } }] }) }))).toThrow(
-      "@galley/astro: src/data/scripts.json has a problem:\n  - scripts[0].settings.containerId: “GTM-1” doesn't look like a Google Tag Manager Container ID (it looks like GTM-XXXXXXX).",
+      "@galleycms/astro: src/data/scripts.json has a problem:\n  - scripts[0].settings.containerId: “GTM-1” doesn't look like a Google Tag Manager Container ID (it looks like GTM-XXXXXXX).",
     );
   });
 
@@ -138,11 +138,11 @@ describe("scripts/vendor.mjs", () => {
     expect(Object.keys(first)).toContain("client/providers/marketo.js");
     expect(Object.keys(first)).toContain("settings.json");
     expect(Object.keys(first)).not.toContain("index.js");
-    expect(first["components/Form.astro"]!.startsWith(`---\n// Vendored from @galley/astro ${version} by scripts/vendor.mjs.`)).toBe(true);
-    expect(first["forms/forms.css"]!.startsWith(`/* Vendored from @galley/astro ${version}`)).toBe(true);
-    for (const [file, text] of Object.entries(first)) if (file !== "settings.json") expect(text, file).toContain(`@galley/astro ${version}`);
+    expect(first["components/Form.astro"]!.startsWith(`---\n// Vendored from @galleycms/astro ${version} by scripts/vendor.mjs.`)).toBe(true);
+    expect(first["forms/forms.css"]!.startsWith(`/* Vendored from @galleycms/astro ${version}`)).toBe(true);
+    for (const [file, text] of Object.entries(first)) if (file !== "settings.json") expect(text, file).toContain(`@galleycms/astro ${version}`);
     // Nothing points back at the package or the integration's virtual module.
-    expect(Object.values(first).join("\n")).not.toMatch(/^(import|export)[^\n]*(virtual:galley-kit|"@galley\/)/m);
+    expect(Object.values(first).join("\n")).not.toMatch(/^(import|export)[^\n]*(virtual:galley-kit|"@galley(?:cms)?\/)/m);
   });
 
   it("the browser runtime reports the package's version", () => {

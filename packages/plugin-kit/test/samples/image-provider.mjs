@@ -1,5 +1,5 @@
 // #region image-provider
-import { ProviderError } from "@galley/plugin-kit";
+import { ProviderError } from "@galleycms/plugin-kit";
 
 // An image provider for a made-up service, "Pictures". Selectable in Settings like the built-in ones.
 export default {

@@ -1,6 +1,6 @@
-// Vendored from @galley/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galleycms/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
-// `@galley/astro/schema` — zod schemas for the two kinds of file the site kit
+// `@galleycms/astro/schema` — zod schemas for the two kinds of file the site kit
 // reads: a form (src/content/forms/<id>.json) and the scripts setup
 // (src/data/scripts.json). They match the contract in kit.d.ts exactly
 // (test/contract.test.ts fails if they drift) and add the checks a type

@@ -296,7 +296,7 @@ post lives in a folder of its own:
 <!-- sample: gatsby-adapter.mjs fixture: gatsby-site -->
 ```js
 // gatsby-adapter.mjs — conventionAdapter does the detecting; the spec adds two hooks.
-import { conventionAdapter } from "@galley/adapter-kit";
+import { conventionAdapter } from "@galleycms/adapter-kit";
 
 export default conventionAdapter({
   id: "gatsby",
@@ -432,7 +432,7 @@ Install the conformance kit as a dev dependency:
 
 <!-- command -->
 ```sh
-npm install --save-dev @galley/adapter-kit
+npm install --save-dev @galleycms/adapter-kit
 ```
 
 Make a fixture: a tiny invented site of your framework, a few files deep,
@@ -443,7 +443,7 @@ with every shape your adapter reads. Then the whole test file is one call
 ```ts
 import { fileURLToPath } from "node:url";
 
-import { describeAdapter } from "@galley/adapter-kit/vitest";
+import { describeAdapter } from "@galleycms/adapter-kit/vitest";
 
 import { eleventyAdapter } from "../src/index";
 
@@ -540,9 +540,9 @@ Publish an adapter to npm as `galley-adapter-<framework>`, with the
   "files": ["lume-adapter.mjs"],
   "keywords": ["galley-adapter", "galley", "lume"],
   "license": "Apache-2.0",
-  "peerDependencies": { "@galley/adapter-kit": ">=0.1.0 <1" },
-  "peerDependenciesMeta": { "@galley/adapter-kit": { "optional": true } },
-  "devDependencies": { "@galley/adapter-kit": "^0.1.0" }
+  "peerDependencies": { "@galleycms/adapter-kit": ">=0.1.0 <1" },
+  "peerDependenciesMeta": { "@galleycms/adapter-kit": { "optional": true } },
+  "devDependencies": { "@galleycms/adapter-kit": "^0.1.0" }
 }
 ```
 

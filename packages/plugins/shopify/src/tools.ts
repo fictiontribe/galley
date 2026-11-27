@@ -10,7 +10,7 @@
  * The engine has no confirmation step of its own for the built-in
  * assistant; this plugin does not invent one.
  */
-import type { JsonValue, SiteToolContribution, ToolCallContext, ToolResult } from "@galley/plugin-kit";
+import type { JsonValue, SiteToolContribution, ToolCallContext, ToolResult } from "@galleycms/plugin-kit";
 import { ShopifyError, scrub, type StoreConnection } from "./client";
 import { demoCollections, demoProduct, demoSearch, resolveSource, type Source } from "./source";
 import { accessScopes, adminToken, getProduct, listCollections, productCopy, searchProducts, shopInfo, updateCopy, type CopyChange, type ProductCopy } from "./store";

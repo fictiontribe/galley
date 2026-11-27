@@ -2,7 +2,7 @@
 
 A Galley adapter for [Eleventy](https://www.11ty.dev) sites, and the worked
 example of a third-party adapter: it is built only on the public adapter API
-(`@galley/adapter-kit`, types only), and it passes the kit's conformance
+(`@galleycms/adapter-kit`, types only), and it passes the kit's conformance
 checks on two fixtures. The full guide is [docs/adapters.md](../../docs/adapters.md).
 
 ## What it reads

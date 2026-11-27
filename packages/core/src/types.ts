@@ -393,7 +393,7 @@ export interface SiteModel {
 
 /** The site kit as detection found it in a site. */
 export interface SiteKitInfo {
-  /** "vendored": the kit's files are in the site (src/galley/); "package": the site depends on @galley/astro. */
+  /** "vendored": the kit's files are in the site (src/galley/); "package": the site depends on @galleycms/astro. */
   source: "vendored" | "package";
   /** The kit version the files say they came from. */
   version?: string;

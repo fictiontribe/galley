@@ -115,7 +115,7 @@ galley/
 │   │       └── hosting/        "Host the editor online": editor hosts, recipe, plans
 │   ├── server/                 @galley/server — HTTP API, SSE, static UI hosting
 │   ├── cli/                    galley-cms — the `galley` binary
-│   ├── adapter-kit/            @galley/adapter-kit — adapter types + the conformance kit
+│   ├── adapter-kit/            @galleycms/adapter-kit — adapter types + the conformance kit
 │   ├── mcp/                    @galley/mcp — the engine's tools over the Model Context Protocol
 │   ├── web/                    @galley/web — the React UI
 │   └── overlay/                @galley/overlay — the script injected into previewed pages
@@ -173,7 +173,7 @@ text) and return data. Deterministic and unit-testable.
     files with front matter is a collection.
   Sites can name extra adapters in `galley.config.json` (`"adapters": [...]`,
   a package or a file inside the site); they are loaded only when named,
-  and `GALLEY_DISABLE_SITE_ADAPTERS=1` turns that off. `@galley/adapter-kit`
+  and `GALLEY_DISABLE_SITE_ADAPTERS=1` turns that off. `@galleycms/adapter-kit`
   is the conformance kit: `checkAdapter(adapter, fixture)` runs the checks
   that define a correct adapter (detects its own fixture and not foreign
   ones, every entry parses and survives an edit-and-undo byte for byte, URLs

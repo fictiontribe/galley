@@ -12,7 +12,7 @@ A form is **one JSON file** in the site — `src/content/forms/contact.json` —
 
 ```astro
 ---
-import { Form } from "../galley/components/index.js"; // vendored; "@galley/astro/components" once published
+import { Form } from "../galley/components/index.js"; // vendored; "@galleycms/astro/components" once published
 ---
 <Form id="contact" />
 ```

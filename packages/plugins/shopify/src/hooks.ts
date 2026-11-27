@@ -6,7 +6,7 @@
  * plugin's log. It never refuses the publish: a page that names a gone
  * product still builds (the starter shows nothing for it).
  */
-import type { BeforePublishResult, ChangeSet, JsonValue, SitePluginContext } from "@galley/plugin-kit";
+import type { BeforePublishResult, ChangeSet, JsonValue, SitePluginContext } from "@galleycms/plugin-kit";
 import { ShopifyError } from "./client";
 import { resolveSource } from "./source";
 import { existingHandles } from "./store";

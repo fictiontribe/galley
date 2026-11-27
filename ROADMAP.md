@@ -131,8 +131,9 @@ Built and waiting to be proven, or being built.
   and their server is exercised on every release, and on Windows the
   installed app is opened in the build; they are unsigned, and no person has
   used the app there yet.
-- **The kits on npm as packages**: the site kit (`@galley/astro`), the adapter
-  kit and the plugin kit. Sites carry the site kit vendored today.
+- **The kits on npm as packages**: the site kit (`@galleycms/astro`), the
+  adapter kit (`@galleycms/adapter-kit`) and the plugin kit
+  (`@galleycms/plugin-kit`). Sites can also carry the site kit vendored.
 - **The starters listed in Astro's catalogue** of themes.
 
 ## Later

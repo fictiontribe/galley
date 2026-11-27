@@ -1,7 +1,7 @@
 # galley-plugin-example
 
 A small but real Galley plugin, and the template to copy for your own. It is
-built only on the public plugin API (`@galley/plugin-kit`) and adds three
+built only on the public plugin API (`@galleycms/plugin-kit`) and adds three
 things:
 
 - **A script integration** — Fathom Analytics. Its snippet is a template

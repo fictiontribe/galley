@@ -16,7 +16,7 @@
  * Polling cadence and backoff belong to the engine (VideoService); this file
  * only answers "where is it now".
  */
-import { ProviderError, type ProviderCallContext, type VideoGenerationRequest, type VideoJobState, type VideoModelInfo, type VideoProviderPlugin } from "@galley/plugin-kit";
+import { ProviderError, type ProviderCallContext, type VideoGenerationRequest, type VideoJobState, type VideoModelInfo, type VideoProviderPlugin } from "@galleycms/plugin-kit";
 import { call, classify, dataUrl, headers, money, readBody, resolveBaseUrl, scrub, type BaseUrlOption } from "./client";
 
 interface CatalogueVideoModel {

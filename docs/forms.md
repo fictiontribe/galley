@@ -5,7 +5,7 @@ A form on a Galley site is **one JSON file** in the site's repository —
 
 ```astro
 ---
-import { Form } from "@galley/astro/components";
+import { Form } from "@galleycms/astro/components";
 ---
 <Form id="contact" />
 ```
@@ -15,7 +15,7 @@ builder, by the assistant, over MCP or by hand; it shows up in Proof and is
 published like any other change. This guide is for site developers and for
 whoever builds the app's form builder. The file format is the contract in
 `packages/core/src/kit.ts` (`FormDefinition`); the runtime that renders and
-sends it is `@galley/astro` (`packages/astro`).
+sends it is `@galleycms/astro` (`packages/astro`).
 
 - [Setting up a site](#setting-up-a-site)
 - [The file, annotated](#the-file-annotated)
@@ -89,11 +89,11 @@ from `packages/astro` in place. `GET /api/sites/:siteId/kit` says what a site
 has and what set-up would do; `POST /api/sites/:siteId/kit/setup` runs it as
 a job.
 
-**With the integration** (`npx astro add @galley/astro`):
+**With the integration** (`npx astro add @galleycms/astro`):
 
 ```ts
 // src/content.config.ts — three lines
-import { formSchema } from "@galley/astro/schema";
+import { formSchema } from "@galleycms/astro/schema";
 
 export const collections = {
   forms: defineCollection({ loader: glob({ pattern: "*.json", base: "./src/content/forms" }), schema: formSchema }),
@@ -735,7 +735,7 @@ type Submitter = (
 Register it before or after the page's forms start:
 
 ```js
-import { registerFormProvider } from "@galley/astro/client";      // vendored: "../galley/client/forms.js"
+import { registerFormProvider } from "@galleycms/astro/client";      // vendored: "../galley/client/forms.js"
 
 registerFormProvider("crm", async (values, destination) => {
   const res = await fetch(String(destination.settings.url), { method: "POST", body: JSON.stringify(values) });

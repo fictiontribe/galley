@@ -36,8 +36,8 @@ one part at a time:
 | `packages/web` — the React UI | `pnpm dev:web` (Vite, against a running server), or `pnpm --filter @galley/web dev:mock` (no server) | `pnpm --filter @galley/web test` |
 | `packages/overlay` — the preview script | built on demand by the server | `pnpm --filter @galley/overlay test` |
 | `packages/mcp` — the MCP server | `node packages/cli/bin/galley.js mcp <site>` (an MCP client starts it) | `pnpm --filter @galley/mcp test` |
-| `packages/astro` — the optional Astro toolbar app | in an Astro site's `astro.config` | `pnpm --filter @galley/astro test` |
-| `packages/adapter-kit` — the conformance kit | `node packages/adapter-kit/bin/galley-adapter-check.js <adapter> <fixture>` | `pnpm --filter @galley/adapter-kit test` |
+| `packages/astro` — the optional Astro toolbar app | in an Astro site's `astro.config` | `pnpm --filter @galleycms/astro test` |
+| `packages/adapter-kit` — the conformance kit | `node packages/adapter-kit/bin/galley-adapter-check.js <adapter> <fixture>` | `pnpm --filter @galleycms/adapter-kit test` |
 | `apps/desktop` — the Tauri shell | `pnpm --filter @galley/desktop dev` (needs Rust; see its README) | `pnpm --filter @galley/desktop test:rust` |
 | `apps/site` — website and documentation | `pnpm --filter @galley/site dev` | `pnpm --filter @galley/site check` |
 

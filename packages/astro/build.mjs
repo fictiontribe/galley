@@ -1,4 +1,4 @@
-// Builds the publishable @galley/astro package into dist/, a standalone
+// Builds the publishable @galleycms/astro package into dist/, a standalone
 // package directory ready for `npm pack` / `npm publish`:
 //
 //   dist/package.json        the published manifest (`private` omitted)

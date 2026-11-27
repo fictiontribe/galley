@@ -41,7 +41,7 @@ A site names its adapters in `galley.config.json`, as files inside the site or p
 
 ## Proving an adapter works
 
-The conformance kit, `@galley/adapter-kit` ([`packages/adapter-kit`]({repository}/tree/main/packages/adapter-kit)), runs sixteen checks against a small fixture site: it is recognised and wins against the built-ins, it doesn't claim other sites, nothing throws, collections exist and parse, **every entry survives an edit and its undo byte for byte**, URL patterns give every entry its own address, and the adapter never writes. Run from a clone against the Lume sample in the guide:
+The conformance kit, `@galleycms/adapter-kit` ([`packages/adapter-kit`]({repository}/tree/main/packages/adapter-kit)), runs sixteen checks against a small fixture site: it is recognised and wins against the built-ins, it doesn't claim other sites, nothing throws, collections exist and parse, **every entry survives an edit and its undo byte for byte**, URL patterns give every entry its own address, and the adapter never writes. Run from a clone against the Lume sample in the guide:
 
 ```sh
 node packages/adapter-kit/bin/galley-adapter-check.js ./lume-adapter.mjs packages/adapter-kit/test/fixtures/lume-site

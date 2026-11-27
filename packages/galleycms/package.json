@@ -1,0 +1,47 @@
+{
+  "name": "galleycms",
+  "version": "0.4.9",
+  "type": "module",
+  "description": "Run Galley, the open-source AI CMS for static sites: npx galleycms (alias for galley-cms).",
+  "keywords": [
+    "cms",
+    "ai-cms",
+    "headless-cms",
+    "git-cms",
+    "static-site",
+    "astro",
+    "visual-editor",
+    "mcp",
+    "galley"
+  ],
+  "license": "Apache-2.0",
+  "author": "Fiction Tribe (https://fictiontribe.com)",
+  "homepage": "https://galley.fictiontribe.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fictiontribe/galley.git",
+    "directory": "packages/galleycms"
+  },
+  "bugs": "https://github.com/fictiontribe/galley/issues",
+  "bin": {
+    "galleycms": "bin/galleycms.js"
+  },
+  "files": [
+    "bin/galleycms.js",
+    "index.js"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "galley-cms": "workspace:*"
+  }
+}

@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galleycms/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // Account Engagement (Pardot) form handler: a form post to the handler's
 // address with fields under the handler's external field names (`mapping`).

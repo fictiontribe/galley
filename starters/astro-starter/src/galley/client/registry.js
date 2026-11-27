@@ -1,10 +1,10 @@
-// Vendored from @galley/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galleycms/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // The one seam for adding a form destination: a submitter registered under a
 // provider id. Built-in providers load from ./providers/ on demand; a site or
 // plugin registers its own before (or after) the forms start:
 //
-//   import { registerFormProvider } from "@galley/astro/client";
+//   import { registerFormProvider } from "@galleycms/astro/client";
 //   registerFormProvider("crm", async (values, destination, context) => {
 //     const res = await fetch(String(destination.settings.url), { method: "POST", body: JSON.stringify(values) });
 //     return res.ok ? { ok: true } : { ok: false, detail: `HTTP ${res.status}` };

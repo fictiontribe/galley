@@ -1,5 +1,5 @@
 /**
- * site-kit/ — the engine's knowledge of the site kit (`@galley/astro`):
+ * site-kit/ — the engine's knowledge of the site kit (`@galleycms/astro`):
  * recognising its files in a site, describing and checking them with the
  * kit's own schema, the forms list, and "Set it up for me".
  */
