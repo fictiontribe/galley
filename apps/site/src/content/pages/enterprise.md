@@ -8,12 +8,11 @@ sections:
     heading: Enterprise governance, without a CMS server on your live site.
     text: Give marketing and content teams visual editing, AI, and side-by-side proof — while keeping production purely static behind Cloudflare, every word in your own Git repository, and sign-in on your own identity provider.
     cta:
-      label: Talk to Fiction Tribe
+      label: Talk to Galley
       href: "{makerContact}"
     secondary:
       label: Read the security model
       href: "/docs/running/security/"
-    note: Opens Fiction Tribe’s contact page.
     visual:
       kind: screen
       src: proof-changes
@@ -82,7 +81,7 @@ sections:
     points:
       - "**Keep your existing pipeline** — your own CI, security checks, and deployment targets stay in charge of going live"
       - "**Self-host inside your VPC** — run the Apache-2.0 multi-arch container (`ghcr.io/fictiontribe/galley`, read-only root filesystem, `cap_drop: ALL`, zero telemetry) on your own Linux server or cloud behind Caddy, Cloudflare Tunnel, or your corporate proxy"
-      - "**Or let Fiction Tribe run the editor** — on [Galley Cloud](/cloud/) (coming soon), each site’s editor is planned to run on its own isolated machine with no public IP address, pushing straight to your repository"
+      - "**Or run it on Galley Cloud** — on [Galley Cloud](/cloud/), each site’s editor runs on its own isolated machine with no public IP address, pushing straight to your repository"
       - "**Monorepo-aware** — point Galley at a subfolder like `apps/site` and files outside that folder are neither editable nor published"
     link:
       label: Run a hosted install
@@ -189,20 +188,20 @@ sections:
       - q: How does Single Sign-On (SSO) work, and what has been verified so far?
         a: Self-hosted installs support OpenID Connect (Authorization Code flow with PKCE) configured exclusively through server environment variables (`GALLEY_OIDC_ISSUER`, `GALLEY_OIDC_CLIENT_ID`). Users are matched by issuer and subject rather than mutable e-mail, roles (`owner`, `editor`, `contributor`) are mapped from an administrator-controlled IdP claim at every sign-in, `GALLEY_OIDC_ONLY=1` turns off password sign-in completely, and OIDC Back-Channel Logout ends active browser, event-stream, and preview sessions immediately. Per our [security model](/docs/running/security/#not-covered-yet), OIDC SSO is new and in final checks — verified against the test suite’s OIDC provider in Chromium and WebKit, not yet run against a live external identity service or in Firefox — and is planned for [Galley Cloud](/cloud/) workspace sign-in.
       - q: Does Galley phone home, collect telemetry, or train AI on our content?
-        a: No. Galley has zero telemetry, no vendor account requirement, and makes no outbound calls to Fiction Tribe. Outbound traffic goes only to your git host, your site’s package registry, your configured identity provider, and any AI or mail service you explicitly configure. AI requests leave the server only when someone actively uses the assistant or an AI-assisted feature, using your own API key (or an internal endpoint set via `GALLEY_ANTHROPIC_BASE_URL`). See the full list in [What leaves the machine](/docs/running/security/#what-leaves-the-machine).
+        a: No. Galley has zero telemetry, no vendor account requirement, and makes no outbound calls to Galley servers. Outbound traffic goes only to your git host, your site’s package registry, your configured identity provider, and any AI or mail service you explicitly configure. AI requests leave the server only when someone actively uses the assistant or an AI-assisted feature, using your own API key (or an internal endpoint set via `GALLEY_ANTHROPIC_BASE_URL`). See the full list in [What leaves the machine](/docs/running/security/#what-leaves-the-machine).
       - q: How do you keep non-technical editors from breaking code or layouts?
         a: Four layers work together. Roles separate `contributor`, `editor`, and `owner`, and the engine enforces content mode versus build mode across the UI, HTTP API, and AI tools so contributors cannot edit templates, code, or `galley.config.json`, or publish. Astro’s Zod schemas validate content structure before anything ships, every change waits in Proof beside the live page, and pull-request mode routes publishes through GitHub or GitLab review. As our [security model](/docs/running/security/#a-hosted-install) notes, roles keep people out of each other’s way while the container itself is the hard security boundary, because a site’s preview runs repository code.
       - q: How are backups and disaster recovery handled?
-        a: Because every published version is a standard Git commit, your Git host and every clone already hold a complete copy of the site’s content, configuration, and history. For unpublished drafts, accounts, and install state on a self-hosted editor, `galley backup` and the Install page produce a single passphrase-sealed archive encrypted with `scrypt` and `AES-256-GCM` in authenticated frames, verified end-to-end before a restore touches disk. On [Galley Cloud](/cloud/) (coming soon), nightly repository bundles kept 30–90 days are planned alongside your Git history.
+        a: Because every published version is a standard Git commit, your Git host and every clone already hold a complete copy of the site’s content, configuration, and history. For unpublished drafts, accounts, and install state on a self-hosted editor, `galley backup` and the Install page produce a single passphrase-sealed archive encrypted with `scrypt` and `AES-256-GCM` in authenticated frames, verified end-to-end before a restore touches disk. On [Galley Cloud](/cloud/), nightly repository bundles kept 30–90 days sit alongside your Git history.
       - q: Do you have SOC 2, ISO 27001, or custom enterprise SLAs?
-        a: Not yet. Galley is a 2026 product and does not carry a SOC 2 report, ISO 27001 certification, or a published SLA badge today. Teams with strict compliance boundaries can audit the Apache-2.0 source and run the hardened container inside their own audited VPC with zero outbound calls to Fiction Tribe — keeping every credential, repository, and session inside their own perimeter. If you need an architecture review or commercial support, [talk directly with Fiction Tribe]({makerContact}).
+        a: Not yet. Galley is a 2026 product and does not carry a SOC 2 report, ISO 27001 certification, or a published SLA badge today. Teams with strict compliance boundaries can audit the Apache-2.0 source and run the hardened container inside their own audited VPC with zero outbound calls to Galley — keeping every credential, repository, and session inside their own perimeter. If you need an architecture review or commercial support, [talk directly with Galley]({makerContact}).
 
   - type: close
     id: talk
     heading: Bring your security checklist and your editors.
     text: Talk directly with the engineers building Galley about your repository, SSO provider, and hosting setup — or start a self-hosted container in your own cloud today.
     actions:
-      - label: Talk to Fiction Tribe
+      - label: Talk to Galley
         href: "{makerContact}"
       - label: Read the security model
         href: /docs/running/security/
