@@ -248,6 +248,11 @@ const coveredElsewhere: ApiRouteKey[] = [
   "POST /api/sites/:siteId/visibility/write", // visibility.test.ts (real engine; batches without a key, and core test/seo/write.test.ts)
   "GET /api/sites/:siteId/visibility/write/:jobId", // visibility.test.ts (real engine; batches without a key, and core test/seo/write.test.ts)
   "POST /api/sites/:siteId/visibility/write/:jobId/cancel", // visibility.test.ts (real engine; batches without a key, and core test/seo/write.test.ts)
+  "GET /api/sites/:siteId/visibility/intelligence", // visibility-intelligence.test.ts (real engine + mocked search-data upstream)
+  "POST /api/sites/:siteId/visibility/intelligence/refresh", // visibility-intelligence.test.ts (real engine + mocked search-data upstream)
+  "POST /api/sites/:siteId/visibility/intelligence/explore", // visibility-intelligence.test.ts (real engine + mocked search-data upstream)
+  "POST /api/sites/:siteId/visibility/intelligence/tune", // visibility-intelligence.test.ts (real engine + mocked search-data upstream)
+  "POST /api/sites/:siteId/visibility/intelligence/draft-gap", // visibility-intelligence.test.ts (real engine + mocked search-data upstream)
   "POST /api/sites/:siteId/visibility/external-links", // visibility.test.ts (real engine; batches without a key, and core test/seo/write.test.ts)
   "POST /api/auth/login", // auth.test.ts
   "POST /api/auth/logout", // auth.test.ts

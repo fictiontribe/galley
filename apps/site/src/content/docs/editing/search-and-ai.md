@@ -28,6 +28,18 @@ Findings come in groups — **Titles & descriptions**, **Headings & content**, *
 
 **What an AI agent reads** shows a page as an AI agent gets it.
 
+## Live search intelligence
+
+When live search data is connected, **Search & AI** also shows how the published domain performs in search and AI answers — mapped straight to the site's content files and redirects:
+
+- **Overview & quick wins** — live organic ranking counts, estimated monthly visits, striking-distance opportunities (`#4–#20`), keyword cannibalization alerts, and broken backlink callouts. Click **Tune in Proof** on any matched page to compare against the top live results and stage title, description, or opening improvements in Proof.
+- **Rankings & explorer** — filter every ranking query by position or route, and explore new seed topics for search volume, keyword difficulty, CPC, search intent, and whether the site already covers the topic.
+- **Competitor gaps** — add up to three competitor domains to surface topics where rivals rank in the Top 10 and your site has no ranking page yet, paired with a suggested collection and section list from your schema and a 1-click **Draft page → Proof** action.
+- **Backlinks & 404s** — view referring domains and spot missing URLs that still hold live external links, with 1-click **Add 301 → Proof** recovery into your redirects list.
+- **AI answer citations** — see prompts in ChatGPT and Google AI Overviews where your domain or brand appears alongside your built-in site checks and AI crawler switches.
+
+Live search intelligence is included automatically on Galley Cloud plans. On self-hosted and local installs, connect your own credentials under **App settings › Search intelligence** (or set `GALLEY_SEARCH_DATA_KEY` in the environment); without a key, all built-in site checks and AI crawler controls continue to work normally.
+
 ## If something's different
 
 - **"Only the content files were checked."** Start the preview to check the pages as served too.

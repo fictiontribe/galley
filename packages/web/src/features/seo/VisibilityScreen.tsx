@@ -1,21 +1,32 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { GROUP_LABELS, GROUP_ORDER } from "@galley/core/seo/catalog";
-import type { CrawlerReport, Finding, FindingGroup, SiteAudit, WriteKind } from "@galley/core/seo/types";
+import type { CrawlerReport, Finding, FindingGroup, SiteAudit, TuneEntryResult, WriteKind } from "@galley/core/seo/types";
 import "./seo.css";
 import { useTopBar } from "@/app/chrome";
 import { setQueryData } from "@/lib/query";
 import { usePreview, usePreviewStatus } from "@/lib/stores/preview";
 import { useSite } from "@/lib/stores/site";
 import { useQuery } from "@/lib/query";
-import { api } from "@/lib/api";
+import { api, errorShape } from "@/lib/api";
 import { useManagedAi } from "@/lib/credits";
-import { Badge, Button, EmptyState, ErrorState, Icon, PageHeader, Skeleton } from "@/ui";
+import { notify } from "@/lib/stores/toasts";
+import { Badge, Button, EmptyState, ErrorState, Icon, PageHeader, Skeleton, TabPanel, Tabs } from "@/ui";
 import { AgentPanel, CrawlerPanel } from "./AiPanel";
 import { BatchDialog } from "./BatchDialog";
 import { FindingRow } from "./FindingRow";
+import {
+  AiCitationsCard,
+  BacklinksRecoveryPanel,
+  CompetitorGapsPanel,
+  IntelligenceControlsBar,
+  OverviewIntelligencePanel,
+  RankingsExplorerPanel,
+  SearchDataConnectCard,
+  TuneResultDialog,
+} from "./IntelligencePanels";
 import { batchesFor, count, sampleWords, SEVERITY, WRITE_LABEL } from "./logic";
-import { useFixes, useSiteAudit, visibilityKeys } from "./useVisibility";
+import { useFixes, useSearchIntelligence, useSiteAudit, visibilityKeys } from "./useVisibility";
 import { isVisibilitySettings } from "@/features/forms/logic/locate";
 
 /**
@@ -209,12 +220,24 @@ function Body({ siteId, audit, refetch }: { siteId: string; audit: SiteAudit; re
   const { disabled: aiDisabled } = useManagedAi();
   // Asked every render, AI off or not: a hook called only sometimes breaks the screen when AI is switched off or on.
   const settings = useQuery(["settings"], () => api("GET /api/settings"));
+  const intel = useSearchIntelligence(siteId);
   const connected = !aiDisabled && (settings.data?.secrets.some((secret) => secret.name === "anthropic" && secret.configured) ?? false);
   const [open, setOpen] = useState<ReadonlySet<FindingGroup>>(() => new Set(GROUP_ORDER.filter((group) => audit.byGroup[group].must + audit.byGroup[group].should > 0).slice(0, 1)));
   const [batch, setBatch] = useState<{ kind: WriteKind; paths?: string[] } | null>(null);
+  const [chosenTab, setChosenTab] = useState<string | null>(null);
+  const [refreshingIntel, setRefreshingIntel] = useState(false);
+  const [tuningKey, setTuningKey] = useState<string | null>(null);
+  const [tuneResult, setTuneResult] = useState<TuneEntryResult | null>(null);
+  const [draftingKey, setDraftingKey] = useState<string | null>(null);
   const { fix, busy } = useFixes(siteId, refetch);
   const address = siteAddress(production);
   const byGroup = useMemo(() => new Map(GROUP_ORDER.map((group) => [group, audit.findings.filter((f) => f.group === group)])), [audit.findings]);
+
+  const intelState = intel.data;
+  const intelReady = Boolean(intelState && (intelState.status.configured || (intelState.status.managed && !intelState.status.disabled)));
+  const defaultTab = intelReady ? "overview" : "checks";
+  const activeTab = chosenTab ?? defaultTab;
+
   const toggle = (group: FindingGroup) => {
     const next = new Set(open);
 
@@ -223,42 +246,211 @@ function Body({ siteId, audit, refetch }: { siteId: string; audit: SiteAudit; re
     setOpen(next);
   };
 
+  const refreshIntel = async (body: { domain?: string; locationCode?: number; competitors?: string[] }) => {
+    setRefreshingIntel(true);
+    try {
+      const next = await api("POST /api/sites/:siteId/visibility/intelligence/refresh", {
+        params: { siteId },
+        body,
+      });
+
+      setQueryData(visibilityKeys.intelligence(siteId), next);
+      notify({
+        tone: "success",
+        title: "Live search data updated",
+        body: next.snapshot
+          ? `${next.snapshot.tallies.rankingKeywords} ranking keywords and ${next.snapshot.tallies.strikingDistanceCount} quick wins loaded for ${next.snapshot.domain}.`
+          : "Snapshot updated.",
+      });
+    } catch (caught) {
+      notify({ tone: "danger", title: "Couldn’t fetch live search data", body: errorShape(caught).message });
+    } finally {
+      setRefreshingIntel(false);
+    }
+  };
+
+  const handleTune = async (path: string, keyword: string) => {
+    const key = `${path}:${keyword}`;
+
+    setTuningKey(key);
+    try {
+      const result = await api("POST /api/sites/:siteId/visibility/intelligence/tune", {
+        params: { siteId },
+        body: { path, keyword, ...(intelState?.config.locationCode ? { locationCode: intelState.config.locationCode } : {}) },
+      });
+
+      setTuneResult(result);
+      if (result.applied > 0) void refetch();
+    } catch (caught) {
+      notify({ tone: "danger", title: "Couldn’t tune page", body: errorShape(caught).message });
+    } finally {
+      setTuningKey(null);
+    }
+  };
+
+  const handleDraftGap = async (keyword: string, collection?: string | null) => {
+    setDraftingKey(keyword);
+    try {
+      const result = await api("POST /api/sites/:siteId/visibility/intelligence/draft-gap", {
+        params: { siteId },
+        body: {
+          keyword,
+          ...(collection ? { collection } : {}),
+          ...(intelState?.config.locationCode ? { locationCode: intelState.config.locationCode } : {}),
+        },
+      });
+
+      notify({
+        tone: "success",
+        title: "Draft page staged in Proof",
+        body: `${result.path} was drafted for “${result.keyword}”. Review and publish from Proof.`,
+      });
+      void refetch();
+    } catch (caught) {
+      notify({ tone: "danger", title: "Couldn’t draft page", body: errorShape(caught).message });
+    } finally {
+      setDraftingKey(null);
+    }
+  };
+
+  const tabItems = [
+    {
+      id: "overview",
+      label: "Overview & quick wins",
+      ...(intelState?.snapshot?.tallies.strikingDistanceCount ? { count: intelState.snapshot.tallies.strikingDistanceCount } : {}),
+    },
+    {
+      id: "rankings",
+      label: "Rankings & explorer",
+      ...(intelState?.snapshot?.tallies.rankingKeywords ? { count: intelState.snapshot.tallies.rankingKeywords, quietCount: true } : {}),
+    },
+    {
+      id: "gaps",
+      label: "Competitor gaps",
+      ...(intelState?.snapshot?.competitorGaps.length ? { count: intelState.snapshot.competitorGaps.length, quietCount: true } : {}),
+    },
+    {
+      id: "backlinks",
+      label: "Backlinks & 404s",
+      ...(intelState?.snapshot?.tallies.brokenBacklinkTargets ? { count: intelState.snapshot.tallies.brokenBacklinkTargets } : {}),
+    },
+    {
+      id: "checks",
+      label: "AI citations & site checks",
+      ...(audit.counts.must + audit.counts.should > 0 ? { count: audit.counts.must + audit.counts.should, quietCount: true } : {}),
+    },
+  ];
+
+  const renderConnectOrControls = () => {
+    if (!intelState) return null;
+    if (!intelReady) return <SearchDataConnectCard disabledManaged={Boolean(intelState.status.managed && intelState.status.disabled)} />;
+    return <IntelligenceControlsBar siteId={siteId} state={intelState} refreshing={refreshingIntel} onRefresh={refreshIntel} />;
+  };
+
   return (
     <>
-      <div className="seo-overview">
-        <Tally audit={audit} />
-        {/* The counts are in the tallies; the summary's first sentence says what was checked. */}
-        <p className="seo-overview__summary">{audit.summary.split(/(?<=\.)\s/)[0]}</p>
-      </div>
-      <RenderNote siteId={siteId} audit={audit} />
-      <div className="seo-layout">
-        <div className="seo-layout__main">
-          {GROUP_ORDER.map((group) => (
-            <Group
-              key={group}
-              siteId={siteId}
-              group={group}
-              findings={byGroup.get(group) ?? []}
-              open={open.has(group)}
-              onToggle={() => toggle(group)}
-              connected={connected}
-              address={address}
-              fixing={busy}
-              onFix={(items) => void fix(items)}
-              onWrite={(kind, paths) => setBatch({ kind, ...(paths ? { paths } : {}) })}
-            />
-          ))}
-          <p className="seo-fineprint">
-            Each item says whether it is measured on the site, documented by the search engine or AI provider (with a link to their page), or a judgement. Nothing here predicts rankings or whether an AI assistant will quote the site.
-          </p>
+      <Tabs label="Search and AI sections" idBase="seo-view" items={tabItems} value={activeTab} onChange={setChosenTab} className="seo-tabs" />
+
+      <TabPanel idBase="seo-view" id="overview" value={activeTab} className="seo-tabpanel">
+        {renderConnectOrControls()}
+        {intelReady && intelState ? (
+          <OverviewIntelligencePanel
+            siteId={siteId}
+            state={intelState}
+            aiConnected={connected}
+            tuningKey={tuningKey}
+            draftingKey={draftingKey}
+            onTune={(path, keyword) => void handleTune(path, keyword)}
+            onDraftGap={(keyword, collection) => void handleDraftGap(keyword, collection)}
+            onSwitchTab={setChosenTab}
+          />
+        ) : (
+          <div className="seo-overview seo-overview--spaced">
+            <Tally audit={audit} />
+            <p className="seo-overview__summary">{audit.summary.split(/(?<=\.)\s/)[0]}</p>
+          </div>
+        )}
+      </TabPanel>
+
+      <TabPanel idBase="seo-view" id="rankings" value={activeTab} className="seo-tabpanel">
+        {renderConnectOrControls()}
+        {intelReady && intelState ? (
+          <RankingsExplorerPanel
+            siteId={siteId}
+            state={intelState}
+            aiConnected={connected}
+            tuningKey={tuningKey}
+            draftingKey={draftingKey}
+            onTune={(path, keyword) => void handleTune(path, keyword)}
+            onDraftGap={(keyword, collection) => void handleDraftGap(keyword, collection)}
+          />
+        ) : null}
+      </TabPanel>
+
+      <TabPanel idBase="seo-view" id="gaps" value={activeTab} className="seo-tabpanel">
+        {renderConnectOrControls()}
+        {intelReady && intelState ? (
+          <CompetitorGapsPanel
+            state={intelState}
+            refreshing={refreshingIntel}
+            aiConnected={connected}
+            draftingKey={draftingKey}
+            onUpdateCompetitors={(competitors) =>
+              refreshIntel({
+                domain: intelState.config.domain || undefined,
+                locationCode: intelState.config.locationCode,
+                competitors,
+              })
+            }
+            onDraftGap={(keyword, collection) => void handleDraftGap(keyword, collection)}
+          />
+        ) : null}
+      </TabPanel>
+
+      <TabPanel idBase="seo-view" id="backlinks" value={activeTab} className="seo-tabpanel">
+        {renderConnectOrControls()}
+        {intelReady && intelState ? <BacklinksRecoveryPanel siteId={siteId} state={intelState} /> : null}
+      </TabPanel>
+
+      <TabPanel idBase="seo-view" id="checks" value={activeTab} className="seo-tabpanel">
+        <AiCitationsCard siteId={siteId} state={intelState} />
+        <div className="seo-overview">
+          <Tally audit={audit} />
+          {/* The counts are in the tallies; the summary's first sentence says what was checked. */}
+          <p className="seo-overview__summary">{audit.summary.split(/(?<=\.)\s/)[0]}</p>
         </div>
-        <aside className="seo-layout__side" aria-label="How AI systems see this site">
-          <h2 className="seo-side__title">How AI systems see this site</h2>
-          <CrawlerPanel siteId={siteId} report={audit.crawlers} onSaved={(next: CrawlerReport) => setQueryData(visibilityKeys.site(siteId), { ...audit, crawlers: next })} />
-          <AgentPanel siteId={siteId} report={audit.agentReadable} />
-        </aside>
-      </div>
+        <RenderNote siteId={siteId} audit={audit} />
+        <div className="seo-layout">
+          <div className="seo-layout__main">
+            {GROUP_ORDER.map((group) => (
+              <Group
+                key={group}
+                siteId={siteId}
+                group={group}
+                findings={byGroup.get(group) ?? []}
+                open={open.has(group)}
+                onToggle={() => toggle(group)}
+                connected={connected}
+                address={address}
+                fixing={busy}
+                onFix={(items) => void fix(items)}
+                onWrite={(kind, paths) => setBatch({ kind, ...(paths ? { paths } : {}) })}
+              />
+            ))}
+            <p className="seo-fineprint">
+              Each item says whether it is measured on the site, documented by the search engine or AI provider (with a link to their page), or a judgement.
+            </p>
+          </div>
+          <aside className="seo-layout__side" aria-label="How AI systems see this site">
+            <h2 className="seo-side__title">How AI systems see this site</h2>
+            <CrawlerPanel siteId={siteId} report={audit.crawlers} onSaved={(next: CrawlerReport) => setQueryData(visibilityKeys.site(siteId), { ...audit, crawlers: next })} />
+            <AgentPanel siteId={siteId} report={audit.agentReadable} />
+          </aside>
+        </div>
+      </TabPanel>
+
       <BatchDialog siteId={siteId} open={batch !== null} kind={batch?.kind ?? null} {...(batch?.paths ? { paths: batch.paths } : {})} onClose={() => setBatch(null)} onFinished={() => void refetch()} />
+      <TuneResultDialog siteId={siteId} result={tuneResult} onClose={() => setTuneResult(null)} />
     </>
   );
 }

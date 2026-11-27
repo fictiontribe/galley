@@ -27,6 +27,7 @@ const SECTIONS = [
   { id: "assistant", label: "Assistant" },
   { id: "images", label: "Images" },
   { id: "videos", label: "Videos" },
+  { id: "search-data", label: "Search intelligence" },
   { id: "you", label: "You" },
   { id: "appearance", label: "Theme and appearance" },
   { id: "previews", label: "Previews" },
@@ -53,6 +54,7 @@ const SECRET_LABEL: Record<SecretName, string> = {
   vercel: "Vercel access key",
   fly: "Fly.io access key",
   gcp: "Google Cloud key file",
+  search_data: "Live search data",
 };
 
 async function patchSettings(patch: SettingsPatch): Promise<Settings> {
@@ -474,6 +476,48 @@ function ImagesSection({ settings }: { settings: Settings }) {
   );
 }
 
+function SearchDataSettingsSection({ settings }: { settings: Settings }) {
+  const where = useWhere();
+  const searchDataMeta = useMeta((s) => s.meta?.searchData);
+  const managed = Boolean(searchDataMeta?.managed);
+  const disabled = Boolean(searchDataMeta?.managed && searchDataMeta?.disabled);
+  const secret = settings.secrets.find((item) => item.name === "search_data");
+
+  return (
+    <SettingsSection
+      id="search-data"
+      title="Search intelligence"
+      description={
+        managed
+          ? disabled
+            ? "Switched off for this site."
+            : "Live rankings, keyword research, competitor gaps, backlinks, and AI answer citations are included with your Galley Cloud plan."
+          : `Connect your own live search data credentials to unlock rankings, keyword research, competitor gaps, backlinks, and AI citations. Stored ${where} only.`
+      }
+    >
+      {managed ? (
+        <div className="app-secret">
+          <div className="app-secret__row">
+            <div className="app-secret__text">
+              <span className="g-label">Live search data</span>
+              <span className="app-secret__status">
+                <ProofMark kind={disabled ? "stet" : "reg"} className={disabled ? "g-faint" : "app-secret__ok"} />
+                <span>{disabled ? "Switched off for this site" : "Included in plan"}</span>
+              </span>
+            </div>
+            {disabled ? null : <Badge tone="success">Included in plan</Badge>}
+          </div>
+        </div>
+      ) : secret ? (
+        <SecretRow
+          secret={secret}
+          hint="API key (login:password or base64) for rankings, keyword research, competitor gaps, backlinks, and AI citations"
+        />
+      ) : null}
+    </SettingsSection>
+  );
+}
+
 /**
  * A hosted install's publishing name: one site, so no site-level author to
  * defer to — and when whoever runs the server set it, it can't change here.
@@ -808,6 +852,7 @@ export function AppSettingsScreen() {
                 <AssistantSection settings={settings.data} />
                 <ImagesSection settings={settings.data} />
                 <VideoSettingsSection />
+                <SearchDataSettingsSection settings={settings.data} />
                 <YouSection settings={settings.data} />
                 <AppearanceSection settings={settings.data} />
                 {install ? null : <PreviewsSection settings={settings.data} />}

@@ -174,7 +174,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
     ...(options.appUrl ? { appUrl: options.appUrl } : {}),
   });
 
-  const visibility = createVisibilityService({ settings, events, env: options.env ?? process.env });
+  const visibility = createVisibilityService({ home: options.home, settings, events, env: options.env ?? process.env });
   // After the registry: it follows list edits made through any part of the app (the assistant's entry tools, Undo).
   const redirects = createRedirectsService({ home: options.home, settings, events, registry, env: options.env ?? process.env });
   // The site's own brand: its jobs, the material waiting to be saved, the proposal under review.

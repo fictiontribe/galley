@@ -829,6 +829,30 @@ export interface ApiRoutes {
     body: { limit?: number };
     response: { checked: number; total: number; findings: import("./seo/types").Finding[] };
   };
+  /** Live search intelligence state: status (BYOK or managed), tracked domain & competitors, and the latest saved snapshot. */
+  "GET /api/sites/:siteId/visibility/intelligence": {
+    response: import("./seo/types").SearchIntelligenceState;
+  };
+  /** Refresh live rankings, striking-distance wins, competitor gaps, backlinks, 404 recovery targets, and AI citations. */
+  "POST /api/sites/:siteId/visibility/intelligence/refresh": {
+    body: import("./seo/types").IntelligenceRefreshRequest;
+    response: import("./seo/types").SearchIntelligenceState;
+  };
+  /** Live keyword explorer: volume, difficulty, intent, site coverage, and top organic results for a seed term. */
+  "POST /api/sites/:siteId/visibility/intelligence/explore": {
+    body: { keyword: string; locationCode?: number };
+    response: import("./seo/types").KeywordExploreResult;
+  };
+  /** Tune a ranking page's title, description, or opening against live search results; edits land in Proof. */
+  "POST /api/sites/:siteId/visibility/intelligence/tune": {
+    body: { path: string; keyword: string; locationCode?: number };
+    response: import("./seo/types").TuneEntryResult;
+  };
+  /** Draft a new page for a competitor content gap using the site's schema and brand voice; lands in Proof. */
+  "POST /api/sites/:siteId/visibility/intelligence/draft-gap": {
+    body: { keyword: string; collection?: string; locationCode?: number };
+    response: import("./seo/types").DraftGapResult;
+  };
 
   // ── bringing a site over: the WordPress import (docs/wordpress-import.md) ──
   /**
@@ -1128,4 +1152,4 @@ export const OVERLAY_SCRIPT_PATH = "/__galley/overlay.js";
 export const PROXY_HEALTH_PATH = "/__galley/health";
 
 /** Secret names accepted by PUT /api/secrets/:name. */
-export const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly", "gcp"];
+export const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly", "gcp", "search_data"];

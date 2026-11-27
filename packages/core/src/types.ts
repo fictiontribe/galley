@@ -1671,7 +1671,7 @@ export interface ModelInfo {
   outputPrice: number;
 }
 
-export type SecretName = "anthropic" | "openai" | "google" | "cloudflare" | "vercel" | "fly" | "gcp";
+export type SecretName = "anthropic" | "openai" | "google" | "cloudflare" | "vercel" | "fly" | "gcp" | "search_data";
 
 export interface SecretStatus {
   name: SecretName;
@@ -1806,6 +1806,13 @@ export interface AiCreditsInfo {
   balance: AiCreditsBalance | null;
 }
 
+export interface SearchDataMetaInfo {
+  /** True when live search intelligence is included via a managed Galley Cloud proxy. */
+  managed: boolean;
+  /** True when managed search intelligence is switched off for this site. */
+  disabled?: boolean;
+}
+
 export interface MetaInfo {
   version: string;
   brand: BrandConfig;
@@ -1828,6 +1835,8 @@ export interface MetaInfo {
   look?: import("./themes").AppliedTheme;
   /** Managed AI credits mode metadata. Absent when self-hosted / BYOK. */
   ai?: AiMetaInfo;
+  /** Managed live search data metadata. Absent when self-hosted / BYOK. */
+  searchData?: SearchDataMetaInfo;
 }
 
 // ─────────────────────────────────────────────────────────────── deploy

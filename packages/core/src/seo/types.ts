@@ -322,3 +322,200 @@ export interface AgentView {
 }
 
 export type CrawlerChoice = "allow" | "block";
+
+// ── search & AI intelligence (live search data) ──────────────────────────
+
+export type SearchIntent = "informational" | "commercial" | "transactional" | "navigational";
+
+export interface SearchDataStatus {
+  /** True when live search data is ready (BYOK key set or managed mode on). */
+  configured: boolean;
+  /** True when included automatically through Galley Cloud managed search intelligence. */
+  managed: boolean;
+  /** True when managed search intelligence is switched off for this site. */
+  disabled?: boolean;
+  /** Where the credentials come from. */
+  source: "env" | "stored" | "managed" | null;
+}
+
+export interface SearchIntelligenceConfig {
+  /** Target domain being tracked (e.g. "example.com"). */
+  domain: string;
+  /** Numeric location code (default 2840 = United States, 2826 = United Kingdom). */
+  locationCode: number;
+  /** Up to 3 competitor domains to compare content gaps against. */
+  competitors: string[];
+}
+
+export interface RankedKeywordItem {
+  keyword: string;
+  position: number;
+  previousPosition?: number | null;
+  searchVolume: number;
+  keywordDifficulty: number | null;
+  cpc: number | null;
+  intent: SearchIntent | null;
+  estimatedVisits: number;
+  /** Full or path URL returned by search rankings. */
+  url: string;
+  /** Normalized pathname (e.g. "/pricing/"). */
+  urlPath: string;
+  /** Matched Galley content entry, when one owns this route. */
+  entryPath: string | null;
+  entryTitle: string | null;
+  collection: string | null;
+  /** Opportunity score for striking-distance prioritisation. */
+  opportunityScore: number;
+}
+
+export interface CannibalizationAlert {
+  keyword: string;
+  searchVolume: number;
+  pages: Array<{
+    url: string;
+    urlPath: string;
+    position: number;
+    entryPath: string | null;
+    entryTitle: string | null;
+  }>;
+}
+
+export interface CompetitorGapItem {
+  keyword: string;
+  searchVolume: number;
+  keywordDifficulty: number | null;
+  cpc: number | null;
+  intent: SearchIntent | null;
+  competitor: string;
+  competitorPosition: number;
+  competitorUrl: string | null;
+  /** Suggested collection in this site's model where a new page fits best. */
+  suggestedCollection: string | null;
+  /** Suggested section types from that collection's blocks schema. */
+  suggestedSections: string[];
+}
+
+export interface ReferringDomainItem {
+  domain: string;
+  rank: number | null;
+  backlinks: number;
+  firstSeen: string | null;
+}
+
+export interface BrokenBacklinkTarget {
+  /** Broken URL on this site that still has live referring domains. */
+  url: string;
+  urlPath: string;
+  statusCode: number | null;
+  referringDomains: number;
+  backlinks: number;
+  /** Closest live route on the site to redirect visitors and link equity to. */
+  suggestedTarget: string | null;
+  suggestedTitle: string | null;
+}
+
+export interface AiCitationItem {
+  prompt: string;
+  platform: string;
+  url: string | null;
+  urlPath: string | null;
+  entryPath: string | null;
+  entryTitle: string | null;
+  mentionedBrand: boolean;
+  searchVolume: number | null;
+}
+
+export interface IntelligenceTallies {
+  rankingKeywords: number;
+  top3Count: number;
+  estimatedMonthlyVisits: number;
+  strikingDistanceCount: number;
+  referringDomains: number;
+  brokenBacklinkTargets: number;
+  aiCitationsCount: number;
+}
+
+export interface SearchIntelligenceSnapshot {
+  fetchedAt: string;
+  domain: string;
+  locationCode: number;
+  competitors: string[];
+  tallies: IntelligenceTallies;
+  rankings: RankedKeywordItem[];
+  strikingDistance: RankedKeywordItem[];
+  cannibalization: CannibalizationAlert[];
+  competitorGaps: CompetitorGapItem[];
+  backlinks: {
+    totalBacklinks: number;
+    referringDomains: number;
+    rank: number | null;
+    topDomains: ReferringDomainItem[];
+    brokenTargets: BrokenBacklinkTarget[];
+  };
+  aiCitations: {
+    available: boolean;
+    note?: string;
+    items: AiCitationItem[];
+  };
+  /** Non-fatal partial notices (for example, an optional feed unavailable on this account). */
+  warnings: string[];
+}
+
+export interface SearchIntelligenceState {
+  status: SearchDataStatus;
+  config: SearchIntelligenceConfig;
+  snapshot: SearchIntelligenceSnapshot | null;
+}
+
+export interface IntelligenceRefreshRequest {
+  domain?: string;
+  locationCode?: number;
+  competitors?: string[];
+}
+
+export interface KeywordSuggestionItem {
+  keyword: string;
+  searchVolume: number;
+  keywordDifficulty: number | null;
+  cpc: number | null;
+  intent: SearchIntent | null;
+  /** Whether the site already ranks for or has an entry matching this keyword. */
+  coveredBy: { entryPath: string; entryTitle: string; url: string | null; position?: number } | null;
+}
+
+export interface SerpSnippet {
+  position: number;
+  title: string;
+  url: string;
+  domain: string;
+  description: string;
+}
+
+export interface KeywordExploreResult {
+  keyword: string;
+  locationCode: number;
+  suggestions: KeywordSuggestionItem[];
+  serpTop: SerpSnippet[];
+}
+
+export interface TuneEntryResult {
+  path: string;
+  keyword: string;
+  title: { before: string; after: string; changed: boolean } | null;
+  description: { before: string; after: string; changed: boolean } | null;
+  opening: { before: string; after: string; changed: boolean } | null;
+  serpTop: SerpSnippet[];
+  applied: number;
+  summary: string;
+}
+
+export interface DraftGapResult {
+  path: string;
+  collection: string;
+  slug: string;
+  title: string;
+  url: string | null;
+  keyword: string;
+  serpTop: SerpSnippet[];
+  summary: string;
+}

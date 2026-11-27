@@ -17,5 +17,16 @@ export { parsePage } from "./html";
 export { DISPLAY, fitWidth, jaccard, shingles, similarPairs, textWidth } from "./text";
 export { agentView, checkExternalLinks } from "./external";
 export { answerToOps, createWriteBatches, inventedFacts, planWrite, WRITE_INSTRUCTIONS, WRITE_MAX_BATCH } from "./write";
+export {
+  buildSearchAuthHeader,
+  createSearchIntelligence,
+  normalizeDomain,
+  readSearchDataConfig,
+  scrubSearchError,
+  searchDataMetaFromEnv,
+  suggestClosestRoute,
+  suggestCollectionAndSections,
+} from "./intelligence";
+export type { SearchDataRuntimeConfig, SearchIntelligenceController, SearchIntelligenceDeps } from "./intelligence";
 export { createVisibilityService } from "./service";
 export type { VisibilityService, VisibilityServiceOptions } from "./service";

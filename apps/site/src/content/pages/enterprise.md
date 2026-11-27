@@ -125,6 +125,7 @@ sections:
       - "**Global edge & DDoS protection** — static files answer from Cloudflare’s network worldwide with automatic HTTPS certificates"
       - "**Custom domains in one DNS record** — attach your domain without handing over registrar passwords"
       - "**Checked redirects, forms, and media buckets** — loop-checked `_redirects`, rate-limited form routing to HubSpot, Marketo, Salesforce, Pardot, or webhooks, and media storage on Cloudflare R2"
+      - "**Built-in search & AI intelligence** — live organic rankings, striking-distance quick wins, competitor content gaps, broken 404 backlink recovery, and AI answer citations mapped straight to your Git content files and Proof (bring your own key on self-hosted installs, or included on Galley Cloud)"
     link:
       label: See Galley Cloud
       href: /cloud/

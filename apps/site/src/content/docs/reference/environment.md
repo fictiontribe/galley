@@ -126,6 +126,11 @@ Keys are looked for in this order: the site's own key (Site settings › Connect
 | `GALLEY_AI_OFF` | off | `1`: indicate that managed AI is switched off for this site. |
 | `GALLEY_AI_CREDITS_URL` | — | Endpoint polled by `GET /api/ai/credits` (authenticated with the assistant key) to display the workspace's live credit balance. |
 | `GALLEY_AI_MANAGE_URL` | — | External dashboard URL linked from managed AI settings so workspace managers can top up credits or toggle AI. |
+| `GALLEY_SEARCH_DATA_KEY` | — | Live search data API key (`login:password` or base64 credentials for self-hosted BYOK, or bearer token in managed mode) for rankings, keyword research, competitor gaps, backlinks and AI citations. |
+| `SEARCH_DATA_API_KEY` | — | Live search data API key, when `GALLEY_SEARCH_DATA_KEY` isn't set. |
+| `GALLEY_SEARCH_DATA_BASE_URL` | the default live search data endpoint | Send live search data requests to this `https://` address instead (for example, a workspace proxy or local gateway). |
+| `GALLEY_SEARCH_DATA_MANAGED` | off | `1`: enable plan-included managed search intelligence mode (sends `Authorization: Bearer` to `GALLEY_SEARCH_DATA_BASE_URL` and hides BYOK search key inputs in App settings). |
+| `GALLEY_SEARCH_DATA_OFF` | off | `1`: indicate that managed search intelligence is switched off for this site. |
 
 ## Putting sites online
 

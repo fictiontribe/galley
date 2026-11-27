@@ -303,6 +303,166 @@ export function createMockVisibility(mock: MockBackend) {
     },
     "POST /api/sites/:siteId/visibility/write/:jobId/cancel": () => ({ ok: true }),
     "POST /api/sites/:siteId/visibility/external-links": () => ({ checked: 0, total: 0, findings: [] }),
+    "GET /api/sites/:siteId/visibility/intelligence": ({ params }) => {
+      const site = mock.site(params.siteId);
+      const production = site.model().urls.production ?? "";
+      let domain = "";
+
+      try {
+        domain = production ? new URL(production).hostname.replace(/^www\./, "") : "";
+      } catch {
+        domain = "";
+      }
+      const key = mock.secrets.search_data;
+
+      return {
+        status: { configured: Boolean(key?.configured), managed: false, source: key?.source ?? null },
+        config: { domain, locationCode: 2840, competitors: [] },
+        snapshot: null,
+      };
+    },
+    "POST /api/sites/:siteId/visibility/intelligence/refresh": ({ params, body }) => {
+      const site = mock.site(params.siteId);
+      const key = mock.secrets.search_data;
+
+      if (!key?.configured) throw new MockError("unconfigured", "Add a live search data key in App settings to fetch rankings and competitor insights.");
+      const domain = body.domain || "example.com";
+      const locationCode = body.locationCode ?? 2840;
+      const competitors = body.competitors ?? [];
+      const first = entries(params.siteId).find((entry) => entry.url);
+
+      return {
+        status: { configured: true, managed: false, source: key.source ?? "stored" },
+        config: { domain, locationCode, competitors },
+        snapshot: {
+          fetchedAt: new Date().toISOString(),
+          domain,
+          locationCode,
+          competitors,
+          tallies: {
+            rankingKeywords: 12,
+            top3Count: 3,
+            estimatedMonthlyVisits: 640,
+            strikingDistanceCount: 4,
+            referringDomains: 18,
+            brokenBacklinkTargets: 1,
+            aiCitationsCount: 2,
+          },
+          rankings: first
+            ? [
+                {
+                  keyword: first.title.toLowerCase(),
+                  position: 6,
+                  previousPosition: 9,
+                  searchVolume: 1400,
+                  keywordDifficulty: 28,
+                  cpc: 2.1,
+                  intent: "commercial",
+                  estimatedVisits: 112,
+                  url: `https://${domain}${first.url}`,
+                  urlPath: first.url!,
+                  entryPath: first.path,
+                  entryTitle: first.title,
+                  collection: first.collection,
+                  opportunityScore: 1050,
+                },
+              ]
+            : [],
+          strikingDistance: first
+            ? [
+                {
+                  keyword: first.title.toLowerCase(),
+                  position: 6,
+                  previousPosition: 9,
+                  searchVolume: 1400,
+                  keywordDifficulty: 28,
+                  cpc: 2.1,
+                  intent: "commercial",
+                  estimatedVisits: 112,
+                  url: `https://${domain}${first.url}`,
+                  urlPath: first.url!,
+                  entryPath: first.path,
+                  entryTitle: first.title,
+                  collection: first.collection,
+                  opportunityScore: 1050,
+                },
+              ]
+            : [],
+          cannibalization: [],
+          competitorGaps: [],
+          backlinks: {
+            totalBacklinks: 94,
+            referringDomains: 18,
+            rank: 24,
+            topDomains: [{ domain: "press.example.org", rank: 42, backlinks: 6, firstSeen: "2026-01-14" }],
+            brokenTargets: [
+              {
+                url: `https://${domain}/old-catalogue/`,
+                urlPath: "/old-catalogue/",
+                statusCode: 404,
+                referringDomains: 4,
+                backlinks: 9,
+                suggestedTarget: first?.url ?? "/",
+                suggestedTitle: first?.title ?? "Home",
+              },
+            ],
+          },
+          aiCitations: {
+            available: true,
+            items: first
+              ? [{ prompt: `Best ${first.title.toLowerCase()}`, platform: "ChatGPT", url: `https://${domain}${first.url}`, urlPath: first.url, entryPath: first.path, entryTitle: first.title, mentionedBrand: true, searchVolume: 320 }]
+              : [],
+          },
+          warnings: [],
+        },
+      };
+    },
+    "POST /api/sites/:siteId/visibility/intelligence/explore": ({ params, body }) => {
+      mock.site(params.siteId);
+      if (!mock.secrets.search_data?.configured) throw new MockError("unconfigured", "Add a live search data key in App settings to explore keywords.");
+      return {
+        keyword: body.keyword,
+        locationCode: body.locationCode ?? 2840,
+        suggestions: [{ keyword: body.keyword, searchVolume: 900, keywordDifficulty: 24, cpc: 1.8, intent: "informational", coveredBy: null }],
+        serpTop: [{ position: 1, title: `${body.keyword} — Guide`, url: "https://example.org/guide", domain: "example.org", description: `An overview of ${body.keyword}.` }],
+      };
+    },
+    "POST /api/sites/:siteId/visibility/intelligence/tune": ({ params, body }) => {
+      const site = mock.site(params.siteId);
+      const entry = site.readEntry(body.path);
+      const nextTitle = entry.title;
+
+      return {
+        path: entry.path,
+        keyword: body.keyword,
+        title: { before: entry.title, after: nextTitle, changed: false },
+        description: null,
+        opening: null,
+        serpTop: [],
+        applied: 0,
+        summary: "Reviewed against top results.",
+      };
+    },
+    "POST /api/sites/:siteId/visibility/intelligence/draft-gap": ({ params, body }) => {
+      const site = mock.site(params.siteId);
+      const col = site.model().collections.find((c) => c.id === body.collection && c.create) ?? site.model().collections.find((c) => c.kind === "entries" && c.create);
+
+      if (!col) throw new MockError("invalid", "No writable collection found for a draft page.");
+      const slug = body.keyword.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "draft-page";
+      const created = site.createEntry({ collection: col.id, slug, data: { title: body.keyword, description: `Guide to ${body.keyword}.` }, body: `# ${body.keyword}\n` });
+
+      mock.changed(site.id, [created.path], "agent");
+      return {
+        path: created.path,
+        collection: col.id,
+        slug: created.slug,
+        title: created.title,
+        url: created.url,
+        keyword: body.keyword,
+        serpTop: [],
+        summary: `Drafted ${created.path} in Proof.`,
+      };
+    },
   };
   return { handlers };
 }

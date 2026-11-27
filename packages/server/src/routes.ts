@@ -12,6 +12,7 @@ import { deleteCookie, setCookie } from "hono/cookie";
 import type { ApiRouteKey, RouteResponse } from "@galley/core/api";
 import { GalleyError } from "@galley/core";
 import { aiMetaFromEnv, fetchManagedAiCredits } from "@galley/core/ai";
+import { searchDataMetaFromEnv } from "@galley/core/seo";
 import { validateConfig } from "@galley/core/content";
 import { readSettings, siteNameAt } from "@galley/core/site";
 import { checkPublish } from "@galley/core/plugins";
@@ -240,9 +241,12 @@ export const routes: RouteTable = {
 
     if (look) meta.look = look;
     if (authenticated) {
-      const ai = aiMetaFromEnv(envOf(ctx));
+      const env = envOf(ctx);
+      const ai = aiMetaFromEnv(env);
+      const searchData = searchDataMetaFromEnv(env);
 
       if (ai) meta.ai = ai;
+      if (searchData) meta.searchData = searchData;
     }
     return meta;
   },

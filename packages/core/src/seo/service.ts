@@ -12,9 +12,27 @@ import type { EventBus, SettingsService, SiteService, UndoResult } from "../type
 import { auditEntry, auditSite } from "./audit";
 import { agentView, checkExternalLinks, type ExternalOptions } from "./external";
 import { applyFixes, undoFixes } from "./fixes";
+import { createSearchIntelligence } from "./intelligence";
 import { applyCrawlerPolicy, crawlerReport, readRobots } from "./policy";
 import { findRenderSource } from "./render";
-import type { AgentView, AuditOptions, CrawlerChoice, CrawlerReport, EntryAudit, Finding, FixResult, SiteAudit, WriteBatchStatus, WriteKind, WritePlan } from "./types";
+import type {
+  AgentView,
+  AuditOptions,
+  CrawlerChoice,
+  CrawlerReport,
+  DraftGapResult,
+  EntryAudit,
+  Finding,
+  FixResult,
+  IntelligenceRefreshRequest,
+  KeywordExploreResult,
+  SearchIntelligenceState,
+  SiteAudit,
+  TuneEntryResult,
+  WriteBatchStatus,
+  WriteKind,
+  WritePlan,
+} from "./types";
 import { createWriteBatches, planWrite, type WriterDeps } from "./write";
 
 export interface VisibilityService {
@@ -30,14 +48,22 @@ export interface VisibilityService {
   writeStatus(jobId: string): WriteBatchStatus | null;
   cancelWrite(jobId: string): void;
   externalLinks(site: SiteService, options?: ExternalOptions): Promise<{ checked: number; total: number; findings: Finding[] }>;
+  intelligence(site: SiteService): Promise<SearchIntelligenceState>;
+  refreshIntelligence(site: SiteService, request?: IntelligenceRefreshRequest): Promise<SearchIntelligenceState>;
+  exploreKeyword(site: SiteService, request: { keyword: string; locationCode?: number }): Promise<KeywordExploreResult>;
+  tuneEntry(site: SiteService, request: { path: string; keyword: string; locationCode?: number }): Promise<TuneEntryResult>;
+  draftGapPage(site: SiteService, request: { keyword: string; collection?: string; locationCode?: number }): Promise<DraftGapResult>;
   dispose(): void;
 }
 
 export interface VisibilityServiceOptions {
+  home?: string;
   settings: SettingsService;
   events: EventBus;
   /** Test seam: a pre-built client (one constructed with a scripted fetch). */
   client?: Anthropic;
+  /** Test seam: custom fetch for live search data requests. */
+  fetch?: typeof fetch;
   env?: NodeJS.ProcessEnv;
   logger?: (line: string) => void;
 }
@@ -65,6 +91,13 @@ export function createVisibilityService(options: VisibilityServiceOptions): Visi
     log,
   };
   const batches = createWriteBatches(deps);
+  const intel = createSearchIntelligence({
+    ...(options.home ? { home: options.home } : {}),
+    settings: options.settings,
+    writer: deps,
+    env,
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+  });
 
   return {
     audit: (site, auditOptions) => auditSite(site, auditOptions),
@@ -86,6 +119,11 @@ export function createVisibilityService(options: VisibilityServiceOptions): Visi
     writeStatus: (jobId) => batches.status(jobId),
     cancelWrite: (jobId) => batches.cancel(jobId),
     externalLinks: (site, externalOptions) => checkExternalLinks(site, externalOptions),
+    intelligence: (site) => intel.getState(site),
+    refreshIntelligence: (site, request) => intel.refresh(site, request),
+    exploreKeyword: (site, request) => intel.explore(site, request),
+    tuneEntry: (site, request) => intel.tuneEntry(site, request),
+    draftGapPage: (site, request) => intel.draftGapPage(site, request),
     dispose: () => batches.dispose(),
   };
 }

@@ -25,10 +25,16 @@ type VisibilityRouteKey =
   | "POST /api/sites/:siteId/visibility/write"
   | "GET /api/sites/:siteId/visibility/write/:jobId"
   | "POST /api/sites/:siteId/visibility/write/:jobId/cancel"
-  | "POST /api/sites/:siteId/visibility/external-links";
+  | "POST /api/sites/:siteId/visibility/external-links"
+  | "GET /api/sites/:siteId/visibility/intelligence"
+  | "POST /api/sites/:siteId/visibility/intelligence/refresh"
+  | "POST /api/sites/:siteId/visibility/intelligence/explore"
+  | "POST /api/sites/:siteId/visibility/intelligence/tune"
+  | "POST /api/sites/:siteId/visibility/intelligence/draft-gap";
 
 const writeKind = z.enum(["description", "alt", "title", "intro", "faq"]);
 const paths = z.array(z.string().min(1).max(1024)).max(500).optional();
+const locationCode = z.number().int().min(1000).max(999999).optional();
 
 export const auditQuery = z.object({ render: z.enum(["auto", "off"]).optional() });
 export const entryAuditQuery = z.object({ path: z.string().min(1).max(1024), render: z.enum(["auto", "off"]).optional() });
@@ -39,6 +45,18 @@ export const agentViewQuery = z.object({ url: z.string().min(1).max(2048).starts
 export const writePlanBody = z.object({ kind: writeKind, paths }).strict();
 export const writeStartBody = z.object({ kind: writeKind, paths, limit: z.number().int().min(1).max(200).optional() }).strict();
 export const externalBody = z.object({ limit: z.number().int().min(1).max(200).optional() }).strict();
+export const intelligenceRefreshBody = z
+  .object({
+    domain: z.string().trim().min(1).max(255).optional(),
+    locationCode,
+    competitors: z.array(z.string().trim().min(1).max(255)).max(3).optional(),
+  })
+  .strict();
+export const intelligenceExploreBody = z.object({ keyword: z.string().trim().min(1).max(200), locationCode }).strict();
+export const intelligenceTuneBody = z.object({ path: z.string().min(1).max(1024), keyword: z.string().trim().min(1).max(200), locationCode }).strict();
+export const intelligenceDraftGapBody = z
+  .object({ keyword: z.string().trim().min(1).max(200), collection: z.string().trim().min(1).max(120).optional(), locationCode })
+  .strict();
 
 const fallback = new WeakMap<Services, VisibilityService>();
 
@@ -130,5 +148,31 @@ export const visibilityRoutes: Pick<RouteTable, VisibilityRouteKey> = {
     const { limit } = await v.body(c, externalBody);
 
     return visibilityOf(ctx).externalLinks(site, { ...(limit ? { limit } : {}) });
+  },
+  "GET /api/sites/:siteId/visibility/intelligence": async (c, ctx) => visibilityOf(ctx).intelligence(await siteOf(c, ctx)),
+  "POST /api/sites/:siteId/visibility/intelligence/refresh": async (c, ctx) => {
+    const site = await siteOf(c, ctx);
+    const raw = await v.readJson(c);
+    const body = raw === undefined ? {} : v.parseWith(intelligenceRefreshBody, raw);
+
+    return visibilityOf(ctx).refreshIntelligence(site, body);
+  },
+  "POST /api/sites/:siteId/visibility/intelligence/explore": async (c, ctx) => {
+    const site = await siteOf(c, ctx);
+    const body = await v.body(c, intelligenceExploreBody);
+
+    return visibilityOf(ctx).exploreKeyword(site, body);
+  },
+  "POST /api/sites/:siteId/visibility/intelligence/tune": async (c, ctx) => {
+    const site = await siteOf(c, ctx);
+    const body = await v.body(c, intelligenceTuneBody);
+
+    return visibilityOf(ctx).tuneEntry(site, body);
+  },
+  "POST /api/sites/:siteId/visibility/intelligence/draft-gap": async (c, ctx) => {
+    const site = await siteOf(c, ctx);
+    const body = await v.body(c, intelligenceDraftGapBody);
+
+    return visibilityOf(ctx).draftGapPage(site, body);
   },
 };

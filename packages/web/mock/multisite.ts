@@ -32,7 +32,7 @@ type MultiSiteKey =
   | "GET /api/usage/sites";
 
 const COLORS: SiteGroup["color"][] = ["ink", "pencil", "green", "ochre", "rose", "sky", "plum"];
-const NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel"];
+const NAMES: SecretName[] = ["anthropic", "openai", "google", "search_data", "cloudflare", "vercel"];
 const CLIENTS = `${HOME}/Clients`;
 const SCANNABLE = ["bakery-site", "clinic-site", "studio-site", "museum-site"];
 
