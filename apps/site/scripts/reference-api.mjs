@@ -132,6 +132,7 @@ const SECTION_TITLES = {
   "proof & publish": "Proof and publish",
   "preview & build": "Preview and build",
   "search & AI visibility": "Search and AI checks",
+  "languages & translations (docs/editing/languages.md)": "Languages and translations",
   "bringing a site over: the WordPress import (docs/wordpress-import.md)": "The WordPress import",
   "the site's brand (docs/brand.md)": "The site's brand",
   "files (source view)": "Files (the source view)",

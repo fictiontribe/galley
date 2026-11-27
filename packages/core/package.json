@@ -43,6 +43,8 @@
     "./seo/types": "./src/seo/types.ts",
     "./seo/text": "./src/seo/text.ts",
     "./seo/catalog": "./src/seo/catalog.ts",
+    "./i18n": "./src/i18n/index.ts",
+    "./i18n/types": "./src/i18n/types.ts",
     "./redirects": "./src/redirects/index.ts",
     "./redirects-info": "./src/redirects/info.ts",
     "./sitebrand": "./src/sitebrand/index.ts",

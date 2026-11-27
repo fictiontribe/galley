@@ -1,0 +1,34 @@
+---
+/**
+ * Renders `<link rel="alternate" hreflang="..." href="..." />` tags for every
+ * translated counterpart of the current page plus `hreflang="x-default"`
+ * pointing at the default-locale version.
+ *
+ * Place inside `<head>`:
+ *   <LocaleHead />
+ */
+import { resolvePageLocales, type I18nConfig, type I18nManifest } from "../i18n/index.js";
+
+interface Props {
+  /** Override site origin (defaults to `Astro.site`). */
+  site?: string | URL;
+  /** Override current pathname (defaults to `Astro.url.pathname`). */
+  pathname?: string;
+  /** Override current locale (defaults to `Astro.currentLocale`). */
+  currentLocale?: string;
+  /** Optional explicit i18n config (defaults to `galley.config.json`). */
+  config?: I18nConfig | null;
+  /** Optional explicit manifest (defaults to `galley/i18n/manifest.json`). */
+  manifest?: I18nManifest | null;
+  /** Site root folder (defaults to `process.cwd()`). */
+  root?: string;
+}
+
+const { site = Astro.site, pathname = Astro.url.pathname, currentLocale = Astro.currentLocale, config, manifest, root } = Astro.props;
+const base = import.meta.env.BASE_URL || "/";
+const resolved = resolvePageLocales({ pathname, currentLocale, site, base, config, manifest, root });
+const links = resolved.configured ? resolved.alternates.filter((item) => item.exists && item.href) : [];
+---
+
+{links.map((item) => <link rel="alternate" hreflang={item.code} href={item.href!} />)}
+{links.length > 0 && resolved.xDefaultHref ? <link rel="alternate" hreflang="x-default" href={resolved.xDefaultHref} /> : null}

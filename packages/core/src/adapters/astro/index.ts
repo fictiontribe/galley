@@ -314,6 +314,7 @@ export const astroAdapter = defineAdapter({
       // Astro builds from its source folder, serves its public folder as it is, and reads the configuration at the
       // root (its own, the package's, TypeScript's, and the tools' that sit beside them).
       builtFrom: [join(state.srcDir, "**"), join(clean(values.publicDir ?? "public"), "**"), "*.config.*", "package.json", "tsconfig.json", "tsconfig.*.json"],
+      ...(values.i18n ? { i18n: values.i18n } : {}),
     };
 
     if (values.site && /^https?:\/\//.test(values.site)) {

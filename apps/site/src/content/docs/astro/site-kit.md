@@ -83,6 +83,15 @@ Pages marked `noindex`, drafts and the not-found page are left out. Structured d
 
 *Status:* agent-readable pages for the sites Galley builds are **in progress**, and so is the per-crawler switch in the app; this website runs the kit's version today. Google says its search doesn't use `llms.txt` or markdown copies, and few AI systems read them yet: the copies make a site easier for an agent to read, not more likely to be cited. Formats, the data file and sources: [`docs/ai-first-output.md`]({repository}/blob/main/docs/ai-first-output.md).
 
+## Languages and hreflang
+
+For multilingual sites, `@galleycms/astro/components` exports two components that read `galley.config.json` and `galley/i18n/manifest.json` so translated slugs link directly to their counterparts:
+
+- **`<LocaleHead />`** — place inside `<head>` to emit `<link rel="alternate" hreflang="…" href="…" />` for every existing translation of the current page plus `hreflang="x-default"` pointing at the default-locale version.
+- **`<LanguageSelector />`** — accessible `<nav aria-label="Language">` language switcher marking the active page with `aria-current="page"`, setting `lang`, `hreflang` and `dir` on each link. Accepts `fallback="home" | "hide"`, `showCode`, `label`, `class` and `unstyled`.
+
+See [Languages and translations](/docs/editing/languages/) for setup and workflow details.
+
 ## Next
 
 - [Forms](/docs/forms/), [Scripts](/docs/scripts/), [What Arrange needs](/docs/visual-builder/).

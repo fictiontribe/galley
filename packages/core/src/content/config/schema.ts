@@ -191,6 +191,43 @@ const redirectsConfig = z
   })
   .strict();
 
+const LOCALE_CODE = /^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*$/;
+const LOCALE_PREFIX = /^[a-z0-9][a-z0-9-]{0,31}$/;
+
+const i18nLocaleConfig = z
+  .object({
+    code: z.string().regex(LOCALE_CODE, { message: "must be a BCP-47 language code, like “en”, “es” or “fr-CA”." }).describe("BCP-47 language code (for example “en”, “es”, “pt-BR”)."),
+    label: z.string().min(1).max(60).describe("Human-readable label shown in selectors and the editor."),
+    prefix: z.string().regex(LOCALE_PREFIX, { message: "must be lowercase letters, digits and dashes, like “es” or “pt-br”." }).optional().describe("Optional URL path prefix. Defaults to the lowercase language code."),
+    direction: z.enum(["ltr", "rtl"]).optional().describe("Text direction: “ltr” (default) or “rtl”."),
+  })
+  .strict();
+
+const i18nConfig = z
+  .object({
+    defaultLocale: z.string().regex(LOCALE_CODE, { message: "must be a BCP-47 language code, like “en”." }).describe("The default language code; must match one entry in `locales`."),
+    locales: z.array(i18nLocaleConfig).min(1).max(50).describe("Languages configured for the site."),
+    strategy: z.enum(["folder", "suffix"]).optional().describe("How translated files sit beside default ones: “folder” (`es/about.md`, default) or “suffix” (`about.es.md`)."),
+    prefixDefaultLocale: z.boolean().optional().describe("Whether default-locale URLs carry their locale prefix (`/en/pricing/` vs `/pricing/`). Default: false."),
+    localizeSlugs: z.boolean().optional().describe("Whether translated pages may use localized URL slugs (`/pricing/` ↔ `/es/precios/`). Default: true."),
+  })
+  .strict()
+  .superRefine((i18n, ctx) => {
+    const seen = new Set<string>();
+
+    i18n.locales.forEach((locale, index) => {
+      const lower = locale.code.toLowerCase();
+
+      if (seen.has(lower)) {
+        ctx.addIssue({ code: "custom", path: ["locales", index, "code"], message: `“${locale.code}” is listed more than once.` });
+      }
+      seen.add(lower);
+    });
+    if (!seen.has(i18n.defaultLocale.toLowerCase())) {
+      ctx.addIssue({ code: "custom", path: ["defaultLocale"], message: `“${i18n.defaultLocale}” must match one of the configured locales.` });
+    }
+  });
+
 export const galleyConfigSchema = z
   .object({
     $schema: z.string().optional(),
@@ -228,6 +265,7 @@ export const galleyConfigSchema = z
     templates: z.array(templateConfig).optional().describe("Ready-made entries to start a new one from (a landing page, a pricing page)."),
     deploy: deployConfig.optional().describe("Where the site is put online. Ids only: the host's access key is kept in the app's secrets, never in this file."),
     redirects: redirectsConfig.optional().describe("Where the redirects list lives and which host applies it. See the redirects guide."),
+    i18n: i18nConfig.optional().describe("Languages, URL routing and translation settings for multilingual sites. See the languages guide."),
     editor: editorConfig.optional().describe("Where this site's editor is hosted online, when it has one. An address and the host's id: no secrets, safe to publish."),
     siteBrand: z
       .object({

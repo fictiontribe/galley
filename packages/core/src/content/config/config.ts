@@ -220,6 +220,7 @@ export function mergeConfig(detected: SiteModel, config: GalleyConfig | null): S
     ...(config.templates?.length ? { templates: config.templates.map((template) => ({ ...template, file: normalizePath(template.file), ...(template.thumbnail ? { thumbnail: normalizePath(template.thumbnail) } : {}) })) } : {}),
     ...(config.deploy ? { deploy: config.deploy } : {}),
     ...(config.redirects ? { redirects: config.redirects } : {}),
+    ...(config.i18n ? { i18n: config.i18n } : {}),
     notes,
   };
 }

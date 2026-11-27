@@ -7,7 +7,7 @@
  * Everything here is types. Keep it free of runtime code so an adapter can
  * `import type` it and stay a dependency-free file.
  */
-import type { Collection, EntryFormat, Field, JsonValue } from "../types";
+import type { Collection, EntryFormat, Field, I18nConfig, JsonValue } from "../types";
 import type { Expr } from "../content/detect/js/parse";
 import type { RouteFile } from "../content/detect/routes";
 
@@ -84,6 +84,8 @@ export interface AdapterConventions {
    * [everything in the site: any file that names a picture counts]
    */
   builtFrom?: string[];
+  /** Multilingual configuration read statically from the framework's own config (e.g. Astro `i18n`). */
+  i18n?: I18nConfig;
 }
 
 /**

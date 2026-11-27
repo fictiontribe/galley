@@ -3,7 +3,7 @@ import type { Field as FieldDef, FieldPath } from "@galley/core/types";
 import { FieldFrameAdditions, FieldHeaderAdditions, FieldNoticeAdditions } from "@/additions/places";
 import { Field, ProofMark } from "@/ui";
 import { useChangeKind, useEditCount, useForm, useIssues, useRefusal, useSaveState } from "../form/context";
-import { pathKey } from "../form/paths";
+import { getAt, pathKey } from "../form/paths";
 import { PutBack } from "./PutBack";
 
 export interface FieldShellProps {
@@ -49,13 +49,18 @@ function SaveNote({ path }: { path: FieldPath }) {
  * engine's refusal wins over validation errors; warnings sit with the hint.
  */
 export function FieldShell({ field, path, children, showKey, group, id, note, className, tools }: FieldShellProps) {
-  const { siteId, entryPath } = useForm();
+  const { siteId, entryPath, i18nRef, store } = useForm();
   const refusal = useRefusal(path);
   const issues = useIssues(path);
   const edits = useEditCount(path);
   const kind = useChangeKind(path);
   const error = refusal ?? issues.find((issue) => issue.severity === "error")?.message;
   const warnings = issues.filter((issue) => issue.severity === "warning");
+
+  const refKey = pathKey(path);
+  const sourceVal = i18nRef && (field.type === "string" || field.type === "text" || field.type === "markdown") ? getAt(i18nRef.sourceData, path) : undefined;
+  const sourceText = typeof sourceVal === "string" && sourceVal.trim() ? sourceVal : null;
+  const tmMatch = i18nRef?.tmMatches[refKey] ?? null;
 
   const hint =
     warnings.length > 0 || field.description || note ? (
@@ -96,6 +101,24 @@ export function FieldShell({ field, path, children, showKey, group, id, note, cl
       tools={tools}
     >
       <FieldFrameAdditions siteId={siteId} entryPath={entryPath} path={path} field={field}>
+        {sourceText && i18nRef ? (
+          <div className="i18n-field-ref">
+            <div className="i18n-field-ref__head">
+              <span className="i18n-field-ref__label">Original ({i18nRef.sourceLocale.toUpperCase()})</span>
+              {tmMatch ? (
+                <button
+                  type="button"
+                  className="i18n-tm-pill"
+                  onClick={() => store.actions.edit(path, tmMatch.target, { required: field.required, immediate: true })}
+                  title={`Apply Translation Memory match: ${tmMatch.target}`}
+                >
+                  Use memory match
+                </button>
+              ) : null}
+            </div>
+            <p className="i18n-field-ref__text">{sourceText}</p>
+          </div>
+        ) : null}
         <div className="app-field-control" data-path={pathKey(path)}>
           {children}
         </div>

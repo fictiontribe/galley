@@ -1,1 +1,0 @@
-import{r as e}from"./rolldown-runtime-XKyaHtl9.js";import{Jt as t,en as n}from"./ui-BbADbOXy.js";var r=e(n(),1);function i(e){let{hash:n}=t();(0,r.useEffect)(()=>{if(!e||!n)return;let t=requestAnimationFrame(()=>document.getElementById(decodeURIComponent(n.slice(1)))?.scrollIntoView({block:`start`}));return()=>cancelAnimationFrame(t)},[e,n])}export{i as t};

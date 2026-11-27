@@ -374,6 +374,27 @@ function sanitizeConventions(value: unknown, report: (what: string) => void): Ad
     if (globs && globs.length > 0) out.builtFrom = globs;
     else report("“builtFrom” was not a list of globs inside the site");
   }
+  const i18n = object("i18n");
+
+  if (i18n && typeof i18n.defaultLocale === "string" && Array.isArray(i18n.locales)) {
+    const locales = i18n.locales.filter(
+      (item): item is { code: string; label: string; prefix?: string; direction?: "ltr" | "rtl" } =>
+        Boolean(item) &&
+        typeof item === "object" &&
+        typeof (item as { code?: unknown }).code === "string" &&
+        typeof (item as { label?: unknown }).label === "string"
+    );
+
+    if (locales.length > 0) {
+      out.i18n = {
+        defaultLocale: i18n.defaultLocale,
+        locales,
+        ...(i18n.strategy === "folder" || i18n.strategy === "suffix" ? { strategy: i18n.strategy } : {}),
+        ...(typeof i18n.prefixDefaultLocale === "boolean" ? { prefixDefaultLocale: i18n.prefixDefaultLocale } : {}),
+        ...(typeof i18n.localizeSlugs === "boolean" ? { localizeSlugs: i18n.localizeSlugs } : {}),
+      };
+    }
+  }
   return out;
 }
 
@@ -629,6 +650,7 @@ export async function runDetection(root: string, options: DetectOptions = {}): P
   const production = detectProductionUrl(root, publicDir, pkg, conventions.urls?.production);
   const contentGlobs = [
     ...inspected.map((collection) => (collection.kind === "data" ? normalizePath(collection.path) : `${collection.path === "." ? "" : `${normalizePath(collection.path)}/`}**`)),
+    "galley/i18n/**",
     `${media.dir}/**`,
     ...media.roots.filter((rootDir) => rootDir.dir !== media.dir).map((rootDir) => `${rootDir.dir}/**/*.{png,jpg,jpeg,gif,webp,avif,svg,ico,mp4,webm,pdf}`),
   ];
@@ -658,6 +680,7 @@ export async function runDetection(root: string, options: DetectOptions = {}): P
   if (environment) result.environment = environment;
   if (previewSaves) result.previewSaves = previewSaves;
   if (conventions.builtFrom) result.builtFrom = conventions.builtFrom;
+  if (conventions.i18n) result.i18n = conventions.i18n;
   if (siteKit.kit) result.kit = siteKit.kit;
   if (conventions.routesDir && isDir(root, conventions.routesDir)) result.routesDir = conventions.routesDir;
   return { model: result, adapter, match, drafts: declared, candidates, problems };
