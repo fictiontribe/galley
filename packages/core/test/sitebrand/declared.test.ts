@@ -20,23 +20,23 @@ describe("declared tokens", () => {
   });
 
   it("picks the SaaS starter's tokens file, sets its alternative looks aside, and resolves its font packages", () => {
-    const files = [read("src/styles/tokens.css"), read("src/styles/themes/signal.css"), read("src/styles/themes/night-shift.css"), read("src/styles/global.css")];
+    const files = [read("src/styles/tokens.css"), read("src/styles/themes/meridian.css"), read("src/styles/themes/signal.css"), read("src/styles/themes/night-shift.css"), read("src/styles/global.css")];
     const scan = scanDeclared(
       files,
-      (spec) => (spec === "@fontsource-variable/geist/wght.css" ? [{ file: "pkg:@fontsource-variable/geist/wght.css", content: "@font-face { font-family: 'Geist Variable'; font-style: normal; font-weight: 100 900; src: url(./files/geist-latin-wght-normal.woff2) format('woff2-variations'); unicode-range: U+0000-00FF; }" }] : null),
+      (spec) => (spec === "@fontsource-variable/public-sans/wght.css" ? [{ file: "pkg:@fontsource-variable/public-sans/wght.css", content: "@font-face { font-family: 'Public Sans Variable'; font-style: normal; font-weight: 100 900; src: url(./files/public-sans-latin-wght-normal.woff2) format('woff2-variations'); unicode-range: U+0000-00FF; }" }] : null),
       { tokensFile: null }
     );
 
     expect(scan.tokensFile).toBe("src/styles/tokens.css");
-    expect(scan.looks.sort()).toEqual(["src/styles/themes/night-shift.css", "src/styles/themes/signal.css"]);
+    expect(scan.looks.sort()).toEqual(["src/styles/themes/meridian.css", "src/styles/themes/night-shift.css", "src/styles/themes/signal.css"]);
     expect(scan.variables.every((v) => !v.file.includes("/themes/"))).toBe(true);
     expect(scan.fonts.map((f) => [f.token, f.family, f.source.kind === "package" ? f.source.ref : null])).toEqual(
       expect.arrayContaining([
-        ["--font-display", "Schibsted Grotesk Variable", "@fontsource-variable/schibsted-grotesk"],
-        ["--font-body", "Geist Variable", "@fontsource-variable/geist"],
+        ["--font-display", "Bricolage Grotesque Variable", "@fontsource-variable/bricolage-grotesque"],
+        ["--font-body", "Public Sans Variable", "@fontsource-variable/public-sans"],
       ])
     );
-    expect(scan.fontFaces).toEqual(expect.arrayContaining([expect.objectContaining({ family: "Geist Variable", file: "pkg:@fontsource-variable/geist/files/geist-latin-wght-normal.woff2" })]));
+    expect(scan.fontFaces).toEqual(expect.arrayContaining([expect.objectContaining({ family: "Public Sans Variable", file: "pkg:@fontsource-variable/public-sans/files/public-sans-latin-wght-normal.woff2" })]));
     expect(scan.notes.join(" ")).toMatch(/alternative looks/);
   });
 

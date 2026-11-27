@@ -84,10 +84,10 @@ depends on Galley: it is an ordinary Astro project.
   series, author, newsletter, text, photograph, invitation, contact, and the
   chart, comparison, figures, timeline, questions, pull quote and gallery
   embeds — with four templates (post, review, about, topic landing).
-- **Three looks, each light and dark** — Ledger (warm paper, a newspaper
-  serif, brick red), Fieldbook (sage paper, a characterful grotesque, moss
-  green) and Almanac (cream and ink blue by day, navy and lamplight by
-  night). The page follows the reader's system setting; the switch in the
+- **Three looks, each light and dark** — Almanac (cream and ink blue by day,
+  navy and lamplight by night; the default), Ledger (warm paper, a newspaper
+  serif, brick red) and Fieldbook (sage paper, a characterful grotesque, moss
+  green). The page follows the reader's system setting; the switch in the
   header pins the other, remembered and applied before the first paint.
 - **The basics done** — self-hosted fonts with the reading faces preloaded,
   images with their real sizes and a smaller file for phones, no layout
@@ -96,9 +96,9 @@ depends on Galley: it is an ordinary Astro project.
   motion respected, and every page working under a sub-path such as a GitHub
   Pages project site.
 
-| Ledger | Fieldbook | Almanac |
+| Almanac | Ledger | Fieldbook |
 | --- | --- | --- |
-| ![Ledger](galley/previews/ledger.webp) | ![Fieldbook](galley/previews/fieldbook.webp) | ![Almanac](galley/previews/almanac.webp) |
+| ![Almanac](galley/previews/almanac.webp) | ![Ledger](galley/previews/ledger.webp) | ![Fieldbook](galley/previews/fieldbook.webp) |
 
 ## Start a project
 
@@ -110,7 +110,7 @@ Requires Node 22.23.4 or newer (Astro 7's minimum).
 npm create galley@latest my-site -- --starter sarking --look fieldbook
 ```
 
-`--look` is optional: `ledger` (the default), `fieldbook` or `almanac`.
+`--look` is optional: `almanac` (the default), `ledger` or `fieldbook`.
 
 **As a plain Astro project:**
 
@@ -243,13 +243,13 @@ appears anywhere else. Every colour is a `light-dark()` pair. To switch to
 another look:
 
 ```sh
-cp src/styles/themes/almanac.css src/styles/tokens.css    # or fieldbook.css, ledger.css
+cp src/styles/themes/ledger.css src/styles/tokens.css    # or fieldbook.css, almanac.css
 ```
 
 Fonts are self-hosted from `@fontsource-variable` packages under the SIL
-Open Font Licence: Newsreader, Schibsted Grotesk and Geist Mono (Ledger);
-Literata, Bricolage Grotesque and JetBrains Mono (Fieldbook); Fraunces,
-Source Serif 4, Instrument Sans and Martian Mono (Almanac). The `preload:`
+Open Font Licence: Fraunces, Source Serif 4, Instrument Sans and Martian
+Mono (Almanac); Newsreader, Schibsted Grotesk and Geist Mono (Ledger);
+Literata, Bricolage Grotesque and JetBrains Mono (Fieldbook). The `preload:`
 line at the top of each look names the files to preload. Keep text colours
 at least 4.5:1 against their ground in both schemes.
 

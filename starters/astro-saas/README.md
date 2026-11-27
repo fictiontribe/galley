@@ -55,8 +55,8 @@ Nothing here depends on Galley: it is an ordinary Astro project.
 - **Product imagery that follows the look** — the screenshots, logos and
   portraits are SVG files drawn in the site's colour tokens and inlined into
   the page, so they change with the theme, dark included.
-- **Three looks** — *Signal* (warm paper, ink, signal orange; the default),
-  *Meridian* (mint paper, deep green, rounder) and *Night shift* (dark). Each
+- **Three looks** — *Meridian* (mint paper, deep green, rounder; the default),
+  *Signal* (warm paper, ink, signal orange) and *Night shift* (dark). Each
   is one tokens file.
 - **The basics done** — self-hosted variable fonts, `sitemap.xml`,
   `robots.txt`, Open Graph tags, a skip link, visible focus, WCAG AA
@@ -71,10 +71,10 @@ Requires Node 22.23.4 or newer (Astro 7's minimum).
 dependencies installed, its first version in git, open in the editor:
 
 ```sh
-npm create galley@latest my-site -- --starter ferrow --look meridian
+npm create galley@latest my-site -- --starter ferrow --look signal
 ```
 
-`--look` is optional: `signal` (the default), `meridian` or `night-shift`.
+`--look` is optional: `meridian` (the default), `signal` or `night-shift`.
 
 **As a plain Astro project:**
 
@@ -261,8 +261,8 @@ development and renders nothing in a production build.
 Everything visual is a custom property in
 [`src/styles/tokens.css`](./src/styles/tokens.css); no colour or font name
 appears anywhere else. `src/styles/themes/` holds three complete
-alternatives with the same properties — `signal.css` (identical to the
-default), `meridian.css` and `night-shift.css`. To switch look, copy one
+alternatives with the same properties — `meridian.css` (identical to the
+default), `signal.css` and `night-shift.css`. To switch look, copy one
 over the tokens file:
 
 ```sh

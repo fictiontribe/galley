@@ -1,34 +1,34 @@
 ---
 title: Starters
-description: Four complete Astro sites built from sections, each in three looks — Caddow for a fashion label, Ferrow for B2B software, Lowfield Studio for a small business, Sarking for a long-form blog — ready to edit with Galley.
+description: Five complete Astro sites built from sections, each in three looks — Caddow, Ferrow, Lowfield Studio, Sarking and Caddow Shop — ready to edit with Galley.
 sections:
   - type: starters
     id: gallery
     layout: gallery
     heading: Start from a finished site.
-    text: Complete Astro sites built from sections, each in three looks. One command starts yours.
+    text: Complete Astro sites built from sections, each in three looks. One command creates the site and opens Galley.
     items:
       - starter: astro-editorial
         name: Caddow
         kind: Fashion
-        text: "A fashion label: campaign, lookbooks, journal, stockists. 20 sections, a full set of original photographs."
+        text: "A fashion label with campaign, lookbooks, journal and stockists. 20 sections and original photography."
       - starter: astro-saas
         name: Ferrow
         kind: B2B software
-        text: "A B2B software company: product, pricing, customer stories, changelog. 29 sections."
+        text: "A B2B software site with product, pricing, customer stories and changelog. 29 sections."
       - starter: astro-starter
         name: Lowfield Studio
         kind: Small business
-        text: "An architectural practice or small studio: services, pricing, contact form, journal. 17 sections, original architectural photographs."
+        text: "An architectural practice or studio with services, projects, pricing and journal. 17 sections and original photography."
       - starter: astro-blog
         name: Sarking
         kind: Blog
-        text: "A blog for long-form writing with evidence: charts, comparison tables, verdicts and timelines in plain Markdown. 18 sections, light and dark in every look."
+        text: "Long-form writing with charts, tables, verdicts and timelines in Markdown. 18 sections, light and dark in every look."
       - starter: astro-storefront
         name: Caddow Shop
         kind: Shop
         status: shopify
-        text: "A fashion shop: products, cart and checkout from Shopify, everything else plain files. 24 sections."
+        text: "A fashion shop with products, cart and checkout from Shopify, and everything else in plain files. 24 sections."
       - name: Make your own
         kind: Your starter
         text: An Astro site with a picture of each section and a few page templates. The contract is one page.
