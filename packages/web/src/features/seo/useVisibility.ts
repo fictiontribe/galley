@@ -11,6 +11,7 @@ export const visibilityKeys = {
   site: (siteId: string) => ["site", siteId, "visibility"] as const,
   entry: (siteId: string, path: string) => ["site", siteId, "visibility", "entry", path] as const,
   crawlers: (siteId: string) => ["site", siteId, "visibility", "crawlers"] as const,
+  intelligence: (siteId: string) => ["site", siteId, "visibility", "intelligence"] as const,
 };
 
 /** Refetch after the site's content changes, once things have settled. */
@@ -32,6 +33,12 @@ export function useSiteAudit(siteId: string) {
 
   useRefetchOnChange(siteId, query.refetch);
   return query;
+}
+
+export function useSearchIntelligence(siteId: string) {
+  return useQuery(visibilityKeys.intelligence(siteId), () => api("GET /api/sites/:siteId/visibility/intelligence", { params: { siteId } }), {
+    enabled: Boolean(siteId),
+  });
 }
 
 /** Applies findings' fixes as ordinary edits, with an Undo in the toast. */

@@ -302,6 +302,7 @@ const KEY_LABEL: Record<SecretName, string> = {
   vercel: "the Vercel key",
   fly: "the Fly.io key",
   gcp: "the Google Cloud key file",
+  search_data: "the live search data key",
 };
 
 const DOMAINS = [

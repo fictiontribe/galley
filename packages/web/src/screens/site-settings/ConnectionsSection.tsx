@@ -4,7 +4,7 @@ import { api, errorShape } from "@/lib/api";
 import { formatUsdAsCredits, useManagedAi } from "@/lib/credits";
 import { count, money } from "@/lib/format";
 import { setQueryData, useQuery } from "@/lib/query";
-import { useHostedInstall } from "@/lib/stores/meta";
+import { useHostedInstall, useMeta } from "@/lib/stores/meta";
 import { notify } from "@/lib/stores/toasts";
 import { Badge, Button, ErrorState, Field, Input, Skeleton } from "@/ui";
 
@@ -12,6 +12,11 @@ const LABELS: Record<string, { title: string; what: string; placeholder: string 
   anthropic: { title: "Assistant", what: "The Anthropic API key the assistant uses for this site.", placeholder: "sk-ant-…" },
   openai: { title: "Images (OpenAI)", what: "The OpenAI key image generation uses for this site.", placeholder: "sk-…" },
   google: { title: "Images (Google)", what: "The Google AI key image generation uses for this site.", placeholder: "AIza…" },
+  search_data: {
+    title: "Live search data",
+    what: "API key (login:password or base64) for rankings, keyword research, competitor gaps, backlinks, and AI citations.",
+    placeholder: "login:password or base64",
+  },
   cloudflare: { title: "Cloudflare", what: "The Cloudflare access key used to put this site online.", placeholder: "Cloudflare API token" },
   vercel: { title: "Vercel", what: "The Vercel access key used to put this site online.", placeholder: "Vercel access token" },
 };
@@ -190,10 +195,11 @@ export function ConnectionsSection({ siteId }: { siteId: string }) {
   // (App settings, the Install page), so there is no shared one to override.
   const hosted = useHostedInstall();
   const { managed, creditMillicents } = useManagedAi();
+  const searchDataManaged = useMeta((s) => Boolean(s.meta?.searchData?.managed));
   const connections = useQuery(connectionsKey(siteId), () => api("GET /api/sites/:siteId/connections", { params: { siteId } }), { enabled: !hosted });
   const usage = useQuery(usageKey(siteId), () => api("GET /api/sites/:siteId/usage", { params: { siteId } }));
   const update = (next: SiteConnections) => setQueryData(connectionsKey(siteId), next);
-  const order: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel"];
+  const order: SecretName[] = ["anthropic", "openai", "google", "search_data", "cloudflare", "vercel"];
 
   return (
     <div className="app-settings__sections sites-connections">
@@ -213,7 +219,7 @@ export function ConnectionsSection({ siteId }: { siteId: string }) {
           ) : connections.data ? (
             <ul className="sites-conns">
               {[...connections.data.secrets]
-                .filter((secret) => !managed || !AI_SECRETS.has(secret.name))
+                .filter((secret) => (!managed || !AI_SECRETS.has(secret.name)) && (!searchDataManaged || secret.name !== "search_data"))
                 .sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name))
                 .map((secret) => (
                   <SecretRow key={secret.name} siteId={siteId} secret={secret} onChange={update} />

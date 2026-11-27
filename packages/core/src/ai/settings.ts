@@ -25,7 +25,7 @@ import { DEFAULT_PREVIEW_POLICY, PREVIEW_LIMITS } from "../site/preview-policy";
 import { isThemeId } from "../themes/contract";
 import { runGit } from "../workspace/git";
 
-const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly", "gcp"];
+const SECRET_NAMES: SecretName[] = ["anthropic", "openai", "google", "cloudflare", "vercel", "fly", "gcp", "search_data"];
 const EFFORTS: Effort[] = ["low", "medium", "high", "xhigh"];
 
 const StoredSettings = z.object({
@@ -428,6 +428,7 @@ const SECRET_ENV_HINT: Record<SecretName, string> = {
   vercel: "VERCEL_TOKEN",
   fly: "FLY_API_TOKEN",
   gcp: "GOOGLE_APPLICATION_CREDENTIALS_JSON",
+  search_data: "GALLEY_SEARCH_DATA_KEY or SEARCH_DATA_API_KEY",
 };
 
 function definedOnly<T extends object>(value: T | undefined): Partial<T> {

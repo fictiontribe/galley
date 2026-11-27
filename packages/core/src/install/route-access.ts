@@ -271,6 +271,11 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "GET /api/sites/:siteId/visibility/write/:jobId": "edit",
   "POST /api/sites/:siteId/visibility/write/:jobId/cancel": "edit",
   "POST /api/sites/:siteId/visibility/external-links": "edit",
+  "GET /api/sites/:siteId/visibility/intelligence": "edit",
+  "POST /api/sites/:siteId/visibility/intelligence/refresh": "edit",
+  "POST /api/sites/:siteId/visibility/intelligence/explore": "edit",
+  "POST /api/sites/:siteId/visibility/intelligence/tune": "edit",
+  "POST /api/sites/:siteId/visibility/intelligence/draft-gap": "edit",
 
   // ── bringing a site in (draft changes) ─────────────────────────────────
   "POST /api/sites/:siteId/import/upload": "edit",

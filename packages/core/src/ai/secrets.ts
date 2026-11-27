@@ -33,6 +33,7 @@ export const SECRET_ENV: Record<SecretName, string[]> = {
   fly: ["FLY_API_TOKEN"],
   // The whole key file's text (GOOGLE_APPLICATION_CREDENTIALS names a file; this holds what is in it).
   gcp: ["GOOGLE_APPLICATION_CREDENTIALS_JSON"],
+  search_data: ["GALLEY_SEARCH_DATA_KEY", "SEARCH_DATA_API_KEY"],
 };
 
 const LABELS: Record<SecretName, string> = {
@@ -43,6 +44,7 @@ const LABELS: Record<SecretName, string> = {
   vercel: "a Vercel access key (access token)",
   fly: "a Fly.io access key (organization token)",
   gcp: "a key file from Google Cloud (a service account's JSON key)",
+  search_data: "a live search data API key",
 };
 
 /** Rough shapes — enough to catch a pasted sentence or the wrong service's key. */
@@ -56,6 +58,8 @@ const SHAPES: Record<SecretName, { test: RegExp; hint: string }> = {
   fly: { test: /^(?:FlyV1 )?[A-Za-z0-9_]+_[A-Za-z0-9_+/=,.-]{20,}$/, hint: "Copy the whole key Fly.io shows, including “FlyV1” at the start." },
   // Checked by parsing it (normalizeSecret), not by this pattern.
   gcp: { test: /^\{[\s\S]*\}$/, hint: "Paste the whole JSON file Google Cloud downloads for a service account's key: it starts with “{” and says \"type\": \"service_account\"." },
+  // Accepts login:password or a base64 / bearer token (optional leading "Basic " stripped on normalize).
+  search_data: { test: /^[A-Za-z0-9._@:+/=-]{8,512}$/, hint: "Paste your login:password or base64 API credentials." },
 };
 
 export function envSecret(env: NodeJS.ProcessEnv, name: SecretName): string | null {
@@ -80,7 +84,12 @@ export function normalizeSecret(name: SecretName, value: string): string {
     return key;
   }
   // Fly.io's keys are the one shape with a space in them ("FlyV1 fm2_…"), and they are long.
-  const key = name === "fly" ? trimmed.replace(/^FlyV1\s+/, "FlyV1 ") : trimmed;
+  const key =
+    name === "fly"
+      ? trimmed.replace(/^FlyV1\s+/, "FlyV1 ")
+      : name === "search_data"
+        ? trimmed.replace(/^Basic\s+/i, "")
+        : trimmed;
   const body = name === "fly" ? key.replace(/^FlyV1 /, "") : key;
 
   if (/\s/.test(body) || key.length > (name === "fly" ? 8192 : 512) || !SHAPES[name].test.test(key)) {
