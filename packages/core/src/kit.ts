@@ -5,7 +5,7 @@
  * is one JSON file, the scripts setup is one JSON file — so that they are
  * edited like any other content (by hand, in the app's builders, by the
  * assistant, over MCP), proofed, and published. The site renders them with a
- * small runtime (`@galley/astro` for Astro sites); the app edits them with
+ * small runtime (`@galleycms/astro` for Astro sites); the app edits them with
  * dedicated screens. Types only — no runtime code — so the site runtime, the
  * web UI and the engine can all import this file.
  */

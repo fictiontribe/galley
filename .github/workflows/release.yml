@@ -1,8 +1,10 @@
-# Publishes the two npm packages — galley-cms (the `galley` command) and
-# create-galley (`npm create galley@latest`) — with provenance.
+# Publishes the six npm packages — galley-cms (the `galley` command),
+# create-galley (`npm create galley@latest`), galleycms (`npx galleycms` alias),
+# and the three standalone kits (@galleycms/astro, @galleycms/adapter-kit,
+# @galleycms/plugin-kit) — with provenance.
 #
 #   On a version tag (vX.Y.Z, pushed by hand: RELEASING.md): install, check
-#   the tag against the versions, typecheck, test, pack both packages, verify
+#   the tag against the versions, typecheck, test, pack all six packages, verify
 #   the tarballs, make and start a site from them in a clean folder, then
 #   publish exactly the tarballs that were checked. A starter that is
 #   downloaded when used ("download": true in its starter.json) travels as an
@@ -16,14 +18,15 @@
 #   the workflow is run from a tag.
 #
 # Needs one repository secret, NPM_TOKEN: an npm granular access token with
-# read and write access to galley-cms and create-galley (RELEASING.md says
-# how to make it). Four jobs, each with only the rights it needs: "release"
-# installs, builds, checks and packs with a read-only token (any package's
-# lifecycle script runs there); "starters" only makes or checks the
-# starters' release, with "contents: write"; "publish" only publishes the
-# checked tarballs to npm, after "starters", with the identity token npm's
-# provenance needs; "docker" builds and smoke-tests the container image (and
-# pushes multi-arch images to ghcr.io on version tags with "packages: write").
+# read and write access to galley-cms, create-galley, galleycms, and the
+# @galleycms organization (RELEASING.md says how to make it). Four jobs, each
+# with only the rights it needs: "release" installs, builds, checks and packs
+# with a read-only token (any package's lifecycle script runs there); "starters"
+# only makes or checks the starters' release, with "contents: write"; "publish"
+# only publishes the checked tarballs to npm, after "starters", with the
+# identity token npm's provenance needs; "docker" builds and smoke-tests the
+# container image (and pushes multi-arch images to ghcr.io on version tags with
+# "packages: write").
 name: Release
 
 on:
@@ -94,9 +97,22 @@ jobs:
             const read = (path) => JSON.parse(readFileSync(path, "utf8")).version;
             const cli = read("packages/cli/package.json");
             const create = read("packages/create-galley/package.json");
+            const alias = read("packages/galleycms/package.json");
+            const astro = read("packages/astro/package.json");
+            const adapterKit = read("packages/adapter-kit/package.json");
+            const pluginKit = read("packages/plugin-kit/package.json");
             const brand = /VERSION = "([^"]+)"/.exec(readFileSync("packages/core/src/brand.ts", "utf8"))?.[1];
             const tag = process.env.GITHUB_REF_TYPE === "tag" ? process.env.GITHUB_REF_NAME.replace(/^v/, "") : cli;
-            const all = { "packages/cli": cli, "packages/create-galley": create, "brand.ts VERSION": brand, tag };
+            const all = {
+              "packages/cli": cli,
+              "packages/create-galley": create,
+              "packages/galleycms": alias,
+              "packages/astro": astro,
+              "packages/adapter-kit": adapterKit,
+              "packages/plugin-kit": pluginKit,
+              "brand.ts VERSION": brand,
+              tag,
+            };
             if (new Set(Object.values(all)).size !== 1) {
               console.error(`::error::The versions differ: ${JSON.stringify(all)}. Set them all to the same number (RELEASING.md, step 3).`);
               process.exit(1);
@@ -113,17 +129,21 @@ jobs:
       - run: pnpm -r --workspace-concurrency=1 --if-present test
 
       # galley-cms's prepack builds the web UI, the bundle, the site kit and the
-      # starters into dist/; pnpm writes create-galley's workspace range as the
-      # exact version.
+      # starters into dist/; pnpm writes create-galley's and galleycms's
+      # workspace ranges as the exact version. verify-kits-pack.mjs builds,
+      # packs and verifies the three standalone @galleycms/* kits into $PACK.
       - name: Pack
         run: |
           mkdir -p "$PACK"
           pnpm --filter galley-cms pack --pack-destination "$PACK"
           pnpm --filter create-galley pack --pack-destination "$PACK"
-          ls -l "$PACK"
+          pnpm --filter galleycms pack --pack-destination "$PACK"
 
       - name: Verify the tarballs
-        run: node packages/cli/scripts/verify-pack.mjs "$PACK"/*.tgz
+        run: |
+          node packages/cli/scripts/verify-pack.mjs "$PACK"/galley-cms-*.tgz "$PACK"/create-galley-*.tgz "$PACK"/galleycms-*.tgz
+          node scripts/verify-kits-pack.mjs --pack-destination "$PACK"
+          ls -l "$PACK"
 
       # From the tarballs, outside the repository, with nothing else installed:
       # make a site, install it, start Galley on it and ask for the site list.
@@ -134,7 +154,8 @@ jobs:
           mkdir -p "$try/tools" "$try/home"
           cd "$try/tools"
           npm init -y > /dev/null
-          npm install --no-audit --no-fund "$PACK/galley-cms-${{ steps.version.outputs.version }}.tgz" "$PACK/create-galley-${{ steps.version.outputs.version }}.tgz"
+          npm install --no-audit --no-fund "$PACK/galley-cms-${{ steps.version.outputs.version }}.tgz" "$PACK/create-galley-${{ steps.version.outputs.version }}.tgz" "$PACK/galleycms-${{ steps.version.outputs.version }}.tgz"
+          "$try/tools/node_modules/.bin/galleycms" version --json | grep -q '"version":"${{ steps.version.outputs.version }}"'
           cd "$try"
           export HOME="$try/home" GALLEY_TOKEN="release-check-token-0123456789" GALLEY_PREVIEW_PORTS="4785-4789"
           "$try/tools/node_modules/.bin/create-galley" ci-site --starter caddow --no-open --port 4780 > galley.log 2>&1 &
@@ -231,14 +252,14 @@ jobs:
             fi
           done
 
-  # galley-cms first: create-galley depends on that exact version. The registry accepts galley-cms at once
+  # galley-cms first: create-galley and galleycms depend on that exact version. The registry accepts galley-cms at once
   # and then takes some minutes over its tarball (about 14 MB) before anyone can install it: eight on 0.4.1.
   # Two things break in that window if nothing is done:
-  #   - the new create-galley asks for a galley-cms that isn't there yet, so `npm create galley@latest` fails;
+  #   - the new create-galley and galleycms ask for a galley-cms that isn't there yet, so `npm create galley@latest` and `npx galleycms` fail;
   #   - "latest" already names the new galley-cms, so `npx galley-cms` and `npm install galley-cms` fail too.
   # So galley-cms is published under a tag of its own ("incoming"), which nobody asks for; the step waits
   # until the registry lists the version and its tarball answers; only then does "latest" move to it, and
-  # only then is create-galley published.
+  # only then are create-galley, galleycms and the @galleycms/* kits published.
   # "incoming" is left where it is: the release's token may add or move a tag and may not remove one
   # (0.4.2: the removal was refused), and the next release moves it to its own version.
   publish:
@@ -278,14 +299,14 @@ jobs:
           tarball="https://registry.npmjs.org/galley-cms/-/galley-cms-$version.tgz"
           listed() { [ -n "$(npm view "$1@$version" version 2> /dev/null)" ]; }
           answers() { [ "$(curl -s -o /dev/null -w '%{http_code}' -I "$tarball" || true)" = "200" ]; }
-          # publish <package> <dist-tag>. Run again after stopping part-way, it leaves what npm already has as it
-          # is: a version the registry lists, or one it has accepted and doesn't list yet (it refuses a second).
+          # publish <package-name> <tarball-stem> <dist-tag>. Run again after stopping part-way, it leaves what npm
+          # already has as it is: a version the registry lists, or one it has accepted and doesn't list yet (it refuses a second).
           publish() {
             if listed "$1"; then
               echo "$1@$version is already on npm."
               return
             fi
-            if out="$(npm publish "$PACK/$1-$version.tgz" --provenance --access public --tag "$2" 2>&1)"; then
+            if out="$(npm publish "$PACK/$2-$version.tgz" --provenance --access public --tag "$3" 2>&1)"; then
               echo "$out"
             elif echo "$out" | grep -qi "previously published\|cannot publish over"; then
               echo "$1@$version was already accepted by npm."
@@ -294,7 +315,7 @@ jobs:
               exit 1
             fi
           }
-          publish galley-cms incoming
+          publish galley-cms galley-cms incoming
           echo "Waiting until galley-cms@$version can be installed: listed by the registry, and $tarball answering."
           # Every 15 seconds, for 20 minutes at most.
           for try in $(seq 1 80); do
@@ -303,22 +324,25 @@ jobs:
               break
             fi
             if [ "$try" = "80" ]; then
-              echo "::error::galley-cms@$version is on npm under the tag \"incoming\", but it still couldn't be installed after 20 minutes, so \"$tag\" was not moved to it and create-galley was not published. Nobody is given the new version: npx galley-cms and npm create galley@latest still give the last release. When $tarball answers 200, run this workflow again from the tag with Dry run off; it leaves galley-cms as it is, moves \"$tag\" and publishes create-galley."
+              echo "::error::galley-cms@$version is on npm under the tag \"incoming\", but it still couldn't be installed after 20 minutes, so \"$tag\" was not moved to it and create-galley/galleycms were not published. Nobody is given the new version: npx galley-cms, npx galleycms and npm create galley@latest still give the last release. When $tarball answers 200, run this workflow again from the tag with Dry run off; it leaves galley-cms as it is, moves \"$tag\" and publishes the remaining packages."
               exit 1
             fi
             sleep 15
           done
-          # A release that was finished before has nothing left to do, and its tag may have moved on since: a run
-          # from an older release's tag must not bring "latest" back to it.
+          # If create-galley@$version is already on npm, galley-cms's dist-tag was moved before (and may have moved on
+          # since): leave galley-cms's dist-tag untouched so an older tag can never move "latest" backwards, then
+          # still check and publish any remaining packages (galleycms and @galleycms/*) idempotently.
           if listed create-galley; then
-            echo "create-galley@$version is already on npm, so this release was finished before. \"$tag\" is left where it is."
-            exit 0
-          fi
-          if ! npm dist-tag add "galley-cms@$version" "$tag"; then
-            echo "::error::galley-cms@$version can be installed, but npm refused to move \"$tag\" to it (see above), so create-galley was not published. Nobody is given the new version yet. By hand, signed in to npm as an owner: npm dist-tag add galley-cms@$version $tag. Then run this workflow again from the tag with Dry run off; it finds the tag in place and publishes create-galley."
+            echo "create-galley@$version is already on npm, so galley-cms \"$tag\" is left where it is."
+          elif ! npm dist-tag add "galley-cms@$version" "$tag"; then
+            echo "::error::galley-cms@$version can be installed, but npm refused to move \"$tag\" to it (see above), so create-galley and galleycms were not published. Nobody is given the new version yet. By hand, signed in to npm as an owner: npm dist-tag add galley-cms@$version $tag. Then run this workflow again from the tag with Dry run off; it finds the tag in place and publishes the remaining packages."
             exit 1
           fi
-          publish create-galley "$tag"
+          publish create-galley create-galley "$tag"
+          publish galleycms galleycms "$tag"
+          publish @galleycms/astro galleycms-astro "$tag"
+          publish @galleycms/adapter-kit galleycms-adapter-kit "$tag"
+          publish @galleycms/plugin-kit galleycms-plugin-kit "$tag"
 
   # Builds and smoke-tests the hosted container image from Dockerfile.
   # On a dry run, "starters" is skipped and this job still builds linux/amd64

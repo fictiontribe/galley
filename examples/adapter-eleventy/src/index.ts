@@ -13,7 +13,7 @@
  *   its `permalink`;
  * - `_data/*.json`: global data files, each a data collection.
  */
-import type { AdapterContext, AdapterConventions, Collection, CollectionDraft, GalleyAdapter, ParsedModule } from "@galley/adapter-kit";
+import type { AdapterContext, AdapterConventions, Collection, CollectionDraft, GalleyAdapter, ParsedModule } from "@galleycms/adapter-kit";
 
 const CONFIG_FILES = ["eleventy.config.js", "eleventy.config.mjs", "eleventy.config.cjs", ".eleventy.js", ".eleventy.cjs"];
 

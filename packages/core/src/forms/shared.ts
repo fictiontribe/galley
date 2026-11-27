@@ -18,7 +18,7 @@ import type { Field, JsonValue, SearchHit } from "../types";
 
 /**
  * Free mailbox providers refused by "business email only": the same list the
- * site's script checks in the browser (`@galley/astro`, forms/free-email-domains.js),
+ * site's script checks in the browser (`@galleycms/astro`, forms/free-email-domains.js),
  * so the server never refuses an address the page accepted. A site can add
  * domains for its own pages (`forms.freeEmailDomains`); those are checked in
  * the browser only.

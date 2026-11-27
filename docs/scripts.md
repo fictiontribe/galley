@@ -1,7 +1,7 @@
 # Third-party scripts
 
 A site's tags — Google Tag Manager, GA4, ad pixels, chat — are listed in
-**one file**, `src/data/scripts.json`, and the site kit (`@galley/astro`)
+**one file**, `src/data/scripts.json`, and the site kit (`@galleycms/astro`)
 writes them into every page correctly: the vendor's own snippet with the
 site's ids, in the right place, loaded at the right moment, and only once the
 visitor has agreed to what it does. Because the setup is a content file it is
@@ -37,7 +37,7 @@ placements are there. It also turns on the kit's build step in
 when that file has the plain `defineConfig({ … })` shape. Details in
 `docs/forms.md`, "Setting up a site".
 
-**With the integration** (`npx astro add @galley/astro`): nothing else. The
+**With the integration** (`npx astro add @galleycms/astro`): nothing else. The
 integration reads `src/data/scripts.json` (option `scripts.file`) and its
 middleware puts the scripts into every HTML page as it is rendered —
 prerendered pages at build time, on-demand pages per request — so **no
@@ -49,7 +49,7 @@ uses a middleware that edits the finished HTML: the head part goes right
 after `<meta charset>` (else right after `<head>`), body-start right after
 `<body…>`, body-end right before `</body>`. A layout that prefers to choose
 the spot renders `<Scripts placement="head" />` (and `"body-start"`,
-`"body-end"`) from `@galley/astro/components`; a placement the page already
+`"body-end"`) from `@galleycms/astro/components`; a placement the page already
 has is not added again. `<ConsentBanner />` does the same for the banner.
 
 **Without the integration** (vendored, `node packages/astro/scripts/vendor.mjs <site>`):
@@ -133,7 +133,7 @@ script's address) or settings.inline (its code); give it one of them."
 
 ## The catalogue
 
-Exported as JSON-able data from `@galley/astro/catalog` (`scriptIntegrations`),
+Exported as JSON-able data from `@galleycms/astro/catalog` (`scriptIntegrations`),
 mirrored from `packages/core/src/kit-catalog.ts` (a test fails if they
 differ).
 
@@ -315,11 +315,11 @@ Google; after "Accept all", each Google tag finds `default` (denied) then
 `astro build` logs one line per script:
 
 ```
-[@galley/astro] scripts: 3 of 4 enabled · the built-in consent banner · Google Consent Mode v2
-[@galley/astro]   ✓ gtm · Google Tag Manager GTM-AB12CDE3 · head, eager · after analytics consent · every page
-[@galley/astro]   ✓ ga · Google Analytics 4 G-TEST12345 · head, idle · after analytics consent · every page
-[@galley/astro]   ✓ chat · Custom script · body-end, eager · after preferences consent · only /pricing/
-[@galley/astro]   – off · off
+[@galleycms/astro] scripts: 3 of 4 enabled · the built-in consent banner · Google Consent Mode v2
+[@galleycms/astro]   ✓ gtm · Google Tag Manager GTM-AB12CDE3 · head, eager · after analytics consent · every page
+[@galleycms/astro]   ✓ ga · Google Analytics 4 G-TEST12345 · head, idle · after analytics consent · every page
+[@galleycms/astro]   ✓ chat · Custom script · body-end, eager · after preferences consent · only /pricing/
+[@galleycms/astro]   – off · off
 ```
 
 In `astro dev`, `GET /__galley/scripts.json?path=/pricing/` answers what a

@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galleycms/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // Every word the form runtime says on its own, written to brand/voice.md:
 // what happened, then what to do; no exclamation marks, no "we".

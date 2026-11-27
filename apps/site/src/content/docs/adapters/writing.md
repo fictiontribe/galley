@@ -8,7 +8,7 @@ order: 2
 
 <!-- Generated from docs/adapters.md by apps/site/scripts/sync-docs.mjs. Edit that file, not this one. -->
 
-> This page is [`docs/adapters.md`]({repository}/blob/main/docs/adapters.md) from the repository, rendered as it is. **The kit isn't on npm** (Galley itself is, as `galley-cms`): `@galley/adapter-kit` is `packages/adapter-kit` in the repository, and the `npm install` and `npx galley-adapter-check` lines below describe a package that isn't published yet. From a clone, run the kit's checker as `node packages/adapter-kit/bin/galley-adapter-check.js <adapter> <fixture>`.
+> This page is [`docs/adapters.md`]({repository}/blob/main/docs/adapters.md) from the repository, rendered as it is. `@galleycms/adapter-kit` lives in `packages/adapter-kit` in the repository; from a clone you can also run the kit's checker directly as `node packages/adapter-kit/bin/galley-adapter-check.js <adapter> <fixture>`.
 
 Galley is built around Astro, and every other framework arrives through an
 **adapter**: a small module that tells Galley how to recognise a site of that
@@ -299,7 +299,7 @@ post lives in a folder of its own:
 
 ```js
 // gatsby-adapter.mjs — conventionAdapter does the detecting; the spec adds two hooks.
-import { conventionAdapter } from "@galley/adapter-kit";
+import { conventionAdapter } from "@galleycms/adapter-kit";
 
 export default conventionAdapter({
   id: "gatsby",
@@ -434,7 +434,7 @@ correct anything an adapter or the engine got wrong.
 Install the conformance kit as a dev dependency:
 
 ```sh
-npm install --save-dev @galley/adapter-kit
+npm install --save-dev @galleycms/adapter-kit
 ```
 
 Make a fixture: a tiny invented site of your framework, a few files deep,
@@ -444,7 +444,7 @@ with every shape your adapter reads. Then the whole test file is one call
 ```ts
 import { fileURLToPath } from "node:url";
 
-import { describeAdapter } from "@galley/adapter-kit/vitest";
+import { describeAdapter } from "@galleycms/adapter-kit/vitest";
 
 import { eleventyAdapter } from "../src/index";
 
@@ -538,9 +538,9 @@ Publish an adapter to npm as `galley-adapter-<framework>`, with the
   "files": ["lume-adapter.mjs"],
   "keywords": ["galley-adapter", "galley", "lume"],
   "license": "Apache-2.0",
-  "peerDependencies": { "@galley/adapter-kit": ">=0.1.0 <1" },
-  "peerDependenciesMeta": { "@galley/adapter-kit": { "optional": true } },
-  "devDependencies": { "@galley/adapter-kit": "^0.1.0" }
+  "peerDependencies": { "@galleycms/adapter-kit": ">=0.1.0 <1" },
+  "peerDependenciesMeta": { "@galleycms/adapter-kit": { "optional": true } },
+  "devDependencies": { "@galleycms/adapter-kit": "^0.1.0" }
 }
 ```
 

@@ -12,8 +12,8 @@ afterEach(() => {
 
 describe("galley()", () => {
   it("is named after its package, and the toolbar app after the product", () => {
-    expect(galley().name).toBe("@galley/astro");
-    expect(INTEGRATION_NAME).toBe("@galley/astro");
+    expect(galley().name).toBe("@galleycms/astro");
+    expect(INTEGRATION_NAME).toBe("@galleycms/astro");
     expect(PRODUCT_NAME).toBe("Galley");
   });
 

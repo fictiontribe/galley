@@ -1,11 +1,11 @@
 ---
 title: The site kit
-description: "@galley/astro: forms, managed scripts with consent, email links, the agent-readable version of the site and the dev toolbar app — how a site gets it, every option, and what it adds to a build."
+description: "@galleycms/astro: forms, managed scripts with consent, email links, the agent-readable version of the site and the dev toolbar app — how a site gets it, every option, and what it adds to a build."
 group: astro
 order: 4
 ---
 
-This page is for developers. Galley edits any Astro site without adding anything to it. The **site kit** is optional: an Astro integration, `@galley/astro` ([`packages/astro`]({repository}/tree/main/packages/astro)), that turns a few content files into site features:
+This page is for developers. Galley edits any Astro site without adding anything to it. The **site kit** is optional: an Astro integration, `@galleycms/astro` ([`packages/astro`]({repository}/tree/main/packages/astro)), that turns a few content files into site features:
 
 | Feature | The file | Guide |
 | --- | --- | --- |
@@ -35,7 +35,7 @@ It copies the components, the browser runtime, the schemas, the CSS and the buil
 - the three placements in the layout: `<Scripts placement="head" />` after `<meta charset>`, `"body-start"` after `<body>`, `"body-end"` before `</body>` (`import { Scripts } from "../galley/components/index.js"`);
 - for the agent-readable version: `import galley from "./src/galley/integration.js"` and `integrations: [galley()]` in `astro.config`.
 
-Once the package is published: `npx astro add @galley/astro`, and the integration places the scripts itself — no template changes.
+Once the package is published: `npx astro add @galleycms/astro`, and the integration places the scripts itself — no template changes.
 
 ## Options
 

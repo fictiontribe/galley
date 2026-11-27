@@ -8,7 +8,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { checkPlugin, fakeFetch, formatPluginReport, json, providerContext, type FakeRoute, type RecordedRequest } from "@galley/plugin-kit";
+import { checkPlugin, fakeFetch, formatPluginReport, json, providerContext, type FakeRoute, type RecordedRequest } from "@galleycms/plugin-kit";
 import { createFileSecretStore, createSettingsService } from "@galley/core/ai";
 import { createPluginRegistry, createPluginSettingsStore } from "@galley/core/plugins";
 import { aspectFor, classify, createOpenRouterPlugin, DEFAULT_IMAGE_MODEL, FALLBACK_IMAGE_MODELS, priceFrom, resolutionFor, videoPrice } from "../src/index";

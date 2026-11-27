@@ -2,7 +2,7 @@
  * The public plugin API: what a plugin is, what it may contribute and what
  * the engine hands it. A plugin is a plain object — no base class, no build
  * step — and everything here is types, so a plugin can `import type` this
- * and stay a dependency-free file. `@galley/plugin-kit` re-exports it.
+ * and stay a dependency-free file. `@galleycms/plugin-kit` re-exports it.
  *
  * Where an engine interface already existed (adapters, the kit catalogues)
  * the public shape reuses it. Where the internal one leaks internals (image

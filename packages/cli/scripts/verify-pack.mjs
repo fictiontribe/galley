@@ -2,7 +2,7 @@
 // Checks the tarballs `npm pack` / `pnpm pack` made, before anything is
 // published — the release workflow runs it, and so can anyone:
 //
-//   node packages/cli/scripts/verify-pack.mjs galley-cms-0.1.0.tgz create-galley-0.1.0.tgz
+//   node packages/cli/scripts/verify-pack.mjs galley-cms-0.1.0.tgz create-galley-0.1.0.tgz galleycms-0.1.0.tgz
 //
 // For each tarball: the package.json is publishable (not private, no
 // `workspace:` ranges, no install scripts, the fields npm shows); nothing is
@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 
 const MB = 1024 * 1024;
 /** Packed size limits. Above galley-cms's, starters should be fetched from the release instead of bundled (RELEASING.md). */
-const LIMITS = { "galley-cms": Number(process.env.GALLEY_PACK_LIMIT_MB || 15) * MB, "create-galley": 64 * 1024 };
+const LIMITS = { "galley-cms": Number(process.env.GALLEY_PACK_LIMIT_MB || 15) * MB, "create-galley": 64 * 1024, galleycms: 64 * 1024 };
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 /** Every starter in the repository, and whether it is downloaded when used ("download": true) instead of bundled. */
 const STARTERS = readdirSync(join(REPO, "starters"), { withFileTypes: true })
@@ -185,12 +185,13 @@ function verify(tarball) {
       }
     }
 
-    if (pkg.name === "create-galley") {
+    if (pkg.name === "create-galley" || pkg.name === "galleycms") {
       const deps = Object.entries(pkg.dependencies ?? {});
+      const binFile = pkg.name === "create-galley" ? "bin/create-galley.js" : "bin/galleycms.js";
 
-      if (deps.length !== 1 || deps[0][0] !== "galley-cms") problems.push(`create-galley should depend on galley-cms alone, not ${deps.map(([name]) => name).join(", ") || "nothing"}`);
-      else if (deps[0][1] !== pkg.version) problems.push(`create-galley ${pkg.version} depends on galley-cms “${deps[0][1]}”; it should be exactly ${pkg.version}`);
-      for (const file of ["bin/create-galley.js", "index.js", "LICENSE", "README.md"]) if (!files.includes(file)) problems.push(`${file} is missing`);
+      if (deps.length !== 1 || deps[0][0] !== "galley-cms") problems.push(`${pkg.name} should depend on galley-cms alone, not ${deps.map(([name]) => name).join(", ") || "nothing"}`);
+      else if (deps[0][1] !== pkg.version) problems.push(`${pkg.name} ${pkg.version} depends on galley-cms “${deps[0][1]}”; it should be exactly ${pkg.version}`);
+      for (const file of [binFile, "index.js", "LICENSE", "README.md"]) if (!files.includes(file)) problems.push(`${file} is missing`);
     }
     return { name: `${pkg.name}@${pkg.version}`, problems, notes };
   } finally {

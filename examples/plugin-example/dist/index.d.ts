@@ -1,6 +1,6 @@
 /**
  * galley-plugin-example — a small but real plugin, built only on
- * @galley/plugin-kit. It adds three things:
+ * @galleycms/plugin-kit. It adds three things:
  *
  *   - a script integration (Fathom Analytics), with its snippet as a template
  *   - an afterPublish hook that posts a plain summary of each publish to a
@@ -13,7 +13,7 @@
  * dependencies at all and installs anywhere: `satisfies GalleyPlugin` checks
  * the shape as `definePlugin` would, without a run-time import.
  */
-import type { PublishResult, SitePluginContext, SiteToolContribution, ScriptIntegrationContribution } from "@galley/plugin-kit";
+import type { PublishResult, SitePluginContext, SiteToolContribution, ScriptIntegrationContribution } from "@galleycms/plugin-kit";
 /** Words in a piece of text: runs of letters or digits, apostrophes and hyphens inside words included. */
 export declare function countWords(text: string): number;
 /** One plain sentence about a publish, for a chat channel. */

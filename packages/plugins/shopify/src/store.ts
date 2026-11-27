@@ -9,7 +9,7 @@
  * `optionValues`, not `values`; `product(handle:)`, not `productByHandle`;
  * `fileUpdate` for alt text, not the deprecated `productUpdateMedia`).
  */
-import type { PluginContext } from "@galley/plugin-kit";
+import type { PluginContext } from "@galleycms/plugin-kit";
 import { graphql, ShopifyError, type StoreConnection } from "./client";
 
 type Ctx = Pick<PluginContext, "fetch">;

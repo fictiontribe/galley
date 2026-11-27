@@ -440,12 +440,12 @@ async function main() {
 
   rmSync(plain, { recursive: true, force: true });
   execFileSync("rsync", ["-a", "--exclude", "node_modules", "--exclude", "dist", "--exclude", ".astro", `${STARTER}/`, `${plain}/`]);
-  mkdirSync(join(plain, "node_modules/@galley/astro"), { recursive: true });
+  mkdirSync(join(plain, "node_modules/@galleycms/astro"), { recursive: true });
   for (const entry of readdirSync(join(STARTER, "node_modules"))) execFileSync("ln", ["-s", join(STARTER, "node_modules", entry), join(plain, "node_modules", entry)]);
-  for (const entry of ["src", "types", "package.json"]) cpSync(join(KIT, entry), join(plain, "node_modules/@galley/astro", entry), { recursive: true });
+  for (const entry of ["src", "types", "package.json"]) cpSync(join(KIT, entry), join(plain, "node_modules/@galleycms/astro", entry), { recursive: true });
   const pkg = JSON.parse(readFileSync(join(plain, "package.json"), "utf8"));
 
-  pkg.dependencies["@galley/astro"] = "file:./vendor/astro";
+  pkg.dependencies["@galleycms/astro"] = "file:./vendor/astro";
   writeFileSync(join(plain, "package.json"), JSON.stringify(pkg, null, 2));
   const configPath = join(plain, "astro.config.ts");
   const original = readFileSync(configPath, "utf8");
@@ -467,7 +467,7 @@ async function main() {
   };
   const without = build("dist-without");
 
-  writeFileSync(configPath, original.replace('import sectionGallery from "./scripts/gallery/integration.mjs";', 'import sectionGallery from "./scripts/gallery/integration.mjs";\nimport galley from "@galley/astro";').replace("    baseLinks(),", "    baseLinks(),\n    galley({ mailto: false }),"));
+  writeFileSync(configPath, original.replace('import sectionGallery from "./scripts/gallery/integration.mjs";', 'import sectionGallery from "./scripts/gallery/integration.mjs";\nimport galley from "@galleycms/astro";').replace("    baseLinks(),", "    baseLinks(),\n    galley({ mailto: false }),"));
   const withKit = build("dist-with");
   const same = JSON.stringify(Object.entries(without).sort()) === JSON.stringify(Object.entries(withKit).sort());
 

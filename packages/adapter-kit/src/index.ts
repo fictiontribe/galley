@@ -1,9 +1,9 @@
 /**
- * @galley/adapter-kit — what a Galley adapter author installs as a dev
+ * @galleycms/adapter-kit — what a Galley adapter author installs as a dev
  * dependency: the adapter types, `defineAdapter` / `conventionAdapter`, and
  * `checkAdapter`, the conformance check that says whether an adapter is
  * correct. For vitest users, `describeAdapter` lives in
- * `@galley/adapter-kit/vitest`; without vitest, run `galley-adapter-check`.
+ * `@galleycms/adapter-kit/vitest`; without vitest, run `galley-adapter-check`.
  */
 export type {
   AdapterContext,

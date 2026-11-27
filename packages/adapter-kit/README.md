@@ -1,4 +1,4 @@
-# @galley/adapter-kit
+# @galleycms/adapter-kit
 
 Write and test framework adapters for [Galley](https://galley.fictiontribe.com),
 the open-source, git-based AI CMS for static sites.
@@ -13,13 +13,13 @@ Guide: [`docs/adapters.md`](https://github.com/fictiontribe/galley/blob/main/doc
 ## Usage
 
 ```ts
-import { defineAdapter, conventionAdapter, checkAdapter } from "@galley/adapter-kit";
+import { defineAdapter, conventionAdapter, checkAdapter } from "@galleycms/adapter-kit";
 ```
 
 With Vitest:
 
 ```ts
-import { describeAdapter } from "@galley/adapter-kit/vitest";
+import { describeAdapter } from "@galleycms/adapter-kit/vitest";
 ```
 
 From the command line:
@@ -32,8 +32,8 @@ npx galley-adapter-check ./my-adapter.mjs ./fixtures/my-site
 
 | Entry point | Contents |
 | --- | --- |
-| `@galley/adapter-kit` | `ADAPTER_API_VERSION`, `defineAdapter`, `conventionAdapter`, `parseModule`, `validateAdapter`, `checkAdapter`, `checksFor`, `CHECKS`, `FOREIGN_FIXTURES`, `formatReport`, and adapter types |
-| `@galley/adapter-kit/vitest` | `describeAdapter` (plus `checkAdapter`, `formatReport`, and report types) |
+| `@galleycms/adapter-kit` | `ADAPTER_API_VERSION`, `defineAdapter`, `conventionAdapter`, `parseModule`, `validateAdapter`, `checkAdapter`, `checksFor`, `CHECKS`, `FOREIGN_FIXTURES`, `formatReport`, and adapter types |
+| `@galleycms/adapter-kit/vitest` | `describeAdapter` (plus `checkAdapter`, `formatReport`, and report types) |
 | `galley-adapter-check` | CLI conformance checker binary |
 
 ## Licence

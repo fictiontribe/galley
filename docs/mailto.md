@@ -14,7 +14,7 @@ The address is shown in the dialog and can be selected. Recipients, `cc`,
 `bcc`, the subject and the body of the original link are carried into every
 option.
 
-It is part of `@galley/astro` and **on by default**: the integration adds it
+It is part of `@galleycms/astro` and **on by default**: the integration adds it
 to every page that has an email link; the vendored kit adds it through
 `<Scripts placement="body-end" />`.
 

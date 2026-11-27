@@ -2,7 +2,7 @@
  * @galley/core/plugins — the plugin system: the public plugin API (types,
  * `definePlugin`, `ProviderError`), the registry every contribution is
  * looked up through, loading (built-in, installed, site-named) and the
- * trust rules. Guide: docs/plugins.md. Authors use `@galley/plugin-kit`,
+ * trust rules. Guide: docs/plugins.md. Authors use `@galleycms/plugin-kit`,
  * which re-exports the public part of this.
  */
 export type {

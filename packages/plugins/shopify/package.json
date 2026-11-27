@@ -30,7 +30,7 @@
     "fake": "node test/fake/serve.mjs"
   },
   "dependencies": {
-    "@galley/plugin-kit": "workspace:*"
+    "@galleycms/plugin-kit": "workspace:*"
   },
   "devDependencies": {
     "@galley/core": "workspace:*"

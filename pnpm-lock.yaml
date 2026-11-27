@@ -49,13 +49,13 @@ importers:
 
   examples/adapter-eleventy:
     devDependencies:
-      '@galley/adapter-kit':
+      '@galleycms/adapter-kit':
         specifier: workspace:*
         version: link:../../packages/adapter-kit
 
   examples/plugin-example:
     devDependencies:
-      '@galley/plugin-kit':
+      '@galleycms/plugin-kit':
         specifier: workspace:*
         version: link:../../packages/plugin-kit
 
@@ -136,6 +136,12 @@ importers:
         specifier: workspace:*
         version: link:../cli
 
+  packages/galleycms:
+    dependencies:
+      galley-cms:
+        specifier: workspace:*
+        version: link:../cli
+
   packages/import-wordpress:
     dependencies:
       '@galley/core':
@@ -182,12 +188,12 @@ importers:
 
   packages/plugin-kit:
     dependencies:
-      '@galley/adapter-kit':
-        specifier: workspace:*
-        version: link:../adapter-kit
       '@galley/core':
         specifier: workspace:*
         version: link:../core
+      '@galleycms/adapter-kit':
+        specifier: workspace:*
+        version: link:../adapter-kit
       vitest:
         specifier: '>=3'
         version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@21.0.4)(jsdom@31.0.1)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
@@ -198,7 +204,7 @@ importers:
 
   packages/plugins/openrouter:
     dependencies:
-      '@galley/plugin-kit':
+      '@galleycms/plugin-kit':
         specifier: workspace:*
         version: link:../../plugin-kit
     devDependencies:
@@ -208,7 +214,7 @@ importers:
 
   packages/plugins/shopify:
     dependencies:
-      '@galley/plugin-kit':
+      '@galleycms/plugin-kit':
         specifier: workspace:*
         version: link:../../plugin-kit
     devDependencies:

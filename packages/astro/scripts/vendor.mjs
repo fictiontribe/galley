@@ -64,7 +64,7 @@ const FILES = [
 ];
 
 const header = (/** @type {string} */ file) => {
-  const text = `Vendored from @galley/astro ${VERSION} by scripts/vendor.mjs. Don't edit: run the script again to update.`;
+  const text = `Vendored from @galleycms/astro ${VERSION} by scripts/vendor.mjs. Don't edit: run the script again to update.`;
 
   if (file.endsWith(".css")) return `/* ${text} */\n`;
   return `// ${text}\n`;
@@ -257,5 +257,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   const { target, files, version } = vendor(siteDir);
 
-  console.log(`Vendored @galley/astro ${version}: ${files} files in ${target}`);
+  console.log(`Vendored @galleycms/astro ${version}: ${files} files in ${target}`);
 }

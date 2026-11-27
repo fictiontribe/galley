@@ -19,7 +19,7 @@
  * background only where `background` offers it, and reference pictures only
  * where the model takes image input.
  */
-import { ProviderError, type GeneratedImageResult, type ImageAspect, type ImageGenerationRequest, type ImageModelInfo, type ImageProviderPlugin, type ProviderCallContext } from "@galley/plugin-kit";
+import { ProviderError, type GeneratedImageResult, type ImageAspect, type ImageGenerationRequest, type ImageModelInfo, type ImageProviderPlugin, type ProviderCallContext } from "@galleycms/plugin-kit";
 import { base64ToBytes, call, classify, dataUrl, headers, money, OPENROUTER_API, readBody, resolveBaseUrl, scrub, type BaseUrlOption } from "./client";
 
 /** What a model accepts, per its catalogue entry. */

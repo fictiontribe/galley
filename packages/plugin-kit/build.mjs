@@ -1,4 +1,4 @@
-// Builds the publishable @galley/plugin-kit into dist/, a package of its own:
+// Builds the publishable @galleycms/plugin-kit into dist/, a package of its own:
 //
 //   dist/package.json   the published manifest (exports → compiled JS)
 //   dist/lib/           index.js, vitest.js and shared chunks — the engine and
@@ -60,7 +60,7 @@ writeFileSync(
       paths: {
         "@galley/core": ["../core/src/index.ts"],
         "@galley/core/*": ["../core/src/*"],
-        "@galley/adapter-kit": ["../adapter-kit/src/index.ts"],
+        "@galleycms/adapter-kit": ["../adapter-kit/src/index.ts"],
       },
     },
     files: ["src/index.ts", "src/vitest.ts"],
@@ -74,7 +74,7 @@ try {
 const typesRoot = join(dist, "types");
 const exportsOf = (manifest, name, dir) =>
   Object.entries(manifest.exports).map(([key, value]) => [key === "." ? name : `${name}/${key.slice(2)}`, join(dir, String(value).replace(/^\.\//, "").replace(/\.ts$/, ".js"))]);
-const known = Object.fromEntries([...exportsOf(core, "@galley/core", "core"), ...exportsOf(adapterKit, "@galley/adapter-kit", "adapter-kit")]);
+const known = Object.fromEntries([...exportsOf(core, "@galley/core", "core"), ...exportsOf(adapterKit, "@galleycms/adapter-kit", "adapter-kit")]);
 
 function declarations(dir) {
   return readdirSync(dir).flatMap((name) => {

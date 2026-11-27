@@ -20,7 +20,7 @@ import { FIELD_TYPES } from "./schema";
 
 /** Where the vendored kit keeps its files, and the header each file carries. */
 export const KIT_DIR = "src/galley";
-export const VENDOR_HEADER = /^(?:---\n)?(?:\/\/|\/\*) Vendored from @galley\/astro (\S+) by scripts\/vendor\.mjs\./;
+export const VENDOR_HEADER = /^(?:---\n)?(?:\/\/|\/\*) Vendored from @galley(?:cms)?\/astro (\S+) by scripts\/vendor\.mjs\./;
 export const KIT_SETTINGS = `${KIT_DIR}/settings.json`;
 /** The file the vendored kit's runtime reads scripts from, and the folder it reads forms from. */
 export const SCRIPTS_FILE = "src/data/scripts.json";
@@ -147,7 +147,7 @@ export function kitInfo(read: { text(path: string): string | null; packageJson: 
     return { source: "vendored", version, allowFormScripts };
   }
   const pkg = read.packageJson;
-  const range = pkg?.dependencies?.["@galley/astro"] ?? pkg?.devDependencies?.["@galley/astro"];
+  const range = pkg?.dependencies?.["@galleycms/astro"] ?? pkg?.devDependencies?.["@galleycms/astro"];
 
   // The package's options live in astro.config, which isn't run: form code counts as off until it is read there.
   return range ? { source: "package", version: range.replace(/^[\^~]/, ""), allowFormScripts: false } : undefined;

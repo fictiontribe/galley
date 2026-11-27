@@ -123,7 +123,7 @@ export interface GalleyPlugin {
 ```
 
 Every key but `name` and `apiVersion` is optional. In TypeScript, wrap the
-object in `definePlugin(…)` from `@galley/plugin-kit` to have it checked; at
+object in `definePlugin(…)` from `@galleycms/plugin-kit` to have it checked; at
 run time `definePlugin` returns its argument unchanged, so a plugin that
 doesn't use the kit's other helpers needs no dependency at all. Or write
 `{ … } satisfies GalleyPlugin` with an `import type`, as the example plugin
@@ -195,7 +195,7 @@ A provider for a made-up service:
 
 <!-- include: packages/plugin-kit/test/samples/image-provider.mjs#image-provider -->
 ```js
-import { ProviderError } from "@galley/plugin-kit";
+import { ProviderError } from "@galleycms/plugin-kit";
 
 // An image provider for a made-up service, "Pictures". Selectable in Settings like the built-in ones.
 export default {
@@ -767,7 +767,7 @@ deploy hosts) the app chooses from.
 
 ## Testing with the kit
 
-`@galley/plugin-kit` has the types, `definePlugin`, `ProviderError`,
+`@galleycms/plugin-kit` has the types, `definePlugin`, `ProviderError`,
 `resolveScriptSnippet`, test doubles (`fakeFetch`, `testContext`,
 `providerContext`) and `checkPlugin` — the checks that say whether a plugin
 is correct. The structural check is the one the engine runs before using a
@@ -777,7 +777,7 @@ adapter through the adapter kit's conformance check (pass `adapters: { id:
 key must become a plain `auth` error without the key in it; no network must
 become a plain error; your own scripted reply must come back as pictures), a
 tool's input through the engine's validator, a script snippet through the
-resolver. With vitest, `describePlugin` from `@galley/plugin-kit/vitest` runs
+resolver. With vitest, `describePlugin` from `@galleycms/plugin-kit/vitest` runs
 them as a test:
 
 <!-- include: examples/plugin-example/test/plugin.test.ts#checks -->
@@ -830,7 +830,7 @@ describe("behaviour", () => {
 - Export the plugin as the module's default export (or as `plugin`).
 - Set `apiVersion: 1`. A plugin written for another version is refused with
   a message saying so, rather than half-working.
-- Depend on `@galley/plugin-kit` only for what you use at run time
+- Depend on `@galleycms/plugin-kit` only for what you use at run time
   (`ProviderError`, `resolveScriptSnippet`); for types alone it can be a dev
   dependency. Installing runs with `--ignore-scripts`, so ship built
   JavaScript, not TypeScript that needs a build on install.
@@ -843,7 +843,7 @@ installs as it is: `galley plugin add ./galley-plugin-example`.
 ## How first-party plugins are built
 
 First-party plugins live in `packages/plugins/<name>` and are written against
-`@galley/plugin-kit` only — no private engine imports — exactly as a third
+`@galleycms/plugin-kit` only — no private engine imports — exactly as a third
 party would write them. The server registers them as built-ins at start-up
 (so a built-in may give its secret a shared name), and they can be turned off
 like any installed plugin. `@galley/plugin-openrouter` is the first: images

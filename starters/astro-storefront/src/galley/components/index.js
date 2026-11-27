@@ -1,5 +1,5 @@
-// Vendored from @galley/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
-// `@galley/astro/components`
+// Vendored from @galleycms/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// `@galleycms/astro/components`
 export { default as Form } from "./Form.astro";
 export { default as Scripts } from "./Scripts.astro";
 export { default as ConsentBanner } from "./ConsentBanner.astro";

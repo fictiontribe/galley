@@ -1,6 +1,6 @@
 /**
  * Page-address patterns for `include` / `exclude`, matched exactly as the
- * site runtime matches them (`@galley/astro` src/shared/glob.js — keep the
+ * site runtime matches them (`@galleycms/astro` src/shared/glob.js — keep the
  * two in step): the path only (no domain, query or hash); a trailing slash
  * makes no difference; `*` stays within one part of the path; `**` crosses
  * parts, and "/blog/**" also matches /blog itself; `?` is one character.

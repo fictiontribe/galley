@@ -1,6 +1,6 @@
 /**
  * @galley/plugin-shopify — a store's products for a Galley site, written
- * against @galley/plugin-kit only, the way a third party writes a plugin.
+ * against @galleycms/plugin-kit only, the way a third party writes a plugin.
  *
  * Shopify keeps what it is good at (products, prices, stock, cart,
  * checkout, orders); the site — its pages, campaigns, editorial and look —
@@ -14,7 +14,7 @@
  * "Shopify" is a trademark of Shopify Inc.; this plugin is not made or
  * endorsed by Shopify. It is named only to say what it connects to.
  */
-import { definePlugin, PLUGIN_API_VERSION, type GalleyPlugin, type PluginSettingField } from "@galley/plugin-kit";
+import { definePlugin, PLUGIN_API_VERSION, type GalleyPlugin, type PluginSettingField } from "@galleycms/plugin-kit";
 import { DEFAULT_API_VERSION } from "./client";
 import { collectionSource, productSource } from "./data-sources";
 import { beforePublish } from "./hooks";

@@ -29,7 +29,7 @@
     "smoke": "node --import tsx test/live-smoke.mts"
   },
   "dependencies": {
-    "@galley/plugin-kit": "workspace:*"
+    "@galleycms/plugin-kit": "workspace:*"
   },
   "devDependencies": {
     "@galley/core": "workspace:*"

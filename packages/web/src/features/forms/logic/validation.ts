@@ -80,7 +80,7 @@ const asList = (value: Answer | undefined): string[] => (Array.isArray(value) ? 
 
 /**
  * What's wrong with an answer, in the words a visitor would see, or null when
- * it's fine. Mirrors the site runtime's check (`@galley/astro` forms/logic.js
+ * it's fine. Mirrors the site runtime's check (`@galleycms/astro` forms/logic.js
  * `problem`) so a test run refuses exactly what the live form refuses: the
  * field's own message, when it has one, replaces every default.
  */

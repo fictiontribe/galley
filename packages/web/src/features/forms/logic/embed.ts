@@ -91,7 +91,7 @@ export { namesThisForm, pagesUsing } from "@galley/core/forms/shared";
 
 /** For developers: how a page template shows this form, with the site kit's Astro component. */
 export function embedSnippet(formId: string): string {
-  return `---\nimport { Form } from "@galley/astro/components";\n---\n<Form id="${formId}" />`;
+  return `---\nimport { Form } from "@galleycms/astro/components";\n---\n<Form id="${formId}" />`;
 }
 
 /** A page "Add to page" could put the form on. */

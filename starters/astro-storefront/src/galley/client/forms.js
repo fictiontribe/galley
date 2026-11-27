@@ -1,4 +1,4 @@
-// Vendored from @galley/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
+// Vendored from @galleycms/astro 0.4.9 by scripts/vendor.mjs. Don't edit: run the script again to update.
 // @ts-check
 // The browser half of the forms: one module for every form on the page.
 // It finds each `.galley-form` the server rendered, then:

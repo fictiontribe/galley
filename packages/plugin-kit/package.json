@@ -1,5 +1,5 @@
 {
-  "name": "@galley/plugin-kit",
+  "name": "@galleycms/plugin-kit",
   "version": "0.4.9",
   "private": true,
   "type": "module",
@@ -31,7 +31,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@galley/adapter-kit": "workspace:*",
+    "@galleycms/adapter-kit": "workspace:*",
     "@galley/core": "workspace:*"
   },
   "devDependencies": {

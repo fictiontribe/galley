@@ -6,7 +6,7 @@
 export const PRODUCT_NAME = "Galley";
 
 /** The npm package name, used as the integration's name in Astro's logs. */
-export const INTEGRATION_NAME = "@galley/astro";
+export const INTEGRATION_NAME = "@galleycms/astro";
 
 /** Dev Toolbar app id; also the prefix of anything the app stores. */
 export const APP_ID = "galley";

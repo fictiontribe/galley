@@ -71,7 +71,7 @@ function region(text: string, name: string): string {
 
 const all = blocks(DOC);
 const sample = (name: string) => all.find((block) => block.marker?.kind === "sample" && block.marker.name === name)!;
-// Inside the kit's folder, so the samples' `import … from "@galley/adapter-kit"` resolves as it would in a site.
+// Inside the kit's folder, so the samples' `import … from "@galleycms/adapter-kit"` resolves as it would in a site.
 const SAMPLES = join(KIT, "test", ".samples");
 const made: string[] = [];
 

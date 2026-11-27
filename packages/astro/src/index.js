@@ -1,5 +1,5 @@
 // @ts-check
-// `@galley/astro` — the Galley site kit for Astro. Three parts, each one
+// `@galleycms/astro` — the Galley site kit for Astro. Three parts, each one
 // switchable:
 //
 //   toolbar  In `astro dev` only: a Dev Toolbar app that says whether Galley

@@ -1,7 +1,7 @@
 /**
  * Whether a site uses Galley's site kit for its agent-readable output, and
  * where the kit's data file is — by evidence, never by guess: the kit's
- * integration in the site's Astro config (the package `@galley/astro`, or a
+ * integration in the site's Astro config (the package `@galleycms/astro`, or a
  * vendored `src/galley/integration.js`), the file named in its options
  * (`galley({ visibility: { file } })`), and the data file itself
  * (`src/data/visibility.json` by default). `galley({ visibility: false })`
@@ -50,7 +50,7 @@ export async function detectKit(site: SiteService, files?: string[]): Promise<Ki
   files ??= await site.listFiles({ glob: KIT_GLOB, limit: 20 }).catch(() => [] as string[]);
   const configFile = CONFIGS.find((name) => files!.includes(name));
   const config = configFile ? ((await site.readFile(configFile).catch(() => null))?.content ?? "") : "";
-  const imports = /from\s+["'](@galley\/astro|\.\/src\/galley\/integration(\.js)?)["']/.exec(config);
+  const imports = /from\s+["'](@galleycms\/astro|\.\/src\/galley\/integration(\.js)?)["']/.exec(config);
   const vendored = files.includes("src/galley/integration.js");
 
   if (/visibility\s*:\s*false/.test(config)) return null;

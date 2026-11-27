@@ -1,4 +1,4 @@
-// Builds the publishable @galley/adapter-kit into dist/, a package of its own:
+// Builds the publishable @galleycms/adapter-kit into dist/, a package of its own:
 //
 //   dist/package.json   the published manifest (exports → compiled JS)
 //   dist/lib/           index.js, vitest.js, bin.js and shared chunks — the

@@ -8,7 +8,7 @@
  * Per https://openrouter.ai/docs/api/reference/errors-and-debugging
  * (read 2026-11-23).
  */
-import { ProviderError, type ProviderCallContext, type ProviderErrorKind } from "@galley/plugin-kit";
+import { ProviderError, type ProviderCallContext, type ProviderErrorKind } from "@galleycms/plugin-kit";
 
 export const OPENROUTER_API = "https://openrouter.ai/api/v1";
 

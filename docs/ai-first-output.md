@@ -272,7 +272,7 @@ above, and may add `src/data/visibility.json`.
 
 ### For the app
 
-The catalogue (`@galley/astro/catalog` → `aiCrawlers`, `describePolicy`) has
+The catalogue (`@galleycms/astro/catalog` → `aiCrawlers`, `describePolicy`) has
 each crawler's `token`, `vendor`, `label`, `purpose` (`training`, `dataset`,
 `search`, `user`), `crawls` (false for control tokens), `what`, `ifBlocked`,
 `caveat` and `docs`, in the same shape as the app's `CrawlerInfo`.

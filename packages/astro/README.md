@@ -1,4 +1,4 @@
-# @galley/astro
+# @galleycms/astro
 
 The site kit for [Galley](https://galley.fictiontribe.com), the open-source
 AI CMS for static sites, as an Astro integration. It turns the site's own
@@ -38,13 +38,13 @@ Guides: [`docs/forms.md`](../../docs/forms.md) · [`docs/scripts.md`](../../docs
 ## Install
 
 ```sh
-npx astro add @galley/astro
+npx astro add @galleycms/astro
 ```
 
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import galley from "@galley/astro";
+import galley from "@galleycms/astro";
 
 export default defineConfig({
   integrations: [galley({ forms: { endpoint: "https://cms.example.com/f/site_abc123" } })],
@@ -53,7 +53,7 @@ export default defineConfig({
 
 ```ts
 // src/content.config.ts
-import { formSchema } from "@galley/astro/schema";
+import { formSchema } from "@galleycms/astro/schema";
 
 export const collections = {
   forms: defineCollection({ loader: glob({ pattern: "*.json", base: "./src/content/forms" }), schema: formSchema }),
@@ -62,7 +62,7 @@ export const collections = {
 
 ```astro
 ---
-import { Form } from "@galley/astro/components";
+import { Form } from "@galleycms/astro/components";
 ---
 <Form id="contact" submitClass="button" />
 ```
@@ -99,13 +99,13 @@ the starter in `test/astro.test.ts`).
 
 | | |
 | --- | --- |
-| `@galley/astro` | the integration, `galley(options)` |
-| `@galley/astro/components` | `Form`, `Scripts`, `ConsentBanner` |
-| `@galley/astro/schema` | `formSchema`, `scriptsSchema` (zod, from `astro/zod`) |
-| `@galley/astro/catalog` | `scriptIntegrations`, `formProviders`, `aiCrawlers` (each AI crawler's token, what it is for — training, search, fetching for a person — and what blocking it does) — JSON-able, for an app to list |
-| `@galley/astro/client` | `registerFormProvider(id, submitter)`, `initForms()` |
-| `@galley/astro/kit` | the contract's types (`FormDefinition`, `ScriptsConfig`, …) |
-| `@galley/astro/forms.css` | the form CSS, for sites that bundle it themselves (`<Form unstyled />`) |
+| `@galleycms/astro` | the integration, `galley(options)` |
+| `@galleycms/astro/components` | `Form`, `Scripts`, `ConsentBanner` |
+| `@galleycms/astro/schema` | `formSchema`, `scriptsSchema` (zod, from `astro/zod`) |
+| `@galleycms/astro/catalog` | `scriptIntegrations`, `formProviders`, `aiCrawlers` (each AI crawler's token, what it is for — training, search, fetching for a person — and what blocking it does) — JSON-able, for an app to list |
+| `@galleycms/astro/client` | `registerFormProvider(id, submitter)`, `initForms()` |
+| `@galleycms/astro/kit` | the contract's types (`FormDefinition`, `ScriptsConfig`, …) |
+| `@galleycms/astro/forms.css` | the form CSS, for sites that bundle it themselves (`<Form unstyled />`) |
 
 ## Size
 
@@ -178,8 +178,8 @@ documentation, and each AI crawler's own page — listed with what each says in
 ## Development
 
 ```sh
-pnpm --filter @galley/astro typecheck
-pnpm --filter @galley/astro test
+pnpm --filter @galleycms/astro typecheck
+pnpm --filter @galleycms/astro test
 node scripts/sync-contract.mjs     # after packages/core/src/kit.ts or kit-catalog.ts change
 node scripts/build-inline.mjs      # after src/scripts/runtime.js or src/mailto/runtime.js change
 E2E_MODULES=/path/to/node_modules/ node test/e2e/run.mjs   # real build + Chromium (playwright-core, axe-core)
@@ -192,12 +192,9 @@ and `src/catalog-data.js` — tests fail when any of them is stale.
 
 ## Publishing (for maintainers)
 
-1. Remove `"private": true` and set `version` (also `KIT_VERSION` in
-   `src/client/forms.js`).
-2. Make sure the `@galley` scope on npm belongs to the project.
-3. `npm publish --access public` from this folder (`npm pack --dry-run`
-   first: `src/`, `types/`, `scripts/vendor.mjs`, `README.md`, `LICENSE`,
-   `NOTICE`).
+1. Set `version` (also `KIT_VERSION` in `src/client/forms.js`) and run `node build.mjs`.
+2. Make sure the `@galleycms` scope on npm belongs to the project.
+3. Publish from `dist/` (`npm publish --access public` from `packages/astro/dist`, or let `.github/workflows/release.yml` publish it on a version tag).
 
 Astro's integrations catalogue picks it up from npm through the
 `astro-integration` keyword (`withastro`, `dev-toolbar`, `forms`,

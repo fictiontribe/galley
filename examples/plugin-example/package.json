@@ -26,6 +26,6 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@galley/plugin-kit": "workspace:*"
+    "@galleycms/plugin-kit": "workspace:*"
   }
 }

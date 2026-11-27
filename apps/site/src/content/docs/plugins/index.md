@@ -69,9 +69,9 @@ Name it in a site's config as above, and the assistant — and every MCP client 
 
 Every key but `name` and `apiVersion` is optional: `adapters`, `imageProviders`, `videoProviders`, `formProviders`, `scriptIntegrations`, `importers`, `deployTargets`, `tools`, `dataSources`, `hooks`, `settings`, `setup`. Each call gets a context with the plugin's own settings, a logger that scrubs secrets, `fetch` and the product's name — name the product by `ctx.brand.productName`, never "Galley", because a deployment may rename it. What a tool or a hook is handed of the site, its model above all (`site.model()`), is the site's own and read-only: to work on it, take a copy (`structuredClone`).
 
-`examples/plugin-example` in the repository is the template to copy: a script integration (Fathom), a publish webhook and a word-count tool, with tests using `@galley/plugin-kit`'s checks and test doubles. The docs added, listed, turned off and on, and removed it with the commands above.
+`examples/plugin-example` in the repository is the template to copy: a script integration (Fathom), a publish webhook and a word-count tool, with tests using `@galleycms/plugin-kit`'s checks and test doubles. The docs added, listed, turned off and on, and removed it with the commands above.
 
-Every contribution's shape, the hooks and their guarantees, settings and secrets, testing, naming and publishing: [`docs/plugins.md`]({repository}/blob/main/docs/plugins.md). `@galley/plugin-kit` isn't on npm yet; it is `packages/plugin-kit` in the repository.
+Every contribution's shape, the hooks and their guarantees, settings and secrets, testing, naming and publishing: [`docs/plugins.md`]({repository}/blob/main/docs/plugins.md). `@galleycms/plugin-kit` isn't on npm yet; it is `packages/plugin-kit` in the repository.
 
 ## Next
 

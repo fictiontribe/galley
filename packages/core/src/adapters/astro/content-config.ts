@@ -86,7 +86,7 @@ function loaderOf(module: ParsedModule, definition: ModuleExpr, notes: string[],
 }
 
 /** Where the site kit's form schema can be imported from: the package, or the kit's files vendored into the site. */
-const KIT_SCHEMA = /^(@galley\/astro\/schema|\.{1,2}\/(?:[^"']*\/)?galley\/schema(\.m?js)?)$/;
+const KIT_SCHEMA = /^(@galleycms\/astro\/schema|\.{1,2}\/(?:[^"']*\/)?galley\/schema(\.m?js)?)$/;
 
 /**
  * Whether a collection's schema is the kit's `formSchema` — read from the

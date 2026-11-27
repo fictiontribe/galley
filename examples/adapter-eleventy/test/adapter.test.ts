@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 
-import { describeAdapter } from "@galley/adapter-kit/vitest";
+import { describeAdapter } from "@galleycms/adapter-kit/vitest";
 
 import { eleventyAdapter } from "../src/index";
 

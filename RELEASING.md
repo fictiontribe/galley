@@ -14,14 +14,22 @@ One version number for the whole project, `MAJOR.MINOR.PATCH`, tagged
 | --- | --- | --- |
 | `galley-cms` — the `galley` command, and what `npx galley-cms` runs | `packages/cli`: the single-file bundle `dist/galley.mjs`, with `web/`, `starters/` and the overlay beside it | npm, by `.github/workflows/release.yml` |
 | `create-galley` — what `npm create galley@latest` runs | `packages/create-galley`: a few lines that hand over to `galley new` from `galley-cms` | npm, by the same workflow |
+| `galleycms` — alias for `galley-cms` (`npx galleycms`) | `packages/galleycms`: forwards every command and option to `galley-cms` | npm, by the same workflow |
+| `@galleycms/astro` — the Astro site kit | `packages/astro/dist`, built by `packages/astro/build.mjs` | npm, by the same workflow |
+| `@galleycms/adapter-kit` — adapter types and conformance checks | `packages/adapter-kit/dist`, built by `packages/adapter-kit/build.mjs` | npm, by the same workflow |
+| `@galleycms/plugin-kit` — plugin types, helpers and checks | `packages/plugin-kit/dist`, built by `packages/plugin-kit/build.mjs` | npm, by the same workflow |
 | Desktop installers | `apps/desktop`, built by `.github/workflows/desktop.yml` on the tag | the GitHub release |
 | The container image | `Dockerfile` (`linux/amd64`, `linux/arm64`) | `ghcr.io/fictiontribe/galley`, by `.github/workflows/release.yml` |
 | The website and documentation | `apps/site` | the site's host |
 
 The engine, server, web UI and overlay are not published on their own: they
-are inside the `galley-cms` bundle. The `@galley/*` workspace packages
-(including `@galley/adapter-kit`) are internal and stay `"private": true`.
-The npm name `galley` belongs to someone else; never publish under it.
+are inside the `galley-cms` bundle. The internal `@galley/*` workspace packages
+stay `"private": true`. The three kit packages (`@galleycms/astro`,
+`@galleycms/adapter-kit`, `@galleycms/plugin-kit`) keep `"private": true` in
+their source `package.json` so they are never published from raw source by
+accident; their `build.mjs` scripts write publishable manifests into `dist/`.
+The npm name `galley` and the `@galley` scope belong to third parties; never
+publish under them.
 
 ### What the version numbers mean before 1.0
 
@@ -81,14 +89,14 @@ instead, downloaded each time a site is made from it (starters/README.md):
       `securityContact` and `conductContact` placeholders in that file
       replaced with real addresses (and mentioned in `SECURITY.md` and
       `CODE_OF_CONDUCT.md`).
-- [ ] The npm names `galley-cms` and `create-galley` are still free (they were
-      on 2026-11-23), and belong to the project's npm account or organisation
-      after the first publish.
+- [ ] The npm names `galley-cms`, `create-galley`, `galleycms`, and the
+      `@galleycms` organisation belong to the project's npm account.
 - [ ] **The npm token.** On npmjs.com, signed in as the account that will own
       the packages: *Access Tokens › Generate New Token › Granular Access
-      Token*, with **Read and write** permission. Before the first publish the
-      packages don't exist, so choose *All packages*; after it, replace the
-      token with one limited to `galley-cms` and `create-galley`. If the
+      Token*, with **Read and write** permission for `galley-cms`,
+      `create-galley`, `galleycms`, and the `@galleycms` organisation (before a
+      package's first publish, grant access to *All packages* or the
+      organisation, then narrow the token afterwards). If the
       account requires two-factor authentication for publishing, tick *Bypass
       two-factor authentication* — the workflow can't type a code. Write
       tokens expire (90 days at most), so note the date. In the repository:
@@ -134,7 +142,9 @@ instead, downloaded each time a site is made from it (starters/README.md):
    - `VERSION` in `packages/core/src/brand.ts` (the server, the CLI's
      `galley version` and the website read it from there);
    - `version` in the root `package.json` and every workspace `package.json`
-     under `packages/` (including `packages/create-galley`), `apps/` and
+     under `packages/` (including `packages/create-galley`,
+     `packages/galleycms`, `packages/astro`, `packages/adapter-kit` and
+     `packages/plugin-kit`), `apps/` and
      `examples/` (the desktop app's `tauri.conf.json` reads
      `apps/desktop/package.json`);
    - `version` in `apps/desktop/src-tauri/Cargo.toml`;
@@ -192,8 +202,8 @@ instead, downloaded each time a site is made from it (starters/README.md):
    `apps/site/screens.json` and `apps/site/src/data/howto.json`, which name
    the release the pictures were taken from until they are taken again.
 
-   The release workflow refuses to publish when the tag, the two packages and
-   `brand.ts` disagree.
+   The release workflow refuses to publish when the tag, the six published
+   packages and `brand.ts` disagree.
 4. **Changelog** — in `CHANGELOG.md`, rename *Unreleased* to
    `X.Y.Z — YYYY-MM-DD` and check every entry against what is merged. The
    website's `/changelog/` page is built from this file.
@@ -203,15 +213,17 @@ instead, downloaded each time a site is made from it (starters/README.md):
    mkdir -p /tmp/galley-pack
    pnpm --filter galley-cms pack --pack-destination /tmp/galley-pack
    pnpm --filter create-galley pack --pack-destination /tmp/galley-pack
-   node packages/cli/scripts/verify-pack.mjs /tmp/galley-pack/*.tgz
+   pnpm --filter galleycms pack --pack-destination /tmp/galley-pack
+   node packages/cli/scripts/verify-pack.mjs /tmp/galley-pack/galley-cms-*.tgz /tmp/galley-pack/create-galley-*.tgz /tmp/galley-pack/galleycms-*.tgz
+   node scripts/verify-kits-pack.mjs --pack-destination /tmp/galley-pack
    cd /tmp/galley-pack
    npm exec --yes --package=./galley-cms-X.Y.Z.tgz --package=./create-galley-X.Y.Z.tgz -- create-galley my-site --starter caddow
    ```
    `galley-cms`'s `prepack` builds the web UI, the bundle, the site kit and
    the starters into `packages/cli/dist`, and `postpack` deletes it again
    (`bin/galley.js` prefers the bundle when it exists, which would hide source
-   changes in development). Pack `create-galley` with pnpm, not npm: pnpm
-   turns its `workspace:*` dependency into the exact version.
+   changes in development). Pack `create-galley` and `galleycms` with pnpm, not
+   npm: pnpm turns their `workspace:*` dependency into the exact version.
 6. **Tag and push** `vX.Y.Z`:
    ```sh
    git tag -a vX.Y.Z -m "Galley X.Y.Z"
@@ -219,25 +231,29 @@ instead, downloaded each time a site is made from it (starters/README.md):
    ```
    Two workflows start: `desktop.yml` builds the installers, and
    `release.yml` builds, tests, packs, verifies, makes and opens a site from
-   the tarballs, publishes `galley-cms` and then `create-galley` to npm with
-   provenance (the exact tarballs it checked, also attached to the run), and
-   runs the `docker` job to smoke-test `/healthz` on `linux/amd64` and push
-   the multi-arch container image (`linux/amd64`, `linux/arm64`) to
+   the tarballs, publishes `galley-cms`, `create-galley`, `galleycms`,
+   `@galleycms/astro`, `@galleycms/adapter-kit` and `@galleycms/plugin-kit` to
+   npm with provenance (the exact tarballs it checked, also attached to the
+   run), and runs the `docker` job to smoke-test `/healthz` on `linux/amd64`
+   and push the multi-arch container image (`linux/amd64`, `linux/arm64`) to
    `ghcr.io/fictiontribe/galley`.
 7. **Check npm**: `npm view galley-cms version`, `npm view create-galley
-   version`, and from an empty folder `npm create galley@latest` and
-   `npx galley-cms --version`.
+   version`, `npm view galleycms version`, `npm view @galleycms/astro version`,
+   `npm view @galleycms/adapter-kit version`,
+   `npm view @galleycms/plugin-kit version`, and from an empty folder
+   `npm create galley@latest`, `npx galley-cms --version` and
+   `npx galleycms --version`.
    The registry accepts `galley-cms` at once and then takes some minutes
    over its tarball before anyone can install it (eight to ten, on 0.4.0,
    0.4.1 and 0.4.2). So the workflow publishes `galley-cms` under a tag of
    its own, `incoming`, which nobody asks for; waits until the registry
    lists the version and its tarball answers; then moves `latest` to it
    (`next`, for a release candidate), and only then publishes
-   `create-galley`. Without that, `npx galley-cms` and
-   `npm create galley@latest` both fail for everyone for as long as the
-   registry takes. On 0.4.2, the first release done this way, `latest`
-   stayed on 0.4.1 for the 495 seconds the registry took, and moved when the
-   tarball answered.
+   `create-galley`, `galleycms` and the `@galleycms/*` kits. Without that,
+   `npx galley-cms`, `npx galleycms` and `npm create galley@latest` all fail
+   for everyone for as long as the registry takes. On 0.4.2, the first release
+   done this way, `latest` stayed on 0.4.1 for the 495 seconds the registry
+   took, and moved when the tarball answered.
 
    `incoming` is left pointing at the release: the release's token may add
    or move a tag and may not remove one (0.4.2: the removal was refused),
@@ -254,13 +270,14 @@ instead, downloaded each time a site is made from it (starters/README.md):
      write to the package, as publishing is. If it ever does, move it by
      hand, signed in as an owner
      (`npm dist-tag add galley-cms@X.Y.Z latest`), and run the workflow
-     again: it finds the tag in place and publishes `create-galley`.
-   - **A release that was finished before** (`create-galley` at that
-     version is on npm) is left alone, tags and all. A run from an older
-     release's tag can't bring `latest` back to it.
+     again: it finds the tag in place and publishes the remaining packages.
+   - **A release that was partially or previously finished** leaves
+     `galley-cms`'s dist-tag alone once `create-galley` at that version is on
+     npm (so a run from an older release's tag can't bring `latest` back to
+     it), and publishes only any packages not yet listed for that version.
 
    To finish wholly by hand instead: `npm dist-tag add galley-cms@X.Y.Z
-   latest`, then publish the `create-galley` tarball the run attached.
+   latest`, then publish the remaining tarballs the run attached.
    `create-galley` itself is listed a few minutes after it is published
    (three and a half, on 0.4.2); until then `npm create galley@latest` gives
    the release before, which still installs.
@@ -300,16 +317,20 @@ not edited.
   ```sh
   npm dist-tag add galley-cms@<last good> latest
   npm dist-tag add create-galley@<last good> latest
+  npm dist-tag add galleycms@<last good> latest
   npm deprecate galley-cms@<bad> "Broken: use <last good> or later"
   npm deprecate create-galley@<bad> "Broken: use <last good> or later"
+  npm deprecate galleycms@<bad> "Broken: use <last good> or later"
   ```
-  `npm create galley@latest` and `npx galley-cms` then fetch the good one
-  again; anyone who asks for the bad version by number is warned.
+  `npm create galley@latest`, `npx galley-cms` and `npx galleycms` then fetch
+  the good one again; anyone who asks for the bad version by number is warned.
+  Move and deprecate `@galleycms/astro`, `@galleycms/adapter-kit` and
+  `@galleycms/plugin-kit` the same way if a kit was affected.
 - **Then fix forward**: a patch release (`X.Y.Z+1`) with the fix, which moves
   `latest` on as usual.
 - **Unpublishing** (`npm unpublish galley-cms@<bad>`) is only allowed within
-  72 hours and while nothing depends on the version — and `create-galley`
-  depends on `galley-cms`, so unpublish `create-galley@<bad>` first. Use it
+  72 hours and while nothing depends on the version — and `create-galley` and
+  `galleycms` depend on `galley-cms`, so unpublish them first. Use it
   only for something that must not stay public (a leaked secret, a licence
   problem); for anything else, deprecate. An unpublished number can never be
   published again.
