@@ -12,10 +12,10 @@
   --galley-field-text: var(--tone-text);
   --galley-field-border: var(--tone-control);
   --galley-field-radius: var(--radius-s);
-  --galley-field-height: 3.25rem;
+  --galley-field-height: 3.15rem;
   --galley-field-padding: 0.7em 0.85em;
   --galley-field-focus: var(--tone-focus);
-  --galley-form-error: var(--color-negative);
+  --galley-form-error: var(--tone-error);
   --galley-form-muted: var(--tone-muted);
   --galley-label-weight: var(--weight-medium);
   --galley-button-bg: var(--tone-button-bg);
@@ -25,11 +25,25 @@
 
 .galley-form__label,
 .galley-form__group > legend {
+  font-size: var(--step--2);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--tone-muted);
+}
+
+.galley-form__check .galley-form__label {
   font-size: var(--step--1);
+  font-weight: var(--weight-body);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tone-text);
 }
 
 .galley-form__control {
-  transition: border-color var(--duration-fast) var(--ease-out);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
 }
 
 /* One height for every single-line control, so a select sits level with the input beside it. */
@@ -47,6 +61,7 @@
   font-family: var(--font-display);
   font-size: var(--step-2);
   font-weight: var(--weight-display);
+  font-optical-sizing: auto;
   letter-spacing: var(--tracking-display);
   line-height: var(--leading-snug);
 }

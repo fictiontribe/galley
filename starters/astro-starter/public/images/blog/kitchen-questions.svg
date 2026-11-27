@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000" role="img"><title>Kitchen extension</title><rect width="1600" height="1000" fill="#E4D5BC"/><rect y="0" width="1600" height="180" fill="#D3DBD6"/>
-<path d="M500 180 L1100 180 L1400 1000 L200 1000Z" fill="#F7F3EC" opacity=".6"/><rect y="170" width="1600" height="18" fill="#2B241E"/>
-<rect x="1050" y="320" width="400" height="560" fill="#8F9C7C" stroke="#2B241E" stroke-width="14"/>
-<rect x="150" y="620" width="760" height="40" fill="#C79C6B"/><rect x="150" y="660" width="760" height="220" fill="#A3482C"/>
-<rect y="880" width="1600" height="120" fill="#ECE5D8"/><line x1="0" y1="880" x2="1600" y2="880" stroke="#2B241E" stroke-width="6"/>
-<text x="420" y="520" font-family="Georgia, serif" font-size="260" fill="#2B241E" opacity=".12">?</text></svg>

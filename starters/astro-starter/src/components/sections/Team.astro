@@ -36,7 +36,9 @@ const people = members?.length
     {
       people.map((person) => (
         <li class="person">
-          <Media src={person.data.photo} alt={person.data.name} ratio="4/5" />
+          <div class="frame">
+            <Media src={person.data.photo} alt={person.data.name} ratio="4/5" />
+          </div>
           <div class="person__body">
             <ItemHeading class="person__name">{person.data.name}</ItemHeading>
             <p class="person__role">{person.data.role}</p>
@@ -61,7 +63,7 @@ const people = members?.length
   .team {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
-    gap: var(--space-xl) var(--space-m);
+    gap: var(--space-xl) var(--space-l);
     padding: 0;
     list-style: none;
   }
@@ -69,12 +71,14 @@ const people = members?.length
   .person {
     display: grid;
     align-content: start;
-    gap: var(--space-s);
+    gap: var(--space-m);
   }
 
   .person__body {
     display: grid;
     gap: var(--space-3xs);
+    padding-block-start: var(--space-xs);
+    border-block-start: var(--border-width) solid var(--tone-line);
   }
 
   .person__name {
@@ -83,14 +87,17 @@ const people = members?.length
   }
 
   .person__role {
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
     color: var(--tone-link);
   }
 
   .person__bio {
-    margin-block-start: var(--space-2xs);
+    margin-block-start: var(--space-xs);
     font-size: var(--step--1);
+    line-height: 1.56;
     color: var(--tone-muted);
   }
 
@@ -98,7 +105,7 @@ const people = members?.length
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2xs) var(--space-s);
-    margin-block-start: var(--space-2xs);
+    margin-block-start: var(--space-xs);
     padding: 0;
     list-style: none;
     font-size: var(--step--1);

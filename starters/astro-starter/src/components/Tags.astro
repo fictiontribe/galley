@@ -1,5 +1,5 @@
 ---
-// A row of tag links, each to the page that lists the posts filed under it.
+// A row of architectural index tags, each linking to the posts filed under it.
 // `current` marks the tag whose page this is.
 import { labels } from "../lib/site";
 import { tagSlug, tagUrl } from "../lib/posts";
@@ -40,16 +40,19 @@ const { tags, current, label = labels.blog.tags, class: className } = Astro.prop
 
   .tag {
     display: inline-block;
-    padding: 0.25em 0.75em;
+    padding: 0.35em 0.8em;
     border: var(--border-width) solid var(--tone-line);
-    border-radius: 999px;
+    border-radius: var(--radius-s);
     font-size: var(--step--2);
     font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
     color: var(--tone-muted);
     text-decoration: none;
     transition:
       color var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out);
+      border-color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out);
   }
 
   .tag:hover {

@@ -109,8 +109,9 @@ instead.
 
 ### Page recipes
 
-- **Home:** `hero` → `logos` → `features` → `split` → `stats` → `steps` →
+- **Home:** `hero` → `gallery` → `features` → `split` → `stats` → `steps` →
   `testimonial` → `posts` → `cta`.
+- **About:** `hero` → `rich-text` → `split` → `logos` → `team` → `gallery` → `cta`.
 - **A service:** `hero` → `features` → `steps` → `faq` → `cta`.
 - **A project story:** `hero` → `split` → `gallery` → `testimonial` → `cta`.
 - **Pricing:** `hero` → `pricing` → `faq` → `form` (a quote request) → `cta`.
@@ -165,7 +166,8 @@ two spellings of the same idea.
 ## Images
 
 - Put files in `public/images/` (sub-folders: `projects`, `gallery`, `blog`,
-  `team`, `people`, `logos`) and reference them as `/images/folder/file.svg`.
+  `team`, `people`, `logos`) and reference them as `/images/folder/file.webp`
+  (or `/images/logos/file.svg` for vector craft marks).
 - Every image that carries meaning needs alt text describing what it shows.
 - Images are cropped to fit, so keep the subject centred. Expected shapes:
 
@@ -173,11 +175,11 @@ two spellings of the same idea.
 | --- | --- |
 | `hero` with `align: left` | 4:5 (portrait) on wide screens, 4:3 on phones |
 | `hero` with `align: center` | 21:9 (panorama) |
-| `split` | 5:4 |
-| `gallery` | 4:3 |
+| `split` | 4:3 |
+| `gallery` (3-column monograph) | 3:4 portrait on items 1, 4, 7…; 4:3 landscape on paired study plates |
 | `team` photos | 4:5 |
-| Blog `image` | 16:9 on the post, 3:2 in lists — compose for both |
-| `testimonial` image | 1:1, shown as a small circle |
+| Blog `image` | 16:10 on both the post and journal cards |
+| `testimonial` image | 1:1 square architectural portrait |
 | `logos` | about 3:1, on a transparent background; SVGs drawn in `currentColor` follow the look |
 | Share image (`image` on a page, `shareImage` in site.json) | 1200×630 PNG or JPG |
 

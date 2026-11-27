@@ -40,8 +40,8 @@ sections:
       - Fortnightly site visits, more often at key moments
       - Valuations of the builder's work before each payment
       - A final snag list and a handover pack for your records
-    image: /images/projects/garden-room.svg
-    imageAlt: Abstract drawing of a timber garden room under construction with scaffolding
+    image: /images/projects/garden-room.webp
+    imageAlt: Cedar and oak garden studio glowing warmly at dusk at the far end of a walled English garden
     imageSide: left
   - type: faq
     eyebrow: Questions
@@ -56,24 +56,25 @@ sections:
       - question: What if I only want drawings?
         answer: That is fine. Our planning-only package covers survey, design and the application itself. You can come back to us for technical drawings later if you need them.
   - type: testimonials
+    tone: muted
     eyebrow: Kind words
     heading: From people who have lived through it
     columns: 3
     items:
       - quote: The site visits were worth every penny. Our builder said it was the first job in years where nobody argued about the drawings.
         name: Ruth Calloway
-        role: Rear extension, Weaver's Row
+        role: Rear extension · Weaver's Row
       - quote: Nell talked us out of the expensive option and into a better one. We still cannot quite believe it.
         name: Marcus Bell
       - quote: The garden studio is the best room we own. Warm in January, cool in August, and quiet all year round.
         name: Ines & Pablo Ferreira
-        role: Garden studio, The Paddocks
+        role: Garden studio · The Paddocks
       - quote: As a listed building we were nervous about every change. Tomás knew exactly what the conservation officer would want to see.
         name: Graham Oduya
-        role: Repairs and alterations, Church Close
+        role: Repairs and alterations · Church Close
       - quote: Clear, calm and on time. We have recommended them to three neighbours already.
         name: Sophie Lund
-        role: Loft conversion, Hill Terrace
+        role: Loft conversion · Hill Terrace
   - type: cta
     heading: Not sure which service you need?
     text: That is what the first visit is for. An hour, at your home, with no obligation.

@@ -39,7 +39,7 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
 
   .rich-text__body {
     font-size: var(--step-1);
-    line-height: 1.55;
+    line-height: 1.6;
   }
 
   .rich-text--center .rich-text__body {
@@ -52,6 +52,8 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
       grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
       gap: var(--space-2xl);
       align-items: start;
+      padding-block-start: var(--space-l);
+      border-block-start: var(--border-width) solid var(--tone-line);
     }
 
     .rich-text--left :global(.rich-text__header) {

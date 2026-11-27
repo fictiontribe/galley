@@ -1,6 +1,6 @@
 ---
-// A handful of numbers that prove a point. `value` is free text ("140+",
-// "9 weeks"), so units and symbols stay editable.
+// Architectural specification band: monumental display numerals separated
+// by crisp horizontal and vertical hairlines, zero card boxes.
 import Section from "../Section.astro";
 import SectionHeader from "../SectionHeader.astro";
 import type { BlockMarker, Tone } from "../../lib/site";
@@ -24,7 +24,7 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
 
 <Section type="stats" block={block} id={id} tone={tone} labelledby={headingId}>
   <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} size="small" />
-  <dl class="stats" style={`--columns: ${columns}`}>
+  <dl class="stats" data-columns={columns} style={`--columns: ${columns}`}>
     {
       items.map((item) => (
         <div class="stat">
@@ -41,29 +41,34 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
   .stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
-    gap: var(--space-l) var(--space-l);
+    gap: var(--space-l);
   }
 
   .stat {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2xs);
-    padding-block-start: var(--space-s);
+    gap: var(--space-xs);
+    padding-block-start: var(--space-m);
     border-block-start: var(--border-width) solid var(--tone-line);
   }
 
   .stat__label {
     order: 2;
+    font-size: var(--step--2);
     font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-text);
   }
 
   .stat__value {
     order: 1;
     font-family: var(--font-display);
-    font-size: var(--step-5);
+    font-size: var(--step-6);
     font-weight: var(--weight-display);
+    font-optical-sizing: auto;
     letter-spacing: var(--tracking-display);
-    line-height: 1;
+    line-height: 0.96;
     font-variant-numeric: lining-nums tabular-nums;
     color: var(--tone-text);
   }
@@ -71,6 +76,7 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
   .stat__text {
     order: 3;
     font-size: var(--step--1);
+    line-height: 1.5;
     color: var(--tone-muted);
     max-width: 24em;
   }
@@ -78,6 +84,30 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
   @media (min-width: 60rem) {
     .stats {
       grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+      gap: var(--space-xl) 0;
+    }
+
+    .stat {
+      padding-block: var(--space-m) var(--space-xs);
+      padding-inline: var(--space-m);
+    }
+
+    .stats[data-columns="2"] > .stat:nth-child(2n + 1),
+    .stats[data-columns="3"] > .stat:nth-child(3n + 1),
+    .stats[data-columns="4"] > .stat:nth-child(4n + 1) {
+      padding-inline-start: 0;
+    }
+
+    .stats[data-columns="2"] > .stat:not(:nth-child(2n + 1)),
+    .stats[data-columns="3"] > .stat:not(:nth-child(3n + 1)),
+    .stats[data-columns="4"] > .stat:not(:nth-child(4n + 1)) {
+      border-inline-start: var(--border-width) solid var(--tone-line);
+    }
+
+    .stats[data-columns="2"] > .stat:nth-child(2n),
+    .stats[data-columns="3"] > .stat:nth-child(3n),
+    .stats[data-columns="4"] > .stat:nth-child(4n) {
+      padding-inline-end: 0;
     }
   }
 </style>

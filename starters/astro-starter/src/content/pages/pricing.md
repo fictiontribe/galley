@@ -1,53 +1,55 @@
 ---
 title: Pricing
-description: Fixed fees for every stage of a home renovation project, from a free first visit to full design and site support.
+description: Fixed fees for every stage of a home renovation project, from a measured survey and sketch options to technical drawings and site support.
 sections:
   - type: hero
     align: center
-    eyebrow: Pricing
-    heading: Fixed fees, agreed before we start.
-    text: No percentages of a build cost we have not seen yet. We quote a fixed fee for each stage, and you can stop after any of them.
+    eyebrow: Fee schedule
+    heading: Fixed fees, agreed *before* we start.
+    text: No percentages of a build cost we have not seen yet. We quote a fixed fee for each architectural stage, and you can pause or stop after any of them.
   - type: pricing
-    heading: Choose how much help you want
-    text: Prices are for a typical house in and around Wrenhallow. We confirm a fixed quote after the first visit.
+    heading: Fixed-fee stage sheets
+    text: Indicative fees for a typical house in and around Wrenhallow. We confirm your exact fixed quote in writing after the free first visit.
     items:
-      - name: First visit
-        price: Free
-        text: An hour at your home to talk through what you want and what is possible.
+      - name: Measured survey & sketches
+        price: £1,400
+        period: fixed fee, plus VAT
+        text: A full measured survey of the house and three distinct sketch options with realistic build-cost ranges.
         features:
-          - A conversation, not a sales pitch
-          - A short written note afterwards
-          - Honest advice on whether you need an architect
+          - Full laser-measured survey of the house
+          - Three hand-drawn sketch options
+          - Honest build-cost ranges for each option
+          - Planning & conservation advice in one meeting
         cta:
-          label: Book a visit
+          label: Book a first visit
           href: /contact/
-      - name: Design & planning
+      - name: Planning & design
         price: £3,800
         period: from, plus VAT
-        text: Survey, sketch options and a full planning application.
+        text: Everything in the survey and sketches stage, developed through to a full planning submission.
         featured: true
         badge: Most chosen
         features:
-          - Measured survey of the whole house
-          - Three sketch options with cost ranges
-          - Planning drawings and application
-          - Liaison with the planning officer
+          - Measured survey and sketch options
+          - Developed design drawings & 3D studies
+          - Full planning or lawful development application
+          - Liaison with the local planning officer
         cta:
           label: Start with a visit
           href: /contact/
-      - name: Full service
+      - name: Technical drawings & site
         price: £9,500
         period: from, plus VAT
-        text: Everything in Design & planning, then technical drawings and site support to completion.
+        text: Complete architectural service from first measured survey through technical drawings to final handover.
         features:
-          - Building regulations drawings
-          - Help finding and appointing a builder
-          - Fortnightly site visits and valuations
-          - Final snag list and handover pack
+          - Building regulations & construction details
+          - Tender pack and help appointing a builder
+          - Fortnightly site visits and payment valuations
+          - Final snag list and handover record pack
         cta:
           label: Talk it through
           href: /contact/
-    note: Planning application fees, structural engineering and party wall surveys are paid separately. We will tell you which apply at the start.
+    note: The initial one-hour visit at your home is always free. Statutory planning fees, structural engineering and party wall surveys are quoted separately — we tell you which apply before you spend a penny.
   - type: faq
     tone: muted
     heading: About our fees
@@ -67,6 +69,7 @@ sections:
     layout: split
     note: We never share your details, and we don't send newsletters.
   - type: cta
+    tone: inverse
     heading: Ready when you are.
     cta:
       label: Book a free first visit

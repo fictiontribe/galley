@@ -3,8 +3,8 @@ title: What a measured survey tells you before anything gets knocked down
 description: A good survey is the cheapest part of any building project and the one that saves the most money. Here is what we look for, and why we measure the whole house.
 date: 2026-10-14
 author: tomas-reyes
-image: /images/blog/measured-survey.svg
-imageAlt: Abstract drawing of a tape measure laid across a floor plan
+image: /images/blog/measured-survey.webp
+imageAlt: Open measured-survey sketchbook and brass tape measure resting on a timber sash windowsill
 tags:
   - Process
   - Older homes

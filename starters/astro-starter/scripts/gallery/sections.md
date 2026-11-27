@@ -7,7 +7,7 @@ title: Section gallery
 description: Every section type, rendered alone.
 sections:
   - type: hero
-    eyebrow: Architecture & renovation
+    eyebrow: Architecture & renovation · Wrenhallow
     heading: Make more of the *home you already have*.
     text: Extensions, loft conversions and garden rooms for houses that are good — and could be better.
     cta:
@@ -16,10 +16,10 @@ sections:
     secondaryCta:
       label: See how we work
       href: /services/
-    image: /images/projects/hero-house.svg
-    imageAlt: Abstract drawing of a brick house with a timber extension
+    image: /images/projects/hero-house.webp
+    imageAlt: Red-brick house with an oak and planted-roof rear extension opening onto a wildflower garden
   - type: logos
-    heading: Trusted by neighbours, builders and the odd parish council
+    heading: Local builders, joiners and suppliers we work alongside
     items:
       - name: Millbrook Timber
         image: /images/logos/millbrook-timber.svg
@@ -30,7 +30,7 @@ sections:
       - name: Wrenhallow Civic Society
         image: /images/logos/wrenhallow-civic.svg
   - type: features
-    eyebrow: What we do
+    eyebrow: What we design
     heading: Three ways we usually help
     columns: 3
     items:
@@ -45,13 +45,13 @@ sections:
         text: Studios and workshops at the end of the garden, built to last.
   - type: split
     eyebrow: How we are different
-    heading: Drawings you can understand before you build
+    heading: Drawings you can read before you build
     text: Every project starts with a measured survey and plain-English sketches.
     items:
       - A measured survey of the whole house
       - Three sketch options with honest cost ranges
-    image: /images/projects/kitchen-extension.svg
-    imageAlt: Abstract drawing of a kitchen extension with a rooflight
+    image: /images/projects/kitchen-extension.webp
+    imageAlt: Bespoke oak and lime-plaster kitchen extension under a pitched rooflight
     cta:
       label: Our fees
       href: /pricing/
@@ -70,7 +70,7 @@ sections:
         label: First visit, free
   - type: steps
     eyebrow: The process
-    heading: From first visit to final snag list
+    heading: From first tea to final snag list
     items:
       - heading: First visit
         text: An hour at your home, listening and looking.
@@ -79,12 +79,12 @@ sections:
       - heading: Design and planning
         text: We develop one scheme and submit the application.
   - type: testimonial
-    tone: accent
+    tone: muted
     quote: They found us a whole extra bedroom without touching the garden.
     name: Hannah & Dev Mistry
-    role: Loft conversion, Orchard Street
-    image: /images/people/client-mistry.svg
-    imageAlt: Portrait illustration of Hannah and Dev Mistry
+    role: Loft conversion · Orchard Street
+    image: /images/people/client-mistry.webp
+    imageAlt: Hannah and Dev Mistry standing together in their sunlit oak-raftered loft room
   - type: testimonials
     eyebrow: Kind words
     heading: From people who have lived through it
@@ -99,17 +99,18 @@ sections:
         name: Ines & Pablo Ferreira
         role: Garden room
   - type: pricing
-    heading: Choose how much help you want
+    heading: Fixed-fee stage sheets
     items:
-      - name: First visit
-        price: Free
+      - name: Survey & sketches
+        price: £1,400
+        period: from, plus VAT
         features:
-          - A conversation, not a sales pitch
-          - A short written note afterwards
+          - Full measured survey
+          - Three sketch options
         cta:
           label: Book a visit
           href: /contact/
-      - name: Design & planning
+      - name: Planning & design
         price: £3,800
         period: from, plus VAT
         featured: true
@@ -120,7 +121,7 @@ sections:
         cta:
           label: Start with a visit
           href: /contact/
-      - name: Full service
+      - name: Technical & site
         price: £9,500
         period: from, plus VAT
         features:
@@ -140,19 +141,19 @@ sections:
       - question: Can you recommend a builder?
         answer: We can introduce you to builders we trust, and we never take a commission.
   - type: gallery
-    eyebrow: Recent work
-    heading: Some houses we have helped
+    eyebrow: Selected work
+    heading: Recent houses in and around Wrenhallow
     columns: 3
     items:
-      - image: /images/gallery/arched-doorway.svg
-        imageAlt: Abstract composition of a tall arched doorway
-        caption: Garden doors, Weaver's Row
-      - image: /images/gallery/stair.svg
-        imageAlt: Abstract composition of a timber stair
-        caption: Loft stair, Orchard Street
-      - image: /images/gallery/window-seat.svg
-        imageAlt: Abstract composition of a window seat framed in oak
-        caption: Window seat, Hill Terrace
+      - image: /images/gallery/arched-doorway.webp
+        imageAlt: Lime-plastered arched doorway enfilade view
+        caption: Church Close — lime-plastered opening
+      - image: /images/gallery/kitchen.webp
+        imageAlt: Fluted oak kitchen joinery and brass tap
+        caption: Weaver's Row — fluted oak joinery
+      - image: /images/gallery/window-seat.webp
+        imageAlt: Built-in white-oak bay window seat
+        caption: Hill Terrace — white-oak window seat
   - type: team
     eyebrow: The team
     heading: The four of us
@@ -172,6 +173,7 @@ sections:
       - **By train** — two minutes from the station.
       - **By bike** — racks in the yard.
   - type: cta
+    tone: inverse
     heading: Tell us about your house.
     text: The first visit is free and there is no obligation.
     cta:

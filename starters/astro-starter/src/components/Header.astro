@@ -12,7 +12,14 @@ const cta = navigation.cta;
 
 <header class="site-header">
   <div class="container site-header__inner">
-    <a class="wordmark" href={withBase("/")} aria-current={isCurrent("/", pathname) ? "page" : undefined}>{site.name}</a>
+    <a class="wordmark" href={withBase("/")} aria-current={isCurrent("/", pathname) ? "page" : undefined}>
+      <svg class="wordmark__mark" width="18" height="20" viewBox="0 0 18 20" fill="none" aria-hidden="true" focusable="false">
+        <path d="M2 19V8.5a7 7 0 0 1 14 0V19" stroke="currentColor" stroke-width="1.35" />
+        <line x1="0.5" y1="19" x2="17.5" y2="19" stroke="currentColor" stroke-width="1.35" />
+        <path d="M6.5 19v-7a2.5 2.5 0 0 1 5 0v7" stroke="currentColor" stroke-width="1.1" />
+      </svg>
+      <span>{site.name}</span>
+    </a>
 
     <nav class="site-nav" aria-label={labels.nav.main}>
       <ul role="list">
@@ -26,7 +33,7 @@ const cta = navigation.cta;
           ))
         }
       </ul>
-      {cta && <a class="button button--small" href={withBase(cta.href)}>{cta.label}</a>}
+      {cta && <a class="button button--small site-nav__cta" href={withBase(cta.href)}>{cta.label}</a>}
     </nav>
 
     <details class="menu" data-menu>
@@ -42,7 +49,7 @@ const cta = navigation.cta;
               links.map((link) => (
                 <li>
                   <a href={withBase(link.href)} aria-current={isCurrent(link.href, pathname) ? "page" : undefined}>
-                    {link.label}
+                    <span>{link.label}</span>
                     <Icon name="arrow-right" size={20} />
                   </a>
                 </li>
@@ -50,7 +57,16 @@ const cta = navigation.cta;
             }
           </ul>
         </nav>
-        {cta && <a class="button" href={withBase(cta.href)}>{cta.label}</a>}
+        {
+          cta && (
+            <div class="menu__foot">
+              <a class="button" href={withBase(cta.href)}>
+                {cta.label}
+                <Icon name="arrow-right" size={16} />
+              </a>
+            </div>
+          )
+        }
       </div>
     </details>
   </div>
@@ -90,22 +106,20 @@ const cta = navigation.cta;
   .wordmark {
     display: inline-flex;
     align-items: center;
-    gap: 0.5em;
+    gap: 0.65em;
     font-family: var(--font-display);
     font-size: var(--step-1);
     font-weight: var(--weight-display-strong);
-    letter-spacing: -0.01em;
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
     color: var(--color-text);
     text-decoration: none;
     white-space: nowrap;
   }
 
-  .wordmark::before {
-    content: "";
-    inline-size: 0.62em;
-    block-size: 0.62em;
-    border-radius: 50% 50% 0 0;
-    background: var(--color-accent);
+  .wordmark__mark {
+    flex: none;
+    color: var(--color-accent);
   }
 
   .site-nav {
@@ -116,7 +130,8 @@ const cta = navigation.cta;
 
   .site-nav ul {
     display: flex;
-    gap: var(--space-m);
+    align-items: center;
+    gap: var(--space-l);
     padding: 0;
     list-style: none;
   }
@@ -125,19 +140,22 @@ const cta = navigation.cta;
     position: relative;
     display: block;
     padding-block: var(--space-2xs);
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
     color: var(--color-text);
     text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-out);
   }
 
   .site-nav ul a::after {
     content: "";
     position: absolute;
     inset-inline: 0;
-    bottom: 0.2rem;
+    bottom: 0.15rem;
     block-size: 1px;
-    background: currentColor;
+    background: var(--color-accent);
     transform: scaleX(0);
     transform-origin: left;
     transition: transform var(--duration) var(--ease-out);
@@ -152,6 +170,10 @@ const cta = navigation.cta;
     color: var(--color-accent);
   }
 
+  .site-nav__cta {
+    margin-inline-start: var(--space-2xs);
+  }
+
   /* Mobile menu */
   .menu__toggle {
     display: inline-flex;
@@ -160,8 +182,10 @@ const cta = navigation.cta;
     min-height: 2.75rem;
     padding-inline: var(--space-xs);
     margin-inline-end: calc(-1 * var(--space-xs));
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
     list-style: none;
     cursor: pointer;
     border-radius: var(--radius-s);
@@ -182,8 +206,8 @@ const cta = navigation.cta;
 
   .menu__icon {
     position: relative;
-    inline-size: 1.25rem;
-    block-size: 0.6rem;
+    inline-size: 1.35rem;
+    block-size: 0.55rem;
   }
 
   .menu__icon::before,
@@ -191,9 +215,11 @@ const cta = navigation.cta;
     content: "";
     position: absolute;
     inset-inline: 0;
-    block-size: 1.5px;
+    block-size: 1px;
     background: currentColor;
-    transition: transform var(--duration) var(--ease-out), top var(--duration) var(--ease-out);
+    transition:
+      transform var(--duration) var(--ease-out),
+      top var(--duration) var(--ease-out);
   }
 
   .menu__icon::before {
@@ -201,16 +227,16 @@ const cta = navigation.cta;
   }
 
   .menu__icon::after {
-    top: calc(100% - 1.5px);
+    top: calc(100% - 1px);
   }
 
   .menu[open] .menu__icon::before {
-    top: calc(50% - 0.75px);
+    top: calc(50% - 0.5px);
     transform: rotate(45deg);
   }
 
   .menu[open] .menu__icon::after {
-    top: calc(50% - 0.75px);
+    top: calc(50% - 0.5px);
     transform: rotate(-45deg);
   }
 
@@ -219,8 +245,8 @@ const cta = navigation.cta;
     inset-inline: 0;
     top: 100%;
     display: grid;
-    gap: var(--space-l);
-    padding: var(--space-m) var(--gutter) var(--space-xl);
+    gap: var(--space-xl);
+    padding: var(--space-l) var(--gutter) var(--space-2xl);
     background: var(--color-background);
     border-block-end: var(--border-width) solid var(--color-border);
     box-shadow: var(--shadow-raised);
@@ -229,9 +255,10 @@ const cta = navigation.cta;
   .menu__panel ul {
     padding: 0;
     list-style: none;
+    border-block-end: var(--border-width) solid var(--color-border);
   }
 
-  .menu__panel li + li {
+  .menu__panel li {
     border-block-start: var(--border-width) solid var(--color-border);
   }
 
@@ -239,10 +266,12 @@ const cta = navigation.cta;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-block: var(--space-s);
+    padding-block: var(--space-m);
     font-family: var(--font-display);
-    font-size: var(--step-3);
+    font-size: var(--step-4);
+    font-weight: var(--weight-display);
     letter-spacing: var(--tracking-display);
+    line-height: 1.08;
     color: var(--color-text);
     text-decoration: none;
   }
@@ -255,8 +284,8 @@ const cta = navigation.cta;
     color: var(--color-accent);
   }
 
-  .menu__panel .button {
-    justify-self: start;
+  .menu__foot {
+    display: flex;
   }
 
   @media (prefers-reduced-motion: no-preference) {

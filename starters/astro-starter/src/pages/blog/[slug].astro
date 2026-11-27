@@ -43,30 +43,30 @@ const minutes = readingMinutes(post.body);
   <article class="post">
     <header class="post__header container">
       <a class="text-link post__back" href={withBase("/blog/")}>
-        <Icon name="arrow-left" size={18} />
+        <Icon name="arrow-left" size={16} />
         {labels.blog.backToBlog}
       </a>
       <Tags tags={post.data.tags} />
       <h1 class="post__title">{post.data.title}</h1>
       <p class="post__dek">{post.data.description}</p>
       <div class="post__meta">
-        {author.data.photo && <Media src={author.data.photo} alt="" ratio="1/1" class="post__avatar" />}
-        <p>
-          <span class="post__author">
+        {author.data.photo && <Media src={author.data.photo} alt="" ratio="4/5" class="post__avatar" />}
+        <div class="post__meta-text">
+          <p class="post__author">
             {labels.blog.by} {authorName}
-          </span>
-          <span class="post__facts">
+          </p>
+          <p class="post__facts">
             <span class="visually-hidden">{labels.blog.published}</span>
             <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
             <span aria-hidden="true">·</span>
-            {fill(labels.blog.readingTime, { minutes })}
-          </span>
-        </p>
+            <span>{fill(labels.blog.readingTime, { minutes })}</span>
+          </p>
+        </div>
       </div>
     </header>
 
     <div class="post__cover container">
-      <Media src={post.data.image} alt={post.data.imageAlt ?? ""} ratio="16/9" eager />
+      <Media src={post.data.image} alt={post.data.imageAlt ?? ""} ratio="16/10" eager />
     </div>
 
     <div class="post__body container">
@@ -94,7 +94,7 @@ const minutes = readingMinutes(post.body);
             {newer ? (
               <a href={postUrl(newer)} class="post__nav-link">
                 <span class="post__nav-label">
-                  <Icon name="arrow-left" size={16} /> {labels.blog.newer}
+                  <Icon name="arrow-left" size={14} /> {labels.blog.newer}
                 </span>
                 <span class="post__nav-title">{newer.data.title}</span>
               </a>
@@ -104,7 +104,7 @@ const minutes = readingMinutes(post.body);
             {older && (
               <a href={postUrl(older)} class="post__nav-link post__nav-link--older">
                 <span class="post__nav-label">
-                  {labels.blog.older} <Icon name="arrow-right" size={16} />
+                  {labels.blog.older} <Icon name="arrow-right" size={14} />
                 </span>
                 <span class="post__nav-title">{older.data.title}</span>
               </a>
@@ -125,11 +125,11 @@ const minutes = readingMinutes(post.body);
     display: grid;
     gap: var(--space-m);
     justify-items: start;
-    max-width: min(100% - 2 * var(--gutter), 56rem);
+    max-width: min(100% - 2 * var(--gutter), 54rem);
   }
 
   .post__back {
-    margin-block-end: var(--space-l);
+    margin-block-end: var(--space-s);
   }
 
   .post__title {
@@ -140,7 +140,7 @@ const minutes = readingMinutes(post.body);
   .post__dek {
     font-family: var(--font-display);
     font-size: var(--step-2);
-    line-height: 1.35;
+    line-height: 1.36;
     color: var(--tone-muted);
     max-width: 34em;
   }
@@ -149,39 +149,50 @@ const minutes = readingMinutes(post.body);
     display: flex;
     align-items: center;
     gap: var(--space-s);
+    width: 100%;
     margin-block-start: var(--space-xs);
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
     font-size: var(--step--1);
   }
 
   .post__meta :global(.post__avatar) {
     inline-size: 3rem;
-    block-size: 3rem;
-    border-radius: 50%;
+    flex: none;
+  }
+
+  .post__meta-text {
+    display: grid;
+    gap: 0.15em;
   }
 
   .post__author {
-    display: block;
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .post__facts {
     display: flex;
-    gap: 0.5em;
+    flex-wrap: wrap;
+    gap: 0.45em;
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
     color: var(--tone-muted);
   }
 
   .post__cover {
     margin-block: var(--space-xl) var(--space-2xl);
+    max-width: min(100% - 2 * var(--gutter), 68rem);
   }
 
   .post__body,
   .post__footer {
-    max-width: min(100% - 2 * var(--gutter), 56rem);
+    max-width: min(100% - 2 * var(--gutter), 54rem);
   }
 
   .post__prose {
     font-size: var(--step-1);
-    line-height: 1.65;
+    line-height: 1.66;
   }
 
   .post__footer {
@@ -193,7 +204,7 @@ const minutes = readingMinutes(post.body);
   .author {
     display: grid;
     grid-template-columns: 6rem 1fr;
-    gap: var(--space-m);
+    gap: var(--space-l);
     padding-block: var(--space-l);
     border-block: var(--border-width) solid var(--tone-line);
   }
@@ -207,7 +218,7 @@ const minutes = readingMinutes(post.body);
   .author__label {
     font-family: var(--font-body);
     font-size: var(--step--2);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     color: var(--tone-muted);
@@ -216,12 +227,14 @@ const minutes = readingMinutes(post.body);
   .author__name {
     font-family: var(--font-display);
     font-size: var(--step-2);
-    line-height: 1.2;
+    line-height: 1.18;
   }
 
   .author__role {
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
     color: var(--tone-link);
   }
 
@@ -246,9 +259,9 @@ const minutes = readingMinutes(post.body);
   .post__nav-label {
     display: inline-flex;
     align-items: center;
-    gap: 0.4em;
+    gap: 0.45em;
     font-size: var(--step--2);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     color: var(--tone-muted);
@@ -256,11 +269,12 @@ const minutes = readingMinutes(post.body);
 
   .post__nav-title {
     font-family: var(--font-display);
-    font-size: var(--step-1);
-    line-height: 1.3;
+    font-size: var(--step-2);
+    line-height: 1.24;
     text-decoration: underline;
+    text-decoration-thickness: 1px;
     text-decoration-color: transparent;
-    text-underline-offset: 0.2em;
+    text-underline-offset: 0.22em;
     transition: text-decoration-color var(--duration-fast) var(--ease-out);
   }
 
@@ -279,7 +293,7 @@ const minutes = readingMinutes(post.body);
     }
 
     .author {
-      grid-template-columns: 9rem 1fr;
+      grid-template-columns: 8.5rem 1fr;
     }
   }
 

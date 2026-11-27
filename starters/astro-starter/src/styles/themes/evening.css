@@ -1,32 +1,23 @@
 /*
- * DESIGN TOKENS — the “Evening” look. The studio after dark: warm charcoal,
- * cream type and an amber accent, in the default fonts.
+ * DESIGN TOKENS — the “Evening” look. The studio by candlelight: deep warm
+ * peat, vellum type and ochre accent, in Newsreader and Instrument Sans.
  * Use it with: cp src/styles/themes/evening.css src/styles/tokens.css
  *
  * Every colour, font, size, radius and shadow used anywhere on the site is
  * defined here as a CSS custom property. Components only ever reference these
  * names, so restyling the site means editing this file and nothing else.
  *
- * To re-skin quickly:
- *   1. Fonts — swap the two @import lines below for another pair of
- *      @fontsource-variable packages (add them to package.json), then update
- *      --font-display and --font-body to the new family names.
- *   2. Accent — change --color-accent (and its -strong hover partner and
- *      --color-accent-on-inverse, the same hue lightened for dark grounds).
- *   3. Neutrals — the background / surface / text / border values share one
- *      warm hue; shift that hue to cool or warm the whole site.
- *
  * Colour roles:
  *   background        page ground
- *   surface           raised things: inputs, cards, the mobile menu
+ *   surface           raised things: inputs, enquiry sheets, the mobile menu
  *   surface-muted     ground of `tone: muted` sections
  *   text / text-muted body copy / secondary copy (keep ≥ 4.5:1 on surface-muted)
- *   border            hairlines and dividers; border-strong for form controls
+ *   border            architectural hairlines; border-strong for form controls
  *   accent            links, primary buttons, ground of `tone: accent` sections
  *   accent-contrast   text placed on accent (keep ≥ 4.5:1)
  *   inverse-*         ground, text, muted text and borders of `tone: inverse`
  *                     sections and the footer
- *   negative          form errors
+ *   negative          form errors on light and dark grounds
  *
  * Colours are written in oklch(lightness chroma hue): lightness is
  * perceptual, so two colours with the same L look equally light. Keep text
@@ -41,27 +32,28 @@
   color-scheme: dark;
 
   /* ── Colour ─────────────────────────────────────────────────────────── */
-  --color-background: oklch(19.5% 0.012 60);
-  --color-surface: oklch(25.5% 0.014 60);
-  --color-surface-muted: oklch(23% 0.015 60);
-  --color-text: oklch(94.5% 0.012 84);
-  --color-text-muted: oklch(79% 0.018 78);
-  --color-border: oklch(33% 0.016 62);
-  --color-border-strong: oklch(62% 0.02 70);
+  --color-background: oklch(18.5% 0.013 58);
+  --color-surface: oklch(24% 0.015 58);
+  --color-surface-muted: oklch(21.5% 0.015 58);
+  --color-text: oklch(94.5% 0.012 82);
+  --color-text-muted: oklch(78.5% 0.018 76);
+  --color-border: oklch(32.5% 0.016 60);
+  --color-border-strong: oklch(60% 0.02 68);
 
-  --color-accent: oklch(76% 0.118 55);
-  --color-accent-strong: oklch(83% 0.1 62);
-  --color-accent-contrast: oklch(20% 0.02 50);
-  --color-accent-on-inverse: oklch(78% 0.115 55);
+  --color-accent: oklch(75.5% 0.115 62);
+  --color-accent-strong: oklch(82% 0.1 66);
+  --color-accent-contrast: oklch(18.5% 0.018 52);
+  --color-accent-on-inverse: oklch(78% 0.11 62);
 
-  --color-inverse-background: oklch(14% 0.01 60);
-  --color-inverse-surface: oklch(18.5% 0.012 60);
-  --color-inverse-text: oklch(94.5% 0.012 84);
-  --color-inverse-muted: oklch(77% 0.018 78);
-  --color-inverse-border: oklch(29% 0.014 62);
+  --color-inverse-background: oklch(13% 0.011 58);
+  --color-inverse-surface: oklch(17.5% 0.013 58);
+  --color-inverse-text: oklch(94.5% 0.012 82);
+  --color-inverse-muted: oklch(76.5% 0.018 76);
+  --color-inverse-border: oklch(28.5% 0.014 60);
 
   /* Error text and borders on forms (keep ≥ 4.5:1 on surface). */
-  --color-negative: oklch(74% 0.14 27);
+  --color-negative: oklch(75% 0.135 28);
+  --color-negative-on-inverse: oklch(75% 0.135 28);
 
   /* Overlay used behind the mobile menu and image placeholders. */
   --color-scrim: oklch(0% 0 0 / 0.3);
@@ -70,53 +62,53 @@
   --font-display: "Newsreader Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --font-body: "Instrument Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --weight-display: 380;
-  --weight-display-strong: 520;
+  --weight-display: 360;
+  --weight-display-strong: 480;
   --weight-body: 400;
-  --weight-medium: 520;
-  --weight-bold: 620;
+  --weight-medium: 500;
+  --weight-bold: 600;
 
-  --tracking-display: -0.022em;
-  --tracking-caps: 0.12em;
-  --leading-tight: 1.04;
-  --leading-snug: 1.22;
-  --leading-body: 1.6;
+  --tracking-display: -0.024em;
+  --tracking-caps: 0.14em;
+  --leading-tight: 1.01;
+  --leading-snug: 1.18;
+  --leading-body: 1.62;
 
   /* Fluid type scale: each step ~1.2× (small screens) to ~1.33× (large). */
-  --step--2: clamp(0.74rem, 0.72rem + 0.08vw, 0.8rem);
-  --step--1: clamp(0.84rem, 0.81rem + 0.14vw, 0.92rem);
-  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
-  --step-1: clamp(1.18rem, 1.09rem + 0.42vw, 1.45rem);
-  --step-2: clamp(1.4rem, 1.24rem + 0.8vw, 1.95rem);
-  --step-3: clamp(1.68rem, 1.4rem + 1.4vw, 2.65rem);
-  --step-4: clamp(2rem, 1.55rem + 2.25vw, 3.6rem);
-  --step-5: clamp(2.35rem, 1.65rem + 3.5vw, 4.9rem);
-  --step-6: clamp(2.6rem, 1.6rem + 5vw, 6.5rem);
+  --step--2: clamp(0.72rem, 0.7rem + 0.08vw, 0.78rem);
+  --step--1: clamp(0.84rem, 0.81rem + 0.12vw, 0.92rem);
+  --step-0: clamp(0.98rem, 0.95rem + 0.16vw, 1.08rem);
+  --step-1: clamp(1.14rem, 1.06rem + 0.36vw, 1.38rem);
+  --step-2: clamp(1.36rem, 1.2rem + 0.72vw, 1.85rem);
+  --step-3: clamp(1.64rem, 1.36rem + 1.3vw, 2.55rem);
+  --step-4: clamp(1.98rem, 1.52rem + 2.15vw, 3.5rem);
+  --step-5: clamp(2.35rem, 1.62rem + 3.4vw, 4.75rem);
+  --step-6: clamp(2.65rem, 1.65rem + 4.6vw, 5.75rem);
 
-  --measure: 64ch;
+  --measure: 62ch;
 
   /* ── Space ──────────────────────────────────────────────────────────── */
   --space-3xs: 0.25rem;
   --space-2xs: 0.5rem;
   --space-xs: 0.75rem;
   --space-s: 1rem;
-  --space-m: clamp(1.25rem, 1.1rem + 0.6vw, 1.6rem);
+  --space-m: clamp(1.25rem, 1.1rem + 0.6vw, 1.65rem);
   --space-l: clamp(1.75rem, 1.45rem + 1.2vw, 2.5rem);
-  --space-xl: clamp(2.5rem, 2rem + 2.2vw, 4rem);
-  --space-2xl: clamp(3.5rem, 2.6rem + 4vw, 6rem);
-  --space-section: clamp(4rem, 2.6rem + 6.5vw, 8.5rem);
+  --space-xl: clamp(2.5rem, 1.95rem + 2.2vw, 4rem);
+  --space-2xl: clamp(3.5rem, 2.55rem + 4vw, 6rem);
+  --space-section: clamp(4.25rem, 2.75rem + 6.2vw, 8.25rem);
 
-  --container: 78rem;
+  --container: 80rem;
   --container-narrow: 46rem;
-  --gutter: clamp(1.25rem, 0.55rem + 3.2vw, 3rem);
-  --header-height: 4.5rem;
+  --gutter: clamp(1.25rem, 0.6rem + 3vw, 3.25rem);
+  --header-height: 4.75rem;
 
   /* ── Shape ──────────────────────────────────────────────────────────── */
-  --radius-s: 2px;
-  --radius-m: 4px;
-  --radius-l: 10px;
+  --radius-s: 0px;
+  --radius-m: 2px;
+  --radius-l: 2px;
   --radius-button: 2px;
-  --radius-image: 2px;
+  --radius-image: 0px;
   --border-width: 1px;
 
   --shadow-raised: 0 1px 2px oklch(0% 0 0 / 0.3), 0 16px 40px -10px oklch(0% 0 0 / 0.55);
@@ -124,12 +116,14 @@
   /* ── Motion ─────────────────────────────────────────────────────────── */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-fast: 140ms;
-  --duration: 240ms;
+  --duration: 260ms;
+  --duration-slow: 900ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-fast: 0ms;
     --duration: 0ms;
+    --duration-slow: 0ms;
   }
 }

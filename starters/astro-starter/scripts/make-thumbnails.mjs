@@ -101,7 +101,17 @@ async function serve(dir) {
 async function open(browser, path, viewport) {
   const page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
   await page.goto(`http://127.0.0.1:${port}${path}`, { waitUntil: "networkidle" });
-  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(async () => {
+    for (const img of document.querySelectorAll('img[loading="lazy"]')) {
+      img.loading = "eager";
+    }
+    await Promise.all(
+      [...document.images].map((img) =>
+        img.complete ? img.decode().catch(() => {}) : new Promise((ok) => { img.onload = img.onerror = ok; }),
+      ),
+    );
+    await document.fonts.ready;
+  });
   await page.waitForTimeout(150);
   return page;
 }

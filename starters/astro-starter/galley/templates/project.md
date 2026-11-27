@@ -6,7 +6,7 @@ sections:
     eyebrow: Project
     heading: The one-line story of the *project*.
     text: Who the clients were, what wasn't working, and what they have now.
-    image: /images/projects/garden-room.svg
+    image: /images/projects/garden-room.webp
     imageAlt: Describe the finished project for someone who can't see it
   - type: split
     heading: The brief
@@ -14,27 +14,27 @@ sections:
     items:
       - The constraint that shaped the design
       - The decision that made the difference
-    image: /images/gallery/plan.svg
+    image: /images/gallery/plan.webp
     imageAlt: Describe the drawing
     imageSide: left
   - type: gallery
     heading: The finished rooms
     columns: 3
     items:
-      - image: /images/gallery/kitchen.svg
+      - image: /images/gallery/stair.webp
         imageAlt: Describe the first picture
         caption: A short caption
-      - image: /images/gallery/window-seat.svg
+      - image: /images/gallery/kitchen.webp
         imageAlt: Describe the second picture
         caption: A short caption
-      - image: /images/gallery/stair.svg
+      - image: /images/gallery/window-seat.webp
         imageAlt: Describe the third picture
         caption: A short caption
   - type: testimonial
-    tone: accent
+    tone: muted
     quote: What the clients said about it, in their own words.
     name: The clients' names
-    role: The project, the street
+    role: The project · the street
   - type: cta
     tone: inverse
     heading: Thinking about something similar?

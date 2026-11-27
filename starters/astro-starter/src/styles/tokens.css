@@ -1,6 +1,9 @@
 /*
  * DESIGN TOKENS — the one file that decides how this site looks.
  *
+ * Look: LOWFIELD — warm cotton paper, lime plaster, deep peat ink and kiln
+ * terracotta, set in Newsreader and Instrument Sans.
+ *
  * Every colour, font, size, radius and shadow used anywhere on the site is
  * defined here as a CSS custom property. Components only ever reference these
  * names, so restyling the site means editing this file and nothing else.
@@ -16,15 +19,15 @@
  *
  * Colour roles:
  *   background        page ground
- *   surface           raised things: inputs, cards, the mobile menu
+ *   surface           raised things: inputs, enquiry sheets, the mobile menu
  *   surface-muted     ground of `tone: muted` sections
  *   text / text-muted body copy / secondary copy (keep ≥ 4.5:1 on surface-muted)
- *   border            hairlines and dividers; border-strong for form controls
+ *   border            architectural hairlines; border-strong for form controls
  *   accent            links, primary buttons, ground of `tone: accent` sections
  *   accent-contrast   text placed on accent (keep ≥ 4.5:1)
  *   inverse-*         ground, text, muted text and borders of `tone: inverse`
  *                     sections and the footer
- *   negative          form errors
+ *   negative          form errors on light and dark grounds
  *
  * Colours are written in oklch(lightness chroma hue): lightness is
  * perceptual, so two colours with the same L look equally light. Keep text
@@ -39,95 +42,98 @@
   color-scheme: light;
 
   /* ── Colour ─────────────────────────────────────────────────────────── */
-  --color-background: oklch(97.4% 0.009 84);
-  --color-surface: oklch(99.3% 0.004 84);
-  --color-surface-muted: oklch(93.6% 0.016 80);
-  --color-text: oklch(23% 0.016 60);
-  --color-text-muted: oklch(43% 0.02 62);
-  --color-border: oklch(86% 0.018 76);
-  --color-border-strong: oklch(56% 0.02 66);
+  --color-background: oklch(97.2% 0.009 82);
+  --color-surface: oklch(99.1% 0.005 84);
+  --color-surface-muted: oklch(93.4% 0.015 79);
+  --color-text: oklch(21.5% 0.016 58);
+  --color-text-muted: oklch(42% 0.02 60);
+  --color-border: oklch(85.5% 0.017 76);
+  --color-border-strong: oklch(54% 0.02 64);
 
-  --color-accent: oklch(50.5% 0.142 39);
-  --color-accent-strong: oklch(43% 0.13 37);
-  --color-accent-contrast: oklch(98.6% 0.008 84);
-  --color-accent-on-inverse: oklch(78% 0.11 50);
+  --color-accent: oklch(48% 0.138 38);
+  --color-accent-strong: oklch(40.5% 0.122 36);
+  --color-accent-contrast: oklch(98.5% 0.006 84);
+  --color-accent-on-inverse: oklch(79% 0.105 52);
 
-  --color-inverse-background: oklch(24.5% 0.018 60);
-  --color-inverse-surface: oklch(30% 0.02 60);
-  --color-inverse-text: oklch(95.5% 0.012 84);
-  --color-inverse-muted: oklch(79% 0.02 76);
-  --color-inverse-border: oklch(40% 0.02 62);
+  --color-inverse-background: oklch(21.5% 0.016 58);
+  --color-inverse-surface: oklch(27% 0.018 58);
+  --color-inverse-text: oklch(95.5% 0.01 82);
+  --color-inverse-muted: oklch(79% 0.018 76);
+  --color-inverse-border: oklch(37% 0.018 60);
 
   /* Error text and borders on forms (keep ≥ 4.5:1 on surface). */
-  --color-negative: oklch(48% 0.16 27);
+  --color-negative: oklch(46% 0.165 26);
+  --color-negative-on-inverse: oklch(76% 0.13 28);
 
   /* Overlay used behind the mobile menu and image placeholders. */
-  --color-scrim: oklch(23% 0.016 60 / 0.06);
+  --color-scrim: oklch(21.5% 0.016 58 / 0.06);
 
   /* ── Type ───────────────────────────────────────────────────────────── */
   --font-display: "Newsreader Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --font-body: "Instrument Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --weight-display: 380;
-  --weight-display-strong: 520;
+  --weight-display: 360;
+  --weight-display-strong: 480;
   --weight-body: 400;
-  --weight-medium: 520;
-  --weight-bold: 620;
+  --weight-medium: 500;
+  --weight-bold: 600;
 
-  --tracking-display: -0.022em;
-  --tracking-caps: 0.12em;
-  --leading-tight: 1.04;
-  --leading-snug: 1.22;
-  --leading-body: 1.6;
+  --tracking-display: -0.024em;
+  --tracking-caps: 0.14em;
+  --leading-tight: 1.01;
+  --leading-snug: 1.18;
+  --leading-body: 1.62;
 
   /* Fluid type scale: each step ~1.2× (small screens) to ~1.33× (large). */
-  --step--2: clamp(0.74rem, 0.72rem + 0.08vw, 0.8rem);
-  --step--1: clamp(0.84rem, 0.81rem + 0.14vw, 0.92rem);
-  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
-  --step-1: clamp(1.18rem, 1.09rem + 0.42vw, 1.45rem);
-  --step-2: clamp(1.4rem, 1.24rem + 0.8vw, 1.95rem);
-  --step-3: clamp(1.68rem, 1.4rem + 1.4vw, 2.65rem);
-  --step-4: clamp(2rem, 1.55rem + 2.25vw, 3.6rem);
-  --step-5: clamp(2.35rem, 1.65rem + 3.5vw, 4.9rem);
-  --step-6: clamp(2.6rem, 1.6rem + 5vw, 6.5rem);
+  --step--2: clamp(0.72rem, 0.7rem + 0.08vw, 0.78rem);
+  --step--1: clamp(0.84rem, 0.81rem + 0.12vw, 0.92rem);
+  --step-0: clamp(0.98rem, 0.95rem + 0.16vw, 1.08rem);
+  --step-1: clamp(1.14rem, 1.06rem + 0.36vw, 1.38rem);
+  --step-2: clamp(1.36rem, 1.2rem + 0.72vw, 1.85rem);
+  --step-3: clamp(1.64rem, 1.36rem + 1.3vw, 2.55rem);
+  --step-4: clamp(1.98rem, 1.52rem + 2.15vw, 3.5rem);
+  --step-5: clamp(2.35rem, 1.62rem + 3.4vw, 4.75rem);
+  --step-6: clamp(2.65rem, 1.65rem + 4.6vw, 5.75rem);
 
-  --measure: 64ch;
+  --measure: 62ch;
 
   /* ── Space ──────────────────────────────────────────────────────────── */
   --space-3xs: 0.25rem;
   --space-2xs: 0.5rem;
   --space-xs: 0.75rem;
   --space-s: 1rem;
-  --space-m: clamp(1.25rem, 1.1rem + 0.6vw, 1.6rem);
+  --space-m: clamp(1.25rem, 1.1rem + 0.6vw, 1.65rem);
   --space-l: clamp(1.75rem, 1.45rem + 1.2vw, 2.5rem);
-  --space-xl: clamp(2.5rem, 2rem + 2.2vw, 4rem);
-  --space-2xl: clamp(3.5rem, 2.6rem + 4vw, 6rem);
-  --space-section: clamp(4rem, 2.6rem + 6.5vw, 8.5rem);
+  --space-xl: clamp(2.5rem, 1.95rem + 2.2vw, 4rem);
+  --space-2xl: clamp(3.5rem, 2.55rem + 4vw, 6rem);
+  --space-section: clamp(4.25rem, 2.75rem + 6.2vw, 8.25rem);
 
-  --container: 78rem;
+  --container: 80rem;
   --container-narrow: 46rem;
-  --gutter: clamp(1.25rem, 0.55rem + 3.2vw, 3rem);
-  --header-height: 4.5rem;
+  --gutter: clamp(1.25rem, 0.6rem + 3vw, 3.25rem);
+  --header-height: 4.75rem;
 
   /* ── Shape ──────────────────────────────────────────────────────────── */
-  --radius-s: 2px;
-  --radius-m: 4px;
-  --radius-l: 10px;
+  --radius-s: 0px;
+  --radius-m: 2px;
+  --radius-l: 2px;
   --radius-button: 2px;
-  --radius-image: 2px;
+  --radius-image: 0px;
   --border-width: 1px;
 
-  --shadow-raised: 0 1px 2px oklch(23% 0.016 60 / 0.06), 0 12px 32px -8px oklch(23% 0.016 60 / 0.16);
+  --shadow-raised: 0 1px 2px oklch(21.5% 0.016 58 / 0.05), 0 14px 32px -12px oklch(21.5% 0.016 58 / 0.14);
 
   /* ── Motion ─────────────────────────────────────────────────────────── */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-fast: 140ms;
-  --duration: 240ms;
+  --duration: 260ms;
+  --duration-slow: 900ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-fast: 0ms;
     --duration: 0ms;
+    --duration-slow: 0ms;
   }
 }
