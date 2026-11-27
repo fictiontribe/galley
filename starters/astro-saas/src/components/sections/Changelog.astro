@@ -85,13 +85,14 @@ const updates = (await getUpdates()).slice(0, limit);
     gap: 1px;
     border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-l);
-    background: var(--tone-line);
+    background: var(--tone-surface);
     overflow: hidden;
   }
 
   .changelog--cards .changelog__list > li {
     padding: 0 var(--space-m);
     background: var(--tone-surface);
+    outline: var(--border-width) solid var(--tone-line);
   }
 
   .changelog--cards .changelog__list :global(.update) {

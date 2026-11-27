@@ -19,7 +19,7 @@ sections:
       - starter: astro-starter
         name: Lowfield Studio
         kind: Small business
-        text: "A studio or local business: services, pricing, contact form, journal. 17 sections."
+        text: "An architectural practice or small studio: services, pricing, contact form, journal. 17 sections, original architectural photographs."
       - starter: astro-blog
         name: Sarking
         kind: Blog

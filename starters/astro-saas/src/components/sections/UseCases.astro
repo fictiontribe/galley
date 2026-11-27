@@ -28,7 +28,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
 <Section type="use-cases" id={id} tone={tone} block={block} labelledby={headingId}>
   <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
-  <ul class:list={["use-cases", `use-cases--${style}`]} role="list" style={`--columns: ${columns}`}>
+  <ul class:list={["use-cases", `use-cases--${style}`]} role="list" style={`--columns: ${Math.min(columns, items.length)}`}>
     {
       items.map((item) => (
         <li class="use-case card-link">
@@ -68,7 +68,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
   .use-cases--cards {
     gap: 1px;
-    background: var(--tone-line);
+    background: var(--tone-surface);
     border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-l);
     overflow: hidden;
@@ -84,6 +84,14 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
   .use-cases--cards .use-case {
     background: var(--tone-surface);
+    outline: var(--border-width) solid var(--tone-line);
+  }
+
+  .use-cases--cards .use-case:has(.card-link__target:focus-visible) {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--tone-focus);
+    outline-offset: -2px;
   }
 
   .use-cases--cards .use-case:hover {

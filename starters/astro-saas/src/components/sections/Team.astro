@@ -35,7 +35,7 @@ const people = members?.length
 
 <Section type="team" id={id} tone={tone} block={block} labelledby={headingId}>
   <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
-  <ul class:list={["team", `team--${style}`]} role="list" style={`--columns: ${columns}`}>
+  <ul class:list={["team", `team--${style}`]} role="list" style={`--columns: ${Math.min(columns, people.length)}`}>
     {
       people.map((person) => (
         <li class="person">
@@ -70,7 +70,7 @@ const people = members?.length
 
   .team--portrait {
     gap: 1px;
-    background: var(--tone-line);
+    background: var(--tone-surface);
     border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-l);
     overflow: hidden;
@@ -86,6 +86,7 @@ const people = members?.length
   .team--portrait .person {
     padding: var(--space-m);
     background: var(--tone-surface);
+    outline: var(--border-width) solid var(--tone-line);
   }
 
   .person :global(.person__photo) {
@@ -129,7 +130,7 @@ const people = members?.length
   .team--compact {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
     gap: 1px;
-    background: var(--tone-line);
+    background: var(--tone-surface);
     border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-l);
     overflow: hidden;
@@ -141,6 +142,7 @@ const people = members?.length
     gap: var(--space-s);
     padding: var(--space-m);
     background: var(--tone-surface);
+    outline: var(--border-width) solid var(--tone-line);
   }
 
   .team--compact :global(.person__photo) {

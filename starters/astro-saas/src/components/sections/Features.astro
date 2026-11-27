@@ -28,7 +28,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
 <Section type="features" id={id} tone={tone} block={block} labelledby={headingId}>
   <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} align={align} />
-  <ul class:list={["features", `features--${style}`]} role="list" style={`--columns: ${columns}`}>
+  <ul class:list={["features", `features--${style}`]} role="list" style={`--columns: ${Math.min(columns, items.length)}`}>
     {
       items.map((item, i) => (
         <li class="feature">
@@ -68,7 +68,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
   .features--cards {
     gap: 1px;
-    background: var(--tone-line);
+    background: var(--tone-surface);
     border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-l);
     overflow: hidden;
@@ -89,6 +89,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   .features--cards .feature {
     padding: var(--space-l);
     background: var(--tone-surface);
+    outline: var(--border-width) solid var(--tone-line);
   }
 
   .feature__top {

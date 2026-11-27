@@ -132,7 +132,7 @@ const PanelHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     gap: 1px;
     overflow-x: auto;
     scrollbar-width: none;
-    background: var(--tone-line);
+    background: var(--tone-surface);
     border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-l);
     overflow: hidden;
@@ -157,12 +157,19 @@ const PanelHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     padding: 0.65em 1.15em;
     border: 0;
     background: var(--tone-surface);
+    outline: var(--border-width) solid var(--tone-line);
     color: var(--tone-muted);
     font-size: var(--step--1);
     font-weight: var(--weight-bold);
     transition:
       background-color var(--duration-fast) var(--ease-out),
       color var(--duration-fast) var(--ease-out);
+  }
+
+  .tabs__tab:focus-visible {
+    z-index: 1;
+    outline: 2px solid var(--tone-focus);
+    outline-offset: -2px;
   }
 
   .tabs__tab:hover {
