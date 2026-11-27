@@ -1,21 +1,22 @@
 ---
 title: "Galley vs Webflow: a Git-based Webflow alternative"
-description: "A Webflow alternative for static sites: Galley edits your site's files in Git. Design, AI, hosting, teams and price, and when Webflow is the better choice."
+description: "A Webflow alternative for static sites: Galley edits your site's files in Git. Design, AI, translations, search intelligence, hosting, teams and price, and when Webflow is the better choice."
 kind: versus
 product: Webflow
 heading: Webflow is the whole website in one product. Galley edits a site that lives in your own repository.
 name: Galley and Webflow
-lead: "In Webflow, designers build on a visual canvas, and the design, the content and the hosting live on Webflow's platform. Galley is a Webflow alternative of another shape: free and open-source, it edits a static site's files in your own Git repository, and the site's code stays your developers'."
+lead: "In Webflow, designers build on a visual canvas, and the design, the content and the hosting live on Webflow's platform. Galley is a Webflow alternative of another shape: open source (Apache-2.0) with optional managed hosting on Galley Cloud, it edits a static site's files in your own Git repository, and the site's code stays your developers'."
 published: "2026-11-25"
+updated: "2026-11-27"
 checked: November 2026
 order: 10
 draft: false
 short:
   - Webflow is a hosted visual site builder with a CMS. Designers build on a canvas without code, CMS content sits in Webflow's database, and paid Site plans include hosting. Galley edits a static site that developers built, as files in your own Git repository.
-  - As of November 2026, Premium, Webflow's Site plan for sites that use the CMS, is $25 a month paid yearly or $39 monthly, per site, with Workspace plans and seats billed apart. Galley is free and Apache-2.0. You pay for your own AI key and your own hosting.
-  - Webflow has a long list of AI features on a credit system, and a hosted MCP server on every Site plan that uses no Webflow AI credits of its own (Campaigns work excepted). Galley has an assistant in the editor that never publishes, and every change it makes waits in a proof beside the live site; other AI tools can connect over MCP and can publish unless that is switched off.
+  - As of November 2026, Premium, Webflow's Site plan for sites that use the CMS, is $25 a month paid yearly or $39 monthly, per site, with Workspace plans and per-seat charges billed apart ($15–$19/seat for editors, $39–$45/seat for designers). Galley is free under Apache-2.0 to run locally or self-host; [Galley Cloud](/cloud/) (opening by invitation) hosts editor and site on Cloudflare's edge with monthly AI credits and **no per-seat fees**, from $35 a month per site ($99 on Agency for five sites).
+  - Webflow has a long list of AI features on a credit system and a hosted MCP server on every Site plan. Galley builds an assistant that never publishes, multilingual AI translation (with Translation Memory and a Glossary), and Search and AI intelligence (live rankings, keyword gaps, 404 recovery) into the editor, holds every change in Proof beside the live site, and offers an MCP server.
   - Leaving Webflow with CMS content means a rebuild. Its code export is static HTML, CSS and JavaScript without the CMS content, which comes out as CSV, one Collection at a time. With Galley the content stays in your repository, as files.
-  - Choose Webflow if designers should build without code, with design, content and hosting in one product, real-time co-editing, comments, scheduled posts and translation. Galley is not a design tool, it needs developers to build the site first, and it was first released in November 2026.
+  - Choose Webflow if designers should build visually without code, with design, content and hosting in one product, 25-person canvas co-editing, comments, scheduled posts, ecommerce, or SOC 2 Type II / ISO 27001. Galley is not a design tool, needs developers to build the site first, and was first released in November 2026.
 table:
   heading: Galley and Webflow, side by side.
   text: Where Webflow does more, the table says so.
@@ -27,9 +28,9 @@ table:
       theirs: On Webflow; CMS content in its database
       better: ours
     - label: Price
-      ours: Free. Your AI key and hosting are yours
-      theirs: Starter free (webflow.io, 2 pages); Premium $25 a month yearly + seats (Nov 2026)
-      better: even
+      ours: Free open source; Galley Cloud from $35/mo, no per-seat fees (Nov 2026)
+      theirs: Starter free (webflow.io, 2 pages); Premium $25/mo yearly + Workspace & seats (Nov 2026)
+      better: ours
     - label: Designing pages
       ours: Not a design tool; arranges sections (preview)
       theirs: A visual canvas, no code; page templates
@@ -38,43 +39,47 @@ table:
       ours: A form, the page itself, or the assistant
       theirs: On the canvas, or in CMS fields
       better: even
-    - label: AI in the editor
-      ours: An assistant that never publishes
-      theirs: Site builder, Assistant, copy and SEO tools
+    - label: AI & search intelligence
+      ours: Assistant that never publishes, AI translations, live rankings & keyword gaps
+      theirs: Site builder, Assistant, copy and on-page SEO/AEO tools
       better: even
     - label: Checking a change
       ours: Every change marked up beside the live site
       theirs: Live canvas and preview; branches on Team and up
+      better: ours
+    - label: Languages
+      ours: Built-in i18n, side-by-side editing, AI translation with memory and glossary
+      theirs: Localize add-on, from $9/mo per locale yearly
       better: ours
     - label: Other AI tools (MCP)
       ours: An MCP server with the assistant's tools
       theirs: Hosted, on every Site plan, no AI credits of its own
       better: theirs
     - label: Hosting
-      ours: Yours to choose; deploys to Cloudflare
-      theirs: Included in paid Site plans, managed
+      ours: Any static host, or Cloudflare edge on Galley Cloud (by invite)
+      theirs: Included in paid Site plans, managed, live today
       better: theirs
     - label: Two people at once
-      ours: One shared copy; a clashing save is refused
-      theirs: Live co-editing for up to 25 people
+      ours: Real-time co-editing and live presence on Cloud; safe save checks self-hosted
+      theirs: Live co-editing on the canvas for up to 25 people
       better: theirs
-    - label: Teams
-      ours: Three roles on a hosted editor (new); they organise work, not security
-      theirs: Eight roles; SSO and custom roles on Enterprise
+    - label: Teams & SSO
+      ours: Three roles + free OIDC SSO (new) self-hosted; no per-seat fees on Cloud
+      theirs: Eight roles (paid per seat); SSO and custom roles on Enterprise
       better: theirs
     - label: Leaving
       ours: Nothing to export; the files are yours
       theirs: Static code export; CMS as CSV per Collection
       better: ours
     - label: Maturity
-      ours: First released November 2026
+      ours: First released November 2026; no SOC 2 or ISO 27001 yet
       theirs: Founded 2013; SOC 2 Type II, ISO 27001
       better: theirs
 faq:
   - q: Is Galley an alternative to Webflow?
-    a: For some sites, yes, but they are different kinds of product. Webflow is where a site is designed, stored and hosted, with no code needed. Galley edits a static site that developers built in code and keep in a Git repository. If designers build your site in Webflow without developers, Galley doesn't replace it. If developers build it, Galley gives everyone else a way to edit it.
+    a: For some sites, yes, but they are different kinds of product. Webflow is where a site is designed, stored and hosted, with no code needed. Galley edits a static site that developers built in code and keep in a Git repository — free to self-host, or managed on Cloudflare's edge through [Galley Cloud](/cloud/). If designers build your site in Webflow without developers, Galley doesn't replace it. If developers build it, Galley gives everyone else a way to edit, translate and check search rankings without per-seat fees.
   - q: How much does Webflow cost?
-    a: As of November 2026, Premium, Webflow's Site plan for sites that use the CMS, is $25 a month paid yearly or $39 paid monthly, per site. Basic, without a CMS, is $15 or $25, and Starter is free on a webflow.io address. Workspace plans and seats are billed separately. Team is $2,500 a month on an annual contract. Galley is free; you pay for your own AI key and hosting.
+    a: As of November 2026, Premium, Webflow's Site plan for sites that use the CMS, is $25 a month paid yearly or $39 paid monthly, per site. Basic, without a CMS, is $15 or $25, and Starter is free on a `webflow.io` address. Workspace plans and seats are billed separately ($15–$19/seat for content editors, $39–$45/seat for designers). Team is $2,500 a month on an annual contract. Galley is free under Apache-2.0 (bringing your own AI key when self-hosted); [Galley Cloud](/cloud/) (opening by invitation) starts at $35 a month per site ($99 on Agency for five sites, $149 on Business), with monthly AI credits and Cloudflare hosting included and no per-seat fees.
   - q: Can you export a Webflow site?
     a: Partly. On paid Workspace plans, Webflow exports the site's HTML, CSS, JavaScript and images as a ZIP file. CMS content, Ecommerce, localised pages, site search, form handling and code components don't come with it, and Collection pages export empty. CMS content comes out separately, as a CSV file for each Collection, with images as links to files Webflow hosts.
   - q: What happened to the Webflow Editor?
@@ -156,6 +161,10 @@ sources:
     href: /docs/project/faq/
   - label: "Galley, the tour: what is built and what isn't yet"
     href: /tour/
+  - label: "Galley Cloud"
+    href: /cloud/
+  - label: "Galley for enterprise and security teams"
+    href: /enterprise/
 related: [/wordpress/, types-of-cms, cloudcannon]
 ---
 
@@ -165,7 +174,7 @@ For some teams. They are different kinds of product, so the answer depends on wh
 
 Webflow is a hosted visual site builder with a CMS built in. A designer builds the site on Webflow's canvas without code; in Webflow's words, "You design, we generate the code". Content with a shared structure, such as blog posts, lives in Webflow's CMS, which its documentation calls "a structured database", and paid Site plans include hosting. Design, content and hosting are one product, on Webflow's platform. Webflow started in 2013 and counts 300,000 organisations using it (November 2026).
 
-Galley edits a static site that developers have built in a framework such as Astro and keep in a Git repository. The words are Markdown, JSON and YAML files beside the code. Everyone else changes them in a form, on the page or by asking an assistant, and each publish is a commit to your repository. The code stays your developers', on the host you choose.
+Galley edits a static site that developers have built in a framework such as Astro and keep in a Git repository. The words are Markdown, JSON and YAML files beside the code. Everyone else changes them in a form, on the page or by asking an assistant, and each publish is a commit to your repository. The code stays your developers', on the host you choose — or on Cloudflare's edge through [Galley Cloud](/cloud/).
 
 So the real question is who makes the site. If designers build it and nobody writes code, Webflow is made for that and Galley isn't. If developers build it and the rest of the team keeps it fresh, Galley is one way to do that.
 
@@ -183,11 +192,11 @@ As of November 2026, Webflow charges for each site and for the team separately. 
 | Team | $2,500 a month | Not offered | A Platform plan: a site, 5 full and 5 limited seats, 100 Collections |
 | Enterprise | Priced on request | Priced on request | Custom roles, single sign-on, EU hosting |
 
-Premium is new: from 13 May 2026 it replaced the CMS and Business plans for new sites, and existing sites move to it at their first renewal from 29 June 2026, or from November for some accounts. The team is billed on a Workspace plan: for in-house teams, Starter is free, Core is $19 a month paid yearly ($28 monthly) and Growth $49 ($60); for freelancers and agencies, Freelancer is $16 ($24) and Agency $35 ($42). Seats beyond the owner's cost extra: $39 a month paid yearly ($45 monthly) for a full seat, which designs, and $15 ($19) for a limited seat, which edits content. Reviewers are free. Those figures are from [Webflow's pricing page](https://webflow.com/pricing), read on both its yearly and its monthly setting. Check it before you decide, because plans change.
+Premium is new: from 13 May 2026 it replaced the CMS and Business plans for new sites, and existing sites move to it at their first renewal from 29 June 2026, or from November for some accounts. The team is billed on a Workspace plan: for in-house teams, Starter is free, Core is $19 a month paid yearly ($28 monthly) and Growth $49 ($60); for freelancers and agencies, Freelancer is $16 ($24) and Agency $35 ($42). Seats beyond the owner's cost extra: $39 a month paid yearly ($45 monthly) for a full seat, which designs, and $15 ($19) for a limited seat, which edits content. Reviewers are free. Localize is an add-on starting at $9 a month per locale paid yearly. Those figures are from [Webflow's pricing page](https://webflow.com/pricing), read on both its yearly and its monthly setting. Check it before you decide, because plans change.
 
-Galley costs nothing: Apache-2.0, one edition, no paid tier. The assistant runs on Anthropic's Claude with your own key, billed to whoever owns it, and hosting is yours to arrange: static files cost little to host, and Cloudflare Pages, for one, serves static assets free on every plan.
+Galley is free and Apache-2.0 to run locally (`npx galley-cms` or the Apple-signed and notarized macOS desktop app) or self-host on your own server with Docker (`ghcr.io/fictiontribe/galley`), bringing your own AI key and static hosting (Cloudflare Pages, for one, serves static assets free on every plan). For managed hosting with no keys to paste, [Galley Cloud](/cloud/) (opening by invitation) hosts both a dedicated editor machine per site and the published site on Cloudflare's global edge, with monthly AI credits, multilingual translation and Search and AI intelligence included and **no per-seat fees** (up to 500 named people per workspace, 100 per site): Partner is $0 a month for agencies whose clients pay directly (earning 15% of handed-over Site invoices), Site is $35 a month, Agency is $99 a month (5 live sites included, then $15–$12 per extra site), and Business is $149 a month.
 
-It isn't like for like: Webflow's price includes the design tool and the hosting, and a Galley site needs developers to build it, whose time is part of the price.
+It isn't like for like: Webflow's price includes the visual design canvas, and a Galley site needs developers to build it, whose time is part of the price.
 
 ## Who designs the site?
 
@@ -203,57 +212,64 @@ In Galley, developers build the site as they would without a CMS. Then Galley re
 
 The caveat on our side: detection is only as good as the site is tidy. Copy hard-coded in components gets a thinner form until someone moves it into content files.
 
-## How does each one use AI?
+## How does each one use AI, translations and search intelligence?
 
-Webflow AI is, in Webflow's words, "the collective name for Webflow's AI-powered features", and there are many. The AI site builder makes a site from a prompt. The AI Assistant answers questions in the app, designs new sections (in beta, so far only on a few free templates and sites made by the AI site builder) and writes React code components. Webflow AI also writes copy, generates CMS items, and fills in missing alt text, meta titles, descriptions and schema markup, for SEO and AEO. Localize adds AI translation.
+Webflow AI is, in Webflow's words, "the collective name for Webflow's AI-powered features", and there are many. The AI site builder makes a site from a prompt. The AI Assistant answers questions in the app, designs new sections (in beta, so far only on a few free templates and sites made by the AI site builder) and writes React code components. Webflow AI also writes copy, generates CMS items, and fills in missing alt text, meta titles, descriptions and schema markup, for SEO and AEO. Localize adds AI translation as a paid add-on.
 
 Since May 2026, much of this uses AI credits, shared across a Workspace: 200 a month on the free Starter Workspace plan, 300 on Core or Freelancer, 400 on Growth or Agency, and 100,000 a year on Team. More can be bought, and Webflow "doesn't publish a rate card".
 
 Webflow also runs an official, hosted MCP server. Tools such as Claude, ChatGPT, Codex and Gemini connect to it with OAuth, and can design pages, manage CMS content, work on SEO and publish. It is "available on all Site plans, including the free Starter plan", and uses no Webflow AI credits of its own (Campaigns work excepted).
 
-Galley puts [one assistant](/how-to/ask-the-assistant/) inside the editor, beside the page. It reads the site before it edits, asks one short question when a request is ambiguous, and quotes the new words back. In content mode it can touch only content and media, and it has no shell or network tool. It never publishes: every change it makes waits in the proof, and a person presses Publish. Galley's [MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
+Galley focuses on editing, translating and growing a live static site:
 
-Webflow's AI is broader by a distance, and most of it helps build and fill a site. We think what matters most once a site is live is the check: who sees a change, in what form, before it goes out. Galley is built around that. For making new pages and sections, Webflow offers far more today.
+- **The built-in assistant.** [Ask in plain words](/how-to/ask-the-assistant/) beside the page; it reads the site before it edits, asks one short question when a request is ambiguous, quotes the new words back, touches only content and media in content mode, has no shell or network tool, and never publishes. Image and short video generation run across OpenAI, Google Gemini and OpenRouter models.
+- **Built-in multilingual (`i18n`) translation.** Instead of a per-locale paid add-on, Galley includes target languages, localized URL slugs, `hreflang` alternates, Astro `<LanguageSelector />` / `<LocaleHead />` components, side-by-side manual editing with out-of-sync flags, and AI translation for single pages or the whole site using a Git-tracked Translation Memory, a Glossary and a clear upfront cost estimate — every translated page waiting in Proof.
+- **Built-in Search and AI intelligence.** Beyond on-page SEO/structured-data checks, Markdown twins, `llms.txt` and per-AI-crawler `robots.txt` controls, Galley includes live Google search rankings, striking-distance (`#4–#15`) quick wins, keyword research, competitor content gaps, broken-404 backlink recovery with one-click redirects, and AI search answer citations — included on every [Galley Cloud](/cloud/) plan (at zero AI credits for lookups) or self-hosted with your own search data key, without a separate Semrush or Ahrefs subscription for everyday site SEO.
+- **MCP server.** Galley's [MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, waiting in Proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
+
+Webflow's AI does far more for visually designing new pages and sections. Galley does more for ongoing search intelligence, built-in multilingual translation with Translation Memory, and readable side-by-side Proof before anything goes live.
 
 ## How do you check a change before it goes live?
 
-In Webflow you edit the page itself and, as its CMS page puts it, "see changes rendered in real time". Changes save as you go and reach the live site when someone publishes. CMS items wait as drafts you can preview, and a site can go to its webflow.io staging address first. On Premium and above, a new CMS item can be scheduled. On Team and Enterprise, page branching gives the team a working copy of a page, staged at its own address and merged after a summary of what changed; on Enterprise, design approvals add a sign-off first. Reviewers comment on the page itself, and people without a Webflow account can too, through a link.
+In Webflow you edit the page itself and, as its CMS page puts it, "see changes rendered in real time". Changes save as you go and reach the live site when someone publishes. CMS items wait as drafts you can preview, and a site can go to its `webflow.io` staging address first. On Premium and above, a new CMS item can be scheduled. On Team and Enterprise, page branching gives the team a working copy of a page, staged at its own address and merged after a summary of what changed; on Enterprise, design approvals add a sign-off first. Reviewers comment on the page itself, and people without a Webflow account can too, through a link.
 
-In Galley every change, from the form, the page or the assistant, lands in [Proof](/how-to/proof-and-publish/): in the site's own words, old struck out and new written in, beside the live site. Any single change can be put back. Publishing is a commit to your repository, or a branch and a pull request. Undo is a new commit, and history is never rewritten.
+In Galley every change, from the form, the page, translation or the assistant, lands in [Proof](/how-to/proof-and-publish/): in the site's own words, old struck out and new written in, beside the live site. Any single change can be put back. Publishing is a commit to your repository, or a branch and a pull request. Undo is a new commit, and history is never rewritten. On Galley Cloud, you can also share preview links for unpublished changes and roll back to an earlier version instantly without rebuilding.
 
-We think a list of each change in words is easier to check than a page compared by eye, especially after an AI made the change. For a design team reviewing together, Webflow's comments and branches do more.
+We think a list of each change in words is easier to check than a page compared by eye, especially after an AI made the change. For a design team reviewing layout changes together, Webflow's canvas comments and page branches do more.
 
 ## Who hosts the site?
 
-Webflow does. Hosting "is included with all paid Webflow Site plans", and Webflow manages it, so scaling and security patches are its job. Each site on its own domain needs its own Site plan; the free Starter plan publishes to a webflow.io address. For a team that wants nothing to wire up, that is a real advantage, and Galley doesn't match it. The other side is that a Webflow site is made in Webflow. Its pricing page says, "No, you can only develop websites in Webflow. If you export your code, it can’t be reimported."
+Webflow does. Hosting "is included with all paid Webflow Site plans", and Webflow manages it, so scaling and security patches are its job. Each site on its own domain needs its own Site plan; the free Starter plan publishes to a `webflow.io` address. The other side is that a Webflow site is made in Webflow. Its pricing page says, "No, you can only develop websites in Webflow. If you export your code, it can’t be reimported."
 
-Galley doesn't host anything. It publishes to your repository, and your host builds from there. It can put a site online on Cloudflare, and that is verified on the real service, though attaching a new domain of your own there has been tested only against stand-ins. Deploys to Vercel are in progress. Forms and redirects are built.
+Galley gives you both options. Publish to your Git repository and host on any static provider (AWS, Google Cloud, Azure, Cloudflare, Vercel, Netlify), deploy straight to Cloudflare from the editor (verified on the real service; Vercel deploys are in progress; external media buckets support Cloudflare R2, Amazon S3 and Cloudflare Images), or host on [Galley Cloud](/cloud/) (opening by invitation), which runs an isolated editor machine per site and serves the published static site on Cloudflare's global edge with automatic SSL, custom domains in one DNS record, and nightly repository backups kept 30–90 days. Forms and redirects are built in.
 
 ## Which one suits a team?
 
-For a team today, Webflow, by a distance. It has eight roles, from Owner and Designer to Content editor, Reviewer and Guest, and the Content editor, who "only edits content", is on every Workspace plan. Real-time collaboration is on every site, whatever the plan, for up to 25 people at once, with avatars showing who is where; when edits overlap, "The last change that hits our servers is the one saved". Every role can comment. Growth and Agency plans can decide who may publish, and Enterprise adds custom roles and single sign-on. Webflow holds SOC 2 Type II and ISO 27001.
+For design-led teams, Webflow leads; for developer-built sites with many marketing editors, Galley avoids per-seat billing and adds built-in OIDC SSO when self-hosted.
 
-One change is recent: "As of October 5, 2026, the legacy Editor is fully deprecated and can no longer be accessed." Everyone who edits a Webflow site now signs in with an account that has a seat in its Workspace: for someone who only edits, usually a limited seat, or one of the free client seats in Workspace plans for freelancers and agencies.
+Webflow has eight roles, from Owner and Designer to Content editor, Reviewer and Guest, and the Content editor, who "only edits content", is on every Workspace plan. Real-time collaboration is on every site, whatever the plan, for up to 25 people at once, with avatars showing who is where; when edits overlap, "The last change that hits our servers is the one saved". Every role can comment. Growth and Agency plans can decide who may publish, and Enterprise adds custom roles and single sign-on. Webflow holds SOC 2 Type II and ISO 27001. Note one recent change: "As of October 5, 2026, the legacy Editor is fully deprecated and can no longer be accessed." Everyone who edits a Webflow site now signs in with an account that has a seat in its Workspace ($15/month yearly or $19 monthly for a limited editor seat, outside agency client seats).
 
-Galley is behind here. On your own computer it has no accounts: anyone who can open the app can publish, so the gate is pull-request mode and your code host's branch protection. A hosted editor, one site per install on a server you run, adds accounts with three roles (owner, editor and contributor), and each publish carries its author's name. The roles keep people out of each other's way; they aren't a security boundary. That hosted editor is new and still in final checks, and single sign-on is planned for later. Everyone on it works on one shared copy of the site, and a second save of a page someone has just changed is refused, not written over it. There is no live presence.
+In Galley:
+
+- **Real-time collaboration on [Galley Cloud](/cloud/):** Built-in live presence in the top bar and page list, active field outlines with each person's name, simultaneous typing in Markdown body text, and per-author Proof — with **no per-seat fees** (up to 500 named people per workspace, 100 per site).
+- **Self-hosted accounts and free OIDC SSO:** A [hosted editor](/docs/running/hosted/) (`ghcr.io/fictiontribe/galley`, one isolated container per site) adds owner, editor and contributor accounts plus **OpenID Connect (OIDC) single sign-on** (new, in final checks — Authorization Code with PKCE, IdP role-claim mapping, `GALLEY_OIDC_ONLY`, Back-Channel Logout) built into the Apache-2.0 image; see [`/enterprise/`](/enterprise/). On self-hosted installs, editors share one copy and a conflicting save is refused rather than overwritten; roles organize work while the container is the security boundary.
 
 ## Where does Galley fall short?
 
-In more places than it does [beside CloudCannon](/compare/cloudcannon/), because Webflow does more jobs.
+In more places than it does [beside CloudCannon](/compare/cloudcannon/), because Webflow does more jobs:
 
 - **It isn't a design tool.** It changes words, pictures and the order of sections. Layout, style and new kinds of section are code.
 - **It needs developers first.** Someone has to build the site before Galley has anything to edit.
-- **It's young.** Version {version} of software first released in November 2026. Webflow started in 2013.
-- **No hosting, no support contract.** Help comes through the project's issues on GitHub.
-- **No editing together, scheduling or languages.** There is no real-time co-editing or presence, no scheduled publishing and no multi-locale editorial workflow. Webflow has all three: co-editing and scheduling on the plans named above, and languages through Localize, priced below.
+- **It's young.** Version {version} of software first released in November 2026, with no SOC 2 Type II or ISO 27001 certification yet. Webflow started in 2013.
+- **No scheduled posts, comments or ecommerce.** Webflow offers scheduled CMS items on Premium, on-page reviewer comments, and built-in ecommerce.
+- **Galley Cloud is opening by invitation.** Self-hosted and local installs are available today (help via GitHub issues; self-hosted AI uses your own keys).
 - **TOML is read-only.** Galley reads TOML but refuses to change it.
-- **The assistant needs a key, billed to you.** Everything except chat and image generation works without one.
 
 ## When is Webflow the better choice?
 
-When designers build the site and nobody wants to write code. When you want design, content and hosting in one product. When several people work on the same pages at once. When you need scheduled posts, on Premium, or several languages, through the Localize add-on, from $9 a month for one locale paid yearly. When you need a shop, or single sign-on, custom roles and design approvals, which are on Enterprise. When you want AI to build pages and sections, not only change words. And when you'd rather buy a service with thirteen years of use, hundreds of apps in its marketplace and a support team.
+When designers build the site and nobody wants to write code. When you want visual design, CMS and hosting in one self-serve product today. When up to 25 people collaborate on a visual design canvas with on-page comments and design approvals. When you need scheduled posts (on Premium), built-in ecommerce, or SOC 2 Type II / ISO 27001 and custom roles on Enterprise. When you want AI to design new pages and sections visually, not only edit content. And when you'd rather buy a service with thirteen years of use and hundreds of apps in its marketplace.
 
-Galley fits when developers build your site and the people who change it aren't developers: they ask for a change, see exactly what changed and publish it. And when you want the site as files you own, on the host you choose, with no subscription.
+Galley fits when developers build your site and the people who change it aren't developers: they ask for a change, translate pages with Translation Memory and a Glossary, check live search rankings, review every change in Proof and publish — while keeping the site as plain files you own in Git, free to self-host (with OIDC SSO) or hosted on Cloudflare through [Galley Cloud](/cloud/) with no per-seat fees.
 
 ## Can you move from one to the other?
 
@@ -263,7 +279,7 @@ From Galley to Webflow, the content is already files in your repository. But Web
 
 ## Three questions to ask before you choose
 
-**Who will make the site, and who will change it after launch?** If designers do both, Webflow. If developers make it and marketers change it, ask how each tool keeps the design safe.
+**Who will make the site, and who will change it after launch?** If designers do both, Webflow. If developers make it and marketers change it, ask how each tool keeps the design safe and what each editor seat costs.
 
 **When the AI makes a change, who sees it before it is live, and in what form?** A canvas shows the new page; on Team and Enterprise, a branch merge shows a summary. Ask what a reviewer sees on your plan.
 

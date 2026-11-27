@@ -6,6 +6,7 @@ heading: There are three main kinds of CMS. The difference is where your words l
 name: Traditional, headless and Git-based CMSs
 lead: A traditional CMS keeps them in its own database. A headless one serves them to your site through an API. A Git-based one keeps them as files beside the code. Most of what matters follows from that one choice.
 published: "2026-11-25"
+updated: "2026-11-27"
 checked: November 2026
 order: 1
 draft: false
@@ -79,6 +80,10 @@ sources:
     href: https://prismic.io/features/mcp
   - label: "Galley, the FAQ for developers"
     href: /docs/project/faq/
+  - label: "Galley Cloud"
+    href: /cloud/
+  - label: "Galley for enterprise and security teams"
+    href: /enterprise/
 related: [cloudcannon, /wordpress/, /ai-first/]
 ---
 
@@ -92,7 +97,7 @@ Hosted site builders such as Shopify, Wix and Squarespace, which W3Techs ranks n
 
 **What it's good at.** One install does everything: pages, editor, users and roles, comments, a shop if you add one. WordPress has roles, posts waiting for review and scheduled posts built in, and Drupal's core includes moderation workflows and translation. More than twenty years of themes and plugins mean that whatever you need, someone has probably built it. And a great many editors have used WordPress before.
 
-**What it costs you.** A server and a database to run, back up and keep patched, along with core, theme and plugin updates. There's a login page on the live site that anyone can find. And the content sits in database rows shaped by the CMS, so leaving means an export and a migration. (We wrote a whole page on [leaving WordPress](/wordpress/), including the three rows where WordPress is stronger.)
+**What it costs you.** A server and a database to run, back up and keep patched, along with core, theme and plugin updates. There's a login page on the live site that anyone can find. And the content sits in database rows shaped by the CMS, so leaving means an export and a migration. (We wrote a whole page on [leaving WordPress](/wordpress/), including the rows where WordPress is stronger.)
 
 ## What is a headless, or API-based, CMS?
 
@@ -136,7 +141,7 @@ The kind has a long list of members. CloudCannon, a commercial hosted service, s
 
 **If developers build the site and the content is mostly the website itself,** choose Git-based. You get a fast static site with nothing behind it to patch, and the editors get a way in without learning Git.
 
-**If you have a large editorial team that needs scheduled publishing, approval chains and many languages today,** choose one of the larger headless products, or a traditional CMS built for it such as Drupal, whatever we'd like to tell you. Some Git-based tools are catching up, but that is where the other two kinds have the most years of work.
+**If you have a large editorial team that needs scheduled publishing, multi-stage approval chains and granular field-level permissions today,** choose one of the larger headless products, or a traditional CMS built for it such as Drupal, whatever we'd like to tell you. Some Git-based tools are catching up, but that is where the other two kinds have the most years of work.
 
 ## Every kind sells AI now. What actually differs?
 
@@ -154,7 +159,7 @@ This is our opinion, and we have an interest: Galley is a Git-based CMS and we m
 
 **AI tools already work on files.** Coding agents and MCP clients read and write the files in a repository today. A CMS whose content is those files gives them nothing new to learn. A CMS whose content sits behind an API has to build its own door for them, and many now have.
 
-**Nothing needs to run behind the live site.** With the tools that keep the editor off the site, Galley among them, visitors get only files that were built ahead of time. There's no database online and no login page to find (unless you run its editor online), so there's no CMS on the live site to patch at two in the morning.
+**Nothing needs to run behind the live site.** With the tools that keep the editor off the site, Galley among them, visitors get only files that were built ahead of time. There's no database online and no login page to find on the live site, so there's no CMS on the live site to patch at two in the morning.
 
 **You can leave.** The content is Markdown and data files in your own repository, readable by any editor, script or person. There's no content to export, because none was ever taken in.
 
@@ -166,22 +171,22 @@ In four places, and they are real.
 
 **Content for many channels.** If an app, a kiosk and a newsletter all read the same product descriptions, you want them behind an API, and that's what headless systems are built for. A Git-based CMS serves the website it sits in.
 
-**Large editorial teams.** Scheduled publishing, approval chains with several steps, editing in many languages at once, and dozens of people with different permissions: the bigger headless products, and Drupal, have years of work here. Most Git-based tools offer less.
+**Large editorial teams.** Scheduled publishing, approval chains with several steps, and dozens of people with granular field-level permissions: the bigger headless products, and Drupal, have years of work here. Most Git-based tools offer less.
 
 **Setup.** Most Git-based CMSs ask a developer to describe the collections and their fields in a configuration file before an editor sees a form, and to keep that file in step with the site.
 
-**Builds and media.** Each published change rebuilds the site, which takes seconds on a small site and longer on a big one. And large images and video are heavy to keep in Git, so many teams move them to a storage bucket.
+**Builds and media.** Each published change rebuilds the site, which takes seconds on a small site and longer on a big one. And large images and video are heavy to keep in Git, so many teams move them to a storage bucket (such as Cloudflare R2 or Amazon S3).
 
 ## Where Galley fits
 
-Galley is our open-source AI CMS for static sites, Apache-2.0 and free, first released in November 2026. It's Git-based, and it's built around the shift above: the assistant can write a change, and a person checks it and presses Publish.
+Galley is our open-source AI CMS for static sites, Apache-2.0 and free to run locally (`npx galley-cms` or the Apple-signed and notarized macOS desktop app) or self-host with Docker (`ghcr.io/fictiontribe/galley`, including OpenID Connect SSO, new in final checks; [`/enterprise/`](/enterprise/)) — with optional managed hosting on [Galley Cloud](/cloud/) (opening by invitation: dedicated editor machine per site, Cloudflare edge delivery, preview links, instant version rollback without rebuilding, 30–90 day nightly backups, real-time collaboration and live presence, monthly AI credits, and **no per-seat fees** from $35 a month per site). First released in November 2026, it's built around the shift above: the assistant can write a change, and a person checks it and presses Publish.
 
 - **No configuration file to write first.** Galley reads the site's framework, content collections and fields from its schemas and files, without running its code. Astro fits deepest; Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll are recognised by their conventions.
 - **Three ways to change a page.** In a form made from the site's own content model, by retyping the words on the page, or by asking the assistant. All three end in the same [proof](/how-to/proof-and-publish/), beside the live site.
 - **Publishing is a commit** to your own repository, or a branch and a pull request. Undo is a new commit.
-- **The assistant never publishes.** It runs on Anthropic's Claude with your own key. Other AI tools can connect over [MCP](/docs/integrations/mcp/). They can publish too (their instructions say only when you ask), unless publishing over MCP is switched off.
+- **Built-in AI, translations and search intelligence.** The assistant never publishes (using your own Anthropic key self-hosted, or monthly AI credits on Galley Cloud); image and short video generation run across OpenAI, Google Gemini and OpenRouter; built-in multilingual (`i18n`) translation includes a Git-tracked Translation Memory and brand/product Glossary; and Search and AI intelligence tracks live Google rankings, keyword gaps, 404 backlink recovery, Markdown twins and `llms.txt`. Outside AI tools can also connect over [MCP](/docs/integrations/mcp/) (publishing over MCP can be switched off).
 
-It's young, and some of it is unfinished: the page builder is in preview, and the hosted editor, with its accounts and roles, is new and still in final checks. There's no editing together in real time. See [what it does today](/tour/), or set it beside [CloudCannon](/compare/cloudcannon/), the Git-based product closest to it.
+It's young, and some parts are still growing: the page builder is in preview, self-hosted accounts and OIDC SSO are new in final checks (real-time co-editing and live presence live on Galley Cloud, while local and self-hosted installs use one shared copy with safe save checks), and there's no scheduled publishing, SOC 2 report or SLA yet. See [what it does today](/tour/), or set it beside [CloudCannon](/compare/cloudcannon/), the Git-based product closest to it.
 
 ## Three questions to ask any CMS
 
