@@ -1,6 +1,6 @@
 /*
  * DESIGN TOKENS — the one file that decides how this site looks.
- * Look: Signal (the default) — warm paper, deep ink, one signal-orange accent.
+ * Look: Meridian — cool mint paper, deep green ink, a viridian accent, rounder corners and a warmer grotesk.
  *
  * Every colour, font, size, radius and shadow used anywhere on the site is a
  * custom property defined here. Components only reference these names, so
@@ -35,84 +35,84 @@
  * from its ground to hold WCAG AA.
  */
 
-@import "@fontsource-variable/schibsted-grotesk/wght.css";
-@import "@fontsource-variable/geist/wght.css";
+@import "@fontsource-variable/bricolage-grotesque/standard.css";
+@import "@fontsource-variable/public-sans/wght.css";
 @import "@fontsource-variable/geist-mono/wght.css";
 
 :root {
   color-scheme: light;
 
   /* ── Colour ─────────────────────────────────────────────────────────── */
-  --color-background: oklch(98.3% 0.004 85);
-  --color-surface: oklch(99.8% 0.001 85);
-  --color-surface-muted: oklch(95.4% 0.006 80);
-  --color-text: oklch(21% 0.022 258);
-  --color-text-muted: oklch(43.5% 0.02 258);
-  --color-border: oklch(88.8% 0.008 80);
-  --color-border-strong: oklch(56% 0.018 258);
+  --color-background: oklch(98% 0.006 165);
+  --color-surface: oklch(99.7% 0.002 165);
+  --color-surface-muted: oklch(95% 0.011 165);
+  --color-text: oklch(22% 0.025 185);
+  --color-text-muted: oklch(43% 0.022 185);
+  --color-border: oklch(88.5% 0.012 165);
+  --color-border-strong: oklch(56% 0.02 185);
 
-  --color-accent: oklch(54.5% 0.19 39);
-  --color-accent-strong: oklch(47% 0.165 37);
-  --color-accent-contrast: oklch(99.2% 0.004 85);
-  --color-accent-soft: oklch(94.5% 0.032 52);
-  --color-accent-on-inverse: oklch(76% 0.145 55);
+  --color-accent: oklch(46% 0.1 172);
+  --color-accent-strong: oklch(39% 0.088 172);
+  --color-accent-contrast: oklch(99% 0.004 165);
+  --color-accent-soft: oklch(93.8% 0.032 168);
+  --color-accent-on-inverse: oklch(82% 0.11 160);
 
-  --color-inverse-background: oklch(19.5% 0.024 258);
-  --color-inverse-surface: oklch(24.5% 0.026 258);
-  --color-inverse-text: oklch(96.8% 0.005 85);
-  --color-inverse-muted: oklch(78.5% 0.016 258);
-  --color-inverse-border: oklch(33% 0.026 258);
+  --color-inverse-background: oklch(23% 0.032 180);
+  --color-inverse-surface: oklch(28.5% 0.035 180);
+  --color-inverse-text: oklch(96.8% 0.007 165);
+  --color-inverse-muted: oklch(80% 0.022 170);
+  --color-inverse-border: oklch(37% 0.032 180);
 
-  --color-positive: oklch(47% 0.115 155);
-  --color-positive-soft: oklch(94.2% 0.032 155);
-  --color-negative: oklch(49.5% 0.175 25);
-  --color-negative-soft: oklch(94.8% 0.024 25);
-  --color-notice: oklch(47% 0.095 80);
+  --color-positive: oklch(46% 0.105 150);
+  --color-positive-soft: oklch(93.8% 0.036 150);
+  --color-negative: oklch(49.5% 0.165 28);
+  --color-negative-soft: oklch(94.8% 0.024 28);
+  --color-notice: oklch(47% 0.092 75);
   --color-notice-soft: oklch(94.8% 0.048 88);
 
   /* Overlay used behind image placeholders and the open menu. */
-  --color-scrim: oklch(21% 0.022 258 / 0.055);
+  --color-scrim: oklch(22% 0.025 185 / 0.055);
 
   /* ── Product imagery (inlined SVG screenshots, logos, portraits) ───── */
-  --shot-bg: oklch(97.6% 0.004 85);
-  --shot-panel: oklch(99.8% 0.001 85);
-  --shot-sunk: oklch(95.2% 0.006 80);
-  --shot-line: oklch(88.5% 0.008 80);
-  --shot-grid: oklch(92.2% 0.006 80);
-  --shot-ink: oklch(22% 0.022 258);
-  --shot-ink-soft: oklch(38% 0.02 258);
-  --shot-muted: oklch(56% 0.016 258);
-  --shot-faint: oklch(85.5% 0.01 258);
-  --shot-accent: oklch(55.5% 0.19 39);
-  --shot-accent-soft: oklch(93.5% 0.04 52);
-  --shot-ok: oklch(54% 0.125 155);
-  --shot-ok-soft: oklch(93.8% 0.036 155);
+  --shot-bg: oklch(97.6% 0.006 165);
+  --shot-panel: oklch(99.7% 0.002 165);
+  --shot-sunk: oklch(94.8% 0.01 165);
+  --shot-line: oklch(88.5% 0.012 165);
+  --shot-grid: oklch(92% 0.01 165);
+  --shot-ink: oklch(23% 0.025 185);
+  --shot-ink-soft: oklch(38% 0.022 185);
+  --shot-muted: oklch(56% 0.02 185);
+  --shot-faint: oklch(85.5% 0.014 170);
+  --shot-accent: oklch(49% 0.1 172);
+  --shot-accent-soft: oklch(92.5% 0.038 168);
+  --shot-ok: oklch(54% 0.12 150);
+  --shot-ok-soft: oklch(93.8% 0.038 150);
   --shot-warn: oklch(72% 0.145 78);
-  --shot-warn-soft: oklch(95% 0.046 88);
-  --shot-bad: oklch(55% 0.18 25);
-  --shot-bad-soft: oklch(94.5% 0.028 25);
-  --shot-data: oklch(39% 0.065 258);
-  --shot-data-soft: oklch(86% 0.026 258);
-  --shot-frame: oklch(93.8% 0.006 80);
+  --shot-warn-soft: oklch(95% 0.048 88);
+  --shot-bad: oklch(56% 0.17 28);
+  --shot-bad-soft: oklch(94.5% 0.028 28);
+  --shot-data: oklch(38% 0.055 215);
+  --shot-data-soft: oklch(86% 0.028 205);
+  --shot-frame: oklch(93.2% 0.012 165);
   /* Portrait placeholders: skin and two hair tones, kept natural in every look. */
-  --shot-skin: oklch(86% 0.012 70);
-  --shot-hair: oklch(27% 0.02 258);
-  --shot-hair-alt: oklch(60% 0.015 258);
+  --shot-skin: oklch(86% 0.014 80);
+  --shot-hair: oklch(28% 0.025 185);
+  --shot-hair-alt: oklch(60% 0.02 185);
 
   /* ── Type ───────────────────────────────────────────────────────────── */
-  --font-display: "Schibsted Grotesk Variable", "Helvetica Neue", Arial, sans-serif;
-  --font-body: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Public Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  --weight-display: 700;
-  --weight-display-strong: 800;
+  --weight-display: 640;
+  --weight-display-strong: 720;
   --weight-body: 400;
-  --weight-medium: 520;
-  --weight-bold: 640;
+  --weight-medium: 540;
+  --weight-bold: 660;
 
-  --tracking-display: -0.034em;
-  --tracking-caps: 0.09em;
-  --leading-tight: 1.02;
+  --tracking-display: -0.028em;
+  --tracking-caps: 0.11em;
+  --leading-tight: 1.03;
   --leading-snug: 1.15;
   --leading-body: 1.58;
 
@@ -146,22 +146,22 @@
   --header-height: 4rem;
 
   /* ── Shape ──────────────────────────────────────────────────────────── */
-  --radius-s: 4px;
-  --radius-m: 6px;
-  --radius-l: 10px;
-  --radius-button: 6px;
-  --radius-image: 8px;
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 16px;
+  --radius-button: 999px;
+  --radius-image: 14px;
   --radius-pill: 999px;
   --border-width: 1px;
 
-  --shadow-card: 0 1px 2px oklch(21% 0.022 258 / 0.04), 0 4px 12px -4px oklch(21% 0.022 258 / 0.06);
-  --shadow-button: inset 0 1px 0 oklch(99.5% 0 0 / 0.18), 0 1px 2px oklch(21% 0.022 258 / 0.14);
-  --shadow-raised: 0 0 0 1px oklch(21% 0.022 258 / 0.05), 0 4px 10px -2px oklch(21% 0.022 258 / 0.08), 0 18px 40px -14px oklch(21% 0.022 258 / 0.18);
-  --shadow-shot: 0 0 0 1px oklch(21% 0.022 258 / 0.06), 0 6px 16px -4px oklch(21% 0.022 258 / 0.08), 0 28px 68px -22px oklch(21% 0.022 258 / 0.24);
+  --shadow-card: 0 1px 2px oklch(22% 0.025 185 / 0.04), 0 4px 12px -4px oklch(22% 0.025 185 / 0.06);
+  --shadow-button: inset 0 1px 0 oklch(99.5% 0 0 / 0.16), 0 1px 2px oklch(22% 0.025 185 / 0.14);
+  --shadow-raised: 0 0 0 1px oklch(22% 0.025 185 / 0.05), 0 4px 10px -2px oklch(22% 0.025 185 / 0.08), 0 18px 40px -14px oklch(22% 0.025 185 / 0.16);
+  --shadow-shot: 0 0 0 1px oklch(22% 0.025 185 / 0.06), 0 6px 16px -4px oklch(22% 0.025 185 / 0.08), 0 28px 68px -22px oklch(22% 0.025 185 / 0.22);
 
   /* Hairline grid drawn behind heroes (the "planner" texture). */
-  --grid-line: oklch(21% 0.022 258 / 0.06);
-  --grid-size: 4rem;
+  --grid-line: oklch(22% 0.025 185 / 0.055);
+  --grid-size: 4.5rem;
 
   /* ── Motion ─────────────────────────────────────────────────────────── */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);

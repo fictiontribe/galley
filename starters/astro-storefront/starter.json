@@ -11,20 +11,8 @@
     "editorial"
   ],
   "tokens": "src/styles/tokens.css",
-  "preview": "galley/previews/chalk.webp",
+  "preview": "galley/previews/paper.webp",
   "looks": [
-    {
-      "id": "chalk",
-      "label": "Chalk",
-      "file": "src/styles/themes/chalk.css",
-      "swatches": [
-        "#f7f6f3",
-        "#110f0d",
-        "#1c3dbb",
-        "#e9e6e1"
-      ],
-      "preview": "galley/previews/chalk.webp"
-    },
     {
       "id": "paper",
       "label": "Paper",
@@ -36,6 +24,18 @@
         "#e6dbca"
       ],
       "preview": "galley/previews/paper.webp"
+    },
+    {
+      "id": "chalk",
+      "label": "Chalk",
+      "file": "src/styles/themes/chalk.css",
+      "swatches": [
+        "#f7f6f3",
+        "#110f0d",
+        "#1c3dbb",
+        "#e9e6e1"
+      ],
+      "preview": "galley/previews/chalk.webp"
     },
     {
       "id": "night",

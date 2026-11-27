@@ -13,18 +13,6 @@
   "preview": "galley/previews/home.webp",
   "looks": [
     {
-      "id": "signal",
-      "label": "Signal",
-      "file": "src/styles/themes/signal.css",
-      "swatches": [
-        "#fbf9f6",
-        "#121922",
-        "#c53500",
-        "#0e1520"
-      ],
-      "preview": "galley/previews/signal.webp"
-    },
-    {
       "id": "meridian",
       "label": "Meridian",
       "file": "src/styles/themes/meridian.css",
@@ -35,6 +23,18 @@
         "#09221d"
       ],
       "preview": "galley/previews/meridian.webp"
+    },
+    {
+      "id": "signal",
+      "label": "Signal",
+      "file": "src/styles/themes/signal.css",
+      "swatches": [
+        "#fbf9f6",
+        "#121922",
+        "#c53500",
+        "#0e1520"
+      ],
+      "preview": "galley/previews/signal.webp"
     },
     {
       "id": "night-shift",

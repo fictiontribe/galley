@@ -1,8 +1,8 @@
 /*
  * DESIGN TOKENS — the one file that decides how this site looks.
  *
- * Look: LEDGER — warm paper and ink, one brick-red accent; a newspaper serif
- * for reading, a plain grotesque for everything around it.
+ * Look: ALMANAC — cream paper and blue-black ink by day, deep navy and lamplight
+ * by night; a soft old-style display serif, a bookish text face.
  *
  * Every colour, font, size, space, radius and motion value used anywhere on
  * the site is a custom property here; components only use these names.
@@ -33,43 +33,45 @@
  *   --astro-code-*     syntax colours (Shiki's css-variables theme)
  *
  * FONT PRELOAD (read by src/layouts/Base.astro — keep the format):
- * preload: newsreader-latin-opsz-normal schibsted-grotesk-latin-wght-normal
+ * preload: source-serif-4-latin-opsz-normal fraunces-latin-opsz-normal
  */
 
-@import "@fontsource-variable/newsreader/opsz.css";
-@import "@fontsource-variable/newsreader/opsz-italic.css";
-@import "@fontsource-variable/schibsted-grotesk/wght.css";
-@import "@fontsource-variable/geist-mono/wght.css";
+@import "@fontsource-variable/fraunces/opsz.css";
+@import "@fontsource-variable/fraunces/opsz-italic.css";
+@import "@fontsource-variable/source-serif-4/opsz.css";
+@import "@fontsource-variable/source-serif-4/opsz-italic.css";
+@import "@fontsource-variable/instrument-sans/wght.css";
+@import "@fontsource-variable/martian-mono/wght.css";
 
 :root {
   /* ── Colour ─────────────────────────────────────────────────────────── */
-  --color-background: light-dark(oklch(97.4% 0.009 84), oklch(18.6% 0.009 62));
-  --color-surface: light-dark(oklch(99.2% 0.004 84), oklch(22.4% 0.01 62));
-  --color-surface-muted: light-dark(oklch(94.2% 0.013 80), oklch(24.8% 0.011 62));
-  --color-text: light-dark(oklch(21% 0.012 58), oklch(93.6% 0.012 82));
-  --color-text-muted: light-dark(oklch(44% 0.014 60), oklch(74% 0.014 76));
-  --color-border: light-dark(oklch(87.5% 0.013 76), oklch(32% 0.011 62));
-  --color-border-strong: light-dark(oklch(54% 0.013 62), oklch(58% 0.012 72));
+  --color-background: light-dark(oklch(96.8% 0.016 90), oklch(19% 0.026 265));
+  --color-surface: light-dark(oklch(99% 0.008 90), oklch(23% 0.03 265));
+  --color-surface-muted: light-dark(oklch(92.6% 0.022 88), oklch(25.6% 0.032 265));
+  --color-text: light-dark(oklch(22.5% 0.03 265), oklch(94% 0.015 90));
+  --color-text-muted: light-dark(oklch(44.5% 0.03 265), oklch(76.5% 0.02 90));
+  --color-border: light-dark(oklch(86% 0.02 88), oklch(33.5% 0.03 265));
+  --color-border-strong: light-dark(oklch(53% 0.025 265), oklch(60% 0.025 265));
 
-  --color-accent: light-dark(oklch(49% 0.155 33), oklch(73% 0.125 42));
-  --color-accent-strong: light-dark(oklch(41% 0.14 32), oklch(81% 0.1 48));
-  --color-accent-soft: light-dark(oklch(93.4% 0.032 48), oklch(28.5% 0.045 40));
-  --color-accent-contrast: light-dark(oklch(98.5% 0.006 84), oklch(18.6% 0.009 62));
+  --color-accent: light-dark(oklch(44% 0.14 262), oklch(81% 0.11 85));
+  --color-accent-strong: light-dark(oklch(36% 0.13 262), oklch(88% 0.09 88));
+  --color-accent-soft: light-dark(oklch(92.4% 0.032 262), oklch(30% 0.05 265));
+  --color-accent-contrast: light-dark(oklch(98.4% 0.008 90), oklch(19% 0.026 265));
 
-  --color-inverse-background: light-dark(oklch(21% 0.012 58), oklch(13.8% 0.008 62));
-  --color-inverse-surface: light-dark(oklch(26% 0.013 58), oklch(19% 0.009 62));
-  --color-inverse-text: light-dark(oklch(95% 0.01 84), oklch(93.6% 0.012 82));
-  --color-inverse-muted: light-dark(oklch(77% 0.013 78), oklch(72% 0.013 76));
-  --color-inverse-border: light-dark(oklch(36% 0.012 60), oklch(28% 0.01 62));
-  --color-inverse-accent: light-dark(oklch(76% 0.12 44), oklch(73% 0.125 42));
+  --color-inverse-background: light-dark(oklch(22.5% 0.03 265), oklch(14% 0.022 265));
+  --color-inverse-surface: light-dark(oklch(27.5% 0.034 265), oklch(19.5% 0.026 265));
+  --color-inverse-text: light-dark(oklch(95% 0.014 90), oklch(94% 0.015 90));
+  --color-inverse-muted: light-dark(oklch(78% 0.018 90), oklch(74% 0.018 90));
+  --color-inverse-border: light-dark(oklch(37% 0.03 265), oklch(29% 0.026 265));
+  --color-inverse-accent: light-dark(oklch(82% 0.11 85), oklch(81% 0.11 85));
 
-  --color-chart-1: light-dark(oklch(52% 0.16 33), oklch(72% 0.14 40));
-  --color-chart-2: light-dark(oklch(45% 0.07 248), oklch(74% 0.08 240));
-  --color-chart-3: light-dark(oklch(68% 0.13 78), oklch(82% 0.12 84));
-  --color-chart-4: light-dark(oklch(50% 0.085 152), oklch(74% 0.1 150));
-  --color-chart-5: light-dark(oklch(46% 0.1 328), oklch(74% 0.09 330));
-  --color-chart-muted: light-dark(oklch(76% 0.012 72), oklch(44% 0.01 66));
-  --color-chart-grid: light-dark(oklch(89% 0.011 78), oklch(29% 0.01 62));
+  --color-chart-1: light-dark(oklch(45% 0.14 262), oklch(81% 0.11 85));
+  --color-chart-2: light-dark(oklch(64% 0.13 70), oklch(74% 0.09 250));
+  --color-chart-3: light-dark(oklch(52% 0.13 25), oklch(74% 0.12 30));
+  --color-chart-4: light-dark(oklch(48% 0.08 170), oklch(76% 0.09 165));
+  --color-chart-5: light-dark(oklch(50% 0.1 320), oklch(74% 0.09 322));
+  --color-chart-muted: light-dark(oklch(76% 0.018 88), oklch(46% 0.025 265));
+  --color-chart-grid: light-dark(oklch(88.5% 0.018 88), oklch(30% 0.028 265));
 
   --color-good: light-dark(oklch(45% 0.11 150), oklch(76% 0.12 150));
   --color-bad: light-dark(oklch(48% 0.16 28), oklch(74% 0.13 30));
@@ -86,43 +88,43 @@
   --shade-strong: 0.78;
 
   /* Syntax colours for code blocks (Shiki's css-variables theme). */
-  --astro-code-foreground: light-dark(oklch(26% 0.012 58), oklch(90% 0.012 82));
-  --astro-code-background: light-dark(oklch(95.4% 0.011 82), oklch(15.8% 0.008 62));
+  --astro-code-foreground: light-dark(oklch(26% 0.03 265), oklch(91% 0.015 90));
+  --astro-code-background: light-dark(oklch(94.6% 0.02 88), oklch(16% 0.024 265));
   --astro-code-token-constant: light-dark(oklch(45% 0.09 250), oklch(78% 0.08 240));
   --astro-code-token-string: light-dark(oklch(44% 0.1 150), oklch(78% 0.1 145));
   --astro-code-token-comment: light-dark(oklch(52% 0.012 62), oklch(64% 0.012 72));
-  --astro-code-token-keyword: light-dark(oklch(48% 0.15 33), oklch(76% 0.12 42));
+  --astro-code-token-keyword: light-dark(oklch(43% 0.14 262), oklch(81% 0.11 85));
   --astro-code-token-parameter: light-dark(oklch(46% 0.08 75), oklch(82% 0.1 84));
   --astro-code-token-function: light-dark(oklch(44% 0.11 320), oklch(78% 0.09 322));
   --astro-code-token-string-expression: light-dark(oklch(44% 0.1 150), oklch(78% 0.1 145));
   --astro-code-token-punctuation: light-dark(oklch(40% 0.012 58), oklch(76% 0.012 76));
-  --astro-code-token-link: light-dark(oklch(48% 0.15 33), oklch(76% 0.12 42));
+  --astro-code-token-link: light-dark(oklch(43% 0.14 262), oklch(81% 0.11 85));
 
   /* ── Type ───────────────────────────────────────────────────────────── */
   /* display: headlines. text: what is read. ui: navigation, labels, figures
      in charts and tables. mono: code. */
-  --font-display: "Newsreader Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --font-text: "Newsreader Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --font-ui: "Schibsted Grotesk Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-display: "Fraunces Variable", "Iowan Old Style", Georgia, serif;
+  --font-text: "Source Serif 4 Variable", "Iowan Old Style", Georgia, serif;
+  --font-ui: "Instrument Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Martian Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  --weight-display: 480;
-  --weight-display-strong: 620;
+  --weight-display: 520;
+  --weight-display-strong: 640;
   --weight-text: 400;
   --weight-text-strong: 620;
-  --weight-ui: 430;
-  --weight-ui-medium: 540;
-  --weight-ui-strong: 680;
+  --weight-ui: 420;
+  --weight-ui-medium: 530;
+  --weight-ui-strong: 650;
 
   /* Optical size for the display face, when it has one (Newsreader does). */
-  --opsz-display: 72;
-  --opsz-text: 16;
+  --opsz-display: 96;
+  --opsz-text: 18;
   --display-style: normal;
 
-  --tracking-display: -0.022em;
+  --tracking-display: -0.018em;
   --tracking-ui: 0;
   --tracking-caps: 0.09em;
-  --leading-tight: 1.02;
+  --leading-tight: 1;
   --leading-snug: 1.2;
   --leading-text: 1.62;
   --leading-ui: 1.4;
@@ -161,11 +163,11 @@
   --header-height: 4.25rem;
 
   /* ── Shape ──────────────────────────────────────────────────────────── */
-  --radius-s: 3px;
-  --radius-m: 6px;
-  --radius-l: 10px;
+  --radius-s: 2px;
+  --radius-m: 4px;
+  --radius-l: 6px;
   --radius-button: 999px;
-  --radius-image: 2px;
+  --radius-image: 0;
   --border-width: 1px;
   --rule-width: 2px;
 

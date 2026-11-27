@@ -8,7 +8,7 @@ import { parseBrandFile, readingSchema, synthesisSchema } from "../../src/sitebr
 import type { StoredSource } from "../../src/sitebrand/sources";
 import { emptyReading, measuredPage, synthesis } from "./fixtures";
 
-const SAAS = fileURLToPath(new URL("../../../../starters/astro-saas/src/styles/tokens.css", import.meta.url));
+const SAAS = fileURLToPath(new URL("../../../../starters/astro-saas/src/styles/themes/signal.css", import.meta.url));
 const declared = scanDeclared([{ path: "src/styles/tokens.css", content: readFileSync(SAAS, "utf8") }], () => null, { tokensFile: "src/styles/tokens.css" });
 const measured = mergeMeasurements(parseMeasurements([measuredPage("/"), measuredPage("/pricing/")]));
 const now = () => new Date("2026-11-23T10:00:00Z");

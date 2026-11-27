@@ -94,7 +94,7 @@ creates them (see the top of the script for the permissions it needs).
   pieces that go with it, and any sections (how it is made, a look, a quote),
   shown on the product page under the buy box.
 - **Thirty-one real photographs** and the shoot brief they were made from
-  (`galley/photography/`), three looks (Chalk, Paper, Night), forms that
+  (`galley/photography/`), three looks (Paper, Chalk, Night), forms that
   send to the Galley inbox, a consent banner, and the e-mail link chooser.
 - **Sections sized to what they hold** — one step of air above and below
   every section (`--space-section`, the top of the spacing scale in
@@ -105,9 +105,9 @@ creates them (see the top of the script for the permissions it needs).
   the shop's filters fold behind one "Filter and sort" button. Everything
   holds still under reduced motion and reads complete without JavaScript.
 
-| Chalk | Paper | Night |
+| Paper | Chalk | Night |
 | --- | --- | --- |
-| ![Chalk](galley/previews/chalk.webp) | ![Paper](galley/previews/paper.webp) | ![Night](galley/previews/night.webp) |
+| ![Paper](galley/previews/paper.webp) | ![Chalk](galley/previews/chalk.webp) | ![Night](galley/previews/night.webp) |
 
 ## Where things live
 

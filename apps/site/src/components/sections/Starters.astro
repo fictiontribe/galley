@@ -10,8 +10,8 @@
 //   stage   — the first tall, its page scrolling inside it as the visitor scrolls, the other two beside it; no commands (the home page)
 //
 // Pictures, in order: the item's `tall` captures (public/sites/<tall>-<look>.webp),
-// else the site's capture of the starter (public/sites/<short>-<look>.webp, the top
-// 1600 px of its home page in a 1280 px window — one treatment for every starter),
+// else the site's capture of the starter (public/sites/<short>-<look>.webp, a clean
+// 16:10 first-screen desktop capture at 1600×1000 — one treatment for every starter),
 // else the starter's own preview (starters/<id>/galley/previews/).
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -70,27 +70,30 @@ const sizes = (tall: boolean) =>
                 ))}
               </div>
             </Panel>
-            <div class="looks" data-galley-agent="skip" role="group" aria-label={t.lookOf.replace("{name}", item.name)}>
-              {item.looks.map((look: any, i: number) => (
-                <button class="look" type="button" data-look-to={look.id} aria-pressed={i === 0 ? "true" : "false"}>
-                  <span class="look__sw" aria-hidden="true"><span style={`background:${look.swatches[0]}`} /><span style={`background:${look.swatches[2] ?? look.swatches[1]}`} /></span>
-                  {look.label}
-                </button>
-              ))}
-            </div>
           </div>
           <div class="starter__body">
-            <Hi class="starter__name" id={`${hid}-${item.starter}`}>{item.name}</Hi>
-            <p class="starter__kind">
-              <span class="label">{item.kind}</span>
-              {item.badge && <span class:list={["badge", `badge--${item.badge.status}`]}>{item.badge.label}</span>}
-            </p>
+            <div class="starter__head">
+              <div class="starter__title">
+                <Hi class="starter__name" id={`${hid}-${item.starter}`}>{item.name}</Hi>
+                <p class="starter__kind">
+                  <span class="label">{item.kind}</span>
+                  {item.badge && <span class:list={["badge", `badge--${item.badge.status}`]}>{item.badge.label}</span>}
+                </p>
+              </div>
+              <div class="looks" data-galley-agent="skip" role="group" aria-label={t.lookOf.replace("{name}", item.name)}>
+                {item.looks.map((look: any, i: number) => (
+                  <button class="look" type="button" data-look-to={look.id} aria-pressed={i === 0 ? "true" : "false"}>
+                    <span class="look__sw" aria-hidden="true"><span style={`background:${look.swatches[0]}`} /><span style={`background:${look.swatches[2] ?? look.swatches[1]}`} /></span>
+                    {look.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <p class="starter__meta">{fill(item.text)}</p>
             {item.run && s.layout !== "row" && s.layout !== "stage" && (
               <div class="starter__run">
                 <Command lines={[item.run.command]} label={`${item.run.note}: ${item.name}`} />
                 <p class="starter__foot">
-                  <span>{item.run.note}</span>
                   <a class="link" href={item.inside}>{t.inside}<span class="sr">: {item.name}</span></a>
                 </p>
               </div>

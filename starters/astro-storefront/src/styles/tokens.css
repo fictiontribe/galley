@@ -1,7 +1,7 @@
 /*
  * DESIGN TOKENS — the one file that decides how this site looks.
  *
- * Look: CHALK — lime-washed white, ink, one ultramarine accent.
+ * Look: PAPER — unbleached paper, espresso ink, an olive accent.
  *
  * Every colour, font, size, radius and motion value used anywhere on the
  * site is a custom property here. Components only reference these names.
@@ -45,55 +45,55 @@
   color-scheme: light;
 
   /* ── Colour ─────────────────────────────────────────────────────────── */
-  --color-background: oklch(97.3% 0.004 95);
-  --color-surface: oklch(99.2% 0.002 95);
-  --color-surface-muted: oklch(92.6% 0.008 85);
-  --color-text: oklch(17% 0.006 70);
-  --color-text-muted: oklch(42% 0.008 70);
-  --color-border: oklch(86% 0.007 80);
-  --color-border-strong: oklch(52% 0.008 70);
+  --color-background: oklch(94.6% 0.017 82);
+  --color-surface: oklch(97.6% 0.009 85);
+  --color-surface-muted: oklch(89.6% 0.026 78);
+  --color-text: oklch(22% 0.022 52);
+  --color-text-muted: oklch(42% 0.03 56);
+  --color-border: oklch(82.5% 0.026 74);
+  --color-border-strong: oklch(50% 0.03 58);
 
-  --color-accent: oklch(43% 0.2 266);
-  --color-accent-strong: oklch(35% 0.17 266);
-  --color-accent-contrast: oklch(97.5% 0.004 95);
-  --color-accent-on-inverse: oklch(78% 0.09 266);
+  --color-accent: oklch(43% 0.085 120);
+  --color-accent-strong: oklch(36% 0.075 120);
+  --color-accent-contrast: oklch(97% 0.012 85);
+  --color-accent-on-inverse: oklch(80% 0.09 112);
 
-  --color-inverse-background: oklch(17% 0.006 70);
-  --color-inverse-surface: oklch(23% 0.007 70);
-  --color-inverse-text: oklch(95.5% 0.005 90);
-  --color-inverse-muted: oklch(77% 0.006 80);
-  --color-inverse-border: oklch(36% 0.006 70);
+  --color-inverse-background: oklch(24% 0.024 50);
+  --color-inverse-surface: oklch(30% 0.026 50);
+  --color-inverse-text: oklch(94.5% 0.017 82);
+  --color-inverse-muted: oklch(79% 0.03 75);
+  --color-inverse-border: oklch(41% 0.028 52);
 
   /* Form errors: on the page's grounds, and on the inverse ground. */
-  --color-error: oklch(48% 0.17 28);
-  --color-error-on-inverse: oklch(77% 0.12 28);
+  --color-error: oklch(46% 0.16 30);
+  --color-error-on-inverse: oklch(78% 0.11 30);
 
-  --color-shade: oklch(14% 0.006 70);
-  --color-on-image: oklch(97.5% 0.004 95);
-  --color-on-image-muted: oklch(88% 0.005 90);
+  --color-shade: oklch(17% 0.02 50);
+  --color-on-image: oklch(97% 0.012 85);
+  --color-on-image-muted: oklch(89% 0.02 80);
   --shade-strong: 0.8;
   --shade-large: 0.6;
   --shade-header: 0.74;
 
-  --placeholder-light: oklch(90% 0.01 85);
-  --placeholder-mid: oklch(74% 0.012 80);
-  --placeholder-dark: oklch(30% 0.01 70);
-  --placeholder-warm: oklch(70% 0.05 60);
-  --placeholder-accent: oklch(43% 0.16 266);
+  --placeholder-light: oklch(88% 0.03 78);
+  --placeholder-mid: oklch(72% 0.04 70);
+  --placeholder-dark: oklch(32% 0.03 50);
+  --placeholder-warm: oklch(64% 0.08 55);
+  --placeholder-accent: oklch(48% 0.07 118);
 
   /* ── Type ───────────────────────────────────────────────────────────── */
   --font-display: "Bodoni Moda Variable", "Bodoni 72", Didot, "Times New Roman", serif;
   --font-body: "Albert Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Spline Sans Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  --weight-display: 430;
+  --weight-display: 480;
   --weight-display-strong: 600;
   --weight-body: 400;
   --weight-medium: 520;
   --weight-bold: 640;
   --weight-mono: 420;
 
-  --tracking-display: -0.028em;
+  --tracking-display: -0.022em;
   --tracking-caps: 0.16em;
   --tracking-mono: 0.08em;
   --leading-tight: 0.92;
@@ -150,7 +150,7 @@
   --radius-image: 0;
   --border-width: 1px;
 
-  --shadow-raised: 0 18px 40px -18px oklch(17% 0.006 70 / 0.28);
+  --shadow-raised: 0 18px 40px -18px oklch(22% 0.022 52 / 0.3);
 
   /* ── Motion ─────────────────────────────────────────────────────────── */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);

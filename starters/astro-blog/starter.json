@@ -10,6 +10,13 @@
   "preview": "galley/previews/home.webp",
   "looks": [
     {
+      "id": "almanac",
+      "label": "Almanac",
+      "file": "src/styles/themes/almanac.css",
+      "swatches": ["#f8f3e5", "#1b2133", "#2e4ca3", "#1b2133"],
+      "preview": "galley/previews/almanac.webp"
+    },
+    {
       "id": "ledger",
       "label": "Ledger",
       "file": "src/styles/themes/ledger.css",
@@ -22,13 +29,6 @@
       "file": "src/styles/themes/fieldbook.css",
       "swatches": ["#f2f6f2", "#14221c", "#1f6b55", "#14221c"],
       "preview": "galley/previews/fieldbook.webp"
-    },
-    {
-      "id": "almanac",
-      "label": "Almanac",
-      "file": "src/styles/themes/almanac.css",
-      "swatches": ["#f8f3e5", "#1b2133", "#2e4ca3", "#1b2133"],
-      "preview": "galley/previews/almanac.webp"
     }
   ]
 }

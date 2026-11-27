@@ -312,15 +312,15 @@ Starters
     npm create galley@latest my-site -- --starter caddow
   ferrow: Ferrow — B2B software
     A marketing site for a software company
-    29 sections · 7 page templates · looks: signal (default), meridian, night-shift
+    29 sections · 7 page templates · looks: meridian (default), signal, night-shift
     npm create galley@latest my-site -- --starter ferrow
   sarking: Sarking — blog
     A blog for long-form writing with charts, tables and evidence
-    18 sections · 4 page templates · looks: ledger (default), fieldbook, almanac
+    18 sections · 4 page templates · looks: almanac (default), ledger, fieldbook
     npm create galley@latest my-site -- --starter sarking
   storefront: Caddow — storefront
     A shop for a small fashion label, with products from Shopify
-    24 sections · 8 page templates · looks: chalk (default), paper, night
+    24 sections · 8 page templates · looks: paper (default), chalk, night
     npm create galley@latest my-site -- --starter storefront
 ```
 
