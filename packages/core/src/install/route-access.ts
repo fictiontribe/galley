@@ -277,6 +277,20 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "POST /api/sites/:siteId/visibility/intelligence/tune": "edit",
   "POST /api/sites/:siteId/visibility/intelligence/draft-gap": "edit",
 
+  // ── languages & translations ───────────────────────────────────────────
+  "GET /api/sites/:siteId/i18n": "edit",
+  "PUT /api/sites/:siteId/i18n/config": "manage",
+  "GET /api/sites/:siteId/i18n/entry": "edit",
+  "POST /api/sites/:siteId/i18n/entry/create": "edit",
+  "GET /api/sites/:siteId/i18n/glossary": "edit",
+  "PUT /api/sites/:siteId/i18n/glossary": "edit",
+  "GET /api/sites/:siteId/i18n/memory": "edit",
+  "PUT /api/sites/:siteId/i18n/memory": "edit",
+  "POST /api/sites/:siteId/i18n/translate/plan": "edit",
+  "POST /api/sites/:siteId/i18n/translate": "edit",
+  "GET /api/sites/:siteId/i18n/translate/:jobId": "edit",
+  "POST /api/sites/:siteId/i18n/translate/:jobId/cancel": "edit",
+
   // ── bringing a site in (draft changes) ─────────────────────────────────
   "POST /api/sites/:siteId/import/upload": "edit",
   "POST /api/sites/:siteId/import/inspect": "edit",

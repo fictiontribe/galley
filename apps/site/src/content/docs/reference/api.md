@@ -314,6 +314,23 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `POST /api/sites/:siteId/visibility/intelligence/explore` | Explore keyword suggestions, search volume, difficulty, intent, site coverage and top organic results for a seed term. | `{ keyword, locationCode? }` | `KeywordExploreResult` | Any signed-in person |
 | `POST /api/sites/:siteId/visibility/intelligence/tune` | Tune an existing page's title, description or opening against top search results; changes wait in Proof. | `{ path, keyword, locationCode? }` | `TuneEntryResult` | Any signed-in person |
 | `POST /api/sites/:siteId/visibility/intelligence/draft-gap` | Draft a new page targeting a competitor content gap using the site's schema and brand voice; lands in Proof. | `{ keyword, collection?, locationCode? }` | `DraftGapResult` | Any signed-in person |
+
+## Languages and translations
+
+| Route | Does | Takes | Returns | Who |
+| --- | --- | --- | --- | --- |
+| `GET /api/sites/:siteId/i18n` | Configured languages, per-locale translation coverage, page variant matrix, and TM/glossary counts. | — | `I18nOverview` | Any signed-in person |
+| `PUT /api/sites/:siteId/i18n/config` | Update the site's languages, default locale, file strategy, URL slug settings, and optionally sync astro.config.*. | `I18nConfigUpdate` | `I18nOverview` | Owners |
+| `GET /api/sites/:siteId/i18n/entry` | Locale counterpart map, default-locale source fields and body for side-by-side manual editing, outdated state, and TM suggestions. | `?path` | `I18nEntryDetail` | Any signed-in person |
+| `POST /api/sites/:siteId/i18n/entry/create` | Create a manual translation draft for a source page in a target language, applying exact TM matches and linking it in galley/i18n/manifest.json. | `I18nCreateEntryInput` | `I18nCreateEntryResult` | Any signed-in person |
+| `GET /api/sites/:siteId/i18n/glossary` | Read the site's Git-tracked terminology glossary (galley/i18n/glossary.json). | — | `GlossaryFile` | Any signed-in person |
+| `PUT /api/sites/:siteId/i18n/glossary` | Replace the site's terminology glossary (lands in Proof). | `GlossaryFile` | `GlossaryFile` | Any signed-in person |
+| `GET /api/sites/:siteId/i18n/memory` | Read the site's Git-tracked Translation Memory (galley/i18n/memory.json). | — | `TranslationMemoryFile` | Any signed-in person |
+| `PUT /api/sites/:siteId/i18n/memory` | Replace the site's Translation Memory (lands in Proof). | `TranslationMemoryFile` | `TranslationMemoryFile` | Any signed-in person |
+| `POST /api/sites/:siteId/i18n/translate/plan` | Preview an automatic translation batch: exact segment counts, TM savings, token counts, estimated USD cost, and AI credits. | `TranslationPlanRequest` | `TranslationPlan` | Any signed-in person |
+| `POST /api/sites/:siteId/i18n/translate` | Start an automatic single-page or whole-site translation job; all translated files land in Proof. | `TranslationPlanRequest` | `TranslationJobStatus` | Any signed-in person |
+| `GET /api/sites/:siteId/i18n/translate/:jobId` | Progress and actual token/USD/credit usage for a running or finished translation job. | — | `TranslationJobStatus` | Any signed-in person |
+| `POST /api/sites/:siteId/i18n/translate/:jobId/cancel` | Stop a running translation job after the current page; finished pages stay in Proof. | — | `Ok` | Any signed-in person |
 | `POST /api/sites/:siteId/import/upload` | Upload an export file, one chunk at a time (base64, at most 8 MB each, 200 MB in all). | `{ uploadId?, name, total, offset, chunk }` | `{ uploadId, received, upload }` | Any signed-in person |
 | `POST /api/sites/:siteId/import/inspect` | The quick look: is it WordPress, can its content be read, how much is there. | `{ source }` | `ImportInspection` | Any signed-in person |
 | `POST /api/sites/:siteId/import/plan` | What would come across and what wouldn't, with the questions that need a person (answered with their defaults until answered). | `{ source, answers? }` | `ImportPlanView` | Any signed-in person |

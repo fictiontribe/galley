@@ -50,6 +50,8 @@ export const ICONS = {
   form: `<path d="M2 2.25h5.5"/><rect class="i-t" x="2.25" y="4.75" width="11.5" height="4.5" rx="1"/><rect x="2.25" y="4.75" width="11.5" height="4.5" rx="1"/><path class="i-a" d="M4.75 6v2"/><rect class="i-af" x="8" y="11.5" width="5.75" height="2.5" rx="1.25"/>`,
   // Search & AI: how the page reads in a list of results.
   visibility: `<path d="M2 3.25h12M2 6.25h4.5M2 9.25h2.5"/><circle class="i-t" cx="10.25" cy="9.75" r="2.75"/><circle cx="10.25" cy="9.75" r="2.75"/><path class="i-a" d="m12.25 11.75 2 2"/>`,
+  // Languages: ruled script sheet paired with a translated counterpart.
+  languages: `<path d="M2 4.25h6.5M5.25 2.25v2M7 4.25c-.5 2.5-2 4.5-4.5 5.75M3.5 6.25c1 1.5 2.25 2.75 3.75 3.5"/><path class="i-a" d="m8.25 13.75 2.75-7 2.75 7M9.25 11.5h3.5"/>`,
   // Brand: a colour bar, the printer's strip of inks.
   brand: `<path d="M1.5 13.5 5 2.75h1.25l3.5 10.75M3 9.75h5.25"/><path class="i-t" d="M12.25 6.25c1.75 2.25 2.5 3.5 2.5 4.75a2.5 2.5 0 0 1-5 0c0-1.25.75-2.5 2.5-4.75z"/><path class="i-a" d="M12.25 6.25c1.75 2.25 2.5 3.5 2.5 4.75a2.5 2.5 0 0 1-5 0c0-1.25.75-2.5 2.5-4.75z"/>`,
   // Sites: a stack of proofs.

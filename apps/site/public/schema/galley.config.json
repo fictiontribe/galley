@@ -536,6 +536,78 @@
       },
       "additionalProperties": false
     },
+    "i18n": {
+      "description": "Languages, URL routing and translation settings for multilingual sites. See the languages guide.",
+      "type": "object",
+      "properties": {
+        "defaultLocale": {
+          "type": "string",
+          "pattern": "^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*$",
+          "description": "The default language code; must match one entry in `locales`."
+        },
+        "locales": {
+          "minItems": 1,
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*$",
+                "description": "BCP-47 language code (for example “en”, “es”, “pt-BR”)."
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60,
+                "description": "Human-readable label shown in selectors and the editor."
+              },
+              "prefix": {
+                "description": "Optional URL path prefix. Defaults to the lowercase language code.",
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+              },
+              "direction": {
+                "description": "Text direction: “ltr” (default) or “rtl”.",
+                "type": "string",
+                "enum": [
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            },
+            "required": [
+              "code",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Languages configured for the site."
+        },
+        "strategy": {
+          "description": "How translated files sit beside default ones: “folder” (`es/about.md`, default) or “suffix” (`about.es.md`).",
+          "type": "string",
+          "enum": [
+            "folder",
+            "suffix"
+          ]
+        },
+        "prefixDefaultLocale": {
+          "description": "Whether default-locale URLs carry their locale prefix (`/en/pricing/` vs `/pricing/`). Default: false.",
+          "type": "boolean"
+        },
+        "localizeSlugs": {
+          "description": "Whether translated pages may use localized URL slugs (`/pricing/` ↔ `/es/precios/`). Default: true.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "defaultLocale",
+        "locales"
+      ],
+      "additionalProperties": false
+    },
     "editor": {
       "description": "Where this site's editor is hosted online, when it has one. An address and the host's id: no secrets, safe to publish.",
       "type": "object",

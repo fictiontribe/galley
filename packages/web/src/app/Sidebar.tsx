@@ -253,6 +253,7 @@ export function SiteSidebar({ siteId }: { siteId: string }) {
         <NavItem to={`${base}/scripts`} icon="scripts" label="Scripts" />
         <NavItem to={`${base}/brand`} icon="brand" label="Brand" />
         <NavItem to={`${base}/visibility`} icon="visibility" label="Search & AI" />
+        <NavItem to={`${base}/languages`} icon="languages" label="Languages" />
         <NavItem to={`${base}/history`} icon="history" label="Version history" />
         <NavItem to={`${base}/online`} icon="globe" label="Online" />
         <NavItem to={`${base}/redirects`} icon="link" label="Redirects" />

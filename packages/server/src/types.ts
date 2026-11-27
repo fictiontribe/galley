@@ -5,6 +5,7 @@ import type { MediaStorageService } from "@galley/core/media-storage";
 import type { RedirectsService } from "@galley/core/redirects";
 import type { PluginRegistry } from "@galley/core/plugins";
 import type { VisibilityService } from "@galley/core/seo";
+import type { I18nService } from "@galley/core/i18n";
 import type { Install } from "@galley/core/install";
 import type { SessionInfo } from "./auth";
 import type { RevocationList } from "./auth";
@@ -39,6 +40,8 @@ export interface Services {
   videos?: VideoService;
   /** Search & AI visibility. Absent: the routes build one from `settings` and `events` on first use. */
   visibility?: VisibilityService;
+  /** Languages & translations. Absent: the routes build one from `settings` and `events` on first use. */
+  i18n?: I18nService;
   /** Bringing a WordPress site over. Absent: the import routes keep their state in a folder of their own. */
   imports?: ImportService;
   /** The site's own brand (galley/brand). Absent: the brand routes say it isn't available. */

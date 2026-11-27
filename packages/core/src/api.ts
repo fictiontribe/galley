@@ -854,6 +854,63 @@ export interface ApiRoutes {
     response: import("./seo/types").DraftGapResult;
   };
 
+  // ── languages & translations (docs/editing/languages.md) ───────────────
+  /** Configured languages, per-locale translation coverage, page variant matrix, and TM/glossary counts. */
+  "GET /api/sites/:siteId/i18n": {
+    response: import("./i18n/types").I18nOverview;
+  };
+  /** Update the site's languages, default locale, file strategy, URL slug settings, and optionally sync astro.config.*. */
+  "PUT /api/sites/:siteId/i18n/config": {
+    body: import("./i18n/types").I18nConfigUpdate;
+    response: import("./i18n/types").I18nOverview;
+  };
+  /** Locale counterpart map, default-locale source fields and body for side-by-side manual editing, outdated state, and TM suggestions. */
+  "GET /api/sites/:siteId/i18n/entry": {
+    query: { path: string };
+    response: import("./i18n/types").I18nEntryDetail;
+  };
+  /** Create a manual translation draft for a source page in a target language, applying exact TM matches and linking it in galley/i18n/manifest.json. */
+  "POST /api/sites/:siteId/i18n/entry/create": {
+    body: import("./i18n/types").I18nCreateEntryInput;
+    response: import("./i18n/types").I18nCreateEntryResult;
+  };
+  /** Read the site's Git-tracked terminology glossary (galley/i18n/glossary.json). */
+  "GET /api/sites/:siteId/i18n/glossary": {
+    response: import("./i18n/types").GlossaryFile;
+  };
+  /** Replace the site's terminology glossary (lands in Proof). */
+  "PUT /api/sites/:siteId/i18n/glossary": {
+    body: import("./i18n/types").GlossaryFile;
+    response: import("./i18n/types").GlossaryFile;
+  };
+  /** Read the site's Git-tracked Translation Memory (galley/i18n/memory.json). */
+  "GET /api/sites/:siteId/i18n/memory": {
+    response: import("./i18n/types").TranslationMemoryFile;
+  };
+  /** Replace the site's Translation Memory (lands in Proof). */
+  "PUT /api/sites/:siteId/i18n/memory": {
+    body: import("./i18n/types").TranslationMemoryFile;
+    response: import("./i18n/types").TranslationMemoryFile;
+  };
+  /** Preview an automatic translation batch: exact segment counts, TM savings, token counts, estimated USD cost, and AI credits. */
+  "POST /api/sites/:siteId/i18n/translate/plan": {
+    body: import("./i18n/types").TranslationPlanRequest;
+    response: import("./i18n/types").TranslationPlan;
+  };
+  /** Start an automatic single-page or whole-site translation job; all translated files land in Proof. */
+  "POST /api/sites/:siteId/i18n/translate": {
+    body: import("./i18n/types").TranslationPlanRequest;
+    response: import("./i18n/types").TranslationJobStatus;
+  };
+  /** Progress and actual token/USD/credit usage for a running or finished translation job. */
+  "GET /api/sites/:siteId/i18n/translate/:jobId": {
+    response: import("./i18n/types").TranslationJobStatus;
+  };
+  /** Stop a running translation job after the current page; finished pages stay in Proof. */
+  "POST /api/sites/:siteId/i18n/translate/:jobId/cancel": {
+    response: Ok;
+  };
+
   // ── bringing a site over: the WordPress import (docs/wordpress-import.md) ──
   /**
    * Upload an export file, one chunk at a time (base64, at most 8 MB each, 200 MB in all). The first

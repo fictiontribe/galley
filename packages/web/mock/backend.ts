@@ -34,6 +34,7 @@ import { createMockMediaStorage } from "./media-storage.ts";
 import { createMockRedirects } from "./redirects.ts";
 import { createMultiSite } from "./multisite.ts";
 import { createMockVisibility } from "./visibility.ts";
+import { createMockI18n } from "./i18n.ts";
 import { createMockBrand } from "./brand.ts";
 import { createMockImport } from "./import.ts";
 import { createMockPlugins } from "./plugins.ts";
@@ -358,6 +359,7 @@ export function createHandlers(mock: MockBackend): Handlers {
   const redirects = createMockRedirects((event) => mock.emit(event), (job) => mock.jobs.set(job.id, job));
   const multiSite = createMultiSite(mock);
   const visibility = createMockVisibility(mock);
+  const i18n = createMockI18n(mock);
   const plugins = createMockPlugins(mock);
   const siteBrand = createMockBrand(mock);
   const wordpress = createMockImport(mock);
@@ -372,6 +374,7 @@ export function createHandlers(mock: MockBackend): Handlers {
     ...redirects.handlers,
     ...multiSite.handlers,
     ...visibility.handlers,
+    ...i18n.handlers,
     ...plugins.handlers,
     ...siteBrand.handlers,
     ...wordpress.handlers,

@@ -21,6 +21,7 @@ const MediaScreen = lazy(() => import("@/features/media/MediaScreen").then((m) =
 const OpenScreen = lazy(() => import("@/screens/open/OpenScreen").then((m) => ({ default: m.OpenScreen })));
 const FormsScreen = lazy(() => import("@/features/forms/FormsScreen").then((m) => ({ default: m.FormsScreen })));
 const VisibilityScreen = lazy(() => import("@/features/seo/VisibilityScreen").then((m) => ({ default: m.VisibilityScreen })));
+const LanguagesScreen = lazy(() => import("@/features/i18n/LanguagesScreen").then((m) => ({ default: m.LanguagesScreen })));
 const ScriptsScreen = lazy(() => import("@/features/scripts/ScriptsScreen").then((m) => ({ default: m.ScriptsScreen })));
 const BrandScreen = lazy(() => import("@/features/brand/BrandScreen").then((m) => ({ default: m.BrandScreen })));
 const InboxScreen = lazy(() => import("@/features/inbox/InboxScreen").then((m) => ({ default: m.InboxScreen })));
@@ -82,6 +83,7 @@ export function AppRoutes() {
         <Route path="scripts" element={<ScriptsScreen />} />
         <Route path="brand" element={<BrandScreen />} />
         <Route path="visibility" element={<VisibilityScreen />} />
+        <Route path="languages" element={<LanguagesScreen />} />
         <Route path="inbox" element={<Allowed route="GET /api/sites/:siteId/inbox"><InboxScreen /></Allowed>} />
         <Route path="history" element={<HistoryScreen />} />
         <Route path="online" element={<OnlineScreen />} />

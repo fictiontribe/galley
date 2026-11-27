@@ -1,4 +1,5 @@
 import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { ChangeOrigin, Collection, Entry, Field, MediaConfig } from "@galley/core/types";
 import { useStore } from "zustand";
 import "@/styles/content.css";
@@ -8,6 +9,8 @@ import { isOwnCopy, storeWrittenEntry } from "@/lib/entryWrites";
 import { useSite } from "@/lib/stores/site";
 import { SegmentedControl, Skeleton } from "@/ui";
 import { useEditor, type EditorSelection } from "@/features/editor/EditorContext";
+import { EditorLocaleBar, OriginalBodyReference } from "@/features/i18n/EditorLocaleBar";
+import { useI18nEntry } from "@/features/i18n/useI18n";
 import { MediaPicker } from "@/features/media/MediaPicker";
 import { FieldList } from "./fields/FieldList";
 import { FormContext, useFormState, type FormContextValue } from "./form/context";
@@ -39,6 +42,7 @@ interface FormRootProps {
   entry: Entry;
   collection: Collection | null;
   media: MediaConfig | null;
+  setPath: (path: string | null) => void;
   setSelection: (selection: EditorSelection | null) => void;
   navigate: (urlPath: string) => void;
   refresh: () => Promise<Entry | undefined>;
@@ -93,13 +97,17 @@ function useReveal(store: FormStore, scroller: RefObject<HTMLDivElement | null>)
   }, [reveal, scroller]);
 }
 
-const FormRoot = memo(function FormRoot({ siteId, entry, collection, media, setSelection, navigate, refresh, registerFormStore }: FormRootProps) {
+const FormRoot = memo(function FormRoot({ siteId, entry, collection, media, setPath, setSelection, navigate, refresh, registerFormStore }: FormRootProps) {
   const entryPath = entry.path;
+  const [params] = useSearchParams();
   const origin = useRef<ChangeOrigin | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<Mode>("form");
+  const [showOriginal, setShowOriginal] = useState(() => params.get("original") === "1");
   const [picker, setPicker] = useState(false);
   const pickerResolve = useRef<((url: string | null) => void) | null>(null);
+  const i18nQuery = useI18nEntry(siteId, entryPath, collection?.kind === "entries");
+  const i18nDetail = i18nQuery.data ?? null;
 
   const [store] = useState(() =>
     createFormStore(entry, {
@@ -142,17 +150,30 @@ const FormRoot = memo(function FormRoot({ siteId, entry, collection, media, setS
     setPicker(false);
   }, []);
 
+  const i18nRef = useMemo(
+    () =>
+      showOriginal && i18nDetail && !i18nDetail.isDefault && i18nDetail.sourceData
+        ? {
+            sourceLocale: i18nDetail.defaultLocale,
+            sourceData: i18nDetail.sourceData,
+            tmMatches: i18nDetail.tmMatches,
+          }
+        : null,
+    [showOriginal, i18nDetail],
+  );
+
   const context = useMemo<FormContextValue>(
     () => ({
       store,
       siteId,
       entryPath,
       media,
+      i18nRef,
       select: (text) => setSelection({ text, sourcePath: entryPath }),
       pickImage,
       preview: navigate,
     }),
-    [store, siteId, entryPath, media, setSelection, pickImage, navigate],
+    [store, siteId, entryPath, media, i18nRef, setSelection, pickImage, navigate],
   );
 
   const fields = useStableFields(entry.fields);
@@ -171,6 +192,19 @@ const FormRoot = memo(function FormRoot({ siteId, entry, collection, media, setS
           <SegmentedControl label="Edit as" options={MODES} value={mode} onChange={(next) => void switchMode(next)} />
           <SaveStatus />
         </div>
+        {i18nDetail ? (
+          <EditorLocaleBar
+            siteId={siteId}
+            detail={i18nDetail}
+            showOriginal={showOriginal}
+            onToggleOriginal={() => setShowOriginal((current) => !current)}
+            onSwitchPath={(nextPath) => setPath(nextPath)}
+            onRefresh={() => {
+              void refresh();
+              void i18nQuery.refetch();
+            }}
+          />
+        ) : null}
         <EntrySessionAdditions siteId={siteId} path={entryPath} entry={entry} store={store} collection={collection} />
         <EntryTopAdditions siteId={siteId} path={entryPath} store={store} />
         <ConflictNotice fields={fields} />
@@ -188,9 +222,14 @@ const FormRoot = memo(function FormRoot({ siteId, entry, collection, media, setS
               <FieldList fields={main} extraFields={extra} basePath={[]} showKeys />
             </div>
             {entry.body !== null ? (
-              <Suspense fallback={<Skeleton height={220} />}>
-                <BodyEditor />
-              </Suspense>
+              <>
+                {showOriginal && i18nDetail && !i18nDetail.isDefault && i18nDetail.sourceBody ? (
+                  <OriginalBodyReference defaultLocale={i18nDetail.defaultLocale} sourceBody={i18nDetail.sourceBody} />
+                ) : null}
+                <Suspense fallback={<Skeleton height={220} />}>
+                  <BodyEditor />
+                </Suspense>
+              </>
             ) : null}
           </>
         )}
@@ -205,8 +244,8 @@ const FormRoot = memo(function FormRoot({ siteId, entry, collection, media, setS
  * made (no Save button); see form/store.ts for the saving model.
  */
 export function EntryForm({ siteId, path }: EntryFormProps) {
-  const { entry, collection, setSelection, navigate, refresh, registerFormStore } = useEditor();
+  const { entry, collection, setPath, setSelection, navigate, refresh, registerFormStore } = useEditor();
   const media = useSite((s) => s.detail?.model.media ?? null);
   if (!entry || entry.path !== path) return null;
-  return <FormRoot key={path} siteId={siteId} entry={entry} collection={collection} media={media} setSelection={setSelection} navigate={navigate} refresh={refresh} registerFormStore={registerFormStore} />;
+  return <FormRoot key={path} siteId={siteId} entry={entry} collection={collection} media={media} setPath={setPath} setSelection={setSelection} navigate={navigate} refresh={refresh} registerFormStore={registerFormStore} />;
 }

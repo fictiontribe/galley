@@ -67,6 +67,7 @@ How the file merges over detection: [galley.config.json](/docs/configuration/#ho
 | `templates` | object[] | Ready-made entries a new one can start from — a landing page, a pricing page ([below](#templates)). *Default:* none. |
 | `deploy` | object | Where the site is put online ([below](#deploy)). Written by the **Online** setup and `galley deploy`. Ids only: the host's access key is never in this file. *Default:* none. |
 | `redirects` | object | Where the redirects list lives and which host applies it ([below](#redirects)). *Default:* detected. |
+| `i18n` | object | Languages, file layout and localized URL routing for multilingual sites ([below](#languages)). *Default:* detected from `astro.config.*` when present. |
 | `editor` | object | Where this site's editor is hosted online ([below](#editor)). Written by **Host the editor online** and `galley host` once the hosted editor has the site. An address and a host id: no secrets, safe to publish. *Default:* none. |
 | `siteBrand` | object | Where the site's own brand is kept ([below](#site-brand)). *Default:* detected. |
 
@@ -186,6 +187,20 @@ Written by **Host the editor online** and `galley host` when the hosted editor h
 | `redirects.cloudflare` | object | For setting the list on Cloudflare itself (Bulk Redirects). Ids only. |
 | `redirects.cloudflare.account` | string, 1–100 characters | The Cloudflare account, when `deploy` doesn't give one. |
 | `redirects.cloudflare.hostnames` | string[], domain names, at most 20 | The site's own domains on Cloudflare: `["example.com", "www.example.com"]`. |
+
+## Languages
+
+| Key | Type | Meaning and default |
+| --- | --- | --- |
+| `i18n.defaultLocale` | string, **required**, BCP-47 language code (`en`, `es`, `fr-CA`) | The default language code. Must match one entry in `i18n.locales`. |
+| `i18n.locales` | object[], **required**, 1–50 items | The languages configured for the site. |
+| `i18n.locales[].code` | string, **required**, BCP-47 language code | Language code such as `en`, `es`, `pt-BR` or `ar`. Unique within `i18n.locales`. |
+| `i18n.locales[].label` | string, **required**, 1–60 characters | Human-readable label shown in selectors and the editor (`English`, `Español`). |
+| `i18n.locales[].prefix` | string, lowercase letters, digits and dashes | Optional URL path prefix. *Default:* the lowercase `code`. |
+| `i18n.locales[].direction` | `ltr` · `rtl` | Text direction for this language. *Default:* `ltr`. |
+| `i18n.strategy` | `folder` · `suffix` | How translated files sit beside default ones: `folder` (`es/about.md`) or `suffix` (`about.es.md`). *Default:* `folder`. |
+| `i18n.prefixDefaultLocale` | boolean | Whether default-locale URLs carry their locale prefix (`/en/pricing/` vs `/pricing/`). *Default:* `false`. |
+| `i18n.localizeSlugs` | boolean | Whether translated pages may use localized URL slugs (`/pricing/` to `/es/precios/`). *Default:* `true`. |
 
 ## Site brand
 

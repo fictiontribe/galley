@@ -6,10 +6,17 @@ import { createContext, useContext } from "react";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import type { FieldChange, FieldPath, JsonValue, MediaConfig, ValidationIssue } from "@galley/core/types";
+import type { I18nMemorySuggestion } from "@galley/core/i18n/types";
 import { useChanges } from "@/lib/stores/changes";
 import { changeAt, editsWithin } from "./marks";
 import { getAt, pathKey, samePath } from "./paths";
 import type { FormState, FormStore, SaveState } from "./store";
+
+export interface I18nFieldReference {
+  sourceLocale: string;
+  sourceData: Record<string, JsonValue>;
+  tmMatches: Record<string, I18nMemorySuggestion>;
+}
 
 export interface FormContextValue {
   store: FormStore;
@@ -17,6 +24,8 @@ export interface FormContextValue {
   /** Repo path of the entry. */
   entryPath: string;
   media: MediaConfig | null;
+  /** Default-locale source reference & TM suggestions when "Show original" is toggled on a translation. */
+  i18nRef?: I18nFieldReference | null;
   /** Tell the editor what the person is looking at (assistant context). */
   select: (text: string) => void;
   /** Open the image picker; resolves with the chosen site URL, or null. */

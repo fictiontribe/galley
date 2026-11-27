@@ -253,6 +253,18 @@ const coveredElsewhere: ApiRouteKey[] = [
   "POST /api/sites/:siteId/visibility/intelligence/explore", // visibility-intelligence.test.ts (real engine + mocked search-data upstream)
   "POST /api/sites/:siteId/visibility/intelligence/tune", // visibility-intelligence.test.ts (real engine + mocked search-data upstream)
   "POST /api/sites/:siteId/visibility/intelligence/draft-gap", // visibility-intelligence.test.ts (real engine + mocked search-data upstream)
+  "GET /api/sites/:siteId/i18n", // i18n.test.ts (real engine)
+  "PUT /api/sites/:siteId/i18n/config", // i18n.test.ts (real engine)
+  "GET /api/sites/:siteId/i18n/entry", // i18n.test.ts (real engine)
+  "POST /api/sites/:siteId/i18n/entry/create", // i18n.test.ts (real engine)
+  "GET /api/sites/:siteId/i18n/glossary", // i18n.test.ts (real engine)
+  "PUT /api/sites/:siteId/i18n/glossary", // i18n.test.ts (real engine)
+  "GET /api/sites/:siteId/i18n/memory", // i18n.test.ts (real engine)
+  "PUT /api/sites/:siteId/i18n/memory", // i18n.test.ts (real engine)
+  "POST /api/sites/:siteId/i18n/translate/plan", // i18n.test.ts (real engine)
+  "POST /api/sites/:siteId/i18n/translate", // i18n.test.ts (real engine)
+  "GET /api/sites/:siteId/i18n/translate/:jobId", // i18n.test.ts (real engine)
+  "POST /api/sites/:siteId/i18n/translate/:jobId/cancel", // i18n.test.ts (real engine)
   "POST /api/sites/:siteId/visibility/external-links", // visibility.test.ts (real engine; batches without a key, and core test/seo/write.test.ts)
   "POST /api/auth/login", // auth.test.ts
   "POST /api/auth/logout", // auth.test.ts

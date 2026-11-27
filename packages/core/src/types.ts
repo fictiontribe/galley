@@ -387,6 +387,8 @@ export interface SiteModel {
   deploy?: DeployConfig;
   /** The redirects list and where it takes effect (galley.config.json `redirects`). Absent until set. */
   redirects?: RedirectsConfig;
+  /** Languages and locale routing (galley.config.json `i18n`, or read from astro.config.*). */
+  i18n?: I18nConfig;
   /** The site kit (forms, managed scripts), when the site has it. */
   kit?: SiteKitInfo;
 }
@@ -442,6 +444,8 @@ export interface GalleyConfig {
   deploy?: DeployConfig;
   /** Where the redirects list lives and which host applies it. See docs/redirects.md. */
   redirects?: RedirectsConfig;
+  /** Languages and locale routing for multilingual sites. See docs/editing/languages.md. */
+  i18n?: I18nConfig;
   /**
    * The site's own brand (its look and voice), not the app's white-label
    * brand. `dir`: where brand.json, guide.md and sources/ live (default
@@ -476,6 +480,34 @@ export interface RedirectsConfig {
     /** The site's own domains the redirects apply on ("example.com", "www.example.com"). */
     hostnames?: string[];
   };
+}
+
+/** One configured language for a multilingual site. */
+export interface I18nLocaleConfig {
+  /** BCP-47 language tag, e.g. "en", "es", "fr-CA", "ar". */
+  code: string;
+  /** Display name shown in selectors and the editor, e.g. "English", "Español". */
+  label: string;
+  /** URL path prefix for this locale (defaults to lowercase `code`, e.g. "es"). */
+  prefix?: string;
+  /** Text direction ("ltr" or "rtl"). Default "ltr". */
+  direction?: "ltr" | "rtl";
+}
+
+export type I18nStrategy = "folder" | "suffix";
+
+/** Multilingual configuration in galley.config.json (or detected from astro.config.*). */
+export interface I18nConfig {
+  /** Default locale code; must match one item in `locales`. */
+  defaultLocale: string;
+  /** Configured languages for the site. */
+  locales: I18nLocaleConfig[];
+  /** How localized content files are organized: `"folder"` (`es/about.md`) or `"suffix"` (`about.es.md`). Default `"folder"`. */
+  strategy?: I18nStrategy;
+  /** Whether default-locale URLs carry their locale prefix (`/en/pricing/` vs `/pricing/`). Default `false`. */
+  prefixDefaultLocale?: boolean;
+  /** Whether URL slugs may be translated per locale (`/pricing/` ↔ `/es/precios/`). Default `true`. */
+  localizeSlugs?: boolean;
 }
 
 export interface CollectionConfig {
@@ -1417,7 +1449,7 @@ export type ServerEvent =
 /** A long-running operation: cloning a repo, creating a site, installing dependencies. */
 export interface Job {
   id: string;
-  kind: "clone" | "create" | "install" | "build" | "publish" | "deploy" | "video" | "visibility" | "redirects" | "brand" | "kit-setup" | "import" | "domain" | "setup" | "restore" | "editor-host" | "media";
+  kind: "clone" | "create" | "install" | "build" | "publish" | "deploy" | "video" | "visibility" | "redirects" | "brand" | "kit-setup" | "import" | "domain" | "setup" | "restore" | "editor-host" | "media" | "i18n";
   label: string;
   state: "running" | "done" | "error";
   /** 0–1 when measurable. */
