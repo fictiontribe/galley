@@ -3,8 +3,8 @@ title: Living through a renovation — a field guide from people who did
 description: Practical advice on staying sane, fed and on speaking terms while the builders are in, gathered from clients who lived at home throughout.
 date: 2026-05-27
 author: ines-ferreira
-image: /images/blog/renovation-guide.svg
-imageAlt: Abstract drawing of a room under renovation with dust sheets, a ladder and a kettle
+image: /images/blog/renovation-guide.webp
+imageAlt: Sunlit renovation room with freshly trowelled lime plaster drying beside exposed Douglas fir ceiling joists
 tags:
   - Living with building work
   - Planning ahead

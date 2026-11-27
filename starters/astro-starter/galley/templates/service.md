@@ -9,7 +9,7 @@ sections:
     cta:
       label: Book a first visit
       href: /contact/
-    image: /images/projects/kitchen-extension.svg
+    image: /images/projects/kitchen-extension.webp
     imageAlt: Describe the picture for someone who can't see it
   - type: features
     tone: muted

@@ -1,5 +1,6 @@
 ---
-// Several shorter quotations in a grid of 2 or 3 columns.
+// Editorial ledger of shorter client remarks in 2 or 3 columns, separated by
+// architectural top hairlines (zero boxed cards).
 import Section from "../Section.astro";
 import SectionHeader from "../SectionHeader.astro";
 import type { BlockMarker, Tone } from "../../lib/site";
@@ -43,30 +44,29 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
 
 <style>
   .quotes {
-    columns: 1;
-    column-gap: var(--space-l);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    gap: var(--space-xl) var(--space-l);
     padding: 0;
     list-style: none;
   }
 
-  .quotes > li {
-    break-inside: avoid;
-    margin-block-end: var(--space-l);
-  }
-
   .quote {
-    display: grid;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     gap: var(--space-m);
-    padding: var(--space-l);
-    background: var(--tone-surface);
-    border: var(--border-width) solid var(--tone-line);
-    border-radius: var(--radius-m);
+    height: 100%;
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
   }
 
   .quote__text {
     font-family: var(--font-display);
     font-size: var(--step-1);
-    line-height: 1.4;
+    font-style: italic;
+    font-optical-sizing: auto;
+    line-height: 1.42;
   }
 
   .quote__text p::before {
@@ -79,29 +79,25 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
 
   .quote__by {
     display: grid;
-    gap: 0.1em;
+    gap: 0.2em;
     padding-block-start: var(--space-s);
-    border-block-start: var(--border-width) solid var(--tone-line);
-    font-size: var(--step--1);
   }
 
   .quote__name {
-    font-weight: var(--weight-bold);
+    font-size: var(--step--1);
+    font-weight: var(--weight-medium);
   }
 
   .quote__role {
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
     color: var(--tone-muted);
-  }
-
-  @media (min-width: 44rem) {
-    .quotes {
-      columns: 2;
-    }
   }
 
   @media (min-width: 64rem) {
     .quotes {
-      columns: var(--columns);
+      grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
     }
   }
 </style>

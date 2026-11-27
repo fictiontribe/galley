@@ -16,7 +16,7 @@ const policy = navigation.legal.find((link) => /privacy/i.test(link.href))?.href
     <div class="site-footer__top">
       <div class="site-footer__brand">
         <a class="site-footer__name" href={withBase("/")} aria-label={labels.home}>
-          <Logo size={32} />
+          <Logo size={30} />
           <span aria-hidden="true">{site.name}</span>
         </a>
         <p class="site-footer__tagline">{site.tagline}</p>
@@ -112,9 +112,9 @@ const policy = navigation.legal.find((link) => /privacy/i.test(link.href))?.href
     align-items: center;
     gap: 0.55rem;
     font-family: var(--font-display);
-    font-size: var(--step-3);
+    font-size: var(--step-2);
     font-weight: var(--weight-display-strong);
-    letter-spacing: -0.04em;
+    letter-spacing: -0.038em;
     line-height: 1;
     color: var(--tone-text);
     text-decoration: none;
@@ -122,15 +122,19 @@ const policy = navigation.legal.find((link) => /privacy/i.test(link.href))?.href
 
   .site-footer__tagline {
     max-width: 24em;
+    font-size: var(--step--1);
     color: var(--tone-muted);
   }
 
   .site-footer__contact {
     display: grid;
     gap: var(--space-3xs);
-    padding: 0;
+    margin-block-start: var(--space-2xs);
+    padding: var(--space-xs) 0 0;
+    border-block-start: var(--border-width) solid var(--tone-line);
     list-style: none;
-    font-size: var(--step--1);
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
   }
 
   .site-footer__nav {
@@ -141,9 +145,11 @@ const policy = navigation.legal.find((link) => /privacy/i.test(link.href))?.href
 
   .site-footer__heading {
     margin-block-end: var(--space-xs);
-    font-family: var(--font-body);
+    padding-block-end: var(--space-2xs);
+    border-block-end: var(--border-width) solid var(--tone-line);
+    font-family: var(--font-mono);
     font-size: var(--step--2);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     color: var(--tone-muted);
@@ -167,6 +173,7 @@ const policy = navigation.legal.find((link) => /privacy/i.test(link.href))?.href
   }
 
   .site-footer a:hover {
+    color: var(--tone-link);
     text-decoration-color: var(--tone-link);
   }
 
@@ -187,6 +194,7 @@ const policy = navigation.legal.find((link) => /privacy/i.test(link.href))?.href
 
   .site-footer__text span {
     color: var(--tone-text);
+    font-weight: var(--weight-medium);
   }
 
   .site-footer__legal,
@@ -199,6 +207,12 @@ const policy = navigation.legal.find((link) => /privacy/i.test(link.href))?.href
   @media (min-width: 60rem) {
     .site-footer__top {
       grid-template-columns: 4fr 8fr;
+      gap: var(--space-2xl);
+    }
+
+    .site-footer__brand {
+      padding-inline-end: var(--space-l);
+      border-inline-end: var(--border-width) solid var(--tone-line);
     }
   }
 </style>

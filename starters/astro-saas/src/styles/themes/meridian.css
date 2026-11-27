@@ -44,54 +44,56 @@
 
   /* ── Colour ─────────────────────────────────────────────────────────── */
   --color-background: oklch(98% 0.006 165);
-  --color-surface: oklch(99.6% 0.003 165);
-  --color-surface-muted: oklch(95% 0.012 165);
+  --color-surface: oklch(99.7% 0.002 165);
+  --color-surface-muted: oklch(95% 0.011 165);
   --color-text: oklch(22% 0.025 185);
   --color-text-muted: oklch(43% 0.022 185);
-  --color-border: oklch(89% 0.012 165);
+  --color-border: oklch(88.5% 0.012 165);
   --color-border-strong: oklch(56% 0.02 185);
 
   --color-accent: oklch(46% 0.1 172);
   --color-accent-strong: oklch(39% 0.088 172);
   --color-accent-contrast: oklch(99% 0.004 165);
-  --color-accent-soft: oklch(93.5% 0.035 168);
+  --color-accent-soft: oklch(93.8% 0.032 168);
   --color-accent-on-inverse: oklch(82% 0.11 160);
 
-  --color-inverse-background: oklch(25% 0.035 180);
-  --color-inverse-surface: oklch(30% 0.038 180);
-  --color-inverse-text: oklch(96.5% 0.008 165);
-  --color-inverse-muted: oklch(80% 0.025 170);
-  --color-inverse-border: oklch(39% 0.035 180);
+  --color-inverse-background: oklch(23% 0.032 180);
+  --color-inverse-surface: oklch(28.5% 0.035 180);
+  --color-inverse-text: oklch(96.8% 0.007 165);
+  --color-inverse-muted: oklch(80% 0.022 170);
+  --color-inverse-border: oklch(37% 0.032 180);
 
-  --color-positive: oklch(46% 0.1 150);
-  --color-positive-soft: oklch(93.5% 0.04 150);
-  --color-negative: oklch(50% 0.16 28);
-  --color-negative-soft: oklch(94.5% 0.025 28);
-  --color-notice: oklch(47% 0.09 75);
-  --color-notice-soft: oklch(94.5% 0.05 88);
+  --color-positive: oklch(46% 0.105 150);
+  --color-positive-soft: oklch(93.8% 0.036 150);
+  --color-negative: oklch(49.5% 0.165 28);
+  --color-negative-soft: oklch(94.8% 0.024 28);
+  --color-notice: oklch(47% 0.092 75);
+  --color-notice-soft: oklch(94.8% 0.048 88);
 
   /* Overlay used behind image placeholders and the open menu. */
-  --color-scrim: oklch(22% 0.025 185 / 0.06);
+  --color-scrim: oklch(22% 0.025 185 / 0.055);
 
   /* ── Product imagery (inlined SVG screenshots, logos, portraits) ───── */
-  --shot-bg: oklch(97.4% 0.006 165);
-  --shot-panel: oklch(99.6% 0.003 165);
-  --shot-sunk: oklch(94.5% 0.01 165);
-  --shot-line: oklch(89% 0.012 165);
-  --shot-ink: oklch(25% 0.025 185);
-  --shot-muted: oklch(60% 0.02 185);
-  --shot-faint: oklch(87% 0.014 170);
-  --shot-accent: oklch(52% 0.1 172);
-  --shot-accent-soft: oklch(92% 0.04 168);
-  --shot-ok: oklch(62% 0.12 150);
-  --shot-ok-soft: oklch(93.5% 0.04 150);
-  --shot-warn: oklch(78% 0.14 78);
-  --shot-warn-soft: oklch(95% 0.05 88);
-  --shot-bad: oklch(60% 0.17 28);
-  --shot-bad-soft: oklch(94% 0.03 28);
-  --shot-data: oklch(40% 0.05 220);
-  --shot-data-soft: oklch(85% 0.03 210);
-  --shot-frame: oklch(92% 0.012 165);
+  --shot-bg: oklch(97.6% 0.006 165);
+  --shot-panel: oklch(99.7% 0.002 165);
+  --shot-sunk: oklch(94.8% 0.01 165);
+  --shot-line: oklch(88.5% 0.012 165);
+  --shot-grid: oklch(92% 0.01 165);
+  --shot-ink: oklch(23% 0.025 185);
+  --shot-ink-soft: oklch(38% 0.022 185);
+  --shot-muted: oklch(56% 0.02 185);
+  --shot-faint: oklch(85.5% 0.014 170);
+  --shot-accent: oklch(49% 0.1 172);
+  --shot-accent-soft: oklch(92.5% 0.038 168);
+  --shot-ok: oklch(54% 0.12 150);
+  --shot-ok-soft: oklch(93.8% 0.038 150);
+  --shot-warn: oklch(72% 0.145 78);
+  --shot-warn-soft: oklch(95% 0.048 88);
+  --shot-bad: oklch(56% 0.17 28);
+  --shot-bad-soft: oklch(94.5% 0.028 28);
+  --shot-data: oklch(38% 0.055 215);
+  --shot-data-soft: oklch(86% 0.028 205);
+  --shot-frame: oklch(93.2% 0.012 165);
   /* Portrait placeholders: skin and two hair tones, kept natural in every look. */
   --shot-skin: oklch(86% 0.014 80);
   --shot-hair: oklch(28% 0.025 185);
@@ -102,28 +104,28 @@
   --font-body: "Public Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  --weight-display: 620;
-  --weight-display-strong: 700;
+  --weight-display: 640;
+  --weight-display-strong: 720;
   --weight-body: 400;
   --weight-medium: 540;
   --weight-bold: 660;
 
   --tracking-display: -0.028em;
   --tracking-caps: 0.11em;
-  --leading-tight: 1.02;
-  --leading-snug: 1.16;
-  --leading-body: 1.6;
+  --leading-tight: 1.03;
+  --leading-snug: 1.15;
+  --leading-body: 1.58;
 
-  /* Fluid type scale: ~1.2× per step on phones to ~1.3× on wide screens. */
-  --step--2: clamp(0.75rem, 0.73rem + 0.08vw, 0.8rem);
-  --step--1: clamp(0.85rem, 0.82rem + 0.12vw, 0.92rem);
-  --step-0: clamp(0.98rem, 0.95rem + 0.16vw, 1.075rem);
-  --step-1: clamp(1.13rem, 1.06rem + 0.34vw, 1.34rem);
-  --step-2: clamp(1.32rem, 1.18rem + 0.68vw, 1.75rem);
-  --step-3: clamp(1.58rem, 1.34rem + 1.2vw, 2.4rem);
-  --step-4: clamp(1.9rem, 1.5rem + 2vw, 3.3rem);
-  --step-5: clamp(2.25rem, 1.6rem + 3.2vw, 4.5rem);
-  --step-6: clamp(2.6rem, 1.6rem + 4.8vw, 6rem);
+  /* Fluid type scale: crisp editorial hierarchy across phones and wide screens. */
+  --step--2: clamp(0.74rem, 0.72rem + 0.07vw, 0.785rem);
+  --step--1: clamp(0.84rem, 0.82rem + 0.1vw, 0.9rem);
+  --step-0: clamp(0.97rem, 0.94rem + 0.14vw, 1.05rem);
+  --step-1: clamp(1.1rem, 1.04rem + 0.28vw, 1.28rem);
+  --step-2: clamp(1.28rem, 1.16rem + 0.56vw, 1.65rem);
+  --step-3: clamp(1.52rem, 1.3rem + 1.05vw, 2.25rem);
+  --step-4: clamp(1.85rem, 1.45rem + 1.75vw, 3.05rem);
+  --step-5: clamp(2.15rem, 1.55rem + 2.55vw, 3.8rem);
+  --step-6: clamp(2.45rem, 1.65rem + 3.6vw, 4.85rem);
 
   --measure: 66ch;
 
@@ -132,32 +134,34 @@
   --space-2xs: 0.5rem;
   --space-xs: 0.75rem;
   --space-s: 1rem;
-  --space-m: clamp(1.25rem, 1.12rem + 0.55vw, 1.6rem);
-  --space-l: clamp(1.75rem, 1.5rem + 1.1vw, 2.5rem);
-  --space-xl: clamp(2.4rem, 1.95rem + 2vw, 3.75rem);
-  --space-2xl: clamp(3.25rem, 2.5rem + 3.6vw, 5.5rem);
-  --space-section: clamp(4rem, 2.8rem + 5.6vw, 8rem);
+  --space-m: clamp(1.25rem, 1.12rem + 0.5vw, 1.55rem);
+  --space-l: clamp(1.7rem, 1.48rem + 1vw, 2.35rem);
+  --space-xl: clamp(2.3rem, 1.9rem + 1.8vw, 3.5rem);
+  --space-2xl: clamp(3rem, 2.35rem + 3.1vw, 4.75rem);
+  --space-section: clamp(3.75rem, 2.75rem + 4.8vw, 7rem);
 
   --container: 80rem;
   --container-narrow: 48rem;
-  --gutter: clamp(1.25rem, 0.6rem + 3vw, 3rem);
-  --header-height: 4.25rem;
+  --gutter: clamp(1.25rem, 0.6rem + 3vw, 2.75rem);
+  --header-height: 4rem;
 
   /* ── Shape ──────────────────────────────────────────────────────────── */
   --radius-s: 6px;
   --radius-m: 10px;
-  --radius-l: 18px;
+  --radius-l: 16px;
   --radius-button: 999px;
-  --radius-image: 16px;
+  --radius-image: 14px;
   --radius-pill: 999px;
   --border-width: 1px;
 
-  --shadow-raised: 0 1px 2px oklch(22% 0.025 185 / 0.06), 0 18px 40px -14px oklch(22% 0.025 185 / 0.18);
-  --shadow-shot: 0 1px 1px oklch(22% 0.025 185 / 0.05), 0 28px 64px -28px oklch(22% 0.025 185 / 0.3);
+  --shadow-card: 0 1px 2px oklch(22% 0.025 185 / 0.04), 0 4px 12px -4px oklch(22% 0.025 185 / 0.06);
+  --shadow-button: inset 0 1px 0 oklch(99.5% 0 0 / 0.16), 0 1px 2px oklch(22% 0.025 185 / 0.14);
+  --shadow-raised: 0 0 0 1px oklch(22% 0.025 185 / 0.05), 0 4px 10px -2px oklch(22% 0.025 185 / 0.08), 0 18px 40px -14px oklch(22% 0.025 185 / 0.16);
+  --shadow-shot: 0 0 0 1px oklch(22% 0.025 185 / 0.06), 0 6px 16px -4px oklch(22% 0.025 185 / 0.08), 0 28px 68px -22px oklch(22% 0.025 185 / 0.22);
 
   /* Hairline grid drawn behind heroes (the "planner" texture). */
-  --grid-line: oklch(22% 0.025 185 / 0.05);
-  --grid-size: 5rem;
+  --grid-line: oklch(22% 0.025 185 / 0.055);
+  --grid-size: 4.5rem;
 
   /* ── Motion ─────────────────────────────────────────────────────────── */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);

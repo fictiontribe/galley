@@ -20,7 +20,7 @@
         "#fbf9f6",
         "#121922",
         "#c53500",
-        "#121a25"
+        "#0e1520"
       ],
       "preview": "galley/previews/signal.webp"
     },
@@ -32,7 +32,7 @@
         "#f5faf7",
         "#0c1e1c",
         "#006952",
-        "#0b2722"
+        "#09221d"
       ],
       "preview": "galley/previews/meridian.webp"
     },
@@ -41,10 +41,10 @@
       "label": "Night shift",
       "file": "src/styles/themes/night-shift.css",
       "swatches": [
-        "#0b1119",
-        "#f2f0ec",
+        "#090f16",
+        "#f3f1ed",
         "#f08944",
-        "#04070c"
+        "#03060b"
       ],
       "preview": "galley/previews/night-shift.webp"
     }

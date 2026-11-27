@@ -38,7 +38,7 @@ const hi = highlight - 1;
           {
             plans.map((plan, i) => (
               <th scope="col" class:list={{ "is-highlight": i === hi }}>
-                {i === hi && <span class="plan-table__flag">{labels.table.highlighted}</span>}
+                {i === hi && <span class="plan-table__flag mono">{labels.table.highlighted}</span>}
                 {plan}
               </th>
             ))
@@ -74,6 +74,10 @@ const hi = highlight - 1;
   .table-scroll {
     position: relative;
     overflow-x: auto;
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-card);
   }
 
   .plan-table {
@@ -86,26 +90,30 @@ const hi = highlight - 1;
 
   .plan-table th,
   .plan-table td {
-    padding: var(--space-xs) var(--space-s);
+    padding: 0.8rem var(--space-s);
     border-block-end: var(--border-width) solid var(--tone-line);
     text-align: center;
     vertical-align: middle;
   }
 
+  .plan-table tbody:last-of-type tr:last-child th,
+  .plan-table tbody:last-of-type tr:last-child td {
+    border-block-end: 0;
+  }
+
   .plan-table thead th {
-    padding-block: var(--space-s);
-    background: var(--tone-bg);
+    padding-block: var(--space-m);
+    background: var(--tone-surface);
     font-family: var(--font-display);
     font-size: var(--step-1);
     font-weight: var(--weight-display);
-    letter-spacing: -0.015em;
+    letter-spacing: -0.02em;
     vertical-align: bottom;
   }
 
   .plan-table__flag {
     display: block;
-    margin-block-end: 0.2em;
-    font-family: var(--font-body);
+    margin-block-end: 0.25em;
     font-size: var(--step--2);
     font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-caps);
@@ -115,29 +123,32 @@ const hi = highlight - 1;
 
   .plan-table thead th.is-highlight {
     border-block-start: 3px solid var(--tone-link);
-    border-start-start-radius: var(--radius-m);
-    border-start-end-radius: var(--radius-m);
-    background: var(--tone-surface);
+    border-inline: var(--border-width) solid var(--tone-line);
+    background: var(--tone-raised);
   }
 
   .plan-table tbody th[scope="row"] {
+    padding-inline-start: var(--space-m);
     text-align: start;
     font-weight: var(--weight-medium);
-    inline-size: 34%;
+    inline-size: 36%;
   }
 
   .plan-table__group th {
-    padding-block: var(--space-l) var(--space-xs);
+    padding: var(--space-s) var(--space-m);
+    background: var(--tone-raised);
     text-align: start;
+    font-family: var(--font-mono);
     font-size: var(--step--2);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     color: var(--tone-muted);
   }
 
   .plan-table td.is-highlight {
-    background: var(--tone-surface);
+    background: color-mix(in oklch, var(--tone-raised) 55%, var(--tone-surface));
+    border-inline: var(--border-width) solid var(--tone-line);
   }
 
   /* On narrow screens the table scrolls; the row labels stay put. */
@@ -146,6 +157,6 @@ const hi = highlight - 1;
     position: sticky;
     left: 0;
     z-index: 1;
-    background: var(--tone-bg);
+    background: var(--tone-surface);
   }
 </style>

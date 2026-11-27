@@ -1,5 +1,5 @@
 ---
-// How the product protects customers' data: practices as icon items, plus a
+// How the product protects customers' data: practices as hairline cells, plus a
 // row of short reassurance chips. Write what is actually true of your
 // product — never name a certification you do not hold.
 import Section from "../Section.astro";
@@ -36,8 +36,8 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
           <ul class="security__badges" role="list">
             {badges.map((badge) => (
               <li class="security__badge">
-                <Icon name="shield" size={16} />
-                {badge}
+                <Icon name="shield" size={14} />
+                <span>{badge}</span>
               </li>
             ))}
           </ul>
@@ -47,7 +47,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
         cta && (
           <a class="text-link" href={withBase(cta.href)}>
             {cta.label}
-            <Icon name="arrow-right" size={18} />
+            <Icon name="arrow-right" size={16} />
           </a>
         )
       }
@@ -57,7 +57,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
         items.map((item) => (
           <li class="security__item">
             <span class="security__icon" aria-hidden="true">
-              <Icon name={item.icon ?? "shield"} size={20} />
+              <Icon name={item.icon ?? "shield"} size={18} />
             </span>
             <div>
               <ItemHeading class="security__item-heading">{item.heading}</ItemHeading>
@@ -99,55 +99,67 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     display: inline-flex;
     align-items: center;
     gap: 0.45em;
-    padding: 0.35em 0.8em;
+    padding: 0.32em 0.72em;
+    background: var(--tone-surface);
     border: var(--border-width) solid var(--tone-line);
-    border-radius: var(--radius-pill);
-    font-size: var(--step--1);
+    border-radius: var(--radius-s);
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
     font-weight: var(--weight-medium);
   }
 
   .security__badge :global(svg) {
+    flex: none;
     color: var(--tone-link);
   }
 
   .security__items {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-    gap: var(--space-l) var(--space-l);
+    gap: 1px;
     padding: 0;
     list-style: none;
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
   }
 
   .security__item {
     display: grid;
     grid-template-columns: auto 1fr;
+    align-content: start;
     gap: var(--space-s);
-    padding-block-start: var(--space-m);
-    border-block-start: var(--border-width) solid var(--tone-line);
+    padding: var(--space-l);
+    background: var(--tone-surface);
+    outline: var(--border-width) solid var(--tone-line);
   }
 
   .security__icon {
     display: inline-grid;
     place-items: center;
-    inline-size: 2.25rem;
-    block-size: 2.25rem;
+    inline-size: 2.15rem;
+    block-size: 2.15rem;
     border: var(--border-width) solid var(--tone-line);
-    border-radius: 50%;
+    border-radius: var(--radius-m);
+    background: var(--tone-raised);
     color: var(--tone-link);
   }
 
   .security__item-heading {
     font-size: var(--step-0);
-    font-family: var(--font-body);
-    font-weight: var(--weight-bold);
-    letter-spacing: 0;
-    line-height: 1.35;
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
+    letter-spacing: -0.015em;
+    line-height: 1.3;
   }
 
   .security__item-text {
     margin-block-start: var(--space-3xs);
     font-size: var(--step--1);
     color: var(--tone-muted);
+    line-height: 1.5;
   }
 
   @media (min-width: 60rem) {

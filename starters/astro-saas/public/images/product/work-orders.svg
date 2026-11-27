@@ -1,1 +1,257 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000"><style>.s-bg{fill:#f8f6f3}.s-panel{fill:#fffefd}.s-sunk{fill:#f0ede9}.s-line{fill:#dfdcd7}.s-ink{fill:#1b222c}.s-muted{fill:#81878f}.s-faint{fill:#d0d4db}.s-acc{fill:#d14400}.s-acc2{fill:#ffdfca}.s-ok{fill:#389560}.s-ok2{fill:#d6f2de}.s-warn{fill:#e6ac3d}.s-warn2{fill:#fdedc9}.s-bad{fill:#cf4040}.s-bad2{fill:#ffe4e1}.s-data{fill:#384e6e}.s-data2{fill:#bfccdf}.s-skin{fill:#d6d3cf}.s-hair{fill:#1f2733}.s-hair2{fill:#7d838e}.s-stroke{fill:none;stroke:#dfdcd7}.s-stroke-ink{fill:none;stroke:#1b222c}.s-stroke-acc{fill:none;stroke:#d14400}.s-stroke-data{fill:none;stroke:#384e6e}.s-text{fill:#1b222c;font-family:system-ui,sans-serif}.s-text-muted{fill:#81878f;font-family:system-ui,sans-serif}.s-text-acc{fill:#d14400;font-family:system-ui,sans-serif}.s-num{fill:#1b222c;font-family:system-ui,sans-serif}.s-logo{fill:currentColor}.s-logo-text{fill:currentColor;font-family:system-ui,sans-serif}</style><rect x="0" y="0" width="1600" height="1000" class="s-bg"/><rect x="0" y="0" width="272" height="1000" class="s-sunk"/><rect x="271" y="0" width="1" height="1000" class="s-line"/><rect x="32" y="30" width="36" height="36" rx="9" class="s-acc"/><rect x="41" y="39" width="18" height="4" rx="2" class="s-panel"/><rect x="41" y="46" width="12" height="4" rx="2" class="s-panel"/><rect x="41" y="53" width="4" height="4" rx="2" class="s-panel"/><text x="80" y="56" font-size="24" font-weight="760" text-anchor="start" class="s-text">Ferrow</text><rect x="32" y="96" width="208" height="40" rx="8" class="s-panel"/><rect x="48" y="111" width="90" height="10" rx="5" class="s-faint"/><rect x="40" y="155" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="168" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Overview</text><rect x="40" y="205" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="218" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Planner</text><rect x="40" y="255" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="268" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Inspections</text><rect x="20" y="292" width="232" height="42" rx="8" class="s-panel"/><rect x="20" y="300" width="4" height="26" rx="2" class="s-acc"/><rect x="40" y="305" width="16" height="16" rx="4" class="s-acc"/><text x="70" y="318" font-size="19" font-weight="650" text-anchor="start" class="s-text">Work orders</text><rect x="40" y="355" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="368" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Certificates</text><rect x="40" y="405" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="418" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Reports</text><text x="40" y="520" font-size="14" font-weight="700" text-anchor="start" class="s-text-muted" letter-spacing="2">SITES</text><circle cx="46" cy="552" r="5" class="s-ok"/><text x="62" y="558" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">North depot</text><circle cx="46" cy="592" r="5" class="s-warn"/><text x="62" y="598" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">Harbour clinic</text><circle cx="46" cy="632" r="5" class="s-ok"/><text x="62" y="638" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">Elm House</text><circle cx="46" cy="672" r="5" class="s-ok"/><text x="62" y="678" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">East campus</text><rect x="32" y="910" width="208" height="60" rx="10" class="s-panel"/><circle cx="62" cy="940" r="16" class="s-data2"/><circle cx="62" cy="936.48" r="5.76" class="s-panel"/><path d="M52.08 949.92a9.92 8 0 0 1 19.84 0" class="s-panel"/><rect x="88" y="928" width="100" height="9" rx="4.5" class="s-faint"/><rect x="88" y="946" width="70" height="8" rx="4" class="s-faint"/><rect x="272" y="0" width="1328" height="88" class="s-bg"/><rect x="272" y="87" width="1328" height="1" class="s-line"/><text x="316" y="56" font-size="28" font-weight="720" text-anchor="start" class="s-text" letter-spacing="-0.5">Work orders</text><rect x="1084" y="24" width="300" height="40" rx="20" class="s-panel"/><rect x="1084.5" y="24.5" width="299" height="39" rx="20" class="s-stroke"/><circle cx="1108" cy="44" r="7" class="s-stroke-ink" stroke-width="2"/><rect x="1126" y="39" width="120" height="10" rx="5" class="s-faint"/><rect x="1404" y="24" width="152" height="40" rx="8" class="s-acc"/><text x="1480" y="50" font-size="17" font-weight="650" text-anchor="middle" class="s-text" style="fill:var(--shot-panel,#fff)">New task</text><rect x="316" y="108" width="112" height="29" rx="14.5" class="s-acc2"/><circle cx="330" cy="122.5" r="4" class="s-acc"/><text x="340" y="126" font-size="15" font-weight="560" text-anchor="start" class="s-text">Open · 58</text><rect x="470" y="108" width="154" height="29" rx="14.5" class="s-sunk"/><circle cx="484" cy="122.5" r="4" class="s-muted"/><text x="494" y="126" font-size="15" font-weight="560" text-anchor="start" class="s-text">My contractors</text><rect x="660" y="108" width="137" height="29" rx="14.5" class="s-sunk"/><circle cx="674" cy="122.5" r="4" class="s-muted"/><text x="684" y="126" font-size="15" font-weight="560" text-anchor="start" class="s-text">Priority 1–2</text><rect x="316" y="160" width="294" height="810" rx="14" class="s-sunk"/><circle cx="340" cy="196" r="6" class="s-faint"/><text x="356" y="202" font-size="18" font-weight="680" text-anchor="start" class="s-text">New</text><text x="586" y="202" font-size="16" font-weight="600" text-anchor="end" class="s-text-muted">6</text><rect x="328" y="228" width="270" height="160" rx="14" class="s-panel"/><rect x="328.5" y="228.5" width="269" height="159" rx="14" class="s-stroke"/><rect x="344" y="244" width="51" height="27" rx="13.5" class="s-warn2"/><circle cx="358" cy="257.5" r="4" class="s-warn"/><text x="368" y="260" font-size="13" font-weight="560" text-anchor="start" class="s-text">P2</text><text x="582" y="264" font-size="13" font-weight="600" text-anchor="end" class="s-text-muted">#4810</text><text x="344" y="308" font-size="17" font-weight="650" text-anchor="start" class="s-text">Leaking valve, kitchen</text><text x="344" y="332" font-size="15" font-weight="500" text-anchor="start" class="s-text-muted">Elm House</text><rect x="344" y="348" width="238" height="1" class="s-line"/><circle cx="360" cy="368" r="12" class="s-data2"/><circle cx="360" cy="365.36" r="4.32" class="s-panel"/><path d="M352.56 375.44a7.4399999999999995 6 0 0 1 14.879999999999999 0" class="s-panel"/><rect x="380" y="363" width="90" height="9" rx="4.5" class="s-faint"/><rect x="328" y="404" width="270" height="160" rx="14" class="s-panel"/><rect x="328.5" y="404.5" width="269" height="159" rx="14" class="s-stroke"/><rect x="344" y="420" width="51" height="27" rx="13.5" class="s-bad2"/><circle cx="358" cy="433.5" r="4" class="s-bad"/><text x="368" y="436" font-size="13" font-weight="560" text-anchor="start" class="s-text">P1</text><text x="582" y="440" font-size="13" font-weight="600" text-anchor="end" class="s-text-muted">#4813</text><text x="344" y="484" font-size="17" font-weight="650" text-anchor="start" class="s-text">No hot water, room 112</text><text x="344" y="508" font-size="15" font-weight="500" text-anchor="start" class="s-text-muted">Pellow Central</text><rect x="344" y="524" width="238" height="1" class="s-line"/><circle cx="360" cy="544" r="12" class="s-acc2"/><circle cx="360" cy="541.36" r="4.32" class="s-panel"/><path d="M352.56 551.44a7.4399999999999995 6 0 0 1 14.879999999999999 0" class="s-panel"/><rect x="380" y="539" width="90" height="9" rx="4.5" class="s-faint"/><rect x="328" y="580" width="270" height="160" rx="14" class="s-panel"/><rect x="328.5" y="580.5" width="269" height="159" rx="14" class="s-stroke"/><rect x="344" y="596" width="51" height="27" rx="13.5" class="s-data2"/><circle cx="358" cy="609.5" r="4" class="s-data"/><text x="368" y="612" font-size="13" font-weight="560" text-anchor="start" class="s-text">P3</text><text x="582" y="616" font-size="13" font-weight="600" text-anchor="end" class="s-text-muted">#4816</text><text x="344" y="660" font-size="17" font-weight="650" text-anchor="start" class="s-text">Door closer broken</text><text x="344" y="684" font-size="15" font-weight="500" text-anchor="start" class="s-text-muted">North depot</text><rect x="344" y="700" width="238" height="1" class="s-line"/><circle cx="360" cy="720" r="12" class="s-ok2"/><circle cx="360" cy="717.36" r="4.32" class="s-panel"/><path d="M352.56 727.44a7.4399999999999995 6 0 0 1 14.879999999999999 0" class="s-panel"/><rect x="380" y="715" width="90" height="9" rx="4.5" class="s-faint"/><rect x="630" y="160" width="294" height="810" rx="14" class="s-sunk"/><circle cx="654" cy="196" r="6" class="s-data"/><text x="670" y="202" font-size="18" font-weight="680" text-anchor="start" class="s-text">Assigned</text><text x="900" y="202" font-size="16" font-weight="600" text-anchor="end" class="s-text-muted">14</text><rect x="642" y="228" width="270" height="160" rx="14" class="s-panel"/><rect x="642.5" y="228.5" width="269" height="159" rx="14" class="s-stroke"/><rect x="658" y="244" width="51" height="27" rx="13.5" class="s-bad2"/><circle cx="672" cy="257.5" r="4" class="s-bad"/><text x="682" y="260" font-size="13" font-weight="560" text-anchor="start" class="s-text">P1</text><text x="896" y="264" font-size="13" font-weight="600" text-anchor="end" class="s-text-muted">#4817</text><text x="658" y="308" font-size="17" font-weight="650" text-anchor="start" class="s-text">Lift fault code E12</text><text x="658" y="332" font-size="15" font-weight="500" text-anchor="start" class="s-text-muted">Old mill</text><rect x="658" y="348" width="238" height="1" class="s-line"/><circle cx="674" cy="368" r="12" class="s-data2"/><circle cx="674" cy="365.36" r="4.32" class="s-panel"/><path d="M666.56 375.44a7.4399999999999995 6 0 0 1 14.879999999999999 0" class="s-panel"/><rect x="694" y="363" width="90" height="9" rx="4.5" class="s-faint"/><rect x="642" y="404" width="270" height="160" rx="14" class="s-panel"/><rect x="642.5" y="404.5" width="269" height="159" rx="14" class="s-stroke"/><rect x="658" y="420" width="51" height="27" rx="13.5" class="s-data2"/><circle cx="672" cy="433.5" r="4" class="s-data"/><text x="682" y="436" font-size="13" font-weight="560" text-anchor="start" class="s-text">P3</text><text x="896" y="440" font-size="13" font-weight="600" text-anchor="end" class="s-text-muted">#4820</text><text x="658" y="484" font-size="17" font-weight="650" text-anchor="start" class="s-text">Replace emergency light</text><text x="658" y="508" font-size="15" font-weight="500" text-anchor="start" class="s-text-muted">Harbour clinic</text><rect x="658" y="524" width="238" height="1" class="s-line"/><circle cx="674" cy="544" r="12" class="s-acc2"/><circle cx="674" cy="541.36" r="4.32" class="s-panel"/><path d="M666.56 551.44a7.4399999999999995 6 0 0 1 14.879999999999999 0" class="s-panel"/><rect x="694" y="539" width="90" height="9" rx="4.5" class="s-faint"/><rect x="642" y="580" width="270" height="160" rx="14" class="s-panel"/><rect x="642.5" y="580.5" width="269" height="159" rx="14" class="s-stroke"/><rect x="658" y="596" width="51" height="27" rx="13.5" class="s-data2"/><circle cx="672" cy="609.5" r="4" class="s-data"/><text x="682" y="612" font-size="13" font-weight="560" text-anchor="start" class="s-text">P3</text><text x="896" y="616" font-size="13" font-weight="600" text-anchor="end" class="s-text-muted">#4823</text><text x="658" y="660" font-size="17" font-weight="650" text-anchor="start" class="s-text">Gutter blocked</text><text x="658" y="684" font-size="15" font-weight="500" text-anchor="start" class="s-text-muted">East campus</text><rect x="658" y="700" width="238" height="1" class="s-line"/><circle cx="674" cy="720" r="12" class="s-ok2"/><circle cx="674" cy="717.36" r="4.32" class="s-panel"/><path d="M666.56 727.44a7.4399999999999995 6 0 0 1 14.879999999999999 0" class="s-panel"/><rect x="694" y="715" width="90" height="9" rx="4.5" class="s-faint"/><rect x="944" y="160" width="294" height="810" rx="14" class="s-sunk"/><circle cx="968" cy="196" r="6" class="s-warn"/><text x="984" y="202" font-size="18" font-weight="680" text-anchor="start" class="s-text">In progress</text><text x="1214" y="202" font-size="16" font-weight="600" text-anchor="end" class="s-text-muted">21</text><rect x="956" y="228" width="270" height="160" rx="14" class="s-panel"/><rect x="956.5" y="228.5" width="269" height="159" rx="14" class="s-stroke"/><rect x="972" y="244" width="51" height="27" rx="13.5" class="s-warn2"/><circle cx="986" cy="257.5" r="4" class="s-warn"/><text x="996" y="260" font-size="13" font-weight="560" text-anchor="start" class="s-text">P2</text><text x="1210" y="264" font-size="13" font-weight="600" text-anchor="end" class="s-text-muted">#4824</text><text x="972" y="308" font-size="17" font-weight="650" text-anchor="start" class="s-text">Chiller pressure low</text><text x="972" y="332" font-size="15" font-weight="500" text-anchor="start" class="s-text-muted">West depot</text><rect x="972" y="348" width="238" height="1" class="s-line"/><circle cx="988" cy="368" r="12" class="s-data2"/><circle cx="988" cy="365.36" r="4.32" class="s-panel"/><path d="M980.56 375.44a7.4399999999999995 6 0 0 1 14.879999999999999 0" class="s-panel"/><rect x="1008" y="363" width="90" height="9" rx="4.5" class="s-faint"/><rect x="956" y="404" width="270" height="160" rx="14" class="s-panel"/><rect x="956.5" y="404.5" width="269" height="159" rx="14" class="s-stroke"/><rect x="972" y="420" width="51" height="27" rx="13.5" class="s-bad2"/><circle cx="986" cy="433.5" r="4" class="s-bad"/><text x="996" y="436" font-size="13" font-weight="560" text-anchor="start" class="s-text">P1</text><text x="1210" y="440" font-size="13" font-weight="600" text-anchor="end" class="s-text-muted">#4827</text><text x="972" y="484" font-size="17" font-weight="650" text-anchor="start" class="s-text">Fire alarm panel fault</text><text x="972" y="508" font-size="15" font-weight="500" text-anchor="start" class="s-text-muted">Station Road</text><rect x="972" y="524" width="238" height="1" class="s-line"/><circle cx="988" cy="544" r="12" class="s-acc2"/><circle cx="988" cy="541.36" r="4.32" class="s-panel"/><path d="M980.56 551.44a7.4399999999999995 6 0 0 1 14.879999999999999 0" class="s-panel"/><rect x="1008" y="539" width="90" height="9" rx="4.5" class="s-faint"/><rect x="1258" y="160" width="294" height="810" rx="14" class="s-sunk"/><circle cx="1282" cy="196" r="6" class="s-ok"/><text x="1298" y="202" font-size="18" font-weight="680" text-anchor="start" class="s-text">Awaiting sign-off</text><text x="1528" y="202" font-size="16" font-weight="600" text-anchor="end" class="s-text-muted">17</text><rect x="1270" y="228" width="270" height="160" rx="14" class="s-panel"/><rect x="1270.5" y="228.5" width="269" height="159" rx="14" class="s-stroke"/><rect x="1286" y="244" width="51" height="27" rx="13.5" class="s-warn2"/><circle cx="1300" cy="257.5" r="4" class="s-warn"/><text x="1310" y="260" font-size="13" font-weight="560" text-anchor="start" class="s-text">P2</text><text x="1524" y="264" font-size="13" font-weight="600" text-anchor="end" class="s-text-muted">#4831</text><text x="1286" y="308" font-size="17" font-weight="650" text-anchor="start" class="s-text">Shower thermostat</text><text x="1286" y="332" font-size="15" font-weight="500" text-anchor="start" class="s-text-muted">Elm House</text><rect x="1286" y="348" width="238" height="1" class="s-line"/><circle cx="1302" cy="368" r="12" class="s-data2"/><circle cx="1302" cy="365.36" r="4.32" class="s-panel"/><path d="M1294.56 375.44a7.4399999999999995 6 0 0 1 14.879999999999999 0" class="s-panel"/><rect x="1322" y="363" width="90" height="9" rx="4.5" class="s-faint"/><path d="M1506 368l4 4 8-9" class="s-stroke-ink" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="1270" y="404" width="270" height="160" rx="14" class="s-panel"/><rect x="1270.5" y="404.5" width="269" height="159" rx="14" class="s-stroke"/><rect x="1286" y="420" width="51" height="27" rx="13.5" class="s-warn2"/><circle cx="1300" cy="433.5" r="4" class="s-warn"/><text x="1310" y="436" font-size="13" font-weight="560" text-anchor="start" class="s-text">P2</text><text x="1524" y="440" font-size="13" font-weight="600" text-anchor="end" class="s-text-muted">#4834</text><text x="1286" y="484" font-size="17" font-weight="650" text-anchor="start" class="s-text">Loading bay door</text><text x="1286" y="508" font-size="15" font-weight="500" text-anchor="start" class="s-text-muted">North depot</text><rect x="1286" y="524" width="238" height="1" class="s-line"/><circle cx="1302" cy="544" r="12" class="s-acc2"/><circle cx="1302" cy="541.36" r="4.32" class="s-panel"/><path d="M1294.56 551.44a7.4399999999999995 6 0 0 1 14.879999999999999 0" class="s-panel"/><rect x="1322" y="539" width="90" height="9" rx="4.5" class="s-faint"/><path d="M1506 544l4 4 8-9" class="s-stroke-ink" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="1270" y="580" width="270" height="160" rx="14" class="s-panel"/><rect x="1270.5" y="580.5" width="269" height="159" rx="14" class="s-stroke"/><rect x="1286" y="596" width="51" height="27" rx="13.5" class="s-data2"/><circle cx="1300" cy="609.5" r="4" class="s-data"/><text x="1310" y="612" font-size="13" font-weight="560" text-anchor="start" class="s-text">P3</text><text x="1524" y="616" font-size="13" font-weight="600" text-anchor="end" class="s-text-muted">#4837</text><text x="1286" y="660" font-size="17" font-weight="650" text-anchor="start" class="s-text">Light fittings, hall</text><text x="1286" y="684" font-size="15" font-weight="500" text-anchor="start" class="s-text-muted">East campus</text><rect x="1286" y="700" width="238" height="1" class="s-line"/><circle cx="1302" cy="720" r="12" class="s-ok2"/><circle cx="1302" cy="717.36" r="4.32" class="s-panel"/><path d="M1294.56 727.44a7.4399999999999995 6 0 0 1 14.879999999999999 0" class="s-panel"/><rect x="1322" y="715" width="90" height="9" rx="4.5" class="s-faint"/><path d="M1506 720l4 4 8-9" class="s-stroke-ink" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000"><style>.s-bg{fill:#f8f6f2}.s-panel{fill:#fffefd}.s-sunk{fill:#f1eee9}.s-line{fill:#e1ddd7}.s-grid{fill:#eae6e0}.s-ink{fill:#18202b}.s-ink-soft{fill:#3f4956}.s-muted{fill:#6e7682}.s-faint{fill:#cfd4dc}.s-acc{fill:#c53500}.s-acc2{fill:#fce4d6}.s-ok{fill:#268854}.s-ok2{fill:#daf2e3}.s-warn{fill:#cc8b18}.s-warn2{fill:#fcf0d2}.s-bad{fill:#c73434}.s-bad2{fill:#fce2e0}.s-data{fill:#324a6e}.s-data2{fill:#d2dce9}.s-skin{fill:#d6d3cf}.s-hair{fill:#1f2733}.s-hair2{fill:#7d838e}.s-stroke{fill:none;stroke:#e1ddd7}.s-stroke-grid{fill:none;stroke:#eae6e0}.s-stroke-faint{fill:none;stroke:#cfd4dc}.s-stroke-ink{fill:none;stroke:#18202b}.s-stroke-panel{fill:none;stroke:#fffefd}.s-stroke-muted{fill:none;stroke:#6e7682}.s-stroke-acc{fill:none;stroke:#c53500}.s-stroke-ok{fill:none;stroke:#268854}.s-stroke-warn{fill:none;stroke:#cc8b18}.s-stroke-bad{fill:none;stroke:#c73434}.s-stroke-data{fill:none;stroke:#324a6e}.s-text{fill:#18202b;font-family:system-ui,-apple-system,sans-serif}.s-text-soft{fill:#3f4956;font-family:system-ui,-apple-system,sans-serif}.s-text-muted{fill:#6e7682;font-family:system-ui,-apple-system,sans-serif}.s-text-acc{fill:#c53500;font-family:system-ui,-apple-system,sans-serif}.s-text-on-acc{fill:#fffefd;font-family:system-ui,-apple-system,sans-serif}.s-text-ok{fill:#268854;font-family:system-ui,-apple-system,sans-serif}.s-text-bad{fill:#c73434;font-family:system-ui,-apple-system,sans-serif}.s-text-mono{fill:#6e7682;font-family:ui-monospace,Menlo,monospace}.s-text-mono-ink{fill:#18202b;font-family:ui-monospace,Menlo,monospace}.s-num{fill:#18202b;font-family:system-ui,-apple-system,sans-serif}</style><rect x="0" y="0" width="1600" height="1000" class="s-bg"/>
+    <rect x="0" y="0" width="268" height="1000" class="s-sunk"/>
+    <rect x="267" y="0" width="1" height="1000" class="s-line"/>
+    <!-- Workspace switcher -->
+    <rect x="20" y="20" width="228" height="48" rx="9" class="s-panel"/>
+    <rect x="20.5" y="20.5" width="227" height="47" rx="9" class="s-stroke"/>
+    <rect x="30" y="29" width="30" height="30" rx="7" class="s-acc"/>
+    <rect x="37" y="36" width="16" height="3.2" rx="1.6" class="s-panel"/>
+    <rect x="37" y="42" width="10.5" height="3.2" rx="1.6" class="s-panel"/>
+    <rect x="37" y="48" width="3.5" height="3.2" rx="1.6" class="s-panel"/>
+    <path d="M44.5 49.5l2.2 2.2 4.5-4.5" class="s-stroke-panel" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="70" y="42" font-size="15.5" font-weight="720" class="s-text">Ferrow</text>
+    <text x="70" y="58" font-size="12" font-weight="500" class="s-text-muted">48 active sites</text>
+    <path d="M228 40l4-4 4 4M228 48l4 4 4-4" class="s-stroke-muted" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Quick command search -->
+    <rect x="20" y="84" width="228" height="38" rx="8" class="s-panel"/>
+    <rect x="20.5" y="84.5" width="227" height="37" rx="8" class="s-stroke"/>
+    <circle cx="38" cy="102" r="5.5" class="s-stroke-muted" stroke-width="1.5"/>
+    <path d="M42.2 106.2l3.3 3.3" class="s-stroke-muted" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="54" y="108" font-size="13.5" font-weight="500" class="s-text-muted">Jump to site or asset</text>
+    <rect x="205" y="92" width="33" height="22" rx="5" class="s-sunk"/>
+    <rect x="205.5" y="92.5" width="32" height="21" rx="5" class="s-stroke"/>
+    <text x="221.5" y="107" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">⌘K</text>
+
+    <text x="28" y="152" font-size="11.5" font-weight="650" letter-spacing="1.4" class="s-text-mono">OPERATIONS</text>
+  <rect x="32" y="177" width="6.5" height="6.5" rx="1.5" class="s-muted"/><rect x="41" y="177" width="6.5" height="6.5" rx="1.5" class="s-muted"/><rect x="32" y="186" width="6.5" height="6.5" rx="1.5" class="s-muted"/><rect x="41" y="186" width="6.5" height="6.5" rx="1.5" class="s-muted"/><text x="58" y="190" font-size="15.5" font-weight="500" class="s-text-soft">Overview</text><rect x="32" y="223" width="15.5" height="13.5" rx="2.5" class="s-stroke-muted" stroke-width="1.6"/><path d="M32 227.5h15.5M36.5 221v3M43 221v3" class="s-stroke-muted" stroke-width="1.6" stroke-linecap="round"/><text x="58" y="234" font-size="15.5" font-weight="500" class="s-text-soft">Planner</text><rect x="210" y="219" width="30" height="20" rx="5" class="s-bg"/><text x="225" y="233" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-mono">18</text><rect x="32" y="265.5" width="15.5" height="15.5" rx="3" class="s-stroke-muted" stroke-width="1.6"/><path d="M36 273.5l3 3 5-5.5" class="s-stroke-muted" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><text x="58" y="278" font-size="15.5" font-weight="500" class="s-text-soft">Inspections</text><rect x="210" y="263" width="30" height="20" rx="5" class="s-bg"/><text x="225" y="277" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-mono">12</text><rect x="16" y="298" width="236" height="38" rx="8" class="s-panel"/><rect x="16.5" y="298.5" width="235" height="37" rx="8" class="s-stroke"/><rect x="16" y="306" width="3.5" height="22" rx="1.75" class="s-acc"/><circle cx="39.75" cy="316.75" r="6.5" class="s-stroke-acc" stroke-width="1.6"/><path d="M39.75 313.5v3.5l2.5 1.8" class="s-stroke-acc" stroke-width="1.6" stroke-linecap="round"/><text x="58" y="322" font-size="15.5" font-weight="660" class="s-text">Work orders</text><rect x="210" y="307" width="30" height="20" rx="5" class="s-acc2"/><text x="225" y="321" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-acc">58</text><path d="M34 354h7.5l4 4v10a1.5 1.5 0 0 1-1.5 1.5H34A1.5 1.5 0 0 1 32.5 368V355.5A1.5 1.5 0 0 1 34 354z" class="s-stroke-muted" stroke-width="1.6"/><path d="M36 362.5h7M36 365.5h5" class="s-stroke-muted" stroke-width="1.5" stroke-linecap="round"/><text x="58" y="366" font-size="15.5" font-weight="500" class="s-text-soft">Certificates</text><rect x="210" y="351" width="30" height="20" rx="5" class="s-bg"/><text x="225" y="365" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-mono">4</text><path d="M33.5 411.5V405M39.5 411.5V400M45.5 411.5V403" class="s-stroke-muted" stroke-width="2" stroke-linecap="round"/><text x="58" y="410" font-size="15.5" font-weight="500" class="s-text-soft">Reports</text><rect x="20" y="454" width="228" height="1" class="s-line"/><text x="28" y="484" font-size="11.5" font-weight="650" letter-spacing="1.4" class="s-text-mono">ESTATE SITES</text><text x="240" y="484" font-size="11.5" font-weight="500" text-anchor="end" class="s-text-mono">SLA</text><circle cx="34" cy="510" r="4.5" class="s-ok"/><text x="48" y="515" font-size="14.5" font-weight="520" class="s-text-soft">North depot</text><text x="240" y="515" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">98%</text><circle cx="34" cy="548" r="4.5" class="s-warn"/><text x="48" y="553" font-size="14.5" font-weight="520" class="s-text-soft">Harbour clinic</text><text x="240" y="553" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">81%</text><circle cx="34" cy="586" r="4.5" class="s-ok"/><text x="48" y="591" font-size="14.5" font-weight="520" class="s-text-soft">Elm House</text><text x="240" y="591" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">95%</text><circle cx="34" cy="624" r="4.5" class="s-ok"/><text x="48" y="629" font-size="14.5" font-weight="520" class="s-text-soft">East campus</text><text x="240" y="629" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">92%</text><circle cx="34" cy="662" r="4.5" class="s-bad"/><text x="48" y="667" font-size="14.5" font-weight="520" class="s-text-soft">West depot</text><text x="240" y="667" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">74%</text>
+    <rect x="20" y="844" width="228" height="58" rx="9" class="s-panel"/>
+    <rect x="20.5" y="844.5" width="227" height="57" rx="9" class="s-stroke"/>
+    <circle cx="38" cy="864" r="4.5" class="s-ok"/>
+    <text x="50" y="868" font-size="13" font-weight="640" class="s-text">Field sync healthy</text>
+    <text x="34" y="888" font-size="12" font-weight="500" class="s-text-mono">14 devices · 2m ago</text>
+
+    <rect x="20" y="916" width="228" height="62" rx="9" class="s-panel"/>
+    <rect x="20.5" y="916.5" width="227" height="61" rx="9" class="s-stroke"/>
+    <circle cx="48" cy="947" r="17" class="s-data2"/><text x="48" y="951.5" font-size="13" font-weight="680" text-anchor="middle" class="s-text">HL</text>
+    <text x="74" y="942" font-size="14" font-weight="660" class="s-text">Hana Lindqvist</text>
+    <text x="74" y="960" font-size="12" font-weight="500" class="s-text-muted">Estates Director</text>
+  
+    <rect x="268" y="0" width="1332" height="76" class="s-panel"/>
+    <rect x="268" y="75" width="1332" height="1" class="s-line"/>
+    <text x="304" y="34" font-size="12" font-weight="600" letter-spacing="0.8" class="s-text-mono">REACTIVE / DISPATCH BOARD</text>
+    <text x="304" y="58" font-size="22" font-weight="720" letter-spacing="-0.4" class="s-text">Work orders &amp; contractors</text>
+    <!-- Date range & filter -->
+    <rect x="1152" y="20" width="142" height="36" rx="7" class="s-bg"/>
+    <rect x="1152.5" y="20.5" width="141" height="35" rx="7" class="s-stroke"/>
+    <text x="1223" y="43" font-size="13.5" font-weight="560" text-anchor="middle" class="s-text-soft">Last 90 days ▾</text>
+    <rect x="1306" y="20" width="114" height="36" rx="7" class="s-bg"/>
+    <rect x="1306.5" y="20.5" width="113" height="35" rx="7" class="s-stroke"/>
+    <text x="1363" y="43" font-size="13.5" font-weight="560" text-anchor="middle" class="s-text-soft">Export CSV</text>
+    <rect x="1432" y="20" width="136" height="36" rx="7" class="s-acc"/>
+    <text x="1500" y="43" font-size="14" font-weight="660" text-anchor="middle" class="s-text-on-acc">+ Raise job</text>
+  
+    <rect x="304" y="96" width="1264" height="58" rx="10" class="s-panel"/>
+    <rect x="304.5" y="96.5" width="1263" height="57" rx="10" class="s-stroke"/>
+    <rect x="320" y="108" width="108" height="34" rx="7" class="s-ink"/><rect x="320.5" y="108.5" width="107" height="33" rx="7" class="s-stroke"/><text x="374" y="130" font-size="13.5" font-weight="640" text-anchor="middle" class="s-text-on-acc">Board view</text>
+    <rect x="438" y="108" width="92" height="34" rx="7" class="s-panel"/><rect x="438.5" y="108.5" width="91" height="33" rx="7" class="s-stroke"/><text x="484" y="130" font-size="13.5" font-weight="520" text-anchor="middle" class="s-text-soft">List view</text>
+    <rect x="540" y="108" width="128" height="34" rx="7" class="s-panel"/><rect x="540.5" y="108.5" width="127" height="33" rx="7" class="s-stroke"/><text x="604" y="130" font-size="13.5" font-weight="520" text-anchor="middle" class="s-text-soft">P1 Urgent (9)</text>
+    <text x="1080" y="130" font-size="13" font-weight="600" class="s-text-mono">MONTH SPEND</text>
+    <text x="1192" y="130" font-size="16" font-weight="740" class="s-num">$18,420</text>
+    <rect x="1282" y="112" width="1" height="26" class="s-line"/>
+    <text x="1300" y="130" font-size="13" font-weight="600" class="s-text-mono">SLA MET</text>
+    <text x="1376" y="130" font-size="16" font-weight="740" class="s-text-ok">96.4%</text>
+    <rect x="1446" y="112" width="106" height="26" rx="13" class="s-ok2"/><circle cx="1460" cy="125" r="4" class="s-ok"/><text x="1471" y="129.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">14 portals</text>
+  
+      <rect x="304" y="172" width="408" height="802" rx="11" class="s-sunk"/>
+      <rect x="304.5" y="172.5" width="407" height="801" rx="11" class="s-stroke"/>
+      <circle cx="328" cy="204" r="5" class="s-bad"/>
+      <text x="342" y="210" font-size="16" font-weight="680" class="s-text">Triaged</text>
+      <rect x="664" y="191" width="32" height="24" rx="6" class="s-panel"/>
+      <text x="680" y="207" font-size="12.5" font-weight="700" text-anchor="middle" class="s-text-mono-ink">14</text>
+    
+        <rect x="318" y="232" width="380" height="226" rx="10" class="s-panel"/>
+        <rect x="318.5" y="232.5" width="379" height="225" rx="10" class="s-stroke"/>
+        <text x="334" y="262" font-size="12" font-weight="680" class="s-text-mono">WO-2841</text>
+        <rect x="590" y="246" width="92" height="24" rx="12" class="s-bad2"/><circle cx="604" cy="258" r="4" class="s-bad"/><text x="615" y="262.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">P1 · 24h</text>
+        <text x="334" y="296" font-size="16" font-weight="680" class="s-text">Fire door closer arm leaking oil</text>
+        <text x="334" y="320" font-size="13" font-weight="500" class="s-text-muted">North depot · FD-02</text>
+
+        <!-- Contractor chip -->
+        <rect x="334" y="338" width="348" height="46" rx="7" class="s-bg"/>
+        <rect x="334.5" y="338.5" width="347" height="45" rx="7" class="s-stroke"/>
+        <text x="346" y="357" font-size="11" font-weight="600" class="s-text-mono">CONTRACTOR</text>
+        <text x="346" y="375" font-size="13.5" font-weight="640" class="s-text">Fire safety partner</text>
+        <text x="670" y="367" font-size="13" font-weight="700" text-anchor="end" class="s-text-mono-ink">$340 est</text>
+
+        <rect x="334" y="400" width="348" height="1" class="s-grid"/>
+        <rect x="334" y="412" width="118" height="26" rx="5" class="s-sunk"/>
+        <text x="393" y="429" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-soft">From inspection</text>
+        <text x="682" y="430" font-size="12.5" font-weight="660" text-anchor="end" class="s-text-bad">18h left</text>
+      
+        <rect x="318" y="474" width="380" height="226" rx="10" class="s-panel"/>
+        <rect x="318.5" y="474.5" width="379" height="225" rx="10" class="s-stroke"/>
+        <text x="334" y="504" font-size="12" font-weight="680" class="s-text-mono">WO-2839</text>
+        <rect x="590" y="488" width="92" height="24" rx="12" class="s-bad2"/><circle cx="604" cy="500" r="4" class="s-bad"/><text x="615" y="504.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">P1 · 4h</text>
+        <text x="334" y="538" font-size="16" font-weight="680" class="s-text">Cold room 2 compressor fault</text>
+        <text x="334" y="562" font-size="13" font-weight="500" class="s-text-muted">West depot · CR-02</text>
+
+        <!-- Contractor chip -->
+        <rect x="334" y="580" width="348" height="46" rx="7" class="s-bg"/>
+        <rect x="334.5" y="580.5" width="347" height="45" rx="7" class="s-stroke"/>
+        <text x="346" y="599" font-size="11" font-weight="600" class="s-text-mono">CONTRACTOR</text>
+        <text x="346" y="617" font-size="13.5" font-weight="640" class="s-text">HVAC partner</text>
+        <text x="670" y="609" font-size="13" font-weight="700" text-anchor="end" class="s-text-mono-ink">$1,180 est</text>
+
+        <rect x="334" y="642" width="348" height="1" class="s-grid"/>
+        <rect x="334" y="654" width="118" height="26" rx="5" class="s-sunk"/>
+        <text x="393" y="671" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-soft">Sensor alert</text>
+        <text x="682" y="672" font-size="12.5" font-weight="660" text-anchor="end" class="s-text-bad">2h 15m</text>
+      
+        <rect x="318" y="716" width="380" height="226" rx="10" class="s-panel"/>
+        <rect x="318.5" y="716.5" width="379" height="225" rx="10" class="s-stroke"/>
+        <text x="334" y="746" font-size="12" font-weight="680" class="s-text-mono">WO-2836</text>
+        <rect x="590" y="730" width="92" height="24" rx="12" class="s-warn2"/><circle cx="604" cy="742" r="4" class="s-warn"/><text x="615" y="746.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">P2 · 48h</text>
+        <text x="334" y="780" font-size="16" font-weight="680" class="s-text">Car park floodlight circuit trip</text>
+        <text x="334" y="804" font-size="13" font-weight="500" class="s-text-muted">Elm House · EL-14</text>
+
+        <!-- Contractor chip -->
+        <rect x="334" y="822" width="348" height="46" rx="7" class="s-bg"/>
+        <rect x="334.5" y="822.5" width="347" height="45" rx="7" class="s-stroke"/>
+        <text x="346" y="841" font-size="11" font-weight="600" class="s-text-mono">CONTRACTOR</text>
+        <text x="346" y="859" font-size="13.5" font-weight="640" class="s-text">Electrical partner</text>
+        <text x="670" y="851" font-size="13" font-weight="700" text-anchor="end" class="s-text-mono-ink">$260 est</text>
+
+        <rect x="334" y="884" width="348" height="1" class="s-grid"/>
+        <rect x="334" y="896" width="118" height="26" rx="5" class="s-sunk"/>
+        <text x="393" y="913" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-soft">QR report</text>
+        <text x="682" y="914" font-size="12.5" font-weight="660" text-anchor="end" class="s-text-mono">31h left</text>
+      
+      <rect x="732" y="172" width="408" height="802" rx="11" class="s-sunk"/>
+      <rect x="732.5" y="172.5" width="407" height="801" rx="11" class="s-stroke"/>
+      <circle cx="756" cy="204" r="5" class="s-acc"/>
+      <text x="770" y="210" font-size="16" font-weight="680" class="s-text">With contractor</text>
+      <rect x="1092" y="191" width="32" height="24" rx="6" class="s-panel"/>
+      <text x="1108" y="207" font-size="12.5" font-weight="700" text-anchor="middle" class="s-text-mono-ink">22</text>
+    
+        <rect x="746" y="232" width="380" height="226" rx="10" class="s-panel"/>
+        <rect x="746.5" y="232.5" width="379" height="225" rx="10" class="s-stroke"/>
+        <text x="762" y="262" font-size="12" font-weight="680" class="s-text-mono">WO-2831</text>
+        <rect x="1018" y="246" width="92" height="24" rx="12" class="s-acc2"/><circle cx="1032" cy="258" r="4" class="s-acc"/><text x="1043" y="262.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">P1 · 24h</text>
+        <text x="762" y="296" font-size="16" font-weight="680" class="s-text">Boiler pressure relief valve</text>
+        <text x="762" y="320" font-size="13" font-weight="500" class="s-text-muted">Harbour clinic · BLR-01</text>
+
+        <!-- Contractor chip -->
+        <rect x="762" y="338" width="348" height="46" rx="7" class="s-bg"/>
+        <rect x="762.5" y="338.5" width="347" height="45" rx="7" class="s-stroke"/>
+        <text x="774" y="357" font-size="11" font-weight="600" class="s-text-mono">CONTRACTOR</text>
+        <text x="774" y="375" font-size="13.5" font-weight="640" class="s-text">Heating partner</text>
+        <text x="1098" y="367" font-size="13" font-weight="700" text-anchor="end" class="s-text-mono-ink">$620 PO</text>
+
+        <rect x="762" y="400" width="348" height="1" class="s-grid"/>
+        <rect x="762" y="412" width="118" height="26" rx="5" class="s-sunk"/>
+        <text x="821" y="429" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-soft">Asset history</text>
+        <text x="1110" y="430" font-size="12.5" font-weight="660" text-anchor="end" class="s-text-mono">On site now</text>
+      
+        <rect x="746" y="474" width="380" height="226" rx="10" class="s-panel"/>
+        <rect x="746.5" y="474.5" width="379" height="225" rx="10" class="s-stroke"/>
+        <text x="762" y="504" font-size="12" font-weight="680" class="s-text-mono">WO-2828</text>
+        <rect x="1018" y="488" width="92" height="24" rx="12" class="s-data2"/><circle cx="1032" cy="500" r="4" class="s-data"/><text x="1043" y="504.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">P2 · 5d</text>
+        <text x="762" y="538" font-size="16" font-weight="680" class="s-text">Passenger lift door sensor</text>
+        <text x="762" y="562" font-size="13" font-weight="500" class="s-text-muted">Old mill · LFT-01</text>
+
+        <!-- Contractor chip -->
+        <rect x="762" y="580" width="348" height="46" rx="7" class="s-bg"/>
+        <rect x="762.5" y="580.5" width="347" height="45" rx="7" class="s-stroke"/>
+        <text x="774" y="599" font-size="11" font-weight="600" class="s-text-mono">CONTRACTOR</text>
+        <text x="774" y="617" font-size="13.5" font-weight="640" class="s-text">Lift service partner</text>
+        <text x="1098" y="609" font-size="13" font-weight="700" text-anchor="end" class="s-text-mono-ink">$890 PO</text>
+
+        <rect x="762" y="642" width="348" height="1" class="s-grid"/>
+        <rect x="762" y="654" width="118" height="26" rx="5" class="s-sunk"/>
+        <text x="821" y="671" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-soft">Portal updated</text>
+        <text x="1110" y="672" font-size="12.5" font-weight="660" text-anchor="end" class="s-text-mono">Booked Thu</text>
+      
+        <rect x="746" y="716" width="380" height="226" rx="10" class="s-panel"/>
+        <rect x="746.5" y="716.5" width="379" height="225" rx="10" class="s-stroke"/>
+        <text x="762" y="746" font-size="12" font-weight="680" class="s-text-mono">WO-2824</text>
+        <rect x="1018" y="730" width="92" height="24" rx="12" class="s-sunk"/><circle cx="1032" cy="742" r="4" class="s-muted"/><text x="1043" y="746.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">P3 · 10d</text>
+        <text x="762" y="780" font-size="16" font-weight="680" class="s-text">Kitchen extract damper rattle</text>
+        <text x="762" y="804" font-size="13" font-weight="500" class="s-text-muted">East campus · HVC-08</text>
+
+        <!-- Contractor chip -->
+        <rect x="762" y="822" width="348" height="46" rx="7" class="s-bg"/>
+        <rect x="762.5" y="822.5" width="347" height="45" rx="7" class="s-stroke"/>
+        <text x="774" y="841" font-size="11" font-weight="600" class="s-text-mono">CONTRACTOR</text>
+        <text x="774" y="859" font-size="13.5" font-weight="640" class="s-text">HVAC partner</text>
+        <text x="1098" y="851" font-size="13" font-weight="700" text-anchor="end" class="s-text-mono-ink">$410 est</text>
+
+        <rect x="762" y="884" width="348" height="1" class="s-grid"/>
+        <rect x="762" y="896" width="118" height="26" rx="5" class="s-sunk"/>
+        <text x="821" y="913" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-soft">Quote pending</text>
+        <text x="1110" y="914" font-size="12.5" font-weight="660" text-anchor="end" class="s-text-mono">4d left</text>
+      
+      <rect x="1160" y="172" width="408" height="802" rx="11" class="s-sunk"/>
+      <rect x="1160.5" y="172.5" width="407" height="801" rx="11" class="s-stroke"/>
+      <circle cx="1184" cy="204" r="5" class="s-ok"/>
+      <text x="1198" y="210" font-size="16" font-weight="680" class="s-text">Awaiting sign-off</text>
+      <rect x="1520" y="191" width="32" height="24" rx="6" class="s-panel"/>
+      <text x="1536" y="207" font-size="12.5" font-weight="700" text-anchor="middle" class="s-text-mono-ink">9</text>
+    
+        <rect x="1174" y="232" width="380" height="226" rx="10" class="s-panel"/>
+        <rect x="1174.5" y="232.5" width="379" height="225" rx="10" class="s-stroke"/>
+        <text x="1190" y="262" font-size="12" font-weight="680" class="s-text-mono">WO-2819</text>
+        <rect x="1446" y="246" width="92" height="24" rx="12" class="s-ok2"/><circle cx="1460" cy="258" r="4" class="s-ok"/><text x="1471" y="262.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">Complete</text>
+        <text x="1190" y="296" font-size="16" font-weight="680" class="s-text">Emergency light battery pack</text>
+        <text x="1190" y="320" font-size="13" font-weight="500" class="s-text-muted">Station Road · EM-06</text>
+
+        <!-- Contractor chip -->
+        <rect x="1190" y="338" width="348" height="46" rx="7" class="s-bg"/>
+        <rect x="1190.5" y="338.5" width="347" height="45" rx="7" class="s-stroke"/>
+        <text x="1202" y="357" font-size="11" font-weight="600" class="s-text-mono">CONTRACTOR</text>
+        <text x="1202" y="375" font-size="13.5" font-weight="640" class="s-text">Electrical partner</text>
+        <text x="1526" y="367" font-size="13" font-weight="700" text-anchor="end" class="s-text-mono-ink">$215 inv</text>
+
+        <rect x="1190" y="400" width="348" height="1" class="s-grid"/>
+        <rect x="1190" y="412" width="118" height="26" rx="5" class="s-sunk"/>
+        <text x="1249" y="429" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-soft">Cert uploaded</text>
+        <text x="1538" y="430" font-size="12.5" font-weight="660" text-anchor="end" class="s-text-mono">2 photos</text>
+      
+        <rect x="1174" y="474" width="380" height="226" rx="10" class="s-panel"/>
+        <rect x="1174.5" y="474.5" width="379" height="225" rx="10" class="s-stroke"/>
+        <text x="1190" y="504" font-size="12" font-weight="680" class="s-text-mono">WO-2815</text>
+        <rect x="1446" y="488" width="92" height="24" rx="12" class="s-ok2"/><circle cx="1460" cy="500" r="4" class="s-ok"/><text x="1471" y="504.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">Complete</text>
+        <text x="1190" y="538" font-size="16" font-weight="680" class="s-text">Hot water mixing valve swap</text>
+        <text x="1190" y="562" font-size="13" font-weight="500" class="s-text-muted">Elm House · WTR-03</text>
+
+        <!-- Contractor chip -->
+        <rect x="1190" y="580" width="348" height="46" rx="7" class="s-bg"/>
+        <rect x="1190.5" y="580.5" width="347" height="45" rx="7" class="s-stroke"/>
+        <text x="1202" y="599" font-size="11" font-weight="600" class="s-text-mono">CONTRACTOR</text>
+        <text x="1202" y="617" font-size="13.5" font-weight="640" class="s-text">Heating partner</text>
+        <text x="1526" y="609" font-size="13" font-weight="700" text-anchor="end" class="s-text-mono-ink">$485 inv</text>
+
+        <rect x="1190" y="642" width="348" height="1" class="s-grid"/>
+        <rect x="1190" y="654" width="118" height="26" rx="5" class="s-sunk"/>
+        <text x="1249" y="671" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-soft">Ready to close</text>
+        <text x="1538" y="672" font-size="12.5" font-weight="660" text-anchor="end" class="s-text-mono">Signed</text>
+      
+        <rect x="1174" y="716" width="380" height="226" rx="10" class="s-panel"/>
+        <rect x="1174.5" y="716.5" width="379" height="225" rx="10" class="s-stroke"/>
+        <text x="1190" y="746" font-size="12" font-weight="680" class="s-text-mono">WO-2811</text>
+        <rect x="1446" y="730" width="92" height="24" rx="12" class="s-ok2"/><circle cx="1460" cy="742" r="4" class="s-ok"/><text x="1471" y="746.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">Complete</text>
+        <text x="1190" y="780" font-size="16" font-weight="680" class="s-text">Loading bay dock bumper</text>
+        <text x="1190" y="804" font-size="13" font-weight="500" class="s-text-muted">North depot · DOK-04</text>
+
+        <!-- Contractor chip -->
+        <rect x="1190" y="822" width="348" height="46" rx="7" class="s-bg"/>
+        <rect x="1190.5" y="822.5" width="347" height="45" rx="7" class="s-stroke"/>
+        <text x="1202" y="841" font-size="11" font-weight="600" class="s-text-mono">CONTRACTOR</text>
+        <text x="1202" y="859" font-size="13.5" font-weight="640" class="s-text">Fabric partner</text>
+        <text x="1526" y="851" font-size="13" font-weight="700" text-anchor="end" class="s-text-mono-ink">$740 inv</text>
+
+        <rect x="1190" y="884" width="348" height="1" class="s-grid"/>
+        <rect x="1190" y="896" width="118" height="26" rx="5" class="s-sunk"/>
+        <text x="1249" y="913" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-soft">PO matched</text>
+        <text x="1538" y="914" font-size="12.5" font-weight="660" text-anchor="end" class="s-text-mono">Invoice ok</text>
+      </svg>

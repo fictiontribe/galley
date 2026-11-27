@@ -88,9 +88,10 @@ npm run preview   # serves dist/ locally
   role, photo, bio), reading time, newer and older links, paginated
   listings and a page for every tag.
 - **A team** collection, shown by the `team` section.
-- **Three looks** — *Lowfield* (warm paper and terracotta, Newsreader and
-  Instrument Sans; the default), *Sage* (cool green, rounded, Bricolage
-  Grotesque and Figtree) and *Evening* (dark). Each is one tokens file.
+- **Three looks** — *Lowfield* (warm cotton paper, lime plaster and kiln
+  terracotta, Newsreader and Instrument Sans; the default), *Sage* (chalk
+  paper and deep botanical slate, Bricolage Grotesque and Figtree) and
+  *Evening* (warm candlelit peat and ochre). Each is one tokens file.
 - **Five page templates** — a service page, a project story, about,
   contact and a journal post, ready to start a new page from.
 - **Settings files** — `src/data/site.json` (name, contact details,
@@ -151,7 +152,7 @@ sections:
 ```
 
 Write links and images from the site root (`/contact/`,
-`/images/plan.svg`) — in front matter, in `src/data/`, in Markdown bodies
+`/images/plan.webp`) — in front matter, in `src/data/`, in Markdown bodies
 and in forms alike. They are adjusted for you when the site is served
 under a sub-path.
 
@@ -295,7 +296,7 @@ errors); swap the font `@import` lines (any `@fontsource-variable`
 package) and `--font-display` / `--font-body`. Keep every text colour at
 least WCAG AA (4.5:1) on its ground; the comment at the top of the tokens
 file says which pairs matter. Logos drawn in `currentColor` follow the
-look; the illustrations keep their own colours, like photographs.
+look; architectural photography and portraits keep their natural colour.
 
 ### Thumbnails and previews
 

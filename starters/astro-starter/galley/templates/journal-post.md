@@ -3,7 +3,7 @@ title: A title that answers a question people ask you
 description: One sentence on what the reader will know by the end.
 date: 2026-11-23
 author: nell-okafor
-image: /images/blog/planning.svg
+image: /images/blog/planning.webp
 imageAlt: Describe the cover picture for someone who can't see it
 tags:
   - Planning ahead

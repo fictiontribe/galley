@@ -1,5 +1,6 @@
 ---
-// A numbered process. Numbers are generated from the order of `items`.
+// Architectural stage schedule: sticky intro column beside numbered horizontal
+// stages separated by crisp 1px hairlines.
 import Section from "../Section.astro";
 import SectionHeader from "../SectionHeader.astro";
 import Actions from "../Actions.astro";
@@ -26,7 +27,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 <Section type="steps" block={block} id={id} tone={tone} labelledby={headingId}>
   <div class="steps-layout">
     <div class="steps-layout__intro">
-      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
+      <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} class="steps-layout__header" />
       <Actions cta={cta} />
     </div>
     <ol class="steps" role="list">
@@ -50,7 +51,17 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 <style>
   .steps-layout {
     display: grid;
+    gap: var(--space-xl);
+  }
+
+  .steps-layout__intro {
+    display: grid;
     gap: var(--space-l);
+    align-content: start;
+  }
+
+  .steps-layout__intro :global(.steps-layout__header) {
+    margin-block-end: 0;
   }
 
   .steps {
@@ -62,7 +73,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     display: grid;
     grid-template-columns: 3.5rem 1fr;
     gap: var(--space-m);
-    padding-block: var(--space-m);
+    padding-block: var(--space-l);
     border-block-start: var(--border-width) solid var(--tone-line);
   }
 
@@ -74,6 +85,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     font-family: var(--font-display);
     font-size: var(--step-3);
     font-style: italic;
+    font-weight: var(--weight-display);
     line-height: 1;
     color: var(--tone-link);
     font-variant-numeric: lining-nums tabular-nums;
@@ -90,8 +102,10 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   }
 
   .step__text {
+    font-size: var(--step--1);
+    line-height: 1.58;
     color: var(--tone-muted);
-    max-width: 36em;
+    max-width: 38em;
   }
 
   @media (min-width: 60rem) {

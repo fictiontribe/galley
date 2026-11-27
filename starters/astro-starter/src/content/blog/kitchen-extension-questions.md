@@ -3,8 +3,8 @@ title: Five questions to ask before you extend your kitchen
 description: Kitchen extensions are the most common project we design, and the easiest to get wrong. Start with these questions and you will brief any architect far better.
 date: 2026-09-02
 author: nell-okafor
-image: /images/blog/kitchen-questions.svg
-imageAlt: Abstract drawing of a kitchen extension with a rooflight and garden doors
+image: /images/blog/kitchen-questions.webp
+imageAlt: Architect's hands sketching a kitchen extension plan in pencil beside a teapot on an oak table
 tags:
   - Extensions
   - Planning ahead

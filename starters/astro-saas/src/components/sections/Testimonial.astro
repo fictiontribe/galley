@@ -29,25 +29,29 @@ const byline = [role, company].filter(Boolean).join(", ");
 
 <Section type="testimonial" id={id} tone={tone} block={block} label={name}>
   <figure class:list={["testimonial", `testimonial--${align}`]}>
-    {logo && company ? <Media src={logo} alt={company} ratio="3/1" contain class="testimonial__logo" /> : <Icon name="quote" size={40} class="testimonial__mark" />}
+    <div class="testimonial__top">
+      {logo && company ? <Media src={logo} alt={company} ratio="3/1" contain class="testimonial__logo" /> : <Icon name="quote" size={34} class="testimonial__mark" />}
+    </div>
     <blockquote class="testimonial__quote">
       <p>{quote}</p>
     </blockquote>
-    <figcaption class="testimonial__by">
-      {image && <Media src={image} alt={imageAlt ?? ""} ratio="1/1" class="testimonial__photo" />}
-      <span>
-        <span class="testimonial__name">{name}</span>
-        {byline && <span class="testimonial__role">{byline}</span>}
-      </span>
-    </figcaption>
-    {
-      cta && (
-        <a class="text-link testimonial__link" href={withBase(cta.href)}>
-          {cta.label}
-          <Icon name="arrow-right" size={18} />
-        </a>
-      )
-    }
+    <div class="testimonial__footer">
+      <figcaption class="testimonial__by">
+        {image && <Media src={image} alt={imageAlt ?? ""} ratio="1/1" class="testimonial__photo" />}
+        <span>
+          <span class="testimonial__name">{name}</span>
+          {byline && <span class="testimonial__role">{byline}</span>}
+        </span>
+      </figcaption>
+      {
+        cta && (
+          <a class="text-link testimonial__link" href={withBase(cta.href)}>
+            {cta.label}
+            <Icon name="arrow-right" size={16} />
+          </a>
+        )
+      }
+    </div>
   </figure>
 </Section>
 
@@ -56,18 +60,22 @@ const byline = [role, company].filter(Boolean).join(", ");
     display: grid;
     gap: var(--space-l);
     justify-items: start;
-    max-width: 60rem;
+    max-width: 62rem;
+    padding-inline-start: var(--space-l);
+    border-inline-start: 2px solid var(--tone-link);
   }
 
   .testimonial--center {
     justify-items: center;
     margin-inline: auto;
+    padding-inline-start: 0;
+    border-inline-start: 0;
     text-align: center;
   }
 
   .testimonial :global(.testimonial__logo) {
-    inline-size: 9rem;
-    block-size: 3rem;
+    inline-size: 8.5rem;
+    block-size: 2.75rem;
     color: var(--tone-text);
   }
 
@@ -77,19 +85,37 @@ const byline = [role, company].filter(Boolean).join(", ");
 
   .testimonial__quote {
     font-family: var(--font-display);
-    font-size: var(--step-4);
+    font-size: var(--step-3);
     font-weight: var(--weight-medium);
-    line-height: 1.12;
-    letter-spacing: -0.03em;
+    line-height: 1.18;
+    letter-spacing: -0.028em;
     text-wrap: balance;
   }
 
   .testimonial__quote p::before {
     content: "“";
+    color: var(--tone-link);
   }
 
   .testimonial__quote p::after {
     content: "”";
+    color: var(--tone-link);
+  }
+
+  .testimonial__footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-m);
+    inline-size: 100%;
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .testimonial--center .testimonial__footer {
+    justify-content: center;
+    gap: var(--space-l);
   }
 
   .testimonial__by {
@@ -100,19 +126,21 @@ const byline = [role, company].filter(Boolean).join(", ");
   }
 
   .testimonial__by :global(.testimonial__photo) {
-    inline-size: 3.5rem;
-    block-size: 3.5rem;
+    inline-size: 3rem;
+    block-size: 3rem;
     border-radius: 50%;
+    border: var(--border-width) solid var(--tone-line);
   }
 
   .testimonial__name {
     display: block;
+    font-size: var(--step--1);
     font-weight: var(--weight-bold);
   }
 
   .testimonial__role {
     display: block;
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     color: var(--tone-muted);
   }
 </style>

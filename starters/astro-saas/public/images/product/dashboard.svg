@@ -1,1 +1,243 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000"><style>.s-bg{fill:#f8f6f3}.s-panel{fill:#fffefd}.s-sunk{fill:#f0ede9}.s-line{fill:#dfdcd7}.s-ink{fill:#1b222c}.s-muted{fill:#81878f}.s-faint{fill:#d0d4db}.s-acc{fill:#d14400}.s-acc2{fill:#ffdfca}.s-ok{fill:#389560}.s-ok2{fill:#d6f2de}.s-warn{fill:#e6ac3d}.s-warn2{fill:#fdedc9}.s-bad{fill:#cf4040}.s-bad2{fill:#ffe4e1}.s-data{fill:#384e6e}.s-data2{fill:#bfccdf}.s-skin{fill:#d6d3cf}.s-hair{fill:#1f2733}.s-hair2{fill:#7d838e}.s-stroke{fill:none;stroke:#dfdcd7}.s-stroke-ink{fill:none;stroke:#1b222c}.s-stroke-acc{fill:none;stroke:#d14400}.s-stroke-data{fill:none;stroke:#384e6e}.s-text{fill:#1b222c;font-family:system-ui,sans-serif}.s-text-muted{fill:#81878f;font-family:system-ui,sans-serif}.s-text-acc{fill:#d14400;font-family:system-ui,sans-serif}.s-num{fill:#1b222c;font-family:system-ui,sans-serif}.s-logo{fill:currentColor}.s-logo-text{fill:currentColor;font-family:system-ui,sans-serif}</style><rect x="0" y="0" width="1600" height="1000" class="s-bg"/><rect x="0" y="0" width="272" height="1000" class="s-sunk"/><rect x="271" y="0" width="1" height="1000" class="s-line"/><rect x="32" y="30" width="36" height="36" rx="9" class="s-acc"/><rect x="41" y="39" width="18" height="4" rx="2" class="s-panel"/><rect x="41" y="46" width="12" height="4" rx="2" class="s-panel"/><rect x="41" y="53" width="4" height="4" rx="2" class="s-panel"/><text x="80" y="56" font-size="24" font-weight="760" text-anchor="start" class="s-text">Ferrow</text><rect x="32" y="96" width="208" height="40" rx="8" class="s-panel"/><rect x="48" y="111" width="90" height="10" rx="5" class="s-faint"/><rect x="20" y="142" width="232" height="42" rx="8" class="s-panel"/><rect x="20" y="150" width="4" height="26" rx="2" class="s-acc"/><rect x="40" y="155" width="16" height="16" rx="4" class="s-acc"/><text x="70" y="168" font-size="19" font-weight="650" text-anchor="start" class="s-text">Overview</text><rect x="40" y="205" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="218" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Planner</text><rect x="40" y="255" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="268" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Inspections</text><rect x="40" y="305" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="318" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Work orders</text><rect x="40" y="355" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="368" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Certificates</text><rect x="40" y="405" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="418" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Reports</text><text x="40" y="520" font-size="14" font-weight="700" text-anchor="start" class="s-text-muted" letter-spacing="2">SITES</text><circle cx="46" cy="552" r="5" class="s-ok"/><text x="62" y="558" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">North depot</text><circle cx="46" cy="592" r="5" class="s-warn"/><text x="62" y="598" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">Harbour clinic</text><circle cx="46" cy="632" r="5" class="s-ok"/><text x="62" y="638" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">Elm House</text><circle cx="46" cy="672" r="5" class="s-ok"/><text x="62" y="678" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">East campus</text><rect x="32" y="910" width="208" height="60" rx="10" class="s-panel"/><circle cx="62" cy="940" r="16" class="s-data2"/><circle cx="62" cy="936.48" r="5.76" class="s-panel"/><path d="M52.08 949.92a9.92 8 0 0 1 19.84 0" class="s-panel"/><rect x="88" y="928" width="100" height="9" rx="4.5" class="s-faint"/><rect x="88" y="946" width="70" height="8" rx="4" class="s-faint"/><rect x="272" y="0" width="1328" height="88" class="s-bg"/><rect x="272" y="87" width="1328" height="1" class="s-line"/><text x="316" y="56" font-size="28" font-weight="720" text-anchor="start" class="s-text" letter-spacing="-0.5">Estate overview</text><rect x="1084" y="24" width="300" height="40" rx="20" class="s-panel"/><rect x="1084.5" y="24.5" width="299" height="39" rx="20" class="s-stroke"/><circle cx="1108" cy="44" r="7" class="s-stroke-ink" stroke-width="2"/><rect x="1126" y="39" width="120" height="10" rx="5" class="s-faint"/><rect x="1404" y="24" width="152" height="40" rx="8" class="s-acc"/><text x="1480" y="50" font-size="17" font-weight="650" text-anchor="middle" class="s-text" style="fill:var(--shot-panel,#fff)">New task</text><rect x="316" y="116" width="294" height="150" rx="14" class="s-panel"/><rect x="316.5" y="116.5" width="293" height="149" rx="14" class="s-stroke"/><text x="340" y="156" font-size="18" font-weight="560" text-anchor="start" class="s-text-muted">Compliance</text><text x="340" y="222" font-size="52" font-weight="720" text-anchor="start" class="s-num" letter-spacing="-2">94%</text><rect x="340" y="240" width="246" height="6" rx="3" class="s-sunk"/><rect x="340" y="240" width="228" height="6" rx="3" class="s-ok"/><text x="586" y="222" font-size="15" font-weight="500" text-anchor="end" class="s-text-muted">+3.1 pts</text><rect x="630" y="116" width="294" height="150" rx="14" class="s-panel"/><rect x="630.5" y="116.5" width="293" height="149" rx="14" class="s-stroke"/><text x="654" y="156" font-size="18" font-weight="560" text-anchor="start" class="s-text-muted">Overdue</text><text x="654" y="222" font-size="52" font-weight="720" text-anchor="start" class="s-num" letter-spacing="-2">37</text><rect x="654" y="240" width="246" height="6" rx="3" class="s-sunk"/><rect x="654" y="240" width="70" height="6" rx="3" class="s-bad"/><text x="900" y="222" font-size="15" font-weight="500" text-anchor="end" class="s-text-muted">−12 this week</text><rect x="944" y="116" width="294" height="150" rx="14" class="s-panel"/><rect x="944.5" y="116.5" width="293" height="149" rx="14" class="s-stroke"/><text x="968" y="156" font-size="18" font-weight="560" text-anchor="start" class="s-text-muted">Due this week</text><text x="968" y="222" font-size="52" font-weight="720" text-anchor="start" class="s-num" letter-spacing="-2">212</text><rect x="968" y="240" width="246" height="6" rx="3" class="s-sunk"/><rect x="968" y="240" width="150" height="6" rx="3" class="s-data"/><text x="1214" y="222" font-size="15" font-weight="500" text-anchor="end" class="s-text-muted">48 sites</text><rect x="1258" y="116" width="294" height="150" rx="14" class="s-panel"/><rect x="1258.5" y="116.5" width="293" height="149" rx="14" class="s-stroke"/><text x="1282" y="156" font-size="18" font-weight="560" text-anchor="start" class="s-text-muted">Open jobs</text><text x="1282" y="222" font-size="52" font-weight="720" text-anchor="start" class="s-num" letter-spacing="-2">58</text><rect x="1282" y="240" width="246" height="6" rx="3" class="s-sunk"/><rect x="1282" y="240" width="110" height="6" rx="3" class="s-acc"/><text x="1528" y="222" font-size="15" font-weight="500" text-anchor="end" class="s-text-muted">9 urgent</text><rect x="316" y="290" width="820" height="420" rx="14" class="s-panel"/><rect x="316.5" y="290.5" width="819" height="419" rx="14" class="s-stroke"/><text x="344" y="334" font-size="21" font-weight="680" text-anchor="start" class="s-text">Compliance by site</text><rect x="990" y="310" width="130" height="28" rx="14" class="s-sunk"/><circle cx="1004" cy="324" r="4" class="s-muted"/><text x="1014" y="327" font-size="14" font-weight="560" text-anchor="start" class="s-text">Last 90 days</text><text x="344" y="387" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">North depot</text><rect x="510" y="372" width="520" height="20" rx="5" class="s-sunk"/><rect x="510" y="372" width="509.6" height="20" rx="5" class="s-data"/><text x="1110" y="388" font-size="17" font-weight="620" text-anchor="end" class="s-text">98%</text><text x="344" y="433" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">Harbour clinic</text><rect x="510" y="418" width="520" height="20" rx="5" class="s-sunk"/><rect x="510" y="418" width="421.2" height="20" rx="5" class="s-warn"/><text x="1110" y="434" font-size="17" font-weight="620" text-anchor="end" class="s-text">81%</text><text x="344" y="479" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">Elm House</text><rect x="510" y="464" width="520" height="20" rx="5" class="s-sunk"/><rect x="510" y="464" width="494" height="20" rx="5" class="s-data"/><text x="1110" y="480" font-size="17" font-weight="620" text-anchor="end" class="s-text">95%</text><text x="344" y="525" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">East campus</text><rect x="510" y="510" width="520" height="20" rx="5" class="s-sunk"/><rect x="510" y="510" width="478.4" height="20" rx="5" class="s-data"/><text x="1110" y="526" font-size="17" font-weight="620" text-anchor="end" class="s-text">92%</text><text x="344" y="571" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">West depot</text><rect x="510" y="556" width="520" height="20" rx="5" class="s-sunk"/><rect x="510" y="556" width="384.8" height="20" rx="5" class="s-warn"/><text x="1110" y="572" font-size="17" font-weight="620" text-anchor="end" class="s-text">74%</text><text x="344" y="617" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">Old mill</text><rect x="510" y="602" width="520" height="20" rx="5" class="s-sunk"/><rect x="510" y="602" width="514.8" height="20" rx="5" class="s-data"/><text x="1110" y="618" font-size="17" font-weight="620" text-anchor="end" class="s-text">99%</text><text x="344" y="663" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">Station Road</text><rect x="510" y="648" width="520" height="20" rx="5" class="s-sunk"/><rect x="510" y="648" width="457.6" height="20" rx="5" class="s-data"/><text x="1110" y="664" font-size="17" font-weight="620" text-anchor="end" class="s-text">88%</text><rect x="978" y="362" width="2" height="330" class="s-acc"/><text x="978" y="704" font-size="13" font-weight="600" text-anchor="middle" class="s-text-acc">Target 90%</text><rect x="1160" y="290" width="396" height="420" rx="14" class="s-panel"/><rect x="1160.5" y="290.5" width="395" height="419" rx="14" class="s-stroke"/><text x="1188" y="334" font-size="21" font-weight="680" text-anchor="start" class="s-text">This week</text><rect x="1188" y="368" width="52" height="48" rx="8" class="s-sunk"/><text x="1214" y="399" font-size="15" font-weight="650" text-anchor="middle" class="s-text">Mon</text><text x="1256" y="388" font-size="16" font-weight="600" text-anchor="start" class="s-text">Fire doors</text><text x="1256" y="409" font-size="14" font-weight="500" text-anchor="start" class="s-text-muted">North depot</text><rect x="1444" y="377" width="65" height="27" rx="13.5" class="s-ok2"/><circle cx="1458" cy="390.5" r="4" class="s-ok"/><text x="1468" y="393" font-size="13" font-weight="560" text-anchor="start" class="s-text">Done</text><rect x="1188" y="432" width="52" height="48" rx="8" class="s-sunk"/><text x="1214" y="463" font-size="15" font-weight="650" text-anchor="middle" class="s-text">Tue</text><text x="1256" y="452" font-size="16" font-weight="600" text-anchor="start" class="s-text">Legionella flush</text><text x="1256" y="473" font-size="14" font-weight="500" text-anchor="start" class="s-text-muted">Elm House</text><rect x="1444" y="441" width="65" height="27" rx="13.5" class="s-ok2"/><circle cx="1458" cy="454.5" r="4" class="s-ok"/><text x="1468" y="457" font-size="13" font-weight="560" text-anchor="start" class="s-text">Done</text><rect x="1188" y="496" width="52" height="48" rx="8" class="s-sunk"/><text x="1214" y="527" font-size="15" font-weight="650" text-anchor="middle" class="s-text">Wed</text><text x="1256" y="516" font-size="16" font-weight="600" text-anchor="start" class="s-text">Boiler service</text><text x="1256" y="537" font-size="14" font-weight="500" text-anchor="start" class="s-text-muted">East campus</text><rect x="1444" y="505" width="72" height="27" rx="13.5" class="s-warn2"/><circle cx="1458" cy="518.5" r="4" class="s-warn"/><text x="1468" y="521" font-size="13" font-weight="560" text-anchor="start" class="s-text">Today</text><rect x="1188" y="560" width="52" height="48" rx="8" class="s-sunk"/><text x="1214" y="591" font-size="15" font-weight="650" text-anchor="middle" class="s-text">Thu</text><text x="1256" y="580" font-size="16" font-weight="600" text-anchor="start" class="s-text">Lift inspection</text><text x="1256" y="601" font-size="14" font-weight="500" text-anchor="start" class="s-text-muted">Old mill</text><rect x="1444" y="569" width="80" height="27" rx="13.5" class="s-data2"/><circle cx="1458" cy="582.5" r="4" class="s-data"/><text x="1468" y="585" font-size="13" font-weight="560" text-anchor="start" class="s-text">Booked</text><rect x="1188" y="624" width="52" height="48" rx="8" class="s-sunk"/><text x="1214" y="655" font-size="15" font-weight="650" text-anchor="middle" class="s-text">Fri</text><text x="1256" y="644" font-size="16" font-weight="600" text-anchor="start" class="s-text">Emergency lights</text><text x="1256" y="665" font-size="14" font-weight="500" text-anchor="start" class="s-text-muted">Harbour</text><rect x="1444" y="633" width="80" height="27" rx="13.5" class="s-data2"/><circle cx="1458" cy="646.5" r="4" class="s-data"/><text x="1468" y="649" font-size="13" font-weight="560" text-anchor="start" class="s-text">Booked</text><rect x="316" y="734" width="1240" height="236" rx="14" class="s-panel"/><rect x="316.5" y="734.5" width="1239" height="235" rx="14" class="s-stroke"/><text x="344" y="778" font-size="21" font-weight="680" text-anchor="start" class="s-text">Overdue</text><rect x="440" y="756" width="52" height="28" rx="14" class="s-bad2"/><circle cx="454" cy="770" r="4" class="s-bad"/><text x="464" y="773" font-size="14" font-weight="560" text-anchor="start" class="s-text">37</text><text x="344" y="818" font-size="14" font-weight="650" text-anchor="start" class="s-text-muted" letter-spacing="0.5">Task</text><text x="760" y="818" font-size="14" font-weight="650" text-anchor="start" class="s-text-muted" letter-spacing="0.5">Site</text><text x="1000" y="818" font-size="14" font-weight="650" text-anchor="start" class="s-text-muted" letter-spacing="0.5">Owner</text><text x="1210" y="818" font-size="14" font-weight="650" text-anchor="start" class="s-text-muted" letter-spacing="0.5">Due</text><text x="1420" y="818" font-size="14" font-weight="650" text-anchor="start" class="s-text-muted" letter-spacing="0.5">Days late</text><rect x="344" y="830" width="1186" height="1" class="s-line"/><rect x="1410" y="847" width="44" height="26" rx="13" class="s-bad2"/><text x="344" y="866" font-size="16" font-weight="650" text-anchor="start" class="s-text">Gas safety certificate renewal</text><text x="760" y="866" font-size="16" font-weight="500" text-anchor="start" class="s-text-muted">Harbour clinic</text><text x="1000" y="866" font-size="16" font-weight="500" text-anchor="start" class="s-text-muted">R. Ferrante</text><text x="1210" y="866" font-size="16" font-weight="500" text-anchor="start" class="s-text-muted">4 Nov</text><text x="1432" y="866" font-size="16" font-weight="650" text-anchor="middle" class="s-text-acc">19</text><rect x="344" y="880" width="1186" height="1" class="s-line"/><rect x="1410" y="885" width="44" height="26" rx="13" class="s-bad2"/><text x="344" y="904" font-size="16" font-weight="650" text-anchor="start" class="s-text">Fire alarm weekly test</text><text x="760" y="904" font-size="16" font-weight="500" text-anchor="start" class="s-text-muted">West depot</text><text x="1000" y="904" font-size="16" font-weight="500" text-anchor="start" class="s-text-muted">J. Marchetti</text><text x="1210" y="904" font-size="16" font-weight="500" text-anchor="start" class="s-text-muted">18 Nov</text><text x="1432" y="904" font-size="16" font-weight="650" text-anchor="middle" class="s-text-acc">5</text><rect x="344" y="918" width="1186" height="1" class="s-line"/><rect x="1410" y="923" width="44" height="26" rx="13" class="s-bad2"/><text x="344" y="942" font-size="16" font-weight="650" text-anchor="start" class="s-text">Water tank inspection</text><text x="760" y="942" font-size="16" font-weight="500" text-anchor="start" class="s-text-muted">Station Road</text><text x="1000" y="942" font-size="16" font-weight="500" text-anchor="start" class="s-text-muted">C. Ashby</text><text x="1210" y="942" font-size="16" font-weight="500" text-anchor="start" class="s-text-muted">20 Nov</text><text x="1432" y="942" font-size="16" font-weight="650" text-anchor="middle" class="s-text-acc">3</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000"><style>.s-bg{fill:#f8f6f2}.s-panel{fill:#fffefd}.s-sunk{fill:#f1eee9}.s-line{fill:#e1ddd7}.s-grid{fill:#eae6e0}.s-ink{fill:#18202b}.s-ink-soft{fill:#3f4956}.s-muted{fill:#6e7682}.s-faint{fill:#cfd4dc}.s-acc{fill:#c53500}.s-acc2{fill:#fce4d6}.s-ok{fill:#268854}.s-ok2{fill:#daf2e3}.s-warn{fill:#cc8b18}.s-warn2{fill:#fcf0d2}.s-bad{fill:#c73434}.s-bad2{fill:#fce2e0}.s-data{fill:#324a6e}.s-data2{fill:#d2dce9}.s-skin{fill:#d6d3cf}.s-hair{fill:#1f2733}.s-hair2{fill:#7d838e}.s-stroke{fill:none;stroke:#e1ddd7}.s-stroke-grid{fill:none;stroke:#eae6e0}.s-stroke-faint{fill:none;stroke:#cfd4dc}.s-stroke-ink{fill:none;stroke:#18202b}.s-stroke-panel{fill:none;stroke:#fffefd}.s-stroke-muted{fill:none;stroke:#6e7682}.s-stroke-acc{fill:none;stroke:#c53500}.s-stroke-ok{fill:none;stroke:#268854}.s-stroke-warn{fill:none;stroke:#cc8b18}.s-stroke-bad{fill:none;stroke:#c73434}.s-stroke-data{fill:none;stroke:#324a6e}.s-text{fill:#18202b;font-family:system-ui,-apple-system,sans-serif}.s-text-soft{fill:#3f4956;font-family:system-ui,-apple-system,sans-serif}.s-text-muted{fill:#6e7682;font-family:system-ui,-apple-system,sans-serif}.s-text-acc{fill:#c53500;font-family:system-ui,-apple-system,sans-serif}.s-text-on-acc{fill:#fffefd;font-family:system-ui,-apple-system,sans-serif}.s-text-ok{fill:#268854;font-family:system-ui,-apple-system,sans-serif}.s-text-bad{fill:#c73434;font-family:system-ui,-apple-system,sans-serif}.s-text-mono{fill:#6e7682;font-family:ui-monospace,Menlo,monospace}.s-text-mono-ink{fill:#18202b;font-family:ui-monospace,Menlo,monospace}.s-num{fill:#18202b;font-family:system-ui,-apple-system,sans-serif}</style><rect x="0" y="0" width="1600" height="1000" class="s-bg"/>
+    <rect x="0" y="0" width="268" height="1000" class="s-sunk"/>
+    <rect x="267" y="0" width="1" height="1000" class="s-line"/>
+    <!-- Workspace switcher -->
+    <rect x="20" y="20" width="228" height="48" rx="9" class="s-panel"/>
+    <rect x="20.5" y="20.5" width="227" height="47" rx="9" class="s-stroke"/>
+    <rect x="30" y="29" width="30" height="30" rx="7" class="s-acc"/>
+    <rect x="37" y="36" width="16" height="3.2" rx="1.6" class="s-panel"/>
+    <rect x="37" y="42" width="10.5" height="3.2" rx="1.6" class="s-panel"/>
+    <rect x="37" y="48" width="3.5" height="3.2" rx="1.6" class="s-panel"/>
+    <path d="M44.5 49.5l2.2 2.2 4.5-4.5" class="s-stroke-panel" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="70" y="42" font-size="15.5" font-weight="720" class="s-text">Ferrow</text>
+    <text x="70" y="58" font-size="12" font-weight="500" class="s-text-muted">48 active sites</text>
+    <path d="M228 40l4-4 4 4M228 48l4 4 4-4" class="s-stroke-muted" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Quick command search -->
+    <rect x="20" y="84" width="228" height="38" rx="8" class="s-panel"/>
+    <rect x="20.5" y="84.5" width="227" height="37" rx="8" class="s-stroke"/>
+    <circle cx="38" cy="102" r="5.5" class="s-stroke-muted" stroke-width="1.5"/>
+    <path d="M42.2 106.2l3.3 3.3" class="s-stroke-muted" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="54" y="108" font-size="13.5" font-weight="500" class="s-text-muted">Jump to site or asset</text>
+    <rect x="205" y="92" width="33" height="22" rx="5" class="s-sunk"/>
+    <rect x="205.5" y="92.5" width="32" height="21" rx="5" class="s-stroke"/>
+    <text x="221.5" y="107" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">⌘K</text>
+
+    <text x="28" y="152" font-size="11.5" font-weight="650" letter-spacing="1.4" class="s-text-mono">OPERATIONS</text>
+  <rect x="16" y="166" width="236" height="38" rx="8" class="s-panel"/><rect x="16.5" y="166.5" width="235" height="37" rx="8" class="s-stroke"/><rect x="16" y="174" width="3.5" height="22" rx="1.75" class="s-acc"/><rect x="32" y="177" width="6.5" height="6.5" rx="1.5" class="s-acc"/><rect x="41" y="177" width="6.5" height="6.5" rx="1.5" class="s-acc"/><rect x="32" y="186" width="6.5" height="6.5" rx="1.5" class="s-acc"/><rect x="41" y="186" width="6.5" height="6.5" rx="1.5" class="s-acc"/><text x="58" y="190" font-size="15.5" font-weight="660" class="s-text">Overview</text><rect x="32" y="223" width="15.5" height="13.5" rx="2.5" class="s-stroke-muted" stroke-width="1.6"/><path d="M32 227.5h15.5M36.5 221v3M43 221v3" class="s-stroke-muted" stroke-width="1.6" stroke-linecap="round"/><text x="58" y="234" font-size="15.5" font-weight="500" class="s-text-soft">Planner</text><rect x="210" y="219" width="30" height="20" rx="5" class="s-bg"/><text x="225" y="233" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-mono">18</text><rect x="32" y="265.5" width="15.5" height="15.5" rx="3" class="s-stroke-muted" stroke-width="1.6"/><path d="M36 273.5l3 3 5-5.5" class="s-stroke-muted" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><text x="58" y="278" font-size="15.5" font-weight="500" class="s-text-soft">Inspections</text><rect x="210" y="263" width="30" height="20" rx="5" class="s-bg"/><text x="225" y="277" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-mono">12</text><circle cx="39.75" cy="316.75" r="6.5" class="s-stroke-muted" stroke-width="1.6"/><path d="M39.75 313.5v3.5l2.5 1.8" class="s-stroke-muted" stroke-width="1.6" stroke-linecap="round"/><text x="58" y="322" font-size="15.5" font-weight="500" class="s-text-soft">Work orders</text><rect x="210" y="307" width="30" height="20" rx="5" class="s-bg"/><text x="225" y="321" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-mono">58</text><path d="M34 354h7.5l4 4v10a1.5 1.5 0 0 1-1.5 1.5H34A1.5 1.5 0 0 1 32.5 368V355.5A1.5 1.5 0 0 1 34 354z" class="s-stroke-muted" stroke-width="1.6"/><path d="M36 362.5h7M36 365.5h5" class="s-stroke-muted" stroke-width="1.5" stroke-linecap="round"/><text x="58" y="366" font-size="15.5" font-weight="500" class="s-text-soft">Certificates</text><rect x="210" y="351" width="30" height="20" rx="5" class="s-bg"/><text x="225" y="365" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-mono">4</text><path d="M33.5 411.5V405M39.5 411.5V400M45.5 411.5V403" class="s-stroke-muted" stroke-width="2" stroke-linecap="round"/><text x="58" y="410" font-size="15.5" font-weight="500" class="s-text-soft">Reports</text><rect x="20" y="454" width="228" height="1" class="s-line"/><text x="28" y="484" font-size="11.5" font-weight="650" letter-spacing="1.4" class="s-text-mono">ESTATE SITES</text><text x="240" y="484" font-size="11.5" font-weight="500" text-anchor="end" class="s-text-mono">SLA</text><circle cx="34" cy="510" r="4.5" class="s-ok"/><text x="48" y="515" font-size="14.5" font-weight="520" class="s-text-soft">North depot</text><text x="240" y="515" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">98%</text><circle cx="34" cy="548" r="4.5" class="s-warn"/><text x="48" y="553" font-size="14.5" font-weight="520" class="s-text-soft">Harbour clinic</text><text x="240" y="553" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">81%</text><circle cx="34" cy="586" r="4.5" class="s-ok"/><text x="48" y="591" font-size="14.5" font-weight="520" class="s-text-soft">Elm House</text><text x="240" y="591" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">95%</text><circle cx="34" cy="624" r="4.5" class="s-ok"/><text x="48" y="629" font-size="14.5" font-weight="520" class="s-text-soft">East campus</text><text x="240" y="629" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">92%</text><circle cx="34" cy="662" r="4.5" class="s-bad"/><text x="48" y="667" font-size="14.5" font-weight="520" class="s-text-soft">West depot</text><text x="240" y="667" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">74%</text>
+    <rect x="20" y="844" width="228" height="58" rx="9" class="s-panel"/>
+    <rect x="20.5" y="844.5" width="227" height="57" rx="9" class="s-stroke"/>
+    <circle cx="38" cy="864" r="4.5" class="s-ok"/>
+    <text x="50" y="868" font-size="13" font-weight="640" class="s-text">Field sync healthy</text>
+    <text x="34" y="888" font-size="12" font-weight="500" class="s-text-mono">14 devices · 2m ago</text>
+
+    <rect x="20" y="916" width="228" height="62" rx="9" class="s-panel"/>
+    <rect x="20.5" y="916.5" width="227" height="61" rx="9" class="s-stroke"/>
+    <circle cx="48" cy="947" r="17" class="s-data2"/><text x="48" y="951.5" font-size="13" font-weight="680" text-anchor="middle" class="s-text">HL</text>
+    <text x="74" y="942" font-size="14" font-weight="660" class="s-text">Hana Lindqvist</text>
+    <text x="74" y="960" font-size="12" font-weight="500" class="s-text-muted">Estates Director</text>
+  
+    <rect x="268" y="0" width="1332" height="76" class="s-panel"/>
+    <rect x="268" y="75" width="1332" height="1" class="s-line"/>
+    <text x="304" y="34" font-size="12" font-weight="600" letter-spacing="0.8" class="s-text-mono">ESTATE / LIVE COMPLIANCE</text>
+    <text x="304" y="58" font-size="22" font-weight="720" letter-spacing="-0.4" class="s-text">Estate overview</text>
+    <!-- Date range & filter -->
+    <rect x="1152" y="20" width="142" height="36" rx="7" class="s-bg"/>
+    <rect x="1152.5" y="20.5" width="141" height="35" rx="7" class="s-stroke"/>
+    <text x="1223" y="43" font-size="13.5" font-weight="560" text-anchor="middle" class="s-text-soft">Last 90 days ▾</text>
+    <rect x="1306" y="20" width="114" height="36" rx="7" class="s-bg"/>
+    <rect x="1306.5" y="20.5" width="113" height="35" rx="7" class="s-stroke"/>
+    <text x="1363" y="43" font-size="13.5" font-weight="560" text-anchor="middle" class="s-text-soft">Export CSV</text>
+    <rect x="1432" y="20" width="136" height="36" rx="7" class="s-acc"/>
+    <text x="1500" y="43" font-size="14" font-weight="660" text-anchor="middle" class="s-text-on-acc">+ New task</text>
+  
+      <rect x="304" y="100" width="304" height="146" rx="11" class="s-panel"/>
+      <rect x="304.5" y="100.5" width="303" height="145" rx="11" class="s-stroke"/>
+      <text x="324" y="128" font-size="11.5" font-weight="640" letter-spacing="1" class="s-text-mono">ESTATE COMPLIANCE</text>
+      <rect x="510" y="112" width="82" height="24" rx="12" class="s-ok2"/><circle cx="524" cy="124" r="4" class="s-ok"/><text x="535" y="128.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">+3.1 pts</text>
+      <text x="324" y="188" font-size="42" font-weight="740" letter-spacing="-1.6" class="s-num">94.2%</text>
+      <rect x="324" y="206" width="264" height="5" rx="2.5" class="s-sunk"/>
+      <rect x="324" y="206" width="248" height="5" rx="2.5" class="s-ok"/>
+      <text x="324" y="232" font-size="12.5" font-weight="500" class="s-text-muted">Target 90% · 48 sites</text>
+    
+      <rect x="624" y="100" width="304" height="146" rx="11" class="s-panel"/>
+      <rect x="624.5" y="100.5" width="303" height="145" rx="11" class="s-stroke"/>
+      <text x="644" y="128" font-size="11.5" font-weight="640" letter-spacing="1" class="s-text-mono">OVERDUE CHECKS</text>
+      <rect x="830" y="112" width="82" height="24" rx="12" class="s-ok2"/><circle cx="844" cy="124" r="4" class="s-ok"/><text x="855" y="128.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">−12 wk</text>
+      <text x="644" y="188" font-size="42" font-weight="740" letter-spacing="-1.6" class="s-num">37</text>
+      <rect x="644" y="206" width="264" height="5" rx="2.5" class="s-sunk"/>
+      <rect x="644" y="206" width="63" height="5" rx="2.5" class="s-bad"/>
+      <text x="644" y="232" font-size="12.5" font-weight="500" class="s-text-muted">6 statutory · 31 routine</text>
+    
+      <rect x="944" y="100" width="304" height="146" rx="11" class="s-panel"/>
+      <rect x="944.5" y="100.5" width="303" height="145" rx="11" class="s-stroke"/>
+      <text x="964" y="128" font-size="11.5" font-weight="640" letter-spacing="1" class="s-text-mono">DUE THIS WEEK</text>
+      <rect x="1150" y="112" width="82" height="24" rx="12" class="s-data2"/><circle cx="1164" cy="124" r="4" class="s-data"/><text x="1175" y="128.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">84% done</text>
+      <text x="964" y="188" font-size="42" font-weight="740" letter-spacing="-1.6" class="s-num">212</text>
+      <rect x="964" y="206" width="264" height="5" rx="2.5" class="s-sunk"/>
+      <rect x="964" y="206" width="222" height="5" rx="2.5" class="s-data"/>
+      <text x="964" y="232" font-size="12.5" font-weight="500" class="s-text-muted">178 signed off · 34 left</text>
+    
+      <rect x="1264" y="100" width="304" height="146" rx="11" class="s-panel"/>
+      <rect x="1264.5" y="100.5" width="303" height="145" rx="11" class="s-stroke"/>
+      <text x="1284" y="128" font-size="11.5" font-weight="640" letter-spacing="1" class="s-text-mono">OPEN WORK ORDERS</text>
+      <rect x="1470" y="112" width="82" height="24" rx="12" class="s-acc2"/><circle cx="1484" cy="124" r="4" class="s-acc"/><text x="1495" y="128.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">9 urgent</text>
+      <text x="1284" y="188" font-size="42" font-weight="740" letter-spacing="-1.6" class="s-num">58</text>
+      <rect x="1284" y="206" width="264" height="5" rx="2.5" class="s-sunk"/>
+      <rect x="1284" y="206" width="111" height="5" rx="2.5" class="s-acc"/>
+      <text x="1284" y="232" font-size="12.5" font-weight="500" class="s-text-muted">Avg response 3h 40m</text>
+    
+    <rect x="304" y="268" width="820" height="414" rx="11" class="s-panel"/>
+    <rect x="304.5" y="268.5" width="819" height="413" rx="11" class="s-stroke"/>
+    <text x="330" y="306" font-size="18" font-weight="680" letter-spacing="-0.2" class="s-text">Statutory compliance by site</text>
+    <text x="330" y="326" font-size="13" font-weight="500" class="s-text-muted">Share of scheduled fire, gas, water and lift checks signed off on time</text>
+    <rect x="974" y="286" width="128" height="28" rx="14" class="s-sunk"/><circle cx="988" cy="300" r="4" class="s-ok"/><text x="999" y="304.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">43 / 48 on SLA</text>
+    <rect x="304" y="344" width="820" height="1" class="s-line"/>
+  <rect x="520" y="356" width="1" height="292" class="s-grid"/><text x="520" y="666" font-size="11.5" font-weight="500" text-anchor="middle" class="s-text-mono">0%</text><rect x="635" y="356" width="1" height="292" class="s-grid"/><text x="635" y="666" font-size="11.5" font-weight="500" text-anchor="middle" class="s-text-mono">25%</text><rect x="750" y="356" width="1" height="292" class="s-grid"/><text x="750" y="666" font-size="11.5" font-weight="500" text-anchor="middle" class="s-text-mono">50%</text><rect x="865" y="356" width="1" height="292" class="s-grid"/><text x="865" y="666" font-size="11.5" font-weight="500" text-anchor="middle" class="s-text-mono">75%</text><rect x="980" y="356" width="1" height="292" class="s-grid"/><text x="980" y="666" font-size="11.5" font-weight="500" text-anchor="middle" class="s-text-mono">100%</text>
+      <text x="330" y="387" font-size="14.5" font-weight="600" class="s-text">Old mill</text>
+      <text x="458" y="387" font-size="12" font-weight="500" class="s-text-mono">North</text>
+      <rect x="520" y="373" width="460" height="18" rx="4" class="s-sunk"/>
+      <rect x="520" y="373" width="455" height="18" rx="4" class="s-data"/>
+      <text x="1034" y="387" font-size="14.5" font-weight="680" text-anchor="end" class="s-text-mono-ink">99%</text>
+      <rect x="1048" y="375" width="54" height="16" rx="4" class="s-ok2"/>
+      <text x="1075" y="386.5" font-size="11" font-weight="640" text-anchor="middle" class="s-text">PASS</text>
+    
+      <text x="330" y="427" font-size="14.5" font-weight="600" class="s-text">North depot</text>
+      <text x="458" y="427" font-size="12" font-weight="500" class="s-text-mono">North</text>
+      <rect x="520" y="413" width="460" height="18" rx="4" class="s-sunk"/>
+      <rect x="520" y="413" width="451" height="18" rx="4" class="s-data"/>
+      <text x="1034" y="427" font-size="14.5" font-weight="680" text-anchor="end" class="s-text-mono-ink">98%</text>
+      <rect x="1048" y="415" width="54" height="16" rx="4" class="s-ok2"/>
+      <text x="1075" y="426.5" font-size="11" font-weight="640" text-anchor="middle" class="s-text">PASS</text>
+    
+      <text x="330" y="467" font-size="14.5" font-weight="600" class="s-text">Elm House</text>
+      <text x="458" y="467" font-size="12" font-weight="500" class="s-text-mono">Central</text>
+      <rect x="520" y="453" width="460" height="18" rx="4" class="s-sunk"/>
+      <rect x="520" y="453" width="437" height="18" rx="4" class="s-data"/>
+      <text x="1034" y="467" font-size="14.5" font-weight="680" text-anchor="end" class="s-text-mono-ink">95%</text>
+      <rect x="1048" y="455" width="54" height="16" rx="4" class="s-ok2"/>
+      <text x="1075" y="466.5" font-size="11" font-weight="640" text-anchor="middle" class="s-text">PASS</text>
+    
+      <text x="330" y="507" font-size="14.5" font-weight="600" class="s-text">East campus</text>
+      <text x="458" y="507" font-size="12" font-weight="500" class="s-text-mono">East</text>
+      <rect x="520" y="493" width="460" height="18" rx="4" class="s-sunk"/>
+      <rect x="520" y="493" width="423" height="18" rx="4" class="s-data"/>
+      <text x="1034" y="507" font-size="14.5" font-weight="680" text-anchor="end" class="s-text-mono-ink">92%</text>
+      <rect x="1048" y="495" width="54" height="16" rx="4" class="s-ok2"/>
+      <text x="1075" y="506.5" font-size="11" font-weight="640" text-anchor="middle" class="s-text">PASS</text>
+    
+      <text x="330" y="547" font-size="14.5" font-weight="600" class="s-text">Station Road</text>
+      <text x="458" y="547" font-size="12" font-weight="500" class="s-text-mono">South</text>
+      <rect x="520" y="533" width="460" height="18" rx="4" class="s-sunk"/>
+      <rect x="520" y="533" width="405" height="18" rx="4" class="s-warn"/>
+      <text x="1034" y="547" font-size="14.5" font-weight="680" text-anchor="end" class="s-text-mono-ink">88%</text>
+      <rect x="1048" y="535" width="54" height="16" rx="4" class="s-warn2"/>
+      <text x="1075" y="546.5" font-size="11" font-weight="640" text-anchor="middle" class="s-text">WATCH</text>
+    
+      <text x="330" y="587" font-size="14.5" font-weight="600" class="s-text">Harbour clinic</text>
+      <text x="458" y="587" font-size="12" font-weight="500" class="s-text-mono">South</text>
+      <rect x="520" y="573" width="460" height="18" rx="4" class="s-sunk"/>
+      <rect x="520" y="573" width="373" height="18" rx="4" class="s-warn"/>
+      <text x="1034" y="587" font-size="14.5" font-weight="680" text-anchor="end" class="s-text-mono-ink">81%</text>
+      <rect x="1048" y="575" width="54" height="16" rx="4" class="s-warn2"/>
+      <text x="1075" y="586.5" font-size="11" font-weight="640" text-anchor="middle" class="s-text">WATCH</text>
+    
+      <text x="330" y="627" font-size="14.5" font-weight="600" class="s-text">West depot</text>
+      <text x="458" y="627" font-size="12" font-weight="500" class="s-text-mono">West</text>
+      <rect x="520" y="613" width="460" height="18" rx="4" class="s-sunk"/>
+      <rect x="520" y="613" width="340" height="18" rx="4" class="s-bad"/>
+      <text x="1034" y="627" font-size="14.5" font-weight="680" text-anchor="end" class="s-text-mono-ink">74%</text>
+      <rect x="1048" y="615" width="54" height="16" rx="4" class="s-bad2"/>
+      <text x="1075" y="626.5" font-size="11" font-weight="640" text-anchor="middle" class="s-text">FLAG</text>
+    <rect x="934" y="354" width="2" height="296" class="s-acc"/><rect x="892" y="346" width="84" height="20" rx="4" class="s-acc"/><text x="934" y="360" font-size="11" font-weight="700" text-anchor="middle" class="s-text-on-acc">TARGET 90%</text>
+    <rect x="1146" y="268" width="422" height="414" rx="11" class="s-panel"/>
+    <rect x="1146.5" y="268.5" width="421" height="413" rx="11" class="s-stroke"/>
+    <text x="1172" y="306" font-size="18" font-weight="680" letter-spacing="-0.2" class="s-text">This week's schedule</text>
+    <text x="1172" y="326" font-size="13" font-weight="500" class="s-text-muted">Wk 48 · 24–28 Nov</text>
+    <text x="1542" y="306" font-size="13" font-weight="640" text-anchor="end" class="s-text-acc">Open planner →</text>
+    <rect x="1146" y="344" width="422" height="1" class="s-line"/>
+  
+      <rect x="1172" y="360" width="48" height="48" rx="8" class="s-sunk"/>
+      <text x="1196" y="378" font-size="10.5" font-weight="700" text-anchor="middle" class="s-text-mono">MON</text>
+      <text x="1196" y="398" font-size="17" font-weight="740" text-anchor="middle" class="s-num">24</text>
+      <text x="1234" y="380" font-size="14.5" font-weight="640" class="s-text">Fire doors (28 assets)</text>
+      <text x="1234" y="400" font-size="13" font-weight="500" class="s-text-muted">North depot</text>
+      <rect x="1456" y="371" width="86" height="26" rx="13" class="s-ok2"/><circle cx="1470" cy="384" r="4" class="s-ok"/><text x="1481" y="388.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">Done</text>
+    <rect x="1172" y="415" width="370" height="1" class="s-grid"/>
+      <rect x="1172" y="422" width="48" height="48" rx="8" class="s-sunk"/>
+      <text x="1196" y="440" font-size="10.5" font-weight="700" text-anchor="middle" class="s-text-mono">TUE</text>
+      <text x="1196" y="460" font-size="17" font-weight="740" text-anchor="middle" class="s-num">25</text>
+      <text x="1234" y="442" font-size="14.5" font-weight="640" class="s-text">Legionella flush &amp; temp</text>
+      <text x="1234" y="462" font-size="13" font-weight="500" class="s-text-muted">Elm House</text>
+      <rect x="1456" y="433" width="86" height="26" rx="13" class="s-ok2"/><circle cx="1470" cy="446" r="4" class="s-ok"/><text x="1481" y="450.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">Done</text>
+    <rect x="1172" y="477" width="370" height="1" class="s-grid"/>
+      <rect x="1172" y="484" width="48" height="48" rx="8" class="s-acc2"/>
+      <text x="1196" y="502" font-size="10.5" font-weight="700" text-anchor="middle" class="s-text-acc">WED</text>
+      <text x="1196" y="522" font-size="17" font-weight="740" text-anchor="middle" class="s-text-acc">26</text>
+      <text x="1234" y="504" font-size="14.5" font-weight="640" class="s-text">Boiler annual service</text>
+      <text x="1234" y="524" font-size="13" font-weight="500" class="s-text-muted">East campus</text>
+      <rect x="1456" y="495" width="86" height="26" rx="13" class="s-warn2"/><circle cx="1470" cy="508" r="4" class="s-warn"/><text x="1481" y="512.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">In prog</text>
+    <rect x="1172" y="539" width="370" height="1" class="s-grid"/>
+      <rect x="1172" y="546" width="48" height="48" rx="8" class="s-sunk"/>
+      <text x="1196" y="564" font-size="10.5" font-weight="700" text-anchor="middle" class="s-text-mono">THU</text>
+      <text x="1196" y="584" font-size="17" font-weight="740" text-anchor="middle" class="s-num">27</text>
+      <text x="1234" y="566" font-size="14.5" font-weight="640" class="s-text">Passenger lift LOLER</text>
+      <text x="1234" y="586" font-size="13" font-weight="500" class="s-text-muted">Old mill</text>
+      <rect x="1456" y="557" width="86" height="26" rx="13" class="s-data2"/><circle cx="1470" cy="570" r="4" class="s-data"/><text x="1481" y="574.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">Booked</text>
+    <rect x="1172" y="601" width="370" height="1" class="s-grid"/>
+      <rect x="1172" y="608" width="48" height="48" rx="8" class="s-sunk"/>
+      <text x="1196" y="626" font-size="10.5" font-weight="700" text-anchor="middle" class="s-text-mono">FRI</text>
+      <text x="1196" y="646" font-size="17" font-weight="740" text-anchor="middle" class="s-num">28</text>
+      <text x="1234" y="628" font-size="14.5" font-weight="640" class="s-text">Emergency lighting 3h</text>
+      <text x="1234" y="648" font-size="13" font-weight="500" class="s-text-muted">Harbour clinic</text>
+      <rect x="1456" y="619" width="86" height="26" rx="13" class="s-data2"/><circle cx="1470" cy="632" r="4" class="s-data"/><text x="1481" y="636.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">Booked</text>
+    
+    <rect x="304" y="704" width="1264" height="270" rx="11" class="s-panel"/>
+    <rect x="304.5" y="704.5" width="1263" height="269" rx="11" class="s-stroke"/>
+    <text x="330" y="742" font-size="18" font-weight="680" letter-spacing="-0.2" class="s-text">Overdue &amp; flagged</text>
+    <rect x="504" y="722" width="62" height="26" rx="13" class="s-bad2"/><circle cx="518" cy="735" r="4" class="s-bad"/><text x="529" y="739.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">37</text>
+    <text x="1542" y="740" font-size="12.5" font-weight="500" text-anchor="end" class="s-text-mono">Sorted by statutory priority · oldest first</text>
+
+    <rect x="304" y="760" width="1264" height="34" class="s-sunk"/>
+    <rect x="304" y="760" width="1264" height="1" class="s-line"/>
+    <rect x="304" y="794" width="1264" height="1" class="s-line"/>
+    <text x="330" y="782" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">ASSET / TASK</text>
+    <text x="740" y="782" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">SITE</text>
+    <text x="955" y="782" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">OWNER</text>
+    <text x="1175" y="782" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">STANDARD</text>
+    <text x="1365" y="782" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">DUE</text>
+    <text x="1542" y="782" font-size="11.5" font-weight="660" letter-spacing="1" text-anchor="end" class="s-text-mono">OVERDUE</text>
+  
+      <rect x="330" y="815" width="64" height="24" rx="5" class="s-sunk"/>
+      <text x="362" y="831" font-size="11.5" font-weight="640" text-anchor="middle" class="s-text-mono-ink">BLR-04</text>
+      <text x="408" y="832" font-size="15" font-weight="620" class="s-text">Gas safety certificate renewal</text>
+      <text x="740" y="832" font-size="14.5" font-weight="500" class="s-text-soft">Harbour clinic</text>
+      <circle cx="968" cy="827" r="13" class="s-data2"/><text x="968" y="831.5" font-size="10" font-weight="680" text-anchor="middle" class="s-text">RF</text>
+      <text x="990" y="832" font-size="14.5" font-weight="500" class="s-text-soft">R. Ferrante</text>
+      <rect x="1175" y="815" width="88" height="24" rx="5" class="s-sunk"/>
+      <text x="1219" y="831" font-size="12" font-weight="560" text-anchor="middle" class="s-text-mono">CP12 Gas</text>
+      <text x="1365" y="832" font-size="14" font-weight="500" class="s-text-mono">4 Nov</text>
+      <rect x="1454" y="814" width="88" height="26" rx="13" class="s-bad2"/><circle cx="1468" cy="827" r="4" class="s-bad"/><text x="1479" y="831.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">19d late</text>
+    <rect x="330" y="854" width="1212" height="1" class="s-grid"/>
+      <rect x="330" y="869" width="64" height="24" rx="5" class="s-sunk"/>
+      <text x="362" y="885" font-size="11.5" font-weight="640" text-anchor="middle" class="s-text-mono-ink">FIR-12</text>
+      <text x="408" y="886" font-size="15" font-weight="620" class="s-text">Fire alarm weekly call-point test</text>
+      <text x="740" y="886" font-size="14.5" font-weight="500" class="s-text-soft">West depot</text>
+      <circle cx="968" cy="881" r="13" class="s-data2"/><text x="968" y="885.5" font-size="10" font-weight="680" text-anchor="middle" class="s-text">JM</text>
+      <text x="990" y="886" font-size="14.5" font-weight="500" class="s-text-soft">J. Marchetti</text>
+      <rect x="1175" y="869" width="88" height="24" rx="5" class="s-sunk"/>
+      <text x="1219" y="885" font-size="12" font-weight="560" text-anchor="middle" class="s-text-mono">BS 5839</text>
+      <text x="1365" y="886" font-size="14" font-weight="500" class="s-text-mono">18 Nov</text>
+      <rect x="1454" y="868" width="88" height="26" rx="13" class="s-bad2"/><circle cx="1468" cy="881" r="4" class="s-bad"/><text x="1479" y="885.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">5d late</text>
+    <rect x="330" y="908" width="1212" height="1" class="s-grid"/>
+      <rect x="330" y="923" width="64" height="24" rx="5" class="s-sunk"/>
+      <text x="362" y="939" font-size="11.5" font-weight="640" text-anchor="middle" class="s-text-mono-ink">WTR-09</text>
+      <text x="408" y="940" font-size="15" font-weight="620" class="s-text">Cold water storage tank inspection</text>
+      <text x="740" y="940" font-size="14.5" font-weight="500" class="s-text-soft">Station Road</text>
+      <circle cx="968" cy="935" r="13" class="s-data2"/><text x="968" y="939.5" font-size="10" font-weight="680" text-anchor="middle" class="s-text">CA</text>
+      <text x="990" y="940" font-size="14.5" font-weight="500" class="s-text-soft">C. Ashby</text>
+      <rect x="1175" y="923" width="88" height="24" rx="5" class="s-sunk"/>
+      <text x="1219" y="939" font-size="12" font-weight="560" text-anchor="middle" class="s-text-mono">L8 Water</text>
+      <text x="1365" y="940" font-size="14" font-weight="500" class="s-text-mono">20 Nov</text>
+      <rect x="1454" y="922" width="88" height="26" rx="13" class="s-warn2"/><circle cx="1468" cy="935" r="4" class="s-warn"/><text x="1479" y="939.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">3d late</text>
+    </svg>

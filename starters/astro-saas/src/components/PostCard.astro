@@ -19,10 +19,12 @@ const minutes = readingMinutes(post.body);
 const tag = post.data.tags[0];
 ---
 
-<article class:list={["post-card", "card-link", `post-card--${layout}`]}>
-  <Media src={post.data.image} alt={post.data.imageAlt ?? ""} ratio="16/10" eager={eager} class="post-card__media" />
+<article class:list={["post-card", "card-link", `post-card--${layout}`, { card: layout === "card" }]}>
+  <div class="post-card__thumb">
+    <Media src={post.data.image} alt={post.data.imageAlt ?? ""} ratio="16/10" eager={eager} class="post-card__media" />
+  </div>
   <div class="post-card__body">
-    <p class="post-card__meta">
+    <p class="post-card__meta mono">
       {tag && <span class="post-card__tag">{tag}</span>}
       <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
       <span aria-hidden="true">·</span>
@@ -39,16 +41,33 @@ const tag = post.data.tags[0];
   .post-card {
     display: grid;
     align-content: start;
-    gap: var(--space-s);
-    border-radius: var(--radius-image);
+    overflow: hidden;
+    transition: border-color var(--duration-fast) var(--ease-out);
   }
 
-  .post-card :global(.post-card__media) {
+  .post-card--card:hover {
+    border-color: var(--tone-control);
+  }
+
+  .post-card--card .post-card__thumb {
+    border-block-end: var(--border-width) solid var(--tone-line);
+    background: var(--tone-raised);
+  }
+
+  .post-card--card :global(.post-card__media) {
+    border-radius: 0;
+  }
+
+  .post-card--row {
+    gap: var(--space-s);
+  }
+
+  .post-card--row :global(.post-card__media) {
     border: var(--border-width) solid var(--tone-line);
     transition: border-color var(--duration-fast) var(--ease-out);
   }
 
-  .post-card:hover :global(.post-card__media) {
+  .post-card--row:hover :global(.post-card__media) {
     border-color: var(--tone-control);
   }
 
@@ -57,11 +76,15 @@ const tag = post.data.tags[0];
     gap: var(--space-2xs);
   }
 
+  .post-card--card .post-card__body {
+    padding: var(--space-m);
+  }
+
   .post-card__meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5em;
+    gap: 0.45em;
     font-size: var(--step--2);
     color: var(--tone-muted);
   }
@@ -75,18 +98,18 @@ const tag = post.data.tags[0];
 
   .post-card__title {
     font-size: var(--step-1);
-    line-height: 1.2;
+    line-height: 1.22;
     letter-spacing: -0.02em;
   }
 
   .post-card:hover .post-card__title a {
-    text-decoration: underline;
-    text-decoration-color: var(--tone-link);
+    color: var(--tone-link);
   }
 
   .post-card__text {
     font-size: var(--step--1);
     color: var(--tone-muted);
+    line-height: 1.5;
   }
 
   @media (min-width: 44rem) {

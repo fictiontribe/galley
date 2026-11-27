@@ -1,7 +1,6 @@
 ---
-// A quiet row of client or partner logos. `name` is the alt text and `href`
-// an optional link. SVG logos drawn in currentColor are inlined, so they take
-// the section's muted text colour in every look; other images stay <img>.
+// A quiet ledger of local craftspeople, suppliers or collaborators. SVG marks
+// drawn in currentColor are inlined so they follow every look cleanly.
 import Section from "../Section.astro";
 import { inlineSvg, withBase, type BlockMarker, type Tone } from "../../lib/site";
 
@@ -32,7 +31,7 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
           ) : (
             <img class="logos__logo" src={withBase(item.image)} alt={item.name} width="180" height="60" loading="lazy" decoding="async" />
           );
-          return <li>{item.href ? <a href={withBase(item.href)}>{logo}</a> : logo}</li>;
+          return <li class="logos__item">{item.href ? <a href={withBase(item.href)}>{logo}</a> : logo}</li>;
         })
       }
     </ul>
@@ -46,32 +45,39 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
 
   .logos {
     display: grid;
-    gap: var(--space-m);
+    gap: var(--space-l);
     padding-block: var(--space-l);
     border-block: var(--border-width) solid var(--tone-line);
   }
 
   .logos__heading {
     font-family: var(--font-body);
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     font-weight: var(--weight-medium);
-    letter-spacing: 0;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    line-height: 1.5;
     color: var(--tone-muted);
   }
 
   .logos__list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
     align-items: center;
     gap: var(--space-m) var(--space-l);
     padding: 0;
     list-style: none;
   }
 
+  .logos__item {
+    display: flex;
+    align-items: center;
+  }
+
   .logos__logo {
     display: block;
     width: 100%;
-    max-width: 10rem;
+    max-width: 11rem;
     height: auto;
     aspect-ratio: 3 / 1;
     object-fit: contain;
@@ -91,9 +97,9 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
 
   @media (min-width: 60rem) {
     .logos {
-      grid-template-columns: 14rem 1fr;
+      grid-template-columns: 15rem 1fr;
       align-items: center;
-      gap: var(--space-xl);
+      gap: var(--space-2xl);
     }
   }
 </style>

@@ -52,7 +52,7 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
 
 <style>
   :global(.section--hero) {
-    padding-block: var(--space-2xl) var(--space-section);
+    padding-block: var(--space-xl) var(--space-2xl);
   }
 
   .hero {
@@ -71,13 +71,17 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
   .hero__text {
     display: grid;
     gap: var(--space-xs);
-    max-width: 36em;
+    max-width: 38em;
     font-size: var(--step-1);
     line-height: 1.5;
     color: var(--tone-muted);
   }
 
   .hero :global(.hero__actions) {
+    margin-block-start: var(--space-3xs);
+  }
+
+  .hero :global(.hero__points) {
     margin-block-start: var(--space-2xs);
   }
 

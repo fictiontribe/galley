@@ -1,1 +1,216 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000"><style>.s-bg{fill:#f8f6f3}.s-panel{fill:#fffefd}.s-sunk{fill:#f0ede9}.s-line{fill:#dfdcd7}.s-ink{fill:#1b222c}.s-muted{fill:#81878f}.s-faint{fill:#d0d4db}.s-acc{fill:#d14400}.s-acc2{fill:#ffdfca}.s-ok{fill:#389560}.s-ok2{fill:#d6f2de}.s-warn{fill:#e6ac3d}.s-warn2{fill:#fdedc9}.s-bad{fill:#cf4040}.s-bad2{fill:#ffe4e1}.s-data{fill:#384e6e}.s-data2{fill:#bfccdf}.s-skin{fill:#d6d3cf}.s-hair{fill:#1f2733}.s-hair2{fill:#7d838e}.s-stroke{fill:none;stroke:#dfdcd7}.s-stroke-ink{fill:none;stroke:#1b222c}.s-stroke-acc{fill:none;stroke:#d14400}.s-stroke-data{fill:none;stroke:#384e6e}.s-text{fill:#1b222c;font-family:system-ui,sans-serif}.s-text-muted{fill:#81878f;font-family:system-ui,sans-serif}.s-text-acc{fill:#d14400;font-family:system-ui,sans-serif}.s-num{fill:#1b222c;font-family:system-ui,sans-serif}.s-logo{fill:currentColor}.s-logo-text{fill:currentColor;font-family:system-ui,sans-serif}</style><rect x="0" y="0" width="1600" height="1000" class="s-bg"/><rect x="0" y="0" width="272" height="1000" class="s-sunk"/><rect x="271" y="0" width="1" height="1000" class="s-line"/><rect x="32" y="30" width="36" height="36" rx="9" class="s-acc"/><rect x="41" y="39" width="18" height="4" rx="2" class="s-panel"/><rect x="41" y="46" width="12" height="4" rx="2" class="s-panel"/><rect x="41" y="53" width="4" height="4" rx="2" class="s-panel"/><text x="80" y="56" font-size="24" font-weight="760" text-anchor="start" class="s-text">Ferrow</text><rect x="32" y="96" width="208" height="40" rx="8" class="s-panel"/><rect x="48" y="111" width="90" height="10" rx="5" class="s-faint"/><rect x="40" y="155" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="168" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Overview</text><rect x="40" y="205" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="218" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Planner</text><rect x="40" y="255" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="268" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Inspections</text><rect x="40" y="305" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="318" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Work orders</text><rect x="40" y="355" width="16" height="16" rx="4" class="s-faint"/><text x="70" y="368" font-size="19" font-weight="500" text-anchor="start" class="s-text-muted">Certificates</text><rect x="20" y="392" width="232" height="42" rx="8" class="s-panel"/><rect x="20" y="400" width="4" height="26" rx="2" class="s-acc"/><rect x="40" y="405" width="16" height="16" rx="4" class="s-acc"/><text x="70" y="418" font-size="19" font-weight="650" text-anchor="start" class="s-text">Reports</text><text x="40" y="520" font-size="14" font-weight="700" text-anchor="start" class="s-text-muted" letter-spacing="2">SITES</text><circle cx="46" cy="552" r="5" class="s-ok"/><text x="62" y="558" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">North depot</text><circle cx="46" cy="592" r="5" class="s-warn"/><text x="62" y="598" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">Harbour clinic</text><circle cx="46" cy="632" r="5" class="s-ok"/><text x="62" y="638" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">Elm House</text><circle cx="46" cy="672" r="5" class="s-ok"/><text x="62" y="678" font-size="17" font-weight="500" text-anchor="start" class="s-text-muted">East campus</text><rect x="32" y="910" width="208" height="60" rx="10" class="s-panel"/><circle cx="62" cy="940" r="16" class="s-data2"/><circle cx="62" cy="936.48" r="5.76" class="s-panel"/><path d="M52.08 949.92a9.92 8 0 0 1 19.84 0" class="s-panel"/><rect x="88" y="928" width="100" height="9" rx="4.5" class="s-faint"/><rect x="88" y="946" width="70" height="8" rx="4" class="s-faint"/><rect x="272" y="0" width="1328" height="88" class="s-bg"/><rect x="272" y="87" width="1328" height="1" class="s-line"/><text x="316" y="56" font-size="28" font-weight="720" text-anchor="start" class="s-text" letter-spacing="-0.5">Reports</text><rect x="1084" y="24" width="300" height="40" rx="20" class="s-panel"/><rect x="1084.5" y="24.5" width="299" height="39" rx="20" class="s-stroke"/><circle cx="1108" cy="44" r="7" class="s-stroke-ink" stroke-width="2"/><rect x="1126" y="39" width="120" height="10" rx="5" class="s-faint"/><rect x="1404" y="24" width="152" height="40" rx="8" class="s-acc"/><text x="1480" y="50" font-size="17" font-weight="650" text-anchor="middle" class="s-text" style="fill:var(--shot-panel,#fff)">New task</text><rect x="316" y="108" width="95" height="29" rx="14.5" class="s-sunk"/><circle cx="330" cy="122.5" r="4" class="s-muted"/><text x="340" y="126" font-size="15" font-weight="560" text-anchor="start" class="s-text">Q4 2026</text><rect x="430" y="108" width="128" height="29" rx="14.5" class="s-sunk"/><circle cx="444" cy="122.5" r="4" class="s-muted"/><text x="454" y="126" font-size="15" font-weight="560" text-anchor="start" class="s-text">All regions</text><rect x="316" y="160" width="398" height="140" rx="14" class="s-panel"/><rect x="316.5" y="160.5" width="397" height="139" rx="14" class="s-stroke"/><text x="340" y="200" font-size="17" font-weight="560" text-anchor="start" class="s-text-muted">On-time statutory checks</text><text x="340" y="264" font-size="46" font-weight="720" text-anchor="start" class="s-num" letter-spacing="-1.5">96.2%</text><circle cx="666" cy="244" r="22" class="s-ok2"/><path d="M660 244l4 4 8-9" class="s-stroke-ink" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="734" y="160" width="398" height="140" rx="14" class="s-panel"/><rect x="734.5" y="160.5" width="397" height="139" rx="14" class="s-stroke"/><text x="758" y="200" font-size="17" font-weight="560" text-anchor="start" class="s-text-muted">Reactive jobs in SLA</text><text x="758" y="264" font-size="46" font-weight="720" text-anchor="start" class="s-num" letter-spacing="-1.5">91%</text><circle cx="1084" cy="244" r="22" class="s-data2"/><path d="M1078 244l4 4 8-9" class="s-stroke-ink" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="1152" y="160" width="398" height="140" rx="14" class="s-panel"/><rect x="1152.5" y="160.5" width="397" height="139" rx="14" class="s-stroke"/><text x="1176" y="200" font-size="17" font-weight="560" text-anchor="start" class="s-text-muted">Planned vs reactive spend</text><text x="1176" y="264" font-size="46" font-weight="720" text-anchor="start" class="s-num" letter-spacing="-1.5">68 : 32</text><circle cx="1502" cy="244" r="22" class="s-acc2"/><path d="M1496 244l4 4 8-9" class="s-stroke-ink" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="316" y="324" width="760" height="646" rx="14" class="s-panel"/><rect x="316.5" y="324.5" width="759" height="645" rx="14" class="s-stroke"/><text x="344" y="368" font-size="20" font-weight="680" text-anchor="start" class="s-text">On-time completion by site</text><rect x="390" y="900" width="660" height="1" class="s-line"/><text x="378" y="905" font-size="13" font-weight="500" text-anchor="end" class="s-text-muted">0</text><rect x="390" y="780" width="660" height="1" class="s-line"/><text x="378" y="785" font-size="13" font-weight="500" text-anchor="end" class="s-text-muted">25</text><rect x="390" y="660" width="660" height="1" class="s-line"/><text x="378" y="665" font-size="13" font-weight="500" text-anchor="end" class="s-text-muted">50</text><rect x="390" y="540" width="660" height="1" class="s-line"/><text x="378" y="545" font-size="13" font-weight="500" text-anchor="end" class="s-text-muted">75</text><rect x="390" y="420" width="660" height="1" class="s-line"/><text x="378" y="425" font-size="13" font-weight="500" text-anchor="end" class="s-text-muted">100</text><rect x="414" y="429.6" width="48" height="470.4" rx="6" class="s-data"/><text x="438" y="419.6" font-size="14" font-weight="620" text-anchor="middle" class="s-text">98</text><text x="438" y="930" font-size="13" font-weight="600" text-anchor="middle" class="s-text-muted">ND</text><rect x="494" y="511.2" width="48" height="388.8" rx="6" class="s-warn"/><text x="518" y="501.2" font-size="14" font-weight="620" text-anchor="middle" class="s-text">81</text><text x="518" y="930" font-size="13" font-weight="600" text-anchor="middle" class="s-text-muted">HC</text><rect x="574" y="444" width="48" height="456" rx="6" class="s-data"/><text x="598" y="434" font-size="14" font-weight="620" text-anchor="middle" class="s-text">95</text><text x="598" y="930" font-size="13" font-weight="600" text-anchor="middle" class="s-text-muted">EH</text><rect x="654" y="458.4" width="48" height="441.6" rx="6" class="s-data"/><text x="678" y="448.4" font-size="14" font-weight="620" text-anchor="middle" class="s-text">92</text><text x="678" y="930" font-size="13" font-weight="600" text-anchor="middle" class="s-text-muted">EC</text><rect x="734" y="544.8" width="48" height="355.2" rx="6" class="s-warn"/><text x="758" y="534.8" font-size="14" font-weight="620" text-anchor="middle" class="s-text">74</text><text x="758" y="930" font-size="13" font-weight="600" text-anchor="middle" class="s-text-muted">WD</text><rect x="814" y="424.8" width="48" height="475.2" rx="6" class="s-data"/><text x="838" y="414.8" font-size="14" font-weight="620" text-anchor="middle" class="s-text">99</text><text x="838" y="930" font-size="13" font-weight="600" text-anchor="middle" class="s-text-muted">OM</text><rect x="894" y="477.6" width="48" height="422.4" rx="6" class="s-data"/><text x="918" y="467.6" font-size="14" font-weight="620" text-anchor="middle" class="s-text">88</text><text x="918" y="930" font-size="13" font-weight="600" text-anchor="middle" class="s-text-muted">SR</text><rect x="974" y="453.6" width="48" height="446.4" rx="6" class="s-data"/><text x="998" y="443.6" font-size="14" font-weight="620" text-anchor="middle" class="s-text">93</text><text x="998" y="930" font-size="13" font-weight="600" text-anchor="middle" class="s-text-muted">PC</text><rect x="390" y="468" width="660" height="2" class="s-acc"/><rect x="1100" y="324" width="456" height="646" rx="14" class="s-panel"/><rect x="1100.5" y="324.5" width="455" height="645" rx="14" class="s-stroke"/><text x="1126" y="368" font-size="20" font-weight="680" text-anchor="start" class="s-text">Overdue tasks, 12 weeks</text><rect x="1130" y="880" width="400" height="1" class="s-line"/><rect x="1130" y="770" width="400" height="1" class="s-line"/><rect x="1130" y="660" width="400" height="1" class="s-line"/><rect x="1130" y="550" width="400" height="1" class="s-line"/><rect x="1130" y="439.99999999999994" width="400" height="1" class="s-line"/><path d="M1140 492.79999999999995L1176 510.4L1212 483.99999999999994L1248 545.5999999999999L1284 567.5999999999999L1320 589.5999999999999L1356 607.2L1392 624.8L1428 655.6L1464 673.2L1500 699.6L1536 717.2L1536 880L1140 880Z" class="s-acc2"/><path d="M1140 492.79999999999995L1176 510.4L1212 483.99999999999994L1248 545.5999999999999L1284 567.5999999999999L1320 589.5999999999999L1356 607.2L1392 624.8L1428 655.6L1464 673.2L1500 699.6L1536 717.2" class="s-stroke-acc" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="1536" cy="717.2" r="8" class="s-acc"/><circle cx="1536" cy="717.2" r="4" class="s-panel"/><text x="1526" y="695.2" font-size="16" font-weight="700" text-anchor="end" class="s-text">37</text><text x="1126" y="930" font-size="15" font-weight="560" text-anchor="start" class="s-text-muted">Down 58% since August</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000"><style>.s-bg{fill:#f8f6f2}.s-panel{fill:#fffefd}.s-sunk{fill:#f1eee9}.s-line{fill:#e1ddd7}.s-grid{fill:#eae6e0}.s-ink{fill:#18202b}.s-ink-soft{fill:#3f4956}.s-muted{fill:#6e7682}.s-faint{fill:#cfd4dc}.s-acc{fill:#c53500}.s-acc2{fill:#fce4d6}.s-ok{fill:#268854}.s-ok2{fill:#daf2e3}.s-warn{fill:#cc8b18}.s-warn2{fill:#fcf0d2}.s-bad{fill:#c73434}.s-bad2{fill:#fce2e0}.s-data{fill:#324a6e}.s-data2{fill:#d2dce9}.s-skin{fill:#d6d3cf}.s-hair{fill:#1f2733}.s-hair2{fill:#7d838e}.s-stroke{fill:none;stroke:#e1ddd7}.s-stroke-grid{fill:none;stroke:#eae6e0}.s-stroke-faint{fill:none;stroke:#cfd4dc}.s-stroke-ink{fill:none;stroke:#18202b}.s-stroke-panel{fill:none;stroke:#fffefd}.s-stroke-muted{fill:none;stroke:#6e7682}.s-stroke-acc{fill:none;stroke:#c53500}.s-stroke-ok{fill:none;stroke:#268854}.s-stroke-warn{fill:none;stroke:#cc8b18}.s-stroke-bad{fill:none;stroke:#c73434}.s-stroke-data{fill:none;stroke:#324a6e}.s-text{fill:#18202b;font-family:system-ui,-apple-system,sans-serif}.s-text-soft{fill:#3f4956;font-family:system-ui,-apple-system,sans-serif}.s-text-muted{fill:#6e7682;font-family:system-ui,-apple-system,sans-serif}.s-text-acc{fill:#c53500;font-family:system-ui,-apple-system,sans-serif}.s-text-on-acc{fill:#fffefd;font-family:system-ui,-apple-system,sans-serif}.s-text-ok{fill:#268854;font-family:system-ui,-apple-system,sans-serif}.s-text-bad{fill:#c73434;font-family:system-ui,-apple-system,sans-serif}.s-text-mono{fill:#6e7682;font-family:ui-monospace,Menlo,monospace}.s-text-mono-ink{fill:#18202b;font-family:ui-monospace,Menlo,monospace}.s-num{fill:#18202b;font-family:system-ui,-apple-system,sans-serif}</style><rect x="0" y="0" width="1600" height="1000" class="s-bg"/>
+    <rect x="0" y="0" width="268" height="1000" class="s-sunk"/>
+    <rect x="267" y="0" width="1" height="1000" class="s-line"/>
+    <!-- Workspace switcher -->
+    <rect x="20" y="20" width="228" height="48" rx="9" class="s-panel"/>
+    <rect x="20.5" y="20.5" width="227" height="47" rx="9" class="s-stroke"/>
+    <rect x="30" y="29" width="30" height="30" rx="7" class="s-acc"/>
+    <rect x="37" y="36" width="16" height="3.2" rx="1.6" class="s-panel"/>
+    <rect x="37" y="42" width="10.5" height="3.2" rx="1.6" class="s-panel"/>
+    <rect x="37" y="48" width="3.5" height="3.2" rx="1.6" class="s-panel"/>
+    <path d="M44.5 49.5l2.2 2.2 4.5-4.5" class="s-stroke-panel" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="70" y="42" font-size="15.5" font-weight="720" class="s-text">Ferrow</text>
+    <text x="70" y="58" font-size="12" font-weight="500" class="s-text-muted">48 active sites</text>
+    <path d="M228 40l4-4 4 4M228 48l4 4 4-4" class="s-stroke-muted" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Quick command search -->
+    <rect x="20" y="84" width="228" height="38" rx="8" class="s-panel"/>
+    <rect x="20.5" y="84.5" width="227" height="37" rx="8" class="s-stroke"/>
+    <circle cx="38" cy="102" r="5.5" class="s-stroke-muted" stroke-width="1.5"/>
+    <path d="M42.2 106.2l3.3 3.3" class="s-stroke-muted" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="54" y="108" font-size="13.5" font-weight="500" class="s-text-muted">Jump to site or asset</text>
+    <rect x="205" y="92" width="33" height="22" rx="5" class="s-sunk"/>
+    <rect x="205.5" y="92.5" width="32" height="21" rx="5" class="s-stroke"/>
+    <text x="221.5" y="107" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">⌘K</text>
+
+    <text x="28" y="152" font-size="11.5" font-weight="650" letter-spacing="1.4" class="s-text-mono">OPERATIONS</text>
+  <rect x="32" y="177" width="6.5" height="6.5" rx="1.5" class="s-muted"/><rect x="41" y="177" width="6.5" height="6.5" rx="1.5" class="s-muted"/><rect x="32" y="186" width="6.5" height="6.5" rx="1.5" class="s-muted"/><rect x="41" y="186" width="6.5" height="6.5" rx="1.5" class="s-muted"/><text x="58" y="190" font-size="15.5" font-weight="500" class="s-text-soft">Overview</text><rect x="32" y="223" width="15.5" height="13.5" rx="2.5" class="s-stroke-muted" stroke-width="1.6"/><path d="M32 227.5h15.5M36.5 221v3M43 221v3" class="s-stroke-muted" stroke-width="1.6" stroke-linecap="round"/><text x="58" y="234" font-size="15.5" font-weight="500" class="s-text-soft">Planner</text><rect x="210" y="219" width="30" height="20" rx="5" class="s-bg"/><text x="225" y="233" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-mono">18</text><rect x="32" y="265.5" width="15.5" height="15.5" rx="3" class="s-stroke-muted" stroke-width="1.6"/><path d="M36 273.5l3 3 5-5.5" class="s-stroke-muted" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><text x="58" y="278" font-size="15.5" font-weight="500" class="s-text-soft">Inspections</text><rect x="210" y="263" width="30" height="20" rx="5" class="s-bg"/><text x="225" y="277" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-mono">12</text><circle cx="39.75" cy="316.75" r="6.5" class="s-stroke-muted" stroke-width="1.6"/><path d="M39.75 313.5v3.5l2.5 1.8" class="s-stroke-muted" stroke-width="1.6" stroke-linecap="round"/><text x="58" y="322" font-size="15.5" font-weight="500" class="s-text-soft">Work orders</text><rect x="210" y="307" width="30" height="20" rx="5" class="s-bg"/><text x="225" y="321" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-mono">58</text><path d="M34 354h7.5l4 4v10a1.5 1.5 0 0 1-1.5 1.5H34A1.5 1.5 0 0 1 32.5 368V355.5A1.5 1.5 0 0 1 34 354z" class="s-stroke-muted" stroke-width="1.6"/><path d="M36 362.5h7M36 365.5h5" class="s-stroke-muted" stroke-width="1.5" stroke-linecap="round"/><text x="58" y="366" font-size="15.5" font-weight="500" class="s-text-soft">Certificates</text><rect x="210" y="351" width="30" height="20" rx="5" class="s-bg"/><text x="225" y="365" font-size="11.5" font-weight="650" text-anchor="middle" class="s-text-mono">4</text><rect x="16" y="386" width="236" height="38" rx="8" class="s-panel"/><rect x="16.5" y="386.5" width="235" height="37" rx="8" class="s-stroke"/><rect x="16" y="394" width="3.5" height="22" rx="1.75" class="s-acc"/><path d="M33.5 411.5V405M39.5 411.5V400M45.5 411.5V403" class="s-stroke-acc" stroke-width="2" stroke-linecap="round"/><text x="58" y="410" font-size="15.5" font-weight="660" class="s-text">Reports</text><rect x="20" y="454" width="228" height="1" class="s-line"/><text x="28" y="484" font-size="11.5" font-weight="650" letter-spacing="1.4" class="s-text-mono">ESTATE SITES</text><text x="240" y="484" font-size="11.5" font-weight="500" text-anchor="end" class="s-text-mono">SLA</text><circle cx="34" cy="510" r="4.5" class="s-ok"/><text x="48" y="515" font-size="14.5" font-weight="520" class="s-text-soft">North depot</text><text x="240" y="515" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">98%</text><circle cx="34" cy="548" r="4.5" class="s-warn"/><text x="48" y="553" font-size="14.5" font-weight="520" class="s-text-soft">Harbour clinic</text><text x="240" y="553" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">81%</text><circle cx="34" cy="586" r="4.5" class="s-ok"/><text x="48" y="591" font-size="14.5" font-weight="520" class="s-text-soft">Elm House</text><text x="240" y="591" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">95%</text><circle cx="34" cy="624" r="4.5" class="s-ok"/><text x="48" y="629" font-size="14.5" font-weight="520" class="s-text-soft">East campus</text><text x="240" y="629" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">92%</text><circle cx="34" cy="662" r="4.5" class="s-bad"/><text x="48" y="667" font-size="14.5" font-weight="520" class="s-text-soft">West depot</text><text x="240" y="667" font-size="13" font-weight="600" text-anchor="end" class="s-text-mono">74%</text>
+    <rect x="20" y="844" width="228" height="58" rx="9" class="s-panel"/>
+    <rect x="20.5" y="844.5" width="227" height="57" rx="9" class="s-stroke"/>
+    <circle cx="38" cy="864" r="4.5" class="s-ok"/>
+    <text x="50" y="868" font-size="13" font-weight="640" class="s-text">Field sync healthy</text>
+    <text x="34" y="888" font-size="12" font-weight="500" class="s-text-mono">14 devices · 2m ago</text>
+
+    <rect x="20" y="916" width="228" height="62" rx="9" class="s-panel"/>
+    <rect x="20.5" y="916.5" width="227" height="61" rx="9" class="s-stroke"/>
+    <circle cx="48" cy="947" r="17" class="s-data2"/><text x="48" y="951.5" font-size="13" font-weight="680" text-anchor="middle" class="s-text">HL</text>
+    <text x="74" y="942" font-size="14" font-weight="660" class="s-text">Hana Lindqvist</text>
+    <text x="74" y="960" font-size="12" font-weight="500" class="s-text-muted">Estates Director</text>
+  
+    <rect x="268" y="0" width="1332" height="76" class="s-panel"/>
+    <rect x="268" y="75" width="1332" height="1" class="s-line"/>
+    <text x="304" y="34" font-size="12" font-weight="600" letter-spacing="0.8" class="s-text-mono">ANALYTICS / 12-MONTH ESTATE REVIEW</text>
+    <text x="304" y="58" font-size="22" font-weight="720" letter-spacing="-0.4" class="s-text">Board &amp; compliance reports</text>
+    <!-- Date range & filter -->
+    <rect x="1152" y="20" width="142" height="36" rx="7" class="s-bg"/>
+    <rect x="1152.5" y="20.5" width="141" height="35" rx="7" class="s-stroke"/>
+    <text x="1223" y="43" font-size="13.5" font-weight="560" text-anchor="middle" class="s-text-soft">Last 90 days ▾</text>
+    <rect x="1306" y="20" width="114" height="36" rx="7" class="s-bg"/>
+    <rect x="1306.5" y="20.5" width="113" height="35" rx="7" class="s-stroke"/>
+    <text x="1363" y="43" font-size="13.5" font-weight="560" text-anchor="middle" class="s-text-soft">Export CSV</text>
+    <rect x="1432" y="20" width="136" height="36" rx="7" class="s-acc"/>
+    <text x="1500" y="43" font-size="14" font-weight="660" text-anchor="middle" class="s-text-on-acc">Schedule report</text>
+  
+      <rect x="304" y="100" width="408" height="122" rx="11" class="s-panel"/>
+      <rect x="304.5" y="100.5" width="407" height="121" rx="11" class="s-stroke"/>
+      <text x="326" y="128" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">ANNUAL ON-TIME RATE</text>
+      <rect x="590" y="112" width="102" height="24" rx="12" class="s-ok2"/><circle cx="604" cy="124" r="4" class="s-ok"/><text x="615" y="128.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">Above target</text>
+      <text x="326" y="182" font-size="38" font-weight="740" letter-spacing="-1.4" class="s-num">95.8%</text>
+      <text x="326" y="206" font-size="13" font-weight="500" class="s-text-muted">+6.4 pts vs 2025</text>
+    
+      <rect x="732" y="100" width="408" height="122" rx="11" class="s-panel"/>
+      <rect x="732.5" y="100.5" width="407" height="121" rx="11" class="s-stroke"/>
+      <text x="754" y="128" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">STATUTORY CERTS VALID</text>
+      <rect x="1018" y="112" width="102" height="24" rx="12" class="s-ok2"/><circle cx="1032" cy="124" r="4" class="s-ok"/><text x="1043" y="128.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">Audit ready</text>
+      <text x="754" y="182" font-size="38" font-weight="740" letter-spacing="-1.4" class="s-num">99.1%</text>
+      <text x="754" y="206" font-size="13" font-weight="500" class="s-text-muted">412 of 416 current</text>
+    
+      <rect x="1160" y="100" width="408" height="122" rx="11" class="s-panel"/>
+      <rect x="1160.5" y="100.5" width="407" height="121" rx="11" class="s-stroke"/>
+      <text x="1182" y="128" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">ANNUAL MAINT. SPEND</text>
+      <rect x="1446" y="112" width="102" height="24" rx="12" class="s-data2"/><circle cx="1460" cy="124" r="4" class="s-data"/><text x="1471" y="128.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">Under budget</text>
+      <text x="1182" y="182" font-size="38" font-weight="740" letter-spacing="-1.4" class="s-num">$214k</text>
+      <text x="1182" y="206" font-size="13" font-weight="500" class="s-text-muted">−11% reactive cost</text>
+    
+    <rect x="304" y="244" width="820" height="398" rx="11" class="s-panel"/>
+    <rect x="304.5" y="244.5" width="819" height="397" rx="11" class="s-stroke"/>
+    <text x="330" y="280" font-size="18" font-weight="680" class="s-text">12-month task completion</text>
+    <text x="330" y="302" font-size="13" font-weight="500" class="s-text-muted">Planned inspections vs reactive fixes completed each month</text>
+    <rect x="866" y="268" width="12" height="12" rx="3" class="s-data"/><text x="884" y="279" font-size="12.5" font-weight="560" class="s-text-soft">Planned</text>
+    <rect x="954" y="268" width="12" height="12" rx="3" class="s-acc"/><text x="972" y="279" font-size="12.5" font-weight="560" class="s-text-soft">Reactive</text>
+    <rect x="1044" y="268" width="12" height="12" rx="3" class="s-warn"/><text x="1062" y="279" font-size="12.5" font-weight="560" class="s-text-soft">Late</text>
+  <rect x="368" y="340" width="732" height="1" class="s-grid"/><text x="356" y="344" font-size="11.5" font-weight="500" text-anchor="end" class="s-text-mono">1000</text><rect x="368" y="405" width="732" height="1" class="s-grid"/><text x="356" y="409" font-size="11.5" font-weight="500" text-anchor="end" class="s-text-mono">750</text><rect x="368" y="470" width="732" height="1" class="s-grid"/><text x="356" y="474" font-size="11.5" font-weight="500" text-anchor="end" class="s-text-mono">500</text><rect x="368" y="535" width="732" height="1" class="s-grid"/><text x="356" y="539" font-size="11.5" font-weight="500" text-anchor="end" class="s-text-mono">250</text><rect x="368" y="600" width="732" height="1" class="s-grid"/><text x="356" y="604" font-size="11.5" font-weight="500" text-anchor="end" class="s-text-mono">0</text>
+      <rect x="384" y="462" width="32" height="138" rx="2" class="s-data"/>
+      <rect x="384" y="418" width="32" height="42" rx="2" class="s-acc"/>
+      <rect x="384" y="396" width="32" height="20" rx="2" class="s-warn"/>
+      <text x="400" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">Dec</text>
+    
+      <rect x="443" y="452" width="32" height="148" rx="2" class="s-data"/>
+      <rect x="443" y="406" width="32" height="44" rx="2" class="s-acc"/>
+      <rect x="443" y="387" width="32" height="17" rx="2" class="s-warn"/>
+      <text x="459" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">Jan</text>
+    
+      <rect x="502" y="448" width="32" height="152" rx="2" class="s-data"/>
+      <rect x="502" y="408" width="32" height="38" rx="2" class="s-acc"/>
+      <rect x="502" y="392" width="32" height="14" rx="2" class="s-warn"/>
+      <text x="518" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">Feb</text>
+    
+      <rect x="561" y="436" width="32" height="164" rx="2" class="s-data"/>
+      <rect x="561" y="398" width="32" height="36" rx="2" class="s-acc"/>
+      <rect x="561" y="384" width="32" height="12" rx="2" class="s-warn"/>
+      <text x="577" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">Mar</text>
+    
+      <rect x="620" y="432" width="32" height="168" rx="2" class="s-data"/>
+      <rect x="620" y="396" width="32" height="34" rx="2" class="s-acc"/>
+      <rect x="620" y="384" width="32" height="10" rx="2" class="s-warn"/>
+      <text x="636" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">Apr</text>
+    
+      <rect x="679" y="426" width="32" height="174" rx="2" class="s-data"/>
+      <rect x="679" y="394" width="32" height="30" rx="2" class="s-acc"/>
+      <rect x="679" y="383" width="32" height="9" rx="2" class="s-warn"/>
+      <text x="695" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">May</text>
+    
+      <rect x="738" y="420" width="32" height="180" rx="2" class="s-data"/>
+      <rect x="738" y="390" width="32" height="28" rx="2" class="s-acc"/>
+      <rect x="738" y="380" width="32" height="8" rx="2" class="s-warn"/>
+      <text x="754" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">Jun</text>
+    
+      <rect x="797" y="416" width="32" height="184" rx="2" class="s-data"/>
+      <rect x="797" y="388" width="32" height="26" rx="2" class="s-acc"/>
+      <rect x="797" y="379" width="32" height="7" rx="2" class="s-warn"/>
+      <text x="813" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">Jul</text>
+    
+      <rect x="856" y="412" width="32" height="188" rx="2" class="s-data"/>
+      <rect x="856" y="386" width="32" height="24" rx="2" class="s-acc"/>
+      <rect x="856" y="378" width="32" height="6" rx="2" class="s-warn"/>
+      <text x="872" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">Aug</text>
+    
+      <rect x="915" y="404" width="32" height="196" rx="2" class="s-data"/>
+      <rect x="915" y="380" width="32" height="22" rx="2" class="s-acc"/>
+      <rect x="915" y="373" width="32" height="5" rx="2" class="s-warn"/>
+      <text x="931" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">Sep</text>
+    
+      <rect x="974" y="398" width="32" height="202" rx="2" class="s-data"/>
+      <rect x="974" y="376" width="32" height="20" rx="2" class="s-acc"/>
+      <rect x="974" y="370" width="32" height="4" rx="2" class="s-warn"/>
+      <text x="990" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">Oct</text>
+    
+      <rect x="1033" y="390" width="32" height="210" rx="2" class="s-data"/>
+      <rect x="1033" y="370" width="32" height="18" rx="2" class="s-acc"/>
+      <rect x="1033" y="365" width="32" height="3" rx="2" class="s-warn"/>
+      <text x="1049" y="624" font-size="11.5" font-weight="600" text-anchor="middle" class="s-text-mono">Nov</text>
+    
+    <rect x="1146" y="244" width="422" height="398" rx="11" class="s-panel"/>
+    <rect x="1146.5" y="244.5" width="421" height="397" rx="11" class="s-stroke"/>
+    <text x="1172" y="280" font-size="18" font-weight="680" class="s-text">Spend by trade</text>
+    <text x="1172" y="302" font-size="13" font-weight="500" class="s-text-muted">YTD contractor invoices ($214,200)</text>
+    <rect x="1146" y="320" width="422" height="1" class="s-line"/>
+  
+      <text x="1172" y="350" font-size="14" font-weight="620" class="s-text">HVAC &amp; refrigeration</text>
+      <text x="1542" y="350" font-size="14" font-weight="680" text-anchor="end" class="s-text-mono-ink">$68,400 · 32%</text>
+      <rect x="1172" y="362" width="370" height="10" rx="5" class="s-sunk"/>
+      <rect x="1172" y="362" width="329" height="10" rx="5" class="s-data"/>
+    
+      <text x="1172" y="406" font-size="14" font-weight="620" class="s-text">Fire &amp; life safety</text>
+      <text x="1542" y="406" font-size="14" font-weight="680" text-anchor="end" class="s-text-mono-ink">$49,260 · 23%</text>
+      <rect x="1172" y="418" width="370" height="10" rx="5" class="s-sunk"/>
+      <rect x="1172" y="418" width="236" height="10" rx="5" class="s-acc"/>
+    
+      <text x="1172" y="462" font-size="14" font-weight="620" class="s-text">Electrical &amp; lighting</text>
+      <text x="1542" y="462" font-size="14" font-weight="680" text-anchor="end" class="s-text-mono-ink">$38,550 · 18%</text>
+      <rect x="1172" y="474" width="370" height="10" rx="5" class="s-sunk"/>
+      <rect x="1172" y="474" width="185" height="10" rx="5" class="s-ok"/>
+    
+      <text x="1172" y="518" font-size="14" font-weight="620" class="s-text">Lifts &amp; access</text>
+      <text x="1542" y="518" font-size="14" font-weight="680" text-anchor="end" class="s-text-mono-ink">$32,130 · 15%</text>
+      <rect x="1172" y="530" width="370" height="10" rx="5" class="s-sunk"/>
+      <rect x="1172" y="530" width="154" height="10" rx="5" class="s-warn"/>
+    
+      <text x="1172" y="574" font-size="14" font-weight="620" class="s-text">Water hygiene &amp; fabric</text>
+      <text x="1542" y="574" font-size="14" font-weight="680" text-anchor="end" class="s-text-mono-ink">$25,860 · 12%</text>
+      <rect x="1172" y="586" width="370" height="10" rx="5" class="s-sunk"/>
+      <rect x="1172" y="586" width="123" height="10" rx="5" class="s-data2"/>
+    
+    <rect x="304" y="664" width="1264" height="310" rx="11" class="s-panel"/>
+    <rect x="304.5" y="664.5" width="1263" height="309" rx="11" class="s-stroke"/>
+    <text x="330" y="702" font-size="18" font-weight="680" class="s-text">Regional league table</text>
+    <text x="1542" y="702" font-size="12.5" font-weight="540" text-anchor="end" class="s-text-mono">Board pack · Nov 2026</text>
+
+    <rect x="304" y="720" width="1264" height="34" class="s-sunk"/>
+    <rect x="304" y="720" width="1264" height="1" class="s-line"/>
+    <rect x="304" y="754" width="1264" height="1" class="s-line"/>
+    <text x="330" y="742" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">REGION</text>
+    <text x="610" y="742" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">SITES</text>
+    <text x="760" y="742" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">ON-TIME SLA</text>
+    <text x="980" y="742" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">CERTS VALID</text>
+    <text x="1200" y="742" font-size="11.5" font-weight="660" letter-spacing="1" class="s-text-mono">YTD SPEND</text>
+    <text x="1542" y="742" font-size="11.5" font-weight="660" letter-spacing="1" text-anchor="end" class="s-text-mono">TREND</text>
+  
+      <text x="330" y="792" font-size="15" font-weight="640" class="s-text">North region</text>
+      <text x="610" y="792" font-size="14.5" font-weight="560" class="s-text-mono">14</text>
+      <text x="760" y="792" font-size="15" font-weight="700" class="s-text-mono-ink">98.2%</text>
+      <text x="980" y="792" font-size="14.5" font-weight="560" class="s-text-mono">100%</text>
+      <text x="1200" y="792" font-size="14.5" font-weight="560" class="s-text-mono">$62,100</text>
+      <rect x="1450" y="774" width="92" height="26" rx="13" class="s-ok2"/><circle cx="1464" cy="787" r="4" class="s-ok"/><text x="1475" y="791.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">+4.2 pts</text>
+    <rect x="330" y="812" width="1212" height="1" class="s-grid"/>
+      <text x="330" y="842" font-size="15" font-weight="640" class="s-text">Central region</text>
+      <text x="610" y="842" font-size="14.5" font-weight="560" class="s-text-mono">12</text>
+      <text x="760" y="842" font-size="15" font-weight="700" class="s-text-mono-ink">96.4%</text>
+      <text x="980" y="842" font-size="14.5" font-weight="560" class="s-text-mono">100%</text>
+      <text x="1200" y="842" font-size="14.5" font-weight="560" class="s-text-mono">$51,400</text>
+      <rect x="1450" y="824" width="92" height="26" rx="13" class="s-ok2"/><circle cx="1464" cy="837" r="4" class="s-ok"/><text x="1475" y="841.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">+3.8 pts</text>
+    <rect x="330" y="862" width="1212" height="1" class="s-grid"/>
+      <text x="330" y="892" font-size="15" font-weight="640" class="s-text">East region</text>
+      <text x="610" y="892" font-size="14.5" font-weight="560" class="s-text-mono">10</text>
+      <text x="760" y="892" font-size="15" font-weight="700" class="s-text-mono-ink">94.1%</text>
+      <text x="980" y="892" font-size="14.5" font-weight="560" class="s-text-mono">98.8%</text>
+      <text x="1200" y="892" font-size="14.5" font-weight="560" class="s-text-mono">$44,800</text>
+      <rect x="1450" y="874" width="92" height="26" rx="13" class="s-ok2"/><circle cx="1464" cy="887" r="4" class="s-ok"/><text x="1475" y="891.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">+2.1 pts</text>
+    <rect x="330" y="912" width="1212" height="1" class="s-grid"/>
+      <text x="330" y="942" font-size="15" font-weight="640" class="s-text">South &amp; West</text>
+      <text x="610" y="942" font-size="14.5" font-weight="560" class="s-text-mono">12</text>
+      <text x="760" y="942" font-size="15" font-weight="700" class="s-text-mono-ink">89.6%</text>
+      <text x="980" y="942" font-size="14.5" font-weight="560" class="s-text-mono">96.4%</text>
+      <text x="1200" y="942" font-size="14.5" font-weight="560" class="s-text-mono">$55,900</text>
+      <rect x="1450" y="924" width="92" height="26" rx="13" class="s-warn2"/><circle cx="1464" cy="937" r="4" class="s-warn"/><text x="1475" y="941.5" font-size="13" font-weight="600" text-anchor="start" class="s-text">−1.2 pts</text>
+    </svg>

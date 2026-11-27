@@ -1,6 +1,6 @@
 ---
-// Several shorter quotes in a grid of two or three columns, as cards or set
-// plainly between hairlines.
+// Several shorter quotes in a grid of two or three columns, as a hairline
+// bento matrix or set plainly between hairlines.
 import Section from "../Section.astro";
 import SectionHeader from "../SectionHeader.astro";
 import Media from "../Media.astro";
@@ -26,11 +26,11 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
 
 <Section type="testimonials" id={id} tone={tone} block={block} labelledby={headingId}>
   <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
-  <ul class:list={["quotes", `quotes--${style}`]} role="list" style={`--columns: ${columns}`}>
+  <ul class:list={["quotes", `quotes--${style}`]} role="list" style={`--columns: ${Math.min(columns, items.length)}`}>
     {
       items.map((item) => (
         <li>
-          <figure class:list={["quote", { card: style === "cards" }]}>
+          <figure class="quote">
             <blockquote class="quote__text">
               <p>{item.quote}</p>
             </blockquote>
@@ -52,9 +52,21 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
   .quotes {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-    gap: var(--space-m);
     padding: 0;
     list-style: none;
+  }
+
+  .quotes--cards {
+    gap: 1px;
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+  }
+
+  .quotes--plain {
+    gap: var(--space-l);
   }
 
   .quote {
@@ -67,6 +79,8 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
 
   .quotes--cards .quote {
     padding: var(--space-l);
+    background: var(--tone-surface);
+    outline: var(--border-width) solid var(--tone-line);
   }
 
   .quotes--plain .quote {
@@ -75,34 +89,45 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
   }
 
   .quote__text {
-    font-size: var(--step-1);
-    line-height: 1.45;
+    font-size: var(--step-0);
+    line-height: 1.55;
+    color: var(--tone-text);
   }
 
   .quote__text p::before {
     content: "“";
+    color: var(--tone-link);
+    font-weight: var(--weight-bold);
+    margin-inline-end: 0.05em;
   }
 
   .quote__text p::after {
     content: "”";
+    color: var(--tone-link);
+    font-weight: var(--weight-bold);
+    margin-inline-start: 0.05em;
   }
 
   .quote__by {
     display: flex;
     align-items: center;
     gap: var(--space-xs);
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
   }
 
   .quote__by :global(.quote__photo) {
-    inline-size: 2.75rem;
-    block-size: 2.75rem;
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
     border-radius: 50%;
+    border: var(--border-width) solid var(--tone-line);
   }
 
   .quote__name {
     display: block;
     font-size: var(--step--1);
     font-weight: var(--weight-bold);
+    line-height: 1.25;
   }
 
   .quote__role {

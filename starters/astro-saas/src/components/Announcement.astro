@@ -12,8 +12,8 @@ const { link } = Astro.props;
 
 <a class="announcement" href={withBase(link.href)}>
   <span class="announcement__dot" aria-hidden="true"></span>
-  <span>{link.label}</span>
-  <Icon name="arrow-right" size={16} />
+  <span class="announcement__label">{link.label}</span>
+  <Icon name="arrow-right" size={14} />
 </a>
 
 <style>
@@ -22,30 +22,42 @@ const { link } = Astro.props;
     align-items: center;
     gap: 0.55em;
     justify-self: start;
-    padding: 0.3em 0.85em 0.3em 0.6em;
+    padding: 0.32em 0.8em 0.32em 0.6em;
     border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-pill);
     background: var(--tone-surface);
+    box-shadow: var(--shadow-card);
     color: var(--tone-text);
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     font-weight: var(--weight-medium);
+    line-height: 1.3;
     text-decoration: none;
-    transition: border-color var(--duration-fast) var(--ease-out);
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out);
   }
 
   .announcement:hover {
     border-color: var(--tone-control);
+    background: var(--tone-raised);
   }
 
   .announcement__dot {
-    inline-size: 0.5rem;
-    block-size: 0.5rem;
+    flex: none;
+    inline-size: 0.45rem;
+    block-size: 0.45rem;
     border-radius: 50%;
     background: var(--tone-link);
     box-shadow: 0 0 0 3px var(--tone-mark);
   }
 
   .announcement :global(svg) {
+    flex: none;
     color: var(--tone-link);
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .announcement:hover :global(svg) {
+    transform: translateX(0.2em);
   }
 </style>

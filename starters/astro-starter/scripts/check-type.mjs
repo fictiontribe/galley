@@ -121,7 +121,10 @@ async function read(browser, url, width) {
   // toolbar and the photographs hidden (which srcset copy of a photograph the
   // browser takes can depend on what it happened to load first).
   await page.addStyleTag({ content: "astro-dev-toolbar { display: none !important; } img, video { visibility: hidden !important; }" });
-  await page.evaluate(() => scrollTo(0, 0));
+  await page.evaluate(() => {
+    scrollTo(0, 0);
+    return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  });
   const shot = await page.screenshot();
   await page.close();
   return { ...data, refused, shot };

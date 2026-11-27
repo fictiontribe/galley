@@ -1,6 +1,6 @@
 ---
 // Site footer: columns from src/data/navigation.json; name, tagline, contact,
-// social links and the closing line from src/data/site.json. "Privacy
+// social links and the closing colophon from src/data/site.json. "Privacy
 // choices" (reopens the consent banner) shows only on pages where
 // src/data/scripts.json puts the built-in banner.
 import { consentBannerShown, labels, navigation, site, withBase } from "../lib/site";
@@ -14,6 +14,7 @@ const privacyChoices = consentBannerShown(Astro.url.pathname, Astro.site);
       <div class="site-footer__brand">
         <a class="site-footer__name" href={withBase("/")}>{site.name}</a>
         <p class="site-footer__tagline">{site.tagline}</p>
+        {site.address && <p class="site-footer__place">{site.address}</p>}
       </div>
 
       <nav class="site-footer__nav" aria-label={labels.nav.footer}>
@@ -93,6 +94,7 @@ const privacyChoices = consentBannerShown(Astro.url.pathname, Astro.site);
     font-family: var(--font-display);
     font-size: var(--step-4);
     font-weight: var(--weight-display);
+    font-optical-sizing: auto;
     letter-spacing: var(--tracking-display);
     line-height: 1;
     color: var(--tone-text);
@@ -102,6 +104,15 @@ const privacyChoices = consentBannerShown(Astro.url.pathname, Astro.site);
   .site-footer__tagline {
     max-width: 24em;
     color: var(--tone-muted);
+    font-size: var(--step--1);
+  }
+
+  .site-footer__place {
+    margin-block-start: var(--space-xs);
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--tone-muted);
   }
 
   .site-footer__nav {
@@ -110,11 +121,16 @@ const privacyChoices = consentBannerShown(Astro.url.pathname, Astro.site);
     gap: var(--space-l) var(--space-m);
   }
 
+  .site-footer__column {
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
   .site-footer__heading {
-    margin-block-end: var(--space-xs);
+    margin-block-end: var(--space-s);
     font-family: var(--font-body);
     font-size: var(--step--2);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     color: var(--tone-muted);
@@ -161,6 +177,7 @@ const privacyChoices = consentBannerShown(Astro.url.pathname, Astro.site);
   @media (min-width: 60rem) {
     .site-footer__top {
       grid-template-columns: 5fr 7fr;
+      gap: var(--space-2xl);
     }
   }
 </style>

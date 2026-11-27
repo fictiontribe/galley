@@ -62,12 +62,12 @@ const FormHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
 <style>
   :global(.section--hero-form) {
-    padding-block: var(--space-2xl) var(--space-section);
+    padding-block: var(--space-xl) var(--space-2xl);
   }
 
   .hero-form {
     display: grid;
-    gap: var(--space-2xl);
+    gap: var(--space-xl);
     align-items: center;
   }
 
@@ -81,7 +81,7 @@ const FormHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     font-size: var(--step-5);
     font-weight: var(--weight-display-strong);
     line-height: var(--leading-tight);
-    max-width: 13em;
+    max-width: 14em;
   }
 
   .hero-form__text {
@@ -94,7 +94,9 @@ const FormHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   }
 
   .hero-form__copy :global(.hero-form__points) {
-    margin-block-start: var(--space-xs);
+    inline-size: 100%;
+    padding-block-start: var(--space-s);
+    border-block-start: var(--border-width) solid var(--tone-line);
   }
 
   .hero-form__form {
@@ -102,13 +104,15 @@ const FormHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     align-content: start;
     gap: var(--space-s);
     padding: var(--space-l);
+    border-block-start: 3px solid var(--tone-link);
     box-shadow: var(--shadow-raised);
   }
 
   .hero-form__form-head {
     display: grid;
     gap: var(--space-3xs);
-    margin-block-end: var(--space-2xs);
+    padding-block-end: var(--space-s);
+    border-block-end: var(--border-width) solid var(--tone-line);
   }
 
   .hero-form__form-heading {
@@ -122,7 +126,7 @@ const FormHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
   @media (min-width: 64rem) {
     .hero-form {
-      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      grid-template-columns: minmax(0, 6.5fr) minmax(0, 5.5fr);
       gap: var(--space-2xl);
     }
   }

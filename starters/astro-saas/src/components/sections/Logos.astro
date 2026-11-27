@@ -1,9 +1,9 @@
 ---
-// Customer or partner logos: a quiet row under a hero, or a grid of tiles.
-// Logos are images (SVG logos are drawn in the colour of the text around
-// them); `name` is the alt text and `href` an optional link.
+// Customer or partner logos: an architectural hairline matrix under a hero,
+// or a larger grid of tiles. Linked customer logos reveal a subtle corner arrow.
 import Section from "../Section.astro";
 import Media from "../Media.astro";
+import Icon from "../Icon.astro";
 import { withBase, type BlockMarker, type Tone } from "../../lib/site";
 
 interface Props {
@@ -28,13 +28,18 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
     <ul class="logos__list" role="list" style={`--count: ${items.length}`}>
       {
         items.map((item) => (
-          <li class="logos__item">
+          <li class:list={["logos__item", { "logos__item--linked": Boolean(item.href) }]}>
             {item.href ? (
               <a href={withBase(item.href)} class="logos__link">
                 <Media src={item.image} alt={item.name} ratio="3/1" contain />
+                <span class="logos__arrow" aria-hidden="true">
+                  <Icon name="arrow-up-right" size={14} />
+                </span>
               </a>
             ) : (
-              <Media src={item.image} alt={item.name} ratio="3/1" contain />
+              <span class="logos__static">
+                <Media src={item.image} alt={item.name} ratio="3/1" contain />
+              </span>
             )}
           </li>
         ))
@@ -46,63 +51,90 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
 <style>
   .logos {
     display: grid;
-    gap: var(--space-m);
+    gap: var(--space-s);
   }
 
   .logos__heading {
-    font-family: var(--font-body);
-    font-size: var(--step--1);
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
     font-weight: var(--weight-medium);
-    letter-spacing: 0;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
     line-height: 1.4;
     color: var(--tone-muted);
-  }
-
-  .logos__list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
-    align-items: center;
-    gap: var(--space-m) var(--space-l);
-    padding: 0;
-    list-style: none;
-  }
-
-  .logos__item {
-    color: var(--tone-text);
-    opacity: 0.72;
-    transition: opacity var(--duration-fast) var(--ease-out);
-  }
-
-  .logos__item :global(.media) {
-    max-inline-size: 9.5rem;
-    margin-inline: auto;
-  }
-
-  .logos__link {
-    display: block;
-    color: inherit;
-  }
-
-  .logos__item:has(a:hover) {
-    opacity: 1;
   }
 
   .logos--row {
     text-align: center;
   }
 
-  .logos--grid .logos__list {
-    gap: 0;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr));
-    border-block-start: var(--border-width) solid var(--tone-line);
-    border-inline-start: var(--border-width) solid var(--tone-line);
+  .logos__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+    gap: 1px;
+    padding: 0;
+    list-style: none;
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    overflow: hidden;
   }
 
-  .logos--grid .logos__item {
-    padding: var(--space-l) var(--space-m);
-    border-inline-end: var(--border-width) solid var(--tone-line);
-    border-block-end: var(--border-width) solid var(--tone-line);
-    opacity: 0.85;
+  .logos__item {
+    position: relative;
+    display: flex;
+    background: var(--tone-surface);
+    outline: var(--border-width) solid var(--tone-line);
+    color: var(--tone-text);
+  }
+
+  .logos__link,
+  .logos__static {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 100%;
+    padding: var(--space-m) var(--space-s);
+    color: inherit;
+    text-decoration: none;
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .logos__link :global(.media),
+  .logos__static :global(.media) {
+    max-inline-size: 8.5rem;
+    opacity: 0.78;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .logos__arrow {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    color: var(--tone-muted);
+    opacity: 0;
+    transform: translate(-0.15rem, 0.15rem);
+    transition:
+      opacity var(--duration-fast) var(--ease-out),
+      transform var(--duration) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .logos__link:hover {
+    background: var(--tone-raised);
+  }
+
+  .logos__link:hover :global(.media),
+  .logos__link:focus-visible :global(.media) {
+    opacity: 1;
+  }
+
+  .logos__link:hover .logos__arrow,
+  .logos__link:focus-visible .logos__arrow {
+    opacity: 1;
+    color: var(--tone-link);
+    transform: none;
   }
 
   .logos--grid .logos__heading {
@@ -110,8 +142,14 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
     font-size: var(--step-3);
     font-weight: var(--weight-display);
     letter-spacing: var(--tracking-display);
+    text-transform: none;
     color: var(--tone-text);
-    max-width: 20em;
+    max-width: 22em;
+  }
+
+  .logos--grid .logos__link,
+  .logos--grid .logos__static {
+    padding: var(--space-l) var(--space-m);
   }
 
   @media (min-width: 60rem) {

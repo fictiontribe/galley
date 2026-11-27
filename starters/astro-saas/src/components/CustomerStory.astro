@@ -26,7 +26,7 @@ const copy = labels.customers;
     <div class="grid-texture" aria-hidden="true"></div>
     <div class="container story__header-inner">
       <a class="text-link story__back" href={withBase("/customers/")}>
-        <Icon name="arrow-left" size={18} />
+        <Icon name="arrow-left" size={16} />
         {copy.backToAll}
       </a>
       <div class="story__brand">
@@ -51,8 +51,8 @@ const copy = labels.customers;
       <aside class="story__aside">
         {
           data.facts.length > 0 && (
-            <section aria-labelledby="story-facts">
-              <h2 id="story-facts" class="story__label">
+            <section class="story__box" aria-labelledby="story-facts">
+              <h2 id="story-facts" class="story__label mono">
                 {copy.atAGlance}
               </h2>
               <dl class="story__facts">
@@ -72,8 +72,8 @@ const copy = labels.customers;
         }
         {
           data.results.length > 0 && (
-            <section aria-labelledby="story-results">
-              <h2 id="story-results" class="story__label">
+            <section class="story__box" aria-labelledby="story-results">
+              <h2 id="story-results" class="story__label mono">
                 {copy.results}
               </h2>
               <dl class="story__results">
@@ -150,7 +150,7 @@ const copy = labels.customers;
   }
 
   .story__back {
-    margin-block-end: var(--space-s);
+    margin-block-end: var(--space-2xs);
   }
 
   .story__brand {
@@ -161,8 +161,8 @@ const copy = labels.customers;
   }
 
   .story__brand :global(.story__logo) {
-    inline-size: 9rem;
-    block-size: 3rem;
+    inline-size: 8.5rem;
+    block-size: 2.75rem;
   }
 
   .story__title {
@@ -195,15 +195,21 @@ const copy = labels.customers;
 
   .story__aside {
     display: grid;
-    gap: var(--space-l);
+    gap: var(--space-m);
     align-content: start;
+  }
+
+  .story__box {
+    padding: var(--space-m);
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
   }
 
   .story__label {
     margin-block-end: var(--space-xs);
-    font-family: var(--font-body);
     font-size: var(--step--2);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     color: var(--tone-muted);
@@ -218,9 +224,15 @@ const copy = labels.customers;
   .story__facts > div,
   .story__results > div {
     display: grid;
-    gap: 0.1em;
+    gap: 0.15em;
     padding-block: var(--space-xs);
     border-block-end: var(--border-width) solid var(--tone-line);
+  }
+
+  .story__facts > div:last-child,
+  .story__results > div:last-child {
+    padding-block-end: 0;
+    border-block-end: 0;
   }
 
   .story__facts > div {
@@ -230,7 +242,7 @@ const copy = labels.customers;
 
   .story__facts dt,
   .story__results dt {
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     color: var(--tone-muted);
   }
 
@@ -248,7 +260,8 @@ const copy = labels.customers;
     order: -1;
     font-family: var(--font-display);
     font-size: var(--step-4);
-    font-weight: var(--weight-display);
+    font-weight: var(--weight-display-strong);
+    font-variant-numeric: tabular-nums;
     letter-spacing: -0.045em;
     line-height: 1;
     color: var(--tone-link);
@@ -269,6 +282,8 @@ const copy = labels.customers;
     gap: var(--space-m);
     margin-block-start: var(--space-xl);
     padding: var(--space-l);
+    border: var(--border-width) solid var(--tone-line);
+    border-inline-start: 3px solid var(--tone-link);
     border-radius: var(--radius-l);
     background: var(--tone-raised);
   }
@@ -283,10 +298,12 @@ const copy = labels.customers;
 
   .story__quote blockquote p::before {
     content: "“";
+    color: var(--tone-link);
   }
 
   .story__quote blockquote p::after {
     content: "”";
+    color: var(--tone-link);
   }
 
   .story__quote figcaption {
@@ -299,6 +316,7 @@ const copy = labels.customers;
     inline-size: 3rem;
     block-size: 3rem;
     border-radius: 50%;
+    border: var(--border-width) solid var(--tone-line);
   }
 
   .story__quote-name {

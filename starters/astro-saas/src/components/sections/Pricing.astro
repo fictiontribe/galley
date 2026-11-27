@@ -45,7 +45,7 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
           <div class="plan__head">
             <div class="plan__name-row">
               <ItemHeading class="plan__name">{plan.name}</ItemHeading>
-              {plan.badge && <span class="plan__badge">{plan.badge}</span>}
+              {plan.badge && <span class="plan__badge mono">{plan.badge}</span>}
             </div>
             <p class="plan__price">
               <span class="plan__amount">{plan.price}</span>
@@ -56,13 +56,16 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
           {plan.cta && (
             <a class:list={["button button--block plan__cta", { "button--secondary": !plan.featured }]} href={withBase(plan.cta.href)}>
               {plan.cta.label}
+              <Icon name="arrow-right" size={16} />
             </a>
           )}
           {plan.features && plan.features.length > 0 && (
             <ul class="plan__features" role="list">
               {plan.features.map((feature) => (
                 <li>
-                  <Icon name="check" size={18} />
+                  <span class="plan__check" aria-hidden="true">
+                    <Icon name="check" size={14} />
+                  </span>
                   <span>{feature}</span>
                 </li>
               ))}
@@ -89,16 +92,18 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: var(--space-l);
+    gap: var(--space-m);
     padding: var(--space-l);
     background: var(--tone-surface);
     color: var(--tone-text);
     border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-l);
+    box-shadow: var(--shadow-card);
   }
 
   .plan--featured {
-    border-color: var(--tone-link);
+    border-color: var(--tone-line);
+    border-block-start: 3px solid var(--tone-link);
     background: var(--tone-bg);
     box-shadow: var(--shadow-raised);
   }
@@ -118,43 +123,53 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
   .plan__name {
     font-size: var(--step-1);
-    letter-spacing: -0.015em;
+    letter-spacing: -0.02em;
   }
 
   .plan__badge {
-    padding: 0.15em 0.65em;
-    border-radius: var(--radius-pill);
+    padding: 0.2em 0.6em;
+    border-radius: var(--radius-s);
     background: var(--tone-link);
     color: var(--tone-bg);
     font-size: var(--step--2);
     font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
   }
 
   .plan__price {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 0.4em;
+    gap: 0.45em;
+    margin-block-start: var(--space-3xs);
   }
 
   .plan__amount {
     font-family: var(--font-display);
     font-size: var(--step-5);
-    font-weight: var(--weight-display);
+    font-weight: var(--weight-display-strong);
+    font-variant-numeric: tabular-nums;
     letter-spacing: -0.045em;
     line-height: 1;
   }
 
-  .plan__period,
+  .plan__period {
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    color: var(--tone-muted);
+  }
+
   .plan__text {
     font-size: var(--step--1);
     color: var(--tone-muted);
+    line-height: 1.5;
   }
 
   .plan__features {
     display: grid;
-    gap: var(--space-2xs);
-    padding: var(--space-m) 0 0;
+    gap: 0;
+    padding: var(--space-xs) 0 0;
     border-block-start: var(--border-width) solid var(--tone-line);
     list-style: none;
     font-size: var(--step--1);
@@ -163,19 +178,32 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   .plan__features li {
     display: grid;
     grid-template-columns: auto 1fr;
+    align-items: start;
     gap: var(--space-xs);
+    padding-block: 0.48rem;
+    border-block-end: var(--border-width) solid color-mix(in oklch, var(--tone-line) 65%, transparent);
   }
 
-  .plan__features :global(svg) {
-    margin-block-start: 0.15em;
+  .plan__features li:last-child {
+    border-block-end: 0;
+  }
+
+  .plan__check {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 1.15rem;
+    block-size: 1.15rem;
+    margin-block-start: 0.14em;
+    border-radius: var(--radius-s);
+    background: var(--tone-mark);
     color: var(--tone-link);
   }
 
   .plans__note {
     margin-block-start: var(--space-l);
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     color: var(--tone-muted);
-    max-width: 48em;
+    max-width: 52em;
   }
 
   .plans__note--center {
@@ -189,8 +217,8 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
     }
 
     .plan--featured {
-      margin-block: calc(-1 * var(--space-s));
-      padding-block: calc(var(--space-l) + var(--space-s));
+      margin-block: calc(-1 * var(--space-2xs));
+      padding-block: calc(var(--space-l) + var(--space-2xs));
     }
   }
 </style>

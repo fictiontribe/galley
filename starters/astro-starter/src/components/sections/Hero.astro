@@ -1,6 +1,6 @@
 ---
-// The opening statement of a page. With an image and align "left" it is a
-// two-column split; with align "center" the image runs full width below.
+// The opening statement of a page. With an image and align "left" it is an
+// asymmetric editorial split; with align "center" the image runs full width below.
 import Section from "../Section.astro";
 import Actions from "../Actions.astro";
 import Media from "../Media.astro";
@@ -57,7 +57,7 @@ const layout = image && align === "left" ? "split" : align === "center" ? "cente
 
 <style>
   :global(.section--hero) {
-    padding-block: var(--space-2xl) var(--space-section);
+    padding-block: var(--space-xl) var(--space-section);
   }
 
   .hero {
@@ -74,7 +74,7 @@ const layout = image && align === "left" ? "split" : align === "center" ? "cente
   .hero__heading {
     font-size: var(--step-6);
     line-height: var(--leading-tight);
-    max-width: 14em;
+    max-width: 13.5em;
   }
 
   .hero__text {
@@ -82,12 +82,16 @@ const layout = image && align === "left" ? "split" : align === "center" ? "cente
     gap: var(--space-xs);
     max-width: 34em;
     font-size: var(--step-1);
-    line-height: 1.5;
+    line-height: 1.54;
     color: var(--tone-muted);
   }
 
   .hero :global(.hero__actions) {
-    margin-block-start: var(--space-xs);
+    margin-block-start: var(--space-s);
+  }
+
+  .hero__media {
+    position: relative;
   }
 
   .hero--center .hero__copy {
@@ -121,8 +125,12 @@ const layout = image && align === "left" ? "split" : align === "center" ? "cente
       align-items: center;
     }
 
-    .hero--split .hero__heading {
-      font-size: var(--step-6);
+    .hero--split .hero__copy {
+      padding-block: var(--space-m);
+    }
+
+    .hero--split .hero__media :global(.media) {
+      max-block-size: min(80svh, 44rem);
     }
   }
 </style>

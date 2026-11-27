@@ -33,7 +33,7 @@ const posts = (await getPosts()).filter((post) => !tag || post.data.tags.include
       cta && (
         <a class="text-link posts__all" href={withBase(cta.href)}>
           {cta.label}
-          <Icon name="arrow-right" size={18} />
+          <Icon name="arrow-right" size={16} />
         </a>
       )
     }
@@ -57,6 +57,8 @@ const posts = (await getPosts()).filter((post) => !tag || post.data.tags.include
     justify-content: space-between;
     gap: var(--space-s) var(--space-l);
     margin-block-end: var(--space-xl);
+    padding-block-end: var(--space-m);
+    border-block-end: var(--border-width) solid var(--tone-line);
   }
 
   .posts__top :global(.posts__header) {
@@ -69,5 +71,11 @@ const posts = (await getPosts()).filter((post) => !tag || post.data.tags.include
     gap: var(--space-xl) var(--space-l);
     padding: 0;
     list-style: none;
+  }
+
+  @media (min-width: 60rem) {
+    .posts {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 </style>

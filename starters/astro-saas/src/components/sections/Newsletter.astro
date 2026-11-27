@@ -44,8 +44,11 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
   .newsletter {
     display: grid;
     gap: var(--space-l);
-    padding-block: var(--space-l);
-    border-block: var(--border-width) solid var(--tone-line);
+    padding: var(--space-l);
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-card);
   }
 
   .newsletter__copy {
@@ -61,6 +64,7 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
   }
 
   .newsletter__text {
+    font-size: var(--step--1);
     color: var(--tone-muted);
     max-width: 36em;
   }
@@ -88,6 +92,7 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
     .newsletter--inline {
       grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
       gap: var(--space-2xl);
+      padding: var(--space-xl);
       align-items: center;
     }
   }

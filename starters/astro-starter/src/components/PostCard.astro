@@ -1,5 +1,5 @@
 ---
-// A blog post teaser: cover image, date, title (the link) and description.
+// A blog post teaser: photographic plate, tag & date metadata, title (the link) and summary.
 import type { CollectionEntry } from "astro:content";
 import Media from "./Media.astro";
 import { fill, formatDate, labels, readingMinutes } from "../lib/site";
@@ -14,12 +14,23 @@ interface Props {
 const { post, headingLevel = 3, eager = false } = Astro.props;
 const Heading = `h${headingLevel}` as "h2" | "h3";
 const minutes = readingMinutes(post.body);
+const primaryTag = post.data.tags[0];
 ---
 
 <article class="post-card">
-  <Media src={post.data.image} alt={post.data.imageAlt ?? ""} ratio="3/2" eager={eager} />
+  <div class="frame post-card__frame">
+    <Media src={post.data.image} alt={post.data.imageAlt ?? ""} ratio="16/10" eager={eager} />
+  </div>
   <div class="post-card__body">
     <p class="post-card__meta">
+      {
+        primaryTag && (
+          <>
+            <span class="post-card__tag">{primaryTag}</span>
+            <span aria-hidden="true">·</span>
+          </>
+        )
+      }
       <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
       <span aria-hidden="true">·</span>
       <span>{fill(labels.blog.readingTime, { minutes })}</span>
@@ -36,15 +47,7 @@ const minutes = readingMinutes(post.body);
     position: relative;
     display: grid;
     align-content: start;
-    gap: var(--space-s);
-  }
-
-  .post-card :global(.media) {
-    transition: opacity var(--duration) var(--ease-out);
-  }
-
-  .post-card:hover :global(.media) {
-    opacity: 0.9;
+    gap: var(--space-m);
   }
 
   .post-card__body {
@@ -55,17 +58,22 @@ const minutes = readingMinutes(post.body);
   .post-card__meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5em;
+    align-items: center;
+    gap: 0.45em;
     font-size: var(--step--2);
     font-weight: var(--weight-medium);
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     color: var(--tone-muted);
   }
 
+  .post-card__tag {
+    color: var(--tone-link);
+  }
+
   .post-card__title {
     font-size: var(--step-2);
-    line-height: 1.15;
+    line-height: 1.14;
   }
 
   .post-card__title a {
@@ -95,7 +103,9 @@ const minutes = readingMinutes(post.body);
   }
 
   .post-card__text {
+    margin-block-start: var(--space-3xs);
     font-size: var(--step--1);
+    line-height: 1.55;
     color: var(--tone-muted);
   }
 </style>

@@ -1,7 +1,7 @@
 ---
 name: Joe Whitlock
 role: Studio and project manager
-photo: /images/team/joe-whitlock.svg
+photo: /images/team/joe-whitlock.webp
 bio: Joe keeps the programme, the fees and the paperwork in order, and is usually the person who answers the phone. He trained as a carpenter, which builders notice quickly.
 order: 4
 links:

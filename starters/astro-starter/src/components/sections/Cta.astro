@@ -1,5 +1,6 @@
 ---
-// The closing call to action. Put one at the end of most pages.
+// The closing call to action: calm studio invitation with a clear action and
+// optional editorial link. Put one at the end of most pages.
 import Section from "../Section.astro";
 import Actions from "../Actions.astro";
 import { inline, paragraphs, type Link, type BlockMarker, type Tone } from "../../lib/site";
@@ -56,7 +57,7 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
   .cta__heading {
     font-size: var(--step-5);
     line-height: var(--leading-tight);
-    max-width: 16em;
+    max-width: 15em;
   }
 
   .cta__text {
@@ -64,7 +65,7 @@ const Heading = (level === 1 ? "h1" : "h2") as "h1" | "h2";
     gap: var(--space-xs);
     max-width: 34em;
     font-size: var(--step-1);
-    line-height: 1.5;
+    line-height: 1.54;
     color: var(--tone-muted);
   }
 

@@ -1,6 +1,6 @@
 ---
 // A grid of short points: icon, heading, text and an optional link. Two to
-// four columns, plain (between hairlines) or as cards.
+// four columns, plain (between hairlines) or as an architectural bento grid.
 import Section from "../Section.astro";
 import SectionHeader from "../SectionHeader.astro";
 import Icon from "../Icon.astro";
@@ -28,13 +28,18 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
 <Section type="features" id={id} tone={tone} block={block} labelledby={headingId}>
   <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} align={align} />
-  <ul class:list={["features", `features--${style}`]} role="list" style={`--columns: ${columns}`}>
+  <ul class:list={["features", `features--${style}`]} role="list" style={`--columns: ${Math.min(columns, items.length)}`}>
     {
       items.map((item, i) => (
-        <li class:list={["feature", { card: style === "cards" }]}>
-          <span class="feature__icon" aria-hidden="true">
-            {item.icon ? <Icon name={item.icon} size={22} /> : <span class="feature__number">{String(i + 1).padStart(2, "0")}</span>}
-          </span>
+        <li class="feature">
+          <div class="feature__top">
+            <span class="feature__icon" aria-hidden="true">
+              {item.icon ? <Icon name={item.icon} size={18} /> : <span class="feature__number">{String(i + 1).padStart(2, "0")}</span>}
+            </span>
+            <span class="feature__index mono" aria-hidden="true">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+          </div>
           <ItemHeading class="feature__heading">{item.heading}</ItemHeading>
           <p class="feature__text">{item.text}</p>
           {item.cta && (
@@ -53,13 +58,21 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   .features {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-    gap: var(--space-xl) var(--space-l);
     padding: 0;
     list-style: none;
   }
 
+  .features--plain {
+    gap: var(--space-xl) var(--space-l);
+  }
+
   .features--cards {
-    gap: var(--space-m);
+    gap: 1px;
+    background: var(--tone-surface);
+    border: var(--border-width) solid var(--tone-line);
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
   }
 
   .feature {
@@ -75,23 +88,36 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
   .features--cards .feature {
     padding: var(--space-l);
+    background: var(--tone-surface);
+    outline: var(--border-width) solid var(--tone-line);
+  }
+
+  .feature__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-block-end: var(--space-xs);
   }
 
   .feature__icon {
     display: inline-grid;
     place-items: center;
-    justify-self: start;
-    inline-size: 2.5rem;
-    block-size: 2.5rem;
-    margin-block-end: var(--space-xs);
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    border: var(--border-width) solid var(--tone-line);
     border-radius: var(--radius-m);
-    background: var(--tone-mark);
+    background: var(--tone-raised);
     color: var(--tone-link);
+  }
+
+  .feature__index {
+    font-size: var(--step--2);
+    color: var(--tone-muted);
   }
 
   .feature__number {
     font-family: var(--font-mono);
-    font-size: var(--step--1);
+    font-size: var(--step--2);
     font-weight: var(--weight-medium);
   }
 
@@ -102,8 +128,10 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   }
 
   .feature__text {
+    font-size: var(--step--1);
     color: var(--tone-muted);
     max-width: 34em;
+    line-height: 1.55;
   }
 
   .feature__link {

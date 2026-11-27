@@ -83,12 +83,16 @@ h4 {
   text-wrap: balance;
 }
 
-/* `*word*` in a heading: the accent, upright, on a soft marker stroke. */
+/* `*word*` in a heading: the accent, upright, with a crisp architectural rule. */
 h1 em,
 h2 em,
 h3 em {
   font-style: normal;
   color: var(--tone-link);
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.065em;
+  text-underline-offset: 0.14em;
+  text-decoration-color: color-mix(in oklch, var(--tone-link) 32%, transparent);
 }
 
 p,
@@ -96,6 +100,13 @@ li,
 dd,
 blockquote {
   text-wrap: pretty;
+}
+
+time,
+table,
+td,
+th {
+  font-variant-numeric: tabular-nums;
 }
 
 ::selection {
@@ -109,9 +120,11 @@ a {
   color: var(--tone-link);
   text-decoration-line: underline;
   text-decoration-thickness: 1px;
-  text-underline-offset: 0.2em;
-  text-decoration-color: color-mix(in oklch, currentColor 45%, transparent);
-  transition: text-decoration-color var(--duration-fast) var(--ease-out);
+  text-underline-offset: 0.22em;
+  text-decoration-color: color-mix(in oklch, currentColor 42%, transparent);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    text-decoration-color var(--duration-fast) var(--ease-out);
 }
 
 a:hover {
@@ -120,7 +133,7 @@ a:hover {
 
 :focus-visible {
   outline: 2px solid var(--tone-focus);
-  outline-offset: 3px;
+  outline-offset: 2px;
   border-radius: var(--radius-s);
 }
 
@@ -181,7 +194,7 @@ a:hover {
   --tone-raised: var(--color-background);
   --tone-text: var(--color-text);
   --tone-muted: var(--color-text-muted);
-  --tone-line: color-mix(in oklch, var(--color-border) 78%, var(--color-text-muted));
+  --tone-line: color-mix(in oklch, var(--color-border) 80%, var(--color-text-muted));
   --tone-control: var(--color-border-strong);
   --tone-link: var(--color-accent-strong);
   --tone-focus: var(--color-accent-strong);
@@ -256,7 +269,7 @@ a:hover {
   padding-block-start: 0;
 }
 
-/* The planner grid behind heroes: hairlines on a fixed module. */
+/* The architectural planner grid behind heroes: crisp hairlines fading softly away from copy. */
 .grid-texture {
   position: absolute;
   inset: 0;
@@ -266,7 +279,7 @@ a:hover {
     linear-gradient(to bottom, var(--tone-grid) 1px, transparent 1px);
   background-size: var(--grid-size) var(--grid-size);
   background-position: center top;
-  mask-image: linear-gradient(to bottom, black 20%, transparent 92%);
+  mask-image: radial-gradient(ellipse 92% 78% at 74% 18%, black 8%, transparent 82%);
 }
 
 /* ── Shared text styles ────────────────────────────────────────────────── */
@@ -275,9 +288,9 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 0.6em;
-  font-family: var(--font-body);
+  font-family: var(--font-mono);
   font-size: var(--step--2);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--tone-muted);
@@ -285,8 +298,8 @@ a:hover {
 
 .eyebrow::before {
   content: "";
-  inline-size: 0.5rem;
-  block-size: 0.5rem;
+  inline-size: 0.45rem;
+  block-size: 0.45rem;
   border-radius: 1px;
   background: var(--tone-link);
 }
@@ -320,23 +333,25 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.55em;
-  min-height: 2.875rem;
-  padding: 0.65em 1.2em;
+  gap: 0.5em;
+  min-height: 2.75rem;
+  padding: 0.6em 1.25em;
   border: var(--border-width) solid var(--tone-button-bg);
   border-radius: var(--radius-button);
   background: var(--tone-button-bg);
   color: var(--tone-button-text);
+  box-shadow: var(--shadow-button);
   font-size: var(--step--1);
   font-weight: var(--weight-bold);
-  letter-spacing: 0.005em;
+  letter-spacing: -0.005em;
   line-height: 1.2;
   text-decoration: none;
   white-space: nowrap;
   transition:
     background-color var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
+    color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .button:hover {
@@ -349,23 +364,37 @@ a:hover {
 }
 
 .button:hover svg {
-  transform: translateX(0.18em);
+  transform: translateX(0.2em);
 }
 
 .button--secondary {
-  background: transparent;
+  background: var(--tone-surface);
   color: var(--tone-text);
-  border-color: color-mix(in oklch, var(--tone-text) 28%, transparent);
+  border-color: var(--tone-line);
+  box-shadow: var(--shadow-card);
 }
 
 .button--secondary:hover {
-  background: color-mix(in oklch, var(--tone-text) 6%, transparent);
+  background: var(--tone-raised);
+  border-color: var(--tone-control);
+}
+
+.tone-accent .button--secondary {
+  background: transparent;
+  color: var(--tone-text);
+  border-color: color-mix(in oklch, var(--tone-text) 42%, transparent);
+  box-shadow: none;
+}
+
+.tone-accent .button--secondary:hover {
+  background: color-mix(in oklch, var(--tone-text) 10%, transparent);
   border-color: var(--tone-text);
 }
 
 .button--small {
-  min-height: 2.5rem;
-  padding: 0.5em 0.95em;
+  min-height: 2.25rem;
+  padding: 0.45em 0.95em;
+  font-size: var(--step--1);
 }
 
 .button--block {
@@ -392,7 +421,7 @@ a:hover {
 }
 
 .text-link:hover svg {
-  transform: translateX(0.2em);
+  transform: translateX(0.22em);
 }
 
 /* ── Chips (tags, labels, badges) ──────────────────────────────────────── */
@@ -403,28 +432,31 @@ a:hover {
   gap: 0.4em;
   padding: 0.2em 0.65em;
   border: var(--border-width) solid var(--tone-line);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-s);
+  background: var(--tone-raised);
+  font-family: var(--font-mono);
   font-size: var(--step--2);
   font-weight: var(--weight-medium);
-  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
   color: var(--tone-muted);
   white-space: nowrap;
 }
 
 .chip--new {
-  border-color: transparent;
+  border-color: color-mix(in oklch, var(--color-accent) 26%, transparent);
   background: var(--color-accent-soft);
   color: var(--color-text);
 }
 
 .chip--improved {
-  border-color: transparent;
+  border-color: color-mix(in oklch, var(--color-positive) 26%, transparent);
   background: var(--color-positive-soft);
   color: var(--color-text);
 }
 
 .chip--fixed {
-  border-color: transparent;
+  border-color: color-mix(in oklch, var(--color-notice) 26%, transparent);
   background: var(--color-notice-soft);
   color: var(--color-text);
 }
@@ -435,6 +467,7 @@ a:hover {
   background: var(--tone-surface);
   border: var(--border-width) solid var(--tone-line);
   border-radius: var(--radius-l);
+  box-shadow: var(--shadow-card);
 }
 
 /* A whole card made clickable through one link inside it. */
@@ -460,7 +493,7 @@ a:hover {
 
 .card-link:has(.card-link__target:focus-visible) {
   outline: 2px solid var(--tone-focus);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
 /* ── Media ─────────────────────────────────────────────────────────────── */
@@ -499,7 +532,9 @@ a:hover {
 .s-panel { fill: var(--shot-panel); }
 .s-sunk { fill: var(--shot-sunk); }
 .s-line { fill: var(--shot-line); }
+.s-grid { fill: var(--shot-grid); }
 .s-ink { fill: var(--shot-ink); }
+.s-ink-soft { fill: var(--shot-ink-soft); }
 .s-muted { fill: var(--shot-muted); }
 .s-faint { fill: var(--shot-faint); }
 .s-acc { fill: var(--shot-accent); }
@@ -516,13 +551,26 @@ a:hover {
 .s-hair { fill: var(--shot-hair); }
 .s-hair2 { fill: var(--shot-hair-alt); }
 .s-stroke { fill: none; stroke: var(--shot-line); }
+.s-stroke-grid { fill: none; stroke: var(--shot-grid); }
+.s-stroke-faint { fill: none; stroke: var(--shot-faint); }
 .s-stroke-ink { fill: none; stroke: var(--shot-ink); }
+.s-stroke-panel { fill: none; stroke: var(--shot-panel); }
+.s-stroke-muted { fill: none; stroke: var(--shot-muted); }
 .s-stroke-acc { fill: none; stroke: var(--shot-accent); }
+.s-stroke-ok { fill: none; stroke: var(--shot-ok); }
+.s-stroke-warn { fill: none; stroke: var(--shot-warn); }
+.s-stroke-bad { fill: none; stroke: var(--shot-bad); }
 .s-stroke-data { fill: none; stroke: var(--shot-data); }
 .s-text { fill: var(--shot-ink); font-family: var(--font-body); }
+.s-text-soft { fill: var(--shot-ink-soft); font-family: var(--font-body); }
 .s-text-muted { fill: var(--shot-muted); font-family: var(--font-body); }
 .s-text-acc { fill: var(--shot-accent); font-family: var(--font-body); }
-.s-num { fill: var(--shot-ink); font-family: var(--font-display); }
+.s-text-on-acc { fill: var(--shot-panel); font-family: var(--font-body); }
+.s-text-ok { fill: var(--shot-ok); font-family: var(--font-body); }
+.s-text-bad { fill: var(--shot-bad); font-family: var(--font-body); }
+.s-text-mono { fill: var(--shot-muted); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.s-text-mono-ink { fill: var(--shot-ink); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.s-num { fill: var(--shot-ink); font-family: var(--font-display); font-variant-numeric: tabular-nums; }
 /* Logos: drawn in the colour of the text around them. */
 .s-logo { fill: currentColor; }
 .s-logo-text { fill: currentColor; font-family: var(--font-display); }
@@ -603,7 +651,8 @@ a:hover {
 .prose code {
   font-family: var(--font-mono);
   font-size: 0.9em;
-  padding: 0.1em 0.3em;
+  padding: 0.1em 0.35em;
+  border: var(--border-width) solid var(--tone-line);
   border-radius: var(--radius-s);
   background: var(--tone-raised);
 }
@@ -627,7 +676,7 @@ a:hover {
 .prose th,
 .prose td {
   text-align: start;
-  padding: 0.6em 0.8em 0.6em 0;
+  padding: 0.65em 0.85em 0.65em 0;
   border-block-end: var(--border-width) solid var(--tone-line);
 }
 

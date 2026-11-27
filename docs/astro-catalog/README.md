@@ -10,7 +10,8 @@ what only you can do, and what has already been checked.
 | File | What it is |
 | --- | --- |
 | `README.md` | This plan, the review checklist and what is blocked on you |
-| `theme-listing.md` | Title, summary, description, categories and links to paste into the portal |
+| `theme-listing.md` | Title, summary, description, categories and links to paste into the portal (`astro-starter` / Lowfield) |
+| `theme-listing-ferrow.md` | Title, summary, description, categories and links to paste into the portal (`astro-saas` / Ferrow) |
 | `integration-listing.md` | What the integrations catalog will show, and the avatar request |
 | `cms-guide-galley.mdx`, `cms-guide-pr.md`, `galley-logo.svg` | The docs page, its pull-request text and its logo |
 | `capture-screens.mjs` | Captures the listing images from the deployed demo |
@@ -62,8 +63,8 @@ URL-encoded), the notice's README link and the workflow.
 *Template repository* in Settings › General, add the description and topics
 (`astro`, `astro-template`, `galley`, `cms`).
 
-**Verified (2026-11-23):** `astro-starter` exports 185 files (942 kB) and
-`astro-saas` 254 files (1.5 MB), each byte-identical on a second run.
+**Verified (2026-11-27):** `astro-starter` exports 194 files (2.0 MB) and
+`astro-saas` 264 files (1.7 MB), each byte-identical on a second run.
 Copied outside the monorepo and built with plain npm in a clean environment
 (`env -i PATH HOME`): `npm install` added 203 and 204 packages with no
 warnings; `npm run build` built 18 and 31 pages with no warnings other than
@@ -121,7 +122,7 @@ What could not: the portal's exact limits on count, dimensions and size
 upload four (see `theme-listing.md`).
 
 `screenshots/local-build/` holds the same set taken from a local production
-build (865 kB). They show what to expect; the guidelines require images
+build (2.6 MB). They show what to expect; the guidelines require images
 from the deployed demo, so do not upload them.
 
 ## 4. Submit the theme

@@ -1,8 +1,8 @@
 ---
-// Questions and answers as native <details>. Answers accept markdown.
+// Questions and answers as native <details> with architectural crosshair
+// indicators (+ / −) that work without JavaScript. Answers accept markdown.
 import Section from "../Section.astro";
 import SectionHeader from "../SectionHeader.astro";
-import Icon from "../Icon.astro";
 import { markdown, type BlockMarker, type Tone } from "../../lib/site";
 
 interface Props {
@@ -30,7 +30,7 @@ const headingId = `${id ?? `section-${index}`}-heading`;
           <details class="faq__item">
             <summary class="faq__question">
               <span>{item.question}</span>
-              <Icon name="plus" size={22} class="faq__icon" />
+              <span class="faq__crosshair" aria-hidden="true" />
             </summary>
             <div class="faq__answer prose" set:html={markdown(item.answer)} />
           </details>
@@ -65,6 +65,7 @@ const headingId = `${id ?? `section-${index}`}-heading`;
     line-height: 1.3;
     list-style: none;
     cursor: pointer;
+    transition: color var(--duration-fast) var(--ease-out);
   }
 
   .faq__question::-webkit-details-marker {
@@ -75,20 +76,48 @@ const headingId = `${id ?? `section-${index}`}-heading`;
     color: var(--tone-link);
   }
 
-  .faq__question :global(.faq__icon) {
+  .faq__crosshair {
+    position: relative;
     flex: none;
-    margin-block-start: 0.1em;
+    inline-size: 1.1rem;
+    block-size: 1.1rem;
+    margin-block-start: 0.22em;
     color: var(--tone-link);
-    transition: transform var(--duration) var(--ease-out);
   }
 
-  .faq__item[open] :global(.faq__icon) {
-    transform: rotate(45deg);
+  .faq__crosshair::before,
+  .faq__crosshair::after {
+    content: "";
+    position: absolute;
+    background: currentColor;
+    transition:
+      transform var(--duration) var(--ease-out),
+      opacity var(--duration) var(--ease-out);
+  }
+
+  .faq__crosshair::before {
+    inset-inline: 0;
+    top: 50%;
+    block-size: 1px;
+    transform: translateY(-50%);
+  }
+
+  .faq__crosshair::after {
+    inset-block: 0;
+    left: 50%;
+    inline-size: 1px;
+    transform: translateX(-50%);
+  }
+
+  .faq__item[open] .faq__crosshair::after {
+    transform: translateX(-50%) scaleY(0);
+    opacity: 0;
   }
 
   .faq__answer {
-    padding-block-end: var(--space-m);
+    padding-block-end: var(--space-l);
     padding-inline-end: var(--space-xl);
+    font-size: var(--step--1);
     color: var(--tone-muted);
   }
 

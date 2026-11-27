@@ -17,10 +17,10 @@
       "label": "Lowfield",
       "file": "src/styles/themes/lowfield.css",
       "swatches": [
-        "#f9f6f0",
-        "#231b15",
-        "#a5401b",
-        "#271f18"
+        "#f9f5ef",
+        "#1f1812",
+        "#9b3a19",
+        "#1f1812"
       ],
       "preview": "galley/previews/lowfield.webp"
     },
@@ -29,10 +29,10 @@
       "label": "Sage",
       "file": "src/styles/themes/sage.css",
       "swatches": [
-        "#f3f8f4",
-        "#111e18",
-        "#1c613f",
-        "#0f231b"
+        "#f3f7f3",
+        "#0e1c16",
+        "#175c3e",
+        "#0b1e17"
       ],
       "preview": "galley/previews/sage.webp"
     },
@@ -41,10 +41,10 @@
       "label": "Evening",
       "file": "src/styles/themes/evening.css",
       "swatches": [
-        "#191410",
+        "#17110d",
         "#f1ece4",
-        "#eb9c65",
-        "#0c0806"
+        "#e49e5f",
+        "#0b0604"
       ],
       "preview": "galley/previews/evening.webp"
     }
