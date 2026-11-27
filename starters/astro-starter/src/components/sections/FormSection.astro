@@ -1,8 +1,7 @@
 ---
 // Any form from src/content/forms/, on any page: pick it with `form` (its
 // file name). The heading and text introduce it; `layout` puts them above
-// the form or beside it. Everything inside the form — fields, wording, where
-// it sends, the thank-you — lives in the form's own file.
+// the form or beside it.
 import { getEntry } from "astro:content";
 import Section from "../Section.astro";
 import SectionHeader from "../SectionHeader.astro";
@@ -74,7 +73,7 @@ const label = entry ? plain(entry.data.name) : undefined;
     padding: var(--space-l);
     background: var(--tone-surface);
     border: var(--border-width) solid var(--tone-line);
-    border-radius: var(--radius-m);
+    border-radius: var(--radius-s);
   }
 
   .form-section--stacked .form-section__form {
@@ -86,6 +85,10 @@ const label = entry ? plain(entry.data.name) : undefined;
     .form-section--split {
       grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
       gap: var(--space-2xl);
+    }
+
+    .form-section__form {
+      padding: var(--space-xl);
     }
   }
 </style>

@@ -3,8 +3,8 @@ title: Planning permission, permitted development and the space in between
 description: A plain-English guide to the two main routes for getting approval for a home extension, and how to tell which one applies to your house.
 date: 2026-07-18
 author: tomas-reyes
-image: /images/blog/planning.svg
-imageAlt: Abstract drawing of a house elevation with dimension lines and a site boundary
+image: /images/blog/planning.webp
+imageAlt: Sympathetic standing-seam zinc and timber dormer window set among English brick chimneys and slate rooftops
 tags:
   - Planning
 ---

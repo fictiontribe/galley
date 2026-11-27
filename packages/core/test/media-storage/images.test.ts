@@ -254,7 +254,7 @@ describe("a site with pictures in Images and other files in a bucket", { timeout
     expect(again.copied).toBe(0);
     const back = await storage.move(site, { kind: "move", from: "images", to: "repository" });
 
-    expect(readFileSync(join(root, "src/content/authors/tomas-reyes.md"), "utf8")).toContain("photo: /images/team/tomas-reyes.svg");
+    expect(readFileSync(join(root, "src/content/authors/tomas-reyes.md"), "utf8")).toContain("photo: /images/team/tomas-reyes.webp");
     expect(back.summary).toMatch(/still in Cloudflare Images/);
     await done();
   });

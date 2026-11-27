@@ -1,5 +1,6 @@
 ---
-// A grid of images with optional captions. Images are cropped to 4:3.
+// An architectural monograph gallery: numbered photographic plates with an
+// asymmetric editorial rhythm (tall leading plates paired with study plates).
 import Section from "../Section.astro";
 import SectionHeader from "../SectionHeader.astro";
 import Media from "../Media.astro";
@@ -20,17 +21,25 @@ interface Props {
 
 const { id, tone, eyebrow, heading, text, columns = 3, items, index = 0, level = 2, block } = Astro.props;
 const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
+const monograph = columns === 3 && items.length >= 3;
 ---
 
 <Section type="gallery" block={block} id={id} tone={tone} labelledby={headingId}>
   <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
-  <ul class:list={["gallery", { "gallery--stagger": columns === 3 && items.length >= 3 }]} role="list" style={`--columns: ${columns}`}>
+  <ul class:list={["gallery", { "gallery--monograph": monograph }]} role="list" style={`--columns: ${columns}`}>
     {
-      items.map((item) => (
-        <li>
+      items.map((item, i) => (
+        <li class="gallery__slot">
           <figure class="gallery__item">
-            <Media src={item.image} alt={item.imageAlt} ratio="4/3" />
-            {item.caption && <figcaption class="gallery__caption">{item.caption}</figcaption>}
+            <div class="frame">
+              <Media src={item.image} alt={item.imageAlt} ratio={monograph && i % 3 === 0 ? "3/4" : "4/3"} />
+            </div>
+            <figcaption class="gallery__meta">
+              <span class="gallery__index" aria-hidden="true">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              {item.caption && <span class="gallery__caption">{item.caption}</span>}
+            </figcaption>
           </figure>
         </li>
       ))
@@ -41,8 +50,8 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
 <style>
   .gallery {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
-    gap: var(--space-l) var(--space-m);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: var(--space-xl) var(--space-l);
     padding: 0;
     list-style: none;
   }
@@ -52,18 +61,47 @@ const headingId = heading ? `${id ?? `section-${index}`}-heading` : undefined;
     gap: var(--space-xs);
   }
 
+  .gallery__meta {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: var(--space-xs);
+    padding-block-start: var(--space-xs);
+    border-block-start: var(--border-width) solid var(--tone-line);
+  }
+
+  .gallery__index {
+    font-family: var(--font-display);
+    font-size: var(--step-0);
+    font-style: italic;
+    line-height: 1;
+    color: var(--tone-link);
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
   .gallery__caption {
     font-size: var(--step--1);
+    line-height: 1.45;
     color: var(--tone-muted);
   }
 
-  @media (min-width: 60rem) {
+  @media (min-width: 58rem) {
     .gallery {
       grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
     }
 
-    .gallery--stagger > li:nth-child(3n + 2) {
+    .gallery--monograph {
+      grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr) minmax(0, 1fr);
+      row-gap: var(--space-2xl);
+      align-items: start;
+    }
+
+    .gallery--monograph > .gallery__slot:nth-child(3n + 2) {
       margin-block-start: var(--space-xl);
+    }
+
+    .gallery--monograph > .gallery__slot:nth-child(3n + 3) {
+      align-self: end;
     }
   }
 </style>

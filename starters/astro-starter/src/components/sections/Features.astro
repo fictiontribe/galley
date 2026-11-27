@@ -1,6 +1,6 @@
 ---
-// A grid of short points: optional icon, heading, text and link. Use for
-// services, benefits or principles; 2–4 columns.
+// Architectural ledger grid: numbered rows/columns separated by crisp 1px
+// hairlines, delicate line icons and calm typography. 2–4 columns.
 import Section from "../Section.astro";
 import SectionHeader from "../SectionHeader.astro";
 import Icon from "../Icon.astro";
@@ -26,18 +26,22 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
 
 <Section type="features" block={block} id={id} tone={tone} labelledby={headingId}>
   <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} />
-  <ul class="features" role="list" style={`--columns: ${columns}`}>
+  <ul class="features" role="list" data-columns={columns} style={`--columns: ${columns}`}>
     {
       items.map((item, i) => (
         <li class="feature">
           <div class="feature__top">
-            {item.icon ? <Icon name={item.icon} size={28} class="feature__icon" /> : <span class="feature__number">{String(i + 1).padStart(2, "0")}</span>}
+            <span class="feature__number" aria-hidden="true">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            {item.icon && <Icon name={item.icon} size={16} class="feature__icon" />}
           </div>
           <ItemHeading class="feature__heading">{item.heading}</ItemHeading>
           <p class="feature__text">{item.text}</p>
           {item.cta && (
             <a class="text-link feature__link" href={withBase(item.cta.href)}>
               {item.cta.label}
+              <Icon name="arrow-right" size={15} />
             </a>
           )}
         </li>
@@ -50,14 +54,14 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   .features {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-    gap: var(--space-xl) var(--space-l);
+    gap: var(--space-l) var(--space-l);
     padding: 0;
     list-style: none;
   }
 
   .feature {
-    display: grid;
-    align-content: start;
+    display: flex;
+    flex-direction: column;
     gap: var(--space-xs);
     padding-block-start: var(--space-m);
     border-block-start: var(--border-width) solid var(--tone-line);
@@ -66,20 +70,22 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   .feature__top {
     display: flex;
     align-items: center;
-    block-size: 1.75rem;
-    margin-block-end: var(--space-xs);
-  }
-
-  .feature :global(.feature__icon) {
-    color: var(--tone-link);
+    justify-content: space-between;
+    gap: var(--space-xs);
+    margin-block-end: var(--space-s);
   }
 
   .feature__number {
     font-family: var(--font-display);
     font-size: var(--step-1);
     font-style: italic;
+    line-height: 1;
     color: var(--tone-link);
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  .feature :global(.feature__icon) {
+    color: var(--tone-muted);
   }
 
   .feature__heading {
@@ -88,18 +94,45 @@ const ItemHeading = (level === 1 ? "h2" : "h3") as "h2" | "h3";
   }
 
   .feature__text {
+    font-size: var(--step--1);
+    line-height: 1.58;
     color: var(--tone-muted);
     max-width: 34em;
   }
 
   .feature__link {
-    margin-block-start: var(--space-2xs);
-    justify-self: start;
+    margin-block-start: auto;
+    padding-block-start: var(--space-xs);
+    align-self: flex-start;
   }
 
   @media (min-width: 60rem) {
     .features {
       grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+      gap: var(--space-xl) 0;
+    }
+
+    .feature {
+      padding-block: var(--space-m) var(--space-xs);
+      padding-inline: var(--space-m);
+    }
+
+    .features[data-columns="2"] > .feature:nth-child(2n + 1),
+    .features[data-columns="3"] > .feature:nth-child(3n + 1),
+    .features[data-columns="4"] > .feature:nth-child(4n + 1) {
+      padding-inline-start: 0;
+    }
+
+    .features[data-columns="2"] > .feature:not(:nth-child(2n + 1)),
+    .features[data-columns="3"] > .feature:not(:nth-child(3n + 1)),
+    .features[data-columns="4"] > .feature:not(:nth-child(4n + 1)) {
+      border-inline-start: var(--border-width) solid var(--tone-line);
+    }
+
+    .features[data-columns="2"] > .feature:nth-child(2n),
+    .features[data-columns="3"] > .feature:nth-child(3n),
+    .features[data-columns="4"] > .feature:nth-child(4n) {
+      padding-inline-end: 0;
     }
   }
 </style>

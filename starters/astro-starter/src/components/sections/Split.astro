@@ -1,11 +1,10 @@
 ---
-// Image beside text. `imageSide` puts the image left or right on wide
-// screens; on small screens the image always comes first.
+// Editorial spread: photograph beside copy and hairline-divided specification
+// points. `imageSide` puts the photograph left or right on wide screens.
 import Section from "../Section.astro";
 import SectionHeader from "../SectionHeader.astro";
 import Actions from "../Actions.astro";
 import Media from "../Media.astro";
-import Icon from "../Icon.astro";
 import type { Link, BlockMarker, Tone } from "../../lib/site";
 
 interface Props {
@@ -33,7 +32,7 @@ const headingId = `${id ?? `section-${index}`}-heading`;
 <Section type="split" block={block} id={id} tone={tone} labelledby={headingId}>
   <div class:list={["split", `split--image-${imageSide}`]}>
     <div class="split__media">
-      <Media src={image} alt={imageAlt} ratio="5/4" eager={index === 0} />
+      <Media src={image} alt={imageAlt} ratio="4/3" eager={index === 0} />
     </div>
     <div class="split__copy">
       <SectionHeader eyebrow={eyebrow} heading={heading} text={text} level={level} headingId={headingId} size="small" class="split__header" />
@@ -42,7 +41,7 @@ const headingId = `${id ?? `section-${index}`}-heading`;
           <ul class="split__list" role="list">
             {items.map((item) => (
               <li>
-                <Icon name="check" size={20} />
+                <span class="split__dash" aria-hidden="true" />
                 <span>{item}</span>
               </li>
             ))}
@@ -72,22 +71,26 @@ const headingId = `${id ?? `section-${index}`}-heading`;
 
   .split__list {
     display: grid;
-    gap: var(--space-xs);
     padding: 0;
     list-style: none;
+    border-block-start: var(--border-width) solid var(--tone-line);
   }
 
   .split__list li {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: var(--space-xs);
-    padding-block-end: var(--space-xs);
+    gap: var(--space-s);
+    padding-block: var(--space-xs);
     border-block-end: var(--border-width) solid var(--tone-line);
+    font-size: var(--step--1);
+    line-height: 1.5;
   }
 
-  .split__list :global(svg) {
-    margin-block-start: 0.2em;
-    color: var(--tone-link);
+  .split__dash {
+    inline-size: 1.15rem;
+    block-size: 1px;
+    margin-block-start: 0.72em;
+    background: var(--tone-link);
   }
 
   @media (min-width: 56rem) {

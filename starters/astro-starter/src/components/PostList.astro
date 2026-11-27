@@ -1,6 +1,6 @@
 ---
 // One page of a post listing — the journal or a tag — with the pager below
-// it. The first post on the first page of the journal is set large.
+// it. The first post on the first page of the journal is set as a spread.
 import type { Page } from "astro";
 import type { CollectionEntry } from "astro:content";
 import PostCard from "./PostCard.astro";
@@ -35,7 +35,7 @@ const { listing, lead = false } = Astro.props;
     <nav class="pager" aria-label={labels.blog.pagination}>
       {listing.url.prev ? (
         <a class="text-link" href={listing.url.prev}>
-          <Icon name="arrow-left" size={18} />
+          <Icon name="arrow-left" size={16} />
           {labels.blog.newer}
         </a>
       ) : (
@@ -45,7 +45,7 @@ const { listing, lead = false } = Astro.props;
       {listing.url.next ? (
         <a class="text-link" href={listing.url.next}>
           {labels.blog.older}
-          <Icon name="arrow-right" size={18} />
+          <Icon name="arrow-right" size={16} />
         </a>
       ) : (
         <span />
@@ -78,7 +78,9 @@ const { listing, lead = false } = Astro.props;
   }
 
   .pager__status {
-    font-size: var(--step--1);
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
     color: var(--tone-muted);
   }
 
@@ -89,20 +91,23 @@ const { listing, lead = false } = Astro.props;
 
     .post-list__lead {
       grid-column: 1 / -1;
+      padding-block-end: var(--space-xl);
+      border-block-end: var(--border-width) solid var(--tone-line);
     }
 
     .post-list__lead :global(.post-card) {
       grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-      gap: var(--space-xl);
+      gap: var(--space-2xl);
       align-items: center;
     }
 
     .post-list__lead :global(.post-card__title) {
       font-size: var(--step-4);
+      line-height: 1.06;
     }
 
     .post-list__lead :global(.post-card__text) {
-      font-size: var(--step-1);
+      font-size: var(--step-0);
     }
   }
 </style>

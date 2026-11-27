@@ -1,8 +1,8 @@
 ---
-// One quotation, set large. Use once per page at most.
+// Editorial magazine pull-quote: large italic display statement paired with
+// a candid square architectural portrait plate and street/project credit.
 import Section from "../Section.astro";
 import Media from "../Media.astro";
-import Icon from "../Icon.astro";
 import type { BlockMarker, Tone } from "../../lib/site";
 
 interface Props {
@@ -22,61 +22,96 @@ const { id, tone, quote, name, role, image, imageAlt, block } = Astro.props;
 ---
 
 <Section type="testimonial" block={block} id={id} tone={tone}>
-  <figure class="testimonial">
-    <Icon name="quote" size={44} class="testimonial__mark" />
-    <blockquote class="testimonial__quote">
-      <p>{quote}</p>
-    </blockquote>
-    <figcaption class="testimonial__by">
-      {image && <Media src={image} alt={imageAlt ?? name} ratio="1/1" class="testimonial__photo" />}
-      <span>
+  <figure class:list={["testimonial", { "testimonial--with-photo": Boolean(image) }]}>
+    {
+      image && (
+        <div class="testimonial__media">
+          <Media src={image} alt={imageAlt ?? name} ratio="1/1" class="testimonial__photo" />
+        </div>
+      )
+    }
+    <div class="testimonial__body">
+      <span class="testimonial__rule" aria-hidden="true" />
+      <blockquote class="testimonial__quote">
+        <p>{quote}</p>
+      </blockquote>
+      <figcaption class="testimonial__by">
         <span class="testimonial__name">{name}</span>
         {role && <span class="testimonial__role">{role}</span>}
-      </span>
-    </figcaption>
+      </figcaption>
+    </div>
   </figure>
 </Section>
 
 <style>
   .testimonial {
     display: grid;
-    gap: var(--space-l);
-    max-width: 56rem;
+    gap: var(--space-xl);
+    align-items: center;
   }
 
-  .testimonial :global(.testimonial__mark) {
-    color: var(--tone-link);
+  .testimonial__body {
+    display: grid;
+    gap: var(--space-l);
+    max-width: 52rem;
+  }
+
+  .testimonial__rule {
+    inline-size: 3rem;
+    block-size: 1px;
+    background: var(--tone-link);
   }
 
   .testimonial__quote {
     font-family: var(--font-display);
     font-size: var(--step-4);
+    font-style: italic;
     font-weight: var(--weight-display);
-    line-height: 1.16;
+    font-optical-sizing: auto;
+    line-height: 1.2;
     letter-spacing: var(--tracking-display);
     text-wrap: balance;
   }
 
-  .testimonial__by {
-    display: flex;
-    align-items: center;
-    gap: var(--space-s);
+  .testimonial__quote p::before {
+    content: open-quote;
   }
 
-  .testimonial__by :global(.testimonial__photo) {
-    inline-size: 3.5rem;
-    block-size: 3.5rem;
-    border-radius: 50%;
+  .testimonial__quote p::after {
+    content: close-quote;
+  }
+
+  .testimonial__by {
+    display: grid;
+    gap: 0.2em;
+    padding-block-start: var(--space-m);
+    border-block-start: var(--border-width) solid var(--tone-line);
   }
 
   .testimonial__name {
-    display: block;
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
+    font-size: var(--step-0);
   }
 
   .testimonial__role {
-    display: block;
-    font-size: var(--step--1);
+    font-size: var(--step--2);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
     color: var(--tone-muted);
+  }
+
+  .testimonial__media {
+    max-width: 18rem;
+  }
+
+  @media (min-width: 56rem) {
+    .testimonial--with-photo {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+      gap: var(--space-2xl);
+    }
+
+    .testimonial__media {
+      max-width: none;
+    }
   }
 </style>

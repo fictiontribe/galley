@@ -16,7 +16,7 @@ import { tempHome } from "./helpers";
 
 const KEY = { accessKeyId: "0123456789abcdef0123456789abcdef", secretAccessKey: "c".repeat(64) };
 const AUTHOR = "src/content/authors/tomas-reyes.md";
-const PHOTO = "public/images/team/tomas-reyes.svg";
+const PHOTO = "public/images/team/tomas-reyes.webp";
 let fake: FakeS3;
 
 beforeAll(async () => {
@@ -77,7 +77,7 @@ const read = (root: string, path: string) => readFileSync(join(root, ...path.spl
 const LAYOUT = "src/layouts/Base.astro";
 const GALLERY = "scripts/gallery/sections.md";
 const ON_STARTERS: Record<StarterName, { files: number; removes: number; templates: number; keeps: Record<string, number>; beside: string[]; withBuildModeOff: number; withGalleryBuilt: number }> = {
-  "astro-starter": { files: 27, removes: 25, templates: 3, keeps: { [LAYOUT]: 2 }, beside: [GALLERY], withBuildModeOff: 18, withGalleryBuilt: 15 },
+  "astro-starter": { files: 26, removes: 24, templates: 3, keeps: { [LAYOUT]: 2 }, beside: [GALLERY], withBuildModeOff: 17, withGalleryBuilt: 14 },
   "astro-editorial": { files: 31, removes: 29, templates: 4, keeps: { [LAYOUT]: 2 }, beside: ["README.md", "galley/photography/shots.json", GALLERY], withBuildModeOff: 14, withGalleryBuilt: 15 },
   "astro-saas": { files: 37, removes: 35, templates: 4, keeps: { [LAYOUT]: 2 }, beside: ["README.md", GALLERY], withBuildModeOff: 22, withGalleryBuilt: 19 },
   "astro-storefront": { files: 52, removes: 30, templates: 6, keeps: { "src/data/shop/catalogue.json": 20, [LAYOUT]: 2 }, beside: ["galley/photography/shots.json", GALLERY], withBuildModeOff: 25, withGalleryBuilt: 24 },
@@ -101,13 +101,13 @@ describe("moving media", { timeout: 240_000 }, () => {
     expect(plan.done).toBe(0);
     expect(plan.keepCopies).toBe(false);
     // The plan changed nothing.
-    expect(read(root, AUTHOR)).toContain("photo: /images/team/tomas-reyes.svg");
+    expect(read(root, AUTHOR)).toContain("photo: /images/team/tomas-reyes.webp");
 
     const first = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
 
     expect(first.copied).toBe(plan.files);
-    expect(read(root, AUTHOR)).toContain(`photo: ${publicUrl}/lowfield/team/tomas-reyes.svg`);
-    expect(fake.buckets.get("moves")!.objects.get("lowfield/team/tomas-reyes.svg")!.body.toString()).toContain("<svg");
+    expect(read(root, AUTHOR)).toContain(`photo: ${publicUrl}/lowfield/team/tomas-reyes.webp`);
+    expect(fake.buckets.get("moves")!.objects.get("lowfield/team/tomas-reyes.webp")!.body.subarray(0, 4).toString()).toBe("RIFF");
     const changes = await site.changes();
 
     expect(changes.files.find((file) => file.path === PHOTO)?.status).toBe("deleted");
@@ -181,7 +181,7 @@ describe("moving media", { timeout: 240_000 }, () => {
   it("ends as an error when a file can't be moved, with the list of what went wrong", async () => {
     const { storage, site, done } = await setUp();
 
-    fake.buckets.get("moves")!.objects.set("lowfield/team/tomas-reyes.svg", { body: Buffer.from("<svg>someone else's</svg>"), contentType: "image/svg+xml", cacheControl: null, metadata: {}, etag: "z", lastModified: new Date() });
+    fake.buckets.get("moves")!.objects.set("lowfield/team/tomas-reyes.webp", { body: Buffer.from("<svg>someone else's</svg>"), contentType: "image/svg+xml", cacheControl: null, metadata: {}, etag: "z", lastModified: new Date() });
     const started = await storage.startMove(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true });
 
     for (let i = 0; i < 600 && storage.job(started.id)?.state === "running"; i += 1) await new Promise((resolve) => setTimeout(resolve, 100));
@@ -189,10 +189,10 @@ describe("moving media", { timeout: 240_000 }, () => {
     const result = (await storage.status(site)).lastMove!;
 
     expect(job.state).toBe("error");
-    expect(job.output).toBe(`${PHOTO}: A different file is already in Cloudflare R2 as “lowfield/team/tomas-reyes.svg”, so this one stays in the repository.`);
+    expect(job.output).toBe(`${PHOTO}: A different file is already in Cloudflare R2 as “lowfield/team/tomas-reyes.webp”, so this one stays in the repository.`);
     expect(job.detail).toMatch(/\. 1 problem — see the list\. Publish to make it live\.$/);
     expect(result.state).toBe("error");
-    expect(result.problems).toEqual([{ path: PHOTO, reason: "A different file is already in Cloudflare R2 as “lowfield/team/tomas-reyes.svg”, so this one stays in the repository." }]);
+    expect(result.problems).toEqual([{ path: PHOTO, reason: "A different file is already in Cloudflare R2 as “lowfield/team/tomas-reyes.webp”, so this one stays in the repository." }]);
     // What code and templates use is still not counted among the problems.
     expect(result.problems.some((problem) => /code or templates/.test(problem.reason))).toBe(false);
     await done();
@@ -203,13 +203,13 @@ describe("moving media", { timeout: 240_000 }, () => {
     const layout = join(root, "src/layouts/Base.astro");
 
     await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
-    writeFileSync(layout, `${readFileSync(layout, "utf8")}\n<!-- ${publicUrl}/lowfield/team/tomas-reyes.svg -->\n`);
+    writeFileSync(layout, `${readFileSync(layout, "utf8")}\n<!-- ${publicUrl}/lowfield/team/tomas-reyes.webp -->\n`);
     const back = await storage.move(site, { kind: "move", from: "bucket", to: "repository" });
 
     expect(back.problems).toEqual([]);
     expect(back.leftAlone).toEqual(["src/layouts/Base.astro"]);
     expect(back.summary).toContain("src/layouts/Base.astro still points at Cloudflare R2: a move doesn't change the site's code, so change it by hand. The files are still in Cloudflare R2; remove them there once the pages are published.");
-    expect(read(root, "src/layouts/Base.astro")).toContain(`${publicUrl}/lowfield/team/tomas-reyes.svg`);
+    expect(read(root, "src/layouts/Base.astro")).toContain(`${publicUrl}/lowfield/team/tomas-reyes.webp`);
     expect((await storage.status(site)).lastMove).toMatchObject({ state: "done", request: { kind: "move", from: "bucket", to: "repository" }, stayedFiles: 0 });
     await done();
   });
@@ -309,9 +309,9 @@ describe("moving media", { timeout: 240_000 }, () => {
 
   it("keeps what a file outside the site's folders names when the site's source reads that file, and says which file reads it", async () => {
     const { storage, site, root, done } = await setUp(undefined, undefined, {
-      "data/team.json": `${JSON.stringify({ lead: "/images/team/tomas-reyes.svg" })}\n`,
+      "data/team.json": `${JSON.stringify({ lead: "/images/team/tomas-reyes.webp" })}\n`,
       "src/lib/team.ts": 'import team from "../../data/team.json";\n\nexport const lead = team.lead;\n',
-      "notes/team.md": "The lead's portrait is /images/team/tomas-reyes.svg.\n",
+      "notes/team.md": "The lead's portrait is /images/team/tomas-reyes.webp.\n",
     });
     const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
     const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
@@ -326,8 +326,8 @@ describe("moving media", { timeout: 240_000 }, () => {
     expect(keptBy(outcome.stillMentioned)).toEqual(keptBy(plan.stillMentioned));
     expect(outcome.readBy).toEqual(plan.readBy);
     expect(outcome.summary).toContain("data/team.json (read by src/lib/team.ts)");
-    expect(read(root, PHOTO)).toContain("<svg");
-    expect(read(root, "data/team.json")).toContain("/images/team/tomas-reyes.svg");
+    expect(read(root, PHOTO)).toContain("WEBP");
+    expect(read(root, "data/team.json")).toContain("/images/team/tomas-reyes.webp");
     expect((await site.changes()).files.map((file) => file.path)).not.toContain("data/team.json");
     await done();
   });
@@ -445,7 +445,7 @@ describe("moving media", { timeout: 240_000 }, () => {
     const page = join(root, AUTHOR);
 
     // One line holds the address twice: once as the photo (read and updated), once inside a sentence (left as it is).
-    writeFileSync(page, readFileSync(page, "utf8").replace("photo: /images/team/tomas-reyes.svg", "photo: /images/team/tomas-reyes.svg # was:/images/team/tomas-reyes.svg"));
+    writeFileSync(page, readFileSync(page, "utf8").replace("photo: /images/team/tomas-reyes.webp", "photo: /images/team/tomas-reyes.webp # was:/images/team/tomas-reyes.webp"));
     const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
     const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
 
@@ -469,14 +469,14 @@ describe("moving media", { timeout: 240_000 }, () => {
     const { storage, site, root, publicUrl, done } = await setUp();
     const page = join(root, AUTHOR);
     const lookalikes = [
-      "Partner logo: https://partner.example/images/team/tomas-reyes.svg",
-      "Their copy: //cdn.example/images/team/tomas-reyes.svg",
-      "Elsewhere on the site: /blog/images/team/tomas-reyes.svg and /about/favicon.svg",
+      "Partner logo: https://partner.example/images/team/tomas-reyes.webp",
+      "Their copy: //cdn.example/images/team/tomas-reyes.webp",
+      "Elsewhere on the site: /blog/images/team/tomas-reyes.webp and /about/favicon.svg",
       "In a word: logo/favicon.svg",
-      "A real one: ![Icon](/favicon.svg) and src=\"/images/team/tomas-reyes.svg?v=2\".",
+      "A real one: ![Icon](/favicon.svg) and src=\"/images/team/tomas-reyes.webp?v=2\".",
       "Angle brackets: [x](</favicon.svg>)",
-      "Escaped quotes: <img src=&quot;/images/team/tomas-reyes.svg&quot;>",
-      'JSON slashes: {"image":"\\/images\\/team\\/tomas-reyes.svg"}',
+      "Escaped quotes: <img src=&quot;/images/team/tomas-reyes.webp&quot;>",
+      'JSON slashes: {"image":"\\/images\\/team\\/tomas-reyes.webp"}',
       "A table: |/favicon.svg|x|",
     ].join("\n");
     const original = `${readFileSync(page, "utf8")}\n${lookalikes}\n`;
@@ -485,16 +485,16 @@ describe("moving media", { timeout: 240_000 }, () => {
     await storage.move(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true });
     const moved = readFileSync(page, "utf8");
 
-    expect(moved).toContain("https://partner.example/images/team/tomas-reyes.svg");
-    expect(moved).toContain("//cdn.example/images/team/tomas-reyes.svg");
-    expect(moved).toContain("/blog/images/team/tomas-reyes.svg and /about/favicon.svg");
+    expect(moved).toContain("https://partner.example/images/team/tomas-reyes.webp");
+    expect(moved).toContain("//cdn.example/images/team/tomas-reyes.webp");
+    expect(moved).toContain("/blog/images/team/tomas-reyes.webp and /about/favicon.svg");
     expect(moved).toContain("In a word: logo/favicon.svg");
     expect(moved).toContain(`![Icon](${publicUrl}/lowfield/favicon.svg)`);
-    expect(moved).toContain(`src="${publicUrl}/lowfield/team/tomas-reyes.svg?v=2"`);
-    expect(moved).toContain(`photo: ${publicUrl}/lowfield/team/tomas-reyes.svg`);
+    expect(moved).toContain(`src="${publicUrl}/lowfield/team/tomas-reyes.webp?v=2"`);
+    expect(moved).toContain(`photo: ${publicUrl}/lowfield/team/tomas-reyes.webp`);
     expect(moved).toContain(`[x](<${publicUrl}/lowfield/favicon.svg>)`);
-    expect(moved).toContain(`src=&quot;${publicUrl}/lowfield/team/tomas-reyes.svg&quot;`);
-    expect(moved).toContain(`{"image":"${`${publicUrl}/lowfield/team/tomas-reyes.svg`.replace(/\//g, "\\/")}"}`);
+    expect(moved).toContain(`src=&quot;${publicUrl}/lowfield/team/tomas-reyes.webp&quot;`);
+    expect(moved).toContain(`{"image":"${`${publicUrl}/lowfield/team/tomas-reyes.webp`.replace(/\//g, "\\/")}"}`);
     expect(moved).toContain(`|${publicUrl}/lowfield/favicon.svg|x|`);
 
     await storage.move(site, { kind: "move", from: "bucket", to: "repository" });
@@ -506,7 +506,7 @@ describe("moving media", { timeout: 240_000 }, () => {
     const { storage, site, root, done } = await setUp();
     const page = join(root, AUTHOR);
 
-    writeFileSync(page, `${readFileSync(page, "utf8")}\nIts own words:/images/team/tomas-reyes.svg\n`);
+    writeFileSync(page, `${readFileSync(page, "utf8")}\nIts own words:/images/team/tomas-reyes.webp\n`);
     const plan = await storage.planMove(site, { kind: "move", from: "repository", to: "bucket" });
 
     expect(plan.stillMentioned).toContainEqual({ path: PHOTO, pages: [AUTHOR] });
@@ -514,7 +514,7 @@ describe("moving media", { timeout: 240_000 }, () => {
 
     expect(outcome.stillMentioned).toContainEqual({ path: PHOTO, pages: [AUTHOR] });
     expect(outcome.summary).toMatch(/left in the repository: still used by .*src\/content\/authors\/tomas-reyes\.md/);
-    expect(read(root, PHOTO)).toContain("<svg");
+    expect(read(root, PHOTO)).toContain("WEBP");
     expect((await site.changes()).files.find((file) => file.path === PHOTO)).toBeUndefined();
     await done();
   });
@@ -522,20 +522,20 @@ describe("moving media", { timeout: 240_000 }, () => {
   it("keeps the repository's copies when asked, and leaves a different file of the same name alone", async () => {
     const { storage, site, root, done } = await setUp();
 
-    fake.buckets.get("moves")!.objects.set("lowfield/team/tomas-reyes.svg", { body: Buffer.from("<svg>someone else's</svg>"), contentType: "image/svg+xml", cacheControl: null, metadata: {}, etag: "z", lastModified: new Date() });
-    const size = readFileSync(join(root, "public/images/team/nell-okafor.svg")).byteLength;
+    fake.buckets.get("moves")!.objects.set("lowfield/team/tomas-reyes.webp", { body: Buffer.from("<svg>someone else's</svg>"), contentType: "image/svg+xml", cacheControl: null, metadata: {}, etag: "z", lastModified: new Date() });
+    const size = readFileSync(join(root, "public/images/team/nell-okafor.webp")).byteLength;
 
-    fake.buckets.get("moves")!.objects.set("lowfield/team/nell-okafor.svg", { body: Buffer.alloc(size, 32), contentType: "image/svg+xml", cacheControl: null, metadata: {}, etag: "0123456789abcdef0123456789abcdef", lastModified: new Date() });
+    fake.buckets.get("moves")!.objects.set("lowfield/team/nell-okafor.webp", { body: Buffer.alloc(size, 32), contentType: "image/svg+xml", cacheControl: null, metadata: {}, etag: "0123456789abcdef0123456789abcdef", lastModified: new Date() });
     const outcome = await storage.move(site, { kind: "move", from: "repository", to: "bucket", keepCopies: true });
 
     expect(outcome.removed).toBe(0);
     expect(outcome.problems.find((problem) => problem.path === PHOTO)?.reason).toMatch(/different file is already/);
     // The same size isn't enough: different bytes are a different file.
-    expect(outcome.problems.find((problem) => problem.path === "public/images/team/nell-okafor.svg")?.reason).toMatch(/different file is already/);
-    expect(read(root, "src/content/authors/nell-okafor.md")).toContain("photo: /images/team/nell-okafor.svg");
+    expect(outcome.problems.find((problem) => problem.path === "public/images/team/nell-okafor.webp")?.reason).toMatch(/different file is already/);
+    expect(read(root, "src/content/authors/nell-okafor.md")).toContain("photo: /images/team/nell-okafor.webp");
     // Its page still uses the repository's file.
-    expect(read(root, AUTHOR)).toContain("photo: /images/team/tomas-reyes.svg");
-    expect(fake.buckets.get("moves")!.objects.get("lowfield/team/tomas-reyes.svg")!.body.toString()).toBe("<svg>someone else's</svg>");
+    expect(read(root, AUTHOR)).toContain("photo: /images/team/tomas-reyes.webp");
+    expect(fake.buckets.get("moves")!.objects.get("lowfield/team/tomas-reyes.webp")!.body.toString()).toBe("<svg>someone else's</svg>");
     expect((await site.changes()).files.some((file) => file.status === "deleted")).toBe(false);
     await done();
   });
@@ -546,10 +546,10 @@ describe("moving media", { timeout: 240_000 }, () => {
     await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
     const back = await storage.move(site, { kind: "move", from: "bucket", to: "repository" });
 
-    expect(read(root, AUTHOR)).toContain("photo: /images/team/tomas-reyes.svg");
-    expect(read(root, PHOTO)).toContain("<svg");
+    expect(read(root, AUTHOR)).toContain("photo: /images/team/tomas-reyes.webp");
+    expect(read(root, PHOTO)).toContain("WEBP");
     expect(back.summary).toMatch(/still in Cloudflare R2/);
-    expect(fake.buckets.get("moves")!.objects.has("lowfield/team/tomas-reyes.svg")).toBe(true);
+    expect(fake.buckets.get("moves")!.objects.has("lowfield/team/tomas-reyes.webp")).toBe(true);
     // The photo is as it was: nothing waits to be published for it.
     expect((await site.changes()).files.find((file) => file.path === PHOTO)).toBeUndefined();
     await done();
@@ -624,7 +624,7 @@ describe("moving media", { timeout: 240_000 }, () => {
     const outcome = await storage.move(site, { kind: "address", store: "bucket", publicUrl: next });
 
     expect(outcome.problems).toEqual([]);
-    expect(read(root, AUTHOR)).toContain(`photo: ${next}/lowfield/team/tomas-reyes.svg`);
+    expect(read(root, AUTHOR)).toContain(`photo: ${next}/lowfield/team/tomas-reyes.webp`);
     expect((await site.readConfig())?.media?.storage?.publicUrl).toBe(next);
     // New uploads use the new address.
     expect((await site.saveMedia({ filename: "new.svg", data: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>') })).url.startsWith(next)).toBe(true);
@@ -636,7 +636,7 @@ describe("moving media", { timeout: 240_000 }, () => {
     const layout = join(root, "src/layouts/Base.astro");
 
     await storage.move(site, { kind: "move", from: "repository", to: "bucket" });
-    writeFileSync(layout, `${readFileSync(layout, "utf8")}\n<!-- ${publicUrl}/lowfield/team/tomas-reyes.svg -->\n`);
+    writeFileSync(layout, `${readFileSync(layout, "utf8")}\n<!-- ${publicUrl}/lowfield/team/tomas-reyes.webp -->\n`);
     const next = publicUrl.replace("127.0.0.1", "localhost");
     const outcome = await storage.move(site, { kind: "address", store: "bucket", publicUrl: next });
 

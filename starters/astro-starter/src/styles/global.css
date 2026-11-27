@@ -76,6 +76,7 @@ h3,
 h4 {
   font-family: var(--font-display);
   font-weight: var(--weight-display);
+  font-optical-sizing: auto;
   letter-spacing: var(--tracking-display);
   line-height: var(--leading-snug);
   text-wrap: balance;
@@ -86,13 +87,15 @@ h2 em,
 h3 em,
 .display em {
   font-style: italic;
+  font-weight: var(--weight-display);
   color: var(--tone-link);
 }
 
 p,
 li,
 dd,
-blockquote {
+blockquote,
+figcaption {
   text-wrap: pretty;
 }
 
@@ -107,9 +110,11 @@ a {
   color: var(--tone-link);
   text-decoration-line: underline;
   text-decoration-thickness: 1px;
-  text-underline-offset: 0.2em;
-  text-decoration-color: color-mix(in oklch, currentColor 45%, transparent);
-  transition: text-decoration-color var(--duration-fast) var(--ease-out);
+  text-underline-offset: 0.24em;
+  text-decoration-color: color-mix(in oklch, currentColor 42%, transparent);
+  transition:
+    text-decoration-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 a:hover {
@@ -130,6 +135,7 @@ a:hover {
   padding: var(--space-2xs) var(--space-s);
   background: var(--color-inverse-background);
   color: var(--color-inverse-text);
+  font-size: var(--step--1);
   font-weight: var(--weight-medium);
   border-radius: var(--radius-button);
   transform: translateY(-200%);
@@ -168,6 +174,8 @@ a:hover {
   --tone-button-bg: var(--color-accent);
   --tone-button-text: var(--color-accent-contrast);
   --tone-button-hover: var(--color-accent-strong);
+  --tone-button-hover-text: var(--color-accent-contrast);
+  --tone-error: var(--color-negative);
 }
 
 .tone-muted {
@@ -175,13 +183,15 @@ a:hover {
   --tone-surface: var(--color-surface);
   --tone-text: var(--color-text);
   --tone-muted: var(--color-text-muted);
-  --tone-line: color-mix(in oklch, var(--color-border) 70%, var(--color-text-muted));
+  --tone-line: color-mix(in oklch, var(--color-border) 72%, var(--color-text-muted));
   --tone-control: var(--color-border-strong);
   --tone-link: var(--color-accent-strong);
   --tone-focus: var(--color-accent-strong);
   --tone-button-bg: var(--color-accent);
   --tone-button-text: var(--color-accent-contrast);
   --tone-button-hover: var(--color-accent-strong);
+  --tone-button-hover-text: var(--color-accent-contrast);
+  --tone-error: var(--color-negative);
 }
 
 .tone-inverse {
@@ -196,20 +206,24 @@ a:hover {
   --tone-button-bg: var(--color-inverse-text);
   --tone-button-text: var(--color-inverse-background);
   --tone-button-hover: var(--color-accent-on-inverse);
+  --tone-button-hover-text: var(--color-inverse-background);
+  --tone-error: var(--color-negative-on-inverse);
 }
 
 .tone-accent {
   --tone-bg: var(--color-accent);
   --tone-surface: var(--color-accent-strong);
   --tone-text: var(--color-accent-contrast);
-  --tone-muted: color-mix(in oklch, var(--color-accent-contrast) 86%, var(--color-accent));
-  --tone-line: color-mix(in oklch, var(--color-accent-contrast) 34%, var(--color-accent));
+  --tone-muted: color-mix(in oklch, var(--color-accent-contrast) 92%, var(--color-accent));
+  --tone-line: color-mix(in oklch, var(--color-accent-contrast) 36%, var(--color-accent));
   --tone-control: var(--color-accent-contrast);
   --tone-link: var(--color-accent-contrast);
   --tone-focus: var(--color-accent-contrast);
   --tone-button-bg: var(--color-inverse-background);
   --tone-button-text: var(--color-inverse-text);
-  --tone-button-hover: color-mix(in oklch, var(--color-inverse-background) 84%, var(--color-accent-contrast));
+  --tone-button-hover: var(--color-inverse-surface);
+  --tone-button-hover-text: var(--color-inverse-text);
+  --tone-error: var(--color-accent-contrast);
 }
 
 /* ── Layout ────────────────────────────────────────────────────────────── */
@@ -250,7 +264,7 @@ a:hover {
   gap: var(--space-xs);
   font-family: var(--font-body);
   font-size: var(--step--2);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--tone-muted);
@@ -258,14 +272,15 @@ a:hover {
 
 .eyebrow::before {
   content: "";
-  inline-size: 1.75rem;
+  flex: none;
+  inline-size: 2rem;
   block-size: 1px;
   background: var(--tone-link);
 }
 
 .lede {
   font-size: var(--step-1);
-  line-height: 1.5;
+  line-height: 1.52;
   color: var(--tone-muted);
   max-width: 38em;
 }
@@ -274,29 +289,29 @@ a:hover {
   color: var(--tone-muted);
 }
 
-/* ── Buttons ───────────────────────────────────────────────────────────── */
+/* ── Buttons & links ───────────────────────────────────────────────────── */
 
 .actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-xs) var(--space-m);
+  gap: var(--space-s) var(--space-l);
 }
 
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.6em;
+  gap: 0.65em;
   min-height: 3rem;
-  padding: 0.7em 1.35em;
+  padding: 0.72em 1.45em;
   border: var(--border-width) solid var(--tone-button-bg);
   border-radius: var(--radius-button);
   background: var(--tone-button-bg);
   color: var(--tone-button-text);
   font-size: var(--step--1);
   font-weight: var(--weight-medium);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   line-height: 1.2;
   text-decoration: none;
   transition:
@@ -308,6 +323,7 @@ a:hover {
 .button:hover {
   background: var(--tone-button-hover);
   border-color: var(--tone-button-hover);
+  color: var(--tone-button-hover-text);
 }
 
 .button svg {
@@ -315,23 +331,24 @@ a:hover {
 }
 
 .button:hover svg {
-  transform: translateX(0.2em);
+  transform: translateX(0.22em);
 }
 
 .button--secondary {
   background: transparent;
   color: var(--tone-text);
-  border-color: color-mix(in oklch, var(--tone-text) 40%, transparent);
+  border-color: color-mix(in oklch, var(--tone-text) 38%, transparent);
 }
 
 .button--secondary:hover {
   background: transparent;
+  color: var(--tone-text);
   border-color: var(--tone-text);
 }
 
 .button--small {
   min-height: 2.5rem;
-  padding: 0.5em 1em;
+  padding: 0.52em 1.1em;
 }
 
 .form-note {
@@ -342,11 +359,24 @@ a:hover {
 .text-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.4em;
+  gap: 0.45em;
+  min-height: 2.5rem;
   font-weight: var(--weight-medium);
   font-size: var(--step--1);
+  letter-spacing: 0.01em;
   color: var(--tone-text);
-  text-decoration-color: var(--tone-link);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.34em;
+  text-decoration-color: color-mix(in oklch, var(--tone-link) 68%, transparent);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    text-decoration-color var(--duration-fast) var(--ease-out);
+}
+
+.text-link:hover {
+  color: var(--tone-link);
+  text-decoration-color: currentColor;
 }
 
 .text-link svg {
@@ -355,7 +385,7 @@ a:hover {
 }
 
 .text-link:hover svg {
-  transform: translateX(0.2em);
+  transform: translateX(0.22em);
 }
 
 /* ── Media ─────────────────────────────────────────────────────────────── */
@@ -369,6 +399,24 @@ a:hover {
   background: var(--color-scrim);
 }
 
+.frame {
+  overflow: hidden;
+  border-radius: var(--radius-image);
+}
+
+.frame .media {
+  border-radius: 0;
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+@media (hover: hover) {
+  a:hover .frame .media,
+  .post-card:hover .frame .media,
+  .frame:hover .media {
+    transform: scale(1.025);
+  }
+}
+
 /* ── Prose (markdown bodies, rich-text sections) ───────────────────────── */
 
 .prose {
@@ -377,12 +425,12 @@ a:hover {
 }
 
 .prose > * + * {
-  margin-block-start: 1.1em;
+  margin-block-start: 1.15em;
 }
 
 .prose h2 {
   font-size: var(--step-3);
-  margin-block-start: 1.6em;
+  margin-block-start: 1.7em;
 }
 
 .prose h3 {
@@ -398,7 +446,7 @@ a:hover {
 .prose h2 + *,
 .prose h3 + *,
 .prose h4 + * {
-  margin-block-start: 0.6em;
+  margin-block-start: 0.65em;
 }
 
 .prose > :first-child {
@@ -411,7 +459,7 @@ a:hover {
 }
 
 .prose li + li {
-  margin-block-start: 0.4em;
+  margin-block-start: 0.45em;
 }
 
 .prose li::marker {
@@ -424,7 +472,7 @@ a:hover {
 }
 
 .prose blockquote {
-  margin-block: 1.6em;
+  margin-block: 1.8em;
   padding-inline-start: var(--space-m);
   border-inline-start: var(--border-width) solid var(--tone-link);
   font-family: var(--font-display);
@@ -461,7 +509,7 @@ a:hover {
 .prose th,
 .prose td {
   text-align: start;
-  padding: 0.6em 0.8em 0.6em 0;
+  padding: 0.65em 0.8em 0.65em 0;
   border-block-end: var(--border-width) solid var(--tone-line);
 }
 
