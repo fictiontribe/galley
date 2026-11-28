@@ -7,7 +7,7 @@ guidesHeading: The three kinds, explained once.
 productsHeading: Galley beside one product at a time.
 also:
   - title: Galley and WordPress
-    text: Leave WordPress and keep editing the site yourself. What moves, what stays behind, and the three rows WordPress wins.
+    text: Leave WordPress and keep editing the site yourself. What moves, what stays behind, and the rows WordPress wins.
     href: /wordpress/
 how:
   heading: How these pages are written.
