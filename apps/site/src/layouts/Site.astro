@@ -1,7 +1,6 @@
 ---
-// The one shell every page uses: head, header, the page, footer. One small
-// stylesheet and one small script, both from this site; nothing from any
-// other origin.
+// The one shell every page uses: head, header, the page, footer. Self-hosted
+// fonts and styles, plus Google Tag Manager (GTM-5V755QQ5) for visit metrics.
 import { Font } from "astro:assets";
 import "../styles/site.css";
 import Header from "../components/Header.astro";
@@ -34,6 +33,12 @@ const shareImage = absoluteUrl(site.shareImage);
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-5V755QQ5"></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    </script>
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}

@@ -208,6 +208,14 @@ export const ROUTE_ACCESS: Record<ApiRouteKey, RouteAccess> = {
   "POST /api/sites/:siteId/send": "publish",
   "POST /api/sites/:siteId/pull": "publish",
 
+  // ── scheduled publishing ───────────────────────────────────────────────
+  "GET /api/sites/:siteId/schedules": "edit",
+  "POST /api/sites/:siteId/schedules": "publish",
+  "PATCH /api/sites/:siteId/schedules/:scheduleId": "publish",
+  "POST /api/sites/:siteId/schedules/:scheduleId/run": "publish",
+  "POST /api/sites/:siteId/schedules/:scheduleId/cancel": "publish",
+  "POST /api/sites/:siteId/schedules/workflow": "manage",
+
   // ── preview ────────────────────────────────────────────────────────────
   "GET /api/sites/:siteId/preview": "edit",
   "POST /api/sites/:siteId/preview/start": "edit",

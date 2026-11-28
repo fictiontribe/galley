@@ -26,6 +26,7 @@ import { pageMarkdown } from "./markdown.js";
  * @property {string} image  og:image, absolute.
  * @property {string} published  article:published_time.
  * @property {string} modified  article:modified_time.
+ * @property {string} [publishAt]  galley:publish-at meta timestamp, when set.
  * @property {string} author  article:author or meta author, when it is a name.
  * @property {string[]} jsonldTypes  The types named in the page's own JSON-LD.
  * @property {{ title: string; href: string; type: string }[]} feeds
@@ -118,6 +119,7 @@ export function readPage(html, where) {
     image: resolve(meta(head, "og:image"), where.url),
     published: meta(head, "article:published_time"),
     modified: meta(head, "article:modified_time"),
+    publishAt: meta(head, "galley:publish-at"),
     author: /^https?:\/\//i.test(author) ? "" : author,
     jsonldTypes: [...types].sort(),
     feeds,

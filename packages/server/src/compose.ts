@@ -17,6 +17,7 @@ import { createSiteBrandService } from "@galley/core/sitebrand";
 import { createThemeStore } from "@galley/core/themes/store";
 import { createVisibilityService } from "@galley/core/seo";
 import { createI18nService } from "@galley/core/i18n";
+import { createScheduleService } from "@galley/core/schedules";
 import type { EventBus, SettingsService, SiteRegistry, SiteService } from "@galley/core/types";
 import { createPortPool, type PortRange, type PreviewGateway } from "@galley/core/workspace";
 import { overlaySource } from "@galley/overlay";
@@ -135,6 +136,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
       await videos.dispose();
       await pluginRegistry.dispose();
       redirects.dispose();
+      schedules.dispose();
       releaseActive();
     },
   });
@@ -177,6 +179,21 @@ export async function createServices(options: ServicesOptions): Promise<Services
 
   const visibility = createVisibilityService({ home: options.home, settings, events, env: options.env ?? process.env });
   const i18n = createI18nService({ settings, events, env: options.env ?? process.env });
+  const schedules = createScheduleService({
+    home: options.home,
+    registry,
+    settings,
+    events,
+    deploySite: async (site) => {
+      const model = await site.model().catch(() => null);
+
+      // When autoDeploy is on, onPublished already triggers deploy.afterPublish.
+      if (!model?.deploy || model.deploy.autoDeploy) return;
+      const job = await deploy.start(site, { kind: "production" });
+
+      return job.url ? { url: job.url } : undefined;
+    },
+  });
   // After the registry: it follows list edits made through any part of the app (the assistant's entry tools, Undo).
   const redirects = createRedirectsService({ home: options.home, settings, events, registry, env: options.env ?? process.env });
   // The site's own brand: its jobs, the material waiting to be saved, the proposal under review.
@@ -194,7 +211,7 @@ export async function createServices(options: ServicesOptions): Promise<Services
   // Themes saved for everyone here: in the data folder, never in a site.
   const themes = createThemeStore({ home: options.home });
 
-  return { registry, agent, images, settings, events, forms, deploy, mediaStorage, plugins: pluginRegistry, videos, visibility, i18n, redirects, siteBrand, imports, themes, ...(hosting ? { hosting } : {}) };
+  return { registry, agent, images, settings, events, forms, deploy, mediaStorage, plugins: pluginRegistry, videos, visibility, i18n, schedules, redirects, siteBrand, imports, themes, ...(hosting ? { hosting } : {}) };
 }
 
 /** The commit author from Settings, as the registry uses it: both name and email, or the machine's git config. */

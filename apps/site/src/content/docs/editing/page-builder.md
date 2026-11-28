@@ -6,7 +6,7 @@ group: editing
 order: 6
 ---
 
-For people who edit a site. **Arrange** lets you put a page together from the sections the site already has, on the page itself. *Status: Preview* — it works, and is still being refined.
+For people who edit a site. **Arrange** lets you put a page together from the sections the site already has, on the page itself.
 
 Every move is one small change to the page, waiting in Proof like any other.
 

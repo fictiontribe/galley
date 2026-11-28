@@ -25,6 +25,7 @@ export const keys = {
   search: (siteId: string, q: string) => ["site", siteId, "search", q] as const,
   media: (siteId: string) => ["site", siteId, "media"] as const,
   history: (siteId: string, limit?: number) => ["site", siteId, "history", limit ?? null] as const,
+  schedules: (siteId: string) => ["site", siteId, "schedules"] as const,
   git: (siteId: string) => ["site", siteId, "git"] as const,
   config: (siteId: string) => ["site", siteId, "config"] as const,
   threads: (siteId: string) => ["site", siteId, "threads"] as const,
@@ -65,6 +66,7 @@ const settleChanges = coalesceBy(async (siteId: string) => {
   if (useChanges.getState().siteId === siteId) waits.push(useChanges.getState().refresh());
   if (marks.versions) {
     invalidate(["site", siteId, "history"]);
+    invalidate(["site", siteId, "schedules"]);
     invalidate(["site", siteId, "git"]);
     if (useSite.getState().siteId === siteId) waits.push(useSite.getState().refresh());
   }

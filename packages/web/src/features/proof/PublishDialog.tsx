@@ -9,7 +9,7 @@ import { useHostedInstall } from "@/lib/stores/meta";
 import { placeWords } from "@/lib/where";
 import { useSite } from "@/lib/stores/site";
 import { notify } from "@/lib/stores/toasts";
-import { Button, Checkbox, Dialog, Field, Input, ProofMark, buttonClass } from "@/ui";
+import { Button, Checkbox, Dialog, Field, Input, ProofMark, SegmentedControl, buttonClass } from "@/ui";
 import { useChangeName } from "./useNames";
 import { publishOutcome, type PublishOutcome } from "./publishOutcome";
 import { sendNow } from "./sendNow";
@@ -18,6 +18,8 @@ import { authorLine } from "./authorLine";
 import { PublishNoticeAdditions } from "@/additions/places";
 import { PublishDeployNote, onlineOutcome } from "@/features/deploy/Online";
 import { useDeployStatus } from "@/features/deploy/useDeploy";
+import { useMay } from "@/lib/may";
+import { combineLocalDateTime, defaultScheduleInputs, formatScheduledTime, invalidateSchedules, localTimeZone } from "./useSchedules";
 import "./proof.css";
 
 export interface PublishDialogProps {
@@ -109,9 +111,17 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
   const [busy, setBusy] = useState(false);
   const [sending, setSending] = useState(false);
   const [outcome, setOutcome] = useState<PublishOutcome | null>(null);
+  const [timing, setTiming] = useState<"now" | "later">("now");
+  const [scheduleDate, setScheduleDate] = useState(() => defaultScheduleInputs().date);
+  const [scheduleTime, setScheduleTime] = useState(() => defaultScheduleInputs().time);
+  const [deployScheduled, setDeployScheduled] = useState(true);
+  const maySchedule = useMay()("POST /api/sites/:siteId/schedules");
   const touched = useRef(false);
   const online = Boolean(useDeployStatus(siteId).data?.config);
   const messageInput = useRef<HTMLInputElement>(null);
+  const tz = localTimeZone();
+  const scheduledIso = combineLocalDateTime(scheduleDate, scheduleTime);
+  const scheduleValid = scheduledIso !== null && Date.parse(scheduledIso) > Date.now() + 30_000;
 
   const chosen = files.filter((file) => !left.has(file.path));
   const chosenKey = chosen.map((file) => file.path).join("\n");
@@ -122,9 +132,14 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
   // Fresh each time it opens.
   useEffect(() => {
     if (!open) return;
+    const defaults = defaultScheduleInputs();
     setLeft(new Set());
     setOutcome(null);
     setMessage("");
+    setTiming("now");
+    setScheduleDate(defaults.date);
+    setScheduleTime(defaults.time);
+    setDeployScheduled(true);
     touched.current = false;
   }, [open]);
 
@@ -151,6 +166,31 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
     setBusy(true);
     const text = message.trim();
     try {
+      if (timing === "later") {
+        if (!scheduledIso || !scheduleValid) return;
+        const created = await api("POST /api/sites/:siteId/schedules", {
+          params: { siteId },
+          body: {
+            ...(text ? { message: text } : {}),
+            ...(all ? {} : { paths: chosen.map((file) => file.path) }),
+            scheduledAt: scheduledIso,
+            timezone: tz,
+            deployAfterPublish: online ? deployScheduled : false,
+            holdOutOfWorkingTree: true,
+          },
+        });
+        invalidateSchedules(siteId);
+        void useChanges.getState().refresh();
+        setOutcome({
+          kind: "published",
+          tone: "success",
+          title: "Scheduled",
+          body: `${count(created.files.length, "change")} will go live ${formatScheduledTime(created.scheduledAt, tz)} (${tz}). You can reschedule, publish early, or put them back in Proof any time.`,
+          canRetry: false,
+          canReview: true,
+        });
+        return;
+      }
       const result = await api("POST /api/sites/:siteId/publish", {
         params: { siteId },
         body: { ...(text ? { message: text } : {}), ...(all ? {} : { paths: chosen.map((file) => file.path) }) },
@@ -162,7 +202,14 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
       void useSite.getState().refresh();
     } catch (error) {
       const shape = errorShape(error);
-      setOutcome({ kind: "failed", tone: "danger", title: "Couldn’t publish", body: `${shape.message} Your changes are safe here.`, detail: shape.detail, canRetry: true });
+      setOutcome({
+        kind: "failed",
+        tone: "danger",
+        title: timing === "later" ? "Couldn’t schedule" : "Couldn’t publish",
+        body: `${shape.message} Your changes are safe here.`,
+        detail: shape.detail,
+        canRetry: true,
+      });
     } finally {
       setBusy(false);
     }
@@ -206,8 +253,19 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
     }
   };
 
-  const verb = mode === "pull-request" ? "Send for review" : `Publish ${count(chosen.length, "change")}`;
-  const title = outcome ? outcome.title : mode === "pull-request" ? `Send ${count(chosen.length, "change")} for review?` : `Publish ${count(chosen.length, "change")}?`;
+  const isScheduling = timing === "later";
+  const verb = isScheduling
+    ? `Schedule ${count(chosen.length, "change")}`
+    : mode === "pull-request"
+      ? "Send for review"
+      : `Publish ${count(chosen.length, "change")}`;
+  const title = outcome
+    ? outcome.title
+    : isScheduling
+      ? `Schedule ${count(chosen.length, "change")}?`
+      : mode === "pull-request"
+        ? `Send ${count(chosen.length, "change")} for review?`
+        : `Publish ${count(chosen.length, "change")}?`;
 
   let footer;
   if (!outcome) {
@@ -216,7 +274,13 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
         <Button variant="secondary" onClick={onClose} disabled={busy}>
           Not yet
         </Button>
-        <Button variant="primary" busy={busy} busyLabel={mode === "pull-request" ? "Sending…" : "Publishing…"} disabled={chosen.length === 0} onClick={() => void publish()}>
+        <Button
+          variant="primary"
+          busy={busy}
+          busyLabel={isScheduling ? "Scheduling…" : mode === "pull-request" ? "Sending…" : "Publishing…"}
+          disabled={chosen.length === 0 || (isScheduling && !scheduleValid)}
+          onClick={() => void publish()}
+        >
           {verb}
         </Button>
       </>
@@ -278,17 +342,59 @@ export function PublishDialog({ siteId, open, onClose }: PublishDialogProps) {
     <Dialog open={open} onClose={onClose} title={title} size="md" dismissible={!busy && !sending} footer={footer} hideTitle={Boolean(outcome)} initialFocus={outcome ? undefined : messageInput}>
       {outcome ? (
         <>
-          <Outcome outcome={onlineOutcome(outcome, online)} />
-          {outcome.kind === "published" || outcome.kind === "saved-local" || outcome.kind === "not-sent" ? <PublishDeployNote siteId={siteId} /> : null}
+          <Outcome outcome={outcome.title === "Scheduled" ? outcome : onlineOutcome(outcome, online)} />
+          {outcome.title !== "Scheduled" && (outcome.kind === "published" || outcome.kind === "saved-local" || outcome.kind === "not-sent") ? <PublishDeployNote siteId={siteId} /> : null}
         </>
       ) : files.length === 0 ? (
         <p className="g-dialog__body">Nothing is waiting. Everything here already matches the live site.</p>
       ) : (
         <div className="publish-body">
-          <p className="publish-mode">
-            <ProofMark kind={mode === "pull-request" ? "send" : "reg"} />
-            <span>{modeText}</span>
-          </p>
+          {maySchedule ? (
+            <div className="publish-timing">
+              <SegmentedControl
+                label="When to publish"
+                value={timing}
+                onChange={setTiming}
+                options={[
+                  { value: "now", label: mode === "pull-request" ? "Send now" : "Publish now" },
+                  { value: "later", label: "Schedule for later" },
+                ]}
+              />
+            </div>
+          ) : null}
+          {isScheduling ? (
+            <div className="publish-schedule">
+              <div className="publish-schedule__grid">
+                <Field label="Publish date">
+                  <Input type="date" value={scheduleDate} onChange={(event) => setScheduleDate(event.target.value)} />
+                </Field>
+                <Field label="Publish time">
+                  <Input type="time" value={scheduleTime} onChange={(event) => setScheduleTime(event.target.value)} />
+                </Field>
+              </div>
+              <p className={scheduleValid ? "publish-schedule__summary" : "publish-schedule__summary publish-schedule__summary--error"}>
+                {scheduledIso && scheduleValid
+                  ? `Goes live ${formatScheduledTime(scheduledIso, tz)} · ${tz}`
+                  : "Choose a date and time in the future."}
+              </p>
+              <p className="publish-schedule__note">
+                Scheduled changes are held safely outside your draft so you can keep editing and publishing other pages right away.
+              </p>
+              {online ? (
+                <Checkbox
+                  checked={deployScheduled}
+                  onChange={setDeployScheduled}
+                  label="Deploy automatically after publishing"
+                  description="Starts a production deploy as soon as this release publishes."
+                />
+              ) : null}
+            </div>
+          ) : (
+            <p className="publish-mode">
+              <ProofMark kind={mode === "pull-request" ? "send" : "reg"} />
+              <span>{modeText}</span>
+            </p>
+          )}
           <Field label="Note for version history" hint="One line, in plain words. Shown in Version history.">
             {/* Always the same input, so focus stays put while a suggestion is on its way. */}
             <Input

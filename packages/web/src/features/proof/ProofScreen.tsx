@@ -13,6 +13,8 @@ import { groupChanges, orderedPaths } from "./changes";
 import { useChangeName, useCollections } from "./useNames";
 import { ValidationSummary } from "./ValidationSummary";
 import { StoreUploads } from "./StoreUploads";
+import { ScheduledList } from "./ScheduledList";
+import { activeSchedules, useSchedules } from "./useSchedules";
 import "./proof.css";
 import { useMay } from "@/lib/may";
 
@@ -41,8 +43,27 @@ function LoadingProof() {
 
 const shorten = (text: string, max = 72) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
 
-function NothingWaiting({ siteId }: { siteId: string }) {
+function NothingWaiting({ siteId, hasScheduled }: { siteId: string; hasScheduled: boolean }) {
   const last = useSite((s) => s.detail?.git.lastCommit);
+  if (hasScheduled) {
+    return (
+      <div className="proof proof--scroll">
+        <header className="proof-head">
+          <div>
+            <p className="g-eyebrow">Proof</p>
+            <h1 className="g-title proof-head__title">Nothing waiting in your draft</h1>
+            <p className="proof-head__lede">Your scheduled releases below will publish automatically at their chosen time.</p>
+          </div>
+          <div className="proof-head__actions">
+            <Link className={buttonClass("secondary", "sm")} to={`/sites/${siteId}/edit`}>
+              Open the editor
+            </Link>
+          </div>
+        </header>
+        <ScheduledList siteId={siteId} />
+      </div>
+    );
+  }
   return (
     <div className="app-screen app-screen--center">
       <EmptyState
@@ -80,6 +101,8 @@ export function ProofScreen() {
   const setDiscardOpen = useChrome((s) => s.setDiscardOpen);
   const [view, setView] = useState<ProofView>("what");
   const mayPublish = useMay()("POST /api/sites/:siteId/publish");
+  const schedules = useSchedules(siteId);
+  const upcomingSchedules = activeSchedules(schedules.data?.items);
   const total = changes?.totals.files ?? 0;
   useTopBar({ crumbs: [{ label: "Proof" }], tag: total > 0 ? { label: count(total, "change"), tone: "change" } : undefined });
 
@@ -119,7 +142,9 @@ export function ProofScreen() {
   }
   const uploads = changes.storeUploads ?? [];
   const uploadsProblem = changes.storeUploadsProblem ?? null;
-  if (changes.files.length === 0 && uploads.length === 0 && !uploadsProblem) return <NothingWaiting siteId={siteId} />;
+  if (changes.files.length === 0 && uploads.length === 0 && !uploadsProblem) {
+    return <NothingWaiting siteId={siteId} hasScheduled={upcomingSchedules.length > 0} />;
+  }
 
   return (
     <div className="proof">
@@ -137,6 +162,7 @@ export function ProofScreen() {
         </div>
       </header>
       <ValidationSummary siteId={siteId} changes={changes} titles={titles} />
+      <ScheduledList siteId={siteId} />
       {uploads.length ? <StoreUploads siteId={siteId} items={uploads} /> : null}
       {uploadsProblem ? (
         <p className="app-card app-card--pad proof-uploads" role="status">

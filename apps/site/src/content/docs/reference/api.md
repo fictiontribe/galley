@@ -212,6 +212,17 @@ Addresses outside `/api` have their own rules: `/mcp` (the [MCP endpoint](/docs/
 | `POST /api/sites/:siteId/publish/message` | Suggest a one-line note for Version history. Uses the assistant (one request) when a key is set. | `{ paths? }` | `{ message }` | Editors and owners |
 | `POST /api/sites/:siteId/publish/check` | What the plugins' publish checks say about publishing these changes (all pending when `paths` is absent): warnings to show first, and whether one would stop the publish. | `{ paths? }` | `PublishCheck` | Any signed-in person |
 
+## Scheduled publishing
+
+| Route | Does | Takes | Returns | Who |
+| --- | --- | --- | --- | --- |
+| `GET /api/sites/:siteId/schedules` | Scheduled releases for this site, newest scheduled time first. | — | `{ items }` | Any signed-in person |
+| `POST /api/sites/:siteId/schedules` | Seal selected pending changes from Proof into a scheduled release and hold them until `scheduledAt`. | `CreateScheduleInput` | `ScheduledRelease` | Editors and owners |
+| `PATCH /api/sites/:siteId/schedules/:scheduleId` | Reschedule an upcoming or failed release, or update its note and deploy setting. | `UpdateScheduleInput` | `ScheduledRelease` | Editors and owners |
+| `POST /api/sites/:siteId/schedules/:scheduleId/run` | Publish a scheduled release immediately instead of waiting for its scheduled time. | — | `ScheduledRelease` | Editors and owners |
+| `POST /api/sites/:siteId/schedules/:scheduleId/cancel` | Cancel a scheduled release and optionally put its files back in Proof (`restoreToProof` defaults to true). | `CancelScheduleInput` | `ScheduledRelease` | Editors and owners |
+| `POST /api/sites/:siteId/schedules/workflow` | Write a scheduled rebuild GitHub Actions workflow (`.github/workflows/galley-schedule.yml`) into Proof for static sites using `publishAt` dates. | `{ cron? }` | `ScheduleWorkflowResult` | Owners |
+
 ## Preview and build
 
 | Route | Does | Takes | Returns | Who |

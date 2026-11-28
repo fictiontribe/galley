@@ -32,6 +32,7 @@ import { dataSourceRoutes } from "./data-sources";
 import { multiSiteRoutes } from "./multisite";
 import { visibilityRoutes } from "./visibility";
 import { i18nRoutes } from "./i18n";
+import { scheduleRoutes } from "./schedules";
 import { importRoutes, importsOf } from "./import";
 import { siteBrandRoutes } from "./sitebrand";
 import { installRoutes } from "./install-routes";
@@ -193,6 +194,7 @@ export const routes: RouteTable = {
   // ── search & AI visibility (visibility.ts) ────────────────────────────
   ...visibilityRoutes,
   ...i18nRoutes,
+  ...scheduleRoutes,
 
   // ── bringing a WordPress site over (import.ts) ────────────────────────
   ...importRoutes,
