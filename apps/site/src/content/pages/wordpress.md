@@ -68,14 +68,18 @@ sections:
         ours: Static live site behind Cloudflare or your CDN; isolated editor with OIDC SSO (new)
         theirs: Patches for core and plugins
         better: ours
-      - label: Editing
-        ours: Form, page or assistant, proofed; live co-editing on Galley Cloud
-        theirs: Block editor or page builder
-        better: even
+      - label: Editing & AI
+        ours: Form, on-page editing, or built-in AI assistant (never publishes), word-level Proof; live co-editing on Galley Cloud
+        theirs: Block editor or page builder; core AI Client added in 7.0, plugins for workflows
+        better: ours
       - label: Page building
-        ours: Your own sections (preview)
-        theirs: Mature builders, many widgets
-        better: theirs
+        ours: Built-in visual Arrange builder; drag, reorder, duplicate and drop your site’s own sections with live layout options and Proof
+        theirs: Mature builders (Elementor, Gutenberg) with large widget libraries
+        better: even
+      - label: Scheduled publishing
+        ours: Built in; open-source scheduled releases and publishAt date/time matching, plus pre-built zero-latency edge deploys on Galley Cloud
+        theirs: Built-in scheduled posts via WP-Cron
+        better: even
       - label: SEO & AI visibility
         ours: Built-in SEO checks, live rankings, keyword gaps, 404 recovery and llms.txt
         theirs: Requires SEO plugins plus separate tools
@@ -119,8 +123,7 @@ sections:
           fallback: proof-changes
           alt: "The import’s report, “Your WordPress site is here”, with five next steps: review it in Proof, rebuild the page-builder pages, set the redirects, put the site online, switch the domain."
       - title: Rebuild with sections
-        text: The assistant rebuilds each page-builder page from your site’s own sections.
-        status: builder
+        text: Arrange your site’s own sections visually — drag, reorder and toggle layout options, or let the assistant rebuild each page-builder page from your sections.
         visual:
           kind: screen
           src: arrange
@@ -138,7 +141,7 @@ sections:
       - q: What is a good alternative to WordPress?
         a: "We think a static site with a Git-based CMS suits a site that is mostly pages and posts: the pages are built ahead of time and served as files, and the words live in your own repository. Galley is one, and its guided move (new, in final checks) brings the posts, pages, images and SEO details across. For a shop, memberships or comments, WordPress or a dedicated platform may still fit better. [The three kinds of CMS](/compare/types-of-cms/)."
       - q: Can I keep editing the site myself after I leave WordPress?
-        a: "Yes. In Galley you change a page in a form, by retyping words on the page, or by asking the assistant, and every change waits in Proof beside the live site until someone presses Publish. Publishing is a commit to your own repository, and a publish can be undone with a new commit. On [Galley Cloud](/cloud/), teammates can also edit together in real time with live presence."
+        a: "Yes. In Galley you change a page in a form, by retyping words on the page, by building and arranging sections visually with Arrange, or by asking the assistant — and every change waits in Proof beside the live site until someone presses Publish or schedules it for a future date and time. Publishing is a commit to your own repository, and a publish can be undone with a new commit. On [Galley Cloud](/cloud/), teammates can also edit together in real time with live presence, and scheduled versions pre-build ahead of time and go live at Cloudflare’s edge at the exact scheduled minute."
       - q: What happens to my search rankings when I move?
         a: "Nobody can promise rankings. The guided move (new, in final checks) carries across the search details it can: descriptions, and SEO titles and canonical addresses where the site has fields for them. Its report lists the old addresses that change, which you review on the Redirects screen before you publish; archive pages need redirect rules of your own. After the move, Galley’s built-in Search and AI intelligence tracks live Google rankings, striking-distance quick wins, and broken-404 backlinks with one-click redirects — included on [Galley Cloud](/cloud/) or available self-hosted with your own search data key."
       - q: Can I use WordPress as a headless CMS instead?
@@ -146,7 +149,7 @@ sections:
       - q: Is a static site safer than WordPress?
         a: "A static site has less on the live site to attack and to patch: its pages are files built ahead of time, with no database or login page behind them. WordPress needs its core, theme and plugin updates kept up, though it can apply many of them automatically. If you self-host Galley’s editor on a public server (`ghcr.io/fictiontribe/galley`, with optional OIDC SSO, new), it runs in an isolated container off your live domain and that server is yours to look after too, or [Galley Cloud](/cloud/) manages it for you. Neither is a wall against someone determined; see [the security model](/docs/running/security/)."
       - q: How much does the move cost?
-        a: "Galley is free and Apache-2.0, and the guided move is part of it. Static hosting is often free or cheap. Running locally or self-hosted, rebuilding page-builder pages with the assistant uses your own AI key, billed to you by its provider; on [Galley Cloud](/cloud/) (opening by invitation), Cloudflare edge hosting, a dedicated editor and monthly AI credits start at $35 a month per site ($99 on Agency for five sites), with no per-seat fees. The page builder is in preview, and the guided move is new and still in final checks."
+        a: "Galley is free and Apache-2.0, and the guided move is part of it. Static hosting is often free or cheap. Running locally or self-hosted, rebuilding page-builder pages with the assistant uses your own AI key, billed to you by its provider; on [Galley Cloud](/cloud/) (opening by invitation), Cloudflare edge hosting, a dedicated editor, pre-built scheduled deploys and monthly AI credits start at $35 a month per site ($99 on Agency for five sites), with no per-seat fees. The guided move is new and still in final checks."
   - type: close
     id: honest
     heading: Galley is new.

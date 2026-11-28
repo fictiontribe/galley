@@ -1,22 +1,22 @@
 ---
 title: "Galley vs CloudCannon: two Git-based CMSs compared"
-description: Galley and CloudCannon both keep your content in Git. How they differ on setup, AI, translations, hosting, collaboration, teams and price, and when CloudCannon is the better choice.
+description: Galley and CloudCannon both keep your content in Git. How they differ on setup, page building, AI, scheduling, translations, SSO, collaboration, hosting and price, and when CloudCannon wins.
 kind: versus
 product: CloudCannon
 heading: CloudCannon and Galley agree about Git. They part ways on where the AI sits.
 name: Galley and CloudCannon
-lead: Both edit the plain files in your repository and record changes as commits. CloudCannon is a hosted service, founded in 2013, that leaves AI to the agents you bring. Galley is open source (Apache-2.0) with optional managed hosting on Galley Cloud, and builds the assistant, proof, translations, and search intelligence into the editor.
+lead: Both edit the plain files in your repository and record changes as commits. CloudCannon is a hosted service, founded in 2013, that leaves AI to the agents you bring. Galley is an AI-first, open-source CMS (Apache-2.0) with optional managed hosting on Galley Cloud — giving teams visual section building, built-in AI, translations, search intelligence, scheduled publishing, free OIDC SSO and live collaboration.
 published: "2026-11-25"
-updated: "2026-11-27"
+updated: "2026-11-28"
 checked: November 2026
 order: 1
 draft: false
 short:
   - Both are Git-based. Your content stays as Markdown, JSON, YAML or TOML files in your own repository, and a change becomes a commit when you save in CloudCannon and when you publish in Galley. Leaving either one needs no content migration.
-  - CloudCannon is a paid, hosted service starting at $55 a month for three users ($49 paid yearly, as of November 2026), with extra users at $10 a month. Galley is free and Apache-2.0 to run locally or self-host on your own server; [Galley Cloud](/cloud/) (opening by invitation) adds hosted editing, Cloudflare edge delivery and monthly AI credits from $35 a month per site ($99 for five sites on Agency), with no per-seat fees.
-  - CloudCannon asks a developer for a configuration file and, for visual editing, markup in the templates. Galley reads the site's framework, collections and fields as they already are.
-  - CloudCannon leaves AI to outside agents such as Cursor, Claude Code or Copilot working in the repository. Galley builds an assistant, multilingual AI translation (with Translation Memory and a Glossary), and Search and AI intelligence into the editor, holds every change in Proof beside the live site, and lets other AI tools in over MCP.
-  - "Choose CloudCannon if you need what thirteen years have built: live-today hosted service without an invitation, custom file-level permissions, SAML SSO, SOC 2 Type 2, scheduled publishing, and an uptime agreement. Galley was first released in November 2026 and doesn't have a SOC 2 report, scheduled publishing or an SLA yet."
+  - CloudCannon is a paid, hosted service starting at $55 a month for three users ($49 paid yearly, as of November 2026), with extra users at $10 a month. Galley is free and Apache-2.0 locally or self-hosted; [Galley Cloud](/cloud/) (opening by invitation) adds Cloudflare edge hosting, monthly AI credits and Search intelligence from $35 a month per site ($99 on Agency for five sites), with no per-seat fees.
+  - CloudCannon asks a developer for a configuration file and, for visual editing, markup in the templates. Galley reads the site's framework, collections and fields as they already are, and includes the visual [Arrange](/docs/editing/page-builder/) section builder with zero template markup.
+  - "Galley is AI-first for websites: a page-aware assistant that never publishes, multi-provider image and short video generation, whole-site AI translations with a Git-tracked Translation Memory and Glossary, live Google rankings and 404 backlink recovery, `llms.txt` and Markdown twins, scheduled publishing, and MCP — whereas CloudCannon has no built-in editor AI (Nov 2026)."
+  - "Choose CloudCannon if you need what thirteen years have built: live-today self-serve hosting without an invitation, custom file-level permission groups, SAML SSO, SOC 2 Type 2, and a published uptime SLA."
 table:
   heading: Galley and CloudCannon, side by side.
   text: Where CloudCannon does more, the table says so.
@@ -28,70 +28,66 @@ table:
       theirs: Files in your Git repository
       better: even
     - label: Price
-      ours: Free open source; Galley Cloud from $35/mo, no per-seat fees (Nov 2026)
-      theirs: Standard, $55 a month for 3 users (+$10/seat), hosting included (Nov 2026)
+      ours: Free open source; Galley Cloud from $35/mo w/ site hosting & $0/seat (Nov 2026)
+      theirs: Standard, $55/mo for 3 users (+$10/seat), hosting included (Nov 2026)
       better: ours
     - label: Setup
-      ours: Reads the site as it is
+      ours: Reads the site as it is; zero template markup
       theirs: A config file (its app or CLI can draft it); markup for editing on the page
       better: ours
-    - label: Editing
-      ours: A form, the page itself, or the assistant
-      theirs: Visual, content, data and source editors
-      better: even
     - label: Page building
-      ours: The site's own sections (preview)
-      theirs: Components in the visual editor
-      better: theirs
-    - label: AI in the editor
-      ours: Assistant that never publishes, AI translations, image/video gen, MCP
+      ours: Visual Arrange builder drags, duplicates & drops the site's sections — zero markup
+      theirs: Components in the visual editor (requires markup and integration package)
+      better: even
+    - label: AI & search intelligence
+      ours: AI-first — assistant (never publishes), image/video gen, AI translations w/ TM & glossary, live rankings/404 recovery, llms.txt, MCP
       theirs: None built in (Nov 2026); bring your own agents
       better: ours
     - label: Checking a change
-      ours: Each change in the site's words, beside the live site
+      ours: Word-by-word Proof beside the live site, put back any change, Cloud preview links
       theirs: Live preview and a list of changed files
       better: ours
     - label: Languages
-      ours: Built-in i18n, side-by-side editing, AI translation with memory and glossary
+      ours: Built-in i18n, side-by-side editing, AI translation w/ Translation Memory & glossary
       theirs: Open-source Rosey tool
       better: ours
-    - label: Search & AI visibility
-      ours: Built-in SEO checks, live rankings, keyword gaps, 404 recovery and llms.txt
-      theirs: None built in; bring your own tools
+    - label: Scheduled publishing
+      ours: Built in free (scheduler/CLI/publishAt) & pre-built zero-latency edge deploys on every Cloud plan
+      theirs: Content scheduling on Standard; advanced scheduling on Team
       better: ours
     - label: Building and hosting
-      ours: Deploys to Cloudflare; Galley Cloud (by invite) hosts editor + Cloudflare edge
-      theirs: Builds and hosts on Cloudflare today, with forms and redirects
-      better: theirs
+      ours: Direct Cloudflare deploy free + Galley Cloud (by invite) Cloudflare edge w/ instant rollback & backups
+      theirs: Builds and hosts on Cloudflare live today without invitation, with forms and redirects
+      better: even
     - label: Teams & SSO
-      ours: Three roles + OIDC SSO (new) self-hosted; no per-seat fees on Cloud
-      theirs: Five roles; custom file-level groups; SAML SSO on Enterprise
-      better: theirs
+      ours: Free OpenID Connect SSO in Apache-2.0 server, 3 roles, $0/seat on Cloud (up to 500)
+      theirs: Five roles; custom file-level groups on Team; SAML SSO locked to Enterprise
+      better: ours
     - label: Two people at once
-      ours: Real-time co-editing and live presence on Cloud; safe save checks self-hosted
+      ours: Real-time multiplayer co-editing & live presence on Cloud; safe save checks self-hosted
       theirs: One editor per file, others watch live
       better: ours
     - label: Where it runs
       ours: Local app/CLI, self-hosted Docker, or Galley Cloud (by invite)
-      theirs: CloudCannon's hosted app
+      theirs: CloudCannon's hosted app only
       better: ours
-    - label: Maturity
+    - label: Maturity & compliance
       ours: First released November 2026; no SOC 2 or SLA yet
-      theirs: Founded 2013; SOC 2 Type 2, scheduled publishing, SLA
+      theirs: Founded 2013; SOC 2 Type 2, live-today self-serve, uptime SLA
       better: theirs
 faq:
   - q: Is Galley an alternative to CloudCannon?
-    a: For many static sites, yes. Both edit the files in your Git repository and record changes as commits (CloudCannon on each save, Galley when you publish). Galley is free and Apache-2.0 to run locally or self-host (with optional managed hosting on [Galley Cloud](/cloud/)), needs no configuration or template markup for common setups, and builds in an AI assistant, multilingual translation and search intelligence. CloudCannon adds a thirteen-year track record, scheduled publishing, custom file-level permissions, SOC 2 Type 2 and an uptime agreement.
+    a: For many static sites, yes. Both edit the files in your Git repository and record changes as commits (CloudCannon on each save, Galley when you publish). Galley is free and Apache-2.0 locally or self-hosted (with optional Cloudflare hosting and live co-editing on [Galley Cloud](/cloud/)), needs no configuration or template markup for common setups, and builds in visual section building ([Arrange](/docs/editing/page-builder/)), an AI assistant, multilingual translation with Translation Memory, live search rankings, scheduled publishing and free OIDC SSO. CloudCannon adds a thirteen-year track record, custom file-level permissions, SOC 2 Type 2, live self-serve hosting today and an uptime agreement.
   - q: Is CloudCannon open source?
     a: "The CMS itself isn't described as open source on CloudCannon's pages, and they don't offer a self-hosted version for editors. Its command-line tool can run the app against local files, for developers building the setup. CloudCannon does publish open-source tools, among them Pagefind for search, Bookshop for components and Rosey for translations. Galley is open source under Apache-2.0: it runs on your own computer (CLI or Apple-signed macOS desktop app), on your own server with Docker (`ghcr.io/fictiontribe/galley`), or hosted on [Galley Cloud](/cloud/)."
   - q: Does CloudCannon have AI features?
     a: As of November 2026, its pages describe no AI assistant built into the CMS. CloudCannon calls itself "AI-ready". Because content is plain files in Git, outside agents such as Cursor, Claude Code or Copilot can work on it, and their changes go through pull requests. It also publishes agent skills that help coding agents set sites up on CloudCannon.
   - q: How much does CloudCannon cost?
-    a: As of November 2026, Standard is $55 a month or $49 a month paid yearly, with three users. Team is $350 a month or $300 paid yearly, with fifteen. Enterprise is priced on request, and extra users are $10 a month each. There is a 21-day free trial and no free plan. Galley is free and open-source when you run it locally or self-host (bringing your own AI key); [Galley Cloud](/cloud/) (opening by invitation) starts at $35 a month for a handed-over client Site or $99 a month on Agency (five live sites included, then $15–$12 per extra site), with monthly AI credits included and no per-seat fees.
+    a: As of November 2026, Standard is $55 a month or $49 a month paid yearly, with three users. Team is $350 a month or $300 paid yearly, with fifteen. Enterprise is priced on request, and extra users are $10 a month each. There is a 21-day free trial and no free plan. Galley is free locally or self-hosted (bringing your own AI key); [Galley Cloud](/cloud/) (opening by invitation) starts at $35 a month for a handed-over client Site or $99 a month on Agency (five live sites included, then $15–$12 per extra site), with Cloudflare hosting, monthly AI credits and Search intelligence included and no per-seat fees.
   - q: Can two people edit the same page at once?
     a: On [Galley Cloud](/cloud/), yes — teammates see live presence in the top bar and page list, active field outlines with each person's name, and simultaneous typing in Markdown body text, with each author attributed in Proof. On local or self-hosted Galley installs, editors share one copy and a conflicting save is refused rather than silently overwritten. In CloudCannon, one person edits a file at a time while others watch the changes live, with avatars showing who is where.
   - q: Do I have to change my templates to use Galley?
-    a: "No. Galley adds no dependency, integration or build plugin, and editing needs no markup. A site that keeps its words in content files gets a better form, and Astro sites with schemas get the most. Optional features such as forms, the consent banner, and multilingual `<LanguageSelector />` / `<LocaleHead />` components come from its site kit, added as changes you check in Proof first."
+    a: "No. Galley adds no dependency, integration or build plugin, and on-page editing and visual [Arrange](/docs/editing/page-builder/) section building need no markup. A site that keeps its words in content files gets a better form, and Astro sites with schemas get the most. Optional features such as forms, the consent banner, and multilingual `<LanguageSelector />` / `<LocaleHead />` components come from its site kit, added as changes you check in Proof first."
 sources:
   - label: "CloudCannon, home page"
     href: https://cloudcannon.com/
@@ -131,6 +127,10 @@ sources:
     href: https://cloudcannon.com/documentation/changelog/
   - label: "Galley, the FAQ for developers"
     href: /docs/project/faq/
+  - label: "Galley, page builder"
+    href: /docs/editing/page-builder/
+  - label: "Galley, languages"
+    href: /docs/editing/languages/
   - label: "Galley, the tour: what is built and what isn't yet"
     href: /tour/
   - label: "Galley Cloud"
@@ -146,8 +146,6 @@ More than either has in common with WordPress or a headless CMS. Both are Git-ba
 
 That shared starting point has two consequences worth knowing before anything else. There is no database behind the live site to run or patch. And neither tool holds your content hostage. CloudCannon's developer page says "If you ever leave CloudCannon, you leave with everything." We say the same about Galley, for the same reason.
 
-So the choice between them isn't about where your content lives. It comes down to four other things: who sets the editor up, where the AI sits, how you want to host and pay for seats, and how mature a vendor you need today.
-
 ## How much does each cost?
 
 As of November 2026, CloudCannon has three plans you can buy and one for agency partners:
@@ -160,9 +158,9 @@ As of November 2026, CloudCannon has three plans you can buy and one for agency 
 
 Every plan covers unlimited sites. Extra users are $10 a month each, and bandwidth beyond the plan's allowance (110 GB on Standard, 700 GB on Team) is $15 per 100 GB. A Lite plan at $10 a month is for agency partners' smaller clients. There is a 21-day trial and no free plan. Those figures are from [CloudCannon's pricing page](https://cloudcannon.com/pricing/); check it before you decide, because plans change.
 
-Galley comes in two shapes. The open-source software is free under Apache-2.0: run it on your own computer (`npx galley-cms` or the Apple-signed and notarized macOS desktop app) or self-host it on your own server with Docker (`ghcr.io/fictiontribe/galley`), bringing your own AI key and arranging static hosting yourself.
+Galley comes in two shapes. The open-source software is free under Apache-2.0: run it locally (`npx galley-cms` or the Apple-signed and notarized macOS desktop app) or self-host it on your own server with Docker (`ghcr.io/fictiontribe/galley`), bringing your own AI key and static hosting.
 
-If you want managed hosting with no keys to paste, [Galley Cloud](/cloud/) (opening by invitation as of November 2026) runs a dedicated editor machine for each site, serves the live site on Cloudflare's global edge, and includes monthly AI credits and Search and AI intelligence on every plan — with **nobody charged by the seat** (up to 500 named people per workspace, 100 per site):
+If you want managed hosting with no keys to paste, [Galley Cloud](/cloud/) (opening by invitation as of November 2026) runs a dedicated editor machine for each site, serves the live site on Cloudflare's global edge, and includes monthly AI credits, pre-built scheduled publishing and Search and AI intelligence — with **nobody charged by the seat** (up to 500 named people per workspace, 100 per site):
 
 | Plan | Price | What's included |
 | --- | --- | --- |
@@ -171,80 +169,69 @@ If you want managed hosting with no keys to paste, [Galley Cloud](/cloud/) (open
 | Agency | $99 a month | 5 live sites included ($15–$12 per extra site) |
 | Business | $149 a month | 12,000 AI credits a month, 90-day nightly repository backups |
 
-The difference for growing teams is per-seat billing. CloudCannon gives unlimited sites on every plan and charges $10 a month per extra user past 3 on Standard or 15 on Team. Galley Cloud prices by site and AI credits, and never charges per editor seat.
+The difference for growing teams is per-seat billing. CloudCannon charges $10 a month per extra user past 3 on Standard or 15 on Team. Galley Cloud never charges per editor seat.
 
-## What does a developer have to set up?
+## What does a developer have to set up, and how does page building work?
 
-This is the biggest practical difference.
+CloudCannon starts from a configuration file in the root of your repository (its CLI's `configure generate` and Configuration Mode can draft much of it). Editing on the page in its Visual Editor needs markup in your templates (`data-editable="text"` or `<editable-text>`), and visual component editing needs an integration package plus a working CloudCannon build.
 
-CloudCannon starts from a configuration file in the root of your repository. Its documentation calls the file "the heart of your CloudCannon experience" and says creating it "should be the first thing you do". At minimum it names the site generator and the source folder. From there, a developer adds collections, schemas, inputs and snippets as the site needs them. Since August 2026 CloudCannon's command-line tool can draft much of this: its `configure generate` command finds the content collections and suggests build settings, though not the inputs. Fairly, CloudCannon also guesses: if inputs aren't configured, it "will attempt to determine the correct editing interface for your data using the Input value and key name." And a Configuration Mode in the app writes the file for you as you click.
-
-Editing on the page in the Visual Editor, CloudCannon's headline feature, needs markup in your templates (its sidebar of fields works without). You mark each editable part with an attribute such as `data-editable="text"` or a tag such as `<editable-text>`. Components you want to edit on the page also need an integration package, and the site has to build successfully on CloudCannon before the visual editor works.
-
-Galley starts by reading the site. It works out the framework, the content collections and every field's type from the site's own schemas and files, without running any of its code. Astro fits deepest: Galley reads the content config and its schemas, and a list of page sections becomes sections you can arrange. Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll are recognised by their conventions. A `galley.config.json` file exists only to correct what it found. Editing on the page needs no markup, because Galley maps the words in the preview back to their fields, and asks which one you meant when the same words come from two places.
+Galley starts by reading the site. It works out the framework, the content collections and every field's type from the site's own schemas and files, without running any of its code. Astro fits deepest; Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll are recognised by their conventions. A `galley.config.json` file exists only to correct what it found. Editing on the page needs no markup, and Galley's built-in visual [Arrange](/docs/editing/page-builder/) page builder lets editors select, drag, reorder, duplicate and drop new sections from a visual thumbnail palette directly onto static pages, toggle layout options live and undo safely — with every change landing surgically in Proof.
 
 The honest caveat on our side: detection is only as good as the site is tidy. A site that keeps its words in content files, with schemas, gets a good form with no work. A site whose copy is hard-coded in components gets less, until someone moves the words out.
 
 ## How does each one use AI, translations and search intelligence?
 
-Here the two products have made opposite choices, and both are defensible.
+CloudCannon calls itself "the CMS your AI tools can actually read" and leaves AI to outside coding agents ("Cursor, Claude Code, GitHub Copilot, a locally hosted model, or something you built yourself") working on branches, plus open-source Rosey for translations. As of November 2026 we found no AI assistant built into CloudCannon's editor itself.
 
-CloudCannon calls itself "the CMS your AI tools can actually read". Its argument is that the whole project sits in one Git repository as plain files, so "AI agents can read, write, and deploy without translation layers or proprietary schemas standing in the way." You bring the agent: "Cursor, Claude Code, GitHub Copilot, a locally hosted model, or something you built yourself." Agents "propose changes on a branch, and those changes go through the same review as any other pull request." CloudCannon also publishes open-source agent skills that help a coding agent move a site onto CloudCannon and configure it, and its open-source Rosey tool handles translations on static builds. As of November 2026 we found no AI assistant built into CloudCannon's editor itself, on its pages, pricing or changelog.
+Galley is AI-first for websites on every edition (free open source and [Galley Cloud](/cloud/)):
 
-That works well for developers. We think it does less for a marketer who wants the AI to make a change without opening a terminal or reading a pull request.
+- **Page-aware built-in assistant.** Ask in plain words beside the page. It reads the site before it edits, builds and arranges sections, reads brand and voice guidelines from your materials or live site, rebuilds WordPress imports, touches only content and media in content mode, has no shell or network tool, and **never publishes**.
+- **Multi-provider image and short video generation.** Generate images and short video clips across OpenAI, Google Gemini and OpenRouter straight into the media library.
+- **Whole-site and per-page AI translations.** Configure target languages, localized URL slugs, `hreflang` alternates and Astro `<LanguageSelector />` / `<LocaleHead />` components ([Languages](/docs/editing/languages/)); edit side by side with automatic out-of-sync flags when the source changes, or translate pages and entire sites with AI using a Git-tracked **Translation Memory** (0-credit reuse), a brand/product **Glossary** and an upfront cost estimate — every translated page waiting in Proof.
+- **Built-in Search and AI intelligence.** On-site SEO and structured-data checks, one-click fixes into Proof, live Google search rankings, striking-distance (`#4–#15`) quick wins, keyword explorer, competitor content gaps, broken-404 backlink recovery with one-click redirects, and AI search answer citations — included on every Galley Cloud plan (at zero AI credits for lookups) or self-hosted with your own search data key.
+- **AI-first published output and MCP.** Publishes `llms.txt`, `llms-full.txt`, `agent.md`, Markdown twins of every page and per-AI-crawler `robots.txt` switches ([AI-first websites](/ai-first/)), plus [Galley's MCP server](/docs/integrations/mcp/) (publishing over MCP can be switched off).
 
-Galley puts AI, translation and search intelligence directly inside the editor, with every change landing in Proof:
+## How do you check a change and schedule publishing?
 
-- **The built-in assistant.** Ask in plain words beside the page. It reads the site before it edits, asks one short question when a request is ambiguous, and quotes the new words back. In content mode it touches only content and media, has no shell or network tool, and never publishes. You can also generate images and short video clips across OpenAI, Google Gemini and OpenRouter models.
-- **Built-in multilingual (`i18n`) translation.** Configure target languages, localized URL slugs (such as `/pricing/` and `/es/precios/`), `hreflang` alternates and Astro `<LanguageSelector />` / `<LocaleHead />` components. Translate manually side by side against the source language (with automatic out-of-sync flags when the source changes), or translate individual pages or the whole site with AI using a Git-tracked Translation Memory (reusing approved phrases at zero cost), a brand/product Glossary, and a clear upfront cost estimate before anything runs — every translated page waiting in Proof.
-- **Built-in Search and AI intelligence.** On-site SEO and structured-data checks, one-click fixes into Proof, Markdown twins, `llms.txt` and per-AI-crawler `robots.txt` controls, plus live Google search rankings, striking-distance (`#4–#15`) quick wins, keyword research, competitor content gaps, broken-404 backlink recovery with one-click redirects, and AI search answer citations — included on every [Galley Cloud](/cloud/) plan (at zero AI credits for lookups) or self-hosted with your own search data key.
-- **Outside AI tools over MCP.** Galley's [MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, with their changes waiting in the same proof. Unlike the built-in assistant, an MCP client can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
+In CloudCannon, saving commits and rebuilds (or opens a pull request on Team/Enterprise), and content scheduling is available on Standard with advanced scheduling on Team.
 
-We think that is where AI in a CMS should sit: close to the person who knows what the page should say, with a check that a non-developer can read. CloudCannon's approach suits a team where developers drive.
+In Galley every change — typed in the form, retyped on the page, arranged visually, translated or made by the assistant — lands in [Proof](/how-to/proof-and-publish/): word-by-word markup beside the live site, where any single change can be put back and publishing is a commit or pull request.
 
-## How do you check a change before it goes live?
+Galley also includes **scheduled publishing** on both editions:
 
-In CloudCannon the visual editor shows the page as you change it, and "Changes render live in real time, exactly as they'll appear in production." Saving commits the change and rebuilds the site. Teams that want a gate can set a site to publish by pull request, which then "must be reviewed and approved by another Organization Member in your Git Provider". Branching workflows and deploy previews for pull requests are on the Team and Enterprise plans.
-
-In Galley every change, whether typed in the form, retyped on the page, translated or made by the assistant, lands in [Proof](/how-to/proof-and-publish/): the change in the site's own words, old text struck out and new text written in, beside the live site. Any single change can be put back. Publishing is a commit to your repository, or a branch and a pull request if the site is set up for review. Undo is a new commit, and history is never rewritten.
-
-The difference is what the reviewer sees. CloudCannon shows the new page and a list of the files that changed, with the line-by-line difference on your Git host. Galley shows what changed on the page, in the site's own words.
+- **Open source (free):** Schedule changes directly from Proof for an exact date and time (published automatically by the server scheduler or `galley schedule` CLI while holding scheduled changes safely aside so you can keep editing other pages), alongside entry `publishAt` date/time matching and a one-click GitHub Actions scheduled build workflow for pure static sites.
+- **Galley Cloud (every plan):** Pre-built scheduled versions are verified ahead of time with a shareable preview link and promoted live at Cloudflare's edge at the exact scheduled minute — even while the editor machine is asleep, with zero build delay at launch time — alongside instant version rollback without rebuilding.
 
 ## Who builds and hosts the site?
 
-CloudCannon, if you want, today without waiting for an invitation. It builds the site with your own build command on every push and hosts it on Cloudflare's network, with SSL, DNS, redirects, forms and password-protected sites included. You can also host elsewhere and use CloudCannon only to edit.
+CloudCannon builds and hosts on Cloudflare's network live today without waiting for an invitation, with SSL, DNS, redirects, forms and password-protected sites included (or BYO hosting).
 
-Galley gives you both paths. You can host your site wherever you like (AWS, Google Cloud, Azure, Cloudflare, Vercel, Netlify, or your own CI/CD) and use Galley purely as the editing GUI for your repository — or deploy straight to Cloudflare from the editor (verified on the real service; attaching a fresh domain is tested against stand-ins; Vercel deploys are in progress). Forms route to HubSpot, Marketo, Salesforce, Pardot, a webhook or Galley's inbox, redirects keep the host's `_redirects` file in step, and external media buckets support Cloudflare R2 (verified on the real service), Amazon S3 / S3-compatible stores and Cloudflare Images (in progress).
-
-On [Galley Cloud](/cloud/) (opening by invitation), Galley hosts both a dedicated editor machine for each site and the published static site on Cloudflare's global edge, with automatic SSL certificates, custom domains in one DNS record, preview links for unpublished changes, instant version rollback without rebuilding, and nightly repository backups kept 30–90 days.
+Galley gives you both paths: keep your own hosting (AWS, Google Cloud, Azure, Cloudflare, Vercel, Netlify) and use Galley purely as the editing GUI for Git, deploy straight to Cloudflare from the editor (verified on the real service; external media buckets support Cloudflare R2, Amazon S3 and Cloudflare Images), or run on [Galley Cloud](/cloud/) (opening by invitation) for a dedicated editor machine per site plus Cloudflare global edge hosting, automatic SSL, custom domains in one DNS record, and 30–90 day nightly backups.
 
 ## Which one suits a team?
 
-Each is stronger in a different place.
+CloudCannon offers five default roles, custom file-level permission groups on Team and Enterprise, SAML SSO on Enterprise, SOC 2 Type 2, and single-editor-per-file live viewing.
 
-CloudCannon has five default roles on every plan (Owners, Developers, Technical Editors, Editors and Billing), custom file-level permission groups on Team and Enterprise, SAML single sign-on on Enterprise, and a SOC 2 Type 2 certification. When two people open the same file, "One person can edit a file at a time, while others can view the changes in real time", and avatars show who is where.
+Galley removes both the SSO paywall and per-seat billing:
 
-On [Galley Cloud](/cloud/), real-time collaboration and live presence are built in with no per-seat fees (up to 500 named people per workspace, 100 per site): teammates see faces in the top bar and page list, jump straight to each other's page, see active field outlines with each person's name, type together simultaneously in Markdown body text, and see each author attributed in Proof.
-
-On self-hosted Galley installs (`ghcr.io/fictiontribe/galley`, one isolated container per site), Galley includes owner, editor and contributor accounts plus **OpenID Connect (OIDC) single sign-on** (new, in final checks — Authorization Code with PKCE, IdP role-claim mapping, passwordless `GALLEY_OIDC_ONLY`, and Back-Channel Logout) built into the free Apache-2.0 server, without paying for an enterprise tier; see [`/enterprise/`](/enterprise/). On self-hosted and local installs, editors share one copy of the site, each publish carries its author's name, and a conflicting save of a page someone just changed is refused rather than silently overwritten. Roles on self-hosted installs keep people out of each other's way; the container is the security boundary.
+- **Free OpenID Connect (OIDC) SSO self-hosted:** Self-hosted Galley (`ghcr.io/fictiontribe/galley`, one isolated container per site) includes owner, editor and contributor accounts plus OpenID Connect single sign-on (Authorization Code with PKCE, IdP role-claim mapping, `GALLEY_OIDC_ONLY`, Back-Channel Logout) built into the free Apache-2.0 server — no Enterprise contract required; see [`/enterprise/`](/enterprise/). On self-hosted installs, editors share one copy and a conflicting save is refused; roles organize work while the container is the security boundary.
+- **Real-time multiplayer collaboration & zero per-seat fees on [Galley Cloud](/cloud/):** Teammates see faces in the top bar and page list, jump to each other's page, see active field outlines with each person's name, type together simultaneously in Markdown body text, and see each author attributed in Proof — for up to 500 named people per workspace and 100 per site with **$0 per-seat fees**.
 
 ## Where does Galley fall short?
 
-Even with Galley Cloud, SSO, translations and live collaboration, CloudCannon still leads in clear places:
+In clear places:
 
 - **It's young.** Version {version} of software first released in November 2026, with no SOC 2 Type 2 report or published uptime SLA yet. CloudCannon has a changelog going back to 2015.
 - **Galley Cloud is opening by invitation.** CloudCannon's hosted service is open for immediate self-serve sign-up today.
-- **No scheduled publishing.** CloudCannon offers content scheduling (with more of it on Team); Galley does not.
-- **Page building is in preview.** Galley builds pages from the site's own sections, and that part is still in preview. CloudCannon has offered component editing for years, and its newer Component Editable Regions cover most frameworks.
 - **Coarser permissions.** CloudCannon's Team and Enterprise plans offer custom permission groups narrowed to particular files. Galley has three fixed roles.
-- **TOML is read-only.** Galley reads TOML files and Hugo's TOML front matter but refuses to change them, rather than risk rewriting the file. CloudCannon edits TOML.
-- **Self-hosted AI needs your own keys.** On Galley Cloud monthly AI credits are included; on local or self-hosted installs, chat, AI translation and image/video generation use your own API keys (everything else works without one).
+- **TOML is read-only.** Galley reads TOML files and Hugo's TOML front matter but refuses to change them. CloudCannon edits TOML.
+- **Self-hosted AI needs your own keys.** Galley Cloud includes monthly AI credits; local and self-hosted AI uses your own API keys (everything else works without one).
 
 ## When is CloudCannon the better choice?
 
-When your team is large, regulated or both, and needs custom file-level permissions, enforced two-factor sign-in, SAML SSO, a SOC 2 Type 2 report and an uptime SLA this quarter. When you need scheduled publishing, which CloudCannon offers and Galley doesn't. When your media lives in Cloudinary or Azure Blob Storage and the CMS should connect directly to it. When you want a hosted CMS open for self-serve sign-up today, with thirteen years of production history and a dedicated support contract. When your developers already run AI agents against the repository and want the CMS to stay out of their way.
+When your team is large, regulated or both, and needs custom file-level permissions, enforced two-factor sign-in, SAML SSO, a SOC 2 Type 2 report and an uptime SLA this quarter. When your media lives in Cloudinary or Azure Blob Storage and the CMS should connect directly to it. When you want a hosted CMS open for self-serve sign-up today with thirteen years of production history. Or when your developers already run AI agents against the repository and want the CMS to stay out of their way.
 
-Galley fits when the people who change the site aren't developers and you want them to ask for a change, translate pages with a glossary and Translation Memory, check live search rankings, see every edit side by side in Proof and publish — on a site that needs little or no CMS setup. It also fits when you want free open-source software (with OIDC SSO built in), real-time co-editing on Galley Cloud, or predictable hosting without per-seat fees.
+Galley fits when non-developers edit the site and you want visual section building ([Arrange](/docs/editing/page-builder/)) with zero markup, an AI-first editor with Proof, built-in translations with Translation Memory and a Glossary, live Google rankings and 404 backlink recovery, scheduled publishing, free open-source OIDC SSO, real-time multiplayer co-editing on [Galley Cloud](/cloud/), and zero per-seat fees.
 
 ## Can you move from one to the other?
 

@@ -6,7 +6,7 @@ sections:
     layout: split
     eyebrow: For enterprise and security teams
     heading: Enterprise governance, without a CMS server on your live site.
-    text: Give marketing and content teams visual editing, AI, and side-by-side proof — while keeping production purely static behind Cloudflare, every word in your own Git repository, and sign-in on your own identity provider.
+    text: Give marketing and content teams visual section building, AI, scheduled publishing, and side-by-side proof — while keeping production purely static behind Cloudflare, every word in your own Git repository, and sign-in on your own identity provider.
     cta:
       label: Talk to Galley
       href: "{makerContact}"
@@ -125,6 +125,7 @@ sections:
       - "**Global edge & DDoS protection** — static files answer from Cloudflare’s network worldwide with automatic HTTPS certificates"
       - "**Custom domains in one DNS record** — attach your domain without handing over registrar passwords"
       - "**Checked redirects, forms, and media buckets** — loop-checked `_redirects`, rate-limited form routing to HubSpot, Marketo, Salesforce, Pardot, or webhooks, and media storage on Cloudflare R2"
+      - "**Pre-built scheduled deploys & instant rollback** — schedule releases ahead of time (with Git-backed `publishAt` date/time matching and scheduled commits self-hosted, or pre-built zero-latency edge promotions on Galley Cloud even while the editor machine is asleep) and roll back any live version instantly without rebuilding"
       - "**Built-in search & AI intelligence** — live organic rankings, striking-distance quick wins, competitor content gaps, broken 404 backlink recovery, and AI answer citations mapped straight to your Git content files and Proof (bring your own key on self-hosted installs, or included on Galley Cloud)"
     link:
       label: See Galley Cloud

@@ -1,22 +1,22 @@
 ---
 title: "Galley vs Payload CMS: files in Git or a database"
-description: Payload CMS runs inside your Next.js app and keeps content in a database you provide; Galley edits files in Git. Setup, AI, translations, teams, when to choose Payload.
+description: Payload CMS runs inside your Next.js app and keeps content in a database you provide; Galley edits files in Git. Setup, page building, AI, scheduling, SSO, teams, when to choose Payload.
 kind: versus
 product: Payload
 heading: Payload is a framework you build your CMS in. Galley reads the site you already have.
 name: Galley and Payload
-lead: Payload CMS is an MIT-licensed headless CMS and application framework that runs inside your Next.js app, over a database you provide, and is configured in TypeScript. Galley is open source (Apache-2.0) with optional managed hosting on Galley Cloud, edits the files in your Git repository with no database at all, and builds the assistant, translations, search intelligence and proof into the editor.
+lead: Payload CMS is an MIT-licensed headless CMS and application framework that runs inside your Next.js app, over a database you provide, and is configured in TypeScript. Galley is an AI-first, open-source CMS (Apache-2.0) with optional managed hosting on Galley Cloud — editing the files in your Git repository with no database at all, and building in visual section building, AI, translations, search intelligence, scheduled publishing and free OIDC SSO.
 published: "2026-11-25"
-updated: "2026-11-27"
+updated: "2026-11-28"
 checked: November 2026
 order: 8
 draft: false
 short:
   - Payload keeps your content in a database you provide (MongoDB, Postgres or SQLite), and the site reads it through Payload's APIs. Galley edits the Markdown, JSON and YAML files in your Git repository, and there is no database. Most of the other differences follow from that one.
-  - "Both are free to self-host: Payload is MIT-licensed (its Enterprise plan has no public price, as of November 2026) and Galley is Apache-2.0. [Galley Cloud](/cloud/) (opening by invitation) adds managed editor hosting, Cloudflare edge delivery and monthly AI credits from $35 a month per site, with no per-seat fees."
-  - Payload is set up in code by a developer, with a Next.js app, a TypeScript config of collections and fields, a database with migrations, and file storage. Galley reads the site's framework, collections and fields as they already are.
-  - Payload offers a free, open-source MCP plugin for your own app, and lists its AI features for editors on Enterprise pages, two of them marked as coming soon. Galley builds an assistant that never publishes, multilingual AI translation (with Translation Memory and a Glossary), and Search and AI intelligence into the editor, holds every change in Proof beside the live site, and lets other AI tools in over MCP.
-  - Choose Payload if you're building an application, or content that also feeds apps, and want field-level access control in code, scheduled publishing, or an established Next.js backend. Galley was first released in November 2026 and has no content API, field-level ACLs or scheduled publishing.
+  - "Both are free to self-host: Payload is MIT-licensed (requiring a Node.js host, database, file storage and email; Enterprise price not public, Nov 2026) and Galley is Apache-2.0 with nothing running behind the live static site. [Galley Cloud](/cloud/) (opening by invitation) adds managed editor hosting, Cloudflare edge website delivery and monthly AI credits from $35 a month per site, with no per-seat fees."
+  - Payload is set up in code by a developer, with a Next.js app, a TypeScript config of collections and fields, a database with migrations, and file storage. Galley reads the site as it is and includes visual section building ([Arrange](/docs/editing/page-builder/)) directly on static pages.
+  - "Payload offers a free, open-source MCP plugin for developers and lists editor AI features on Enterprise pages (two marked coming soon). Galley is AI-first on every edition: a page-aware assistant that never publishes, image and short video generation, whole-site AI translations with a Git-tracked Translation Memory and Glossary, live Google rankings and keyword-gap intelligence, `llms.txt` and Markdown twins, scheduled publishing, and MCP."
+  - Choose Payload if you're building a Next.js application (accounts, orders, internal tools) or multi-channel APIs with code-defined field-level access control and a mature 2018 codebase.
 table:
   heading: Galley and Payload, side by side.
   text: Where Payload does more, the table says so.
@@ -28,9 +28,9 @@ table:
       theirs: A database you provide
       better: even
     - label: Price
-      ours: Free, Apache-2.0; optional Galley Cloud from $35/mo, no per-seat fees
-      theirs: Free (MIT; self-hosted, community support); Enterprise price not public (Nov 2026)
-      better: even
+      ours: Free Apache-2.0 (static live site, no DB bill); Cloud from $35/mo w/ site hosting & $0/seat
+      theirs: Free MIT (needs Node host, DB, storage & email); Enterprise price not public (Nov 2026)
+      better: ours
     - label: Setup
       ours: Reads the site as it is
       theirs: A Next.js app, config and database (create-payload-app starts them)
@@ -39,51 +39,51 @@ table:
       ours: Static pages; no database
       theirs: Usually the Next.js app that runs Payload, and its database
       better: ours
-    - label: Editing
-      ours: A form, the page itself, or the assistant
-      theirs: An admin panel built from your fields (its pages differ on visual editing)
-      better: even
-    - label: Page building
-      ours: The site's own sections (preview)
-      theirs: Blocks fields a developer defines
-      better: theirs
+    - label: Page building & editing
+      ours: Visual Arrange section builder, click-to-edit on the page, forms & assistant
+      theirs: Blocks fields in admin forms (its pages differ on visual editing)
+      better: ours
     - label: AI & search intelligence
-      ours: Assistant that never publishes, AI translations, SEO/rankings intelligence, MCP
+      ours: AI-first — assistant (never publishes), image/video gen, AI translations w/ TM & glossary, live rankings/404 recovery, llms.txt, MCP
       theirs: Free MCP plugin for developers; editor AI on Enterprise pages, two coming soon (Nov 2026)
       better: ours
     - label: Checking a change
-      ours: Each change in the site's words, beside the live site
-      theirs: Drafts, Live Preview, version diffs and restore
-      better: even
-    - label: Scheduling and languages
-      ours: Built-in i18n with AI translation, memory and glossary; no scheduling
-      theirs: Scheduled publishing and unlimited locales, free
-      better: theirs
+      ours: Word-by-word Proof beside the live site, single-change undo, unlimited Git log
+      theirs: Opt-in Drafts, Live Preview, document version diffs and restore
+      better: ours
+    - label: Scheduling & languages
+      ours: Built-in i18n w/ TM, glossary & AI translation + built-in scheduled publishing (free & Cloud edge)
+      theirs: Free DB locales & background-job scheduling; no built-in AI translation memory
+      better: ours
     - label: Teams & SSO
-      ours: Three roles + free OIDC SSO (new) self-hosted; live co-editing on Cloud
-      theirs: Field-level access in code; SAML/OAuth SSO and multi-player on Enterprise
-      better: theirs
+      ours: Free OIDC SSO in Apache-2.0 server + real-time co-editing & $0/seat on Cloud
+      theirs: Field-level access in code; SAML/OAuth SSO & Multi-Player (coming soon) on Enterprise
+      better: even
     - label: Content for apps
-      ours: None; the site's build reads the files
-      theirs: REST, GraphQL and a Local API
+      ours: Built for websites; the site's build reads Git files
+      theirs: REST, GraphQL and Local APIs for apps and multi-channel backends
       better: theirs
+    - label: Leaving
+      ours: No database export; keep your Git repository as-is
+      theirs: CSV/JSON export and rich-text conversion
+      better: ours
     - label: Maturity
       ours: First released November 2026
       theirs: Started in 2018; about 46,000 GitHub stars (Nov 2026)
       better: theirs
 faq:
   - q: Is Galley an alternative to Payload?
-    a: "For a static website, yes. Galley lets editors change copy, translate pages with AI and check search rankings with no database, little setup and an assistant built in (free to self-host, or managed on [Galley Cloud](/cloud/)). If you're building an application, or content that feeds apps, Payload is the better fit: it's a full backend with REST/GraphQL/Local APIs, field-level access control in code and scheduled publishing, all free."
+    a: "For a static website, yes. Galley lets editors visually arrange sections ([Arrange](/docs/editing/page-builder/)), edit copy with an AI assistant, translate pages with Translation Memory, check live search rankings and schedule releases with no database and little setup (free to self-host with OIDC SSO, or managed on [Galley Cloud](/cloud/)). If you're building an application, or content that feeds mobile apps, Payload is the better fit: it's a full Next.js backend with REST/GraphQL/Local APIs and code-defined field-level access control."
   - q: Is Payload CMS free?
-    a: Yes. Payload is open source under the MIT licence and free to host yourself. Its Enterprise plan, with dedicated support and features such as single sign-on, has no public price as of November 2026. You still pay for somewhere to run a Node.js app, a database and file storage. Galley is free under Apache-2.0 to run locally or self-host (including OIDC SSO, new, using your own AI key), or hosted on [Galley Cloud](/cloud/) from $35 a month per site with monthly AI credits and Cloudflare edge hosting.
+    a: Yes. Payload is open source under the MIT licence and free to host yourself. Its Enterprise plan, with dedicated support and features such as single sign-on, has no public price as of November 2026. You still pay for somewhere to run a Node.js app, a database and file storage. Galley is free under Apache-2.0 locally or self-hosted (including OIDC SSO, using your own AI key), or hosted on [Galley Cloud](/cloud/) from $35 a month per site with Cloudflare website hosting, monthly AI credits and no per-seat fees.
   - q: Does Payload CMS need a database?
     a: Yes. Payload officially supports MongoDB, Postgres and SQLite through adapters, and you provide the database. If your Next.js pages are generated statically and read content through Payload's Local API, the build needs a database connection as well, unless you change how you build. Galley has no database. The content is the files in your Git repository, and the site's build reads them.
   - q: Does Payload have AI features or an MCP server?
-    a: "Both, in different places. A free, open-source plugin adds an MCP server to your own Payload app, with permissions set per collection. Its AI features for editors are on its Enterprise pages, with no price: translations, image generation and a writing assistant, the last two marked \"COMING SOON\" (November 2026). Galley's assistant, AI translations, image/video generation and search intelligence are built into the editor today, and the assistant never publishes."
+    a: "Both, in different places. A free, open-source plugin adds an MCP server to your own Payload app, with permissions set per collection. Its AI features for editors are on its Enterprise pages, with no price: translations, image generation and a writing assistant, the last two marked \"COMING SOON\" (November 2026). Galley's assistant, AI translations with Translation Memory, image/video generation and search intelligence are built into the editor today, and the assistant never publishes."
   - q: How does Payload compare with Strapi and Sanity?
     a: All three are headless. The content sits in a database and reaches the site through an API. Payload and Strapi are open source under MIT and can run on your own servers, while Sanity hosts its content database for you. Payload publishes its own comparison with each, and both make the case that it is native to Next.js. Galley is another kind of CMS that edits files in Git.
   - q: Can Galley edit a site built with Payload?
-    a: Not its content. Galley edits files in a Git repository, and a Payload site keeps its words in a database, so there is nothing for Galley to change until the content has been moved into files. Galley has no importer for Payload. Its only guided move is from WordPress, and that is new and still in final checks.
+    a: Not its content. Galley edits files in a Git repository, and a Payload site keeps its words in a database, so there is nothing for Galley to change until the content has been moved into files. Galley has no importer for Payload. Its only guided move is from WordPress, and that is new and in final checks.
 sources:
   - label: "Payload, home page"
     href: https://payloadcms.com/
@@ -171,6 +171,10 @@ sources:
     href: https://www.sanity.io/pricing
   - label: "Galley, the FAQ for developers"
     href: /docs/project/faq/
+  - label: "Galley, page builder"
+    href: /docs/editing/page-builder/
+  - label: "Galley, languages"
+    href: /docs/editing/languages/
   - label: "Galley, the tour: what is built and what isn't yet"
     href: /tour/
   - label: "Galley over MCP"
@@ -201,86 +205,72 @@ As of November 2026, Payload's pricing page names two tiers:
 | Free, self-hosted | Free, MIT licence | Open source, host it yourself, community support |
 | Enterprise | No public price | Dedicated support and Enterprise features such as SSO, self-hosted or with Payload |
 
-The free card says: "Deploy it anywhere you can run a Node.js app — for free, forever." Enterprise is reached through "Get a Demo" or "Talk to Sales", and the page shows no price, user count or usage limit for either tier. Payload's own hosting, Payload Cloud, says "Although deployment of new projects is currently paused, existing Cloud projects will continue running as normal." Those details are from [Payload's pricing page](https://payloadcms.com/get-started) and its [announcement of joining Figma](https://payloadcms.com/payload-has-joined-figma); check them before you decide.
+The free card says: "Deploy it anywhere you can run a Node.js app — for free, forever." Enterprise is reached through "Get a Demo" or "Talk to Sales", and the page shows no price, user count or usage limit for either tier. Payload's own hosting, Payload Cloud, says "Although deployment of new projects is currently paused, existing Cloud projects will continue running as normal." Payload's deployment guide notes that "most Payload projects will also need a database, file storage, an email provider, and a CDN."
 
-Galley is Apache-2.0 and free to run locally (`npx galley-cms` or the Apple-signed and notarized macOS desktop app) or self-host on your own server with Docker (`ghcr.io/fictiontribe/galley`), including OIDC single sign-on (new, in final checks), bringing your own AI key. For teams that want managed hosting with no keys to paste, [Galley Cloud](/cloud/) (opening by invitation) runs an isolated editor machine per site, serves the published site on Cloudflare's global edge, and includes monthly AI credits and Search and AI intelligence — with **no per-seat fees** (up to 500 named people per workspace, 100 per site): Partner is $0 a month for agencies whose clients pay directly, Site is $35 a month, Agency is $99 a month (5 live sites included, then $15–$12 per extra site), and Business is $149 a month.
+Galley is Apache-2.0 and free to run locally (`npx galley-cms` or the Apple-signed and notarized macOS desktop app) or self-host on your own server with Docker (`ghcr.io/fictiontribe/galley`), including OIDC single sign-on, visual section building, AI translations and scheduled publishing, with no database or Node server required behind the live static site. For managed hosting with no keys to paste, [Galley Cloud](/cloud/) (opening by invitation) runs an isolated editor machine per site, serves the published site on Cloudflare's global edge, and includes monthly AI credits, pre-built scheduled publishing and Search and AI intelligence — with **no per-seat fees** (up to 500 named people per workspace, 100 per site): Partner is $0 a month for agencies whose clients pay directly, Site is $35 a month, Agency is $99 a month (5 live sites included, then $15–$12 per extra site), and Business is $149 a month.
 
-Neither self-hosted bill stops at the licence. Payload's deployment guide says "most Payload projects will also need a database, file storage, an email provider, and a CDN". A self-hosted Galley site needs somewhere to serve static files, which is often free or cheap.
+## What does a developer have to set up, and how does page building work?
 
-## What does a developer have to set up?
+With Payload, the CMS itself, which is the point of it. `npx create-payload-app` scaffolds a Next.js app, database adapter, route files and `payload.config.ts`. With Postgres or SQLite, migrations "will be required for non-development database environments". Types are generated with `payload generate:types`, Live Preview needs front-end hooks, and scheduled publishing requires background jobs wired up. Blocks fields let developers define modular page blocks edited inside admin forms (Payload's own pages differ on whether on-page visual editing is available).
 
-With Payload, the CMS itself, which is the point of it. The installation guide lists the Next.js versions it supports and warns: "Not all Next.js 15/16 releases are compatible". `npx create-payload-app` scaffolds a new project. To add Payload to an existing app, a developer installs Payload and a database adapter, copies Payload's route files into the app's `/app` folder, wraps the Next.js config with `withPayload`, and writes `payload.config.ts`. Then come the collections and their fields, in TypeScript, and the admin panel follows from them.
-
-A working project needs a little more. With Postgres or SQLite, migrations "will be required for non-development database environments". Types are generated with `payload generate:types`. Live Preview needs a little code in the front end: a hook, or for the Next.js App Router a component Payload provides. Scheduled publishing needs the app set up to run background jobs, or the jobs "will never be executed." That's no complaint: in a code-first framework the content model lives in code, typed and versioned with the app.
-
-Galley starts by reading the site. It works out the framework, the collections and every field's type from the site's own schemas and files, without running its code. Astro fits deepest; Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll are recognised by their conventions. A `galley.config.json` file exists only to correct what it found, and editing on the page needs no markup.
+Galley starts by reading the site. It works out the framework, the collections and every field's type from the site's own schemas and files, without running its code. Astro fits deepest; Docusaurus, Nuxt, Next.js, SvelteKit, Eleventy, Hugo and Jekyll are recognised by their conventions. A `galley.config.json` file exists only to correct what it found, editing on the page needs no markup, and Galley's visual [Arrange](/docs/editing/page-builder/) page builder lets editors visually select, drag, reorder, duplicate and drop new sections from a thumbnail palette directly onto static pages, toggle layout options live and undo safely — with zero database or SSR required.
 
 The caveats on our side: detection is only as good as the site is tidy. And Galley edits files only, so a Next.js site whose words are in Payload's database gives it nothing to edit.
 
 ## How does each one use AI, translations and search intelligence?
 
-Payload's home page calls it "The Agentic Content Framework". We think what is free today is mostly for developers.
+Payload's home page calls it "The Agentic Content Framework". What is free today is mostly for developers: its open-source [MCP plugin](https://payloadcms.com/docs/plugins/mcp) adds `/api/mcp` under Payload's collection access rules. Payload's editor AI features are on its Enterprise pages with no public price: AI-Translations, AI-Image Generation ("COMING SOON") and AI-Writing Assistant ("COMING SOON"), plus AI Auto-Embedding for vector search.
 
-Its [MCP plugin](https://payloadcms.com/docs/plugins/mcp), whose docs say "This plugin is completely open-source", adds an MCP server to your own Payload app at `/api/mcp`. You allow or disallow find, create, update and delete for each collection. By default, every request needs an API key, and Payload's access rules still apply to the key's user. Payload's post announcing the 4.0 beta, in October 2026, says: "We've rebuilt our MCP integration to work out of the box with significantly less configuration."
+Galley is AI-first on every edition — open source and [Galley Cloud](/cloud/):
 
-Payload's other AI features are on its Enterprise pages, which show no price and offer a demo. The Enterprise AI page names three: AI-Translations, AI-Image Generation and AI-Writing Assistant. The second and third are marked "COMING SOON", and the page doesn't say whether translations are available now. A separate page, AI Auto-Embedding, describes breaking your content into chunks and storing vector embeddings of them in your own database, for retrieval-augmented generation. We found no page for any of these in Payload's current (3.x) documentation.
+- **Page-aware built-in assistant.** Ask in plain words beside the page; it reads the site before it edits, builds and arranges sections, reads brand and voice guidelines from your materials or live site, rebuilds WordPress imports, touches only content and media in content mode, has no shell or network tool, and **never publishes**.
+- **Multi-provider image and short video generation.** Generate images and short video clips across OpenAI, Google Gemini and OpenRouter straight into the media library.
+- **Whole-site and per-page AI translations.** Configure target languages, localized URL slugs, `hreflang` alternates and Astro `<LanguageSelector />` / `<LocaleHead />` components ([Languages](/docs/editing/languages/)); edit side by side with automatic out-of-sync flags when the source changes, or translate pages and entire sites with AI using a Git-tracked **Translation Memory** (0-credit reuse), a brand/product **Glossary** and an upfront cost estimate — every translated page waiting in Proof.
+- **Built-in Search and AI intelligence.** On-site SEO and structured-data checks, live Google search rankings, striking-distance (`#4–#15`) quick wins, keyword explorer, competitor content gaps, broken-404 backlink recovery with one-click redirects, and AI search answer citations — included on Galley Cloud (at zero AI credits for lookups) or self-hosted with your own search data key.
+- **AI-first published output and MCP.** Publishes `llms.txt`, `llms-full.txt`, `agent.md`, Markdown twins of every page and per-AI-crawler `robots.txt` switches ([AI-first websites](/ai-first/)), plus [Galley's MCP server](/docs/integrations/mcp/) (publishing over MCP can be switched off).
 
-Galley puts AI, multilingual translation and search intelligence inside the editor today:
+## How do you check a change and schedule publishing?
 
-- **The built-in assistant.** Ask in plain words beside the page; it reads the site before it edits, touches only content and media in content mode, has no shell or network tool, and never publishes. Image and short video generation run across OpenAI, Google Gemini and OpenRouter models.
-- **Multilingual (`i18n`) translation.** Configure target languages, localized URL slugs, `hreflang` alternates and Astro `<LanguageSelector />` / `<LocaleHead />` components; translate side by side (with automatic out-of-sync flags when the source page changes) or translate individual pages or the whole site with AI using a Git-tracked Translation Memory, a Glossary and a clear upfront cost estimate — every translated page waiting in Proof.
-- **Search and AI intelligence.** Built-in SEO and structured-data checks, Markdown twins, `llms.txt`, per-AI-crawler `robots.txt` controls, live Google search rankings, striking-distance (`#4–#15`) quick wins, keyword research, competitor content gaps, broken-404 backlink recovery with one-click redirects, and AI search answer citations — included on [Galley Cloud](/cloud/) (at zero AI credits for lookups) or self-hosted with your own search data key.
-- **MCP server.** [Galley's MCP server](/docs/integrations/mcp/) gives Claude Desktop, Claude Code, Cursor, VS Code or any MCP client the assistant's tools for reading and changing the site, waiting in Proof. Unlike the assistant, such a tool can also publish (its instructions say only when you ask) unless publishing over MCP is switched off.
+Payload makes versions opt-in, with Drafts, Autosave, Live Preview, document version diffs and restore, and background-job scheduled publishing free once configured. On Enterprise, Publishing Workflows add multi-step approvals.
 
-We think Payload's approach suits developers who want AI tools working against a typed backend, under permissions they write. We think it does less, today, for an editor who wants to ask for a change in plain words, translate pages and see exactly what changed before it goes live. That's our view, and it's what Galley is built around.
+In Galley every change — typed in the form, retyped on the page, arranged visually, translated or made by the assistant — lands in [Proof](/how-to/proof-and-publish/): word-by-word markup beside the live site, where any single change can be put back and publishing is a commit or pull request with unlimited Git history.
 
-## How do you check a change before it goes live?
+Galley also includes **scheduled publishing** on both editions:
 
-Payload has the pieces, free, once a developer turns them on; its docs call versions "totally opt-in". With drafts on, Save becomes a choice between saving a draft and publishing, and each document shows as Draft, Published or Changed. Autosave keeps changes as a new draft while you work. Live Preview shows your front end inside the admin panel: "As you type, your changes take effect in real-time." Versions keep each document's history, show the differences between versions and restore an earlier one. Scheduled publishing puts a document live, or back to draft, at a set time. On Enterprise, Publishing Workflows add what the page calls "multi-step approval processes".
-
-In Galley every change, whether typed in the form, retyped on the page, translated or made by the assistant, lands in [Proof](/how-to/proof-and-publish/): the change in the site's own words, old text struck out and new text written in, beside the live site. Any single change can be put back. Publishing is a commit to your repository, or a branch and a pull request if the site is set up for review. Undo is a new commit, and history is never rewritten. On Galley Cloud, you can also share preview links for unpublished changes and roll back to an earlier version instantly without rebuilding.
-
-Payload shows the changed document and the page in a preview, with the history inside the CMS. Galley shows what changed on the page, in the site's own words, and the history is your Git log.
+- **Open source (free):** Schedule changes directly from Proof for an exact date and time (published automatically by the server scheduler or `galley schedule` CLI while holding scheduled changes safely aside so you can keep editing other pages), alongside entry `publishAt` date/time matching and a one-click GitHub Actions scheduled build workflow for pure static sites.
+- **Galley Cloud (every plan):** Pre-built scheduled versions are verified ahead of time with a shareable preview link and promoted live at Cloudflare's edge at the exact scheduled minute — even while the editor machine is asleep, with zero build delay at launch time — alongside instant version rollback without rebuilding.
 
 ## How does the site get its content?
 
-Payload's docs list three APIs. The Local API is "Direct-to-database access with no HTTP overhead — call payload.find from any server context, including React Server Components." There is also a REST API at `/api`, and GraphQL.
+Payload's docs list three APIs: Local API, REST and GraphQL. When Next.js generates pages statically using the Local API, the build needs a database connection unless you disable static optimization.
 
-One detail matters for static sites. When Next.js generates pages statically, which is the default, and they read Payload's Local API, the build needs a database connection. The docs offer two ways round it: generate the pages later, when a connection is available, or turn static generation off, which "will disable static optimization and your site will be slower."
-
-Payload "can be deployed anywhere that Next.js can run", and one-click templates put it on Vercel or Cloudflare with a database and file storage. In Payload's website template, the admin panel and the site are one app. Payload Cloud's new-project page tells a signed-out visitor "Project creation is only available for Enterprise teams."
-
-With Galley there's nothing to ask: the site's build reads the files. Galley publishes to your repository and your host builds from there — or deploys straight to Cloudflare (verified on the real service; Vercel deploys are in progress; external media buckets support Cloudflare R2, Amazon S3 and Cloudflare Images). On [Galley Cloud](/cloud/) (opening by invitation), the published site is served straight from Cloudflare's global edge with automatic SSL, custom domains in one DNS record, and nightly repository backups kept 30–90 days.
+With Galley there's nothing to ask: the site's build reads the files. Galley publishes to your repository and your host builds from there — or deploys directly to Cloudflare (verified on the real service; Vercel deploys are in progress; external media buckets support Cloudflare R2, Amazon S3 and Cloudflare Images). On [Galley Cloud](/cloud/) (opening by invitation), the published site is served straight from Cloudflare's global edge with automatic SSL, custom domains in one DNS record, and nightly backups kept 30–90 days.
 
 ## Which one suits a team?
 
-Payload, for granular access control and audit logs, by a clear margin. In the free edition, access control is code you write for each collection, global and field, and for each operation. Roles aren't a fixed list: the docs have you add a `roles` field and check it. Versions keep "an audit log / history of every change ever made to a document, including monitoring for what user made which change". Document locking "ensures that only one user at a time can edit a document", and anyone else can view it read-only or take over. "There are no limits to the number of locales you can add to your Payload project", and the admin panel is "translated in over 30 languages".
+Payload wins on code-defined field-level access control and multi-step approval workflows; Galley wins on free OIDC SSO and built-in real-time multiplayer editing on Cloud.
 
-Its Enterprise page lists single sign-on through SAML or OAuth 2.0, Publishing Workflows with approvals and notifications, and "Audit Logs & Version Control". The Enterprise page lists real-time "Multi-Player Editing", marked "Coming Soon". It also describes an on-page visual editor, but Payload's own pages differ on whether that is available, so we leave it out of this comparison.
+In Payload's free edition, access control is code you write per collection, global and field, versions keep a document-level history, document locking prevents overlapping edits, and the admin panel is translated into over 30 languages. Enterprise adds SAML/OAuth 2.0 SSO, Publishing Workflows, Audit Logs, and Multi-Player Editing (marked "Coming Soon").
 
-Galley handles smaller and mid-sized web teams cleanly, and includes two features Payload puts on Enterprise:
+In Galley:
 
-- **OpenID Connect (OIDC) SSO in the free self-hosted server:** A [hosted editor](/docs/running/hosted/) (`ghcr.io/fictiontribe/galley`, one container per site) adds owner, editor and contributor accounts plus OpenID Connect single sign-on (new, in final checks — Authorization Code with PKCE, IdP role-claim mapping, `GALLEY_OIDC_ONLY`, Back-Channel Logout) built into the Apache-2.0 image; see [`/enterprise/`](/enterprise/). Roles organize work while the container is the security boundary, and conflicting saves are refused rather than silently overwritten.
-- **Real-time collaboration on [Galley Cloud](/cloud/):** Built-in live presence, active field outlines, simultaneous Markdown typing, and per-author Proof with no per-seat fees (up to 500 named people per workspace, 100 per site).
-
-Where Payload still leads: field-level access control in code, multi-step approval workflows, document-level audit logs, and an admin UI translated into over 30 languages.
+- **Free OpenID Connect (OIDC) SSO self-hosted:** A [hosted editor](/docs/running/hosted/) (`ghcr.io/fictiontribe/galley`, one isolated container per site) adds owner, editor and contributor accounts plus OpenID Connect single sign-on (Authorization Code with PKCE, IdP role-claim mapping, `GALLEY_OIDC_ONLY`, Back-Channel Logout) built into the free Apache-2.0 server — no Enterprise plan needed; see [`/enterprise/`](/enterprise/). On self-hosted installs, editors share one copy and a conflicting save is refused rather than overwritten; roles organize work while the container is the security boundary.
+- **Real-time collaboration & zero per-seat fees on [Galley Cloud](/cloud/):** Built-in live presence, active field outlines, simultaneous Markdown typing, and per-author Proof for up to 500 named people per workspace and 100 per site with **$0 per-seat fees**.
 
 ## Where does Galley fall short?
 
-Against a framework this size, in several places:
+Against an application framework this size, in clear places:
 
-- **It's young.** Version {version} of software first released in November 2026. Payload's team started building it in 2018, and the project published two releases on 24 November 2026 alone.
-- **No content for apps.** Galley has no content API. If an app needs the same words, Payload serves them and Galley doesn't.
-- **No scheduled publishing or field-level ACLs.** Payload has scheduled publishing and code-defined field-level access control in its free edition.
-- **Page building is in preview.** Galley builds pages from the site's own sections, and that part is still in preview. Payload's Blocks field suits page builders, with blocks a developer defines.
-- **No enterprise support contract or SOC 2 badge yet.** Self-hosted help comes through GitHub issues, and Galley Cloud is opening by invitation. Payload's Enterprise plan includes dedicated support.
-- **Self-hosted AI needs your own keys.** Galley Cloud includes monthly AI credits; on local or self-hosted installs, chat, AI translation and image/video generation use your own API keys.
+- **No content API or app backend.** Galley edits static websites; it doesn't provide REST/GraphQL/Local APIs, user accounts for end-users, or an application database.
+- **It's young.** Version {version} of software first released in November 2026. Payload started in 2018 and has ~46,000 GitHub stars.
+- **No code-defined field-level ACLs or multi-step approval workflows.** Galley uses Proof, pull requests and three fixed roles.
+- **Galley Cloud is opening by invitation.** Self-hosted and local installs are available today (help via GitHub issues; self-hosted AI uses your own keys).
 
 ## When is Payload the better choice?
 
-When you're building an application, not only a website: accounts, orders, an internal tool, or content an app reads too. When you need field-level permissions or scheduled publishing, free, this month. When your team builds in Next.js and wants the backend in the same codebase. Payload's own docs put it bluntly: "If you're building a website and your frontend is on Next.js, then Payload is a no-brainer." When you need SAML SSO, multi-step approval workflows and someone to call, which Enterprise offers. And when you'd rather adopt a project with years of releases and a large community than a new one.
+When you're building an application, not only a website: accounts, orders, an internal tool, or content an app reads too. When you need field-level permissions written in TypeScript, or your team builds in Next.js and wants the backend in the same codebase. When you need SAML SSO, multi-step approval workflows and Enterprise support. And when you'd rather adopt a project with years of releases and a large community than a new one.
 
-Galley fits when the site is static, the content is the website, and the people who change it aren't developers. They can ask for a change, translate pages with Translation Memory and a Glossary, check live search rankings, see every edit in Proof and publish — with no content model to write first, no database behind the site, free OIDC SSO self-hosted, or Cloudflare-hosted [Galley Cloud](/cloud/) with real-time collaboration.
+Galley fits when the site is static, the content is the website, and the people who change it aren't developers: visual section building ([Arrange](/docs/editing/page-builder/)), AI editing, translations with Translation Memory and a Glossary, live Google rankings and keyword-gap intelligence, scheduled publishing, readable Proof, free OIDC SSO self-hosted, and Cloudflare-hosted [Galley Cloud](/cloud/) with real-time collaboration and no per-seat fees — with no database behind the site.
 
 ## Can you move from one to the other?
 
