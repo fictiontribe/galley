@@ -92,6 +92,16 @@ For multilingual sites, `@galleycms/astro/components` exports two components tha
 
 See [Languages and translations](/docs/editing/languages/) for setup and workflow details.
 
+## Scheduled publishing
+
+For sites that schedule posts using `publishAt` or `scheduledAt` front matter dates, `@galleycms/astro/schedules` exports three pure helpers:
+
+- **`parsePublishAt(value)`** — parses an ISO date or date-time string (`YYYY-MM-DD` or full ISO-8601) or `Date` into epoch milliseconds, or `null`.
+- **`isPublished(entry, now?)`** — returns `true` when the entry is not a draft and its `publishAt` / `scheduledAt` timestamp is absent or at or before `now`.
+- **`filterPublished(entries, now?)`** — filters an array of Astro content entries to those live at `now`.
+
+The kit's visibility builder automatically omits future-dated content entries and rendered pages containing `<meta name="galley:publish-at" content="…">` from `sitemap.xml`, `llms.txt`, `llms-full.txt`, and Markdown twins until their timestamp passes. See [Schedule a publish](/docs/editing/scheduling/) for the full workflow.
+
 ## Next
 
 - [Forms](/docs/forms/), [Scripts](/docs/scripts/), [What Arrange needs](/docs/visual-builder/).

@@ -15,6 +15,7 @@
 // under any sub-path, with no rewrite rules.
 
 import { matchGlob } from "../shared/glob.js";
+import { parsePublishAt } from "../schedules/index.js";
 import { AI_CRAWLERS, aiCrawler, PURPOSE_NOTES } from "./crawlers.js";
 import { patternGlob } from "./content.js";
 import { articleLd, breadcrumbLd, jsonLdTag, organizationLd, websiteLd } from "./structured.js";
@@ -40,6 +41,7 @@ export const MAX_SITEMAP_URLS = 50_000;
  * @property {Record<string, string>} [patterns]  Collection id → address pattern ("/blog/{slug}/").
  * @property {string} [fallbackName]  The site's name when no page states one (galley.config.json).
  * @property {(path: string) => boolean} [fileExists]  Whether the site serves a file (for the logo).
+ * @property {Date} [now]  Clock used when evaluating `galley:publish-at` timestamps (default `new Date()`).
  */
 
 /**
@@ -168,12 +170,18 @@ export function planSite(input) {
   // A page the kit's own robots.txt asks every crawler to stay away from isn't listed for them either.
   const disallowed = (/** @type {string} */ path) => settings.robots.enabled && !own.robots && !robotsAllows(settings.robots, sitePath(path, base));
 
+  const nowMs = (input.now ?? new Date()).getTime();
   // ── Which pages count ────────────────────────────────────────────────
   /** @param {PageFacts} page */
   const listed = (page) => {
     const local = sitePath(page.path, base);
 
     if (page.noindex || page.redirect || SPECIAL.test(local) || drafts.has(pathKey(local)) || disallowed(page.path)) return false;
+    if (page.publishAt) {
+      const targetMs = parsePublishAt(page.publishAt);
+
+      if (targetMs !== null && targetMs > nowMs) return false;
+    }
     // A page whose canonical address is another page is a copy of that page.
     if (page.canonical) {
       try {

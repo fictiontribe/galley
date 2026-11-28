@@ -43,6 +43,7 @@ galley host recipe --name acme --address cms.example.com --out -
   init: `Writes the corrections file with what detection found, for you to edit. Without \`--force\`, an existing file is left alone (exit 1). The file: [galley.config.json](/docs/configuration/).`,
   doctor: `Reads the site without running any of its code and prints what Galley sees — framework, package manager, dev and build commands, each collection with its fields, media, git, and the assistant's key. Exits with 1 only when something would stop Galley working. [Detection](/docs/concepts/detection/) explains each line.`,
   deploy: `Puts the site online from a terminal, as the app's **Online** screen does. Not run against the live services by the docs; Cloudflare has been verified by the people who built it, Vercel not yet. \`--domain\` is new in 0.1.1. Details: [Deploying, for developers](/docs/running/deploy/).`,
+  schedule: `Lists scheduled releases for a site (\`--list\`) or publishes any whose scheduled time has arrived (\`--run-due\`), leaving unrelated drafts waiting in Proof untouched. Details: [Schedule a publish](/docs/editing/scheduling/).`,
   media: `Keeps the site's new media in a bucket (Cloudflare R2 or Amazon S3), and pictures in Cloudflare Images, instead of its repository, as Media › Keep media outside the repository does in the app. \`connect\` asks only for what the chosen bucket needs, reads the key from the environment or asks for it with nothing shown, and saves only after a real check passes. \`move\` shows its plan and needs \`--yes\`. Cloudflare R2 has been run on the real service by the people who built it; Amazon S3, other S3-compatible stores and Cloudflare Images not yet. Details: [Media in a bucket](/docs/configuration/media-storage/).`,
   domain: `New in 0.1.1. Uses your own address for a site that is already online: it shows what will change, attaches the address on yes, waits until it answers over HTTPS, and makes it the site's live address. It never replaces a DNS record, and it detaches only an address it attached itself. On Cloudflare the domain has to be in the same account as the site. Details: [Deploying, for developers](/docs/running/deploy/).`,
   new: `Copies a starter into a new folder named after the site, installs its dependencies, records a first version with git, and opens it — the step-by-step version is [Create a new site](/docs/getting-started/new-site/). In a terminal it asks for a missing name or starter. The options a first site doesn't need:
@@ -109,7 +110,7 @@ export function renderCliReference(repoRoot, names) {
 
   for (const name of names) {
     const help = run(repoRoot, [name, "--help"]);
-    const title = name === "new" ? "`galley new <name>`" : ["init", "doctor", "deploy", "mcp"].includes(name) ? `\`galley ${name} [path]\`` : `\`galley ${name}\``;
+    const title = name === "new" ? "`galley new <name>`" : ["init", "doctor", "deploy", "schedule", "mcp"].includes(name) ? `\`galley ${name} [path]\`` : `\`galley ${name}\``;
 
     sections.push({ title, note: NOTES[name], help, name });
     for (const sub of subcommands(help)) sections.push({ title: `\`galley ${name} ${sub}\``, note: NOTES[`${name} ${sub}`], help: run(repoRoot, [name, sub, "--help"]), name: `${name} ${sub}` });

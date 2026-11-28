@@ -16,6 +16,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { parsePublishAt } from "../schedules/index.js";
 
 /**
  * @typedef {object} SiteContent
@@ -66,7 +67,18 @@ export function isDraft(/** @type {string} */ text, /** @type {string} */ file, 
 }
 
 const DATE_KEYS = ["date", "pubDate", "publishDate", "published"];
+const SCHEDULE_KEYS = ["publishAt", "scheduledAt"];
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:[T ][\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+
+/** Whether a content file declares a future `publishAt` or `scheduledAt` timestamp. */
+export function isScheduledFuture(/** @type {string} */ text, /** @type {string} */ file, now = new Date()) {
+  const value = entryDate(text, file, SCHEDULE_KEYS);
+
+  if (!value) return false;
+  const ms = parsePublishAt(value);
+
+  return ms !== null && ms > now.getTime();
+}
 
 /** The entry's date, as written, when it is an ISO date. */
 export function entryDate(/** @type {string} */ text, /** @type {string} */ file, /** @type {string[]} */ keys) {
@@ -161,7 +173,7 @@ export function readSiteContent(root) {
       const slug = slugOf(relative(dir, file));
       const address = id === "pages" && (slug === "index" || slug === "") ? "/" : fillPattern(pattern, slug);
 
-      if (isDraft(text, file, draftFields[id] ?? "draft")) {
+      if (isDraft(text, file, draftFields[id] ?? "draft") || isScheduledFuture(text, file)) {
         out.drafts.push(address);
         continue;
       }

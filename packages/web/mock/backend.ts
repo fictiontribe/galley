@@ -35,6 +35,7 @@ import { createMockRedirects } from "./redirects.ts";
 import { createMultiSite } from "./multisite.ts";
 import { createMockVisibility } from "./visibility.ts";
 import { createMockI18n } from "./i18n.ts";
+import { createMockSchedules } from "./schedules.ts";
 import { createMockBrand } from "./brand.ts";
 import { createMockImport } from "./import.ts";
 import { createMockPlugins } from "./plugins.ts";
@@ -360,6 +361,7 @@ export function createHandlers(mock: MockBackend): Handlers {
   const multiSite = createMultiSite(mock);
   const visibility = createMockVisibility(mock);
   const i18n = createMockI18n(mock);
+  const schedules = createMockSchedules(mock);
   const plugins = createMockPlugins(mock);
   const siteBrand = createMockBrand(mock);
   const wordpress = createMockImport(mock);
@@ -375,6 +377,7 @@ export function createHandlers(mock: MockBackend): Handlers {
     ...multiSite.handlers,
     ...visibility.handlers,
     ...i18n.handlers,
+    ...schedules.handlers,
     ...plugins.handlers,
     ...siteBrand.handlers,
     ...wordpress.handlers,

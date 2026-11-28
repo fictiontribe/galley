@@ -140,6 +140,7 @@ Keys are looked for in this order: the site's own key (Site settings › Connect
 | `CLOUDFLARE_ACCOUNT_ID` | — | Which Cloudflare account, when the key reaches several. |
 | `VERCEL_TOKEN` | — | The Vercel access key. |
 | `VERCEL_TEAM_ID` | — | Which Vercel team. |
+| `GALLEY_DEPLOY_HOOK_URL` | — | Optional GitHub Actions secret used by `.github/workflows/galley-schedule.yml` to trigger a static host's rebuild webhook on a schedule ([Schedule a publish](/docs/editing/scheduling/)). |
 | `GALLEY_DEPLOY_<HOST>_API` | the host's own API | Testing only: send a host's API calls to another address (a fake host). `<HOST>` is the host's id in capitals. |
 | `GALLEY_DEPLOY_PROBE` | the domain itself, over HTTPS | Testing only: where Galley looks to see whether a site's own domain answers yet. A URL with `{host}` in it. |
 | `GALLEY_REDIRECTS_CLOUDFLARE_API` | `https://api.cloudflare.com/client/v4` | Testing only: the API address for setting redirects on Cloudflare. |

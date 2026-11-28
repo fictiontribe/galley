@@ -6,7 +6,7 @@ group: astro
 order: 7
 ---
 
-This page is for developers. **Arrange**, the on-page page builder ([Build a page from sections](/docs/editing/page-builder/)), links here when it can't arrange a page. *Status: Preview.*
+This page is for developers. **Arrange**, the on-page page builder ([Build a page from sections](/docs/editing/page-builder/)), links here when it can't arrange a page.
 
 Arrange works on pages whose content has a `blocks` field — a list of sections, each with a type — which Galley detects from the content schema or the files. To arrange them *on the page*, Galley must know which element is which section.
 

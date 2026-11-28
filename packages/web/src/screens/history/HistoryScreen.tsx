@@ -14,6 +14,7 @@ import { placeWords, usePlaceWords } from "@/lib/where";
 import { useHostedInstall } from "@/lib/stores/meta";
 import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, PageHeader, ProofMark, Skeleton, Spinner } from "@/ui";
 import { sendNowWithToast } from "@/features/proof/sendNow";
+import { ScheduledList } from "@/features/proof/ScheduledList";
 import { PutLiveButton } from "@/features/deploy/Online";
 import { useMay } from "@/lib/may";
 
@@ -237,6 +238,7 @@ export function HistoryScreen() {
       <div className="app-screen__inner">
         <PageHeader title="Version history" description="Every published version of this site, newest first. Undoing a publish adds a new version that reverses it; nothing here is ever erased." />
         <SyncStatus siteId={siteId} />
+        <ScheduledList siteId={siteId} compact />
         {body}
       </div>
       <ConfirmDialog

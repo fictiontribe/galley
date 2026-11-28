@@ -648,6 +648,36 @@ export interface ApiRoutes {
     response: PublishCheck;
   };
 
+  // ── scheduled publishing (docs/editing/scheduling.md) ──────────────────
+  /** Scheduled releases for this site, newest scheduled time first. */
+  "GET /api/sites/:siteId/schedules": {
+    response: { items: import("./schedules/types").ScheduledRelease[] };
+  };
+  /** Seal selected pending changes from Proof into a scheduled release and hold them until `scheduledAt`. */
+  "POST /api/sites/:siteId/schedules": {
+    body: import("./schedules/types").CreateScheduleInput;
+    response: import("./schedules/types").ScheduledRelease;
+  };
+  /** Reschedule an upcoming or failed release, or update its note and deploy setting. */
+  "PATCH /api/sites/:siteId/schedules/:scheduleId": {
+    body: import("./schedules/types").UpdateScheduleInput;
+    response: import("./schedules/types").ScheduledRelease;
+  };
+  /** Publish a scheduled release immediately instead of waiting for its scheduled time. */
+  "POST /api/sites/:siteId/schedules/:scheduleId/run": {
+    response: import("./schedules/types").ScheduledRelease;
+  };
+  /** Cancel a scheduled release and optionally put its files back in Proof (`restoreToProof` defaults to true). */
+  "POST /api/sites/:siteId/schedules/:scheduleId/cancel": {
+    body: import("./schedules/types").CancelScheduleInput;
+    response: import("./schedules/types").ScheduledRelease;
+  };
+  /** Write a scheduled rebuild GitHub Actions workflow (`.github/workflows/galley-schedule.yml`) into Proof for static sites using `publishAt` dates. */
+  "POST /api/sites/:siteId/schedules/workflow": {
+    body: { cron?: string };
+    response: import("./schedules/types").ScheduleWorkflowResult;
+  };
+
   // ── preview & build ────────────────────────────────────────────────────
   "GET /api/sites/:siteId/preview": { response: PreviewStatus };
   "POST /api/sites/:siteId/preview/start": { response: PreviewStatus };

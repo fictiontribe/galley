@@ -76,7 +76,7 @@ keeps one list of them. Anything not marked is built.
   Claude, with your own key). All three end in the same Proof.
 - **One field changed, one value changed.** Comments, quoting, key order and
   the markdown body stay exactly as they were.
-- **Build pages from the site's own sections.** *Preview.* Drag a section
+- **Build pages from the site's own sections.** Drag a section
   onto the page, move it, switch its options.
 
 **Check and publish**
@@ -130,7 +130,7 @@ keeps one list of them. Anything not marked is built.
     <td><img src="apps/site/public/screens/site-home.webp" width="430" alt="Site home for Caddow: a box to ask for a change, three pages waiting to publish, a card to put the site online, and a card for moving from WordPress."></td>
   </tr>
   <tr>
-    <td>Arrange the site's own sections. <em>Preview</em></td>
+    <td>Arrange the site's own sections.</td>
     <td>Site home: what's waiting, and what to do next.</td>
   </tr>
 </table>
@@ -252,7 +252,6 @@ change between minor versions ([what the numbers mean](RELEASING.md#what-the-ver
   editor, one site per install, run for real on its image and on a server
   behind HTTPS (multi-arch image published to `ghcr.io/fictiontribe/galley` on
   each release: [`docs/cloud-install.md`](docs/cloud-install.md)).
-- **Preview**: the page builder.
 - **In progress**: deploys to Vercel (built, not yet run on the real
   service); hosting the editor online on your own Fly.io, Cloudflare or
   server (run against stand-ins for Fly.io and Cloudflare, not the real

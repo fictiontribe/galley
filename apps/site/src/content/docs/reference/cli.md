@@ -25,6 +25,7 @@ Usage
   galley init [path]     Write galley.config.json from what detection finds
   galley doctor [path]   Check that a site and this computer are ready
   galley deploy [path]   Put the site online with Cloudflare or Vercel (--preview: unpublished changes)
+  galley schedule [path] List scheduled releases or publish any that are due (--run-due)
   galley domain [path]   Use your own domain for a site that is online
   galley media …         Keep the site's media in a bucket (Cloudflare R2, Amazon S3), and move it there and back
   galley host [path]     Host the editor online for the site, on your own account (Fly.io, Cloudflare, a server)
@@ -509,6 +510,27 @@ Examples
   galley deploy                       Put the published site live
   galley deploy --preview             Share unpublished changes
   galley deploy ./site --target vercel --project my-site --yes
+```
+
+## `galley schedule [path]`
+
+Lists scheduled releases for a site (`--list`) or publishes any whose scheduled time has arrived (`--run-due`), leaving unrelated drafts waiting in Proof untouched. Details: [Schedule a publish](/docs/editing/scheduling/).
+
+Its help (`--help`):
+
+```text
+Usage: galley schedule [path] [options]
+List scheduled releases for the site in [path] (default: this folder), or
+publish any scheduled releases whose time has arrived.
+Options
+      --list     List scheduled releases (default when no action is given)
+      --run-due  Publish every scheduled release whose time has passed
+      --json     Print the result as JSON
+  -h, --help     Show this help
+Examples
+  galley schedule --list
+  galley schedule --run-due
+  galley schedule ./site --run-due --json
 ```
 
 ## `galley domain`

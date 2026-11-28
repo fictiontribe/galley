@@ -265,6 +265,13 @@ const coveredElsewhere: ApiRouteKey[] = [
   "POST /api/sites/:siteId/i18n/translate", // i18n.test.ts (real engine)
   "GET /api/sites/:siteId/i18n/translate/:jobId", // i18n.test.ts (real engine)
   "POST /api/sites/:siteId/i18n/translate/:jobId/cancel", // i18n.test.ts (real engine)
+  // schedules.test.ts (real engine + git repo)
+  "GET /api/sites/:siteId/schedules",
+  "POST /api/sites/:siteId/schedules",
+  "PATCH /api/sites/:siteId/schedules/:scheduleId",
+  "POST /api/sites/:siteId/schedules/:scheduleId/run",
+  "POST /api/sites/:siteId/schedules/:scheduleId/cancel",
+  "POST /api/sites/:siteId/schedules/workflow",
   "POST /api/sites/:siteId/visibility/external-links", // visibility.test.ts (real engine; batches without a key, and core test/seo/write.test.ts)
   "POST /api/auth/login", // auth.test.ts
   "POST /api/auth/logout", // auth.test.ts

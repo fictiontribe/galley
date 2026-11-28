@@ -130,6 +130,7 @@ const LINES = {
 const SECTION_TITLES = {
   "meta & auth": "Meta and sign-in",
   "proof & publish": "Proof and publish",
+  "scheduled publishing (docs/editing/scheduling.md)": "Scheduled publishing",
   "preview & build": "Preview and build",
   "search & AI visibility": "Search and AI checks",
   "languages & translations (docs/editing/languages.md)": "Languages and translations",

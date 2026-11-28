@@ -1,24 +1,22 @@
 ---
 title: Privacy and notices
-description: This site sets no cookies, runs no analytics and loads nothing from anyone else. What that means, what Galley itself sends when you use it, and the trademark notes.
+description: What this website measures, what Galley the software sends when you use it, and the trademark notes.
 eyebrow: Privacy and notices
-heading: This site doesn’t watch you.
-lead: No cookies, no analytics, no tracking pixels, and nothing loaded from anyone else’s servers. Every file this site uses — the fonts included — comes from this site.
+heading: Plain about what’s sent.
+lead: This website loads Google Tag Manager to measure visits. Galley, the open-source software, has zero telemetry and no vendor account.
 ---
 
 ## This website
 
-- **No cookies.** The site sets none, so there is nothing to consent to.
-- **No analytics.** No page-view counters, no session recording, no advertising tags.
-- **No third parties.** No font services, no CDNs, no embedded videos or widgets. Your browser talks to this site and nothing else.
-- **One thing kept in your browser, and only if you ask.** Press the light or dark switch in the header and your choice is saved in your browser, so the next page looks the same. It is never sent anywhere. Nothing else is kept.
+- **Visit measurement.** This marketing website (`galleycms.com`) loads Google Tag Manager (`GTM-5V755QQ5`) to measure visits and see which documentation pages are read. Fonts, styles and interactive demos are served directly from this site.
+- **Theme preference in your browser.** Press the light or dark switch in the header and your choice is saved in `localStorage` (`galley-theme`) so the next page matches. It is never sent anywhere.
 - **Email links.** An email link opens a small choice — Gmail, Outlook, your mail app, or copying the address. Nothing is sent until you send the email yourself.
 
-The server that hosts the site may keep ordinary access logs — the address and the page requested — as every web server does. They are not used to identify or follow anyone.
+The server that hosts the site may keep ordinary access logs — the address and the page requested — as every web server does.
 
 ## Galley, the software
 
-Galley has no telemetry and no account. It runs on your computer, or on a server you control, and talks only to:
+Galley itself has zero telemetry and no vendor account. It runs on your computer, or on a server you control, and talks only to:
 
 - **your git host**, when you publish (the remote your repository already uses);
 - **your own deployed site**, when the proof shows it beside your changes;

@@ -20,6 +20,7 @@ import { mcpCommand } from "./commands/mcp";
 import { newCommand } from "./commands/new";
 import { openCommand } from "./commands/open";
 import { pluginCommand } from "./commands/plugin";
+import { scheduleCommand } from "./commands/schedule";
 import { schemaCommand } from "./commands/schema";
 import { serveCommand } from "./commands/serve";
 import { startersCommand } from "./commands/starters";
@@ -36,6 +37,7 @@ Usage
   ${PRODUCT.slug} init [path]     Write ${PRODUCT.configFile} from what detection finds
   ${PRODUCT.slug} doctor [path]   Check that a site and this computer are ready
   ${PRODUCT.slug} deploy [path]   Put the site online with Cloudflare or Vercel (--preview: unpublished changes)
+  ${PRODUCT.slug} schedule [path] List scheduled releases or publish any that are due (--run-due)
   ${PRODUCT.slug} domain [path]   Use your own domain for a site that is online
   ${PRODUCT.slug} media …         Keep the site's media in a bucket (Cloudflare R2, Amazon S3), and move it there and back
   ${PRODUCT.slug} host [path]     Host the editor online for the site, on your own account (Fly.io, Cloudflare, a server)
@@ -81,6 +83,7 @@ export const COMMANDS: Record<string, Command> = {
   theme: themeCommand,
   import: importCommand,
   deploy: deployCommand,
+  schedule: scheduleCommand,
   domain: domainCommand,
   media: mediaCommand,
   host: hostCommand,

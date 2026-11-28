@@ -20,6 +20,7 @@ import { setHostedMode } from "@galley/core/plugins";
 import { createSmtpTransport, mailConfigFromEnv, type MailTransport } from "@galley/core/forms";
 import {
   APP_SECRET_ENV_NAMES,
+  asEngine,
   createInstall,
   requireCallerForGuardedWork,
   createInstallRegistry,
@@ -1275,6 +1276,18 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
         })
       : null);
 
+  // Background scheduled publishing loop: checks due releases every 15 seconds.
+  const scheduleTimer = services.schedules
+    ? setInterval(() => {
+        if (draining || phase !== "running") return;
+        void asEngine(() => services.schedules!.runDueAll()).catch((error) => {
+          out.log(`Scheduled publish check failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
+      }, 15_000)
+    : null;
+
+  scheduleTimer?.unref?.();
+
   let closing: Promise<void> | null = null;
 
   /** Waits for requests and jobs in progress, for at most `ms`. Event streams don't count: they are ended first. */
@@ -1319,6 +1332,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
 
         // No new connections, and new requests on open ones are told the editor is stopping.
         draining = true;
+        if (scheduleTimer) clearInterval(scheduleTimer);
         // A measurement of the data folder for the Install page is let go of at once: nothing waits for it.
         void ops?.stopMeasuring();
         // No new round; one in progress gets the grace like a request does.
